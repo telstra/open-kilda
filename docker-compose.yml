@@ -1,0 +1,20 @@
+version: '2'
+services:
+
+  kilda-base-ubuntu:
+    build: base/kilda-base-ubuntu/
+    image: kilda/base-ubuntu:latest
+
+  openflow-speaker:
+    build: services/openflow-speaker/
+    image: kilda/openflow-speaker:latest 
+    command: /app/pox/pox.py samples.pretty_log forwarding.l2_learning
+    ports:
+    - "6633:6633" 
+
+  neo4j:
+    build: services/neo4j/
+    image: kilda/neo4j:latest
+    command: neo4j console
+    ports:
+    - "7474:7474"
