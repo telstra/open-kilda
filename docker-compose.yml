@@ -1,14 +1,15 @@
 version: '2'
 services:
 
-  kilda-base-ubuntu:
-    build: base/kilda-base-ubuntu/
-    image: kilda/base-ubuntu:latest
+  hello-world:
+    build: services/hello-world/
+    image: kilda/hello-world:latest
+    command: /app/helloworld.sh
 
   openflow-speaker:
     build: services/openflow-speaker/
     image: kilda/openflow-speaker:latest 
-    command: /app/pox/pox.py samples.pretty_log forwarding.l2_learning
+    #command: /app/runner.sh
     ports:
     - "6633:6633" 
 
