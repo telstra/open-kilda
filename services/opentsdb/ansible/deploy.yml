@@ -14,7 +14,6 @@
     with_items:
       - net-tools
       - gnuplot
-      - default-jre
     become_method: sudo
     become_user: root
     become: true
