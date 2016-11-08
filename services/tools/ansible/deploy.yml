@@ -9,15 +9,15 @@
     file: path=/var/zookeeper state=directory owner=root group=root mode=755
 
   - name: get zookeeper
-    unarchive: 
+    unarchive:
       src=http://ftp.kddilabs.jp/infosystems/apache/zookeeper/zookeeper-3.4.9/zookeeper-3.4.9.tar.gz
-      dest=/opt 
-      remote_src=yes 
+      dest=/opt
+      remote_src=yes
       owner=root
       group=root
 
   - name: create zookeeper link
-    file: src=/opt/zookeeper-3.4.9 dest=/opt/zookeeper state=link owner=root group=root 
+    file: src=/opt/zookeeper-3.4.9 dest=/opt/zookeeper state=link owner=root group=root
 
   - name: create log dir
     file: path=/var/log/zookeeper state=directory owner=root group=root mode=777
@@ -50,8 +50,6 @@
       update_cache: yes
     with_items:
     - net-tools
-    - default-jre
-    - build-essential
     become_method: sudo
     become_user: root
     become: true
