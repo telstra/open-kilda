@@ -24,6 +24,8 @@ services:
     build: services/zookeeper/
     image: kilda/zookeeper:latest
     command: /opt/zookeeper/bin/zkServer.sh start-foreground
+    volumes:
+      - zookeeper_data:/data/zookeeper
     ports:
       - "2181:2181"
 
@@ -31,6 +33,8 @@ services:
     build: services/kafka/
     image: kilda/kafka:latest
     command: /opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/server.properties
+    volumes:
+      - kafka_data:/data/kafka
     depends_on:
       - zookeeper
     links:
@@ -42,6 +46,8 @@ services:
     build: services/hbase
     image: kilda/hbase:latest
     command: /opt/hbase/bin/start-hbase
+    volumes:
+      - hbase_data:/data/hbase
     depends_on:
       - zookeeper
     links:
@@ -53,6 +59,8 @@ services:
       - "60030:60030"
       - "8070:8070"
       - "8090:8090"
+      - "9070:9070"
+      - "9090:9090"
 
   opentsdb:
     build: services/opentsdb
@@ -84,3 +92,8 @@ services:
     ports:
       - "22:8022"
     container_name: "hadoop-tools"
+
+volumes:
+  hbase_data:
+  zookeeper_data:
+  kafka_data:
