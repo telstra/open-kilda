@@ -67,6 +67,6 @@
   </property>
   <property>
     <name>hbase.thrift.info.port</name>
-    <value>9090</value>
+    <value>9080</value>
   </property>
 </configuration>
