@@ -1,0 +1,57 @@
+---
+- hosts: localhost
+  tasks:
+
+  - name: create zookeeper dir
+    file: path=/opt state=directory
+
+  - name: create data dir
+    file: path=/var/zookeeper state=directory owner=root group=root mode=755
+
+  - name: get zookeeper
+    unarchive: 
+      src=http://ftp.kddilabs.jp/infosystems/apache/zookeeper/zookeeper-3.4.9/zookeeper-3.4.9.tar.gz
+      dest=/opt 
+      remote_src=yes 
+      owner=root
+      group=root
+
+  - name: create zookeeper link
+    file: src=/opt/zookeeper-3.4.9 dest=/opt/zookeeper state=link owner=root group=root 
+
+  - name: create log dir
+    file: path=/var/log/zookeeper state=directory owner=root group=root mode=777
+
+  - name: get kafka
+    unarchive:
+      src=http://ftp.kddilabs.jp/infosystems/apache/kafka/0.10.1.0/kafka_2.11-0.10.1.0.tgz
+      dest=/opt
+      remote_src=yes
+      owner=root
+      group=root
+
+  - name: create kafka link
+    file: src=/opt/kafka_2.11-0.10.1.0 dest=/opt/kafka state=link owner=root group=root
+
+  - name: get hbase
+    unarchive:
+      src=http://ftp.kddilabs.jp/infosystems/apache/hbase/1.2.3/hbase-1.2.3-bin.tar.gz
+      dest=/opt
+      remote_src=yes
+      owner=root
+      group=root
+
+  - name: create hbase link
+    file: src=/opt/hbase-1.2.3 dest=/opt/hbase state=link owner=root group=root
+
+  - name: install apt packages
+    apt:
+      name: "{{ item }}"
+      update_cache: yes
+    with_items:
+    - net-tools
+    - default-jre
+    - build-essential
+    become_method: sudo
+    become_user: root
+    become: true

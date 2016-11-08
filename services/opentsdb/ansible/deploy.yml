@@ -1,0 +1,26 @@
+---
+- hosts: localhost
+  tasks:
+
+  - name: get opentsdb
+    get_url:
+      url="https://github.com/OpenTSDB/opentsdb/releases/download/v2.2.1/opentsdb-2.2.1_all.deb"
+      dest="/tmp/opentsdb-2.2.1.deb"
+
+  - name: install apt packages
+    apt:
+      name: "{{ item }}"
+      update_cache: yes
+    with_items:
+      - net-tools
+      - gnuplot
+      - default-jre
+    become_method: sudo
+    become_user: root
+    become: true
+
+  - name: install opentsdb
+    apt: deb="/tmp/opentsdb-2.2.1.deb"
+    become_method: sudo
+    become_user: root
+    become: true

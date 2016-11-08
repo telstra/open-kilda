@@ -1,0 +1,28 @@
+---
+- hosts: localhost
+  tasks:
+
+  - name: create opt dir
+    file: path=/opt state=directory
+
+  - name: get kafka
+    unarchive: 
+      src=http://ftp.kddilabs.jp/infosystems/apache/kafka/0.10.1.0/kafka_2.11-0.10.1.0.tgz
+      dest=/opt 
+      remote_src=yes 
+      owner=root
+      group=root
+
+  - name: create kafka link
+    file: src=/opt/kafka_2.11-0.10.1.0 dest=/opt/kafka state=link owner=root group=root 
+
+  - name: install apt packages
+    apt:
+      name: "{{ item }}"
+      update_cache: yes
+    with_items:
+    - net-tools
+    - default-jre
+    become_method: sudo
+    become_user: root
+    become: true
