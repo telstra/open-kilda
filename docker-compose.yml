@@ -65,7 +65,7 @@ services:
   opentsdb:
     build: services/opentsdb
     image: kilda/opentsdb:latest
-    command: sleep 1d
+    command: /app/wait-for-it.sh -t 120 -h hbase.pendev -p 9090 -- /app/start-opentsdb
     environment:
       - JAVA_HOME=/usr
       - HBASE_HOME=/opt/hbase
