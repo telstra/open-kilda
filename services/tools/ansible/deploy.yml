@@ -35,14 +35,14 @@
 
   - name: get hbase
     unarchive:
-      src=http://ftp.kddilabs.jp/infosystems/apache/hbase/1.2.3/hbase-1.2.3-bin.tar.gz
+      src=http://ftp.kddilabs.jp/infosystems/apache/hbase/1.2.4/hbase-1.2.4-bin.tar.gz
       dest=/opt
       remote_src=yes
       owner=root
       group=root
 
   - name: create hbase link
-    file: src=/opt/hbase-1.2.3 dest=/opt/hbase state=link owner=root group=root
+    file: src=/opt/hbase-1.2.4 dest=/opt/hbase state=link owner=root group=root
 
   - name: install apt packages
     apt:
