@@ -6,10 +6,10 @@
     file: path=/opt state=directory
 
   - name: get hbase
-    unarchive: 
+    unarchive:
       src=http://ftp.kddilabs.jp/infosystems/apache/hbase/1.2.3/hbase-1.2.3-bin.tar.gz
-      dest=/opt 
-      remote_src=yes 
+      dest=/opt
+      remote_src=yes
       owner=root
       group=root
 
@@ -22,7 +22,6 @@
       update_cache: yes
     with_items:
     - net-tools
-    - default-jre
     become_method: sudo
     become_user: root
     become: true
