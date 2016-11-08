@@ -6,14 +6,16 @@ import sys
 host = 'hbase.pendev'
 port = 9090
 
-new_tables = [ 'tsdb', 'tsdb-uid', 'tsdb-tree', 'tsdb-meta']
+new_tables = ['tsdb', 'tsdb-uid', 'tsdb-tree', 'tsdb-meta']
 
 connection = happybase.Connection(host=host, port=port)
 existing_tables = connection.tables()
 
+
 def create_table(table):
     if (table == 'tsdb') or (table == 'tsdb-tree'):
-        families = {'t': dict(max_versions=1, compression='none', bloom_filter_type='ROW')}
+        families = {'t': dict(max_versions=1, compression='none',
+                              bloom_filter_type='ROW')}
     elif table == 'tsdb-uid':
         families = {'id': dict(compression='none', bloom_filter_type='ROW'),
                     'name': dict(compression='none', bloom_filter_type='ROW')}
