@@ -5,11 +5,13 @@ services:
     build: services/hello-world/
     image: kilda/hello-world:latest
     command: /app/helloworld.sh
+    env_file:
+      - services/hello-world/variables.env
 
   openflow-speaker:
     build: services/openflow-speaker/
     image: kilda/openflow-speaker:latest
-    #command: /app/runner.sh
+    command: /app/app.sh
     ports:
       - "6633:6633"
 
