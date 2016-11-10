@@ -86,12 +86,64 @@ services:
     depends_on:
       - zookeeper
       - hbase
+      - storm_nimbus
+      - storm_supervisor
+    links:
+      - zookeeper:zookeeper.pendev
+      - hbase:hbase.pendev
+      - storm_nimbus:nimbus.pendev
+      - storm_supervisor:supervisor.pendev
+    ports:
+      - "22:8022"
+    container_name: "hadoop-tools"
+
+  storm_nimbus:
+    build: services/storm-nimbus
+    image: kilda/storm-nimbus:latest
+    command: /app/wait-for-it.sh -t 120 -h zookeeper.pendev -p 2181 -- /opt/storm/bin/storm nimbus
+    depends_on:
+      - zookeeper
     links:
       - zookeeper:zookeeper.pendev
       - hbase:hbase.pendev
     ports:
-      - "22:8022"
-    container_name: "hadoop-tools"
+      - "6627:6627"
+      - "3772:3772"
+      - "3773:3773"
+
+  storm_ui:
+    build: services/storm-ui
+    image: kilda/storm-ui:latest
+    command: /app/wait-for-it.sh -t 120 -h zookeeper.pendev -p 2181 -- /opt/storm/bin/storm ui
+    depends_on:
+      - zookeeper
+      - storm_nimbus
+      - storm_supervisor
+    links:
+      - zookeeper:zookeeper.pendev
+      - hbase:hbase.pendev
+      - storm_nimbus:nimbus.pendev
+      - storm_supervisor:supervisor.pendev
+    ports:
+      - "8080:8080"
+
+  storm_supervisor:
+    build: services/storm-supervisor
+    image: kilda/storm-supervisor:latest
+    command: /app/wait-for-it.sh -t 120 -h zookeeper.pendev -p 2181 -- /opt/storm/bin/storm supervisor
+    depends_on:
+      - zookeeper
+      - storm_nimbus
+    links:
+      - zookeeper:zookeeper.pendev
+      - hbase:hbase.pendev
+      - storm_nimbus:nimbus.pendev
+    ports:
+      - "6700:6700"
+      - "6701:6701"
+      - "6702:6702"
+      - "6703:6703"
+      - "8000:8000"
 
 volumes:
   hbase_data:

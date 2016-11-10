@@ -1,0 +1,27 @@
+---
+- hosts: localhost
+  tasks:
+
+  - name: create opt dir
+    file: path=/opt state=directory
+
+  - name: get storm
+    unarchive:
+      src=http://ftp.kddilabs.jp/infosystems/apache/storm/apache-storm-0.10.2/apache-storm-0.10.2.tar.gz
+      dest=/opt
+      remote_src=yes
+      owner=root
+      group=root
+
+  - name: create storm link
+    file: src=/opt/apache-storm-0.10.2 dest=/opt/storm state=link owner=root group=root
+
+  - name: install apt packages
+    apt:
+      name: "{{ item }}"
+      update_cache: yes
+    with_items:
+    - net-tools
+    become_method: sudo
+    become_user: root
+    become: true
