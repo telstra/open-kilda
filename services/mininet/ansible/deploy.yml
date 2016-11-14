@@ -1,0 +1,24 @@
+---
+- hosts: localhost
+  tasks:
+  - name: install apt packages
+    apt:
+      name: "{{ item }}"
+      update_cache: yes
+    with_items:
+    - mininet
+    - net-tools
+    - autoconf
+    - automake
+    - ca-certificates
+    - git
+    - libtool
+    - openssh-client
+    - patch
+    - vim
+    become_method: sudo
+    become_user: root
+    become: true
+
+
+
