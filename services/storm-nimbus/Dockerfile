@@ -1,0 +1,1 @@
+FROM kilda/storm:latest

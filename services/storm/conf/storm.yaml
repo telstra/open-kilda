@@ -1,0 +1,14 @@
+storm.zookeeper.servers:
+  - "zookeeper.pendev"
+nimbus.host: "nimbus.pendev"
+drpc.port: 3772
+drpc.invocations.port: 3773
+
+## Metrics Consumers
+# topology.metrics.consumer.register:
+#   - class: "backtype.storm.metric.LoggingMetricsConsumer"
+#     parallelism.hint: 1
+#   - class: "org.mycompany.MyMetricsConsumer"
+#     parallelism.hint: 1
+#     argument:
+#       - endpoint: "metrics-collector.mycompany.org"
