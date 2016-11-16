@@ -164,6 +164,16 @@ services:
       - "6703:6703"
       - "8000:8000"
 
+  floodlight:
+    build: services/floodlight
+    image: kilda/floodlight:latest
+    command: java -jar /app/floodlight/target/floodlight.jar -cf /app/floodlight/src/main/resources/floodlightdefault.properties
+    ports:
+      - "6653:6653"
+      - "8180:8080"
+      - "6655:6655"
+      - "6642:6642"
+
 volumes:
   hbase_data:
   zookeeper_data:
