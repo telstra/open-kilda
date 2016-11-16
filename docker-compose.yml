@@ -5,11 +5,20 @@ services:
     build: services/hello-world/
     image: kilda/hello-world:latest
     command: /app/helloworld.sh
+    env_file:
+      - services/hello-world/variables.env
+  
+  mininet:
+    build: services/mininet/
+    image: kilda/mininet:latest
+    command: mn
+    env_file:
+      - services/mininet/variables.env
 
   openflow-speaker:
     build: services/openflow-speaker/
     image: kilda/openflow-speaker:latest
-    #command: /app/runner.sh
+    command: /app/app.sh
     ports:
       - "6633:6633"
 
@@ -19,6 +28,16 @@ services:
     command: neo4j console
     ports:
       - "7474:7474"
+      - "7687:7687"
+
+  topology-engine:
+    build: services/topology-engine/
+    image: kilda/topology-engine:latest
+    command: python app/helloworld.py
+    ports:
+      - "80:80"
+    links:
+      - neo4j
 
   zookeeper:
     build: services/zookeeper/
