@@ -117,8 +117,8 @@ services:
     container_name: "hadoop-tools"
 
   storm_nimbus:
-    build: services/storm-nimbus
-    image: kilda/storm-nimbus:latest
+    build: services/storm
+    image: kilda/storm:latest
     command: /app/wait-for-it.sh -t 120 -h zookeeper.pendev -p 2181 -- /opt/storm/bin/storm nimbus
     depends_on:
       - zookeeper
@@ -131,8 +131,8 @@ services:
       - "3773:3773"
 
   storm_ui:
-    build: services/storm-ui
-    image: kilda/storm-ui:latest
+    build: services/storm
+    image: kilda/storm:latest
     command: /app/wait-for-it.sh -t 120 -h zookeeper.pendev -p 2181 -- /opt/storm/bin/storm ui
     depends_on:
       - zookeeper
@@ -147,8 +147,8 @@ services:
       - "8080:8080"
 
   storm_supervisor:
-    build: services/storm-supervisor
-    image: kilda/storm-supervisor:latest
+    build: services/storm
+    image: kilda/storm:latest
     command: /app/wait-for-it.sh -t 120 -h zookeeper.pendev -p 2181 -- /opt/storm/bin/storm supervisor
     depends_on:
       - zookeeper

@@ -16,7 +16,7 @@
 
   - name: git floodlight
     git: 
-       repo=https://github.com/floodlight/floodlight.git
+       repo=https://github.com/kilda/floodlight.git
        dest=/app/floodlight
        clone=yes
        recursive=yes
