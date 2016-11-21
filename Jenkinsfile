@@ -1,3 +1,3 @@
 node {
-    sh 'docker --version'
+    sh 'docker-compose build'
 }
