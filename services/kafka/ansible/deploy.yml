@@ -1,5 +1,9 @@
 ---
 - hosts: localhost
+
+  vars_files:
+    - sources.yml 
+
   tasks:
 
   - name: create opt dir
@@ -7,7 +11,7 @@
 
   - name: get kafka
     unarchive:
-      src=http://ftp.kddilabs.jp/infosystems/apache/kafka/0.10.1.0/kafka_2.11-0.10.1.0.tgz
+      src={{ default_url }}/kafka/0.10.1.0/kafka_2.11-0.10.1.0.tgz
       dest=/opt
       remote_src=yes
       owner=root

@@ -1,5 +1,9 @@
 ---
 - hosts: localhost
+
+  vars_files:
+    - sources.yml 
+
   tasks:
 
   - name: create zookeeper dir
@@ -10,7 +14,7 @@
 
   - name: get zookeeper
     unarchive:
-      src=http://ftp.kddilabs.jp/infosystems/apache/zookeeper/zookeeper-3.4.9/zookeeper-3.4.9.tar.gz
+      src={{ default_url }}/zookeeper/zookeeper-3.4.9/zookeeper-3.4.9.tar.gz
       dest=/opt
       remote_src=yes
       owner=root

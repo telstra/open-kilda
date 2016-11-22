@@ -1,5 +1,9 @@
 ---
 - hosts: localhost
+
+  vars_files:
+    - sources.yml 
+
   tasks:
 
   - name: create opt dir
@@ -7,7 +11,7 @@
 
   - name: get storm
     unarchive:
-      src=http://ftp.kddilabs.jp/infosystems/apache/storm/apache-storm-0.10.2/apache-storm-0.10.2.tar.gz
+      src={{ default_url }}/storm/apache-storm-0.10.2/apache-storm-0.10.2.tar.gz
       dest=/opt
       remote_src=yes
       owner=root

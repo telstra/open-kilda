@@ -2,7 +2,7 @@
 - hosts: localhost
 
   vars_files:
-    - sources.yml
+    - sources.yml 
 
   tasks:  
 
