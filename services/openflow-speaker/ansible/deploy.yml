@@ -6,7 +6,7 @@
       name: "{{ item }}"
       update_cache: yes
     with_items:
-    - net-tools
+    - vim
     become_method: sudo
     become_user: root
     become: true

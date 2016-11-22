@@ -6,7 +6,6 @@
       name: "{{ item }}"
       update_cache: yes
     with_items:
-    - net-tools
     - git
     - ant
     - maven

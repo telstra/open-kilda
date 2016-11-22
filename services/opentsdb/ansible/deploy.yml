@@ -12,7 +12,6 @@
       name: "{{ item }}"
       update_cache: yes
     with_items:
-      - net-tools
       - gnuplot
       - python-happybase
     become_method: sudo

@@ -16,12 +16,3 @@
   - name: create hbase link
     file: src=/opt/hbase-1.2.4 dest=/opt/hbase state=link owner=root group=root
 
-  - name: install apt packages
-    apt:
-      name: "{{ item }}"
-      update_cache: yes
-    with_items:
-    - net-tools
-    become_method: sudo
-    become_user: root
-    become: true
