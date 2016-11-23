@@ -9,9 +9,9 @@
     - git
     - ant
     - maven
-    become_method: sudo
-    become_user: root
-    become: true
+    #become_method: sudo
+    #become_user: root
+    #become: true
 
   - name: git floodlight
     git: 

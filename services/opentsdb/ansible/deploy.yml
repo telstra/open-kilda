@@ -14,12 +14,12 @@
     with_items:
       - gnuplot
       - python-happybase
-    become_method: sudo
-    become_user: root
-    become: true
+    #become_method: sudo
+    #become_user: root
+    #become: true
 
   - name: install opentsdb
     apt: deb="/tmp/opentsdb-2.2.1.deb"
-    become_method: sudo
-    become_user: root
-    become: true
+    #become_method: sudo
+    #become_user: root
+    #become: true
