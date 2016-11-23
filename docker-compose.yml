@@ -3,28 +3,28 @@ services:
 
   hello-world:
     build: services/hello-world/
-    image: kilda/hello-world:${BUILD_NUMBER:-latest}
+    image: "kilda/hello-world:${BUILD_NUMBER:-latest}"
     command: /app/helloworld.sh
     env_file:
       - services/hello-world/variables.env
   
   mininet:
     build: services/mininet/
-    image: kilda/mininet:${BUILD_NUMBER:-latest}
+    image: "kilda/mininet:${BUILD_NUMBER:-latest}"
     command: mn
     env_file:
       - services/mininet/variables.env
 
   openflow-speaker:
     build: services/openflow-speaker/
-    image: kilda/openflow-speaker:${BUILD_NUMBER:-latest}
+    image: "kilda/openflow-speaker:${BUILD_NUMBER:-latest}"
     command: /app/app.sh
     ports:
       - "6633:6633"
 
   neo4j:
     build: services/neo4j/
-    image: kilda/neo4j:${BUILD_NUMBER:-latest}
+    image: "kilda/neo4j:${BUILD_NUMBER:-latest}"
     command: neo4j console
     ports:
       - "7474:7474"
@@ -32,7 +32,7 @@ services:
 
   topology-engine:
     build: services/topology-engine/
-    image: kilda/topology-engine:${BUILD_NUMBER:-latest}
+    image: "kilda/topology-engine:${BUILD_NUMBER:-latest}"
     command: python app/helloworld.py
     ports:
       - "80:80"
@@ -41,7 +41,7 @@ services:
 
   zookeeper:
     build: services/zookeeper/
-    image: kilda/zookeeper:${BUILD_NUMBER:-latest}
+    image: "kilda/zookeeper:${BUILD_NUMBER:-latest}"
     command: /opt/zookeeper/bin/zkServer.sh start-foreground
     volumes:
       - zookeeper_data:/data/zookeeper
@@ -50,7 +50,7 @@ services:
 
   kafka:
     build: services/kafka/
-    image: kilda/kafka:${BUILD_NUMBER:-latest}
+    image: "kilda/kafka:${BUILD_NUMBER:-latest}"
     command: /opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/server.properties
     volumes:
       - kafka_data:/data/kafka
@@ -63,7 +63,7 @@ services:
 
   hbase:
     build: services/hbase
-    image: kilda/hbase:${BUILD_NUMBER:-latest}
+    image: "kilda/hbase:${BUILD_NUMBER:-latest}"
     command: /opt/hbase/bin/start-hbase
     volumes:
       - hbase_data:/data/hbase
@@ -83,7 +83,7 @@ services:
 
   opentsdb:
     build: services/opentsdb
-    image: kilda/opentsdb:${BUILD_NUMBER:-latest}
+    image: "kilda/opentsdb:${BUILD_NUMBER:-latest}"
     command: /app/wait-for-it.sh -t 120 -h hbase.pendev -p 9090 -- /app/start-opentsdb
     environment:
       - JAVA_HOME=/usr
@@ -100,7 +100,7 @@ services:
 
   tools:
     build: services/tools
-    image: kilda/tools:${BUILD_NUMBER:-latest}
+    image: "kilda/tools:${BUILD_NUMBER:-latest}"
     command: sleep 10d
     depends_on:
       - zookeeper
@@ -118,7 +118,7 @@ services:
 
   storm_nimbus:
     build: services/storm
-    image: kilda/storm:${BUILD_NUMBER:-latest}
+    image: "kilda/storm:${BUILD_NUMBER:-latest}"
     command: /app/wait-for-it.sh -t 120 -h zookeeper.pendev -p 2181 -- /opt/storm/bin/storm nimbus
     depends_on:
       - zookeeper
@@ -132,7 +132,7 @@ services:
 
   storm_ui:
     build: services/storm
-    image: kilda/storm:${BUILD_NUMBER:-latest}
+    image: "kilda/storm:${BUILD_NUMBER:-latest}"
     command: /app/wait-for-it.sh -t 120 -h zookeeper.pendev -p 2181 -- /opt/storm/bin/storm ui
     depends_on:
       - zookeeper
@@ -148,7 +148,7 @@ services:
 
   storm_supervisor:
     build: services/storm
-    image: kilda/storm:${BUILD_NUMBER:-latest}
+    image: "kilda/storm:${BUILD_NUMBER:-latest}"
     command: /app/wait-for-it.sh -t 120 -h zookeeper.pendev -p 2181 -- /opt/storm/bin/storm supervisor
     depends_on:
       - zookeeper
@@ -166,7 +166,7 @@ services:
 
   floodlight:
     build: services/floodlight
-    image: kilda/floodlight:${BUILD_NUMBER:-latest}
+    image: "kilda/floodlight:${BUILD_NUMBER:-latest}"
     command: java -jar /app/floodlight/target/floodlight.jar -cf /app/floodlight/src/main/resources/floodlightdefault.properties
     ports:
       - "6653:6653"
