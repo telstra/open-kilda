@@ -9,7 +9,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get autoremove
 #####################
 #Install Ansible deps
 #####################
-RUN apt-get install -y build-essential libffi-dev libssl-dev python python-dev python-pip ssh software-properties-common apt-utils
+RUN apt-get install -y build-essential curl libffi-dev libssl-dev python python-dev python-pip ssh software-properties-common apt-utils
 RUN pip install --upgrade pip
 
 ################
