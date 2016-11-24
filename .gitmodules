@@ -1,0 +1,3 @@
+[submodule "kilda-bins"]
+	path = kilda-bins
+	url = git@bitbucket.org:pendevops/kilda-bins.git
