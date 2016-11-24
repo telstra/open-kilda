@@ -2,7 +2,7 @@
 - hosts: localhost
 
   vars_files:
-    - sources.yml 
+    - sources.yml
 
   tasks:
 
@@ -11,13 +11,11 @@
 
   - name: get storm
     unarchive:
-      src={{ default_url }}/storm/apache-storm-0.10.2/apache-storm-0.10.2.tar.gz
+      src={{ default_url }}/storm/apache-storm-1.0.2/apache-storm-1.0.2.tar.gz
       dest=/opt
       remote_src=yes
       owner=root
       group=root
 
   - name: create storm link
-    file: src=/opt/apache-storm-0.10.2 dest=/opt/storm state=link owner=root group=root
-
-
+    file: src=/opt/apache-storm-1.0.2 dest=/opt/storm state=link owner=root group=root
