@@ -20,7 +20,7 @@ parallel (
 
         }
     },
-    hbase-and-opentsdb: { 
+    hbaseandopentsdb: { 
         node {
             sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build hbase'
             sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build opentsdb'
