@@ -9,7 +9,7 @@ services:
     command: /app/helloworld.sh
     env_file:
       - services/hello-world/variables.env
-  
+
   mininet:
     build: 
       context: .
@@ -168,7 +168,7 @@ services:
       - storm_nimbus:nimbus.pendev
       - storm_supervisor:supervisor.pendev
     ports:
-      - "8080:8080"
+      - "8888:8080"
 
   storm_supervisor:
     build: 
