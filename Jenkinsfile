@@ -14,9 +14,22 @@ node {
 
 stage "Build Kilda containers"
 parallel (
-    hbase: { 
+    floodlight: { 
+        node {
+            sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build floodlight'
+
+        }
+    },
+    hbase-and-opentsdb: { 
         node {
             sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build hbase'
+            sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build opentsdb'
+
+        }
+    },
+    hello-world: { 
+        node {
+            sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build hello-world'
 
         }
     },
@@ -25,5 +38,23 @@ parallel (
             sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build kafka'
 
         }
-    }
+    },
+    mininet: { 
+        node {
+            sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build mininet'
+
+        }
+    },
+    neo4j: { 
+        node {
+            sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build neo4j'
+
+        }
+    },
+    openflow-speaker: { 
+        node {
+            sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build kafka'
+
+        }
+    } 
 )
