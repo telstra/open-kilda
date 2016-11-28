@@ -1,8 +1,6 @@
 ---
 - hosts: localhost
 
-  vars_files:
-    - sources.yml
 
   tasks:
 
@@ -11,7 +9,7 @@
 
   - name: get storm
     unarchive:
-      src={{ default_url }}/storm/apache-storm-1.0.2/apache-storm-1.0.2.tar.gz
+      src=/src/apache-storm-1.0.2.tar.gz
       dest=/opt
       remote_src=yes
       owner=root

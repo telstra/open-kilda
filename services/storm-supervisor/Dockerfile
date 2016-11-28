@@ -1,2 +1,2 @@
 FROM kilda/storm:latest
-ADD ansible /ansible
+ADD services/storm-supervisor/ansible /ansible

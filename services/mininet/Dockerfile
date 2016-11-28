@@ -5,7 +5,7 @@ ENV MININET_REPO https://github.com/mininet/mininet.git
 ENV MININET_INSTALLER mininet/util/install.sh
 ENV INSTALLER_SWITCHES -fbinptvwyx
 
-ADD ansible /ansible
+ADD services/mininet/ansible /ansible
 RUN ansible-playbook -s /ansible/deploy.yml
 
 WORKDIR /tmp

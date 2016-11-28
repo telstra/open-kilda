@@ -2,28 +2,36 @@ version: '2.1'
 services:
 
   hello-world:
-    build: services/hello-world/
+    build: 
+      context: .
+      dockerfile:  services/hello-world/Dockerfile
     image: "kilda/hello-world:${full_build_number:-latest}"
     command: /app/helloworld.sh
     env_file:
       - services/hello-world/variables.env
   
   mininet:
-    build: services/mininet/
+    build: 
+      context: .
+      dockerfile:  services/mininet/Dockerfile
     image: "kilda/mininet:${full_build_number:-latest}"
     command: mn
     env_file:
       - services/mininet/variables.env
 
   openflow-speaker:
-    build: services/openflow-speaker/
+    build: 
+      context: .
+      dockerfile:  services/openflow-speaker/Dockerfile
     image: "kilda/openflow-speaker:${full_build_number:-latest}"
     command: /app/app.sh
     ports:
       - "6633:6633"
 
   neo4j:
-    build: services/neo4j/
+    build: 
+      context: .
+      dockerfile:  services/neo4j/Dockerfile
     image: "kilda/neo4j:${full_build_number:-latest}"
     command: neo4j console
     ports:
@@ -31,7 +39,9 @@ services:
       - "7687:7687"
 
   topology-engine:
-    build: services/topology-engine/
+    build: 
+      context: .
+      dockerfile:  services/topology-engine/Dockerfile
     image: "kilda/topology-engine:${full_build_number:-latest}"
     command: python app/helloworld.py
     ports:
@@ -40,7 +50,9 @@ services:
       - neo4j
 
   zookeeper:
-    build: services/zookeeper/
+    build: 
+      context: .
+      dockerfile:  services/zookeeper/Dockerfile
     image: "kilda/zookeeper:${full_build_number:-latest}"
     command: /opt/zookeeper/bin/zkServer.sh start-foreground
     volumes:
@@ -49,7 +61,9 @@ services:
       - "2181:2181"
 
   kafka:
-    build: services/kafka/
+    build: 
+      context: .
+      dockerfile:  services/kafka/Dockerfile
     image: "kilda/kafka:${full_build_number:-latest}"
     command: /opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/server.properties
     volumes:
@@ -62,7 +76,9 @@ services:
       - "9092:9092"
 
   hbase:
-    build: services/hbase
+    build: 
+      context: .
+      dockerfile: services/hbase/Dockerfile
     image: "kilda/hbase:${full_build_number:-latest}"
     command: /opt/hbase/bin/start-hbase
     volumes:
@@ -82,7 +98,9 @@ services:
       - "9090:9090"
 
   opentsdb:
-    build: services/opentsdb
+    build: 
+      context: .
+      dockerfile:  services/opentsdb/Dockerfile
     image: "kilda/opentsdb:${full_build_number:-latest}"
     command: /app/wait-for-it.sh -t 120 -h hbase.pendev -p 9090 -- /app/start-opentsdb
     environment:
@@ -99,7 +117,9 @@ services:
       - "4242:4242"
 
   tools:
-    build: services/tools
+    build: 
+      context: .
+      dockerfile:  services/tools/Dockerfile
     image: "kilda/tools:${full_build_number:-latest}"
     command: sleep 10d
     depends_on:
@@ -117,7 +137,9 @@ services:
     container_name: "hadoop-tools"
 
   storm_nimbus:
-    build: services/storm
+    build: 
+      context: .
+      dockerfile:  services/storm/Dockerfile
     image: "kilda/storm:${full_build_number:-latest}"
     command: /app/wait-for-it.sh -t 120 -h zookeeper.pendev -p 2181 -- /opt/storm/bin/storm nimbus
     depends_on:
@@ -131,7 +153,9 @@ services:
       - "3773:3773"
 
   storm_ui:
-    build: services/storm
+    build: 
+      context: .
+      dockerfile:  services/storm/Dockerfile
     image: "kilda/storm:${full_build_number:-latest}"
     command: /app/wait-for-it.sh -t 120 -h zookeeper.pendev -p 2181 -- /opt/storm/bin/storm ui
     depends_on:
@@ -147,7 +171,9 @@ services:
       - "8080:8080"
 
   storm_supervisor:
-    build: services/storm
+    build: 
+      context: .
+      dockerfile:  services/storm/Dockerfile
     image: "kilda/storm:${full_build_number:-latest}"
     command: /app/wait-for-it.sh -t 120 -h zookeeper.pendev -p 2181 -- /opt/storm/bin/storm supervisor
     depends_on:
@@ -165,7 +191,9 @@ services:
       - "8000:8000"
 
   floodlight:
-    build: services/floodlight
+    build: 
+      context: .
+      dockerfile:  services/floodlight/Dockerfile
     image: "kilda/floodlight:${full_build_number:-latest}"
     command: java -jar /app/floodlight/target/floodlight.jar -cf /app/floodlight/src/main/resources/floodlightdefault.properties
     ports:
