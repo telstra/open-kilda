@@ -51,7 +51,7 @@ parallel (
 
         }
     },
-    openflow-speaker: { 
+    openflowspeaker: { 
         node {
             sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build kafka'
 
