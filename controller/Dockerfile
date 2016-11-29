@@ -1,7 +1,7 @@
 ##
 ## NB: The verify_from() function in project.sh is used to verify the FROM exists
 ##
-FROM tools/builder-java:0.0.2
+FROM kilda/builder-java:0.0.2
 
 ENV PROJECT controller
 ENV VERSION 1.0-SNAPSHOT

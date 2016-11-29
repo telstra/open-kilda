@@ -4,9 +4,9 @@
 # | This script holds most / all of the verbs related to this project.
 # +=•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==
 
-FROM_NAME=tools/builder-java
+FROM_NAME=kilda/builder-java
 FROM_VER=0.0.2
-COMPILER_NAME=tools/builder-maven
+COMPILER_NAME=kilda/builder-maven
 COMPILER_VER=latest
 COMPILER=${COMPILER_NAME}:${COMPILER_VER}
 GROUP=kilda

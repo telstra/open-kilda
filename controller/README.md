@@ -13,10 +13,12 @@ zookeeper, kafka, storm, and the other components in the services directory. To 
 the full experience, ensure the following services are operational somewhere, and pass
 the configuration in.
 
-# BUILDING
+## BUILDING, IMAGING, RUNNING
 
-project.sh can be use to build the project.
+Use project.sh:
+- ./project.sh build
+- ./project.sh image
+- ./project.sh run
 
-# RUNNING
-
-project.sh can be use to run the project.
+__NB: There is a dependency on tools-devlops/images base images.  project.sh will
+    generate an error if the required docker images don't exist._
