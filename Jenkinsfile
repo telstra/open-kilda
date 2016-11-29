@@ -2,71 +2,67 @@ stage "Code checkout"
 
 node {
     checkout scm
-    sh 'printenv'
 }
 
 stage "Build base container"
 
 node {
-    sh 'printenv'
     sh 'docker build -t kilda/base-ubuntu:latest base/kilda-base-ubuntu'
     sh 'ls -la'
     sh 'ls -la kilda-bins/'
 }
 
 stage "Build Kilda containers"
-timeout(time: 10, unit: 'HOURS') {
-    parallel (
-        floodlight: { 
-            node {
-                checkout scm
-                sh 'printenv'
-                sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build floodlight'
+parallel (
+    
+    timeout(time: 1, unit: 'HOURS') { floodlight: {    
+        node {
+            checkout scm
+            sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build floodlight'
 
-            }
-        },
-        hbaseandopentsdb: { 
-            node {
-                checkout scm
-                sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build hbase'
-                sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build opentsdb'
+        }
+    }},
+    timeout(time: 1, unit: 'HOURS') { hbaseandopentsdb: { 
+        node {
+            checkout scm
+            sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build hbase'
+            sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build opentsdb'
 
-            }
-        },
-        helloworld: { 
-            node {
-                checkout scm
-                sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build hello-world'
+        }
+    }},
+    timeout(time: 1, unit: 'HOURS') { helloworld: { 
+        node {
+            checkout scm
+            sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build hello-world'
 
-            }
-        },
-        kafka: { 
-            node {
-                checkout scm
-                sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build kafka'
+        }
+    }},
+    timeout(time: 1, unit: 'HOURS') { kafka: { 
+        node {
+            checkout scm
+            sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build kafka'
 
-            }
-        },
-        mininet: { 
-            node {
-                checkout scm
-                sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build mininet'
+        }
+    }},
+    timeout(time: 1, unit: 'HOURS') { mininet: { 
+        node {
+            checkout scm
+            sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build mininet'
 
-            }
-        },
-        neo4j: { 
-            node {
-                checkout scm
-                sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build neo4j'
+        }
+    }},
+    timeout(time: 1, unit: 'HOURS') { neo4j: { 
+        node {
+            checkout scm
+            sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build neo4j'
 
-            }
-        },
-        openflowspeaker: { 
-            node {
-                checkout scm
-                sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build kafka'
+        }
+    }},
+    timeout(time: 1, unit: 'HOURS') { openflowspeaker: { 
+        node {
+            checkout scm
+            sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build kafka'
 
-            }
-        } 
-    )
-}
+        }
+    }} 
+)
