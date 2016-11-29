@@ -2,11 +2,13 @@ stage "Code checkout"
 
 node {
     checkout scm
+    sh 'printenv'
 }
 
 stage "Build base container"
 
 node {
+    sh 'printenv'
     sh 'docker build -t kilda/base-ubuntu:latest base/kilda-base-ubuntu'
     sh 'ls -la'
     sh 'ls -la kilda-bins/'
@@ -17,6 +19,7 @@ parallel (
     floodlight: { 
         node {
             checkout scm
+            sh 'printenv'
             sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build floodlight'
 
         }
