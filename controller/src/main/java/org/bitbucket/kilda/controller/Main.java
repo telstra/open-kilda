@@ -29,7 +29,8 @@ import org.apache.logging.log4j.Logger;
 public class Main {
 	// private static final Logger logger = LoggerFactory.getLogger(Main.class);
 	private static final Logger logger = LogManager.getLogger(Main.class);
-
+	private static Context context; 
+	
 	public static final int ZK_DEFAULT_PORT = 2181;
 	public static final int KAFKA_DEFAULT_PORT = 9092;
 
@@ -41,6 +42,7 @@ public class Main {
 		logger.debug("args value: " + Arrays.toString(args));
 		// String hostPort = args[0];
 		// String znode = args[1];
+		context = new Context();
 	}
 
 	private static void Startup() {
