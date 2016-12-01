@@ -20,5 +20,26 @@ Use project.sh:
 - ./project.sh image
 - ./project.sh run
 
-__NB: There is a dependency on tools-devlops/images base images.  project.sh will
-    generate an error if the required docker images don't exist._
+__NB: There is a dependency on base images (eg: kilda-controller/base/build-base.sh)__
+
+### Logging
+- SLF4J and Log4J2 are used. The configuration file is in src/main/resources/log4j2.properties
+
+### Troubleshooting
+
+#### Maven Build: Maven invalid LOC header (bad signature)
+One of the dependendent libraries is corrupt. Delete from ~/.m2/repositories and run maven again.
+
+## TESTING
+
+At present we are using JUnit 4 (4.12 as of this writing). [JUnit 5](http://junit.org/junit5/) will release soon and we may migrate to that. 
+
+# ARCHITECTURE
+
+## BOOTUP
+
+### PROPERTIES
+
+Kilda uses the [Java Properties](https://docs.oracle.com/javase/tutorial/essential/environment/properties.html) patterns to load in default values, and the ability to
+override these defaults.
+

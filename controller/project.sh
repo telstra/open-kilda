@@ -27,12 +27,24 @@ verify_image() {
   fi
 }
 
+# +=•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==
+# | verify_compiler - verifies the compiler image exists and ensures the maven data
+# |   volume exists too.
+# +=•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==
 verify_compiler() {
   verify_image ${COMPILER_NAME} ${COMPILER_VER}
+  docker volume create --name m2 >/dev/null
 }
 
 verify_from() {
   verify_image ${FROM_NAME} ${FROM_VER}
+}
+
+verify_source_exists() {
+  if ! [ -d src ] ; then
+    echo "The project source directory 'src' doesn't exist. Something must be wrong."
+    exit 1
+  fi
 }
 
 # +=•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==
@@ -58,28 +70,43 @@ create() {
 build() {
   verify_compiler
   verify_from
-  if [ -d src ]
-  then
-    docker volume create --name m2 >/dev/null
-    docker run -it --rm -v m2:/root/.m2 -v $(PWD):/app -w /app ${COMPILER} \
-      mvn package
-  else
-    echo "The project source directory 'src' doesn't exist. Run create first"
-  fi
+  verify_source_exists
+
+  docker run -it --rm -v m2:/root/.m2 -v $(PWD):/app -w /app ${COMPILER} \
+    mvn package
+}
+
+# +=•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==
+# | run - Run "locally" - ie not its own image
+# +=•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==
+run() {
+  verify_compiler
+  verify_source_exists
+
+  echo ""
+  echo "==> RUNNING 'LOCALLY':"
+  # NB: this leverages the built-in definitions / jar.
+  docker run -it --rm -v m2:/root/.m2 -v $(PWD):/app -w /app ${COMPILER} mvn exec:java
+
+# NB: here is another mechanism, where you can specify the main class
+#  local main_class="org.bitbucket.kilda.controller.Main"
+#  docker run -it --rm -v m2:/root/.m2 -v $(PWD):/app -w /app ${COMPILER} \
+#    mvn exec:java -Dexec.mainClass=${main_class} -Dexec.args="%classpath"
 }
 
 image() {
-  if [ -d src ]
-  then
-    docker build -t ${IMAGE}:${VER} -t ${IMAGE}:latest .
-  else
-    echo "The project directory '${PROJECT}' doesn't exist. Run with create && build"
-  fi
+  verify_from
+  verify_source_exists
+
+  docker build -t ${IMAGE}:${VER} -t ${IMAGE}:latest .
 }
 
-run() {
+# +=•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==
+# | drun - Docker Run .. run the docker image
+# +=•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==
+drun() {
   echo ""
-	echo "==> RUNNING:"
+	echo "==> RUNNING in DOCKER:"
   docker run ${IMAGE}:${VER}
 }
 
@@ -88,10 +115,11 @@ main() {
     verify) verify_compiler ; verify_from ;;
     create) create ;;
     build)  build ;;
-    image)  image ;;
     run)    run ;;
-    all)    build ; image ; run ;;
-    *)      echo $"Usage: $0 {verify|create|build|image|run|all}" && exit 1
+    image)  image ;;
+    drun)   drun ;;
+    all)    build ; image ; drun ;;
+    *)      echo $"Usage: $0 {verify | create | build | run | image | drun | all}" && exit 1
   esac
 }
 
