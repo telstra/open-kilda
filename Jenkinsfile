@@ -15,14 +15,14 @@ node {
 stage "Build Kilda containers"
 parallel (
     
-    timeout(time: 1, unit: 'HOURS') { floodlight: {    
+    floodlight: {    
         node {
             checkout scm
             sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build floodlight'
 
         }
-    }},
-    timeout(time: 1, unit: 'HOURS') { hbaseandopentsdb: { 
+    },
+    hbaseandopentsdb: { 
         node {
             checkout scm
             sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build hbase'
@@ -30,40 +30,40 @@ parallel (
             sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build opentsdb'
 
         }
-    }},
-    timeout(time: 1, unit: 'HOURS') { helloworld: { 
+    },
+    helloworld: { 
         node {
             checkout scm
             sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build hello-world'
 
         }
-    }},
-    timeout(time: 1, unit: 'HOURS') { kafka: { 
+    },
+    kafka: { 
         node {
             checkout scm
             sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build kafka'
 
         }
-    }},
-    timeout(time: 1, unit: 'HOURS') { mininet: { 
+    },
+    mininet: { 
         node {
             checkout scm
             sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build mininet'
 
         }
-    }},
-    timeout(time: 1, unit: 'HOURS') { neo4j: { 
+    },
+    neo4j: { 
         node {
             checkout scm
             sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build neo4j'
 
         }
-    }},
-    timeout(time: 1, unit: 'HOURS') { openflowspeaker: { 
+    },
+    openflowspeaker: { 
         node {
             checkout scm
             sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build kafka'
 
         }
-    }} 
+    }
 )
