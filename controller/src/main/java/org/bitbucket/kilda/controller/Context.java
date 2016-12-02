@@ -35,6 +35,21 @@ public class Context {
 		this.intialize();
 	}
 
+	/*
+	 * A helper function leveraged by @readFromResources and @readFromFile
+	 */
+	private static Properties readFromStream(InputStream in, Properties fromThis){
+		Properties props = new Properties(fromThis);
+		try {
+			props.load(in);
+			in.close();
+		} catch (IOException e) {
+			logger.error("There was a problem loading the resource file.");
+			e.printStackTrace();
+		}
+		logger.debug("Properties: " + props);
+		return props;		
+	}
 
 	/**
 	 * readFromResource reads from the jar file, which has a different strategy
@@ -44,40 +59,30 @@ public class Context {
 	 * @return new Properties, will the contents of the file overlaying fromThis
 	 */
 	private Properties readFromResource(String resourceFile, Properties fromThis) {
-		Properties resourceProps = new Properties(fromThis);
-
-		try {
-			InputStream in = getClass().getResourceAsStream(resourceFile); 						
-			resourceProps.load(in);
-			logger.debug("From: " +resourceFile+ " Properties: " + resourceProps);
-			in.close();			
-		} catch (FileNotFoundException e) {
-			logger.error("Can't find resource property file " + resourceFile);
-			e.printStackTrace();
-		} catch (IOException e) {
-			logger.error("There was a problem closing the resource properties file " + resourceFile);
-			e.printStackTrace();
-		}
-		return resourceProps;
+		logger.debug("Reading Properites From: " + resourceFile);
+		return readFromStream (getClass().getResourceAsStream(resourceFile), fromThis);
 	}
 
+	/**
+	 * readFromFile will open a file stream for Property input. Slightly different
+	 * call compared to readFromResource.
+	 * 
+	 * @param propsFile the name of the file to read.
+	 * @param fromThis the seed properties. The stuff in the file, if same name, will overwrite.
+	 * @return the combined set of properties from fromThis and the file.
+	 */
 	private Properties readFromFile(String propsFile, Properties fromThis) {
-		Properties props = new Properties(fromThis);
-
 		try {
-			InputStream in = new FileInputStream(propsFile);
-			
-			props.load(in);
-			logger.debug("From: " +propsFile+ " Properties: " + props);
-			in.close();			
+			logger.debug("Reading Properites From: " + propsFile);
+			return readFromStream (new FileInputStream(propsFile), fromThis);
 		} catch (FileNotFoundException e) {
 			logger.error("Can't find property file " + propsFile);
 			e.printStackTrace();
-		} catch (IOException e) {
-			logger.error("There was a problem closing the properties file " + propsFile);
-			e.printStackTrace();
 		}
-		return props;
+		// Fail fast .. if the file isn't found, exit. 
+		System.exit(1);
+		// Java doesn't know that exit will exit, so I need a return
+		return fromThis;
 	}
 	
 	
