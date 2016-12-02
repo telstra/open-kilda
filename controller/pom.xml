@@ -68,7 +68,7 @@
 
 	<dependencies>
 
-    <dependency>
+		<dependency>
 			<!-- NB: JUNIT 5 is coming .. http://junit.org/junit5/docs/current/user-guide/#running-tests-build-maven -->
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
@@ -85,39 +85,51 @@
 
 		<!-- https://mvnrepository.com/artifact/org.apache.logging.log4j/log4j-slf4j-impl -->
 		<dependency>
-		    <groupId>org.apache.logging.log4j</groupId>
-		    <artifactId>log4j-slf4j-impl</artifactId>
-		    <version>2.7</version>
+			<groupId>org.apache.logging.log4j</groupId>
+			<artifactId>log4j-slf4j-impl</artifactId>
+			<version>2.7</version>
 		</dependency>
 
 		<!-- https://mvnrepository.com/artifact/org.apache.logging.log4j/log4j-api -->
 		<dependency>
-		    <groupId>org.apache.logging.log4j</groupId>
-		    <artifactId>log4j-api</artifactId>
-		    <version>2.7</version>
+			<groupId>org.apache.logging.log4j</groupId>
+			<artifactId>log4j-api</artifactId>
+			<version>2.7</version>
 		</dependency>
 
 		<!-- https://mvnrepository.com/artifact/org.apache.logging.log4j/log4j-core -->
 		<dependency>
-		    <groupId>org.apache.logging.log4j</groupId>
-		    <artifactId>log4j-core</artifactId>
-		    <version>2.7</version>
+			<groupId>org.apache.logging.log4j</groupId>
+			<artifactId>log4j-core</artifactId>
+			<version>2.7</version>
 		</dependency>
 
+		<!-- https://mvnrepository.com/artifact/org.apache.zookeeper/zookeeper -->
+		<!-- NB: 3.5.x is still in alpha, but has some new features (from etcd?) -->
 		<dependency>
 			<groupId>org.apache.zookeeper</groupId>
 			<artifactId>zookeeper</artifactId>
 			<version>3.4.9</version>
-      <!-- need to eliminate its SL4J stuff, since we already have it -->
-      <exclusions>
-        <exclusion>
-          <groupId>org.slf4j</groupId>
-          <artifactId>slf4j-log4j12</artifactId>
-        </exclusion>
-      </exclusions>
+
+
+			<!-- need to eliminate its SL4J stuff, since we already have it -->
+			<exclusions>
+				<exclusion>
+					<groupId>org.slf4j</groupId>
+					<artifactId>slf4j-log4j12</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 
-    <!-- https://mvnrepository.com/artifact/com.google.inject/guice -->
+		<!-- https://mvnrepository.com/artifact/org.apache.curator/curator-framework -->
+		<!-- NB: 2.X is compatible with ZooKeeper 3.4.x and 3.5.x -->
+		<dependency>
+			<groupId>org.apache.curator</groupId>
+			<artifactId>curator-framework</artifactId>
+			<version>2.11.1</version>
+		</dependency>
+
+		<!-- https://mvnrepository.com/artifact/com.google.inject/guice -->
 		<dependency>
 			<groupId>com.google.inject</groupId>
 			<artifactId>guice</artifactId>

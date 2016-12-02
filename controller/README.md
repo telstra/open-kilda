@@ -15,10 +15,15 @@ the configuration in.
 
 ## BUILDING, IMAGING, RUNNING
 
-Use project.sh:
-- ./project.sh build
-- ./project.sh image
-- ./project.sh run
+### Building Options
+
+1. Use project.sh (this will run the code inside a container):
+	- ./project.sh build
+	- ./project.sh image
+	- ./project.sh run
+2. Use Maven locallY (run outside of a container)
+	-  `mvn -q package && mvn -q exec:java`
+	-  NB: this is faster.
 
 __NB: There is a dependency on base images (eg: kilda-controller/base/build-base.sh)__
 
