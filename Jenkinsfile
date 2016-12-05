@@ -24,10 +24,10 @@ parallel (
     },
     hbaseandopentsdb: { 
         node {
-            checkout scm
-            sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build hbase'
-            sh 'export full_build_number=1.0.$BUILD_NUMBER && docker tag kilda/hbase:$full_build_number kilda/hbase:latest'
-            sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build opentsdb'
+            #checkout scm
+            #sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build hbase'
+            #sh 'export full_build_number=1.0.$BUILD_NUMBER && docker tag kilda/hbase:$full_build_number kilda/hbase:latest'
+            #sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build opentsdb'
 
         }
     },
