@@ -14,7 +14,7 @@ node {
 
 stage "Build Kilda containers"
 
-floodlight: {    
+containers: {    
     node {
         checkout scm
         sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build floodlight'
@@ -24,3 +24,4 @@ floodlight: {
         sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build neo4j'
         sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build kafka'
     }
+}
