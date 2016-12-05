@@ -13,49 +13,47 @@ node {
 }
 
 stage "Build Kilda containers"
-parallel (
-    
-    floodlight: {    
-        node {
-            checkout scm
-            sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build floodlight'
 
-        }
-    },
+floodlight: {    
+    node {
+        checkout scm
+        sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build floodlight'
 
-    helloworld: { 
-        node {
-            checkout scm
-            sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build hello-world'
-
-        }
-    },
-    kafka: { 
-        node {
-            checkout scm
-            sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build kafka'
-
-        }
-    },
-    mininet: { 
-        node {
-            checkout scm
-            sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build mininet'
-
-        }
-    },
-    neo4j: { 
-        node {
-            checkout scm
-            sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build neo4j'
-
-        }
-    },
-    openflowspeaker: { 
-        node {
-            checkout scm
-            sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build kafka'
-
-        }
     }
-)
+},
+
+helloworld: { 
+    node {
+        checkout scm
+        sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build hello-world'
+
+    }
+},
+kafka: { 
+    node {
+        checkout scm
+        sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build kafka'
+
+    }
+},
+mininet: { 
+    node {
+        checkout scm
+        sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build mininet'
+
+    }
+},
+neo4j: { 
+    node {
+        checkout scm
+        sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build neo4j'
+
+    }
+},
+openflowspeaker: { 
+    node {
+        checkout scm
+        sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build kafka'
+
+    }
+}
