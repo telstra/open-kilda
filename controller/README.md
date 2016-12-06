@@ -15,7 +15,7 @@ the configuration in.
 
 ## BUILDING, IMAGING, RUNNING
 
-### Building Options
+### Building - Options
 
 1. Use project.sh (this will run the code inside a container):
 	- ./project.sh build
@@ -35,9 +35,19 @@ __NB: There is a dependency on base images (eg: kilda-controller/base/build-base
 #### Maven Build: Maven invalid LOC header (bad signature)
 One of the dependendent libraries is corrupt. Delete from ~/.m2/repositories and run maven again.
 
+## DEVELOPING
+
+### Key libraries
+
+A good place to start is to look at the pom.xml file to see what libraries are included. That'll also give the latest set.  We document a few here.
+
+1. [Guava](http://google.github.io/guava/releases/20.0/api/docs/) - Google Core Libraries for Java
+2. [Curator](http://curator.apache.org/getting-started.html) - Makes using Zookeeper easier. As Guava is to Java, Curator is to Zookeeper.
+3. []
+
 ## TESTING
 
-At present we are using JUnit 4 (4.12 as of this writing). [JUnit 5](http://junit.org/junit5/) will release soon and we may migrate to that. 
+At present we are using JUnit 4 (4.12 as of this writing). [JUnit 5](http://junit.org/junit5/) will release soon and we may migrate to that.
 
 # ARCHITECTURE
 
@@ -47,4 +57,3 @@ At present we are using JUnit 4 (4.12 as of this writing). [JUnit 5](http://juni
 
 Kilda uses the [Java Properties](https://docs.oracle.com/javase/tutorial/essential/environment/properties.html) patterns to load in default values, and the ability to
 override these defaults.
-
