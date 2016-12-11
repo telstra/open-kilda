@@ -2,7 +2,7 @@
 default: build-latest run-dev
 
 build-base:
-	git submodule update --init --recursive
+    git submodule update --init --recursive
     docker build -t kilda/base-ubuntu:latest base/kilda-base-ubuntu/
 
 build-latest: build-base
