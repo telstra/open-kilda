@@ -17,11 +17,6 @@ stage "Build Kilda containers"
 containers: {    
     node {
         checkout scm
-        sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build floodlight'
-        sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build hello-world'
-        sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build kafka'
-        sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build mininet'
-        sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build neo4j'
-        sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build kafka'
+        sh 'export full_build_number=1.0.$BUILD_NUMBER && docker-compose build'
     }
 }
