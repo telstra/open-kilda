@@ -16,6 +16,8 @@
     - openssh-client
     - patch
     - vim
+    - python-bottle
+    - python-jsonschema
     become_method: sudo
     become_user: root
     become: true

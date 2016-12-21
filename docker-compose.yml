@@ -15,9 +15,13 @@ services:
       context: .
       dockerfile:  services/mininet/Dockerfile
     image: "kilda/mininet:${full_build_number:-latest}"
-    command: mn
+    command: /app/mininet_rest.py
     env_file:
       - services/mininet/variables.env
+    ports:
+      - "38080:38080"
+    links:
+      - floodlight:kilda
 
   openflow-speaker:
     build: 
@@ -206,3 +210,4 @@ volumes:
   hbase_data:
   zookeeper_data:
   kafka_data:
+  mininet_data:
