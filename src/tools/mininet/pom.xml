@@ -4,6 +4,18 @@
   <artifactId>mininet</artifactId>
   <version>0.0.1-SNAPSHOT</version>
   <name>Mininet</name>
+  <repositories>
+    <repository>
+	  <id>maven-restlet</id>
+	  <name>Public online Restlet repository</name>
+	  <url>http://maven.restlet.com</url>
+    </repository>
+    <repository>
+	  <id>sonatype-oss-snapshot</id>
+	  <name>Sonatype OSS snapshot repository</name>
+	  <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+	</repository>
+  </repositories>
   <description>Tools for interacting with mininet-rest API.</description>
   <dependencies>
   	<dependency>
@@ -15,6 +27,11 @@
   		<groupId>junit</groupId>
   		<artifactId>junit</artifactId>
   		<version>4.12</version>
+  	</dependency>
+  	<dependency>
+  		<groupId>com.google.guava</groupId>
+  		<artifactId>guava</artifactId>
+  		<version>13.0.1</version>
   	</dependency>
   </dependencies>
 </project>
