@@ -1,17 +1,8 @@
 package org.bitbucket.openkilda.tools.mininet;
 
-import java.io.IOException;
-import java.net.Inet4Address;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import org.apache.http.HttpResponse;
-import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -26,8 +17,15 @@ import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.TransportPort;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.module.SimpleModule;
+import java.io.IOException;
+import java.net.Inet4Address;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class Mininet implements IMininet {
 
@@ -36,11 +34,15 @@ public class Mininet implements IMininet {
   private TransportPort mininetServerPort;
   private ObjectMapper mapper;
   
-  private final int CONNECTION_TIMEOUT_MS = 5000;
+  private static final int CONNECTION_TIMEOUT_MS = 5000;
   
+  /**
+   * Instantiates a new mininet.
+   */
   public Mininet() {
     mapper = new ObjectMapper();
-    MininetSwitch mnSw = new MininetSwitch();  //TODO: Should we move all the serializers into a single class?
+    MininetSwitch mnSw = new MininetSwitch();  
+    //TODO: Should we move all the serializers into a single class?
     SimpleModule switchModule = new SimpleModule();
     switchModule.addSerializer(MininetSwitch.class, mnSw.new Serializer());
     mapper.registerModule(switchModule);
@@ -80,13 +82,14 @@ public class Mininet implements IMininet {
   @Override
   public IMininet addController(IMininetController controller) {
     try {
-      Map<String, List<IMininetController>> jsonPojo = new HashMap<String, List<IMininetController>>();
-      List<IMininetController> controllers = new ArrayList<IMininetController>();
+      Map<String, List<IMininetController>> jsonPojo = 
+          new HashMap<>();
+      List<IMininetController> controllers = new ArrayList<>();
       controllers.add(controller);
       jsonPojo.put("controllers", controllers);
       logger.debug("adding controller " + mapper.writeValueAsString(jsonPojo));
       simplePost("/controller", mapper.writeValueAsString(jsonPojo));
-    } catch (URISyntaxException|IOException|MininetException e) {
+    } catch (URISyntaxException | IOException | MininetException e) {
       logger.error(e);
     }
     return this;
@@ -99,7 +102,7 @@ public class Mininet implements IMininet {
     try {
       logger.debug("sending " + mapper.writeValueAsString(switches));
       simplePost("/switch", mapper.writeValueAsString(switches));
-    } catch (URISyntaxException|IOException|MininetException e) {
+    } catch (URISyntaxException | IOException | MininetException e) {
       logger.error(e);
     }
     return this;
@@ -159,7 +162,8 @@ public class Mininet implements IMininet {
     boolean results = false;
     try {
       response = simpleGet("/status");
-      MininetStatus status = mapper.readValue(response.getEntity().getContent(), MininetStatus.class);
+      MininetStatus status = mapper.readValue(response.getEntity()
+          .getContent(), MininetStatus.class);
       results = status.isConnected();
     } catch (Exception e) {
       logger.error(e);
@@ -167,8 +171,17 @@ public class Mininet implements IMininet {
     return results;
   }
   
+  /**
+   * Simple Http Get.
+   *
+   * @param path the path
+   * @return the CloseableHttpResponse
+   * @throws URISyntaxException the URI syntax exception
+   * @throws IOException Signals that an I/O exception has occurred.
+   * @throws MininetException the MininetException
+   */
   public CloseableHttpResponse simpleGet(String path) 
-      throws URISyntaxException, ClientProtocolException, IOException, MininetException {
+      throws URISyntaxException, IOException, MininetException {
     URI uri = new URIBuilder()
         .setScheme("http")
         .setHost(mininetServerIP.toString())
@@ -193,9 +206,18 @@ public class Mininet implements IMininet {
     return response;
   }
   
+  /**
+   * Simple Http Post.
+   *
+   * @param path the path
+   * @param payload the payload
+   * @return the closeable http response
+   * @throws URISyntaxException the URI syntax exception
+   * @throws IOException Signals that an I/O exception has occurred.
+   * @throws MininetException the MininetException
+   */
   public CloseableHttpResponse simplePost(String path, String payload) 
       throws URISyntaxException, IOException, MininetException {
-    ObjectMapper mapper = new ObjectMapper();
     URI uri = new URIBuilder()
         .setScheme("http")
         .setHost(mininetServerIP.toString())

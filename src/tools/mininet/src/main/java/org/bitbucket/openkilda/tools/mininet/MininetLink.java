@@ -1,20 +1,19 @@
 package org.bitbucket.openkilda.tools.mininet;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
-  "node1",
-  "node2",
-  "name",
-  "status"
-})
+    "node1",
+    "node2",
+    "name",
+    "status"
+    })
 
 public class MininetLink {
   private static final Logger logger = LogManager.getLogger(MininetLink.class.getName());
@@ -27,8 +26,11 @@ public class MininetLink {
   @JsonProperty("status")
   private String status;
   
+  /**
+   * Instantiates a new MininetLink.
+   */
   public MininetLink() {
-    
+    // Needed for Jackson.
   }
   
   public MininetLink(String node1, String node2) {
@@ -80,6 +82,11 @@ public class MininetLink {
     return this;
   }
   
+  /**
+   * Checks if link is up.
+   *
+   * @return true, if link is up
+   */
   @JsonIgnore
   public boolean isUp() {
     logger.debug("link " + name + " status is " + status);

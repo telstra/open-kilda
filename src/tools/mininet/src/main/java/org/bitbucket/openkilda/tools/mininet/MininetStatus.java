@@ -11,17 +11,10 @@ public class MininetStatus {
   @JsonProperty("status")
   private String status;
 
-  /**
-   * No args constructor for use in serialization
-   * 
-   */
   public MininetStatus() {
+    // Needed for Jackson.
   }
 
-  /**
-   * 
-   * @param status
-   */
   public MininetStatus(String status) {
     super();
     this.status = status;
@@ -38,7 +31,7 @@ public class MininetStatus {
   }
   
   public boolean isConnected() {
-    return status.equals("ok");
+    return "ok".equals(status);
   }
 
 }
