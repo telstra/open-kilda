@@ -43,13 +43,30 @@ A good place to start is to look at the pom.xml file to see what libraries are i
 
 1. [Guava](http://google.github.io/guava/releases/20.0/api/docs/) - Google Core Libraries for Java
 2. [Curator](http://curator.apache.org/getting-started.html) - Makes using Zookeeper easier. As Guava is to Java, Curator is to Zookeeper.
-3. []
+
 
 ## TESTING
 
 At present we are using JUnit 4 (4.12 as of this writing). [JUnit 5](http://junit.org/junit5/) will release soon and we may migrate to that.
 
 # ARCHITECTURE
+
+## Platform components
+
+### Storm
+
+#### New to Storm
+
+A good place to start is by looking at the code examples in the [github project](https://github.com/apache/storm/). __NB: if you clone this project__, remember to do a `mvn package` at the top level before trying any examples
+
+#### Storm CLI
+
+Ensure you have the CLI installed; there are quite a few useful commands and things to assist development.
+
+- http://storm.apache.org/releases/current/Command-line-client.html
+	- http://storm.apache.org/releases/current/Setting-up-development-environment.html
+- _Mac / Brew pro tip:_
+	- `brew install storm`
 
 ## BOOTUP
 
