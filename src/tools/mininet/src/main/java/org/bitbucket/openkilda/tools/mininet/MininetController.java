@@ -1,20 +1,19 @@
 package org.bitbucket.openkilda.tools.mininet;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.TransportPort;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
-  "name",
-  "ip",
-  "port",
-  "of-version"
-})
+    "name",
+    "ip",
+    "port",
+    "of-version"
+    })
 
 public class MininetController implements IMininetController {
   @JsonProperty("host")

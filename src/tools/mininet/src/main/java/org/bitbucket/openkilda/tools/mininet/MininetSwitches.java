@@ -1,13 +1,12 @@
 package org.bitbucket.openkilda.tools.mininet;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import org.projectfloodlight.openflow.types.DatapathId;
-
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import org.projectfloodlight.openflow.types.DatapathId;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({ "switches" })
@@ -41,6 +40,13 @@ public class MininetSwitches {
     return this;
   }
 
+  /**
+   * Adds the switch.
+   *
+   * @param name the name
+   * @param dpid the dpid
+   * @return the MininetSwitches
+   */
   public MininetSwitches addSwitch(String name, DatapathId dpid) {
     MininetSwitch sw = new MininetSwitch(name, dpid.toString(), null, null);
     switches.add(sw);

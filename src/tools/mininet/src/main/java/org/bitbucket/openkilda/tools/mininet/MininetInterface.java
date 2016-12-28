@@ -11,9 +11,16 @@ public class MininetInterface {
   private String name;
 
   public MininetInterface() {
-
+    // Needed for Jackson
   }
 
+  /**
+   * Instantiates a new MininetInterface.
+   *
+   * @param status the status
+   * @param mac the mac
+   * @param name the name
+   */
   public MininetInterface(String status, String mac, String name) {
     this.status = status;
     this.mac = mac;

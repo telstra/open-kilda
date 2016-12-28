@@ -1,22 +1,23 @@
 package org.bitbucket.openkilda.tools.mininet;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
-  "links"
-})
+    "links"
+    })
+
 public class MininetLinks {
   @JsonProperty("links")
   private List<MininetLink> links = null;
   
   public MininetLinks() {
-    links = new ArrayList<MininetLink>();
+    links = new ArrayList<>();
   }
   
   public MininetLinks(List<MininetLink> links) {
@@ -34,6 +35,13 @@ public class MininetLinks {
     return this;
   }
   
+  /**
+   * Add link.
+   *
+   * @param node1 the node 1
+   * @param node2 the node 2
+   * @return the MininetLinks
+   */
   public MininetLinks addLink(String node1, String node2) {
     MininetLink link = new MininetLink(node1, node2);
     links.add(link);
