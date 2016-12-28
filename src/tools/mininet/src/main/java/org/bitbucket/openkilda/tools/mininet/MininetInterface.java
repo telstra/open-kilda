@@ -1,31 +1,52 @@
 package org.bitbucket.openkilda.tools.mininet;
 
-import org.projectfloodlight.openflow.types.MacAddress;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
-public class MininetInterface implements IMininetInterface {
+public class MininetInterface {
+  @JsonProperty("status")
+  private String status;
+  @JsonProperty("mac")
+  private String mac;
+  @JsonProperty("name")
+  private String name;
 
-  @Override
-  public String getName() {
-    // TODO Auto-generated method stub
-    return null;
+  public MininetInterface() {
+
   }
 
-  @Override
-  public MacAddress getMac() {
-    // TODO Auto-generated method stub
-    return null;
+  public MininetInterface(String status, String mac, String name) {
+    this.status = status;
+    this.mac = mac;
+    this.name = name;
   }
 
-  @Override
-  public boolean isUp() {
-    // TODO Auto-generated method stub
-    return false;
-  }
-
-  @Override
+  @JsonProperty("status")
   public String getStatus() {
-    // TODO Auto-generated method stub
-    return null;
+    return status;
   }
 
+  @JsonProperty("status")
+  public void setStatus(String status) {
+    this.status = status;
+  }
+
+  @JsonProperty("mac")
+  public String getMac() {
+    return mac;
+  }
+
+  @JsonProperty("mac")
+  public void setMac(String mac) {
+    this.mac = mac;
+  }
+
+  @JsonProperty("name")
+  public String getName() {
+    return name;
+  }
+
+  @JsonProperty("name")
+  public void setName(String name) {
+    this.name = name;
+  }
 }

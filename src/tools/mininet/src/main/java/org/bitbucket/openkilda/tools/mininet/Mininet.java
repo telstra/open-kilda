@@ -1,83 +1,223 @@
 package org.bitbucket.openkilda.tools.mininet;
 
+import java.io.IOException;
+import java.net.Inet4Address;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.client.ClientProtocolException;
+import org.apache.http.client.config.RequestConfig;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.utils.URIBuilder;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.TransportPort;
 
-public class Mininet implements IMininet{
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 
-  @Override
-  public IMininet build() {
-    // TODO Auto-generated method stub
-    return this;
-  }
+public class Mininet implements IMininet {
 
-  @Override
-  public IMininet addSwitch(IMininetSwitch sw) {
-    // TODO Auto-generated method stub
-    return this;
+  private static final Logger logger = LogManager.getLogger(Mininet.class.getName());
+  private IPv4Address mininetServerIP;
+  private TransportPort mininetServerPort;
+  private ObjectMapper mapper;
+  
+  private final int CONNECTION_TIMEOUT_MS = 5000;
+  
+  public Mininet() {
+    mapper = new ObjectMapper();
+    MininetSwitch mnSw = new MininetSwitch();  //TODO: Should we move all the serializers into a single class?
+    SimpleModule switchModule = new SimpleModule();
+    switchModule.addSerializer(MininetSwitch.class, mnSw.new Serializer());
+    mapper.registerModule(switchModule);
   }
   
   @Override
-  public IMininet addSwitch(String name, DatapathId dpid) {
-    // TODO Auto-generated method stub
-    return this;
-  }
-
-  @Override
-  public IMininet addLink(String nodea, String nodeb) {
-    // TODO Auto-generated method stub
-    return this;
-  }
-
-  @Override
-  public IMininet addLink(IMininetLink link) {
-    // TODO Auto-generated method stub
-    return this;
-  }
-
-  @Override
-  public IMininet addController(IMininetController controller) {
-    // TODO Auto-generated method stub
+  public IMininet build() throws MininetException, URISyntaxException {
+    if (mininetServerIP == null) {
+      throw new MininetException("Need to set Mininet Server IP before calling build.");
+    }
+    
+    if (mininetServerPort == null) {
+      throw new MininetException("Need to set Mininet Server Port before calling build.");
+    }
+    
+    if (!this.isConnect()) {
+      throw new MininetException("Could not connect to the Mininet Server.");
+    }
+    
     return this;
   }
 
   @Override
   public IMininet addMininetServer(IPv4Address ipAddress, TransportPort port) {
-    // TODO Auto-generated method stub
+    mininetServerIP = ipAddress;
+    mininetServerPort = port;
     return this;
   }
 
   @Override
-  public IMininet addMininetServer(String hostname, int port) {
-    // TODO Auto-generated method stub
+  public IMininet addMininetServer(String hostname, int port) throws UnknownHostException {
+    mininetServerIP = IPv4Address.of((Inet4Address) Inet4Address.getByName(hostname));
+    mininetServerPort = TransportPort.of(port);
+    return this;
+  }
+  
+  @Override
+  public IMininet addController(IMininetController controller) {
+    try {
+      Map<String, List<IMininetController>> jsonPojo = new HashMap<String, List<IMininetController>>();
+      List<IMininetController> controllers = new ArrayList<IMininetController>();
+      controllers.add(controller);
+      jsonPojo.put("controllers", controllers);
+      logger.debug("adding controller " + mapper.writeValueAsString(jsonPojo));
+      simplePost("/controller", mapper.writeValueAsString(jsonPojo));
+    } catch (URISyntaxException|IOException|MininetException e) {
+      logger.error(e);
+    }
+    return this;
+  }
+  
+  @Override
+  public IMininet addSwitch(String name, DatapathId dpid) {
+    MininetSwitch sw = new MininetSwitch(name, dpid.toString(), null, null);
+    MininetSwitches switches = new MininetSwitches().addSwitch(sw);
+    try {
+      logger.debug("sending " + mapper.writeValueAsString(switches));
+      simplePost("/switch", mapper.writeValueAsString(switches));
+    } catch (URISyntaxException|IOException|MininetException e) {
+      logger.error(e);
+    }
+    return this;
+  }
+  
+  @Override
+  public IMininet addLink(String nodeA, String nodeB) {
+    MininetLinks links = new MininetLinks().addLink(nodeA, nodeB);
+    try {
+      logger.debug("sending " + mapper.writeValueAsString(links));
+      simplePost("/links", mapper.writeValueAsString(links));
+    } catch (URISyntaxException | IOException | MininetException e) {
+      logger.error(e);
+    }
     return this;
   }
 
   @Override
-  public List<IMininetSwitch> switches() {
-    List<IMininetSwitch> switches = new ArrayList<>();
+  public IMininet clear() {
+    try {
+      simplePost("/cleanup", "");
+    } catch (URISyntaxException | IOException | MininetException e) {
+      logger.error(e);
+    }
+    return this;
+  }
+  
+  @Override
+  public MininetSwitches switches() {
+    MininetSwitches switches = null;
+    CloseableHttpResponse response;
+    try {
+      response = simpleGet("/switch");
+      switches = mapper.readValue(response.getEntity().getContent(), MininetSwitches.class);
+    } catch (Exception e) {
+      logger.error(e);
+    }
     return switches;
   }
-
+  
   @Override
-  public List<IMininetLink> links() {
-    // TODO Auto-generated method stub
-    return null;
+  public MininetLinks links() {
+    MininetLinks links = null;
+    CloseableHttpResponse response;
+    try {
+      response = simpleGet("/links");
+      links = mapper.readValue(response.getEntity().getContent(), MininetLinks.class);
+    } catch (Exception e) {
+      logger.error(e);
+    }
+    return links;
   }
 
   @Override
-  public List<IMininetController> controllers() {
-    // TODO Auto-generated method stub
-    return null;
+  public boolean isConnect() {
+    HttpResponse response;
+    boolean results = false;
+    try {
+      response = simpleGet("/status");
+      MininetStatus status = mapper.readValue(response.getEntity().getContent(), MininetStatus.class);
+      results = status.isConnected();
+    } catch (Exception e) {
+      logger.error(e);
+    }
+    return results;
   }
-
-  @Override
-  public IMininetSwitch getSwitch(String name) {
-    // TODO Auto-generated method stub
-    return null;
+  
+  public CloseableHttpResponse simpleGet(String path) 
+      throws URISyntaxException, ClientProtocolException, IOException, MininetException {
+    URI uri = new URIBuilder()
+        .setScheme("http")
+        .setHost(mininetServerIP.toString())
+        .setPort(mininetServerPort.getPort())
+        .setPath(path)
+        .build();
+    CloseableHttpClient client = HttpClientBuilder.create().build();
+    RequestConfig config = RequestConfig
+        .custom()
+        .setConnectTimeout(CONNECTION_TIMEOUT_MS)
+        .setConnectionRequestTimeout(CONNECTION_TIMEOUT_MS)
+        .setSocketTimeout(CONNECTION_TIMEOUT_MS)
+        .build();
+    HttpGet request = new HttpGet(uri);
+    request.setConfig(config);
+    request.addHeader("Content-Type", "application/json");
+    CloseableHttpResponse response = client.execute(request);
+    if (response.getStatusLine().getStatusCode() >= 300) {
+      throw new MininetException(String.format("failure - received a %d for %s.", 
+          response.getStatusLine().getStatusCode(), request.getURI().toString()));
+    }
+    return response;
+  }
+  
+  public CloseableHttpResponse simplePost(String path, String payload) 
+      throws URISyntaxException, IOException, MininetException {
+    ObjectMapper mapper = new ObjectMapper();
+    URI uri = new URIBuilder()
+        .setScheme("http")
+        .setHost(mininetServerIP.toString())
+        .setPort(mininetServerPort.getPort())
+        .setPath(path)
+        .build();
+    CloseableHttpClient client = HttpClientBuilder.create().build();
+    RequestConfig config = RequestConfig
+        .custom()
+        .setConnectTimeout(CONNECTION_TIMEOUT_MS)
+        .setConnectionRequestTimeout(CONNECTION_TIMEOUT_MS)
+        .setSocketTimeout(CONNECTION_TIMEOUT_MS)
+        .build();
+    HttpPost request = new HttpPost(uri);
+    request.setConfig(config);
+    request.addHeader("Content-Type", "application/json");
+    request.setEntity(new StringEntity(payload));
+    CloseableHttpResponse response = client.execute(request);
+    if (response.getStatusLine().getStatusCode() >= 300) {
+      throw new MininetException(String.format("failure - received a %d for %s.", 
+          response.getStatusLine().getStatusCode(), request.getURI().toString()));
+    }
+    return response;
   }
 }

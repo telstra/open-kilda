@@ -1,37 +1,89 @@
 package org.bitbucket.openkilda.tools.mininet;
 
-import java.util.Map;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
-public class MininetLink implements IMininetLink {
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
-  @Override
-  public IMininetLink setNodes(Map<IMininetSwitch, IMininetSwitch> nodes) {
-    // TODO Auto-generated method stub
-    return null;
+@JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonPropertyOrder({
+  "node1",
+  "node2",
+  "name",
+  "status"
+})
+
+public class MininetLink {
+  private static final Logger logger = LogManager.getLogger(MininetLink.class.getName());
+  @JsonProperty("node1")
+  private String node1;
+  @JsonProperty("node2")
+  private String node2;
+  @JsonProperty("name")
+  private String name;
+  @JsonProperty("status")
+  private String status;
+  
+  public MininetLink() {
+    
   }
-
-  @Override
-  public IMininetLink build() {
-    // TODO Auto-generated method stub
-    return null;
+  
+  public MininetLink(String node1, String node2) {
+    this.node1 = node1;
+    this.node2 = node2;
   }
-
-  @Override
+  
+  @JsonProperty("node1")
+  public String getNode1() {
+    return node1;
+  }
+  
+  @JsonProperty("node1")
+  public MininetLink setNode1(String node1) {
+    this.node1 = node1;
+    return this;
+  }
+  
+  @JsonProperty("node2")
+  public String getNode2() {
+    return node2;
+  }
+  
+  @JsonProperty("node2")
+  public MininetLink setNode2(String node2) {
+    this.node2 = node2;
+    return this;
+  }
+  
+  @JsonProperty("name")
   public String getName() {
-    // TODO Auto-generated method stub
-    return null;
+    return name;
   }
-
-  @Override
-  public boolean isUp() {
-    // TODO Auto-generated method stub
-    return false;
+  
+  @JsonProperty("name")
+  public MininetLink setName(String name) {
+    this.name = name;
+    return this;
   }
-
-  @Override
+  
+  @JsonProperty("status")
   public String getStatus() {
-    // TODO Auto-generated method stub
-    return null;
+    return status;
   }
-
+  
+  @JsonProperty("status")
+  public MininetLink setStatus(String status) {
+    this.status = status;
+    return this;
+  }
+  
+  @JsonIgnore
+  public boolean isUp() {
+    logger.debug("link " + name + " status is " + status);
+    logger.debug("isUp " + status.equalsIgnoreCase("(OK OK)"));
+    return status.equalsIgnoreCase("(OK OK)");
+  }
 }
