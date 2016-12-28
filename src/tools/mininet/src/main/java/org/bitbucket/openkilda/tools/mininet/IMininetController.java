@@ -9,4 +9,9 @@ public interface IMininetController {
   public IMininetController setPort(TransportPort port);
   public IMininetController setVersion(OFVersion version);
   public IMininetController build();
+  public IMininetController setName(String name);
+  public String getIP();
+  public Integer getPort();
+  public String getOfVersion();
+  public String getName();
 }

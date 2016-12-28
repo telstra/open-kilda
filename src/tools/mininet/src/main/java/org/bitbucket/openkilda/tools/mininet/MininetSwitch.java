@@ -1,45 +1,138 @@
 package org.bitbucket.openkilda.tools.mininet;
 
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
-import org.projectfloodlight.openflow.types.DatapathId;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.databind.ser.std.StdSerializer;
+
+@JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonPropertyOrder({ 
+  "name",
+  "dpid",
+  "interface",
+  "connected"
+})
 
 public class MininetSwitch implements IMininetSwitch {
+    @JsonProperty("name")
+    private String name;
+    @JsonProperty("dpid")
+    private String dpid;
+    @JsonProperty("interface")
+    private List<MininetInterface> interfaces = null;
+    @JsonProperty("connected")
+    private Boolean connected;
+    
+    private static final Logger logger = LogManager.getLogger(MininetSwitch.class.getName());
+    private ObjectMapper mapper;
+    
+    public class Serializer extends StdSerializer<MininetSwitch> {
+      public Serializer() {
+        this(null);
+      }
+      
+      public Serializer(Class<MininetSwitch> t) {
+        super(t);
+      }
 
-  @Override
-  public MininetSwitch build() {
-    // TODO Auto-generated method stub
-    return null;
+      public void serialize(MininetSwitch sw, JsonGenerator jgen, SerializerProvider provider)
+          throws IOException {
+        jgen.writeStartObject();
+        jgen.writeStringField("name", sw.name);
+        jgen.writeStringField("dpid", sw.dpid);
+        jgen.writeEndObject();
+      }
+      
+    }
+    
+    public MininetSwitch() {
+      interfaces = new ArrayList<MininetInterface>();
+      mapper = new ObjectMapper();
+      SimpleModule module = new SimpleModule();
+      module.addSerializer(MininetSwitch.class, new Serializer());
+      mapper.registerModule(module);
+    }
+
+    public MininetSwitch(String name, String dpid, List<MininetInterface> interfaces, Boolean connected) {
+      logger.debug("creating siwtch " + name + " with DPID " + dpid);
+      this.name = name;
+      this.dpid = dpid;
+      this.interfaces = interfaces;
+      this.connected = connected;
+    }
+    
+    @Override
+    @JsonProperty("name")
+    public String getName() {
+      return name;
+    }
+    
+    @Override
+    @JsonProperty("name")
+    public void setName(String name) {
+      this.name = name;
+    }
+    
+    @Override
+    @JsonProperty("dpid")
+    public String getDpid() {
+      return dpid;
+    }
+    
+    @Override
+    @JsonProperty("dpid")
+    public void setDpid(String dpid) {
+      this.dpid = dpid;
+    }
+    
+    @Override
+    @JsonProperty("interface")
+    public List<MininetInterface> getInterface() {
+      return interfaces;
+    }
+    
+    @Override
+    @JsonProperty("interface")
+    public void setInterface(List<MininetInterface> interfaces) {
+      this.interfaces = interfaces;
+    }
+    
+    @Override
+    @JsonProperty("connected")
+    public Boolean getConnected() {
+      return connected;
+    }
+    
+    @Override
+    @JsonProperty("connected")
+    public void setConnected(Boolean connected) {
+      this.connected = connected;
+    }
+    
+    @Override
+    public void addInterface(MininetInterface intf) {
+      interfaces.add(intf);
+    }
+    
+    @Override
+    public String toJson() throws JsonProcessingException {
+      return mapper.writeValueAsString(this);
+    }
+    
+    @Override
+    public String toString() {
+      return "MininetSwitch [name=" + name + ", dpid=" + dpid + "]";
+    }
   }
-
-  @Override
-  public MininetSwitch setName(String name) {
-    // TODO Auto-generated method stub
-    return null;
-  }
-
-  @Override
-  public MininetSwitch setDPID(DatapathId dpid) {
-    // TODO Auto-generated method stub
-    return null;
-  }
-
-  @Override
-  public String name() {
-    // TODO Auto-generated method stub
-    return null;
-  }
-
-  @Override
-  public DatapathId dpid() {
-    // TODO Auto-generated method stub
-    return null;
-  }
-
-  @Override
-  public List<IMininetInterface> interfaces() {
-    // TODO Auto-generated method stub
-    return null;
-  }
-
-}
