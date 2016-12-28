@@ -8,6 +8,9 @@ ENV INSTALLER_SWITCHES -fbinptvwyx
 ADD services/mininet/ansible /ansible
 RUN ansible-playbook -s /ansible/deploy.yml
 
+ADD services/mininet/app /app
+RUN chmod 777 /app/*
+
 WORKDIR /tmp
 
 VOLUME ["/data"]

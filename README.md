@@ -2,7 +2,7 @@
 KILDA CONTROLLER
 ---
 
-# How to Build
+# How to Build Kilda Controller
 
 - There are a few dependencies on Artifactory:
   - It should be up and running at http://artifactory:8081.
