@@ -18,7 +18,7 @@ import org.projectfloodlight.openflow.types.TransportPort;
 
 public class MininetTest {
 
-  public static final String MININET_ADDRESS = "0.0.0.0";
+  public static final String MININET_ADDRESS = "127.0.0.1";
   public static final int MININET_PORT = 38080;
   public static final int MAX_CONNECT_TIME = 5000;
   public static final int SLEEP_INTERVAL = 1000;
@@ -41,7 +41,7 @@ public class MininetTest {
 
   @Test
   public void testTDD() throws Exception {
-    IPv4Address controllerAddress = IPv4Address.of("0.0.0.0");
+    IPv4Address controllerAddress = IPv4Address.of("127.0.0.1");
     TransportPort controllerPort = TransportPort.of(6653);
     OFVersion ofVersion = OFVersion.OF_13;
     IMininetController controller = new MininetController()
