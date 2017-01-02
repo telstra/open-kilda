@@ -8,6 +8,7 @@ from mininet.link import TCLink
 from jsonschema import validate
 import logging
 import json
+import socket
 
 topology_schema = {
   "$schema": "http://json-schema.org/draft-04/schema#",
@@ -171,7 +172,8 @@ controllers_schema = {
 def add_controller(name, host, port):
     logger.debug("adding controller name={}, host={}, port={}"
                  .format(name, host, port))
-    controller = RemoteController(name, ip=host, port=port)
+    ip = socket.gethostbyname(host)
+    controller = RemoteController(name, ip=ip, port=port)
     controller.start()
     controllers.append(controller)
     return controller

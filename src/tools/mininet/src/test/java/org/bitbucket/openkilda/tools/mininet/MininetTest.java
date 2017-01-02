@@ -43,7 +43,7 @@ public class MininetTest {
 
   @Test
   public void testTDD() throws Exception {
-    String controllerAddress = "17.18.0.3";
+    String controllerAddress = "kilda";
     TransportPort controllerPort = TransportPort.of(6653);
     OFVersion ofVersion = OFVersion.OF_13;
     IMininetController controller = new MininetController()
