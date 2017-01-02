@@ -2,6 +2,8 @@ package org.bitbucket.openkilda.tools.mininet;
 
 import static org.junit.Assert.*;
 
+import java.net.Inet4Address;
+import java.net.InetAddress;
 import java.util.List;
 
 import org.bitbucket.openkilda.tools.mininet.Mininet;
@@ -41,7 +43,7 @@ public class MininetTest {
 
   @Test
   public void testTDD() throws Exception {
-    IPv4Address controllerAddress = IPv4Address.of("127.0.0.1");
+    IPv4Address controllerAddress = IPv4Address.of("192.168.56.1");
     TransportPort controllerPort = TransportPort.of(6653);
     OFVersion ofVersion = OFVersion.OF_13;
     IMininetController controller = new MininetController()
