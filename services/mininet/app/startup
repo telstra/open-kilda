@@ -1,0 +1,4 @@
+#!/bin/bash
+
+service openvswitch-switch start
+/app/mininet_rest.py
