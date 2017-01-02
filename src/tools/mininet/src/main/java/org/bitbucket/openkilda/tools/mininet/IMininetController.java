@@ -1,9 +1,5 @@
 package org.bitbucket.openkilda.tools.mininet;
 
-<<<<<<< HEAD
-=======
-import org.projectfloodlight.openflow.types.IPv4Address;
->>>>>>> fd6adbbfcc4a5259b29e023345e9ed932566fa71
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.types.TransportPort;
 
@@ -18,11 +14,7 @@ public interface IMininetController {
    * @param ip the ip address
    * @return the IMininetController
    */
-<<<<<<< HEAD
   public IMininetController setIP(String ip);
-=======
-  public IMininetController setIP(IPv4Address ip);
->>>>>>> fd6adbbfcc4a5259b29e023345e9ed932566fa71
   
   /**
    * Sets the port.

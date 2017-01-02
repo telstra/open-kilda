@@ -28,13 +28,8 @@ public class MininetController implements IMininetController {
   
   @Override
   @JsonProperty("host")
-<<<<<<< HEAD
   public IMininetController setIP(String host) {
     this.host = host;
-=======
-  public IMininetController setIP(IPv4Address host) {
-    this.host = host.toString();
->>>>>>> fd6adbbfcc4a5259b29e023345e9ed932566fa71
     return this;
   }
   
