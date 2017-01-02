@@ -169,6 +169,8 @@ controllers_schema = {
 
 
 def add_controller(name, host, port):
+    logger.debug("adding controller name={}, host={}, port={}"
+                 .format(name, host, port))
     controller = RemoteController(name, ip=host, port=port)
     controller.start()
     controllers.append(controller)
@@ -247,7 +249,7 @@ def list_links():
     data = []
     for name, link in links.iteritems():
         data.append({'name': name, 'status': link.status()})
-    return data
+    return {"links": data}
 
 
 @post('/topology')
@@ -271,7 +273,7 @@ def get_switch(name):
 @get('/switch')
 def get_switches():
     response.content_type = 'appliation/json'
-    return json.dumps(list_switches())
+    return json.dumps({'switches': list_switches()})
 
 
 @post('/switch')
@@ -312,7 +314,15 @@ def create_controller():
 
 @post('/cleanup')
 def mininet_cleanup():
+    del controllers[:]
+    switches.clear()
+    links.clear()
     cleanup()
+    return {'status': 'ok'}
+
+
+@get('/status')
+def status():
     return {'status': 'ok'}
 
 
