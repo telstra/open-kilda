@@ -43,7 +43,11 @@ public class MininetTest {
 
   @Test
   public void testTDD() throws Exception {
+<<<<<<< HEAD
     String controllerAddress = "kilda";
+=======
+    IPv4Address controllerAddress = IPv4Address.of("192.168.56.1");
+>>>>>>> fd6adbbfcc4a5259b29e023345e9ed932566fa71
     TransportPort controllerPort = TransportPort.of(6653);
     OFVersion ofVersion = OFVersion.OF_13;
     IMininetController controller = new MininetController()
