@@ -21,7 +21,7 @@ the configuration in.
 	- ./project.sh build
 	- ./project.sh image
 	- ./project.sh run
-2. Use Maven locallY (run outside of a container)
+2. Use Maven locally (run outside of a container)
 	-  `mvn -q package && mvn -q exec:java`
 	-  NB: this is faster.
 
@@ -39,15 +39,18 @@ One of the dependendent libraries is corrupt. Delete from ~/.m2/repositories and
 
 ### Key libraries
 
-A good place to start is to look at the pom.xml file to see what libraries are included. That'll also give the latest set.  We document a few here.
+A good place to start is to look at the pom.xml file to see what libraries are included. 
+That'll also give the latest set.  We document a few here.
 
 1. [Guava](http://google.github.io/guava/releases/20.0/api/docs/) - Google Core Libraries for Java
-2. [Curator](http://curator.apache.org/getting-started.html) - Makes using Zookeeper easier. As Guava is to Java, Curator is to Zookeeper.
+2. [Curator](http://curator.apache.org/getting-started.html) - Makes using Zookeeper easier. 
+As Guava is to Java, Curator is to Zookeeper.
 
 
 ## TESTING
 
-At present we are using JUnit 4 (4.12 as of this writing). [JUnit 5](http://junit.org/junit5/) will release soon and we may migrate to that.
+At present we are using JUnit 4 (4.12 as of this writing). [JUnit 5](http://junit.org/junit5/) 
+will release soon and we may migrate to that.
 
 # ARCHITECTURE
 
@@ -57,7 +60,8 @@ At present we are using JUnit 4 (4.12 as of this writing). [JUnit 5](http://juni
 
 #### New to Storm
 
-A good place to start is by looking at the code examples in the [github project](https://github.com/apache/storm/). __NB: if you clone this project__, remember to do a `mvn package` at the top level before trying any examples
+A good place to start is by looking at the code examples in the [github project](https://github.com/apache/storm/). 
+__NB: if you clone this project__, remember to do a `mvn package` at the top level before trying any examples
 
 #### Storm CLI
 
@@ -72,5 +76,12 @@ Ensure you have the CLI installed; there are quite a few useful commands and thi
 
 ### PROPERTIES
 
-Kilda uses the [Java Properties](https://docs.oracle.com/javase/tutorial/essential/environment/properties.html) patterns to load in default values, and the ability to
-override these defaults.
+Kilda uses the [Java Properties](https://docs.oracle.com/javase/tutorial/essential/environment/properties.html) 
+patterns to load in default values, and the ability to override these defaults.
+
+To override the defaults, make sure to pass in an argument during execution. An example of
+during this with maven is:
+
+```
+mvn exec:java -Dexec.args="--config=src/test/resources/test.properties"
+```

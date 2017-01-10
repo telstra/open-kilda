@@ -86,7 +86,7 @@ run() {
   echo ""
   echo "==> RUNNING 'LOCALLY':"
   # NB: this leverages the built-in definitions / jar.
-  docker run -it --rm -v m2:/root/.m2 -v $(PWD):/app -w /app ${COMPILER} mvn exec:java
+  docker run -it --rm --network=host -v m2:/root/.m2 -v $(PWD):/app -w /app ${COMPILER} mvn exec:java
 
 # NB: here is another mechanism, where you can specify the main class
 #  local main_class="org.bitbucket.kilda.controller.Main"
@@ -107,7 +107,7 @@ image() {
 drun() {
   echo ""
 	echo "==> RUNNING in DOCKER:"
-  docker run ${IMAGE}:${VER}
+  docker run --network=host ${IMAGE}:${VER}
 }
 
 main() {
