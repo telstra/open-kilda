@@ -42,11 +42,11 @@ public class Heartbeat {
 		startTime = Instant.now();
 	}
 
-	public Runnable createProducer() {
+	public Producer createProducer() {
 		return this.new Producer();
 	}
 
-	public Runnable createConsumer() {
+	public Consumer createConsumer() {
 		return this.new Consumer();
 	}
 
