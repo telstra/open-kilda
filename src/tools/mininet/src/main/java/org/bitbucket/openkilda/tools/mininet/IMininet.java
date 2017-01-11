@@ -81,6 +81,13 @@ public interface IMininet {
    * @return the MininetSwitches
    */
   MininetSwitches switches();
+  
+  /**
+   * Get specific switch.
+   * 
+   * @return the MininetSwitch
+   */
+  IMininetSwitch getSwitch(String name);
 
   /**
    * Get all links.
@@ -95,5 +102,7 @@ public interface IMininet {
    * @return true, if connected
    */
   boolean isConnect();
+
+  boolean isSwitchConnected(String name);
 
 }
