@@ -2,3 +2,5 @@
 *.pyc
 py_env/
 effective.pom
+.classpath
+
