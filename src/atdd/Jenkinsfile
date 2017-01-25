@@ -1,0 +1,15 @@
+
+node {
+    stage ("Pull") {
+      checkout scm
+    }
+
+    stage ("Build") {
+      sh 'mvn compile'
+    }
+
+    stage ("Test") {
+      sh 'mvn verify'
+    }
+
+}
