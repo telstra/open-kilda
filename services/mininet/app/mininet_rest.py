@@ -172,12 +172,8 @@ controllers_schema = {
 def add_controller(name, host, port):
     logger.debug("adding controller name={}, host={}, port={}"
                  .format(name, host, port))
-<<<<<<< HEAD
     ip = socket.gethostbyname(host)
     controller = RemoteController(name, ip=ip, port=port)
-=======
-    controller = RemoteController(name, ip=host, port=port)
->>>>>>> fd6adbbfcc4a5259b29e023345e9ed932566fa71
     controller.start()
     controllers.append(controller)
     return controller
