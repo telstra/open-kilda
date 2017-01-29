@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
 
+import org.bitbucket.openkilda.floodlight.kafka.IKafkaService;
 import org.bitbucket.openkilda.floodlight.switchmanager.type.PortMessageData;
 import org.bitbucket.openkilda.floodlight.switchmanager.type.SwitchEventType;
 import org.bitbucket.openkilda.floodlight.switchmanager.type.SwitchMessageData;
@@ -31,6 +32,8 @@ public class SwitchManager implements IFloodlightModule, IOFSwitchListener {
   protected Logger logger;
   protected IFloodlightProviderService floodlightProvider;
   protected IOFSwitchService switchService; 
+  protected IKafkaService kafkaService;
+  protected String topic;
   private ObjectMapper mapper;
 
   /**
@@ -42,6 +45,7 @@ public class SwitchManager implements IFloodlightModule, IOFSwitchListener {
     Collection<Class<? extends IFloodlightService>> services = new ArrayList<>();
     services.add(IFloodlightProviderService.class);
     services.add(IOFSwitchService.class);
+    services.add(IKafkaService.class);
     return services;
   }
 
@@ -59,12 +63,15 @@ public class SwitchManager implements IFloodlightModule, IOFSwitchListener {
   public void init(FloodlightModuleContext context) throws FloodlightModuleException {
     floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
     switchService = context.getServiceImpl(IOFSwitchService.class);
+    kafkaService = context.getServiceImpl(IKafkaService.class);
     logger = LoggerFactory.getLogger(SwitchManager.class);
     mapper = new ObjectMapper();
+    Map<String, String> configParameters = context.getConfigParams(this);
+    topic = configParameters.get("topic");
   }
 
   @Override
-  public void startUp(FloodlightModuleContext arg0) throws FloodlightModuleException {
+  public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
     logger.info("Starting " + SwitchManager.class.getCanonicalName());
     switchService.addOFSwitchListener(this);
   }
@@ -78,6 +85,7 @@ public class SwitchManager implements IFloodlightModule, IOFSwitchListener {
     Message message = buildSwitchMessage(dpid, SwitchEventType.ACTIVATED);
     try {
       logger.info(mapper.writeValueAsString(message));
+      kafkaService.postMessage(topic, message);
     } catch (JsonProcessingException e) {
       logger.error(e.toString());
     }
@@ -88,6 +96,7 @@ public class SwitchManager implements IFloodlightModule, IOFSwitchListener {
     Message message = buildSwitchMessage(dpid, SwitchEventType.ADDED);
     try {
       logger.info(mapper.writeValueAsString(message));
+      kafkaService.postMessage(topic, message);
     } catch (JsonProcessingException e) {
       logger.error(e.toString());
     }
@@ -98,6 +107,7 @@ public class SwitchManager implements IFloodlightModule, IOFSwitchListener {
     Message message = buildSwitchMessage(dpid, SwitchEventType.CHANGED);
     try {
       logger.info(mapper.writeValueAsString(message));
+      kafkaService.postMessage(topic, message);
     } catch (JsonProcessingException e) {
       logger.error(e.toString());
     }
@@ -108,6 +118,7 @@ public class SwitchManager implements IFloodlightModule, IOFSwitchListener {
     Message message = buildSwitchMessage(dpid, SwitchEventType.DEACTIVATED);
     try {
       logger.info(mapper.writeValueAsString(message));
+      kafkaService.postMessage(topic, message);
     } catch (JsonProcessingException e) {
       logger.error(e.toString());
     }
@@ -118,6 +129,7 @@ public class SwitchManager implements IFloodlightModule, IOFSwitchListener {
     Message message = buildSwitchMessage(dpid, SwitchEventType.REMOVED);
     try {
       logger.info(mapper.writeValueAsString(message));
+      kafkaService.postMessage(topic, message);
     } catch (JsonProcessingException e) {
       logger.error(e.toString());
     }

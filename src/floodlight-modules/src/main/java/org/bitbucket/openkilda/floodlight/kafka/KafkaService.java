@@ -13,15 +13,13 @@ import org.bitbucket.openkilda.floodlight.type.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 
-public class KafkaService implements IKafkaService, IFloodlightModule {
+public class KafkaService implements IFloodlightModule, IKafkaService {
   protected IFloodlightProviderService floodlightProvider;
   private Logger logger;
   protected Properties kafkaProps;
@@ -36,7 +34,7 @@ public class KafkaService implements IKafkaService, IFloodlightModule {
   public boolean postMessage(String topic, Message message) {
     try {
       producer.send(new ProducerRecord<String, String>(topic, message.toJson()));
-    } catch (JsonProcessingException e) {
+    } catch (Exception e) {
       logger.error("Error converting to JSON.", e);
       return false;
     }
@@ -45,6 +43,7 @@ public class KafkaService implements IKafkaService, IFloodlightModule {
 
   @Override
   public boolean topicExists(String queueName) {
+    
     return false;
   }
 
@@ -82,10 +81,10 @@ public class KafkaService implements IKafkaService, IFloodlightModule {
   public void init(FloodlightModuleContext context) throws FloodlightModuleException {
     floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
     logger = LoggerFactory.getLogger(KafkaService.class);
+    
     Map<String, String> configParameters = context.getConfigParams(this);
-   // logger.debug(configParameters.get(bootstrap-servers));
     kafkaProps = new Properties();
-    kafkaProps.put("bootstrap.servers", "192.168.33.10:9092");
+    kafkaProps.put("bootstrap.servers", configParameters.get("bootstrap-servers"));
     kafkaProps.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
     kafkaProps.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
     producer = new KafkaProducer<>(kafkaProps);

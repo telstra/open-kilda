@@ -1,11 +1,8 @@
 #!/bin/bash
 
-cd ../../../floodlight
-mvn install
+ant -buildfile ../../../floodlight
 
-cd ../floodlight-test
-mvn install
+mvn -f ../../../floodlight-test install
 
-cd ../kilda-controller/src/floodlight-modules
-mvn verify
+mvn package
 java -Dlogback.configurationFile=src/test/resources/logback.xml -cp ../../../floodlight/target/floodlight.jar:target/floodlight-modules-0.0.1-SNAPSHOT.jar net.floodlightcontroller.core.Main -cf src/main/resources/floodlightkilda.properties

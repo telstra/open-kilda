@@ -14,6 +14,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.bitbucket.openkilda.floodlight.type.MessageData;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
@@ -21,7 +22,7 @@ import org.apache.commons.lang3.builder.ToStringBuilder;
     "type",
     "links"
 })
-public class Path implements Serializable
+public class Path extends MessageData
 {
 
     @JsonProperty("id")

@@ -31,11 +31,15 @@ import net.floodlightcontroller.staticentry.IStaticEntryPusherService;
 import net.floodlightcontroller.util.FlowModUtils;
 import net.floodlightcontroller.util.OFMessageUtils;
 
+import org.bitbucket.openkilda.floodlight.kafka.IKafkaService;
 import org.bitbucket.openkilda.floodlight.pathverification.type.Link;
 import org.bitbucket.openkilda.floodlight.pathverification.type.Node;
 import org.bitbucket.openkilda.floodlight.pathverification.type.Path;
 import org.bitbucket.openkilda.floodlight.pathverification.type.PathType;
 import org.bitbucket.openkilda.floodlight.pathverification.web.PathVerificationServiceWebRoutable;
+import org.bitbucket.openkilda.floodlight.switchmanager.SwitchManager;
+import org.bitbucket.openkilda.floodlight.type.Message;
+import org.bitbucket.openkilda.floodlight.type.MessageType;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
@@ -72,8 +76,10 @@ implements IFloodlightModule, IOFMessageListener, IPathVerificationService {
   protected IOFSwitchService switchService;
   protected IStaticEntryPusherService sfpService;
   protected IRestApiService restApiService;
+  protected IKafkaService kafkaService;
   protected Logger logger;
   protected ObjectMapper mapper = new ObjectMapper();
+  protected String topic;
 
   /**
    * IFloodlightModule Methods.
@@ -85,6 +91,7 @@ implements IFloodlightModule, IOFMessageListener, IPathVerificationService {
     services.add(IStaticEntryPusherService.class);
     services.add(IOFSwitchService.class);
     services.add(IRestApiService.class);
+    services.add(IKafkaService.class);
     return services;
   }
 
@@ -108,7 +115,10 @@ implements IFloodlightModule, IOFMessageListener, IPathVerificationService {
     sfpService = context.getServiceImpl(IStaticEntryPusherService.class);
     switchService = context.getServiceImpl(IOFSwitchService.class);
     restApiService = context.getServiceImpl(IRestApiService.class);
+    kafkaService = context.getServiceImpl(IKafkaService.class);
     logger = LoggerFactory.getLogger(PathVerificationService.class);
+    Map<String, String> configParameters = context.getConfigParams(this);
+    topic = configParameters.get("topic");
   }
 
   @Override
@@ -418,8 +428,8 @@ implements IFloodlightModule, IOFMessageListener, IPathVerificationService {
 
     List<Node> nodes = Arrays.asList(
         new Node()
-          .withSwitch(remoteSwitch.getId().toString())
-          .withPort(remotePort.getPortNumber()),
+          .withSwitch(sw.getId().toString())
+          .withPort(inPort.getPortNumber()),
         new Node()
           .withSwitch(remoteSwitch.getId().toString())
           .withPort(remotePort.getPortNumber()));
@@ -434,8 +444,15 @@ implements IFloodlightModule, IOFMessageListener, IPathVerificationService {
         .withType(PathType.values()[pathOrdinal])
         .withLinks(links);
     
+    Message message = new Message()
+        .withMessageType(MessageType.PATH)
+        .withTimestamp(System.currentTimeMillis())
+        .withController(floodlightProvider.getControllerId())
+        .withData(path);
+    
     try {
-      logger.debug(mapper.writeValueAsString(path));
+      logger.debug(message.toJson());
+      kafkaService.postMessage(topic, message);
     } catch (JsonProcessingException exception) {
       logger.error("could not create json for path");
     }
