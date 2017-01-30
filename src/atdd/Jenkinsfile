@@ -5,11 +5,11 @@ node {
     }
 
     stage ("Build") {
-      sh 'mvn compile'
+      sh 'docker run -it --rm -v m2:/root/.m2 -v $(PWD):/app -w /app kilda/builder-maven:latest mvn compile'
     }
 
     stage ("Test") {
-      sh 'mvn verify'
+      sh 'docker run -it --rm -v m2:/root/.m2 -v $(PWD):/app -w /app kilda/builder-maven:latest mvn verify'
     }
 
 }
