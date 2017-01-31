@@ -1,15 +1,15 @@
 
 node {
     stage ("Pull") {
-      checkout scm
+        checkout scm
     }
 
     stage ("Build") {
-      sh 'docker run -it --rm -v m2:/root/.m2 -v $(PWD):/app -w /app kilda/builder-maven:latest mvn compile'
+        sh 'mvn compile'
     }
 
     stage ("Test") {
-      sh 'docker run -it --rm -v m2:/root/.m2 -v $(PWD):/app -w /app kilda/builder-maven:latest mvn verify'
+        sh 'mvn verify'
     }
 
 }
