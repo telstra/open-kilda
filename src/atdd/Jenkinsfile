@@ -5,11 +5,15 @@ node {
     }
 
     stage ("Build") {
-        sh 'mvn compile'
+        dir("src/atdd"){
+            sh 'mvn compile'
+        }
     }
 
     stage ("Test") {
-        sh 'mvn verify'
+        dir("src/atdd"){
+            sh 'mvn verify'
+        }
     }
 
 }
