@@ -1,7 +1,7 @@
 import os
 from neo4j.v1 import GraphDatabase, basic_auth, TRUST_DEFAULT
 
-neo4jhost = "localhost"
+neo4jhost = "neo4j"
 neo4juser = "neo4j"
 neo4jpass = "temppass"
 
