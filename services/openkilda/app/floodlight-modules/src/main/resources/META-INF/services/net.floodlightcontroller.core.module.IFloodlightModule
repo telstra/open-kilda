@@ -1,3 +1,0 @@
-org.bitbucket.openkilda.floodlight.kafka.KafkaService
-org.bitbucket.openkilda.floodlight.pathverification.PathVerificationService
-org.bitbucket.openkilda.floodlight.switchmanager.SwitchManager

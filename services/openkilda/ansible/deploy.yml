@@ -1,7 +1,0 @@
----
-- hosts: localhost
-  tasks:
-  - name: build kilda
-    shell: "{{ item }}"
-    with_items:
-    - /bin/bash /app/build_kilda.sh
