@@ -1,5 +1,7 @@
 #!/usr/bin/python
 
+print "Topology engine started."
+
 import topologylistener
 import topologyrest
 

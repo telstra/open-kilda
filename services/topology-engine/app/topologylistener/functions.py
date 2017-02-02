@@ -6,6 +6,7 @@ import time
 from pprint import pprint
 
 db.runner("MATCH (n) DETACH DELETE n")
+print "Topology engine started."
 
 def get_event():
     rawevent = kafkareader.readMessage()
