@@ -48,7 +48,7 @@ services:
       context: .
       dockerfile:  services/topology-engine/Dockerfile
     image: "kilda/topology-engine:${full_build_number:-latest}"
-    command: python app/__main__.py
+    command: python -u app/__main__.py
     ports:
       - "80:80"
     links:

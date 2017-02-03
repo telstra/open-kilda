@@ -8,7 +8,7 @@
 
   - name: get hbase
     unarchive:
-      src=/src/hbase-1.2.4-bin.tar.gz
+      src=/src/hbase/1.2.4/hbase-1.2.4-bin.tar.gz
       dest=/opt
       remote_src=yes
       owner=root

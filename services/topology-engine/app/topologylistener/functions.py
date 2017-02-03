@@ -1,10 +1,10 @@
-import db
-import kafkareader
+import db, kafkareader
 import json
 import time
 
 from pprint import pprint
 
+print "Cleaning old topology"
 db.runner("MATCH (n) DETACH DELETE n")
 print "Topology engine started."
 
@@ -32,8 +32,12 @@ def listen_for_topology_event():
 
 def create_switch(switchid):
     print "Creating switch '{0}'.".format(switchid)
-    query = "CREATE (:switch {{ name: '{0}' }})".format(switchid)
-    db.runner(query)
+    switchExists = bool(db.runner("MATCH (a:switch{{ name: '{0}' }}) return count(a)".format(switchid)).single()[0])
+    if not switchExists:
+        query = "CREATE (:switch {{ name: '{0}' }})".format(switchid)
+        db.runner(query)
+    else:
+        print "Switch '{0}' already exists in topology.".format(switchid)
     return 0
 
 

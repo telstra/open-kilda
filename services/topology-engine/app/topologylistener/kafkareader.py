@@ -23,8 +23,8 @@ while kafkaConnectionRetries > 0:
         consumer.subscribe([topic])
         print "Connected to kafka"
         break
-    except:
-        print "Waiting for kafka topic {} to become available".format(topic)
+    except Exception as e:
+        print e
         time.sleep(1)
 
 def readMessage():
