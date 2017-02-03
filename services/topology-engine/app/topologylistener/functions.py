@@ -28,6 +28,7 @@ def listen_for_topology_event():
                 portB = event['data']['links'][0]['nodes'][1]['port']
 
                 create_isl(switchA, portA, switchB, portB)
+        time.sleep(.5)
     return 0
 
 def create_switch(switchid):
@@ -43,7 +44,5 @@ def create_switch(switchid):
 
 def create_isl(a_switch, a_port, b_switch, b_port):
     query = "MATCH (a:switch{{ name: '{0}' }}),(b:switch{{ name: '{2}' }}) CREATE(a) -[r:isl {{ src_port: '{1}', dst_port: '{3}'  }}]-> (b) CREATE(b) -[s:isl {{ src_port: '{3}', dst_port: '{1}' }}]-> (a)".format(a_switch, a_port, b_switch, b_port)
-    print query
     db.runner(query)
-
     return 0
