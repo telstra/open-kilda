@@ -18,13 +18,14 @@ def listen_for_topology_event():
         event = get_event()
         if event:
             print event.toJSON()
-            if event.data['message_type'] == "switch" and event.data['state'] == "ADD":
+            if event.data['message_type'] == "switch" and event.data['state'] == "ADDED":
                 print "Event: switch added to topology"
                 create_switch(event.data['switch_id'])
             if event.data['message_type'] == "isl":
                 print "Event: isl added to topology"
                 create_isl(event.data['path'])
-        time.sleep(.5)
+        if not event:
+                time.sleep(.5)
     return 0
 
 def create_switch(switchid):
@@ -39,6 +40,7 @@ def create_switch(switchid):
 
 
 def create_isl(path):
+    
     a_switch = path[0]['switch_id']
     a_port = path[0]['port_no']
     b_switch = path[1]['switch_id']
