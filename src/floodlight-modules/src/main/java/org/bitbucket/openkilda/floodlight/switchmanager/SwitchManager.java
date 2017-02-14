@@ -5,12 +5,13 @@ import java.util.Collection;
 import java.util.Map;
 
 import org.bitbucket.openkilda.floodlight.kafka.IKafkaService;
-import org.bitbucket.openkilda.floodlight.switchmanager.type.PortMessageData;
-import org.bitbucket.openkilda.floodlight.switchmanager.type.SwitchEventType;
-import org.bitbucket.openkilda.floodlight.switchmanager.type.SwitchMessageData;
-import org.bitbucket.openkilda.floodlight.type.Message;
-import org.bitbucket.openkilda.floodlight.type.MessageData;
-import org.bitbucket.openkilda.floodlight.type.MessageType;
+import org.bitbucket.openkilda.floodlight.message.InfoMessage;
+import org.bitbucket.openkilda.floodlight.message.Message;
+import org.bitbucket.openkilda.floodlight.message.MessageData;
+import org.bitbucket.openkilda.floodlight.message.info.InfoData;
+import org.bitbucket.openkilda.floodlight.message.info.PortInfoData;
+import org.bitbucket.openkilda.floodlight.message.info.SwitchInfoData;
+import org.bitbucket.openkilda.floodlight.message.info.SwitchInfoData.SwitchEventType;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.slf4j.Logger;
@@ -84,7 +85,7 @@ public class SwitchManager implements IFloodlightModule, IOFSwitchListener {
   public void switchActivated(DatapathId dpid) {
     Message message = buildSwitchMessage(dpid, SwitchEventType.ACTIVATED);
     try {
-      logger.info(mapper.writeValueAsString(message));
+      logger.info("activated" + mapper.writeValueAsString(message));
       kafkaService.postMessage(topic, message);
     } catch (JsonProcessingException e) {
       logger.error(e.toString());
@@ -95,7 +96,7 @@ public class SwitchManager implements IFloodlightModule, IOFSwitchListener {
   public void switchAdded(DatapathId dpid) {
     Message message = buildSwitchMessage(dpid, SwitchEventType.ADDED);
     try {
-      logger.info(mapper.writeValueAsString(message));
+      logger.info("added" + mapper.writeValueAsString(message));
       kafkaService.postMessage(topic, message);
     } catch (JsonProcessingException e) {
       logger.error(e.toString());
@@ -106,7 +107,7 @@ public class SwitchManager implements IFloodlightModule, IOFSwitchListener {
   public void switchChanged(DatapathId dpid) {
     Message message = buildSwitchMessage(dpid, SwitchEventType.CHANGED);
     try {
-      logger.info(mapper.writeValueAsString(message));
+      logger.info("changed" + mapper.writeValueAsString(message));
       kafkaService.postMessage(topic, message);
     } catch (JsonProcessingException e) {
       logger.error(e.toString());
@@ -117,7 +118,7 @@ public class SwitchManager implements IFloodlightModule, IOFSwitchListener {
   public void switchDeactivated(DatapathId dpid) {
     Message message = buildSwitchMessage(dpid, SwitchEventType.DEACTIVATED);
     try {
-      logger.info(mapper.writeValueAsString(message));
+      logger.info("deactivated" + mapper.writeValueAsString(message));
       kafkaService.postMessage(topic, message);
     } catch (JsonProcessingException e) {
       logger.error(e.toString());
@@ -137,13 +138,13 @@ public class SwitchManager implements IFloodlightModule, IOFSwitchListener {
 
   @Override
   public void switchPortChanged(DatapathId dpid, OFPortDesc port, PortChangeType changeType) {
-    PortMessageData data = new PortMessageData()
-        .withEventType(changeType)
+    InfoData data = new PortInfoData()
         .withSwitchId(dpid.toString())
-        .withPortNo(port.getPortNo().getPortNumber());
-    Message message = buildMessage(MessageType.PORT, data);
+        .withPortNo(port.getPortNo().getPortNumber())
+        .withState(changeType);
     try {
-      logger.info(mapper.writeValueAsString(message));
+      logger.info(mapper.writeValueAsString(data));
+      kafkaService.postMessage(topic, buildMessage(data));
     } catch (JsonProcessingException e) {
       logger.error(e.toString());
     }
@@ -154,18 +155,15 @@ public class SwitchManager implements IFloodlightModule, IOFSwitchListener {
    */
   
   public Message buildSwitchMessage(DatapathId dpid, SwitchEventType eventType) {
-    SwitchMessageData data = new SwitchMessageData()
-        .withEventType(eventType)
-        .withSwitchId(dpid.toString());
-    
-    return buildMessage(MessageType.SWITCH, data);
+    InfoData data = new SwitchInfoData()
+        .withSwitchId(dpid.toString())
+        .withState(eventType);
+    return buildMessage(data);
   }
   
-  public Message buildMessage(MessageType type, MessageData data) {
-    return new Message()
-        .withMessageType(type)
-        .withTimestamp(System.currentTimeMillis())
-        .withController(floodlightProvider.getControllerId())
-        .withData(data);
+  public Message buildMessage(InfoData data) {
+    return new InfoMessage()
+        .withData(data)
+        .withTimestamp(System.currentTimeMillis());
   }
 }

@@ -20,7 +20,6 @@ def main(args):
                              auto_offset_reset='latest',
                              group_id=group_uuid,
                              api_version=(0, 9))
-    logger.info("Subscribing to {}".format(args.topic))
     topics = [args.topic]
     consumer.subscribe(topics)
 

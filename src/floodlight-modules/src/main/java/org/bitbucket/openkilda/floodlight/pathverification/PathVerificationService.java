@@ -32,14 +32,12 @@ import net.floodlightcontroller.util.FlowModUtils;
 import net.floodlightcontroller.util.OFMessageUtils;
 
 import org.bitbucket.openkilda.floodlight.kafka.IKafkaService;
-import org.bitbucket.openkilda.floodlight.pathverification.type.Link;
-import org.bitbucket.openkilda.floodlight.pathverification.type.Node;
-import org.bitbucket.openkilda.floodlight.pathverification.type.Path;
+import org.bitbucket.openkilda.floodlight.message.InfoMessage;
+import org.bitbucket.openkilda.floodlight.message.Message;
+import org.bitbucket.openkilda.floodlight.message.info.IslInfoData;
+import org.bitbucket.openkilda.floodlight.message.info.PathNode;
 import org.bitbucket.openkilda.floodlight.pathverification.type.PathType;
 import org.bitbucket.openkilda.floodlight.pathverification.web.PathVerificationServiceWebRoutable;
-import org.bitbucket.openkilda.floodlight.switchmanager.SwitchManager;
-import org.bitbucket.openkilda.floodlight.type.Message;
-import org.bitbucket.openkilda.floodlight.type.MessageType;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
@@ -195,7 +193,7 @@ implements IFloodlightModule, IOFMessageListener, IPathVerificationService {
     fmb.setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT);
     fmb.setHardTimeout(FlowModUtils.INFINITE_TIMEOUT);
     fmb.setBufferId(OFBufferId.NO_BUFFER);
-    fmb.setCookie(U64.of(0));
+    fmb.setCookie(U64.of(123L));
     fmb.setPriority(FlowModUtils.PRIORITY_VERY_HIGH);
     fmb.setActions(actionList);
     fmb.setMatch(match);
@@ -212,7 +210,8 @@ implements IFloodlightModule, IOFMessageListener, IPathVerificationService {
 
     logger.debug("Adding verification flow to {}.", switchId);
     String flowname = (isBroadcast) ? "Broadcast" : "Unicast";
-    flowname += "VerificationFlow";
+    flowname += "--VerificationFlow--" + switchId.toString();
+    logger.debug("adding: " + flowname + " " + flowMod.toString() + "--" + switchId.toString());
     sfpService.addFlow(flowname, flowMod, switchId);
   }
 
@@ -426,29 +425,25 @@ implements IFloodlightModule, IOFMessageListener, IPathVerificationService {
     }
     U64 latency = (timestamp != 0 && (time - timestamp) > 0) ? U64.of(time - timestamp) : U64.ZERO;
 
-    List<Node> nodes = Arrays.asList(
-        new Node()
-          .withSwitch(sw.getId().toString())
-          .withPort(inPort.getPortNumber()),
-        new Node()
-          .withSwitch(remoteSwitch.getId().toString())
-          .withPort(remotePort.getPortNumber()));
-
-    List<Link> links = Arrays.asList(
-        new Link()
-          .withLatency(latency.getValue())
-          .withNodes(nodes)
+    List<PathNode> nodes = Arrays.asList(
+        new PathNode()
+          .withSwitchId(sw.getId().toString())
+          .withPortNo(inPort.getPortNumber())
+          .withSegLatency(latency.getValue())
+          .withSeqId(0),
+        new PathNode()
+          .withSwitchId(remoteSwitch.getId().toString())
+          .withPortNo(remotePort.getPortNumber())
+          .withSeqId(1)
         );
 
-    Path path = new Path()
-        .withType(PathType.values()[pathOrdinal])
-        .withLinks(links);
+    IslInfoData path = new IslInfoData()
+        .withLatency(latency.getValue())
+        .withPath(nodes);
     
-    Message message = new Message()
-        .withMessageType(MessageType.PATH)
-        .withTimestamp(System.currentTimeMillis())
-        .withController(floodlightProvider.getControllerId())
-        .withData(path);
+    Message message = new InfoMessage()
+        .withData(path)
+        .withTimestamp(System.currentTimeMillis());
     
     try {
       logger.debug(message.toJson());
