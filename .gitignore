@@ -6,3 +6,5 @@ effective.pom
 .lfsconfig
 .pydevproject
 dependency-reduced-pom.xml
+*.class
+*.swp

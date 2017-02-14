@@ -43,7 +43,7 @@ public class KafkaListener implements Runnable {
       while (!closed.get()) {
         ConsumerRecords<String, String> records = consumer.poll(1000);
         for (ConsumerRecord<String, String> record: records) {
-          logger.debug("offset = {}, key = {}, value = {}", new Object[]{record.offset(), record.key(), record.value()});
+          logger.debug("kafka message received:  offset = {}, key = {}, value = {}", new Object[]{record.offset(), record.key(), record.value()});
           queue.add(record.value());
         }
       }

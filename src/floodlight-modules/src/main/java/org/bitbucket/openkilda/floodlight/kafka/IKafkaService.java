@@ -1,6 +1,6 @@
 package org.bitbucket.openkilda.floodlight.kafka;
 
-import org.bitbucket.openkilda.floodlight.type.Message;
+import org.bitbucket.openkilda.floodlight.message.Message;
 
 import net.floodlightcontroller.core.module.IFloodlightService;
 

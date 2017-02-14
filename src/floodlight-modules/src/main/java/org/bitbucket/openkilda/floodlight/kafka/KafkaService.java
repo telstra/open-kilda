@@ -1,21 +1,19 @@
 package org.bitbucket.openkilda.floodlight.kafka;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.bitbucket.openkilda.floodlight.type.Message;
+import org.bitbucket.openkilda.floodlight.message.Message;
+import org.bitbucket.openkilda.floodlight.pathverification.IPathVerificationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,6 +28,7 @@ public class KafkaService implements IFloodlightModule, IKafkaService {
   private Logger logger;
   protected Properties kafkaProps;
   private Producer<String, String> producer;
+  private IPathVerificationService pathVerificationService;
   private static ConcurrentLinkedQueue<String> queue = new ConcurrentLinkedQueue<>();
   
 
@@ -67,6 +66,7 @@ public class KafkaService implements IFloodlightModule, IKafkaService {
   public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
     Collection<Class<? extends IFloodlightService>> services = new ArrayList<>();
     services.add(IFloodlightProviderService.class);
+    services.add(IPathVerificationService.class);
     return services;
   }
 
@@ -87,6 +87,7 @@ public class KafkaService implements IFloodlightModule, IKafkaService {
   @Override
   public void init(FloodlightModuleContext context) throws FloodlightModuleException {
     floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
+    pathVerificationService = context.getServiceImpl(IPathVerificationService.class);
     logger = LoggerFactory.getLogger(KafkaService.class);
     
     Map<String, String> configParameters = context.getConfigParams(this);
@@ -103,7 +104,12 @@ public class KafkaService implements IFloodlightModule, IKafkaService {
     // Start Threads
     ExecutorService executor = Executors.newFixedThreadPool(10);
     executor.execute(new KafkaListener(queue));
-    executor.execute(new MessageDispatcher(queue));
+    executor.execute(new KafkaListener(queue));
+    executor.execute(new KafkaListener(queue));
+    executor.execute(new MessageDispatcher(queue, pathVerificationService));
+    executor.execute(new MessageDispatcher(queue, pathVerificationService));
+    executor.execute(new MessageDispatcher(queue, pathVerificationService));
+    executor.execute(new MessageDispatcher(queue, pathVerificationService));
     producer = new KafkaProducer<>(kafkaProps);
   }
 
