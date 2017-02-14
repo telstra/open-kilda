@@ -9,7 +9,7 @@
 
   - name: get kafka
     unarchive:
-      src=/src/kafka_2.11-0.10.1.0.tgz
+      src=/src/kafka/0.10.1.0/kafka_2.11-0.10.1.0.tgz
       dest=/opt
       remote_src=yes
       owner=root

@@ -1,12 +1,18 @@
 #!/usr/bin/python
 
-print "Topology engine started."
+print "Topology engine starting."
 
 import topologylistener
-import topologyrest
+
 
 import threading
 import time
 
-threading.Thread(target=topologylistener.functions.listen_for_topology_event()).start()    
-
+while True:
+    try:
+        print "Starting lister thread."
+        threading.Thread(target=topologylistener.functions.listen_for_topology_event()).start()
+        print "Listener thread closed."
+    except Exception as e:
+        print "Listener thread unhandled exception:"
+        print e

@@ -8,6 +8,12 @@ neo4jpass = "temppass"
 
 Neo4jConnectionRetries = 10
 
+def runner(query):
+    session = driver.session()
+    result = session.run(query)
+    session.close()
+    return result
+
 while Neo4jConnectionRetries > 0:
     try:
         time.sleep(1)
@@ -19,10 +25,15 @@ while Neo4jConnectionRetries > 0:
         print "Waiting for Neo4j to become available"
         time.sleep(1)
 
+while driver:
+    try:
+        runner("MATCH (n) DETACH DELETE n")
+        print "Old topology deleted"
+        break
+    except Exception as e:
+        time.sleep(1)
+        print e
+        print "Waiting for DB layer"
 
 
-def runner(query):
-    session = driver.session()
-    result = session.run(query)
-    session.close()
-    return result
+
