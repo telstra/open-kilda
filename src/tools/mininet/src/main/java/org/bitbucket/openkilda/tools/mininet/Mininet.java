@@ -144,6 +144,25 @@ public class Mininet implements IMininet {
   }
   
   @Override
+  public MininetSwitch getSwitch(String name) {
+    MininetSwitch sw = null;
+    CloseableHttpResponse response;
+    try {
+      response = simpleGet(String.format("/switch/%s", name));
+      sw = mapper.readValue(response.getEntity().getContent(), MininetSwitch.class);
+    } catch (Exception e) {
+      logger.error(e);
+    }
+    return sw;
+  }
+  
+  @Override
+  public boolean isSwitchConnected(String name) {
+    MininetSwitch sw = getSwitch(name);
+    return sw.getConnected();
+  }
+  
+  @Override
   public MininetLinks links() {
     MininetLinks links = null;
     CloseableHttpResponse response;

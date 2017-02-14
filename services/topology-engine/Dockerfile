@@ -1,4 +1,7 @@
 FROM kilda/base-ubuntu
-ADD services/topology-engine/ansible /ansible
+RUN apt-get install -y python-pip
+RUN pip install neo4j-driver
+RUN pip install kafka
+RUN pip install flask
 ADD services/topology-engine/app /app
-RUN ansible-playbook -s /ansible/deploy.yml
+

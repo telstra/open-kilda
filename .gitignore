@@ -3,4 +3,6 @@
 py_env/
 effective.pom
 .classpath
-
+.lfsconfig
+.pydevproject
+dependency-reduced-pom.xml

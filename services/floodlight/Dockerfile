@@ -1,4 +1,4 @@
-FROM kilda/base-ubuntu
-ADD services/floodlight/ansible /ansible
-ADD services/floodlight/app /app
-RUN ansible-playbook -s /ansible/deploy.yml
+FROM kilda/base-floodlight
+ADD src/floodlight-modules /app/floodlight-modules
+RUN (cp /app/floodlight-modules/src/main/resources/floodlightkilda.properties /app && cp /app/floodlight-modules/src/test/resources/logback.xml /app)
+RUN (cd /app/floodlight-modules && mvn package)

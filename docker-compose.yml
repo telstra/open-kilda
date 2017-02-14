@@ -48,11 +48,12 @@ services:
       context: .
       dockerfile:  services/topology-engine/Dockerfile
     image: "kilda/topology-engine:${full_build_number:-latest}"
-    command: python app/helloworld.py
+    command: python -u app/__main__.py
     ports:
       - "80:80"
     links:
       - neo4j
+      - kafka:kafka.pendev
 
   zookeeper:
     build: 
@@ -79,6 +80,8 @@ services:
       - zookeeper:zookeeper.pendev
     ports:
       - "9092:9092"
+    extra_hosts:
+      - "kafka.pendev:127.0.0.1"
 
   hbase:
     build: 
@@ -200,12 +203,15 @@ services:
       context: .
       dockerfile:  services/floodlight/Dockerfile
     image: "kilda/floodlight:${full_build_number:-latest}"
-    command: java -jar /app/floodlight/target/floodlight.jar -cf /app/floodlight/src/main/resources/floodlightdefault.properties
+    command: java -Dlogback.configurationFile=/app/logback.xml -cp /app/floodlight/target/floodlight.jar:/app/floodlight-modules/target/floodlight-modules.jar net.floodlightcontroller.core.Main -cf /app/floodlightkilda.properties
     ports:
       - "6653:6653"
       - "8180:8080"
       - "6655:6655"
       - "6642:6642"
+      - "8081:8080"
+    links:
+      - kafka:kafka.pendev
 
 volumes:
   hbase_data:

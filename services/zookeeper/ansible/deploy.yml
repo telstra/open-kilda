@@ -12,7 +12,7 @@
 
   - name: get zookeeper
     unarchive:
-      src=/src/zookeeper-3.4.9.tar.gz
+      src=/src/zookeeper/zookeeper-3.4.9/zookeeper-3.4.9.tar.gz
       dest=/opt
       remote_src=yes
       owner=root
