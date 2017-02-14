@@ -1,32 +1,39 @@
-from kafka import KafkaConsumer, KafkaProducer
+from kafka import KafkaConsumer
 import json
 import time
 
-print "Connecting to kafka"
+print "Connecting to kafka using application defined configuration:"
 
 bootstrapServer = 'kafka.pendev:9092'
 topic = 'kilda-test'
 kafkaConnectionRetries = 10
 
-'''
-producer = KafkaProducer(bootstrap_servers=bootstrapServer)
-producer.send(topic, b'{"message-type": "SWITCH","timestamp": 1485994060989,"controller": "1","data": {"event-type": "ADDED","switch-id": "00:00:00:00:00:00:00:01"}}')
-producer.send(topic, b'{"message-type": "SWITCH","timestamp": 1485994060989,"controller": "1","data": {"event-type": "ADDED","switch-id": "00:00:00:00:00:00:00:02"}}')
-producer.send(topic, b'{"message-type": "PATH","timestamp": 1485994078693,"controller": "1","data": {"id": 0,"type": "ISL","links": [{"latency": 19,"nodes": [{"switch": "00:00:00:00:00:00:00:02","port": 1},{"switch": "00:00:00:00:00:00:00:01","port": 1}]}]}}')
-'''
+print "Server: {}".format(bootstrapServer)
+print "Kafka topic: {}".format(topic)
+print "Retry limit: {}".format(kafkaConnectionRetries)
+
 
 while kafkaConnectionRetries > 0:
     try:
-        time.sleep(1)
+        print "Creating Kafka consumer for '{}' at '{}'".format(topic, bootstrapServer)
         kafkaConnectionRetries -= 1
         consumer = KafkaConsumer(bootstrap_servers=bootstrapServer, auto_offset_reset='earliest')
         consumer.subscribe([topic])
         print "Connected to kafka"
         break
     except Exception as e:
+        print "The follow error was generated:"
         print e
-        time.sleep(1)
+        print "{} retries remaining.".format(kafkaConnectionRetries-1)
+        time.sleep(5)
 
 def readMessage():
-    message = consumer.next()
-    return message.value
+    try:
+        message = consumer.next()
+        if message:
+            print "Message retrieved from topic '{}'".format(topic)
+            return message.value
+    except Exception as e:
+        print "Failed to retrive message from topic '{}'".format(topic)
+        print e
+    
