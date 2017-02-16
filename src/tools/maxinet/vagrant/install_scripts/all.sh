@@ -71,6 +71,25 @@ mininet() {
 
 }
 
+containernet() {
+  apt-get install -y ansible aptitude
+  # Patch config file if necessary
+  grep "localhost ansible_connection=local" /etc/ansible/hosts >/dev/null
+  if [ $? -ne 0 ]; then
+    echo "localhost ansible_connection=local" | tee -a /etc/ansible/hosts
+  fi
+
+  cd ~
+	#rm -rf containernet &> /dev/null
+	#rm -rf oflops &> /dev/null
+	#rm -rf oftest &> /dev/null
+	#rm -rf openflow &> /dev/null
+	#rm -rf pox &> /dev/null
+  git clone https://github.com/containernet/containernet
+  cd containernet/ansible
+  ansible-playbook install.yml
+}
+
 maxinet() {
   apt-get install -y screen cmake sysstat python-matplotlib
 
@@ -124,6 +143,7 @@ main() {
   networking
   docker
   mininet
+  #containernet
   maxinet
   setup-maxi
   update
