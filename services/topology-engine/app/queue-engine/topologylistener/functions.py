@@ -5,15 +5,18 @@ import time
 from pprint import pprint
 from messageclasses import MessageItem
 
-print "Cleaning old topology"
-db.runner("MATCH (n) DETACH DELETE n")
+#print "Cleaning old topology"
+#db.runner("MATCH (n) DETACH DELETE n")
+
 print "Topology engine started."
 
 def get_event():
     rawevent = kafkareader.readMessage()
-    return MessageItem(rawevent)
+    j = json.loads(rawevent)
+    return MessageItem(**j)
 
 def listen_for_topology_event():
+    print "Lister connected and waiting for messages"
     while True:
         event = get_event()
         if event:
