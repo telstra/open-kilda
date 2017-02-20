@@ -1,7 +1,10 @@
 package org.bitbucket.kilda.controller.yaml;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -10,19 +13,50 @@ import org.apache.commons.lang.StringUtils;
 import org.yaml.snakeyaml.Yaml;
 
 public class YamlParser {
-
-	private final String profile;
 	
-	public YamlParser(String profile) {
-		this.profile = profile;
+	private static final String APPLICATION_DEFAULTS_FILENAME = "/kilda-defaults.yml";
+	
+	private String defaultsFilename;
+
+	private final String overridesFilename;
+	
+	public YamlParser(String overridesFilename) {
+		this.overridesFilename = overridesFilename;
 	}
 	
 	public Map<String, Object> loadAsMap() {
-		Yaml yaml = new Yaml();
-		Object object = yaml.load(ClassLoader.class.getResourceAsStream("/application-" + profile + ".yml"));
-	
-		return getFlattenedMap(asMap(object));
+		Map<String, Object> defaults = getDefaults();		
+		Map<String, Object> overrides = getOverrides();
+		
+		Map<String, Object> map = new HashMap<String, Object>();
+		
+		map.putAll(overrides);
+		
+		for (String key : defaults.keySet()) {
+			if (!overrides.containsKey(key)) {
+			    map.put(key, defaults.get(key));	
+			}
+		}
+		
+		return map;
 	}
+	
+	private Map<String, Object> getOverrides() {
+		try {
+			Yaml  yaml = new Yaml();
+			Object object = yaml.load(new FileInputStream(overridesFilename));
+			return getFlattenedMap(asMap(object));	
+		} catch (FileNotFoundException e) {
+			throw new RuntimeException("can't read file " + overridesFilename);			
+		}				
+	}
+
+	private Map<String, Object> getDefaults() {
+		Yaml  yaml = new Yaml();
+		Object object = yaml.load(ClassLoader.class.getResourceAsStream(getDefaultsFilename()));	
+		return getFlattenedMap(asMap(object));		
+	}
+	
 	
 	private final Map<String, Object> getFlattenedMap(Map<String, Object> source) {
 		Map<String, Object> result = new LinkedHashMap<>();
@@ -92,6 +126,18 @@ public class YamlParser {
 				result.put(key, (value != null ? value : ""));
 			}
 		}
+	}
+	
+	String getDefaultsFilename() {
+		if (defaultsFilename == null) {
+		    setDefaultsFilename(APPLICATION_DEFAULTS_FILENAME);	
+		}
+		
+		return defaultsFilename;
+	}
+
+	void setDefaultsFilename(String defaultsFilename) {
+		this.defaultsFilename = defaultsFilename;
 	}
 	
 }

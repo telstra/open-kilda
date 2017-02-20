@@ -4,7 +4,7 @@ zookeeper:
 
 # TODO: kafka url should be fetched from zookeeper.
 kafka:
-  host: kafka.pendev
+  host: zookeeper.pendev
   port: 9092
 
 logging.level.root: DEBUG

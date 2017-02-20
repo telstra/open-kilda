@@ -11,5 +11,5 @@
 <stringAttribute key="org.eclipse.jdt.launching.MAIN_TYPE" value="org.bitbucket.kilda.controller.Main"/>
 <stringAttribute key="org.eclipse.jdt.launching.PROJECT_ATTR" value="controller"/>
 <stringAttribute key="org.eclipse.jdt.launching.SOURCE_PATH_PROVIDER" value="org.eclipse.m2e.launchconfig.sourcepathProvider"/>
-<stringAttribute key="org.eclipse.jdt.launching.VM_ARGUMENTS" value="-Dcontroller.profile=dev"/>
+<stringAttribute key="org.eclipse.jdt.launching.VM_ARGUMENTS" value="-Dcontroller.config.file=./kilda-dev.yml"/>
 </launchConfiguration>

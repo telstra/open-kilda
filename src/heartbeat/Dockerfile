@@ -10,4 +10,4 @@ ENV DST /app/${PROJECT}-${VERSION}.jar
 ENV MAIN org.bitbucket.kilda.controller.Main
 
 COPY ${SRC} ${DST}
-CMD ["sh", "-c", "java -Dcontroller.profile=dev -cp ${DST} ${MAIN}"]
+CMD ["sh", "-c", "java -cp ${DST} ${MAIN}"]
