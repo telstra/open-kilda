@@ -48,9 +48,9 @@ services:
       context: .
       dockerfile:  services/topology-engine/Dockerfile
     image: "kilda/topology-engine:${full_build_number:-latest}"
-    command: python -u app/__main__.py
+    command: /usr/bin/supervisord
     ports:
-      - "80:80"
+      - "80:3000"
     links:
       - neo4j
       - kafka:kafka.pendev

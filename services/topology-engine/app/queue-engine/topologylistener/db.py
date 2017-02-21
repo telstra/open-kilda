@@ -27,8 +27,8 @@ while Neo4jConnectionRetries > 0:
 
 while driver:
     try:
-        runner("MATCH (n) DETACH DELETE n")
-        print "Old topology deleted"
+        runner("MATCH (n) RETURN n")
+        print "DB layer connected"
         break
     except Exception as e:
         time.sleep(1)
