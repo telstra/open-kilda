@@ -27,7 +27,6 @@ public class KafkaService implements IFloodlightModule, IKafkaService {
   protected IFloodlightProviderService floodlightProvider;
   private Logger logger;
   protected Properties kafkaProps;
-  private Producer<String, String> producer;
   private IPathVerificationService pathVerificationService;
   private static ConcurrentLinkedQueue<String> queue = new ConcurrentLinkedQueue<>();
   
@@ -35,17 +34,6 @@ public class KafkaService implements IFloodlightModule, IKafkaService {
   /**
    * IKafkaServiceMethods
    */
-  
-  @Override
-  public boolean postMessage(String topic, Message message) {
-    try {
-      producer.send(new ProducerRecord<String, String>(topic, message.toJson()));
-    } catch (Exception e) {
-      logger.error("Error converting to JSON.", e);
-      return false;
-    }
-    return true;
-  }
 
   @Override
   public boolean topicExists(String queueName) {
@@ -104,13 +92,15 @@ public class KafkaService implements IFloodlightModule, IKafkaService {
     // Start Threads
     ExecutorService executor = Executors.newFixedThreadPool(10);
     executor.execute(new KafkaListener(queue));
-    executor.execute(new KafkaListener(queue));
-    executor.execute(new KafkaListener(queue));
+    while (!pathVerificationService.isAlive()) {
+      try {
+        logger.debug("waiting for pathVerificationService");  // circular dependency in Floodlight
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+        // TODO Auto-generated catch block
+        e.printStackTrace();
+      }
+    }
     executor.execute(new MessageDispatcher(queue, pathVerificationService));
-    executor.execute(new MessageDispatcher(queue, pathVerificationService));
-    executor.execute(new MessageDispatcher(queue, pathVerificationService));
-    executor.execute(new MessageDispatcher(queue, pathVerificationService));
-    producer = new KafkaProducer<>(kafkaProps);
   }
-
 }

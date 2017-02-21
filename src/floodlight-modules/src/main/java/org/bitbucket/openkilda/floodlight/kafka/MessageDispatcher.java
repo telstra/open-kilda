@@ -69,6 +69,7 @@ public class MessageDispatcher implements Runnable, IMessageDispatcher {
     CommandData data = message.getData();
     if (data instanceof DefaultFlowsCommandData) {
       logger.debug("adding default flows");
+      logger.debug("pathVerificationService: " + pathVerificationService);
       DefaultFlowsCommandData command = (DefaultFlowsCommandData) data;
       DatapathId dpid = DatapathId.of(command.getSwitchId());
       pathVerificationService.installVerificationRule(dpid, true);
