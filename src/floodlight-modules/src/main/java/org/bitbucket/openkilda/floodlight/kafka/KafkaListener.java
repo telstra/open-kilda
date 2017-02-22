@@ -18,7 +18,6 @@ public class KafkaListener implements Runnable {
   private final AtomicBoolean closed = new AtomicBoolean(false);
   private static final Logger logger = LoggerFactory.getLogger(KafkaListener.class);
   private KafkaConsumer<String, String> consumer;
-  TopicPartition partition;
   ConcurrentLinkedQueue<String> queue;
 
   public KafkaListener(ConcurrentLinkedQueue<String> queue) {
@@ -32,7 +31,6 @@ public class KafkaListener implements Runnable {
     props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
     props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
     this.consumer = new KafkaConsumer<>(props);
-    partition = new TopicPartition("kilda-test", 0);
   }
 
   @Override
@@ -40,8 +38,9 @@ public class KafkaListener implements Runnable {
     logger.info("starting a KafkaListener");
     try {
       consumer.subscribe(Arrays.asList("kilda-test"));
+
       while (!closed.get()) {
-        ConsumerRecords<String, String> records = consumer.poll(1000);
+        ConsumerRecords<String, String> records = consumer.poll(100);
         for (ConsumerRecord<String, String> record: records) {
           logger.debug("kafka message received:  offset = {}, key = {}, value = {}", new Object[]{record.offset(), record.key(), record.value()});
           queue.add(record.value());

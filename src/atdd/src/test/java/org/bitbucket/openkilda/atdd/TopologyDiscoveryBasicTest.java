@@ -19,6 +19,7 @@ public class TopologyDiscoveryBasicTest {
 	@Given("^a random linear topology of (\\d+)$")
 	public void a_random_linear_topology_of(int arg1) throws Throwable {
 	    // Write code here that turns the phrase above into concrete actions
+			// TODO: Will need to send the IP address of the controller.
 	    throw new PendingException();
 	}
 

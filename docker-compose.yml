@@ -83,6 +83,17 @@ services:
     extra_hosts:
       - "kafka.pendev:127.0.0.1"
 
+  wfm:
+    build:
+      context: .
+      dockerfile:  services/wfm/Dockerfile
+    image: "kilda/wfm:${full_build_number:-latest}"
+    command: /app/wfm-poc.py kafka.pendev:9092 kilda-test
+    depends_on:
+      - kafka
+    links:
+      - kafka:kafka.pendev
+
   hbase:
     build: 
       context: .
