@@ -12,6 +12,17 @@ from kafka.errors import KafkaError
 KAFKA_GROUP_ID = 'kilda-workflow-consumers'
 KAFKA_TOPIC = 'kilda-test'
 KAFA_TOPICS = ['kilda-test']
+KAFKA_CONSUMER_COUNT = 5
+KAFKA_PRODUCER_COUNT = 10
+ISL_DISCOVER_FREQUENCY = 30
+
+format = '%(asctime)s.%(msecs)s:%(name)s:%(thread)d:%(levelname)s:%(process)d'
+format += ':%(message)s'
+logging.basicConfig(
+    format=format,
+    level=logging.DEBUG
+)
+logger = logging.getLogger(__name__)
 
 
 class IslDiscover(threading.Thread):
@@ -20,7 +31,8 @@ class IslDiscover(threading.Thread):
     def run(self):
         logging.info("checking isls")
         for isl in isls:
-            logging.info("checking isl {} - {}".format(isl['switch_id'], isl['port_no']))
+            logging.info("checking isl {} - {}"
+                         .format(isl['switch_id'], isl['port_no']))
             sendIslDiscoverPacket(isl['switch_id'], isl['port_no'])
         logging.info("done checking isls")
 
@@ -32,7 +44,7 @@ class IslPoll(threading.Thread):
         while not shutting_down:
             if len(isls) > 0:
                 IslDiscover().start()
-            time.sleep(10)
+            time.sleep(ISL_DISCOVER_FREQUENCY)
 
 
 class Producer(threading.Thread):
@@ -40,7 +52,8 @@ class Producer(threading.Thread):
 
     def run(self):
         producer = KafkaProducer(bootstrap_servers=args.server,
-                                 value_serializer=lambda m: json.dumps(m).encode('ascii'))
+                                 value_serializer=lambda
+                                 m: json.dumps(m).encode('ascii'))
 
         while not shutting_down:
             message = queue.get()
@@ -103,20 +116,25 @@ def parseSwitchMessage(message):
 def switchAdded(message):
     logging.info("switch {} added.".format(message['switch_id']))
 
+
 def switchActivated(message):
     logging.info("switch {} activated.".format(message['switch_id']))
     switchInsertDefaultFlows(message['switch_id'])
+
 
 def switchDeactivated(message):
     logging.info("switch {} deactivated.".format(message['switch_id']))
     removeSwitchForDiscover(message['switch_id'])
 
+
 def switchRemoved(message):
     logging.info("switch {} removed.".format(message['switch_id']))
     removeSwitchForDiscover(message['switch_id'])
 
+
 def switchChanged(message):
     logging.info("switch {} changed.".format(message['switch_id']))
+
 
 def parsePortMessage(message):
     state = message['state']
@@ -131,34 +149,42 @@ def parsePortMessage(message):
     elif state == 'OTHER_UPDATE':
         portOther(message)
 
+
 def portAdd(message):
     logging.info("switch {} port {} added.".format(message['switch_id'],
                  message['port_no']))
     addPortForDiscover(message['switch_id'], message['port_no'])
+
 
 def portDelete(message):
     logging.info("switch {} port {} deleted.".format(message['switch_id'],
                  message['port_no']))
     removePortForDiscover(message['switch_id'], message['port_no'])
 
+
 def portUp(message):
     logging.info("switch {} port {} up.".format(message['switch_id'],
                  message['port_no']))
     addPortForDiscover(message['switch_id'], message['port_no'])
+
 
 def portDown(message):
     logging.info("switch {} port {} down.".format(message['switch_id'],
                  message['port_no']))
     removePortForDiscover(message['switch_id'], message['port_no'])
 
+
 def portOther(message):
     logging.info("switch {} port {} other change.".format(message['switch_id'],
                  message['port_no']))
 
+
 def parse_cmdline():
     parser = argparse.ArgumentParser()
-    parser.add_argument('server', action='store', help='Kafka server:port.')
-    parser.add_argument('topic', action='store', help='Kafka topic to listen to')
+    parser.add_argument('server', action='store',
+                        help='Kafka server:port.')
+    parser.add_argument('topic', action='store',
+                        help='Kafka topic to listen to')
     return parser.parse_args()
 
 
@@ -170,6 +196,7 @@ def switchInsertDefaultFlows(switch_id):
                "data": data}
     logger.info(message)
     queue.put(message)
+
 
 def sendIslDiscoverPacket(switch_id, port):
     data = {"destination": "CONTROLLER",
@@ -183,6 +210,7 @@ def sendIslDiscoverPacket(switch_id, port):
     logger.info(message)
     queue.put(message)
 
+
 def addPortForDiscover(switch_id, port):
     is_present = False
     for isl in isls:
@@ -191,17 +219,25 @@ def addPortForDiscover(switch_id, port):
     if not is_present:
         isls.append({'switch_id': switch_id, 'port_no': port})
 
+
 def removePortForDiscover(switch_id, port):
+    logger.debug("checking if isl discovery is enabled on {} - {}"
+                 .format(switch_id, port))
     for isl in isls:
         if isl['switch_id'] == switch_id and isl['port_no'] == port:
-            logger.info("removing {}".format(isl))
-            isls.remove(isl)
+            logger.info("removing {} port {} from discovery"
+                        .format(switch_id, port))
+            isls.remove(isl)      # TODO: how to deal with messages in Kafka
+
 
 def removeSwitchForDiscover(switch_id):
+    logger.debug("checking if any isl discovers are on associated with {}"
+                 .format(switch_id))
     for isl in isls:
         if isl['switch_id'] == switch_id:
-            logger.info("removing {}".format(isl))
-            isls.remove(isl)
+            logger.info("removing {} from discovery".format(isl))
+            isls.remove(isl)      # TODO: how to deal with messages in Kafka
+
 
 def main(args):
     global queue
@@ -213,10 +249,14 @@ def main(args):
     queue = Queue()
 
     threads = [
-        Consumer(),
-        Producer(),
         IslPoll()
     ]
+
+    for i in Range(KAFKA_CONSUMER_COUNT):
+        threads.append(Consumer())
+
+    for i in Range(KAFKA_PRODUCER_COUNT):
+        threads.append(Producer())
 
     for t in threads:
         t.start()
@@ -229,11 +269,6 @@ def main(args):
         shutting_down = True
 
 if __name__ == "__main__":
-    logging.basicConfig(
-        format='%(asctime)s.%(msecs)s:%(name)s:%(thread)d:%(levelname)s:%(process)d:  %(message)s',
-        level=logging.INFO
-    )
-    logger = logging.getLogger(__name__)
-    args=parse_cmdline()
+    args = parse_cmdline()
     logging.info("bootstrap_servers = {}".format(args.server))
     main(args)
