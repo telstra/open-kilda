@@ -11,8 +11,8 @@ public class YamlConfigModule extends AbstractModule {
 	
 	private final YamlParser parser;
 	
-	public YamlConfigModule(String profile) {
-		this.parser = new YamlParser(profile);
+	public YamlConfigModule(String overridesFilename) {
+		this.parser = new YamlParser(overridesFilename);
 	}
 
 	@Override

@@ -82,7 +82,7 @@ public class Main {
 	public static void main(String[] args) {
 		try {
 			Main.Initialize(args);
-			Injector injector = Guice.createInjector(new YamlConfigModule((System.getProperty("controller.config.file") != null) ? System.getProperty("controller.config.file") : "./kilda.yml"));
+			Injector injector = Guice.createInjector(new YamlConfigModule(System.getProperty("controller.config.overrides.file")));
 			
 			Main main = injector.getInstance(Main.class);
 			main.Startup();

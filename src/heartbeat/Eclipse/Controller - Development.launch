@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <launchConfiguration type="org.eclipse.jdt.launching.localJavaApplication">
+<stringAttribute key="bad_container_name" value="\controller\e"/>
 <listAttribute key="org.eclipse.debug.core.MAPPED_RESOURCE_PATHS">
 <listEntry value="/controller/src/main/java/org/bitbucket/kilda/controller/Main.java"/>
 </listAttribute>
@@ -11,5 +12,5 @@
 <stringAttribute key="org.eclipse.jdt.launching.MAIN_TYPE" value="org.bitbucket.kilda.controller.Main"/>
 <stringAttribute key="org.eclipse.jdt.launching.PROJECT_ATTR" value="controller"/>
 <stringAttribute key="org.eclipse.jdt.launching.SOURCE_PATH_PROVIDER" value="org.eclipse.m2e.launchconfig.sourcepathProvider"/>
-<stringAttribute key="org.eclipse.jdt.launching.VM_ARGUMENTS" value="-Dcontroller.config.file=./kilda-dev.yml"/>
+<stringAttribute key="org.eclipse.jdt.launching.VM_ARGUMENTS" value="-Dcontroller.config.overrides.file=./kilda-dev.yml"/>
 </launchConfiguration>
