@@ -92,6 +92,10 @@ public class KafkaService implements IFloodlightModule, IKafkaService {
     // Start Threads
     ExecutorService executor = Executors.newFixedThreadPool(10);
     executor.execute(new KafkaListener(queue));
+    executor.execute(new KafkaListener(queue));
+    executor.execute(new KafkaListener(queue));
+    executor.execute(new KafkaListener(queue));
+    executor.execute(new KafkaListener(queue));
     while (!pathVerificationService.isAlive()) {
       try {
         logger.debug("waiting for pathVerificationService");  // circular dependency in Floodlight
@@ -101,6 +105,10 @@ public class KafkaService implements IFloodlightModule, IKafkaService {
         e.printStackTrace();
       }
     }
+    executor.execute(new MessageDispatcher(queue, pathVerificationService));
+    executor.execute(new MessageDispatcher(queue, pathVerificationService));
+    executor.execute(new MessageDispatcher(queue, pathVerificationService));
+    executor.execute(new MessageDispatcher(queue, pathVerificationService));
     executor.execute(new MessageDispatcher(queue, pathVerificationService));
   }
 }
