@@ -252,10 +252,10 @@ def main(args):
         IslPoll()
     ]
 
-    for i in Range(KAFKA_CONSUMER_COUNT):
+    for i in range(KAFKA_CONSUMER_COUNT):
         threads.append(Consumer())
 
-    for i in Range(KAFKA_PRODUCER_COUNT):
+    for i in range(KAFKA_PRODUCER_COUNT):
         threads.append(Producer())
 
     for t in threads:
