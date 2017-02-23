@@ -6,7 +6,7 @@ print "Connecting to kafka using application defined configuration:"
 
 bootstrapServer = 'kafka.pendev:9092'
 topic = 'kilda-test'
-kafkaConnectionRetries = 10
+kafkaConnectionRetries = 100
 
 print "Server: {}".format(bootstrapServer)
 print "Kafka topic: {}".format(topic)
