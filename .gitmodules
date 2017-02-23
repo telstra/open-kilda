@@ -1,3 +1,6 @@
 [submodule "src/tools/maxinet/vagrant/packer/ubuntu"]
 	path = src/tools/maxinet/vagrant/packer/ubuntu
 	url = https://github.com/kilda/ubuntu.git
+[submodule "kilda-bins"]
+	path = kilda-bins
+	url = git@bitbucket.org:pendevops/kilda-bins.git
