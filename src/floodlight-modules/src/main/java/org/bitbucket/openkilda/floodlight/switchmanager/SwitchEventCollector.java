@@ -7,7 +7,6 @@ import java.util.Properties;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -33,10 +32,9 @@ import net.floodlightcontroller.core.module.IFloodlightService;
 
 public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListener {
 
-  private IFloodlightProviderService floodlightProvider;
   private IOFSwitchService switchService;
   private Logger logger;
-  protected ConcurrentLinkedQueue<Message> queue;
+  private ConcurrentLinkedQueue<Message> queue;
   private Properties kafkaProps;
   private String topic;
   
@@ -108,7 +106,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
 
   @Override
   public void init(FloodlightModuleContext context) throws FloodlightModuleException {
-    floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
+    IFloodlightProviderService floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
     switchService = context.getServiceImpl(IOFSwitchService.class);
     logger = LoggerFactory.getLogger(SwitchEventCollector.class);
     queue = new ConcurrentLinkedQueue<>();
@@ -156,7 +154,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
           Message message = dequeueItem();
           if (message != null) {
             logger.debug("message = " + message.toJson());
-            producer.send(new ProducerRecord<String, String>(topic, message.toJson()));
+            producer.send(new ProducerRecord<>(topic, message.toJson()));
           }
           Thread.sleep(5);
         }
@@ -170,15 +168,15 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
   /**
    * Utility functions
    */
-  
-  public Message buildSwitchMessage(DatapathId dpid, SwitchEventType eventType) {
+
+  private Message buildSwitchMessage(DatapathId dpid, SwitchEventType eventType) {
     InfoData data = new SwitchInfoData()
         .withSwitchId(dpid.toString())
         .withState(eventType);
     return buildMessage(data);
   }
   
-  public Message buildMessage(InfoData data) {
+  private Message buildMessage(InfoData data) {
     return new InfoMessage()
         .withData(data)
         .withTimestamp(System.currentTimeMillis());
