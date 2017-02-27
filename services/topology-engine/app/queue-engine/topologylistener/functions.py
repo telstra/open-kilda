@@ -1,6 +1,7 @@
 import db, kafkareader
 import json
 import time
+import threading
 
 from pprint import pprint
 from messageclasses import MessageItem
@@ -20,16 +21,21 @@ def listen_for_topology_event():
     while True:
         event = get_event()
         if event:
-            print event.toJSON()
-            if event.data['message_type'] == "switch" and event.data['state'] == "ADDED":
-                print "Event: switch added to topology"
-                create_switch(event.data['switch_id'])
-            if event.data['message_type'] == "isl":
-                print "Event: isl added to topology"
-                create_isl(event.data['path'])
+            threading.Thread(target=topo_event_handler(event)).start()
         if not event:
-                time.sleep(.5)
+            time.sleep(.1)
     return 0
+
+
+def topo_event_handler(event):
+    print event.toJSON()
+    if event.data['message_type'] == "switch" and event.data['state'] == "ADDED":
+        print "Event: switch added to topology"
+        create_switch(event.data['switch_id'])
+    if event.data['message_type'] == "isl":
+        print "Event: isl added to topology"
+        create_isl(event.data['path'])
+
 
 def create_switch(switchid):
     print "Creating switch '{0}'.".format(switchid)
