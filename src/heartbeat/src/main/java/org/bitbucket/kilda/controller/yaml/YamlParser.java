@@ -10,9 +10,13 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
 
 public class YamlParser {
+	
+	private static final Logger logger = LoggerFactory.getLogger(YamlParser.class);
 	
 	private static final String APPLICATION_DEFAULTS_FILENAME = "/kilda-defaults.yml";
 	
@@ -25,7 +29,18 @@ public class YamlParser {
 	}
 	
 	public Map<String, Object> loadAsMap() {
-		Map<String, Object> defaults = getDefaults();		
+		Map<String, Object> defaults = getDefaults();
+		
+		// no overrides to process
+		if (overridesFilename == null) {
+			logger.warn("no overrides file specified, loading default config only");
+			return defaults;
+		}
+		
+        return getOverridesAndDefaults(defaults);
+	}
+	
+	private Map<String, Object> getOverridesAndDefaults(Map<String, Object> defaults) {
 		Map<String, Object> overrides = getOverrides();
 		
 		Map<String, Object> map = new HashMap<String, Object>();
@@ -38,7 +53,7 @@ public class YamlParser {
 			}
 		}
 		
-		return map;
+		return map;		
 	}
 	
 	private Map<String, Object> getOverrides() {
