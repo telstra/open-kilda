@@ -4,36 +4,28 @@ import time
 
 print "Connecting to kafka using application defined configuration:"
 
-bootstrapServer = 'kafka.pendev:9092'
-topic = 'kilda-test'
-kafkaConnectionRetries = 100
+def create_consumer():
+    bootstrapServer = 'kafka.pendev:9092'
+    topic = 'kilda-test'
+    while True:
+        try: 
+            consumer = KafkaConsumer(bootstrap_servers=bootstrapServer, auto_offset_reset='earliest')
+            consumer.subscribe([topic])
+            print "Connected to kafka"
+            break
+        except Exception as e:
+                print "The follow error was generated:"
+                print e
+                time.sleep(5)
+    return consumer
 
-print "Server: {}".format(bootstrapServer)
-print "Kafka topic: {}".format(topic)
-print "Retry limit: {}".format(kafkaConnectionRetries)
-
-
-while kafkaConnectionRetries > 0:
-    try:
-        print "Creating Kafka consumer for '{}' at '{}'".format(topic, bootstrapServer)
-        kafkaConnectionRetries -= 1
-        consumer = KafkaConsumer(bootstrap_servers=bootstrapServer, auto_offset_reset='earliest')
-        consumer.subscribe([topic])
-        print "Connected to kafka"
-        break
-    except Exception as e:
-        print "The follow error was generated:"
-        print e
-        print "{} retries remaining.".format(kafkaConnectionRetries-1)
-        time.sleep(5)
-
-def readMessage():
+def read_message(consumer):
     try:
         message = consumer.next()
         if message:
-            print "Message retrieved from topic '{}'".format(topic)
             return message.value
     except Exception as e:
-        print "Failed to retrive message from topic '{}'".format(topic)
         print e
-    
+
+        
+
