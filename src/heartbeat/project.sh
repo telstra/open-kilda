@@ -15,6 +15,8 @@ IMAGE=${GROUP}/${PROJECT}
 ORG=org.bitbucket.kilda
 VER=0.0.1
 SOCK=/var/run/docker.sock:/var/run/docker.sock
+CONFIG_OVERRIDES_DIR=${PWD}/config
+CONFIG_OVERRIDES_FILE=${CONFIG_OVERRIDES_DIR}/kilda.yml
 
 # +=•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==
 # Ensure the compiler exists.  Otherwise error out.
@@ -72,7 +74,7 @@ build() {
   verify_from
   verify_source_exists
 
-  docker run -it --rm -v m2:/root/.m2 -v $(PWD):/app -w /app ${COMPILER} \
+  docker run -it --rm -v m2:/root/.m2 -v ${PWD}:/app -w /app ${COMPILER} \
     mvn package
 }
 
@@ -106,8 +108,16 @@ image() {
 # +=•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==
 drun() {
   echo ""
-	echo "==> RUNNING in DOCKER:"
-  docker run --network=host ${IMAGE}:${VER}
+  echo -n "==> RUNNING in DOCKER"
+  if [ -f "${CONFIG_OVERRIDES_FILE}" ]; then
+    echo " with default config plus overrides from ${CONFIG_OVERRIDES_FILE} YAML file"
+    DOCKER_OPTIONS="-v ${CONFIG_OVERRIDES_DIR}:/app/config"
+    JAVA_OPTIONS="-Dcontroller.config.overrides.file=/app/config/kilda.yml"
+  else
+    echo " with default config (create ${CONFIG_OVERRIDES_FILE} YAML file to override any defaults)"
+  fi
+
+  docker run --network=host -e "JAVA_OPTIONS=${JAVA_OPTIONS}" ${DOCKER_OPTIONS} ${IMAGE}:${VER}
 }
 
 main() {

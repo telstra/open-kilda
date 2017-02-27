@@ -2,6 +2,8 @@ package org.bitbucket.kilda.controller;
 
 import java.util.Arrays;
 
+import javax.inject.Inject;
+
 //import org.apache.zookeeper.KeeperException;
 //import org.apache.zookeeper.WatchedEvent;
 //import org.apache.zookeeper.Watcher;
@@ -11,6 +13,11 @@ import java.util.Arrays;
 //		not available in the SLF4J API (ie get log level)
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.bitbucket.kilda.controller.guice.module.YamlConfigModule;
+import org.bitbucket.kilda.controller.heartbeat.Heartbeat;
+
+import com.google.inject.Guice;
+import com.google.inject.Injector;
 
 /**
  * Main is the class that kicks off the controller.
@@ -20,15 +27,19 @@ import org.apache.logging.log4j.Logger;
  *
  */
 public class Main {
+	
 	private static final Logger logger = LogManager.getLogger(Main.class);
+	
 	private static Context context;
-	private static Heartbeat hb;
-	private static Heartbeat.Consumer hbc;
-	private static Heartbeat.Producer hbp;
 
 	public static final int ZK_DEFAULT_PORT = 2181;
 	public static final int KAFKA_DEFAULT_PORT = 9092;
 
+	@Inject
+	private Heartbeat hb;
+	
+;
+	
 	private static void Initialize(String[] args) {
 		Thread.currentThread().setName("Kilda.Main");
 		logger.info("INITIALIZING Kilda");
@@ -47,7 +58,7 @@ public class Main {
 		context = new Context(configfile);
 	}
 
-	private static void Startup() {
+	private  void Startup() {
 		logger.info("STARTING Kilda..");
 		Runtime.getRuntime().addShutdownHook(new Thread() {
 			@Override
@@ -55,11 +66,8 @@ public class Main {
 				Main.Shutdown();
 			}
 		});
-		hb = new Heartbeat(context.getProps());
-		hbp = hb.createProducer();
-		hbc = hb.createConsumer();
-		hbp.run();
-		hbc.run();
+ 
+		hb.start();
 	}
 
 	/**
@@ -74,9 +82,13 @@ public class Main {
 	public static void main(String[] args) {
 		try {
 			Main.Initialize(args);
-			Main.Startup();
+			Injector injector = Guice.createInjector(new YamlConfigModule(System.getProperty("controller.config.overrides.file")));
+			
+			Main main = injector.getInstance(Main.class);
+			main.Startup();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
+	
 }

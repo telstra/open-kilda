@@ -11,4 +11,5 @@ dependency-reduced-pom.xml
 *.pom
 .settings/
 .project
-
+*.idea/
+*.iml

@@ -11,6 +11,8 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -31,7 +33,8 @@ import net.floodlightcontroller.staticentry.IStaticEntryPusherService;
 import net.floodlightcontroller.util.FlowModUtils;
 import net.floodlightcontroller.util.OFMessageUtils;
 
-import org.bitbucket.openkilda.floodlight.kafka.IKafkaService;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.bitbucket.openkilda.floodlight.message.InfoMessage;
 import org.bitbucket.openkilda.floodlight.message.Message;
 import org.bitbucket.openkilda.floodlight.message.info.IslInfoData;
@@ -74,10 +77,12 @@ implements IFloodlightModule, IOFMessageListener, IPathVerificationService {
   protected IOFSwitchService switchService;
   protected IStaticEntryPusherService sfpService;
   protected IRestApiService restApiService;
-  protected IKafkaService kafkaService;
   protected Logger logger;
   protected ObjectMapper mapper = new ObjectMapper();
   protected String topic;
+  public Boolean isAlive = false;
+  private KafkaProducer<String, String> producer;
+  private Properties kafkaProps;
 
   /**
    * IFloodlightModule Methods.
@@ -89,7 +94,6 @@ implements IFloodlightModule, IOFMessageListener, IPathVerificationService {
     services.add(IStaticEntryPusherService.class);
     services.add(IOFSwitchService.class);
     services.add(IRestApiService.class);
-    services.add(IKafkaService.class);
     return services;
   }
 
@@ -113,10 +117,16 @@ implements IFloodlightModule, IOFMessageListener, IPathVerificationService {
     sfpService = context.getServiceImpl(IStaticEntryPusherService.class);
     switchService = context.getServiceImpl(IOFSwitchService.class);
     restApiService = context.getServiceImpl(IRestApiService.class);
-    kafkaService = context.getServiceImpl(IKafkaService.class);
     logger = LoggerFactory.getLogger(PathVerificationService.class);
     Map<String, String> configParameters = context.getConfigParams(this);
     topic = configParameters.get("topic");
+    logger.debug("main pathverificaiton service: " + this);
+    
+    kafkaProps = new Properties();
+    kafkaProps.put("bootstrap.servers", configParameters.get("bootstrap-servers"));
+    kafkaProps.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+    kafkaProps.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+    producer = new KafkaProducer<>(kafkaProps);
   }
 
   @Override
@@ -124,6 +134,7 @@ implements IFloodlightModule, IOFMessageListener, IPathVerificationService {
     logger.info("Stating " + PathVerificationService.class.getCanonicalName());
     floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
     restApiService.addRestletRoutable(new PathVerificationServiceWebRoutable());
+    isAlive = true;
   }
 
   /**
@@ -146,7 +157,6 @@ implements IFloodlightModule, IOFMessageListener, IPathVerificationService {
 
   @Override
   public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext context) {
-    logger.info("received a " + msg.getType());
     switch (msg.getType()) {
     case PACKET_IN:
       return handlePacketIn(sw, (OFPacketIn) msg, context);
@@ -159,6 +169,10 @@ implements IFloodlightModule, IOFMessageListener, IPathVerificationService {
   /**
    * IPathVerificationService Methods.
    */
+  
+  public boolean isAlive() {
+    return isAlive;
+  }
 
   protected Match buildVerificationMatch(IOFSwitch sw, boolean isBroadcast) {
     MacAddress dstMac = MacAddress.of(VERIFICATION_BCAST_PACKET_DST);
@@ -385,7 +399,7 @@ implements IFloodlightModule, IOFMessageListener, IPathVerificationService {
       verificationPacket = deserialize(eth);
       command = Command.STOP;
     } catch (Exception exception) {
-      logger.debug("was not a verificaiton packet");
+      //
     }
 
     OFPort inPort = pkt.getVersion().compareTo(OFVersion.OF_12) < 0 ? pkt.getInPort()
@@ -447,9 +461,9 @@ implements IFloodlightModule, IOFMessageListener, IPathVerificationService {
     
     try {
       logger.debug(message.toJson());
-      kafkaService.postMessage(topic, message);
+      producer.send(new ProducerRecord<String, String>(topic, message.toJson()));
     } catch (JsonProcessingException exception) {
-      logger.error("could not create json for path");
+      logger.error("could not create json for path.", exception);
     }
   return command;
   }
