@@ -35,7 +35,6 @@ import net.floodlightcontroller.util.OFMessageUtils;
 
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.bitbucket.openkilda.floodlight.kafka.IKafkaService;
 import org.bitbucket.openkilda.floodlight.message.InfoMessage;
 import org.bitbucket.openkilda.floodlight.message.Message;
 import org.bitbucket.openkilda.floodlight.message.info.IslInfoData;
@@ -78,7 +77,6 @@ implements IFloodlightModule, IOFMessageListener, IPathVerificationService {
   protected IOFSwitchService switchService;
   protected IStaticEntryPusherService sfpService;
   protected IRestApiService restApiService;
-  protected IKafkaService kafkaService;
   protected Logger logger;
   protected ObjectMapper mapper = new ObjectMapper();
   protected String topic;
@@ -96,7 +94,6 @@ implements IFloodlightModule, IOFMessageListener, IPathVerificationService {
     services.add(IStaticEntryPusherService.class);
     services.add(IOFSwitchService.class);
     services.add(IRestApiService.class);
-    services.add(IKafkaService.class);
     return services;
   }
 
@@ -120,7 +117,6 @@ implements IFloodlightModule, IOFMessageListener, IPathVerificationService {
     sfpService = context.getServiceImpl(IStaticEntryPusherService.class);
     switchService = context.getServiceImpl(IOFSwitchService.class);
     restApiService = context.getServiceImpl(IRestApiService.class);
-    kafkaService = context.getServiceImpl(IKafkaService.class);
     logger = LoggerFactory.getLogger(PathVerificationService.class);
     Map<String, String> configParameters = context.getConfigParams(this);
     topic = configParameters.get("topic");

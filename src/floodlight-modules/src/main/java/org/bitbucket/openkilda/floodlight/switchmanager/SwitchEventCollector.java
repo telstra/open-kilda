@@ -7,8 +7,8 @@ import java.util.Properties;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicBoolean;
 
+import net.floodlightcontroller.core.IOFSwitch;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.bitbucket.openkilda.floodlight.message.InfoMessage;
@@ -19,6 +19,7 @@ import org.bitbucket.openkilda.floodlight.message.info.SwitchInfoData;
 import org.bitbucket.openkilda.floodlight.message.info.SwitchInfoData.SwitchEventType;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.OFPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,10 +34,9 @@ import net.floodlightcontroller.core.module.IFloodlightService;
 
 public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListener {
 
-  private IFloodlightProviderService floodlightProvider;
   private IOFSwitchService switchService;
   private Logger logger;
-  protected ConcurrentLinkedQueue<Message> queue;
+  private ConcurrentLinkedQueue<Message> queue;
   private Properties kafkaProps;
   private String topic;
   
@@ -60,15 +60,18 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
   public void switchActivated(DatapathId switchId) {
     Message message = buildSwitchMessage(switchId, SwitchEventType.ACTIVATED);
     queue.add(message);
+
+    IOFSwitch sw = switchService.getSwitch(switchId);
+    if (sw.getEnabledPortNumbers() != null) {
+      for (OFPort p : sw.getEnabledPortNumbers()) {
+        queue.add(buildPortMessage(sw.getId(), p, PortChangeType.UP));
+      }
+    }
   }
 
   @Override
   public void switchPortChanged(DatapathId switchId, OFPortDesc port, PortChangeType type) {
-    InfoData data = new PortInfoData()
-        .withSwitchId(switchId.toString())
-        .withPortNo(port.getPortNo().getPortNumber())
-        .withState(type);
-    Message message = buildMessage(data);
+    Message message = buildPortMessage(switchId, port, type);
     queue.add(message);
   }
 
@@ -108,7 +111,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
 
   @Override
   public void init(FloodlightModuleContext context) throws FloodlightModuleException {
-    floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
+    IFloodlightProviderService floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
     switchService = context.getServiceImpl(IOFSwitchService.class);
     logger = LoggerFactory.getLogger(SwitchEventCollector.class);
     queue = new ConcurrentLinkedQueue<>();
@@ -133,7 +136,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
       executor.execute(new Producer());
     }
   }
-  
+
   /**
    * KafkaProducer
    */
@@ -146,7 +149,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
         return null;
       }
     }
-    
+
     @Override
     public void run() {
       logger.debug("Running a Producer");
@@ -156,7 +159,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
           Message message = dequeueItem();
           if (message != null) {
             logger.debug("message = " + message.toJson());
-            producer.send(new ProducerRecord<String, String>(topic, message.toJson()));
+            producer.send(new ProducerRecord<>(topic, message.toJson()));
           }
           Thread.sleep(5);
         }
@@ -166,21 +169,39 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
       producer.close();
     }
   }
-  
+
   /**
    * Utility functions
    */
-  
-  public Message buildSwitchMessage(DatapathId dpid, SwitchEventType eventType) {
+
+  private Message buildSwitchMessage(DatapathId dpid, SwitchEventType eventType) {
     InfoData data = new SwitchInfoData()
         .withSwitchId(dpid.toString())
         .withState(eventType);
     return buildMessage(data);
   }
   
-  public Message buildMessage(InfoData data) {
+  private Message buildMessage(InfoData data) {
     return new InfoMessage()
         .withData(data)
         .withTimestamp(System.currentTimeMillis());
+  }
+
+  private Message buildPortMessage(DatapathId switchId, OFPort port, PortChangeType type) {
+    InfoData data = new PortInfoData()
+            .withSwitchId(switchId.toString())
+            .withPortNo(port.getPortNumber())
+            .withState(type);
+    Message message = buildMessage(data);
+    return message;
+  }
+
+  private Message buildPortMessage(DatapathId switchId, OFPortDesc port, PortChangeType type) {
+    InfoData data = new PortInfoData()
+            .withSwitchId(switchId.toString())
+            .withPortNo(port.getPortNo().getPortNumber())
+            .withState(type);
+    Message message = buildMessage(data);
+    return message;
   }
 }

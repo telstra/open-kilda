@@ -1,14 +1,14 @@
 version: '2.1'
 services:
 
-  hello-world:
-    build: 
-      context: .
-      dockerfile:  services/hello-world/Dockerfile
-    image: "kilda/hello-world:${full_build_number:-latest}"
-    command: /app/helloworld.sh
-    env_file:
-      - services/hello-world/variables.env
+#  hello-world:
+#    build: 
+#      context: .
+#      dockerfile:  services/hello-world/Dockerfile
+#    image: "kilda/hello-world:${full_build_number:-latest}"
+#    command: /app/helloworld.sh
+#    env_file:
+#      - services/hello-world/variables.env
 
   mininet:
     build: 
@@ -20,18 +20,9 @@ services:
       - services/mininet/variables.env
     ports:
       - "38080:38080"
-    links:
-      - floodlight:kilda
+#    links:
+#      - floodlight:kilda
     privileged: true
-
-  openflow-speaker:
-    build: 
-      context: .
-      dockerfile:  services/openflow-speaker/Dockerfile
-    image: "kilda/openflow-speaker:${full_build_number:-latest}"
-    command: /app/app.sh
-    ports:
-      - "6633:6633"
 
   neo4j:
     build: 
@@ -94,138 +85,119 @@ services:
     links:
       - kafka:kafka.pendev
 
-  hbase:
-    build: 
-      context: .
-      dockerfile: services/hbase/Dockerfile
-    image: "kilda/hbase:${full_build_number:-latest}"
-    command: /opt/hbase/bin/start-hbase
-    volumes:
-      - hbase_data:/data/hbase
-    depends_on:
-      - zookeeper
-    links:
-      - zookeeper:zookeeper.pendev
-    ports:
-      - "60000:60000"
-      - "60010:60010"
-      - "60020:60020"
-      - "60030:60030"
-      - "8070:8070"
-      - "8090:8090"
-      - "9070:9070"
-      - "9090:9090"
+#  hbase:
+#    build: 
+#      context: .
+#      dockerfile: services/hbase/Dockerfile
+#    image: "kilda/hbase:${full_build_number:-latest}"
+#    command: /opt/hbase/bin/start-hbase
+#    volumes:
+#      - hbase_data:/data/hbase
+#    depends_on:
+#      - zookeeper
+#    links:
+#      - zookeeper:zookeeper.pendev
+#    ports:
+#      - "60000:60000"
+#      - "60010:60010"
+#      - "60020:60020"
+#      - "60030:60030"
+#      - "8070:8070"
+#      - "8090:8090"
+#      - "9070:9070"
+#      - "9090:9090"
 
-  opentsdb:
-    build: 
-      context: .
-      dockerfile:  services/opentsdb/Dockerfile
-    image: "kilda/opentsdb:${full_build_number:-latest}"
-    command: /app/wait-for-it.sh -t 120 -h hbase.pendev -p 9090 -- /app/start-opentsdb
-    environment:
-      - JAVA_HOME=/usr
-      - HBASE_HOME=/opt/hbase
-      - COMPRESSION=NONE
-    depends_on:
-      - zookeeper
-      - hbase
-    links:
-      - zookeeper:zookeeper.pendev
-      - hbase:hbase.pendev
-    ports:
-      - "4242:4242"
+#  tools:
+#    build: 
+#      context: .
+#      dockerfile:  services/tools/Dockerfile
+#    image: "kilda/tools:${full_build_number:-latest}"
+#    command: sleep 10d
+#    depends_on:
+#      - zookeeper
+#      - hbase
+#      - storm_nimbus
+#      - storm_supervisor
+#    links:
+#      - zookeeper:zookeeper.pendev
+#      - hbase:hbase.pendev
+#      - storm_nimbus:nimbus.pendev
+#      - storm_supervisor:supervisor.pendev
+#    ports:
+#      - "22:8022"
+#    container_name: "hadoop-tools"
 
-  tools:
-    build: 
-      context: .
-      dockerfile:  services/tools/Dockerfile
-    image: "kilda/tools:${full_build_number:-latest}"
-    command: sleep 10d
-    depends_on:
-      - zookeeper
-      - hbase
-      - storm_nimbus
-      - storm_supervisor
-    links:
-      - zookeeper:zookeeper.pendev
-      - hbase:hbase.pendev
-      - storm_nimbus:nimbus.pendev
-      - storm_supervisor:supervisor.pendev
-    ports:
-      - "22:8022"
-    container_name: "hadoop-tools"
+#  storm_nimbus:
+#    build: 
+#      context: .
+#      dockerfile:  services/storm/Dockerfile
+#    image: "kilda/storm:${full_build_number:-latest}"
+#    command: /app/wait-for-it.sh -t 120 -h zookeeper.pendev -p 2181 -- /opt/storm/bin/storm nimbus
+#    depends_on:
+#      - zookeeper
+#    links:
+#      - zookeeper:zookeeper.pendev
+#      - hbase:hbase.pendev
+#    ports:
+#      - "6627:6627"
+#      - "3772:3772"
+#      - "3773:3773"
 
-  storm_nimbus:
-    build: 
-      context: .
-      dockerfile:  services/storm/Dockerfile
-    image: "kilda/storm:${full_build_number:-latest}"
-    command: /app/wait-for-it.sh -t 120 -h zookeeper.pendev -p 2181 -- /opt/storm/bin/storm nimbus
-    depends_on:
-      - zookeeper
-    links:
-      - zookeeper:zookeeper.pendev
-      - hbase:hbase.pendev
-    ports:
-      - "6627:6627"
-      - "3772:3772"
-      - "3773:3773"
+#  storm_ui:
+#    build: 
+#      context: .
+#      dockerfile:  services/storm/Dockerfile
+#    image: "kilda/storm:${full_build_number:-latest}"
+#    command: /app/wait-for-it.sh -t 120 -h zookeeper.pendev -p 2181 -- /opt/storm/bin/storm ui
+#    depends_on:
+#      - zookeeper
+#      - storm_nimbus
+#      - storm_supervisor
+#    links:
+#      - zookeeper:zookeeper.pendev
+#      - hbase:hbase.pendev
+#      - storm_nimbus:nimbus.pendev
+#      - storm_supervisor:supervisor.pendev
+#    ports:
+#      - "8888:8080"
 
-  storm_ui:
-    build: 
-      context: .
-      dockerfile:  services/storm/Dockerfile
-    image: "kilda/storm:${full_build_number:-latest}"
-    command: /app/wait-for-it.sh -t 120 -h zookeeper.pendev -p 2181 -- /opt/storm/bin/storm ui
-    depends_on:
-      - zookeeper
-      - storm_nimbus
-      - storm_supervisor
-    links:
-      - zookeeper:zookeeper.pendev
-      - hbase:hbase.pendev
-      - storm_nimbus:nimbus.pendev
-      - storm_supervisor:supervisor.pendev
-    ports:
-      - "8888:8080"
+#  storm_supervisor:
+#    build: 
+#      context: .
+#      dockerfile:  services/storm/Dockerfile
+#    image: "kilda/storm:${full_build_number:-latest}"
+#    command: /app/wait-for-it.sh -t 120 -h zookeeper.pendev -p 2181 -- /opt/storm/bin/storm supervisor
+#    depends_on:
+#      - zookeeper
+#      - storm_nimbus
+#    links:
+#      - zookeeper:zookeeper.pendev
+#      - hbase:hbase.pendev
+#      - storm_nimbus:nimbus.pendev
+#    ports:
+#      - "6700:6700"
+#      - "6701:6701"
+#      - "6702:6702"
+#      - "6703:6703"
+#      - "8000:8000"
 
-  storm_supervisor:
-    build: 
-      context: .
-      dockerfile:  services/storm/Dockerfile
-    image: "kilda/storm:${full_build_number:-latest}"
-    command: /app/wait-for-it.sh -t 120 -h zookeeper.pendev -p 2181 -- /opt/storm/bin/storm supervisor
-    depends_on:
-      - zookeeper
-      - storm_nimbus
-    links:
-      - zookeeper:zookeeper.pendev
-      - hbase:hbase.pendev
-      - storm_nimbus:nimbus.pendev
-    ports:
-      - "6700:6700"
-      - "6701:6701"
-      - "6702:6702"
-      - "6703:6703"
-      - "8000:8000"
-
-  floodlight:
-    build: 
-      context: .
-      dockerfile:  services/floodlight/Dockerfile
-    image: "kilda/floodlight:${full_build_number:-latest}"
-    command: java -Dlogback.configurationFile=/app/logback.xml -cp /app/floodlight/target/floodlight.jar:/app/floodlight-modules/target/floodlight-modules.jar net.floodlightcontroller.core.Main -cf /app/floodlightkilda.properties
-    ports:
-      - "6653:6653"
-      - "8180:8080"
-      - "6655:6655"
-      - "6642:6642"
-      - "8081:8080"
-    links:
-      - kafka:kafka.pendev
+#  floodlight:
+#    build: 
+#      context: .
+#      dockerfile:  services/floodlight/Dockerfile
+#    image: "kilda/floodlight:${full_build_number:-latest}"
+#    command: java -Dlogback.configurationFile=/app/logback.xml -cp /app/floodlight/target/floodlight.jar:/app/floodlight-modules/target/floodlight-modules.jar net.floodlightcontroller.core.Main -cf /app/floodlightkilda.properties
+ #   ports:
+ #     - "6653:6653"
+ #     - "8180:8080"
+ #     - "6655:6655"
+ #     - "6642:6642"
+ #     - "8081:8080"
+ #   links:
+ #     - kafka:kafka.pendev
 
 volumes:
-  hbase_data:
+#  hbase_data:
   zookeeper_data:
   kafka_data:
-  mininet_data:
+#  mininet_data:
