@@ -14,9 +14,9 @@ def create_consumer():
             print "Connected to kafka"
             break
         except Exception as e:
-                print "The follow error was generated:"
-                print e
-                time.sleep(5)
+            print "The follow error was generated:"
+            print e
+            time.sleep(5)
     return consumer
 
 def read_message(consumer):
@@ -24,6 +24,8 @@ def read_message(consumer):
         message = consumer.next()
         if message:
             return message.value
+        else:
+            time.sleep(1)
     except Exception as e:
         print e
 

@@ -3,8 +3,9 @@ import json
 import time
 import threading
 
-from pprint import pprint
+from datetime import datetime
 from messageclasses import MessageItem
+from pprint import pprint
 
 print "Topology engine started."
 
@@ -25,7 +26,9 @@ def topo_event_handler(event):
             eventHandled = create_switch(event.data['switch_id'])
         if event.data['message_type'] == "isl":
             eventHandled = create_isl(event.data['path'])
-        time.sleep(1)
+        if not eventHandled:
+            time.sleep(1)
+    print "{} Event processed".format("{:%d %b, %Y %H:%M:%S}".format(datetime.now()))
 
 def create_switch(switchid):
     

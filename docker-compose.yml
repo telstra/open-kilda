@@ -20,8 +20,8 @@ services:
       - services/mininet/variables.env
     ports:
       - "38080:38080"
-#    links:
-#      - floodlight:kilda
+    links:
+      - floodlight:kilda
     privileged: true
 
   neo4j:
@@ -181,20 +181,20 @@ services:
 #      - "6703:6703"
 #      - "8000:8000"
 
-#  floodlight:
-#    build: 
-#      context: .
-#      dockerfile:  services/floodlight/Dockerfile
-#    image: "kilda/floodlight:${full_build_number:-latest}"
-#    command: java -Dlogback.configurationFile=/app/logback.xml -cp /app/floodlight/target/floodlight.jar:/app/floodlight-modules/target/floodlight-modules.jar net.floodlightcontroller.core.Main -cf /app/floodlightkilda.properties
- #   ports:
- #     - "6653:6653"
- #     - "8180:8080"
- #     - "6655:6655"
- #     - "6642:6642"
- #     - "8081:8080"
- #   links:
- #     - kafka:kafka.pendev
+  floodlight:
+    build: 
+      context: .
+      dockerfile:  services/floodlight/Dockerfile
+    image: "kilda/floodlight:${full_build_number:-latest}"
+    command: java -Dlogback.configurationFile=/app/logback.xml -cp /app/floodlight/target/floodlight.jar:/app/floodlight-modules/target/floodlight-modules.jar net.floodlightcontroller.core.Main -cf /app/floodlightkilda.properties
+    ports:
+      - "6653:6653"
+      - "8180:8080"
+      - "6655:6655"
+      - "6642:6642"
+      - "8081:8080"
+    links:
+      - kafka:kafka.pendev
 
 volumes:
 #  hbase_data:
