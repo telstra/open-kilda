@@ -1,5 +1,6 @@
 target/
 tmp/
+config/
 
 # eclipse stuff
 .classpath

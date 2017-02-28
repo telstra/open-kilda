@@ -1,0 +1,7 @@
+zookeeper:
+  host: localhost
+
+kafka:
+  host: localhost
+
+logging.level.root: DEBUG

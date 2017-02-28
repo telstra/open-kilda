@@ -8,5 +8,8 @@ effective.pom
 dependency-reduced-pom.xml
 *.class
 *.swp
+*.pom
+.settings/
+.project
 *.idea/
 *.iml
