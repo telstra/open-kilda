@@ -22,28 +22,34 @@ public class Topo {
 	@JsonProperty("links")
 	private List<Link> links;
 	
-	public void addHost(Host host) {
+	public Topo host(Host host) {
 	    if (hosts == null)	{
 	    	hosts = new ArrayList<Host>();
 	    }
 	    
 	    hosts.add(host);
+	    
+	    return this;
 	}
 
-	public void addSwitch(Switch _switch) {
+	public Topo _switch(Switch _switch) {
 	    if (switches == null)	{
 	    	switches = new ArrayList<Switch>();
 	    }
 	    
-	    switches.add(_switch);		
+	    switches.add(_switch);
+	    
+	    return this;
 	}
 
-	public void addLink(Link link) {
+	public Topo link(Link link) {
 	    if (links == null)	{
 	    	links = new ArrayList<Link>();
 	    }
 	    
-	    links.add(link);		
+	    links.add(link);
+	    
+	    return this;
 	}
 	
 }

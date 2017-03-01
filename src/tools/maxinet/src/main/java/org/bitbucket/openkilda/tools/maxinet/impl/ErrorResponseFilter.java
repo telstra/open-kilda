@@ -7,6 +7,7 @@ import javax.ws.rs.client.ClientResponseContext;
 import javax.ws.rs.client.ClientResponseFilter;
 import javax.ws.rs.core.Response;
 
+import org.bitbucket.openkilda.tools.maxinet.exception.MaxinetClientException;
 import org.bitbucket.openkilda.tools.maxinet.exception.MaxinetException;
 import org.bitbucket.openkilda.tools.maxinet.exception.MaxinetInternalException;
 
@@ -18,7 +19,8 @@ public class ErrorResponseFilter implements ClientResponseFilter {
 	
 	@Override
     public void filter(ClientRequestContext requestContext, ClientResponseContext responseContext) throws IOException {
-        // for non-200 response, deal with the custom error messages
+        
+		// TODO - add other non-error responses here
         if (responseContext.getStatus() != Response.Status.OK.getStatusCode() &&
         		responseContext.getStatus() != Response.Status.CREATED.getStatusCode()) {
             if (responseContext.hasEntity()) {
@@ -29,10 +31,13 @@ public class ErrorResponseFilter implements ClientResponseFilter {
                 MaxinetException maxinetException;
                 switch (status) {
                     case INTERNAL_SERVER_ERROR:
-                    	maxinetException = new MaxinetInternalException(error.getMessage());
+                    	maxinetException = new MaxinetInternalException(error.getMessage(), responseContext.getStatus());
+                        break;
+                    case BAD_REQUEST:
+                    	maxinetException = new MaxinetClientException(error.getMessage(), responseContext.getStatus());
                         break;
                     default:
-                    	maxinetException = new MaxinetException(error.getMessage());
+                    	maxinetException = new MaxinetException(error.getMessage(), responseContext.getStatus());
                 }
 
                 throw maxinetException;
