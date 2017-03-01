@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-from bottle import get, post, request, run, Bottle, response, request, error
+from bottle import get, post, request, run, Bottle, response, request, error, abort
 
 from mininet.topo import Topo
 from mininet.node import OVSSwitch
@@ -8,7 +8,7 @@ from mininet.node import OVSSwitch
 from MaxiNet.Frontend import maxinet
 from MaxiNet.tools import Tools
 
-from jsonschema import validate
+from jsonschema import validate, ValidationError
 import logging
 import json
 import socket
@@ -87,23 +87,35 @@ experiment_schema = {
          },
       },
     },
-  }
+  },
+  "required": [
+    "name",
+    "cluster",
+    "topo"
+  ]
 }
 
 @error(500)
 def error_handler_500(error):
     return json.dumps({"message": str(error.exception)})
 
+@error(400)
+def error_handler_400(error):
+    return json.dumps({"message": str(error.exception)})
+
 @post('/frontend/cluster')
 def create_cluster():
-    logger.debug("creating cluster with json={}"
+    try:
+        logger.debug("creating cluster with json={}"
                  .format(request.json))
-    validate(request.json, cluster_schema)
-    name = _create_cluster(request.json)
-    response.content_type = 'application/json'
-    response.status = 201
-    response.set_header('Location', "http://frontend/cluster/{}".format(name))
-    return json.dumps({'name': name})
+        validate(request.json, cluster_schema)
+        name = _create_cluster(request.json)
+        response.content_type = 'application/json'
+        response.status = 201
+        response.set_header('Location', "http://frontend/cluster/{}".format(name))
+        return json.dumps({'name': name})
+    except ValidationError as e:
+        abort(400, e.message)
 
 def _create_cluster(cluster):
     name = cluster['name']
@@ -141,12 +153,15 @@ def create_topo(topo):
 
 @post('/frontend/experiment')
 def create_experiment():
-    validate(request.json, experiment_schema)
-    name = _create_experiment(request.json['name'], request.json['cluster'], request.json['topo'])
-    response.content_type = 'application/json'
-    response.status = 201
-    response.set_header('Location', "http://frontend/experiment/{}".format(name))
-    return json.dumps({'name': name})
+    try:
+        validate(request.json, experiment_schema)
+        name = _create_experiment(request.json['name'], request.json['cluster'], request.json['topo'])
+        response.content_type = 'application/json'
+        response.status = 201
+        response.set_header('Location', "http://frontend/experiment/{}".format(name))
+        return json.dumps({'name': name})
+    except ValidationError as e:
+        abort(400, e.message)
 
 def _create_experiment(name, cluster, topo):
     logger.debug("creating experiment with name={}, cluster={}"
@@ -162,6 +177,14 @@ def setup_experiment(name):
     logger.debug("setup experiment with name={}" .format(name))
     experiment = experiments[name]
     experiment.setup()
+    response.content_type = 'application/json'
+    return json.dumps({'name': name})
+
+@get('/experiment/stop/<name>')
+def stop_experiment(name):
+    logger.debug("stop experiment with name={}" .format(name))
+    experiment = experiments[name]
+    experiment.stop()
     response.content_type = 'application/json'
     return json.dumps({'name': name})
 
