@@ -3,7 +3,6 @@ import time
 from neo4j.v1 import GraphDatabase, basic_auth, TRUST_DEFAULT
 
 def runner(query):
-    driver = create_driver()
     session = driver.session()
     result = session.run(query)
     session.close()
@@ -41,4 +40,4 @@ def test_neo4j_connection():
     return True
 
 
-
+driver = create_driver()

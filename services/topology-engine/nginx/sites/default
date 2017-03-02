@@ -1,0 +1,12 @@
+server {
+        listen 80 default_server;
+        root /app/html;
+        index index.html;
+        server_name localhost;
+        location / {
+                proxy_pass  http://localhost:3000;
+        }
+
+        location /static {
+        }
+}

@@ -5,7 +5,7 @@ import topologylistener
 while True:
     try:
         print "Starting lister thread."
-        topologylistener.functions.get_event()
+        topologylistener.eventhandler.get_events()
     except Exception as e:
         print "Listener thread unhandled exception:"
         print e
