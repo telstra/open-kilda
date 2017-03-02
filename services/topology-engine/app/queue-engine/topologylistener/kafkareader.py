@@ -28,6 +28,3 @@ def read_message(consumer):
             time.sleep(1)
     except Exception as e:
         print e
-
-        
-
