@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ClassDiagram>
+    <Class
+        name="org.bitbucket.openkilda.floodlight.message.Message.Type"
+        x="160" y="74">
+        <AttributesDisplayFilter public-accepted="true"
+            private-accepted="true" protected-accepted="true"
+            default-accepted="true" static-accepted="false"/>
+        <MethodDisplayFilter public-accepted="true"
+            private-accepted="false" protected-accepted="false"
+            default-accepted="false" static-accepted="false"
+            accessors-accepted="false" constructors-accepted="false"/>
+    </Class>
+    <Class
+        name="org.bitbucket.openkilda.floodlight.message.CommandMessage"
+        x="596" y="57">
+        <AttributesDisplayFilter public-accepted="true"
+            private-accepted="true" protected-accepted="true"
+            default-accepted="true" static-accepted="false"/>
+        <MethodDisplayFilter public-accepted="true"
+            private-accepted="false" protected-accepted="false"
+            default-accepted="false" static-accepted="false"
+            accessors-accepted="false" constructors-accepted="false"/>
+        <Extension destinationClassName="org.bitbucket.openkilda.floodlight.message.Message"/>
+    </Class>
+    <Class
+        name="org.bitbucket.openkilda.floodlight.message.info.InfoData.MESSAGE_TYPE"
+        x="-42" y="364">
+        <AttributesDisplayFilter public-accepted="true"
+            private-accepted="true" protected-accepted="true"
+            default-accepted="true" static-accepted="false"/>
+        <MethodDisplayFilter public-accepted="true"
+            private-accepted="false" protected-accepted="false"
+            default-accepted="false" static-accepted="false"
+            accessors-accepted="false" constructors-accepted="false"/>
+    </Class>
+    <Class
+        name="org.bitbucket.openkilda.floodlight.message.info.PathInfoData"
+        x="379" y="573">
+        <AttributesDisplayFilter public-accepted="true"
+            private-accepted="true" protected-accepted="true"
+            default-accepted="true" static-accepted="false"/>
+        <MethodDisplayFilter public-accepted="true"
+            private-accepted="false" protected-accepted="false"
+            default-accepted="false" static-accepted="false"
+            accessors-accepted="false" constructors-accepted="false"/>
+        <Extension destinationClassName="org.bitbucket.openkilda.floodlight.message.info.IslInfoData"/>
+    </Class>
+    <Class name="org.bitbucket.openkilda.floodlight.message.Message"
+        x="303" y="45">
+        <AttributesDisplayFilter public-accepted="true"
+            private-accepted="true" protected-accepted="true"
+            default-accepted="true" static-accepted="false"/>
+        <MethodDisplayFilter public-accepted="true"
+            private-accepted="false" protected-accepted="false"
+            default-accepted="false" static-accepted="false"
+            accessors-accepted="false" constructors-accepted="false"/>
+        <Association
+            destinationClassName="org.bitbucket.openkilda.floodlight.message.MessageData"
+            endpointName="data" kind="Simple"/>
+        <Association
+            destinationClassName="org.bitbucket.openkilda.floodlight.message.Message.Type"
+            endpointName="type" kind="Simple"/>
+    </Class>
+    <Class name="org.bitbucket.openkilda.floodlight.message.InfoMessage"
+        x="358" y="233">
+        <AttributesDisplayFilter public-accepted="true"
+            private-accepted="true" protected-accepted="true"
+            default-accepted="true" static-accepted="false"/>
+        <MethodDisplayFilter public-accepted="true"
+            private-accepted="false" protected-accepted="false"
+            default-accepted="false" static-accepted="false"
+            accessors-accepted="false" constructors-accepted="false"/>
+        <Extension destinationClassName="org.bitbucket.openkilda.floodlight.message.Message"/>
+        <Association
+            destinationClassName="org.bitbucket.openkilda.floodlight.message.info.InfoData"
+            endpointName="data" kind="Simple"/>
+    </Class>
+    <Class
+        name="org.bitbucket.openkilda.floodlight.message.info.SwitchInfoData.SwitchEventType"
+        x="620" y="348">
+        <AttributesDisplayFilter public-accepted="true"
+            private-accepted="true" protected-accepted="true"
+            default-accepted="true" static-accepted="false"/>
+        <MethodDisplayFilter public-accepted="true"
+            private-accepted="false" protected-accepted="false"
+            default-accepted="false" static-accepted="false"
+            accessors-accepted="false" constructors-accepted="false"/>
+    </Class>
+    <Class
+        name="org.bitbucket.openkilda.floodlight.message.info.SwitchInfoData"
+        x="304" y="350">
+        <AttributesDisplayFilter public-accepted="true"
+            private-accepted="true" protected-accepted="true"
+            default-accepted="true" static-accepted="false"/>
+        <MethodDisplayFilter public-accepted="true"
+            private-accepted="false" protected-accepted="false"
+            default-accepted="false" static-accepted="false"
+            accessors-accepted="false" constructors-accepted="false"/>
+        <Extension destinationClassName="org.bitbucket.openkilda.floodlight.message.info.InfoData"/>
+        <Association
+            destinationClassName="org.bitbucket.openkilda.floodlight.message.info.SwitchInfoData.SwitchEventType"
+            endpointName="state" kind="Simple"/>
+    </Class>
+    <Class
+        name="org.bitbucket.openkilda.floodlight.message.info.PathNode"
+        x="620" y="466">
+        <AttributesDisplayFilter public-accepted="true"
+            private-accepted="true" protected-accepted="true"
+            default-accepted="true" static-accepted="false"/>
+        <MethodDisplayFilter public-accepted="true"
+            private-accepted="false" protected-accepted="false"
+            default-accepted="false" static-accepted="false"
+            accessors-accepted="false" constructors-accepted="false"/>
+    </Class>
+    <Class name="org.bitbucket.openkilda.floodlight.message.MessageData"
+        x="69" y="178">
+        <AttributesDisplayFilter public-accepted="true"
+            private-accepted="true" protected-accepted="true"
+            default-accepted="true" static-accepted="false"/>
+        <MethodDisplayFilter public-accepted="true"
+            private-accepted="false" protected-accepted="false"
+            default-accepted="false" static-accepted="false"
+            accessors-accepted="false" constructors-accepted="false"/>
+    </Class>
+    <Class
+        name="org.bitbucket.openkilda.floodlight.message.info.PortInfoData"
+        x="56" y="539">
+        <AttributesDisplayFilter public-accepted="true"
+            private-accepted="true" protected-accepted="true"
+            default-accepted="true" static-accepted="false"/>
+        <MethodDisplayFilter public-accepted="true"
+            private-accepted="false" protected-accepted="false"
+            default-accepted="false" static-accepted="false"
+            accessors-accepted="false" constructors-accepted="false"/>
+        <Extension destinationClassName="org.bitbucket.openkilda.floodlight.message.info.InfoData"/>
+    </Class>
+    <Class
+        name="org.bitbucket.openkilda.floodlight.message.info.InfoData"
+        x="159" y="378">
+        <AttributesDisplayFilter public-accepted="true"
+            private-accepted="true" protected-accepted="true"
+            default-accepted="true" static-accepted="false"/>
+        <MethodDisplayFilter public-accepted="true"
+            private-accepted="false" protected-accepted="false"
+            default-accepted="false" static-accepted="false"
+            accessors-accepted="false" constructors-accepted="false"/>
+        <Extension destinationClassName="org.bitbucket.openkilda.floodlight.message.MessageData"/>
+        <Association
+            destinationClassName="org.bitbucket.openkilda.floodlight.message.info.InfoData.MESSAGE_TYPE"
+            endpointName="message_type" kind="Simple"/>
+    </Class>
+    <Class
+        name="org.bitbucket.openkilda.floodlight.message.info.IslInfoData"
+        x="313" y="445">
+        <AttributesDisplayFilter public-accepted="true"
+            private-accepted="true" protected-accepted="true"
+            default-accepted="true" static-accepted="false"/>
+        <MethodDisplayFilter public-accepted="true"
+            private-accepted="false" protected-accepted="false"
+            default-accepted="false" static-accepted="false"
+            accessors-accepted="false" constructors-accepted="false"/>
+        <Extension destinationClassName="org.bitbucket.openkilda.floodlight.message.info.InfoData"/>
+        <Association
+            destinationClassName="org.bitbucket.openkilda.floodlight.message.info.PathNode"
+            endpointName="path" kind="Simple"/>
+    </Class>
+</ClassDiagram>
