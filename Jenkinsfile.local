@@ -1,6 +1,6 @@
 node {
     stage ("PULL"){
-      checkout scm
+      sh 'cp -a /var/local/dev/kilda/kilda-controller/* .'
     }
 
     stage ("BASE") {
