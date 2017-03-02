@@ -21,6 +21,7 @@ class MessageItem(object):
 
     def handle(self):
         try:
+            eventHandled = False
             if self.get_message_type() == "switch" and self.data['state'] == "ADDED":
                 eventHandled = self.create_switch()
             if self.get_message_type() == "isl":

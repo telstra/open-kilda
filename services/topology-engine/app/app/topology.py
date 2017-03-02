@@ -1,17 +1,21 @@
-#!/usr/bin/python
+from flask import Flask, flash, redirect, render_template, request, session, abort, url_for, Response
+from flask_login import LoginManager, UserMixin, login_required, login_user, logout_user, current_user
+
+from app import application
+from app import db
+from app import utils
+
+import sys, os
 import requests
 import json
-from flask import Flask, render_template
 
-
-print "Starting topology engine API"
-app = Flask(__name__)
-
-@app.route('/topology')
-def topology():
+@application.route('/api/v1/topology')
+@login_required
+def api_v1_topology():
     try:
         data = {'query' : 'MATCH (n) return n'}
-        result_switches = requests.post('http://neo4j:7474/db/data/cypher', data=data, auth=('neo4j', 'temppass'))
+        auth = (os.environ['neo4juser'], os.environ['neo4jpass'])
+        result_switches = requests.post(os.environ['neo4jbolt'], data=data, auth=auth)
         j_switches = json.loads(result_switches.text)
         nodes = []
         topology = {}
@@ -19,7 +23,7 @@ def topology():
             for r in n:
                 node = {} 
                 node['name'] = (r['data']['name'])
-                result_relationships = requests.get(str(r['outgoing_relationships']), auth=('neo4j', 'temppass'))
+                result_relationships = requests.get(str(r['outgoing_relationships']), auth=auth)
                 j_paths = json.loads(result_relationships.text)
                 outgoing_relationships = []
                 for j_path in j_paths:
@@ -35,9 +39,7 @@ def topology():
         return "error: {}".format(str(e))
 
 
-@app.route('/')
-def index():
-    return "KILDA TOPOLOGY ENGINE"
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=3000)
+@application.route('/topology', methods=['GET'])
+@login_required
+def topology():
+    return render_template('topology.html')

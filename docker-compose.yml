@@ -40,11 +40,20 @@ services:
       dockerfile: Dockerfile
     image: "kilda/topology-engine:${full_build_number:-latest}"
     command: ./entrypoint.sh
+    volumes:
+      - app_server_data:/var/data
     ports:
       - "80:80"
     links:
       - neo4j
       - kafka:kafka.pendev
+    environment:
+      neo4jhost: 'neo4j'
+      neo4juser: 'neo4j'
+      neo4jpass: 'temppass'
+      neo4jbolt: 'http://neo4j:7474/db/data/cypher'
+      bootstrapServer: 'kafka.pendev:9092'
+      topic: 'kilda-test'
 
   zookeeper:
     build: 
@@ -197,7 +206,8 @@ services:
       - kafka:kafka.pendev
 
 volumes:
-#  hbase_data:
   zookeeper_data:
   kafka_data:
-#  mininet_data:
+  app_server_data:
+# mininet_data:
+# hbase_data:

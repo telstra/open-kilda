@@ -8,7 +8,7 @@ topic = 'kilda-test'
 
 producer = KafkaProducer(bootstrap_servers=bootstrapServer)
 
-loopSize = 10
+loopSize = 99
 
 loopSize += 1
 topology = []

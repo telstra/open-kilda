@@ -1,3 +1,3 @@
 #!/bin/bash
-#nginx
+chown www-data:www-data /var/data
 /usr/bin/supervisord

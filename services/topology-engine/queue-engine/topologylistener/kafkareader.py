@@ -1,12 +1,14 @@
 from kafka import KafkaConsumer
 import json
 import time
-
+import os
 print "Connecting to kafka using application defined configuration:"
 
 def create_consumer():
-    bootstrapServer = 'kafka.pendev:9092'
-    topic = 'kilda-test'
+    
+    bootstrapServer = os.environ['bootstrapServer']
+    topic = os.environ['topic']
+
     while True:
         try: 
             consumer = KafkaConsumer(bootstrap_servers=bootstrapServer, auto_offset_reset='earliest')

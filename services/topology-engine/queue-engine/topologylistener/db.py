@@ -2,6 +2,12 @@ import os
 import time
 from neo4j.v1 import GraphDatabase, basic_auth, TRUST_DEFAULT
 
+import os
+
+
+
+
+
 def runner(query):
     session = driver.session()
     result = session.run(query)
@@ -9,9 +15,9 @@ def runner(query):
     return result
 
 def create_driver():
-    neo4jhost = "neo4j"
-    neo4juser = "neo4j"
-    neo4jpass = "temppass"    
+    neo4jhost = os.environ['neo4jhost']
+    neo4juser = os.environ['neo4juser']
+    neo4jpass = os.environ['neo4jpass']    
     driver = GraphDatabase.driver("bolt://{}".format(neo4jhost), auth=basic_auth(neo4juser, neo4jpass), encrypted=True, trust=TRUST_DEFAULT)
     return driver
 
