@@ -36,12 +36,12 @@ services:
 
   topology-engine:
     build: 
-      context: .
-      dockerfile:  services/topology-engine/Dockerfile
+      context: services/topology-engine/
+      dockerfile: Dockerfile
     image: "kilda/topology-engine:${full_build_number:-latest}"
-    command: /usr/bin/supervisord
+    command: ./entrypoint.sh
     ports:
-      - "80:3000"
+      - "80:80"
     links:
       - neo4j
       - kafka:kafka.pendev
