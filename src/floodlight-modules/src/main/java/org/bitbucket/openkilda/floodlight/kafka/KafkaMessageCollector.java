@@ -30,7 +30,6 @@ public class KafkaMessageCollector implements IFloodlightModule {
     private Properties kafkaProps;
     private String topic;
     private final AtomicBoolean closed = new AtomicBoolean(false);
-    private ConcurrentLinkedQueue<ConsumerRecord> newRecordQueue;
     private ObjectMapper mapper;
     private IPathVerificationService pathVerificationService;
 
@@ -48,18 +47,11 @@ public class KafkaMessageCollector implements IFloodlightModule {
     }
 
     class ParseRecord implements Runnable {
+        final ConsumerRecord record;
 
-        public ParseRecord() {
+        public ParseRecord(ConsumerRecord record) {
             mapper = new ObjectMapper();
-        }
-
-        private ConsumerRecord dequeueItem() {
-            if (!newRecordQueue.isEmpty()) {
-                logger.debug("Queue size: " + newRecordQueue.size());
-                return newRecordQueue.remove();
-            } else {
-                return null;
-            }
+            this.record = record;
         }
 
         private void doControllerMsg(CommandMessage message) {
@@ -123,13 +115,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
 
         @Override
         public void run() {
-            while (!closed.get()) {
-                ConsumerRecord record = dequeueItem();
-                if (record != null) {
-                    logger.debug("got one from queue: {}", record.toString());
-                    parseRecord(record);
-                }
-            }
+            parseRecord(record);
         }
     }
 
@@ -137,10 +123,12 @@ public class KafkaMessageCollector implements IFloodlightModule {
     class Consumer implements Runnable {
         final List<String> topics;
         final Properties kafkaProps;
+        final ExecutorService parseRecordExecutor;
 
-        public Consumer(List<String> topics, Properties kafkaProps) {
+        public Consumer(List<String> topics, Properties kafkaProps, ExecutorService parseRecordExecutor) {
             this.topics = topics;
             this.kafkaProps = kafkaProps;
+            this.parseRecordExecutor = parseRecordExecutor;
         }
 
         @Override
@@ -152,7 +140,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
                 ConsumerRecords<String, String> records = consumer.poll(100);
                 for (ConsumerRecord<String, String> record: records) {
                     logger.debug("received message: {} - {}", new Object[]{record.offset(), record.value()});
-                    newRecordQueue.add(record);
+                    parseRecordExecutor.execute(new ParseRecord(record));
                 }
             }
         }
@@ -194,16 +182,15 @@ public class KafkaMessageCollector implements IFloodlightModule {
         kafkaProps.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
         kafkaProps.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
         topic = configParameters.get("topic");
-        newRecordQueue = new ConcurrentLinkedQueue<>();
     }
 
     @Override
     public void startUp(FloodlightModuleContext floodlightModuleContext) throws FloodlightModuleException {
         logger.info("Starting {}", this.getClass().getCanonicalName());
         try {
-            ExecutorService executorService = Executors.newFixedThreadPool(10);
-            executorService.execute(new Consumer(Arrays.asList(topic), kafkaProps));
-            executorService.execute(new ParseRecord());
+            ExecutorService parseRecordExecutor = Executors.newFixedThreadPool(10);
+            ExecutorService consumerExecutor = Executors.newSingleThreadExecutor();
+            consumerExecutor.execute(new Consumer(Arrays.asList(topic), kafkaProps, parseRecordExecutor));
         } catch (Exception exception) {
             logger.error("error", exception);
         }
