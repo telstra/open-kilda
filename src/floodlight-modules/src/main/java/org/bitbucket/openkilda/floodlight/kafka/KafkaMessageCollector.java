@@ -6,7 +6,6 @@ import net.floodlightcontroller.core.module.*;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.clients.producer.KafkaProducer;
 import org.bitbucket.openkilda.floodlight.message.CommandMessage;
 import org.bitbucket.openkilda.floodlight.message.Message;
 import org.bitbucket.openkilda.floodlight.message.command.CommandData;
@@ -20,7 +19,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -32,19 +30,6 @@ public class KafkaMessageCollector implements IFloodlightModule {
     private final AtomicBoolean closed = new AtomicBoolean(false);
     private ObjectMapper mapper;
     private IPathVerificationService pathVerificationService;
-
-    class Producer implements Runnable {
-        private final Properties kafkaProps;
-
-        public Producer(Properties kafkaProps) {
-            this.kafkaProps = kafkaProps;
-        }
-
-        @Override
-        public void run() {
-            KafkaProducer<String, String> producer = new KafkaProducer<>(kafkaProps);
-        }
-    }
 
     class ParseRecord implements Runnable {
         final ConsumerRecord record;
