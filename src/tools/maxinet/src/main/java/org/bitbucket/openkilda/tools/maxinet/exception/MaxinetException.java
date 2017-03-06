@@ -1,12 +1,9 @@
 package org.bitbucket.openkilda.tools.maxinet.exception;
 
-import javax.ws.rs.WebApplicationException;
+public class MaxinetException extends RuntimeException {
 
-public class MaxinetException extends WebApplicationException {
-
-	public MaxinetException(String message, int status) {
-		super(message, status);
+	public MaxinetException(String message, Throwable t) {
+		super(message, t);
 	}
-
 
 }

@@ -8,7 +8,7 @@ import javax.ws.rs.client.ClientResponseFilter;
 import javax.ws.rs.core.Response;
 
 import org.bitbucket.openkilda.tools.maxinet.exception.MaxinetClientException;
-import org.bitbucket.openkilda.tools.maxinet.exception.MaxinetException;
+import org.bitbucket.openkilda.tools.maxinet.exception.MaxinetWebException;
 import org.bitbucket.openkilda.tools.maxinet.exception.MaxinetInternalException;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,7 +28,7 @@ public class ErrorResponseFilter implements ClientResponseFilter {
                 Error error = _MAPPER.readValue(responseContext.getEntityStream(), Error.class);
 
                 Response.Status status = Response.Status.fromStatusCode(responseContext.getStatus());
-                MaxinetException maxinetException;
+                MaxinetWebException maxinetException;
                 switch (status) {
                     case INTERNAL_SERVER_ERROR:
                     	maxinetException = new MaxinetInternalException(error.getMessage(), responseContext.getStatus());
@@ -37,7 +37,7 @@ public class ErrorResponseFilter implements ClientResponseFilter {
                     	maxinetException = new MaxinetClientException(error.getMessage(), responseContext.getStatus());
                         break;
                     default:
-                    	maxinetException = new MaxinetException(error.getMessage(), responseContext.getStatus());
+                    	maxinetException = new MaxinetWebException(error.getMessage(), responseContext.getStatus());
                 }
 
                 throw maxinetException;

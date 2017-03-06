@@ -17,6 +17,9 @@ public class Link {
 	@JsonProperty("node2")
 	private Node node2;
 
+	public Link() {		
+	}
+	
 	public Link(Node node1, Node node2) {
 		this.node1 = node1;
 		this.node2 = node2;

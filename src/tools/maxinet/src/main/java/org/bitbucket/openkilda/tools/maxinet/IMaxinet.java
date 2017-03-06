@@ -10,4 +10,14 @@ public interface IMaxinet {
 
 	IMaxinet stop();
 
+	IMaxinet sleep(Long sleep);
+
+	IMaxinet run(String node, String command);
+
+	IMaxinet host(String name, String pos);
+
+	IMaxinet _switch(String name, Integer workerId);
+
+	IMaxinet link(Node node1, Node node2);
+
 }

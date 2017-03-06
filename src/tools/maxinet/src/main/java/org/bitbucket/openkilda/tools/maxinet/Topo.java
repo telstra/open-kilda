@@ -51,5 +51,27 @@ public class Topo {
 	    
 	    return this;
 	}
+
+	public Node getSwitch(String name) {
+		// TODO - improve for large networks!
+		for (Node sw : switches) {
+			if (name.equals(sw.getName())) {
+				return sw;
+			}
+		}
+		
+		return null;
+	}
+	
+	public Node getHost(String name) {
+		// TODO - improve for large networks!
+		for (Node host : hosts) {
+			if (name.equals(host.getName())) {
+				return host;
+			}
+		}
+		
+		return null;
+	}
 	
 }
