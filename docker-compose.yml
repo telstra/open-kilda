@@ -41,8 +41,8 @@ services:
 
   topology-engine:
     build:
-      context: .
-      dockerfile:  services/topology-engine/Dockerfile
+      context: services/topology-engine/
+      dockerfile: Dockerfile
     image: "kilda/topology-engine:${full_build_number:-latest}"
     command: ./entrypoint.sh
     volumes:
