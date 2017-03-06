@@ -39,7 +39,24 @@ def api_v1_topology():
         return "error: {}".format(str(e))
 
 
-@application.route('/topology', methods=['GET'])
+@application.route('/api/v1/network')
 @login_required
-def topology():
-    return render_template('topology.html')
+def api_v1_network():
+    try:
+        data = {"statements":[{"statement":"MATCH path = (n)-[r]->(m) RETURN path", "resultDataContents":["graph"]}]}
+        auth = (os.environ['neo4juser'], os.environ['neo4jpass'])
+        result_switches = requests.post(os.environ['neo4jbolt'], data=data, auth=auth)
+        j_switches = json.loads(result_switches.text)
+        return "test"
+    except Exception as e:
+        return "error: {}".format(str(e))
+
+@application.route('/topology/chord', methods=['GET'])
+@login_required
+def topology_chord():
+    return render_template('topologychord.html')
+
+@application.route('/topology/network', methods=['GET'])
+@login_required
+def topology_network():
+    return render_template('topologynetwork.html')

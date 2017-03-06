@@ -18,4 +18,5 @@ ADD app/ /app
 ADD queue-engine/ /queue-engine
 ADD supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 ADD nginx/sites/ /etc/nginx/sites-available/
+ADD db/database.db /var/data/
 ADD entrypoint.sh /entrypoint.sh
