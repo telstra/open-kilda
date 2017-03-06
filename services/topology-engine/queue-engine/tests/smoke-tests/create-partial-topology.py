@@ -5,5 +5,5 @@ from create_topology import create_topo
 
 print "\n -- "
 cleanup()
-create_topo('full-topology.json')
+create_topo('partial-topology.json')
 print "\n -- "
