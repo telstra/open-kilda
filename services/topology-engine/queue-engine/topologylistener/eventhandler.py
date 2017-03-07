@@ -15,7 +15,6 @@ def get_events():
         try:
             rawevent = kafkareader.read_message(consumer)
             event = MessageItem(**json.loads(rawevent))
-            print event.to_json()
             t = threading.Thread(target=topo_event_handler, args=(event,))
             t.daemon =True
             t.start()

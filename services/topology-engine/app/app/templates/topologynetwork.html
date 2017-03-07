@@ -21,49 +21,30 @@
 <script>
     console.log("Starting logging...");
 
-    var screenWidth = $(window).width();
-
-    var margin = {left: 50, top: 10, right: 50, bottom: 10},
-        width = screenWidth - margin.left - margin.right,
-        height = screenWidth*5/6 - margin.top - margin.bottom;
-                
-    var svg = d3.select("#chart").append("svg")
-                .attr("width", (width + margin.left + margin.right))
-                .attr("height", (height + margin.top + margin.bottom));
-                
-    var wrapper = svg.append("g").attr("class", "chordWrapper")
-                .attr("transform", "translate(" + (width / 2 + margin.left) + "," + (height / 2 + margin.top) + ")");;
-                
-    var outerRadius = Math.min(width, height) / 2  - 100,
-        innerRadius = outerRadius * 0.95,
-        opacityDefault = 0.7; //default opacity of chords
-        
-    ////////////////////////////////////////////////////////////
-    ////////////////////////// Data ////////////////////////////
-    ////////////////////////////////////////////////////////////
-
-    var Names = new Array();
-
-    full_topology = new Array();
+    
+    
+    var names = new Array();
+    var nodes = new Array();
+    var fulltopology = new Array();
 
     $.ajaxSetup({async:false});
     $.ajax({
         url:"/api/v1/topology",
         type:"GET",
         success:function(result){
-            full_topology.push(result);
+            fulltopology.push(result);
         },
         dataType:"json"
     });
 
-    var nodes = new Array();
+    
 
-    for (var i = 0; i < full_topology[0]['nodes'].length; i++){
-        nodes.push(full_topology[0]['nodes'][i]);
+    for (var i = 0; i < fulltopology[0]['nodes'].length; i++){
+        nodes.push(fulltopology[0]['nodes'][i]);
     }
 
     for (var i = 0; i < nodes.length; i++){
-        Names.push(nodes[i]['name']);
+        names.push(nodes[i]['name']);
     }
 
     var matrix = new Array();
@@ -72,92 +53,13 @@
         tempArray = new Array(nodes.length).fill(0);
         
         for (var j = 0; j < nodes[i]['outgoing_relationships'].length; j++){
-            tempArray[Names.indexOf(nodes[i]['outgoing_relationships'][j])] = Math.floor(Math.random() * (10 - 1 + 1)) + 1;
+            tempArray[names.indexOf(nodes[i]['outgoing_relationships'][j])] = Math.floor(Math.random() * (10 - 1 + 1)) + 1;
         }
 
         matrix.push(tempArray);
     }
 
     console.log(matrix);     
-
-
-    var chord = d3.layout.chord()
-        .padding(.02)
-        .sortSubgroups(d3.descending) //sort the chords inside an arc from high to low
-        .sortChords(d3.descending) //which chord should be shown on top when chords cross. Now the biggest chord is at the bottom
-        .matrix(matrix);
-
-    var arc = d3.svg.arc()
-        .innerRadius(innerRadius)
-        .outerRadius(outerRadius);
-
-    var path = d3.svg.chord()
-        .radius(innerRadius);
-        
-    var fill = d3.scale.ordinal()
-        .domain(d3.range(Names.length))
-        .range(["#C4C4C4","#C4C4C4","#C4C4C4","#EDC951","#CC333F","#00A0B0"]);
-
-    ////////////////////////////////////////////////////////////
-    //////////////////// Draw outer Arcs ///////////////////////
-    ////////////////////////////////////////////////////////////
-
-    var g = wrapper.selectAll("g.group")
-        .data(chord.groups)
-        .enter().append("g")
-        .attr("class", "group");;
-
-    g.append("path")
-        .style("stroke", function(d) { return fill(d.index); })
-        .style("fill", function(d) { return fill(d.index); })
-        .attr("d", arc);
-
-    ////////////////////////////////////////////////////////////
-    ////////////////////// Append Names ////////////////////////
-    ////////////////////////////////////////////////////////////
-
-    g.append("text")
-        .each(function(d) { d.angle = ((d.startAngle + d.endAngle) / 2);})
-        .attr("dy", ".35em")
-        .attr("class", "titles")
-        .attr("text-anchor", function(d) { return d.angle > Math.PI ? "end" : null; })
-        .attr("transform", function(d,i) { 
-            var c = arc.centroid(d);
-            return "rotate(" + (d.angle * 180 / Math.PI - 90) + ")"
-            + "translate(" + (innerRadius + 55) + ")"
-            + (d.angle > Math.PI ? "rotate(180)" : "")
-        })
-        .text(function(d,i) { return Names[i]; });
-
-    //+ "translate(" + (innerRadius + 55) + ")"
-
-    ////////////////////////////////////////////////////////////
-    //////////////////// Draw inner chords /////////////////////
-    ////////////////////////////////////////////////////////////
-    
-    var colors = ["#00A0B0","#CC333F","#EDC951"];
-    var chords = wrapper.selectAll("path.chord")
-        .data(chord.chords)
-        .enter().append("path")
-        .attr("class", "chord")
-        .style("stroke", "none")
-        .style("fill", function(d,i) { return fill(d.target.index); })
-        .style("opacity", opacityDefault)
-        .attr("d", path);	
-
-    ////////////////////////////////////////////////////////////
-    ///////////////////////// Tooltip //////////////////////////
-    ////////////////////////////////////////////////////////////
-
-    //Arcs
-    g.append("title")	
-        .text(function(d, i) {return Math.round(d.value) + " people in " + Names[i];});
-        
-    //Chords
-    chords.append("title")
-        .text(function(d) {
-            return [Math.round(d.source.value), " people from ", Names[d.target.index], " to ", Names[d.source.index]].join(""); 
-        });
 
 </script>
 

@@ -57,7 +57,7 @@ services:
       neo4juser: 'neo4j'
       neo4jpass: 'temppass'
       neo4jbolt: 'http://neo4j:7474/db/data/cypher'
-      bootstrapServer: 'kafka.pendev:9092'
+      bootstrapserver: 'kafka.pendev:9092'
       topic: 'kilda-test'
     depends_on:
       kafka:
