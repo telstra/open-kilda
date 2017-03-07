@@ -48,7 +48,7 @@
 
     $.ajaxSetup({async:false});
     $.ajax({
-        url:"/api/v1/topology",
+        url:"/api/v1/topology/chord",
         type:"GET",
         success:function(result){
             full_topology.push(result);

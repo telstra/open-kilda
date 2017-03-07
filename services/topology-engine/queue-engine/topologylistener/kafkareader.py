@@ -1,4 +1,4 @@
-from kafka import KafkaConsumer
+from kafka import KafkaConsumer, TopicPartition
 import json
 import time
 import os
@@ -6,13 +6,13 @@ print "Connecting to kafka using application defined configuration:"
 
 def create_consumer():
     
-    bootstrapServer = os.environ['bootstrapServer']
+    bootstrapServer = os.environ['bootstrapserver']
     topic = os.environ['topic']
 
     while True:
         try: 
             consumer = KafkaConsumer(bootstrap_servers=bootstrapServer, auto_offset_reset='earliest')
-            consumer.subscribe([topic])
+            consumer.subscribe(['{}'.format(topic)])
             print "Connected to kafka"
             break
         except Exception as e:
