@@ -1,3 +1,4 @@
+org.bitbucket.openkilda.floodlight.kafka.KafkaMessageProducer
 org.bitbucket.openkilda.floodlight.kafka.KafkaMessageCollector
 org.bitbucket.openkilda.floodlight.pathverification.PathVerificationService
 org.bitbucket.openkilda.floodlight.switchmanager.SwitchEventCollector
