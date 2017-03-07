@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+
+{% block head %}
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8"/>
+<title>Stretched Chord to show Flows</title>
+
+<!-- D3.js -->	
+<script src="http://d3js.org/d3.v3.js"></script>
+
+
+<!-- jQuery -->
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+
+<!-- Open Sans & CSS -->
+</head>
+{% endblock %}
+{% block body %}
+
+<div id="chart"></div>	
+<script>
+    console.log("Starting logging...");
+
+    
+    
+    var names = new Array();
+    var nodes = new Array();
+    var fulltopology = new Array();
+
+    $.ajaxSetup({async:false});
+    $.ajax({
+        url:"/api/v1/topology",
+        type:"GET",
+        success:function(result){
+            fulltopology.push(result);
+        },
+        dataType:"json"
+    });
+
+    
+
+    for (var i = 0; i < fulltopology[0]['nodes'].length; i++){
+        nodes.push(fulltopology[0]['nodes'][i]);
+    }
+
+    for (var i = 0; i < nodes.length; i++){
+        names.push(nodes[i]['name']);
+    }
+
+    var matrix = new Array();
+
+    for (var i = 0; i < nodes.length; i++){
+        tempArray = new Array(nodes.length).fill(0);
+        
+        for (var j = 0; j < nodes[i]['outgoing_relationships'].length; j++){
+            tempArray[names.indexOf(nodes[i]['outgoing_relationships'][j])] = Math.floor(Math.random() * (10 - 1 + 1)) + 1;
+        }
+
+        matrix.push(tempArray);
+    }
+
+    console.log(matrix);     
+
+</script>
+
+{% endblock %}

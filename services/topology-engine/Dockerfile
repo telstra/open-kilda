@@ -14,8 +14,10 @@ RUN pip install uwsgi
 RUN pip install pyotp
 RUN pip install jsonschema
 RUN chmod +x /usr/local/bin/uwsgi
-ADD services/topology-engine/app /app
-ADD services/topology-engine/queue-engine/ /queue-engine
-ADD services/topology-engine/supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-ADD services/topology-engine/nginx/sites/ /etc/nginx/sites-available/
-ADD services/topology-engine/entrypoint.sh /entrypoint.sh
+ADD app/ /app
+ADD queue-engine/ /queue-engine
+ADD supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+ADD nginx/sites/ /etc/nginx/sites-available/
+ADD db/database.db /var/data/
+ADD entrypoint.sh /entrypoint.sh
+

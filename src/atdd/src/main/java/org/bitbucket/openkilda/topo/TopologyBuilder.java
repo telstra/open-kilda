@@ -1,8 +1,6 @@
 package org.bitbucket.openkilda.topo;
 
-import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import javafx.util.Pair;
@@ -10,8 +8,8 @@ import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.IOException;
 import java.io.StringWriter;
-import java.util.LinkedList;
-import java.util.TreeSet;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 /**
@@ -46,6 +44,69 @@ public class TopologyBuilder {
 
         throw new NotImplementedException();
     }
+
+    /**
+     * This implements the ability to translate a test topology into a Topology object
+     *
+     * @param jsonDoc A JSON doc that matches the syntax of the json files in test/resources/topology
+     * @return The topology represented in the text file.
+     */
+    public static final Topology buildTopoFromTestJson(String jsonDoc) throws IOException {
+        Topology t = new Topology(jsonDoc);
+        ConcurrentMap<String, Switch> switches = t.getSwitches();
+        ConcurrentMap<String, Switch> altSwitchId = new ConcurrentHashMap<>();
+        ConcurrentMap<String, Link> links = t.getLinks();
+        ConcurrentMap<String, LinkEndpoint> endpoints = t.getEndpoints();
+
+
+        ObjectMapper mapper = new ObjectMapper();
+        Map<String,ArrayList<Map<String,String>>> root = mapper.readValue(jsonDoc, Map.class);
+
+        // populate switches first
+        ArrayList<Map<String,String>> jsonSwitches = root.get("switches");
+        for (Map<String,String> s : jsonSwitches) {
+            String id = s.get("dpid");
+            Switch newSwitch = new Switch(id);
+            switches.put(id, newSwitch);
+            if (s.get("name") != null)
+                altSwitchId.put(s.get("name"),newSwitch);
+        }
+
+        // now populate links
+        ArrayList<Map<String,String>> jsonLinks = root.get("links");
+        for (Map<String,String> l : jsonLinks) {
+            String srcId = l.get("node1");
+            String dstId = l.get("node2");
+            Switch src = switches.get(srcId);
+            if (src == null) src = altSwitchId.get(srcId);
+            Switch dst = switches.get(dstId);
+            if (dst == null) dst = altSwitchId.get(dstId);
+
+
+            Link link = new Link(
+                    new LinkEndpoint(src,null,null),
+                    new LinkEndpoint(dst,null,null)
+                    );
+            links.put(link.getShortSlug(),link);
+        }
+
+        return t;
+    }
+
+    public static final Topology buildTopoFromTopoEngineJson(String jsonDoc) throws IOException {
+        Topology t = new Topology(jsonDoc);
+        ConcurrentMap<String, Switch> switches = t.getSwitches();
+        ConcurrentMap<String, Switch> altSwitchId = new ConcurrentHashMap<>();
+        ConcurrentMap<String, Link> links = t.getLinks();
+        ConcurrentMap<String, LinkEndpoint> endpoints = t.getEndpoints();
+
+        ObjectMapper mapper = new ObjectMapper();
+        Map<String,ArrayList<Map<String,String>>> root = mapper.readValue(jsonDoc, Map.class);
+
+        return t;
+    }
+
+
 
     /** buildLinearTopo models the Linear topology from Mininet */
     public static final Topology buildLinearTopo(int numSwitches){

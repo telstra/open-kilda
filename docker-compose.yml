@@ -41,8 +41,8 @@ services:
 
   topology-engine:
     build:
-      context: .
-      dockerfile:  services/topology-engine/Dockerfile
+      context: services/topology-engine/
+      dockerfile: Dockerfile
     image: "kilda/topology-engine:${full_build_number:-latest}"
     command: ./entrypoint.sh
     volumes:
@@ -57,8 +57,9 @@ services:
       neo4juser: 'neo4j'
       neo4jpass: 'temppass'
       neo4jbolt: 'http://neo4j:7474/db/data/cypher'
-      bootstrapServer: 'kafka.pendev:9092'
+      bootstrapserver: 'kafka.pendev:9092'
       topic: 'kilda-test'
+      OK_TESTS: ${OK_TESTS:-none}
     depends_on:
       kafka:
         condition: service_healthy

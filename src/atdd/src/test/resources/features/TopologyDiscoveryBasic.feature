@@ -18,9 +18,9 @@ Feature: Basic Topology Discovery
 
     Examples:
       | switches | discovery_time |
-      |       10 |           1000 |
-      |       50 |           2000 |
-      |      100 |           4000 |
+      |       10 |          30000 |
+      |       50 |         120000 |
+      |      100 |         240000 |
 
 
 
@@ -35,6 +35,6 @@ Feature: Basic Topology Discovery
 
     Examples:
       | switches | discovery_time |
-      |       10 |            500 |
-      |       50 |           1000 |
-      |      100 |           1500 |
+      |       10 |          40000 |
+      |       50 |         150000 |
+      |      100 |         450000 |
