@@ -15,7 +15,7 @@ db = SQLAlchemy(application)
 #           ```docker-compose run --service-ports -e OK_TESTS="DISABLE_LOGIN" topology-engine```
 #     Then you'll be able to access the APIs without login. Useful for testing.
 #
-if "DISABLE_LOGIN" in os.environ["OK_TESTS"]:
+if "DISABLE_LOGIN" in os.getenv("OK_TESTS","none"):
     print "\nWARNING\nWARNING: Disabling Login .. all APIs exposed!\nWARNING\n"
     application.config['LOGIN_DISABLED'] = True
 
