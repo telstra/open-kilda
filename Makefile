@@ -11,4 +11,13 @@ build-latest: build-base
 run-dev:
 	docker-compose up
 
+run-test:
+	OK_TESTS="DISABLE_LOGIN" docker-compose up -d
+
+clean-test:
+	docker-compose down
+	docker-compose rm -fv
+	docker volume list -q | grep kilda | xargs docker volume rm
+
+
 .PHONY: default run-dev build-latest

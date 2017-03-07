@@ -17,11 +17,30 @@
 
     <dependencies>
 
+        <dependency>
+            <groupId>org.bitbucket.openkilda.atdd</groupId>
+            <artifactId>atdd</artifactId>
+            <version>1.0-SNAPSHOT</version>
+        </dependency>
+
         <!-- https://mvnrepository.com/artifact/org.glassfish.jersey.core/jersey-client -->
         <dependency>
             <groupId>org.glassfish.jersey.core</groupId>
             <artifactId>jersey-client</artifactId>
             <version>2.12</version>
+        </dependency>
+
+        <!-- https://mvnrepository.com/artifact/com.google.guava/guava -->
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>21.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.8.7</version>
         </dependency>
 
         <dependency>
