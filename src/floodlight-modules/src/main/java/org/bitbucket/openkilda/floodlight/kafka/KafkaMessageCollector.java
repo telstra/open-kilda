@@ -30,6 +30,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
     private final AtomicBoolean closed = new AtomicBoolean(false);
     private ObjectMapper mapper;
     private IPathVerificationService pathVerificationService;
+    private KafkaMessageProducer kafkaProducer;
 
     class ParseRecord implements Runnable {
         final ConsumerRecord record;
@@ -149,6 +150,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
         Collection<Class<? extends IFloodlightService>> services = new ArrayList<>();
         services.add(IFloodlightProviderService.class);
         services.add(IPathVerificationService.class);
+        services.add(KafkaMessageProducer.class);
         return services;
     }
 
@@ -156,6 +158,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
         IFloodlightProviderService floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
         pathVerificationService = context.getServiceImpl(IPathVerificationService.class);
+        kafkaProducer = context.getServiceImpl(KafkaMessageProducer.class);
         logger = LoggerFactory.getLogger(this.getClass());
         Map<String, String> configParameters = context.getConfigParams(this);
         kafkaProps = new Properties();

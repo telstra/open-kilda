@@ -1,5 +1,6 @@
 package org.bitbucket.openkilda.floodlight.switchmanager;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchListener;
@@ -11,6 +12,7 @@ import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.bitbucket.openkilda.floodlight.kafka.KafkaMessageProducer;
 import org.bitbucket.openkilda.floodlight.message.InfoMessage;
 import org.bitbucket.openkilda.floodlight.message.Message;
 import org.bitbucket.openkilda.floodlight.message.info.InfoData;
@@ -35,9 +37,9 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
 
     private IOFSwitchService switchService;
     private Logger logger;
-    private ConcurrentLinkedQueue<Message> queue;
     private Properties kafkaProps;
     private String topic;
+    private KafkaMessageProducer kafkaProducer;
 
     /**
      * IOFSwitchListener methods
@@ -46,24 +48,24 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
     @Override
     public void switchAdded(DatapathId switchId) {
         Message message = buildSwitchMessage(switchId, SwitchEventType.ADDED);
-        queue.add(message);
+        postMessage(topic, message);
     }
 
     @Override
     public void switchRemoved(DatapathId switchId) {
         Message message = buildSwitchMessage(switchId, SwitchEventType.REMOVED);
-        queue.add(message);
+        postMessage(topic, message);
     }
 
     @Override
     public void switchActivated(DatapathId switchId) {
         Message message = buildSwitchMessage(switchId, SwitchEventType.ACTIVATED);
-        queue.add(message);
+        postMessage(topic, message);
 
         IOFSwitch sw = switchService.getSwitch(switchId);
         if (sw.getEnabledPortNumbers() != null) {
             for (OFPort p : sw.getEnabledPortNumbers()) {
-                queue.add(buildPortMessage(sw.getId(), p, PortChangeType.UP));
+                postMessage(topic, buildPortMessage(sw.getId(), p, PortChangeType.UP));
             }
         }
     }
@@ -71,19 +73,19 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
     @Override
     public void switchPortChanged(DatapathId switchId, OFPortDesc port, PortChangeType type) {
         Message message = buildPortMessage(switchId, port, type);
-        queue.add(message);
+        postMessage(topic, message);
     }
 
     @Override
     public void switchChanged(DatapathId switchId) {
         Message message = buildSwitchMessage(switchId, SwitchEventType.CHANGED);
-        queue.add(message);
+        postMessage(topic, message);
     }
 
     @Override
     public void switchDeactivated(DatapathId switchId) {
         Message message = buildSwitchMessage(switchId, SwitchEventType.DEACTIVATED);
-        queue.add(message);
+        postMessage(topic, message);
     }
 
     /**
@@ -105,6 +107,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
         Collection<Class<? extends IFloodlightService>> services = new ArrayList<>();
         services.add(IFloodlightProviderService.class);
         services.add(IOFSwitchService.class);
+        services.add(KafkaMessageProducer.class);
         return services;
     }
 
@@ -112,8 +115,8 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
         IFloodlightProviderService floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
         switchService = context.getServiceImpl(IOFSwitchService.class);
+        kafkaProducer = context.getServiceImpl(KafkaMessageProducer.class);
         logger = LoggerFactory.getLogger(SwitchEventCollector.class);
-        queue = new ConcurrentLinkedQueue<>();
 
         Map<String, String> configParameters = context.getConfigParams(this);
         kafkaProps = new Properties();
@@ -127,13 +130,13 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
     public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
         logger.info("Starting " + SwitchEventCollector.class.getCanonicalName());
         switchService.addOFSwitchListener(this);
-        ExecutorService executor = Executors.newFixedThreadPool(5);
-        try {
-            executor.execute(new Producer());
-        }  catch (Exception exception) {
-            logger.error("Exception: ", exception);
-            executor.execute(new Producer());
-        }
+//        ExecutorService executor = Executors.newFixedThreadPool(5);
+//        try {
+//            executor.execute(new Producer());
+//        }  catch (Exception exception) {
+//            logger.error("Exception: ", exception);
+//            executor.execute(new Producer());
+//        }
     }
 
     /**
@@ -169,36 +172,44 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
         return (buildMessage(data));
     }
 
-    /**
-     * KafkaProducer
-     */
-    public class Producer implements Runnable {
-        public Message dequeueItem() {
-            if (!queue.isEmpty()) {
-                logger.debug("Queue size: " + queue.size());
-                return queue.remove();
-            } else {
-                return null;
-            }
-        }
-
-        @Override
-        public void run() {
-            logger.debug("Running a Producer");
-            KafkaProducer<String, String> producer = new KafkaProducer<>(kafkaProps);
-            try {
-                while (true) {
-                    Message message = dequeueItem();
-                    if (message != null) {
-                        logger.debug("message = " + message.toJson());
-                        producer.send(new ProducerRecord<>(topic, message.toJson()));
-                    }
-                    Thread.sleep(5);
-                }
-            } catch (Exception exception) {
-                logger.error("Error: ", exception);
-            }
-            producer.close();
+    private void postMessage(String topic, Message message) {
+        try {
+            kafkaProducer.send(new ProducerRecord<String, String>(topic, message.toJson()));
+        } catch (JsonProcessingException e) {
+            logger.error("error", e);
         }
     }
+
+//    /**
+//     * KafkaProducer
+//     */
+//    public class Producer implements Runnable {
+//        public Message dequeueItem() {
+//            if (!queue.isEmpty()) {
+//                logger.debug("Queue size: " + queue.size());
+//                return queue.remove();
+//            } else {
+//                return null;
+//            }
+//        }
+//
+//        @Override
+//        public void run() {
+//            logger.debug("Running a Producer");
+//            KafkaProducer<String, String> producer = new KafkaProducer<>(kafkaProps);
+//            try {
+//                while (true) {
+//                    Message message = dequeueItem();
+//                    if (message != null) {
+//                        logger.debug("message = " + message.toJson());
+//                        producer.send(new ProducerRecord<>(topic, message.toJson()));
+//                    }
+//                    Thread.sleep(5);
+//                }
+//            } catch (Exception exception) {
+//                logger.error("Error: ", exception);
+//            }
+//            producer.close();
+//        }
+//    }
 }
