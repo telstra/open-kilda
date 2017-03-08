@@ -41,31 +41,32 @@ def api_v1_topology():
 @application.route('/api/v1/topology/network')
 @login_required
 def api_v1_network():
+    '''
+    2017.03.08 (carmine) - this is now identical to api_v1_topology.
+    :return: the switches and links
+    '''
+
     try:
         data = {'query' : 'MATCH (n) return n'}
         auth = (os.environ['neo4juser'], os.environ['neo4jpass'])
         result_switches = requests.post(os.environ['neo4jbolt'], data=data, auth=auth)
-        j_switches = json.loads(result_switches.text)       
+        j_switches = json.loads(result_switches.text)
         nodes = []
-        links = []
         topology = {}
         for n in j_switches['data']:
             for r in n:
                 node = {}
-                node['name'] = str((r['data']['name']))
-                nodes.append(node)
-                result_relationships = requests.get(str(r['outgoing_relationships']), auth=('neo4j', 'temppass'))
+                node['name'] = (r['data']['name'])
+                result_relationships = requests.get(str(r['outgoing_relationships']), auth=auth)
                 j_paths = json.loads(result_relationships.text)
+                outgoing_relationships = []
                 for j_path in j_paths:
                     if j_path['type'] == u'isl':
-                        link = {}
-                        link['src_switch'] = str(j_path['data']['src_switch'])
-                        link['src_port'] = str(j_path['data']['src_port'])
-                        link['dst_switch'] = str(j_path['data']['dst_switch'])
-                        link['dst_port'] = str(j_path['data']['dst_port'])
-                        links.append(link)
+                        outgoing_relationships.append(j_path['data']['dst_switch'])
+                    outgoing_relationships.sort()
+                    node['outgoing_relationships'] = outgoing_relationships
+            nodes.append(node)
         topology['nodes'] = nodes
-        topology['links'] = links
         return str(json.dumps(topology, default=lambda o: o.__dict__, sort_keys=True))
     except Exception as e:
         return "error: {}".format(str(e))
