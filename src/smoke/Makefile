@@ -1,4 +1,5 @@
 smoke:
 	echo Running Smoke Tests
-	mvn exec:java -f java/pom.xml
+	cd ../atdd && mvn install
+	mvn verify -f java/pom.xml
 	pytest python
