@@ -30,10 +30,99 @@ public class TopologyEngineSmokeTest  {
      *      - ```match (n) detach delete n```
      */
     public void testServiceUp(){
-
-        String entity = TopologyHelp.GetTopology();
+        String entity = TopologyHelp.ClearTopology();
 
         assertEquals("Default, initial, response from TopologyEngine", "{\"nodes\": []}",entity);
+    }
+
+
+    private String createTopo(URL url) throws IOException {
+        String doc = Resources.toString(url, Charsets.UTF_8);
+        doc = doc.replaceAll("\"dpid\": \"SW", "\"dpid\": \""); // remove any SW characters
+        doc = doc.replaceAll("([0-9A-Fa-f]{2}):","$1");         // remove ':' in id
+        TopologyHelp.DeleteTopology();  // clear out mininet
+        String result = TopologyHelp.ClearTopology();   // clear out neo4j / topology-engine
+        System.out.println("Just cleared the Topology Engine. Result = " + result);
+        TopologyHelp.CreateTopology(doc);
+        return doc;
+    }
+
+
+    private ITopology translateTestTopo(String doc) throws IOException {
+        ITopology tDoc = TopologyBuilder.buildTopoFromTestJson(doc);
+        System.out.println("tDoc = " + tDoc);
+        System.out.println("tDoc.switchs.size = " + tDoc.getSwitches().keySet().size());
+        System.out.println("tDoc.links  .size = " + tDoc.getLinks().keySet().size());
+        return tDoc;
+    }
+
+
+    private ITopology translateTopoEngTopo(ITopology expected) throws InterruptedException,
+            IOException {
+        ITopology tTE = new Topology(""); // ie null topology
+
+        // try a couple of times to get the topology;
+        // TODO: this should be based off of a cucumber spec .. the cucumber tests as smoke!
+        long priorSwitches = 0, priorLinks = 0;
+        long expectedSwitches = expected.getSwitches().keySet().size();
+        long expectedLinks = expected.getLinks().keySet().size();
+        for (int i = 0; i < 4; i++) {
+            Thread.yield(); // let other threads do something ..
+            Thread.sleep(10000);
+            String jsonFromTE = TopologyHelp.GetTopology();
+            Thread.yield(); // let other threads do something ..
+
+            tTE = TopologyBuilder.buildTopoFromTopoEngineJson(jsonFromTE);
+            long numSwitches = tTE.getSwitches().keySet().size();
+            long numLinks = tTE.getLinks().keySet().size();
+
+            System.out.print("(" + numSwitches + "," + numLinks + ") ");
+            System.out.flush();
+
+            if (numSwitches != expectedSwitches){
+                if (numSwitches > priorSwitches){
+                    priorSwitches = numSwitches;
+                    i = 0; // reset the timeout
+                }
+                continue;
+            }
+
+            if (numLinks != expectedLinks){
+                if (numLinks > priorLinks){
+                    priorLinks = numLinks;
+                    i = 0; // reset the timeout
+                }
+                continue;
+            }
+            break;
+        }
+        System.out.println("");
+        return tTE;
+    }
+
+
+    private void validateTopos(ITopology expected, ITopology actual){
+        assertEquals("TOPOLOGY DISCOVERY: The number of SWITCHES don't match"
+                ,expected.getSwitches().keySet().size()
+                , actual.getSwitches().keySet().size());
+        assertEquals("TOPOLOGY DISCOVERY: The number of LINKS don't match"
+                ,expected.getLinks().keySet().size()
+                , actual.getLinks().keySet().size());
+        assertEquals("TOPOLOGY DISCOVERY: The IDs of Switches and/or Links don't match"
+                , expected, actual);
+
+    }
+
+
+    private void testTheTopo(URL url){
+        try {
+            String doc = createTopo(url);
+            ITopology expected = translateTestTopo(doc);
+            ITopology actual = translateTopoEngTopo(expected);
+            validateTopos(expected,actual);
+        } catch (Exception e) {
+            fail("Unexpected Exception:" + e.getMessage());
+        }
     }
 
 
@@ -43,27 +132,8 @@ public class TopologyEngineSmokeTest  {
      * properly.
      */
     public void testSimpleTopologyDiscovery() throws InterruptedException {
-        URL url = Resources.getResource("topologies/partial-topology.json");
-        try {
-            String doc = Resources.toString(url, Charsets.UTF_8);
-//            TopologyHelp.DeleteTopology();
-//            TopologyHelp.CreateTopology(doc);
-            Thread.sleep(10000);
-            String jsonFromTE = TopologyHelp.GetTopology();
-            System.out.println("jsonFromTE = " + jsonFromTE);
-
-            if (1==1) return;
-            ITopology t = TopologyBuilder.buildTopoFromTestJson(doc);
-            ITopology t1 = new Topology(doc);
-            IController ctrl = new MockController(t1);
-            ITopology t2 = ctrl.getTopology();
-            assertTrue(t1.equivalent(t2));
-        } catch (IOException e) {
-            fail("Unexpected Exception:" + e.getMessage());
-        }
-
+        testTheTopo(Resources.getResource("topologies/partial-topology.json"));
     }
-
 
     @Test
     /**
@@ -71,32 +141,14 @@ public class TopologyEngineSmokeTest  {
      * up properly.
      */
     public void testFullTopologyDiscovery(){
+        testTheTopo(Resources.getResource("topologies/full-topology.json"));
     }
 
-
-
     @Test
-    public void testTemp(){
-        String jsonFromTE = "jsonFromTE = "
-                + "{\"nodes\": "
-                    + "[{\"name\": \"00:00:00:00:00:00:00:05\", \"outgoing_relationships\": "
-                        +  "[\"00:00:00:00:00:00:00:04\", \"00:00:00:00:00:00:00:04\", \"00:00:00:00:00:00:00:06\", \"00:00:00:00:00:00:00:06\", \"00:00:00:00:00:00:00:07\", \"00:00:00:00:00:00:00:07\"]} "
-                    + ", {\"name\": \"00:00:00:00:00:00:00:07\", \"outgoing_relationships\": "
-                        +  "[\"00:00:00:00:00:00:00:04\", \"00:00:00:00:00:00:00:04\", \"00:00:00:00:00:00:00:05\", \"00:00:00:00:00:00:00:05\", \"00:00:00:00:00:00:00:06\", \"00:00:00:00:00:00:00:06\"]} "
-                    + ", {\"name\": \"00:00:00:00:00:00:00:09\"} "
-                    + ", {\"name\": \"00:00:00:00:00:00:00:06\", \"outgoing_relationships\": "
-                        + "[\"00:00:00:00:00:00:00:05\", \"00:00:00:00:00:00:00:05\", \"00:00:00:00:00:00:00:07\", \"00:00:00:00:00:00:00:07\"]} "
-                    + ", {\"name\": \"00:00:00:00:00:00:00:08\"} "
-                    + ", {\"name\": \"00:00:00:00:00:00:00:01\", \"outgoing_relationships\": "
-                        + "[\"00:00:00:00:00:00:00:02\", \"00:00:00:00:00:00:00:02\", \"00:00:00:00:00:00:00:03\", \"00:00:00:00:00:00:00:03\"]}"
-                    + ", {\"name\": \"00:00:00:00:00:00:00:02\", \"outgoing_relationships\": "
-                        + "[\"00:00:00:00:00:00:00:01\", \"00:00:00:00:00:00:00:01\", \"00:00:00:00:00:00:00:03\", \"00:00:00:00:00:00:00:03\", \"00:00:00:00:00:00:00:03\", \"00:00:00:00:00:00:00:03\"]}"
-                    + ", {\"name\": \"00:00:00:00:00:00:00:04\", \"outgoing_relationships\": "
-                        + "[\"00:00:00:00:00:00:00:05\", \"00:00:00:00:00:00:00:05\", \"00:00:00:00:00:00:00:07\", \"00:00:00:00:00:00:00:07\"]}"
-                    + ", {\"name\": \"00:00:00:00:00:00:00:03\", \"outgoing_relationships\": " +
-                "[\"00:00:00:00:00:00:00:01\", \"00:00:00:00:00:00:00:01\", \"00:00:00:00:00:00:00:02\", \"00:00:00:00:00:00:00:02\", \"00:00:00:00:00:00:00:02\", \"00:00:00:00:00:00:00:02\"]}]}";
+    public void testMock() throws IOException {
+//        ITopology t1 = new Topology(doc);
+//        IController ctrl = new MockController(t1);
+//        ITopology t2 = ctrl.getTopology();
 
-        ITopology t = TopologyBuilder.buildTopoFromTopoEngineJson(doc);
-        System.out.println("jsonFromTE = " + jsonFromTE);
     }
 }

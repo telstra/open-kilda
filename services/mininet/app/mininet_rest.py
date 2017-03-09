@@ -203,6 +203,7 @@ def add_switches(switches):
 def add_switch(name,dpid):
     if type(dpid) is unicode:
         dpid = dpid.encode('ascii','ignore')
+
     switch = OVSKernelSwitch(name, protocols='OpenFlow13', inNamespace=False, dpid=dpid)
     switch.start(controllers)
     switches[name] = switch

@@ -41,10 +41,10 @@ def api_v1_topology():
 @application.route('/api/v1/topology/network')
 @login_required
 def api_v1_network():
-    '''
+    """
     2017.03.08 (carmine) - this is now identical to api_v1_topology.
     :return: the switches and links
-    '''
+    """
 
     try:
         data = {'query' : 'MATCH (n) return n'}
@@ -68,6 +68,22 @@ def api_v1_network():
             nodes.append(node)
         topology['nodes'] = nodes
         return str(json.dumps(topology, default=lambda o: o.__dict__, sort_keys=True))
+    except Exception as e:
+        return "error: {}".format(str(e))
+
+
+@application.route('/api/v1/topology/clear')
+@login_required
+def api_v1_topo_clear():
+    """
+    Clear the entire topology
+    :returns the result of api_v1_network() after the delete
+    """
+    try:
+        data = {'query' : 'MATCH (n) detach delete n'}
+        auth = (os.environ['neo4juser'], os.environ['neo4jpass'])
+        requests.post(os.environ['neo4jbolt'], data=data, auth=auth)
+        return api_v1_network()
     except Exception as e:
         return "error: {}".format(str(e))
 

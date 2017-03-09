@@ -82,39 +82,39 @@
  ],
  "switches": [
   {
-   "dpid": "SW0000B0D2F5005E18", 
+   "dpid": "SW0000B0D2F5005E18",
    "name": "s6"
   }, 
   {
-   "dpid": "SW0000B0D2F5B0086E", 
+   "dpid": "00:00:B0:D2:F5:B0:08:6E",
    "name": "s5"
   }, 
   {
-   "dpid": "SW0000001E080008A4", 
+   "dpid": "00:00:00:1E:08:00:08:A4",
    "name": "s9"
   }, 
   {
-   "dpid": "SW0000001E08000E45", 
+   "dpid": "00:00:00:1E:08:00:0E:45",
    "name": "s8"
   }, 
   {
-   "dpid": "SW0000B0D2F5B00934", 
+   "dpid": "00:00:B0:D2:F5:B0:09:34",
    "name": "s7"
   }, 
   {
-   "dpid": "SW0000001E08000E2F", 
+   "dpid": "00:00:00:1E:08:00:0E:2F",
    "name": "s1"
   }, 
   {
-   "dpid": "SW0000CC37AB32F318", 
+   "dpid": "00:00:CC:37:AB:32:F3:18",
    "name": "s2"
   }, 
   {
-   "dpid": "SW0000CC37AB33020C", 
+   "dpid": "00:00:CC:37:AB:33:02:0C",
    "name": "s3"
   }, 
   {
-   "dpid": "SW0000B0D2F5B009FA", 
+   "dpid": "00:00:B0:D2:F5:B0:09:FA",
    "name": "s4"
   }
  ]

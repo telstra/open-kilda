@@ -64,21 +64,39 @@ public class TopologyHelp {
 
         Client client = ClientBuilder.newClient(new ClientConfig());
 
-        String result = client.target("http://127.0.0.1:80").path("/api/v1/topology")
+        String result = client.target("http://localhost:80").path("/api/v1/topology/network")
                 .request(MediaType.TEXT_PLAIN_TYPE)
-                .header("Authorization", "Basic " + java.util.Base64.getEncoder().encodeToString
-                        ("admin:admin".getBytes()))
                 .get(String.class);
 
         return result;
     }
 
 
-    public static void main(String[] args) throws IOException {
-        TopologyHelp.DeleteTopology();
+    /**
+     * NB: This method calls TE, not Mininet
+     *
+     * @return The JSON document of the Topology from the Topology Engine
+     */
+    public static String ClearTopology(){
 
-        URL url = Resources.getResource("topologies/partial-topology.json");
-        String doc = Resources.toString(url, Charsets.UTF_8);
-        TopologyHelp.CreateTopology(doc);
+        Client client = ClientBuilder.newClient(new ClientConfig());
+
+        String result = client.target("http://localhost:80").path("/api/v1/topology/clear")
+                .request(MediaType.TEXT_PLAIN_TYPE)
+                .get(String.class);
+
+        return result;
+    }
+
+
+
+    public static void main(String[] args) throws IOException {
+        // TopologyHelp.DeleteTopology();
+//        URL url = Resources.getResource("topologies/partial-topology.json");
+//        String doc = Resources.toString(url, Charsets.UTF_8);
+//        TopologyHelp.CreateTopology(doc);
+
+        System.out.println("GetTopology(): = " + TopologyHelp.GetTopology());
+        System.out.println("ClearTopology(): = " + TopologyHelp.ClearTopology());
     }
 }
