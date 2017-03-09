@@ -10,6 +10,11 @@ application.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:////var/data/database.db
 application.debug = True
 db = SQLAlchemy(application)
 
+settings = application.config.get('RESTFUL_JSON', {})
+settings.setdefault('indent', 2)
+settings.setdefault('sort_keys', True)
+application.config['RESTFUL_JSON'] = settings
+
 #
 # NB: If you run the topology engine like this:
 #           ```docker-compose run --service-ports -e OK_TESTS="DISABLE_LOGIN" topology-engine```
