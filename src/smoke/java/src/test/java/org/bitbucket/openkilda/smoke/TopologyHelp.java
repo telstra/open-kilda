@@ -37,17 +37,34 @@ public class TopologyHelp {
     /**
      * Creates the topology through Mininet.
      *
-     * @param mininetJson - the json doc that is suitable for the mininet API
+     * @param json - the json doc that is suitable for the mininet API
      */
-    public static boolean CreateTopology(String mininetJson){
+    public static boolean CreateTopology(String json){
         long current = System.currentTimeMillis();
         Client client = ClientBuilder.newClient(new ClientConfig());
         Response result = client.target("http://localhost:38080").path("/topology")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.entity(mininetJson,MediaType.APPLICATION_JSON));
+                .post(Entity.entity(json,MediaType.APPLICATION_JSON));
 
         System.out.println("\n== Create Topology\n==> result = " + result);
         System.out.println("==> CreateTopology Time: " + (double)(((System.currentTimeMillis() -
+                current)
+                / 1000.0)));
+
+        return result.getStatus() == 200;
+    }
+
+
+    public static boolean TestMininetCreate(String json){
+        long current = System.currentTimeMillis();
+        Client client = ClientBuilder.newClient(new ClientConfig());
+        Response result = client.target("http://localhost:38080").path("/topo_speed_test_up")
+                .request(MediaType.APPLICATION_JSON)
+                .post(Entity.entity(json,MediaType.APPLICATION_JSON));
+
+        System.out.println("\n== Mininet Create Random Topology\n==> result = " + result);
+        System.out.println("==> Mininet Create Random Topology Time: " + (double)(((System
+                .currentTimeMillis() -
                 current)
                 / 1000.0)));
 
