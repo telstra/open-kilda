@@ -2,7 +2,9 @@
 import json
 import db
 from jsonschema import validate
+from py2neo import Node, Relationship
 
+graph = db.create_p2n_driver()
 
 class MessageItem(object):
     def __init__(self, type, timestamp, data):
@@ -34,30 +36,30 @@ class MessageItem(object):
 
     def create_switch(self):
         switchid = self.data['switch_id']
-        switchExists = bool(db.runner("MATCH (a:switch{{ name: '{0}' }}) return count(a)".format(switchid)).single()[0])
+        switchExists = graph.find_one('switch', property_key='name', property_value='{}'.format(switchid))
         if not switchExists:
-            query = "CREATE (:switch {{ name: '{0}' }})".format(switchid)
-            db.runner(query)
+            switch = Node("switch", name="{}".format(switchid))
+            graph.create(switch)
             return True
         else:
             print "Switch '{0}' already exists in topology.".format(switchid)
             return True
-    
 
     def remove_switch(self):
         switchid = self.data['switch_id']
-        switchExists = bool(db.runner("MATCH (a:switch{{ name: '{0}' }}) return count(a)".format(switchid)).single()[0])
-        if switchExists:
-            query = "MATCH (a:switch{{ name: '{0}' }}) detach delete a".format(switchid)
-            db.runner(query)
+        switch = graph.find_one('switch', property_key='name', property_value='{}'.format(switchid))
+        if switch:
+            out_rels = graph.match(start_node=switch, rel_type='isl')
+            in_rels = graph.match(end_node=switch, rel_type='isl')
+            for rel in out_rels:
+                graph.separate(rel)
+            for rel in in_rels:
+                graph.separate(rel)
+            graph.delete(switch)
             return True
         else:
             print "Switch '{0}' does not exist in topology.".format(switchid)
             return True
-
-
-
-
 
     def create_isl(self):
         path = self.data['path']
@@ -65,15 +67,14 @@ class MessageItem(object):
         a_port = path[0]['port_no']
         b_switch = path[1]['switch_id']
         b_port = path[1]['port_no']
-        a_switchExists = bool(db.runner("MATCH (a:switch{{ name: '{0}' }}) return count(a)".format(a_switch)).single()[0])
-        b_switchExists = bool(db.runner("MATCH (a:switch{{ name: '{0}' }}) return count(a)".format(b_switch)).single()[0])
-        if not a_switchExists or not b_switchExists:
+
+        a_switchNode = graph.find_one('switch', property_key='name', property_value='{}'.format(a_switch))
+        b_switchNode = graph.find_one('switch', property_key='name', property_value='{}'.format(b_switch))
+
+        if not a_switchNode or not b_switchNode:
             return False
-        islExists = bool(db.runner("MATCH p=()-[r:isl{{ src_switch: '{0}',src_port: '{1}', dst_switch: '{2}', dst_port: '{3}'  }}]->() RETURN count(p)".format(a_switch, a_port, b_switch, b_port)).single()[0])
-        if not islExists:
-            query = "MATCH (a:switch{{ name: '{0}' }}),(b:switch{{ name: '{2}' }}) CREATE(a) -[r:isl {{ src_switch: '{0}',src_port: '{1}', dst_switch: '{2}', dst_port: '{3}'  }}]-> (b)".format(a_switch, a_port, b_switch, b_port)
-            db.runner(query)
-            return True
-        else:
-            print "ISL {0}:{1} -> {2}:{3} already exists.".format(a_switch, a_port, b_switch, b_port)
-            return True
+
+        isl = Relationship(a_switchNode, "isl", b_switchNode, src_port=a_port, dst_port=b_port, src_switch=a_switch, dst_switch=b_switch)
+        graph.create(isl)
+
+
