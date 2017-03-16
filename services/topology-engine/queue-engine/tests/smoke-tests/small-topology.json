@@ -1,0 +1,33 @@
+{
+ "controllers": [
+  {
+   "host": "kilda", 
+   "name": "floodlight", 
+   "port": 6653
+  }
+ ], 
+ "links": [
+  {
+   "node1": "s1", 
+   "node2": "s2"
+  }, 
+  {
+   "node1": "s2", 
+   "node2": "s3"
+  }
+ ], 
+ "switches": [
+  {         
+   "dpid": "SW0000000000000001", 
+   "name": "s1"
+  }, 
+  {
+   "dpid": "SW0000000000000002", 
+   "name": "s2"
+  }, 
+  {
+   "dpid": "SW0000000000000003", 
+   "name": "s3"
+  }
+ ]
+}
