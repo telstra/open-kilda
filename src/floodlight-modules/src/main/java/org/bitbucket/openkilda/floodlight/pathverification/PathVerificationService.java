@@ -229,6 +229,12 @@ implements IFloodlightModule, IOFMessageListener, IPathVerificationService {
     sfpService.addFlow(flowname, flowMod, switchId);
   }
 
+  @Override
+  public void installVerificationRules(DatapathId switchId) {
+    installVerificationRule(switchId, true);
+    installVerificationRule(switchId, false);
+  }
+
   protected List<OFAction> getDiscoveryActions(IOFSwitch sw, OFPort port) {
     // set actions
     List<OFAction> actions = new ArrayList<OFAction>();

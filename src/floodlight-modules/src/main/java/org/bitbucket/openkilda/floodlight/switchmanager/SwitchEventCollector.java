@@ -19,6 +19,8 @@ import org.bitbucket.openkilda.floodlight.message.info.InfoData;
 import org.bitbucket.openkilda.floodlight.message.info.PortInfoData;
 import org.bitbucket.openkilda.floodlight.message.info.SwitchInfoData;
 import org.bitbucket.openkilda.floodlight.message.info.SwitchInfoData.SwitchEventType;
+import org.bitbucket.openkilda.floodlight.pathverification.IPathVerificationService;
+import org.bitbucket.openkilda.floodlight.pathverification.PathVerificationService;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
@@ -40,6 +42,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
     private Properties kafkaProps;
     private String topic;
     private KafkaMessageProducer kafkaProducer;
+    private IPathVerificationService pathVerificationService;
 
     /**
      * IOFSwitchListener methods
@@ -60,6 +63,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
     @Override
     public void switchActivated(DatapathId switchId) {
         Message message = buildSwitchMessage(switchId, SwitchEventType.ACTIVATED);
+        pathVerificationService.installVerificationRules(switchId);
         postMessage(topic, message);
 
         IOFSwitch sw = switchService.getSwitch(switchId);
@@ -108,6 +112,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
         services.add(IFloodlightProviderService.class);
         services.add(IOFSwitchService.class);
         services.add(KafkaMessageProducer.class);
+        services.add(IPathVerificationService.class);
         return services;
     }
 
@@ -116,6 +121,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
         IFloodlightProviderService floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
         switchService = context.getServiceImpl(IOFSwitchService.class);
         kafkaProducer = context.getServiceImpl(KafkaMessageProducer.class);
+        pathVerificationService = context.getServiceImpl(IPathVerificationService.class);
         logger = LoggerFactory.getLogger(SwitchEventCollector.class);
 
         Map<String, String> configParameters = context.getConfigParams(this);
@@ -130,13 +136,6 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
     public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
         logger.info("Starting " + SwitchEventCollector.class.getCanonicalName());
         switchService.addOFSwitchListener(this);
-//        ExecutorService executor = Executors.newFixedThreadPool(5);
-//        try {
-//            executor.execute(new Producer());
-//        }  catch (Exception exception) {
-//            logger.error("Exception: ", exception);
-//            executor.execute(new Producer());
-//        }
     }
 
     /**
@@ -179,37 +178,4 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
             logger.error("error", e);
         }
     }
-
-//    /**
-//     * KafkaProducer
-//     */
-//    public class Producer implements Runnable {
-//        public Message dequeueItem() {
-//            if (!queue.isEmpty()) {
-//                logger.debug("Queue size: " + queue.size());
-//                return queue.remove();
-//            } else {
-//                return null;
-//            }
-//        }
-//
-//        @Override
-//        public void run() {
-//            logger.debug("Running a Producer");
-//            KafkaProducer<String, String> producer = new KafkaProducer<>(kafkaProps);
-//            try {
-//                while (true) {
-//                    Message message = dequeueItem();
-//                    if (message != null) {
-//                        logger.debug("message = " + message.toJson());
-//                        producer.send(new ProducerRecord<>(topic, message.toJson()));
-//                    }
-//                    Thread.sleep(5);
-//                }
-//            } catch (Exception exception) {
-//                logger.error("Error: ", exception);
-//            }
-//            producer.close();
-//        }
-//    }
 }

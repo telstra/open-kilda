@@ -15,4 +15,6 @@ public interface IPathVerificationService extends IFloodlightService {
   
   public void installVerificationRule(DatapathId switchId, boolean isBroadcast);
 
+  public void installVerificationRules(DatapathId switchId);
+
 }
