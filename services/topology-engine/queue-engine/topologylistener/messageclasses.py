@@ -26,6 +26,8 @@ class MessageItem(object):
                 eventHandled = self.create_switch()
             if self.get_message_type() == "isl":
                 eventHandled = self.create_isl()
+            if self.get_message_type() == "switch" and self.data['state'] == "DEACTIVATED":
+                eventHandled = self.remove_switch()
             return eventHandled
         except Exception as e:
             print e
@@ -41,6 +43,22 @@ class MessageItem(object):
             print "Switch '{0}' already exists in topology.".format(switchid)
             return True
     
+
+    def remove_switch(self):
+        switchid = self.data['switch_id']
+        switchExists = bool(db.runner("MATCH (a:switch{{ name: '{0}' }}) return count(a)".format(switchid)).single()[0])
+        if switchExists:
+            query = "MATCH (a:switch{{ name: '{0}' }}) detach delete a".format(switchid)
+            db.runner(query)
+            return True
+        else:
+            print "Switch '{0}' does not exist in topology.".format(switchid)
+            return True
+
+
+
+
+
     def create_isl(self):
         path = self.data['path']
         a_switch = path[0]['switch_id']

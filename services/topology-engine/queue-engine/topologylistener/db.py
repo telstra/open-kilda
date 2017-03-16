@@ -2,12 +2,6 @@ import os
 import time
 from neo4j.v1 import GraphDatabase, basic_auth, TRUST_DEFAULT
 
-import os
-
-
-
-
-
 def runner(query):
     session = driver.session()
     result = session.run(query)

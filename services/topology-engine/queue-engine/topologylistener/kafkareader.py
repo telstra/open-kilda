@@ -23,10 +23,11 @@ def create_consumer():
 
 def read_message(consumer):
     try:
-        message = consumer.next()
-        if message:
+        message = consumer.next()   
+        if message.value is not "":
             return message.value
         else:
+            print "sleeping"
             time.sleep(1)
     except Exception as e:
         print e

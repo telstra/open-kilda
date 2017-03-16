@@ -13,6 +13,7 @@ RUN pip install flask-sqlalchemy
 RUN pip install uwsgi
 RUN pip install pyotp
 RUN pip install jsonschema
+RUN pip install py2neo
 RUN chmod +x /usr/local/bin/uwsgi
 ADD app/ /app
 ADD queue-engine/ /queue-engine
