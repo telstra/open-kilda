@@ -66,11 +66,11 @@
 		</dependency>
 
 		<!-- https://mvnrepository.com/artifact/info.cukes/cucumber-guice -->
-		<dependency>
-			<groupId>info.cukes</groupId>
-			<artifactId>cucumber-guice</artifactId>
-			<version>1.2.5</version>
-		</dependency>
+		<!--<dependency>-->
+			<!--<groupId>info.cukes</groupId>-->
+			<!--<artifactId>cucumber-guice</artifactId>-->
+			<!--<version>1.2.5</version>-->
+		<!--</dependency>-->
 
 		<!-- https://mvnrepository.com/artifact/org.mockito/mockito-core -->
 		<dependency>

@@ -13,6 +13,7 @@ run-dev:
 
 run-test:
 	OK_TESTS="DISABLE_LOGIN" docker-compose up -d
+	docker-compose logs -f
 
 clean-test:
 	docker-compose down

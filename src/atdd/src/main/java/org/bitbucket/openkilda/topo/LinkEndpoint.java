@@ -12,14 +12,19 @@ public class LinkEndpoint implements ITopoSlug {
     private final PortQueue portQueue;
     private transient String slug;
 
-    private static final Switch nullSwitch = new Switch("0");
-    private static final Port nullPort = new Port (nullSwitch,"0");
-    private static final PortQueue nullQueue = new PortQueue(nullPort,"0");
+    private static final String NULL_ID = "0";
 
+
+    /**
+     * @param topoSwitch At least a valid switch is needed.
+     * @param switchPort can be null; id will be 0.
+     * @param portQueue can be null; id will be 0.
+     */
     public LinkEndpoint(Switch topoSwitch, Port switchPort, PortQueue portQueue) {
-        this.topoSwitch = (topoSwitch != null) ? topoSwitch : nullSwitch;
-        this.switchPort = (switchPort != null) ? switchPort: nullPort;
-        this.portQueue = (portQueue != null) ? portQueue: nullQueue;
+        if (topoSwitch == null) throw new IllegalArgumentException("Switch can't be null");
+        this.topoSwitch = topoSwitch;
+        this.switchPort = (switchPort != null) ? switchPort: new Port(this.topoSwitch,NULL_ID);
+        this.portQueue = (portQueue != null) ? portQueue: new PortQueue(this.switchPort,NULL_ID);
     }
 
     public LinkEndpoint(PortQueue portQueue) {
@@ -50,11 +55,29 @@ public class LinkEndpoint implements ITopoSlug {
         return slug;
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof LinkEndpoint)) return false;
+
+        LinkEndpoint that = (LinkEndpoint) o;
+
+        if (topoSwitch != null ? !topoSwitch.equals(that.topoSwitch) : that.topoSwitch != null)
+            return false;
+        if (switchPort != null ? !switchPort.equals(that.switchPort) : that.switchPort != null)
+            return false;
+        return portQueue != null ? portQueue.equals(that.portQueue) : that.portQueue == null;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = topoSwitch != null ? topoSwitch.hashCode() : 0;
+        result = 31 * result + (switchPort != null ? switchPort.hashCode() : 0);
+        result = 31 * result + (portQueue != null ? portQueue.hashCode() : 0);
+        return result;
+    }
+
     public static void main(String[] args) {
-        // standard null endpoint
-        System.out.println("nullQueue = " + nullQueue.getSlug());
-        // effectively the same as null endpoint
-        System.out.println("null port = " + new LinkEndpoint(null).getSlug());
     }
 
 }
