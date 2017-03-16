@@ -1,0 +1,11 @@
+{
+ "controllers": [
+  {
+   "host": "kilda", 
+   "name": "floodlight", 
+   "port": 6653
+  }
+ ], 
+ "switches": 5,
+ "links": 20
+}

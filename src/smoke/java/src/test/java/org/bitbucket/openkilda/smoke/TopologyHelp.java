@@ -37,17 +37,34 @@ public class TopologyHelp {
     /**
      * Creates the topology through Mininet.
      *
-     * @param mininetJson - the json doc that is suitable for the mininet API
+     * @param json - the json doc that is suitable for the mininet API
      */
-    public static boolean CreateTopology(String mininetJson){
+    public static boolean CreateTopology(String json){
         long current = System.currentTimeMillis();
         Client client = ClientBuilder.newClient(new ClientConfig());
         Response result = client.target("http://localhost:38080").path("/topology")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.entity(mininetJson,MediaType.APPLICATION_JSON));
+                .post(Entity.entity(json,MediaType.APPLICATION_JSON));
 
         System.out.println("\n== Create Topology\n==> result = " + result);
         System.out.println("==> CreateTopology Time: " + (double)(((System.currentTimeMillis() -
+                current)
+                / 1000.0)));
+
+        return result.getStatus() == 200;
+    }
+
+
+    public static boolean TestMininetCreate(String json){
+        long current = System.currentTimeMillis();
+        Client client = ClientBuilder.newClient(new ClientConfig());
+        Response result = client.target("http://localhost:38080").path("/topo_speed_test_up")
+                .request(MediaType.APPLICATION_JSON)
+                .post(Entity.entity(json,MediaType.APPLICATION_JSON));
+
+        System.out.println("\n== Mininet Create Random Topology\n==> result = " + result);
+        System.out.println("==> Mininet Create Random Topology Time: " + (double)(((System
+                .currentTimeMillis() -
                 current)
                 / 1000.0)));
 
@@ -64,21 +81,39 @@ public class TopologyHelp {
 
         Client client = ClientBuilder.newClient(new ClientConfig());
 
-        String result = client.target("http://127.0.0.1:80").path("/api/v1/topology")
+        String result = client.target("http://localhost:80").path("/api/v1/topology/network")
                 .request(MediaType.TEXT_PLAIN_TYPE)
-                .header("Authorization", "Basic " + java.util.Base64.getEncoder().encodeToString
-                        ("admin:admin".getBytes()))
                 .get(String.class);
 
         return result;
     }
 
 
-    public static void main(String[] args) throws IOException {
-        TopologyHelp.DeleteTopology();
+    /**
+     * NB: This method calls TE, not Mininet
+     *
+     * @return The JSON document of the Topology from the Topology Engine
+     */
+    public static String ClearTopology(){
 
-        URL url = Resources.getResource("topologies/partial-topology.json");
-        String doc = Resources.toString(url, Charsets.UTF_8);
-        TopologyHelp.CreateTopology(doc);
+        Client client = ClientBuilder.newClient(new ClientConfig());
+
+        String result = client.target("http://localhost:80").path("/api/v1/topology/clear")
+                .request(MediaType.TEXT_PLAIN_TYPE)
+                .get(String.class);
+
+        return result;
+    }
+
+
+
+    public static void main(String[] args) throws IOException {
+        // TopologyHelp.DeleteTopology();
+//        URL url = Resources.getResource("topologies/partial-topology.json");
+//        String doc = Resources.toString(url, Charsets.UTF_8);
+//        TopologyHelp.CreateTopology(doc);
+
+        System.out.println("GetTopology(): = " + TopologyHelp.GetTopology());
+        System.out.println("ClearTopology(): = " + TopologyHelp.ClearTopology());
     }
 }

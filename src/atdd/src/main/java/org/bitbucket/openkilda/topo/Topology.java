@@ -19,7 +19,6 @@ public class Topology implements ITopology {
 	// TODO: consider using TopoID or TopoSlug as the key, not String
     private final ConcurrentMap<String, Switch> switches;
     private final ConcurrentMap<String, Link> links;
-    private final ConcurrentMap<String, LinkEndpoint> endpoints;
     private final String src;
 
     /** Use this constructor to build up or unserialize a topology */
@@ -31,7 +30,6 @@ public class Topology implements ITopology {
     public Topology(String doc) {
         switches = new ConcurrentHashMap<>();
         links = new ConcurrentHashMap<>();
-        endpoints = new ConcurrentHashMap<>();
         src = doc;
 	}
 
@@ -43,11 +41,6 @@ public class Topology implements ITopology {
     @Override
     public ConcurrentMap<String, Link> getLinks() {
         return links;
-    }
-
-    @JsonIgnore
-    public ConcurrentMap<String, LinkEndpoint> getEndpoints() {
-        return endpoints;
     }
 
     @Override
@@ -64,6 +57,15 @@ public class Topology implements ITopology {
         return sb.toString();
     }
 
+    /**
+     * Clear the Topology, making it empty.
+     */
+    public void clear() {
+        switches.clear();
+        links.clear();
+    }
+
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder(256);
@@ -78,14 +80,6 @@ public class Topology implements ITopology {
         }
         sb.append("\t}\n}");
 
-//        sb.append("Topology{\n");
-//        sb.append("Topology{\n");
-//        +
-//                 + switches +
-//                ", links=" + links +
-//                ", endpoints=" + endpoints +
-//                '}';
-
         return sb.toString();
     }
 
@@ -98,16 +92,55 @@ public class Topology implements ITopology {
              */
 	@Override
 	public boolean equivalent(ITopology other) {
-		// TODO Auto-generated method stub
-		return false;
+	    // size should be the same
+        if (switches.size() != other.getSwitches().size()) return false;
+        if (links.size() != other.getLinks().size()) return false;
+
+        // for now, ensure the each entryset matches (ie each is contained in the other)
+        if (!switches.entrySet().containsAll(other.getSwitches().entrySet())) return false;
+        if (!other.getSwitches().entrySet().containsAll(switches.entrySet())) return false;
+
+        // ..same strategy for links..
+        if (!links.entrySet().containsAll(other.getLinks().entrySet())) return false;
+        if (!other.getLinks().entrySet().containsAll(links.entrySet())) return false;
+
+		return true;
 	}
 
-	/*
-	 * For Testing
-	 */
-	public static void main(String[] args) {
-		//TODO:
-		//NetworkGraph ng = new NetworkGraph();
-	}
+    /**
+     * This ignores the doc field - that isn't an essential part of equality.
+     */
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Topology)) return false;
+
+        Topology topology = (Topology) o;
+
+        if (!switches.equals(topology.switches)) return false;
+        if (!links.equals(topology.links)) return false;
+        return true;
+    }
+
+    /**
+     * This ignores the doc field - that isn't an essential part of equality.
+     */
+    @Override
+    public int hashCode() {
+        int result = switches.hashCode();
+        result = 31 * result + links.hashCode();
+        return result;
+    }
+
+    /*
+     * For Testing
+     */
+    public static void main(String[] args) {
+        Topology t1 = new Topology();
+        Topology t2 = new Topology();
+        System.out.println("equivalent: " + t1.equivalent(t2));
+        System.out.println("equals: " + t1.equals(t2));
+    }
+
 
 }

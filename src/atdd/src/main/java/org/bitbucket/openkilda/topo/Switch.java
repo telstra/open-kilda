@@ -33,4 +33,21 @@ public class Switch implements ITopoSlug {
 		return slug;
 	}
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Switch)) return false;
+
+        Switch aSwitch = (Switch) o;
+
+        if (!ports.equals(aSwitch.ports)) return false;
+        return id != null ? id.equals(aSwitch.id) : aSwitch.id == null;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = ports.hashCode();
+        result = 31 * result + (id != null ? id.hashCode() : 0);
+        return result;
+    }
 }

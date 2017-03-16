@@ -56,8 +56,6 @@ public class TopologyBuilder {
         ConcurrentMap<String, Switch> switches = t.getSwitches();
         ConcurrentMap<String, Switch> altSwitchId = new ConcurrentHashMap<>();
         ConcurrentMap<String, Link> links = t.getLinks();
-        ConcurrentMap<String, LinkEndpoint> endpoints = t.getEndpoints();
-
 
         ObjectMapper mapper = new ObjectMapper();
         Map<String,ArrayList<Map<String,String>>> root = mapper.readValue(jsonDoc, Map.class);
@@ -65,7 +63,7 @@ public class TopologyBuilder {
         // populate switches first
         ArrayList<Map<String,String>> jsonSwitches = root.get("switches");
         for (Map<String,String> s : jsonSwitches) {
-            String id = s.get("dpid");
+            String id = normalSwitchID(s.get("dpid"));
             Switch newSwitch = new Switch(id);
             switches.put(id, newSwitch);
             if (s.get("name") != null)
@@ -82,7 +80,6 @@ public class TopologyBuilder {
             Switch dst = switches.get(dstId);
             if (dst == null) dst = altSwitchId.get(dstId);
 
-
             Link link = new Link(
                     new LinkEndpoint(src,null,null),
                     new LinkEndpoint(dst,null,null)
@@ -93,15 +90,61 @@ public class TopologyBuilder {
         return t;
     }
 
+    /**
+     * In case the ID hasn't been normalized to what Mininet does.
+     * This should match what mininet / kilda process - ie xx:xx.. 8 sets of xx in lower case.
+     */
+    private static final String normalSwitchID(String id){
+        // normalize the ID ... I assume (mostly) the id is a valid mininet ID coming in.
+        // now, need to make it look like what mininet / topology engine generate.
+
+        if (id.contains(":") == false){
+            StringBuilder sb = new StringBuilder(id.substring(0,2));
+            for (int i = 2; i < 16; i+=2) {
+                sb.append(":").append(id.substring(i,i+2));
+            }
+            id = sb.toString();
+        }
+        id = id.toLowerCase(); // mininet will do lower case ..
+        System.out.println("normalSwitchID: id = " + id);
+        return id;
+    }
+
     public static final Topology buildTopoFromTopoEngineJson(String jsonDoc) throws IOException {
         Topology t = new Topology(jsonDoc);
         ConcurrentMap<String, Switch> switches = t.getSwitches();
-        ConcurrentMap<String, Switch> altSwitchId = new ConcurrentHashMap<>();
         ConcurrentMap<String, Link> links = t.getLinks();
-        ConcurrentMap<String, LinkEndpoint> endpoints = t.getEndpoints();
 
+        // {"nodes":[{"name":"string", "outgoing_relationships": ["string",..]},..]}
         ObjectMapper mapper = new ObjectMapper();
-        Map<String,ArrayList<Map<String,String>>> root = mapper.readValue(jsonDoc, Map.class);
+        Map<String,ArrayList<?>> root = mapper.readValue(jsonDoc, Map.class);
+
+        // populate switches first
+        ArrayList<Map<String,?>> jsonSwitches = (ArrayList<Map<String, ?>>) root.get("nodes");
+        for (Map<String,?> s : jsonSwitches) {
+            String id = (String) s.get("name");
+            Switch newSwitch = new Switch(id);
+            switches.put(id, newSwitch);
+        }
+
+        // now populate links
+        for (Map<String,?> s : jsonSwitches) {
+            Switch src = switches.get(s.get("name"));
+
+            ArrayList<String> outbound = (ArrayList<String>) s.get("outgoing_relationships");
+            if (outbound != null) {
+                for (String other : outbound) {
+                    Switch dst = switches.get(other);
+                    Link link = new Link(
+                            // TODO: LinkEndpoint is immutable .. so, with no port/queue .. we should
+                            // TODO: probably reuse the same endpoint. Why not?
+                            new LinkEndpoint(src, null, null),
+                            new LinkEndpoint(dst, null, null)
+                    );
+                    links.put(link.getShortSlug(), link);
+                }
+            }
+        }
 
         return t;
     }
@@ -115,7 +158,6 @@ public class TopologyBuilder {
         // Add Switches
         ConcurrentMap<String, Switch> switches = t.getSwitches();
         ConcurrentMap<String, Link> links = t.getLinks();
-        ConcurrentMap<String, LinkEndpoint> endpoints = t.getEndpoints();
 
         for (int i = 0; i < numSwitches; i++) {
             // model the Mininet naming scheme
@@ -143,8 +185,6 @@ public class TopologyBuilder {
 
         LinkEndpoint e1 = new LinkEndpoint(q1);
         LinkEndpoint e2 = new LinkEndpoint(q2);
-        t.getEndpoints().put(e1.getSlug(),e1);
-        t.getEndpoints().put(e2.getSlug(),e2);
 
         Link link1 = new Link(e1,e2);
         Link link2 = new Link(e2,e1);

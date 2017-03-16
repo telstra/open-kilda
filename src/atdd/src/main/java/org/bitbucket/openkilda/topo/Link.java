@@ -37,6 +37,24 @@ public class Link implements ITopoSlug {
 		return shortSlug;
 	}
 
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (!(o instanceof Link)) return false;
+
+		Link link = (Link) o;
+
+		if (src != null ? !src.equals(link.src) : link.src != null) return false;
+		return dst != null ? dst.equals(link.dst) : link.dst == null;
+	}
+
+	@Override
+	public int hashCode() {
+		int result = src != null ? src.hashCode() : 0;
+		result = 31 * result + (dst != null ? dst.hashCode() : 0);
+		return result;
+	}
+
 	public static void main(String[] args) {
         LinkEndpoint ep1 = new LinkEndpoint(null,null, null);
         LinkEndpoint ep2 = new LinkEndpoint(null,null, null);
