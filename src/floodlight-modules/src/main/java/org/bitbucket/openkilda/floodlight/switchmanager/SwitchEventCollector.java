@@ -10,7 +10,8 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
-import org.apache.kafka.clients.producer.KafkaProducer;
+import net.floodlightcontroller.staticentry.IStaticEntryPusherService;
+import net.floodlightcontroller.util.FlowModUtils;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.bitbucket.openkilda.floodlight.kafka.KafkaMessageProducer;
 import org.bitbucket.openkilda.floodlight.message.InfoMessage;
@@ -19,21 +20,23 @@ import org.bitbucket.openkilda.floodlight.message.info.InfoData;
 import org.bitbucket.openkilda.floodlight.message.info.PortInfoData;
 import org.bitbucket.openkilda.floodlight.message.info.SwitchInfoData;
 import org.bitbucket.openkilda.floodlight.message.info.SwitchInfoData.SwitchEventType;
-import org.bitbucket.openkilda.floodlight.pathverification.IPathVerificationService;
-import org.bitbucket.openkilda.floodlight.pathverification.PathVerificationService;
+import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
-import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.protocol.action.OFAction;
+import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
+import org.projectfloodlight.openflow.protocol.action.OFActionSetField;
+import org.projectfloodlight.openflow.protocol.action.OFActions;
+import org.projectfloodlight.openflow.protocol.match.Match;
+import org.projectfloodlight.openflow.protocol.match.MatchField;
+import org.projectfloodlight.openflow.protocol.oxm.OFOxms;
+import org.projectfloodlight.openflow.types.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Map;
-import java.util.Properties;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.*;
+
+import static org.bitbucket.openkilda.floodlight.pathverification.PathVerificationService.VERIFICATION_BCAST_PACKET_DST;
+import static org.bitbucket.openkilda.floodlight.pathverification.PathVerificationService.VERIFICATION_PACKET_UDP_PORT;
 
 public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListener {
 
@@ -42,7 +45,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
     private Properties kafkaProps;
     private String topic;
     private KafkaMessageProducer kafkaProducer;
-    private IPathVerificationService pathVerificationService;
+    private IStaticEntryPusherService sfpService;
 
     /**
      * IOFSwitchListener methods
@@ -63,7 +66,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
     @Override
     public void switchActivated(DatapathId switchId) {
         Message message = buildSwitchMessage(switchId, SwitchEventType.ACTIVATED);
-        pathVerificationService.installVerificationRules(switchId);
+        installDefaultRules(switchId);
         postMessage(topic, message);
 
         IOFSwitch sw = switchService.getSwitch(switchId);
@@ -112,7 +115,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
         services.add(IFloodlightProviderService.class);
         services.add(IOFSwitchService.class);
         services.add(KafkaMessageProducer.class);
-        services.add(IPathVerificationService.class);
+        services.add(IStaticEntryPusherService.class);
         return services;
     }
 
@@ -121,7 +124,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
         IFloodlightProviderService floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
         switchService = context.getServiceImpl(IOFSwitchService.class);
         kafkaProducer = context.getServiceImpl(KafkaMessageProducer.class);
-        pathVerificationService = context.getServiceImpl(IPathVerificationService.class);
+        sfpService = context.getServiceImpl(IStaticEntryPusherService.class);
         logger = LoggerFactory.getLogger(SwitchEventCollector.class);
 
         Map<String, String> configParameters = context.getConfigParams(this);
@@ -177,5 +180,84 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
         } catch (JsonProcessingException e) {
             logger.error("error", e);
         }
+    }
+
+    private void installDropFlow(DatapathId switchId) {
+        IOFSwitch sw = switchService.getSwitch(switchId);
+        OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();
+        fmb.setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT);
+        fmb.setHardTimeout(FlowModUtils.INFINITE_TIMEOUT);
+        fmb.setBufferId(OFBufferId.NO_BUFFER);
+        fmb.setCookie(U64.of(1L));
+        fmb.setPriority(FlowModUtils.PRIORITY_MIN);
+        OFFlowMod flowMod  = fmb.build();
+
+        logger.debug("Adding drop flow to {}.", switchId);
+        String flowname = "--DropRule--" + switchId.toString();
+        sfpService.addFlow(flowname, flowMod, switchId);
+    }
+
+    public MacAddress dpidToMac(IOFSwitch sw) {
+        return MacAddress.of(Arrays.copyOfRange(sw.getId().getBytes(), 2, 8));
+    }
+
+    protected Match buildVerificationMatch(IOFSwitch sw, boolean isBroadcast) {
+        MacAddress dstMac = MacAddress.of(VERIFICATION_BCAST_PACKET_DST);
+        if (!isBroadcast) {
+            dstMac = dpidToMac(sw);
+        }
+        Match.Builder mb = sw.getOFFactory().buildMatch();
+        mb.setExact(MatchField.ETH_DST, dstMac).setExact(MatchField.ETH_TYPE, EthType.IPv4)
+                .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
+                .setExact(MatchField.UDP_DST, TransportPort.of(VERIFICATION_PACKET_UDP_PORT))
+                .setExact(MatchField.UDP_SRC, TransportPort.of(VERIFICATION_PACKET_UDP_PORT));
+        return mb.build();
+    }
+
+    protected List<OFAction> buildSendToControllerAction(IOFSwitch sw) {
+        ArrayList<OFAction> actionList = new ArrayList<>();
+        OFActions actions = sw.getOFFactory().actions();
+        OFActionOutput output = actions.buildOutput().setMaxLen(0xFFffFFff).setPort(OFPort.CONTROLLER)
+                .build();
+        actionList.add(output);
+
+        // Set Destination MAC to own DPID
+        OFOxms oxms = sw.getOFFactory().oxms();
+        OFActionSetField dstMac = actions.buildSetField()
+                .setField(oxms.buildEthDst().setValue(dpidToMac(sw)).build()).build();
+        actionList.add(dstMac);
+        return actionList;
+    }
+
+    protected OFFlowMod buildFlowMod(IOFSwitch sw, Match match, List<OFAction> actionList) {
+        OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();
+        fmb.setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT);
+        fmb.setHardTimeout(FlowModUtils.INFINITE_TIMEOUT);
+        fmb.setBufferId(OFBufferId.NO_BUFFER);
+        fmb.setCookie(U64.of(123L));
+        fmb.setPriority(FlowModUtils.PRIORITY_VERY_HIGH);
+        fmb.setActions(actionList);
+        fmb.setMatch(match);
+        return fmb.build();
+    }
+
+    public void installVerificationRule(DatapathId switchId, boolean isBroadcast) {
+        IOFSwitch sw = switchService.getSwitch(switchId);
+
+        Match match = buildVerificationMatch(sw, isBroadcast);
+        ArrayList<OFAction> actionList = (ArrayList<OFAction>) buildSendToControllerAction(sw);
+        OFFlowMod flowMod = buildFlowMod(sw, match, actionList);
+
+        logger.debug("Adding verification flow to {}.", switchId);
+        String flowname = (isBroadcast) ? "Broadcast" : "Unicast";
+        flowname += "--VerificationFlow--" + switchId.toString();
+        logger.debug("adding: " + flowname + " " + flowMod.toString() + "--" + switchId.toString());
+        sfpService.addFlow(flowname, flowMod, switchId);
+    }
+
+    public void installDefaultRules(DatapathId switchId) {
+        installDropFlow(switchId);
+        installVerificationRule(switchId, true);
+        installVerificationRule(switchId, false);
     }
 }

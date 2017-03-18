@@ -42,9 +42,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
 
         private void doControllerMsg(CommandMessage message) {
             CommandData data = message.getData();
-            if (data instanceof DefaultFlowsCommandData) {
-                doDefaultFlowsCommand(data);
-            } else if (data instanceof DiscoverISLCommandData) {
+            if (data instanceof DiscoverISLCommandData) {
                 doDiscoverIslCommand(data);
             } else if (data instanceof DiscoverPathCommandData) {
                 doDiscoverPathCommand(data);
@@ -52,12 +50,6 @@ public class KafkaMessageCollector implements IFloodlightModule {
                 logger.error("unknown data type: {}", data.toString());
             }
 
-        }
-
-        private void doDefaultFlowsCommand(CommandData data) {
-            DefaultFlowsCommandData command = (DefaultFlowsCommandData) data;
-            logger.debug("sending default flows to {}", (command.getSwitchId()));
-            pathVerificationService.installVerificationRule(DatapathId.of(command.getSwitchId()), false);
         }
 
         private void doDiscoverIslCommand(CommandData data) {
