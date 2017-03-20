@@ -9,9 +9,8 @@ from kafka import KafkaConsumer
 from kafka import KafkaProducer
 
 KAFKA_GROUP_ID = 'kilda-workflow-consumers'
-KAFKA_TPE_TOPIC = 'kilda-test'
-KAFKA_SPK_TOPIC = 'kilda-speaker'
-KAFKA_TOPICS = [KAFKA_TPE_TOPIC, KAFKA_SPK_TOPIC]
+KAFKA_TOPIC = 'kilda-test'
+KAFA_TOPICS = ['kilda-test']
 KAFKA_CONSUMER_COUNT = 5
 KAFKA_PRODUCER_COUNT = 10
 ISL_DISCOVER_FREQUENCY = 30
@@ -80,8 +79,7 @@ class Producer(threading.Thread):
         while not shutting_down:
             message = queue.get()
             logging.info("sending: {}".format(message))
-            producer.send(message['topic'], message['message'])
-            message.done()
+            producer.send(KAFKA_TOPIC, message)
         producer.close()
 
 
@@ -95,11 +93,12 @@ class Consumer(threading.Thread):
         """
         Listens to Kafka and grabs messages
         """
+        topics = [args.topic]
         consumer = KafkaConsumer(bootstrap_servers=args.server,
                                  auto_offset_reset='latest',
                                  group_id=KAFKA_GROUP_ID,
                                  api_version=(0, 10))
-        consumer.subscribe(KAFKA_TOPICS)
+        consumer.subscribe(topics)
 
         try:
             while not shutting_down:
@@ -177,7 +176,6 @@ def switch_activated(message):
         message: switch message
     """
     logging.info("switch {} activated.".format(message['switch_id']))
-    queue.put({"topic": KAFKA_TPE_TOPIC, "message": message})
     switch_insert_default_flows(message['switch_id'])
 
 
@@ -189,7 +187,6 @@ def switch_deactivated(message):
         message: switch message
     """
     logging.info("switch {} deactivated.".format(message['switch_id']))
-    queue.put({"topic": KAFKA_TPE_TOPIC, "message": message})
     remove_switch_for_discover(message['switch_id'])
 
 
@@ -243,7 +240,6 @@ def port_add(message):
     """
     logging.info("switch {} port {} added.".format(message['switch_id'],
                  message['port_no']))
-    queue.put({"topic": KAFKA_TPE_TOPIC, "message": message})
     add_port_for_discover(message['switch_id'], message['port_no'])
 
 
@@ -256,7 +252,6 @@ def port_delete(message):
     """
     logging.info("switch {} port {} deleted.".format(message['switch_id'],
                  message['port_no']))
-    queue.put({"topic": KAFKA_TPE_TOPIC, "message": message})
     remove_port_for_discover(message['switch_id'], message['port_no'])
 
 
@@ -269,7 +264,6 @@ def port_up(message):
     """
     logging.info("switch {} port {} up.".format(message['switch_id'],
                  message['port_no']))
-    queue.put({"topic": KAFKA_TPE_TOPIC, "message": message})
     add_port_for_discover(message['switch_id'], message['port_no'])
 
 
@@ -282,7 +276,6 @@ def port_down(message):
     """
     logging.info("switch {} port {} down.".format(message['switch_id'],
                  message['port_no']))
-    queue.put({"topic": KAFKA_TPE_TOPIC, "message": message})
     remove_port_for_discover(message['switch_id'], message['port_no'])
 
 
@@ -307,6 +300,8 @@ def parse_cmdline():
     parser = argparse.ArgumentParser()
     parser.add_argument('server', action='store',
                         help='Kafka server:port.')
+    parser.add_argument('topic', action='store',
+                        help='Kafka topic to listen to')
     return parser.parse_args()
 
 
@@ -323,7 +318,7 @@ def switch_insert_default_flows(switch_id):
                "timestamp": long(time.time()*1000),
                "data": data}
     logger.info(message)
-    queue.put({"topic": KAFKA_SPK_TOPIC, "message": message})
+    queue.put(message)
 
 
 def send_isl_discover_packet(switch_id, port):
@@ -343,7 +338,7 @@ def send_isl_discover_packet(switch_id, port):
                "data": data}
 
     logger.info(message)
-    queue.put({"topic": KAFKA_SPK_TOPIC, "message": message})
+    queue.put(message)
 
 
 def add_port_for_discover(switch_id, port):
