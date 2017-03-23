@@ -8,10 +8,11 @@ def create_consumer():
     
     bootstrapServer = os.environ['bootstrapserver']
     topic = os.environ['topic']
+    group = os.environ['group']
 
     while True:
         try: 
-            consumer = KafkaConsumer(bootstrap_servers=bootstrapServer, auto_offset_reset='earliest')
+            consumer = KafkaConsumer(bootstrap_servers=bootstrapServer, group_id=group, auto_offset_reset='earliest')
             consumer.subscribe(['{}'.format(topic)])
             print "Connected to kafka"
             break

@@ -1386,379 +1386,379 @@
  ], 
  "switches": [
   {
-   "dpid": "SW0000001E08000843", 
+   "dpid": "0000001E08000843", 
    "name": "s19"
   }, 
   {
-   "dpid": "SW0000B0D2F5C002BE", 
+   "dpid": "0000B0D2F5C002BE", 
    "name": "s75"
   }, 
   {
-   "dpid": "SW0000B0D2F5005D76", 
+   "dpid": "0000B0D2F5005D76", 
    "name": "s79"
   }, 
   {
-   "dpid": "SW0000B0D2F5005DAC", 
+   "dpid": "0000B0D2F5005DAC", 
    "name": "s47"
   }, 
   {
-   "dpid": "SW0000B0D2F5C0046E", 
+   "dpid": "0000B0D2F5C0046E", 
    "name": "s21"
   }, 
   {
-   "dpid": "SW0000001E08000863", 
+   "dpid": "0000001E08000863", 
    "name": "s29"
   }, 
   {
-   "dpid": "SW0000001E08000853", 
+   "dpid": "0000001E08000853", 
    "name": "s28"
   }, 
   {
-   "dpid": "SW0000001E08000852", 
+   "dpid": "0000001E08000852", 
    "name": "s27"
   }, 
   {
-   "dpid": "SW0000B0D2F5005B90", 
+   "dpid": "0000B0D2F5005B90", 
    "name": "s88"
   }, 
   {
-   "dpid": "SW0000B0D2F5005AEE", 
+   "dpid": "0000B0D2F5005AEE", 
    "name": "s87"
   }, 
   {
-   "dpid": "SW00007072CFADBABE", 
+   "dpid": "00007072CFADBABE", 
    "name": "s55"
   }, 
   {
-   "dpid": "SW0000B0D2F5005CD4", 
+   "dpid": "0000B0D2F5005CD4", 
    "name": "s54"
   }, 
   {
-   "dpid": "SW0000B0D2F5005AB8", 
+   "dpid": "0000B0D2F5005AB8", 
    "name": "s85"
   }, 
   {
-   "dpid": "SW0000B0D2F5B008B0", 
+   "dpid": "0000B0D2F5B008B0", 
    "name": "s24"
   }, 
   {
-   "dpid": "SW0000B0D2F5005B5A", 
+   "dpid": "0000B0D2F5005B5A", 
    "name": "s84"
   }, 
   {
-   "dpid": "SW0000B0D2F5005C32", 
+   "dpid": "0000B0D2F5005C32", 
    "name": "s51"
   }, 
   {
-   "dpid": "SW0000B0D2F50059E0", 
+   "dpid": "0000B0D2F50059E0", 
    "name": "s81"
   }, 
   {
-   "dpid": "SW0000B0D2F500527E", 
+   "dpid": "0000B0D2F500527E", 
    "name": "s82"
   }, 
   {
-   "dpid": "SW00007072CFABB56A", 
+   "dpid": "00007072CFABB56A", 
    "name": "s49"
   }, 
   {
-   "dpid": "SW00007072CFADBB84", 
+   "dpid": "00007072CFADBB84", 
    "name": "s22"
   }, 
   {
-   "dpid": "SW0000B0D2F5005BC6", 
+   "dpid": "0000B0D2F5005BC6", 
    "name": "s80"
   }, 
   {
-   "dpid": "SW0000B0D2F5005E18", 
+   "dpid": "0000B0D2F5005E18", 
    "name": "s6"
   }, 
   {
-   "dpid": "SW0000B0D2F5B00104", 
+   "dpid": "0000B0D2F5B00104", 
    "name": "s62"
   }, 
   {
-   "dpid": "SW00007072CFAA0F72", 
+   "dpid": "00007072CFAA0F72", 
    "name": "s86"
   }, 
   {
-   "dpid": "SW0000B0D2F5B0086E", 
+   "dpid": "0000B0D2F5B0086E", 
    "name": "s5"
   }, 
   {
-   "dpid": "SW0000B0D2F5005A82", 
+   "dpid": "0000B0D2F5005A82", 
    "name": "s76"
   }, 
   {
-   "dpid": "SW0000B0D2F5B05145", 
+   "dpid": "0000B0D2F5B05145", 
    "name": "s44"
   }, 
   {
-   "dpid": "SW00007072CFADB65C", 
+   "dpid": "00007072CFADB65C", 
    "name": "s18"
   }, 
   {
-   "dpid": "SW0000B0D2F5B05104", 
+   "dpid": "0000B0D2F5B05104", 
    "name": "s43"
   }, 
   {
-   "dpid": "SW00007072CFAA1458", 
+   "dpid": "00007072CFAA1458", 
    "name": "s45"
   }, 
   {
-   "dpid": "SW0000B0D2F5005866", 
+   "dpid": "0000B0D2F5005866", 
    "name": "s73"
   }, 
   {
-   "dpid": "SW00007072CFADB9F8", 
+   "dpid": "00007072CFADB9F8", 
    "name": "s50"
   }, 
   {
-   "dpid": "SW0000B0D2F5015A16", 
+   "dpid": "0000B0D2F5015A16", 
    "name": "s41"
   }, 
   {
-   "dpid": "SW00007072CFADC172", 
+   "dpid": "00007072CFADC172", 
    "name": "s35"
   }, 
   {
-   "dpid": "SW00007072CFAA1416", 
+   "dpid": "00007072CFAA1416", 
    "name": "s66"
   }, 
   {
-   "dpid": "SW00007072CFADC238", 
+   "dpid": "00007072CFADC238", 
    "name": "s33"
   }, 
   {
-   "dpid": "SW00007072CFAA1206", 
+   "dpid": "00007072CFAA1206", 
    "name": "s64"
   }, 
   {
-   "dpid": "SW00007072CFADB932", 
+   "dpid": "00007072CFADB932", 
    "name": "s67"
   }, 
   {
-   "dpid": "SW00007072CFABB35A", 
+   "dpid": "00007072CFABB35A", 
    "name": "s37"
   }, 
   {
-   "dpid": "SW00007072CFABB6B4", 
+   "dpid": "00007072CFABB6B4", 
    "name": "s69"
   }, 
   {
-   "dpid": "SW00007072CFABBA0E", 
+   "dpid": "00007072CFABBA0E", 
    "name": "s92"
   }, 
   {
-   "dpid": "SW00007072CFADBF62", 
+   "dpid": "00007072CFADBF62", 
    "name": "s36"
   }, 
   {
-   "dpid": "SW00007072CFAA1350", 
+   "dpid": "00007072CFAA1350", 
    "name": "s77"
   }, 
   {
-   "dpid": "SW00007072CFADB974", 
+   "dpid": "00007072CFADB974", 
    "name": "s58"
   }, 
   {
-   "dpid": "SW00007072CFADBFA4", 
+   "dpid": "00007072CFADBFA4", 
    "name": "s91"
   }, 
   {
-   "dpid": "SW0000001E08000866", 
+   "dpid": "0000001E08000866", 
    "name": "s11"
   }, 
   {
-   "dpid": "SW00007072CFD24974", 
+   "dpid": "00007072CFD24974", 
    "name": "s59"
   }, 
   {
-   "dpid": "SW00007072CFADB61A", 
+   "dpid": "00007072CFADB61A", 
    "name": "s83"
   }, 
   {
-   "dpid": "SW0000001E08000893", 
+   "dpid": "0000001E08000893", 
    "name": "s12"
   }, 
   {
-   "dpid": "SW0000001E080008A4", 
+   "dpid": "0000001E080008A4", 
    "name": "s9"
   }, 
   {
-   "dpid": "SW0000001E08000855", 
+   "dpid": "0000001E08000855", 
    "name": "s13"
   }, 
   {
-   "dpid": "SW0000B0D2F5005A16", 
+   "dpid": "0000B0D2F5005A16", 
    "name": "s78"
   }, 
   {
-   "dpid": "SW0000001E08000E45", 
+   "dpid": "0000001E08000E45", 
    "name": "s8"
   }, 
   {
-   "dpid": "SW0000B0D2F5005DE2", 
+   "dpid": "0000B0D2F5005DE2", 
    "name": "s53"
   }, 
   {
-   "dpid": "SW0000001E0800085C", 
+   "dpid": "0000001E0800085C", 
    "name": "s23"
   }, 
   {
-   "dpid": "SW0000B0D2F5005212", 
+   "dpid": "0000B0D2F5005212", 
    "name": "s68"
   }, 
   {
-   "dpid": "SW0000B0D2F5B00934", 
+   "dpid": "0000B0D2F5B00934", 
    "name": "s7"
   }, 
   {
-   "dpid": "SW0000B0D2F5B05000", 
+   "dpid": "0000B0D2F5B05000", 
    "name": "s46"
   }, 
   {
-   "dpid": "SW00007072CFADBFE6", 
+   "dpid": "00007072CFADBFE6", 
    "name": "s20"
   }, 
   {
-   "dpid": "SW0000001E08000DA2", 
+   "dpid": "0000001E08000DA2", 
    "name": "s10"
   }, 
   {
-   "dpid": "SW0000B0D2F5005C9E", 
+   "dpid": "0000B0D2F5005C9E", 
    "name": "s42"
   }, 
   {
-   "dpid": "SW0000001E08000867", 
+   "dpid": "0000001E08000867", 
    "name": "s74"
   }, 
   {
-   "dpid": "SW00007072CFADBDD6", 
+   "dpid": "00007072CFADBDD6", 
    "name": "s65"
   }, 
   {
-   "dpid": "SW00007072CFABB528", 
+   "dpid": "00007072CFABB528", 
    "name": "s34"
   }, 
   {
-   "dpid": "SW0000001E08000E2F", 
+   "dpid": "0000001E08000E2F", 
    "name": "s1"
   }, 
   {
-   "dpid": "SW0000CC37AB32F318", 
+   "dpid": "0000CC37AB32F318", 
    "name": "s2"
   }, 
   {
-   "dpid": "SW0000CC37AB33020C", 
+   "dpid": "0000CC37AB33020C", 
    "name": "s3"
   }, 
   {
-   "dpid": "SW0000B0D2F5B0082C", 
+   "dpid": "0000B0D2F5B0082C", 
    "name": "s17"
   }, 
   {
-   "dpid": "SW00007072CF9F1C68", 
+   "dpid": "00007072CF9F1C68", 
    "name": "s32"
   }, 
   {
-   "dpid": "SW00007072CF9D5908", 
+   "dpid": "00007072CF9D5908", 
    "name": "s63"
   }, 
   {
-   "dpid": "SW0000B0D2F5B00724", 
+   "dpid": "0000B0D2F5B00724", 
    "name": "s26"
   }, 
   {
-   "dpid": "SW0000B0D2F5B007A8", 
+   "dpid": "0000B0D2F5B007A8", 
    "name": "s48"
   }, 
   {
-   "dpid": "SW0000B0D2F5B009FA", 
+   "dpid": "0000B0D2F5B009FA", 
    "name": "s4"
   }, 
   {
-   "dpid": "SW0000B0D2F5B004D3", 
+   "dpid": "0000B0D2F5B004D3", 
    "name": "s89"
   }, 
   {
-   "dpid": "SW0000B0D2F5C0057C", 
+   "dpid": "0000B0D2F5C0057C", 
    "name": "s56"
   }, 
   {
-   "dpid": "SW00007072CFADB596", 
+   "dpid": "00007072CFADB596", 
    "name": "s57"
   }, 
   {
-   "dpid": "SW00007072CFADB9B6", 
+   "dpid": "00007072CFADB9B6", 
    "name": "s90"
   }, 
   {
-   "dpid": "SW0000CC37AB3E741E", 
+   "dpid": "0000CC37AB3E741E", 
    "name": "s25"
   }, 
   {
-   "dpid": "SW0000CC37AB3E7E6E", 
+   "dpid": "0000CC37AB3E7E6E", 
    "name": "s52"
   }, 
   {
-   "dpid": "SW0000CC37AB32FCA2", 
+   "dpid": "0000CC37AB32FCA2", 
    "name": "s71"
   }, 
   {
-   "dpid": "SW0000CC37AB32F8C4", 
+   "dpid": "0000CC37AB32F8C4", 
    "name": "s39"
   }, 
   {
-   "dpid": "SW0000001E080010BE", 
+   "dpid": "0000001E080010BE", 
    "name": "s15"
   }, 
   {
-   "dpid": "SW0000001E08000F55", 
+   "dpid": "0000001E08000F55", 
    "name": "s14"
   }, 
   {
-   "dpid": "SW0000CC37AB3303DA", 
+   "dpid": "0000CC37AB3303DA", 
    "name": "s70"
   }, 
   {
-   "dpid": "SW0000CC37AB32FDEC", 
+   "dpid": "0000CC37AB32FDEC", 
    "name": "s38"
   }, 
   {
-   "dpid": "SW0000001E08000F34", 
+   "dpid": "0000001E08000F34", 
    "name": "s30"
   }, 
   {
-   "dpid": "SW0000CC37AB32FD68", 
+   "dpid": "0000CC37AB32FD68", 
    "name": "s93"
   }, 
   {
-   "dpid": "SW0000CC37AB330314", 
+   "dpid": "0000CC37AB330314", 
    "name": "s60"
   }, 
   {
-   "dpid": "SW0000001E08001096", 
+   "dpid": "0000001E08001096", 
    "name": "s31"
   }, 
   {
-   "dpid": "SW0000CC37AB330902", 
+   "dpid": "0000CC37AB330902", 
    "name": "s94"
   }, 
   {
-   "dpid": "SW0000CC37AB32FDAA", 
+   "dpid": "0000CC37AB32FDAA", 
    "name": "s61"
   }, 
   {
-   "dpid": "SW0000001E080010FE", 
+   "dpid": "0000001E080010FE", 
    "name": "s16"
   }, 
   {
-   "dpid": "SW0000CC37AB32FC60", 
+   "dpid": "0000CC37AB32FC60", 
    "name": "s72"
   }, 
   {
-   "dpid": "SW0000CC37AB3306B0", 
+   "dpid": "0000CC37AB3306B0", 
    "name": "s40"
   }
  ]

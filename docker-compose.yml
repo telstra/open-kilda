@@ -59,6 +59,7 @@ services:
       neo4jbolt: 'http://neo4j:7474/db/data/cypher'
       bootstrapserver: 'kafka.pendev:9092'
       topic: 'kilda-test'
+      group: 'python-tpe-tl-consumer'
       OK_TESTS: "${OK_TESTS:-none}"
     depends_on:
       kafka:
