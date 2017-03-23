@@ -27,6 +27,7 @@ if "DISABLE_LOGIN" in os.getenv("OK_TESTS","none"):
 from app import login
 from app import topology
 from app import models
+from app import flows
 
 
 if __name__ == "__main__":
