@@ -8,11 +8,9 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.bitbucket.openkilda.floodlight.message.CommandMessage;
 import org.bitbucket.openkilda.floodlight.message.Message;
-import org.bitbucket.openkilda.floodlight.message.command.CommandData;
-import org.bitbucket.openkilda.floodlight.message.command.DefaultFlowsCommandData;
-import org.bitbucket.openkilda.floodlight.message.command.DiscoverISLCommandData;
-import org.bitbucket.openkilda.floodlight.message.command.DiscoverPathCommandData;
+import org.bitbucket.openkilda.floodlight.message.command.*;
 import org.bitbucket.openkilda.floodlight.pathverification.IPathVerificationService;
+import org.bitbucket.openkilda.floodlight.switchmanager.SwitchEventCollector;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.slf4j.Logger;
@@ -30,6 +28,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
     private final AtomicBoolean closed = new AtomicBoolean(false);
     private ObjectMapper mapper;
     private IPathVerificationService pathVerificationService;
+    private SwitchEventCollector switchEventCollector;
     private KafkaMessageProducer kafkaProducer;
 
     class ParseRecord implements Runnable {
@@ -46,10 +45,15 @@ public class KafkaMessageCollector implements IFloodlightModule {
                 doDiscoverIslCommand(data);
             } else if (data instanceof DiscoverPathCommandData) {
                 doDiscoverPathCommand(data);
+            } else if (data instanceof InstallIngressFlow) {
+                doInstallIngressFlow(data);
+            } else if (data instanceof InstallEgressFlow) {
+                doInstallEgressFlow(data);
+            } else if (data instanceof InstallTransitFlow) {
+                doInstallTransitFlow(data);
             } else {
                 logger.error("unknown data type: {}", data.toString());
             }
-
         }
 
         private void doDiscoverIslCommand(CommandData data) {
@@ -63,6 +67,38 @@ public class KafkaMessageCollector implements IFloodlightModule {
             DiscoverPathCommandData command = (DiscoverPathCommandData) data;
             logger.debug("sending discover Path to {}:{} - {}",
                          new Object[]{command.getSrcSwitchId(), command.getSrcPortNo(), command.getDstSwitchId()});
+
+        }
+
+        private void doInstallIngressFlow(CommandData data) {
+            InstallIngressFlow command = (InstallIngressFlow) data;
+            logger.debug("creating an ingress flow {} on {} with input_port: {}, output_port: {}, input_vlan_id: {}, " +
+                    "transit_vlan_id: {}", new Object[]{command.getFlowName(), command.getSwitchId(),
+                    command.getInputPort(), command.getOutputPort(), command.getInputVlanId(),
+                    command.getTransitVlanId()});
+            switchEventCollector.installIngressFlow(DatapathId.of(command.getSwitchId()),
+                    command.getInputPort().intValue(), command.getOutputPort().intValue(),
+                    command.getInputVlanId().intValue(), command.getTransitVlanId().intValue());
+        }
+
+        private void doInstallEgressFlow(CommandData data) {
+            InstallEgressFlow command = (InstallEgressFlow) data;
+            logger.debug("creating an engress flow {} on {} with input_port: {}, output_port: {}, " +
+                    "transit_vlan_id: {}", new Object[]{command.getFlowName(), command.getSwitchId(),
+                    command.getInputPort(), command.getOutputPort(), command.getTransitVlanId()});
+            switchEventCollector.installEgressFlow(DatapathId.of(command.getSwitchId()),
+                    command.getInputPort().intValue(), command.getOutputPort().intValue(),
+                    command.getTransitVlanId().intValue());
+        }
+
+        private void doInstallTransitFlow(CommandData data) {
+            InstallTransitFlow command = (InstallTransitFlow) data;
+            logger.debug("creating a transit flow {} on {} with input_port: {}, output_port: {}, " +
+                    "transit_vlan_id: {}", new Object[]{command.getFlowName(), command.getSwitchId(),
+                    command.getInputPort(), command.getOutputPort(), command.getTransitVlanId()});
+            switchEventCollector.installTransitFlow(DatapathId.of(command.getSwitchId()),
+                    command.getInputPort().intValue(), command.getOutputPort().intValue(),
+                    command.getTransitVlanId().intValue());
         }
 
         private void parseRecord(ConsumerRecord record) {
@@ -143,6 +179,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
         services.add(IFloodlightProviderService.class);
         services.add(IPathVerificationService.class);
         services.add(KafkaMessageProducer.class);
+        services.add(SwitchEventCollector.class);
         return services;
     }
 
@@ -150,6 +187,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
         IFloodlightProviderService floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
         pathVerificationService = context.getServiceImpl(IPathVerificationService.class);
+        switchEventCollector = context.getServiceImpl(SwitchEventCollector.class);
         kafkaProducer = context.getServiceImpl(KafkaMessageProducer.class);
         logger = LoggerFactory.getLogger(this.getClass());
         Map<String, String> configParameters = context.getConfigParams(this);
