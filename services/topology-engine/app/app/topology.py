@@ -87,18 +87,6 @@ def api_v1_topo_clear():
     except Exception as e:
         return "error: {}".format(str(e))
 
-
-@application.route('/api/v1/topology/path/<src_switch>/<src_port>/<dst_switch>/<dst_port>')
-@login_required
-def api_v1_topology_path(src_switch, src_port, dst_switch, dst_port):
-    query = "MATCH (a:switch{{name:'{}'}}),(b:switch{{name:'{}'}}), p = shortestPath((a)-[:isl*..15]->(b)) RETURN p".format(src_switch,dst_switch)
-    data = {'query' : query}
-    auth = (os.environ['neo4juser'], os.environ['neo4jpass'])
-    result_path = requests.post(os.environ['neo4jbolt'], data=data, auth=auth)
-    j_path = json.loads(result_path.text)
-
-    return json.dumps(j_path['data'])
-
 @application.route('/topology/chord', methods=['GET'])
 @login_required
 def topology_chord():

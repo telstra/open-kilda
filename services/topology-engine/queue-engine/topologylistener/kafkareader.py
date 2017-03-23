@@ -8,10 +8,11 @@ def create_consumer():
     
     bootstrapServer = os.environ['bootstrapserver']
     topic = os.environ['topic']
+    group = os.environ['group']
 
     while True:
         try: 
-            consumer = KafkaConsumer(bootstrap_servers=bootstrapServer, auto_offset_reset='earliest')
+            consumer = KafkaConsumer(bootstrap_servers=bootstrapServer, group_id=group, auto_offset_reset='earliest')
             consumer.subscribe(['{}'.format(topic)])
             print "Connected to kafka"
             break
@@ -23,10 +24,11 @@ def create_consumer():
 
 def read_message(consumer):
     try:
-        message = consumer.next()
-        if message:
+        message = consumer.next()   
+        if message.value is not "":
             return message.value
         else:
+            print "sleeping"
             time.sleep(1)
     except Exception as e:
         print e
