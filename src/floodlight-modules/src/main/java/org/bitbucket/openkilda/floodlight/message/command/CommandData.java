@@ -21,9 +21,12 @@ import com.fasterxml.jackson.annotation.JsonSubTypes.Type;
               property = "command")
 
 @JsonSubTypes({ 
-  @Type(value = DefaultFlowsCommandData.class, name = "install_default_flows"), 
-  @Type(value = DiscoverISLCommandData.class, name = "discover_isl"),
-  @Type(value = DiscoverPathCommandData.class, name = "discover_path")
+        @Type(value = DefaultFlowsCommandData.class, name = "install_default_flows"),
+        @Type(value = InstallIngressFlow.class, name= "install_ingress_flow"),
+        @Type(value = InstallEgressFlow.class, name= "install_egress_flow"),
+        @Type(value = InstallTransitFlow.class, name= "install_transit_flow"),
+        @Type(value = DiscoverISLCommandData.class, name = "discover_isl"),
+        @Type(value = DiscoverPathCommandData.class, name = "discover_path")
 })
 
 public abstract class CommandData extends MessageData {

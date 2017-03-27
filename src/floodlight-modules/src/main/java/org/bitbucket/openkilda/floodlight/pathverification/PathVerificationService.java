@@ -174,61 +174,6 @@ implements IFloodlightModule, IOFMessageListener, IPathVerificationService {
     return isAlive;
   }
 
-  protected Match buildVerificationMatch(IOFSwitch sw, boolean isBroadcast) {
-    MacAddress dstMac = MacAddress.of(VERIFICATION_BCAST_PACKET_DST);
-    if (!isBroadcast) {
-      dstMac = dpidToMac(sw);
-    }
-    Match.Builder mb = sw.getOFFactory().buildMatch();
-    mb.setExact(MatchField.ETH_DST, dstMac).setExact(MatchField.ETH_TYPE, EthType.IPv4)
-    .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
-    .setExact(MatchField.UDP_DST, TransportPort.of(VERIFICATION_PACKET_UDP_PORT))
-    .setExact(MatchField.UDP_SRC, TransportPort.of(VERIFICATION_PACKET_UDP_PORT));
-    return mb.build();
-  }
-
-  protected List<OFAction> buildSendToControllerAction(IOFSwitch sw) {
-    ArrayList<OFAction> actionList = new ArrayList<>();
-    OFActions actions = sw.getOFFactory().actions();
-    OFActionOutput output = actions.buildOutput().setMaxLen(0xFFffFFff).setPort(OFPort.CONTROLLER)
-        .build();
-    actionList.add(output);
-
-    // Set Destination MAC to own DPID
-    OFOxms oxms = sw.getOFFactory().oxms();
-    OFActionSetField dstMac = actions.buildSetField()
-        .setField(oxms.buildEthDst().setValue(dpidToMac(sw)).build()).build();
-    actionList.add(dstMac);
-    return actionList;
-  }
-
-  protected OFFlowMod buildFlowMod(IOFSwitch sw, Match match, List<OFAction> actionList) {
-    OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();
-    fmb.setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT);
-    fmb.setHardTimeout(FlowModUtils.INFINITE_TIMEOUT);
-    fmb.setBufferId(OFBufferId.NO_BUFFER);
-    fmb.setCookie(U64.of(123L));
-    fmb.setPriority(FlowModUtils.PRIORITY_VERY_HIGH);
-    fmb.setActions(actionList);
-    fmb.setMatch(match);
-    return fmb.build();
-  }
-
-  @Override
-  public void installVerificationRule(DatapathId switchId, boolean isBroadcast) {
-    IOFSwitch sw = switchService.getSwitch(switchId);
-
-    Match match = buildVerificationMatch(sw, isBroadcast);
-    ArrayList<OFAction> actionList = (ArrayList<OFAction>) buildSendToControllerAction(sw);
-    OFFlowMod flowMod = buildFlowMod(sw, match, actionList);
-
-    logger.debug("Adding verification flow to {}.", switchId);
-    String flowname = (isBroadcast) ? "Broadcast" : "Unicast";
-    flowname += "--VerificationFlow--" + switchId.toString();
-    logger.debug("adding: " + flowname + " " + flowMod.toString() + "--" + switchId.toString());
-    sfpService.addFlow(flowname, flowMod, switchId);
-  }
-
   protected List<OFAction> getDiscoveryActions(IOFSwitch sw, OFPort port) {
     // set actions
     List<OFAction> actions = new ArrayList<OFAction>();
@@ -368,10 +313,6 @@ implements IFloodlightModule, IOFMessageListener, IPathVerificationService {
       logger.error("error generating verification packet: ", exception);
     }
     return null;
-  }
-
-  public MacAddress dpidToMac(IOFSwitch sw) {
-    return MacAddress.of(Arrays.copyOfRange(sw.getId().getBytes(), 2, 8));
   }
 
   public VerificationPacket deserialize(Ethernet eth) throws Exception {
