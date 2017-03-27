@@ -12,7 +12,5 @@ public interface IPathVerificationService extends IFloodlightService {
   public boolean sendDiscoveryMessage(DatapathId srcSwId, OFPort port);
   
   public boolean sendDiscoveryMessage(DatapathId srcSwId, OFPort port, DatapathId dstSwId);
-  
-  public void installVerificationRule(DatapathId switchId, boolean isBroadcast);
 
 }

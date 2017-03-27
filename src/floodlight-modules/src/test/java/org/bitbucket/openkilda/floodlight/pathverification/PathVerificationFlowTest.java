@@ -86,40 +86,40 @@ public class PathVerificationFlowTest extends FloodlightTestCase {
   public void tearDown() throws Exception {
   }
 
-  @SuppressWarnings("static-access")
-  @Test
-  public void testBcastPathVerificationFlow() {
-    Match match = pvs.buildVerificationMatch(sw, true);
-    assertEquals(match.get(MatchField.ETH_DST), MacAddress.of(pvs.VERIFICATION_BCAST_PACKET_DST));
-  }
-  
-  @Test
-  public void testDpidToMac() {
-    assertArrayEquals(targetMac.getBytes(), pvs.dpidToMac(sw).getBytes());
-  }
-  
-  @Test
-  public void testUnicastPathVerificationFlow() {
-    Match match = pvs.buildVerificationMatch(sw, false);
-    assertEquals(match.get(MatchField.ETH_DST), MacAddress.of(swDpid));
-  }
-  
-  @Test
-  public void testPathVerificationAction() {
-    List<OFAction> actions = pvs.buildSendToControllerAction(sw);
-    assertEquals(actions.size(), 2);
-    assertEquals(actions.get(0).getVersion(), OFVersion.OF_13);
-    
-    // Should output to controller
-    assertEquals(actions.get(0).getType(), OFActionType.OUTPUT);
-    OFActionOutput sendToControllerRule = (OFActionOutput) actions.get(0);
-    assertEquals(sendToControllerRule.getPort(), OFPort.CONTROLLER);
-    
-    // Should rewrite DST_MAC to DPID MAC via OXM
-    assertEquals(actions.get(1).getType(), OFActionType.SET_FIELD);
-    OFActionSetField rewriteMac = (OFActionSetField) actions.get(1);
-    assertEquals(rewriteMac.getField().getValue(), pvs.dpidToMac(sw));
-    logger.info(actions.get(1).toString());
-  }
+//  @SuppressWarnings("static-access")
+//  @Test
+//  public void testBcastPathVerificationFlow() {
+//    Match match = pvs.buildVerificationMatch(sw, true);
+//    assertEquals(match.get(MatchField.ETH_DST), MacAddress.of(pvs.VERIFICATION_BCAST_PACKET_DST));
+//  }
+//
+//  @Test
+//  public void testDpidToMac() {
+//    assertArrayEquals(targetMac.getBytes(), pvs.dpidToMac(sw).getBytes());
+//  }
+//
+//  @Test
+//  public void testUnicastPathVerificationFlow() {
+//    Match match = pvs.buildVerificationMatch(sw, false);
+//    assertEquals(match.get(MatchField.ETH_DST), MacAddress.of(swDpid));
+//  }
+//
+//  @Test
+//  public void testPathVerificationAction() {
+//    List<OFAction> actions = pvs.buildSendToControllerAction(sw);
+//    assertEquals(actions.size(), 2);
+//    assertEquals(actions.get(0).getVersion(), OFVersion.OF_13);
+//
+//    // Should output to controller
+//    assertEquals(actions.get(0).getType(), OFActionType.OUTPUT);
+//    OFActionOutput sendToControllerRule = (OFActionOutput) actions.get(0);
+//    assertEquals(sendToControllerRule.getPort(), OFPort.CONTROLLER);
+//
+//    // Should rewrite DST_MAC to DPID MAC via OXM
+//    assertEquals(actions.get(1).getType(), OFActionType.SET_FIELD);
+//    OFActionSetField rewriteMac = (OFActionSetField) actions.get(1);
+//    assertEquals(rewriteMac.getField().getValue(), pvs.dpidToMac(sw));
+//    logger.info(actions.get(1).toString());
+//  }
 
 }

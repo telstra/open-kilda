@@ -10,7 +10,9 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
-import org.apache.kafka.clients.producer.KafkaProducer;
+import net.floodlightcontroller.staticentry.IStaticEntryPusherService;
+import net.floodlightcontroller.util.FlowModUtils;
+import net.floodlightcontroller.util.ParseUtils;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.bitbucket.openkilda.floodlight.kafka.KafkaMessageProducer;
 import org.bitbucket.openkilda.floodlight.message.InfoMessage;
@@ -19,27 +21,29 @@ import org.bitbucket.openkilda.floodlight.message.info.InfoData;
 import org.bitbucket.openkilda.floodlight.message.info.PortInfoData;
 import org.bitbucket.openkilda.floodlight.message.info.SwitchInfoData;
 import org.bitbucket.openkilda.floodlight.message.info.SwitchInfoData.SwitchEventType;
+import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
-import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.protocol.action.*;
+import org.projectfloodlight.openflow.protocol.match.Match;
+import org.projectfloodlight.openflow.protocol.match.MatchField;
+import org.projectfloodlight.openflow.protocol.oxm.OFOxms;
+import org.projectfloodlight.openflow.types.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Map;
-import java.util.Properties;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.*;
 
-public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListener {
+import static org.bitbucket.openkilda.floodlight.pathverification.PathVerificationService.VERIFICATION_BCAST_PACKET_DST;
+import static org.bitbucket.openkilda.floodlight.pathverification.PathVerificationService.VERIFICATION_PACKET_UDP_PORT;
+
+public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListener, IFloodlightService {
 
     private IOFSwitchService switchService;
     private Logger logger;
     private Properties kafkaProps;
     private String topic;
     private KafkaMessageProducer kafkaProducer;
+    private IStaticEntryPusherService sfpService;
 
     /**
      * IOFSwitchListener methods
@@ -60,6 +64,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
     @Override
     public void switchActivated(DatapathId switchId) {
         Message message = buildSwitchMessage(switchId, SwitchEventType.ACTIVATED);
+        installDefaultRules(switchId);
         postMessage(topic, message);
 
         IOFSwitch sw = switchService.getSwitch(switchId);
@@ -94,12 +99,16 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
 
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
-        return null;
+        Collection<Class<? extends IFloodlightService>> services = new ArrayList<>();
+        services.add(SwitchEventCollector.class);
+        return services;
     }
 
     @Override
     public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
-        return null;
+        Map<Class<? extends IFloodlightService>, IFloodlightService> map = new HashMap<>();
+        map.put(SwitchEventCollector.class, this);
+        return map;
     }
 
     @Override
@@ -108,6 +117,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
         services.add(IFloodlightProviderService.class);
         services.add(IOFSwitchService.class);
         services.add(KafkaMessageProducer.class);
+        services.add(IStaticEntryPusherService.class);
         return services;
     }
 
@@ -116,6 +126,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
         IFloodlightProviderService floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
         switchService = context.getServiceImpl(IOFSwitchService.class);
         kafkaProducer = context.getServiceImpl(KafkaMessageProducer.class);
+        sfpService = context.getServiceImpl(IStaticEntryPusherService.class);
         logger = LoggerFactory.getLogger(SwitchEventCollector.class);
 
         Map<String, String> configParameters = context.getConfigParams(this);
@@ -130,13 +141,6 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
     public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
         logger.info("Starting " + SwitchEventCollector.class.getCanonicalName());
         switchService.addOFSwitchListener(this);
-//        ExecutorService executor = Executors.newFixedThreadPool(5);
-//        try {
-//            executor.execute(new Producer());
-//        }  catch (Exception exception) {
-//            logger.error("Exception: ", exception);
-//            executor.execute(new Producer());
-//        }
     }
 
     /**
@@ -180,36 +184,198 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
         }
     }
 
-//    /**
-//     * KafkaProducer
-//     */
-//    public class Producer implements Runnable {
-//        public Message dequeueItem() {
-//            if (!queue.isEmpty()) {
-//                logger.debug("Queue size: " + queue.size());
-//                return queue.remove();
-//            } else {
-//                return null;
-//            }
-//        }
-//
-//        @Override
-//        public void run() {
-//            logger.debug("Running a Producer");
-//            KafkaProducer<String, String> producer = new KafkaProducer<>(kafkaProps);
-//            try {
-//                while (true) {
-//                    Message message = dequeueItem();
-//                    if (message != null) {
-//                        logger.debug("message = " + message.toJson());
-//                        producer.send(new ProducerRecord<>(topic, message.toJson()));
-//                    }
-//                    Thread.sleep(5);
-//                }
-//            } catch (Exception exception) {
-//                logger.error("Error: ", exception);
-//            }
-//            producer.close();
-//        }
-//    }
+    private void installDropFlow(DatapathId switchId) {
+        IOFSwitch sw = switchService.getSwitch(switchId);
+        OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();
+        fmb.setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT);
+        fmb.setHardTimeout(FlowModUtils.INFINITE_TIMEOUT);
+        fmb.setBufferId(OFBufferId.NO_BUFFER);
+        fmb.setCookie(U64.of(1L));
+        fmb.setPriority(FlowModUtils.PRIORITY_MIN);
+        OFFlowMod flowMod  = fmb.build();
+
+        logger.debug("Adding drop flow to {}.", switchId);
+        String flowname = "--DropRule--" + switchId.toString();
+        sfpService.addFlow(flowname, flowMod, switchId);
+    }
+
+    public MacAddress dpidToMac(IOFSwitch sw) {
+        return MacAddress.of(Arrays.copyOfRange(sw.getId().getBytes(), 2, 8));
+    }
+
+    protected Match buildVerificationMatch(IOFSwitch sw, boolean isBroadcast) {
+        MacAddress dstMac = MacAddress.of(VERIFICATION_BCAST_PACKET_DST);
+        if (!isBroadcast) {
+            dstMac = dpidToMac(sw);
+        }
+        Match.Builder mb = sw.getOFFactory().buildMatch();
+        mb.setExact(MatchField.ETH_DST, dstMac).setExact(MatchField.ETH_TYPE, EthType.IPv4)
+                .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
+                .setExact(MatchField.UDP_DST, TransportPort.of(VERIFICATION_PACKET_UDP_PORT))
+                .setExact(MatchField.UDP_SRC, TransportPort.of(VERIFICATION_PACKET_UDP_PORT));
+        return mb.build();
+    }
+
+    protected List<OFAction> buildSendToControllerAction(IOFSwitch sw) {
+        ArrayList<OFAction> actionList = new ArrayList<>();
+        OFActions actions = sw.getOFFactory().actions();
+        OFActionOutput output = actions.buildOutput().setMaxLen(0xFFffFFff).setPort(OFPort.CONTROLLER)
+                .build();
+        actionList.add(output);
+
+        // Set Destination MAC to own DPID
+        OFOxms oxms = sw.getOFFactory().oxms();
+        OFActionSetField dstMac = actions.buildSetField()
+                .setField(oxms.buildEthDst().setValue(dpidToMac(sw)).build()).build();
+        actionList.add(dstMac);
+        return actionList;
+    }
+
+    protected OFFlowMod buildFlowMod(IOFSwitch sw, Match match, List<OFAction> actionList) {
+        OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();
+        fmb.setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT);
+        fmb.setHardTimeout(FlowModUtils.INFINITE_TIMEOUT);
+        fmb.setBufferId(OFBufferId.NO_BUFFER);
+        fmb.setCookie(U64.of(123L));
+        fmb.setPriority(FlowModUtils.PRIORITY_VERY_HIGH);
+        fmb.setActions(actionList);
+        fmb.setMatch(match);
+        return fmb.build();
+    }
+
+    public void installVerificationRule(DatapathId switchId, boolean isBroadcast) {
+        IOFSwitch sw = switchService.getSwitch(switchId);
+
+        Match match = buildVerificationMatch(sw, isBroadcast);
+        ArrayList<OFAction> actionList = (ArrayList<OFAction>) buildSendToControllerAction(sw);
+        OFFlowMod flowMod = buildFlowMod(sw, match, actionList);
+
+        logger.debug("Adding verification flow to {}.", switchId);
+        String flowname = (isBroadcast) ? "Broadcast" : "Unicast";
+        flowname += "--VerificationFlow--" + switchId.toString();
+        logger.debug("adding: " + flowname + " " + flowMod.toString() + "--" + switchId.toString());
+        sfpService.addFlow(flowname, flowMod, switchId);
+    }
+
+    public void installDefaultRules(DatapathId switchId) {
+        installDropFlow(switchId);
+        installVerificationRule(switchId, true);
+        installVerificationRule(switchId, false);
+    }
+
+    /*
+     * There are 3 different type of entries for a flow:
+     *
+     * 1.  ingress_flow:  this flow is used on the ingress port and will have to different matches depending on the use
+     *     case.
+     *
+     *     Match:
+     *       a.  First type will have no VLAN to match on and will be a full port
+     *       b.  Second type will have a specific VLAN and an input_port
+     *     Action:
+     *       Push a new VLAN and forward out the output_port
+     *
+     * 2.  egress_flow:  this is used on the port exiting towards the customer and has a single match.
+     *
+     *     Match:
+     *       Match on an input_port and VLAN (outer tag)
+     *     Action:
+     *       POP the VLAN and forward via the output_port
+     *
+     * 3.  transit_flow:  this is the simplest form
+     *
+     *     Match:
+     *       Match on an input_port and VLAN (outer tag)
+     *     Action:
+     *       Forward via an output_port
+     *
+     */
+
+    public Match matchFlow(DatapathId dpid, int inputPort) {
+        IOFSwitch sw = switchService.getSwitch(dpid);
+        Match.Builder mb = sw.getOFFactory().buildMatch();
+        mb.setExact(MatchField.IN_PORT, OFPort.of(inputPort));
+        return mb.build();
+    }
+
+    public Match matchFlow(DatapathId dpid, int inputPort, int vlanID) {
+        IOFSwitch sw = switchService.getSwitch(dpid);
+        Match.Builder mb = sw.getOFFactory().buildMatch();
+        mb.setExact(MatchField.IN_PORT, OFPort.of(inputPort))
+                .setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(vlanID));
+        return mb.build();
+    }
+
+    public OFAction actionSetOutputPort(DatapathId dpid, int outputPort) {
+        IOFSwitch sw = switchService.getSwitch(dpid);
+        OFActions actions = sw.getOFFactory().actions();
+
+        return actions.buildOutput().setMaxLen(0xFFFFFFFF).setPort(OFPort.of(outputPort)).build();
+    }
+
+    public List<OFAction> actionPushVlan(DatapathId dpid, int vlanID) {
+        IOFSwitch sw = switchService.getSwitch(dpid);
+        List<OFAction> actionList = new ArrayList<>();
+        OFActions actions = sw.getOFFactory().actions();
+
+        // Add VLAN Header
+        OFActionPushVlan pushVlan = actions.buildPushVlan().setEthertype(EthType.of(0x8100)).build();
+        actionList.add(pushVlan);
+
+        // Set VLAN
+        OFOxms oxms = sw.getOFFactory().oxms();
+        OFActionSetField setVlan = actions.buildSetField()
+                .setField(oxms.buildVlanVid().setValue(OFVlanVidMatch.ofVlan(vlanID)).build()).build();
+        actionList.add(setVlan);
+
+        return actionList;
+    }
+
+    public OFAction actionPopVlan(DatapathId dpid) {
+        IOFSwitch sw = switchService.getSwitch(dpid);
+        OFActions actions = sw.getOFFactory().actions();
+
+        return actions.popVlan();
+    }
+
+    public void installIngressFlow(DatapathId dpid, int inputPort, int outputPort, int inputVlanId, int transitVlanId) {
+        Match match;
+        if (inputVlanId > 0) {
+            match = matchFlow(dpid, inputPort, inputVlanId);
+        } else {
+            match = matchFlow(dpid, inputPort);
+        }
+
+        List<OFAction> actionList = actionPushVlan(dpid, transitVlanId);
+        IOFSwitch sw = switchService.getSwitch(dpid);
+        actionList.add(actionSetOutputPort(dpid, outputPort));
+
+        OFFlowMod flowMod = buildFlowMod(sw, match, actionList);
+        String flowname = "flow-" + dpid.toString() + "-" +
+                inputPort + "-" + inputVlanId + "-" + outputPort + "-" + transitVlanId;
+        sfpService.addFlow(flowname, flowMod, dpid);
+    }
+
+    public void installEgressFlow(DatapathId dpid, int inputPort, int outputPort, int transitVlanId) {
+        Match match = matchFlow(dpid, inputPort, transitVlanId);
+
+        List<OFAction> actionList = new ArrayList<>();
+        actionList.add(actionPopVlan(dpid));
+        actionList.add(actionSetOutputPort(dpid, outputPort));
+
+        IOFSwitch sw = switchService.getSwitch(dpid);
+        OFFlowMod flowMod = buildFlowMod(sw, match, actionList);
+        String flowname = "flow-" + dpid.toString() + "-" + inputPort + "-" + outputPort + "-" + transitVlanId;
+        sfpService.addFlow(flowname, flowMod, dpid);
+    }
+
+    public void installTransitFlow(DatapathId dpid, int inputPort, int outputPort, int transitVlanId) {
+        Match match = matchFlow(dpid, inputPort, transitVlanId);
+        List<OFAction> actionList = new ArrayList<>();
+        actionList.add(actionSetOutputPort(dpid, outputPort));
+        IOFSwitch sw = switchService.getSwitch(dpid);
+        OFFlowMod flowMod = buildFlowMod(sw, match, actionList);
+        String flowname = "flow-" + dpid.toString() + "-" + inputPort + "-" + outputPort + "-" + transitVlanId;
+        sfpService.addFlow(flowname, flowMod, dpid);
+    }
 }

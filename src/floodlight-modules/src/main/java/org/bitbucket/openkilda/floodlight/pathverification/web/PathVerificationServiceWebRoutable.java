@@ -16,7 +16,6 @@ public class PathVerificationServiceWebRoutable implements RestletRoutable {
     Router router = new Router(context);
     router.attach("/discover/send_packet/{src_switch}/{src_port}", PathDiscover.class);
     router.attach("/discover/send_packet/{src_switch}/{src_port}/{dst_switch}", PathDiscover.class);
-    router.attach("/discover/install_match/{src_switch}/{is_broadcast}", InstallMatch.class);
     return router;
   }
 }
