@@ -8,6 +8,7 @@ from app import utils
 import sys, os
 import requests
 import json
+import random 
 
 from kafka import KafkaConsumer, KafkaProducer
 from py2neo import Graph, Node, Relationship
@@ -16,9 +17,14 @@ from py2neo import Graph, Node, Relationship
 neo4jhost = os.environ['neo4jhost']
 bootstrapServer = 'kafka.pendev:9092'
 topic = 'kilda-test'
+
 producer = KafkaProducer(bootstrap_servers=bootstrapServer)
 
 class Flow(object):
+    def toJSON(self):
+        return json.dumps(self, default=lambda o: o.__dict__, sort_keys=False, indent=4)
+
+class Message(object):
     def toJSON(self):
         return json.dumps(self, default=lambda o: o.__dict__, sort_keys=False, indent=4)
 
@@ -92,7 +98,7 @@ def get_relationships(src_switch, src_port, dst_switch, dst_port):
     return jPath['data'][0][0]['relationships']
 
 def assign_transit_vlan():
-    return 666
+    return random.randrange(99, 4000,1)
 
 def api_v1_topology_get_path(src_switch, src_port, src_vlan, dst_switch, dst_port, dst_vlan):
     transitVlan = assign_transit_vlan ()
@@ -132,8 +138,12 @@ def api_v1_topology_path():
 
     for flows in allflows:
         for flow in flows:
-            print flow.toJSON()
-            producer.send(topic, b'{}'.format(flow.toJSON()))
+            message = Message()
+            message.data = flow
+            message.type = "COMMAND"
+            message.timestamp = 42
+            print message.toJSON()
+            producer.send(topic, b'{}'.format(message.toJSON()))
     
 
     a_switch = src_switch
