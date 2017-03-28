@@ -6,7 +6,7 @@ server {
 
 	location / {
 	        uwsgi_pass unix:///tmp/app.sock;
-                include uwsgi_params;
+            include uwsgi_params;
 	}
 
 	location /static {
