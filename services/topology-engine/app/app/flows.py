@@ -10,7 +10,10 @@ import requests
 import json
 
 from kafka import KafkaConsumer, KafkaProducer
-neo4jhost = "neo4j"
+from py2neo import Graph, Node, Relationship
+
+
+neo4jhost = os.environ['neo4jhost']
 bootstrapServer = 'kafka.pendev:9092'
 topic = 'kilda-test'
 producer = KafkaProducer(bootstrap_servers=bootstrapServer)
@@ -18,6 +21,10 @@ producer = KafkaProducer(bootstrap_servers=bootstrapServer)
 class Flow(object):
     def toJSON(self):
         return json.dumps(self, default=lambda o: o.__dict__, sort_keys=False, indent=4)
+
+def create_p2n_driver():
+    graph = Graph("http://{}:{}@{}:7474/db/data/".format(os.environ['neo4juser'], os.environ['neo4jpass'], os.environ['neo4jhost']))
+    return graph
 
 def build_ingress_flow(expandedRelationships, src_switch, src_port, src_vlan, transitVlan):
     match = src_port
@@ -118,17 +125,6 @@ def api_v1_topology_path():
     dst_port = content['dst_port']
     dst_vlan = content['dst_vlan']
 
-    '''
-    src_switch = "00:00:00:00:00:00:00:01"
-    src_port = "11"
-    src_vlan = "111"
-    dst_switch = "00:00:00:00:00:00:00:05"
-    dst_port = "55"
-    dst_vlan = "555"
-    '''
-
-
-
     forwardFlows = api_v1_topology_get_path(src_switch, src_port, src_vlan, dst_switch, dst_port, dst_vlan)
     reverseFlows = api_v1_topology_get_path(dst_switch, dst_port, dst_vlan, src_switch, src_port, src_vlan)
 
@@ -136,6 +132,27 @@ def api_v1_topology_path():
 
     for flows in allflows:
         for flow in flows:
+            print flow.toJSON()
             producer.send(topic, b'{}'.format(flow.toJSON()))
+    
+
+    a_switch = src_switch
+    a_port = src_port
+    b_switch = dst_switch
+    b_port = dst_port
+
+    graph = create_p2n_driver()
+
+    a_switchNode = graph.find_one('switch', property_key='name', property_value='{}'.format(a_switch))
+    b_switchNode = graph.find_one('switch', property_key='name', property_value='{}'.format(b_switch))
+
+    print a_switchNode
+    print b_switchNode
+
+    if not a_switchNode or not b_switchNode:
+        return '{"result": "failed"}'
+
+    isl = Relationship(a_switchNode, "flow", b_switchNode, src_port=a_port, dst_port=b_port, src_switch=a_switch, dst_switch=b_switch)
+    graph.create(isl)
 
     return '{"result": "sucessful"}'
