@@ -9,6 +9,8 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Properties;
 import com.google.common.io.Files;
+import org.apache.storm.kafka.BrokerHosts;
+import org.apache.storm.kafka.ZkHosts;
 
 /**
  * Utility classes to facilitate testing.
@@ -57,6 +59,10 @@ public class TestUtils {
             String url = (String) properties.get("zookeeper.connect");
             String port = url.split(":")[1];
             return Integer.valueOf(port);
+        }
+
+        public BrokerHosts getBrokerHosts(){
+            return new ZkHosts(zk.getConnectString());
         }
     }
 
