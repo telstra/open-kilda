@@ -9,16 +9,13 @@ import sys, os
 import requests
 import json
 import random 
+import time
 
 from kafka import KafkaConsumer, KafkaProducer
 from py2neo import Graph, Node, Relationship
 
-
 neo4jhost = os.environ['neo4jhost']
-bootstrapServer = 'kafka.pendev:9092'
-topic = 'kilda-test'
-
-producer = KafkaProducer(bootstrap_servers=bootstrapServer)
+    
 
 class Flow(object):
     def toJSON(self):
@@ -55,7 +52,7 @@ def build_egress_flow(expandedRelationships, dst_switch, dst_port, dst_vlan, tra
     action = dst_port
     for relationship in expandedRelationships:
         if relationship['data']['dst_switch'] == dst_switch:
-            match = relationship['data']['src_port']
+            match = relationship['data']['dst_port']
     flow = Flow()
  
     flow.command = "install_egress_flow"
@@ -100,8 +97,7 @@ def get_relationships(src_switch, src_port, dst_switch, dst_port):
 def assign_transit_vlan():
     return random.randrange(99, 4000,1)
 
-def api_v1_topology_get_path(src_switch, src_port, src_vlan, dst_switch, dst_port, dst_vlan):
-    transitVlan = assign_transit_vlan ()
+def api_v1_topology_get_path(src_switch, src_port, src_vlan, dst_switch, dst_port, dst_vlan, transitVlan):
     relationships = get_relationships(src_switch, src_port, dst_switch, dst_port)
     expandedRelationships = expand_relationships(relationships)
     flows = []
@@ -115,12 +111,17 @@ def api_v1_topology_get_path(src_switch, src_port, src_vlan, dst_switch, dst_por
     return flows
 
 
-
-
-
 @application.route('/api/v1/flow', methods=["POST"])
 #@login_required
 def api_v1_topology_path():
+        
+    transitVlanForward = 666
+    transitVlanReturn = 777
+
+    bootstrapServer = 'kafka.pendev:9092'
+    topic = 'kilda-test'
+    producer = KafkaProducer(bootstrap_servers=bootstrapServer)
+    
     content = json.loads('{}'.format(request.data))
     print content
 
@@ -131,8 +132,8 @@ def api_v1_topology_path():
     dst_port = content['dst_port']
     dst_vlan = content['dst_vlan']
 
-    forwardFlows = api_v1_topology_get_path(src_switch, src_port, src_vlan, dst_switch, dst_port, dst_vlan)
-    reverseFlows = api_v1_topology_get_path(dst_switch, dst_port, dst_vlan, src_switch, src_port, src_vlan)
+    forwardFlows = api_v1_topology_get_path(src_switch, src_port, src_vlan, dst_switch, dst_port, dst_vlan, transitVlanForward)
+    reverseFlows = api_v1_topology_get_path(dst_switch, dst_port, dst_vlan, src_switch, src_port, src_vlan, transitVlanReturn)
 
     allflows = [forwardFlows, reverseFlows]
 
@@ -142,8 +143,11 @@ def api_v1_topology_path():
             message.data = flow
             message.type = "COMMAND"
             message.timestamp = 42
-            print message.toJSON()
-            producer.send(topic, b'{}'.format(message.toJSON()))
+            kafkamessage = b'{}'.format(message.toJSON())
+            print 'topic: {}, message: {}'.format(topic, kafkamessage)
+            messageresult = producer.send(topic, kafkamessage)
+            result = messageresult.get(timeout=5)
+            print result
     
 
     a_switch = src_switch
