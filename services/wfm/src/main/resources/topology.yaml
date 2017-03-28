@@ -1,0 +1,37 @@
+# topology definition
+
+# name to be used when submitting. This is what shows up...
+# in the Storm UI/storm command line tool as the topology name
+# when submitted to Storm
+name: "wordcount"
+config:
+  topology.workers: 1
+
+spouts:
+  - id: "sentence-spout"
+    className: "org.bitbucket.openkilda.wfm.RandomSentenceSpout"
+    parallelism: 1
+
+bolts:
+  - id: "splitter-bolt"
+    className: "org.bitbucket.openkilda.wfm.SplitSentence"
+    parallelism: 1
+  - id: "counter-bolt"
+    className: "org.bitbucket.openkilda.wfm.WordCount"
+    constructorArgs:
+      - 10
+    parallelism: 1
+
+streams:
+  - name: "Spout --> Splitter" # name isn't used (placeholder for logging, UI, etc.)
+    from: "sentence-spout"
+    to: "splitter-bolt"
+    grouping:
+      type: SHUFFLE
+
+  - name: "Splitter -> Counter"
+    from: "splitter-bolt"
+    to: "counter-bolt"
+    grouping:
+      type: FIELDS
+      args: ["word"]
