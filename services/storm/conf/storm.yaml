@@ -1,6 +1,6 @@
 storm.zookeeper.servers:
   - "zookeeper.pendev"
-nimbus.host: "nimbus.pendev"
+nimbus.seeds: ["nimbus.pendev"]
 drpc.port: 3772
 drpc.invocations.port: 3773
 

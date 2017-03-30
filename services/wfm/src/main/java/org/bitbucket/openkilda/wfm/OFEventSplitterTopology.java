@@ -3,7 +3,11 @@ package org.bitbucket.openkilda.wfm;
 import kafka.api.OffsetRequest;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.storm.Config;
+import org.apache.storm.LocalCluster;
+import org.apache.storm.StormSubmitter;
 import org.apache.storm.kafka.BrokerHosts;
+import org.apache.storm.kafka.ZkHosts;
 import org.apache.storm.kafka.KafkaSpout;
 import org.apache.storm.kafka.SpoutConfig;
 import org.apache.storm.kafka.StringScheme;
@@ -12,6 +16,8 @@ import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
 import org.apache.storm.kafka.bolt.selector.DefaultTopicSelector;
 import org.apache.storm.spout.SchemeAsMultiScheme;
 import org.apache.storm.topology.TopologyBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Properties;
 
@@ -19,9 +25,11 @@ import java.util.Properties;
  */
 public class OFEventSplitterTopology {
 
+    private static Logger logger = LoggerFactory.getLogger(OFEventSplitterTopology.class);
+
     String ofSplitterBoltID = "of.splitter.bolt";
     String topic = "kilda-speaker"; // + System.currentTimeMillis();
-    String topoName = "OpenFlowEvents-Topology";
+    String topoName = "OF Event Splitter";
 
     TopologyBuilder builder;
     BrokerHosts hosts;
@@ -43,6 +51,7 @@ public class OFEventSplitterTopology {
      * Build the Topology .. ie add it to the TopologyBuilder
      */
     public TopologyBuilder build(){
+        logger.debug("Building Topology - OFEventSplitterTopology");
         builder.setSpout("kafka-spout", createKafkaSpout(topic));
         builder.setBolt(ofSplitterBoltID,
                 new OFEventSplitterBolt(), 3)
@@ -56,6 +65,7 @@ public class OFEventSplitterTopology {
         props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
 
+        primeKafkaTopic(topic);
         primeKafkaTopic(topic+".INFO");
         KafkaBolt<String, String> bolt = new KafkaBolt<String, String>()
                 .withProducerProperties(props)
@@ -116,8 +126,27 @@ public class OFEventSplitterTopology {
 
     //Entry point for the topology
     public static void main(String[] args) throws Exception {
+        BrokerHosts hosts = new ZkHosts("zookeeper.pendev");
+        OFEventSplitterTopology splitterTopology = new OFEventSplitterTopology().setBrokerHosts(hosts);
+        splitterTopology.build();
+        Config conf = new Config();
+        conf.setDebug(true);
 
+        //If there are arguments, we are running on a cluster; otherwise, we are running locally
+        if (args != null && args.length > 0) {
+            conf.setNumWorkers(3);
+            StormSubmitter.submitTopology(args[0], conf, splitterTopology.builder.createTopology());
+        }
+        else {
+            conf.setMaxTaskParallelism(3);
 
+            LocalCluster cluster = new LocalCluster();
+            cluster.submitTopology(splitterTopology.topoName, conf,
+                    splitterTopology.builder.createTopology());
+
+            Thread.sleep(20000);
+            cluster.shutdown();
+        }
 
     }
 

@@ -143,6 +143,8 @@ public class SimpleSplitterTest {
              }
         }
 
+     {"type": "INFO", "data": {"message_type": "switch", "switch_id": "0x0000000000000001", "state": "ACTIVATED"}}
+
      * @param isSwitch - it is either a switch or port at this stage.
      */
     private String createInfoMessage (boolean isSwitch, String switchID, String portID, String
