@@ -166,7 +166,11 @@ def api_v1_topology_path():
     if not a_switchNode or not b_switchNode:
         return '{"result": "failed"}'
 
-    isl = Relationship(a_switchNode, "flow", b_switchNode, src_port=a_port, dst_port=b_port, src_switch=a_switch, dst_switch=b_switch)
-    graph.create(isl)
+    pathForward = Relationship(a_switchNode, "flow", b_switchNode, src_port=a_port, dst_port=b_port, src_switch=a_switch, dst_switch=b_switch)
+    pathReverse = Relationship(b_switchNode, "flow", a_switchNode, src_port=b_port, dst_port=a_port, src_switch=b_switch, dst_switch=a_switch)
+    
+    
+    graph.create(pathForward)
+    graph.create(pathReverse)
 
     return '{"result": "sucessful"}'

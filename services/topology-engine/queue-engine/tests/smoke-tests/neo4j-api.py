@@ -9,6 +9,4 @@ j_data = {"src_switch":"00:00:00:00:00:00:00:01", "src_port":1, "src_vlan":0, "d
 result = requests.post(url, json=j_data, headers=headers)
 print result.text
 
-#j_data = {"dst_switch":"00:00:00:00:00:00:00:01", "dst_port":0, "dst_vlan":0, "src_switch":"00:00:00:00:00:00:00:07", "src_port":0, "src_vlan":555}
-#result = requests.post(url, json=j_data, headers=headers)
 
