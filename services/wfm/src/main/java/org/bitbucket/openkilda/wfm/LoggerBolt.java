@@ -5,8 +5,9 @@ import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Tuple;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Level;
 
 import java.util.Map;
 
@@ -14,12 +15,21 @@ import java.util.Map;
  * LoggerBolt - just dumps everything received to the log file.
  */
 public class LoggerBolt extends BaseRichBolt {
+
     private OutputCollector _collector;
+    private static Logger logger = LogManager.getLogger(LoggerBolt.class);
+    public Level level = Level.DEBUG;
+    public String watermark = "";
 
-    public enum LEVEL {INFO,DEBUG,TRACE};
-    public LEVEL level = LEVEL.DEBUG;
+    public LoggerBolt withLevel(Level level){
+        this.level = level;
+        return this;
+    }
 
-    private static Logger logger = LoggerFactory.getLogger(LoggerBolt.class);
+    public LoggerBolt withWatermark(String watermark){
+        this.watermark = watermark;
+        return this;
+    }
 
     @Override
     public void prepare(Map conf, TopologyContext context, OutputCollector collector) {
@@ -28,16 +38,8 @@ public class LoggerBolt extends BaseRichBolt {
 
     @Override
     public void execute(Tuple tuple) {
-        switch (level) {
-            case INFO:
-                logger.info("\nfields: {}\nvalues: {}", tuple.getFields(), tuple.getValues());
-                break;
-            case TRACE:
-                logger.trace("\nfields: {}\nvalues: {}", tuple.getFields(), tuple.getValues());
-                break;
-            default:
-                logger.debug("\nfields: {}\nvalues: {}", tuple.getFields(), tuple.getValues());
-        }
+        logger.log(level, "\n{}: fields: {} \n{}: values: {}",
+                watermark, tuple.getFields(), watermark, tuple.getValues());
         _collector.ack(tuple);
     }
 

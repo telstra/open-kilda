@@ -86,6 +86,8 @@ services:
       retries: 3
 
   kafka:
+    container_name: kafka
+    hostname: kafka.pendev
     build:
       context: .
       dockerfile:  services/kafka/Dockerfile
@@ -237,6 +239,7 @@ services:
         condition: service_healthy
     links:
       - zookeeper:zookeeper.pendev
+      - kafka:kafka.pendev
 #      - hbase:hbase.pendev
       - storm_nimbus:nimbus.pendev
     ports:
