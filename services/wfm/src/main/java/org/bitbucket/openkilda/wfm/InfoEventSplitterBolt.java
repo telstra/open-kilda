@@ -9,8 +9,8 @@ import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import java.io.IOException;
 import java.util.Map;
@@ -23,25 +23,27 @@ import java.util.Map;
  */
 public class InfoEventSplitterBolt extends BaseRichBolt {
 
-    private static Logger logger = LoggerFactory.getLogger(InfoEventSplitterBolt.class);
+    private static Logger logger = LogManager.getLogger(InfoEventSplitterBolt.class);
 
     OutputCollector _collector;
 
-    public static final String INFO_SWITCH = "INFO.SWITCH";
-    public static final String INFO_PORT = "INFO.PORT";
-    public static final String INFO_ISL = "INFO.ISL";
-    public static final String INFO_OTHER = "INFO.OTHER";
-    public static final String SWITCH_UPDOWN = "SWITCH.UPDOWN";
-    public static final String PORT_UPDOWN = "PORT.UPDOWN";
-    public static final String ISL_UPDOWN = "ISL.UPDOWN";
-    public static final String SWITCH_OTHER = "SWITCH.OTHER";
-    public static final String PORT_OTHER = "PORT.OTHER";
-    public static final String ISL_OTHER = "ISL.OTHER";
+    public static final String INFO = OFEventSplitterBolt.INFO; // topic created elsewhere
+    public static final String I_OTHER = INFO+".other";
+    public static final String I_SWITCH = INFO+".switch";
+    public static final String I_SWITCH_UPDOWN = I_SWITCH+".updown";
+    public static final String I_SWITCH_OTHER = I_SWITCH+".other";
+    public static final String I_PORT = INFO+".port";
+    public static final String I_PORT_UPDOWN = I_PORT+".updown";
+    public static final String I_PORT_OTHER = I_PORT+".other";
+    public static final String I_ISL = INFO+".isl";
+    public static final String I_ISL_UPDOWN = I_ISL+".updown";
+    public static final String I_ISL_OTHER = I_ISL+".other";
 
     public static final String[] outputStreams = {
-            INFO_SWITCH, INFO_PORT, INFO_ISL,
-            SWITCH_UPDOWN, PORT_UPDOWN, ISL_UPDOWN,
-            SWITCH_OTHER, PORT_OTHER, ISL_OTHER
+            I_OTHER,
+            I_SWITCH, I_SWITCH_UPDOWN, I_SWITCH_OTHER,
+            I_PORT, I_PORT_UPDOWN, I_PORT_OTHER,
+            I_ISL, I_ISL_UPDOWN, I_ISL_OTHER
     };
 
     @Override
@@ -55,39 +57,39 @@ public class InfoEventSplitterBolt extends BaseRichBolt {
      */
     private void splitInfoMessage(Map<String,?> root, Tuple tuple) throws JsonProcessingException {
         Values dataVal = new Values("data", new ObjectMapper().writeValueAsString(root));
-        String key = ((String) root.get("message_type")).toUpperCase();
+        String key = ((String) root.get("message_type")).toLowerCase();
         String state = (String) root.get("state");
         switch (key) {
-            case "SWITCH":
-                _collector.emit(INFO_SWITCH,tuple,dataVal);
-                logger.debug("EMIT {} : {}", INFO_SWITCH, dataVal);
+            case "switch":
+                _collector.emit(I_SWITCH,tuple,dataVal);
+                logger.debug("EMIT {} : {}", I_SWITCH, dataVal);
                 if (state.equals("ACTIVATED") || state.equals("DEACTIVATED")){
-                    _collector.emit(SWITCH_UPDOWN,tuple,dataVal);
-                    logger.debug("EMIT {} : {}", SWITCH_UPDOWN, dataVal);
+                    _collector.emit(I_SWITCH_UPDOWN,tuple,dataVal);
+                    logger.debug("EMIT {} : {}", I_SWITCH_UPDOWN, dataVal);
                 } else {
-                    _collector.emit(SWITCH_OTHER,tuple,dataVal);
-                    logger.debug("EMIT {} : {}", SWITCH_OTHER, dataVal);
+                    _collector.emit(I_SWITCH_OTHER,tuple,dataVal);
+                    logger.debug("EMIT {} : {}", I_SWITCH_OTHER, dataVal);
                 }
                 break;
-            case "PORT":
-                _collector.emit(INFO_PORT,tuple,dataVal);
+            case "port":
+                _collector.emit(I_PORT,tuple,dataVal);
                 if (state.equals("UP") || state.equals("DOWN")){
-                    _collector.emit(PORT_UPDOWN,tuple,dataVal);
+                    _collector.emit(I_PORT_UPDOWN,tuple,dataVal);
                 } else {
-                    _collector.emit(PORT_OTHER,tuple,dataVal);
+                    _collector.emit(I_PORT_OTHER,tuple,dataVal);
                 }
                 break;
-            case "ISL":
-                _collector.emit(INFO_ISL,tuple,dataVal);
+            case "isl":
+                _collector.emit(I_ISL,tuple,dataVal);
                 if (state.equals("UP") || state.equals("DOWN")){
-                    _collector.emit(ISL_UPDOWN,tuple,dataVal);
+                    _collector.emit(I_ISL_UPDOWN,tuple,dataVal);
                 } else {
-                    _collector.emit(ISL_OTHER,tuple,dataVal);
+                    _collector.emit(I_ISL_OTHER,tuple,dataVal);
                 }
                 break;
             default:
                 // NB: we'll push the original message onto the CONFUSED channel
-                _collector.emit(INFO_OTHER,tuple,dataVal);
+                _collector.emit(I_OTHER,tuple,dataVal);
                 logger.warn("Unknown INFO Message Type: {}\nJSON:{}", key, root);
         }
     }
@@ -96,17 +98,19 @@ public class InfoEventSplitterBolt extends BaseRichBolt {
     @Override
     public void execute(Tuple tuple) {
         String json = tuple.getString(1);
+        logger.info("Processing INFO message: {}", json);   
 
         Map<String,?> root = null;
         try {
             root = (Map<String,?>) new ObjectMapper().readValue(json, Map.class);
             splitInfoMessage(root,tuple);
         } catch (IOException e) {
+            logger.error("IOException processing an INFO message: {}, error: {} ", json,
+                    e.getMessage());
             e.printStackTrace();
         } finally {
             // Regardless of whether we have errors, we don't want to reprocess for now, so send ack
             _collector.ack(tuple);
-
         }
     }
 

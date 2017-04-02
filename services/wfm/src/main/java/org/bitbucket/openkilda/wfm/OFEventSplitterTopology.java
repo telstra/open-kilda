@@ -1,148 +1,145 @@
 package org.bitbucket.openkilda.wfm;
 
-import kafka.api.OffsetRequest;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.storm.Config;
 import org.apache.storm.LocalCluster;
 import org.apache.storm.StormSubmitter;
+import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.BrokerHosts;
 import org.apache.storm.kafka.ZkHosts;
-import org.apache.storm.kafka.KafkaSpout;
-import org.apache.storm.kafka.SpoutConfig;
-import org.apache.storm.kafka.StringScheme;
 import org.apache.storm.kafka.bolt.KafkaBolt;
 import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
 import org.apache.storm.kafka.bolt.selector.DefaultTopicSelector;
-import org.apache.storm.spout.SchemeAsMultiScheme;
 import org.apache.storm.topology.TopologyBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import java.util.Properties;
 
 /**
+ * This topology does the following:
+ *  1) Listen to the kilda open flow speaker topic and split it into info / command / other.
+ *      - It does that by listening to kafka via a kafka spout (createKafkaSpout) and adding
+ *        a bolt to that (OFEventSplitterBolt). The bolt is the thing that creates 3 storm streams.
+ *  2) Create bolts to listen to each of those streams
+ *      - The bolts are KafkaBolts, tied to the streams emitted in #1.
+ *  3) At present, we only have another splitter for the INFO channel, and the same strategy is
+ *      followed, with the exception that there isn't a need to listen to the INFO kafka topic,
+ *      since we already have the stream within storm.
+ *
  */
 public class OFEventSplitterTopology {
 
-    private static Logger logger = LoggerFactory.getLogger(OFEventSplitterTopology.class);
+    private static Logger logger = LogManager.getLogger(OFEventSplitterTopology.class);
 
-    String ofSplitterBoltID = "of.splitter.bolt";
-    String topic = "kilda-speaker"; // + System.currentTimeMillis();
-    String topoName = "OF Event Splitter";
-
-    TopologyBuilder builder;
-    BrokerHosts hosts;
+    public String topic = "kilda.speaker"; // + System.currentTimeMillis();
+    public String defaultTopoName = "OF Event Splitter";
+    public Properties kafkaProps = new Properties();
+    public int parallelism = 3;
+    public KafkaUtils kutils = new KafkaUtils();
 
     public OFEventSplitterTopology(){
-        this(new TopologyBuilder());
+        kafkaProps.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+        kafkaProps.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+        kafkaProps.put("bootstrap.servers", "kafka.pendev:9092");
     }
 
-    public OFEventSplitterTopology(TopologyBuilder builder){
-        this.builder = builder;
+    public Properties withKafkaProps(Properties kprops){
+        kafkaProps.putAll(kprops);
+        return kafkaProps;
     }
 
-    public OFEventSplitterTopology setBrokerHosts(BrokerHosts hosts){
-        this.hosts = hosts;
+    /**
+     * The default behavior is to use the default KafkaUtils.
+     * If more specialized behavior is needed, pass in a different one;
+     */
+    public OFEventSplitterTopology withKafkaUtils(KafkaUtils kutils){
+        this.kutils = kutils;
         return this;
     }
 
     /**
      * Build the Topology .. ie add it to the TopologyBuilder
      */
-    public TopologyBuilder build(){
+    public StormTopology createTopology(){
+
         logger.debug("Building Topology - OFEventSplitterTopology");
-        builder.setSpout("kafka-spout", createKafkaSpout(topic));
-        builder.setBolt(ofSplitterBoltID,
-                new OFEventSplitterBolt(), 3)
-                .shuffleGrouping("kafka-spout");
+
+        TopologyBuilder builder = new TopologyBuilder();
 
         /*
-         * Setup the KafkaBolt, which will listen to the appropriate Stream from "SplitterBolt"
+         * Setup the initial kafka spout and bolts to write the streams to kafka.
          */
-        Properties props = new Properties();
-        props.put("bootstrap.servers", "localhost:9092");
-        props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-        props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+        String primarySpout = topic+"-spout";
+        String primaryBolt = topic+"-bolt";
+        primeKafkaTopic(topic); // in case the topic doesn't exist yet
+        builder.setSpout(primarySpout, kutils.createKafkaSpout(topic));
+        builder.setBolt(primaryBolt,
+                new OFEventSplitterBolt(), parallelism)
+                .shuffleGrouping(primarySpout);
 
-        primeKafkaTopic(topic);
-        primeKafkaTopic(topic+".INFO");
-        KafkaBolt<String, String> bolt = new KafkaBolt<String, String>()
-                .withProducerProperties(props)
-                .withTopicSelector(new DefaultTopicSelector(topic+".INFO"))
-                .withTupleToKafkaMapper(new FieldNameBasedTupleToKafkaMapper());
-        builder.setBolt("forwardToKafka", bolt, 8)
-                .shuffleGrouping(ofSplitterBoltID, OFEventSplitterBolt.INFO);
-        builder.setBolt("echo_to_confused",
-                new OFEventSplitterBolt(), 3)
-                .shuffleGrouping(ofSplitterBoltID, OFEventSplitterBolt.OTHER);
+        /*
+         * Setup the next level of spouts / bolts .. take the streams emitted and push to kafka.
+         * At present, only INFO has further processing, so it has an additional bolt to create
+         * more streams.  The others just need to write the stream their stream to a kafka topic.
+         */
+        for (String channel : OFEventSplitterBolt.CHANNELS) {
+            primeKafkaTopic(channel);
 
-        String infoSplitterBoltID = "info.splitter.bolt";
+            KafkaBolt<String, String> bolt = new KafkaBolt<String, String>()
+                    .withProducerProperties(kafkaProps)
+                    .withTopicSelector(new DefaultTopicSelector(channel))
+                    .withTupleToKafkaMapper(new FieldNameBasedTupleToKafkaMapper());
+            builder.setBolt(channel+"-kafkabolt", bolt, parallelism)
+                    .shuffleGrouping(primaryBolt, channel);
+
+        }
+        // NB: This is the extra bolt for INFO to generate more streams. If the others end up with
+        //     their own splitter bolt, then we can move this logic into the for loop above.
+        String infoSplitterBoltID = OFEventSplitterBolt.INFO+"-bolt";
         builder.setBolt(infoSplitterBoltID, new InfoEventSplitterBolt(),3).shuffleGrouping
-                (ofSplitterBoltID, OFEventSplitterBolt.INFO);
-
+                (primaryBolt, OFEventSplitterBolt.INFO);
 
         // Create the output from the InfoSplitter to Kafka
         // TODO: Can convert part of this to a test .. see if the right messages land in right topic
-        /*
-         * Next steps
-         *  1) ... validate the messages are showing up in the right place.
-         *  2) ... hook up to kilda, with logging output, see if messages show up.
-         */
         for (String stream : InfoEventSplitterBolt.outputStreams){
+            primeKafkaTopic(stream);
             KafkaBolt<String, String> splitter_bolt = new KafkaBolt<String, String>()
-                    .withProducerProperties(props)
+                    .withProducerProperties(kafkaProps)
                     .withTopicSelector(new DefaultTopicSelector(stream))
                     .withTupleToKafkaMapper(new FieldNameBasedTupleToKafkaMapper());
-            builder.setBolt(stream+"-KafkaWriter", splitter_bolt, 8)
+            builder.setBolt(stream+"-kafkabolt", splitter_bolt, 8)
                     .shuffleGrouping(infoSplitterBoltID, stream);
-
-            // TODO: only set this up if the DEBUG flag is on.
-            // NB: However, if we do that, it'll eliminate the ability to *dynamically* adjust log
-            // Create Kafka Spout / Logger pairs   (facilitate debugging)
-            primeKafkaTopic(stream);
-            String spout = stream+"-KafkaSpout";
-            builder.setSpout(spout,createKafkaSpout(stream));
-            builder.setBolt(stream+"-KafkaReader", new LoggerBolt(), 3).shuffleGrouping(spout);
         }
-        return builder;
+        return builder.createTopology();
     }
 
-    KafkaProducer<String,String> kProducer = KafkaUtils.createStringsProducer();
+    // TODO: KafkaUtils should be passed the configured Kafka server.
+    KafkaProducer<String,String> kProducer = new KafkaUtils().createStringsProducer();
     private void primeKafkaTopic(String topic){
-        kProducer.send(new ProducerRecord<>(topic, "no_op", "{'type': 'NO_OP'}"));
+        kProducer.send(new ProducerRecord<>(topic, "no_op", "{\"type\": \"NO_OP\"}"));
     }
 
-
-    private KafkaSpout createKafkaSpout(String topic){
-        String spoutID = topic + "_" + System.currentTimeMillis();
-        SpoutConfig kafkaSpoutConfig = new SpoutConfig (hosts, topic, "/" + topic, spoutID);
-        kafkaSpoutConfig.bufferSizeBytes = 1024 * 1024 * 4;
-        kafkaSpoutConfig.fetchSizeBytes = 1024 * 1024 * 4;
-        kafkaSpoutConfig.startOffsetTime = OffsetRequest.EarliestTime();  // start later
-        kafkaSpoutConfig.scheme = new SchemeAsMultiScheme(new StringScheme());
-        return new KafkaSpout(kafkaSpoutConfig);
-    }
 
     //Entry point for the topology
     public static void main(String[] args) throws Exception {
-        BrokerHosts hosts = new ZkHosts("zookeeper.pendev");
-        OFEventSplitterTopology splitterTopology = new OFEventSplitterTopology().setBrokerHosts(hosts);
-        splitterTopology.build();
+        BrokerHosts hosts = new ZkHosts("zookeeper.pendev:2181");
         Config conf = new Config();
-        conf.setDebug(true);
+        conf.setDebug(false);
+        OFEventSplitterTopology splitterTopology = new OFEventSplitterTopology();
+        StormTopology topo = splitterTopology.createTopology();
 
         //If there are arguments, we are running on a cluster; otherwise, we are running locally
         if (args != null && args.length > 0) {
             conf.setNumWorkers(3);
-            StormSubmitter.submitTopology(args[0], conf, splitterTopology.builder.createTopology());
+            StormSubmitter.submitTopology(args[0], conf, topo);
         }
         else {
             conf.setMaxTaskParallelism(3);
 
             LocalCluster cluster = new LocalCluster();
-            cluster.submitTopology(splitterTopology.topoName, conf,
-                    splitterTopology.builder.createTopology());
+            cluster.submitTopology(splitterTopology.defaultTopoName, conf,topo);
 
             Thread.sleep(20000);
             cluster.shutdown();

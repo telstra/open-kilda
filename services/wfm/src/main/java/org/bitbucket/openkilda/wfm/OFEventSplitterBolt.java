@@ -1,6 +1,9 @@
 package org.bitbucket.openkilda.wfm;
 
+import clojure.lang.Compiler;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -17,10 +20,16 @@ import java.util.Map;
  */
 public class OFEventSplitterBolt extends BaseRichBolt {
     OutputCollector _collector;
+    private static Logger logger = LogManager.getLogger(OFEventSplitterBolt.class);
 
-    public static final String INFO = "INFO";
-    public static final String COMMAND = "COMMAND";
-    public static final String OTHER = "OTHER";
+
+    public static final String INFO = "speaker.info";
+    public static final String COMMAND = "speaker.command";
+    public static final String OTHER = "speaker.other";
+    public static final String JSON_INFO = "info";
+    public static final String JSON_COMMAND = "command";
+
+    public static final String[] CHANNELS = {INFO, COMMAND, OTHER};
 
     @Override
     public void prepare(Map conf, TopologyContext context, OutputCollector collector) {
@@ -34,30 +43,29 @@ public class OFEventSplitterBolt extends BaseRichBolt {
         Map<String,?> root;
         try {
             root = mapper.readValue(json, Map.class);
-            String type = (String) root.get("type");
+            String type = ((String) root.get("type")).toLowerCase();
             Map<String,?> data = (Map<String,?>) root.get("data");
             // TODO: data should be converted back to json string .. or use json serializer
             Values dataVal = new Values("data", mapper.writeValueAsString(data));
             switch (type) {
-                case INFO:
+                case JSON_INFO:
                     _collector.emit(INFO,tuple,dataVal);
                     break;
-                case COMMAND:
+                case JSON_COMMAND:
                     _collector.emit(COMMAND,tuple,dataVal);
                     break;
                 default:
                     // NB: we'll push the original message onto the CONFUSED channel
-                    _collector.emit(OTHER,tuple, new Values(tuple.getString(0)));
-                    System.out.println("WARNING: Unknown Message Type: " + type);
+                    _collector.emit(OTHER,tuple, new Values("data", json));
+                    logger.warn("WARNING: Unknown Message Type: " + type);
             }
         } catch (IOException e) {
-            System.out.println("ERROR: Exception during json parsing: " + e.getMessage());
+            logger.warn("EXCEPTION during JSON parsing: {}, error: {}", json, e.getMessage());
             e.printStackTrace();
-            return;
+        } finally {
+            // Regardless of whether we have errors, we don't want to reprocess for now, so send ack
+            _collector.ack(tuple);
         }
-
-        // Regardless of whether we have errors, we don't want to reprocess for now, so send ack
-        _collector.ack(tuple);
     }
 
     @Override
