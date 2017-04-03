@@ -21,7 +21,8 @@ import com.fasterxml.jackson.annotation.JsonSubTypes.Type;
               include = JsonTypeInfo.As.PROPERTY, 
               property = "type")
 @JsonSubTypes({ @Type(value = CommandMessage.class, name = "COMMAND"),
-                @Type(value = InfoMessage.class, name = "INFO")})
+                @Type(value = InfoMessage.class, name = "INFO"),
+                @Type(value = ErrorMessage.class, name = "ERROR")})
 
 public abstract class Message implements Serializable {
 
@@ -30,13 +31,12 @@ public abstract class Message implements Serializable {
   private Type type;
   @JsonProperty("timestamp")
   private long timestamp;
-//  @JsonProperty("data")
-//  private MessageData data;
   private ObjectMapper mapper;
   
   public enum Type {
     COMMAND,
-    INFO
+    INFO,
+    ERROR
   }
   
   public Message() {
@@ -46,6 +46,16 @@ public abstract class Message implements Serializable {
   @JsonProperty("type")
   public Type getType() {
     return type;
+  }
+
+  @JsonProperty("type")
+  public void setType(Type type) {
+    this.type = type;
+  }
+
+  public Message withType(Type type) {
+    setType(type);
+    return this;
   }
   
   @JsonProperty("timestamp")
@@ -62,21 +72,7 @@ public abstract class Message implements Serializable {
     setTimestamp(timestamp);
     return this;
   }
-  
-//  @JsonProperty("data")
-//  public MessageData getData() {
-//    return data;
-//  }
-//  
-//  @JsonProperty("data")
-//  public void setData(MessageData data) {
-//    this.data = data;
-//  }
-//  
-//  public Message withData(MessageData data) {
-//    setData(data);
-//    return this;
-//  }
+
   public String toJson() throws JsonProcessingException {
     return mapper.writeValueAsString(this);
   }
