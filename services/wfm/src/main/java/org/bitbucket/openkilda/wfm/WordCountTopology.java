@@ -32,16 +32,14 @@ public class WordCountTopology {
         Config conf = new Config();
         //Set to false to disable debug information when
         // running in production on a cluster
-        conf.setDebug(false);
+        conf.setDebug(true);
 
         //If there are arguments, we are running on a cluster
         if (args != null && args.length > 0) {
-            //parallelism hint to set the number of workers
+            // ie `storm jar this.jar org.bitbucket.openkilda.wfm.WordCountTopology someName`
             conf.setNumWorkers(3);
-            //submit the topology
             StormSubmitter.submitTopology(args[0], conf, builder.createTopology());
         }
-        //Otherwise, we are running locally
         else {
             //Cap the maximum number of executors that can be spawned
             //for a component to 3

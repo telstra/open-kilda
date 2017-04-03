@@ -9,7 +9,9 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get autoremove
 #####################
 #Install Ansible deps
 #####################
-RUN apt-get install -y build-essential curl libffi-dev libssl-dev python python-dev python-pip ssh software-properties-common apt-utils
+RUN apt-get install -y build-essential apt-utils libffi-dev libssl-dev software-properties-common
+RUN apt-get install -y curl ssh iputils-ping
+RUN apt-get install -y python python-dev python-pip
 RUN pip install --upgrade pip
 
 ################
@@ -28,6 +30,10 @@ RUN add-apt-repository ppa:webupd8team/java -y
 RUN apt-get update
 RUN echo oracle-java7-installer shared/accepted-oracle-license-v1-1 select true | /usr/bin/debconf-set-selections
 RUN apt-get install -y oracle-java8-installer
+ENV JAVA_VER 8
+ENV JAVA_HOME /usr/lib/jvm/java-8-oracle
+RUN echo "export JAVA_HOME=/usr/lib/jvm/java-8-oracle" >> ~/.bashrc
+
 RUN apt-get clean
 ADD app /app
 RUN chmod 777 /app/*
