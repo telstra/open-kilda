@@ -1,18 +1,30 @@
 package org.bitbucket.openkilda.wfm;
 
+import com.google.common.base.Charsets;
+import com.google.common.collect.Lists;
+import com.google.common.io.Files;
+import org.apache.commons.io.input.TeeInputStream;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.storm.kafka.*;
 
+import org.apache.logging.log4j.Level;
 import org.apache.storm.Config;
+import org.apache.storm.StormSubmitter;
+import org.apache.storm.generated.Bolt;
+import org.apache.storm.task.IBolt;
 import org.apache.storm.utils.Utils;
 import org.junit.*;
 
 import org.apache.storm.LocalCluster;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Properties;
+
 
 /**
  * Basic Splitter Tests.
@@ -21,13 +33,17 @@ import java.util.Properties;
  */
 public class SimpleSplitterTest {
 
-    private static Logger logger = LoggerFactory.getLogger(SimpleSplitterTest.class);
-    private static TestUtils.KafkaTestFixture server;
+    static Logger logger = LogManager.getLogger(SimpleSplitterTest.class);
+    static TestUtils.KafkaTestFixture server;
+    static KafkaUtils kutils;
 
     @BeforeClass
     public static void setupOnce() throws Exception {
         server = new TestUtils.KafkaTestFixture();
         server.start();
+        kutils = new KafkaUtils()
+                .withZookeeperHost(TestUtils.zookeeperUrl)
+                .withKafkaHosts(TestUtils.kafkaUrl);
     }
 
     @AfterClass
@@ -44,30 +60,54 @@ public class SimpleSplitterTest {
     public void teardownEach() throws Exception {
     }
 
-    private Config stormConfig() {
+    public static Config stormConfig() {
         Config config = new Config();
-        config.setDebug(true);
-        config.setNumWorkers(3);
+        config.setDebug(false);
+        config.setNumWorkers(1);
         return config;
     }
 
 
     @Test
-    public void no_op() {
+    public void KafkaSplitterTest() throws IOException {
 
-        OFEventSplitterTopology splitter = new OFEventSplitterTopology();
-        splitter.setBrokerHosts(server.getBrokerHosts());
-        splitter.build();
+        /*
+         * Need to ensure everything is pointing to the right testing URLS
+         */
+        Properties kprops = new Properties();
+        kprops.put("bootstrap.servers", TestUtils.kafkaUrl);
+
+        OFEventSplitterTopology splitter = new OFEventSplitterTopology().withKafkaProps(kprops);
+        splitter.kutils = kutils;
+
         LocalCluster cluster = new LocalCluster();
-        cluster.submitTopology(splitter.topoName, stormConfig()
-                , splitter.builder.createTopology());
+        cluster.submitTopology(splitter.defaultTopoName, stormConfig(), splitter.createTopology());
 
-        // Send data into kafka ..
+        KafkaFilerTopology kfiler = new KafkaFilerTopology();
+        cluster.submitTopology("filer-1", stormConfig(),
+                kfiler.createTopology(InfoEventSplitterBolt.I_SWITCH_UPDOWN,
+                        server.tempDir.getAbsolutePath(), TestUtils.zookeeperUrl));
+
+        Utils.sleep(4 * 1000);
         SendMessages(splitter.topic);
+        Utils.sleep(8 * 1000);
 
-        Utils.sleep(15 * 1000);
-        Assert.assertTrue(true);
-        cluster.killTopology(splitter.topoName);
+        long messagesExpected = 4; // 3 from below, and 1 no-op
+        long messagesReceived = Files.readLines(kfiler.filer.getFile(), Charsets.UTF_8).size();
+        Assert.assertEquals(messagesExpected,messagesReceived);
+
+        Utils.sleep( 2 * 1000);
+        cluster.killTopology(splitter.defaultTopoName);
+
+// This code block was preferred but didn't work - ie interrogate Kafka and get number of
+// messages sent. Unfortunately, the code returned 0 each time.  So, plan B was to dump to file.
+//        KafkaLoggerTopology klogger = new KafkaLoggerTopology();
+//        cluster.submitTopology("logger-3", stormConfig(),
+//                klogger.createTopology(InfoEventSplitterBolt.I_SWITCH_UPDOWN, Level.DEBUG,
+//                        InfoEventSplitterBolt.I_SWITCH_UPDOWN,TestUtils.zookeeperUrl));
+//        List<String> messages = kutils
+//                .getMessagesFromTopic(InfoEventSplitterBolt.I_SWITCH_UPDOWN);
+//        long messagesReceived = messages.size();
 
     }
 
@@ -77,10 +117,10 @@ public class SimpleSplitterTest {
     // TESTING Area
     // =~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=
 
-    private void SendMessages(String topic){
+    public static void SendMessages(String topic){
         System.out.println("==> sending records");
 
-        KafkaProducer<String,String> kProducer = KafkaUtils.createStringsProducer();
+        KafkaProducer<String,String> kProducer = kutils.createStringsProducer();
 
         kProducer.send(new ProducerRecord<>(topic, "data", createSwitchInfoMessage("sw1",
                 "ADDED")));
@@ -88,11 +128,9 @@ public class SimpleSplitterTest {
                 "ADDED")));
         kProducer.send(new ProducerRecord<>(topic, "data", createSwitchInfoMessage("sw3",
                 "ADDED")));
-        try {
-            Thread.sleep(500);
-        } catch (InterruptedException e) {
-            /* consume the exception .. ie noop */
-        }
+
+        Utils.sleep(1 * 1000);
+
         kProducer.send(new ProducerRecord<>(topic, "data", createSwitchInfoMessage("sw1",
                 "ACTIVATED")));
         kProducer.send(new ProducerRecord<>(topic, "data", createSwitchInfoMessage("sw2",
@@ -107,14 +145,14 @@ public class SimpleSplitterTest {
     /**
      * @param state - ACTIVATED | ADDED | CHANGE | DEACTIVATED | REMOVED
      */
-    public String createSwitchInfoMessage (String switchID, String state) {
+    public static String createSwitchInfoMessage (String switchID, String state) {
         return createInfoMessage(true,switchID,null,state);
     }
 
     /**
      * @param state - ADD | OTHER_UPDATE | DELETE | UP | DOWN
      */
-    public String createPortInfoMessage (String switchID, String portID, String state) {
+    public static String createPortInfoMessage (String switchID, String portID, String state) {
         return createInfoMessage(false,switchID,portID,state);
     }
 
@@ -147,7 +185,7 @@ public class SimpleSplitterTest {
 
      * @param isSwitch - it is either a switch or port at this stage.
      */
-    private String createInfoMessage (boolean isSwitch, String switchID, String portID, String
+    public static String createInfoMessage (boolean isSwitch, String switchID, String portID, String
             state) {
         StringBuffer sb = new StringBuffer("{'type': 'INFO', ");
         sb.append("'timestamp': ").append(System.currentTimeMillis()).append(", ");

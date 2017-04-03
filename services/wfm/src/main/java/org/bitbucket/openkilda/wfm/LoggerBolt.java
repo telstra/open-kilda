@@ -38,8 +38,9 @@ public class LoggerBolt extends BaseRichBolt {
 
     @Override
     public void execute(Tuple tuple) {
-        logger.log(level, "\n{}: fields: {} \n{}: values: {}",
-                watermark, tuple.getFields(), watermark, tuple.getValues());
+        System.out.println("this = " + this);
+        logger.log(level, "\n{}: fields: {} :: values: {}",
+                watermark, tuple.getFields(), tuple.getValues());
         _collector.ack(tuple);
     }
 

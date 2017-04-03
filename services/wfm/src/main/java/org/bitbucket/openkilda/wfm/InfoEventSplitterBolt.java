@@ -98,7 +98,7 @@ public class InfoEventSplitterBolt extends BaseRichBolt {
     @Override
     public void execute(Tuple tuple) {
         String json = tuple.getString(1);
-        logger.info("Processing INFO message: {}", json);   
+        logger.info("Processing INFO message: {}", json);
 
         Map<String,?> root = null;
         try {

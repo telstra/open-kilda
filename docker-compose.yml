@@ -227,6 +227,7 @@ services:
 
   storm_supervisor:
     container_name: storm_supervisor
+    hostname: storm_supervisor.pendev
     build:
       context: .
       dockerfile:  services/storm/Dockerfile

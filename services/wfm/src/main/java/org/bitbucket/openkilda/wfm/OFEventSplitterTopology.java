@@ -34,7 +34,7 @@ public class OFEventSplitterTopology {
     private static Logger logger = LogManager.getLogger(OFEventSplitterTopology.class);
 
     public String topic = "kilda.speaker"; // + System.currentTimeMillis();
-    public String defaultTopoName = "OF Event Splitter";
+    public String defaultTopoName = "OF_Event_Splitter";
     public Properties kafkaProps = new Properties();
     public int parallelism = 3;
     public KafkaUtils kutils = new KafkaUtils();
@@ -45,9 +45,9 @@ public class OFEventSplitterTopology {
         kafkaProps.put("bootstrap.servers", "kafka.pendev:9092");
     }
 
-    public Properties withKafkaProps(Properties kprops){
+    public OFEventSplitterTopology withKafkaProps(Properties kprops){
         kafkaProps.putAll(kprops);
-        return kafkaProps;
+        return this;
     }
 
     /**
@@ -117,7 +117,7 @@ public class OFEventSplitterTopology {
 
     // TODO: KafkaUtils should be passed the configured Kafka server.
     KafkaProducer<String,String> kProducer = new KafkaUtils().createStringsProducer();
-    private void primeKafkaTopic(String topic){
+    public void primeKafkaTopic(String topic){
         kProducer.send(new ProducerRecord<>(topic, "no_op", "{\"type\": \"NO_OP\"}"));
     }
 

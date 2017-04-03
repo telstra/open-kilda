@@ -1,10 +1,20 @@
 package org.bitbucket.openkilda.wfm;
 
 import kafka.api.OffsetRequest;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.common.PartitionInfo;
+import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.kafka.common.utils.Utils;
 import org.apache.storm.kafka.*;
 import org.apache.storm.spout.SchemeAsMultiScheme;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Properties;
 
 /**
@@ -43,6 +53,7 @@ public class KafkaUtils {
         kprops.put("bootstrap.servers", kafkaHosts);
         kprops.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         kprops.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+        kprops.put("request.required.acks", "1");
         return createStringsProducer(kprops);
     }
 
@@ -52,6 +63,51 @@ public class KafkaUtils {
     public KafkaProducer<String, String> createStringsProducer(Properties kprops){
         return new KafkaProducer<>(kprops);
     }
+
+    /**
+     * @return The list of messages from the topic.
+     */
+    public List<String> getMessagesFromTopic(String topic){
+        List<String> results = new ArrayList<>();
+
+//        Properties props = new Properties();
+//        props.put("bootstrap.servers", "localhost:9092");
+//        props.put("group.id", "kilda.consumer."+topic);
+//        props.put("key.deserializer", StringDeserializer.class.getName());
+//        props.put("value.deserializer", StringDeserializer.class.getName());
+//        KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props);
+//        consumer.subscribe(Arrays.asList(topic));
+
+
+        Properties props = new Properties();
+        props.put("bootstrap.servers", "localhost:9092");
+        props.put("group.id", "test");
+        props.put("enable.auto.commit", "true");
+        props.put("auto.commit.interval.ms", "1000");
+        props.put("session.timeout.ms", "15000");
+        props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+        props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+        KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props);
+        topic = "speaker.info.switch.updown";
+        consumer.subscribe(Arrays.asList(topic));
+
+        System.out.println("");
+        for (int i = 0; i < 10; i++) {
+            ConsumerRecords<String, String> records = consumer.poll(500);
+            System.out.println(".");
+            for (ConsumerRecord<String, String> record : records) {
+                System.out.printf("offset = %d, key = %s, value = %s", record.offset(), record.key(), record.value());
+                System.out.print("$");
+                results.add(record.value());
+            }
+            Utils.sleep(1000);
+        }
+        System.out.println("");
+        consumer.close();
+
+        return results;
+    }
+
 
     /**
      * Creates a basic Kafka Spout.
@@ -70,6 +126,5 @@ public class KafkaUtils {
         cfg.fetchSizeBytes = 1024 * 1024 * 4;
         return new KafkaSpout(cfg);
     }
-
 
 }
