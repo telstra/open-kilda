@@ -10,6 +10,8 @@ import org.bitbucket.openkilda.floodlight.message.CommandMessage;
 import org.bitbucket.openkilda.floodlight.message.Message;
 import org.bitbucket.openkilda.floodlight.message.command.*;
 import org.bitbucket.openkilda.floodlight.pathverification.IPathVerificationService;
+import org.bitbucket.openkilda.floodlight.switchmanager.ISwitchManager;
+import org.bitbucket.openkilda.floodlight.switchmanager.OutputVlanType;
 import org.bitbucket.openkilda.floodlight.switchmanager.SwitchEventCollector;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
@@ -29,6 +31,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
     private ObjectMapper mapper;
     private IPathVerificationService pathVerificationService;
     private SwitchEventCollector switchEventCollector;
+    private ISwitchManager switchManager;
     private KafkaMessageProducer kafkaProducer;
 
     class ParseRecord implements Runnable {
@@ -76,7 +79,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
                     "transit_vlan_id: {}", new Object[]{command.getFlowName(), command.getSwitchId(),
                     command.getInputPort(), command.getOutputPort(), command.getInputVlanId(),
                     command.getTransitVlanId()});
-            switchEventCollector.installIngressFlow(DatapathId.of(command.getSwitchId()),
+            switchManager.installIngressFlow(DatapathId.of(command.getSwitchId()),
                     command.getInputPort().intValue(), command.getOutputPort().intValue(),
                     command.getInputVlanId().intValue(), command.getTransitVlanId().intValue());
         }
@@ -86,9 +89,11 @@ public class KafkaMessageCollector implements IFloodlightModule {
             logger.debug("creating an engress flow {} on {} with input_port: {}, output_port: {}, " +
                     "transit_vlan_id: {}", new Object[]{command.getFlowName(), command.getSwitchId(),
                     command.getInputPort(), command.getOutputPort(), command.getTransitVlanId()});
-            switchEventCollector.installEgressFlow(DatapathId.of(command.getSwitchId()),
+            switchManager.installEgressFlow(DatapathId.of(command.getSwitchId()),
                     command.getInputPort().intValue(), command.getOutputPort().intValue(),
-                    command.getTransitVlanId().intValue());
+                    command.getTransitVlanId().intValue(),
+                    0,
+                    OutputVlanType.NONE);
         }
 
         private void doInstallTransitFlow(CommandData data) {
@@ -96,7 +101,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
             logger.debug("creating a transit flow {} on {} with input_port: {}, output_port: {}, " +
                     "transit_vlan_id: {}", new Object[]{command.getFlowName(), command.getSwitchId(),
                     command.getInputPort(), command.getOutputPort(), command.getTransitVlanId()});
-            switchEventCollector.installTransitFlow(DatapathId.of(command.getSwitchId()),
+            switchManager.installTransitFlow(DatapathId.of(command.getSwitchId()),
                     command.getInputPort().intValue(), command.getOutputPort().intValue(),
                     command.getTransitVlanId().intValue());
         }
@@ -180,6 +185,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
         services.add(IPathVerificationService.class);
         services.add(KafkaMessageProducer.class);
         services.add(SwitchEventCollector.class);
+        services.add(ISwitchManager.class);
         return services;
     }
 
@@ -189,6 +195,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
         pathVerificationService = context.getServiceImpl(IPathVerificationService.class);
         switchEventCollector = context.getServiceImpl(SwitchEventCollector.class);
         kafkaProducer = context.getServiceImpl(KafkaMessageProducer.class);
+        switchManager = context.getServiceImpl(ISwitchManager.class);
         logger = LoggerFactory.getLogger(this.getClass());
         Map<String, String> configParameters = context.getConfigParams(this);
         kafkaProps = new Properties();
