@@ -1,0 +1,245 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>org.bitbucket.openkilda.wfm</groupId>
+    <artifactId>WorkflowManager</artifactId>
+    <packaging>jar</packaging>
+    <version>1.0-SNAPSHOT</version>
+    <name>WFM</name>
+    <url>https://bitbucket.org/openkilda/controller/wiki/Home</url>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <storm.version>1.0.3</storm.version>
+    </properties>
+
+    <dependencies>
+
+
+        <dependency>
+            <groupId>org.apache.storm</groupId>
+            <artifactId>storm-core</artifactId>
+            <version>${storm.version}</version>
+            <!-- keep storm out of the jar-with-dependencies -->
+            <!--<scope>provided</scope>-->
+        </dependency>
+        <dependency>
+            <groupId>org.apache.storm</groupId>
+            <artifactId>storm-kafka</artifactId>
+            <version>${storm.version}</version>
+        </dependency>
+
+        <!-- https://mvnrepository.com/artifact/org.apache.storm/storm-kafka-client -->
+        <dependency>
+            <groupId>org.apache.storm</groupId>
+            <artifactId>storm-kafka-client</artifactId>
+            <version>${storm.version}</version>
+        </dependency>
+
+        <!-- TODO: kafka_2.10 holds the old clients, replace with kafka-clients -->
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-clients</artifactId>
+            <version>0.10.2.0</version>
+
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-log4j12</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>log4j</groupId>
+                    <artifactId>log4j</artifactId>
+                </exclusion>
+            </exclusions>
+
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka_2.10</artifactId>
+            <version>0.10.2.0</version>
+
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-log4j12</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>log4j</groupId>
+                    <artifactId>log4j</artifactId>
+                </exclusion>
+            </exclusions>
+
+        </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.8.7</version>
+        </dependency>
+
+
+        <!-- Add a dependency on the Flux framework -->
+        <dependency>
+            <groupId>org.apache.storm</groupId>
+            <artifactId>flux-core</artifactId>
+            <version>${storm.version}</version>
+        </dependency>
+        <!-- Flux Wrappers include -->
+        <dependency>
+            <groupId>org.apache.storm</groupId>
+            <artifactId>flux-wrappers</artifactId>
+            <version>${storm.version}</version>
+        </dependency>
+
+        <!-- ~~~~~~~ -->
+        <!-- TESTING -->
+        <!-- ~~~~~~~ -->
+
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.12</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.curator</groupId>
+            <artifactId>curator-test</artifactId>
+            <version>2.8.0</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/com.101tec/zkclient -->
+        <dependency>
+            <groupId>com.101tec</groupId>
+            <artifactId>zkclient</artifactId>
+            <version>0.10</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jetbrains</groupId>
+            <artifactId>annotations</artifactId>
+            <version>15.0</version>
+        </dependency>
+
+
+    </dependencies>
+
+
+    <build>
+
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.6.1</version>
+                <configuration>
+                    <source>1.8</source>
+                    <target>1.8</target>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>1.6.0</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <executable>java</executable>
+                    <includeProjectDependencies>true</includeProjectDependencies>
+                    <includePluginDependencies>false</includePluginDependencies>
+                    <classpathScope>compile</classpathScope>
+                    <!-- storm.topology will be passed in during invocation -->
+                    <mainClass>org.apache.storm.flux.Flux</mainClass>
+                </configuration>
+            </plugin>
+
+            <!-- build an uber jar -->
+            <!--<plugin>-->
+                <!--<groupId>org.apache.maven.plugins</groupId>-->
+                <!--<artifactId>maven-shade-plugin</artifactId>-->
+                <!--<version>2.3</version>-->
+                <!--<configuration>-->
+                    <!--<createDependencyReducedPom>true</createDependencyReducedPom>-->
+                <!--</configuration>-->
+                <!--<executions>-->
+                    <!--<execution>-->
+                        <!--<phase>package</phase>-->
+                        <!--<goals>-->
+                            <!--<goal>shade</goal>-->
+                        <!--</goals>-->
+                        <!--<configuration>-->
+                            <!--<transformers>-->
+                                <!--<transformer-->
+                                        <!--implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>-->
+                                <!--<transformer-->
+                                        <!--implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">-->
+                                    <!--<mainClass>org.apache.storm.flux.Flux</mainClass>-->
+                                <!--</transformer>-->
+                            <!--</transformers>-->
+                        <!--</configuration>-->
+                    <!--</execution>-->
+                <!--</executions>-->
+            <!--</plugin>-->
+
+
+            <!--<plugin>-->
+                <!--<groupId>org.apache.maven.plugins</groupId>-->
+                <!--<artifactId>maven-shade-plugin</artifactId>-->
+                <!--<version>2.3</version>-->
+                <!--<configuration>-->
+                    <!--<transformers>-->
+                        <!--&lt;!&ndash; Keep us from getting a "can't overwrite file error" &ndash;&gt;-->
+                        <!--<transformer-->
+                                <!--implementation="org.apache.maven.plugins.shade.resource.ApacheLicenseResourceTransformer"/>-->
+                        <!--<transformer-->
+                                <!--implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>-->
+                        <!--&lt;!&ndash; We're using Flux, so refer to it as main &ndash;&gt;-->
+                        <!--<transformer-->
+                                <!--implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">-->
+                            <!--<mainClass>org.apache.storm.flux.Flux</mainClass>-->
+                        <!--</transformer>-->
+                    <!--</transformers>-->
+                    <!--&lt;!&ndash; Keep us from getting a bad signature error &ndash;&gt;-->
+                    <!--<filters>-->
+                        <!--<filter>-->
+                            <!--<artifact>*:*</artifact>-->
+                            <!--<excludes>-->
+                                <!--<exclude>META-INF/*.SF</exclude>-->
+                                <!--<exclude>META-INF/*.DSA</exclude>-->
+                                <!--<exclude>META-INF/*.RSA</exclude>-->
+                            <!--</excludes>-->
+                        <!--</filter>-->
+                    <!--</filters>-->
+                <!--</configuration>-->
+                <!--<executions>-->
+                    <!--<execution>-->
+                        <!--<phase>package</phase>-->
+                        <!--<goals>-->
+                            <!--<goal>shade</goal>-->
+                        <!--</goals>-->
+                    <!--</execution>-->
+                <!--</executions>-->
+            <!--</plugin>-->
+
+        </plugins>
+
+        <!--<resources>-->
+            <!--<resource>-->
+                <!--<directory>${basedir}/src/main/resources</directory>-->
+                <!--<filtering>false</filtering>-->
+                <!--<includes>-->
+                    <!--<include>log4j2.xml</include>-->
+                    <!--<include>topology.yaml</include>-->
+                <!--</includes>-->
+            <!--</resource>-->
+        <!--</resources>-->
+    </build>
+
+</project>

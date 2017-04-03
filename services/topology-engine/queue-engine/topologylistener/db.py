@@ -31,16 +31,6 @@ def test_neo4j_connection():
         except:
             print "Waiting for Neo4j to become available"
             time.sleep(1)
-
-    while driver:
-        try:
-            runner("MATCH (n) RETURN n")
-            print "DB layer connected"
-            break
-        except Exception as e:
-            time.sleep(1)
-            print e
-            print "Waiting for DB layer"
     
     return True
 
