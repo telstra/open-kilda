@@ -1,28 +1,17 @@
 package org.bitbucket.openkilda.wfm;
 
 import com.google.common.base.Charsets;
-import com.google.common.collect.Lists;
 import com.google.common.io.Files;
-import org.apache.commons.io.input.TeeInputStream;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 
-import org.apache.logging.log4j.Level;
 import org.apache.storm.Config;
-import org.apache.storm.StormSubmitter;
-import org.apache.storm.generated.Bolt;
-import org.apache.storm.task.IBolt;
 import org.apache.storm.utils.Utils;
 import org.junit.*;
 
 import org.apache.storm.LocalCluster;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
 
-import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Properties;
 
 
@@ -31,33 +20,14 @@ import java.util.Properties;
  * <p>
  * The Splitter listens to a kafka queue and splits them into other queues.
  */
-public class SimpleSplitterTest {
-
-    static Logger logger = LogManager.getLogger(SimpleSplitterTest.class);
-    static TestUtils.KafkaTestFixture server;
-    static KafkaUtils kutils;
-
-    @BeforeClass
-    public static void setupOnce() throws Exception {
-        server = new TestUtils.KafkaTestFixture();
-        server.start();
-        kutils = new KafkaUtils()
-                .withZookeeperHost(TestUtils.zookeeperUrl)
-                .withKafkaHosts(TestUtils.kafkaUrl);
-    }
-
-    @AfterClass
-    public static void teardownOnce() throws Exception {
-        System.out.println("------> Killing Sheep \uD83D\uDC11\n");
-        server.stop();
-    }
+public class SimpleSplitterTest extends AbstractStormTest {
 
     @Before
-    public void setupEach() throws Exception {
+    public void setupEach() {
     }
 
     @After
-    public void teardownEach() throws Exception {
+    public void teardownEach() {
     }
 
     public static Config stormConfig() {
@@ -66,7 +36,6 @@ public class SimpleSplitterTest {
         config.setNumWorkers(1);
         return config;
     }
-
 
     @Test
     public void KafkaSplitterTest() throws IOException {
