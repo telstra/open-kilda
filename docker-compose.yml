@@ -11,6 +11,7 @@ services:
 #      - services/hello-world/variables.env
 
   mininet:
+    container_name: mininet
     build:
       context: .
       dockerfile:  services/mininet/Dockerfile
@@ -25,6 +26,7 @@ services:
     privileged: true
 
   neo4j:
+    container_name: neo4j
     build:
       context: .
       dockerfile:  services/neo4j/Dockerfile
@@ -40,6 +42,7 @@ services:
       retries: 3
 
   topology-engine:
+    container_name: topology-engine
     build:
       context: services/topology-engine/
       dockerfile: Dockerfile
@@ -68,6 +71,7 @@ services:
         condition: service_healthy
 
   zookeeper:
+    container_name: zookeeper
     build:
       context: .
       dockerfile:  services/zookeeper/Dockerfile
@@ -82,6 +86,8 @@ services:
       retries: 3
 
   kafka:
+    container_name: kafka
+    hostname: kafka.pendev
     build:
       context: .
       dockerfile:  services/kafka/Dockerfile
@@ -105,6 +111,7 @@ services:
       retries: 3
 
   wfm:
+    container_name: wfm
     build:
       context: .
       dockerfile:  services/wfm/Dockerfile
@@ -113,8 +120,15 @@ services:
     depends_on:
       kafka:
         condition: service_healthy
+      zookeeper:
+        condition: service_healthy
+      storm_nimbus:
+        condition: service_healthy
+#      hbase:
+#        condition: service_healthy
     links:
       - kafka:kafka.pendev
+      - storm_nimbus:nimbus.pendev
 
 #  hbase:
 #    build:
@@ -159,65 +173,87 @@ services:
 #      - "22:8022"
 #    container_name: "hadoop-tools"
 
-#  storm_nimbus:
-#    build:
-#      context: .
-#      dockerfile:  services/storm/Dockerfile
-#    image: "kilda/storm:${full_build_number:-latest}"
-#    command: /app/wait-for-it.sh -t 120 -h zookeeper.pendev -p 2181 -- /opt/storm/bin/storm nimbus
-#    depends_on:
-#      zookeeper:
-#        condition: service_healthy
-#    links:
-#      - zookeeper:zookeeper.pendev
+  storm_nimbus:
+    container_name: storm_nimbus
+    hostname: nimbus.pendev
+    build:
+      context: .
+      dockerfile:  services/storm/Dockerfile
+    image: "kilda/storm:${full_build_number:-latest}"
+    command: /app/wait-for-it.sh -t 120 -h zookeeper.pendev -p 2181 -- /opt/storm/bin/storm nimbus
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    links:
+      - zookeeper:zookeeper.pendev
 #      - hbase:hbase.pendev
-#    ports:
-#      - "6627:6627"
-#      - "3772:3772"
-#      - "3773:3773"
+    ports:
+      - "6627:6627"
+      - "3772:3772"
+      - "3773:3773"
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD-SHELL", "jps | grep --silent nimbus"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-#  storm_ui:
-#    build:
-#      context: .
-#      dockerfile:  services/storm/Dockerfile
-#    image: "kilda/storm:${full_build_number:-latest}"
-#    command: /app/wait-for-it.sh -t 120 -h zookeeper.pendev -p 2181 -- /opt/storm/bin/storm ui
-#    depends_on:
-#      zookeeper:
-#        condition: service_healthy
-#      storm_nimbus:
-#        condition: service_healthy
-#      storm_supervisor:
-#        condition: service_healthy
-#    links:
-#      - zookeeper:zookeeper.pendev
+  storm_ui:
+    container_name: storm_ui
+    build:
+      context: .
+      dockerfile:  services/storm/Dockerfile
+    image: "kilda/storm:${full_build_number:-latest}"
+    command: /app/wait-for-it.sh -t 120 -h zookeeper.pendev -p 2181 -- /opt/storm/bin/storm ui
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+      storm_nimbus:
+        condition: service_healthy
+      storm_supervisor:
+        condition: service_healthy
+    links:
+      - zookeeper:zookeeper.pendev
 #      - hbase:hbase.pendev
-#      - storm_nimbus:nimbus.pendev
-#      - storm_supervisor:supervisor.pendev
-#    ports:
-#      - "8888:8080"
+      - storm_nimbus:nimbus.pendev
+      - storm_supervisor:supervisor.pendev
+    ports:
+      - "8888:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "jps | grep --silent core"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-#  storm_supervisor:
-#    build:
-#      context: .
-#      dockerfile:  services/storm/Dockerfile
-#    image: "kilda/storm:${full_build_number:-latest}"
-#    command: /app/wait-for-it.sh -t 120 -h zookeeper.pendev -p 2181 -- /opt/storm/bin/storm supervisor
-#    depends_on:
-#      zookeeper:
-#        condition: service_healthy
-#      storm_nimbus:
-#        condition: service_healthy
-#    links:
-#      - zookeeper:zookeeper.pendev
+  storm_supervisor:
+    container_name: storm_supervisor
+    hostname: storm_supervisor.pendev
+    build:
+      context: .
+      dockerfile:  services/storm/Dockerfile
+    image: "kilda/storm:${full_build_number:-latest}"
+    command: /app/wait-for-it.sh -t 120 -h zookeeper.pendev -p 2181 -- /opt/storm/bin/storm supervisor
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+      storm_nimbus:
+        condition: service_healthy
+    links:
+      - zookeeper:zookeeper.pendev
+      - kafka:kafka.pendev
 #      - hbase:hbase.pendev
-#      - storm_nimbus:nimbus.pendev
-#    ports:
-#      - "6700:6700"
-#      - "6701:6701"
-#      - "6702:6702"
-#      - "6703:6703"
-#      - "8000:8000"
+      - storm_nimbus:nimbus.pendev
+    ports:
+      - "6700:6700"
+      - "6701:6701"
+      - "6702:6702"
+      - "6703:6703"
+      - "8001:8000"
+    healthcheck:
+      test: ["CMD-SHELL", "jps | grep --silent Supervisor"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   floodlight:
     build:

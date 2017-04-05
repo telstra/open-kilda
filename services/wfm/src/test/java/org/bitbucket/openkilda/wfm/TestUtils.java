@@ -20,9 +20,21 @@ import org.apache.storm.kafka.ZkHosts;
  */
 public class TestUtils {
 
+    public static final String zookeeperUrl = "localhost:2182";
+    public static final String kafkaUrl = "localhost:9092";
+
+    public static Properties serverProperties() {
+        Properties props = new Properties();
+        props.put("zookeeper.connect", zookeeperUrl);
+        props.put("broker.id", "1");
+        props.put("delete.topic.enable","true");
+        return props;
+    }
+
     public static class KafkaTestFixture {
         public TestingServer zk;
         public KafkaServerStartable kafka;
+        public File tempDir  = Files.createTempDir();;
 
 
         public void start() throws Exception {
@@ -31,22 +43,16 @@ public class TestUtils {
 
         public void start(Properties props) throws Exception {
             Integer port = getZkPort(props);
-            File tempDir = Files.createTempDir();
-            props.put("log.dirs", tempDir.getAbsolutePath());
 
-            //zk = new TestingServer(port); // this starts the zk server
             zk = new TestingServer(port, tempDir); // this starts the zk server
-            //zk.start();
             System.out.println("Started ZooKeeper: ");
             System.out.println("--> Temp Directory: " + zk.getTempDirectory());
 
+            props.put("log.dirs", tempDir.getAbsolutePath());
             KafkaConfig kafkaConfig = new KafkaConfig(props);
             kafka = new KafkaServerStartable(kafkaConfig);
-            System.out.println("Started KAFKA: ");
             kafka.startup();
-            //for (Object v : kafka.serverConfig().values().entrySet()) {
-            //    System.out.println(v);
-            //}
+            System.out.println("Started KAFKA: ");
         }
 
         public void stop() throws IOException {
@@ -61,18 +67,9 @@ public class TestUtils {
             return Integer.valueOf(port);
         }
 
-        public BrokerHosts getBrokerHosts(){
-            return new ZkHosts(zk.getConnectString());
-        }
-    }
-
-    public static Properties serverProperties() {
-        String tempDir = Files.createTempDir().getAbsolutePath();
-        Properties props = new Properties();
-        props.put("zookeeper.connect", "localhost:2182");
-        props.put("broker.id", "1");
-        props.put("delete.topic.enable","true");
-        return props;
+//        public BrokerHosts getBrokerHosts(){
+//            return new ZkHosts(zk.getConnectString());
+//        }
     }
 
 
