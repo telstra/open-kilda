@@ -23,9 +23,6 @@ result_switches = requests.post('http://localhost:7474/db/data/cypher', data=dat
 
 
 j_switches = json.loads(result_switches.text)
-nodes = []
-topology = {}
-
 nodes = Nodes()
 nodes.edges = []
 

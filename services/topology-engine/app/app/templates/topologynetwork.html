@@ -99,7 +99,7 @@ path.invis {
       var w = window.innerWidth - 20,
           h = window.innerHeight,
           middle = w/2;
-      var linkDistance = 10; //40
+      var linkDistance = 40; //40
 
       var colors = d3.scale.category20();
 
@@ -234,7 +234,7 @@ path.invis {
                 });
 
                 force
-                        .charge(-100) //-10000
+                        .charge(-10000) //-10000
                         .friction(0.5)
                         .linkDistance(linkDistance)
                         .size([w, h])

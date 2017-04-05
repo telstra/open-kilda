@@ -10,6 +10,7 @@ import requests
 import json
 import random 
 import time
+import uuid
 
 from kafka import KafkaConsumer, KafkaProducer
 from py2neo import Graph, Node, Relationship
@@ -48,7 +49,7 @@ def build_ingress_flow(expandedRelationships, src_switch, src_port, src_vlan, tr
 
     return flow
 
-def build_egress_flow(expandedRelationships, dst_switch, dst_port, dst_vlan, transitVlan):
+def build_egress_flow(expandedRelationships, dst_switch, dst_port, dst_vlan, transitVlan, outputAction):
     action = dst_port
     for relationship in expandedRelationships:
         if relationship['data']['dst_switch'] == dst_switch:
@@ -62,7 +63,8 @@ def build_egress_flow(expandedRelationships, dst_switch, dst_port, dst_vlan, tra
     flow.input_port = int(match)
     flow.output_port = int(dst_port)
     flow.transit_vlan_id = int(transitVlan)
-
+    flow.output_vlan_id = int(dst_vlan)
+    flow.output_vlan_type = outputAction
     return flow
 
 def build_intermediate_flows(expandedRelationships, transitVlan, i):
@@ -97,7 +99,10 @@ def get_relationships(src_switch, src_port, dst_switch, dst_port):
 def assign_transit_vlan():
     return random.randrange(99, 4000,1)
 
-def api_v1_topology_get_path(src_switch, src_port, src_vlan, dst_switch, dst_port, dst_vlan, transitVlan):
+def assign_flow_id():
+    return str(uuid.uuid4())
+
+def api_v1_topology_get_path(src_switch, src_port, src_vlan, dst_switch, dst_port, dst_vlan, transitVlan, outputAction):
     relationships = get_relationships(src_switch, src_port, dst_switch, dst_port)
     expandedRelationships = expand_relationships(relationships)
     flows = []
@@ -107,70 +112,73 @@ def api_v1_topology_get_path(src_switch, src_port, src_vlan, dst_switch, dst_por
     while i < intermediateFlowCount:
         flows.append(build_intermediate_flows(expandedRelationships, transitVlan, i))
         i += 1
-    flows.append(build_egress_flow(expandedRelationships, dst_switch, dst_port, dst_vlan, transitVlan))
+    flows.append(build_egress_flow(expandedRelationships, dst_switch, dst_port, dst_vlan, transitVlan, outputAction))
     return flows
 
 
 @application.route('/api/v1/flow', methods=["POST"])
 #@login_required
 def api_v1_topology_path():
+    if request.method == 'POST':
+        flowID = assign_flow_id()
+        transitVlanForward = assign_transit_vlan()
+        transitVlanReturn = assign_transit_vlan()
+
+        bootstrapServer = 'kafka.pendev:9092'
+        topic = 'kilda-test'
+        producer = KafkaProducer(bootstrap_servers=bootstrapServer)
         
-    transitVlanForward = 666
-    transitVlanReturn = 777
+        content = json.loads('{}'.format(request.data))
+        print content
 
-    bootstrapServer = 'kafka.pendev:9092'
-    topic = 'kilda-test'
-    producer = KafkaProducer(bootstrap_servers=bootstrapServer)
-    
-    content = json.loads('{}'.format(request.data))
-    print content
+        src_switch = content['src_switch']
+        src_port = content['src_port']
+        src_vlan = content['src_vlan']
+        dst_switch = content['dst_switch']
+        dst_port = content['dst_port']
+        dst_vlan = content['dst_vlan']
+        outputAction = "PUSH" #needs to be added to api
 
-    src_switch = content['src_switch']
-    src_port = content['src_port']
-    src_vlan = content['src_vlan']
-    dst_switch = content['dst_switch']
-    dst_port = content['dst_port']
-    dst_vlan = content['dst_vlan']
+        forwardFlows = api_v1_topology_get_path(src_switch, src_port, src_vlan, dst_switch, dst_port, dst_vlan, transitVlanForward, outputAction)
+        reverseFlows = api_v1_topology_get_path(dst_switch, dst_port, dst_vlan, src_switch, src_port, src_vlan, transitVlanReturn, outputAction)
 
-    forwardFlows = api_v1_topology_get_path(src_switch, src_port, src_vlan, dst_switch, dst_port, dst_vlan, transitVlanForward)
-    reverseFlows = api_v1_topology_get_path(dst_switch, dst_port, dst_vlan, src_switch, src_port, src_vlan, transitVlanReturn)
+        allflows = [forwardFlows, reverseFlows]
 
-    allflows = [forwardFlows, reverseFlows]
+        for flows in allflows:
+            for flow in flows:
+                message = Message()
+                message.data = flow
+                message.type = "COMMAND"
+                message.timestamp = 42
+                kafkamessage = b'{}'.format(message.toJSON())
+                print 'topic: {}, message: {}'.format(topic, kafkamessage)
+                messageresult = producer.send(topic, kafkamessage)
+                result = messageresult.get(timeout=5)
+                print result
+        
 
-    for flows in allflows:
-        for flow in flows:
-            message = Message()
-            message.data = flow
-            message.type = "COMMAND"
-            message.timestamp = 42
-            kafkamessage = b'{}'.format(message.toJSON())
-            print 'topic: {}, message: {}'.format(topic, kafkamessage)
-            messageresult = producer.send(topic, kafkamessage)
-            result = messageresult.get(timeout=5)
-            print result
-    
+        a_switch = src_switch
+        a_port = src_port
+        b_switch = dst_switch
+        b_port = dst_port
 
-    a_switch = src_switch
-    a_port = src_port
-    b_switch = dst_switch
-    b_port = dst_port
+        graph = create_p2n_driver()
 
-    graph = create_p2n_driver()
+        a_switchNode = graph.find_one('switch', property_key='name', property_value='{}'.format(a_switch))
+        b_switchNode = graph.find_one('switch', property_key='name', property_value='{}'.format(b_switch))
 
-    a_switchNode = graph.find_one('switch', property_key='name', property_value='{}'.format(a_switch))
-    b_switchNode = graph.find_one('switch', property_key='name', property_value='{}'.format(b_switch))
+        print a_switchNode
+        print b_switchNode
 
-    print a_switchNode
-    print b_switchNode
+        if not a_switchNode or not b_switchNode:
+            return '{"result": "failed"}'
 
-    if not a_switchNode or not b_switchNode:
-        return '{"result": "failed"}'
+        pathForward = Relationship(a_switchNode, "flow", b_switchNode, src_port=a_port, dst_port=b_port, src_switch=a_switch, dst_switch=b_switch, flowid=flowID)
+        pathReverse = Relationship(b_switchNode, "flow", a_switchNode, src_port=b_port, dst_port=a_port, src_switch=b_switch, dst_switch=a_switch, flowid=flowID)
+        
+        
+        graph.create(pathForward)
+        graph.create(pathReverse)
 
-    pathForward = Relationship(a_switchNode, "flow", b_switchNode, src_port=a_port, dst_port=b_port, src_switch=a_switch, dst_switch=b_switch)
-    pathReverse = Relationship(b_switchNode, "flow", a_switchNode, src_port=b_port, dst_port=a_port, src_switch=b_switch, dst_switch=a_switch)
-    
-    
-    graph.create(pathForward)
-    graph.create(pathReverse)
-
-    return '{"result": "sucessful"}'
+        response = {"result": "sucessful", "flowID": flowID}
+        return json.dumps(response)
