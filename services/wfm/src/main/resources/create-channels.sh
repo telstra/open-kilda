@@ -17,3 +17,4 @@ ${CREATE_SIMPLE} speaker.info.isl
 ${CREATE_SIMPLE} speaker.info.isl.updown
 ${CREATE_SIMPLE} speaker.info.isl.other
 ${CREATE_SIMPLE} speaker.info.other
+${CREATE_SIMPLE} kilda.wfm.topo.updown

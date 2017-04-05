@@ -35,9 +35,9 @@ public class OFEventSplitterTopology {
 
     public String topic = "kilda.speaker"; // + System.currentTimeMillis();
     public String defaultTopoName = "OF_Event_Splitter";
+    public KafkaUtils kutils = new KafkaUtils();
     public Properties kafkaProps = new Properties();
     public int parallelism = 3;
-    public KafkaUtils kutils = new KafkaUtils();
 
     public OFEventSplitterTopology(){
         kafkaProps.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
@@ -86,12 +86,7 @@ public class OFEventSplitterTopology {
          */
         for (String channel : OFEventSplitterBolt.CHANNELS) {
             primeKafkaTopic(channel);
-
-            KafkaBolt<String, String> bolt = new KafkaBolt<String, String>()
-                    .withProducerProperties(kafkaProps)
-                    .withTopicSelector(new DefaultTopicSelector(channel))
-                    .withTupleToKafkaMapper(new FieldNameBasedTupleToKafkaMapper());
-            builder.setBolt(channel+"-kafkabolt", bolt, parallelism)
+            builder.setBolt(channel+"-kafkabolt", kutils.createKafkaBolt(channel), parallelism)
                     .shuffleGrouping(primaryBolt, channel);
 
         }
@@ -105,11 +100,7 @@ public class OFEventSplitterTopology {
         // TODO: Can convert part of this to a test .. see if the right messages land in right topic
         for (String stream : InfoEventSplitterBolt.outputStreams){
             primeKafkaTopic(stream);
-            KafkaBolt<String, String> splitter_bolt = new KafkaBolt<String, String>()
-                    .withProducerProperties(kafkaProps)
-                    .withTopicSelector(new DefaultTopicSelector(stream))
-                    .withTupleToKafkaMapper(new FieldNameBasedTupleToKafkaMapper());
-            builder.setBolt(stream+"-kafkabolt", splitter_bolt, 8)
+            builder.setBolt(stream+"-kafkabolt", kutils.createKafkaBolt(stream), parallelism)
                     .shuffleGrouping(infoSplitterBoltID, stream);
         }
         return builder.createTopology();
@@ -124,7 +115,6 @@ public class OFEventSplitterTopology {
 
     //Entry point for the topology
     public static void main(String[] args) throws Exception {
-        BrokerHosts hosts = new ZkHosts("zookeeper.pendev:2181");
         Config conf = new Config();
         conf.setDebug(false);
         OFEventSplitterTopology splitterTopology = new OFEventSplitterTopology();

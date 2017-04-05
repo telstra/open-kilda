@@ -1,6 +1,5 @@
 package org.bitbucket.openkilda.wfm;
 
-import clojure.lang.Compiler;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
