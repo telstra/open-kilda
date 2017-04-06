@@ -9,7 +9,9 @@ import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseStatefulBolt;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
+import org.apache.storm.tuple.Values;
 
+import java.io.IOException;
 import java.util.Map;
 
 /**
@@ -22,11 +24,11 @@ import java.util.Map;
  */
 public class OFESwitchBolt extends BaseStatefulBolt<KeyValueState<String, String>> {
 
-    /** The ID of the Stream that this bolt will emit */
     private static Logger logger = LogManager.getLogger(OFESwitchBolt.class);
 
     protected OutputCollector collector;
     protected KeyValueState<String, String> state;
+    /** The ID of the Stream that this bolt will emit */
     public String outputStreamId = "kilda.wfm.topo.updown";
 
     public OFESwitchBolt withOutputStreamId(String outputStreamId){
@@ -48,35 +50,41 @@ public class OFESwitchBolt extends BaseStatefulBolt<KeyValueState<String, String
      * We expect to receive Switch up/down events. We'll track the Switches we've seen initially.
      *
      * This bolt will listen to the splitter kafka stream.
-     *
-     * @param input
      */
     @Override
-    public void execute(Tuple input) {
-        String switchID = getSwitchID(input);
-        String history = state.get(switchID);
-        if (history == null) {
-            logger.debug("NEW SWITCH: " + switchID);
-            state.put(switchID,switchID);
-        } else {
-            logger.debug("OLD SWITCH: " + switchID);
+    public void execute(Tuple tuple) {
+        try {
+            String json = tuple.getString(0);
+            Map<String,?> data = OFEMessageUtils.getData(json);
+            String switchID = (String) data.get(OFEMessageUtils.FIELD_SWITCH_ID);
+            String updown = (String) data.get(OFEMessageUtils.FIELD_STATE);
+            if (switchID == null || switchID.length() == 0){
+                logger.error("OFESwitchBolt received a null/zero switch id: {}", json);
+            }
+            String history = state.get(switchID);
+            if (history == null) {
+                logger.debug("NEW SWITCH: {}, state: {}", switchID, updown);
+                state.put(switchID,switchID);
+            } else {
+                logger.debug("OLD SWITCH: {}, state: {}", switchID, updown);
+            }
+            // NB: The KafkaBolt will pickup the first 2 fields, and the LinkBolt the last two
+            Values dataVal = new Values("data", json, switchID, updown);
+            collector.emit(outputStreamId,tuple,dataVal);
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            collector.ack(tuple);
         }
 
     }
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declareStream(outputStreamId, new Fields("switch_id","state","timestamp"));
-    }
-
-    // ==================  ==================  ==================
-    // HELPER FUNCTIONS
-    // ==================  ==================  ==================
-
-    private String getSwitchID(Tuple input) {
-        String json = input.getString(0);
-        System.out.println("json = " + json);
-        return "";
+        declarer.declareStream(outputStreamId, new Fields(
+                "key","message"
+                , OFEMessageUtils.FIELD_SWITCH_ID
+                , OFEMessageUtils.FIELD_STATE));
     }
 
 }

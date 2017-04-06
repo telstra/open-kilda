@@ -1,9 +1,10 @@
 #!/bin/bash
 
 STD_OPTS="--create --partition 1 --replication-factor 1 "
-CREATE_SIMPLE="kafka-topics --zookeeper localhost ${STD_OPTS} --topic"
+CREATE_SIMPLE="/opt/kafka/bin/kafka-topics.sh --zookeeper zookeeper.pendev:2181 ${STD_OPTS} --topic"
 
 ${CREATE_SIMPLE} kilda.speaker
+${CREATE_SIMPLE} kilda-test
 ${CREATE_SIMPLE} speaker.command
 ${CREATE_SIMPLE} speaker.other
 ${CREATE_SIMPLE} speaker.info

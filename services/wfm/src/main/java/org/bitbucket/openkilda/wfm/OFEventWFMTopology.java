@@ -27,9 +27,9 @@ import java.util.Properties;
 public class OFEventWFMTopology {
     /*
      * Progress Tracker - Phase 1: Simple message flow, a little bit of state, re-wire spkr/tpe
-     * (1) ◊ Switch UP - Simple pass through
+     * (1) √ Switch UP - Simple pass through
      * (2) ◊ Switch Down - Simple pass through (LinkBolt will stop Link Discovery / Health)
-     * (3) ◊ Port UP - Simple Pass through (will be picked up by Link bolts, Discovery started)
+     * (3) √ Port UP - Simple Pass through (will be picked up by Link bolts, Discovery started)
      * (4) ◊ Port DOWN - Simple Pass through (LinkBolt will stop Link Discovery / Health)
      * (5) ◊ Link UP - this will be a response from the Discovery packet.
      *          ◊ Put message on kilda.wfm.topo.updown
@@ -40,7 +40,9 @@ public class OFEventWFMTopology {
      */
 
     public String topoName = "WFM_OFEvents";
-    public String kafkaOutputTopic = "kilda.wfm.topo.updown";
+    public static final String DEFAULT_KAFKA_OUTPUT = "kilda.wfm.topo.updown";
+    //public static final String DEFAULT_KAFKA_OUTPUT = "kilda-test";
+    public String kafkaOutputTopic = DEFAULT_KAFKA_OUTPUT;
     private static Logger logger = LogManager.getLogger(OFEventWFMTopology.class);
 
 
@@ -53,6 +55,7 @@ public class OFEventWFMTopology {
             InfoEventSplitterBolt.I_PORT_UPDOWN,
             InfoEventSplitterBolt.I_ISL_UPDOWN
     };
+    // The order of bolts should match topics, and Link should be last .. logic below relies on it
     public IStatefulBolt[] bolts = {
             new OFESwitchBolt().withOutputStreamId(kafkaOutputTopic),
             new OFEPortBolt().withOutputStreamId(kafkaOutputTopic),
@@ -74,14 +77,27 @@ public class OFEventWFMTopology {
 
         BoltDeclarer kbolt = builder.setBolt(kafkaOutputTopic+"-kafkabolt",
                 kutils.createKafkaBolt(kafkaOutputTopic), parallelism);
+        // tbolt will save the setBolt() results; will be useed to add switch/port to link
+        BoltDeclarer[] tbolt = new BoltDeclarer[bolts.length];
+
         for (int i = 0; i < topics.length; i++) {
             String topic = topics[i];
             String spoutName = topic+"-spout";
             String boltName = topic+"-bolt";
             builder.setSpout(spoutName, kutils.createKafkaSpout(topic));
-            builder.setBolt(boltName, bolts[i], parallelism).shuffleGrouping(spoutName);
+            // NB: with shuffleGrouping, we can't maintain state .. would need to parse first
+            //      just to pull out switchID.
+            tbolt[i] = builder.setBolt(boltName, bolts[i], parallelism).shuffleGrouping(spoutName);
             kbolt = kbolt.shuffleGrouping(boltName,kafkaOutputTopic);
         }
+        // now hookup switch and port to the link bolt so that it can take appropriate action
+        tbolt[2].shuffleGrouping(topics[0]+"-bolt",kafkaOutputTopic)
+                .shuffleGrouping(topics[1]+"-bolt",kafkaOutputTopic);
+        // finally, one more bolt, to write the ISL Discovery requests
+        String discoTopic = ((OFELinkBolt) bolts[2]).islDiscoTopic;
+        builder.setBolt("ISL_Discovery-kafkabolt",
+                kutils.createKafkaBolt(discoTopic), parallelism)
+                .shuffleGrouping(topics[2]+"-bolt",discoTopic);
 
         return builder.createTopology();
     }

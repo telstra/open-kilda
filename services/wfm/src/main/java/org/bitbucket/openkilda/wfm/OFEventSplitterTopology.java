@@ -33,7 +33,7 @@ public class OFEventSplitterTopology {
 
     private static Logger logger = LogManager.getLogger(OFEventSplitterTopology.class);
 
-    public String topic = "kilda.speaker"; // + System.currentTimeMillis();
+    public String topic = "kilda-test"; // + System.currentTimeMillis();
     public String defaultTopoName = "OF_Event_Splitter";
     public KafkaUtils kutils = new KafkaUtils();
     public Properties kafkaProps = new Properties();

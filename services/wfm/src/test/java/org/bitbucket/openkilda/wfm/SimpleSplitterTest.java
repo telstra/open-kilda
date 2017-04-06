@@ -52,6 +52,7 @@ public class SimpleSplitterTest extends AbstractStormTest {
         LocalCluster cluster = new LocalCluster();
         cluster.submitTopology(splitter.defaultTopoName, stormConfig(), splitter.createTopology());
 
+        // Dumping the Kafka Topic to file so that I can test the results.
         KafkaFilerTopology kfiler = new KafkaFilerTopology();
         cluster.submitTopology("filer-1", stormConfig(),
                 kfiler.createTopology(InfoEventSplitterBolt.I_SWITCH_UPDOWN,
