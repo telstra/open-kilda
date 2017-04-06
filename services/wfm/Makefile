@@ -11,3 +11,25 @@ start-z:
 
 stop-z:
 	zkServer stop
+
+all-in-one:
+	mvn assembly:assembly -DskipTests
+
+deploy-splitter:
+	storm jar target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar \
+        org.bitbucket.openkilda.wfm.OFEventSplitterTopology \
+        splitter
+
+kill-splitter:
+	storm kill splitter >/dev/null 2>&1
+
+deploy-wfm:
+	storm jar target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar \
+        org.bitbucket.openkilda.wfm.OFEventWFMTopology \
+        wfm
+
+kill-wfm:
+	storm kill wfm >/dev/null 2>&1
+
+create-topics:
+	src/main/resources/create-channels.sh
