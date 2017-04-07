@@ -10,7 +10,7 @@ from kafka import KafkaProducer
 
 KAFKA_GROUP_ID = 'kilda-workflow-consumers'
 KAFKA_TOPIC = 'kilda-test'
-KAFA_TOPICS = ['kilda-test']
+KAFKA_TOPICS = ['kilda-test']
 KAFKA_CONSUMER_COUNT = 5
 KAFKA_PRODUCER_COUNT = 10
 ISL_DISCOVER_FREQUENCY = 30

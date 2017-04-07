@@ -1,6 +1,5 @@
 package org.bitbucket.openkilda.wfm;
 
-import clojure.lang.Compiler;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -39,14 +38,12 @@ public class OFEventSplitterBolt extends BaseRichBolt {
     @Override
     public void execute(Tuple tuple) {
         String json = tuple.getString(0);
-        ObjectMapper mapper = new ObjectMapper();
-        Map<String,?> root;
         try {
-            root = mapper.readValue(json, Map.class);
+            Map<String,?> root = OFEMessageUtils.fromJson(json);
             String type = ((String) root.get("type")).toLowerCase();
             Map<String,?> data = (Map<String,?>) root.get("data");
             // TODO: data should be converted back to json string .. or use json serializer
-            Values dataVal = new Values("data", mapper.writeValueAsString(data));
+            Values dataVal = new Values("data", OFEMessageUtils.toJson(data));
             switch (type) {
                 case JSON_INFO:
                     _collector.emit(INFO,tuple,dataVal);

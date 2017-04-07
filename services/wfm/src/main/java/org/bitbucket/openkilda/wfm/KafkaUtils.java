@@ -1,6 +1,12 @@
 package org.bitbucket.openkilda.wfm;
 
+import kafka.admin.AdminUtils;
+import kafka.admin.RackAwareMode;
 import kafka.api.OffsetRequest;
+import kafka.utils.ZKStringSerializer$;
+import kafka.utils.ZkUtils;
+import org.I0Itec.zkclient.ZkClient;
+import org.I0Itec.zkclient.ZkConnection;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -10,6 +16,9 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.utils.Utils;
 import org.apache.storm.kafka.*;
+import org.apache.storm.kafka.bolt.KafkaBolt;
+import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
+import org.apache.storm.kafka.bolt.selector.DefaultTopicSelector;
 import org.apache.storm.spout.SchemeAsMultiScheme;
 
 import java.util.ArrayList;
@@ -45,16 +54,20 @@ public class KafkaUtils {
         return this;
     }
 
-    /**
-     * @return a Basic Kafka Producer where both key/value are strings.
-     */
-    public KafkaProducer<String, String> createStringsProducer(){
+    public Properties createStringsKafkaProps() {
         Properties kprops = new Properties();
         kprops.put("bootstrap.servers", kafkaHosts);
         kprops.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         kprops.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         kprops.put("request.required.acks", "1");
-        return createStringsProducer(kprops);
+        return kprops;
+    }
+
+    /**
+     * @return a Basic Kafka Producer where both key/value are strings.
+     */
+    public KafkaProducer<String, String> createStringsProducer(){
+        return createStringsProducer(createStringsKafkaProps());
     }
 
     /**
@@ -62,6 +75,43 @@ public class KafkaUtils {
      */
     public KafkaProducer<String, String> createStringsProducer(Properties kprops){
         return new KafkaProducer<>(kprops);
+    }
+
+
+    public KafkaBolt<String, String> createKafkaBolt(String topic) {
+        return new KafkaBolt<String, String>()
+                .withProducerProperties(createStringsKafkaProps())
+                .withTopicSelector(new DefaultTopicSelector(topic))
+                .withTupleToKafkaMapper(new FieldNameBasedTupleToKafkaMapper<>());
+    }
+
+    /**
+     * This will create all of the topics passed in.
+     * - Currently doesn't check to see if they already exist.
+     */
+    public void createTopics(String[] topics, int partitions, int replication){
+        int sessionTimeoutMs = 5 * 1000;
+        int connectionTimeoutMs = 5 * 1000;
+        // Note: You must initialize the ZkClient with ZKStringSerializer.  If you don't, then
+        // createTopic() will only seem to work (it will return without error).  The topic will exist in
+        // only ZooKeeper and will be returned when listing topics, but Kafka itself does not create the
+        // topic.
+        ZkClient zkClient = new ZkClient(
+                zookeeperHost,
+                sessionTimeoutMs,
+                connectionTimeoutMs,
+                ZKStringSerializer$.MODULE$);
+
+        // Security for Kafka was added in Kafka 0.9.0.0
+        boolean isSecureKafkaCluster = false;
+        ZkUtils zkUtils = new ZkUtils(zkClient, new ZkConnection(zookeeperHost), isSecureKafkaCluster);
+
+        Properties topicConfig = new Properties(); // add per-topic configurations settings here
+        for (String topic : topics){
+            AdminUtils.createTopic(zkUtils, topic, partitions, replication,
+                    topicConfig, RackAwareMode.Disabled$.MODULE$);
+        }
+        zkClient.close();
     }
 
     /**
