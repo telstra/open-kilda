@@ -59,8 +59,8 @@ def build_egress_flow(expandedRelationships, dst_switch, dst_port, dst_vlan, tra
     flow.input_port = int(match)
     flow.output_port = int(dst_port)
     flow.transit_vlan_id = int(transitVlan)
-    flow.output_vlan_id = int(dst_vlan)
-    flow.output_vlan_type = outputAction
+    #flow.output_vlan_id = int(dst_vlan)
+    #flow.output_vlan_type = outputAction
     return flow
 
 def build_intermediate_flows(expandedRelationships, transitVlan, i):
