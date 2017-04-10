@@ -92,6 +92,12 @@
             <artifactId>flux-wrappers</artifactId>
             <version>${storm.version}</version>
         </dependency>
+        <!-- NB: KafkaUtils uses zkclient, at least in tests, possibly in prod -->
+        <dependency>
+            <groupId>com.101tec</groupId>
+            <artifactId>zkclient</artifactId>
+            <version>0.10</version>
+        </dependency>
 
         <!-- ~~~~~~~ -->
         <!-- TESTING -->
@@ -110,11 +116,6 @@
             <scope>test</scope>
         </dependency>
         <!-- https://mvnrepository.com/artifact/com.101tec/zkclient -->
-        <dependency>
-            <groupId>com.101tec</groupId>
-            <artifactId>zkclient</artifactId>
-            <version>0.10</version>
-        </dependency>
         <dependency>
             <groupId>org.jetbrains</groupId>
             <artifactId>annotations</artifactId>

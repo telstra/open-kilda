@@ -92,6 +92,8 @@ services:
       context: .
       dockerfile:  services/kafka/Dockerfile
     image: "kilda/kafka:${full_build_number:-latest}"
+    # run_and_configure is in services/kafka/kafka-conf
+    # command: /opt/kafka/bin/run_and_configure.sh
     command: /opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/server.properties
     volumes:
       - kafka_data:/data/kafka
@@ -117,6 +119,7 @@ services:
       dockerfile:  services/wfm/Dockerfile
     image: "kilda/wfm:${full_build_number:-latest}"
     #command: /app/wfm-poc.py kafka.pendev:9092 kilda-test
+    command: /app/deploy_topos_and_monitor.sh kafka.pendev:9092 kilda-test
     depends_on:
       kafka:
         condition: service_healthy
@@ -124,11 +127,14 @@ services:
         condition: service_healthy
       storm_nimbus:
         condition: service_healthy
+      storm_supervisor:
+        condition: service_healthy
 #      hbase:
 #        condition: service_healthy
     links:
       - kafka:kafka.pendev
       - storm_nimbus:nimbus.pendev
+      - zookeeper:zookeeper.pendev
 
 #  hbase:
 #    build:

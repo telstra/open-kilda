@@ -17,7 +17,7 @@ RUN echo "PATH=$PATH:/opt/storm/bin" >> ~/.bashrc
 
 COPY /services/wfm /app/wfm
 WORKDIR /app/wfm
-RUN mvn package
+RUN mvn assembly:assembly -DskipTests
 
 RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
