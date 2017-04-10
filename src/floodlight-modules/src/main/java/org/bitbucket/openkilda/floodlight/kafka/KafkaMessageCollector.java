@@ -91,9 +91,8 @@ public class KafkaMessageCollector implements IFloodlightModule {
                     command.getInputPort(), command.getOutputPort(), command.getTransitVlanId()});
             switchManager.installEgressFlow(DatapathId.of(command.getSwitchId()),
                     command.getInputPort().intValue(), command.getOutputPort().intValue(),
-                    command.getTransitVlanId().intValue(),
-                    0,
-                    OutputVlanType.NONE);
+                    command.getTransitVlanId().intValue(), command.getOutputVlanId().intValue(),
+                    command.getOutputVlanType());
         }
 
         private void doInstallTransitFlow(CommandData data) {

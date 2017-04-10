@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import org.bitbucket.openkilda.floodlight.switchmanager.OutputVlanType;
 
 import java.io.IOException;
 
@@ -29,13 +30,17 @@ public class InstallEgressFlow extends CommandData {
     private Number inputPort;
     private Number outputPort;
     private Number transitVlanId;
+    private Number outputVlanId;
+    private OutputVlanType outputVlanType;
 
     @JsonCreator
     public InstallEgressFlow(@JsonProperty("flow_name") String flowName,
                              @JsonProperty("switch_id") String switchId,
                              @JsonProperty("input_port") Number inputPort,
                              @JsonProperty("output_port") Number outputPort,
-                             @JsonProperty("transit_vlan_id") Number transitVlanId) throws IOException {
+                             @JsonProperty("transit_vlan_id") Number transitVlanId,
+                             @JsonProperty("output_vlan_type") OutputVlanType outputVlanType,
+                             @JsonProperty("output_vlan_id") Number outputVlanId) throws IOException {
         if (flowName == null) {
             throw new IOException("need to set a flow_name");
         }
@@ -60,6 +65,17 @@ public class InstallEgressFlow extends CommandData {
             throw new IOException("need to set transit_vlan_id");
         }
         this.transitVlanId = transitVlanId;
+
+        if (outputVlanType != OutputVlanType.NONE && outputVlanId.intValue() < 1) {
+            throw new IOException("need to set an output_vlan_id if using type other than NONE");
+        }
+        this.outputVlanType = outputVlanType;
+
+        if (outputVlanId != null) {
+            this.outputVlanId = outputVlanId;
+        } else {
+            this.outputVlanId = 0;
+        }
     }
 
     @JsonProperty("flow_name")
@@ -85,6 +101,16 @@ public class InstallEgressFlow extends CommandData {
     @JsonProperty("transit_vlan_id")
     public Number getTransitVlanId() {
         return transitVlanId;
+    }
+
+    @JsonProperty("output_vlan_id")
+    public Number getOutputVlanId() {
+        return outputVlanId;
+    }
+
+    @JsonProperty("output_vlan_type")
+    public OutputVlanType getOutputVlanType() {
+        return outputVlanType;
     }
 }
 
