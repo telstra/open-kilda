@@ -109,7 +109,11 @@ public class OFEventSplitterTopology {
     // TODO: KafkaUtils should be passed the configured Kafka server.
     KafkaProducer<String,String> kProducer = new KafkaUtils().createStringsProducer();
     public void primeKafkaTopic(String topic){
-        kProducer.send(new ProducerRecord<>(topic, "no_op", "{\"type\": \"NO_OP\"}"));
+        if (!kutils.topicExists(topic)){
+            kutils.createTopics(new String[]{topic});
+        }
+        // the old approach - just send a message to autocreate the topic
+        //kProducer.send(new ProducerRecord<>(topic, "no_op", "{\"type\": \"NO_OP\"}"));
     }
 
 

@@ -73,6 +73,7 @@ public class InfoEventSplitterBolt extends BaseRichBolt {
                 break;
             case "port":
                 _collector.emit(I_PORT,tuple,dataVal);
+                logger.debug("EMIT {} : {}", I_PORT, dataVal);
                 if (state.equals("UP") || state.equals("DOWN")){
                     _collector.emit(I_PORT_UPDOWN,tuple,dataVal);
                 } else {
@@ -81,7 +82,9 @@ public class InfoEventSplitterBolt extends BaseRichBolt {
                 break;
             case "isl":
                 _collector.emit(I_ISL,tuple,dataVal);
-                if (state.equals("UP") || state.equals("DOWN")){
+                logger.debug("EMIT {} : {}", I_ISL, dataVal);
+                // TODO: ISL doesn't seem to have a state field .. so it'll all go into other
+                if (state != null && (state.equals("UP") || state.equals("DOWN"))){
                     _collector.emit(I_ISL_UPDOWN,tuple,dataVal);
                 } else {
                     _collector.emit(I_ISL_OTHER,tuple,dataVal);

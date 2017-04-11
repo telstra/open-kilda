@@ -56,6 +56,7 @@ public class OFELinkBolt
         } else if (source.startsWith(InfoEventSplitterBolt.I_PORT_UPDOWN)){
             handlePortEvent(tuple);
         } else if (source.startsWith(InfoEventSplitterBolt.I_ISL_UPDOWN)) {
+            // TODO: determine whether we'll receive these, and what to do with it.
             logger.debug("LINK: ISL Event: {}", tuple);
         } else {
             logger.error("Unknown source component: {}", source);

@@ -75,6 +75,8 @@ public class OFEventWFMTopology {
 
         TopologyBuilder builder = new TopologyBuilder();
 
+        // Make sure the output Topic exists..
+        primeTopic(kafkaOutputTopic);
         BoltDeclarer kbolt = builder.setBolt(kafkaOutputTopic+"-kafkabolt",
                 kutils.createKafkaBolt(kafkaOutputTopic), parallelism);
         // tbolt will save the setBolt() results; will be useed to add switch/port to link
@@ -84,6 +86,8 @@ public class OFEventWFMTopology {
             String topic = topics[i];
             String spoutName = topic+"-spout";
             String boltName = topic+"-bolt";
+            // Make sure the input Topic exists..
+            primeTopic(topic);
             builder.setSpout(spoutName, kutils.createKafkaSpout(topic));
             // NB: with shuffleGrouping, we can't maintain state .. would need to parse first
             //      just to pull out switchID.
@@ -100,6 +104,12 @@ public class OFEventWFMTopology {
                 .shuffleGrouping(topics[2]+"-bolt",discoTopic);
 
         return builder.createTopology();
+    }
+
+    private void primeTopic(String topic){
+        if (!kutils.topicExists(topic)){
+            kutils.createTopics(new String[]{topic});
+        }
     }
 
     public static void main(String[] args) throws Exception {

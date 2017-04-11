@@ -85,33 +85,64 @@ public class KafkaUtils {
                 .withTupleToKafkaMapper(new FieldNameBasedTupleToKafkaMapper<>());
     }
 
-    /**
-     * This will create all of the topics passed in.
-     * - Currently doesn't check to see if they already exist.
-     */
-    public void createTopics(String[] topics, int partitions, int replication){
-        int sessionTimeoutMs = 5 * 1000;
-        int connectionTimeoutMs = 5 * 1000;
+    public boolean topicExists(String topic){
+        return AdminUtils.topicExists(getZkUtils(),topic);
+    }
+
+    private ZkClient _zkclient = null;
+    private ZkUtils _zkutils = null;
+
+    /** @return a lazily created, global ZkClient */
+    public ZkClient getZkClient(){
         // Note: You must initialize the ZkClient with ZKStringSerializer.  If you don't, then
         // createTopic() will only seem to work (it will return without error).  The topic will exist in
         // only ZooKeeper and will be returned when listing topics, but Kafka itself does not create the
         // topic.
-        ZkClient zkClient = new ZkClient(
-                zookeeperHost,
-                sessionTimeoutMs,
-                connectionTimeoutMs,
-                ZKStringSerializer$.MODULE$);
+        // TODO: create mechanism to pull in zookeeper connection properties from file
+        if (_zkclient == null) {
+            int sessionTimeoutMs = 5 * 1000;
+            int connectionTimeoutMs = 5 * 1000;
+            _zkclient = new ZkClient(
+                    zookeeperHost,
+                    sessionTimeoutMs,
+                    connectionTimeoutMs,
+                    ZKStringSerializer$.MODULE$);
+        }
+        return _zkclient;
+    }
 
-        // Security for Kafka was added in Kafka 0.9.0.0
-        boolean isSecureKafkaCluster = false;
-        ZkUtils zkUtils = new ZkUtils(zkClient, new ZkConnection(zookeeperHost), isSecureKafkaCluster);
+    /** @return the default ZkUtil, lazily created, global */
+    public ZkUtils getZkUtils() {
+        if (_zkutils == null){
+            boolean isSecureKafkaCluster = false;
+            _zkutils = new ZkUtils(getZkClient(), new ZkConnection(zookeeperHost), isSecureKafkaCluster);
+        }
+        return _zkutils;
+    }
 
+
+    /**
+     * This will create all of the topics passed in.
+     * - Currently doesn't check to see if they already exist. The underlying code does a
+     *      create or update.
+     */
+    public void createTopics(String[] topics, int partitions, int replication){
+        ZkUtils zkUtils = getZkUtils();
+
+        // TODO: create mechanism to pull in topic properties from file
         Properties topicConfig = new Properties(); // add per-topic configurations settings here
         for (String topic : topics){
             AdminUtils.createTopic(zkUtils, topic, partitions, replication,
                     topicConfig, RackAwareMode.Disabled$.MODULE$);
         }
-        zkClient.close();
+    }
+
+    /**
+     * Create the topic, using the default setting for Partitions and Replication
+     */
+    public void createTopics(String[] topics){
+        // TODO: create mechanism to pull in topic properties from file .. for partitions/replicas
+        createTopics(topics, 1,1);
     }
 
     /**

@@ -17,7 +17,7 @@ public class LinkWfmTest extends AbstractStormTest {
     public void BasicTickTest() {
         System.out.println("==> Starting BasicTickTest");
 
-        // TODO: Write the BasicTickTest
+        // TODO: Write the LinkWfmTest
         /*
          * The intention here is to confirm the tick bolt works as configured .. every X seconds,
          * something happens

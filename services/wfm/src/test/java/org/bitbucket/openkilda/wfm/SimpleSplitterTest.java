@@ -62,7 +62,8 @@ public class SimpleSplitterTest extends AbstractStormTest {
         SendMessages(splitter.topic);
         Utils.sleep(8 * 1000);
 
-        long messagesExpected = 4; // 3 from below, and 1 no-op
+        // 3 messages .. in I_SWITCH_UPDOWN  .. since we send 3 of those type of messages
+        long messagesExpected = 3;
         long messagesReceived = Files.readLines(kfiler.filer.getFile(), Charsets.UTF_8).size();
         Assert.assertEquals(messagesExpected,messagesReceived);
 
