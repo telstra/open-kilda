@@ -59,8 +59,8 @@ def build_egress_flow(expandedRelationships, dst_switch, dst_port, dst_vlan, tra
     flow.input_port = int(match)
     flow.output_port = int(dst_port)
     flow.transit_vlan_id = int(transitVlan)
-    #flow.output_vlan_id = int(dst_vlan)
-    #flow.output_vlan_type = outputAction
+    flow.output_vlan_id = int(dst_vlan)
+    flow.output_vlan_type = outputAction
     return flow
 
 def build_intermediate_flows(expandedRelationships, transitVlan, i):
@@ -84,11 +84,14 @@ def expand_relationships(relationships):
     return fullRelationships
 
 def get_relationships(src_switch, src_port, dst_switch, dst_port):
-    query = "MATCH (a:switch{{name:'{}'}}),(b:switch{{name:'{}'}}), p = shortestPath((a)-[:isl*..100]->(b)) RETURN p".format(src_switch,dst_switch)
+    query = "MATCH (a:switch{{name:'{}'}}),(b:switch{{name:'{}'}}), p = shortestPath((a)-[:isl*..100]->(b)) where ALL(x in nodes(p) WHERE x.state = 'active') RETURN p".format(src_switch,dst_switch)
     data = {'query' : query}    
     resultPath = requests.post('http://{}:7474/db/data/cypher'.format(neo4jhost), data=data, auth=('neo4j', 'temppass'))
     jPath = json.loads(resultPath.text)
-    return jPath['data'][0][0]['relationships']
+    if jPath['data']:
+        return jPath['data'][0][0]['relationships']
+    else:
+        return False
 
 def assign_transit_vlan():
     return random.randrange(99, 4000,1)
@@ -98,17 +101,22 @@ def assign_flow_id():
 
 def api_v1_topology_get_path(src_switch, src_port, src_vlan, dst_switch, dst_port, dst_vlan, transitVlan, outputAction):
     relationships = get_relationships(src_switch, src_port, dst_switch, dst_port)
-    expandedRelationships = expand_relationships(relationships)
-    flows = []
-    flows.append(build_ingress_flow(expandedRelationships, src_switch, src_port, src_vlan, transitVlan))
-    intermediateFlowCount = len(expandedRelationships) - 1
-    i = 0
-    while i < intermediateFlowCount:
-        flows.append(build_intermediate_flows(expandedRelationships, transitVlan, i))
-        i += 1
-    flows.append(build_egress_flow(expandedRelationships, dst_switch, dst_port, dst_vlan, transitVlan, outputAction))
-    return flows
 
+    if relationships:
+
+        expandedRelationships = expand_relationships(relationships)
+        flows = []
+        flows.append(build_ingress_flow(expandedRelationships, src_switch, src_port, src_vlan, transitVlan))
+        intermediateFlowCount = len(expandedRelationships) - 1
+        i = 0
+        while i < intermediateFlowCount:
+            flows.append(build_intermediate_flows(expandedRelationships, transitVlan, i))
+            i += 1
+        flows.append(build_egress_flow(expandedRelationships, dst_switch, dst_port, dst_vlan, transitVlan, outputAction))
+        return flows
+
+    else:
+        return False
 
 @application.route('/api/v1/flow', methods=["POST"])
 #@login_required
@@ -125,6 +133,10 @@ def api_v1_topology_path():
 
         forwardFlows = api_v1_topology_get_path(content['src_switch'], content['src_port'], content['src_vlan'], content['dst_switch'], content['dst_port'], content['dst_vlan'], transitVlanForward, outputAction)
         reverseFlows = api_v1_topology_get_path(content['dst_switch'], content['dst_port'], content['dst_vlan'], content['src_switch'], content['src_port'], content['src_vlan'], transitVlanReturn, outputAction)
+
+        if not forwardFlows or not reverseFlows:
+            response = {"result": "failed", "message": "unable to find valid path in the network"}
+            return json.dumps(response)
 
         allflows = [forwardFlows, reverseFlows]
 
