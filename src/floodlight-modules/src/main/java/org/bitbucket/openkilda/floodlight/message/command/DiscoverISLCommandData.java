@@ -54,4 +54,11 @@ public class DiscoverISLCommandData extends CommandData {
     return this;
   }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String toString() {
+        return String.format("%s:%s", switchId, portNo);
+    }
 }

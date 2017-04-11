@@ -21,6 +21,6 @@ public class KafkaMessageCollectorTest {
 
     @Test
     public void testCreateFlowCommand() {
-
+        // TODO: verify aproppriate switchManager methods run
     }
 }

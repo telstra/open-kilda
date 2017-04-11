@@ -23,7 +23,7 @@ public interface ISwitchManager extends IFloodlightService {
      * @param inputVlanId - input vlan to match on, 0 means not to match on vlan
      * @param transitVlanId - vlan to add before outputing on outputPort
      */
-    void installIngressFlow(DatapathId dpid, int inputPort, int outputPort, int inputVlanId, int transitVlanId);
+    void installIngressFlow(DatapathId dpid, int inputPort, int outputPort, int inputVlanId, int transitVlanId, long meterid);
 
     /**
      * installEgressFlow - Install flow on egress swtich.
@@ -49,6 +49,19 @@ public interface ISwitchManager extends IFloodlightService {
     void installTransitFlow(DatapathId dpid, int inputPort, int outputPort, int transitVlanId);
 
     /**
+     * installOneSwitchFlow - install flow through one switch.
+     *
+     * @param dpid - datapathId of the switch
+     * @param inputPort - port to expect packet on
+     * @param outputPort - port to forward packet out
+     * @param inputVlanId - vlan to match on inputPort
+     * @param outputVlanId - set vlan on packet before forwarding via outputPort; 0 means not to set
+     * @param outputVlanType - type of action to apply to the outputVlanId if greater than 0
+     */
+    void installOneSwitchFlow(DatapathId dpid, int inputPort, int outputPort, int inputVlanId, int outputVlanId,
+                              OutputVlanType outputVlanType, int meterId);
+
+    /**
      *
      */
     void dumpFlowTable();
@@ -57,4 +70,15 @@ public interface ISwitchManager extends IFloodlightService {
      *
      */
     void dumpMeters();
+
+    /**
+     * installMeter - Installs a meter on ingress switch.
+     * TODO: describe params meaning in accordance with OF
+     *
+     * @param dpid - datapathId of the switch
+     * @param bandwidth - the bandwidth limit value
+     * @param burstSize - the size of the burst
+     * @param meterId - the meter ID
+     */
+    void installMeter(DatapathId dpid, long bandwidth, long burstSize, long meterId);
 }

@@ -54,6 +54,8 @@ public class KafkaMessageCollector implements IFloodlightModule {
                 doInstallEgressFlow(data);
             } else if (data instanceof InstallTransitFlow) {
                 doInstallTransitFlow(data);
+            } else if (data instanceof InstallOneSwitchFlow) {
+                doInstallOneSwitchFlow(data);
             } else {
                 logger.error("unknown data type: {}", data.toString());
             }
@@ -61,48 +63,104 @@ public class KafkaMessageCollector implements IFloodlightModule {
 
         private void doDiscoverIslCommand(CommandData data) {
             DiscoverISLCommandData command = (DiscoverISLCommandData) data;
-            logger.debug("sending discover ISL to {}:{}", command.getSwitchId(), command.getPortNo());
+            logger.debug("sending discover ISL to {}", command);
             pathVerificationService.sendDiscoveryMessage(DatapathId.of(command.getSwitchId()),
                                                          OFPort.of(command.getPortNo()));
         }
 
         private void doDiscoverPathCommand(CommandData data) {
             DiscoverPathCommandData command = (DiscoverPathCommandData) data;
-            logger.debug("sending discover Path to {}:{} - {}",
-                         new Object[]{command.getSrcSwitchId(), command.getSrcPortNo(), command.getDstSwitchId()});
-
+            logger.debug("sending discover Path to {}", command);
         }
 
+        /**
+         * doInstallIngressFlow - Installs ingress flow on the switch
+         *
+         * @param data - Command data for flow installation
+         */
         private void doInstallIngressFlow(CommandData data) {
             InstallIngressFlow command = (InstallIngressFlow) data;
-            logger.debug("creating an ingress flow {} on {} with input_port: {}, output_port: {}, input_vlan_id: {}, " +
-                    "transit_vlan_id: {}", new Object[]{command.getFlowName(), command.getSwitchId(),
-                    command.getInputPort(), command.getOutputPort(), command.getInputVlanId(),
-                    command.getTransitVlanId()});
+            logger.debug("creating an ingress flow: {}",command);
+
+            switchManager.installMeter(DatapathId.of(command.getSwitchId()),
+                    command.getBandwidth().longValue(),
+                    1024,
+                    command.getMeterId().longValue());
+
             switchManager.installIngressFlow(DatapathId.of(command.getSwitchId()),
-                    command.getInputPort().intValue(), command.getOutputPort().intValue(),
-                    command.getInputVlanId().intValue(), command.getTransitVlanId().intValue());
+                    command.getInputPort().intValue(),
+                    command.getOutputPort().intValue(),
+                    command.getInputVlanId().intValue(),
+                    command.getTransitVlanId().intValue(),
+                    command.getMeterId().longValue());
         }
 
+        /**
+         * doInstallEgressFlow - Installs egress flow on the switch
+         *
+         * @param data - Command data for flow installation
+         */
         private void doInstallEgressFlow(CommandData data) {
             InstallEgressFlow command = (InstallEgressFlow) data;
-            logger.debug("creating an engress flow {} on {} with input_port: {}, output_port: {}, " +
-                    "transit_vlan_id: {}", new Object[]{command.getFlowName(), command.getSwitchId(),
-                    command.getInputPort(), command.getOutputPort(), command.getTransitVlanId()});
+            logger.debug("creating an egress flow: {}", command);
+
             switchManager.installEgressFlow(DatapathId.of(command.getSwitchId()),
-                    command.getInputPort().intValue(), command.getOutputPort().intValue(),
-                    command.getTransitVlanId().intValue(), command.getOutputVlanId().intValue(),
-                    command.getOutputVlanType());
+                    command.getInputPort().intValue(),
+                    command.getOutputPort().intValue(),
+                    command.getTransitVlanId().intValue(),
+                    command.getOutputVlanId().intValue(),
+                    OutputVlanType.valueOf(command.getOutputVlanType()));
         }
 
+        /**
+         * doInstallTransitFlow - Installs transit flow on the switch
+         *
+         * @param data - Command data for flow installation
+         */
         private void doInstallTransitFlow(CommandData data) {
             InstallTransitFlow command = (InstallTransitFlow) data;
-            logger.debug("creating a transit flow {} on {} with input_port: {}, output_port: {}, " +
-                    "transit_vlan_id: {}", new Object[]{command.getFlowName(), command.getSwitchId(),
-                    command.getInputPort(), command.getOutputPort(), command.getTransitVlanId()});
+            logger.debug("creating a transit flow: {}", command);
+
             switchManager.installTransitFlow(DatapathId.of(command.getSwitchId()),
-                    command.getInputPort().intValue(), command.getOutputPort().intValue(),
+                    command.getInputPort().intValue(),
+                    command.getOutputPort().intValue(),
                     command.getTransitVlanId().intValue());
+        }
+
+        /**
+         * doInstallOneSwitchFlow - Installs flow through one switch
+         *
+         * @param data - Command data for flow installation
+         */
+        private void doInstallOneSwitchFlow(CommandData data) {
+            InstallOneSwitchFlow command = (InstallOneSwitchFlow) data;
+            logger.debug("creating a flow through one switch: {}", command);
+
+            switchManager.installMeter(DatapathId.of(command.getSwitchId()),
+                    command.getBandwidth().longValue(),
+                    1024,
+                    command.getInputMeterId().longValue());
+
+            switchManager.installOneSwitchFlow(DatapathId.of(command.getSwitchId()),
+                    command.getInputPort().intValue(),
+                    command.getOutputPort().intValue(),
+                    command.getInputVlanId().intValue(),
+                    command.getOutputVlanId().intValue(),
+                    OutputVlanType.valueOf(command.getOutputVlanType()),
+                    command.getInputMeterId().intValue());
+
+            switchManager.installMeter(DatapathId.of(command.getSwitchId()),
+                    command.getBandwidth().longValue(),
+                    1024,
+                    command.getOutputMeterId().longValue());
+
+            switchManager.installOneSwitchFlow(DatapathId.of(command.getSwitchId()),
+                    command.getInputPort().intValue(),
+                    command.getOutputPort().intValue(),
+                    command.getInputVlanId().intValue(),
+                    command.getOutputVlanId().intValue(),
+                    OutputVlanType.valueOf(command.getOutputVlanType()),
+                    command.getOutputMeterId().intValue());
         }
 
         private void parseRecord(ConsumerRecord record) {
