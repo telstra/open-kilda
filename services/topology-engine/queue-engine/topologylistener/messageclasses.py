@@ -36,12 +36,15 @@ class MessageItem(object):
 
     def create_switch(self):
         switchid = self.data['switch_id']
-        switchExists = graph.find_one('switch', property_key='name', property_value='{}'.format(switchid))
-        if not switchExists:
-            switch = Node("switch", name="{}".format(switchid))
-            graph.create(switch)
+        switch = graph.find_one('switch', property_key='name', property_value='{}'.format(switchid))
+        if not switch:
+            newSwitch = Node("switch", name="{}".format(switchid), state="active")
+            graph.create(newSwitch)
             return True
         else:
+            graph.merge(switch)
+            switch['state'] = "active"
+            switch.push()
             print "Switch '{0}' already exists in topology.".format(switchid)
             return True
 
@@ -49,13 +52,9 @@ class MessageItem(object):
         switchid = self.data['switch_id']
         switch = graph.find_one('switch', property_key='name', property_value='{}'.format(switchid))
         if switch:
-            out_rels = graph.match(start_node=switch, rel_type='isl')
-            in_rels = graph.match(end_node=switch, rel_type='isl')
-            for rel in out_rels:
-                graph.separate(rel)
-            for rel in in_rels:
-                graph.separate(rel)
-            graph.delete(switch)
+            graph.merge(switch)
+            switch['state'] = "inactive"
+            switch.push()
             return True
         else:
             print "Switch '{0}' does not exist in topology.".format(switchid)
