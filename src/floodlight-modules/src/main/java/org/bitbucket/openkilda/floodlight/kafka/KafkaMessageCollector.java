@@ -24,7 +24,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class KafkaMessageCollector implements IFloodlightModule {
-    private Logger logger;
+    private static final Logger logger = LoggerFactory.getLogger(KafkaMessageCollector.class);
     private Properties kafkaProps;
     private String topic;
     private final AtomicBoolean closed = new AtomicBoolean(false);
@@ -141,12 +141,13 @@ public class KafkaMessageCollector implements IFloodlightModule {
                     1024,
                     command.getInputMeterId().longValue());
 
+            OutputVlanType directOutputVlanType = OutputVlanType.valueOf(command.getOutputVlanType());
             switchManager.installOneSwitchFlow(DatapathId.of(command.getSwitchId()),
                     command.getInputPort().intValue(),
                     command.getOutputPort().intValue(),
                     command.getInputVlanId().intValue(),
                     command.getOutputVlanId().intValue(),
-                    OutputVlanType.valueOf(command.getOutputVlanType()),
+                    directOutputVlanType,
                     command.getInputMeterId().intValue());
 
             switchManager.installMeter(DatapathId.of(command.getSwitchId()),
@@ -154,12 +155,24 @@ public class KafkaMessageCollector implements IFloodlightModule {
                     1024,
                     command.getOutputMeterId().longValue());
 
+            OutputVlanType reverseOutputVlanType;
+            switch (directOutputVlanType) {
+                case POP:
+                    reverseOutputVlanType = OutputVlanType.PUSH;
+                    break;
+                case PUSH:
+                    reverseOutputVlanType = OutputVlanType.POP;
+                    break;
+                default:
+                    reverseOutputVlanType = directOutputVlanType;
+                    break;
+            }
             switchManager.installOneSwitchFlow(DatapathId.of(command.getSwitchId()),
-                    command.getInputPort().intValue(),
                     command.getOutputPort().intValue(),
-                    command.getInputVlanId().intValue(),
+                    command.getInputPort().intValue(),
                     command.getOutputVlanId().intValue(),
-                    OutputVlanType.valueOf(command.getOutputVlanType()),
+                    command.getInputVlanId().intValue(),
+                    reverseOutputVlanType,
                     command.getOutputMeterId().intValue());
         }
 
@@ -253,7 +266,6 @@ public class KafkaMessageCollector implements IFloodlightModule {
         switchEventCollector = context.getServiceImpl(SwitchEventCollector.class);
         kafkaProducer = context.getServiceImpl(KafkaMessageProducer.class);
         switchManager = context.getServiceImpl(ISwitchManager.class);
-        logger = LoggerFactory.getLogger(this.getClass());
         Map<String, String> configParameters = context.getConfigParams(this);
         kafkaProps = new Properties();
         kafkaProps.put("bootstrap.servers", configParameters.get("bootstrap-servers"));

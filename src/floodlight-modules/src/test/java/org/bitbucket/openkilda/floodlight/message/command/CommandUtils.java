@@ -1,6 +1,7 @@
 package org.bitbucket.openkilda.floodlight.message.command;
 
 import net.floodlightcontroller.util.FlowModUtils;
+import org.bitbucket.openkilda.floodlight.OFFactoryMock;
 import org.projectfloodlight.openflow.protocol.*;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.*;
@@ -12,7 +13,7 @@ import static java.util.Collections.singletonList;
 import static org.bitbucket.openkilda.floodlight.message.command.Utils.ETH_TYPE;
 import static org.projectfloodlight.openflow.protocol.OFMeterFlags.BURST;
 import static org.projectfloodlight.openflow.protocol.OFMeterFlags.KBPS;
-import static org.projectfloodlight.openflow.protocol.OFMeterModCommand.MODIFY;
+import static org.projectfloodlight.openflow.protocol.OFMeterModCommand.ADD;
 
 /**
  * Represent OF commands.
@@ -21,7 +22,7 @@ import static org.projectfloodlight.openflow.protocol.OFMeterModCommand.MODIFY;
  * Created by atopilin on 11/04/2017.
  */
 public class CommandUtils {
-    public static final OFFactory ofFactory = OFFactories.getFactory(OFVersion.OF_13);
+    public static final OFFactory ofFactory = new OFFactoryMock();
 
     public static OFFlowAdd ingressReplaceFlowMod(int inputPort, int outputPort, int inputVlanId, int transitVlanId,
                                                   int meterId, long cookie) {
@@ -72,7 +73,7 @@ public class CommandUtils {
                                         .build()))
                                 .createBuilder()
                                 .build()))
-                .setXid(ofFactory.nextXid() - 2)
+                .setXid(0L)
                 .build();
 
     }
@@ -105,7 +106,7 @@ public class CommandUtils {
                                         .build()))
                                 .createBuilder()
                                 .build()))
-                .setXid(ofFactory.nextXid() - 2)
+                .setXid(0L)
                 .build();
 
     }
@@ -136,7 +137,7 @@ public class CommandUtils {
                                         .build()))
                                 .createBuilder()
                                 .build()))
-                .setXid(ofFactory.nextXid() - 2)
+                .setXid(0L)
                 .build();
     }
 
@@ -159,7 +160,7 @@ public class CommandUtils {
                                         .build()))
                                 .createBuilder()
                                 .build()))
-                .setXid(ofFactory.nextXid() - 2)
+                .setXid(0L)
                 .build();
     }
 
@@ -185,7 +186,7 @@ public class CommandUtils {
                                         .build()))
                                 .createBuilder()
                                 .build()))
-                .setXid(ofFactory.nextXid() - 2)
+                .setXid(0L)
                 .build();
     }
 
@@ -217,7 +218,7 @@ public class CommandUtils {
                                         .build()))
                                 .createBuilder()
                                 .build()))
-                .setXid(ofFactory.nextXid() - 2)
+                .setXid(0L)
                 .build();
     }
 
@@ -250,7 +251,7 @@ public class CommandUtils {
                                         .build()))
                                 .createBuilder()
                                 .build()))
-                .setXid(ofFactory.nextXid() - 2)
+                .setXid(0L)
                 .build();
     }
 
@@ -276,7 +277,7 @@ public class CommandUtils {
                                         .build()))
                                 .createBuilder()
                                 .build()))
-                .setXid(ofFactory.nextXid() - 2)
+                .setXid(0L)
                 .build();
     }
 
@@ -301,7 +302,7 @@ public class CommandUtils {
                                         .build()))
                                 .createBuilder()
                                 .build()))
-                .setXid(ofFactory.nextXid() - 2)
+                .setXid(0L)
                 .build();
     }
 
@@ -331,7 +332,7 @@ public class CommandUtils {
                                         .build()))
                                 .createBuilder()
                                 .build()))
-                .setXid(ofFactory.nextXid() - 2)
+                .setXid(0L)
                 .build();
     }
 
@@ -354,20 +355,20 @@ public class CommandUtils {
                                         .build()))
                                 .createBuilder()
                                 .build()))
-                .setXid(ofFactory.nextXid() - 2)
+                .setXid(0L)
                 .build();
     }
 
     public static OFMeterMod expectedMeter(int bandwidth, int burstSize, int meterId) {
         return ofFactory.buildMeterMod()
                 .setMeterId(meterId)
-                .setCommand(MODIFY)
+                .setCommand(ADD)
                 .setMeters(singletonList(ofFactory.meterBands()
                         .buildDrop()
                         .setRate(bandwidth)
                         .setBurstSize(burstSize).build()))
                 .setFlags(new HashSet<>(Arrays.asList(KBPS, BURST)))
-                .setXid(ofFactory.nextXid() + 1)
+                .setXid(0L)
                 .build();
     }
 }

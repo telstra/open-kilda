@@ -41,7 +41,7 @@ import static org.bitbucket.openkilda.floodlight.pathverification.PathVerificati
 import static org.bitbucket.openkilda.floodlight.pathverification.PathVerificationService.VERIFICATION_PACKET_UDP_PORT;
 import static org.projectfloodlight.openflow.protocol.OFMeterFlags.BURST;
 import static org.projectfloodlight.openflow.protocol.OFMeterFlags.KBPS;
-import static org.projectfloodlight.openflow.protocol.OFMeterModCommand.MODIFY;
+import static org.projectfloodlight.openflow.protocol.OFMeterModCommand.ADD;
 
 /**
  * Created by jonv on 29/3/17.
@@ -280,7 +280,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         OFMeterMod.Builder meterModBuilder = ofFactory.buildMeterMod()
                 .setMeterId(meterId)
-                .setCommand(MODIFY)
+                .setCommand(ADD)
                 .setMeters(singletonList(bandBuilder.build()))
                 .setFlags(flags);
 

@@ -76,7 +76,7 @@ public class InstallOneSwitchFlow extends AbstractInstallFlow {
                                 @JsonProperty("input_port") Number inputPort,
                                 @JsonProperty("output_port") Number outputPort,
                                 @JsonProperty("input_vlan_id") Number inputVlanId,
-                                @JsonProperty("input_out_id") Number outputVlanId,
+                                @JsonProperty("output_vlan_id") Number outputVlanId,
                                 @JsonProperty("output_vlan_type") String outputVlanType,
                                 @JsonProperty("bandwidth") Number bandwidth,
                                 @JsonProperty("input_meter_id") Number inputMeterId,
