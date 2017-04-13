@@ -12,8 +12,8 @@
 		"output_vlan_id": 0,
 		"output_vlan_type": "NONE",
 		"bandwidth": 10000,
-    "input_meter_id": 1,
-    "output_meter_id": 2
+		"input_meter_id": 1,
+		"output_meter_id": 2
 	}
 }
 

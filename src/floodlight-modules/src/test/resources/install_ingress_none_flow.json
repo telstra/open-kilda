@@ -8,10 +8,9 @@
 		"switch_id": "00:00:00:00:00:00:00:09",
 		"input_port": 3,
 		"output_port": 2,
-    "input_vlan_id": 0,
+		"input_vlan_id": 0,
 		"transit_vlan_id": 100,
 		"bandwidth": 10000,
 		"meter_id": 1
 	}
 }
-

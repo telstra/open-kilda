@@ -131,7 +131,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         Match match = matchFlow(sw, inputPort, inputVlanId);
 
         // build meter instruction
-        OFInstructionMeter meter = buildInstructionMeter(sw, meterId);
+        OFInstructionMeter meter = meterId != 0 ? buildInstructionMeter(sw, meterId) : null;
 
         // push transit vlan
         actionList.add(actionPushVlan(sw, ETH_TYPE));
@@ -218,7 +218,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      */
     @Override
     public void installOneSwitchFlow(DatapathId dpid, int inputPort, int outputPort, int inputVlanId, int outputVlanId,
-                                     OutputVlanType outputVlanType, int meterId) {
+                                     OutputVlanType outputVlanType, long meterId) {
         List<OFAction> actionList = new ArrayList<>();
         IOFSwitch sw = ofSwitchService.getSwitch(dpid);
 
@@ -226,7 +226,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         Match match = matchFlow(sw, inputPort, inputVlanId);
 
         // build meter instruction
-        OFInstructionMeter meter = buildInstructionMeter(sw, meterId);
+        OFInstructionMeter meter = meterId != 0 ? buildInstructionMeter(sw, meterId) : null;
 
         // output action based on flow type
         actionList.addAll(outputVlanTypeToOFActionList(sw, outputVlanId, outputVlanType));
@@ -267,6 +267,10 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      */
     @Override
     public void installMeter(DatapathId dpid, long bandwidth, long burstSize, long meterId) {
+        if (meterId == 0) {
+            logger.info("skip installing meter {} on switch {} width bandwidth {}", meterId, dpid, bandwidth);
+            return;
+        }
         logger.debug("installing meter {} on switch {} width bandwidth {}", meterId, dpid, bandwidth);
 
         IOFSwitch sw = ofSwitchService.getSwitch(dpid);

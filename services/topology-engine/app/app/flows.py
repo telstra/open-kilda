@@ -30,7 +30,8 @@ def create_p2n_driver():
     return graph
 
 
-def build_ingress_flow(expandedRelationships, src_switch, src_port, src_vlan, bandwidth, transit_vlan, flow_id, outputAction):
+def build_ingress_flow(expandedRelationships, src_switch, src_port, src_vlan, bandwidth, transit_vlan, flow_id):
+    # output action is always PUSH transit vlan id
     match = src_port
     for relationship in expandedRelationships:
         if relationship['data']['src_switch'] == src_switch:
@@ -71,7 +72,8 @@ def build_egress_flow(expandedRelationships, dst_switch, dst_port, dst_vlan, tra
     return flow
 
 
-def build_intermediate_flows(expandedRelationships, transit_vlan, i, flow_id, outputAction):
+def build_intermediate_flows(expandedRelationships, transit_vlan, i, flow_id):
+    # output action is always NONE for transit vlan id
     match = expandedRelationships[i]['data']['dst_port']
     action = expandedRelationships[i+1]['data']['src_port']
     switch = expandedRelationships[i]['data']['dst_switch']
@@ -129,31 +131,55 @@ def assign_flow_id():
     return str(uuid.uuid4())
 
 def assign_meter_id():
-    return random.randrange(1, 4000, 1)
+    # zero means meter should not be actually installed on switch
+    # zero value should be used only for software switch based testing
+    return 0
 
-def api_v1_topology_get_one_switch_flows(src_switch, src_port, src_vlan, dst_switch, dst_port, dst_vlan, bandwidth, flow_id, outputAction):
-    return [[build_one_switch_flow(src_switch, src_port, src_vlan, dst_port, dst_vlan, bandwidth, flow_id, outputAction)],
-            [build_one_switch_flow(dst_switch, dst_port, dst_vlan, src_port, src_vlan, bandwidth, flow_id, outputAction)]]
+def choose_output_action(input_vlan_id, output_vlan_id):
+    # TODO: move to Storm Flow Topology
+    if not input_vlan_id or input_vlan_id == 0:
+        if not output_vlan_id or output_vlan_id == 0:
+            output_action_type = "NONE"
+        else:
+            output_action_type = "PUSH"
+    else:
+        if not output_vlan_id or output_vlan_id == 0:
+            output_action_type = "POP"
+        else:
+            output_action_type = "REPLACE"
+    return output_action_type
+
+def api_v1_topology_get_one_switch_flows(src_switch, src_port, src_vlan, dst_switch, dst_port, dst_vlan, bandwidth, flow_id):
+    forwardOutputAction = choose_output_action(int(src_vlan), int(dst_vlan))
+    reverseOutputAction = choose_output_action(int(dst_vlan), int(src_vlan))
+    return [[build_one_switch_flow(src_switch, src_port, src_vlan, dst_port, dst_vlan, bandwidth, flow_id, forwardOutputAction)],
+            [build_one_switch_flow(dst_switch, dst_port, dst_vlan, src_port, src_vlan, bandwidth, flow_id, reverseOutputAction)]]
 
 def api_v1_topology_get_path(src_switch, src_port, src_vlan, dst_switch, dst_port, dst_vlan,
-                             bandwidth, transit_vlan, flow_id, outputAction):
+                             bandwidth, transit_vlan, flow_id):
     relationships = get_relationships(src_switch, src_port, dst_switch, dst_port)
-
+    outputAction = choose_output_action(int(src_vlan), int(dst_vlan))
     if relationships:
 
         expandedRelationships = expand_relationships(relationships)
         flows = []
-        flows.append(build_ingress_flow(expandedRelationships, src_switch, src_port, src_vlan, bandwidth, transit_vlan, flow_id, outputAction))
+        flows.append(build_ingress_flow(expandedRelationships, src_switch, src_port, src_vlan, bandwidth, transit_vlan, flow_id))
         intermediateFlowCount = len(expandedRelationships) - 1
         i = 0
         while i < intermediateFlowCount:
-            flows.append(build_intermediate_flows(expandedRelationships, transit_vlan, i, flow_id, outputAction))
+            flows.append(build_intermediate_flows(expandedRelationships, transit_vlan, i, flow_id))
             i += 1
         flows.append(build_egress_flow(expandedRelationships, dst_switch, dst_port, dst_vlan, transit_vlan, flow_id, outputAction))
         return flows
 
     else:
         return False
+
+
+@application.route('/api/v1/health-check', methods=["GET"])
+def api_v1_health_check():
+    return '{"status": "ok"}'
+
 
 @application.route('/api/v1/flow', methods=["POST"])
 #@login_required
@@ -164,23 +190,24 @@ def api_v1_topology_path():
         producer = KafkaProducer(bootstrap_servers=bootstrapServer)
         content = json.loads('{}'.format(request.data))
         flowID = assign_flow_id()
-        outputAction = "PUSH" #needs to be added to api
 
         if content['src_switch'] == content['dst_switch']:
             allflows = api_v1_topology_get_one_switch_flows(
                 content['src_switch'], content['src_port'], content['src_vlan'],
                 content['dst_switch'], content['dst_port'], content['dst_vlan'],
-                content['bandwidth'], content['flow_id'], outputAction)
+                content['bandwidth'], flowID)
         else:
             transitVlanForward = assign_transit_vlan()
             forwardFlows = api_v1_topology_get_path(
-                content['src_switch'], content['src_port'], content['src_vlan'], content['dst_switch'],
-                content['dst_port'], content['dst_vlan'], transitVlanForward, flowID, outputAction)
+                content['src_switch'], content['src_port'], content['src_vlan'],
+                content['dst_switch'], content['dst_port'], content['dst_vlan'],
+                content['bandwidth'], transitVlanForward, flowID)
 
             transitVlanReturn = assign_transit_vlan()
             reverseFlows = api_v1_topology_get_path(
-                content['dst_switch'], content['dst_port'], content['dst_vlan'], content['src_switch'],
-                content['src_port'], content['src_vlan'], transitVlanReturn, flowID, outputAction)
+                content['dst_switch'], content['dst_port'], content['dst_vlan'],
+                content['src_switch'], content['src_port'], content['src_vlan'],
+                content['bandwidth'], transitVlanReturn, flowID)
 
             allflows = [forwardFlows, reverseFlows]
 

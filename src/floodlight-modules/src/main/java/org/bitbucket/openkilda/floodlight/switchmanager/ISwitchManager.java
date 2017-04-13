@@ -59,7 +59,7 @@ public interface ISwitchManager extends IFloodlightService {
      * @param outputVlanType - type of action to apply to the outputVlanId if greater than 0
      */
     void installOneSwitchFlow(DatapathId dpid, int inputPort, int outputPort, int inputVlanId, int outputVlanId,
-                              OutputVlanType outputVlanType, int meterId);
+                              OutputVlanType outputVlanType, long meterId);
 
     /**
      *

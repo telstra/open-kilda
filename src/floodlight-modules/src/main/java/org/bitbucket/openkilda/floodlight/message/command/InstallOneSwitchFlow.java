@@ -210,7 +210,7 @@ public class InstallOneSwitchFlow extends AbstractInstallFlow {
             throw new IllegalArgumentException("need to set output_meter_id");
         } else if (outputMeterId.intValue() < 0) {
             throw new IllegalArgumentException("need to set non negative output_meter_id");
-        } else if (outputMeterId.equals(inputMeterId)) {
+        } else if (outputMeterId.equals(inputMeterId) && outputMeterId.longValue() != 0) {
             throw new IllegalArgumentException("need to set different input_meter_id and output_meter_id");
         }
         this.outputMeterId = outputMeterId;
