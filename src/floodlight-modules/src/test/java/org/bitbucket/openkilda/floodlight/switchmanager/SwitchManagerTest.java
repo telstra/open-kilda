@@ -1,11 +1,14 @@
 package org.bitbucket.openkilda.floodlight.switchmanager;
 
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.SwitchDescription;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.staticentry.IStaticEntryPusherService;
+import org.bitbucket.openkilda.floodlight.message.command.encapsulation.OutputCommands;
+import org.bitbucket.openkilda.floodlight.message.command.encapsulation.PushSchemeOutputCommands;
 import org.easymock.*;
 import org.junit.Before;
 import org.junit.Test;
@@ -13,7 +16,7 @@ import org.projectfloodlight.openflow.protocol.*;
 import org.projectfloodlight.openflow.types.*;
 
 import static org.bitbucket.openkilda.floodlight.Constants.*;
-import static org.bitbucket.openkilda.floodlight.message.command.CommandUtils.*;
+import static org.bitbucket.openkilda.floodlight.message.command.encapsulation.PushSchemeOutputCommands.*;
 import static org.bitbucket.openkilda.floodlight.switchmanager.SwitchManager.cookieMaker;
 import static org.easymock.EasyMock.*;
 import static org.junit.Assert.*;
@@ -22,6 +25,7 @@ import static org.junit.Assert.*;
  * Created by atopilin on 10/04/2017.
  */
 public class SwitchManagerTest {
+    private static final OutputCommands scheme = new PushSchemeOutputCommands();
     private static final FloodlightModuleContext context = new FloodlightModuleContext();
     private SwitchManager switchManager;
     private IStaticEntryPusherService staticEntryPusher;
@@ -55,12 +59,13 @@ public class SwitchManagerTest {
     public void installIngressFlowReplaceAction() throws Exception {
         Capture<OFFlowMod> capture = prepareForInstallTest();
 
-        switchManager.installIngressFlow(dpid, inputPort, outputPort, inputVlanId, transitVlanId, meterId);
+        switchManager.installIngressFlow(dpid, inputPort, outputPort,
+                inputVlanId, transitVlanId, OutputVlanType.REPLACE, meterId);
 
         verify(staticEntryPusher);
 
         assertEquals(
-                ingressReplaceFlowMod(inputPort, outputPort, inputVlanId, transitVlanId, meterId, cookieMaker()),
+                scheme.ingressReplaceFlowMod(inputPort, outputPort, inputVlanId, transitVlanId, meterId, cookieMaker()),
                 capture.getValue());
     }
 
@@ -68,12 +73,13 @@ public class SwitchManagerTest {
     public void installIngressFlowPopAction() throws Exception {
         Capture<OFFlowMod> capture = prepareForInstallTest();
 
-        switchManager.installIngressFlow(dpid, inputPort, outputPort, inputVlanId, transitVlanId, meterId);
+        switchManager.installIngressFlow(dpid, inputPort, outputPort,
+                inputVlanId, transitVlanId, OutputVlanType.POP, meterId);
 
         verify(staticEntryPusher);
 
         assertEquals(
-                ingressPopFlowMod(inputPort, outputPort, inputVlanId, transitVlanId, meterId, cookieMaker()),
+                scheme.ingressPopFlowMod(inputPort, outputPort, inputVlanId, transitVlanId, meterId, cookieMaker()),
                 capture.getValue());
     }
 
@@ -81,12 +87,13 @@ public class SwitchManagerTest {
     public void installIngressFlowPushAction() throws Exception {
         Capture<OFFlowMod> capture = prepareForInstallTest();
 
-        switchManager.installIngressFlow(dpid, inputPort, outputPort, 0, transitVlanId, meterId);
+        switchManager.installIngressFlow(dpid, inputPort, outputPort,
+                0, transitVlanId, OutputVlanType.PUSH, meterId);
 
         verify(staticEntryPusher);
 
         assertEquals(
-                ingressPushFlowMod(inputPort, outputPort, transitVlanId, meterId, cookieMaker()),
+                scheme.ingressPushFlowMod(inputPort, outputPort, transitVlanId, meterId, cookieMaker()),
                 capture.getValue());
     }
 
@@ -94,12 +101,13 @@ public class SwitchManagerTest {
     public void installIngressFlowNoneAction() throws Exception {
         Capture<OFFlowMod> capture = prepareForInstallTest();
 
-        switchManager.installIngressFlow(dpid, inputPort, outputPort, 0, transitVlanId, meterId);
+        switchManager.installIngressFlow(dpid, inputPort, outputPort,
+                0, transitVlanId, OutputVlanType.NONE, meterId);
 
         verify(staticEntryPusher);
 
         assertEquals(
-                ingressNoneFlowMod(inputPort, outputPort, transitVlanId, meterId, cookieMaker()),
+                scheme.ingressNoneFlowMod(inputPort, outputPort, transitVlanId, meterId, cookieMaker()),
                 capture.getValue());
     }
 
@@ -112,7 +120,7 @@ public class SwitchManagerTest {
         verify(staticEntryPusher);
 
         assertEquals(
-                egressNoneFlowMod(inputPort, outputPort, transitVlanId, cookieMaker()),
+                scheme.egressNoneFlowMod(inputPort, outputPort, transitVlanId, cookieMaker()),
                 capture.getValue());
     }
 
@@ -125,7 +133,7 @@ public class SwitchManagerTest {
         verify(staticEntryPusher);
 
         assertEquals(
-                egressPushFlowMod(inputPort, outputPort, transitVlanId, outputVlanId, cookieMaker()),
+                scheme.egressPushFlowMod(inputPort, outputPort, transitVlanId, outputVlanId, cookieMaker()),
                 capture.getValue());
     }
 
@@ -138,7 +146,7 @@ public class SwitchManagerTest {
         verify(staticEntryPusher);
 
         assertEquals(
-                egressPopFlowMod(inputPort, outputPort, transitVlanId, cookieMaker()),
+                scheme.egressPopFlowMod(inputPort, outputPort, transitVlanId, cookieMaker()),
                 capture.getValue());
     }
 
@@ -151,7 +159,7 @@ public class SwitchManagerTest {
         verify(staticEntryPusher);
 
         assertEquals(
-                egressReplaceFlowMod(inputPort, outputPort, transitVlanId, outputVlanId, cookieMaker()),
+                scheme.egressReplaceFlowMod(inputPort, outputPort, transitVlanId, outputVlanId, cookieMaker()),
                 capture.getValue());
     }
 
@@ -164,7 +172,7 @@ public class SwitchManagerTest {
         verify(staticEntryPusher);
 
         assertEquals(
-                transitFlowMod(inputPort, outputPort, transitVlanId, cookieMaker()),
+                scheme.transitFlowMod(inputPort, outputPort, transitVlanId, cookieMaker()),
                 capture.getValue());
     }
 
@@ -178,7 +186,7 @@ public class SwitchManagerTest {
         verify(staticEntryPusher);
 
         assertEquals(
-                oneSwitchReplaceFlowMod(inputPort, outputPort, inputVlanId, outputVlanId, meterId, cookieMaker()),
+                scheme.oneSwitchReplaceFlowMod(inputPort, outputPort, inputVlanId, outputVlanId, meterId, cookieMaker()),
                 capture.getValue());
     }
 
@@ -191,7 +199,7 @@ public class SwitchManagerTest {
         verify(staticEntryPusher);
 
         assertEquals(
-                oneSwitchPushFlowMod(inputPort, outputPort, outputVlanId, meterId, cookieMaker()),
+                scheme.oneSwitchPushFlowMod(inputPort, outputPort, outputVlanId, meterId, cookieMaker()),
                 capture.getValue());
     }
 
@@ -204,7 +212,7 @@ public class SwitchManagerTest {
         verify(staticEntryPusher);
 
         assertEquals(
-                oneSwitchPopFlowMod(inputPort, outputPort, inputVlanId, meterId, cookieMaker()),
+                scheme.oneSwitchPopFlowMod(inputPort, outputPort, inputVlanId, meterId, cookieMaker()),
                 capture.getValue());
     }
 
@@ -217,7 +225,7 @@ public class SwitchManagerTest {
         verify(staticEntryPusher);
 
         assertEquals(
-                oneSwitchNoneFlowMod(inputPort, outputPort, meterId, cookieMaker()),
+                scheme.oneSwitchNoneFlowMod(inputPort, outputPort, meterId, cookieMaker()),
                 capture.getValue());
     }
 
@@ -232,11 +240,11 @@ public class SwitchManagerTest {
     }
 
     @Test
-    public void installMeter() throws Exception {
+    public void installBandwidthMeter() throws Exception {
         expect(ofSwitchService.getSwitch(dpid)).andStubReturn(iofSwitch);
         expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
 
-        expect(iofSwitch.write(expectedMeter(bandwidth, burstSize, meterId))).andReturn(true);
+        expect(iofSwitch.write(scheme.installMeter(bandwidth, burstSize, meterId))).andReturn(true);
 
         replay(ofSwitchService);
         replay(iofSwitch);
@@ -249,6 +257,7 @@ public class SwitchManagerTest {
 
         expect(ofSwitchService.getSwitch(dpid)).andStubReturn(iofSwitch);
         expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
+        expect(iofSwitch.getSwitchDescription()).andStubReturn(new SwitchDescription());
 
         staticEntryPusher.addFlow(anyString(), capture(capture), anyObject(DatapathId.class));
         EasyMock.expectLastCall();

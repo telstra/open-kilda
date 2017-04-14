@@ -22,7 +22,7 @@ public class InstallIngressFlowTest {
     @BeforeClass
     public static void setUpClass() throws Exception {
         installIngressFlow = new InstallIngressFlow(flowName, switchId, inputPort,
-                outputPort, inputVlanId, transitVlanId, bandwidth, meterId);
+                outputPort, inputVlanId, transitVlanId, outputVlanType, bandwidth, meterId);
         System.out.println(installIngressFlow.toString());
     }
 

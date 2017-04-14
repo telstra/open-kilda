@@ -5,6 +5,8 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.google.common.base.Objects;
+import org.apache.commons.lang3.EnumUtils;
+import org.bitbucket.openkilda.floodlight.switchmanager.OutputVlanType;
 
 /**
  * Class represents ingress flow installation info.
@@ -41,6 +43,9 @@ public class InstallIngressFlow extends InstallTransitFlow {
     /** Input vlan id value. It is an optional parameter.*/
     protected Number inputVlanId;
 
+    /** Output action on the vlan tag. It is a mandatory parameter. */
+    protected String outputVlanType;
+
     /** Default constructor. */
     public InstallIngressFlow() {}
 
@@ -64,13 +69,25 @@ public class InstallIngressFlow extends InstallTransitFlow {
                               @JsonProperty("output_port") Number outputPort,
                               @JsonProperty("input_vlan_id") Number inputVlanId,
                               @JsonProperty("transit_vlan_id") Number transitVlanId,
+                              @JsonProperty("output_vlan_type") String outputVlanType,
                               @JsonProperty("bandwidth") Number bandwidth,
                               @JsonProperty("meter_id") Number meterId) {
         super(flowName, switchId, inputPort, outputPort, transitVlanId);
 
         setInputVlanId(inputVlanId);
+        setOutputVlanType(outputVlanType);
         setBandwidth(bandwidth);
         setMeterId(meterId);
+    }
+
+    /**
+     * Returns output action on the vlan tag.
+     *
+     * @return Output action on the vlan tag
+     */
+    @JsonProperty("output_vlan_type")
+    public String getOutputVlanType() {
+        return outputVlanType;
     }
 
     /**
@@ -101,6 +118,24 @@ public class InstallIngressFlow extends InstallTransitFlow {
     @JsonProperty("input_vlan_id")
     public Number getInputVlanId() {
         return inputVlanId;
+    }
+
+    /**
+     * Sets output action on the vlan tag.
+     *
+     * @param outputVlanType action on the vlan tag
+     */
+    @JsonProperty("output_vlan_type")
+    public void setOutputVlanType(String outputVlanType) {
+        if (outputVlanType == null) {
+            throw new IllegalArgumentException("need to set output_vlan_type");
+        } else if (!EnumUtils.isValidEnum(OutputVlanType.class, outputVlanType)) {
+            throw new IllegalArgumentException("need to set valid value for output_vlan_type");
+        } else if (!Utils.checkInputVlanType(inputVlanId, outputVlanType)) {
+            throw new IllegalArgumentException("need to set valid values for input_vlan_id and output_vlan_type");
+        } else {
+            this.outputVlanType = outputVlanType;
+        }
     }
 
     /**

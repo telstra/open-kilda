@@ -7,6 +7,9 @@ import org.projectfloodlight.openflow.types.DatapathId;
  * Created by jonv on 29/3/17.
  */
 public interface ISwitchManager extends IFloodlightService {
+    /** OVS software switch manufacturer constant value. */
+    String OVS_MANUFACTURER = "Nicira, Inc.";
+
     /**
      * installDefaultRules - Adds default rules to install verification rules and final drop rule.
      *
@@ -23,7 +26,8 @@ public interface ISwitchManager extends IFloodlightService {
      * @param inputVlanId - input vlan to match on, 0 means not to match on vlan
      * @param transitVlanId - vlan to add before outputing on outputPort
      */
-    void installIngressFlow(DatapathId dpid, int inputPort, int outputPort, int inputVlanId, int transitVlanId, long meterid);
+    void installIngressFlow(DatapathId dpid, int inputPort, int outputPort, int inputVlanId, int transitVlanId,
+                            OutputVlanType outputVlanType, long meterid);
 
     /**
      * installEgressFlow - Install flow on egress swtich.
@@ -36,7 +40,7 @@ public interface ISwitchManager extends IFloodlightService {
      * @param outputVlanType - type of action to apply to the outputVlanId if greater than 0
      */
     void installEgressFlow(DatapathId dpid, int inputPort, int outputPort, int transitVlanId, int outputVlanId,
-                                  OutputVlanType outputVlanType);
+                           OutputVlanType outputVlanType);
 
     /**
      * installTransitFlow - install flow on a transit switch.

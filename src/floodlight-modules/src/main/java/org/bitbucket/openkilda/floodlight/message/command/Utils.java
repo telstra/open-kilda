@@ -22,6 +22,14 @@ public final class Utils {
                        || OutputVlanType.NONE.toString().equals(outputVlanType));
     }
 
+    public static boolean checkInputVlanType(Number inputVlanId, String outputVlanType) {
+        return (inputVlanId != null && inputVlanId.intValue() != 0) ?
+                (OutputVlanType.POP.toString().equals(outputVlanType)
+                        || OutputVlanType.REPLACE.toString().equals(outputVlanType)) :
+                (OutputVlanType.PUSH.toString().equals(outputVlanType)
+                        || OutputVlanType.NONE.toString().equals(outputVlanType));
+    }
+
     public static boolean checkSwitchId(String switchId) {
         // TODO: check valid switch id
         return !switchId.isEmpty();

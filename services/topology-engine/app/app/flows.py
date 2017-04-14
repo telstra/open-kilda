@@ -30,8 +30,7 @@ def create_p2n_driver():
     return graph
 
 
-def build_ingress_flow(expandedRelationships, src_switch, src_port, src_vlan, bandwidth, transit_vlan, flow_id):
-    # output action is always PUSH transit vlan id
+def build_ingress_flow(expandedRelationships, src_switch, src_port, src_vlan, bandwidth, transit_vlan, flow_id, outputAction):
     match = src_port
     for relationship in expandedRelationships:
         if relationship['data']['src_switch'] == src_switch:
@@ -46,6 +45,7 @@ def build_ingress_flow(expandedRelationships, src_switch, src_port, src_vlan, ba
     flow.output_port = action
     flow.input_vlan_id = int(src_vlan)
     flow.transit_vlan_id = int(transit_vlan)
+    flow.output_vlan_type = outputAction
     flow.bandwidth = bandwidth
     flow.meter_id = assign_meter_id()
 
@@ -163,7 +163,7 @@ def api_v1_topology_get_path(src_switch, src_port, src_vlan, dst_switch, dst_por
 
         expandedRelationships = expand_relationships(relationships)
         flows = []
-        flows.append(build_ingress_flow(expandedRelationships, src_switch, src_port, src_vlan, bandwidth, transit_vlan, flow_id))
+        flows.append(build_ingress_flow(expandedRelationships, src_switch, src_port, src_vlan, bandwidth, transit_vlan, flow_id, outputAction))
         intermediateFlowCount = len(expandedRelationships) - 1
         i = 0
         while i < intermediateFlowCount:

@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.bitbucket.openkilda.floodlight.message.command.Utils.ETH_TYPE;
 import static org.bitbucket.openkilda.floodlight.pathverification.PathVerificationService.VERIFICATION_BCAST_PACKET_DST;
@@ -123,7 +124,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      */
     @Override
     public void installIngressFlow(final DatapathId dpid, final int inputPort, final int outputPort,
-                                   final int inputVlanId, final int transitVlanId, final long meterId) {
+                                   final int inputVlanId, final int transitVlanId, final OutputVlanType outputVlanType,
+                                   final long meterId) {
         List<OFAction> actionList = new ArrayList<>();
         IOFSwitch sw = ofSwitchService.getSwitch(dpid);
 
@@ -133,9 +135,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         // build meter instruction
         OFInstructionMeter meter = meterId != 0 ? buildInstructionMeter(sw, meterId) : null;
 
-        // push transit vlan
-        actionList.add(actionPushVlan(sw, ETH_TYPE));
-        actionList.add(actionReplaceVlan(sw, transitVlanId));
+        // output action based on encap scheme
+        actionList.addAll(inputVlanTypeToOFActionList(sw, transitVlanId, outputVlanType));
+
         // transmit packet from outgoing port
         actionList.add(actionSetOutputPort(sw, outputPort));
 
@@ -165,10 +167,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         // build match by input port and transit vlan id
         Match match = matchFlow(sw, inputPort, transitVlanId);
 
-        // pop transit vlan
-        actionList.add(actionPopVlan(sw));
-        // output action based on flow type
+        // output action based on encap scheme
         actionList.addAll(outputVlanTypeToOFActionList(sw, outputVlanId, outputVlanType));
+
         // transmit packet from outgoing port
         actionList.add(actionSetOutputPort(sw, outputPort));
 
@@ -228,8 +229,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         // build meter instruction
         OFInstructionMeter meter = meterId != 0 ? buildInstructionMeter(sw, meterId) : null;
 
-        // output action based on flow type
-        actionList.addAll(outputVlanTypeToOFActionList(sw, outputVlanId, outputVlanType));
+        // output action based on encap scheme
+        actionList.addAll(pushSchemeOutputVlanTypeToOFActionList(sw, outputVlanId, outputVlanType));
         // transmit packet from outgoing port
         actionList.add(actionSetOutputPort(sw, outputPort));
 
@@ -323,15 +324,45 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
     /**
-     * outputVlanTypeToOFActionList - Builds OFAction list based on flow output parameters
+     * replaceSchemeOutputVlanTypeToOFActionList - Builds OFAction list based on flow parameters for replace scheme
      *
      * @param sw - IOFSwitch instance
      * @param outputVlanId - set vlan on packet before forwarding via outputPort; 0 means not to set
      * @param outputVlanType - type of action to apply to the outputVlanId if greater than 0
      * @return List<OFAction>
      */
-    protected List<OFAction> outputVlanTypeToOFActionList(IOFSwitch sw, int outputVlanId, OutputVlanType outputVlanType) {
-        List<OFAction> actionList = new ArrayList<>();
+    private List<OFAction> replaceSchemeOutputVlanTypeToOFActionList(IOFSwitch sw, int outputVlanId,
+                                                                     OutputVlanType outputVlanType) {
+        List<OFAction> actionList;
+
+        switch (outputVlanType) {
+            case PUSH:
+            case REPLACE:
+                actionList = singletonList(actionReplaceVlan(sw, outputVlanId));
+                break;
+            case POP:
+            case NONE:
+                actionList = singletonList(actionPopVlan(sw));
+                break;
+            default:
+                actionList = emptyList();
+                logger.error("Unknown OutputVlanType: " + outputVlanType);
+        }
+
+        return actionList;
+    }
+
+    /**
+     * pushSchemeOutputVlanTypeToOFActionList - Builds OFAction list based on flow parameters for push scheme
+     *
+     * @param sw - IOFSwitch instance
+     * @param outputVlanId - set vlan on packet before forwarding via outputPort; 0 means not to set
+     * @param outputVlanType - type of action to apply to the outputVlanId if greater than 0
+     * @return List<OFAction>
+     */
+    private List<OFAction> pushSchemeOutputVlanTypeToOFActionList(IOFSwitch sw, int outputVlanId,
+                                                                  OutputVlanType outputVlanType) {
+        List<OFAction> actionList = new ArrayList<>(2);
 
         switch (outputVlanType) {
             case PUSH:      // No VLAN on packet so push a new one
@@ -351,6 +382,46 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 logger.error("Unknown OutputVlanType: " + outputVlanType);
         }
 
+        return actionList;
+    }
+
+    /**
+     * outputVlanTypeToOFActionList - Chooses encapsulation scheme for building OFAction list
+     *
+     * @param sw - IOFSwitch instance
+     * @param outputVlanId - set vlan on packet before forwarding via outputPort; 0 means not to set
+     * @param outputVlanType - type of action to apply to the outputVlanId if greater than 0
+     * @return List<OFAction>
+     */
+    private List<OFAction> outputVlanTypeToOFActionList(IOFSwitch sw, int outputVlanId, OutputVlanType outputVlanType) {
+        List<OFAction> actionList = new ArrayList<>(3);
+        switch (sw.getSwitchDescription().getManufacturerDescription()) {
+            case OVS_MANUFACTURER:
+                actionList.addAll(replaceSchemeOutputVlanTypeToOFActionList(sw, outputVlanId, outputVlanType));
+                break;
+            default:
+                // pop transit vlan
+                actionList.add(actionPopVlan(sw));
+                actionList.addAll(pushSchemeOutputVlanTypeToOFActionList(sw, outputVlanId, outputVlanType));
+                break;
+        }
+        return actionList;
+    }
+
+    /**
+     * inputVlanTypeToOFActionList - Chooses encapsulation scheme for building OFAction list
+     *
+     * @param sw - IOFSwitch instance
+     * @param transitVlanId - set vlan on packet or replace it before forwarding via outputPort; 0 means not to set
+     * @return List<OFAction>
+     */
+    private List<OFAction> inputVlanTypeToOFActionList(IOFSwitch sw, int transitVlanId, OutputVlanType outputVlanType) {
+        List<OFAction> actionList = new ArrayList<>(3);
+        if (!OVS_MANUFACTURER.equals(sw.getSwitchDescription().getManufacturerDescription())
+                || (OutputVlanType.PUSH.equals(outputVlanType) || OutputVlanType.NONE.equals(outputVlanType))) {
+            actionList.add(actionPushVlan(sw, ETH_TYPE));
+        }
+        actionList.add(actionReplaceVlan(sw, transitVlanId));
         return actionList;
     }
 
