@@ -1,7 +1,6 @@
 package org.bitbucket.openkilda.floodlight.switchmanager.web;
 
 import net.floodlightcontroller.restserver.RestletRoutable;
-import org.bitbucket.openkilda.floodlight.switchmanager.SwitchManager;
 import org.restlet.Context;
 import org.restlet.Restlet;
 import org.restlet.routing.Router;
