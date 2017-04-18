@@ -4,10 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.bitbucket.openkilda.floodlight.message.CommandMessage;
 import org.bitbucket.openkilda.floodlight.message.ErrorMessage;
 import org.bitbucket.openkilda.floodlight.message.Message;
-import org.bitbucket.openkilda.floodlight.message.command.CommandData;
-import org.bitbucket.openkilda.floodlight.message.command.InstallEgressFlow;
-import org.bitbucket.openkilda.floodlight.message.command.InstallIngressFlow;
-import org.bitbucket.openkilda.floodlight.message.command.InstallTransitFlow;
+import org.bitbucket.openkilda.floodlight.message.command.*;
 import org.bitbucket.openkilda.floodlight.message.error.ErrorData;
 import org.bitbucket.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.restlet.resource.Post;
@@ -63,8 +60,7 @@ public class FlowResource extends ServerResource {
 
         CommandMessage cmdMessage = (CommandMessage) message;
         CommandData data = cmdMessage.getData();
-        if (!(data instanceof InstallIngressFlow || data instanceof InstallTransitFlow
-                || data instanceof InstallEgressFlow)) {
+        if (!(data instanceof AbstractInstallFlow)) {
             logger.error("Message was not correct type: " + json);
             logger.debug("Class was " + data.getClass().getCanonicalName());
             message = new ErrorMessage()
