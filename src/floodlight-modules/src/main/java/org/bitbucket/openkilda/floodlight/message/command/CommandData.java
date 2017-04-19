@@ -25,6 +25,7 @@ import com.fasterxml.jackson.annotation.JsonSubTypes.Type;
         @Type(value = InstallIngressFlow.class, name= "install_ingress_flow"),
         @Type(value = InstallEgressFlow.class, name= "install_egress_flow"),
         @Type(value = InstallTransitFlow.class, name= "install_transit_flow"),
+        @Type(value = InstallOneSwitchFlow.class, name= "install_one_switch_flow"),
         @Type(value = DiscoverISLCommandData.class, name = "discover_isl"),
         @Type(value = DiscoverPathCommandData.class, name = "discover_path")
 })

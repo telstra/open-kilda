@@ -71,4 +71,12 @@ public class DiscoverPathCommandData extends CommandData {
     setDstSwitchId(switchId);
     return this;
   }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String toString() {
+        return String.format("%s:%s -> %s", srcSwitchId, srcPortNo, dstSwitchId);
+    }
 }

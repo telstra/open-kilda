@@ -1,0 +1,17 @@
+{
+	"type": "COMMAND",
+	"timestamp": 42,
+	"data": {
+		"command": "install_ingress_flow",
+		"destination": "CONTROLLER",
+		"flow_name": "test_flow",
+		"switch_id": "00:00:00:00:00:00:00:09",
+		"input_port": 3,
+		"output_port": 2,
+		"input_vlan_id": 200,
+		"transit_vlan_id": 100,
+		"output_vlan_type": "POP",
+		"bandwidth": 10000,
+		"meter_id": 1
+	}
+}

@@ -1,10 +1,25 @@
 #!/usr/bin/python
 import json
 import db
+import requests
+import time
 from jsonschema import validate
 from py2neo import Node, Relationship
 
 graph = db.create_p2n_driver()
+
+def repair_flows(switchid):
+    flows = (graph.run("MATCH (n)-[r:flow]-(m) where any(i in r.flowpath where i = '{}') return r".format(switchid))).data()
+    repairedFlowIDs = []
+    for flow in flows:
+        if flow['r']['flowid'] not in repairedFlowIDs:
+            repairedFlowIDs.append(flow['r']['flowid'])
+            url = "http://localhost/api/v1/flow"
+            headers = {'Content-Type': 'application/json'}
+            j_data = {"src_switch":"{}".format(flow['r']['src_switch']), "src_port":1, "src_vlan":0, "dst_switch":"{}".format(flow['r']['dst_switch']), "dst_port":1, "dst_vlan":0, "bandwidth": 2000}
+            result = requests.post(url, json=j_data, headers=headers)
+    return True
+
 
 class MessageItem(object):
     def __init__(self, type, timestamp, data):
@@ -29,7 +44,7 @@ class MessageItem(object):
             if self.get_message_type() == "isl":
                 eventHandled = self.create_isl()
             if self.get_message_type() == "switch" and self.data['state'] == "DEACTIVATED":
-                eventHandled = self.remove_switch()
+                eventHandled = self.deactivate_switch()
             return eventHandled
         except Exception as e:
             print e
@@ -45,22 +60,28 @@ class MessageItem(object):
             graph.merge(switch)
             switch['state'] = "active"
             switch.push()
-            print "Switch '{0}' already exists in topology.".format(switchid)
+            print "Activating switch: {}".format(switchid)
             return True
 
-    def remove_switch(self):
+    def deactivate_switch(self):
         switchid = self.data['switch_id']
         switch = graph.find_one('switch', property_key='name', property_value='{}'.format(switchid))
         if switch:
             graph.merge(switch)
             switch['state'] = "inactive"
             switch.push()
-            return True
+            print "Deactivating switch: {}".format(switchid)
+            if repair_flows(switchid):
+                return True
+            else:
+                return True
+
         else:
             print "Switch '{0}' does not exist in topology.".format(switchid)
             return True
 
     def create_isl(self):
+        
         path = self.data['path']
         a_switch = path[0]['switch_id']
         a_port = path[0]['port_no']
@@ -73,7 +94,15 @@ class MessageItem(object):
         if not a_switchNode or not b_switchNode:
             return False
 
-        isl = Relationship(a_switchNode, "isl", b_switchNode, src_port=a_port, dst_port=b_port, src_switch=a_switch, dst_switch=b_switch)
-        graph.create(isl)
+        islQuery = "MATCH (u:switch {{name:'{}'}}), (r:switch {{name:'{}'}}) MERGE (u)-[:isl {{src_port: '{}', dst_port: '{}', src_switch: '{}', dst_switch: '{}'}}]->(r)"
+        graph.run(islQuery.format(a_switchNode['name'], b_switchNode['name'], a_port, b_port, a_switch, b_switch))
+
+        #This method only checks for uniquness on start node, end node, and Relationship type.
+        #isl = Relationship(a_switchNode, "isl", b_switchNode, src_port=a_port, dst_port=b_port, src_switch=a_switch, dst_switch=b_switch)
+        #graph.create(isl)
+
+        return True
+        
+
 
 

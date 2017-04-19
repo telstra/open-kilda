@@ -4,13 +4,15 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-
-import java.io.IOException;
+import com.google.common.base.Objects;
 
 /**
+ * Class represents transit flow installation info.
+ *
+ * There is no output action for this type of flow.
+ *
  * Created by jonv on 23/3/17.
  */
-
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
         "command",
@@ -20,71 +22,72 @@ import java.io.IOException;
         "input_port",
         "output_port",
         "transit_vlan_id",
-        "bandwidth"
 })
+public class InstallTransitFlow extends AbstractInstallFlow {
 
-public class InstallTransitFlow extends CommandData {
-    private String flowName;
-    private String switchId;
-    private Number inputPort;
-    private Number outputPort;
-    private Number transitVlanId;
+    /** The transit vlan id value. It is a mandatory parameter. */
+    protected Number transitVlanId;
 
+    /** Default constructor. */
+    public InstallTransitFlow() {}
+
+    /**
+     * Constructs a transit flow installation command.
+     *
+     * @param flowName       Name of the flow
+     * @param switchId       Switch ID for flow installation
+     * @param inputPort      Input port of the flow
+     * @param outputPort     Output port of the flow
+     * @param transitVlanId  Transit vlan id value
+     * @throws IllegalArgumentException if any of parameters parameters is null
+     */
     @JsonCreator
     public InstallTransitFlow(@JsonProperty("flow_name") String flowName,
                               @JsonProperty("switch_id") String switchId,
                               @JsonProperty("input_port") Number inputPort,
                               @JsonProperty("output_port") Number outputPort,
-                              @JsonProperty("transit_vlan_id") Number transitVlanId) throws IOException {
-        if (flowName == null) {
-            throw new IOException("need to set a flow_name");
-        }
-        this.flowName = flowName;
+                              @JsonProperty("transit_vlan_id") Number transitVlanId) {
+        super(flowName, switchId, inputPort, outputPort);
 
-        if (switchId == null) {
-            throw new IOException("need to set a switch_id");
-        }
-        this.switchId = switchId;
-
-        if (inputPort == null) {
-            throw new IOException("need to set input_port");
-        }
-        this.inputPort = inputPort;
-
-        if (outputPort == null) {
-            throw new IOException("need to set output_port");
-        }
-        this.outputPort = outputPort;
-
-        if (transitVlanId == null) {
-            throw new IOException("need to set transit_vlan_id");
-        }
-        this.transitVlanId = transitVlanId;
+        setTransitVlanId(transitVlanId);
     }
 
-    @JsonProperty("flow_name")
-    public String getFlowName() {
-        return flowName;
-    }
-
-    @JsonProperty("switch_id")
-    public String getSwitchId() {
-        return switchId;
-    }
-
-    @JsonProperty("input_port")
-    public Number getInputPort() {
-        return inputPort;
-    }
-
-    @JsonProperty("output_port")
-    public Number getOutputPort() {
-        return outputPort;
-    }
-
+    /**
+     * Returns transit vlan id of the flow.
+     *
+     * @return Transit vlan id of the flow
+     */
     @JsonProperty("transit_vlan_id")
     public Number getTransitVlanId() {
         return transitVlanId;
     }
-}
 
+    /**
+     * Sets transit vlan id of the flow.
+     *
+     * @param transitVlanId vlan id of the flow
+     */
+    @JsonProperty("transit_vlan_id")
+    public void setTransitVlanId(Number transitVlanId) {
+        if (transitVlanId == null) {
+            throw new IllegalArgumentException("need to set transit_vlan_id");
+        } if (!Utils.checkVlanRange(transitVlanId.intValue()) || transitVlanId.intValue() == 0) {
+            throw new IllegalArgumentException("need to set valid value for transit_vlan_id");
+        }
+        this.transitVlanId = transitVlanId;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String toString() {
+        return Objects.toStringHelper(this)
+                .addValue(flowName)
+                .addValue(switchId)
+                .addValue(inputPort)
+                .addValue(outputPort)
+                .addValue(transitVlanId)
+                .toString();
+    }
+}
