@@ -215,6 +215,10 @@ def api_v1_topology_path():
                 response = {"result": "failed", "message": "unable to find valid path in the network"}
                 return json.dumps(response)
 
+        forwardFlowSwitches = [str(f.switch_id) for f in forwardFlows]
+        reverseFlowSwitches = [str(f.switch_id) for f in reverseFlows]    
+            
+
         for flows in allflows:
             for flow in flows:
                 message = Message()
@@ -234,12 +238,13 @@ def api_v1_topology_path():
         if not a_switchNode or not b_switchNode:
             return '{"result": "failed"}'
 
-        pathForward = Relationship(a_switchNode, "flow", b_switchNode, src_port=content['src_port'], dst_port=content['dst_port'], src_switch=content['src_switch'], dst_switch=content['dst_switch'], flowid=flowID)
-        pathReverse = Relationship(b_switchNode, "flow", a_switchNode, src_port=content['dst_port'], dst_port=content['src_port'], src_switch=content['dst_switch'], dst_switch=content['src_switch'], flowid=flowID)
-        
-        
-        graph.create(pathForward)
-        graph.create(pathReverse)
+        pathQuery = "MATCH (u:switch {{name:'{}'}}), (r:switch {{name:'{}'}}) MERGE (u)-[:flow {{flowid:'{}', src_port: '{}', dst_port: '{}', src_switch: '{}', dst_switch: '{}', flowpath: {}}}]->(r)"
+
+        pathForwardQuery = pathQuery.format(a_switchNode['name'], b_switchNode['name'], flowID, content['src_port'], content['dst_port'], content['src_switch'], content['dst_switch'], str(forwardFlowSwitches))
+        pathReverseQuery = pathQuery.format(b_switchNode['name'], a_switchNode['name'], flowID, content['dst_port'], content['src_port'], content['dst_switch'], content['src_switch'], str(reverseFlowSwitches))
+
+        graph.run(pathForwardQuery)
+        graph.run(pathReverseQuery)
 
         response = {"result": "sucessful", "flowID": flowID}
         return json.dumps(response)

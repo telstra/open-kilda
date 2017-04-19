@@ -31,11 +31,8 @@ def get_events(threadcount):
 
 def topo_event_handler(event):
     eventHandled = False
-    handleCount = 0
     while not eventHandled:
         eventHandled = event.handle()
         if not eventHandled:
-            handleCount += 1
-            if handleCount > 50:
-                time.sleep(.1)
+            time.sleep(.1)
     print "{} Event processed for: {}".format("{:%d %b, %Y %H:%M:%S}".format(datetime.now()), event.get_message_type())
