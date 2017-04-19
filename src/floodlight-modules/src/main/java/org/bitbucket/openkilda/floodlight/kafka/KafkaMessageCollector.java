@@ -11,7 +11,6 @@ import org.bitbucket.openkilda.floodlight.message.Message;
 import org.bitbucket.openkilda.floodlight.message.command.*;
 import org.bitbucket.openkilda.floodlight.pathverification.IPathVerificationService;
 import org.bitbucket.openkilda.floodlight.switchmanager.ISwitchManager;
-import org.bitbucket.openkilda.floodlight.switchmanager.OutputVlanType;
 import org.bitbucket.openkilda.floodlight.switchmanager.SwitchEventCollector;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
