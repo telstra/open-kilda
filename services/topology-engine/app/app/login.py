@@ -25,7 +25,6 @@ def login():
         otp = request.form['twofactor']
         hashed_password = utils.hash_password(password)
         db_user = models.Users.query.filter(models.Users.username == username).first()
-
         try: 
             otp_result = utils.check_otp(otp, db_user.twofactor)
             otp_result = True

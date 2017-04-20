@@ -17,6 +17,7 @@ from py2neo import Graph, Node, Relationship
 
 neo4jhost = os.environ['neo4jhost']
 
+
 class Flow(object):
     def toJSON(self):
         return json.dumps(self, default=lambda o: o.__dict__, sort_keys=False, indent=4)
@@ -35,7 +36,6 @@ def build_ingress_flow(expandedRelationships, src_switch, src_port, src_vlan, ba
     for relationship in expandedRelationships:
         if relationship['data']['src_switch'] == src_switch:
             action = relationship['data']['src_port']
-
     flow = Flow()
     flow.command = "install_ingress_flow"
     flow.destination = "CONTROLLER"
@@ -48,7 +48,6 @@ def build_ingress_flow(expandedRelationships, src_switch, src_port, src_vlan, ba
     flow.output_vlan_type = outputAction
     flow.bandwidth = bandwidth
     flow.meter_id = assign_meter_id()
-
     return flow
 
 
@@ -57,7 +56,6 @@ def build_egress_flow(expandedRelationships, dst_switch, dst_port, dst_vlan, tra
     for relationship in expandedRelationships:
         if relationship['data']['dst_switch'] == dst_switch:
             match = relationship['data']['dst_port']
-
     flow = Flow()
     flow.command = "install_egress_flow"
     flow.destination = "CONTROLLER"
@@ -68,7 +66,6 @@ def build_egress_flow(expandedRelationships, dst_switch, dst_port, dst_vlan, tra
     flow.transit_vlan_id = int(transit_vlan)
     flow.output_vlan_id = int(dst_vlan)
     flow.output_vlan_type = outputAction
-
     return flow
 
 
@@ -77,7 +74,6 @@ def build_intermediate_flows(expandedRelationships, transit_vlan, i, flow_id):
     match = expandedRelationships[i]['data']['dst_port']
     action = expandedRelationships[i+1]['data']['src_port']
     switch = expandedRelationships[i]['data']['dst_switch']
-
     flow = Flow()
     flow.command = "install_transit_flow"
     flow.destination = "CONTROLLER"
@@ -86,7 +82,6 @@ def build_intermediate_flows(expandedRelationships, transit_vlan, i, flow_id):
     flow.input_port = int(match)
     flow.output_port = int(action)
     flow.transit_vlan_id = int(transit_vlan)
-
     return flow
 
 
@@ -104,7 +99,6 @@ def build_one_switch_flow(switch, src_port, src_vlan, dst_port, dst_vlan, bandwi
     flow.input_meter_id = assign_meter_id()
     flow.output_meter_id = assign_meter_id()
     flow.output_vlan_type = outputAction
-
     return flow
 
 
@@ -160,7 +154,6 @@ def api_v1_topology_get_path(src_switch, src_port, src_vlan, dst_switch, dst_por
     relationships = get_relationships(src_switch, src_port, dst_switch, dst_port)
     outputAction = choose_output_action(int(src_vlan), int(dst_vlan))
     if relationships:
-
         expandedRelationships = expand_relationships(relationships)
         flows = []
         flows.append(build_ingress_flow(expandedRelationships, src_switch, src_port, src_vlan, bandwidth, transit_vlan, flow_id, outputAction))
@@ -171,7 +164,6 @@ def api_v1_topology_get_path(src_switch, src_port, src_vlan, dst_switch, dst_por
             i += 1
         flows.append(build_egress_flow(expandedRelationships, dst_switch, dst_port, dst_vlan, transit_vlan, flow_id, outputAction))
         return flows
-
     else:
         return False
 
@@ -180,10 +172,21 @@ def api_v1_topology_get_path(src_switch, src_port, src_vlan, dst_switch, dst_por
 def api_v1_health_check():
     return '{"status": "ok"}'
 
+@application.route('/api/v1/flow/<flowid>', methods=["GET", "DELETE"])
+#@login_required
+def api_v1_flow(flowid):
+    query = "MATCH (a:switch)-[r:flow {{flowid: '{}'}}]->(b:switch) {} r"
+    graph = create_p2n_driver()
+    if request.method == 'GET':
+        result = graph.run(query.format(flowid, "return")).data()
+    if request.method == 'DELETE':
+        result = graph.run(query.format(flowid, "delete")).data()
+    return json.dumps(result)
+
 
 @application.route('/api/v1/flow', methods=["POST"])
 #@login_required
-def api_v1_topology_path():
+def api_v1_create_flow():
     if request.method == 'POST':
         bootstrapServer = 'kafka.pendev:9092'
         topic = 'kilda-test'

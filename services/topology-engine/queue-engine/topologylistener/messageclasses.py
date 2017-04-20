@@ -16,8 +16,14 @@ def repair_flows(switchid):
             repairedFlowIDs.append(flow['r']['flowid'])
             url = "http://localhost/api/v1/flow"
             headers = {'Content-Type': 'application/json'}
-            j_data = {"src_switch":"{}".format(flow['r']['src_switch']), "src_port":1, "src_vlan":0, "dst_switch":"{}".format(flow['r']['dst_switch']), "dst_port":1, "dst_vlan":0, "bandwidth": 2000}
+            j_data = {"src_switch":"{}".format(flow['r']['src_switch']),
+                      "src_port":1,
+                      "src_vlan":0,
+                      "dst_switch":"{}".format(flow['r']['dst_switch']),
+                      "dst_port":1, "dst_vlan":0, "bandwidth": 2000}
             result = requests.post(url, json=j_data, headers=headers)
+            deleteURL = url + flow['r']['flowid']
+            result = requests.delete(url, headers=headers)
     return True
 
 
