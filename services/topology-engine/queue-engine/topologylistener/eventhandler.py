@@ -21,7 +21,8 @@ def get_events(threadcount):
             rawevent = kafkareader.read_message(consumer)
             event = MessageItem(**json.loads(rawevent))
             if event.get_message_type() in handleableMessages:
-                t = threading.Thread(target=topo_event_handler, args=(event,))
+                t = threading.Thread(target=topo_event_handler, 
+                                     args=(event,))
                 t.daemon =True
                 t.start()
             else:
@@ -34,5 +35,8 @@ def topo_event_handler(event):
     while not eventHandled:
         eventHandled = event.handle()
         if not eventHandled:
+            print "{} Unable to process event: {}".format("{:%d %b, %Y %H:%M:%S}".format(datetime.now()), event.get_message_type())
+            print "Message body: "
+            print event.to_json()
             time.sleep(.1)
-    print "{} Event processed for: {}".format("{:%d %b, %Y %H:%M:%S}".format(datetime.now()), event.get_message_type())
+    #print "{} Event processed for: {}".format("{:%d %b, %Y %H:%M:%S}".format(datetime.now()), event.get_message_type())
