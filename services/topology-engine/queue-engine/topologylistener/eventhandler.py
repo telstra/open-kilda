@@ -10,10 +10,9 @@ from pprint import pprint
 print "Topology engine started."
 handleableMessages = ['switch', 'isl', 'port']
 
-
-
 def get_events(threadcount):
     global workerthreadcount
+    messagecount = 0
     print "starting thread: {}".format(threadcount)
     consumer = kafkareader.create_consumer()
     while True:
@@ -21,12 +20,11 @@ def get_events(threadcount):
             rawevent = kafkareader.read_message(consumer)
             event = MessageItem(**json.loads(rawevent))
             if event.get_message_type() in handleableMessages:
-                t = threading.Thread(target=topo_event_handler, 
-                                     args=(event,))
+                messagecount += 1
+                print "message {}".format(messagecount)
+                t = threading.Thread(target=topo_event_handler, args=(event,))
                 t.daemon =True
                 t.start()
-            else:
-                time.sleep(.1)
         except Exception as e:
             print e
 
