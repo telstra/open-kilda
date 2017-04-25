@@ -8,7 +8,6 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.restserver.IRestApiService;
-import net.floodlightcontroller.staticentry.IStaticEntryPusherService;
 import net.floodlightcontroller.util.FlowModUtils;
 import org.bitbucket.openkilda.floodlight.switchmanager.web.SwitchManagerWebRoutable;
 import org.projectfloodlight.openflow.protocol.*;
@@ -21,15 +20,7 @@ import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.protocol.meterband.OFMeterBandDrop;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxms;
-import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.EthType;
-import org.projectfloodlight.openflow.types.IpProtocol;
-import org.projectfloodlight.openflow.types.MacAddress;
-import org.projectfloodlight.openflow.types.OFBufferId;
-import org.projectfloodlight.openflow.types.OFPort;
-import org.projectfloodlight.openflow.types.OFVlanVidMatch;
-import org.projectfloodlight.openflow.types.TransportPort;
-import org.projectfloodlight.openflow.types.U64;
+import org.projectfloodlight.openflow.types.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,14 +34,16 @@ import static org.bitbucket.openkilda.floodlight.pathverification.PathVerificati
 import static org.projectfloodlight.openflow.protocol.OFMeterFlags.BURST;
 import static org.projectfloodlight.openflow.protocol.OFMeterFlags.KBPS;
 import static org.projectfloodlight.openflow.protocol.OFMeterModCommand.ADD;
+import static org.projectfloodlight.openflow.protocol.OFMeterModCommand.DELETE;
 
 /**
  * Created by jonv on 29/3/17.
  */
 public class SwitchManager implements IFloodlightModule, IFloodlightService, ISwitchManager {
+    static final U64 NON_SYSTEM_MASK = U64.of(0x7fffffffffffffffL);
     private static final Logger logger = LoggerFactory.getLogger(SwitchManager.class);
+    private static final long DROP_COOKIE = 0x8000000000000001L;
     private IOFSwitchService ofSwitchService;
-    private IStaticEntryPusherService staticEntryPusher;
     private IRestApiService restApiService;
 
     // IFloodlightModule Methods
@@ -80,10 +73,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      */
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
-        Collection<Class<? extends IFloodlightService>> services = new ArrayList<>();
+        Collection<Class<? extends IFloodlightService>> services = new ArrayList<>(3);
         services.add(IFloodlightProviderService.class);
         services.add(IOFSwitchService.class);
-        services.add(IStaticEntryPusherService.class);
         services.add(IRestApiService.class);
         return services;
     }
@@ -94,7 +86,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     @Override
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
         ofSwitchService = context.getServiceImpl(IOFSwitchService.class);
-        staticEntryPusher = context.getServiceImpl(IStaticEntryPusherService.class);
         restApiService = context.getServiceImpl(IRestApiService.class);
     }
 
@@ -113,17 +104,18 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * {@inheritDoc}
      */
     @Override
-    public void installDefaultRules(final DatapathId dpid) {
-        installDropFlow(dpid);
-        installVerificationRule(dpid, true);
-        installVerificationRule(dpid, false);
+    public boolean installDefaultRules(final DatapathId dpid) {
+        final boolean dropFlow = installDropFlow(dpid);
+        final boolean broadcastVerification = installVerificationRule(dpid, true);
+        final boolean unicastVerification = installVerificationRule(dpid, false);
+        return dropFlow & broadcastVerification & unicastVerification;
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public void installIngressFlow(final DatapathId dpid, final int inputPort, final int outputPort,
+    public boolean installIngressFlow(final DatapathId dpid, String cookie, final int inputPort, final int outputPort,
                                    final int inputVlanId, final int transitVlanId, final OutputVlanType outputVlanType,
                                    final long meterId) {
         List<OFAction> actionList = new ArrayList<>();
@@ -145,20 +137,17 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         OFInstructionApplyActions actions = buildInstructionApplyActions(sw, actionList);
 
         // build FLOW_MOD command with meter
-        OFFlowMod flowMod = buildFlowMod(sw, match, meter, actions, cookieMaker(), FlowModUtils.PRIORITY_VERY_HIGH);
-
-        // build flow name
-        String flowName = buildFlowName(dpid, inputPort, outputPort, transitVlanId);
+        OFFlowMod flowMod = buildFlowMod(sw, match, meter, actions, U64.parseHex(cookie).getValue(), FlowModUtils.PRIORITY_VERY_HIGH);
 
         // send FLOW_MOD to the switch
-        pushEntry(flowName, flowMod, dpid);
+        return pushFlow(cookie, dpid, flowMod);
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public void installEgressFlow(final DatapathId dpid, final int inputPort, final int outputPort,
+    public boolean installEgressFlow(final DatapathId dpid, String cookie, final int inputPort, final int outputPort,
                                   final int transitVlanId, final int outputVlanId,
                                   final OutputVlanType outputVlanType) {
         List<OFAction> actionList = new ArrayList<>();
@@ -177,20 +166,17 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         OFInstructionApplyActions actions = buildInstructionApplyActions(sw, actionList);
 
         // build FLOW_MOD command, no meter
-        OFFlowMod flowMod = buildFlowMod(sw, match, null, actions, cookieMaker(), FlowModUtils.PRIORITY_VERY_HIGH);
-
-        // build flow name
-        String flowName = buildFlowName(dpid, inputPort, outputPort, outputVlanId);
+        OFFlowMod flowMod = buildFlowMod(sw, match, null, actions, U64.parseHex(cookie).getValue(), FlowModUtils.PRIORITY_VERY_HIGH);
 
         // send FLOW_MOD to the switch
-        pushEntry(flowName, flowMod, dpid);
+        return pushFlow(cookie, dpid, flowMod);
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public void installTransitFlow(final DatapathId dpid, final int inputPort, final int outputPort,
+    public boolean installTransitFlow(final DatapathId dpid, String cookie, final int inputPort, final int outputPort,
                                    final int transitVlanId) {
         List<OFAction> actionList = new ArrayList<>();
         IOFSwitch sw = ofSwitchService.getSwitch(dpid);
@@ -205,20 +191,17 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         OFInstructionApplyActions actions = buildInstructionApplyActions(sw, actionList);
 
         // build FLOW_MOD command, no meter
-        OFFlowMod flowMod = buildFlowMod(sw, match, null, actions, cookieMaker(), FlowModUtils.PRIORITY_VERY_HIGH);
-
-        // build flow name
-        String flowName = buildFlowName(dpid, inputPort, outputPort, transitVlanId);
+        OFFlowMod flowMod = buildFlowMod(sw, match, null, actions, U64.parseHex(cookie).getValue(), FlowModUtils.PRIORITY_VERY_HIGH);
 
         // send FLOW_MOD to the switch
-        pushEntry(flowName, flowMod, dpid);
+        return pushFlow(cookie, dpid, flowMod);
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public void installOneSwitchFlow(DatapathId dpid, int inputPort, int outputPort, int inputVlanId, int outputVlanId,
+    public boolean installOneSwitchFlow(DatapathId dpid, String cookie, int inputPort, int outputPort, int inputVlanId, int outputVlanId,
                                      OutputVlanType outputVlanType, long meterId) {
         List<OFAction> actionList = new ArrayList<>();
         IOFSwitch sw = ofSwitchService.getSwitch(dpid);
@@ -238,13 +221,10 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         OFInstructionApplyActions actions = buildInstructionApplyActions(sw, actionList);
 
         // build FLOW_MOD command with meter
-        OFFlowMod flowMod = buildFlowMod(sw, match, meter, actions, cookieMaker(), FlowModUtils.PRIORITY_VERY_HIGH);
-
-        // build flow name
-        String flowName = buildFlowName(dpid, inputPort, outputPort, outputVlanId);
+        OFFlowMod flowMod = buildFlowMod(sw, match, meter, actions, U64.parseHex(cookie).getValue(), FlowModUtils.PRIORITY_VERY_HIGH);
 
         // send FLOW_MOD to the switch
-        pushEntry(flowName, flowMod, dpid);
+        return pushFlow(cookie, dpid, flowMod);
     }
 
     /**
@@ -267,10 +247,10 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * {@inheritDoc}
      */
     @Override
-    public void installMeter(DatapathId dpid, long bandwidth, long burstSize, long meterId) {
+    public boolean installMeter(DatapathId dpid, long bandwidth, long burstSize, long meterId) {
         if (meterId == 0) {
             logger.info("skip installing meter {} on switch {} width bandwidth {}", meterId, dpid, bandwidth);
-            return;
+            return true;
         }
         logger.debug("installing meter {} on switch {} width bandwidth {}", meterId, dpid, bandwidth);
 
@@ -289,19 +269,35 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .setMeters(singletonList(bandBuilder.build()))
                 .setFlags(flags);
 
-        sw.write(meterModBuilder.build());
+        return sw.write(meterModBuilder.build());
+    }
+
+    @Override
+    public boolean deleteFlow(DatapathId dpid, String cookie) {
+        final Masked<U64> masked = Masked.of(U64.parseHex(cookie), NON_SYSTEM_MASK);
+        logger.info("deleting flows {} from switch {}", masked.toString(), dpid.toString());
+        IOFSwitch sw = ofSwitchService.getSwitch(dpid);
+        OFFactory ofFactory = sw.getOFFactory();
+        OFFlowDelete flowDelete = ofFactory.buildFlowDelete()
+                .setCookie(masked.getValue())
+                .setCookieMask(masked.getMask())
+                .setFlags(Collections.singleton(OFFlowModFlags.SEND_FLOW_REM))
+                .build();
+        return sw.write(flowDelete);
+    }
+
+    @Override
+    public boolean deleteMeter(DatapathId dpid, long meterId) {
+        IOFSwitch sw = ofSwitchService.getSwitch(dpid);
+        OFFactory ofFactory = sw.getOFFactory();
+        OFMeterMod meterDelete = ofFactory.buildMeterMod()
+                .setMeterId(meterId)
+                .setCommand(DELETE)
+                .build();
+        return sw.write(meterDelete);
     }
 
     // Utility Methods
-
-    /**
-     * cookieMaker - TODO: this needs to do something...
-     *
-     * @return long
-     */
-    protected static long cookieMaker() {
-        return 123L;
-    }
 
     /**
      * matchFlow - Creates a Match based on an inputPort and VlanID.  Note that this match only matches on the outer
@@ -493,7 +489,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         fmb.setBufferId(OFBufferId.NO_BUFFER);
         fmb.setCookie(U64.of(cookie));
         fmb.setPriority(priority);
-        List<OFInstruction> instructions = new ArrayList<>();
+        List<OFInstruction> instructions = new ArrayList<>(2);
 
         if (meter != null) {              // If no meter then no bandwidth limit
             instructions.add(meter);
@@ -528,7 +524,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * @return Match
      */
 
-    private Match matchVerificaiton(final IOFSwitch sw, final boolean isBroadcast) {
+    private Match matchVerification(final IOFSwitch sw, final boolean isBroadcast) {
         MacAddress dstMac = MacAddress.of(VERIFICATION_BCAST_PACKET_DST);
         if (!isBroadcast) {
             dstMac = dpidToMac(sw);
@@ -568,24 +564,25 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
     /**
-     * installVerificatioRule - Installs the verification rule
+     * installVerificationRule - Installs the verification rule
      *
      * @param dpid - datapathId of switch
-     * @param isBroadcast - if boradcast then set a generic match; else specific to switch Id
+     * @param isBroadcast - if broadcast then set a generic match; else specific to switch Id
      */
-    private void installVerificationRule(final DatapathId dpid, final boolean isBroadcast) {
+    private boolean installVerificationRule(final DatapathId dpid, final boolean isBroadcast) {
         IOFSwitch sw = ofSwitchService.getSwitch(dpid);
 
-        Match match = matchVerificaiton(sw, isBroadcast);
-        ArrayList<OFAction> actionList = new ArrayList<>();
+        Match match = matchVerification(sw, isBroadcast);
+        ArrayList<OFAction> actionList = new ArrayList<>(2);
         actionList.add(actionSendToController(sw));
         actionList.add(actionSetDstMac(sw, dpidToMac(sw)));
         OFInstructionApplyActions instructionApplyActions = sw.getOFFactory().instructions()
                 .applyActions(actionList).createBuilder().build();
-        OFFlowMod flowMod = buildFlowMod(sw, match, null, instructionApplyActions, cookieMaker(), FlowModUtils.PRIORITY_VERY_HIGH);
+        final long cookie = isBroadcast ? 0x8000000000000002L : 0x8000000000000003L;
+        OFFlowMod flowMod = buildFlowMod(sw, match, null, instructionApplyActions, cookie, FlowModUtils.PRIORITY_VERY_HIGH);
         String flowname = (isBroadcast) ? "Broadcast" : "Unicast";
         flowname += "--VerificationFlow--" + dpid.toString();
-        pushEntry(flowname, flowMod, dpid);
+        return pushFlow(flowname, dpid, flowMod);
     }
 
     /**
@@ -593,23 +590,24 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      *
      * @param dpid - datapathId of switch
      */
-    private void installDropFlow(final DatapathId dpid) {
+    private boolean installDropFlow(final DatapathId dpid) {
         IOFSwitch sw = ofSwitchService.getSwitch(dpid);
-        OFFlowMod flowMod = buildFlowMod(sw, null, null, null, 1L, 1);
+        OFFlowMod flowMod = buildFlowMod(sw, null, null, null, DROP_COOKIE, 1);
         String flowname = "--DropRule--" + dpid.toString();
-        pushEntry(flowname, flowMod, dpid);
+        return pushFlow(flowname, dpid, flowMod);
     }
 
     /**
-     * pushEntry -
+     * Pushes a single flow modification command to the switch with the given datapath ID.
      *
-     * @param entryName
-     * @param flowMod
-     * @param dpid
+     * @param flowName flow name, for logging
+     * @param dpid switch datapath ID
+     * @param flowMod command to send
+     * @return true if the command is accepted to be sent to switch, false otherwise - switch is disconnected or in SLAVE mode
      */
-    private void pushEntry(final String entryName, final OFFlowMod flowMod, final DatapathId dpid) {
-        logger.info("installing flow: " + entryName);
-        staticEntryPusher.addFlow(entryName, flowMod, dpid);
+    private boolean pushFlow(final String flowName, final DatapathId dpid, final OFFlowMod flowMod) {
+        logger.info("installing flow: " + flowName);
+        return ofSwitchService.getSwitch(dpid).write(flowMod);
     }
 
     /**
@@ -632,18 +630,5 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      */
     private static OFInstructionMeter buildInstructionMeter(final IOFSwitch sw, final long meterId) {
         return sw.getOFFactory().instructions().buildMeter().setMeterId(meterId).build();
-    }
-
-    /**
-     * buildFlowName - Builds name for the flow based on flow parameters
-     *
-     * @param dpid - datapathId of the switch
-     * @param inputPort - port to expect packet on
-     * @param outputPort - port to forward packet out
-     * @param outputVlanId - set vlan on packet before forwarding via outputPort; 0 means not to set
-     * @return Flow name
-     */
-    protected static String buildFlowName(DatapathId dpid, int inputPort, int outputPort, int outputVlanId) {
-        return "flow-" + dpid.toString() + "-" + inputPort + "-" + outputPort + "-" + outputVlanId;
     }
 }

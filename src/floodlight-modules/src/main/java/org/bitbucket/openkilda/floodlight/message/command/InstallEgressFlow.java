@@ -21,7 +21,7 @@ import org.bitbucket.openkilda.floodlight.switchmanager.OutputVlanType;
 @JsonPropertyOrder(value = {
         "command",
         "destination",
-        "flow_name",
+        "cookie",
         "switch_id",
         "input_port",
         "output_port",
@@ -43,7 +43,7 @@ public class InstallEgressFlow extends InstallTransitFlow {
     /**
      * Constructs an egress flow installation command.
      *
-     * @param flowName        Name of the flow
+     * @param cookie          Flow cookie
      * @param switchId        Switch ID for flow installation
      * @param inputPort       Input port of the flow
      * @param outputPort      Output port of the flow
@@ -53,14 +53,14 @@ public class InstallEgressFlow extends InstallTransitFlow {
      * @throws IllegalArgumentException if any of mandatory parameters is null
      */
     @JsonCreator
-    public InstallEgressFlow(@JsonProperty("flow_name") String flowName,
+    public InstallEgressFlow(@JsonProperty("cookie") String cookie,
                              @JsonProperty("switch_id") String switchId,
                              @JsonProperty("input_port") Number inputPort,
                              @JsonProperty("output_port") Number outputPort,
                              @JsonProperty("transit_vlan_id") Number transitVlanId,
                              @JsonProperty("output_vlan_id") Number outputVlanId,
                              @JsonProperty("output_vlan_type") String outputVlanType) {
-        super(flowName, switchId, inputPort, outputPort, transitVlanId);
+        super(cookie, switchId, inputPort, outputPort, transitVlanId);
 
         setOutputVlanId(outputVlanId);
         setOutputVlanType(outputVlanType);
@@ -126,7 +126,7 @@ public class InstallEgressFlow extends InstallTransitFlow {
     @Override
     public String toString() {
         return Objects.toStringHelper(this)
-                .addValue(flowName)
+                .addValue(cookie)
                 .addValue(switchId)
                 .addValue(inputPort)
                 .addValue(outputPort)
