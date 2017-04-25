@@ -10,7 +10,6 @@ import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.restserver.IRestApiService;
-import net.floodlightcontroller.staticentry.IStaticEntryPusherService;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.bitbucket.openkilda.floodlight.message.CommandMessage;
 import org.bitbucket.openkilda.floodlight.message.Message;
@@ -46,7 +45,6 @@ import static org.junit.Assert.assertEquals;
 public class PushInstallFlowTest {
     private static final FloodlightModuleContext context = new FloodlightModuleContext();
     private final ExecutorService parseRecordExecutor = MoreExecutors.sameThreadExecutor();
-    private IStaticEntryPusherService staticEntryPusher;
     private IOFSwitchService ofSwitchService;
     private KafkaMessageCollector collector;
     protected SwitchDescription switchDescription;
@@ -57,10 +55,8 @@ public class PushInstallFlowTest {
         final SwitchManager switchManager = new SwitchManager();
         final PathVerificationService pathVerificationService = new PathVerificationService();
 
-        staticEntryPusher = createMock(IStaticEntryPusherService.class);
         ofSwitchService = createMock(IOFSwitchService.class);
 
-        context.addService(IStaticEntryPusherService.class, staticEntryPusher);
         context.addService(IOFSwitchService.class, ofSwitchService);
         context.addService(IRestApiService.class, null);
         context.addService(SwitchEventCollector.class, null);
@@ -248,7 +244,6 @@ public class PushInstallFlowTest {
         parseRecordExecutor.awaitTermination(10, TimeUnit.SECONDS);
 
         // verify results
-        verify(staticEntryPusher);
         if (meterCommand != null) {
             assertEquals(meterCommand, meterAddCapture.getValues().get(0));
             if (reverseMeterCommand != null) {
@@ -292,15 +287,21 @@ public class PushInstallFlowTest {
         expect(iofSwitch.getSwitchDescription()).andStubReturn(switchDescription);
 
         if (meterAddCapture != null) {
-            expect(iofSwitch.write(capture(meterAddCapture))).andReturn(true).times(needCheckReverseMeter ? 2 : 1);
-        }
-        if (flowAddCapture != null) {
-            staticEntryPusher.addFlow(anyString(), capture(flowAddCapture), anyObject(DatapathId.class));
-            expectLastCall().times(needCheckReverseFlow ? 2 : 1);
+            expect(iofSwitch.write(capture(meterAddCapture))).andReturn(true);
+            if (flowAddCapture != null) {
+                expect(iofSwitch.write(capture(flowAddCapture))).andReturn(true);
+            }
+            if (needCheckReverseMeter) {
+                expect(iofSwitch.write(capture(meterAddCapture))).andReturn(true);
+            }
+            if (needCheckReverseFlow) {
+                expect(iofSwitch.write(capture(flowAddCapture))).andReturn(true);
+            }
+        } else if (flowAddCapture != null) {
+            expect(iofSwitch.write(capture(flowAddCapture))).andReturn(true).times(needCheckReverseFlow ? 2 : 1);
         }
 
         replay(ofSwitchService);
         replay(iofSwitch);
-        replay(staticEntryPusher);
     }
 }

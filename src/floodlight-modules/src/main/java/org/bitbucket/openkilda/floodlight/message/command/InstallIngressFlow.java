@@ -22,7 +22,7 @@ import org.bitbucket.openkilda.floodlight.switchmanager.OutputVlanType;
 @JsonPropertyOrder({
         "command",
         "destination",
-        "flow_name",
+        "cookie",
         "switch_id",
         "input_port",
         "output_port",
@@ -52,7 +52,7 @@ public class InstallIngressFlow extends InstallTransitFlow {
     /**
      * Constructs an ingress flow installation command.
      *
-     * @param flowName        Name of the flow
+     * @param cookie          Flow cookie
      * @param switchId        Switch ID for flow installation
      * @param inputPort       Input port of the flow
      * @param outputPort      Output port of the flow
@@ -63,7 +63,7 @@ public class InstallIngressFlow extends InstallTransitFlow {
      * @throws IllegalArgumentException if any of mandatory parameters is null
      */
     @JsonCreator
-    public InstallIngressFlow(@JsonProperty("flow_name") String flowName,
+    public InstallIngressFlow(@JsonProperty("cookie") String cookie,
                               @JsonProperty("switch_id") String switchId,
                               @JsonProperty("input_port") Number inputPort,
                               @JsonProperty("output_port") Number outputPort,
@@ -72,7 +72,7 @@ public class InstallIngressFlow extends InstallTransitFlow {
                               @JsonProperty("output_vlan_type") String outputVlanType,
                               @JsonProperty("bandwidth") Number bandwidth,
                               @JsonProperty("meter_id") Number meterId) {
-        super(flowName, switchId, inputPort, outputPort, transitVlanId);
+        super(cookie, switchId, inputPort, outputPort, transitVlanId);
 
         setInputVlanId(inputVlanId);
         setOutputVlanType(outputVlanType);
@@ -190,7 +190,7 @@ public class InstallIngressFlow extends InstallTransitFlow {
     @Override
     public String toString() {
         return Objects.toStringHelper(this)
-                .addValue(flowName)
+                .addValue(cookie)
                 .addValue(switchId)
                 .addValue(inputPort)
                 .addValue(outputPort)
