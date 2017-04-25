@@ -17,7 +17,7 @@ import com.google.common.base.Objects;
 @JsonPropertyOrder({
         "command",
         "destination",
-        "flow_name",
+        "cookie",
         "switch_id",
         "input_port",
         "output_port",
@@ -34,7 +34,7 @@ public class InstallTransitFlow extends AbstractInstallFlow {
     /**
      * Constructs a transit flow installation command.
      *
-     * @param flowName       Name of the flow
+     * @param cookie         Flow cookie
      * @param switchId       Switch ID for flow installation
      * @param inputPort      Input port of the flow
      * @param outputPort     Output port of the flow
@@ -42,12 +42,12 @@ public class InstallTransitFlow extends AbstractInstallFlow {
      * @throws IllegalArgumentException if any of parameters parameters is null
      */
     @JsonCreator
-    public InstallTransitFlow(@JsonProperty("flow_name") String flowName,
+    public InstallTransitFlow(@JsonProperty("cookie") String cookie,
                               @JsonProperty("switch_id") String switchId,
                               @JsonProperty("input_port") Number inputPort,
                               @JsonProperty("output_port") Number outputPort,
                               @JsonProperty("transit_vlan_id") Number transitVlanId) {
-        super(flowName, switchId, inputPort, outputPort);
+        super(cookie, switchId, inputPort, outputPort);
 
         setTransitVlanId(transitVlanId);
     }
@@ -83,7 +83,7 @@ public class InstallTransitFlow extends AbstractInstallFlow {
     @Override
     public String toString() {
         return Objects.toStringHelper(this)
-                .addValue(flowName)
+                .addValue(cookie)
                 .addValue(switchId)
                 .addValue(inputPort)
                 .addValue(outputPort)
