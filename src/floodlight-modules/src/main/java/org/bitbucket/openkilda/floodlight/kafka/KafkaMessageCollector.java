@@ -123,7 +123,8 @@ public class KafkaMessageCollector implements IFloodlightModule {
                     command.getInputPort().intValue(),
                     command.getOutputPort().intValue(),
                     command.getTransitVlanId().intValue(),
-                    command.getOutputVlanId().intValue(), command.getOutputVlanType());
+                    command.getOutputVlanId().intValue(),
+                    command.getOutputVlanType());
         }
 
         /**
