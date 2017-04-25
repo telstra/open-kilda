@@ -4,7 +4,7 @@
 	"data": {
 		"command": "install_transit_flow",
 		"destination": "CONTROLLER",
-		"flow_name": "test_flow",
+		"cookie": "7B",
 		"switch_id": "00:00:00:00:00:00:00:09",
 		"input_port": 3,
 		"output_port": 2,

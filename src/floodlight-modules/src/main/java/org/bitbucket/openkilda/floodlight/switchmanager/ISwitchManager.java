@@ -15,54 +15,58 @@ public interface ISwitchManager extends IFloodlightService {
      *
      * @param dpid - datapathId of switch
      */
-    void installDefaultRules(DatapathId dpid);
+    boolean installDefaultRules(DatapathId dpid);
 
     /**
      * installIngressFlow - Installs an flow on ingress switch.
      *
      * @param dpid - datapathId of the switch
+     * @param cookie - flow cookie
      * @param inputPort - port to expect the packet on
      * @param outputPort - port to forward the packet out
      * @param inputVlanId - input vlan to match on, 0 means not to match on vlan
      * @param transitVlanId - vlan to add before outputing on outputPort
      */
-    void installIngressFlow(DatapathId dpid, int inputPort, int outputPort, int inputVlanId, int transitVlanId,
-                            OutputVlanType outputVlanType, long meterid);
+    boolean installIngressFlow(DatapathId dpid, String cookie, int inputPort, int outputPort, int inputVlanId,
+                            int transitVlanId, OutputVlanType outputVlanType, long meterid);
 
     /**
      * installEgressFlow - Install flow on egress swtich.
      *
      * @param dpid - datapathId of the switch
+     * @param cookie - flow cookie
      * @param inputPort - port to expect the packet on
      * @param outputPort - port to forward the packet out
      * @param transitVlanId - vlan to match on the ingressPort
      * @param outputVlanId - set vlan on packet before forwarding via outputPort; 0 means not to set
      * @param outputVlanType - type of action to apply to the outputVlanId if greater than 0
      */
-    void installEgressFlow(DatapathId dpid, int inputPort, int outputPort, int transitVlanId, int outputVlanId,
-                           OutputVlanType outputVlanType);
+    boolean installEgressFlow(DatapathId dpid, String cookie, int inputPort, int outputPort, int transitVlanId,
+                           int outputVlanId, OutputVlanType outputVlanType);
 
     /**
      * installTransitFlow - install flow on a transit switch.
      *
      * @param dpid - datapathId of the switch
+     * @param cookie - flow cookie
      * @param inputPort - port to expect packet on
      * @param outputPort - port to forward packet out
      * @param transitVlanId - vlan to match on inputPort
      */
-    void installTransitFlow(DatapathId dpid, int inputPort, int outputPort, int transitVlanId);
+    boolean installTransitFlow(DatapathId dpid, String cookie, int inputPort, int outputPort, int transitVlanId);
 
     /**
      * installOneSwitchFlow - install flow through one switch.
      *
      * @param dpid - datapathId of the switch
+     * @param cookie - flow cookie
      * @param inputPort - port to expect packet on
      * @param outputPort - port to forward packet out
      * @param inputVlanId - vlan to match on inputPort
      * @param outputVlanId - set vlan on packet before forwarding via outputPort; 0 means not to set
      * @param outputVlanType - type of action to apply to the outputVlanId if greater than 0
      */
-    void installOneSwitchFlow(DatapathId dpid, int inputPort, int outputPort, int inputVlanId, int outputVlanId,
+    boolean installOneSwitchFlow(DatapathId dpid, String cookie, int inputPort, int outputPort, int inputVlanId, int outputVlanId,
                               OutputVlanType outputVlanType, long meterId);
 
     /**
@@ -84,5 +88,21 @@ public interface ISwitchManager extends IFloodlightService {
      * @param burstSize - the size of the burst
      * @param meterId - the meter ID
      */
-    void installMeter(DatapathId dpid, long bandwidth, long burstSize, long meterId);
+    boolean installMeter(DatapathId dpid, long bandwidth, long burstSize, long meterId);
+
+    /**
+     * Deletes the flow from the switch
+     *
+     * @param dpid datapathId of the switch
+     * @param cookie flow cookie
+     */
+    boolean deleteFlow(DatapathId dpid, String cookie);
+
+    /**
+     * Deletes the meter from the switch
+     *
+     * @param dpid datapathId of the switch
+     * @param meterId meter identifier
+     */
+    boolean deleteMeter(DatapathId dpid, long meterId);
 }

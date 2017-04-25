@@ -1,7 +1,5 @@
 package org.bitbucket.openkilda.floodlight.message.command;
 
-import java.io.Serializable;
-
 import org.bitbucket.openkilda.floodlight.message.MessageData;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -27,7 +25,8 @@ import com.fasterxml.jackson.annotation.JsonSubTypes.Type;
         @Type(value = InstallTransitFlow.class, name= "install_transit_flow"),
         @Type(value = InstallOneSwitchFlow.class, name= "install_one_switch_flow"),
         @Type(value = DiscoverISLCommandData.class, name = "discover_isl"),
-        @Type(value = DiscoverPathCommandData.class, name = "discover_path")
+        @Type(value = DiscoverPathCommandData.class, name = "discover_path"),
+        @Type(value = DeleteFlow.class, name = "delete_flow")
 })
 
 public abstract class CommandData extends MessageData {

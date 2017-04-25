@@ -1,7 +1,6 @@
 package org.bitbucket.openkilda.floodlight.pathverification;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -12,7 +11,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -29,8 +27,6 @@ import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.LLDPTLV;
 import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.restserver.IRestApiService;
-import net.floodlightcontroller.staticentry.IStaticEntryPusherService;
-import net.floodlightcontroller.util.FlowModUtils;
 import net.floodlightcontroller.util.OFMessageUtils;
 
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -41,7 +37,6 @@ import org.bitbucket.openkilda.floodlight.message.info.IslInfoData;
 import org.bitbucket.openkilda.floodlight.message.info.PathNode;
 import org.bitbucket.openkilda.floodlight.pathverification.type.PathType;
 import org.bitbucket.openkilda.floodlight.pathverification.web.PathVerificationServiceWebRoutable;
-import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
@@ -49,12 +44,7 @@ import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
-import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
-import org.projectfloodlight.openflow.protocol.action.OFActionSetField;
-import org.projectfloodlight.openflow.protocol.action.OFActions;
-import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
-import org.projectfloodlight.openflow.protocol.oxm.OFOxms;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IPv4Address;
@@ -75,12 +65,10 @@ implements IFloodlightModule, IOFMessageListener, IPathVerificationService {
 
   protected IFloodlightProviderService floodlightProvider;
   protected IOFSwitchService switchService;
-  protected IStaticEntryPusherService sfpService;
   protected IRestApiService restApiService;
   protected Logger logger;
-  protected ObjectMapper mapper = new ObjectMapper();
   protected String topic;
-  public Boolean isAlive = false;
+  private boolean isAlive = false;
   private KafkaProducer<String, String> producer;
   private Properties kafkaProps;
 
@@ -89,9 +77,8 @@ implements IFloodlightModule, IOFMessageListener, IPathVerificationService {
    */
   @Override
   public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
-    Collection<Class<? extends IFloodlightService>> services = new ArrayList<>();
+    Collection<Class<? extends IFloodlightService>> services = new ArrayList<>(3);
     services.add(IFloodlightProviderService.class);
-    services.add(IStaticEntryPusherService.class);
     services.add(IOFSwitchService.class);
     services.add(IRestApiService.class);
     return services;
@@ -114,7 +101,6 @@ implements IFloodlightModule, IOFMessageListener, IPathVerificationService {
   @Override
   public void init(FloodlightModuleContext context) throws FloodlightModuleException {
     floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
-    sfpService = context.getServiceImpl(IStaticEntryPusherService.class);
     switchService = context.getServiceImpl(IOFSwitchService.class);
     restApiService = context.getServiceImpl(IRestApiService.class);
     logger = LoggerFactory.getLogger(PathVerificationService.class);
