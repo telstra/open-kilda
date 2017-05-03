@@ -1,7 +1,13 @@
 package org.bitbucket.openkilda.floodlight.switchmanager;
 
+import com.google.common.util.concurrent.ListenableFuture;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
+import org.projectfloodlight.openflow.protocol.OFMeterConfigStatsReply;
+import org.projectfloodlight.openflow.protocol.OFPortStatsReply;
 import org.projectfloodlight.openflow.types.DatapathId;
+
+import java.util.List;
 
 /**
  * Created by jonv on 29/3/17.
@@ -83,7 +89,7 @@ public interface ISwitchManager extends IFloodlightService {
      * installMeter - Installs a meter on ingress switch.
      * TODO: describe params meaning in accordance with OF
      *
-     * @param dpid - datapathId of the switch
+     * @param dpid - datapath ID of the switch
      * @param bandwidth - the bandwidth limit value
      * @param burstSize - the size of the burst
      * @param meterId - the meter ID
@@ -93,7 +99,7 @@ public interface ISwitchManager extends IFloodlightService {
     /**
      * Deletes the flow from the switch
      *
-     * @param dpid datapathId of the switch
+     * @param dpid datapath ID of the switch
      * @param cookie flow cookie
      */
     boolean deleteFlow(DatapathId dpid, String cookie);
@@ -101,8 +107,32 @@ public interface ISwitchManager extends IFloodlightService {
     /**
      * Deletes the meter from the switch
      *
-     * @param dpid datapathId of the switch
+     * @param dpid datapath ID of the switch
      * @param meterId meter identifier
      */
     boolean deleteMeter(DatapathId dpid, long meterId);
+
+    /**
+     * Retrieves statistics for all ports of a switch with the given datapath ID.
+     *
+     * @param dpid datapath ID of the switch
+     * @return statistics for all ports of a switch with the given datapath ID
+     */
+    ListenableFuture<List<OFPortStatsReply>> requestPortStats(DatapathId dpid);
+
+    /**
+     * Retrieves statistics for all non-system flows of a switch with the given datapath ID.
+     *
+     * @param dpid datapath ID of the switch
+     * @return statistics for all non-system flows of a switch with the given datapath ID
+     */
+    ListenableFuture<List<OFFlowStatsReply>> requestFlowStats(DatapathId dpid);
+
+    /**
+     * Retrieves all meters configurations on a switch with the given datapath ID.
+     *
+     * @param dpid datapath ID of the switch
+     * @return all meters configurations on a switch with the given datapath ID
+     */
+    ListenableFuture<List<OFMeterConfigStatsReply>> requestMeterConfigStats(DatapathId dpid);
 }

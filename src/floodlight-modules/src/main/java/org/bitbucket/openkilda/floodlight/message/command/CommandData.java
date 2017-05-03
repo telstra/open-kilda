@@ -26,7 +26,8 @@ import com.fasterxml.jackson.annotation.JsonSubTypes.Type;
         @Type(value = InstallOneSwitchFlow.class, name= "install_one_switch_flow"),
         @Type(value = DiscoverISLCommandData.class, name = "discover_isl"),
         @Type(value = DiscoverPathCommandData.class, name = "discover_path"),
-        @Type(value = DeleteFlow.class, name = "delete_flow")
+        @Type(value = DeleteFlow.class, name = "delete_flow"),
+        @Type(value = StatsRequest.class, name = "stats")
 })
 
 public abstract class CommandData extends MessageData {
