@@ -4,13 +4,13 @@ import com.fasterxml.jackson.core.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import javafx.util.Pair;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.IOException;
 import java.io.StringWriter;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.lang.UnsupportedOperationException;
 
 /**
  * TopologyBuilder is a utility / factory class that can be used to build topologies.
@@ -29,8 +29,8 @@ public class TopologyBuilder {
 
         g.writeStartObject();
         // use TreeSet to sort the list
-        g.writeObjectField("switches", new TreeSet(topo.getSwitches().keySet()));
-        g.writeObjectField("links", new TreeSet(topo.getLinks().keySet()));
+        g.writeObjectField("switches", new TreeSet<String>(topo.getSwitches().keySet()));
+        g.writeObjectField("links", new TreeSet<String>(topo.getLinks().keySet()));
         g.writeEndObject();
         g.close();
 
@@ -38,11 +38,10 @@ public class TopologyBuilder {
     }
 
 
-
     public static final Topology buildTopoFromJson(String jsonDoc){
         ObjectMapper mapper = new ObjectMapper();
 
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -51,6 +50,7 @@ public class TopologyBuilder {
      * @param jsonDoc A JSON doc that matches the syntax of the json files in test/resources/topology
      * @return The topology represented in the text file.
      */
+    @SuppressWarnings("unchecked")
     public static final Topology buildTopoFromTestJson(String jsonDoc) throws IOException {
         Topology t = new Topology(jsonDoc);
         ConcurrentMap<String, Switch> switches = t.getSwitches();
@@ -58,7 +58,8 @@ public class TopologyBuilder {
         ConcurrentMap<String, Link> links = t.getLinks();
 
         ObjectMapper mapper = new ObjectMapper();
-        Map<String,ArrayList<Map<String,String>>> root = mapper.readValue(jsonDoc, Map.class);
+        Map<String,ArrayList<Map<String,String>>> root =
+                mapper.readValue(jsonDoc, Map.class);
 
         // populate switches first
         ArrayList<Map<String,String>> jsonSwitches = root.get("switches");
@@ -106,10 +107,10 @@ public class TopologyBuilder {
             id = sb.toString();
         }
         id = id.toLowerCase(); // mininet will do lower case ..
-        System.out.println("normalSwitchID: id = " + id);
         return id;
     }
 
+    @SuppressWarnings("unchecked")
     public static final Topology buildTopoFromTopoEngineJson(String jsonDoc) throws IOException {
         Topology t = new Topology(jsonDoc);
         ConcurrentMap<String, Switch> switches = t.getSwitches();
@@ -214,7 +215,7 @@ public class TopologyBuilder {
 
     /** buildTorusTopo models the Torus topology from Mininet */
     public static final Topology buildTorusTopo(){
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**

@@ -16,17 +16,23 @@ public class TopologyDiscoveryBasicTest {
 	    throw new PendingException();
 	}
 
-	@Given("^a random linear topology of (\\d+)$")
+	@Given("^a random linear topology of (\\d+) switches$")
 	public void a_random_linear_topology_of(int arg1) throws Throwable {
 	    // Write code here that turns the phrase above into concrete actions
-			// TODO: Will need to send the IP address of the controller.
-	    throw new PendingException();
+		// TODO: Will need to send the IP address of the controller.
+	    //throw new PendingException();
+	}
+
+	@Given("^a random full-mesh topology of (\\d+) switches$")
+	public void a_random_full_mesh_topology_of(int arg1) throws Throwable {
+		// Write code here that turns the phrase above into concrete actions
+		throw new PendingException();
 	}
 
 	@When("^the controller learns the topology$")
 	public void the_controller_learns_the_topology() throws Throwable {
 	    // Write code here that turns the phrase above into concrete actions
-	    throw new PendingException();
+	    //throw new PendingException();
 	}
 
 	@Then("^the controller should converge within (\\d+) milliseconds$")
@@ -35,10 +41,5 @@ public class TopologyDiscoveryBasicTest {
 	    throw new PendingException();
 	}
 
-	@Given("^a random full-mesh topology of (\\d+)$")
-	public void a_random_full_mesh_topology_of(int arg1) throws Throwable {
-	    // Write code here that turns the phrase above into concrete actions
-	    throw new PendingException();
-	}
 
 }
