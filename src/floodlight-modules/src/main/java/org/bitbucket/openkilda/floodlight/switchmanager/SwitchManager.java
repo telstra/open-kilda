@@ -1,5 +1,6 @@
 package org.bitbucket.openkilda.floodlight.switchmanager;
 
+import com.google.common.util.concurrent.ListenableFuture;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
@@ -41,6 +42,8 @@ import static org.projectfloodlight.openflow.protocol.OFMeterModCommand.DELETE;
  */
 public class SwitchManager implements IFloodlightModule, IFloodlightService, ISwitchManager {
     static final U64 NON_SYSTEM_MASK = U64.of(0x7fffffffffffffffL);
+    static final U64 SYSTEM_MASK = U64.of(0x8000000000000000L);
+    static final long OFPM_ALL = 0xffffffffL;
     private static final Logger logger = LoggerFactory.getLogger(SwitchManager.class);
     private static final long DROP_COOKIE = 0x8000000000000001L;
     private IOFSwitchService ofSwitchService;
@@ -295,6 +298,35 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .setCommand(DELETE)
                 .build();
         return sw.write(meterDelete);
+    }
+
+    @Override
+    public ListenableFuture<List<OFPortStatsReply>> requestPortStats(DatapathId dpid) {
+        IOFSwitch sw = ofSwitchService.getSwitch(dpid);
+        OFFactory ofFactory = sw.getOFFactory();
+        OFPortStatsRequest request = ofFactory.buildPortStatsRequest().setPortNo(OFPort.ANY).build();
+        return sw.writeStatsRequest(request);
+    }
+
+    @Override
+    public ListenableFuture<List<OFFlowStatsReply>> requestFlowStats(DatapathId dpid) {
+        IOFSwitch sw = ofSwitchService.getSwitch(dpid);
+        OFFactory ofFactory = sw.getOFFactory();
+        OFFlowStatsRequest request = ofFactory.buildFlowStatsRequest()
+                .setCookie(U64.ZERO)
+                .setCookieMask(SYSTEM_MASK)
+                .build();
+        return sw.writeStatsRequest(request);
+    }
+
+    @Override
+    public ListenableFuture<List<OFMeterConfigStatsReply>> requestMeterConfigStats(DatapathId dpid) {
+        IOFSwitch sw = ofSwitchService.getSwitch(dpid);
+        OFFactory ofFactory = sw.getOFFactory();
+        final OFMeterConfigStatsRequest request = ofFactory.buildMeterConfigStatsRequest()
+                .setMeterId(OFPM_ALL)
+                .build();
+        return sw.writeStatsRequest(request);
     }
 
     // Utility Methods
