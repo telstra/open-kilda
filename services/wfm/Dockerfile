@@ -15,6 +15,11 @@ RUN chmod 777 /app/*
 
 RUN echo "PATH=$PATH:/opt/storm/bin" >> ~/.bashrc
 
+ADD /src/messaging /app/messaging
+WORKDIR /app/messaging
+RUN mvn clean install
+WORKDIR /
+
 COPY /services/wfm /app/wfm
 WORKDIR /app/wfm
 RUN mvn assembly:assembly -DskipTests
