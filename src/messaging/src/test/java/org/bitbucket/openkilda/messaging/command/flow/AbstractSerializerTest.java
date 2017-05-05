@@ -1,22 +1,20 @@
-package org.bitbucket.openkilda.messaging.command;
+package org.bitbucket.openkilda.messaging.command.flow;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import org.bitbucket.openkilda.messaging.AbstractSerializer;
 import org.bitbucket.openkilda.messaging.CommandMessage;
 import org.bitbucket.openkilda.messaging.Message;
-import org.bitbucket.openkilda.messaging.command.flow.InstallEgressFlow;
-import org.bitbucket.openkilda.messaging.command.flow.InstallIngressFlow;
-import org.bitbucket.openkilda.messaging.command.flow.InstallOneSwitchFlow;
-import org.bitbucket.openkilda.messaging.command.flow.InstallTransitFlow;
-import org.bitbucket.openkilda.messaging.command.flow.OutputVlanType;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.util.UUID;
 
-public class MessageTest extends AbstractTest {
+@Ignore
+public abstract class AbstractSerializerTest implements AbstractSerializer {
     private static final String FLOW_NAME = "test_flow";
     private static final String SWITCH_ID = "00:00:00:00:00:00:00:00";
     private static final String CORRELATION_ID = UUID.randomUUID().toString();
@@ -37,15 +35,21 @@ public class MessageTest extends AbstractTest {
         InstallEgressFlow data = new InstallEgressFlow(FLOW_NAME, SWITCH_ID, INPUT_PORT, OUTPUT_PORT,
                 TRANSIT_VLAN_ID, OUTPUT_VLAN_ID, OUTPUT_VLAN_TYPE);
         System.out.println(data);
+
         CommandMessage command = new CommandMessage();
         command.setData(data);
         serialize(command);
+
         Message message = (Message) deserialize();
-        System.out.println(mapper.writeValueAsString(message));
         assertTrue(message instanceof CommandMessage);
-        CommandMessage result = (CommandMessage) message;
-        assertTrue(result.getData() instanceof InstallEgressFlow);
-        assertEquals(data, result.getData());
+        System.out.println(String.format("message type: %s", message.getType()));
+
+        CommandMessage resultCommand = (CommandMessage) message;
+        assertTrue(resultCommand.getData() instanceof InstallEgressFlow);
+
+        InstallEgressFlow resultData = (InstallEgressFlow) resultCommand.getData();
+        System.out.println(resultData);
+        assertEquals(data, resultData);
     }
 
     @Test
@@ -53,15 +57,21 @@ public class MessageTest extends AbstractTest {
         InstallIngressFlow data = new InstallIngressFlow(FLOW_NAME, SWITCH_ID, INPUT_PORT, OUTPUT_PORT,
                 INPUT_VLAN_ID, TRANSIT_VLAN_ID, OUTPUT_VLAN_TYPE, BANDWIDTH, METER_ID);
         System.out.println(data);
+
         CommandMessage command = new CommandMessage();
         command.setData(data);
         serialize(command);
+
         Message message = (Message) deserialize();
-        System.out.println(mapper.writeValueAsString(message));
         assertTrue(message instanceof CommandMessage);
-        CommandMessage result = (CommandMessage) message;
-        assertTrue(result.getData() instanceof InstallIngressFlow);
-        assertEquals(data, result.getData());
+        System.out.println(String.format("message type: %s", message.getType()));
+
+        CommandMessage resultCommand = (CommandMessage) message;
+        assertTrue(resultCommand.getData() instanceof InstallIngressFlow);
+
+        InstallIngressFlow resultData = (InstallIngressFlow) resultCommand.getData();
+        System.out.println(resultData);
+        assertEquals(data, resultData);
     }
 
     @Test
@@ -69,15 +79,21 @@ public class MessageTest extends AbstractTest {
         InstallTransitFlow data = new InstallTransitFlow(FLOW_NAME, SWITCH_ID, INPUT_PORT, OUTPUT_PORT,
                 TRANSIT_VLAN_ID);
         System.out.println(data);
+
         CommandMessage command = new CommandMessage();
         command.setData(data);
         serialize(command);
+
         Message message = (Message) deserialize();
-        System.out.println(mapper.writeValueAsString(message));
         assertTrue(message instanceof CommandMessage);
-        CommandMessage result = (CommandMessage) message;
-        assertTrue(result.getData() instanceof InstallTransitFlow);
-        assertEquals(data, result.getData());
+        System.out.println(String.format("message type: %s", message.getType()));
+
+        CommandMessage resultCommand = (CommandMessage) message;
+        assertTrue(resultCommand.getData() instanceof InstallTransitFlow);
+
+        InstallTransitFlow resultData = (InstallTransitFlow) resultCommand.getData();
+        System.out.println(resultData);
+        assertEquals(data, resultData);
     }
 
     @Test
@@ -85,14 +101,20 @@ public class MessageTest extends AbstractTest {
         InstallOneSwitchFlow data = new InstallOneSwitchFlow(FLOW_NAME, SWITCH_ID, INPUT_PORT, OUTPUT_PORT,
                 INPUT_VLAN_ID, OUTPUT_VLAN_ID, OUTPUT_VLAN_TYPE, BANDWIDTH, SOURCE_METER_ID, DESTINATION_METER_ID);
         System.out.println(data);
+
         CommandMessage command = new CommandMessage();
         command.setData(data);
         serialize(command);
+
         Message message = (Message) deserialize();
-        System.out.println(mapper.writeValueAsString(message));
         assertTrue(message instanceof CommandMessage);
-        CommandMessage result = (CommandMessage) message;
-        assertTrue(result.getData() instanceof InstallOneSwitchFlow);
-        assertEquals(data, result.getData());
+        System.out.println(String.format("message type: %s", message.getType()));
+
+        CommandMessage resultCommand = (CommandMessage) message;
+        assertTrue(resultCommand.getData() instanceof InstallOneSwitchFlow);
+
+        InstallOneSwitchFlow resultData = (InstallOneSwitchFlow) resultCommand.getData();
+        System.out.println(resultData);
+        assertEquals(data, resultData);
     }
 }
