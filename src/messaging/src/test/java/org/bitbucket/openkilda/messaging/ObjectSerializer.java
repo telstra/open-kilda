@@ -1,8 +1,4 @@
-package org.bitbucket.openkilda.messaging.command;
-
-import static org.junit.Assert.assertEquals;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
+package org.bitbucket.openkilda.messaging;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -12,11 +8,11 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 
-public class AbstractTest {
-    private static final String FILE_NAME = "serialization.txt";
-    protected static final ObjectMapper mapper = new ObjectMapper();
+public interface ObjectSerializer extends AbstractSerializer {
+    String FILE_NAME = "serialization.txt";
 
-    protected static Object deserialize() throws IOException, ClassNotFoundException {
+    @Override
+    default Object deserialize() throws IOException, ClassNotFoundException {
         FileInputStream fis = new FileInputStream(FILE_NAME);
         BufferedInputStream bis = new BufferedInputStream(fis);
         ObjectInputStream ois = new ObjectInputStream(bis);
@@ -25,7 +21,8 @@ public class AbstractTest {
         return obj;
     }
 
-    protected static void serialize(Object obj) throws IOException {
+    @Override
+    default void serialize(Object obj) throws IOException {
         FileOutputStream fos = new FileOutputStream(FILE_NAME);
         BufferedOutputStream bos = new BufferedOutputStream(fos);
         ObjectOutputStream oos = new ObjectOutputStream(bos);
