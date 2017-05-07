@@ -59,10 +59,12 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
      */
     @Override
     protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+        // get username from environment variable, otherwise use default
         String username = System.getenv(envUsername);
         if (username == null || username.isEmpty()) {
             username = defaultUsername;
         }
+        // get password from environment variable, otherwise use default
         String password = System.getenv(envPassword);
         if (password == null || password.isEmpty()) {
             password = defaultPassword;

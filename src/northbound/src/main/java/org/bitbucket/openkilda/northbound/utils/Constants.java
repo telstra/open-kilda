@@ -7,7 +7,7 @@ public class Constants {
     /**
      * The request timestamp attribute.
      */
-    public static final String REQUEST_TIMESTAMP = "timestamp";
+    public static final String TIMESTAMP = "timestamp";
 
     /**
      * The correlation ID header name.

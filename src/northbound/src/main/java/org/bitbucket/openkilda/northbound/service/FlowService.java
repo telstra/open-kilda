@@ -1,49 +1,84 @@
 package org.bitbucket.openkilda.northbound.service;
 
-import org.bitbucket.openkilda.northbound.model.Flow;
-
-import java.util.List;
+import org.bitbucket.openkilda.messaging.payload.FlowPayload;
+import org.bitbucket.openkilda.messaging.payload.response.FlowPathResponsePayload;
+import org.bitbucket.openkilda.messaging.payload.response.FlowStatusResponsePayload;
+import org.bitbucket.openkilda.messaging.payload.response.FlowsResponsePayload;
+import org.bitbucket.openkilda.messaging.payload.response.FlowsStatusResponsePayload;
 
 /**
- * Service for operations on flows.
+ * FlowService is for operations on flows.
  */
-public interface FlowService {
+public interface FlowService extends BasicService {
     /**
      * Creates flow.
      *
-     * @param flow Flow to create
-     * @return Created flow
+     * @param flow          flow
+     * @param correlationId request correlation Id
+     * @return created flow
      */
-    Flow create(Flow flow);
+    FlowPayload createFlow(final FlowPayload flow, final String correlationId);
 
     /**
      * Deletes flow.
      *
-     * @param id Flow id
-     * @return Deleted flow
+     * @param id            flow id
+     * @param correlationId request correlation Id
+     * @return deleted flow
      */
-    Flow delete(String id);
-
-    /**
-     * Gets flow by id.
-     *
-     * @param id Flow id
-     * @return Flow
-     */
-    Flow get(String id);
+    FlowPayload deleteFlow(final String id, final String correlationId);
 
     /**
      * Updates flow.
      *
-     * @param flow New flow
-     * @return New flow
+     * @param flow          flow
+     * @param correlationId request correlation Id
+     * @return updated flow
      */
-    Flow update(Flow flow);
+    FlowPayload updateFlow(final FlowPayload flow, final String correlationId);
+
+    /**
+     * Gets flow by id.
+     *
+     * @param id            flow id
+     * @param correlationId request correlation Id
+     * @return flow
+     */
+    FlowPayload getFlow(final String id, final String correlationId);
 
     /**
      * Gets all the flows.
      *
-     * @return the list of all flows
+     * @param status        target status
+     * @param correlationId request correlation id
+     * @return the list of all flows with specified status
      */
-    List<Flow> dump();
+    FlowsResponsePayload getFlows(final String status, final String correlationId);
+
+    /**
+     * Gets flow status by id.
+     *
+     * @param id            flow id
+     * @param correlationId request correlation Id
+     * @return flow status
+     */
+    FlowStatusResponsePayload statusFlow(final String id, final String correlationId);
+
+    /**
+     * Gets flows status by status value.
+     *
+     * @param status        target status
+     * @param correlationId request correlation Id
+     * @return flow status
+     */
+    FlowsStatusResponsePayload statusFlows(final String status, final String correlationId);
+
+    /**
+     * Gets flow path by id.
+     *
+     * @param id            flow id
+     * @param correlationId request correlation Id
+     * @return Flow path
+     */
+    FlowPathResponsePayload pathFlow(final String id, final String correlationId);
 }

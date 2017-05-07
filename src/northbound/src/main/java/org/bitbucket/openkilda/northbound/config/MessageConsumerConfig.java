@@ -45,7 +45,7 @@ public class MessageConsumerConfig {
     /**
      * Kafka consumer config bean.
      *
-     * @return Kafka properties
+     * @return kafka properties
      */
     @Bean
     public Map<String, Object> consumerConfigs() {
@@ -65,7 +65,7 @@ public class MessageConsumerConfig {
     /**
      * Kafka consumer factory bean.
      *
-     * @return Kafka consumer factory
+     * @return kafka consumer factory
      */
     @Bean
     public ConsumerFactory<String, String> consumerFactory() {
@@ -75,7 +75,7 @@ public class MessageConsumerConfig {
     /**
      * Kafka listener container factory bean.
      *
-     * @return Kafka listener container factory
+     * @return kafka listener container factory
      */
     @Bean
     public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory() {
@@ -90,7 +90,7 @@ public class MessageConsumerConfig {
     /**
      * Kafka message consumer bean.
      *
-     * @return Kafka message consumer
+     * @return kafka message consumer
      */
     @Bean
     public KafkaMessageConsumer kafkaMessageConsumer() {

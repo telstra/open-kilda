@@ -3,6 +3,9 @@ package org.bitbucket.openkilda.northbound.config;
 import org.bitbucket.openkilda.northbound.messaging.kafka.KafkaMessageProducer;
 import org.bitbucket.openkilda.northbound.model.HealthCheck;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.MapperFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,12 +46,6 @@ public class AppConfig {
     private String serviceDescription;
 
     /**
-     * The Kafka topic.
-     */
-    @Value("${kafka.topic.nb.wfm}")
-    private String kafkaTopic;
-
-    /**
      * The Kafka producer instance.
      */
     @Autowired
@@ -57,14 +54,27 @@ public class AppConfig {
     /**
      * The health-check info bean.
      *
-     * @return the Flow instance
+     * @return the FlowModel instance
      */
     @Bean
     public HealthCheck healthCheck() {
         HealthCheck healthCheck = new HealthCheck(serviceName, serviceVersion, serviceDescription);
         String message = String.format("Starting application: %s-%s", healthCheck.getName(), healthCheck.getVersion());
         logger.info(message);
-        kafkaMessageProducer.send(kafkaTopic, message);
+        //kafkaMessageProducer.send(message);
         return healthCheck;
+    }
+
+    /**
+     * Object mapper bean.
+     *
+     * @return the ObjectMapper instance
+     */
+    @Bean
+    public ObjectMapper objectMapper() {
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        mapper.configure(MapperFeature.DEFAULT_VIEW_INCLUSION, true);
+        return mapper;
     }
 }

@@ -2,4 +2,3 @@ target/
 *.jar
 *.classpath
 logs/
-reports/
