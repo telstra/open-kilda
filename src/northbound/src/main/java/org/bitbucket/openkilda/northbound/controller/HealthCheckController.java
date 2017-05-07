@@ -1,6 +1,6 @@
 package org.bitbucket.openkilda.northbound.controller;
 
-import static org.bitbucket.openkilda.northbound.utils.NorthboundException.EntityExceptionTypes.INTERNAL_ERROR;
+import static org.bitbucket.openkilda.messaging.error.ErrorType.INTERNAL_ERROR;
 
 import org.bitbucket.openkilda.northbound.model.HealthCheck;
 import org.bitbucket.openkilda.northbound.utils.NorthboundException;
@@ -39,7 +39,7 @@ public class HealthCheckController {
     /**
      * Gets the health-check status.
      *
-     * @return Health-check model entity
+     * @return health-check model entity
      */
     @RequestMapping(value = "/health-check",
             method = RequestMethod.GET,
@@ -49,7 +49,7 @@ public class HealthCheckController {
     public ResponseEntity<HealthCheck> getHealthCheck() {
         logger.trace("getHealthCheck");
         if (healthCheck == null) {
-            throw new NorthboundException(INTERNAL_ERROR);
+            throw new NorthboundException(INTERNAL_ERROR, System.currentTimeMillis());
         }
         return new ResponseEntity<>(healthCheck, new HttpHeaders(), HttpStatus.OK);
     }

@@ -1,71 +1,11 @@
 package org.bitbucket.openkilda.northbound.utils;
 
+import org.bitbucket.openkilda.messaging.error.ErrorType;
+
 /**
- * The exception for notifying errors related to missing or invalid entities.
+ * The exception for notifying errors.
  */
 public class NorthboundException extends RuntimeException {
-    /**
-     * The entity exception type enum.
-     */
-    public enum EntityExceptionTypes {
-        /**
-         * The error message for entity not found exception.
-         */
-        INTERNAL_ERROR("Internal server error"),
-
-        /**
-         * The error message for entity not found exception.
-         */
-        ENTITY_NOT_FOUND("Object was not found"),
-
-        /**
-         * The error message for entity already exists exception.
-         */
-        ENTITY_ALREADY_EXISTS("Object already exists"),
-
-        /**
-         * The error message for invalid entity exception.
-         */
-        ENTITY_INVALID("Invalid object"),
-
-        /**
-         * The error message for invalid request exception.
-         */
-        REQUEST_INVALID("Invalid request"),
-
-        /**
-         * The error message for expired token request exception.
-         */
-        TOKEN_EXPIRED("Token expired"),
-
-        /**
-         * The error message for invalid request credentials.
-         */
-        AUTH_FAILED("Invalid credentials");
-
-        /**
-         * The text value.
-         */
-        private final String text;
-
-        /**
-         * Constructs instance by value.
-         *
-         * @param text the type value
-         */
-        EntityExceptionTypes(final String text) {
-            this.text = text;
-        }
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        public String toString() {
-            return text;
-        }
-    }
-
     /**
      * The constant serialVersionUID.
      */
@@ -74,14 +14,19 @@ public class NorthboundException extends RuntimeException {
     /**
      * The error type.
      */
-    private EntityExceptionTypes errorType;
+    private ErrorType errorType;
+
+    /**
+     * The timestamp.
+     */
+    private long timestamp;
 
     /**
      * Gets error type.
      *
      * @return the error type
      */
-    public EntityExceptionTypes getErrorType() {
+    public ErrorType getErrorType() {
         return errorType;
     }
 
@@ -90,28 +35,37 @@ public class NorthboundException extends RuntimeException {
      *
      * @param errorType the error type
      */
-    public void setErrorType(EntityExceptionTypes errorType) {
+    public void setErrorType(ErrorType errorType) {
         this.errorType = errorType;
+    }
+
+    /**
+     * Gets error timestamp.
+     *
+     * @return the error timestamp
+     */
+    public long getTimestamp() {
+        return timestamp;
+    }
+
+    /**
+     * Sets the error timestamp.
+     *
+     * @param timestamp the error timestamp
+     */
+    public void setTimestamp(final long timestamp) {
+        this.timestamp = timestamp;
     }
 
     /**
      * Constructs exception.
      *
      * @param errorType the error type
+     * @param timestamp the error timestamp
      */
-    public NorthboundException(EntityExceptionTypes errorType) {
+    public NorthboundException(final ErrorType errorType, final long timestamp) {
         super(errorType.toString());
         this.errorType = errorType;
-    }
-
-    /**
-     * Constructs exception.
-     *
-     * @param field     the field name
-     * @param errorType the error type
-     */
-    public NorthboundException(String field, EntityExceptionTypes errorType) {
-        super(String.format("%s: %s", errorType.toString(), String.valueOf(field)));
-        setErrorType(errorType);
+        this.timestamp = timestamp;
     }
 }

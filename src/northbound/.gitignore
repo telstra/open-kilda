@@ -3,5 +3,4 @@ target/
 .project
 .settings/
 *.pom
-reports/
-*.log
+logs/

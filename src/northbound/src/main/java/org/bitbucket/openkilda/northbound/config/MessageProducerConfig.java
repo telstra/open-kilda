@@ -23,7 +23,6 @@ import java.util.Map;
 @PropertySource("classpath:northbound.properties")
 @ComponentScan("org.bitbucket.openkilda.northbound")
 public class MessageProducerConfig {
-
     /**
      * Kafka bootstrap servers.
      */
@@ -33,7 +32,7 @@ public class MessageProducerConfig {
     /**
      * Kafka producer config bean.
      *
-     * @return Kafka properties bean
+     * @return kafka properties bean
      */
     @Bean
     public Map<String, Object> producerConfigs() {
@@ -52,7 +51,7 @@ public class MessageProducerConfig {
     /**
      * Kafka producer factory bean.
      *
-     * @return Kafka producer factory
+     * @return kafka producer factory
      */
     @Bean
     public ProducerFactory<String, String> producerFactory() {
@@ -62,7 +61,7 @@ public class MessageProducerConfig {
     /**
      * Kafka template bean.
      *
-     * @return Kafka template
+     * @return kafka template
      */
     @Bean
     public KafkaTemplate<String, String> kafkaTemplate() {
@@ -72,7 +71,7 @@ public class MessageProducerConfig {
     /**
      * Kafka message producer bean.
      *
-     * @return Kafka message producer
+     * @return kafka message producer
      */
     @Bean
     public KafkaMessageProducer kafkaMessageProducer() {

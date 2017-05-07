@@ -9,7 +9,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 
 public interface ObjectSerializer extends AbstractSerializer {
-    String FILE_NAME = "serialization.txt";
+    String FILE_NAME = "target/serialization.txt";
 
     @Override
     default Object deserialize() throws IOException, ClassNotFoundException {
@@ -18,6 +18,8 @@ public interface ObjectSerializer extends AbstractSerializer {
         ObjectInputStream ois = new ObjectInputStream(bis);
         Object obj = ois.readObject();
         ois.close();
+        bis.close();
+        fis.close();
         return obj;
     }
 
@@ -28,5 +30,7 @@ public interface ObjectSerializer extends AbstractSerializer {
         ObjectOutputStream oos = new ObjectOutputStream(bos);
         oos.writeObject(obj);
         oos.close();
+        bos.close();
+        fos.close();
     }
 }

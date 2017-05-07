@@ -2,10 +2,8 @@ package org.bitbucket.openkilda.northbound.utils;
 
 import static org.bitbucket.openkilda.northbound.utils.Constants.CORRELATION_ID;
 
-import org.bitbucket.openkilda.northbound.model.ErrorResponse;
+import org.bitbucket.openkilda.northbound.model.NorthboundError;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,8 +17,6 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
  */
 @ControllerAdvice
 public class NorthboundExceptionHandler extends ResponseEntityExceptionHandler {
-    private static final Logger logger = LoggerFactory.getLogger(NorthboundExceptionHandler.class);
-
     /**
      * Handles NorthboundException exception.
      *
@@ -33,26 +29,29 @@ public class NorthboundExceptionHandler extends ResponseEntityExceptionHandler {
         HttpStatus status;
 
         switch (exception.getErrorType()) {
-            case ENTITY_NOT_FOUND:
+            case NOT_FOUND:
                 status = HttpStatus.NOT_FOUND;
                 break;
-            case ENTITY_ALREADY_EXISTS:
+            case DATA_INVALID:
+            case PARAMETERS_INVALID:
+                status = HttpStatus.BAD_REQUEST;
+                break;
+            case ALREADY_EXISTS:
                 status = HttpStatus.CONFLICT;
                 break;
             case AUTH_FAILED:
-            case TOKEN_EXPIRED:
                 status = HttpStatus.UNAUTHORIZED;
                 break;
-            case ENTITY_INVALID:
-            case REQUEST_INVALID:
+            case OPERATION_TIMED_OUT:
+            case INTERNAL_ERROR:
             default:
-                status = HttpStatus.BAD_REQUEST;
+                status = HttpStatus.INTERNAL_SERVER_ERROR;
                 break;
         }
 
-        ErrorResponse error = new ErrorResponse(status, exception.getMessage(), exception.getClass().getSimpleName(),
-                request.getHeader(CORRELATION_ID), System.nanoTime());
-        return handleExceptionInternal(exception, error, new HttpHeaders(), status, request);
+        NorthboundError error = new NorthboundError(request.getHeader(CORRELATION_ID), exception.getTimestamp(),
+                status, exception.getMessage(), exception.getClass().getSimpleName());
+        return super.handleExceptionInternal(exception, error, new HttpHeaders(), status, request);
     }
 
     /**
@@ -61,8 +60,8 @@ public class NorthboundExceptionHandler extends ResponseEntityExceptionHandler {
     @Override
     protected ResponseEntity<Object> handleExceptionInternal(Exception exception, Object body, HttpHeaders headers,
                                                              HttpStatus status, WebRequest request) {
-        ErrorResponse error = new ErrorResponse(status, exception.getMessage(), exception.getClass().getSimpleName(),
-                request.getHeader(CORRELATION_ID), System.nanoTime());
+        NorthboundError error = new NorthboundError(request.getHeader(CORRELATION_ID), System.currentTimeMillis(),
+                status, exception.getMessage(), exception.getClass().getSimpleName());
         return super.handleExceptionInternal(exception, error, headers, status, request);
     }
 }

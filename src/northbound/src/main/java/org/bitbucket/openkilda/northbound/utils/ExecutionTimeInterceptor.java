@@ -1,6 +1,6 @@
 package org.bitbucket.openkilda.northbound.utils;
 
-import static org.bitbucket.openkilda.northbound.utils.Constants.REQUEST_TIMESTAMP;
+import static org.bitbucket.openkilda.northbound.utils.Constants.TIMESTAMP;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,7 +24,7 @@ public class ExecutionTimeInterceptor implements HandlerInterceptor {
      */
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object obj) {
-        request.setAttribute(REQUEST_TIMESTAMP, System.currentTimeMillis());
+        request.setAttribute(TIMESTAMP, System.currentTimeMillis());
         return true;
     }
 
@@ -40,7 +40,7 @@ public class ExecutionTimeInterceptor implements HandlerInterceptor {
      */
     @Override
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object obj, Exception ex) {
-        long executed = System.currentTimeMillis() - (long) request.getAttribute(REQUEST_TIMESTAMP);
+        long executed = System.currentTimeMillis() - (long) request.getAttribute(TIMESTAMP);
         logger.debug("execution-time ms: {}", executed);
     }
 }
