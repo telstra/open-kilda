@@ -26,6 +26,9 @@
         <spring.webmvc.version>4.3.8.RELEASE</spring.webmvc.version>
         <enunciate.version>2.9.1</enunciate.version>
         <messaging.version>1.0-SNAPSHOT</messaging.version>
+        <junit.version>4.12</junit.version>
+        <surefire.version>2.20</surefire.version>
+        <jacoco.version>0.7.9</jacoco.version>
     </properties>
 
     <parent>
@@ -92,9 +95,29 @@
             <artifactId>enunciate-maven-plugin</artifactId>
             <version>${enunciate.version}</version>
         </dependency>
+
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka-test</artifactId>
+            <version>${spring.kafka.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
+        <finalName>northbound</finalName>
+
         <pluginManagement>
             <plugins>
                 <plugin>
@@ -106,6 +129,7 @@
                         <consoleOutput>true</consoleOutput>
                         <failsOnError>true</failsOnError>
                         <linkXRef>false</linkXRef>
+                        <includeTestSourceDirectory>false</includeTestSourceDirectory>
                     </configuration>
                     <dependencies>
                         <dependency>
@@ -124,6 +148,58 @@
                         </execution>
                     </executions>
                 </plugin>
+                <plugin>
+                    <groupId>org.jacoco</groupId>
+                    <artifactId>jacoco-maven-plugin</artifactId>
+                    <version>${jacoco.version}</version>
+                    <configuration>
+                        <outputDirectory>${project.build.directory}/jacoco</outputDirectory>
+                        <destFile>${project.build.directory}/coverage/jacoco-unit.exec</destFile>
+                        <dataFile>${project.build.directory}/coverage/jacoco-unit.exec</dataFile>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>pre-test</id>
+                            <goals>
+                                <goal>prepare-agent</goal>
+                            </goals>
+                        </execution>
+                        <execution>
+                            <id>post-test</id>
+                            <phase>package</phase>
+                            <goals>
+                                <goal>report</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>${surefire.version}</version>
+                    <configuration>
+                        <redirectTestOutputToFile>true</redirectTestOutputToFile>
+                        <reportsDirectory>${project.build.directory}/junit</reportsDirectory>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>com.webcohesion.enunciate</groupId>
+                    <artifactId>enunciate-maven-plugin</artifactId>
+                    <version>${enunciate.version}</version>
+                    <executions>
+                        <execution>
+                            <goals>
+                                <goal>docs</goal>
+                            </goals>
+                            <configuration>
+                                <docsDir>${project.build.directory}/docs</docsDir>
+                                <exports>
+                                    <docs>${project.build.directory}/docs.zip</docs>
+                                </exports>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
             </plugins>
         </pluginManagement>
 
@@ -137,22 +213,17 @@
                 <artifactId>maven-checkstyle-plugin</artifactId>
             </plugin>
             <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+            </plugin>
+            <plugin>
                 <groupId>com.webcohesion.enunciate</groupId>
                 <artifactId>enunciate-maven-plugin</artifactId>
                 <version>${enunciate.version}</version>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>docs</goal>
-                        </goals>
-                        <configuration>
-                            <docsDir>${project.build.directory}/docs</docsDir>
-                            <exports>
-                                <docs>${project.build.directory}/docs.zip</docs>
-                            </exports>
-                        </configuration>
-                    </execution>
-                </executions>
             </plugin>
         </plugins>
 
