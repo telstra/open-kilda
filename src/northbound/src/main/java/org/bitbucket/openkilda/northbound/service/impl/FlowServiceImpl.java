@@ -32,6 +32,7 @@ import org.bitbucket.openkilda.northbound.service.FlowService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 /**
@@ -57,6 +58,12 @@ public class FlowServiceImpl implements FlowService {
     private KafkaMessageProducer kafkaMessageProducer;
 
     /**
+     * WorkFlow Manager Kafka topic.
+     */
+    @Value("${kafka.topic.nb.wfm}")
+    private String topic;
+
+    /**
      * {@inheritDoc}
      */
     @Override
@@ -64,7 +71,7 @@ public class FlowServiceImpl implements FlowService {
         logger.trace("Create flow: {}={}", CORRELATION_ID, correlationId);
         FlowCreateRequest data = new FlowCreateRequest(flow);
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId);
-        kafkaMessageProducer.send(request);
+        kafkaMessageProducer.send(topic, request);
         Message message = (Message) kafkaMessageConsumer.poll(correlationId);
         FlowResponse response = (FlowResponse) validateInfoMessage(request, message, correlationId);
         return response.getPayload();
@@ -78,7 +85,7 @@ public class FlowServiceImpl implements FlowService {
         logger.trace("Delete flow: {}={}", CORRELATION_ID, correlationId);
         FlowDeleteRequest data = new FlowDeleteRequest(new FlowIdRequestPayload(id));
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId);
-        kafkaMessageProducer.send(request);
+        kafkaMessageProducer.send(topic, request);
         Message message = (Message) kafkaMessageConsumer.poll(correlationId);
         FlowResponse response = (FlowResponse) validateInfoMessage(request, message, correlationId);
         return response.getPayload();
@@ -92,7 +99,7 @@ public class FlowServiceImpl implements FlowService {
         logger.trace("Get flow: {}={}", CORRELATION_ID, correlationId);
         FlowGetRequest data = new FlowGetRequest(new FlowIdRequestPayload(id));
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId);
-        kafkaMessageProducer.send(request);
+        kafkaMessageProducer.send(topic, request);
         Message message = (Message) kafkaMessageConsumer.poll(correlationId);
         FlowResponse response = (FlowResponse) validateInfoMessage(request, message, correlationId);
         return response.getPayload();
@@ -106,7 +113,7 @@ public class FlowServiceImpl implements FlowService {
         logger.trace("Update flow: {}={}", CORRELATION_ID, correlationId);
         FlowUpdateRequest data = new FlowUpdateRequest(flow);
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId);
-        kafkaMessageProducer.send(request);
+        kafkaMessageProducer.send(topic, request);
         Message message = (Message) kafkaMessageConsumer.poll(correlationId);
         FlowResponse response = (FlowResponse) validateInfoMessage(request, message, correlationId);
         return response.getPayload();
@@ -118,9 +125,10 @@ public class FlowServiceImpl implements FlowService {
     @Override
     public FlowsResponsePayload getFlows(final String status, final String correlationId) {
         logger.trace("Get flows: {}={}", CORRELATION_ID, correlationId);
-        FlowsGetRequest data = new FlowsGetRequest(new FlowStatusRequestPayload(FlowStatusType.valueOf(status)));
+        FlowStatusType flowStatusType = status == null ? FlowStatusType.ANY : FlowStatusType.valueOf(status);
+        FlowsGetRequest data = new FlowsGetRequest(new FlowStatusRequestPayload(flowStatusType));
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId);
-        kafkaMessageProducer.send(request);
+        kafkaMessageProducer.send(topic, request);
         Message message = (Message) kafkaMessageConsumer.poll(correlationId);
         FlowsResponse response = (FlowsResponse) validateInfoMessage(request, message, correlationId);
         return response.getPayload();
@@ -134,7 +142,7 @@ public class FlowServiceImpl implements FlowService {
         logger.trace("Flow status: {}={}", CORRELATION_ID, correlationId);
         FlowStatusRequest data = new FlowStatusRequest(new FlowIdRequestPayload(id));
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId);
-        kafkaMessageProducer.send(request);
+        kafkaMessageProducer.send(topic, request);
         Message message = (Message) kafkaMessageConsumer.poll(correlationId);
         FlowStatusResponse response = (FlowStatusResponse) validateInfoMessage(request, message, correlationId);
         return response.getPayload();
@@ -146,9 +154,10 @@ public class FlowServiceImpl implements FlowService {
     @Override
     public FlowsStatusResponsePayload statusFlows(final String status, final String correlationId) {
         logger.trace("Flows status: {}={}", CORRELATION_ID, correlationId);
-        FlowsStatusRequest data = new FlowsStatusRequest(new FlowStatusRequestPayload(FlowStatusType.valueOf(status)));
+        FlowStatusType flowStatusType = status == null ? FlowStatusType.ANY : FlowStatusType.valueOf(status);
+        FlowsStatusRequest data = new FlowsStatusRequest(new FlowStatusRequestPayload(flowStatusType));
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId);
-        kafkaMessageProducer.send(request);
+        kafkaMessageProducer.send(topic, request);
         Message message = (Message) kafkaMessageConsumer.poll(correlationId);
         FlowsStatusResponse response = (FlowsStatusResponse) validateInfoMessage(request, message, correlationId);
         return response.getPayload();
@@ -162,7 +171,7 @@ public class FlowServiceImpl implements FlowService {
         logger.trace("Flow path: {}={}", CORRELATION_ID, correlationId);
         FlowPathRequest data = new FlowPathRequest(new FlowIdRequestPayload(id));
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId);
-        kafkaMessageProducer.send(request);
+        kafkaMessageProducer.send(topic, request);
         Message message = (Message) kafkaMessageConsumer.poll(correlationId);
         FlowPathResponse response = (FlowPathResponse) validateInfoMessage(request, message, correlationId);
         return response.getPayload();

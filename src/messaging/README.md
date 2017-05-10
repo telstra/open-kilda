@@ -1,13 +1,6 @@
-# Floodlight - Modules
+# Messaging package
 
-This project holds the Floodlight application.
-It is used along with Floodlight SDN controller to manage OpenFlow compatible switches.
-
-# Developers
-
-## Debugging Tips
-
-## Testing tips
+This project holds the messages formats used by different services of Kilda controller application.
 
 ### Unit tests
 
@@ -26,3 +19,4 @@ It could be opened in any browser (```target/jacoco/index.html```).
 Junit reports could be used by external services (CI/CD for example) to represent test results.
 
 Generated coverage data from the ```target/coverage-reports``` directory could also be opened in IDE to show the coverage.
+

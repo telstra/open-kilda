@@ -8,6 +8,11 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  */
 public enum FlowStatusType {
     /**
+     * Any flow status is used in requests only.
+     */
+    ANY("ANY"),
+
+    /**
      * Flow installation status.
      */
     INSTALLATION("INSTALLATION"),

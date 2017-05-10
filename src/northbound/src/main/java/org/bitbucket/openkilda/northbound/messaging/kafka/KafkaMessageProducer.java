@@ -10,9 +10,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.PropertySource;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
+import org.springframework.stereotype.Component;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.util.concurrent.ListenableFutureCallback;
 
@@ -23,6 +24,8 @@ import java.util.concurrent.TimeoutException;
 /**
  * Kafka message producer.
  */
+@Component
+@PropertySource("classpath:northbound.properties")
 public class KafkaMessageProducer {
     /**
      * Timeout.
@@ -46,17 +49,12 @@ public class KafkaMessageProducer {
     private ObjectMapper objectMapper;
 
     /**
-     * WorkFlow Manager Kafka topic.
-     */
-    @Value("${kafka.topic.nb.wfm}")
-    private String topic;
-
-    /**
      * Sends messages to WorkFlowManager.
      *
+     * @param topic kafka topic
      * @param object object to serialize and send
      */
-    public void send(final Object object) {
+    public void send(final String topic, final Object object) {
         ListenableFuture<SendResult<String, String>> future;
         String message;
 
