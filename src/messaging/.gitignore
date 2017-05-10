@@ -3,4 +3,5 @@ target/
 .project
 .settings/
 *.pom
+serialization.txt
 reports/
