@@ -51,6 +51,8 @@ public class TopoSlug {
             return sb.toString();
         }
     }
+
+
     /* Create an abbreviated endpoint - minimize based on real values, vs NULL values */
     private static final void toAbbrString(StringBuilder sb, LinkEndpoint ep){
         if (ep != null) {

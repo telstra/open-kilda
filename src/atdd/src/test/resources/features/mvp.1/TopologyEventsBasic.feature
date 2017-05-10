@@ -6,7 +6,6 @@ Feature: Basic Topology Events
 
   The events should be propagated to the Topology Engine and they should stop link checks.
 
-  @MVP1
   Scenario: Link is Dropped
 
     Given a clean controller
@@ -17,7 +16,6 @@ Feature: Basic Topology Events
     Then the link will have no health checks
     And the link disappears from the topology engine.
 
-  @MVP1
   Scenario: Link is Added
 
   This scenario will test link up events after the initial discovery period.
@@ -42,7 +40,6 @@ Feature: Basic Topology Events
     And the links disappear from the topology engine.
     And the switch disappears from the topology engine.
 
-  @MVP1
   Scenario: Switch is Added
 
     This scenario will test switch up events after the initial discovery period.

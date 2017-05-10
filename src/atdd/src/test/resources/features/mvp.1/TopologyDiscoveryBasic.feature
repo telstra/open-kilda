@@ -11,30 +11,27 @@ Feature: Basic Topology Discovery
     Verify topology discovery happens within acceptable time lengths.
     Initial assumption is that discovery time is non-linear; e.g. logarithmic.
 
-    Given a new controller
+    Given a clean controller
     And a random linear topology of <num> switches
     When the controller learns the topology
     Then the controller should converge within <discovery_time> milliseconds
 
     Examples:
       | num | discovery_time |
-      |  10 |          30000 |
-      |  50 |         120000 |
-      | 100 |         240000 |
+      |  10 |          25000 |
+      |  20 |          25000 |
 
 
-  @MVP1
   Scenario Outline: Full-mesh Network Discovery Time
 
     Verify full mesh discovery time is acceptable
 
-    Given a new controller
-    And a random full-mesh topology of <num> switches
+    Given a clean controller
+    And a random tree topology with depth of <depth> and fanout of <fanout>
     When the controller learns the topology
     Then the controller should converge within <discovery_time> milliseconds
 
     Examples:
-      |    num | discovery_time |
-      |     10 |          40000 |
-      |     50 |         150000 |
-      |    100 |         450000 |
+      |  depth | fanout | discovery_time |
+      |      3 |      4 |          30000 |
+      |      4 |      5 |          30000 |

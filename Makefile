@@ -25,7 +25,12 @@ clean-test:
 	docker-compose rm -fv
 	docker volume list -q | grep kilda | xargs docker volume rm
 
-acceptance:
+# NB: To override the default (localhost) kilda location, you can make a call like this:
+#		cd src/atdd && \
+#		mvn "-Dtest=org.bitbucket.openkilda.atdd.*" \
+#			-DargLine="-Dkilda.host=127.0.0.1" \
+#			test
+atdd:
 	cd src/atdd && mvn "-Dtest=org.bitbucket.openkilda.atdd.*" test
 
 smoke:

@@ -18,7 +18,7 @@ public class TopologyHelp {
     public static boolean DeleteMininetTopology(String mini_ip, String mini_port){
         long current = System.currentTimeMillis();
         Client client = ClientBuilder.newClient(new ClientConfig());
-        Response result = client.target(mini_ip + ":" + mini_port).path("/cleanup")
+        Response result = client.target("http://"+mini_ip + ":" + mini_port).path("/cleanup")
                 .request(MediaType.APPLICATION_JSON)
                 .post(null);
 
@@ -30,7 +30,7 @@ public class TopologyHelp {
     }
 
     public static boolean DeleteMininetTopology() {
-        return DeleteMininetTopology("http://localhost","38080");
+        return DeleteMininetTopology("localhost","38080");
     }
 
     /**
@@ -57,7 +57,7 @@ public class TopologyHelp {
     public static boolean TestMininetCreate(String json){
         long current = System.currentTimeMillis();
         Client client = ClientBuilder.newClient(new ClientConfig());
-        Response result = client.target("http://localhost:38080").path("/topo_speed_test_up")
+        Response result = client.target("http://localhost:38080").path("/create_random_linear_topology")
                 .request(MediaType.APPLICATION_JSON)
                 .post(Entity.entity(json,MediaType.APPLICATION_JSON));
 
@@ -93,11 +93,11 @@ public class TopologyHelp {
      *
      * @return The JSON document of the Topology from the Topology Engine
      */
-    public static String ClearTopology(){
+    public static String ClearTopology(String endpoint){
 
         Client client = ClientBuilder.newClient(new ClientConfig());
 
-        String result = client.target("http://localhost:80").path("/api/v1/topology/clear")
+        String result = client.target("http://"+endpoint+":80").path("/api/v1/topology/clear")
                 .request(MediaType.TEXT_PLAIN_TYPE)
                 .get(String.class);
 
@@ -113,6 +113,6 @@ public class TopologyHelp {
 //        TopologyHelp.CreateTopology(doc);
 
         System.out.println("GetTopology(): = " + TopologyHelp.GetTopology());
-        System.out.println("ClearTopology(): = " + TopologyHelp.ClearTopology());
+        System.out.println("ClearTopology(): = " + TopologyHelp.ClearTopology("localhost"));
     }
 }

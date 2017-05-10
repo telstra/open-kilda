@@ -33,7 +33,7 @@ primary configuration class.
 This is useful if you want to run the acceptance test against a separate server
 (e.g. not local):
 
-    mvn -DargLine="-Dkilda.ip=1.2.3.4" test
+    mvn -DargLine="-Dkilda.host=1.2.3.4" test
 
 ## REFERENCE
 

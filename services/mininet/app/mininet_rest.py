@@ -275,8 +275,12 @@ def create_topology():
                        'links': list_links()})
 
 
-
-@post('/topo_speed_test_up')
+#
+# Create a linear topology with random links between the switches.
+# - create N switches
+# - create a random set of M links amongst the switches
+#
+@post('/create_random_linear_topology')
 def create_topology():
     _switch_threads=[]
     _link_threads=[]

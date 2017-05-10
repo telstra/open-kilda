@@ -21,23 +21,6 @@ public class TopologyEventsBasicTest {
      */
     public String kildaEndpoint = "127.0.0.1";
 
-    /**
-     * This code will make sure there aren't any topologies:
-     * 0) drop workflows (ie storm topologies)
-     * 1) delete things in mininet
-     * 2) delete things in topology engine (and anywhere else)
-     * 3) verify everything is gone
-     * 4) bring up workflows again.
-     */
-    @Given("^a clean controller$")
-    public void a_clean_controller() throws Throwable {
-        // Write code here that turns the phrase above into concrete actions
-        String kildaEndpoint = System.getProperty("kilda.ip","127.0.0.1");
-        System.out.println("kildaEndpoint = " + kildaEndpoint);
-
-        throw new PendingException();
-    }
-
     @When("^multiple links exist between all switches$")
     public void multiple_links_exist_between_all_switches() throws Throwable {
         // Write code here that turns the phrase above into concrete actions

@@ -12,6 +12,7 @@ import static org.junit.Assert.assertEquals;
  * Created by carmine on 3/2/17.
  */
 public class TopologyEngineSmokeTest  {
+    public static final String defaultHost = "localhost";
 
     @Test
     /**
@@ -21,7 +22,7 @@ public class TopologyEngineSmokeTest  {
      *      - ```match (n) detach delete n```
      */
     public void testServiceUp(){
-        String entity = TopologyHelp.ClearTopology();
+        String entity = TopologyHelp.ClearTopology(defaultHost);
         assertEquals("Default, initial, response from TopologyEngine", "{\"nodes\": []}",entity);
     }
 

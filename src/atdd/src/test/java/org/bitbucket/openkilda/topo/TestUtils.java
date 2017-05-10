@@ -6,10 +6,13 @@ import com.google.common.util.concurrent.Uninterruptibles;
 
 import java.io.IOException;
 import java.net.URL;
-import java.util.concurrent.ConcurrentMap;
+import java.util.Arrays;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /**
@@ -29,8 +32,41 @@ public class TestUtils {
         assertEquals("TOPOLOGY DISCOVERY: The number of LINKS don't match"
                 ,expected.getLinks().keySet().size()
                 , actual.getLinks().keySet().size());
-        assertEquals("TOPOLOGY DISCOVERY: The IDs of Switches and/or Links don't match"
-                , expected, actual);
+        assertEquals("TOPOLOGY DISCOVERY: The IDs of SWITCHES don't match"
+                , toUpper(expected.getSwitches().keySet()), toUpper(actual.getSwitches().keySet()));
+        simpleLinkComparison(expected.getLinks().keySet(), actual.getLinks().keySet());
+    }
+
+    /* ensure everything is uppercase .. useful for testing intent .. would prefer exactness */
+    private static Set<String> toUpper(Set<String> ss){
+        Set<String> result = new TreeSet<>();
+        for(String s : ss){
+            result.add(s.toUpperCase());
+        }
+        return result;
+    }
+
+    private static Set<String> toUpperSubstring(Set<String> ss, int start, int end){
+        Set<String> result = new TreeSet<>();
+        // break apart src->dst into src and dst, truncate each, then reassemble.
+        for(String s : ss){
+            String[] trunc = s.toUpperCase().split(TopoSlug.EP_DELIM);
+            trunc[0] = trunc[0].substring(start,end);
+            trunc[1] = trunc[1].substring(start,end);
+            result.add(trunc[0]+TopoSlug.EP_DELIM+trunc[1]);
+        }
+        return result;
+    }
+
+
+    /** this method will ignore case and ignore port / queue information, if it exists */
+    private static void simpleLinkComparison(Set<String> expected, Set<String> actual){
+        // TODO: remove this comparison once port/queue info is used universally
+        String[] s1 = toUpperSubstring(expected,0,23).toArray(new String[expected.size()]);   // upper case and sorted
+        String[] s2 = toUpperSubstring(actual,0,23).toArray(new String[actual.size()]);       // upper case and sorted
+        for (int i = 0; i < s1.length; i++) {
+            assertEquals(String.format("Link IDs - test failed[%d]: %s,%s", i, s1[i], s2[i]), s1[i],s2[i]);
+        }
     }
 
     public static String createMininetTopoFromFile(URL url) throws IOException {
@@ -73,6 +109,7 @@ public class TestUtils {
             long numLinks = tTE.getLinks().keySet().size();
 
             System.out.print("(" + numSwitches + "," + numLinks + ") ");
+            System.out.print("of (" + expectedSwitches + "," + expectedLinks + ") .. ");
             System.out.flush();
 
             if (numSwitches != expectedSwitches){
@@ -96,14 +133,25 @@ public class TestUtils {
         return tTE;
     }
 
+
+    /**
+     * Default behavior - hit localhost
+     */
     public static void clearEverything(){
-        TopologyHelp.DeleteMininetTopology();
+        clearEverything("localhost");
+    }
+
+    /**
+     * @param endpoint the kilda endpoint to clear
+     */
+    public static void clearEverything(String endpoint){
+        TopologyHelp.DeleteMininetTopology(endpoint,"38080");
 
         // verify it is empty
-        String entity = TopologyHelp.ClearTopology();
+        String entity = TopologyHelp.ClearTopology(endpoint);
         assertEquals("Default, initial, response from TopologyEngine", "{\"nodes\": []}",entity);
 
-        Uninterruptibles.sleepUninterruptibly(1, TimeUnit.SECONDS);
+        Uninterruptibles.sleepUninterruptibly(3, TimeUnit.SECONDS);
     }
 
     /**
