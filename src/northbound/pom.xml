@@ -29,6 +29,7 @@
         <junit.version>4.12</junit.version>
         <surefire.version>2.20</surefire.version>
         <jacoco.version>0.7.9</jacoco.version>
+        <javadoc.version>2.10.4</javadoc.version>
     </properties>
 
     <parent>
@@ -112,6 +113,10 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
         </dependency>
     </dependencies>
 
@@ -200,6 +205,17 @@
                         </execution>
                     </executions>
                 </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-javadoc-plugin</artifactId>
+                    <version>${javadoc.version}</version>
+                    <configuration>
+                        <show>private</show>
+                        <nohelp>true</nohelp>
+                        <links>http://docs.spring.io/spring-kafka/api/</links>
+                    </configuration>
+                </plugin>
+
             </plugins>
         </pluginManagement>
 
@@ -224,6 +240,10 @@
                 <groupId>com.webcohesion.enunciate</groupId>
                 <artifactId>enunciate-maven-plugin</artifactId>
                 <version>${enunciate.version}</version>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
             </plugin>
         </plugins>
 

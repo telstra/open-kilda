@@ -2,6 +2,7 @@ package org.bitbucket.openkilda.northbound.controller;
 
 import org.bitbucket.openkilda.northbound.config.MessageConsumerConfig;
 import org.bitbucket.openkilda.northbound.config.MessageProducerConfig;
+import org.bitbucket.openkilda.northbound.config.SecurityConfig;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -12,6 +13,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
+import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.test.context.TestPropertySource;
 
 import java.util.HashMap;
@@ -21,8 +24,9 @@ import java.util.Map;
  * The Test configuration.
  */
 @Configuration
+@EnableWebSecurity
 @TestPropertySource("classpath:northbound.properties")
-@Import({MessageConsumerConfig.class, MessageProducerConfig.class})
+@Import({MessageConsumerConfig.class, MessageProducerConfig.class, SecurityConfig.class})
 public class TestConfig {
     /**
      * Kafka group id.
@@ -30,6 +34,13 @@ public class TestConfig {
     @Value("${kafka.groupid}")
     private String groupId;
 
+    /**
+     * Kafka consumer configuration bean.
+     * This {@link Map} is used by {@link MessageConsumerConfig#consumerFactory}.
+     * Overrides {@link MessageConsumerConfig#consumerConfigs()}.
+     *
+     * @return kafka properties
+     */
     @Primary
     @Bean
     public Map<String, Object> consumerConfigs() {
@@ -43,6 +54,13 @@ public class TestConfig {
         return props;
     }
 
+    /**
+     * Kafka producer config bean.
+     * This {@link Map} is used by {@link MessageProducerConfig#producerFactory}.
+     * Overrides {@link MessageProducerConfig#producerConfigs()}.
+     *
+     * @return kafka properties bean
+     */
     @Primary
     @Bean
     public Map<String, Object> producerConfigs() {

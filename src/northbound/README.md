@@ -26,6 +26,8 @@ These values could also be changed in ```src/main/resources/northbound.propertie
 
 ## Documentation
 
+### REST API
+
 REST API documentation could be generated via __mvn clean package__ command.
 
 * generated site package is stored in ```target/docs/apidocs/``` folder
@@ -48,3 +50,9 @@ It could be opened in any browser (```target/jacoco/index.html```).
 Junit reports could be used by external services (CI/CD for example) to represent test results.
 
 Generated coverage data from the ```target/coverage-reports``` directory could also be opened in IDE to show the coverage.
+
+
+### Javadoc
+
+Javadoc mvn documentation could be generated via __mvn clean javadoc:javadoc__ command.
+Generated site-package is located under ```target/site/apidocs/``` directory.

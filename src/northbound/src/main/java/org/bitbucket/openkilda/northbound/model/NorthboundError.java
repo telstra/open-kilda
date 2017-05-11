@@ -77,7 +77,6 @@ public class NorthboundError implements Serializable {
      * @param description   the error description
      * @param exception     the caused error exception name
      */
-    @JsonCreator
     public NorthboundError(final String correlationId,
                            final long timestamp,
                            final HttpStatus status,
@@ -87,6 +86,31 @@ public class NorthboundError implements Serializable {
         this.timestamp = timestamp;
         this.code = status.value();
         this.message = status.getReasonPhrase();
+        this.description = description;
+        this.exception = exception;
+    }
+
+    /**
+     * Constructs the error.
+     *
+     * @param correlationId the failed request correlation id
+     * @param timestamp     the error timestamp
+     * @param code          the error HttpStatus code
+     * @param message       the error HttpStatus reason phrase
+     * @param description   the error description
+     * @param exception     the caused error exception name
+     */
+    @JsonCreator
+    public NorthboundError(@JsonProperty(CORRELATION_ID) final String correlationId,
+                           @JsonProperty(TIMESTAMP) final long timestamp,
+                           @JsonProperty("error-code") final long code,
+                           @JsonProperty("error-message") final String message,
+                           @JsonProperty("error-description") final String description,
+                           @JsonProperty("error-exception") final String exception) {
+        this.correlationId = correlationId;
+        this.timestamp = timestamp;
+        this.code = code;
+        this.message = message;
         this.description = description;
         this.exception = exception;
     }

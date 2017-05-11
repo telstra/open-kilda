@@ -31,6 +31,7 @@ public class MessageProducerConfig {
 
     /**
      * Kafka producer config bean.
+     * This {@link Map} is used by {@link MessageProducerConfig#producerFactory}.
      *
      * @return kafka properties bean
      */
@@ -50,6 +51,9 @@ public class MessageProducerConfig {
 
     /**
      * Kafka producer factory bean.
+     * The strategy to produce a {@link org.apache.kafka.clients.producer.Producer} instance
+     * with {@link MessageProducerConfig#producerConfigs}
+     * on each {@link org.springframework.kafka.core.DefaultKafkaProducerFactory#createProducer} invocation.
      *
      * @return kafka producer factory
      */
@@ -60,6 +64,7 @@ public class MessageProducerConfig {
 
     /**
      * Kafka template bean.
+     * Wraps {@link org.apache.kafka.clients.producer.KafkaProducer}.
      *
      * @return kafka template
      */
@@ -70,6 +75,9 @@ public class MessageProducerConfig {
 
     /**
      * Kafka message producer bean.
+     * Instance of {@link org.bitbucket.openkilda.northbound.messaging.kafka.KafkaMessageProducer}
+     * contains {@link org.springframework.kafka.core.KafkaTemplate}
+     * to be used to send messages.
      *
      * @return kafka message producer
      */

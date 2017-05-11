@@ -14,6 +14,8 @@ import org.springframework.context.annotation.Import;
 
 /**
  * The Application configuration.
+ * This configuration is used for application run.
+ * It includes configs of different components via {@link org.springframework.context.annotation.Import} annotation.
  */
 @Configuration
 @EnableAutoConfiguration
