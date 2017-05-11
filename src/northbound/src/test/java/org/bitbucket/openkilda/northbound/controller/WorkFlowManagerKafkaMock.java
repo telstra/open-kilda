@@ -15,6 +15,9 @@ import org.bitbucket.openkilda.messaging.command.flow.FlowStatusRequest;
 import org.bitbucket.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.bitbucket.openkilda.messaging.command.flow.FlowsGetRequest;
 import org.bitbucket.openkilda.messaging.command.flow.FlowsStatusRequest;
+import org.bitbucket.openkilda.messaging.error.ErrorData;
+import org.bitbucket.openkilda.messaging.error.ErrorMessage;
+import org.bitbucket.openkilda.messaging.error.ErrorType;
 import org.bitbucket.openkilda.messaging.info.InfoMessage;
 import org.bitbucket.openkilda.messaging.info.flow.FlowPathResponse;
 import org.bitbucket.openkilda.messaging.info.flow.FlowResponse;
@@ -42,29 +45,47 @@ import org.springframework.util.concurrent.ListenableFutureCallback;
 
 import java.io.IOException;
 
+/**
+ * Spring component which mocks WorkFlow Manager.
+ * This instance listens kafka ingoing requests and sends back appropriate kafka responses.
+ * Response type choice is based on request type.
+ */
 @Component
 @PropertySource("classpath:northbound.properties")
 public class WorkFlowManagerKafkaMock {
     static final String FLOW_ID = "test-flow";
-    private static FlowEndpointPayload flowEndpoint = new FlowEndpointPayload(FLOW_ID, 1, 1);
-    static FlowPayload flow = new FlowPayload(FLOW_ID, flowEndpoint, flowEndpoint, 10000, "", "");
-    private static final ObjectMapper objectMapper = new ObjectMapper();
-    private static final FlowStatusResponsePayload flowStatus = new FlowStatusResponsePayload(FLOW_ID, INSTALLATION);
-    private static FlowStatusResponse flowStatusResponse = new FlowStatusResponse(flowStatus);
-    private static FlowResponse flowResponse = new FlowResponse(flow);
-    private static FlowsResponse flowsResponse = new FlowsResponse(new FlowsResponsePayload(singletonList(flow)));
-    private static FlowsStatusResponse flowsStatusResponse =
-            new FlowsStatusResponse(new FlowsStatusResponsePayload(singletonList(flowStatus)));
-    private static FlowPathResponse flowPathResponse =
-            new FlowPathResponse(new FlowPathResponsePayload(FLOW_ID, singletonList(FLOW_ID)));
+    static final String ERROR_FLOW_ID = "error-flow";
+    static final FlowEndpointPayload flowEndpoint = new FlowEndpointPayload(FLOW_ID, 1, 1);
+    static final FlowPayload flow = new FlowPayload(FLOW_ID, flowEndpoint, flowEndpoint, 10000, "", "");
+    static final FlowStatusResponsePayload flowStatus = new FlowStatusResponsePayload(FLOW_ID, INSTALLATION);
+    static final FlowsStatusResponsePayload flowsStatus = new FlowsStatusResponsePayload(singletonList(flowStatus));
+    static final FlowsResponsePayload flows = new FlowsResponsePayload(singletonList(flow));
+    static final FlowPathResponsePayload flowPath = new FlowPathResponsePayload(FLOW_ID, singletonList(FLOW_ID));
+    private static final FlowResponse flowResponse = new FlowResponse(flow);
+    private static final FlowsResponse flowsResponse = new FlowsResponse(flows);
+    private static final FlowPathResponse flowPathResponse = new FlowPathResponse(flowPath);
+    private static final FlowsStatusResponse flowsStatusResponse = new FlowsStatusResponse(flowsStatus);
+    private static final FlowStatusResponse flowStatusResponse = new FlowStatusResponse(flowStatus);
     private static final Logger logger = LoggerFactory.getLogger(WorkFlowManagerKafkaMock.class);
+    private static final ObjectMapper objectMapper = new ObjectMapper();
 
+    /**
+     * Spring KafkaProducer wrapper.
+     */
     @Autowired
     private KafkaTemplate<String, String> kafkaTemplate;
 
+    /**
+     * Kafka outgoing topic.
+     */
     @Value("${kafka.topic.wfm.nb}")
     private String topic;
 
+    /**
+     * Spring KafkaConsumer wrapper.
+     *
+     * @param record received kafka message
+     */
     @KafkaListener(topics = "${kafka.topic.nb.wfm}")
     public void receive(final String record) {
         logger.debug("Message received: {}", record);
@@ -88,8 +109,13 @@ public class WorkFlowManagerKafkaMock {
         }
     }
 
-    private InfoMessage formatResponse(final CommandData data) {
-
+    /**
+     * Chooses response by request.
+     *
+     * @param data received from kafka CommandData message payload
+     * @return InfoMassage to be send as response payload
+     */
+    private Message formatResponse(final CommandData data) {
         if (data instanceof FlowCreateRequest) {
             return new InfoMessage(flowResponse, 0, DEFAULT_CORRELATION_ID);
         } else if (data instanceof FlowDeleteRequest) {
@@ -97,15 +123,19 @@ public class WorkFlowManagerKafkaMock {
         } else if (data instanceof FlowUpdateRequest) {
             return new InfoMessage(flowResponse, 0, DEFAULT_CORRELATION_ID);
         } else if (data instanceof FlowGetRequest) {
-            return new InfoMessage(flowResponse, 0, DEFAULT_CORRELATION_ID);
+            if (ERROR_FLOW_ID.equals(((FlowGetRequest) data).getPayload().getId())) {
+                return new ErrorMessage(new ErrorData(0, null, ErrorType.NOT_FOUND, ""),
+                        0, DEFAULT_CORRELATION_ID);
+            } else {
+                return new InfoMessage(flowResponse, 0, DEFAULT_CORRELATION_ID);
+            }
         } else if (data instanceof FlowsGetRequest) {
             return new InfoMessage(flowsResponse, 0, DEFAULT_CORRELATION_ID);
         } else if (data instanceof FlowStatusRequest) {
             return new InfoMessage(flowStatusResponse, 0, DEFAULT_CORRELATION_ID);
         } else if (data instanceof FlowsStatusRequest) {
             return new InfoMessage(flowsStatusResponse, 0, DEFAULT_CORRELATION_ID);
-        }
-        if (data instanceof FlowPathRequest) {
+        } else if (data instanceof FlowPathRequest) {
             return new InfoMessage(flowPathResponse, 0, DEFAULT_CORRELATION_ID);
         } else {
             return null;

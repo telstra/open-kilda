@@ -40,7 +40,7 @@ public interface BasicService {
                 ErrorData error = ((ErrorMessage) message).getData();
                 logger.error("Response message is error: {}={}, command={}, error={}",
                         CORRELATION_ID, correlationId, commandMessage, error);
-                throw new NorthboundException(INTERNAL_ERROR, message.getTimestamp());
+                throw new NorthboundException(error.getErrorDescription(), message.getTimestamp());
             } else if (message instanceof InfoMessage) {
                 InfoMessage info = (InfoMessage) message;
                 data = info.getData();
