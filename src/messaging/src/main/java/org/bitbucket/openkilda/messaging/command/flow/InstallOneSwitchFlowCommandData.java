@@ -23,7 +23,6 @@ import java.util.Objects;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
         "command",
-        "destination",
         "flow_name",
         "switch_id",
         "input_port",
@@ -69,12 +68,6 @@ public class InstallOneSwitchFlowCommandData extends AbstractInstallFlowCommandD
      * Optional output vlan id value.
      */
     private Number outputVlanId;
-
-    /**
-     * Default constructor.
-     */
-    public InstallOneSwitchFlowCommandData() {
-    }
 
     /**
      * Instance constructor.

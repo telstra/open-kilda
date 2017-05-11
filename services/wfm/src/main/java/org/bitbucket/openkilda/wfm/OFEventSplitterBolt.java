@@ -41,9 +41,9 @@ public class OFEventSplitterBolt extends BaseRichBolt {
         try {
             Map<String,?> root = OFEMessageUtils.fromJson(json);
             String type = ((String) root.get("type")).toLowerCase();
-            Map<String,?> data = (Map<String,?>) root.get("data");
+            Map<String,?> data = (Map<String,?>) root.get("payload");
             // TODO: data should be converted back to json string .. or use json serializer
-            Values dataVal = new Values("data", OFEMessageUtils.toJson(data));
+            Values dataVal = new Values("payload", OFEMessageUtils.toJson(data));
             switch (type) {
                 case JSON_INFO:
                     _collector.emit(INFO,tuple,dataVal);
@@ -53,7 +53,7 @@ public class OFEventSplitterBolt extends BaseRichBolt {
                     break;
                 default:
                     // NB: we'll push the original message onto the CONFUSED channel
-                    _collector.emit(OTHER,tuple, new Values("data", json));
+                    _collector.emit(OTHER,tuple, new Values("payload", json));
                     logger.warn("WARNING: Unknown Message Type: " + type);
             }
         } catch (IOException e) {

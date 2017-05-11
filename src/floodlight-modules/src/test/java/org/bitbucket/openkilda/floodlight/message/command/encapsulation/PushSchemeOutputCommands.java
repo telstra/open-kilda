@@ -8,7 +8,7 @@ import org.projectfloodlight.openflow.types.*;
 import java.util.Arrays;
 
 import static java.util.Collections.singletonList;
-import static org.bitbucket.openkilda.floodlight.message.command.Utils.ETH_TYPE;
+import static org.bitbucket.openkilda.messaging.Utils.ETH_TYPE;
 
 /**
  * Represent OF commands.

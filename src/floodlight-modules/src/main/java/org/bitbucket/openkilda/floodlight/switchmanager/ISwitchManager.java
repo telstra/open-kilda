@@ -2,6 +2,7 @@ package org.bitbucket.openkilda.floodlight.switchmanager;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import org.bitbucket.openkilda.messaging.payload.response.OutputVlanType;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
 import org.projectfloodlight.openflow.protocol.OFMeterConfigStatsReply;
 import org.projectfloodlight.openflow.protocol.OFPortStatsReply;
@@ -27,52 +28,52 @@ public interface ISwitchManager extends IFloodlightService {
      * installIngressFlow - Installs an flow on ingress switch.
      *
      * @param dpid - datapathId of the switch
-     * @param cookie - flow cookie
+     * @param flowName - flow name
      * @param inputPort - port to expect the packet on
      * @param outputPort - port to forward the packet out
      * @param inputVlanId - input vlan to match on, 0 means not to match on vlan
      * @param transitVlanId - vlan to add before outputing on outputPort
      */
-    boolean installIngressFlow(DatapathId dpid, String cookie, int inputPort, int outputPort, int inputVlanId,
-                            int transitVlanId, OutputVlanType outputVlanType, long meterid);
+    boolean installIngressFlow(DatapathId dpid, String flowName, int inputPort, int outputPort, int inputVlanId,
+                               int transitVlanId, OutputVlanType outputVlanType, long meterid);
 
     /**
      * installEgressFlow - Install flow on egress swtich.
      *
      * @param dpid - datapathId of the switch
-     * @param cookie - flow cookie
+     * @param flowName - flow name
      * @param inputPort - port to expect the packet on
      * @param outputPort - port to forward the packet out
      * @param transitVlanId - vlan to match on the ingressPort
      * @param outputVlanId - set vlan on packet before forwarding via outputPort; 0 means not to set
      * @param outputVlanType - type of action to apply to the outputVlanId if greater than 0
      */
-    boolean installEgressFlow(DatapathId dpid, String cookie, int inputPort, int outputPort, int transitVlanId,
+    boolean installEgressFlow(DatapathId dpid, String flowName, int inputPort, int outputPort, int transitVlanId,
                            int outputVlanId, OutputVlanType outputVlanType);
 
     /**
      * installTransitFlow - install flow on a transit switch.
      *
      * @param dpid - datapathId of the switch
-     * @param cookie - flow cookie
+     * @param flowName - flow name
      * @param inputPort - port to expect packet on
      * @param outputPort - port to forward packet out
      * @param transitVlanId - vlan to match on inputPort
      */
-    boolean installTransitFlow(DatapathId dpid, String cookie, int inputPort, int outputPort, int transitVlanId);
+    boolean installTransitFlow(DatapathId dpid, String flowName, int inputPort, int outputPort, int transitVlanId);
 
     /**
      * installOneSwitchFlow - install flow through one switch.
      *
      * @param dpid - datapathId of the switch
-     * @param cookie - flow cookie
+     * @param flowName - flow name
      * @param inputPort - port to expect packet on
      * @param outputPort - port to forward packet out
      * @param inputVlanId - vlan to match on inputPort
      * @param outputVlanId - set vlan on packet before forwarding via outputPort; 0 means not to set
      * @param outputVlanType - type of action to apply to the outputVlanId if greater than 0
      */
-    boolean installOneSwitchFlow(DatapathId dpid, String cookie, int inputPort, int outputPort, int inputVlanId, int outputVlanId,
+    boolean installOneSwitchFlow(DatapathId dpid, String flowName, int inputPort, int outputPort, int inputVlanId, int outputVlanId,
                               OutputVlanType outputVlanType, long meterId);
 
     /**
@@ -100,9 +101,9 @@ public interface ISwitchManager extends IFloodlightService {
      * Deletes the flow from the switch
      *
      * @param dpid datapath ID of the switch
-     * @param cookie flow cookie
+     * @param flowName flow name
      */
-    boolean deleteFlow(DatapathId dpid, String cookie);
+    boolean deleteFlow(DatapathId dpid, String flowName);
 
     /**
      * Deletes the meter from the switch

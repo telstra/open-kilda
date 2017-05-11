@@ -12,7 +12,7 @@ public class Constants {
     /**
      * The correlation ID header name.
      */
-    public static final String CORRELATION_ID = "correlation-id";
+    public static final String CORRELATION_ID = "correlation_id";
 
     /**
      * The default correlation ID value.

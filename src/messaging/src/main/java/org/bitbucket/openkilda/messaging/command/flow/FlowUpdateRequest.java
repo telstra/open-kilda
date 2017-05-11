@@ -35,12 +35,6 @@ public class FlowUpdateRequest extends CommandData {
     protected FlowPayload payload;
 
     /**
-     * Default constructor.
-     */
-    public FlowUpdateRequest() {
-    }
-
-    /**
      * Constructs instance.
      *
      * @param   payload  request payload

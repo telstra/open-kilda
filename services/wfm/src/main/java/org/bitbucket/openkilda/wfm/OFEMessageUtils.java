@@ -14,7 +14,7 @@ import java.util.Map;
  {
  "type": "INFO",
  "timestamp": 1489980143,
- "data": {
+ "payload": {
      "message_type": "switch",
      "switch_id": "0x0000000000000001",
      "state": "ACTIVATED | ADDED | CHANGE | DEACTIVATED | REMOVED"
@@ -24,7 +24,7 @@ import java.util.Map;
  {
  "type": "INFO",
  "timestamp": 1489980143,
- "data": {
+ "payload": {
      "message_type": "port",
      "switch_id": "0x0000000000000001",
      "state": "UP | DOWN | .. "
@@ -33,7 +33,7 @@ import java.util.Map;
      }
  }
 
- {"type": "INFO", "data": {"message_type": "switch", "switch_id": "0x0000000000000001", "state": "ACTIVATED"}}
+ {"type": "INFO", "payload": {"message_type": "switch", "switch_id": "0x0000000000000001", "state": "ACTIVATED"}}
  *
  */
 public class OFEMessageUtils {
@@ -69,7 +69,7 @@ public class OFEMessageUtils {
         StringBuffer sb = new StringBuffer("{'type': 'INFO', ");
         sb.append("'timestamp': ").append(System.currentTimeMillis()).append(", ");
         String type = (isSwitch) ? "switch" : "port";
-        sb.append("'data': ").append(createDataMessage(type,state,switchID,portID));
+        sb.append("'payload': ").append(createDataMessage(type,state,switchID,portID));
         sb.append("}");
         return sb.toString().replace("'","\"");
     }
@@ -83,7 +83,7 @@ public class OFEMessageUtils {
     }
 
     /**
-     * @return the {"data":{}} portion of a Kilda message type
+     * @return the {"payload":{}} portion of a Kilda message type
      */
     public static String createDataMessage(String type, String state, String switchId, String
             portId){
@@ -112,7 +112,7 @@ public class OFEMessageUtils {
     public static  Map<String,?> getData(String json) throws IOException {
         Map<String,?> root = OFEMessageUtils.fromJson(json);
         if (root.containsKey("type")){
-            root = (Map<String, ?>) root.get("data");
+            root = (Map<String, ?>) root.get("payload");
         }
         return root;
     }
@@ -128,7 +128,7 @@ public class OFEMessageUtils {
     public static String createIslDiscovery(String switchID, String portID){
         StringBuffer sb = new StringBuffer("{\"type\": \"COMMAND\"");
         sb.append(", \"timestamp\": ").append(System.currentTimeMillis());
-        sb.append(", \"data\": ");
+        sb.append(", \"payload\": ");
             sb.append("{\"destination\": \"CONTROLLER\"");
             sb.append(", \"command\": \"discover_isl\"");
             sb.append(", \"switch_id\": \"").append(switchID).append("\"");

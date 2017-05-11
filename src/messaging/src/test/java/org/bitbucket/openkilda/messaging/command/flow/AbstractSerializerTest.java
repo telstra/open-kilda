@@ -77,13 +77,11 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
                 TRANSIT_VLAN_ID, OUTPUT_VLAN_ID, OUTPUT_VLAN_TYPE);
         System.out.println(data);
 
-        CommandMessage command = new CommandMessage();
-        command.setData(data);
+        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID);
         serialize(command);
 
         Message message = (Message) deserialize();
         assertTrue(message instanceof CommandMessage);
-        System.out.println(String.format("message type: %s", message.getType()));
 
         CommandMessage resultCommand = (CommandMessage) message;
         assertTrue(resultCommand.getData() instanceof InstallEgressFlowCommandData);
@@ -100,13 +98,11 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
                 INPUT_VLAN_ID, TRANSIT_VLAN_ID, OUTPUT_VLAN_TYPE, BANDWIDTH, METER_ID);
         System.out.println(data);
 
-        CommandMessage command = new CommandMessage();
-        command.setData(data);
+        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID);
         serialize(command);
 
         Message message = (Message) deserialize();
         assertTrue(message instanceof CommandMessage);
-        System.out.println(String.format("message type: %s", message.getType()));
 
         CommandMessage resultCommand = (CommandMessage) message;
         assertTrue(resultCommand.getData() instanceof InstallIngressFlowCommandData);
@@ -123,13 +119,11 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
                 TRANSIT_VLAN_ID);
         System.out.println(data);
 
-        CommandMessage command = new CommandMessage();
-        command.setData(data);
+        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID);
         serialize(command);
 
         Message message = (Message) deserialize();
         assertTrue(message instanceof CommandMessage);
-        System.out.println(String.format("message type: %s", message.getType()));
 
         CommandMessage resultCommand = (CommandMessage) message;
         assertTrue(resultCommand.getData() instanceof InstallTransitFlowCommandData);
@@ -146,13 +140,11 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
                 INPUT_VLAN_ID, OUTPUT_VLAN_ID, OUTPUT_VLAN_TYPE, BANDWIDTH, SOURCE_METER_ID, DESTINATION_METER_ID);
         System.out.println(data);
 
-        CommandMessage command = new CommandMessage();
-        command.setData(data);
+        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID);
         serialize(command);
 
         Message message = (Message) deserialize();
         assertTrue(message instanceof CommandMessage);
-        System.out.println(String.format("message type: %s", message.getType()));
 
         CommandMessage resultCommand = (CommandMessage) message;
         assertTrue(resultCommand.getData() instanceof InstallOneSwitchFlowCommandData);
@@ -168,13 +160,11 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         FlowCreateRequest data = new FlowCreateRequest(flow);
         System.out.println(data);
 
-        CommandMessage command = new CommandMessage();
-        command.setData(data);
+        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID);
         serialize(command);
 
         Message message = (Message) deserialize();
         assertTrue(message instanceof CommandMessage);
-        System.out.println(String.format("message type: %s", message.getType()));
 
         CommandMessage resultCommand = (CommandMessage) message;
         assertTrue(resultCommand.getData() instanceof FlowCreateRequest);
@@ -191,13 +181,11 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         FlowUpdateRequest data = new FlowUpdateRequest(flow);
         System.out.println(data);
 
-        CommandMessage command = new CommandMessage();
-        command.setData(data);
+        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID);
         serialize(command);
 
         Message message = (Message) deserialize();
         assertTrue(message instanceof CommandMessage);
-        System.out.println(String.format("message type: %s", message.getType()));
 
         CommandMessage resultCommand = (CommandMessage) message;
         assertTrue(resultCommand.getData() instanceof FlowUpdateRequest);
@@ -214,13 +202,11 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         FlowDeleteRequest data = new FlowDeleteRequest(flowId);
         System.out.println(data);
 
-        CommandMessage command = new CommandMessage();
-        command.setData(data);
+        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID);
         serialize(command);
 
         Message message = (Message) deserialize();
         assertTrue(message instanceof CommandMessage);
-        System.out.println(String.format("message type: %s", message.getType()));
 
         CommandMessage resultCommand = (CommandMessage) message;
         assertTrue(resultCommand.getData() instanceof FlowDeleteRequest);
@@ -237,13 +223,11 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         FlowGetRequest data = new FlowGetRequest(flowId);
         System.out.println(data);
 
-        CommandMessage command = new CommandMessage();
-        command.setData(data);
+        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID);
         serialize(command);
 
         Message message = (Message) deserialize();
         assertTrue(message instanceof CommandMessage);
-        System.out.println(String.format("message type: %s", message.getType()));
 
         CommandMessage resultCommand = (CommandMessage) message;
         assertTrue(resultCommand.getData() instanceof FlowGetRequest);
@@ -260,13 +244,11 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         FlowStatusRequest data = new FlowStatusRequest(flowId);
         System.out.println(data);
 
-        CommandMessage command = new CommandMessage();
-        command.setData(data);
+        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID);
         serialize(command);
 
         Message message = (Message) deserialize();
         assertTrue(message instanceof CommandMessage);
-        System.out.println(String.format("message type: %s", message.getType()));
 
         CommandMessage resultCommand = (CommandMessage) message;
         assertTrue(resultCommand.getData() instanceof FlowStatusRequest);
@@ -283,13 +265,11 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         FlowPathRequest data = new FlowPathRequest(flowId);
         System.out.println(data);
 
-        CommandMessage command = new CommandMessage();
-        command.setData(data);
+        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID);
         serialize(command);
 
         Message message = (Message) deserialize();
         assertTrue(message instanceof CommandMessage);
-        System.out.println(String.format("message type: %s", message.getType()));
 
         CommandMessage resultCommand = (CommandMessage) message;
         assertTrue(resultCommand.getData() instanceof FlowPathRequest);
@@ -306,13 +286,11 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         FlowsStatusRequest data = new FlowsStatusRequest(flowStatusRequest);
         System.out.println(data);
 
-        CommandMessage command = new CommandMessage();
-        command.setData(data);
+        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID);
         serialize(command);
 
         Message message = (Message) deserialize();
         assertTrue(message instanceof CommandMessage);
-        System.out.println(String.format("message type: %s", message.getType()));
 
         CommandMessage resultCommand = (CommandMessage) message;
         assertTrue(resultCommand.getData() instanceof FlowsStatusRequest);
@@ -329,13 +307,11 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         FlowsGetRequest data = new FlowsGetRequest(flowStatusRequest);
         System.out.println(data);
 
-        CommandMessage command = new CommandMessage();
-        command.setData(data);
+        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID);
         serialize(command);
 
         Message message = (Message) deserialize();
         assertTrue(message instanceof CommandMessage);
-        System.out.println(String.format("message type: %s", message.getType()));
 
         CommandMessage resultCommand = (CommandMessage) message;
         assertTrue(resultCommand.getData() instanceof FlowsGetRequest);
@@ -353,13 +329,11 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         FlowPathResponse data = new FlowPathResponse(payload);
         System.out.println(data);
 
-        InfoMessage info = new InfoMessage();
-        info.setData(data);
+        InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID);
         serialize(info);
 
         Message message = (Message) deserialize();
         assertTrue(message instanceof InfoMessage);
-        System.out.println(String.format("message type: %s", message.getType()));
 
         InfoMessage resultInfo = (InfoMessage) message;
         assertTrue(resultInfo.getData() instanceof FlowPathResponse);
@@ -376,13 +350,11 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         FlowStatusResponse data = new FlowStatusResponse(flowStatusResponse);
         System.out.println(data);
 
-        InfoMessage info = new InfoMessage();
-        info.setData(data);
+        InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID);
         serialize(info);
 
         Message message = (Message) deserialize();
         assertTrue(message instanceof InfoMessage);
-        System.out.println(String.format("message type: %s", message.getType()));
 
         InfoMessage resultInfo = (InfoMessage) message;
         assertTrue(resultInfo.getData() instanceof FlowStatusResponse);
@@ -400,13 +372,11 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         FlowsStatusResponse data = new FlowsStatusResponse(payload);
         System.out.println(data);
 
-        InfoMessage info = new InfoMessage();
-        info.setData(data);
+        InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID);
         serialize(info);
 
         Message message = (Message) deserialize();
         assertTrue(message instanceof InfoMessage);
-        System.out.println(String.format("message type: %s", message.getType()));
 
         InfoMessage resultInfo = (InfoMessage) message;
         assertTrue(resultInfo.getData() instanceof FlowsStatusResponse);
@@ -423,13 +393,11 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         FlowResponse data = new FlowResponse(flow);
         System.out.println(data);
 
-        InfoMessage info = new InfoMessage();
-        info.setData(data);
+        InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID);
         serialize(info);
 
         Message message = (Message) deserialize();
         assertTrue(message instanceof InfoMessage);
-        System.out.println(String.format("message type: %s", message.getType()));
 
         InfoMessage resultInfo = (InfoMessage) message;
         assertTrue(resultInfo.getData() instanceof FlowResponse);
@@ -447,13 +415,11 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         FlowsResponse data = new FlowsResponse(payload);
         System.out.println(data);
 
-        InfoMessage info = new InfoMessage();
-        info.setData(data);
+        InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID);
         serialize(info);
 
         Message message = (Message) deserialize();
         assertTrue(message instanceof InfoMessage);
-        System.out.println(String.format("message type: %s", message.getType()));
 
         InfoMessage resultInfo = (InfoMessage) message;
         assertTrue(resultInfo.getData() instanceof FlowsResponse);
@@ -471,13 +437,11 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         IslInfoData data = new IslInfoData(0, Collections.singletonList(payload));
         System.out.println(data);
 
-        InfoMessage info = new InfoMessage();
-        info.setData(data);
+        InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID);
         serialize(info);
 
         Message message = (Message) deserialize();
         assertTrue(message instanceof InfoMessage);
-        System.out.println(String.format("message type: %s", message.getType()));
 
         InfoMessage resultInfo = (InfoMessage) message;
         assertTrue(resultInfo.getData() instanceof IslInfoData);
@@ -494,13 +458,11 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         PathInfoData data = new PathInfoData();
         System.out.println(data);
 
-        InfoMessage info = new InfoMessage();
-        info.setData(data);
+        InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID);
         serialize(info);
 
         Message message = (Message) deserialize();
         assertTrue(message instanceof InfoMessage);
-        System.out.println(String.format("message type: %s", message.getType()));
 
         InfoMessage resultInfo = (InfoMessage) message;
         assertTrue(resultInfo.getData() instanceof PathInfoData);
@@ -516,13 +478,11 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         PortInfoData data = new PortInfoData(SWITCH_ID, INPUT_PORT, 0, PORT_CHANGE);
         System.out.println(data);
 
-        InfoMessage info = new InfoMessage();
-        info.setData(data);
+        InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID);
         serialize(info);
 
         Message message = (Message) deserialize();
         assertTrue(message instanceof InfoMessage);
-        System.out.println(String.format("message type: %s", message.getType()));
 
         InfoMessage resultInfo = (InfoMessage) message;
         assertTrue(resultInfo.getData() instanceof PortInfoData);
@@ -538,13 +498,11 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         SwitchInfoData data = new SwitchInfoData(SWITCH_ID, SWITCH_EVENT);
         System.out.println(data);
 
-        InfoMessage info = new InfoMessage();
-        info.setData(data);
+        InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID);
         serialize(info);
 
         Message message = (Message) deserialize();
         assertTrue(message instanceof InfoMessage);
-        System.out.println(String.format("message type: %s", message.getType()));
 
         InfoMessage resultInfo = (InfoMessage) message;
         assertTrue(resultInfo.getData() instanceof SwitchInfoData);
@@ -560,18 +518,17 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         ErrorData data = new ErrorData(1, null, ErrorType.AUTH_FAILED, "exception");
         System.out.println(data);
 
-        ErrorMessage info = new ErrorMessage();
+        ErrorMessage info = new ErrorMessage(data, System.currentTimeMillis(), CORRELATION_ID);
         info.setData(data);
         serialize(info);
 
         Message message = (Message) deserialize();
         assertTrue(message instanceof ErrorMessage);
-        System.out.println(String.format("message type: %s", message.getType()));
 
         ErrorMessage resultInfo = (ErrorMessage) message;
-        assertTrue(resultInfo.getData() instanceof ErrorData);
+        assertTrue(resultInfo.getData() != null);
 
-        ErrorData resultData = (ErrorData) resultInfo.getData();
+        ErrorData resultData = resultInfo.getData();
         System.out.println(resultData);
         assertEquals(data, resultData);
         assertEquals(data.hashCode(), resultData.hashCode());

@@ -1,4 +1,4 @@
-package org.bitbucket.openkilda.floodlight.message;
+package org.bitbucket.openkilda.messaging;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 

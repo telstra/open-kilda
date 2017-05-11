@@ -78,7 +78,7 @@ public class OFEPortBolt
                 }
             }
             // NB: The KafkaBolt will pickup the first 2 fields, and the LinkBolt the last two
-            Values dataVal = new Values("data", json, switchID, portID, updown);
+            Values dataVal = new Values("payload", json, switchID, portID, updown);
             collector.emit(outputStreamId,tuple,dataVal);
         } catch (IOException e) {
             e.printStackTrace();
