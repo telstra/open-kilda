@@ -37,6 +37,8 @@ import java.util.function.Function;
 import static java.util.stream.Collectors.toList;
 import java.util.function.Function;
 
+import static java.util.stream.Collectors.toList;
+
 public class KafkaMessageCollector implements IFloodlightModule {
     private static final Logger logger = LoggerFactory.getLogger(KafkaMessageCollector.class);
     private static final String OF_TO_WFM_TOPIC = "kilda.ofs.wfm.flow";
@@ -124,8 +126,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
                     command.getInputPort().intValue(),
                     command.getOutputPort().intValue(),
                     command.getTransitVlanId().intValue(),
-                    command.getOutputVlanId().intValue(),
-                    command.getOutputVlanType());
+                    command.getOutputVlanId().intValue(), command.getOutputVlanType());
         }
 
         /**

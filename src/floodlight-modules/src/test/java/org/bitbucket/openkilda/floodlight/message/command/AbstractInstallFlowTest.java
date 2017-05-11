@@ -34,8 +34,8 @@ public class AbstractInstallFlowTest {
 
     @Test
     public void setFlowName() throws Exception {
-        flow.setCookie(flowName);
-        assertEquals(flowName, flow.getCookie());
+        flow.setFlowName(flowName);
+        assertEquals(flowName, flow.getFlowName());
     }
 
     @Test
@@ -58,7 +58,7 @@ public class AbstractInstallFlowTest {
 
     @Test(expected=IllegalArgumentException.class)
     public void setNullFlowName() throws Exception {
-        flow.setCookie(null);
+        flow.setFlowName(null);
     }
 
     @Test(expected=IllegalArgumentException.class)

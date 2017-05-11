@@ -64,11 +64,11 @@ implements IFloodlightModule, IOFMessageListener, IPathVerificationService {
   public static final int VERIFICATION_PACKET_UDP_PORT = 61231;
   public static final String VERIFICATION_PACKET_IP_DST = "192.168.0.255";
 
-  protected IFloodlightProviderService floodlightProvider;
-  protected IOFSwitchService switchService;
-  protected IRestApiService restApiService;
   protected Logger logger;
-  protected String topic;
+  private IFloodlightProviderService floodlightProvider;
+  private IOFSwitchService switchService;
+  private IRestApiService restApiService;
+  private String topic;
   private boolean isAlive = false;
   private KafkaProducer<String, String> producer;
   private Properties kafkaProps;
