@@ -1,8 +1,5 @@
-package org.bitbucket.openkilda.smoke;
+package org.bitbucket.openkilda.topo;
 
-import com.google.common.base.Charsets;
-import com.google.common.io.Resources;
-import org.bitbucket.openkilda.topo.Topology;
 import org.glassfish.jersey.client.ClientConfig;
 
 import javax.ws.rs.client.Client;
@@ -11,7 +8,6 @@ import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
-import java.net.URL;
 
 
 /**
@@ -19,14 +15,13 @@ import java.net.URL;
  */
 public class TopologyHelp {
 
-    public static boolean DeleteTopology(){
+    public static boolean DeleteMininetTopology(String mini_ip, String mini_port){
         long current = System.currentTimeMillis();
         Client client = ClientBuilder.newClient(new ClientConfig());
-        Response result = client.target("http://localhost:38080").path("/cleanup")
+        Response result = client.target("http://"+mini_ip + ":" + mini_port).path("/cleanup")
                 .request(MediaType.APPLICATION_JSON)
                 .post(null);
 
-        System.out.println("\n== Delete Topology\n==> result = " + result);
         System.out.println("==> DeleteTopology Time: " + (double)(((System.currentTimeMillis() -
                 current)
                 / 1000.0)));
@@ -34,12 +29,16 @@ public class TopologyHelp {
         return result.getStatus() == 200;
     }
 
+    public static boolean DeleteMininetTopology() {
+        return DeleteMininetTopology("localhost","38080");
+    }
+
     /**
      * Creates the topology through Mininet.
      *
      * @param json - the json doc that is suitable for the mininet API
      */
-    public static boolean CreateTopology(String json){
+    public static boolean CreateMininetTopology(String json){
         long current = System.currentTimeMillis();
         Client client = ClientBuilder.newClient(new ClientConfig());
         Response result = client.target("http://localhost:38080").path("/topology")
@@ -58,7 +57,7 @@ public class TopologyHelp {
     public static boolean TestMininetCreate(String json){
         long current = System.currentTimeMillis();
         Client client = ClientBuilder.newClient(new ClientConfig());
-        Response result = client.target("http://localhost:38080").path("/topo_speed_test_up")
+        Response result = client.target("http://localhost:38080").path("/create_random_linear_topology")
                 .request(MediaType.APPLICATION_JSON)
                 .post(Entity.entity(json,MediaType.APPLICATION_JSON));
 
@@ -94,11 +93,11 @@ public class TopologyHelp {
      *
      * @return The JSON document of the Topology from the Topology Engine
      */
-    public static String ClearTopology(){
+    public static String ClearTopology(String endpoint){
 
         Client client = ClientBuilder.newClient(new ClientConfig());
 
-        String result = client.target("http://localhost:80").path("/api/v1/topology/clear")
+        String result = client.target("http://"+endpoint+":80").path("/api/v1/topology/clear")
                 .request(MediaType.TEXT_PLAIN_TYPE)
                 .get(String.class);
 
@@ -114,6 +113,6 @@ public class TopologyHelp {
 //        TopologyHelp.CreateTopology(doc);
 
         System.out.println("GetTopology(): = " + TopologyHelp.GetTopology());
-        System.out.println("ClearTopology(): = " + TopologyHelp.ClearTopology());
+        System.out.println("ClearTopology(): = " + TopologyHelp.ClearTopology("localhost"));
     }
 }
