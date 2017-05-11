@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
@@ -31,12 +32,12 @@ import net.floodlightcontroller.util.OFMessageUtils;
 
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.bitbucket.openkilda.floodlight.message.InfoMessage;
-import org.bitbucket.openkilda.floodlight.message.Message;
-import org.bitbucket.openkilda.floodlight.message.info.IslInfoData;
-import org.bitbucket.openkilda.floodlight.message.info.PathNode;
 import org.bitbucket.openkilda.floodlight.pathverification.type.PathType;
 import org.bitbucket.openkilda.floodlight.pathverification.web.PathVerificationServiceWebRoutable;
+import org.bitbucket.openkilda.messaging.Message;
+import org.bitbucket.openkilda.messaging.info.InfoMessage;
+import org.bitbucket.openkilda.messaging.info.event.IslInfoData;
+import org.bitbucket.openkilda.messaging.info.event.PathNode;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
@@ -63,14 +64,15 @@ implements IFloodlightModule, IOFMessageListener, IPathVerificationService {
   public static final int VERIFICATION_PACKET_UDP_PORT = 61231;
   public static final String VERIFICATION_PACKET_IP_DST = "192.168.0.255";
 
-  protected IFloodlightProviderService floodlightProvider;
-  protected IOFSwitchService switchService;
-  protected IRestApiService restApiService;
   protected Logger logger;
-  protected String topic;
+  private IFloodlightProviderService floodlightProvider;
+  private IOFSwitchService switchService;
+  private IRestApiService restApiService;
+  private String topic;
   private boolean isAlive = false;
   private KafkaProducer<String, String> producer;
   private Properties kafkaProps;
+  private final ObjectMapper mapper = new ObjectMapper();
 
   /**
    * IFloodlightModule Methods.
@@ -301,7 +303,7 @@ implements IFloodlightModule, IOFMessageListener, IPathVerificationService {
     return null;
   }
 
-  public VerificationPacket deserialize(Ethernet eth) throws Exception {
+  private VerificationPacket deserialize(Ethernet eth) throws Exception {
     if (eth.getPayload() instanceof IPv4) {
       IPv4 ip = (IPv4) eth.getPayload();
 
@@ -319,8 +321,8 @@ implements IFloodlightModule, IOFMessageListener, IPathVerificationService {
     throw new Exception("Ethernet packet was not a verificaiton packet");
   }
 
-  public net.floodlightcontroller.core.IListener.Command handlePacketIn(IOFSwitch sw,
-      OFPacketIn pkt, FloodlightContext context) {
+  private net.floodlightcontroller.core.IListener.Command handlePacketIn(IOFSwitch sw,
+                                                                         OFPacketIn pkt, FloodlightContext context) {
     long time = System.currentTimeMillis();
     VerificationPacket verificationPacket = null;
     Command command = Command.CONTINUE;
@@ -372,28 +374,16 @@ implements IFloodlightModule, IOFMessageListener, IPathVerificationService {
     U64 latency = (timestamp != 0 && (time - timestamp) > 0) ? U64.of(time - timestamp) : U64.ZERO;
 
     List<PathNode> nodes = Arrays.asList(
-        new PathNode()
-          .withSwitchId(sw.getId().toString())
-          .withPortNo(inPort.getPortNumber())
-          .withSegLatency(latency.getValue())
-          .withSeqId(0),
-        new PathNode()
-          .withSwitchId(remoteSwitch.getId().toString())
-          .withPortNo(remotePort.getPortNumber())
-          .withSeqId(1)
-        );
+        new PathNode(sw.getId().toString(), inPort.getPortNumber(), 0, latency.getValue()),
+        new PathNode(remoteSwitch.getId().toString(), remotePort.getPortNumber(), 1));
 
-    IslInfoData path = new IslInfoData()
-        .withLatency(latency.getValue())
-        .withPath(nodes);
+    IslInfoData path = new IslInfoData(latency.getValue(), nodes);
     
-    Message message = new InfoMessage()
-        .withData(path)
-        .withTimestamp(System.currentTimeMillis());
-    
+    Message message = new InfoMessage(path, System.currentTimeMillis(), "system");
     try {
-      logger.debug(message.toJson());
-      producer.send(new ProducerRecord<String, String>(topic, message.toJson()));
+      final String json = mapper.writeValueAsString(message);
+      logger.debug("about to send {}", json);
+      producer.send(new ProducerRecord<>(topic, json));
     } catch (JsonProcessingException exception) {
       logger.error("could not create json for path.", exception);
     }

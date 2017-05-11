@@ -44,7 +44,7 @@ public class PortInfoData extends InfoData {
      * Maximum capacity.
      */
     @JsonProperty("max_capacity")
-    private int maxCapacity;
+    private Integer maxCapacity;
 
     /**
      * Port state.
@@ -58,6 +58,12 @@ public class PortInfoData extends InfoData {
     public PortInfoData() {
     }
 
+    public PortInfoData(final String switchId, final int portNo, final PortChangeType state) {
+        this.switchId = switchId;
+        this.portNo = portNo;
+        this.state = state;
+    }
+
     /**
      * Instance constructor.
      *
@@ -69,7 +75,7 @@ public class PortInfoData extends InfoData {
     @JsonCreator
     public PortInfoData(@JsonProperty("switch_id") final String switchId,
                         @JsonProperty("port_no") final int portNo,
-                        @JsonProperty("max_capacity") final int maxCapacity,
+                        @JsonProperty("max_capacity") final Integer maxCapacity,
                         @JsonProperty("state") final PortChangeType state) {
         this.switchId = switchId;
         this.portNo = portNo;
@@ -123,7 +129,7 @@ public class PortInfoData extends InfoData {
      * @return  maximum capacity
      */
     @JsonProperty("max_capacity")
-    public int getMaxCapacity() {
+    public Integer getMaxCapacity() {
         return maxCapacity;
     }
 

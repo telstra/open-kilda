@@ -22,80 +22,44 @@ import java.io.Serializable;
 @JsonPropertyOrder({
         "type",
         "timestamp",
-        "correlation-id",
+        "correlation_id",
         "payload"})
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME,
         include = JsonTypeInfo.As.PROPERTY,
-        property = "type",
-        visible = true)
+        property = "type")
 @JsonSubTypes({@JsonSubTypes.Type(value = CommandMessage.class, name = "COMMAND"),
         @JsonSubTypes.Type(value = InfoMessage.class, name = "INFO"),
         @JsonSubTypes.Type(value = ErrorMessage.class, name = "ERROR")})
-public abstract class Message implements Serializable {
+public class Message implements Serializable {
     /**
      * Serialization version number constant.
      */
     private static final long serialVersionUID = 1L;
 
     /**
-     * Message type.
-     */
-    @JsonProperty("type")
-    private MessageType type;
-
-    /**
      * Message timestamp.
      */
     @JsonProperty("timestamp")
-    private long timestamp;
+    protected long timestamp;
 
     /**
      * Message correlation id.
      * Correlation ID request value for Northbound messages or generated value without REST API calls (re-flow, etc.).
      */
     @JsonProperty("correlation_id")
-    private String correlationId;
-
-    /**
-     * Default constructor.
-     */
-    public Message() {
-    }
+    protected String correlationId;
 
     /**
      * Instance constructor.
      *
-     * @param   type           message type
-     * @param   timestamp      message timestamp
-     * @param   correlationId  message correlation id
+     * @param timestamp     message timestamp
+     * @param correlationId message correlation id
      */
     @JsonCreator
-    public Message(@JsonProperty("type") final MessageType type,
-                   @JsonProperty("timestamp") final long timestamp,
+    public Message(@JsonProperty("timestamp") final long timestamp,
                    @JsonProperty("correlation_id") final String correlationId) {
-        this.type = type;
         this.timestamp = timestamp;
         this.correlationId = correlationId;
-    }
-
-    /**
-     * Returns message type.
-     *
-     * @return  message type
-     */
-    @JsonProperty("type")
-    public MessageType getType() {
-        return type;
-    }
-
-    /**
-     * Sets message type.
-     *
-     * @param   type  message type
-     */
-    @JsonProperty("type")
-    public void setType(final MessageType type) {
-        this.type = type;
     }
 
     /**
@@ -109,16 +73,6 @@ public abstract class Message implements Serializable {
     }
 
     /**
-     * Sets message timestamp.
-     *
-     * @param   timestamp  message timestamp
-     */
-    @JsonProperty("timestamp")
-    public void setTimestamp(final long timestamp) {
-        this.timestamp = timestamp;
-    }
-
-    /**
      * Returns message correlation id.
      *
      * @return  message correlation id
@@ -127,14 +81,5 @@ public abstract class Message implements Serializable {
     public String getCorrelationId() {
         return correlationId;
     }
-
-    /**
-     * Sets message correlation id.
-     *
-     * @param   correlationId  message correlation id
-     */
-    @JsonProperty("correlation_id")
-    public void setCorrelationId(final String correlationId) {
-        this.correlationId = correlationId;
-    }
 }
+

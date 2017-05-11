@@ -93,20 +93,20 @@ public class SimpleSplitterTest extends AbstractStormTest {
         String added = "ADDED";
         String active = OFEMessageUtils.SWITCH_UP;
 
-        kProducer.send(new ProducerRecord<>(topic, "data",
+        kProducer.send(new ProducerRecord<>(topic, "payload",
                 OFEMessageUtils.createSwitchInfoMessage("sw1", added)));
-        kProducer.send(new ProducerRecord<>(topic, "data",
+        kProducer.send(new ProducerRecord<>(topic, "payload",
                 OFEMessageUtils.createSwitchInfoMessage("sw2", added)));
-        kProducer.send(new ProducerRecord<>(topic, "data",
+        kProducer.send(new ProducerRecord<>(topic, "payload",
                 OFEMessageUtils.createSwitchInfoMessage("sw3", added)));
 
         Utils.sleep(1 * 1000);
 
-        kProducer.send(new ProducerRecord<>(topic, "data",
+        kProducer.send(new ProducerRecord<>(topic, "payload",
                 OFEMessageUtils.createSwitchInfoMessage("sw1", active)));
-        kProducer.send(new ProducerRecord<>(topic, "data",
+        kProducer.send(new ProducerRecord<>(topic, "payload",
                 OFEMessageUtils.createSwitchInfoMessage("sw2", active)));
-        kProducer.send(new ProducerRecord<>(topic, "data",
+        kProducer.send(new ProducerRecord<>(topic, "payload",
                 OFEMessageUtils.createSwitchInfoMessage("sw3", active)));
 
 

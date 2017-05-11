@@ -1,10 +1,10 @@
-package org.bitbucket.openkilda.floodlight.message.command;
+package org.bitbucket.openkilda.messaging.command;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import com.google.common.base.Objects;
+import com.google.common.base.MoreObjects;
 
 /**
  * Class represents flow deletion info.
@@ -13,7 +13,7 @@ import com.google.common.base.Objects;
 @JsonPropertyOrder({
         "command",
         "destination",
-        "cookie",
+        "flow_name",
         "switch_id",
         "meter_id"
 })
@@ -21,21 +21,18 @@ public class DeleteFlow extends AbstractFlow {
 
     protected Long meterId;
 
-    /** Default constructor. */
-    public DeleteFlow() {}
-
     /**
      * Constructs a flow deletion command.
      *
-     * @param cookie       Flow cookie
+     * @param flowName     Flow name
      * @param switchId     Switch ID for flow installation
      * @throws IllegalArgumentException if any of parameters parameters is null
      */
     @JsonCreator
-    public DeleteFlow(@JsonProperty("cookie") String cookie,
+    public DeleteFlow(@JsonProperty("flow_name") String flowName,
                       @JsonProperty("switch_id") String switchId,
                       @JsonProperty("meter_id") Long meterId) {
-        super(cookie, switchId);
+        super(flowName, switchId);
         setMeterId(meterId);
     }
 
@@ -51,8 +48,8 @@ public class DeleteFlow extends AbstractFlow {
 
     @Override
     public String toString() {
-        return Objects.toStringHelper(this)
-                .addValue(cookie)
+        return MoreObjects.toStringHelper(this)
+                .addValue(flowName)
                 .addValue(switchId)
                 .addValue(meterId)
                 .toString();

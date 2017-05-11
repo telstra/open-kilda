@@ -15,10 +15,4 @@ public abstract class MessageData implements Serializable {
      * Serialization version number constant.
      */
     static final long serialVersionUID = 1L;
-
-    /**
-     * Default constructor.
-     */
-    public MessageData() {
-    }
 }

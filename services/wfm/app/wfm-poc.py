@@ -122,7 +122,7 @@ def parse_message(message):
         message: kafka message
     """
     if message['type'] == 'INFO':
-        parse_info_message(message['data'])
+        parse_info_message(message['payload'])
 
 
 def parse_info_message(message):
@@ -312,11 +312,11 @@ def switch_insert_default_flows(switch_id):
     Args:
         switch_id: datapathID of the switch
     """
-    data = {"destination": "CONTROLLER", "command": "install_default_flows",
+    data = {"command": "install_default_flows",
             "switch_id": switch_id}
     message = {"type": "COMMAND",
                "timestamp": long(time.time()*1000),
-               "data": data}
+               "payload": data}
     logger.info(message)
     queue.put(message)
 
@@ -329,13 +329,12 @@ def send_isl_discover_packet(switch_id, port):
         switch_id: datapathID of switch
         port: port number as int
     """
-    data = {"destination": "CONTROLLER",
-            "command": "discover_isl",
+    data = {"command": "discover_isl",
             "switch_id": switch_id,
             "port_no": port}
     message = {"type": "COMMAND",
                "timestamp": long(time.time()*1000),
-               "data": data}
+               "payload": data}
 
     logger.info(message)
     queue.put(message)

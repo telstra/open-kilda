@@ -1,10 +1,9 @@
-package org.bitbucket.openkilda.floodlight.message.info;
+package org.bitbucket.openkilda.messaging.info;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import org.bitbucket.openkilda.floodlight.message.StatsType;
-import org.projectfloodlight.openflow.protocol.OFPortStatsReply;
+import org.bitbucket.openkilda.messaging.StatsType;
 
 import java.util.List;
 
@@ -26,9 +25,9 @@ public class PortStatsData extends InfoData {
     private StatsType type = StatsType.PORTS;
 
     @JsonProperty
-    private List<OFPortStatsReply> stats;
+    private List<PortStatsReply> stats;
 
-    public PortStatsData(String switchId, List<OFPortStatsReply> switchStats) {
+    public PortStatsData(String switchId, List<PortStatsReply> switchStats) {
         this.switchId = switchId;
         this.stats = switchStats;
     }

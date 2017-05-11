@@ -39,7 +39,7 @@ public class DiscoverPathCommandData extends CommandData {
     /**
      * Destination switch id.
      */
-    @JsonProperty("destination-switch-id")
+    @JsonProperty("destination_switch_id")
     private String dstSwitchId;
 
     /**

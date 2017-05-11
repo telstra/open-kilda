@@ -9,14 +9,16 @@ import java.io.IOException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import org.bitbucket.openkilda.floodlight.message.CommandMessage;
-import org.bitbucket.openkilda.floodlight.message.InfoMessage;
-import org.bitbucket.openkilda.floodlight.message.Message;
-import org.bitbucket.openkilda.floodlight.message.command.CommandData.Destination;
-import org.bitbucket.openkilda.floodlight.message.info.IslInfoData;
-import org.bitbucket.openkilda.floodlight.message.info.PathInfoData;
-import org.bitbucket.openkilda.floodlight.message.info.PortInfoData;
-import org.bitbucket.openkilda.floodlight.message.info.SwitchInfoData;
+import org.bitbucket.openkilda.messaging.Message;
+import org.bitbucket.openkilda.messaging.command.*;
+import org.bitbucket.openkilda.messaging.command.discovery.DiscoverIslCommandData;
+import org.bitbucket.openkilda.messaging.command.discovery.DiscoverPathCommandData;
+import org.bitbucket.openkilda.messaging.command.flow.DefaultFlowsCommandData;
+import org.bitbucket.openkilda.messaging.info.InfoMessage;
+import org.bitbucket.openkilda.messaging.info.event.IslInfoData;
+import org.bitbucket.openkilda.messaging.info.event.PathInfoData;
+import org.bitbucket.openkilda.messaging.info.event.PortInfoData;
+import org.bitbucket.openkilda.messaging.info.event.SwitchInfoData;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -25,42 +27,48 @@ import org.junit.Test;
 
 public class MessageTest {
   private ObjectMapper mapper;
+  private static final String CORRELATION_ID = "f37530b6-02f1-493e-b28b-2d98a48cf4cc";
+  private static final long TIMESTAMP = 23478952134L;
 
-  private static final String DISCOVER_ISL = "{\"type\":\"COMMAND\",\"timestamp\""
-      + ":23478952134,\"data\":{\"command\":\"discover_isl\",\"destination\":"
-      + "\"CONTROLLER\",\"switch_id\":\"0000000000000001\",\"port_no\":1}}";
+  private static final String DISCOVER_ISL = "{\"type\":\"COMMAND\","
+      + "\"payload\":{\"command\":\"discover_isl\",\"switch_id\":\"0000000000000001\",\"port_no\":1},\"timestamp\""
+      + ":23478952134,\"correlation_id\":\"f37530b6-02f1-493e-b28b-2d98a48cf4cc\"}";
   
   private static final String DEFAULT_FLOWS = "{\"type\":\"COMMAND\","
-      + "\"timestamp\":23478952134,\"data\":{\"command\":"
-      + "\"install_default_flows\",\"destination\":\"CONTROLLER\","
-      + "\"switch_id\":\"0x0000000000000001\"}}";
+      + "\"payload\":{\"command\":\"install_default_flows\","
+      + "\"switch_id\":\"0x0000000000000001\"},"
+      + "\"timestamp\":23478952134,\"correlation_id\":\"f37530b6-02f1-493e-b28b-2d98a48cf4cc\"}";
   
   private static final String DISCOVER_PATH = "{\"type\":\"COMMAND\","
-      + "\"timestamp\":23478952134,\"data\":{\"command\":"
-      + "\"discover_path\",\"destination\":\"CONTROLLER\","
+      + "\"payload\":{\"command\":\"discover_path\","
       + "\"source_switch_id\":\"0x0000000000000001\",\"source_port_no\":1,"
-      + "\"destination_switch_id\":\"0x0000000000000002\"}}";
+      + "\"destination_switch_id\":\"0x0000000000000002\"},"
+      + "\"timestamp\":23478952134,\"correlation_id\":\"f37530b6-02f1-493e-b28b-2d98a48cf4cc\"}";
 
-  private static final String ISL_INFO = "{\"type\":\"INFO\",\"timestamp\":"
-      + "23478952134,\"data\":{\"message_type\":\"isl\",\"latency_ns\":1123,"
+  private static final String ISL_INFO = "{\"type\":\"INFO\","
+      + "\"payload\":{\"message_type\":\"isl\",\"latency_ns\":1123,"
       + "\"path\":[{\"switch_id\":\"1\",\"port_no\":20,\"seq_id\":0,"
       + "\"segment_latency\":1123},{\"switch_id\":\"2\",\"port_no\":1,"
-      + "\"seq_id\":1}]}}";
+      + "\"seq_id\":1}]},"
+      + "\"timestamp\":23478952134,\"correlation_id\":\"f37530b6-02f1-493e-b28b-2d98a48cf4cc\"}";
   
-  private static final String PATH_INFO = "{\"type\":\"INFO\",\"timestamp\":"
-      + "23478952134,\"data\":{\"message_type\":\"path\",\"latency_ns\":1123,"
+  private static final String PATH_INFO = "{\"type\":\"INFO\","
+      + "\"payload\":{\"message_type\":\"path\",\"latency_ns\":1123,"
       + "\"path\":[{\"switch_id\":\"1\",\"port_no\":20,\"seq_id\":0,"
       + "\"segment_latency\":1123},{\"switch_id\":\"2\",\"port_no\":1,"
-      + "\"seq_id\":1}]}}";
+      + "\"seq_id\":1}]},"
+      + "\"timestamp\":23478952134,\"correlation_id\":\"f37530b6-02f1-493e-b28b-2d98a48cf4cc\"}";
   
-  private static final String SWITCH_INFO = "{\"type\":\"INFO\",\"timestamp\""
-      + ":23478952134,\"data\":{\"message_type\":\"switch\",\"switch_id\":"
-      + "\"0000000000000001\",\"state\":\"ADDED\"}}";
+  private static final String SWITCH_INFO = "{\"type\":\"INFO\","
+      + "\"payload\":{\"message_type\":\"switch\",\"switch_id\":"
+      + "\"0000000000000001\",\"state\":\"ADDED\"},"
+      + "\"timestamp\":23478952134,\"correlation_id\":\"f37530b6-02f1-493e-b28b-2d98a48cf4cc\"}";
   
-  private static final String PORT_INFO = "{\"type\":\"INFO\",\"timestamp\":"
-      + "23478952134,\"data\":{\"message_type\":\"port\",\"switch_id\":"
+  private static final String PORT_INFO = "{\"type\":\"INFO\","
+      + "\"payload\":{\"message_type\":\"port\",\"switch_id\":"
       + "\"0000000000000001\",\"port_no\":1,\"max_capacity\":1000,\"state\":"
-      + "\"ADD\"}}";
+      + "\"ADD\"},"
+      + "\"timestamp\":23478952134,\"correlation_id\":\"f37530b6-02f1-493e-b28b-2d98a48cf4cc\"}";
   
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
@@ -80,24 +88,16 @@ public class MessageTest {
   }
 
   @Test
-  public void testSerializer() {
-    CommandData data = new DiscoverISLCommandData().withSwitchId("0000000000000001").withPortNo(1)
-        .withDestination(Destination.CONTROLLER);
-
-    Message message = new CommandMessage().withData(data).withTimestamp(23478952134L);
-
-    String json = null;
-    try {
-      json = mapper.writeValueAsString(message);
-    } catch (JsonProcessingException e) {
-      e.printStackTrace();
-    }
-    assertEquals(json, DISCOVER_ISL);
+  public void testSerializer() throws JsonProcessingException {
+    CommandData data = new DiscoverIslCommandData("0000000000000001", 1);
+    Message message = new CommandMessage(data, TIMESTAMP, CORRELATION_ID);
+    String json = mapper.writeValueAsString(message);
+    assertEquals(DISCOVER_ISL, json);
   }
   
   @Test
-  public void testDeserialized() {
-    testDeserializer(DISCOVER_ISL, Message.class, CommandMessage.class, DiscoverISLCommandData.class);
+  public void testDeserialized() throws IOException {
+    testDeserializer(DISCOVER_ISL, Message.class, CommandMessage.class, DiscoverIslCommandData.class);
     testDeserializer(DEFAULT_FLOWS, Message.class, CommandMessage.class, DefaultFlowsCommandData.class);
     testDeserializer(DISCOVER_PATH, Message.class, CommandMessage.class, DiscoverPathCommandData.class);
     testDeserializer(ISL_INFO, Message.class, InfoMessage.class, IslInfoData.class);
@@ -107,15 +107,9 @@ public class MessageTest {
   }
   
   @SuppressWarnings({ "rawtypes", "unchecked" })
-  public void testDeserializer(String testJson, Class mapperClass, Class targetClass, Class dataClass){
-    Message message = null;
-    String json = null;
-    try {
-      message = (Message) mapper.readValue(testJson, mapperClass);
-      json = mapper.writeValueAsString(message);
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
+  private void testDeserializer(String testJson, Class mapperClass, Class targetClass, Class dataClass) throws IOException {
+    Message message = (Message) mapper.readValue(testJson, mapperClass);
+    String json = mapper.writeValueAsString(message);
     System.out.println(testJson);
     System.out.println(json);
     assertThat(message, instanceOf(targetClass));

@@ -42,7 +42,7 @@ public class ISLTopology {
 //                "port_no": port}
 //        message = {"type": "COMMAND",
 //                "timestamp": long(time.time()*1000),
-//                "data": data}
+//                "payload": data}
 //
 //            logger.info(message)
 //                queue.put(message)
