@@ -14,7 +14,7 @@ public class AbstractInstallFlowTest {
 
     @Test
     public void getFlowName() throws Exception {
-        assertEquals(flowName, flow.getCookie());
+        assertEquals(flowName, flow.getFlowName());
     }
 
     @Test

@@ -86,7 +86,7 @@ public class InstallOneSwitchFlowCommandData extends AbstractInstallFlowCommandD
      * @throws  IllegalArgumentException if any of arguments is null
      */
     @JsonCreator
-    public InstallOneSwitchFlowCommandData(@JsonProperty("cookie") String cookie,
+    public InstallOneSwitchFlowCommandData(@JsonProperty("flow_name") String flowName,
                                            @JsonProperty("switch_id") String switchId,
                                            @JsonProperty("input_port") Number inputPort,
                                            @JsonProperty("output_port") Number outputPort,
@@ -96,7 +96,7 @@ public class InstallOneSwitchFlowCommandData extends AbstractInstallFlowCommandD
                                            @JsonProperty("bandwidth") Number bandwidth,
                                            @JsonProperty("input_meter_id") Number inputMeterId,
                                            @JsonProperty("output_meter_id") Number outputMeterId) {
-        super(cookie, switchId, inputPort, outputPort);
+        super(flowName, switchId, inputPort, outputPort);
         setInputVlanId(inputVlanId);
         setOutputVlanId(outputVlanId);
         setOutputVlanType(outputVlanType);
@@ -266,7 +266,7 @@ public class InstallOneSwitchFlowCommandData extends AbstractInstallFlowCommandD
     @Override
     public String toString() {
         return toStringHelper(this)
-                .addValue(cookie)
+                .addValue(flowName)
                 .addValue(switchId)
                 .addValue(inputPort)
                 .addValue(outputPort)
