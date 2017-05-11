@@ -35,9 +35,6 @@ import java.util.concurrent.Executors;
 import java.util.function.Function;
 
 import static java.util.stream.Collectors.toList;
-import java.util.function.Function;
-
-import static java.util.stream.Collectors.toList;
 
 public class KafkaMessageCollector implements IFloodlightModule {
     private static final Logger logger = LoggerFactory.getLogger(KafkaMessageCollector.class);
