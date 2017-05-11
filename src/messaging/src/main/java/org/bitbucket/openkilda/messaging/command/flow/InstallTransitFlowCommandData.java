@@ -20,7 +20,6 @@ import java.util.Objects;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
         "command",
-        "destination",
         "flow_name",
         "switch_id",
         "input_port",
@@ -36,12 +35,6 @@ public class InstallTransitFlowCommandData extends AbstractInstallFlowCommandDat
      * The transit vlan id value.
      */
     protected Number transitVlanId;
-
-    /**
-     * Default constructor.
-     */
-    public InstallTransitFlowCommandData() {
-    }
 
     /**
      * Instance constructor.

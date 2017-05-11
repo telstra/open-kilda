@@ -9,6 +9,7 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.restserver.IRestApiService;
 import org.bitbucket.openkilda.floodlight.message.command.encapsulation.OutputCommands;
 import org.bitbucket.openkilda.floodlight.message.command.encapsulation.PushSchemeOutputCommands;
+import org.bitbucket.openkilda.messaging.payload.response.OutputVlanType;
 import org.easymock.*;
 import org.junit.Before;
 import org.junit.Test;

@@ -26,7 +26,7 @@ import java.util.Objects;
         "switch_id",
         "input_port",
         "output_port"})
-public abstract class AbstractInstallFlowCommandData extends CommandData {
+public class AbstractInstallFlowCommandData extends CommandData {
     /**
      * Serialization version number constant.
      */
@@ -51,12 +51,6 @@ public abstract class AbstractInstallFlowCommandData extends CommandData {
      * Output port for flow action.
      */
     protected Number outputPort;
-
-    /**
-     * Default constructor.
-     */
-    public AbstractInstallFlowCommandData() {
-    }
 
     /**
      * Instance constructor.

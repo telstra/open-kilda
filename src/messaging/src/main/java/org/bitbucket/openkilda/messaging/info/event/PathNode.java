@@ -50,7 +50,7 @@ public class PathNode implements Serializable {
      */
     @JsonInclude(JsonInclude.Include.NON_DEFAULT) // Needed to exclude when not set
     @JsonProperty("segment_latency")
-    private long segmentLatency;
+    private Long segmentLatency;
 
     /**
      * Default constructor.
@@ -65,9 +65,7 @@ public class PathNode implements Serializable {
      * @param   portNo    port number
      * @param   seqId     sequence id
      */
-    public PathNode(@JsonProperty("switch_id") final String switchId,
-                    @JsonProperty("port_no") final int portNo,
-                    @JsonProperty("seq_id") final int seqId) {
+    public PathNode(final String switchId, final int portNo, final int seqId) {
         this.switchId = switchId;
         this.portNo = portNo;
         this.seqId = seqId;
@@ -85,7 +83,7 @@ public class PathNode implements Serializable {
     public PathNode(@JsonProperty("switch_id") final String switchId,
                     @JsonProperty("port_no") final int portNo,
                     @JsonProperty("seq_id") final int seqId,
-                    @JsonProperty("segment_latency") final long segmentLatency) {
+                    @JsonProperty("segment_latency") final Long segmentLatency) {
         this.switchId = switchId;
         this.portNo = portNo;
         this.seqId = seqId;
@@ -158,7 +156,7 @@ public class PathNode implements Serializable {
      * @return  segment latency
      */
     @JsonProperty("segment_latency")
-    public long getSegLatency() {
+    public Long getSegLatency() {
         return segmentLatency;
     }
 

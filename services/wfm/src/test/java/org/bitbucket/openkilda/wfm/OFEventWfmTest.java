@@ -80,23 +80,23 @@ public class OFEventWfmTest extends AbstractStormTest  {
         String port_topic = InfoEventSplitterBolt.I_PORT_UPDOWN;
 
         // send sw1 and sw2 up
-        kProducer.send(new ProducerRecord<>(switch_topic, "data", sw1_up));
-        kProducer.send(new ProducerRecord<>(switch_topic, "data", sw2_up));
+        kProducer.send(new ProducerRecord<>(switch_topic, "payload", sw1_up));
+        kProducer.send(new ProducerRecord<>(switch_topic, "payload", sw2_up));
 
         Utils.sleep(1 * 1000);
 
         // sent sw1/port1 up ... sw2/port2 up
-        kProducer.send(new ProducerRecord<>(port_topic, "data", sw1p1_up));
-        kProducer.send(new ProducerRecord<>(port_topic, "data", sw2p2_up));
+        kProducer.send(new ProducerRecord<>(port_topic, "payload", sw1p1_up));
+        kProducer.send(new ProducerRecord<>(port_topic, "payload", sw2p2_up));
 
         Utils.sleep(1 * 1000);
 
         // send duplicates ... NB: at present, dupes aren't detected until we do FieldGrouping
         // probably should send duplicates in another test
-        kProducer.send(new ProducerRecord<>(switch_topic, "data", sw1_up));
-        kProducer.send(new ProducerRecord<>(switch_topic, "data", sw2_up));
-        kProducer.send(new ProducerRecord<>(port_topic, "data", sw1p1_up));
-        kProducer.send(new ProducerRecord<>(port_topic, "data", sw2p2_up));
+        kProducer.send(new ProducerRecord<>(switch_topic, "payload", sw1_up));
+        kProducer.send(new ProducerRecord<>(switch_topic, "payload", sw2_up));
+        kProducer.send(new ProducerRecord<>(port_topic, "payload", sw1p1_up));
+        kProducer.send(new ProducerRecord<>(port_topic, "payload", sw2p2_up));
 
         Utils.sleep(1 * 1000);
 
@@ -109,7 +109,7 @@ public class OFEventWfmTest extends AbstractStormTest  {
         Utils.sleep(1 * 1000);
 
         // sending this now just for fun .. we'll more formally test that the ISL state is correct.
-        kProducer.send(new ProducerRecord<>(port_topic, "data", sw2p2_down));
+        kProducer.send(new ProducerRecord<>(port_topic, "payload", sw2p2_down));
 
         Utils.sleep(2 * 1000);
 

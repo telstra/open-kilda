@@ -2,7 +2,6 @@ package org.bitbucket.openkilda.messaging.payload.request;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 
-import org.bitbucket.openkilda.messaging.command.CommandData;
 import org.bitbucket.openkilda.messaging.payload.response.FlowStatusType;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -34,12 +33,6 @@ public class FlowStatusRequestPayload implements Serializable {
      */
     @JsonProperty("status")
     protected FlowStatusType status;
-
-    /**
-     * Default constructor.
-     */
-    public FlowStatusRequestPayload() {
-    }
 
     /**
      * Instance constructor.

@@ -1,13 +1,15 @@
-package org.bitbucket.openkilda.floodlight.message.command;
+package org.bitbucket.openkilda.messaging.command;
 
 import com.fasterxml.jackson.annotation.*;
-import org.bitbucket.openkilda.floodlight.message.StatsType;
+import org.bitbucket.openkilda.messaging.StatsType;
+import org.bitbucket.openkilda.messaging.Utils;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
         "command",
         "destination",
-        "switch_id"
+        "switch_id",
+        "type"
 })
 public class StatsRequest extends CommandData {
 
@@ -15,8 +17,6 @@ public class StatsRequest extends CommandData {
     protected String switchId;
 
     private StatsType statsType;
-
-    public StatsRequest() {}
 
     @JsonCreator
     public StatsRequest(@JsonProperty("switch_id") String switchId, @JsonProperty("type") StatsType statsType) {
@@ -33,7 +33,7 @@ public class StatsRequest extends CommandData {
     public void setSwitchId(String switchId) {
         if (switchId == null) {
             throw new IllegalArgumentException("need to set a switch_id");
-        } else if (!Utils.checkSwitchId(switchId)) {
+        } else if (!Utils.validateSwitchId(switchId)) {
             throw new IllegalArgumentException("need to set valid value for switch_id");
         }
         this.switchId = switchId;

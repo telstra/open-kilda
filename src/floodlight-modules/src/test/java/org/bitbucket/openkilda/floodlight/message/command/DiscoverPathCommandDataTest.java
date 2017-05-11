@@ -1,5 +1,6 @@
 package org.bitbucket.openkilda.floodlight.message.command;
 
+import org.bitbucket.openkilda.messaging.command.discovery.DiscoverPathCommandData;
 import org.junit.Test;
 
 import static org.bitbucket.openkilda.floodlight.Constants.inputPort;
@@ -12,7 +13,9 @@ import static org.junit.Assert.*;
 public class DiscoverPathCommandDataTest {
     @Test
     public void toStringTest() throws Exception {
-        String dataString = new DiscoverPathCommandData().withSrcPortNo(inputPort).toString();
+        final DiscoverPathCommandData data = new DiscoverPathCommandData();
+        data.setSrcPortNo(inputPort);
+        String dataString = data.toString();
         assertNotNull(dataString);
         assertFalse(dataString.isEmpty());
     }
@@ -25,21 +28,9 @@ public class DiscoverPathCommandDataTest {
     }
 
     @Test
-    public void withSrcSwitchId() throws Exception {
-        DiscoverPathCommandData data = new DiscoverPathCommandData().withSrcSwitchId(switchId);
-        assertEquals(switchId, data.getSrcSwitchId());
-    }
-
-    @Test
     public void srcPortNo() throws Exception {
         DiscoverPathCommandData data = new DiscoverPathCommandData();
         data.setSrcPortNo(inputPort);
-        assertEquals(inputPort, data.getSrcPortNo());
-    }
-
-    @Test
-    public void withSrcPortNo() throws Exception {
-        DiscoverPathCommandData data = new DiscoverPathCommandData().withSrcPortNo(inputPort);
         assertEquals(inputPort, data.getSrcPortNo());
     }
 
@@ -50,9 +41,4 @@ public class DiscoverPathCommandDataTest {
         assertEquals(switchId, data.getDstSwitchId());
     }
 
-    @Test
-    public void withDstSwitchId() throws Exception {
-        DiscoverPathCommandData data = new DiscoverPathCommandData().withDstSwitchId(switchId);
-        assertEquals(switchId, data.getDstSwitchId());
-    }
 }

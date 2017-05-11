@@ -1,8 +1,7 @@
 package org.bitbucket.openkilda.floodlight.message.command;
 
-import org.bitbucket.openkilda.floodlight.switchmanager.OutputVlanType;
-import org.junit.Before;
-import org.junit.BeforeClass;
+import org.bitbucket.openkilda.messaging.command.flow.InstallEgressFlowCommandData;
+import org.bitbucket.openkilda.messaging.payload.response.OutputVlanType;
 import org.junit.Test;
 
 import static org.bitbucket.openkilda.floodlight.Constants.*;
@@ -12,36 +11,23 @@ import static org.junit.Assert.*;
  * Created by atopilin on 10/04/2017.
  */
 public class InstallEgressFlowTest {
-    private static InstallEgressFlow installEgressFlow;
-    private InstallEgressFlow flow;
-
-    @Before
-    public void setUp() throws Exception {
-        flow = new InstallEgressFlow();
-    }
-
-    @BeforeClass
-    public static void setUpClass() throws Exception {
-        installEgressFlow = new InstallEgressFlow(flowName, switchId, inputPort,
-                outputPort, transitVlanId, outputVlanId, outputVlanType);
-        System.out.println(installEgressFlow.toString());
-    }
-
+    private InstallEgressFlowCommandData flow = new InstallEgressFlowCommandData(flowName, switchId, inputPort,
+            outputPort, transitVlanId, outputVlanId, outputVlanType);
     @Test
     public void toStringTest() throws Exception {
-        String flowString = installEgressFlow.toString();
+        String flowString = flow.toString();
         assertNotNull(flowString);
         assertFalse(flowString.isEmpty());
     }
 
     @Test
     public void getOutputVlanType() throws Exception {
-        assertEquals(outputVlanType, installEgressFlow.getOutputVlanType());
+        assertEquals(outputVlanType, flow.getOutputVlanType());
     }
 
     @Test
     public void getOutputVlanId() throws Exception {
-        assertEquals(outputVlanId, installEgressFlow.getOutputVlanId());
+        assertEquals(outputVlanId, flow.getOutputVlanId());
     }
 
     @Test
@@ -58,31 +44,31 @@ public class InstallEgressFlowTest {
 
     @Test(expected=IllegalArgumentException.class)
     public void setInvalidOutputVlanType() throws Exception {
-        flow.setOutputVlanType("");
+        flow.setOutputVlanType(null);
     }
 
     @Test(expected=IllegalArgumentException.class)
     public void setIncorrectNoneOutputVlanType() throws Exception {
         flow.setOutputVlanId(outputVlanId);
-        flow.setOutputVlanType(OutputVlanType.NONE.toString());
+        flow.setOutputVlanType(OutputVlanType.NONE);
     }
 
     @Test(expected=IllegalArgumentException.class)
     public void setIncorrectPopOutputVlanType() throws Exception {
         flow.setOutputVlanId(outputVlanId);
-        flow.setOutputVlanType(OutputVlanType.POP.toString());
+        flow.setOutputVlanType(OutputVlanType.POP);
     }
 
     @Test(expected=IllegalArgumentException.class)
     public void setIncorrectPushOutputVlanType() throws Exception {
         flow.setOutputVlanId(0);
-        flow.setOutputVlanType(OutputVlanType.PUSH.toString());
+        flow.setOutputVlanType(OutputVlanType.PUSH);
     }
 
     @Test(expected=IllegalArgumentException.class)
     public void setIncorrectReplaceOutputVlanType() throws Exception {
         flow.setOutputVlanId(null);
-        flow.setOutputVlanType(OutputVlanType.REPLACE.toString());
+        flow.setOutputVlanType(OutputVlanType.REPLACE);
     }
 
     @Test

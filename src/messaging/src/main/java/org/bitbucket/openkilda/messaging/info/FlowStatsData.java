@@ -1,10 +1,9 @@
-package org.bitbucket.openkilda.floodlight.message.info;
+package org.bitbucket.openkilda.messaging.info;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import org.bitbucket.openkilda.floodlight.message.StatsType;
-import org.projectfloodlight.openflow.protocol.OFMeterConfigStatsReply;
+import org.bitbucket.openkilda.messaging.StatsType;
 
 import java.util.List;
 
@@ -15,7 +14,7 @@ import java.util.List;
         "type",
         "stats"
 })
-public class MeterConfigStatsData extends InfoData {
+public class FlowStatsData extends InfoData {
 
     private static final long serialVersionUID = 1L;
 
@@ -23,12 +22,12 @@ public class MeterConfigStatsData extends InfoData {
     private String switchId;
 
     @JsonProperty
-    private StatsType type = StatsType.METERS;
+    private StatsType type = StatsType.FLOWS;
 
     @JsonProperty
-    private List<OFMeterConfigStatsReply> stats;
+    private List<FlowStatsReply> stats;
 
-    public MeterConfigStatsData(String switchId, List<OFMeterConfigStatsReply> switchStats) {
+    public FlowStatsData(String switchId, List<FlowStatsReply> switchStats) {
         this.switchId = switchId;
         this.stats = switchStats;
     }

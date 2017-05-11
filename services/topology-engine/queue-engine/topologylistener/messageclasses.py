@@ -30,32 +30,32 @@ def repair_flows(switchid):
 
 
 class MessageItem(object):
-    def __init__(self, type, timestamp, data):
+    def __init__(self, type, payload, timestamp, correlation_id):
         self.type = type
         self.timestamp = timestamp
-        self.data = data
+        self.payload = payload
 
     def to_json(self):
         return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4)
 
     def get_message_type(self):
         try:
-            return self.data['message_type']
+            return self.payload['message_type']
         except:
             return "unknown"
 
     def handle(self):
         try:
             eventHandled = False
-            if self.get_message_type() == "switch" and self.data['state'] == "ADDED":
+            if self.get_message_type() == "switch" and self.payload['state'] == "ADDED":
                 eventHandled = self.create_switch()
-            if self.get_message_type() == "switch" and self.data['state'] == "ACTIVATED":
+            if self.get_message_type() == "switch" and self.payload['state'] == "ACTIVATED":
                 eventHandled = self.activate_switch()
             if self.get_message_type() == "isl":
                 eventHandled = self.create_isl()
             if self.get_message_type() == "port":
                 eventHandled = True #needs to handled correctly
-            if self.get_message_type() == "switch" and self.data['state'] == "DEACTIVATED":
+            if self.get_message_type() == "switch" and self.payload['state'] == "DEACTIVATED":
                 eventHandled = self.deactivate_switch()
             return eventHandled
         except Exception as e:
@@ -65,7 +65,7 @@ class MessageItem(object):
         return True
 
     def create_switch(self):
-        switchid = self.data['switch_id']
+        switchid = self.payload['switch_id']
         switch = graph.find_one('switch', property_key='name', property_value='{}'.format(switchid))
         if not switch:
             newSwitch = Node("switch", name="{}".format(switchid), state="active")
@@ -80,7 +80,7 @@ class MessageItem(object):
             return True
 
     def deactivate_switch(self):
-        switchid = self.data['switch_id']
+        switchid = self.payload['switch_id']
         switch = graph.find_one('switch', property_key='name', property_value='{}'.format(switchid))
         if switch:
             graph.merge(switch)
@@ -98,8 +98,8 @@ class MessageItem(object):
 
     def create_isl(self):
 
-        path = self.data['path']
-        latency = self.data['latency_ns']
+        path = self.payload['path']
+        latency = self.payload['latency_ns']
         a_switch = path[0]['switch_id']
         a_port = path[0]['port_no']
         b_switch = path[1]['switch_id']

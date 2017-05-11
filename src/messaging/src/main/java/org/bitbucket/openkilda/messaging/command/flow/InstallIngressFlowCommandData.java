@@ -24,7 +24,6 @@ import java.util.Objects;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
         "command",
-        "destination",
         "flow_name",
         "switch_id",
         "input_port",
@@ -59,12 +58,6 @@ public class InstallIngressFlowCommandData extends InstallTransitFlowCommandData
      * Output action on the vlan tag.
      */
     protected OutputVlanType outputVlanType;
-
-    /**
-     * Default constructor.
-     */
-    public InstallIngressFlowCommandData() {
-    }
 
     /**
      * Instance constructor.

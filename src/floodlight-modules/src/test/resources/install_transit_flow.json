@@ -1,10 +1,9 @@
 {
 	"type": "COMMAND",
 	"timestamp": 42,
-	"data": {
+	"payload": {
 		"command": "install_transit_flow",
-		"destination": "CONTROLLER",
-		"cookie": "7B",
+		"flow_name": "7B",
 		"switch_id": "00:00:00:00:00:00:00:09",
 		"input_port": 3,
 		"output_port": 2,
