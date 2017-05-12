@@ -1,50 +1,42 @@
 package org.bitbucket.openkilda.floodlight.kafka;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.util.concurrent.FutureCallback;
-import com.google.common.util.concurrent.Futures;
-import net.floodlightcontroller.core.module.*;
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.core.module.FloodlightModuleException;
+import net.floodlightcontroller.core.module.IFloodlightModule;
+import net.floodlightcontroller.core.module.IFloodlightService;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.clients.producer.ProducerRecord;
 import org.bitbucket.openkilda.floodlight.pathverification.IPathVerificationService;
 import org.bitbucket.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.bitbucket.openkilda.messaging.Message;
-import org.bitbucket.openkilda.messaging.command.*;
+import org.bitbucket.openkilda.messaging.command.CommandData;
+import org.bitbucket.openkilda.messaging.command.CommandMessage;
+import org.bitbucket.openkilda.messaging.command.DeleteFlow;
 import org.bitbucket.openkilda.messaging.command.discovery.DiscoverIslCommandData;
 import org.bitbucket.openkilda.messaging.command.discovery.DiscoverPathCommandData;
 import org.bitbucket.openkilda.messaging.command.flow.InstallEgressFlowCommandData;
 import org.bitbucket.openkilda.messaging.command.flow.InstallIngressFlowCommandData;
 import org.bitbucket.openkilda.messaging.command.flow.InstallOneSwitchFlowCommandData;
 import org.bitbucket.openkilda.messaging.command.flow.InstallTransitFlowCommandData;
-import org.bitbucket.openkilda.messaging.info.*;
 import org.bitbucket.openkilda.messaging.payload.response.OutputVlanType;
-import org.projectfloodlight.openflow.protocol.OFMeterConfig;
-import org.projectfloodlight.openflow.protocol.OFStatsReply;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nonnull;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.function.Function;
-
-import static java.util.stream.Collectors.toList;
 
 public class KafkaMessageCollector implements IFloodlightModule {
     private static final Logger logger = LoggerFactory.getLogger(KafkaMessageCollector.class);
-    private static final String OF_TO_WFM_TOPIC = "kilda.ofs.wfm.flow";
     private Properties kafkaProps;
     private String topic;
     private final ObjectMapper mapper = new ObjectMapper();
     private IPathVerificationService pathVerificationService;
     private ISwitchManager switchManager;
-    private KafkaMessageProducer kafkaProducer;
 
     class ParseRecord implements Runnable {
         final ConsumerRecord record;
@@ -69,8 +61,6 @@ public class KafkaMessageCollector implements IFloodlightModule {
                 doInstallOneSwitchFlow(data);
             } else if (data instanceof DeleteFlow) {
                 doDeleteFlow(((DeleteFlow) data));
-            } else if (data instanceof StatsRequest) {
-                doRequestStats((StatsRequest) data);
             } else {
                 logger.error("unknown data type: {}", data.toString());
             }
@@ -196,58 +186,6 @@ public class KafkaMessageCollector implements IFloodlightModule {
             }
         }
 
-        private void doRequestStats(StatsRequest request) {
-            final String switchId = request.getSwitchId();
-            DatapathId dpid = DatapathId.of(switchId);
-            switch (request.getStatsType()) {
-                case FLOWS:
-                    Futures.addCallback(switchManager.requestFlowStats(dpid),
-                            new RequestCallback<>(data -> {
-                                final List<FlowStatsReply> replies = data.stream().map(reply -> {
-                                    final List<FlowStatsEntry> entries = reply.getEntries().stream()
-                                            .map(entry -> new FlowStatsEntry(entry.getTableId().getValue(),
-                                                                             entry.getCookie().getValue(),
-                                                                             entry.getPacketCount().getValue(),
-                                                                             entry.getByteCount().getValue()))
-                                            .collect(toList());
-                                    return new FlowStatsReply(reply.getXid(), entries);
-                                }).collect(toList());
-                                return new FlowStatsData(switchId, replies);
-                            }, "flow"));
-                    break;
-                case PORTS:
-                    Futures.addCallback(switchManager.requestPortStats(dpid),
-                            new RequestCallback<>(data -> {
-                                final List<PortStatsReply> replies = data.stream().map(reply -> {
-                                    final List<PortStatsEntry> entries = reply.getEntries().stream()
-                                            .map(entry -> new PortStatsEntry(entry.getPortNo().getPortNumber(),
-                                                    entry.getRxPackets().getValue(), entry.getTxPackets().getValue(),
-                                                    entry.getRxBytes().getValue(), entry.getTxBytes().getValue(),
-                                                    entry.getRxDropped().getValue(), entry.getTxDropped().getValue(),
-                                                    entry.getRxErrors().getValue(), entry.getTxErrors().getValue(),
-                                                    entry.getRxFrameErr().getValue(), entry.getRxOverErr().getValue(),
-                                                    entry.getRxCrcErr().getValue(), entry.getCollisions().getValue()))
-                                            .collect(toList());
-                                    return new PortStatsReply(reply.getXid(), entries);
-                                }).collect(toList());
-                                return new PortStatsData(switchId, replies);
-                            }, "port"));
-                    break;
-                case METERS:
-                    Futures.addCallback(switchManager.requestMeterConfigStats(dpid),
-                            new RequestCallback<>(data -> {
-                                final List<MeterConfigReply> replies = data.stream().map(reply -> {
-                                    final List<Long> meterIds = reply.getEntries().stream().map(OFMeterConfig::getMeterId).collect(toList());
-                                    return new MeterConfigReply(reply.getXid(), meterIds);
-                                }).collect(toList());
-                                return new MeterConfigStatsData(switchId, replies);
-                            }, "meter config"));
-                    break;
-                default:
-                    break;
-            }
-        }
-
         private void parseRecord(ConsumerRecord record) {
             try {
                 if (record.value() instanceof String) {
@@ -298,31 +236,6 @@ public class KafkaMessageCollector implements IFloodlightModule {
         }
     }
 
-    private class RequestCallback<T extends OFStatsReply> implements FutureCallback<List<T>> {
-        private Function<List<T>, InfoData> transform;
-        private String type;
-
-        RequestCallback(Function<List<T>, InfoData> transform, String type) {
-            this.transform = transform;
-            this.type = type;
-        }
-
-        @Override
-        public void onSuccess(@Nonnull List<T> data) {
-            try {
-                InfoMessage infoMessage = new InfoMessage(transform.apply(data), System.currentTimeMillis(), "system");
-                kafkaProducer.send(new ProducerRecord<>(OF_TO_WFM_TOPIC, mapper.writeValueAsString(infoMessage)));
-            } catch (JsonProcessingException e) {
-                logger.debug("Exception serializing " + type + " stats", e);
-            }
-        }
-
-        @Override
-        public void onFailure(Throwable t) {
-            logger.debug("Exception reading " + type + " stats", t);
-        }
-    }
-
     /**
      * IFloodLightModule Methods
      */
@@ -338,9 +251,8 @@ public class KafkaMessageCollector implements IFloodlightModule {
 
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
-        Collection<Class<? extends IFloodlightService>> services = new ArrayList<>(3);
+        Collection<Class<? extends IFloodlightService>> services = new ArrayList<>(2);
         services.add(IPathVerificationService.class);
-        services.add(KafkaMessageProducer.class);
         services.add(ISwitchManager.class);
         return services;
     }
@@ -348,7 +260,6 @@ public class KafkaMessageCollector implements IFloodlightModule {
     @Override
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
         pathVerificationService = context.getServiceImpl(IPathVerificationService.class);
-        kafkaProducer = context.getServiceImpl(KafkaMessageProducer.class);
         switchManager = context.getServiceImpl(ISwitchManager.class);
         Map<String, String> configParameters = context.getConfigParams(this);
         kafkaProps = new Properties();
