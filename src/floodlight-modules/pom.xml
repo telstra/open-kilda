@@ -121,9 +121,9 @@
 				<artifactId>jacoco-maven-plugin</artifactId>
 				<version>0.7.9</version>
 				<configuration>
-					<outputDirectory>${project.basedir}/reports/jacoco</outputDirectory>
-					<destFile>${project.basedir}/target/coverage-reports/jacoco-unit.exec</destFile>
-					<dataFile>${project.basedir}/target/coverage-reports/jacoco-unit.exec</dataFile>
+					<outputDirectory>${project.build.directory}/jacoco</outputDirectory>
+					<destFile>${project.build.directory}/coverage/jacoco-unit.exec</destFile>
+					<dataFile>${project.build.directory}/coverage/jacoco-unit.exec</dataFile>
 				</configuration>
 				<executions>
 					<execution>
@@ -147,7 +147,7 @@
 				<version>2.20</version>
 				<configuration>
 					<redirectTestOutputToFile>true</redirectTestOutputToFile>
-					<reportsDirectory>${project.basedir}/reports/junit</reportsDirectory>
+					<reportsDirectory>${project.build.directory}/junit</reportsDirectory>
 				</configuration>
 			</plugin>
 		</plugins>

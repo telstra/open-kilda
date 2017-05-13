@@ -16,9 +16,7 @@ RUN chmod 777 /app/*
 RUN echo "PATH=$PATH:/opt/storm/bin" >> ~/.bashrc
 
 ADD /src/messaging /app/messaging
-WORKDIR /app/messaging
-RUN mvn clean install
-WORKDIR /
+RUN mvn -f /app/messaging clean install
 
 COPY /services/wfm /app/wfm
 WORKDIR /app/wfm

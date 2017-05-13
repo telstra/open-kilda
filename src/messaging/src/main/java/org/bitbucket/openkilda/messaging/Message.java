@@ -1,5 +1,9 @@
 package org.bitbucket.openkilda.messaging;
 
+import org.bitbucket.openkilda.messaging.command.CommandMessage;
+import org.bitbucket.openkilda.messaging.error.ErrorMessage;
+import org.bitbucket.openkilda.messaging.info.InfoMessage;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -18,8 +22,8 @@ import java.io.Serializable;
 @JsonPropertyOrder({
         "type",
         "timestamp",
-        "correlation_id",
-        "data"})
+        "correlation-id",
+        "payload"})
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME,
         include = JsonTypeInfo.As.PROPERTY,
         property = "type",
@@ -61,9 +65,9 @@ public abstract class Message implements Serializable {
     /**
      * Instance constructor.
      *
-     * @param type          message type
-     * @param timestamp     message timestamp
-     * @param correlationId message correlation id
+     * @param   type           message type
+     * @param   timestamp      message timestamp
+     * @param   correlationId  message correlation id
      */
     @JsonCreator
     public Message(@JsonProperty("type") final MessageType type,
@@ -77,7 +81,7 @@ public abstract class Message implements Serializable {
     /**
      * Returns message type.
      *
-     * @return message type
+     * @return  message type
      */
     @JsonProperty("type")
     public MessageType getType() {
@@ -87,7 +91,7 @@ public abstract class Message implements Serializable {
     /**
      * Sets message type.
      *
-     * @param type message type
+     * @param   type  message type
      */
     @JsonProperty("type")
     public void setType(final MessageType type) {
@@ -97,7 +101,7 @@ public abstract class Message implements Serializable {
     /**
      * Returns message timestamp.
      *
-     * @return message timestamp
+     * @return  message timestamp
      */
     @JsonProperty("timestamp")
     public long getTimestamp() {
@@ -107,7 +111,7 @@ public abstract class Message implements Serializable {
     /**
      * Sets message timestamp.
      *
-     * @param timestamp message timestamp
+     * @param   timestamp  message timestamp
      */
     @JsonProperty("timestamp")
     public void setTimestamp(final long timestamp) {
@@ -117,7 +121,7 @@ public abstract class Message implements Serializable {
     /**
      * Returns message correlation id.
      *
-     * @return message correlation id
+     * @return  message correlation id
      */
     @JsonProperty("correlation_id")
     public String getCorrelationId() {
@@ -127,7 +131,7 @@ public abstract class Message implements Serializable {
     /**
      * Sets message correlation id.
      *
-     * @param correlationId message correlation id
+     * @param   correlationId  message correlation id
      */
     @JsonProperty("correlation_id")
     public void setCorrelationId(final String correlationId) {

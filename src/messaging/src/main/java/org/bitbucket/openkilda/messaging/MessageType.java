@@ -38,7 +38,7 @@ public enum MessageType {
     /**
      * Constructs entity.
      *
-     * @param type flow type
+     * @param   type  flow type
      */
     @JsonCreator
     MessageType(@JsonProperty("type") final String type) {
@@ -48,7 +48,7 @@ public enum MessageType {
     /**
      * Returns type name.
      *
-     * @return type name
+     * @return  type name
      */
     @JsonProperty("type")
     public String getType() {
