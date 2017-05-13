@@ -1,7 +1,6 @@
 package org.bitbucket.openkilda.floodlight.pathverification;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -12,8 +11,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
@@ -29,19 +28,16 @@ import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.LLDPTLV;
 import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.restserver.IRestApiService;
-import net.floodlightcontroller.staticentry.IStaticEntryPusherService;
-import net.floodlightcontroller.util.FlowModUtils;
 import net.floodlightcontroller.util.OFMessageUtils;
 
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.bitbucket.openkilda.floodlight.message.InfoMessage;
-import org.bitbucket.openkilda.floodlight.message.Message;
-import org.bitbucket.openkilda.floodlight.message.info.IslInfoData;
-import org.bitbucket.openkilda.floodlight.message.info.PathNode;
 import org.bitbucket.openkilda.floodlight.pathverification.type.PathType;
 import org.bitbucket.openkilda.floodlight.pathverification.web.PathVerificationServiceWebRoutable;
-import org.projectfloodlight.openflow.protocol.OFFlowMod;
+import org.bitbucket.openkilda.messaging.Message;
+import org.bitbucket.openkilda.messaging.info.InfoMessage;
+import org.bitbucket.openkilda.messaging.info.event.IslInfoData;
+import org.bitbucket.openkilda.messaging.info.event.PathNode;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
@@ -49,12 +45,7 @@ import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
-import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
-import org.projectfloodlight.openflow.protocol.action.OFActionSetField;
-import org.projectfloodlight.openflow.protocol.action.OFActions;
-import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
-import org.projectfloodlight.openflow.protocol.oxm.OFOxms;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IPv4Address;
@@ -73,25 +64,23 @@ implements IFloodlightModule, IOFMessageListener, IPathVerificationService {
   public static final int VERIFICATION_PACKET_UDP_PORT = 61231;
   public static final String VERIFICATION_PACKET_IP_DST = "192.168.0.255";
 
-  protected IFloodlightProviderService floodlightProvider;
-  protected IOFSwitchService switchService;
-  protected IStaticEntryPusherService sfpService;
-  protected IRestApiService restApiService;
   protected Logger logger;
-  protected ObjectMapper mapper = new ObjectMapper();
-  protected String topic;
-  public Boolean isAlive = false;
+  private IFloodlightProviderService floodlightProvider;
+  private IOFSwitchService switchService;
+  private IRestApiService restApiService;
+  private String topic;
+  private boolean isAlive = false;
   private KafkaProducer<String, String> producer;
   private Properties kafkaProps;
+  private final ObjectMapper mapper = new ObjectMapper();
 
   /**
    * IFloodlightModule Methods.
    */
   @Override
   public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
-    Collection<Class<? extends IFloodlightService>> services = new ArrayList<>();
+    Collection<Class<? extends IFloodlightService>> services = new ArrayList<>(3);
     services.add(IFloodlightProviderService.class);
-    services.add(IStaticEntryPusherService.class);
     services.add(IOFSwitchService.class);
     services.add(IRestApiService.class);
     return services;
@@ -114,7 +103,6 @@ implements IFloodlightModule, IOFMessageListener, IPathVerificationService {
   @Override
   public void init(FloodlightModuleContext context) throws FloodlightModuleException {
     floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
-    sfpService = context.getServiceImpl(IStaticEntryPusherService.class);
     switchService = context.getServiceImpl(IOFSwitchService.class);
     restApiService = context.getServiceImpl(IRestApiService.class);
     logger = LoggerFactory.getLogger(PathVerificationService.class);
@@ -315,7 +303,7 @@ implements IFloodlightModule, IOFMessageListener, IPathVerificationService {
     return null;
   }
 
-  public VerificationPacket deserialize(Ethernet eth) throws Exception {
+  private VerificationPacket deserialize(Ethernet eth) throws Exception {
     if (eth.getPayload() instanceof IPv4) {
       IPv4 ip = (IPv4) eth.getPayload();
 
@@ -333,8 +321,8 @@ implements IFloodlightModule, IOFMessageListener, IPathVerificationService {
     throw new Exception("Ethernet packet was not a verificaiton packet");
   }
 
-  public net.floodlightcontroller.core.IListener.Command handlePacketIn(IOFSwitch sw,
-      OFPacketIn pkt, FloodlightContext context) {
+  private net.floodlightcontroller.core.IListener.Command handlePacketIn(IOFSwitch sw,
+                                                                         OFPacketIn pkt, FloodlightContext context) {
     long time = System.currentTimeMillis();
     VerificationPacket verificationPacket = null;
     Command command = Command.CONTINUE;
@@ -386,28 +374,16 @@ implements IFloodlightModule, IOFMessageListener, IPathVerificationService {
     U64 latency = (timestamp != 0 && (time - timestamp) > 0) ? U64.of(time - timestamp) : U64.ZERO;
 
     List<PathNode> nodes = Arrays.asList(
-        new PathNode()
-          .withSwitchId(sw.getId().toString())
-          .withPortNo(inPort.getPortNumber())
-          .withSegLatency(latency.getValue())
-          .withSeqId(0),
-        new PathNode()
-          .withSwitchId(remoteSwitch.getId().toString())
-          .withPortNo(remotePort.getPortNumber())
-          .withSeqId(1)
-        );
+        new PathNode(sw.getId().toString(), inPort.getPortNumber(), 0, latency.getValue()),
+        new PathNode(remoteSwitch.getId().toString(), remotePort.getPortNumber(), 1));
 
-    IslInfoData path = new IslInfoData()
-        .withLatency(latency.getValue())
-        .withPath(nodes);
+    IslInfoData path = new IslInfoData(latency.getValue(), nodes);
     
-    Message message = new InfoMessage()
-        .withData(path)
-        .withTimestamp(System.currentTimeMillis());
-    
+    Message message = new InfoMessage(path, System.currentTimeMillis(), "system");
     try {
-      logger.debug(message.toJson());
-      producer.send(new ProducerRecord<String, String>(topic, message.toJson()));
+      final String json = mapper.writeValueAsString(message);
+      logger.debug("about to send {}", json);
+      producer.send(new ProducerRecord<>(topic, json));
     } catch (JsonProcessingException exception) {
       logger.error("could not create json for path.", exception);
     }

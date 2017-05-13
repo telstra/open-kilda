@@ -53,10 +53,10 @@ public class InfoEventSplitterBolt extends BaseRichBolt {
 
     /**
      * The data field holds the "message_type" and "state" fields.
-     * @param root the "data" field of an "INFO" message
+     * @param root the "payload" field of an "INFO" message
      */
     private void splitInfoMessage(Map<String,?> root, Tuple tuple) throws JsonProcessingException {
-        Values dataVal = new Values("data", new ObjectMapper().writeValueAsString(root));
+        Values dataVal = new Values("payload", new ObjectMapper().writeValueAsString(root));
         String key = ((String) root.get("message_type")).toLowerCase();
         String state = (String) root.get("state");
         switch (key) {

@@ -1,5 +1,6 @@
 package org.bitbucket.openkilda.floodlight.message.command;
 
+import org.bitbucket.openkilda.messaging.command.discovery.DiscoverIslCommandData;
 import org.junit.Test;
 
 import static org.bitbucket.openkilda.floodlight.Constants.outputPort;
@@ -12,34 +13,24 @@ import static org.junit.Assert.*;
 public class DiscoverISLCommandDataTest {
     @Test
     public void toStringTest() throws Exception {
-        String dataString = new DiscoverISLCommandData().withSwitchId(switchId).toString();
+        final DiscoverIslCommandData data = new DiscoverIslCommandData();
+        data.setSwitchId(switchId);
+        String dataString = data.toString();
         assertNotNull(dataString);
         assertFalse(dataString.isEmpty());
     }
 
     @Test
     public void switchId() throws Exception {
-        DiscoverISLCommandData data = new DiscoverISLCommandData();
+        DiscoverIslCommandData data = new DiscoverIslCommandData();
         data.setSwitchId(switchId);
         assertEquals(switchId, data.getSwitchId());
     }
 
     @Test
-    public void withSwitchId() throws Exception {
-        DiscoverISLCommandData data = new DiscoverISLCommandData().withSwitchId(switchId);
-        assertEquals(switchId, data.getSwitchId());
-    }
-
-    @Test
     public void portNo() throws Exception {
-        DiscoverISLCommandData data = new DiscoverISLCommandData();
+        DiscoverIslCommandData data = new DiscoverIslCommandData();
         data.setPortNo(outputPort);
-        assertEquals(outputPort, data.getPortNo());
-    }
-
-    @Test
-    public void withPortNo() throws Exception {
-        DiscoverISLCommandData data = new DiscoverISLCommandData().withPortNo(outputPort);
         assertEquals(outputPort, data.getPortNo());
     }
 }

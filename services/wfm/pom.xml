@@ -282,7 +282,7 @@
                 <version>2.20</version>
                 <configuration>
                     <redirectTestOutputToFile>true</redirectTestOutputToFile>
-                    <reportsDirectory>${project.basedir}/reports/junit</reportsDirectory>
+                    <reportsDirectory>${project.build.directory}/junit</reportsDirectory>
                 </configuration>
             </plugin>
         </plugins>

@@ -2,8 +2,7 @@
   {
     "type": "COMMAND",
     "timestamp": 23478952134,
-    "data": {
-      "destination": "CONTROLLER",
+    "payload": {
       "command": "install_default_flows",
       "switch_id": "0x0000000000000001"
     }
@@ -11,8 +10,7 @@
   {
     "type": "COMMAND",
     "timestamp": 23478952134,
-    "data": {
-      "destination": "CONTROLLER",
+    "payload": {
       "command": "isl_discover",
       "source_switch": "0x0000000000000001",
       "source_port": 1
@@ -21,8 +19,7 @@
   {
     "type": "COMMAND",
     "timestamp": 23478952134,
-    "data": {
-      "destination": "CONTROLLER",
+    "payload": {
       "command": "path_discover",
       "source_switch_id": "0x0000000000000001",
       "source_switch_port": 1,
@@ -32,7 +29,7 @@
   {
     "type": "INFO",
     "timestamp": 23478952134,
-    "data": {
+    "payload": {
       "message_type": "isl",
       "latency_ns": 1123,
       "path": [
@@ -53,7 +50,7 @@
   {
     "type": "INFO",
     "timestamp": 23478952134,
-    "data": {
+    "payload": {
       "message_type": "path",
       "latency_ns": 1123,
       "path": [
@@ -74,7 +71,7 @@
   {
     "type": "INFO",
     "timestamp": 23478952134,
-    "data": {
+    "payload": {
       "message_type": "switch",
       "switch_id": "0000000000000001",
       "state": "ADD,ACTIVATED,REMOVED,DEACTIVATED,CHANGE"
@@ -83,7 +80,7 @@
   {
     "type": "INFO",
     "timestamp": 23478952134,
-    "data": {
+    "payload": {
       "message_type": "port",
       "switch_id": "0000000000000001",
       "port_no": 1,

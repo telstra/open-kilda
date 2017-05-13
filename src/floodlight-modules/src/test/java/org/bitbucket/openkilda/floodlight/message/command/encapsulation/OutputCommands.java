@@ -12,7 +12,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 
 import static java.util.Collections.singletonList;
-import static org.bitbucket.openkilda.floodlight.message.command.Utils.ETH_TYPE;
+import static org.bitbucket.openkilda.messaging.Utils.ETH_TYPE;
 import static org.projectfloodlight.openflow.protocol.OFMeterFlags.BURST;
 import static org.projectfloodlight.openflow.protocol.OFMeterFlags.KBPS;
 import static org.projectfloodlight.openflow.protocol.OFMeterModCommand.ADD;

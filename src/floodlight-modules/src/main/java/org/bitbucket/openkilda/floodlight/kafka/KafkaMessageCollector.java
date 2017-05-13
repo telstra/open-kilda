@@ -1,18 +1,26 @@
 package org.bitbucket.openkilda.floodlight.kafka;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import net.floodlightcontroller.core.IFloodlightProviderService;
-import net.floodlightcontroller.core.module.*;
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.core.module.FloodlightModuleException;
+import net.floodlightcontroller.core.module.IFloodlightModule;
+import net.floodlightcontroller.core.module.IFloodlightService;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.bitbucket.openkilda.floodlight.message.CommandMessage;
-import org.bitbucket.openkilda.floodlight.message.Message;
-import org.bitbucket.openkilda.floodlight.message.command.*;
 import org.bitbucket.openkilda.floodlight.pathverification.IPathVerificationService;
 import org.bitbucket.openkilda.floodlight.switchmanager.ISwitchManager;
-import org.bitbucket.openkilda.floodlight.switchmanager.OutputVlanType;
-import org.bitbucket.openkilda.floodlight.switchmanager.SwitchEventCollector;
+import org.bitbucket.openkilda.messaging.Message;
+import org.bitbucket.openkilda.messaging.command.CommandData;
+import org.bitbucket.openkilda.messaging.command.CommandMessage;
+import org.bitbucket.openkilda.messaging.command.DeleteFlow;
+import org.bitbucket.openkilda.messaging.command.discovery.DiscoverIslCommandData;
+import org.bitbucket.openkilda.messaging.command.discovery.DiscoverPathCommandData;
+import org.bitbucket.openkilda.messaging.command.flow.InstallEgressFlowCommandData;
+import org.bitbucket.openkilda.messaging.command.flow.InstallIngressFlowCommandData;
+import org.bitbucket.openkilda.messaging.command.flow.InstallOneSwitchFlowCommandData;
+import org.bitbucket.openkilda.messaging.command.flow.InstallTransitFlowCommandData;
+import org.bitbucket.openkilda.messaging.payload.response.OutputVlanType;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.slf4j.Logger;
@@ -21,48 +29,45 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public class KafkaMessageCollector implements IFloodlightModule {
     private static final Logger logger = LoggerFactory.getLogger(KafkaMessageCollector.class);
     private Properties kafkaProps;
     private String topic;
-    private final AtomicBoolean closed = new AtomicBoolean(false);
-    private ObjectMapper mapper;
+    private final ObjectMapper mapper = new ObjectMapper();
     private IPathVerificationService pathVerificationService;
-    private SwitchEventCollector switchEventCollector;
     private ISwitchManager switchManager;
-    private KafkaMessageProducer kafkaProducer;
 
     class ParseRecord implements Runnable {
         final ConsumerRecord record;
 
         public ParseRecord(ConsumerRecord record) {
-            mapper = new ObjectMapper();
             this.record = record;
         }
 
         private void doControllerMsg(CommandMessage message) {
             CommandData data = message.getData();
-            if (data instanceof DiscoverISLCommandData) {
+            if (data instanceof DiscoverIslCommandData) {
                 doDiscoverIslCommand(data);
             } else if (data instanceof DiscoverPathCommandData) {
                 doDiscoverPathCommand(data);
-            } else if (data instanceof InstallIngressFlow) {
+            } else if (data instanceof InstallIngressFlowCommandData) {
                 doInstallIngressFlow(data);
-            } else if (data instanceof InstallEgressFlow) {
+            } else if (data instanceof InstallEgressFlowCommandData) {
                 doInstallEgressFlow(data);
-            } else if (data instanceof InstallTransitFlow) {
+            } else if (data instanceof InstallTransitFlowCommandData) {
                 doInstallTransitFlow(data);
-            } else if (data instanceof InstallOneSwitchFlow) {
+            } else if (data instanceof InstallOneSwitchFlowCommandData) {
                 doInstallOneSwitchFlow(data);
+            } else if (data instanceof DeleteFlow) {
+                doDeleteFlow(((DeleteFlow) data));
             } else {
                 logger.error("unknown data type: {}", data.toString());
             }
         }
 
         private void doDiscoverIslCommand(CommandData data) {
-            DiscoverISLCommandData command = (DiscoverISLCommandData) data;
+            DiscoverIslCommandData command = (DiscoverIslCommandData) data;
             logger.debug("sending discover ISL to {}", command);
             pathVerificationService.sendDiscoveryMessage(DatapathId.of(command.getSwitchId()),
                                                          OFPort.of(command.getPortNo()));
@@ -79,7 +84,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
          * @param data - Command data for flow installation
          */
         private void doInstallIngressFlow(CommandData data) {
-            InstallIngressFlow command = (InstallIngressFlow) data;
+            InstallIngressFlowCommandData command = (InstallIngressFlowCommandData) data;
             logger.debug("creating an ingress flow: {}",command);
 
             switchManager.installMeter(DatapathId.of(command.getSwitchId()),
@@ -87,13 +92,12 @@ public class KafkaMessageCollector implements IFloodlightModule {
                     1024,
                     command.getMeterId().longValue());
 
-            switchManager.installIngressFlow(DatapathId.of(command.getSwitchId()),
+            switchManager.installIngressFlow(DatapathId.of(command.getSwitchId()), command.getFlowName(),
                     command.getInputPort().intValue(),
                     command.getOutputPort().intValue(),
                     command.getInputVlanId().intValue(),
                     command.getTransitVlanId().intValue(),
-                    OutputVlanType.valueOf(command.getOutputVlanType()),
-                    command.getMeterId().longValue());
+                    command.getOutputVlanType(), command.getMeterId().longValue());
         }
 
         /**
@@ -102,15 +106,14 @@ public class KafkaMessageCollector implements IFloodlightModule {
          * @param data - Command data for flow installation
          */
         private void doInstallEgressFlow(CommandData data) {
-            InstallEgressFlow command = (InstallEgressFlow) data;
+            InstallEgressFlowCommandData command = (InstallEgressFlowCommandData) data;
             logger.debug("creating an egress flow: {}", command);
 
-            switchManager.installEgressFlow(DatapathId.of(command.getSwitchId()),
+            switchManager.installEgressFlow(DatapathId.of(command.getSwitchId()), command.getFlowName(),
                     command.getInputPort().intValue(),
                     command.getOutputPort().intValue(),
                     command.getTransitVlanId().intValue(),
-                    command.getOutputVlanId().intValue(),
-                    OutputVlanType.valueOf(command.getOutputVlanType()));
+                    command.getOutputVlanId().intValue(), command.getOutputVlanType());
         }
 
         /**
@@ -119,13 +122,12 @@ public class KafkaMessageCollector implements IFloodlightModule {
          * @param data - Command data for flow installation
          */
         private void doInstallTransitFlow(CommandData data) {
-            InstallTransitFlow command = (InstallTransitFlow) data;
+            InstallTransitFlowCommandData command = (InstallTransitFlowCommandData) data;
             logger.debug("creating a transit flow: {}", command);
 
-            switchManager.installTransitFlow(DatapathId.of(command.getSwitchId()),
+            switchManager.installTransitFlow(DatapathId.of(command.getSwitchId()), command.getFlowName(),
                     command.getInputPort().intValue(),
-                    command.getOutputPort().intValue(),
-                    command.getTransitVlanId().intValue());
+                    command.getOutputPort().intValue(), command.getTransitVlanId().intValue());
         }
 
         /**
@@ -134,7 +136,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
          * @param data - Command data for flow installation
          */
         private void doInstallOneSwitchFlow(CommandData data) {
-            InstallOneSwitchFlow command = (InstallOneSwitchFlow) data;
+            InstallOneSwitchFlowCommandData command = (InstallOneSwitchFlowCommandData) data;
             logger.debug("creating a flow through one switch: {}", command);
 
             switchManager.installMeter(DatapathId.of(command.getSwitchId()),
@@ -142,14 +144,13 @@ public class KafkaMessageCollector implements IFloodlightModule {
                     1024,
                     command.getInputMeterId().longValue());
 
-            OutputVlanType directOutputVlanType = OutputVlanType.valueOf(command.getOutputVlanType());
-            switchManager.installOneSwitchFlow(DatapathId.of(command.getSwitchId()),
+            OutputVlanType directOutputVlanType = command.getOutputVlanType();
+            switchManager.installOneSwitchFlow(DatapathId.of(command.getSwitchId()), command.getFlowName(),
                     command.getInputPort().intValue(),
                     command.getOutputPort().intValue(),
                     command.getInputVlanId().intValue(),
                     command.getOutputVlanId().intValue(),
-                    directOutputVlanType,
-                    command.getInputMeterId().intValue());
+                    directOutputVlanType, command.getInputMeterId().intValue());
 
             switchManager.installMeter(DatapathId.of(command.getSwitchId()),
                     command.getBandwidth().longValue(),
@@ -168,13 +169,21 @@ public class KafkaMessageCollector implements IFloodlightModule {
                     reverseOutputVlanType = directOutputVlanType;
                     break;
             }
-            switchManager.installOneSwitchFlow(DatapathId.of(command.getSwitchId()),
+            switchManager.installOneSwitchFlow(DatapathId.of(command.getSwitchId()), command.getFlowName(),
                     command.getOutputPort().intValue(),
                     command.getInputPort().intValue(),
                     command.getOutputVlanId().intValue(),
                     command.getInputVlanId().intValue(),
-                    reverseOutputVlanType,
-                    command.getOutputMeterId().intValue());
+                    reverseOutputVlanType, command.getOutputMeterId().intValue());
+        }
+
+        private void doDeleteFlow(DeleteFlow data) {
+            logger.debug("deleting a flow: {}", data);
+            DatapathId dpid = DatapathId.of(data.getSwitchId());
+            boolean flowDeleted = switchManager.deleteFlow(dpid, data.getFlowName());
+            if (flowDeleted && data.getMeterId() != null) {
+                switchManager.deleteMeter(dpid, data.getMeterId());
+            }
         }
 
         private void parseRecord(ConsumerRecord record) {
@@ -184,16 +193,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
                     Message message = mapper.readValue(value, Message.class);
                     if (message instanceof CommandMessage) {
                         logger.debug("got a command message");
-                        CommandMessage cmdMessage = (CommandMessage) message;
-                        switch (cmdMessage.getData().getDestination()) {
-                            case CONTROLLER:
-                                doControllerMsg(cmdMessage);
-                                break;
-                            case TOPOLOGY_ENGINE:
-                                break;
-                            default:
-                                break;
-                        }
+                        doControllerMsg((CommandMessage) message);
                     }
                 } else {
                     logger.error("{} not of type String", record.value());
@@ -226,10 +226,10 @@ public class KafkaMessageCollector implements IFloodlightModule {
             KafkaConsumer<String, String> consumer = new KafkaConsumer<>(kafkaProps);
             consumer.subscribe(topics);
 
-            while (!closed.get()) {
+            while (true) {
                 ConsumerRecords<String, String> records = consumer.poll(100);
                 for (ConsumerRecord<String, String> record: records) {
-                    logger.debug("received message: {} - {}", new Object[]{record.offset(), record.value()});
+                    logger.debug("received message: {} - {}", record.offset(), record.value());
                     parseRecordExecutor.execute(new ParseRecord(record));
                 }
             }
@@ -251,21 +251,15 @@ public class KafkaMessageCollector implements IFloodlightModule {
 
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
-        Collection<Class<? extends IFloodlightService>> services = new ArrayList<>();
-        services.add(IFloodlightProviderService.class);
+        Collection<Class<? extends IFloodlightService>> services = new ArrayList<>(2);
         services.add(IPathVerificationService.class);
-        services.add(KafkaMessageProducer.class);
-        services.add(SwitchEventCollector.class);
         services.add(ISwitchManager.class);
         return services;
     }
 
     @Override
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
-        IFloodlightProviderService floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
         pathVerificationService = context.getServiceImpl(IPathVerificationService.class);
-        switchEventCollector = context.getServiceImpl(SwitchEventCollector.class);
-        kafkaProducer = context.getServiceImpl(KafkaMessageProducer.class);
         switchManager = context.getServiceImpl(ISwitchManager.class);
         Map<String, String> configParameters = context.getConfigParams(this);
         kafkaProps = new Properties();
@@ -285,7 +279,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
         try {
             ExecutorService parseRecordExecutor = Executors.newFixedThreadPool(10);
             ExecutorService consumerExecutor = Executors.newSingleThreadExecutor();
-            consumerExecutor.execute(new Consumer(Arrays.asList(topic), kafkaProps, parseRecordExecutor));
+            consumerExecutor.execute(new Consumer(Collections.singletonList(topic), kafkaProps, parseRecordExecutor));
         } catch (Exception exception) {
             logger.error("error", exception);
         }

@@ -23,6 +23,11 @@
 		</repository>
 	</repositories>
 	<dependencies>
+        <dependency>
+            <groupId>org.bitbucket.openkilda</groupId>
+            <artifactId>messaging</artifactId>
+            <version>1.0-SNAPSHOT</version>
+        </dependency>
 		<dependency>
 			<groupId>org.projectfloodlight</groupId>
 			<artifactId>openflowj</artifactId>
@@ -31,7 +36,7 @@
 		<dependency>
 			<groupId>com.google.guava</groupId>
 			<artifactId>guava</artifactId>
-			<version>13.0.1</version>
+			<version>21.0</version>
 		</dependency>
 		<dependency>
 			<groupId>junit</groupId>
@@ -50,7 +55,7 @@
 			<artifactId>commons-lang3</artifactId>
 			<version>3.5</version>
 		</dependency>
-		<dependency>
+        <dependency>
 			<groupId>org.projectfloodlight</groupId>
 			<artifactId>floodlight</artifactId>
 			<version>1.2-SNAPSHOT</version>
@@ -121,9 +126,9 @@
 				<artifactId>jacoco-maven-plugin</artifactId>
 				<version>0.7.9</version>
 				<configuration>
-					<outputDirectory>${project.basedir}/reports/jacoco</outputDirectory>
-					<destFile>${project.basedir}/target/coverage-reports/jacoco-unit.exec</destFile>
-					<dataFile>${project.basedir}/target/coverage-reports/jacoco-unit.exec</dataFile>
+					<outputDirectory>${project.build.directory}/jacoco</outputDirectory>
+					<destFile>${project.build.directory}/coverage/jacoco-unit.exec</destFile>
+					<dataFile>${project.build.directory}/coverage/jacoco-unit.exec</dataFile>
 				</configuration>
 				<executions>
 					<execution>
@@ -147,7 +152,7 @@
 				<version>2.20</version>
 				<configuration>
 					<redirectTestOutputToFile>true</redirectTestOutputToFile>
-					<reportsDirectory>${project.basedir}/reports/junit</reportsDirectory>
+					<reportsDirectory>${project.build.directory}/junit</reportsDirectory>
 				</configuration>
 			</plugin>
 		</plugins>

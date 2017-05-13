@@ -39,7 +39,7 @@ def build_ingress_flow(expandedRelationships, src_switch, src_port, src_vlan, ba
     flow = Flow()
     flow.command = "install_ingress_flow"
     flow.destination = "CONTROLLER"
-    flow.flow_name = flow_id
+    flow.cookie = flow_id
     flow.switch_id = src_switch
     flow.input_port= int(src_port)
     flow.output_port = action
@@ -59,7 +59,7 @@ def build_egress_flow(expandedRelationships, dst_switch, dst_port, dst_vlan, tra
     flow = Flow()
     flow.command = "install_egress_flow"
     flow.destination = "CONTROLLER"
-    flow.flow_name = flow_id
+    flow.cookie = flow_id
     flow.switch_id = dst_switch
     flow.input_port = int(match)
     flow.output_port = int(dst_port)
@@ -77,7 +77,7 @@ def build_intermediate_flows(expandedRelationships, transit_vlan, i, flow_id):
     flow = Flow()
     flow.command = "install_transit_flow"
     flow.destination = "CONTROLLER"
-    flow.flow_name = flow_id
+    flow.cookie = flow_id
     flow.switch_id = switch
     flow.input_port = int(match)
     flow.output_port = int(action)
@@ -89,7 +89,7 @@ def build_one_switch_flow(switch, src_port, src_vlan, dst_port, dst_vlan, bandwi
     flow = Flow()
     flow.command = "install_one_switch_flow"
     flow.destination = "CONTROLLER"
-    flow.flow_name = flow_id
+    flow.cookie = flow_id
     flow.switch_id = switch
     flow.input_port = int(src_port)
     flow.output_port = int(dst_port)
@@ -101,6 +101,13 @@ def build_one_switch_flow(switch, src_port, src_vlan, dst_port, dst_vlan, bandwi
     flow.output_vlan_type = outputAction
     return flow
 
+def build_delete_flow(switch, flow_id):
+    flow = Flow()
+    flow.command = "delete_flow"
+    flow.destination = "CONTROLLER"
+    flow.cookie = flow_id
+    flow.switch_id = switch
+    return flow
 
 def expand_relationships(relationships):
     fullRelationships = []
@@ -122,7 +129,7 @@ def assign_transit_vlan():
     return random.randrange(99, 4000,1)
 
 def assign_flow_id():
-    return str(uuid.uuid4())
+    return "123"
 
 def assign_meter_id():
     # zero means meter should not be actually installed on switch
@@ -180,6 +187,19 @@ def api_v1_flow(flowid):
     if request.method == 'GET':
         result = graph.run(query.format(flowid, "return")).data()
     if request.method == 'DELETE':
+        bootstrap_server = 'kafka.pendev:9092'
+        topic = 'kilda-test'
+        producer = KafkaProducer(bootstrap_servers=bootstrap_server)
+        switches =  graph.run("MATCH (a:switch)-[r:flow {{flowid: '{}'}}]->(b:switch) return r.flowpath limit 1".format(flowid)).evaluate()
+        for switch in switches:
+            message = Message()
+            message.data = build_delete_flow(switch, str(flowid))
+            message.type = "COMMAND"
+            message.timestamp = 42
+            kafkamessage = b'{}'.format(message.toJSON())
+            print 'topic: {}, message: {}'.format(topic, kafkamessage)
+            messageresult = producer.send(topic, kafkamessage)
+            messageresult.get(timeout=5)
         result = graph.run(query.format(flowid, "delete")).data()
     return json.dumps(result)
 

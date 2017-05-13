@@ -3,4 +3,3 @@ target/
 .project
 .settings/
 *.pom
-reports/

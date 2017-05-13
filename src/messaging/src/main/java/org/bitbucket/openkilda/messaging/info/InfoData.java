@@ -1,26 +1,36 @@
 package org.bitbucket.openkilda.messaging.info;
 
 import org.bitbucket.openkilda.messaging.MessageData;
+import org.bitbucket.openkilda.messaging.info.event.IslInfoData;
+import org.bitbucket.openkilda.messaging.info.event.PathInfoData;
+import org.bitbucket.openkilda.messaging.info.event.PortInfoData;
+import org.bitbucket.openkilda.messaging.info.event.SwitchInfoData;
+import org.bitbucket.openkilda.messaging.info.flow.FlowPathResponse;
+import org.bitbucket.openkilda.messaging.info.flow.FlowResponse;
+import org.bitbucket.openkilda.messaging.info.flow.FlowStatusResponse;
+import org.bitbucket.openkilda.messaging.info.flow.FlowsResponse;
+import org.bitbucket.openkilda.messaging.info.flow.FlowsStatusResponse;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonSubTypes.Type;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 /**
- * Class represents high level view of data for info messages.
+ * Defines the payload of a Message representing an info.
  */
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonPropertyOrder({
-        "message_type"})
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME,
         include = JsonTypeInfo.As.PROPERTY,
         property = "message_type")
 @JsonSubTypes({
+        @Type(value = FlowResponse.class, name = "flow"),
+        @Type(value = FlowsResponse.class, name = "flows"),
+        @Type(value = FlowStatusResponse.class, name = "flow_status"),
+        @Type(value = FlowsStatusResponse.class, name = "flows_status"),
+        @Type(value = FlowPathResponse.class, name = "flow_path"),
         @Type(value = PathInfoData.class, name = "path"),
         @Type(value = IslInfoData.class, name = "isl"),
         @Type(value = SwitchInfoData.class, name = "switch"),
@@ -32,34 +42,10 @@ public abstract class InfoData extends MessageData {
     private static final long serialVersionUID = 1L;
 
     /**
-     * Info message type.
+     * {@inheritDoc}
      */
-    @JsonProperty("message_type")
-    private InfoMessageType messageType;
-
-    /**
-     * Default constructor.
-     */
-    public InfoData() {
-    }
-
-    /**
-     * Returns info message type.
-     *
-     * @return info message type
-     */
-    @JsonProperty("message_type")
-    public InfoMessageType getType() {
-        return messageType;
-    }
-
-    /**
-     * Sets info message type.
-     *
-     * @param messageType info message type
-     */
-    @JsonProperty("message_type")
-    public void setType(final InfoMessageType messageType) {
-        this.messageType = messageType;
+    @Override
+    public String toString() {
+        return "Not implemented for " + getClass().getCanonicalName();
     }
 }
