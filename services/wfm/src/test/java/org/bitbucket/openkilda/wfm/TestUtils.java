@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Properties;
 import com.google.common.io.Files;
+import org.apache.storm.Config;
 import org.apache.storm.kafka.BrokerHosts;
 import org.apache.storm.kafka.ZkHosts;
 
@@ -29,6 +30,13 @@ public class TestUtils {
         props.put("broker.id", "1");
         props.put("delete.topic.enable","true");
         return props;
+    }
+
+    public static Config stormConfig() {
+        Config config = new Config();
+        config.setDebug(false);
+        config.setNumWorkers(1);
+        return config;
     }
 
     public static class KafkaTestFixture {
