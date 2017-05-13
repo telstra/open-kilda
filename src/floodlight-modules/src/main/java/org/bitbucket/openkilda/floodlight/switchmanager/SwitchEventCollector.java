@@ -1,6 +1,7 @@
 package org.bitbucket.openkilda.floodlight.switchmanager;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchListener;
@@ -12,12 +13,12 @@ import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.bitbucket.openkilda.floodlight.kafka.KafkaMessageProducer;
-import org.bitbucket.openkilda.floodlight.message.InfoMessage;
-import org.bitbucket.openkilda.floodlight.message.Message;
-import org.bitbucket.openkilda.floodlight.message.info.InfoData;
-import org.bitbucket.openkilda.floodlight.message.info.PortInfoData;
-import org.bitbucket.openkilda.floodlight.message.info.SwitchInfoData;
-import org.bitbucket.openkilda.floodlight.message.info.SwitchInfoData.SwitchEventType;
+import org.bitbucket.openkilda.messaging.Message;
+import org.bitbucket.openkilda.messaging.info.InfoData;
+import org.bitbucket.openkilda.messaging.info.InfoMessage;
+import org.bitbucket.openkilda.messaging.info.event.PortInfoData;
+import org.bitbucket.openkilda.messaging.info.event.SwitchEventType;
+import org.bitbucket.openkilda.messaging.info.event.SwitchInfoData;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.*;
 import org.slf4j.Logger;
@@ -37,6 +38,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
     private String topic;
     private KafkaMessageProducer kafkaProducer;
     private ISwitchManager switchManager;
+    private ObjectMapper mapper = new ObjectMapper();
 
     /**
      * IOFSwitchListener methods
@@ -148,9 +150,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
      * @return Message
      */
     private Message buildSwitchMessage(final DatapathId dpid, final SwitchEventType eventType) {
-        InfoData data = new SwitchInfoData()
-                .withSwitchId(dpid.toString())
-                .withState(eventType);
+        InfoData data = new SwitchInfoData(dpid.toString(), eventType);
         return buildMessage(data);
     }
 
@@ -161,9 +161,22 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
      * @return Message
      */
     private Message buildMessage(final InfoData data) {
-        return new InfoMessage()
-                .withData(data)
-                .withTimestamp(System.currentTimeMillis());
+        return new InfoMessage(data, System.currentTimeMillis(), "system");
+    }
+
+    private static org.bitbucket.openkilda.messaging.info.event.PortChangeType toJsonType(PortChangeType type) {
+        switch (type) {
+            case ADD:
+                return org.bitbucket.openkilda.messaging.info.event.PortChangeType.ADD;
+            case OTHER_UPDATE:
+                return org.bitbucket.openkilda.messaging.info.event.PortChangeType.OTHER_UPDATE;
+            case DELETE:
+                return org.bitbucket.openkilda.messaging.info.event.PortChangeType.DELETE;
+            case UP:
+                return org.bitbucket.openkilda.messaging.info.event.PortChangeType.UP;
+            default:
+                return org.bitbucket.openkilda.messaging.info.event.PortChangeType.DOWN;
+        }
     }
 
     /**
@@ -175,11 +188,8 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
      * @return Message
      */
     private Message buildPortMessage(final DatapathId switchId, final OFPort port, final PortChangeType type) {
-        InfoData data = new PortInfoData()
-                .withSwitchId(switchId.toString())
-                .withPortNo(port.getPortNumber())
-                .withState(type);
-        return (buildMessage(data));
+        InfoData data = new PortInfoData(switchId.toString(), port.getPortNumber(), toJsonType(type));
+        return buildMessage(data);
     }
 
     /**
@@ -191,11 +201,8 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
      * @return Message
      */
     private Message buildPortMessage(final DatapathId switchId, final OFPortDesc port, final PortChangeType type) {
-        InfoData data = new PortInfoData()
-                .withSwitchId(switchId.toString())
-                .withPortNo(port.getPortNo().getPortNumber())
-                .withState(type);
-        return (buildMessage(data));
+        InfoData data = new PortInfoData(switchId.toString(), port.getPortNo().getPortNumber(), toJsonType(type));
+        return buildMessage(data);
     }
 
     /**
@@ -206,7 +213,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
      */
     private void postMessage(final String topic, final Message message) {
         try {
-            kafkaProducer.send(new ProducerRecord<>(topic, message.toJson()));
+            kafkaProducer.send(new ProducerRecord<>(topic, mapper.writeValueAsString(message)));
         } catch (JsonProcessingException e) {
             logger.error("error", e);
         }

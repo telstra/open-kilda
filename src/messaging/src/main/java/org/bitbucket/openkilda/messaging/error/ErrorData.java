@@ -53,12 +53,6 @@ public class ErrorData extends MessageData {
     private String errorException;
 
     /**
-     * Default constructor.
-     */
-    public ErrorData() {
-    }
-
-    /**
      * Instance constructor.
      *
      * @param errorCode        error code

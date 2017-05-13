@@ -1,12 +1,14 @@
 package org.bitbucket.openkilda.floodlight.switchmanager.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.bitbucket.openkilda.floodlight.message.CommandMessage;
-import org.bitbucket.openkilda.floodlight.message.ErrorMessage;
-import org.bitbucket.openkilda.floodlight.message.Message;
-import org.bitbucket.openkilda.floodlight.message.command.*;
-import org.bitbucket.openkilda.floodlight.message.error.ErrorData;
 import org.bitbucket.openkilda.floodlight.switchmanager.ISwitchManager;
+import org.bitbucket.openkilda.messaging.Message;
+import org.bitbucket.openkilda.messaging.command.CommandData;
+import org.bitbucket.openkilda.messaging.command.CommandMessage;
+import org.bitbucket.openkilda.messaging.command.flow.AbstractInstallFlowCommandData;
+import org.bitbucket.openkilda.messaging.error.ErrorData;
+import org.bitbucket.openkilda.messaging.error.ErrorMessage;
+import org.bitbucket.openkilda.messaging.error.ErrorType;
 import org.restlet.resource.Post;
 import org.restlet.resource.Put;
 import org.restlet.resource.ServerResource;
@@ -19,12 +21,11 @@ import java.io.IOException;
  * Created by jonv on 2/4/17.
  */
 public class FlowResource extends ServerResource {
-    Logger logger;
+    private static final Logger logger = LoggerFactory.getLogger(FlowResource.class);
 
     @Post("json")
     @Put("json")
     public String installFlow(String json) throws IOException {
-        logger = LoggerFactory.getLogger(FlowResource.class);
         ISwitchManager switchManager = (ISwitchManager) getContext().getAttributes()
                 .get(ISwitchManager.class.getCanonicalName());
         ObjectMapper mapper = new ObjectMapper();
@@ -34,12 +35,9 @@ public class FlowResource extends ServerResource {
             message = mapper.readValue(json, Message.class);
         } catch (IOException exception) {
             logger.error("error parsing json: ", exception);
-            message = new ErrorMessage()
-                    .withData(new ErrorData().withErrorCode(123)
-                                             .withErrorMessage("Invalid JSON Received")
-                                             .withErrorDescription("Received JSON is not valid for TPN."))
-                    .withType(Message.Type.ERROR)
-                    .withTimestamp(now());
+            final ErrorData data = new ErrorData(123, "Received JSON is not valid for TPN.",
+                    ErrorType.DATA_INVALID, exception.toString());
+            message = new ErrorMessage(data, now(), "");
             return mapper.writeValueAsString(message);
         }
 
@@ -48,27 +46,20 @@ public class FlowResource extends ServerResource {
             logger.error(json);
 
             // TODO: figure out a real scheme for errorCode and errorMessages
-            message = new ErrorMessage()
-                    .withData(new ErrorData().withErrorCode(123)
-                                             .withErrorMessage("Invalid JSON Received")
-                                             .withErrorDescription("Was expecting an installIngressFlow, " +
-                                                     "installEgressFlow or installTransitFlow."))
-                    .withType(Message.Type.ERROR)
-                    .withTimestamp(now());
+            final ErrorData data = new ErrorData(123,
+                    "Was expecting an installIngressFlow, installEgressFlow or installTransitFlow.",
+                    ErrorType.DATA_INVALID, "");
+            message = new ErrorMessage(data, now(), "");
             return mapper.writeValueAsString(message);
         }
 
         CommandMessage cmdMessage = (CommandMessage) message;
         CommandData data = cmdMessage.getData();
-        if (!(data instanceof AbstractInstallFlow)) {
+        if (!(data instanceof AbstractInstallFlowCommandData)) {
             logger.error("Message was not correct type: " + json);
             logger.debug("Class was " + data.getClass().getCanonicalName());
-            message = new ErrorMessage()
-                    .withData(new ErrorData().withErrorCode(123)
-                                             .withErrorMessage("Invalid JSON Received")
-                                             .withErrorDescription("Command was not of the correct type"))
-                    .withType(Message.Type.ERROR)
-                    .withTimestamp(now());
+            final ErrorData errorData = new ErrorData(123, "Command was not of the correct type", ErrorType.DATA_INVALID, "");
+            message = new ErrorMessage(errorData, now(), "");
             return mapper.writeValueAsString(message);
         }
 

@@ -16,7 +16,7 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 @JsonPropertyOrder(value = {
         "payload",
         "timestamp",
-        "correlation-id"})
+        "correlation_id"})
 public class InfoMessage extends Message {
     /**
      * Serialization version number constant.
@@ -30,12 +30,6 @@ public class InfoMessage extends Message {
     private InfoData data;
 
     /**
-     * Default constructor.
-     */
-    public InfoMessage() {
-    }
-
-    /**
      * Instance constructor.
      *
      * @param   data           info message payload
@@ -45,10 +39,9 @@ public class InfoMessage extends Message {
     @JsonCreator
     public InfoMessage(@JsonProperty("payload") final InfoData data,
                        @JsonProperty("timestamp") final long timestamp,
-                       @JsonProperty("correlation-id") final String correlationId) {
+                       @JsonProperty("correlation_id") final String correlationId) {
+        super(timestamp, correlationId);
         setData(data);
-        setTimestamp(timestamp);
-        setCorrelationId(correlationId);
     }
 
     /**

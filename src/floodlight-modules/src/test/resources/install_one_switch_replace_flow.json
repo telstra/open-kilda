@@ -1,10 +1,9 @@
 {
 	"type": "COMMAND",
 	"timestamp": 42,
-	"data": {
+	"payload": {
 		"command": "install_one_switch_flow",
-		"destination": "CONTROLLER",
-		"flow_name": "test_flow",
+		"flow_name": "7B",
 		"switch_id": "00:00:00:00:00:00:00:09",
 		"input_port": 1,
 		"output_port": 2,

@@ -1,7 +1,6 @@
 package org.bitbucket.openkilda.floodlight.message.command;
 
-import org.junit.Before;
-import org.junit.BeforeClass;
+import org.bitbucket.openkilda.messaging.command.flow.InstallIngressFlowCommandData;
 import org.junit.Test;
 
 import static org.bitbucket.openkilda.floodlight.Constants.*;
@@ -11,41 +10,29 @@ import static org.junit.Assert.*;
  * Created by atopilin on 10/04/2017.
  */
 public class InstallIngressFlowTest {
-    private static InstallIngressFlow installIngressFlow;
-    private InstallIngressFlow flow;
-
-    @Before
-    public void setUp() throws Exception {
-        flow = new InstallIngressFlow();
-    }
-
-    @BeforeClass
-    public static void setUpClass() throws Exception {
-        installIngressFlow = new InstallIngressFlow(flowName, switchId, inputPort,
-                outputPort, inputVlanId, transitVlanId, outputVlanType, bandwidth, meterId);
-        System.out.println(installIngressFlow.toString());
-    }
+    private InstallIngressFlowCommandData flow = new InstallIngressFlowCommandData(flowName, switchId, inputPort,
+            outputPort, inputVlanId, transitVlanId, outputVlanType, bandwidth, meterId);
 
     @Test
     public void toStringTest() throws Exception {
-        String flowString = installIngressFlow.toString();
+        String flowString = flow.toString();
         assertNotNull(flowString);
         assertFalse(flowString.isEmpty());
     }
 
     @Test
     public void getBandwidth() throws Exception {
-        assertEquals(bandwidth, installIngressFlow.getBandwidth());
+        assertEquals(bandwidth, flow.getBandwidth());
     }
 
     @Test
     public void getMeterId() throws Exception {
-        assertEquals(meterId, installIngressFlow.getMeterId());
+        assertEquals(meterId, flow.getMeterId());
     }
 
     @Test
     public void getInputVlanId() throws Exception {
-        assertEquals(inputVlanId, installIngressFlow.getInputVlanId());
+        assertEquals(inputVlanId, flow.getInputVlanId());
     }
 
     @Test

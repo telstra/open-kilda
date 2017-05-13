@@ -1,7 +1,6 @@
 package org.bitbucket.openkilda.floodlight.message.command;
 
-import org.junit.Before;
-import org.junit.BeforeClass;
+import org.bitbucket.openkilda.messaging.command.flow.AbstractInstallFlowCommandData;
 import org.junit.Test;
 
 import static org.bitbucket.openkilda.floodlight.Constants.*;
@@ -11,38 +10,26 @@ import static org.junit.Assert.*;
  * Created by atopilin on 11/04/2017.
  */
 public class AbstractInstallFlowTest {
-    private static AbstractInstallFlow abstractInstallFlow;
-    private AbstractInstallFlow flow;
-
-    @Before
-    public void setUp() throws Exception {
-        flow = new AbstractInstallFlow();
-    }
-
-    @BeforeClass
-    public static void setUpClass() throws Exception {
-        abstractInstallFlow = new AbstractInstallFlow(flowName, switchId, inputPort, outputPort);
-        System.out.println(abstractInstallFlow.toString());
-    }
+    private static AbstractInstallFlowCommandData flow = new AbstractInstallFlowCommandData(flowName, switchId, inputPort, outputPort);
 
     @Test
     public void getFlowName() throws Exception {
-        assertEquals(flowName, abstractInstallFlow.getFlowName());
+        assertEquals(flowName, flow.getFlowName());
     }
 
     @Test
     public void getSwitchId() throws Exception {
-        assertEquals(switchId, abstractInstallFlow.getSwitchId());
+        assertEquals(switchId, flow.getSwitchId());
     }
 
     @Test
     public void getInputPort() throws Exception {
-        assertEquals(inputPort, abstractInstallFlow.getInputPort());
+        assertEquals(inputPort, flow.getInputPort());
     }
 
     @Test
     public void getOutputPort() throws Exception {
-        assertEquals(outputPort, abstractInstallFlow.getOutputPort());
+        assertEquals(outputPort, flow.getOutputPort());
     }
 
     @Test

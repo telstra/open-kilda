@@ -89,7 +89,7 @@ public class OFELinkBolt
         if (updown.equals(OFEMessageUtils.PORT_UP)){
             // Send ISL Discovery Packet
             String discoJson = OFEMessageUtils.createIslDiscovery(switchID,portID);
-            collector.emit(islDiscoTopic, tuple, new Values("data",discoJson));
+            collector.emit(islDiscoTopic, tuple, new Values("payload",discoJson));
         } else if (updown.equals(OFEMessageUtils.PORT_DOWN)){
             // Clear the check, if it exists.
             logger.trace("LINK: REMOVING Port from health checks: {}:{}", switchID, portID);

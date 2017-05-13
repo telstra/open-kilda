@@ -1,5 +1,6 @@
 package org.bitbucket.openkilda.floodlight.message.command;
 
+import org.bitbucket.openkilda.messaging.command.flow.DefaultFlowsCommandData;
 import org.junit.Test;
 
 import static org.bitbucket.openkilda.floodlight.Constants.switchId;
@@ -13,12 +14,6 @@ public class DefaultFlowsCommandDataTest {
     public void switchId() throws Exception {
         DefaultFlowsCommandData defaultFlowsCommandData = new DefaultFlowsCommandData();
         defaultFlowsCommandData.setSwitchId(switchId);
-        assertEquals(switchId, defaultFlowsCommandData.getSwitchId());
-    }
-
-    @Test
-    public void withSwitchId() throws Exception {
-        DefaultFlowsCommandData defaultFlowsCommandData = new DefaultFlowsCommandData().withSwitchId(switchId);
         assertEquals(switchId, defaultFlowsCommandData.getSwitchId());
     }
 }
