@@ -20,5 +20,4 @@ clean-test:
 	docker-compose rm -fv
 	docker volume list -q | grep kilda | xargs docker volume rm
 
-
 .PHONY: default run-dev build-latest
