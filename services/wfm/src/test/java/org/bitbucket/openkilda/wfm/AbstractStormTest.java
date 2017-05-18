@@ -15,6 +15,7 @@ public class AbstractStormTest {
 
     @BeforeClass
     public static void setupOnce() throws Exception {
+        System.out.println("------> Creating Sheep \uD83D\uDC11\n");
         server = new TestUtils.KafkaTestFixture();
         server.start();
         kutils = new KafkaUtils()

@@ -36,7 +36,7 @@ One way to look at what is going on in a topic:
 #### Producing Messages on Topics
 
 * Example:
-```kafka-console-producer --broker-list localhost:9092 --topic kilda.speaker```
+    ```kafka-console-producer --broker-list localhost:9092 --topic kilda.speaker```
 
 ### Storm Debugging
 

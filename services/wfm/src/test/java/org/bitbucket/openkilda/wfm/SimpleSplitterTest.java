@@ -22,21 +22,6 @@ import java.util.Properties;
  */
 public class SimpleSplitterTest extends AbstractStormTest {
 
-    @Before
-    public void setupEach() {
-    }
-
-    @After
-    public void teardownEach() {
-    }
-
-    public static Config stormConfig() {
-        Config config = new Config();
-        config.setDebug(false);
-        config.setNumWorkers(1);
-        return config;
-    }
-
     @Test
     public void KafkaSplitterTest() throws IOException {
 
@@ -50,11 +35,12 @@ public class SimpleSplitterTest extends AbstractStormTest {
         splitter.kutils = kutils;
 
         LocalCluster cluster = new LocalCluster();
-        cluster.submitTopology(splitter.defaultTopoName, stormConfig(), splitter.createTopology());
+        cluster.submitTopology(splitter.defaultTopoName, TestUtils.stormConfig(), splitter
+                .createTopology());
 
         // Dumping the Kafka Topic to file so that I can test the results.
         KafkaFilerTopology kfiler = new KafkaFilerTopology();
-        cluster.submitTopology("filer-1", stormConfig(),
+        cluster.submitTopology("filer-1", TestUtils.stormConfig(),
                 kfiler.createTopology(InfoEventSplitterBolt.I_SWITCH_UPDOWN,
                         server.tempDir.getAbsolutePath(), TestUtils.zookeeperUrl));
 

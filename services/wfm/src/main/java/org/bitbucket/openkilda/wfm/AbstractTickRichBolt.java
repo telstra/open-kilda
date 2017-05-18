@@ -6,29 +6,26 @@ import org.apache.storm.Config;
 import org.apache.storm.Constants;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
-import org.apache.storm.topology.BasicOutputCollector;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
-import org.apache.storm.tuple.Values;
 
-import java.util.HashMap;
 import java.util.Map;
 
 /**
  * A base class for Bolts interested in doing TickTuples.
  */
-public abstract class AbstractTickBolt extends BaseRichBolt {
+public abstract class AbstractTickRichBolt extends BaseRichBolt {
 
     protected OutputCollector _collector;
-    private static final Logger logger = LogManager.getLogger(AbstractTickBolt.class);
+    private static final Logger logger = LogManager.getLogger(AbstractTickRichBolt.class);
     private Integer emitFrequency;
 
-    public AbstractTickBolt() {
+    public AbstractTickRichBolt() {
         emitFrequency = 1; // every second
     }
-    public AbstractTickBolt(Integer frequency) {
+    public AbstractTickRichBolt(Integer frequency) {
         emitFrequency = frequency;
     }
 
@@ -66,11 +63,5 @@ public abstract class AbstractTickBolt extends BaseRichBolt {
 
     protected abstract void doTick(Tuple tuple);
     protected abstract void doWork(Tuple tuple);
-
-    //Declare that this emits a tuple containing two fields; word and count
-    @Override
-    public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(new Fields("word", "count"));
-    }
 
 }
