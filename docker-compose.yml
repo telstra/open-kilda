@@ -48,6 +48,31 @@ services:
       dockerfile: Dockerfile
     image: "kilda/topology-engine:${full_build_number:-latest}"
     command: ./entrypoint.sh
+    links:
+      - neo4j
+      - kafka:kafka.pendev
+    environment:
+      neo4jhost: 'neo4j'
+      neo4juser: 'neo4j'
+      neo4jpass: 'temppass'
+      neo4jbolt: 'http://neo4j:7474/db/data/cypher'
+      bootstrapserver: 'kafka.pendev:9092'
+      topic: 'kilda-test'
+      group: 'python-tpe-tl-consumer'
+      OK_TESTS: "${OK_TESTS:-none}"
+    depends_on:
+      kafka:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+
+  topology-engine-rest:
+    container_name: topology-engine-rest
+    build:
+      context: services/topology-engine-rest/
+      dockerfile: Dockerfile
+    image: "kilda/topology-engine-rest:${full_build_number:-latest}"
+    command: ./entrypoint.sh
     volumes:
       - app_server_data:/var/data
     ports:

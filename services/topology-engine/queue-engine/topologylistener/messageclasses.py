@@ -25,6 +25,9 @@ def repair_flows(switchid):
             if result.status_code == 200:
                 deleteURL = url + "/" + flow['r']['flowid']
                 result = requests.delete(deleteURL)
+            else:
+                #create logic to alert on failed reroute
+                print "Unable to reroute flow: {}".format(flow['r']['flowid'])
     return True
     
 
@@ -146,8 +149,8 @@ class MessageItem(object):
                                             b_switch, 
                                             b_port, 
                                             latency)).data()
-            print "ISL between {} and {} updated".format(a_switchNode['name'], 
-                                                         b_switchNode['name'])
+            #print "ISL between {} and {} updated".format(a_switchNode['name'], 
+            #                                             b_switchNode['name'])
         return True
         
 

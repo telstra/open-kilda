@@ -1,0 +1,30 @@
+image: python:3.5.1
+
+pipelines:
+  branches:
+    default:
+      - step:
+          script:
+            - pip install -r bitbucket-python-pipeline-requirements.txt
+            - git fetch
+            - git checkout -b rc
+            - git merge rc
+            - git push -v --tags origin rc:rc
+    rc:
+      - step:
+          script:
+            - pip install -r bitbucket-python-pipeline-requirements.txt
+            - mkdir ssl/
+            - docker-compose build
+            - docker images
+            - git fetch
+            - git checkout -b master
+            - git merge rc
+            - git push -v --tags origin master:master       
+    master:
+      - step:
+          script:
+            - echo "this is the master branch"
+
+options:
+  docker: true
