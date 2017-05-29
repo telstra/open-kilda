@@ -14,9 +14,6 @@ pipelines:
       - step:
           script:
             - pip install -r bitbucket-python-pipeline-requirements.txt
-            - mkdir ssl/
-            - docker-compose build
-            - docker images
             - git fetch
             - git checkout -b master
             - git merge rc
