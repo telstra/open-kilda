@@ -2,6 +2,10 @@ image: python:3.5.1
 
 pipelines:
   branches:
+    default:
+      - step:
+          script:
+            - echo "branch built"
     rc:
       - step:
           script:
