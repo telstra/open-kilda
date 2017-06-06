@@ -41,29 +41,57 @@ services:
       timeout: 10s
       retries: 3
 
-  topology-engine:
-    container_name: topology-engine
+###
+### topology-engine is replaced by topology. This block is left here for reference.
+###
+#  topology-engine:
+#    container_name: topology-engine
+#    build:
+#      context: services/topology-engine/
+#      dockerfile: Dockerfile
+#    image: "kilda/topology-engine:${full_build_number:-latest}"
+#    command: ./entrypoint.sh
+#    volumes:
+#      - app_server_data:/var/data
+#    ports:
+#      - "80:80"
+#    links:
+#      - neo4j
+#      - kafka:kafka.pendev
+#    environment:
+#      neo4jhost: 'neo4j'
+#      neo4juser: 'neo4j'
+#      neo4jpass: 'temppass'
+#      neo4jbolt: 'http://neo4j:7474/db/data/cypher'
+#      bootstrapserver: 'kafka.pendev:9092'
+#      topic: 'kilda-test'
+#      group: 'python-tpe-tl-consumer'
+#      OK_TESTS: "${OK_TESTS:-none}"
+#    depends_on:
+#      kafka:
+#        condition: service_healthy
+#      neo4j:
+#        condition: service_healthy
+
+###
+### java-based topology-engine. It replaces python-based topology-engine.
+###
+  topology:
     build:
-      context: services/topology-engine/
-      dockerfile: Dockerfile
-    image: "kilda/topology-engine:${full_build_number:-latest}"
-    command: ./entrypoint.sh
-    volumes:
-      - app_server_data:/var/data
+      context: .
+      dockerfile:  services/topology/Dockerfile
+    image: "kilda/topology:${full_build_number:-latest}"
+    command: java -jar /app/topology/target/topology.jar
     ports:
       - "80:80"
     links:
       - neo4j
       - kafka:kafka.pendev
     environment:
-      neo4jhost: 'neo4j'
-      neo4juser: 'neo4j'
-      neo4jpass: 'temppass'
-      neo4jbolt: 'http://neo4j:7474/db/data/cypher'
-      bootstrapserver: 'kafka.pendev:9092'
-      topic: 'kilda-test'
-      group: 'python-tpe-tl-consumer'
-      OK_TESTS: "${OK_TESTS:-none}"
+      NEO4J_USERNAME: 'neo4j'
+      NEO4J_PASSWORD: 'temppass'
+      REST_USERNAME: 'kilda'
+      REST_PASSWORD: 'kilda'
     depends_on:
       kafka:
         condition: service_healthy
