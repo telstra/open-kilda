@@ -22,7 +22,7 @@ public class TopologyEngineSmokeTest  {
      *      - ```match (n) detach delete n```
      */
     public void testServiceUp(){
-        String entity = TopologyHelp.ClearTopology(defaultHost);
+        String entity = TopologyHelp.ClearTopology();
         assertEquals("Default, initial, response from TopologyEngine", "{\"nodes\": []}",entity);
     }
 

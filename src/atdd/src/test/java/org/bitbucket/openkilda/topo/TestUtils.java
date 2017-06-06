@@ -145,11 +145,11 @@ public class TestUtils {
      * @param endpoint the kilda endpoint to clear
      */
     public static void clearEverything(String endpoint){
-        TopologyHelp.DeleteMininetTopology(endpoint,"38080");
+        TopologyHelp.DeleteMininetTopology();
 
         // verify it is empty
-        String entity = TopologyHelp.ClearTopology(endpoint);
-        assertEquals("Default, initial, response from TopologyEngine", "{\"nodes\": []}",entity);
+        String entity = TopologyHelp.ClearTopology();
+        assertEquals("Default, initial, response from TopologyEngine", "{\"nodes\":[]}",entity);
 
         Uninterruptibles.sleepUninterruptibly(3, TimeUnit.SECONDS);
     }

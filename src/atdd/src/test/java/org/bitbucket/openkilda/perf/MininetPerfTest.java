@@ -18,7 +18,7 @@ public class MininetPerfTest {
 
     private void testIt(URL url) throws IOException {
         TopologyHelp.DeleteMininetTopology();  // clear out mininet
-        String result = TopologyHelp.ClearTopology(defaultHost);   // clear out neo4j / topology-engine
+        String result = TopologyHelp.ClearTopology();   // clear out neo4j / topology-engine
         System.out.println("Just cleared the Topology Engine. Result = " + result);
 
         String doc = Resources.toString(url, Charsets.UTF_8);

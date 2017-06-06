@@ -46,8 +46,8 @@ public class TopologyBuilder {
             String id = normalSwitchID(s.get("dpid"));
             Switch newSwitch = new Switch(id);
             switches.put(id, newSwitch);
-            if (s.get("name") != null)
-                altSwitchId.put(s.get("name"),newSwitch);
+            if (s.get("dpid") != null)
+                altSwitchId.put(s.get("dpid"),newSwitch);
         }
 
         // now populate links
@@ -102,7 +102,7 @@ public class TopologyBuilder {
         // populate switches first
         ArrayList<Map<String,?>> jsonSwitches = (ArrayList<Map<String, ?>>) root.get("nodes");
         for (Map<String,?> s : jsonSwitches) {
-            String id = (String) s.get("name");
+            String id = (String) s.get("dpid");
             id = id.toUpperCase();
             Switch newSwitch = new Switch(id);
             switches.put(id, newSwitch);
@@ -111,11 +111,11 @@ public class TopologyBuilder {
         // now populate links
         for (Map<String,?> s : jsonSwitches) {
             // TODO: srcId could be NULL in a malformed json ... do the right thing here.
-            String srcId = (String) s.get("name");
+            String srcId = (String) s.get("dpid");
             srcId = srcId.toUpperCase();
             Switch src = switches.get(srcId);
 
-            ArrayList<String> outbound = (ArrayList<String>) s.get("outgoing_relationships");
+            ArrayList<String> outbound = (ArrayList<String>) s.get("outgoing-relationships");
             if (outbound != null) {
                 for (String other : outbound) {
                     other = other.toUpperCase();
