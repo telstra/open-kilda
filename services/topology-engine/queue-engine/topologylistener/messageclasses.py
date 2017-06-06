@@ -30,7 +30,7 @@ def repair_flows(switchid):
 
 
 class MessageItem(object):
-    def __init__(self, type, payload, timestamp, correlation_id):
+    def __init__(self, type, payload, timestamp, **kwargs):
         self.type = type
         self.timestamp = timestamp
         self.payload = payload
@@ -40,7 +40,7 @@ class MessageItem(object):
 
     def get_message_type(self):
         try:
-            return self.payload['message_type']
+            return self.payload['info']
         except:
             return "unknown"
 

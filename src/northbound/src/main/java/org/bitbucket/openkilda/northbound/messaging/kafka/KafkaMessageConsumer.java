@@ -1,16 +1,15 @@
 package org.bitbucket.openkilda.northbound.messaging.kafka;
 
+import static org.bitbucket.openkilda.messaging.Utils.CORRELATION_ID;
+import static org.bitbucket.openkilda.messaging.Utils.MAPPER;
 import static org.bitbucket.openkilda.messaging.error.ErrorType.INTERNAL_ERROR;
 import static org.bitbucket.openkilda.messaging.error.ErrorType.OPERATION_TIMED_OUT;
-import static org.bitbucket.openkilda.northbound.utils.Constants.CORRELATION_ID;
 
 import org.bitbucket.openkilda.messaging.Message;
-import org.bitbucket.openkilda.northbound.utils.NorthboundException;
+import org.bitbucket.openkilda.messaging.error.MessageException;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
@@ -46,21 +45,15 @@ public class KafkaMessageConsumer {
     private volatile Map<String, Object> messages = new ConcurrentHashMap<>();
 
     /**
-     * Object mapper.
-     */
-    @Autowired
-    private ObjectMapper objectMapper;
-
-    /**
      * Receives messages from WorkFlowManager queue.
      *
      * @param record the message object instance
      */
-    @KafkaListener(topics = "${kafka.topic.wfm.nb}")
+    @KafkaListener(topics = "#{T(org.bitbucket.openkilda.messaging.Topic).WFM_NB.getId()}")
     public void receive(final String record) {
         logger.debug("message received: {}", record);
         try {
-            Message message = objectMapper.readValue(record, Message.class);
+            Message message = MAPPER.readValue(record, Message.class);
             messages.put(message.getCorrelationId(), message);
         } catch (IOException exception) {
             logger.error("Could not deserialize message: {}", record, exception);
@@ -83,8 +76,8 @@ public class KafkaMessageConsumer {
             }
         } catch (InterruptedException exception) {
             logger.error("Unable to poll message: {}={}", CORRELATION_ID, correlationId);
-            throw new NorthboundException(INTERNAL_ERROR, System.currentTimeMillis());
+            throw new MessageException(INTERNAL_ERROR, System.currentTimeMillis());
         }
-        throw new NorthboundException(OPERATION_TIMED_OUT, System.currentTimeMillis());
+        throw new MessageException(OPERATION_TIMED_OUT, System.currentTimeMillis());
     }
 }

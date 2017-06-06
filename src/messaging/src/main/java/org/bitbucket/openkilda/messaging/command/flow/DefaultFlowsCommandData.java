@@ -15,7 +15,6 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
         "command",
-        "destination",
         "switch_id"})
 public class DefaultFlowsCommandData extends CommandData {
     /**
@@ -38,7 +37,7 @@ public class DefaultFlowsCommandData extends CommandData {
     /**
      * Instance constructor.
      *
-     * @param   switchId  switch id to install default flows on
+     * @param switchId switch id to install default flows on
      */
     @JsonCreator
     public DefaultFlowsCommandData(@JsonProperty("switch_id") final String switchId) {
@@ -48,9 +47,8 @@ public class DefaultFlowsCommandData extends CommandData {
     /**
      * Returns switch id.
      *
-     * @return  switch id
+     * @return switch id
      */
-    @JsonProperty("switch_id")
     public String getSwitchId() {
         return switchId;
     }
@@ -58,9 +56,8 @@ public class DefaultFlowsCommandData extends CommandData {
     /**
      * Sets switch id.
      *
-     * @param   switchId  switch id to set
+     * @param switchId switch id to set
      */
-    @JsonProperty("switch_id")
     public void setSwitchId(final String switchId) {
         this.switchId = switchId;
     }

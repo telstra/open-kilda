@@ -15,7 +15,6 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
         "command",
-        "destination",
         "switch_id",
         "port_no"})
 public class DiscoverIslCommandData extends CommandData {
@@ -45,8 +44,8 @@ public class DiscoverIslCommandData extends CommandData {
     /**
      * Instance constructor.
      *
-     * @param   switchId  switch id
-     * @param   portNo    port number
+     * @param switchId switch id
+     * @param portNo   port number
      */
     @JsonCreator
     public DiscoverIslCommandData(@JsonProperty("switch_id") final String switchId,
@@ -58,7 +57,7 @@ public class DiscoverIslCommandData extends CommandData {
     /**
      * Returns switch id.
      *
-     * @return  switch id
+     * @return switch id
      */
     @JsonProperty("switch_id")
     public String getSwitchId() {
@@ -68,7 +67,7 @@ public class DiscoverIslCommandData extends CommandData {
     /**
      * Sets switch id.
      *
-     * @param   switchId  switch id to set
+     * @param switchId switch id to set
      */
     @JsonProperty("switch_id")
     public void setSwitchId(final String switchId) {
@@ -78,7 +77,7 @@ public class DiscoverIslCommandData extends CommandData {
     /**
      * Returns port number.
      *
-     * @return  port number
+     * @return port number
      */
     @JsonProperty("port_no")
     public int getPortNo() {
@@ -88,7 +87,7 @@ public class DiscoverIslCommandData extends CommandData {
     /**
      * Sets port number.
      *
-     * @param   portNo  port number to set
+     * @param portNo port number to set
      */
     @JsonProperty("port_no")
     public void setPortNo(int portNo) {

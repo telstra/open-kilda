@@ -1,8 +1,9 @@
 package org.bitbucket.openkilda.northbound.utils;
 
-import static org.bitbucket.openkilda.northbound.utils.Constants.CORRELATION_ID;
+import static org.bitbucket.openkilda.messaging.Utils.CORRELATION_ID;
 
-import org.bitbucket.openkilda.northbound.model.NorthboundError;
+import org.bitbucket.openkilda.messaging.error.MessageError;
+import org.bitbucket.openkilda.messaging.error.MessageException;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -24,8 +25,8 @@ public class NorthboundExceptionHandler extends ResponseEntityExceptionHandler {
      * @param request   the WebRequest caused exception
      * @return the ResponseEntity object instance
      */
-    @ExceptionHandler(NorthboundException.class)
-    protected ResponseEntity<Object> handleNorthboundException(NorthboundException exception, WebRequest request) {
+    @ExceptionHandler(MessageException.class)
+    protected ResponseEntity<Object> handleMessageException(MessageException exception, WebRequest request) {
         HttpStatus status;
 
         switch (exception.getErrorType()) {
@@ -49,8 +50,8 @@ public class NorthboundExceptionHandler extends ResponseEntityExceptionHandler {
                 break;
         }
 
-        NorthboundError error = new NorthboundError(request.getHeader(CORRELATION_ID), exception.getTimestamp(),
-                status, exception.getMessage(), exception.getClass().getSimpleName());
+        MessageError error = new MessageError(request.getHeader(CORRELATION_ID), exception.getTimestamp(),
+                status.value(), status.getReasonPhrase(), exception.getMessage(), exception.getClass().getSimpleName());
         return super.handleExceptionInternal(exception, error, new HttpHeaders(), status, request);
     }
 
@@ -60,8 +61,8 @@ public class NorthboundExceptionHandler extends ResponseEntityExceptionHandler {
     @Override
     protected ResponseEntity<Object> handleExceptionInternal(Exception exception, Object body, HttpHeaders headers,
                                                              HttpStatus status, WebRequest request) {
-        NorthboundError error = new NorthboundError(request.getHeader(CORRELATION_ID), System.currentTimeMillis(),
-                status, exception.getMessage(), exception.getClass().getSimpleName());
+        MessageError error = new MessageError(request.getHeader(CORRELATION_ID), System.currentTimeMillis(),
+                status.value(), status.getReasonPhrase(), exception.getMessage(), exception.getClass().getSimpleName());
         return super.handleExceptionInternal(exception, error, headers, status, request);
     }
 }

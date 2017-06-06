@@ -1,5 +1,9 @@
 package org.bitbucket.openkilda.messaging.command;
 
+import static com.google.common.base.Objects.toStringHelper;
+import static org.bitbucket.openkilda.messaging.Utils.CORRELATION_ID;
+import static org.bitbucket.openkilda.messaging.Utils.TIMESTAMP;
+
 import org.bitbucket.openkilda.messaging.Message;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -15,8 +19,8 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder(value = {
         "payload",
-        "timestamp",
-        "correlation_id"})
+        TIMESTAMP,
+        CORRELATION_ID})
 public class CommandMessage extends Message {
     /**
      * Serialization version number constant.
@@ -32,14 +36,14 @@ public class CommandMessage extends Message {
     /**
      * Instance constructor.
      *
-     * @param   data           command message payload
-     * @param   timestamp      timestamp value
-     * @param   correlationId  request correlation id
+     * @param data          command message payload
+     * @param timestamp     timestamp value
+     * @param correlationId request correlation id
      */
     @JsonCreator
     public CommandMessage(@JsonProperty("payload") final CommandData data,
-                          @JsonProperty("timestamp") final long timestamp,
-                          @JsonProperty("correlation_id") final String correlationId) {
+                          @JsonProperty(TIMESTAMP) final long timestamp,
+                          @JsonProperty(CORRELATION_ID) final String correlationId) {
         super(timestamp, correlationId);
         setData(data);
     }
@@ -47,7 +51,7 @@ public class CommandMessage extends Message {
     /**
      * Returns payload of the command message.
      *
-     * @return  command message payload
+     * @return command message payload
      */
     @JsonProperty("payload")
     public CommandData getData() {
@@ -57,10 +61,22 @@ public class CommandMessage extends Message {
     /**
      * Sets payload of the command message.
      *
-     * @param   data  command message payload
+     * @param data command message payload
      */
     @JsonProperty("payload")
     public void setData(final CommandData data) {
         this.data = data;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String toString() {
+        return toStringHelper(this)
+                .add(TIMESTAMP, timestamp)
+                .add(CORRELATION_ID, correlationId)
+                .add("payload", data)
+                .toString();
     }
 }

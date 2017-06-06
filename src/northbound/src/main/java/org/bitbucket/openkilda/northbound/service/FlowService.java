@@ -1,10 +1,9 @@
 package org.bitbucket.openkilda.northbound.service;
 
-import org.bitbucket.openkilda.messaging.payload.FlowPayload;
-import org.bitbucket.openkilda.messaging.payload.response.FlowPathResponsePayload;
-import org.bitbucket.openkilda.messaging.payload.response.FlowStatusResponsePayload;
-import org.bitbucket.openkilda.messaging.payload.response.FlowsResponsePayload;
-import org.bitbucket.openkilda.messaging.payload.response.FlowsStatusResponsePayload;
+import org.bitbucket.openkilda.messaging.payload.flow.FlowIdStatusPayload;
+import org.bitbucket.openkilda.messaging.payload.flow.FlowPathPayload;
+import org.bitbucket.openkilda.messaging.payload.flow.FlowPayload;
+import org.bitbucket.openkilda.messaging.payload.flow.FlowsPayload;
 
 /**
  * FlowService is for operations on flows.
@@ -26,7 +25,7 @@ public interface FlowService extends BasicService {
      * @param correlationId request correlation Id
      * @return deleted flow
      */
-    FlowPayload deleteFlow(final String id, final String correlationId);
+    FlowIdStatusPayload deleteFlow(final String id, final String correlationId);
 
     /**
      * Updates flow.
@@ -49,11 +48,10 @@ public interface FlowService extends BasicService {
     /**
      * Gets all the flows.
      *
-     * @param status        target status
      * @param correlationId request correlation id
      * @return the list of all flows with specified status
      */
-    FlowsResponsePayload getFlows(final String status, final String correlationId);
+    FlowsPayload getFlows(final String correlationId);
 
     /**
      * Gets flow status by id.
@@ -62,16 +60,7 @@ public interface FlowService extends BasicService {
      * @param correlationId request correlation Id
      * @return flow status
      */
-    FlowStatusResponsePayload statusFlow(final String id, final String correlationId);
-
-    /**
-     * Gets flows status by status value.
-     *
-     * @param status        target status
-     * @param correlationId request correlation Id
-     * @return flow status
-     */
-    FlowsStatusResponsePayload statusFlows(final String status, final String correlationId);
+    FlowIdStatusPayload statusFlow(final String id, final String correlationId);
 
     /**
      * Gets flow path by id.
@@ -80,5 +69,5 @@ public interface FlowService extends BasicService {
      * @param correlationId request correlation Id
      * @return Flow path
      */
-    FlowPathResponsePayload pathFlow(final String id, final String correlationId);
+    FlowPathPayload pathFlow(final String id, final String correlationId);
 }

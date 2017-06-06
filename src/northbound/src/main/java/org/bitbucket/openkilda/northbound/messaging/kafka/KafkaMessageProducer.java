@@ -1,12 +1,12 @@
 package org.bitbucket.openkilda.northbound.messaging.kafka;
 
+import static org.bitbucket.openkilda.messaging.Utils.MAPPER;
 import static org.bitbucket.openkilda.messaging.error.ErrorType.DATA_INVALID;
 import static org.bitbucket.openkilda.messaging.error.ErrorType.INTERNAL_ERROR;
 
-import org.bitbucket.openkilda.northbound.utils.NorthboundException;
+import org.bitbucket.openkilda.messaging.error.MessageException;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,14 +28,13 @@ import java.util.concurrent.TimeoutException;
 @PropertySource("classpath:northbound.properties")
 public class KafkaMessageProducer {
     /**
-     * Timeout.
-     */
-    private static int TIMEOUT = 1000;
-    /**
      * The logger.
      */
     private static final Logger logger = LoggerFactory.getLogger(KafkaMessageProducer.class);
-
+    /**
+     * Timeout.
+     */
+    private static int TIMEOUT = 1000;
     /**
      * Kafka template.
      */
@@ -43,15 +42,9 @@ public class KafkaMessageProducer {
     private KafkaTemplate<String, String> kafkaTemplate;
 
     /**
-     * Object mapper.
-     */
-    @Autowired
-    private ObjectMapper objectMapper;
-
-    /**
      * Sends messages to WorkFlowManager.
      *
-     * @param topic kafka topic
+     * @param topic  kafka topic
      * @param object object to serialize and send
      */
     public void send(final String topic, final Object object) {
@@ -59,10 +52,10 @@ public class KafkaMessageProducer {
         String message;
 
         try {
-            message = objectMapper.writeValueAsString(object);
+            message = MAPPER.writeValueAsString(object);
         } catch (JsonProcessingException exception) {
             logger.error("Unable to serialize object: object={}", object, exception);
-            throw new NorthboundException(DATA_INVALID, System.currentTimeMillis());
+            throw new MessageException(DATA_INVALID, System.currentTimeMillis());
         }
 
         future = kafkaTemplate.send(topic, message);
@@ -80,9 +73,10 @@ public class KafkaMessageProducer {
 
         try {
             SendResult<String, String> result = future.get(TIMEOUT, TimeUnit.MILLISECONDS);
+            logger.debug("Record sent: record={}, metadata={}", result.getProducerRecord(), result.getRecordMetadata());
         } catch (TimeoutException | ExecutionException | InterruptedException exception) {
             logger.error("Unable to send message: topic={}, message={}", topic, message, exception);
-            throw new NorthboundException(INTERNAL_ERROR, System.currentTimeMillis());
+            throw new MessageException(INTERNAL_ERROR, System.currentTimeMillis());
         }
     }
 }

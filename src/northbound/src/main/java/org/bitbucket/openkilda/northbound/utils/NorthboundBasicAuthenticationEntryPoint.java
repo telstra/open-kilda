@@ -1,12 +1,11 @@
 package org.bitbucket.openkilda.northbound.utils;
 
-import static org.bitbucket.openkilda.northbound.utils.Constants.CORRELATION_ID;
+import static org.bitbucket.openkilda.messaging.Utils.CORRELATION_ID;
+import static org.bitbucket.openkilda.messaging.Utils.MAPPER;
 
 import org.bitbucket.openkilda.messaging.error.ErrorType;
-import org.bitbucket.openkilda.northbound.model.NorthboundError;
+import org.bitbucket.openkilda.messaging.error.MessageError;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -30,12 +29,6 @@ public class NorthboundBasicAuthenticationEntryPoint extends BasicAuthentication
     private static final String DEFAULT_REALM = "Kilda";
 
     /**
-     * Object mapper.
-     */
-    @Autowired
-    private ObjectMapper objectMapper;
-
-    /**
      * Instance constructor.
      * Sets the default basic realm value
      */
@@ -53,8 +46,9 @@ public class NorthboundBasicAuthenticationEntryPoint extends BasicAuthentication
         response.addHeader(HttpHeaders.WWW_AUTHENTICATE, realm);
         response.setContentType(MediaType.APPLICATION_JSON_UTF8_VALUE);
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        NorthboundError error = new NorthboundError(request.getHeader(CORRELATION_ID), System.currentTimeMillis(),
-                HttpStatus.UNAUTHORIZED, ErrorType.AUTH_FAILED.toString(), exception.getClass().getSimpleName());
-        response.getWriter().print(objectMapper.writeValueAsString(error));
+        MessageError error = new MessageError(request.getHeader(CORRELATION_ID), System.currentTimeMillis(),
+                HttpStatus.UNAUTHORIZED.value(), HttpStatus.UNAUTHORIZED.getReasonPhrase(),
+                ErrorType.AUTH_FAILED.toString(), exception.getClass().getSimpleName());
+        response.getWriter().print(MAPPER.writeValueAsString(error));
     }
 }

@@ -3,7 +3,7 @@ package org.bitbucket.openkilda.messaging.info.flow;
 import static com.google.common.base.Objects.toStringHelper;
 
 import org.bitbucket.openkilda.messaging.info.InfoData;
-import org.bitbucket.openkilda.messaging.payload.response.FlowStatusResponsePayload;
+import org.bitbucket.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -19,8 +19,7 @@ import java.util.Objects;
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
-        "command",
-        "destination",
+        "info",
         "payload"})
 public class FlowStatusResponse extends InfoData {
     /**
@@ -32,7 +31,7 @@ public class FlowStatusResponse extends InfoData {
      * The response payload.
      */
     @JsonProperty("payload")
-    protected FlowStatusResponsePayload payload;
+    protected FlowIdStatusPayload payload;
 
     /**
      * Default constructor.
@@ -43,30 +42,29 @@ public class FlowStatusResponse extends InfoData {
     /**
      * Constructs instance.
      *
-     * @param   payload  response payload
-     *
-     * @throws  IllegalArgumentException if payload is null
+     * @param payload response payload
+     * @throws IllegalArgumentException if payload is null
      */
     @JsonCreator
-    public FlowStatusResponse(@JsonProperty("payload") final FlowStatusResponsePayload payload) {
+    public FlowStatusResponse(@JsonProperty("payload") final FlowIdStatusPayload payload) {
         setPayload(payload);
     }
 
     /**
      * Returns response payload.
      *
-     * @return  response payload
+     * @return response payload
      */
-    public FlowStatusResponsePayload getPayload() {
+    public FlowIdStatusPayload getPayload() {
         return payload;
     }
 
     /**
      * Sets response payload.
      *
-     * @param   payload  response payload
+     * @param payload response payload
      */
-    public void setPayload(final FlowStatusResponsePayload payload) {
+    public void setPayload(final FlowIdStatusPayload payload) {
         if (payload == null) {
             throw new IllegalArgumentException("need to set payload");
         }

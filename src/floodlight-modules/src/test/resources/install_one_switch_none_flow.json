@@ -3,7 +3,8 @@
 	"timestamp": 42,
 	"payload": {
 		"command": "install_one_switch_flow",
-		"flow_name": "7B",
+		"id": "7B",
+		"cookie": 123,
 		"switch_id": "00:00:00:00:00:00:00:09",
 		"input_port": 3,
 		"output_port": 2,
@@ -11,8 +12,8 @@
 		"output_vlan_id": 0,
 		"output_vlan_type": "NONE",
 		"bandwidth": 10000,
-		"input_meter_id": 1,
-		"output_meter_id": 2
+		"src_meter_id": 1,
+		"dst_meter_id": 2
 	}
 }
 

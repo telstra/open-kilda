@@ -9,7 +9,9 @@ import org.bitbucket.openkilda.messaging.info.flow.FlowPathResponse;
 import org.bitbucket.openkilda.messaging.info.flow.FlowResponse;
 import org.bitbucket.openkilda.messaging.info.flow.FlowStatusResponse;
 import org.bitbucket.openkilda.messaging.info.flow.FlowsResponse;
-import org.bitbucket.openkilda.messaging.info.flow.FlowsStatusResponse;
+import org.bitbucket.openkilda.messaging.info.stats.FlowStatsData;
+import org.bitbucket.openkilda.messaging.info.stats.MeterConfigStatsData;
+import org.bitbucket.openkilda.messaging.info.stats.PortStatsData;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
@@ -24,17 +26,19 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME,
         include = JsonTypeInfo.As.PROPERTY,
-        property = "message_type")
+        property = "info")
 @JsonSubTypes({
         @Type(value = FlowResponse.class, name = "flow"),
         @Type(value = FlowsResponse.class, name = "flows"),
         @Type(value = FlowStatusResponse.class, name = "flow_status"),
-        @Type(value = FlowsStatusResponse.class, name = "flows_status"),
         @Type(value = FlowPathResponse.class, name = "flow_path"),
         @Type(value = PathInfoData.class, name = "path"),
         @Type(value = IslInfoData.class, name = "isl"),
         @Type(value = SwitchInfoData.class, name = "switch"),
-        @Type(value = PortInfoData.class, name = "port")})
+        @Type(value = PortInfoData.class, name = "port"),
+        @Type(value = PortStatsData.class, name = "port_stats"),
+        @Type(value = MeterConfigStatsData.class, name = "meter_config_stats"),
+        @Type(value = FlowStatsData.class, name = "flow_stats")})
 public abstract class InfoData extends MessageData {
     /**
      * Serialization version number constant.
@@ -46,6 +50,6 @@ public abstract class InfoData extends MessageData {
      */
     @Override
     public String toString() {
-        return "Not implemented for " + getClass().getCanonicalName();
+        return String.format("Not implemented for: %s", getClass().getSimpleName());
     }
 }

@@ -3,7 +3,8 @@
 	"timestamp": 42,
 	"payload": {
 		"command": "install_egress_flow",
-		"flow_name": "7B",
+		"id": "7B",
+		"cookie": 123,
 		"switch_id": "00:00:00:00:00:00:00:09",
 		"input_port": 3,
 		"output_port": 2,

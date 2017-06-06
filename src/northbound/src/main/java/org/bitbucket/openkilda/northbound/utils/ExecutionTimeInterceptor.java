@@ -1,6 +1,6 @@
 package org.bitbucket.openkilda.northbound.utils;
 
-import static org.bitbucket.openkilda.northbound.utils.Constants.TIMESTAMP;
+import static org.bitbucket.openkilda.messaging.Utils.TIMESTAMP;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

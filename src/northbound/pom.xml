@@ -21,7 +21,7 @@
         <jackson.version>2.8.8</jackson.version>
         <checkstyle.version>7.6.1</checkstyle.version>
         <checkstyle.plugin.version>2.17</checkstyle.plugin.version>
-        <spring.kafka.version>1.2.0.RELEASE</spring.kafka.version>
+        <spring.kafka.version>1.2.1.RELEASE</spring.kafka.version>
         <spring.webmvc.version>4.3.8.RELEASE</spring.webmvc.version>
         <enunciate.version>2.9.1</enunciate.version>
         <messaging.version>1.0-SNAPSHOT</messaging.version>
@@ -48,12 +48,8 @@
             <artifactId>spring-boot-starter-web</artifactId>
             <exclusions>
                 <exclusion>
-                    <groupId>org.slf4j</groupId>
-                    <artifactId>log4j-over-slf4j</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>ch.qos.logback</groupId>
-                    <artifactId>logback-classic</artifactId>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-logging</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>

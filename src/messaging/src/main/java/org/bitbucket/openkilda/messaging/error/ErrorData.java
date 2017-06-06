@@ -20,8 +20,8 @@ import java.util.Objects;
 @JsonPropertyOrder({
         "error-code",
         "error-message",
-        "error-description",
-        "error-exception"})
+        "error-type",
+        "error-description"})
 public class ErrorData extends MessageData {
     /**
      * Serialization version number constant.
@@ -41,34 +41,46 @@ public class ErrorData extends MessageData {
     private String errorMessage;
 
     /**
+     * Error type.
+     */
+    @JsonProperty("error-type")
+    private ErrorType errorType;
+
+    /**
      * Error description.
      */
     @JsonProperty("error-description")
-    private ErrorType errorDescription;
+    private String errorDescription;
 
     /**
-     * Error exception.
+     * Instance constructor.
+     *
+     * @param errorType        error type
+     * @param errorDescription error exception
      */
-    @JsonProperty("error-exception")
-    private String errorException;
+    public ErrorData(@JsonProperty("error-type") final ErrorType errorType,
+                     @JsonProperty("error-description") final String errorDescription) {
+        this.errorType = errorType;
+        this.errorDescription = errorDescription;
+    }
 
     /**
      * Instance constructor.
      *
      * @param errorCode        error code
      * @param errorMessage     error message
-     * @param errorDescription error description
-     * @param errorException   error exception
+     * @param errorType        error type
+     * @param errorDescription error exception
      */
     @JsonCreator
     public ErrorData(@JsonProperty("error-code") final int errorCode,
                      @JsonProperty("error-message") final String errorMessage,
-                     @JsonProperty("error-description") final ErrorType errorDescription,
-                     @JsonProperty("error-exception") final String errorException) {
+                     @JsonProperty("error-type") final ErrorType errorType,
+                     @JsonProperty("error-description") final String errorDescription) {
         this.errorCode = errorCode;
         this.errorMessage = errorMessage;
+        this.errorType = errorType;
         this.errorDescription = errorDescription;
-        this.errorException = errorException;
     }
 
     /**
@@ -76,7 +88,6 @@ public class ErrorData extends MessageData {
      *
      * @return error code
      */
-    @JsonProperty("error-code")
     public int getErrorCode() {
         return errorCode;
     }
@@ -86,7 +97,6 @@ public class ErrorData extends MessageData {
      *
      * @param errorCode error code
      */
-    @JsonProperty("error-code")
     public void setErrorCode(final int errorCode) {
         this.errorCode = errorCode;
     }
@@ -96,59 +106,53 @@ public class ErrorData extends MessageData {
      *
      * @return error message
      */
-    @JsonProperty("error-message")
     public String getErrorMessage() {
         return errorMessage;
     }
 
     /**
-     * Sets the error message.
+     * Sets error message.
      *
      * @param errorMessage error message
      */
-    @JsonProperty("error-message")
     public void setErrorMessage(final String errorMessage) {
         this.errorMessage = errorMessage;
     }
 
     /**
-     * Returns the description of the error.
+     * Returns description of the error.
      *
      * @return error description
      */
-    @JsonProperty("error-description")
-    public ErrorType getErrorDescription() {
+    public String getErrorDescription() {
         return errorDescription;
     }
 
     /**
-     * Sets the error description.
+     * Sets error description.
      *
      * @param errorDescription exception description
      */
-    @JsonProperty("error-description")
-    public void setErrorDescription(final ErrorType errorDescription) {
+    public void setErrorDescription(final String errorDescription) {
         this.errorDescription = errorDescription;
     }
 
     /**
-     * Returns error exception.
+     * Returns error type.
      *
-     * @return error exception
+     * @return error type
      */
-    @JsonProperty("error-exception")
-    public String getErrorException() {
-        return errorException;
+    public ErrorType getErrorType() {
+        return errorType;
     }
 
     /**
-     * Sets error exception.
+     * Sets error type.
      *
-     * @param errorException error exception
+     * @param errorType error type
      */
-    @JsonProperty("error-exception")
-    public void setErrorException(final String errorException) {
-        this.errorException = errorException;
+    public void setErrorType(final ErrorType errorType) {
+        this.errorType = errorType;
     }
 
     /**
@@ -159,8 +163,8 @@ public class ErrorData extends MessageData {
         return toStringHelper(this)
                 .add("error-code", errorCode)
                 .add("error-message", errorMessage)
+                .add("error-type", errorType)
                 .add("error-description", errorDescription)
-                .add("error-exception", errorException)
                 .toString();
     }
 
@@ -180,8 +184,8 @@ public class ErrorData extends MessageData {
         ErrorData that = (ErrorData) obj;
         return Objects.equals(getErrorCode(), that.getErrorCode())
                 && Objects.equals(getErrorMessage(), that.getErrorMessage())
-                && Objects.equals(getErrorDescription(), that.getErrorDescription())
-                && Objects.equals(getErrorException(), that.getErrorException());
+                && Objects.equals(getErrorType(), that.getErrorType())
+                && Objects.equals(getErrorDescription(), that.getErrorDescription());
     }
 
     /**
@@ -189,6 +193,6 @@ public class ErrorData extends MessageData {
      */
     @Override
     public int hashCode() {
-        return Objects.hash(errorCode, errorException, errorDescription, errorException);
+        return Objects.hash(errorCode, errorMessage, errorType, errorDescription);
     }
 }

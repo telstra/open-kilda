@@ -11,11 +11,11 @@ import org.bitbucket.openkilda.messaging.command.flow.FlowPathRequest;
 import org.bitbucket.openkilda.messaging.command.flow.FlowStatusRequest;
 import org.bitbucket.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.bitbucket.openkilda.messaging.command.flow.FlowsGetRequest;
-import org.bitbucket.openkilda.messaging.command.flow.FlowsStatusRequest;
-import org.bitbucket.openkilda.messaging.command.flow.InstallEgressFlowCommandData;
-import org.bitbucket.openkilda.messaging.command.flow.InstallIngressFlowCommandData;
-import org.bitbucket.openkilda.messaging.command.flow.InstallOneSwitchFlowCommandData;
-import org.bitbucket.openkilda.messaging.command.flow.InstallTransitFlowCommandData;
+import org.bitbucket.openkilda.messaging.command.flow.InstallEgressFlow;
+import org.bitbucket.openkilda.messaging.command.flow.InstallIngressFlow;
+import org.bitbucket.openkilda.messaging.command.flow.InstallOneSwitchFlow;
+import org.bitbucket.openkilda.messaging.command.flow.InstallTransitFlow;
+import org.bitbucket.openkilda.messaging.command.flow.RemoveFlow;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
@@ -32,7 +32,6 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
         include = JsonTypeInfo.As.PROPERTY,
         property = "command")
 @JsonSubTypes({
-        @Type(value = FlowsStatusRequest.class, name = "flows_status"),
         @Type(value = FlowStatusRequest.class, name = "flow_status"),
         @Type(value = FlowCreateRequest.class, name = "flow_create"),
         @Type(value = FlowUpdateRequest.class, name = "flow_update"),
@@ -41,10 +40,11 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
         @Type(value = FlowGetRequest.class, name = "flow_get"),
         @Type(value = FlowPathRequest.class, name = "flow_path"),
         @Type(value = DefaultFlowsCommandData.class, name = "install_default_flows"),
-        @Type(value = InstallIngressFlowCommandData.class, name = "install_ingress_flow"),
-        @Type(value = InstallEgressFlowCommandData.class, name = "install_egress_flow"),
-        @Type(value = InstallTransitFlowCommandData.class, name = "install_transit_flow"),
-        @Type(value = InstallOneSwitchFlowCommandData.class, name = "install_one_switch_flow"),
+        @Type(value = InstallIngressFlow.class, name = "install_ingress_flow"),
+        @Type(value = InstallEgressFlow.class, name = "install_egress_flow"),
+        @Type(value = InstallTransitFlow.class, name = "install_transit_flow"),
+        @Type(value = InstallOneSwitchFlow.class, name = "install_one_switch_flow"),
+        @Type(value = RemoveFlow.class, name = "remove_flow"),
         @Type(value = DiscoverIslCommandData.class, name = "discover_isl"),
         @Type(value = DiscoverPathCommandData.class, name = "discover_path")})
 public abstract class CommandData extends MessageData {
@@ -58,6 +58,6 @@ public abstract class CommandData extends MessageData {
      */
     @Override
     public String toString() {
-        return "Not implemented for " + getClass().getCanonicalName();
+        return String.format("Not implemented for: %s", getClass().getSimpleName());
     }
 }

@@ -3,7 +3,7 @@ package org.bitbucket.openkilda.messaging.command.flow;
 import static com.google.common.base.Objects.toStringHelper;
 
 import org.bitbucket.openkilda.messaging.command.CommandData;
-import org.bitbucket.openkilda.messaging.payload.FlowPayload;
+import org.bitbucket.openkilda.messaging.payload.flow.FlowPayload;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -20,7 +20,6 @@ import java.util.Objects;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
         "command",
-        "destination",
         "payload"})
 public class FlowUpdateRequest extends CommandData {
     /**
@@ -37,9 +36,8 @@ public class FlowUpdateRequest extends CommandData {
     /**
      * Constructs instance.
      *
-     * @param   payload  request payload
-     *
-     * @throws  IllegalArgumentException if payload is null
+     * @param payload request payload
+     * @throws IllegalArgumentException if payload is null
      */
     @JsonCreator
     public FlowUpdateRequest(@JsonProperty("payload") final FlowPayload payload) {
@@ -49,7 +47,7 @@ public class FlowUpdateRequest extends CommandData {
     /**
      * Returns request payload.
      *
-     * @return  request payload
+     * @return request payload
      */
     public FlowPayload getPayload() {
         return payload;
@@ -58,7 +56,7 @@ public class FlowUpdateRequest extends CommandData {
     /**
      * Sets request payload.
      *
-     * @param   payload  request payload
+     * @param payload request payload
      */
     public void setPayload(final FlowPayload payload) {
         if (payload == null) {

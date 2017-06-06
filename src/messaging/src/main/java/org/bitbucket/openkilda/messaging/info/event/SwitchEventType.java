@@ -45,7 +45,7 @@ public enum SwitchEventType {
     /**
      * Constructs entity.
      *
-     * @param   type  info message type
+     * @param type info message type
      */
     @JsonCreator
     SwitchEventType(final String type) {
@@ -55,7 +55,7 @@ public enum SwitchEventType {
     /**
      * Returns info message type.
      *
-     * @return  info message type
+     * @return info message type
      */
     public String getType() {
         return this.type;

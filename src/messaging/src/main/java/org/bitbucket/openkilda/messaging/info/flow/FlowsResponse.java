@@ -3,7 +3,7 @@ package org.bitbucket.openkilda.messaging.info.flow;
 import static com.google.common.base.Objects.toStringHelper;
 
 import org.bitbucket.openkilda.messaging.info.InfoData;
-import org.bitbucket.openkilda.messaging.payload.response.FlowsResponsePayload;
+import org.bitbucket.openkilda.messaging.payload.flow.FlowsPayload;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -19,8 +19,7 @@ import java.util.Objects;
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
-        "command",
-        "destination",
+        "info",
         "payload"})
 public class FlowsResponse extends InfoData {
     /**
@@ -32,7 +31,7 @@ public class FlowsResponse extends InfoData {
      * The response payload.
      */
     @JsonProperty("payload")
-    protected FlowsResponsePayload payload;
+    protected FlowsPayload payload;
 
     /**
      * Default constructor.
@@ -43,30 +42,29 @@ public class FlowsResponse extends InfoData {
     /**
      * Constructs instance.
      *
-     * @param   payload  response payload
-     *
-     * @throws  IllegalArgumentException if payload is null
+     * @param payload response payload
+     * @throws IllegalArgumentException if payload is null
      */
     @JsonCreator
-    public FlowsResponse(@JsonProperty("payload") final FlowsResponsePayload payload) {
+    public FlowsResponse(@JsonProperty("payload") final FlowsPayload payload) {
         setPayload(payload);
     }
 
     /**
      * Returns response payload.
      *
-     * @return  response payload
+     * @return response payload
      */
-    public FlowsResponsePayload getPayload() {
+    public FlowsPayload getPayload() {
         return payload;
     }
 
     /**
      * Sets response payload.
      *
-     * @param   payload  response payload
+     * @param payload response payload
      */
-    public void setPayload(final FlowsResponsePayload payload) {
+    public void setPayload(final FlowsPayload payload) {
         if (payload == null) {
             throw new IllegalArgumentException("need to set payload");
         }

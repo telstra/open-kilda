@@ -1,5 +1,9 @@
 package org.bitbucket.openkilda.messaging;
 
+import static com.google.common.base.Objects.toStringHelper;
+import static org.bitbucket.openkilda.messaging.Utils.CORRELATION_ID;
+import static org.bitbucket.openkilda.messaging.Utils.TIMESTAMP;
+
 import org.bitbucket.openkilda.messaging.command.CommandMessage;
 import org.bitbucket.openkilda.messaging.error.ErrorMessage;
 import org.bitbucket.openkilda.messaging.info.InfoMessage;
@@ -21,8 +25,8 @@ import java.io.Serializable;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
         "type",
-        "timestamp",
-        "correlation_id",
+        TIMESTAMP,
+        CORRELATION_ID,
         "payload"})
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME,
         include = JsonTypeInfo.As.PROPERTY,
@@ -39,14 +43,14 @@ public class Message implements Serializable {
     /**
      * Message timestamp.
      */
-    @JsonProperty("timestamp")
+    @JsonProperty(TIMESTAMP)
     protected long timestamp;
 
     /**
      * Message correlation id.
      * Correlation ID request value for Northbound messages or generated value without REST API calls (re-flow, etc.).
      */
-    @JsonProperty("correlation_id")
+    @JsonProperty(CORRELATION_ID)
     protected String correlationId;
 
     /**
@@ -56,8 +60,8 @@ public class Message implements Serializable {
      * @param correlationId message correlation id
      */
     @JsonCreator
-    public Message(@JsonProperty("timestamp") final long timestamp,
-                   @JsonProperty("correlation_id") final String correlationId) {
+    public Message(@JsonProperty(TIMESTAMP) final long timestamp,
+                   @JsonProperty(CORRELATION_ID) final String correlationId) {
         this.timestamp = timestamp;
         this.correlationId = correlationId;
     }
@@ -65,9 +69,9 @@ public class Message implements Serializable {
     /**
      * Returns message timestamp.
      *
-     * @return  message timestamp
+     * @return message timestamp
      */
-    @JsonProperty("timestamp")
+    @JsonProperty(TIMESTAMP)
     public long getTimestamp() {
         return timestamp;
     }
@@ -75,11 +79,22 @@ public class Message implements Serializable {
     /**
      * Returns message correlation id.
      *
-     * @return  message correlation id
+     * @return message correlation id
      */
-    @JsonProperty("correlation_id")
+    @JsonProperty(CORRELATION_ID)
     public String getCorrelationId() {
         return correlationId;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String toString() {
+        return toStringHelper(this)
+                .add(TIMESTAMP, timestamp)
+                .add(CORRELATION_ID, correlationId)
+                .toString();
     }
 }
 

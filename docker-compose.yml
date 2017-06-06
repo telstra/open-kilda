@@ -290,8 +290,8 @@ services:
     links:
       - kafka:kafka.pendev
     environment:
-      KILDA_USERNAME: 'kilda'
-      KILDA_PASSWORD: 'kilda'
+      REST_USERNAME: 'kilda'
+      REST_PASSWORD: 'kilda'
     depends_on:
       kafka:
         condition: service_healthy

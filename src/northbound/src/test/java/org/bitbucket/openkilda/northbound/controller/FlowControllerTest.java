@@ -1,7 +1,8 @@
 package org.bitbucket.openkilda.northbound.controller;
 
-import static org.bitbucket.openkilda.northbound.utils.Constants.CORRELATION_ID;
-import static org.bitbucket.openkilda.northbound.utils.Constants.DEFAULT_CORRELATION_ID;
+import static org.bitbucket.openkilda.messaging.Utils.CORRELATION_ID;
+import static org.bitbucket.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
+import static org.bitbucket.openkilda.messaging.Utils.MAPPER;
 import static org.junit.Assert.assertEquals;
 import static org.springframework.http.MediaType.APPLICATION_JSON_UTF8_VALUE;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
@@ -13,16 +14,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.bitbucket.openkilda.messaging.error.ErrorType;
-import org.bitbucket.openkilda.messaging.payload.FlowPayload;
-import org.bitbucket.openkilda.messaging.payload.response.FlowPathResponsePayload;
-import org.bitbucket.openkilda.messaging.payload.response.FlowStatusResponsePayload;
-import org.bitbucket.openkilda.messaging.payload.response.FlowsResponsePayload;
-import org.bitbucket.openkilda.messaging.payload.response.FlowsStatusResponsePayload;
+import org.bitbucket.openkilda.messaging.error.MessageError;
+import org.bitbucket.openkilda.messaging.error.MessageException;
+import org.bitbucket.openkilda.messaging.payload.flow.FlowIdStatusPayload;
+import org.bitbucket.openkilda.messaging.payload.flow.FlowPathPayload;
+import org.bitbucket.openkilda.messaging.payload.flow.FlowPayload;
+import org.bitbucket.openkilda.messaging.payload.flow.FlowsPayload;
 import org.bitbucket.openkilda.northbound.model.HealthCheck;
-import org.bitbucket.openkilda.northbound.model.NorthboundError;
-import org.bitbucket.openkilda.northbound.utils.NorthboundException;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -63,32 +62,28 @@ public class FlowControllerTest {
     private static final String ROLE = "ADMIN";
     private static final String SENDER_TOPIC = "kilda.nb.wfm";
     private static final String RECEIVER_TOPIC = "kilda.wfm.nb";
-    private static final ObjectMapper mapper = new ObjectMapper();
     private static final ContainerProperties containerProperties = new ContainerProperties(SENDER_TOPIC);
-    private static final NorthboundError AUTH_ERROR = new NorthboundError(DEFAULT_CORRELATION_ID, 0,
-            HttpStatus.UNAUTHORIZED, ErrorType.AUTH_FAILED.toString(), "InsufficientAuthenticationException");
-    private static final NorthboundError NOT_FOUND_ERROR = new NorthboundError(DEFAULT_CORRELATION_ID, 0,
-            HttpStatus.NOT_FOUND, ErrorType.NOT_FOUND.toString(), NorthboundException.class.getSimpleName());
+    private static final MessageError AUTH_ERROR = new MessageError(DEFAULT_CORRELATION_ID, 0,
+            HttpStatus.UNAUTHORIZED.value(), HttpStatus.UNAUTHORIZED.getReasonPhrase(),
+            ErrorType.AUTH_FAILED.toString(), "InsufficientAuthenticationException");
+    private static final MessageError NOT_FOUND_ERROR = new MessageError(DEFAULT_CORRELATION_ID, 0,
+            HttpStatus.NOT_FOUND.value(), HttpStatus.NOT_FOUND.getReasonPhrase(),
+            ErrorType.NOT_FOUND.toString(), MessageException.class.getSimpleName());
+    @ClassRule
+    public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, SENDER_TOPIC, RECEIVER_TOPIC);
     private final Map<String, Object> consumerProperties =
             KafkaTestUtils.consumerProps("test", "true", embeddedKafka);
     private final DefaultKafkaConsumerFactory<String, String> consumerFactory =
             new DefaultKafkaConsumerFactory<>(consumerProperties);
     private final KafkaMessageListenerContainer<String, String> container =
             new KafkaMessageListenerContainer<>(consumerFactory, containerProperties);
-
-    private MockMvc mockMvc;
-
-    @Value("${kafka.groupid}")
-    private String groupId;
-
     @Autowired
     HealthCheck healthCheck;
-
+    private MockMvc mockMvc;
+    @Value("${kafka.groupid}")
+    private String groupId;
     @Autowired
     private WebApplicationContext webApplicationContext;
-
-    @ClassRule
-    public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, SENDER_TOPIC, RECEIVER_TOPIC);
 
     @BeforeClass
     public static void setUpBeforeClass() throws Exception {
@@ -125,11 +120,11 @@ public class FlowControllerTest {
         MvcResult result = mockMvc.perform(put("/flows")
                 .header(CORRELATION_ID, DEFAULT_CORRELATION_ID)
                 .contentType(APPLICATION_JSON_VALUE)
-                .content(mapper.writeValueAsString(WorkFlowManagerKafkaMock.flow)))
+                .content(MAPPER.writeValueAsString(WorkFlowManagerKafkaMock.flow)))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
                 .andReturn();
-        FlowPayload response = mapper.readValue(result.getResponse().getContentAsString(), FlowPayload.class);
+        FlowPayload response = MAPPER.readValue(result.getResponse().getContentAsString(), FlowPayload.class);
         assertEquals(WorkFlowManagerKafkaMock.flow, response);
     }
 
@@ -142,7 +137,7 @@ public class FlowControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
                 .andReturn();
-        FlowPayload response = mapper.readValue(result.getResponse().getContentAsString(), FlowPayload.class);
+        FlowPayload response = MAPPER.readValue(result.getResponse().getContentAsString(), FlowPayload.class);
         assertEquals(WorkFlowManagerKafkaMock.flow, response);
     }
 
@@ -155,8 +150,9 @@ public class FlowControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
                 .andReturn();
-        FlowPayload response = mapper.readValue(result.getResponse().getContentAsString(), FlowPayload.class);
-        assertEquals(WorkFlowManagerKafkaMock.flow, response);
+        FlowIdStatusPayload response =
+                MAPPER.readValue(result.getResponse().getContentAsString(), FlowIdStatusPayload.class);
+        assertEquals(WorkFlowManagerKafkaMock.flowDelete, response);
     }
 
     @Test
@@ -165,11 +161,11 @@ public class FlowControllerTest {
         MvcResult result = mockMvc.perform(put("/flows/{flow-id}", WorkFlowManagerKafkaMock.FLOW_ID)
                 .header(CORRELATION_ID, DEFAULT_CORRELATION_ID)
                 .contentType(APPLICATION_JSON_VALUE)
-                .content(mapper.writeValueAsString(WorkFlowManagerKafkaMock.flow)))
+                .content(MAPPER.writeValueAsString(WorkFlowManagerKafkaMock.flow)))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
                 .andReturn();
-        FlowPayload response = mapper.readValue(result.getResponse().getContentAsString(), FlowPayload.class);
+        FlowPayload response = MAPPER.readValue(result.getResponse().getContentAsString(), FlowPayload.class);
         assertEquals(WorkFlowManagerKafkaMock.flow, response);
     }
 
@@ -182,8 +178,7 @@ public class FlowControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
                 .andReturn();
-        FlowsResponsePayload response =
-                mapper.readValue(result.getResponse().getContentAsString(), FlowsResponsePayload.class);
+        FlowsPayload response = MAPPER.readValue(result.getResponse().getContentAsString(), FlowsPayload.class);
         assertEquals(WorkFlowManagerKafkaMock.flows, response);
     }
 
@@ -196,24 +191,9 @@ public class FlowControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
                 .andReturn();
-        FlowStatusResponsePayload response =
-                mapper.readValue(result.getResponse().getContentAsString(), FlowStatusResponsePayload.class);
+        FlowIdStatusPayload response =
+                MAPPER.readValue(result.getResponse().getContentAsString(), FlowIdStatusPayload.class);
         assertEquals(WorkFlowManagerKafkaMock.flowStatus, response);
-    }
-
-    @Test
-    @WithMockUser(username = USERNAME, password = PASSWORD, roles = ROLE)
-    public void statusFlows() throws Exception {
-        MvcResult result = mockMvc.perform(get("/flows/status")
-                .header(CORRELATION_ID, DEFAULT_CORRELATION_ID)
-                .param("status", "INSTALLATION")
-                .contentType(APPLICATION_JSON_VALUE))
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
-                .andReturn();
-        FlowsStatusResponsePayload response =
-                mapper.readValue(result.getResponse().getContentAsString(), FlowsStatusResponsePayload.class);
-        assertEquals(WorkFlowManagerKafkaMock.flowsStatus, response);
     }
 
     @Test
@@ -225,8 +205,7 @@ public class FlowControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
                 .andReturn();
-        FlowPathResponsePayload response =
-                mapper.readValue(result.getResponse().getContentAsString(), FlowPathResponsePayload.class);
+        FlowPathPayload response = MAPPER.readValue(result.getResponse().getContentAsString(), FlowPathPayload.class);
         assertEquals(WorkFlowManagerKafkaMock.flowPath, response);
     }
 
@@ -239,7 +218,7 @@ public class FlowControllerTest {
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
                 .andReturn();
-        NorthboundError response = mapper.readValue(result.getResponse().getContentAsString(), NorthboundError.class);
+        MessageError response = MAPPER.readValue(result.getResponse().getContentAsString(), MessageError.class);
         assertEquals(NOT_FOUND_ERROR, response);
     }
 
@@ -251,7 +230,7 @@ public class FlowControllerTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
                 .andReturn();
-        NorthboundError response = mapper.readValue(result.getResponse().getContentAsString(), NorthboundError.class);
+        MessageError response = MAPPER.readValue(result.getResponse().getContentAsString(), MessageError.class);
         assertEquals(AUTH_ERROR.getCorrelationId(), response.getCorrelationId());
         assertEquals(AUTH_ERROR.getDescription(), response.getDescription());
     }

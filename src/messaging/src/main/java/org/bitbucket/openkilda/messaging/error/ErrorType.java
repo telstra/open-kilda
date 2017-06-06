@@ -13,6 +13,11 @@ public enum ErrorType {
     INTERNAL_ERROR("Internal service error"),
 
     /**
+     * The error message for not implemented error.
+     */
+    NOT_IMPLEMENTED("Feature not implemented"),
+
+    /**
      * The error message for object not found.
      */
     NOT_FOUND("Object was not found"),
@@ -31,6 +36,11 @@ public enum ErrorType {
      * The error message for invalid request parameters.
      */
     PARAMETERS_INVALID("Invalid request parameters"),
+
+    /**
+     * The error message for invalid request.
+     */
+    REQUEST_INVALID("Invalid request"),
 
     /**
      * The error message for operation timeout.

@@ -1,13 +1,17 @@
 package org.bitbucket.openkilda.floodlight.message.command.encapsulation;
 
+import static java.util.Collections.singletonList;
+import static org.bitbucket.openkilda.floodlight.switchmanager.SwitchManager.FLOW_COOKIE_MASK;
+
 import net.floodlightcontroller.util.FlowModUtils;
 import org.projectfloodlight.openflow.protocol.OFFlowAdd;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
-import org.projectfloodlight.openflow.types.*;
+import org.projectfloodlight.openflow.types.OFBufferId;
+import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.OFVlanVidMatch;
+import org.projectfloodlight.openflow.types.U64;
 
 import java.util.Arrays;
-
-import static java.util.Collections.singletonList;
 
 /**
  * Created by atopilin on 14/04/2017.
@@ -15,9 +19,9 @@ import static java.util.Collections.singletonList;
 public class ReplaceSchemeOutputCommands extends PushSchemeOutputCommands {
     @Override
     public OFFlowAdd ingressMatchVlanIdFlowMod(int inputPort, int outputPort, int inputVlan, int transitVlan,
-                                               int meterId, long cookie) {
+                                               long meterId, long cookie) {
         return ofFactory.buildFlowAdd()
-                .setCookie(U64.of(cookie))
+                .setCookie(U64.of(cookie & FLOW_COOKIE_MASK))
                 .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setBufferId(OFBufferId.NO_BUFFER)
@@ -48,7 +52,7 @@ public class ReplaceSchemeOutputCommands extends PushSchemeOutputCommands {
     @Override
     public OFFlowAdd egressPushFlowMod(int inputPort, int outputPort, int transitVlan, int outputVlan, long cookie) {
         return ofFactory.buildFlowAdd()
-                .setCookie(U64.of(cookie))
+                .setCookie(U64.of(cookie & FLOW_COOKIE_MASK))
                 .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setBufferId(OFBufferId.NO_BUFFER)

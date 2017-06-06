@@ -132,9 +132,9 @@ def parse_info_message(message):
     Args:
         message: info message
     """
-    if message['message_type'] == 'switch':
+    if message['info'] == 'switch':
         parse_switch_message(message)
-    elif message['message_type'] == 'port':
+    elif message['info'] == 'port':
         parse_port_message(message)
 
 

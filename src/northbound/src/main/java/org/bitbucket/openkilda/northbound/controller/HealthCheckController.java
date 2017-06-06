@@ -2,8 +2,8 @@ package org.bitbucket.openkilda.northbound.controller;
 
 import static org.bitbucket.openkilda.messaging.error.ErrorType.INTERNAL_ERROR;
 
+import org.bitbucket.openkilda.messaging.error.MessageException;
 import org.bitbucket.openkilda.northbound.model.HealthCheck;
-import org.bitbucket.openkilda.northbound.utils.NorthboundException;
 
 import com.webcohesion.enunciate.metadata.rs.ResponseCode;
 import com.webcohesion.enunciate.metadata.rs.StatusCodes;
@@ -47,9 +47,9 @@ public class HealthCheckController {
     @StatusCodes({@ResponseCode(code = 200, condition = "Operation is successful"),
             @ResponseCode(code = 503, condition = "Service unavailable")})
     public ResponseEntity<HealthCheck> getHealthCheck() {
-        logger.trace("getHealthCheck");
+        logger.debug("getHealthCheck");
         if (healthCheck == null) {
-            throw new NorthboundException(INTERNAL_ERROR, System.currentTimeMillis());
+            throw new MessageException(INTERNAL_ERROR, System.currentTimeMillis());
         }
         return new ResponseEntity<>(healthCheck, new HttpHeaders(), HttpStatus.OK);
     }

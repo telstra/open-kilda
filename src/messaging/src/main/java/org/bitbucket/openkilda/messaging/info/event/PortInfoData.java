@@ -18,7 +18,7 @@ import java.util.Objects;
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
-        "message_type",
+        "info",
         "switch_id",
         "port_no",
         "max_capacity",
@@ -58,6 +58,13 @@ public class PortInfoData extends InfoData {
     public PortInfoData() {
     }
 
+    /**
+     * Instance constructor.
+     *
+     * @param switchId switch id
+     * @param portNo   port number
+     * @param state    port state
+     */
     public PortInfoData(final String switchId, final int portNo, final PortChangeType state) {
         this.switchId = switchId;
         this.portNo = portNo;
@@ -67,10 +74,10 @@ public class PortInfoData extends InfoData {
     /**
      * Instance constructor.
      *
-     * @param   switchId     switch id
-     * @param   portNo       port number
-     * @param   maxCapacity  maximum capacity
-     * @param   state        port state
+     * @param switchId    switch id
+     * @param portNo      port number
+     * @param maxCapacity maximum capacity
+     * @param state       port state
      */
     @JsonCreator
     public PortInfoData(@JsonProperty("switch_id") final String switchId,
@@ -86,9 +93,8 @@ public class PortInfoData extends InfoData {
     /**
      * Returns switch id.
      *
-     * @return  switch id
+     * @return switch id
      */
-    @JsonProperty("switch_id")
     public String getSwitchId() {
         return switchId;
     }
@@ -96,9 +102,8 @@ public class PortInfoData extends InfoData {
     /**
      * Sets switch id.
      *
-     * @param   switchId  switch id to set
+     * @param switchId switch id to set
      */
-    @JsonProperty("switch_id")
     public void setSwitchId(final String switchId) {
         this.switchId = switchId;
     }
@@ -106,9 +111,8 @@ public class PortInfoData extends InfoData {
     /**
      * Returns port number.
      *
-     * @return  port number
+     * @return port number
      */
-    @JsonProperty("port_no")
     public int getPortNo() {
         return portNo;
     }
@@ -116,9 +120,8 @@ public class PortInfoData extends InfoData {
     /**
      * Sets port number.
      *
-     * @param   portNo  port number to set
+     * @param portNo port number to set
      */
-    @JsonProperty("port_no")
     public void setPortNo(final int portNo) {
         this.portNo = portNo;
     }
@@ -126,9 +129,8 @@ public class PortInfoData extends InfoData {
     /**
      * Returns maximum capacity.
      *
-     * @return  maximum capacity
+     * @return maximum capacity
      */
-    @JsonProperty("max_capacity")
     public Integer getMaxCapacity() {
         return maxCapacity;
     }
@@ -136,9 +138,8 @@ public class PortInfoData extends InfoData {
     /**
      * Sets maximum capacity.
      *
-     * @param   maxCapacity  maximum capacity to set
+     * @param maxCapacity maximum capacity to set
      */
-    @JsonProperty("max_capacity")
     public void setMaxCapacity(final int maxCapacity) {
         this.maxCapacity = maxCapacity;
     }
@@ -146,9 +147,8 @@ public class PortInfoData extends InfoData {
     /**
      * Returns port state.
      *
-     * @return  port state
+     * @return port state
      */
-    @JsonProperty("state")
     public PortChangeType getState() {
         return state;
     }
@@ -156,9 +156,8 @@ public class PortInfoData extends InfoData {
     /**
      * Sets port state.
      *
-     * @param   state  port state to set
+     * @param state port state to set
      */
-    @JsonProperty("state")
     public void setState(final PortChangeType state) {
         this.state = state;
     }

@@ -19,9 +19,10 @@ import java.util.Objects;
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
-        "message-type",
+        "info",
         "latency_ns",
-        "path"})
+        "path",
+        "speed"})
 public class IslInfoData extends InfoData {
     /**
      * Serialization version number constant.
@@ -41,6 +42,12 @@ public class IslInfoData extends InfoData {
     private List<PathNode> path;
 
     /**
+     * Port speed.
+     */
+    @JsonProperty("speed")
+    private long speed;
+
+    /**
      * Default constructor.
      */
     public IslInfoData() {
@@ -49,22 +56,25 @@ public class IslInfoData extends InfoData {
     /**
      * Instance constructor.
      *
-     * @param   latency  latency
-     * @param   path     path
+     * @param latency latency
+     * @param path    path
+     * @param speed   port speed
      */
     @JsonCreator
     public IslInfoData(@JsonProperty("latency_ns") final long latency,
-                       @JsonProperty("path") final List<PathNode> path) {
+                       @JsonProperty("path") final List<PathNode> path,
+                       @JsonProperty("speed") final long speed) {
         this.latency = latency;
         this.path = path;
+        this.speed = speed;
+
     }
 
     /**
      * Returns latency.
      *
-     * @return  latency
+     * @return latency
      */
-    @JsonProperty("latency_ns")
     public long getLatency() {
         return latency;
     }
@@ -72,9 +82,8 @@ public class IslInfoData extends InfoData {
     /**
      * Sets latency.
      *
-     * @param   latency  latency to set
+     * @param latency latency to set
      */
-    @JsonProperty("latency_ns")
     public void setLatency(final long latency) {
         this.latency = latency;
     }
@@ -82,9 +91,8 @@ public class IslInfoData extends InfoData {
     /**
      * Returns path.
      *
-     * @return  path
+     * @return path
      */
-    @JsonProperty("path")
     public List<PathNode> getPath() {
         return path;
     }
@@ -92,11 +100,28 @@ public class IslInfoData extends InfoData {
     /**
      * Sets path.
      *
-     * @param   path  latency to set
+     * @param path latency to set
      */
-    @JsonProperty("path")
     public void setPath(final List<PathNode> path) {
         this.path = path;
+    }
+
+    /**
+     * Gets port speed.
+     *
+     * @return port speed
+     */
+    public long getSpeed() {
+        return speed;
+    }
+
+    /**
+     * Sets port speed.
+     *
+     * @param speed port speed
+     */
+    public void setSpeed(long speed) {
+        this.speed = speed;
     }
 
     /**
@@ -107,6 +132,7 @@ public class IslInfoData extends InfoData {
         return toStringHelper(this)
                 .add("latency_ns", latency)
                 .add("path", path)
+                .add("speed", speed)
                 .toString();
     }
 
@@ -115,7 +141,7 @@ public class IslInfoData extends InfoData {
      */
     @Override
     public int hashCode() {
-        return Objects.hash(latency, path);
+        return Objects.hash(latency, path, speed);
     }
 
     /**
@@ -132,6 +158,7 @@ public class IslInfoData extends InfoData {
 
         IslInfoData that = (IslInfoData) object;
         return Objects.equals(getLatency(), that.getLatency())
-                && Objects.equals(getPath(), that.getPath());
+                && Objects.equals(getPath(), that.getPath())
+                && Objects.equals(getSpeed(), that.getSpeed());
     }
 }

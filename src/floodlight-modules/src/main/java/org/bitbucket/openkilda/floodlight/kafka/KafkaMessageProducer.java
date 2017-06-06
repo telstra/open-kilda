@@ -1,5 +1,10 @@
 package org.bitbucket.openkilda.floodlight.kafka;
 
+import static org.bitbucket.openkilda.messaging.Utils.MAPPER;
+
+import org.bitbucket.openkilda.messaging.Message;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
@@ -10,36 +15,51 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Properties;
 
 /**
  * Created by jonv on 6/3/17.
  */
 public class KafkaMessageProducer implements IFloodlightModule, IFloodlightService {
-    private Logger logger;
+    private static final Logger logger = LoggerFactory.getLogger(KafkaMessageProducer.class);
     private KafkaProducer<String, String> producer;
 
     /*
      * IFloodlightModule Methods
+     */
+
+    /**
+     * {@inheritDoc}
      */
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
         return Collections.singletonList(KafkaMessageProducer.class);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
         return Collections.singletonMap(KafkaMessageProducer.class, this);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
         return Collections.singletonList(IFloodlightProviderService.class);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
-        logger = LoggerFactory.getLogger(this.getClass());
         Map<String, String> configParameters = context.getConfigParams(this);
         Properties kafkaProps = new Properties();
         kafkaProps.put("bootstrap.servers", configParameters.get("bootstrap-servers"));
@@ -53,11 +73,26 @@ public class KafkaMessageProducer implements IFloodlightModule, IFloodlightServi
         producer = new KafkaProducer<>(kafkaProps);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public void startUp(FloodlightModuleContext floodlightModuleContext) throws FloodlightModuleException {}
+    public void startUp(FloodlightModuleContext floodlightModuleContext) throws FloodlightModuleException {
+    }
 
-    public void send(ProducerRecord<String, String> record) {
-        logger.debug("posting {} to {}", record.topic(), record.value());
-        producer.send(record);
+    /**
+     * Send the message to Kafka.
+     *
+     * @param topic   topic to post the message to
+     * @param message message to pose
+     */
+    public void postMessage(final String topic, final Message message) {
+        try {
+            String messageString = MAPPER.writeValueAsString(message);
+            logger.debug("Posting: topic={}, message={}", topic, messageString);
+            producer.send(new ProducerRecord<>(topic, messageString));
+        } catch (JsonProcessingException e) {
+            logger.error("Can not serialize message: {}", message, e);
+        }
     }
 }

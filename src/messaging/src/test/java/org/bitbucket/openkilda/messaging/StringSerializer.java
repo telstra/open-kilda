@@ -1,5 +1,7 @@
 package org.bitbucket.openkilda.messaging;
 
+import static org.bitbucket.openkilda.messaging.Utils.MAPPER;
+
 import java.io.IOException;
 import java.util.LinkedList;
 import java.util.Queue;
@@ -9,11 +11,11 @@ public interface StringSerializer extends AbstractSerializer {
 
     @Override
     default Object deserialize() throws IOException {
-        return mapper.readValue(strings.poll(), Message.class);
+        return MAPPER.readValue(strings.poll(), Message.class);
     }
 
     @Override
     default void serialize(Object object) throws IOException {
-        strings.add(mapper.writeValueAsString(object));
+        strings.add(MAPPER.writeValueAsString(object));
     }
 }

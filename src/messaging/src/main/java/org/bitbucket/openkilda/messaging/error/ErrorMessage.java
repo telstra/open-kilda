@@ -1,5 +1,9 @@
 package org.bitbucket.openkilda.messaging.error;
 
+import static com.google.common.base.Objects.toStringHelper;
+import static org.bitbucket.openkilda.messaging.Utils.CORRELATION_ID;
+import static org.bitbucket.openkilda.messaging.Utils.TIMESTAMP;
+
 import org.bitbucket.openkilda.messaging.Message;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -15,8 +19,8 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder(value = {
         "payload",
-        "timestamp",
-        "correlation_id"})
+        TIMESTAMP,
+        CORRELATION_ID})
 public class ErrorMessage extends Message {
     /**
      * Serialization version number constant.
@@ -38,8 +42,8 @@ public class ErrorMessage extends Message {
      */
     @JsonCreator
     public ErrorMessage(@JsonProperty("payload") final ErrorData data,
-                        @JsonProperty("timestamp") final long timestamp,
-                        @JsonProperty("correlation_id") final String correlationId) {
+                        @JsonProperty(TIMESTAMP) final long timestamp,
+                        @JsonProperty(CORRELATION_ID) final String correlationId) {
         super(timestamp, correlationId);
         setData(data);
     }
@@ -49,7 +53,6 @@ public class ErrorMessage extends Message {
      *
      * @return error message payload
      */
-    @JsonProperty("payload")
     public ErrorData getData() {
         return data;
     }
@@ -59,8 +62,19 @@ public class ErrorMessage extends Message {
      *
      * @param data error message payload
      */
-    @JsonProperty("payload")
     public void setData(final ErrorData data) {
         this.data = data;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String toString() {
+        return toStringHelper(this)
+                .add(TIMESTAMP, timestamp)
+                .add(CORRELATION_ID, correlationId)
+                .add("payload", data)
+                .toString();
     }
 }
