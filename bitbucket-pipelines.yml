@@ -6,8 +6,8 @@ pipelines:
       - step:
           script:
             - git fetch
-            - git checkout -b mvp1dev
-            - git push -v --tags origin mvp1dev:mvp1dev
+            - git checkout -b rc
+            - git push -v --tags origin rc:rc
     mvp1dev:
       - step:
           script:
@@ -17,7 +17,6 @@ pipelines:
     rc:
       - step:
           script:
-            - pip install -r bitbucket-python-pipeline-requirements.txt
             - git fetch
             - git checkout -b master
             - git merge rc
