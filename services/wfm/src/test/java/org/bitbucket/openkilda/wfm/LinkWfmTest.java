@@ -22,7 +22,5 @@ public class LinkWfmTest extends AbstractStormTest {
          * The intention here is to confirm the tick bolt works as configured .. every X seconds,
          * something happens
          */
-
     }
-
 }

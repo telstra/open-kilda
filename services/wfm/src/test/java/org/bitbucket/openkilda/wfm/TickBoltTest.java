@@ -1,7 +1,8 @@
 package org.bitbucket.openkilda.wfm;
 
-import com.google.common.base.Charsets;
-import com.google.common.io.Files;
+import org.bitbucket.openkilda.wfm.topology.utils.AbstractTickStatefulBolt;
+import org.bitbucket.openkilda.wfm.topology.utils.FileUtil;
+
 import com.google.common.util.concurrent.Uninterruptibles;
 import org.apache.storm.LocalCluster;
 import org.apache.storm.state.KeyValueState;
@@ -11,7 +12,6 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.junit.*;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
@@ -29,7 +29,7 @@ public class TickBoltTest {
      * This class helps expose how ticks work, it can serve as a basis for something else.
      */
     private static class SimpleStatefulTick
-            extends AbstractTickStatefulBolt<KeyValueState<String, ConcurrentHashMap<String, String>>>{
+            extends AbstractTickStatefulBolt<KeyValueState<String, ConcurrentHashMap<String, String>>> {
 
         public FileUtil tickFile = new FileUtil().withFileName("tick.log");
         public FileUtil workFile = new FileUtil().withFileName("work.log");
@@ -84,5 +84,4 @@ public class TickBoltTest {
         Assert.assertEquals(3, tickBolt.tickFile.numLines());
         Assert.assertEquals(1, tickBolt.workFile.numLines());
     }
-
 }

@@ -1,4 +1,4 @@
-package org.bitbucket.openkilda.wfm;
+package org.bitbucket.openkilda.wfm.topology.utils;
 
 import com.google.common.base.Charsets;
 import com.google.common.io.Files;
@@ -10,26 +10,26 @@ import java.io.Serializable;
 /**
  * Simple File Utility class .. centered around appending and counting and things like that.
  */
-public class FileUtil implements Serializable{
+public class FileUtil implements Serializable {
 
     public File dir = Files.createTempDir();
     public String fileName = "temp.txt";
+    private File file;
 
-    public FileUtil withDir(File dir){
+    public FileUtil withDir(File dir) {
         this.dir = dir;
         return this;
     }
 
-    public FileUtil withFileName(String fileName){
+    public FileUtil withFileName(String fileName) {
         this.fileName = fileName;
         return this;
     }
 
-    private File file;
-    public File getFile(){
-        if (file == null){
+    public File getFile() {
+        if (file == null) {
             dir.mkdirs();
-            file = new File(dir.getAbsolutePath(),fileName);
+            file = new File(dir.getAbsolutePath(), fileName);
         }
         return file;
     }
@@ -39,7 +39,7 @@ public class FileUtil implements Serializable{
      *
      * @return true if append worked, false otherwise.
      */
-    public boolean append(String text){
+    public boolean append(String text) {
         boolean success = true;
 
         try {
@@ -55,7 +55,7 @@ public class FileUtil implements Serializable{
     /**
      * @return the actual number, or -1 if there was an exception.
      */
-    public int numLines(){
+    public int numLines() {
         int result = -1;
 
         try {

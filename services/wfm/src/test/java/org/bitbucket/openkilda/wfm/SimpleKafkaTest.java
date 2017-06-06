@@ -16,6 +16,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
+import static org.bitbucket.openkilda.wfm.TestUtils.kafkaUrl;
+import static org.bitbucket.openkilda.wfm.TestUtils.zookeeperUrl;
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertThat;
 
@@ -27,7 +29,7 @@ public class SimpleKafkaTest {
     public static final String topic = "simple-kafka"; // + System.currentTimeMillis();
 
     private TestUtils.KafkaTestFixture server;
-    private Producer producer;
+    private Producer<String, String> producer;
     private ConsumerConnector consumerConnector;
 
     @Before
@@ -50,10 +52,10 @@ public class SimpleKafkaTest {
         ConsumerIterator<String, String> it = buildConsumer(SimpleKafkaTest.topic);
 
         //Create a producer
-        producer = new KafkaProducer(producerProps());
+        producer = new KafkaProducer<>(producerProps());
 
         //send a message
-        producer.send(new ProducerRecord(SimpleKafkaTest.topic, "message")).get();
+        producer.send(new ProducerRecord<>(SimpleKafkaTest.topic, "message")).get();
 
         //read it back
         MessageAndMetadata<String, String> messageAndMetadata = it.next();
@@ -64,18 +66,19 @@ public class SimpleKafkaTest {
     private ConsumerIterator<String, String> buildConsumer(String topic) {
         Properties props = consumerProperties();
 
-        Map<String, Integer> topicCountMap = new HashMap();
+        Map<String, Integer> topicCountMap = new HashMap<>();
         topicCountMap.put(topic, 1);
         ConsumerConfig consumerConfig = new ConsumerConfig(props);
         consumerConnector = Consumer.createJavaConsumerConnector(consumerConfig);
-        Map<String, List<KafkaStream<String, String>>> consumers = consumerConnector.createMessageStreams(topicCountMap, new StringDecoder(null), new StringDecoder(null));
+        Map<String, List<KafkaStream<String, String>>> consumers = consumerConnector.createMessageStreams(
+                topicCountMap, new StringDecoder(null), new StringDecoder(null));
         KafkaStream<String, String> stream = consumers.get(topic).get(0);
         return stream.iterator();
     }
 
     private Properties consumerProperties() {
         Properties props = new Properties();
-        props.put("zookeeper.connect", TestUtils.serverProperties().get("zookeeper.connect"));
+        props.put("zookeeper.connect", zookeeperUrl);
         props.put("group.id", "group1");
         props.put("auto.offset.reset", "smallest");
         return props;
@@ -83,11 +86,10 @@ public class SimpleKafkaTest {
 
     private Properties producerProps() {
         Properties props = new Properties();
-        props.put("bootstrap.servers", "localhost:9092");
+        props.put("bootstrap.servers", kafkaUrl);
         props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         props.put("request.required.acks", "1");
         return props;
     }
-
 }

@@ -1,4 +1,6 @@
-package org.bitbucket.openkilda.wfm;
+package org.bitbucket.openkilda.wfm.topology.event;
+
+import org.bitbucket.openkilda.wfm.KafkaUtils;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -6,20 +8,13 @@ import org.apache.storm.Config;
 import org.apache.storm.LocalCluster;
 import org.apache.storm.StormSubmitter;
 import org.apache.storm.generated.StormTopology;
-import org.apache.storm.kafka.bolt.KafkaBolt;
-import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
-import org.apache.storm.kafka.bolt.selector.DefaultTopicSelector;
-import org.apache.storm.task.IBolt;
 import org.apache.storm.topology.BoltDeclarer;
-import org.apache.storm.topology.IComponent;
 import org.apache.storm.topology.IStatefulBolt;
 import org.apache.storm.topology.TopologyBuilder;
 
-import java.util.Properties;
-
 /**
  * OFEventWFMTopology creates the topology to manage these key aspects of OFEvents:
- *
+ * <p>
  * (1) Switch UP/DOWN
  * (2) Port UP/DOWN
  * (3) Link UP/DOWN (ISL) - and health manager
@@ -39,77 +34,34 @@ public class OFEventWFMTopology {
      * (8) ◊ Add simple pass through for verification (w/ speaker) & validation (w/ TPE)
      */
 
-    public String topoName = "WFM_OFEvents";
     public static final String DEFAULT_KAFKA_OUTPUT = "kilda.wfm.topo.updown";
-    //public static final String DEFAULT_KAFKA_OUTPUT = "kilda-test";
-    public String kafkaOutputTopic = DEFAULT_KAFKA_OUTPUT;
     private static Logger logger = LogManager.getLogger(OFEventWFMTopology.class);
 
-
-    public KafkaUtils kutils = new KafkaUtils();
-    public Properties kafkaProps = kutils.createStringsKafkaProps();
-    public int parallelism = 3;
-    /** This is the primary input topics */
-    public String[] topics = {
+    private final String kafkaOutputTopic = DEFAULT_KAFKA_OUTPUT;
+    private final String topoName = "WFM_OFEvents";
+    private final KafkaUtils kutils;
+    private final int parallelism = 3;
+    /**
+     * This is the primary input topics
+     */
+    private String[] topics = {
             InfoEventSplitterBolt.I_SWITCH_UPDOWN,
             InfoEventSplitterBolt.I_PORT_UPDOWN,
             InfoEventSplitterBolt.I_ISL_UPDOWN
     };
     // The order of bolts should match topics, and Link should be last .. logic below relies on it
-    public IStatefulBolt[] bolts = {
+    private IStatefulBolt[] bolts = {
             new OFESwitchBolt().withOutputStreamId(kafkaOutputTopic),
             new OFEPortBolt().withOutputStreamId(kafkaOutputTopic),
             new OFELinkBolt().withOutputStreamId(kafkaOutputTopic)
     };
 
-    public OFEventWFMTopology(){}
-
-    public OFEventWFMTopology withKafkaProps(Properties kprops){
-        kafkaProps.putAll(kprops);
-        return this;
+    public OFEventWFMTopology() {
+        this.kutils = new KafkaUtils();
     }
 
-
-    public StormTopology createTopology() {
-        logger.debug("Building Topology - " + this.getClass().getSimpleName());
-
-        TopologyBuilder builder = new TopologyBuilder();
-
-        // Make sure the output Topic exists..
-        primeTopic(kafkaOutputTopic);
-        BoltDeclarer kbolt = builder.setBolt(kafkaOutputTopic+"-kafkabolt",
-                kutils.createKafkaBolt(kafkaOutputTopic), parallelism);
-        // tbolt will save the setBolt() results; will be useed to add switch/port to link
-        BoltDeclarer[] tbolt = new BoltDeclarer[bolts.length];
-
-        for (int i = 0; i < topics.length; i++) {
-            String topic = topics[i];
-            String spoutName = topic+"-spout";
-            String boltName = topic+"-bolt";
-            // Make sure the input Topic exists..
-            primeTopic(topic);
-            builder.setSpout(spoutName, kutils.createKafkaSpout(topic));
-            // NB: with shuffleGrouping, we can't maintain state .. would need to parse first
-            //      just to pull out switchID.
-            tbolt[i] = builder.setBolt(boltName, bolts[i], parallelism).shuffleGrouping(spoutName);
-            kbolt = kbolt.shuffleGrouping(boltName,kafkaOutputTopic);
-        }
-        // now hookup switch and port to the link bolt so that it can take appropriate action
-        tbolt[2].shuffleGrouping(topics[0]+"-bolt",kafkaOutputTopic)
-                .shuffleGrouping(topics[1]+"-bolt",kafkaOutputTopic);
-        // finally, one more bolt, to write the ISL Discovery requests
-        String discoTopic = ((OFELinkBolt) bolts[2]).islDiscoTopic;
-        builder.setBolt("ISL_Discovery-kafkabolt",
-                kutils.createKafkaBolt(discoTopic), parallelism)
-                .shuffleGrouping(topics[2]+"-bolt",discoTopic);
-
-        return builder.createTopology();
-    }
-
-    private void primeTopic(String topic){
-        if (!kutils.topicExists(topic)){
-            kutils.createTopics(new String[]{topic});
-        }
+    public OFEventWFMTopology(KafkaUtils kutils) {
+        this.kutils = kutils;
     }
 
     public static void main(String[] args) throws Exception {
@@ -117,7 +69,7 @@ public class OFEventWFMTopology {
         OFEventWFMTopology kildaTopology = new OFEventWFMTopology();
         StormTopology topo = kildaTopology.createTopology();
         String name = (args != null && args.length > 0) ?
-             args[0] : kildaTopology.topoName;
+                args[0] : kildaTopology.topoName;
 
         Config conf = new Config();
         conf.setDebug(false);
@@ -126,15 +78,64 @@ public class OFEventWFMTopology {
         if (args != null && args.length > 0) {
             conf.setNumWorkers(kildaTopology.parallelism);
             StormSubmitter.submitTopology(name, conf, topo);
-        }
-        else {
+        } else {
             conf.setMaxTaskParallelism(kildaTopology.parallelism);
 
             LocalCluster cluster = new LocalCluster();
-            cluster.submitTopology(name, conf,topo);
+            cluster.submitTopology(name, conf, topo);
 
             Thread.sleep(10 * 1000);
             cluster.shutdown();
+        }
+    }
+
+    public StormTopology createTopology() {
+        logger.debug("Building Topology - " + this.getClass().getSimpleName());
+
+        TopologyBuilder builder = new TopologyBuilder();
+
+        // Make sure the output Topic exists..
+        primeTopic(kafkaOutputTopic);
+        BoltDeclarer kbolt = builder.setBolt(kafkaOutputTopic + "-kafkabolt",
+                kutils.createKafkaBolt(kafkaOutputTopic), parallelism);
+        // tbolt will save the setBolt() results; will be useed to add switch/port to link
+        BoltDeclarer[] tbolt = new BoltDeclarer[bolts.length];
+
+        for (int i = 0; i < topics.length; i++) {
+            String topic = topics[i];
+            String spoutName = topic + "-spout";
+            String boltName = topic + "-bolt";
+            // Make sure the input Topic exists..
+            primeTopic(topic);
+            builder.setSpout(spoutName, kutils.createKafkaSpout(topic));
+            // NB: with shuffleGrouping, we can't maintain state .. would need to parse first
+            //      just to pull out switchID.
+            tbolt[i] = builder.setBolt(boltName, bolts[i], parallelism).shuffleGrouping(spoutName);
+            kbolt = kbolt.shuffleGrouping(boltName, kafkaOutputTopic);
+        }
+        // now hookup switch and port to the link bolt so that it can take appropriate action
+        tbolt[2].shuffleGrouping(topics[0] + "-bolt", kafkaOutputTopic)
+                .shuffleGrouping(topics[1] + "-bolt", kafkaOutputTopic);
+        // finally, one more bolt, to write the ISL Discovery requests
+        String discoTopic = ((OFELinkBolt) bolts[2]).islDiscoTopic;
+        builder.setBolt("ISL_Discovery-kafkabolt",
+                kutils.createKafkaBolt(discoTopic), parallelism)
+                .shuffleGrouping(topics[2] + "-bolt", discoTopic);
+
+        return builder.createTopology();
+    }
+
+    public String getKafkaOutputTopic() {
+        return kafkaOutputTopic;
+    }
+
+    public String getTopoName() {
+        return topoName;
+    }
+
+    private void primeTopic(String topic) {
+        if (!kutils.topicExists(topic)) {
+            kutils.createTopics(new String[]{topic});
         }
     }
 

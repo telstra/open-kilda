@@ -1,19 +1,18 @@
 package org.bitbucket.openkilda.wfm;
 
+import org.bitbucket.openkilda.wfm.topology.event.InfoEventSplitterBolt;
+import org.bitbucket.openkilda.wfm.topology.event.OFEventSplitterTopology;
+import org.bitbucket.openkilda.wfm.topology.utils.KafkaFilerTopology;
+
 import com.google.common.base.Charsets;
 import com.google.common.io.Files;
-import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.ProducerRecord;
-
-import org.apache.storm.Config;
 import org.apache.storm.utils.Utils;
-import org.junit.*;
-
-import org.apache.storm.LocalCluster;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.io.IOException;
-import java.util.Properties;
-
 
 /**
  * Basic Splitter Tests.
@@ -22,25 +21,30 @@ import java.util.Properties;
  */
 public class SimpleSplitterTest extends AbstractStormTest {
 
+    @Before
+    public void setupEach() {
+    }
+
+    @After
+    public void teardownEach() {
+    }
+
     @Test
     public void KafkaSplitterTest() throws IOException {
 
         /*
          * Need to ensure everything is pointing to the right testing URLS
          */
-        Properties kprops = new Properties();
-        kprops.put("bootstrap.servers", TestUtils.kafkaUrl);
 
-        OFEventSplitterTopology splitter = new OFEventSplitterTopology().withKafkaProps(kprops);
+        OFEventSplitterTopology splitter = new OFEventSplitterTopology();
         splitter.kutils = kutils;
 
-        LocalCluster cluster = new LocalCluster();
         cluster.submitTopology(splitter.defaultTopoName, TestUtils.stormConfig(), splitter
                 .createTopology());
 
         // Dumping the Kafka Topic to file so that I can test the results.
         KafkaFilerTopology kfiler = new KafkaFilerTopology();
-        cluster.submitTopology("filer-1", TestUtils.stormConfig(),
+        cluster.submitTopology("utils-1", TestUtils.stormConfig(),
                 kfiler.createTopology(InfoEventSplitterBolt.I_SWITCH_UPDOWN,
                         server.tempDir.getAbsolutePath(), TestUtils.zookeeperUrl));
 
@@ -50,11 +54,10 @@ public class SimpleSplitterTest extends AbstractStormTest {
 
         // 3 messages .. in I_SWITCH_UPDOWN  .. since we send 3 of those type of messages
         long messagesExpected = 3;
-        long messagesReceived = Files.readLines(kfiler.filer.getFile(), Charsets.UTF_8).size();
+        long messagesReceived = Files.readLines(kfiler.getFiler().getFile(), Charsets.UTF_8).size();
         Assert.assertEquals(messagesExpected,messagesReceived);
 
         Utils.sleep( 2 * 1000);
-        cluster.killTopology(splitter.defaultTopoName);
 
 // This code block was preferred but didn't work - ie interrogate Kafka and get number of
 // messages sent. Unfortunately, the code returned 0 each time.  So, plan B was to dump to file.
@@ -79,23 +82,14 @@ public class SimpleSplitterTest extends AbstractStormTest {
         String added = "ADDED";
         String active = OFEMessageUtils.SWITCH_UP;
 
-        kProducer.send(new ProducerRecord<>(topic, "payload",
-                OFEMessageUtils.createSwitchInfoMessage("sw1", added)));
-        kProducer.send(new ProducerRecord<>(topic, "payload",
-                OFEMessageUtils.createSwitchInfoMessage("sw2", added)));
-        kProducer.send(new ProducerRecord<>(topic, "payload",
-                OFEMessageUtils.createSwitchInfoMessage("sw3", added)));
+        kProducer.pushMessage(topic, OFEMessageUtils.createSwitchInfoMessage("sw1", added));
+        kProducer.pushMessage(topic, OFEMessageUtils.createSwitchInfoMessage("sw2", added));
+        kProducer.pushMessage(topic, OFEMessageUtils.createSwitchInfoMessage("sw3", added));
 
         Utils.sleep(1 * 1000);
 
-        kProducer.send(new ProducerRecord<>(topic, "payload",
-                OFEMessageUtils.createSwitchInfoMessage("sw1", active)));
-        kProducer.send(new ProducerRecord<>(topic, "payload",
-                OFEMessageUtils.createSwitchInfoMessage("sw2", active)));
-        kProducer.send(new ProducerRecord<>(topic, "payload",
-                OFEMessageUtils.createSwitchInfoMessage("sw3", active)));
-
-
+        kProducer.pushMessage(topic, OFEMessageUtils.createSwitchInfoMessage("sw1", active));
+        kProducer.pushMessage(topic, OFEMessageUtils.createSwitchInfoMessage("sw2", active));
+        kProducer.pushMessage(topic, OFEMessageUtils.createSwitchInfoMessage("sw3", active));
     }
-
 }

@@ -6,12 +6,9 @@ import org.apache.curator.test.TestingServer;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Properties;
 import com.google.common.io.Files;
 import org.apache.storm.Config;
-import org.apache.storm.kafka.BrokerHosts;
-import org.apache.storm.kafka.ZkHosts;
 
 /**
  * Utility classes to facilitate testing.
@@ -42,7 +39,7 @@ public class TestUtils {
     public static class KafkaTestFixture {
         public TestingServer zk;
         public KafkaServerStartable kafka;
-        public File tempDir  = Files.createTempDir();;
+        public File tempDir  = Files.createTempDir();
 
 
         public void start() throws Exception {
@@ -67,6 +64,7 @@ public class TestUtils {
             kafka.shutdown();
             zk.stop();
             zk.close();
+            tempDir.delete();
         }
 
         private int getZkPort(Properties properties) {

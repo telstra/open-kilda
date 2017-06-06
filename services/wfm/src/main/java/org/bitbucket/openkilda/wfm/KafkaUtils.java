@@ -11,11 +11,11 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.common.PartitionInfo;
-import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.utils.Utils;
-import org.apache.storm.kafka.*;
+import org.apache.storm.kafka.KafkaSpout;
+import org.apache.storm.kafka.SpoutConfig;
+import org.apache.storm.kafka.StringScheme;
+import org.apache.storm.kafka.ZkHosts;
 import org.apache.storm.kafka.bolt.KafkaBolt;
 import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
 import org.apache.storm.kafka.bolt.selector.DefaultTopicSelector;
@@ -28,7 +28,7 @@ import java.util.Properties;
 
 /**
  * Common utilities for Kafka
- *
+ * <p>
  * Reference:
  * (1) Basics - https://kafka.apache.org/quickstart
  * (2) System Tools - https://cwiki.apache.org/confluence/display/KAFKA/System+Tools
@@ -38,18 +38,21 @@ public class KafkaUtils {
     public String zookeeperHost = "zookeeper.pendev:2181";
     public String kafkaHosts = "kafka.pendev:9092";
     public Long offset = OffsetRequest.EarliestTime();
+    private ZkClient _zkclient = null;
+    private ZkUtils _zkutils = null;
 
-    public KafkaUtils () {}
-    public KafkaUtils withZookeeperHost(String zookeeperHost){
+    public KafkaUtils withZookeeperHost(String zookeeperHost) {
         this.zookeeperHost = zookeeperHost;
         return this;
     }
-    public KafkaUtils withKafkaHosts(String kafkaHosts){
+
+    public KafkaUtils withKafkaHosts(String kafkaHosts) {
         this.kafkaHosts = kafkaHosts;
         return this;
     }
-    /** @param offset either OffsetRequest.EarliestTime() or OffsetRequest.LatestTime()  */
-    public KafkaUtils withOffset(Long offset){
+
+    /** @param offset either OffsetRequest.EarliestTime() or OffsetRequest.LatestTime() */
+    public KafkaUtils withOffset(Long offset) {
         this.offset = offset;
         return this;
     }
@@ -57,6 +60,7 @@ public class KafkaUtils {
     public Properties createStringsKafkaProps() {
         Properties kprops = new Properties();
         kprops.put("bootstrap.servers", kafkaHosts);
+        kprops.put("group.id", "test");
         kprops.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         kprops.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         kprops.put("request.required.acks", "1");
@@ -66,17 +70,16 @@ public class KafkaUtils {
     /**
      * @return a Basic Kafka Producer where both key/value are strings.
      */
-    public KafkaProducer<String, String> createStringsProducer(){
+    public KafkaProducer<String, String> createStringsProducer() {
         return createStringsProducer(createStringsKafkaProps());
     }
 
     /**
      * @param kprops the properties to use to build the KafkaProducer
      */
-    public KafkaProducer<String, String> createStringsProducer(Properties kprops){
+    public KafkaProducer<String, String> createStringsProducer(Properties kprops) {
         return new KafkaProducer<>(kprops);
     }
-
 
     public KafkaBolt<String, String> createKafkaBolt(String topic) {
         return new KafkaBolt<String, String>()
@@ -85,15 +88,12 @@ public class KafkaUtils {
                 .withTupleToKafkaMapper(new FieldNameBasedTupleToKafkaMapper<>());
     }
 
-    public boolean topicExists(String topic){
-        return AdminUtils.topicExists(getZkUtils(),topic);
+    public boolean topicExists(String topic) {
+        return AdminUtils.topicExists(getZkUtils(), topic);
     }
 
-    private ZkClient _zkclient = null;
-    private ZkUtils _zkutils = null;
-
     /** @return a lazily created, global ZkClient */
-    public ZkClient getZkClient(){
+    public ZkClient getZkClient() {
         // Note: You must initialize the ZkClient with ZKStringSerializer.  If you don't, then
         // createTopic() will only seem to work (it will return without error).  The topic will exist in
         // only ZooKeeper and will be returned when listing topics, but Kafka itself does not create the
@@ -113,7 +113,7 @@ public class KafkaUtils {
 
     /** @return the default ZkUtil, lazily created, global */
     public ZkUtils getZkUtils() {
-        if (_zkutils == null){
+        if (_zkutils == null) {
             boolean isSecureKafkaCluster = false;
             _zkutils = new ZkUtils(getZkClient(), new ZkConnection(zookeeperHost), isSecureKafkaCluster);
         }
@@ -124,14 +124,14 @@ public class KafkaUtils {
     /**
      * This will create all of the topics passed in.
      * - Currently doesn't check to see if they already exist. The underlying code does a
-     *      create or update.
+     * create or update.
      */
-    public void createTopics(String[] topics, int partitions, int replication){
+    public void createTopics(String[] topics, int partitions, int replication) {
         ZkUtils zkUtils = getZkUtils();
 
         // TODO: create mechanism to pull in topic properties from file
         Properties topicConfig = new Properties(); // add per-topic configurations settings here
-        for (String topic : topics){
+        for (String topic : topics) {
             AdminUtils.createTopic(zkUtils, topic, partitions, replication,
                     topicConfig, RackAwareMode.Disabled$.MODULE$);
         }
@@ -140,15 +140,15 @@ public class KafkaUtils {
     /**
      * Create the topic, using the default setting for Partitions and Replication
      */
-    public void createTopics(String[] topics){
+    public void createTopics(String[] topics) {
         // TODO: create mechanism to pull in topic properties from file .. for partitions/replicas
-        createTopics(topics, 1,1);
+        createTopics(topics, 1, 1);
     }
 
     /**
      * @return The list of messages from the topic.
      */
-    public List<String> getMessagesFromTopic(String topic){
+    public List<String> getMessagesFromTopic(String topic) {
         List<String> results = new ArrayList<>();
 
 //        Properties props = new Properties();
@@ -189,14 +189,13 @@ public class KafkaUtils {
         return results;
     }
 
-
     /**
      * Creates a basic Kafka Spout.
      *
      * @param topic the topic to listen on
      * @return a KafkaSpout that can be used in a topology
      */
-    public KafkaSpout createKafkaSpout(String topic){
+    public KafkaSpout createKafkaSpout(String topic) {
         String spoutID = topic + "_" + System.currentTimeMillis();
         String zkRoot = "/" + topic; // used to store offset information.
         ZkHosts hosts = new ZkHosts(zookeeperHost);

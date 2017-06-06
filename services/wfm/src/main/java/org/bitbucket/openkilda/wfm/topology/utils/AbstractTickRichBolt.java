@@ -1,15 +1,12 @@
-package org.bitbucket.openkilda.wfm;
+package org.bitbucket.openkilda.wfm.topology.utils;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.storm.Config;
 import org.apache.storm.Constants;
-import org.apache.storm.state.State;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
-import org.apache.storm.topology.OutputFieldsDeclarer;
-import org.apache.storm.topology.base.BaseStatefulBolt;
-import org.apache.storm.tuple.Fields;
+import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Tuple;
 
 import java.util.Map;
@@ -17,19 +14,17 @@ import java.util.Map;
 /**
  * A base class for Bolts interested in doing TickTuples.
  */
-public abstract class AbstractTickStatefulBolt<T extends State> extends BaseStatefulBolt<T> {
+public abstract class AbstractTickRichBolt extends BaseRichBolt {
 
+    private static final Logger logger = LogManager.getLogger(AbstractTickRichBolt.class);
     protected OutputCollector _collector;
-    private static final Logger logger = LogManager.getLogger(AbstractTickStatefulBolt.class);
-    /** emitFrequency is in seconds */
     private Integer emitFrequency;
 
-    public AbstractTickStatefulBolt() {
+    public AbstractTickRichBolt() {
         emitFrequency = 1; // every second
     }
 
-    /** @param frequency is in seconds*/
-    public AbstractTickStatefulBolt(Integer frequency) {
+    public AbstractTickRichBolt(Integer frequency) {
         emitFrequency = frequency;
     }
 
@@ -44,7 +39,7 @@ public abstract class AbstractTickStatefulBolt<T extends State> extends BaseStat
         return conf;
     }
 
-    protected boolean isTickTuple(Tuple tuple){
+    protected boolean isTickTuple(Tuple tuple) {
         return (tuple.getSourceComponent().equals(Constants.SYSTEM_COMPONENT_ID)
                 && tuple.getSourceStreamId().equals(Constants.SYSTEM_TICK_STREAM_ID));
     }
@@ -58,7 +53,7 @@ public abstract class AbstractTickStatefulBolt<T extends State> extends BaseStat
     @Override
     public void execute(Tuple tuple) {
         //If it's a tick tuple, emit all words and counts
-        if (isTickTuple(tuple)){
+        if (isTickTuple(tuple)) {
             doTick(tuple);
         } else {
             doWork(tuple);
@@ -66,6 +61,7 @@ public abstract class AbstractTickStatefulBolt<T extends State> extends BaseStat
     }
 
     protected abstract void doTick(Tuple tuple);
+
     protected abstract void doWork(Tuple tuple);
 
 }

@@ -32,7 +32,7 @@ public class Original {
     public static final String topic = "topic1-" + System.currentTimeMillis();
 
     private KafkaTestFixture server;
-    private Producer producer;
+    private Producer<String, String> producer;
     private ConsumerConnector consumerConnector;
 
     @Before
@@ -55,10 +55,10 @@ public class Original {
         ConsumerIterator<String, String> it = buildConsumer(Original.topic);
 
         //Create a producer
-        producer = new KafkaProducer(producerProps());
+        producer = new KafkaProducer<>(producerProps());
 
         //send a message
-        producer.send(new ProducerRecord(Original.topic, "message")).get();
+        producer.send(new ProducerRecord<>(Original.topic, "message")).get();
 
         //read it back
         MessageAndMetadata<String, String> messageAndMetadata = it.next();
@@ -69,7 +69,7 @@ public class Original {
     private ConsumerIterator<String, String> buildConsumer(String topic) {
         Properties props = consumerProperties();
 
-        Map<String, Integer> topicCountMap = new HashMap();
+        Map<String, Integer> topicCountMap = new HashMap<>();
         topicCountMap.put(topic, 1);
         ConsumerConfig consumerConfig = new ConsumerConfig(props);
         consumerConnector = Consumer.createJavaConsumerConnector(consumerConfig);

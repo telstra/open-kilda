@@ -1,4 +1,4 @@
-package org.bitbucket.openkilda.wfm;
+package org.bitbucket.openkilda.wfm.topology.event;
 
 /**
  * OFELinkTickBolt

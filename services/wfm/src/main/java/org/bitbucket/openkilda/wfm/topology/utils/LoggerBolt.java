@@ -1,13 +1,13 @@
-package org.bitbucket.openkilda.wfm;
+package org.bitbucket.openkilda.wfm.topology.utils;
 
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Tuple;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Level;
 
 import java.util.Map;
 
@@ -16,17 +16,17 @@ import java.util.Map;
  */
 public class LoggerBolt extends BaseRichBolt {
 
-    private OutputCollector _collector;
     private static Logger logger = LogManager.getLogger(LoggerBolt.class);
     public Level level = Level.DEBUG;
     public String watermark = "";
+    private OutputCollector _collector;
 
-    public LoggerBolt withLevel(Level level){
+    public LoggerBolt withLevel(Level level) {
         this.level = level;
         return this;
     }
 
-    public LoggerBolt withWatermark(String watermark){
+    public LoggerBolt withWatermark(String watermark) {
         this.watermark = watermark;
         return this;
     }
@@ -45,7 +45,8 @@ public class LoggerBolt extends BaseRichBolt {
     }
 
     @Override
-    public void declareOutputFields(OutputFieldsDeclarer declarer) {}
+    public void declareOutputFields(OutputFieldsDeclarer declarer) {
+    }
 }
 
 
