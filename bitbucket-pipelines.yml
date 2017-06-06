@@ -5,7 +5,15 @@ pipelines:
     default:
       - step:
           script:
-            - echo "branch built"
+            - git fetch
+            - git checkout -b mvp1dev
+            - git push -v --tags origin mvp1dev:mvp1dev
+    mvp1dev:
+      - step:
+          script:
+            - git fetch
+            - git checkout -b rc
+            - git push -v --tags origin rc:rc
     rc:
       - step:
           script:
