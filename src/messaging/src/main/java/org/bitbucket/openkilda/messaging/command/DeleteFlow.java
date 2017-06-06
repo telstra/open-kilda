@@ -1,10 +1,11 @@
 package org.bitbucket.openkilda.messaging.command;
 
+import static com.google.common.base.Objects.toStringHelper;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import com.google.common.base.MoreObjects;
 
 /**
  * Class represents flow deletion info.
@@ -48,7 +49,7 @@ public class DeleteFlow extends AbstractFlow {
 
     @Override
     public String toString() {
-        return MoreObjects.toStringHelper(this)
+        return toStringHelper(this)
                 .addValue(flowName)
                 .addValue(switchId)
                 .addValue(meterId)

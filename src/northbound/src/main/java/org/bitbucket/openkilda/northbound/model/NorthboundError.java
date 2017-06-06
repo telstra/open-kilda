@@ -1,7 +1,7 @@
 package org.bitbucket.openkilda.northbound.model;
 
-import static com.google.common.base.MoreObjects.firstNonNull;
-import static com.google.common.base.MoreObjects.toStringHelper;
+import static com.google.common.base.Objects.firstNonNull;
+import static com.google.common.base.Objects.toStringHelper;
 import static org.bitbucket.openkilda.northbound.utils.Constants.CORRELATION_ID;
 import static org.bitbucket.openkilda.northbound.utils.Constants.DEFAULT_CORRELATION_ID;
 import static org.bitbucket.openkilda.northbound.utils.Constants.TIMESTAMP;

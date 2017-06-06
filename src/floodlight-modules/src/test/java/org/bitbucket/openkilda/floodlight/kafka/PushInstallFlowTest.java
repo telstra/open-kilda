@@ -48,7 +48,7 @@ import static org.junit.Assert.assertEquals;
  */
 public class PushInstallFlowTest {
     private static final FloodlightModuleContext context = new FloodlightModuleContext();
-    private final ExecutorService parseRecordExecutor = MoreExecutors.newDirectExecutorService();
+    private final ExecutorService parseRecordExecutor = MoreExecutors.sameThreadExecutor();
     private IOFSwitchService ofSwitchService;
     private KafkaMessageCollector collector;
     protected SwitchDescription switchDescription;

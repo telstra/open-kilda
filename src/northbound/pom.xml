@@ -18,7 +18,6 @@
         <java.version>1.8</java.version>
         <slf4j.version>1.7.25</slf4j.version>
         <junit.version>4.12</junit.version>
-        <guava.version>21.0</guava.version>
         <jackson.version>2.8.8</jackson.version>
         <checkstyle.version>7.6.1</checkstyle.version>
         <checkstyle.plugin.version>2.17</checkstyle.plugin.version>
@@ -80,11 +79,6 @@
             <groupId>com.fasterxml.jackson.datatype</groupId>
             <artifactId>jackson-datatype-jsr310</artifactId>
             <version>${jackson.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-            <version>${guava.version}</version>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
