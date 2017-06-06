@@ -131,10 +131,8 @@ public interface ISwitchManager extends IFloodlightService {
      * @return {@link ImmutablePair}<Long, Boolean>, where key is OF transaction id and value is true if the command was
      * accepted to be sent to switch, false otherwise - switch is disconnected or in SLAVE mode
      */
-    /*
     ImmutablePair<Long, Boolean> installLegacyMeter(final DatapathId dpid, final long bandwidth, final long burstSize,
                                                     final long meterId);
-    */
 
     /**
      * Deletes the flow from the switch
@@ -164,7 +162,5 @@ public interface ISwitchManager extends IFloodlightService {
      * @return {@link ImmutablePair}<Long, Boolean>, where key is OF transaction id and value is true if the command was
      * accepted to be sent to switch, false otherwise - switch is disconnected or in SLAVE mode
      */
-    /*
     ImmutablePair<Long, Boolean> deleteLegacyMeter(final DatapathId dpid, final long meterId);
-     */
 }

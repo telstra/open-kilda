@@ -42,6 +42,25 @@ perf:
 sec:
 	cd src/atdd && mvn "-Dtest=org.bitbucket.openkilda.sec.*" test
 
+FLOODLIGHT_JAR := ~/.m2/repository/org/projectfloodlight/floodlight/1.2-SNAPSHOT/floodlight-1.2-SNAPSHOT.jar
+FM_JAR := src/floodlight-modules/target/floodlight-modules.jar
+
+$(FM_JAR):
+	$(MAKE) -C src/projectfloodlight
+	mvn -f src/floodlight-modules/pom.xml package
+
+build-floodlight: $(FM_JAR)
+
+clean-floodlight:
+	mvn -f src/floodlight-modules/pom.xml clean
+	$(MAKE) -C src/projectfloodlight clean
+
+run-floodlight:
+	java -Dlogback.configurationFile=src/floodlight-modules/src/test/resources/logback.xml \
+	-cp $(FLOODLIGHT_JAR):$(FM_JAR) net.floodlightcontroller.core.Main \
+	-cf src/floodlight-modules/src/main/resources/floodlightkilda.properties
+
 .PHONY: default run-dev build-latest build-base
 .PHONY: up-test-mode up-log-mode run-test clean-test
 .PHONY: smoke acceptance perf sec
+.PHONY: build-floodlight clean-floodlight run-floodlight

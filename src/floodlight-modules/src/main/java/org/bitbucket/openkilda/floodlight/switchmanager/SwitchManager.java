@@ -36,10 +36,10 @@ import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsRequest;
-//import org.projectfloodlight.openflow.protocol.OFLegacyMeterBandDrop;
-//import org.projectfloodlight.openflow.protocol.OFLegacyMeterFlags;
-//import org.projectfloodlight.openflow.protocol.OFLegacyMeterMod;
-//import org.projectfloodlight.openflow.protocol.OFLegacyMeterModCommand;
+import org.projectfloodlight.openflow.protocol.OFLegacyMeterBandDrop;
+import org.projectfloodlight.openflow.protocol.OFLegacyMeterFlags;
+import org.projectfloodlight.openflow.protocol.OFLegacyMeterMod;
+import org.projectfloodlight.openflow.protocol.OFLegacyMeterModCommand;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFMeterConfigStatsReply;
 import org.projectfloodlight.openflow.protocol.OFMeterConfigStatsRequest;
@@ -125,11 +125,16 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         }
     }
 
-    /*
+    /**
+     * Returns legacy meter action.
+     *
+     * @param sw      switch object
+     * @param meterId meter id
+     * @return {@link OFAction}
+     */
     private static OFAction legacyMeterAction(final IOFSwitch sw, final long meterId) {
         return sw.getOFFactory().actions().buildNiciraLegacyMeter().setMeterId(meterId).build();
     }
-    */
 
     /**
      * {@inheritDoc}
@@ -255,7 +260,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         OFInstructionMeter meter = null;
         if (meterId != 0L) {
             if (sw.getOFFactory().getVersion().compareTo(OF_13) < 0) {
-                ;//actionList.add(legacyMeterAction(sw, meterId));
+                actionList.add(legacyMeterAction(sw, meterId));
             } else {
                 meter = buildInstructionMeter(sw, meterId);
             }
@@ -358,7 +363,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         OFInstructionMeter meter = null;
         if (meterId != 0L) {
             if (sw.getOFFactory().getVersion().compareTo(OF_13) < 0) {
-                ;//actionList.add(legacyMeterAction(sw, meterId));
+                actionList.add(legacyMeterAction(sw, meterId));
             } else {
                 meter = buildInstructionMeter(sw, meterId);
             }
@@ -479,7 +484,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     /**
      * {@inheritDoc}
      */
-    /*
     @Override
     public ImmutablePair<Long, Boolean> installLegacyMeter(final DatapathId dpid, final long bandwidth, final long burstSize,
                                                            final long meterId) {
@@ -512,7 +516,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         boolean response = sw.write(meterMod);
         return new ImmutablePair<>(meterMod.getXid(), response);
     }
-    */
 
     // Utility Methods
 
@@ -568,7 +571,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     /**
      * {@inheritDoc}
      */
-    /*
     @Override
     public ImmutablePair<Long, Boolean> deleteLegacyMeter(final DatapathId dpid, final long meterId) {
         if (meterId == 0) {
@@ -595,7 +597,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         boolean response = sw.write(meterDelete);
         return new ImmutablePair<>(meterDelete.getXid(), response);
     }
-    */
 
     /**
      * Creates a Match based on an inputPort and VlanID.
@@ -809,7 +810,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * @param isBroadcast if broadcast then set a generic match; else specific to switch Id
      * @return {@link Match}
      */
-
     private Match matchVerification(final IOFSwitch sw, final boolean isBroadcast) {
         MacAddress dstMac = MacAddress.of(VERIFICATION_BCAST_PACKET_DST);
         if (!isBroadcast) {

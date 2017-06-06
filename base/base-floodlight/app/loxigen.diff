@@ -1,0 +1,45 @@
+diff --git a/java_gen/pre-written/pom.xml b/java_gen/pre-written/pom.xml
+index e0bf157..5162b6a 100644
+--- a/java_gen/pre-written/pom.xml
++++ b/java_gen/pre-written/pom.xml
+@@ -154,40 +154,6 @@
+                     <downloadJavadocs>true</downloadJavadocs>
+                 </configuration>
+             </plugin>
+-            <!-- use maven git-commit-id plugin to provide vcs metadata -->
+-            <plugin>
+-                <groupId>pl.project13.maven</groupId>
+-                <artifactId>git-commit-id-plugin</artifactId>
+-                <version>2.1.5</version>
+-                <executions>
+-                    <execution>
+-                        <goals>
+-                            <goal>revision</goal>
+-                        </goals>
+-                    </execution>
+-                </executions>
+-
+-                <configuration>
+-                    <!-- our BuildInfoManager expects dates to be in ISO-8601 format -->
+-                    <dateFormat>yyyy-MM-dd'T'HH:mm:ssZ</dateFormat>
+-
+-                    <verbose>true</verbose>
+-
+-                    <skipPoms>true</skipPoms>
+-                    <generateGitPropertiesFile>false</generateGitPropertiesFile>
+-                    <dotGitDirectory>${project.basedir}/../../.git</dotGitDirectory>
+-                    <failOnNoGitDirectory>false</failOnNoGitDirectory>
+-
+-                    <gitDescribe>
+-                        <skip>true</skip>
+-                        <always>true</always>
+-                        <abbrev>7</abbrev>
+-                        <dirty>-dirty</dirty>
+-                        <forceLongFormat>false</forceLongFormat>
+-                    </gitDescribe>
+-                </configuration>
+-            </plugin>
+-            <!-- include git info in generated jars -->
+             <plugin>
+                 <groupId>org.apache.maven.plugins</groupId>
+                 <artifactId>maven-jar-plugin</artifactId>

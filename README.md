@@ -17,3 +17,8 @@ or
 
 1. ```make up-test-mode```
 
+### How to run floodlight-modules locally
+
+1. ```make build-floodlight```
+2. ```make run-floodlight```
+

@@ -1,0 +1,19 @@
+#version 4
+
+struct of_action_nicira_popl2 : of_action_nicira {
+    uint16_t type == 65535;
+    uint16_t len;
+    uint32_t experimenter == 0x2320;
+    uint16_t subtype == 26;
+    pad(2);
+    pad(4);
+};
+
+struct of_action_nicira_pushl2 : of_action_nicira {
+    uint16_t type == 65535;
+    uint16_t len;
+    uint32_t experimenter == 0x2320;
+    uint16_t subtype == 25;
+    pad(2);
+    pad(4);
+};

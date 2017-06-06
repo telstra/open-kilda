@@ -1,0 +1,69 @@
+diff --git a/pom.xml b/pom.xml
+index 2c451763..5a2b48cb 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -143,7 +143,7 @@
+ 		<dependency>
+ 			<groupId>com.google.guava</groupId>
+ 			<artifactId>guava</artifactId>
+-			<version>13.0.1</version>
++			<version>16.0.1</version>
+ 		</dependency>
+ 		<dependency>
+ 			<groupId>ch.qos.logback</groupId>
+@@ -255,7 +255,7 @@
+ 		<dependency>
+ 			<groupId>org.projectfloodlight</groupId>
+ 			<artifactId>openflowj</artifactId>
+-			<version>3.0.0-SNAPSHOT</version>
++			<version>3.2.0-SNAPSHOT</version>
+ 		</dependency>
+ 		<dependency>
+ 			<groupId>io.netty</groupId>
+@@ -270,7 +270,7 @@
+ 	</dependencies>
+ 	<properties>
+ 		<lib-restlet-version>2.3.2</lib-restlet-version>
+-		<lib-jackson-version>2.4.4</lib-jackson-version>
++		<lib-jackson-version>2.8.8</lib-jackson-version>
+ 		<lib-hamcrest-version>1.3</lib-hamcrest-version>
+ 	</properties>
+ </project>
+diff --git a/src/main/java/net/floodlightcontroller/core/internal/OFSwitch.java b/src/main/java/net/floodlightcontroller/core/internal/OFSwitch.java
+index b31c3796..8902019b 100644
+--- a/src/main/java/net/floodlightcontroller/core/internal/OFSwitch.java
++++ b/src/main/java/net/floodlightcontroller/core/internal/OFSwitch.java
+@@ -932,7 +932,8 @@ public class OFSwitch implements IOFSwitchBackend {
+ 		this.capabilities = featuresReply.getCapabilities();
+ 		this.buffers = featuresReply.getNBuffers();
+ 
+-		if (featuresReply.getVersion().compareTo(OFVersion.OF_13) < 0 ) {
++		/* OF1.1+ OFPT_FEATURES_REPLY does not contain actions, this field is reserved */
++		if (featuresReply.getVersion().compareTo(OFVersion.OF_11) < 0 ) {
+ 			/* OF1.3+ Per-table actions are set later in the OFTableFeaturesRequest/Reply */
+ 			this.actions = featuresReply.getActions();
+ 		}
+@@ -1340,4 +1341,4 @@ public class OFSwitch implements IOFSwitchBackend {
+ 	public U64 getLatency() {
+ 		return this.connections.get(OFAuxId.MAIN).getLatency();
+ 	}
+-}
+\ No newline at end of file
++}
+diff --git a/src/main/java/net/floodlightcontroller/core/internal/OFSwitchHandshakeHandler.java b/src/main/java/net/floodlightcontroller/core/internal/OFSwitchHandshakeHandler.java
+index 2ad7e5e3..2ec8ef72 100644
+--- a/src/main/java/net/floodlightcontroller/core/internal/OFSwitchHandshakeHandler.java
++++ b/src/main/java/net/floodlightcontroller/core/internal/OFSwitchHandshakeHandler.java
+@@ -442,8 +442,10 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
+ 			this.sw.write(delgroup.build());
+ 			delgroup.setGroupType(OFGroupType.FF);
+ 			this.sw.write(delgroup.build());
+-			delgroup.setGroupType(OFGroupType.INDIRECT);
+-			this.sw.write(delgroup.build());
++			if (this.sw.getOFFactory().getVersion().compareTo(OFVersion.OF_12) > 0) {
++				delgroup.setGroupType(OFGroupType.INDIRECT);
++				this.sw.write(delgroup.build());
++			}
+ 			delgroup.setGroupType(OFGroupType.SELECT);
+ 			this.sw.write(delgroup.build());
+ 
