@@ -40,7 +40,7 @@ public class SwitchServiceImplTest {
 
         Switch sw = switchService.add(data);
 
-        assertEquals(sw.getDpid(), switchId);
+        assertEquals(sw.getName(), switchId);
         assertEquals(sw.getState(), SwitchStateType.INACTIVE.toString().toLowerCase());
     }
 

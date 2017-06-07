@@ -18,7 +18,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -78,12 +77,12 @@ public class TopologyServiceImpl implements TopologyService {
             List<String> relationships = new ArrayList<>();
 
             for (Isl isl : isls) {
-                if (isl.getSourceSwitch().equals(sw.getDpid())) {
+                if (isl.getSourceSwitch().equals(sw.getName())) {
                     relationships.add(isl.getDestinationSwitch());
                 }
             }
 
-            nodes.add(new Node(sw.getDpid(), relationships));
+            nodes.add(new Node(sw.getName(), relationships));
         }
 
         return new Topology(nodes);

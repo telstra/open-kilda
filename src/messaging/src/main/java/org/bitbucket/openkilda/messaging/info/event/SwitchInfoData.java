@@ -45,8 +45,8 @@ public class SwitchInfoData extends InfoData {
     /**
      * Switch name.
      */
-    @JsonProperty("name")
-    private String name;
+    @JsonProperty("hostname")
+    private String hostname;
 
     /**
      * Switch description.
@@ -72,19 +72,19 @@ public class SwitchInfoData extends InfoData {
      * @param switchId    switch datapath id
      * @param state       switch state
      * @param address     switch ip address
-     * @param name        switch name
+     * @param hostname    switch name
      * @param description switch description
      */
     @JsonCreator
     public SwitchInfoData(@JsonProperty("switch_id") final String switchId,
                           @JsonProperty("state") final SwitchEventType state,
                           @JsonProperty("address") final String address,
-                          @JsonProperty("name") final String name,
+                          @JsonProperty("hostname") final String hostname,
                           @JsonProperty("description") final String description) {
         this.switchId = switchId;
         this.state = state;
         this.address = address;
-        this.name = name;
+        this.hostname = hostname;
         this.description = description;
     }
 
@@ -147,17 +147,17 @@ public class SwitchInfoData extends InfoData {
      *
      * @return switch name
      */
-    public String getName() {
-        return name;
+    public String getHostname() {
+        return hostname;
     }
 
     /**
      * Sets switch name.
      *
-     * @param name switch name
+     * @param hostname switch name
      */
-    public void setName(String name) {
-        this.name = name;
+    public void setHostname(String hostname) {
+        this.hostname = hostname;
     }
 
     /**
@@ -187,7 +187,7 @@ public class SwitchInfoData extends InfoData {
                 .add("switch_id", switchId)
                 .add("state", state)
                 .add("address", address)
-                .add("name", name)
+                .add("hostname", hostname)
                 .add("description", description)
                 .toString();
     }
@@ -197,7 +197,7 @@ public class SwitchInfoData extends InfoData {
      */
     @Override
     public int hashCode() {
-        return Objects.hash(switchId, state, address, name, description);
+        return Objects.hash(switchId, state, address, hostname, description);
     }
 
     /**
@@ -216,7 +216,7 @@ public class SwitchInfoData extends InfoData {
         return Objects.equals(getSwitchId(), that.getSwitchId())
                 && Objects.equals(getState(), that.getState())
                 && Objects.equals(getAddress(), that.getAddress())
-                && Objects.equals(getName(), that.getName())
+                && Objects.equals(getHostname(), that.getHostname())
                 && Objects.equals(getDescription(), that.getDescription());
     }
 }

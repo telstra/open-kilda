@@ -25,13 +25,13 @@ public class Node implements Serializable {
     /**
      * Node datapath id.
      */
-    @JsonProperty("dpid")
-    private String dpid;
+    @JsonProperty("name")
+    private String name;
 
     /**
      * Outgoing relationships.
      */
-    @JsonProperty("outgoing-relationships")
+    @JsonProperty("outgoing_relationships")
     private List<String> outgoingRelationships;
 
     /**
@@ -43,13 +43,13 @@ public class Node implements Serializable {
     /**
      * Constructs instance.
      *
-     * @param dpid                  node datapath id
+     * @param name                  node datapath id
      * @param outgoingRelationships node outgoing relationships
      */
     @JsonCreator
-    public Node(@JsonProperty("dpid") final String dpid,
-                @JsonProperty("outgoing-relationships") final List<String> outgoingRelationships) {
-        this.dpid = dpid;
+    public Node(@JsonProperty("name") final String name,
+                @JsonProperty("outgoing_relationships") final List<String> outgoingRelationships) {
+        this.name = name;
         this.outgoingRelationships = outgoingRelationships;
     }
 
@@ -58,17 +58,17 @@ public class Node implements Serializable {
      *
      * @return node datapath id
      */
-    public String getDpid() {
-        return dpid;
+    public String getName() {
+        return name;
     }
 
     /**
      * Sets node datapath id.
      *
-     * @param dpid node datapath id
+     * @param name node datapath id
      */
-    public void setDpid(final String dpid) {
-        this.dpid = dpid;
+    public void setName(final String name) {
+        this.name = name;
     }
 
     /**
@@ -103,7 +103,7 @@ public class Node implements Serializable {
         }
 
         Node that = (Node) object;
-        return Objects.equals(getDpid(), that.getDpid())
+        return Objects.equals(getName(), that.getName())
                 && Objects.equals(getOutgoingRelationships(), that.getOutgoingRelationships());
     }
 
@@ -112,7 +112,7 @@ public class Node implements Serializable {
      */
     @Override
     public int hashCode() {
-        return Objects.hash(getDpid(), getOutgoingRelationships());
+        return Objects.hash(getName(), getOutgoingRelationships());
     }
 
     /**
@@ -121,7 +121,7 @@ public class Node implements Serializable {
     @Override
     public String toString() {
         return toStringHelper(this)
-                .add("dpid", dpid)
+                .add("name", name)
                 .add("outgoing-relationships", outgoingRelationships)
                 .toString();
     }

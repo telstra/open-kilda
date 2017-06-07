@@ -15,5 +15,5 @@ public interface SwitchRepository extends GraphRepository<Switch> {
      * @param name switch datapath id
      * @return {@link Switch} instance
      */
-    Switch findByDpid(String name);
+    Switch findByName(String name);
 }

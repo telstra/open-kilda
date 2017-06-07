@@ -55,8 +55,8 @@ public class IslServiceImpl implements IslService {
         logger.debug("Isl relationship found: {}", isl);
 
         if (isl == null) {
-            Switch sourceSwitch = switchRepository.findByDpid(sourceNode.getSwitchId());
-            Switch destinationSwitch = switchRepository.findByDpid(destinationNode.getSwitchId());
+            Switch sourceSwitch = switchRepository.findByName(sourceNode.getSwitchId());
+            Switch destinationSwitch = switchRepository.findByName(destinationNode.getSwitchId());
 
             if (sourceSwitch == null || destinationSwitch == null) {
                 logger.error("Could not find switch: source={}, destination={}", sourceSwitch, destinationSwitch);
@@ -71,7 +71,7 @@ public class IslServiceImpl implements IslService {
 
             logger.debug("Isl relationship create: isl={}", isl);
 
-            islRepository.creteIsl(sourceSwitch.getDpid(), destinationSwitch.getDpid(), sourceNode.getSwitchId(),
+            islRepository.creteIsl(sourceSwitch.getName(), destinationSwitch.getName(), sourceNode.getSwitchId(),
                     sourceNode.getPortNo(), destinationNode.getSwitchId(), destinationNode.getPortNo(),
                     data.getLatency(), data.getSpeed(), 0L);
         } else {
@@ -110,8 +110,8 @@ public class IslServiceImpl implements IslService {
         PathNode sourceNode = data.getPath().get(0);
         PathNode destinationNode = data.getPath().get(1);
 
-        Switch sourceSwitch = switchRepository.findByDpid(sourceNode.getSwitchId());
-        Switch destinationSwitch = switchRepository.findByDpid(destinationNode.getSwitchId());
+        Switch sourceSwitch = switchRepository.findByName(sourceNode.getSwitchId());
+        Switch destinationSwitch = switchRepository.findByName(destinationNode.getSwitchId());
 
         if (sourceSwitch == null || destinationSwitch == null) {
             logger.error("Could not find switch: source={}, destination={}", sourceSwitch, destinationSwitch);

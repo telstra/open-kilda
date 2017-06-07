@@ -118,8 +118,8 @@ public class FlowServiceImpl implements FlowService {
      */
     @Override
     public Set<CommandMessage> createFlow(final FlowPayload payload, final String correlationId) {
-        Switch source = switchRepository.findByDpid(payload.getSource().getSwitchId());
-        Switch destination = switchRepository.findByDpid(payload.getDestination().getSwitchId());
+        Switch source = switchRepository.findByName(payload.getSource().getSwitchId());
+        Switch destination = switchRepository.findByName(payload.getDestination().getSwitchId());
 
         if (source == null || destination == null) {
             logger.error("Switches not found: source={}, destination={}",
@@ -127,7 +127,7 @@ public class FlowServiceImpl implements FlowService {
             throw new MessageException(ErrorType.NOT_FOUND, System.currentTimeMillis());
         }
 
-        List<Isl> path = islRepository.getPath(source.getDpid(), destination.getDpid());
+        List<Isl> path = islRepository.getPath(source.getName(), destination.getName());
 
         if (path == null || path.isEmpty()) {
             logger.error("Path not found: source={}, destination={}",
@@ -135,7 +135,7 @@ public class FlowServiceImpl implements FlowService {
             throw new MessageException(ErrorType.NOT_FOUND, System.currentTimeMillis());
         }
 
-        List<Isl> sortedPath = sortPath(source.getDpid(), path);
+        List<Isl> sortedPath = sortPath(source.getName(), path);
         logger.debug("Path found: {}", sortedPath);
 
         int directVlanId = transitVlanIdPool.allocate();

@@ -36,7 +36,7 @@ public class SwitchServiceImpl implements SwitchService {
      */
     @Override
     public Switch get(final String switchId) {
-        return switchRepository.findByDpid(switchId);
+        return switchRepository.findByName(switchId);
     }
 
     /**
@@ -52,16 +52,16 @@ public class SwitchServiceImpl implements SwitchService {
      */
     @Override
     public Switch add(final SwitchInfoData data) {
-        String dpid = data.getSwitchId();
+        String name = data.getSwitchId();
         String state = SwitchStateType.INACTIVE.toString().toLowerCase();
-        logger.debug("Switch adding: switch-id={}", dpid);
+        logger.debug("Switch adding: switch-id={}", name);
 
-        Switch sw = switchRepository.findByDpid(dpid);
+        Switch sw = switchRepository.findByName(name);
         if (sw != null) {
             throw new MessageException(ErrorType.ALREADY_EXISTS, System.currentTimeMillis());
         }
 
-        sw = new Switch(dpid, state, data.getAddress(), data.getName(), data.getDescription());
+        sw = new Switch(name, state, data.getAddress(), data.getHostname(), data.getDescription());
         sw.setLabels(state, data.getDescription());
         switchRepository.save(sw);
 
@@ -73,10 +73,10 @@ public class SwitchServiceImpl implements SwitchService {
      */
     @Override
     public Switch remove(final SwitchInfoData data) {
-        String dpid = data.getSwitchId();
-        logger.debug("Switch removing: switch-id={}", dpid);
+        String name = data.getSwitchId();
+        logger.debug("Switch removing: switch-id={}", name);
 
-        Switch sw = switchRepository.findByDpid(dpid);
+        Switch sw = switchRepository.findByName(name);
         if (sw == null) {
             throw new MessageException(ErrorType.NOT_FOUND, System.currentTimeMillis());
         }
@@ -91,11 +91,11 @@ public class SwitchServiceImpl implements SwitchService {
      */
     @Override
     public Switch activate(final SwitchInfoData data) {
-        String dpid = data.getSwitchId();
+        String name = data.getSwitchId();
         String state = SwitchStateType.ACTIVE.toString().toLowerCase();
-        logger.debug("Switch activating: switch-id={}", dpid);
+        logger.debug("Switch activating: switch-id={}", name);
 
-        Switch sw = switchRepository.findByDpid(dpid);
+        Switch sw = switchRepository.findByName(name);
         if (sw == null) {
             throw new MessageException(ErrorType.NOT_FOUND, System.currentTimeMillis());
         }
@@ -112,11 +112,11 @@ public class SwitchServiceImpl implements SwitchService {
      */
     @Override
     public Switch deactivate(final SwitchInfoData data) {
-        String dpid = data.getSwitchId();
+        String name = data.getSwitchId();
         String state = SwitchStateType.INACTIVE.toString().toLowerCase();
-        logger.debug("Switch deactivating: switch-id={}", dpid);
+        logger.debug("Switch deactivating: switch-id={}", name);
 
-        Switch sw = switchRepository.findByDpid(dpid);
+        Switch sw = switchRepository.findByName(name);
         if (sw == null) {
             throw new MessageException(ErrorType.NOT_FOUND, System.currentTimeMillis());
         }
@@ -133,8 +133,8 @@ public class SwitchServiceImpl implements SwitchService {
      */
     @Override
     public Switch change(final SwitchInfoData data) {
-        String dpid = data.getSwitchId();
-        logger.debug("Switch changing: switch-id={}", dpid);
+        String name = data.getSwitchId();
+        logger.debug("Switch changing: switch-id={}", name);
 
         throw new MessageException(ErrorType.NOT_IMPLEMENTED, System.currentTimeMillis());
     }

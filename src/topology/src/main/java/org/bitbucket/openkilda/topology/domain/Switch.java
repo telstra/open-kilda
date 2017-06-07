@@ -25,9 +25,9 @@ public class Switch {
     /**
      * Switch datapath id.
      */
-    @Property(name = "dpid")
+    @Property(name = "name")
     @Index
-    private String dpid;
+    private String name;
 
     /**
      * Switch state.
@@ -42,10 +42,10 @@ public class Switch {
     private String address;
 
     /**
-     * Switch name.
+     * Switch hostname.
      */
-    @Property(name = "name")
-    private String name;
+    @Property(name = "hostname")
+    private String hostname;
 
     /**
      * Switch description.
@@ -64,19 +64,19 @@ public class Switch {
     /**
      * Constructs entity.
      *
-     * @param dpid        switch datapath id
+     * @param name        switch datapath id
      * @param state       switch state
      * @param address     switch address
-     * @param name        switch name
+     * @param hostname        switch hostname
      * @param description switch description
      */
-    public Switch(final String dpid, final String state,
-                  final String address, final String name,
+    public Switch(final String name, final String state,
+                  final String address, final String hostname,
                   final String description) {
-        this.dpid = dpid;
+        this.name = name;
         this.state = state;
         this.address = address;
-        this.name = name;
+        this.hostname = hostname;
         this.description = description;
 
     }
@@ -86,26 +86,35 @@ public class Switch {
      *
      * @return switch datapath id
      */
-    public String getDpid() {
-        return dpid;
+    public String getName() {
+        return name;
     }
 
     /**
      * Sets switch datapath id.
      *
-     * @param dpid switch datapath id
+     * @param name switch datapath id
      */
-    public void setDpid(String dpid) {
-        this.dpid = dpid;
+    public void setName(String name) {
+        this.name = name;
     }
 
     /**
-     * Gets switch name.
+     * Gets switch hostname.
      *
-     * @return switch name
+     * @return switch hostname
      */
-    public String getName() {
-        return name;
+    public String getHostname() {
+        return hostname;
+    }
+
+    /**
+     * Sets switch hostname.
+     *
+     * @param hostname switch hostname
+     */
+    public void setHostname(String hostname) {
+        this.hostname = hostname;
     }
 
     /**
@@ -168,10 +177,10 @@ public class Switch {
     @Override
     public String toString() {
         return toStringHelper(this)
-                .add("dpid", dpid)
+                .add("name", name)
                 .add("state", state)
                 .add("address", address)
-                .add("name", name)
+                .add("hostname", hostname)
                 .add("description", description)
                 .toString();
     }

@@ -29,7 +29,7 @@ public interface IslRepository extends GraphRepository<Isl> {
      * @param speed             port speed
      * @param bandwidth         available bandwidth
      */
-    @Query("MATCH ( u:switch { dpid: {src_node} } ), ( r:switch { dpid: {dst_node} } ) MERGE (u)-[:isl " +
+    @Query("MATCH ( u:switch { name: {src_node} } ), ( r:switch { name: {dst_node} } ) MERGE (u)-[:isl " +
             "{ src_port: {src_port}, dst_port: {dst_port}, src_switch: {src_switch}, dst_switch: {dst_switch}, " +
             "latency: {latency}, speed: {speed}, bandwidth: {bandwidth} } " +
             "]->(r)")
@@ -102,7 +102,7 @@ public interface IslRepository extends GraphRepository<Isl> {
      * @param destinationNode destination switch datapath id
      * @return list of {@link Isl} instances
      */
-    @Query("MATCH ( a:switch { dpid: {src_node} } ), ( b:switch { dpid: {dst_node} } ), " +
+    @Query("MATCH ( a:switch { name: {src_node} } ), ( b:switch { name: {dst_node} } ), " +
             "p = shortestPath((a)-[:isl*..100]->(b)) where ALL(x in nodes(p) WHERE x.state = 'active') RETURN p")
     List<Isl> getPath(@Param("src_node") String sourceNode,
                       @Param("dst_node") String destinationNode);
