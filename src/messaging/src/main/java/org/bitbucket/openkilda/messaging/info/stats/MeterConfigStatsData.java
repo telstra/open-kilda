@@ -13,7 +13,7 @@ import java.util.List;
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
-        "info",
+        "message_type",
         "switch_id",
         "stats"})
 public class MeterConfigStatsData extends InfoData {

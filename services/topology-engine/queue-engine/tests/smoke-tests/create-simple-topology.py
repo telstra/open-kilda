@@ -41,12 +41,12 @@ for n in range(1, loopSize):
     node['outgoing_relationships'] = outgoing_relationships
     topology.append(node)
 
-    producer.send(topic, b'{{"type": "INFO", "timestamp": 23478952134, "payload": {{"info": "switch", "switch_id": "00:00:00:00:00:00:00:{}", "state": "ADDED"}}}}'.format(switch_id))
-    producer.send(topic, b'{{"type": "INFO", "timestamp": 23478952136, "payload": {{"info": "isl", "latency_ns": 1123, "path": [{{"switch_id": "00:00:00:00:00:00:00:{}", "port_no": 1, "seq_id": "0", "segment_latency": 1123}}, {{"switch_id": "00:00:00:00:00:00:00:{}", "port_no": 2, "seq_id": "1"}}]}}}}'.format(switch_id, linked_id_next))
-    producer.send(topic, b'{{"type": "INFO", "timestamp": 23478952136, "payload": {{"info": "isl", "latency_ns": 1123, "path": [{{"switch_id": "00:00:00:00:00:00:00:{}", "port_no": 2, "seq_id": "0", "segment_latency": 1123}}, {{"switch_id": "00:00:00:00:00:00:00:{}", "port_no": 1, "seq_id": "1"}}]}}}}'.format(switch_id, linked_id_prev))
+    producer.send(topic, b'{{"type": "INFO", "timestamp": 23478952134, "payload": {{"message_type": "switch", "switch_id": "00:00:00:00:00:00:00:{}", "state": "ADDED"}}}}'.format(switch_id))
+    producer.send(topic, b'{{"type": "INFO", "timestamp": 23478952136, "payload": {{"message_type": "isl", "latency_ns": 1123, "path": [{{"switch_id": "00:00:00:00:00:00:00:{}", "port_no": 1, "seq_id": "0", "segment_latency": 1123}}, {{"switch_id": "00:00:00:00:00:00:00:{}", "port_no": 2, "seq_id": "1"}}]}}}}'.format(switch_id, linked_id_next))
+    producer.send(topic, b'{{"type": "INFO", "timestamp": 23478952136, "payload": {{"message_type": "isl", "latency_ns": 1123, "path": [{{"switch_id": "00:00:00:00:00:00:00:{}", "port_no": 2, "seq_id": "0", "segment_latency": 1123}}, {{"switch_id": "00:00:00:00:00:00:00:{}", "port_no": 1, "seq_id": "1"}}]}}}}'.format(switch_id, linked_id_prev))
 
-    producer.send(topic, b'{{"type": "INFO", "timestamp": 23478952136, "payload": {{"info": "isl", "latency_ns": 1123, "path": [{{"switch_id": "00:00:00:00:00:00:00:{}", "port_no": 3, "seq_id": "0", "segment_latency": 1123}}, {{"switch_id": "00:00:00:00:00:00:00:{}", "port_no": 4, "seq_id": "1"}}]}}}}'.format(switch_id, linked_id_next))
-    producer.send(topic, b'{{"type": "INFO", "timestamp": 23478952136, "payload": {{"info": "isl", "latency_ns": 1123, "path": [{{"switch_id": "00:00:00:00:00:00:00:{}", "port_no": 4, "seq_id": "0", "segment_latency": 1123}}, {{"switch_id": "00:00:00:00:00:00:00:{}", "port_no": 3, "seq_id": "1"}}]}}}}'.format(switch_id, linked_id_prev))
+    producer.send(topic, b'{{"type": "INFO", "timestamp": 23478952136, "payload": {{"message_type": "isl", "latency_ns": 1123, "path": [{{"switch_id": "00:00:00:00:00:00:00:{}", "port_no": 3, "seq_id": "0", "segment_latency": 1123}}, {{"switch_id": "00:00:00:00:00:00:00:{}", "port_no": 4, "seq_id": "1"}}]}}}}'.format(switch_id, linked_id_next))
+    producer.send(topic, b'{{"type": "INFO", "timestamp": 23478952136, "payload": {{"message_type": "isl", "latency_ns": 1123, "path": [{{"switch_id": "00:00:00:00:00:00:00:{}", "port_no": 4, "seq_id": "0", "segment_latency": 1123}}, {{"switch_id": "00:00:00:00:00:00:00:{}", "port_no": 3, "seq_id": "1"}}]}}}}'.format(switch_id, linked_id_prev))
 
 
 headers = {'Content-Type': 'application/json'}

@@ -19,7 +19,7 @@ import java.util.Objects;
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
-        "info",
+        "message_type",
         "latency_ns",
         "path",
         "speed"})

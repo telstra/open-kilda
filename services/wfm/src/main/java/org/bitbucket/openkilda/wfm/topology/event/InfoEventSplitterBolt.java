@@ -49,13 +49,13 @@ public class InfoEventSplitterBolt extends BaseRichBolt {
     }
 
     /**
-     * The data field holds the "info" and "state" fields.
+     * The data field holds the "message_type" and "state" fields.
      *
      * @param root the "payload" field of an "INFO" message
      */
     private void splitInfoMessage(Map<String, ?> root, Tuple tuple) throws JsonProcessingException {
         Values dataVal = new Values("payload", new ObjectMapper().writeValueAsString(root));
-        String key = ((String) root.get("info")).toLowerCase();
+        String key = ((String) root.get("message_type")).toLowerCase();
         String state = (String) root.get("state");
         switch (key) {
             case "switch":
@@ -72,7 +72,7 @@ public class InfoEventSplitterBolt extends BaseRichBolt {
             case "port":
                 _collector.emit(I_PORT, tuple, dataVal);
                 logger.debug("EMIT {} : {}", I_PORT, dataVal);
-                if (state.equals("UP") || state.equals("DOWN")) {
+                if (state.equals("UP") || state.equals("DOWN") || state.equals("ADD")) {
                     _collector.emit(I_PORT_UPDOWN, tuple, dataVal);
                 } else {
                     _collector.emit(I_PORT_OTHER, tuple, dataVal);

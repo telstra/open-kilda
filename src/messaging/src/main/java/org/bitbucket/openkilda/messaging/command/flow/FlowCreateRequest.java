@@ -20,6 +20,7 @@ import java.util.Objects;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
         "command",
+        "destination",
         "payload"})
 public class FlowCreateRequest extends CommandData {
     /**

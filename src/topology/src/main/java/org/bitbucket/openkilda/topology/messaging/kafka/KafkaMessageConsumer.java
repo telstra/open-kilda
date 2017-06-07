@@ -101,7 +101,7 @@ public class KafkaMessageConsumer {
                     IslInfoData payload = (IslInfoData) data;
                     islService.discoverLink(payload);
                 } else {
-                    logger.error("Unexpected message data type: {}", data);
+                    logger.debug("Unexpected message data type: {}", data);
                 }
             } else {
                 logger.debug("Unexpected message type: {}", message);

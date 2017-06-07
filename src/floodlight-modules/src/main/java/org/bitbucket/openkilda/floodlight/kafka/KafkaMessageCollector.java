@@ -388,7 +388,14 @@ public class KafkaMessageCollector implements IFloodlightModule {
                     Message message = MAPPER.readValue(value, Message.class);
                     if (message instanceof CommandMessage) {
                         logger.debug("got a command message");
-                        doControllerMsg((CommandMessage) message);
+                        CommandMessage cmdMessage = (CommandMessage) message;
+                        switch (cmdMessage.getData().getDestination()) {
+                            case CONTROLLER:
+                                doControllerMsg(cmdMessage);
+                                break;
+                            default:
+                                break;
+                        }
                     }
                 } else {
                     logger.error("{} not of type String", record.value());

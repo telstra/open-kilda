@@ -40,7 +40,7 @@ class MessageItem(object):
 
     def get_message_type(self):
         try:
-            return self.payload['info']
+            return self.payload['message_type']
         except:
             return "unknown"
 

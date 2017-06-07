@@ -1,5 +1,6 @@
 package org.bitbucket.openkilda.messaging.command.flow;
 
+import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.command.CommandData;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -15,6 +16,7 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
         "command",
+        "destination",
         "switch_id"})
 public class DefaultFlowsCommandData extends CommandData {
     /**
@@ -42,6 +44,7 @@ public class DefaultFlowsCommandData extends CommandData {
     @JsonCreator
     public DefaultFlowsCommandData(@JsonProperty("switch_id") final String switchId) {
         this.switchId = switchId;
+        setDestination(Destination.CONTROLLER);
     }
 
     /**

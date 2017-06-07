@@ -2,6 +2,7 @@ package org.bitbucket.openkilda.messaging.command.flow;
 
 import static org.bitbucket.openkilda.messaging.Utils.TRANSACTION_ID;
 
+import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.Utils;
 import org.bitbucket.openkilda.messaging.command.CommandData;
 
@@ -16,6 +17,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
         "command",
+        "destination",
         TRANSACTION_ID,
         "id",
         "cookie",
@@ -63,6 +65,7 @@ public class BaseFlow extends CommandData {
         setId(id);
         setCookie(cookie);
         setSwitchId(switchId);
+        setDestination(Destination.CONTROLLER);
     }
 
     /**

@@ -18,7 +18,7 @@ import java.util.Objects;
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
-        "info",
+        "message_type",
         "switch_id",
         "port_no",
         "max_capacity",

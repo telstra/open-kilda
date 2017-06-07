@@ -24,6 +24,7 @@ import java.util.Objects;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder(value = {
         "command",
+        "destination",
         TRANSACTION_ID,
         "id",
         "cookie",

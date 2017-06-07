@@ -30,35 +30,36 @@ public class MessageTest {
     private static final String CORRELATION_ID = "f37530b6-02f1-493e-b28b-2d98a48cf4cc";
     private static final long TIMESTAMP = 23478952134L;
     private static final String DISCOVER_ISL = "{\"type\":\"COMMAND\","
-            + "\"payload\":{\"command\":\"discover_isl\",\"switch_id\":\"0000000000000001\",\"port_no\":1},\"timestamp\""
+            + "\"payload\":{\"command\":\"discover_isl\",\"destination\":\"CONTROLLER\","
+            + "\"switch_id\":\"0000000000000001\",\"port_no\":1},\"timestamp\""
             + ":23478952134,\"correlation-id\":\"f37530b6-02f1-493e-b28b-2d98a48cf4cc\"}";
     private static final String DEFAULT_FLOWS = "{\"type\":\"COMMAND\","
-            + "\"payload\":{\"command\":\"install_default_flows\","
+            + "\"payload\":{\"command\":\"install_default_flows\",\"destination\":\"CONTROLLER\","
             + "\"switch_id\":\"0x0000000000000001\"},"
             + "\"timestamp\":23478952134,\"correlation-id\":\"f37530b6-02f1-493e-b28b-2d98a48cf4cc\"}";
     private static final String DISCOVER_PATH = "{\"type\":\"COMMAND\","
-            + "\"payload\":{\"command\":\"discover_path\","
+            + "\"payload\":{\"command\":\"discover_path\",\"destination\":\"CONTROLLER\","
             + "\"source_switch_id\":\"0x0000000000000001\",\"source_port_no\":1,"
             + "\"destination_switch_id\":\"0x0000000000000002\"},"
             + "\"timestamp\":23478952134,\"correlation-id\":\"f37530b6-02f1-493e-b28b-2d98a48cf4cc\"}";
     private static final String ISL_INFO = "{\"type\":\"INFO\","
-            + "\"payload\":{\"info\":\"isl\",\"latency_ns\":1123,"
+            + "\"payload\":{\"message_type\":\"isl\",\"latency_ns\":1123,"
             + "\"path\":[{\"switch_id\":\"1\",\"port_no\":20,\"seq_id\":0,"
             + "\"segment_latency\":1123},{\"switch_id\":\"2\",\"port_no\":1,"
             + "\"seq_id\":1}],\"speed\":0},"
             + "\"timestamp\":23478952134,\"correlation-id\":\"f37530b6-02f1-493e-b28b-2d98a48cf4cc\"}";
     private static final String PATH_INFO = "{\"type\":\"INFO\","
-            + "\"payload\":{\"info\":\"path\",\"latency_ns\":1123,"
+            + "\"payload\":{\"message_type\":\"path\",\"latency_ns\":1123,"
             + "\"path\":[{\"switch_id\":\"1\",\"port_no\":20,\"seq_id\":0,"
             + "\"segment_latency\":1123},{\"switch_id\":\"2\",\"port_no\":1,"
             + "\"seq_id\":1}],\"speed\":0},"
             + "\"timestamp\":23478952134,\"correlation-id\":\"f37530b6-02f1-493e-b28b-2d98a48cf4cc\"}";
     private static final String SWITCH_INFO = "{\"type\":\"INFO\","
-            + "\"payload\":{\"info\":\"switch\",\"switch_id\":"
+            + "\"payload\":{\"message_type\":\"switch\",\"switch_id\":"
             + "\"0000000000000001\",\"state\":\"ADDED\"},"
             + "\"timestamp\":23478952134,\"correlation-id\":\"f37530b6-02f1-493e-b28b-2d98a48cf4cc\"}";
     private static final String PORT_INFO = "{\"type\":\"INFO\","
-            + "\"payload\":{\"info\":\"port\",\"switch_id\":"
+            + "\"payload\":{\"message_type\":\"port\",\"switch_id\":"
             + "\"0000000000000001\",\"port_no\":1,\"max_capacity\":1000,\"state\":"
             + "\"ADD\"},"
             + "\"timestamp\":23478952134,\"correlation-id\":\"f37530b6-02f1-493e-b28b-2d98a48cf4cc\"}";

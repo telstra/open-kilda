@@ -124,7 +124,7 @@ public class OFELinkBolt extends AbstractTickStatefulBolt<KeyValueState<String, 
         logger.debug("LINK: PORT EVENT {} {} {}", switchID, portID, updown);
 
         ConcurrentHashMap<String, String> ports = links.getOrNewSwitchPorts(switchID);
-        if (updown.equals(OFEMessageUtils.PORT_UP)) {
+        if (updown.equals(OFEMessageUtils.PORT_UP) || updown.equals(OFEMessageUtils.PORT_ADD)) {
             // Send ISL Discovery Packet
             String discoJson = OFEMessageUtils.createIslDiscovery(switchID, portID);
             collector.emit(islDiscoTopic, tuple, new Values("payload", discoJson));

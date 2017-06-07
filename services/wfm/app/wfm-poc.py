@@ -132,9 +132,9 @@ def parse_info_message(message):
     Args:
         message: info message
     """
-    if message['info'] == 'switch':
+    if message['message_type'] == 'switch':
         parse_switch_message(message)
-    elif message['info'] == 'port':
+    elif message['message_type'] == 'port':
         parse_port_message(message)
 
 
@@ -312,7 +312,7 @@ def switch_insert_default_flows(switch_id):
     Args:
         switch_id: datapathID of the switch
     """
-    data = {"command": "install_default_flows",
+    data = {"destination": "CONTROLLER", "command": "install_default_flows",
             "switch_id": switch_id}
     message = {"type": "COMMAND",
                "timestamp": long(time.time()*1000),
@@ -329,7 +329,8 @@ def send_isl_discover_packet(switch_id, port):
         switch_id: datapathID of switch
         port: port number as int
     """
-    data = {"command": "discover_isl",
+    data = {"destination": "CONTROLLER",
+            "command": "discover_isl",
             "switch_id": switch_id,
             "port_no": port}
     message = {"type": "COMMAND",

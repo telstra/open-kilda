@@ -171,7 +171,7 @@
                     </descriptorRefs>
                     <archive>
                         <manifest>
-                            <mainClass>org.bitbucket.openkilda.wfm.OFEventSplitterTopology</mainClass>
+                            <mainClass>org.bitbucket.openkilda.wfm.topology.event.OFEventSplitterTopology</mainClass>
                         </manifest>
                     </archive>
                 </configuration>

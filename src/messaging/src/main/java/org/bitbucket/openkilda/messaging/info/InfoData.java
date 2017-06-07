@@ -26,7 +26,7 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME,
         include = JsonTypeInfo.As.PROPERTY,
-        property = "info")
+        property = "message_type")
 @JsonSubTypes({
         @Type(value = FlowResponse.class, name = "flow"),
         @Type(value = FlowsResponse.class, name = "flows"),

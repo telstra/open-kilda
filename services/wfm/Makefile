@@ -17,7 +17,7 @@ all-in-one:
 
 deploy-splitter:
 	storm jar target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar \
-        org.bitbucket.openkilda.wfm.OFEventSplitterTopology \
+        org.bitbucket.openkilda.wfm.topology.event.OFEventSplitterTopology \
         splitter
 
 kill-splitter:
@@ -25,7 +25,7 @@ kill-splitter:
 
 deploy-wfm:
 	storm jar target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar \
-        org.bitbucket.openkilda.wfm.OFEventWFMTopology \
+        org.bitbucket.openkilda.wfm.topology.event.OFEventWFMTopology \
         wfm
 
 kill-wfm:

@@ -14,7 +14,7 @@ import java.util.Map;
  * "type": "INFO",
  * "timestamp": 1489980143,
  * "payload": {
- * "info": "switch",
+ * ""message_type"": "switch",
  * "switch_id": "0x0000000000000001",
  * "state": "ACTIVATED | ADDED | CHANGE | DEACTIVATED | REMOVED"
  * }
@@ -24,7 +24,7 @@ import java.util.Map;
  * "type": "INFO",
  * "timestamp": 1489980143,
  * "payload": {
- * "info": "port",
+ * ""message_type"": "port",
  * "switch_id": "0x0000000000000001",
  * "state": "UP | DOWN | .. "
  * "port_no": LONG
@@ -32,7 +32,7 @@ import java.util.Map;
  * }
  * }
  * <p>
- * {"type": "INFO", "payload": {"info": "switch", "switch_id": "0x0000000000000001", "state": "ACTIVATED"}}
+ * {"type": "INFO", "payload": {""message_type"": "switch", "switch_id": "0x0000000000000001", "state": "ACTIVATED"}}
  */
 public class OFEMessageUtils {
 
@@ -43,6 +43,7 @@ public class OFEMessageUtils {
     public static final String SWITCH_UP = "ACTIVATED";
     public static final String SWITCH_DOWN = "DEACTIVATED";
     public static final String PORT_UP = "UP";
+    public static final String PORT_ADD = "ADD";
     public static final String PORT_DOWN = "DOWN";
     // ==============  ==============  ==============  ==============  ==============
     // Parsing Routines
@@ -90,7 +91,7 @@ public class OFEMessageUtils {
     public static String createDataMessage(String type, String state, String switchId, String
             portId) {
         StringBuffer sb = new StringBuffer();
-        sb.append("{'info': '").append(type).append("', ");
+        sb.append("{'message_type': '").append(type).append("', ");
         sb.append("'switch_id': '").append(switchId).append("', ");
         if (portId != null && portId.length() > 0) {
             sb.append("'port_no': ").append(portId).append(", ");

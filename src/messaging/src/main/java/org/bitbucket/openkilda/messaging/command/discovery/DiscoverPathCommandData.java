@@ -1,5 +1,6 @@
 package org.bitbucket.openkilda.messaging.command.discovery;
 
+import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.command.CommandData;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -14,6 +15,7 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
         "command",
+        "destination",
         "source_switch_id",
         "source_port_no",
         "destination_switch_id"})
@@ -60,6 +62,7 @@ public class DiscoverPathCommandData extends CommandData {
         this.srcSwitchId = srcSwitchId;
         this.srcPortNo = srcPortNo;
         this.dstSwitchId = dstSwitchId;
+        setDestination(Destination.CONTROLLER);
     }
 
     /**

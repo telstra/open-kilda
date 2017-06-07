@@ -148,8 +148,8 @@ services:
       context: .
       dockerfile:  services/wfm/Dockerfile
     image: "kilda/wfm:${full_build_number:-latest}"
-    command: /app/wfm-poc.py kafka.pendev:9092 kilda-test
-    #command: /app/deploy_topos_and_monitor.sh kafka.pendev:9092 kilda-test
+    #command: /app/wfm-poc.py kafka.pendev:9092 kilda-test
+    command: /app/deploy_topos_and_monitor.sh kafka.pendev:9092 kilda-test
     depends_on:
       kafka:
         condition: service_healthy
