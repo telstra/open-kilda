@@ -10,6 +10,7 @@ RUN pip install uwsgi
 RUN pip install pyotp
 RUN pip install jsonschema
 RUN pip install py2neo
+RUN pip install requests
 RUN chmod +x /usr/local/bin/uwsgi
 ADD queue-engine/ /queue-engine
 ADD supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
