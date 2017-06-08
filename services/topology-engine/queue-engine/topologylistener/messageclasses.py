@@ -14,7 +14,7 @@ def repair_flows(switchid):
     for flow in flows:
         if flow['r']['flowid'] not in repairedFlowIDs:
             repairedFlowIDs.append(flow['r']['flowid'])
-            url = "http://localhost/api/v1/flow"
+            url = "http://topology-engine-rest/api/v1/flow"
             headers = {'Content-Type': 'application/json'}
             j_data = {"src_switch":"{}".format(flow['r']['src_switch']),
                       "src_port":1,
