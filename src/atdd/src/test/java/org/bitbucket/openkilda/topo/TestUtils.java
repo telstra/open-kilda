@@ -149,7 +149,8 @@ public class TestUtils {
 
         // verify it is empty
         String entity = TopologyHelp.ClearTopology();
-        assertEquals("Default, initial, response from TopologyEngine", "{\"nodes\":[]}",entity);
+        String expected = "{\"nodes\": []}";
+        assertEquals("Default, initial, response from TopologyEngine", expected, entity);
 
         Uninterruptibles.sleepUninterruptibly(3, TimeUnit.SECONDS);
     }
