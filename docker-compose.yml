@@ -51,6 +51,7 @@ services:
     links:
       - neo4j
       - kafka:kafka.pendev
+      - topology-engine-rest
     environment:
       neo4jhost: 'neo4j'
       neo4juser: 'neo4j'
