@@ -11,7 +11,7 @@ pipelines:
     rc:
       - step:
           script:
-            - $(cd base && ./build-base.sh)
+            - make build-base
             - git fetch
             - git checkout -b master
             - git merge rc
