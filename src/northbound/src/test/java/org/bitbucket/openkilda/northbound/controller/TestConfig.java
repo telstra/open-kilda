@@ -8,13 +8,11 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.test.context.TestPropertySource;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -24,15 +22,8 @@ import java.util.Map;
  */
 @Configuration
 @EnableWebSecurity
-@TestPropertySource("classpath:northbound.properties")
 @Import({MessageConsumerConfig.class, MessageProducerConfig.class, SecurityConfig.class})
 public class TestConfig {
-    /**
-     * Kafka group id.
-     */
-    @Value("${kafka.groupid}")
-    private String groupId;
-
     /**
      * Kafka consumer configuration bean.
      * This {@link Map} is used by {@link MessageConsumerConfig#consumerFactory}.
@@ -47,7 +38,7 @@ public class TestConfig {
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, System.getProperty("kafka.bootstrap-servers"));
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, "test");
         props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true);
         props.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, "30000");
         return props;

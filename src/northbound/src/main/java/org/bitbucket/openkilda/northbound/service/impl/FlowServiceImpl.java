@@ -27,6 +27,7 @@ import org.bitbucket.openkilda.northbound.service.FlowService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 /**
@@ -40,9 +41,10 @@ public class FlowServiceImpl implements FlowService {
     private static final Logger logger = LoggerFactory.getLogger(FlowServiceImpl.class);
 
     /**
-     * WorkFlow Manager Kafka topic.
+     * The kafka topic.
      */
-    private static final String topic = Topic.NB_WFM.getId();
+    @Value("${kafka.topic}")
+    private String topic;
 
     /**
      * Kafka message consumer.

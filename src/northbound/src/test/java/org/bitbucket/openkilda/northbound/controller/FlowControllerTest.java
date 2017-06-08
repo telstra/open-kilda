@@ -20,7 +20,6 @@ import org.bitbucket.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowsPayload;
-import org.bitbucket.openkilda.northbound.model.HealthCheck;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.After;
@@ -31,7 +30,6 @@ import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.listener.KafkaMessageListenerContainer;
@@ -51,6 +49,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
 import java.util.Map;
+import java.util.UUID;
 
 @RunWith(SpringJUnit4ClassRunner.class)
 @WebAppConfiguration
@@ -60,9 +59,10 @@ public class FlowControllerTest {
     private static final String USERNAME = "kilda";
     private static final String PASSWORD = "kilda";
     private static final String ROLE = "ADMIN";
-    private static final String SENDER_TOPIC = "kilda.nb.wfm";
-    private static final String RECEIVER_TOPIC = "kilda.wfm.nb";
-    private static final ContainerProperties containerProperties = new ContainerProperties(SENDER_TOPIC);
+    private static final String SENDER_TOPIC = "kilda-test";
+    //private static final String RECEIVER_TOPIC = "kilda-test";
+    private static final ContainerProperties containerProperties =
+            new ContainerProperties(SENDER_TOPIC /*, RECEIVER_TOPIC*/);
     private static final MessageError AUTH_ERROR = new MessageError(DEFAULT_CORRELATION_ID, 0,
             HttpStatus.UNAUTHORIZED.value(), HttpStatus.UNAUTHORIZED.getReasonPhrase(),
             ErrorType.AUTH_FAILED.toString(), "InsufficientAuthenticationException");
@@ -70,18 +70,16 @@ public class FlowControllerTest {
             HttpStatus.NOT_FOUND.value(), HttpStatus.NOT_FOUND.getReasonPhrase(),
             ErrorType.NOT_FOUND.toString(), MessageException.class.getSimpleName());
     @ClassRule
-    public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, SENDER_TOPIC, RECEIVER_TOPIC);
+    public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, SENDER_TOPIC /*, RECEIVER_TOPIC*/);
     private final Map<String, Object> consumerProperties =
             KafkaTestUtils.consumerProps("test", "true", embeddedKafka);
     private final DefaultKafkaConsumerFactory<String, String> consumerFactory =
             new DefaultKafkaConsumerFactory<>(consumerProperties);
     private final KafkaMessageListenerContainer<String, String> container =
             new KafkaMessageListenerContainer<>(consumerFactory, containerProperties);
-    @Autowired
-    HealthCheck healthCheck;
+
     private MockMvc mockMvc;
-    @Value("${kafka.groupid}")
-    private String groupId;
+
     @Autowired
     private WebApplicationContext webApplicationContext;
 
@@ -118,7 +116,7 @@ public class FlowControllerTest {
     @WithMockUser(username = USERNAME, password = PASSWORD, roles = ROLE)
     public void createFlow() throws Exception {
         MvcResult result = mockMvc.perform(put("/flows")
-                .header(CORRELATION_ID, DEFAULT_CORRELATION_ID)
+                .header(CORRELATION_ID, testCorrelationId())
                 .contentType(APPLICATION_JSON_VALUE)
                 .content(MAPPER.writeValueAsString(WorkFlowManagerKafkaMock.flow)))
                 .andExpect(status().isOk())
@@ -132,7 +130,7 @@ public class FlowControllerTest {
     @WithMockUser(username = USERNAME, password = PASSWORD, roles = ROLE)
     public void getFlow() throws Exception {
         MvcResult result = mockMvc.perform(get("/flows/{flow-id}", WorkFlowManagerKafkaMock.FLOW_ID)
-                .header(CORRELATION_ID, DEFAULT_CORRELATION_ID)
+                .header(CORRELATION_ID, testCorrelationId())
                 .contentType(APPLICATION_JSON_VALUE))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
@@ -145,7 +143,7 @@ public class FlowControllerTest {
     @WithMockUser(username = USERNAME, password = PASSWORD, roles = ROLE)
     public void deleteFlow() throws Exception {
         MvcResult result = mockMvc.perform(delete("/flows/{flow-id}", WorkFlowManagerKafkaMock.FLOW_ID)
-                .header(CORRELATION_ID, DEFAULT_CORRELATION_ID)
+                .header(CORRELATION_ID, testCorrelationId())
                 .contentType(APPLICATION_JSON_VALUE))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
@@ -159,7 +157,7 @@ public class FlowControllerTest {
     @WithMockUser(username = USERNAME, password = PASSWORD, roles = ROLE)
     public void updateFlow() throws Exception {
         MvcResult result = mockMvc.perform(put("/flows/{flow-id}", WorkFlowManagerKafkaMock.FLOW_ID)
-                .header(CORRELATION_ID, DEFAULT_CORRELATION_ID)
+                .header(CORRELATION_ID, testCorrelationId())
                 .contentType(APPLICATION_JSON_VALUE)
                 .content(MAPPER.writeValueAsString(WorkFlowManagerKafkaMock.flow)))
                 .andExpect(status().isOk())
@@ -173,7 +171,7 @@ public class FlowControllerTest {
     @WithMockUser(username = USERNAME, password = PASSWORD, roles = ROLE)
     public void getFlows() throws Exception {
         MvcResult result = mockMvc.perform(get("/flows", WorkFlowManagerKafkaMock.FLOW_ID)
-                .header(CORRELATION_ID, DEFAULT_CORRELATION_ID)
+                .header(CORRELATION_ID, testCorrelationId())
                 .contentType(APPLICATION_JSON_VALUE))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
@@ -186,7 +184,7 @@ public class FlowControllerTest {
     @WithMockUser(username = USERNAME, password = PASSWORD, roles = ROLE)
     public void statusFlow() throws Exception {
         MvcResult result = mockMvc.perform(get("/flows/status/{flow-id}", WorkFlowManagerKafkaMock.FLOW_ID)
-                .header(CORRELATION_ID, DEFAULT_CORRELATION_ID)
+                .header(CORRELATION_ID, testCorrelationId())
                 .contentType(APPLICATION_JSON_VALUE))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
@@ -200,7 +198,7 @@ public class FlowControllerTest {
     @WithMockUser(username = USERNAME, password = PASSWORD, roles = ROLE)
     public void pathFlow() throws Exception {
         MvcResult result = mockMvc.perform(get("/flows/path/{flow-id}", WorkFlowManagerKafkaMock.FLOW_ID)
-                .header(CORRELATION_ID, DEFAULT_CORRELATION_ID)
+                .header(CORRELATION_ID, testCorrelationId())
                 .contentType(APPLICATION_JSON_VALUE))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
@@ -212,26 +210,38 @@ public class FlowControllerTest {
     @Test
     @WithMockUser(username = USERNAME, password = PASSWORD, roles = ROLE)
     public void getNonExistingFlow() throws Exception {
+        String correlationId = testCorrelationId();
+        NOT_FOUND_ERROR.setCorrelationId(correlationId);
+
         MvcResult result = mockMvc.perform(get("/flows/{flow-id}", WorkFlowManagerKafkaMock.ERROR_FLOW_ID)
-                .header(CORRELATION_ID, DEFAULT_CORRELATION_ID)
+                .header(CORRELATION_ID, correlationId)
                 .contentType(APPLICATION_JSON_VALUE))
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
                 .andReturn();
+
         MessageError response = MAPPER.readValue(result.getResponse().getContentAsString(), MessageError.class);
         assertEquals(NOT_FOUND_ERROR, response);
     }
 
     @Test
     public void emptyCredentials() throws Exception {
+        String correlationId = testCorrelationId();
+        AUTH_ERROR.setCorrelationId(correlationId);
+
         MvcResult result = mockMvc.perform(get("/flows/path/{flow-id}", WorkFlowManagerKafkaMock.FLOW_ID)
-                .header(CORRELATION_ID, DEFAULT_CORRELATION_ID)
+                .header(CORRELATION_ID, correlationId)
                 .contentType(APPLICATION_JSON_VALUE))
                 .andExpect(status().isUnauthorized())
                 .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
                 .andReturn();
+
         MessageError response = MAPPER.readValue(result.getResponse().getContentAsString(), MessageError.class);
         assertEquals(AUTH_ERROR.getCorrelationId(), response.getCorrelationId());
         assertEquals(AUTH_ERROR.getDescription(), response.getDescription());
+    }
+
+    private static String testCorrelationId() {
+        return UUID.randomUUID().toString();
     }
 }

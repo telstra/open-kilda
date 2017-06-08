@@ -19,6 +19,7 @@ import java.util.Objects;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
         "message_type",
+        "destination",
         "switch_id",
         "port_no",
         "max_capacity",

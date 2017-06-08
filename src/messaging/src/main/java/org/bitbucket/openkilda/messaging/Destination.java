@@ -8,6 +8,11 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  */
 public enum Destination {
     /**
+     * Northbound component.
+     */
+    NORTHBOUND("NORTHBOUND"),
+
+    /**
      * Topology-Engine component.
      */
     TOPOLOGY_ENGINE("TOPOLOGY_ENGINE"),
@@ -20,7 +25,12 @@ public enum Destination {
     /**
      * WorkFlow Manager component.
      */
-    WFM("WFM");
+    WFM("WFM"),
+
+    /**
+     * WorkFlow Manager transactions handling bolt.
+     */
+    WFM_TRANSACTION("WFM_TRANSACTION");
 
     /**
      * Message destination.

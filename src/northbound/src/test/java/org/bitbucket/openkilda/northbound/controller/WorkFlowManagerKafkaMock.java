@@ -1,5 +1,6 @@
 package org.bitbucket.openkilda.northbound.controller;
 
+import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.Message;
 import org.bitbucket.openkilda.messaging.Topic;
 import org.bitbucket.openkilda.messaging.command.CommandData;
@@ -8,6 +9,7 @@ import org.bitbucket.openkilda.messaging.command.flow.*;
 import org.bitbucket.openkilda.messaging.error.ErrorData;
 import org.bitbucket.openkilda.messaging.error.ErrorMessage;
 import org.bitbucket.openkilda.messaging.error.ErrorType;
+import org.bitbucket.openkilda.messaging.info.InfoData;
 import org.bitbucket.openkilda.messaging.info.InfoMessage;
 import org.bitbucket.openkilda.messaging.info.flow.FlowPathResponse;
 import org.bitbucket.openkilda.messaging.info.flow.FlowResponse;
@@ -18,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.PropertySource;
+import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
@@ -36,7 +39,6 @@ import static org.bitbucket.openkilda.messaging.Utils.MAPPER;
  * Response type choice is based on request type.
  */
 @Component
-@PropertySource("classpath:northbound.properties")
 public class WorkFlowManagerKafkaMock {
     static final String FLOW_ID = "test-flow";
     static final String ERROR_FLOW_ID = "error-flow";
@@ -56,7 +58,7 @@ public class WorkFlowManagerKafkaMock {
     /**
      * Kafka outgoing topic.
      */
-    private static final String topic = Topic.WFM_NB.getId();
+    private static final String topic = "kilda-test";//Topic.WFM_NB.getId();
 
     /**
      * Spring KafkaProducer wrapper.
@@ -69,26 +71,32 @@ public class WorkFlowManagerKafkaMock {
      *
      * @param record received kafka message
      */
-    @KafkaListener(topics = "#{T(org.bitbucket.openkilda.messaging.Topic).NB_WFM.getId()}")
-    public void receive(final String record) {
-        logger.debug("Message received: {}", record);
+    //@KafkaListener(topics = "#{T(org.bitbucket.openkilda.messaging.Topic).NB_WFM.getId()}")
+    @KafkaListener(id = "test-listener", topics = "${kafka.topic}")
+    public void testReceive(final String record) {
+        logger.debug("Test message");
         try {
-            CommandMessage request = (CommandMessage) MAPPER.readValue(record, Message.class);
-            String response = MAPPER.writeValueAsString(formatResponse(request.getData()));
+            Message message = (Message) MAPPER.readValue(record, Message.class);
+            if (message instanceof CommandMessage) {
+                CommandData commandData = ((CommandMessage) message).getData();
+                if (Destination.WFM.equals(commandData.getDestination())) {
+                    logger.debug("Test message received: record={}", record);
+                    String response = MAPPER.writeValueAsString(formatResponse(message.getCorrelationId(), commandData));
+                    kafkaTemplate.send(topic, response).addCallback(new ListenableFutureCallback<SendResult<String, String>>() {
+                        @Override
+                        public void onSuccess(SendResult<String, String> result) {
+                            logger.debug("Test message sent: topic={}, message={}", topic, response);
+                        }
 
-            kafkaTemplate.send(topic, response).addCallback(new ListenableFutureCallback<SendResult<String, String>>() {
-                @Override
-                public void onSuccess(SendResult<String, String> result) {
-                    logger.debug("Message sent: topic={}, message={}", topic, response);
+                        @Override
+                        public void onFailure(Throwable exception) {
+                            logger.error("Unable to send test message: topic={}, message={}", topic, response, exception);
+                        }
+                    });
                 }
-
-                @Override
-                public void onFailure(Throwable exception) {
-                    logger.error("Unable to send message: topic={}, message={}", topic, response, exception);
-                }
-            });
+            }
         } catch (IOException exception) {
-            logger.error("Could not deserialize message: {}", record, exception);
+            logger.error("Could not deserialize test message: {}", record, exception);
         }
     }
 
@@ -98,25 +106,25 @@ public class WorkFlowManagerKafkaMock {
      * @param data received from kafka CommandData message payload
      * @return InfoMassage to be send as response payload
      */
-    private Message formatResponse(final CommandData data) {
+    private Message formatResponse(final String correlationId, final CommandData data) {
         if (data instanceof FlowCreateRequest) {
-            return new InfoMessage(flowResponse, 0, DEFAULT_CORRELATION_ID);
+            return new InfoMessage(flowResponse, 0, correlationId);
         } else if (data instanceof FlowDeleteRequest) {
-            return new InfoMessage(flowDeleteResponse, 0, DEFAULT_CORRELATION_ID);
+            return new InfoMessage(flowDeleteResponse, 0, correlationId);
         } else if (data instanceof FlowUpdateRequest) {
-            return new InfoMessage(flowResponse, 0, DEFAULT_CORRELATION_ID);
+            return new InfoMessage(flowResponse, 0, correlationId);
         } else if (data instanceof FlowGetRequest) {
             if (ERROR_FLOW_ID.equals(((FlowGetRequest) data).getPayload().getId())) {
-                return new ErrorMessage(new ErrorData(ErrorType.NOT_FOUND, FLOW_ID), 0, DEFAULT_CORRELATION_ID);
+                return new ErrorMessage(new ErrorData(ErrorType.NOT_FOUND, FLOW_ID), 0, correlationId);
             } else {
-                return new InfoMessage(flowResponse, 0, DEFAULT_CORRELATION_ID);
+                return new InfoMessage(flowResponse, 0, correlationId);
             }
         } else if (data instanceof FlowsGetRequest) {
-            return new InfoMessage(flowsResponse, 0, DEFAULT_CORRELATION_ID);
+            return new InfoMessage(flowsResponse, 0, correlationId);
         } else if (data instanceof FlowStatusRequest) {
-            return new InfoMessage(flowStatusResponse, 0, DEFAULT_CORRELATION_ID);
+            return new InfoMessage(flowStatusResponse, 0, correlationId);
         } else if (data instanceof FlowPathRequest) {
-            return new InfoMessage(flowPathResponse, 0, DEFAULT_CORRELATION_ID);
+            return new InfoMessage(flowPathResponse, 0, correlationId);
         } else {
             return null;
         }

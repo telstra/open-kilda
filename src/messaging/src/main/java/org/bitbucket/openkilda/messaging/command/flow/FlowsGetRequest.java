@@ -2,6 +2,7 @@ package org.bitbucket.openkilda.messaging.command.flow;
 
 import static com.google.common.base.Objects.toStringHelper;
 
+import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.command.CommandData;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 
@@ -49,6 +50,7 @@ public class FlowsGetRequest extends CommandData {
     @JsonCreator
     public FlowsGetRequest(@JsonProperty("payload") final FlowIdStatusPayload payload) {
         setPayload(payload);
+        setDestination(Destination.WFM);
     }
 
     /**

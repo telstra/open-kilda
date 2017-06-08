@@ -5,6 +5,7 @@ import static org.bitbucket.openkilda.messaging.Utils.MAPPER;
 import org.bitbucket.openkilda.floodlight.pathverification.IPathVerificationService;
 import org.bitbucket.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.bitbucket.openkilda.floodlight.switchmanager.MeterPool;
+import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.Message;
 import org.bitbucket.openkilda.messaging.Topic;
 import org.bitbucket.openkilda.messaging.command.CommandData;
@@ -45,8 +46,8 @@ import java.util.concurrent.Executors;
 
 public class KafkaMessageCollector implements IFloodlightModule {
     private static final Logger logger = LoggerFactory.getLogger(KafkaMessageCollector.class);
-    private static final String INPUT_TOPIC = "kilda-test";//Topic.WFM_OFS_FLOW.getId();
-    private static final String OUTPUT_TOPIC = "kilda-test";//Topic.OFS_WFM_FLOW.getId();
+    private static final String INPUT_TOPIC = "kilda-test";
+    private static final String OUTPUT_TOPIC = "kilda-test";
     private final MeterPool meterPool = new MeterPool();
     private Properties kafkaProps;
     private IPathVerificationService pathVerificationService;
@@ -166,9 +167,6 @@ public class KafkaMessageCollector implements IFloodlightModule {
                 ErrorMessage error = new ErrorMessage(new ErrorData(ErrorType.INTERNAL_ERROR, command.getId()),
                         System.currentTimeMillis(), message.getCorrelationId());
                 kafkaProducer.postMessage(OUTPUT_TOPIC, error);
-            } else {
-                command.setTransactionId(meterInstalled.getLeft());
-                kafkaProducer.postMessage(OUTPUT_TOPIC, message);
             }
 
             ImmutablePair<Long, Boolean> flowInstalled = switchManager.installIngressFlow(
@@ -187,7 +185,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
                         System.currentTimeMillis(), message.getCorrelationId());
                 kafkaProducer.postMessage(OUTPUT_TOPIC, error);
             } else {
-                command.setTransactionId(flowInstalled.getLeft());
+                command.setDestination(Destination.WFM_TRANSACTION);
                 kafkaProducer.postMessage(OUTPUT_TOPIC, message);
             }
         }
@@ -216,7 +214,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
                         System.currentTimeMillis(), message.getCorrelationId());
                 kafkaProducer.postMessage(OUTPUT_TOPIC, error);
             } else {
-                command.setTransactionId(flowInstalled.getLeft());
+                command.setDestination(Destination.WFM_TRANSACTION);
                 kafkaProducer.postMessage(OUTPUT_TOPIC, message);
             }
         }
@@ -243,7 +241,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
                         System.currentTimeMillis(), message.getCorrelationId());
                 kafkaProducer.postMessage(OUTPUT_TOPIC, error);
             } else {
-                command.setTransactionId(flowInstalled.getLeft());
+                command.setDestination(Destination.WFM_TRANSACTION);
                 kafkaProducer.postMessage(OUTPUT_TOPIC, message);
             }
         }
@@ -270,9 +268,6 @@ public class KafkaMessageCollector implements IFloodlightModule {
                 ErrorMessage error = new ErrorMessage(new ErrorData(ErrorType.INTERNAL_ERROR, command.getId()),
                         System.currentTimeMillis(), message.getCorrelationId());
                 kafkaProducer.postMessage(OUTPUT_TOPIC, error);
-            } else {
-                command.setTransactionId(sourceMeterInstalled.getLeft());
-                kafkaProducer.postMessage(OUTPUT_TOPIC, message);
             }
 
             OutputVlanType directOutputVlanType = command.getOutputVlanType();
@@ -292,7 +287,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
                         System.currentTimeMillis(), message.getCorrelationId());
                 kafkaProducer.postMessage(OUTPUT_TOPIC, error);
             } else {
-                command.setTransactionId(forwardFlowInstalled.getLeft());
+                command.setDestination(Destination.WFM_TRANSACTION);
                 kafkaProducer.postMessage(OUTPUT_TOPIC, message);
             }
 
@@ -306,9 +301,6 @@ public class KafkaMessageCollector implements IFloodlightModule {
                 ErrorMessage error = new ErrorMessage(new ErrorData(ErrorType.INTERNAL_ERROR, command.getId()),
                         System.currentTimeMillis(), message.getCorrelationId());
                 kafkaProducer.postMessage(OUTPUT_TOPIC, error);
-            } else {
-                command.setTransactionId(destinationMeterInstalled.getLeft());
-                kafkaProducer.postMessage(OUTPUT_TOPIC, message);
             }
 
             OutputVlanType reverseOutputVlanType;
@@ -339,7 +331,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
                         System.currentTimeMillis(), message.getCorrelationId());
                 kafkaProducer.postMessage(OUTPUT_TOPIC, error);
             } else {
-                command.setTransactionId(reverseFlowInstalled.getLeft());
+                command.setDestination(Destination.WFM_TRANSACTION);
                 kafkaProducer.postMessage(OUTPUT_TOPIC, message);
             }
         }
@@ -362,7 +354,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
                         System.currentTimeMillis(), message.getCorrelationId());
                 kafkaProducer.postMessage(OUTPUT_TOPIC, error);
             } else {
-                command.setTransactionId(flowDeleted.getLeft());
+                command.setDestination(Destination.WFM_TRANSACTION);
                 kafkaProducer.postMessage(OUTPUT_TOPIC, message);
             }
 
@@ -374,9 +366,6 @@ public class KafkaMessageCollector implements IFloodlightModule {
                     ErrorMessage error = new ErrorMessage(new ErrorData(ErrorType.INTERNAL_ERROR, command.getId()),
                             System.currentTimeMillis(), message.getCorrelationId());
                     kafkaProducer.postMessage(OUTPUT_TOPIC, error);
-                } else {
-                    command.setTransactionId(meterDeleted.getLeft());
-                    kafkaProducer.postMessage(OUTPUT_TOPIC, message);
                 }
             }
         }

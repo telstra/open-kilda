@@ -12,10 +12,15 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <storm.version>1.0.3</storm.version>
+        <messaging.version>1.0-SNAPSHOT</messaging.version>
     </properties>
 
     <dependencies>
-
+        <dependency>
+            <groupId>org.bitbucket.openkilda</groupId>
+            <artifactId>messaging</artifactId>
+            <version>${messaging.version}</version>
+        </dependency>
 
         <dependency>
             <groupId>org.apache.storm</groupId>

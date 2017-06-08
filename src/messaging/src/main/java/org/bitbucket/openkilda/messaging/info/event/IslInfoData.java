@@ -20,6 +20,7 @@ import java.util.Objects;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
         "message_type",
+        "destination",
         "latency_ns",
         "path",
         "speed"})

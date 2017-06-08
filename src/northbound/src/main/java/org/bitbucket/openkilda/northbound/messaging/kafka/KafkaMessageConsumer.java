@@ -5,8 +5,12 @@ import static org.bitbucket.openkilda.messaging.Utils.MAPPER;
 import static org.bitbucket.openkilda.messaging.error.ErrorType.INTERNAL_ERROR;
 import static org.bitbucket.openkilda.messaging.error.ErrorType.OPERATION_TIMED_OUT;
 
+import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.Message;
+import org.bitbucket.openkilda.messaging.error.ErrorMessage;
 import org.bitbucket.openkilda.messaging.error.MessageException;
+import org.bitbucket.openkilda.messaging.info.InfoData;
+import org.bitbucket.openkilda.messaging.info.InfoMessage;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,12 +53,22 @@ public class KafkaMessageConsumer {
      *
      * @param record the message object instance
      */
-    @KafkaListener(topics = "#{T(org.bitbucket.openkilda.messaging.Topic).WFM_NB.getId()}")
+    //@KafkaListener(topics = "#{T(org.bitbucket.openkilda.messaging.Topic).WFM_NB.getId()}")
+    @KafkaListener(id = "northbound-listener", topics = "kilda-test")
     public void receive(final String record) {
-        logger.debug("message received: {}", record);
         try {
+            logger.debug("message received");
             Message message = MAPPER.readValue(record, Message.class);
-            messages.put(message.getCorrelationId(), message);
+            if (message instanceof InfoMessage) {
+                InfoData infoData = ((InfoMessage) message).getData();
+                if (Destination.NORTHBOUND.equals(infoData.getDestination())) {
+                    logger.debug("message received: {}", record);
+                    messages.put(message.getCorrelationId(), message);
+                }
+            } else if (message instanceof ErrorMessage) {
+                logger.debug("message received: {}", record);
+                messages.put(message.getCorrelationId(), message);
+            }
         } catch (IOException exception) {
             logger.error("Could not deserialize message: {}", record, exception);
         }

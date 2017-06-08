@@ -32,6 +32,12 @@ public class AbstractStormTest {
         return properties;
     }
 
+    protected static Properties kafkaProperties(final String groupId) {
+        Properties properties = kafkaProperties();
+        properties.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+        return properties;
+    }
+
     protected static Config stormConfig() {
         Config config = new Config();
         config.setDebug(false);

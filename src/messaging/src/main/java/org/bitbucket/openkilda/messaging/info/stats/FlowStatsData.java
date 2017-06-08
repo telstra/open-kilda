@@ -1,5 +1,6 @@
 package org.bitbucket.openkilda.messaging.info.stats;
 
+import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.info.InfoData;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -14,6 +15,7 @@ import java.util.List;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
         "message_type",
+        "destination",
         "switch_id",
         "stats"})
 public class FlowStatsData extends InfoData {
@@ -30,6 +32,7 @@ public class FlowStatsData extends InfoData {
                          @JsonProperty("stats") List<FlowStatsReply> switchStats) {
         this.switchId = switchId;
         this.stats = switchStats;
+        setDestination(Destination.WFM);
     }
 
     public String getSwitchId() {

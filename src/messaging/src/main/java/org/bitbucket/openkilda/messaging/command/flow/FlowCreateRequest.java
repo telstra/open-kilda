@@ -2,6 +2,7 @@ package org.bitbucket.openkilda.messaging.command.flow;
 
 import static com.google.common.base.Objects.toStringHelper;
 
+import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.command.CommandData;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowPayload;
 
@@ -49,6 +50,7 @@ public class FlowCreateRequest extends CommandData {
     @JsonCreator
     public FlowCreateRequest(@JsonProperty("payload") final FlowPayload payload) {
         setPayload(payload);
+        setDestination(Destination.WFM);
     }
 
     /**

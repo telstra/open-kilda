@@ -4,6 +4,8 @@ package org.bitbucket.openkilda.messaging;
  * This class contains Kilda-specific Kafka topics.
  */
 public enum Topic {
+    TEST("kilda-test");
+    /*
     NB_WFM("kilda.nb.wfm"),
     WFM_NB("kilda.wfm.nb"),
     TE_WFM_FLOW("kilda.te.wfm.flow"),
@@ -13,6 +15,7 @@ public enum Topic {
     OFS_WFM_STATS("kilda.ofs.wfm.stats"),
     OFS_WFM_DISCOVERY("kilda.ofs.wfm.discovery"),
     WFM_TE_DISCOVERY("kilda.wfm.te.discovery");
+    */
 
     private String id;
 

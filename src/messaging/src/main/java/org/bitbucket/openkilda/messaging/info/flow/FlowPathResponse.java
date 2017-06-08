@@ -2,6 +2,7 @@ package org.bitbucket.openkilda.messaging.info.flow;
 
 import static com.google.common.base.Objects.toStringHelper;
 
+import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.info.InfoData;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowPathPayload;
 
@@ -20,6 +21,7 @@ import java.util.Objects;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
         "message_type",
+        "destination",
         "payload"})
 public class FlowPathResponse extends InfoData {
     /**
@@ -48,6 +50,7 @@ public class FlowPathResponse extends InfoData {
     @JsonCreator
     public FlowPathResponse(@JsonProperty("payload") final FlowPathPayload payload) {
         setPayload(payload);
+        setDestination(Destination.NORTHBOUND);
     }
 
     /**
