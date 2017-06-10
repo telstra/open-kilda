@@ -24,11 +24,6 @@
     with_items:
     - /bin/bash /app/build_loxigen.sh
 
-  - name: check jar was installed
-    stat:
-      path: /root/.m2/repository/org/projectfloodlight/openflowj/3.2.0-SNAPSHOT/openflowj-3.2.0-SNAPSHOT.jar
-    register: stat_result
-
   - name: git floodlight
     git: 
        repo=https://github.com/kilda/floodlight.git
@@ -39,9 +34,4 @@
     shell: "{{ item }}"
     with_items:
     - /bin/bash /app/build_floodlight.sh
-
-  - name: check jar was installed
-    stat:
-      path: /root/.m2/repository/org/projectfloodlight/floodlight/1.2-SNAPSHOT/floodlight-1.2-SNAPSHOT.jar 
-    register: stat_result
 

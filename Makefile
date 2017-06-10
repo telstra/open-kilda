@@ -44,18 +44,24 @@ sec:
 
 FLOODLIGHT_JAR := ~/.m2/repository/org/projectfloodlight/floodlight/1.2-SNAPSHOT/floodlight-1.2-SNAPSHOT.jar
 FM_JAR := src/floodlight-modules/target/floodlight-modules.jar
+MSG_JAR := ~/.m2/repository/org/bitbucket/openkilda/messaging/1.0-SNAPSHOT/messaging-1.0-SNAPSHOT.jar
 
-$(FM_JAR):
+$(MSG_JAR):
+	mvn -f src/messaging/pom.xml install
+
+$(FM_JAR): $(MSG_JAR)
 	$(MAKE) -C src/projectfloodlight
 	mvn -f src/floodlight-modules/pom.xml package
 
 build-floodlight: $(FM_JAR)
 
 clean-floodlight:
+	rm -rf ~/.m2/repository/org/bitbucket/openkilda/messaging/
+	mvn -f src/messaging/pom.xml clean
 	mvn -f src/floodlight-modules/pom.xml clean
 	$(MAKE) -C src/projectfloodlight clean
 
-run-floodlight:
+run-floodlight: build-floodlight
 	java -Dlogback.configurationFile=src/floodlight-modules/src/test/resources/logback.xml \
 	-cp $(FLOODLIGHT_JAR):$(FM_JAR) net.floodlightcontroller.core.Main \
 	-cf src/floodlight-modules/src/main/resources/floodlightkilda.properties
