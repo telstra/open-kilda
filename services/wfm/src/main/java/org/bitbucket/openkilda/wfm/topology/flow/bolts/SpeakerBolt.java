@@ -56,17 +56,14 @@ public class SpeakerBolt extends BaseRichBolt {
 
         try {
             Message message = MAPPER.readValue(request, Message.class);
+            if (!Destination.WFM_TRANSACTION.equals(message.getDestination())) {
+                return;
+            }
 
             if (message instanceof CommandMessage) {
                 CommandData data = ((CommandMessage) message).getData();
 
-                if (!Destination.WFM_TRANSACTION.equals(data.getDestination())) {
-                    outputCollector.ack(tuple);
-                    return;
-                }
-
                 if (data instanceof BaseInstallFlow) {
-                    BaseInstallFlow installData = (BaseInstallFlow) data;
                     Long transactionId = ((BaseInstallFlow) data).getTransactionId();
                     String switchId = ((BaseInstallFlow) data).getSwitchId();
                     String flowId = ((BaseInstallFlow) data).getId();
@@ -74,12 +71,11 @@ public class SpeakerBolt extends BaseRichBolt {
                     logger.debug("Flow install message: {}={}, switch-id={}, flow-id={}, transaction-id={}, message={}",
                             CORRELATION_ID, message.getCorrelationId(), switchId, flowId, transactionId, request);
 
-                    installData.setDestination(Destination.TOPOLOGY_ENGINE);
+                    message.setDestination(Destination.TOPOLOGY_ENGINE);
                     values = new Values(MAPPER.writeValueAsString(message), switchId, flowId, transactionId);
                     outputCollector.emit(StreamType.CREATE.toString(), tuple, values);
 
                 } else if (data instanceof RemoveFlow) {
-                    RemoveFlow removeData = (RemoveFlow) data;
                     Long transactionId = ((RemoveFlow) data).getTransactionId();
                     String switchId = ((RemoveFlow) data).getSwitchId();
                     String flowId = ((RemoveFlow) data).getId();
@@ -87,7 +83,7 @@ public class SpeakerBolt extends BaseRichBolt {
                     logger.debug("Flow remove message: {}={}, switch-id={}, flow-id={}, transaction-id={}, message={}",
                             CORRELATION_ID, message.getCorrelationId(), switchId, flowId, transactionId, request);
 
-                    removeData.setDestination(Destination.TOPOLOGY_ENGINE);
+                    message.setDestination(Destination.TOPOLOGY_ENGINE);
                     values = new Values(MAPPER.writeValueAsString(message), switchId, flowId, transactionId);
                     outputCollector.emit(StreamType.DELETE.toString(), tuple, values);
 

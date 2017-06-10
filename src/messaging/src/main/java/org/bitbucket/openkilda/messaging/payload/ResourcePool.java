@@ -16,7 +16,7 @@ public class ResourcePool {
     private final Range<Integer> range;
 
     /**
-     * Constructs instance.
+     * Instance constructor.
      *
      * @param minValue minimum resource id value
      * @param maxValue maximum resource id value

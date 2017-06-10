@@ -1,6 +1,6 @@
 package org.bitbucket.openkilda.messaging.info.event;
 
-import static com.google.common.base.Objects.toStringHelper;
+import static com.google.common.base.MoreObjects.toStringHelper;
 
 import org.bitbucket.openkilda.messaging.info.InfoData;
 
@@ -20,7 +20,6 @@ import java.util.Objects;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
         "message_type",
-        "destination",
         "latency_ns",
         "path",
         "speed"})
@@ -68,7 +67,6 @@ public class IslInfoData extends InfoData {
         this.latency = latency;
         this.path = path;
         this.speed = speed;
-
     }
 
     /**

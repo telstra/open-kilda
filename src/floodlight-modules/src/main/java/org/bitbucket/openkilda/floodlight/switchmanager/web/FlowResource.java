@@ -8,9 +8,8 @@ import org.bitbucket.openkilda.messaging.Message;
 import org.bitbucket.openkilda.messaging.command.CommandData;
 import org.bitbucket.openkilda.messaging.command.CommandMessage;
 import org.bitbucket.openkilda.messaging.command.flow.BaseInstallFlow;
-import org.bitbucket.openkilda.messaging.error.ErrorData;
-import org.bitbucket.openkilda.messaging.error.ErrorMessage;
 import org.bitbucket.openkilda.messaging.error.ErrorType;
+import org.bitbucket.openkilda.messaging.error.MessageError;
 
 import org.apache.commons.httpclient.HttpStatus;
 import org.restlet.resource.Post;
@@ -41,8 +40,8 @@ public class FlowResource extends ServerResource {
             String messageString = "Received JSON is not valid for TPN";
             logger.error("{}: {}", messageString, json, exception);
             int code = HttpStatus.SC_BAD_REQUEST;
-            Message responseMessage = new ErrorMessage(new ErrorData(code, HttpStatus.getStatusText(code),
-                    ErrorType.DATA_INVALID, messageString), now(), DEFAULT_CORRELATION_ID);
+            MessageError responseMessage = new MessageError(DEFAULT_CORRELATION_ID, now(), code,
+                    HttpStatus.getStatusText(code), ErrorType.DATA_INVALID.toString(), messageString);
             return MAPPER.writeValueAsString(responseMessage);
         }
 
@@ -50,8 +49,8 @@ public class FlowResource extends ServerResource {
             String messageString = "Json payload message is not an instance of CommandMessage";
             logger.error("{}: class={}, data={}", messageString, message.getClass().getCanonicalName(), json);
             int code = HttpStatus.SC_BAD_REQUEST;
-            Message responseMessage = new ErrorMessage(new ErrorData(code, HttpStatus.getStatusText(code),
-                    ErrorType.DATA_INVALID, messageString), now(), DEFAULT_CORRELATION_ID);
+            MessageError responseMessage = new MessageError(DEFAULT_CORRELATION_ID, now(), code,
+                    HttpStatus.getStatusText(code), ErrorType.DATA_INVALID.toString(), messageString);
             return MAPPER.writeValueAsString(responseMessage);
         }
 
@@ -61,8 +60,8 @@ public class FlowResource extends ServerResource {
             String messageString = "Json payload data is not an instance of CommandData";
             logger.error("{}: class={}, data={}", messageString, data.getClass().getCanonicalName(), json);
             int code = HttpStatus.SC_BAD_REQUEST;
-            Message responseMessage = new ErrorMessage(new ErrorData(code, HttpStatus.getStatusText(code),
-                    ErrorType.PARAMETERS_INVALID, messageString), now(), DEFAULT_CORRELATION_ID);
+            MessageError responseMessage = new MessageError(DEFAULT_CORRELATION_ID, now(), code,
+                    HttpStatus.getStatusText(code), ErrorType.DATA_INVALID.toString(), messageString);
             return MAPPER.writeValueAsString(responseMessage);
         }
 

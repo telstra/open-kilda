@@ -9,9 +9,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-/**
- * Created by atopilin on 20/04/2017.
- */
 public class TestKafkaProducer {
     private static final long SEND_TIMEOUT = 1000;
     private final KafkaProducer<String, String> producer;

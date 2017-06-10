@@ -36,7 +36,7 @@ public enum MessageType {
     private final String type;
 
     /**
-     * Constructs entity.
+     * Instance constructor.
      *
      * @param type message type
      */
@@ -50,7 +50,6 @@ public enum MessageType {
      *
      * @return message type
      */
-    @JsonProperty("type")
     public String getType() {
         return type;
     }

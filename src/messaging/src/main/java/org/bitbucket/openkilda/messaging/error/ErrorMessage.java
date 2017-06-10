@@ -1,9 +1,12 @@
 package org.bitbucket.openkilda.messaging.error;
 
-import static com.google.common.base.Objects.toStringHelper;
+import static com.google.common.base.MoreObjects.toStringHelper;
 import static org.bitbucket.openkilda.messaging.Utils.CORRELATION_ID;
+import static org.bitbucket.openkilda.messaging.Utils.DESTINATION;
+import static org.bitbucket.openkilda.messaging.Utils.PAYLOAD;
 import static org.bitbucket.openkilda.messaging.Utils.TIMESTAMP;
 
+import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.Message;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -18,7 +21,8 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder(value = {
-        "payload",
+        DESTINATION,
+        PAYLOAD,
         TIMESTAMP,
         CORRELATION_ID})
 public class ErrorMessage extends Message {
@@ -30,7 +34,7 @@ public class ErrorMessage extends Message {
     /**
      * Data of the error message.
      */
-    @JsonProperty("payload")
+    @JsonProperty(PAYLOAD)
     private ErrorData data;
 
     /**
@@ -38,13 +42,15 @@ public class ErrorMessage extends Message {
      *
      * @param data          error message payload
      * @param timestamp     timestamp value
-     * @param correlationId request correlation id
+     * @param correlationId message correlation id
+     * @param destination   message destination
      */
     @JsonCreator
-    public ErrorMessage(@JsonProperty("payload") final ErrorData data,
+    public ErrorMessage(@JsonProperty(PAYLOAD) final ErrorData data,
                         @JsonProperty(TIMESTAMP) final long timestamp,
-                        @JsonProperty(CORRELATION_ID) final String correlationId) {
-        super(timestamp, correlationId);
+                        @JsonProperty(CORRELATION_ID) final String correlationId,
+                        @JsonProperty(DESTINATION) final Destination destination) {
+        super(timestamp, correlationId, destination);
         setData(data);
     }
 
@@ -74,7 +80,8 @@ public class ErrorMessage extends Message {
         return toStringHelper(this)
                 .add(TIMESTAMP, timestamp)
                 .add(CORRELATION_ID, correlationId)
-                .add("payload", data)
+                .add(DESTINATION, destination)
+                .add(PAYLOAD, data)
                 .toString();
     }
 }

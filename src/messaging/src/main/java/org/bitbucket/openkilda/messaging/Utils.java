@@ -25,6 +25,14 @@ public final class Utils {
      */
     public static final String CORRELATION_ID = "correlation-id";
     /**
+     * The destination property.
+     */
+    public static final String DESTINATION = "destination";
+    /**
+     * The payload property.
+     */
+    public static final String PAYLOAD = "payload";
+    /**
      * The default correlation ID value.
      */
     public static final String DEFAULT_CORRELATION_ID = "admin-request";

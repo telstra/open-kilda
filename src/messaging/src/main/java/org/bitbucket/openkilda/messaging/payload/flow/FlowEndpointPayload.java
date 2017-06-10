@@ -1,6 +1,6 @@
 package org.bitbucket.openkilda.messaging.payload.flow;
 
-import static com.google.common.base.Objects.toStringHelper;
+import static com.google.common.base.MoreObjects.toStringHelper;
 
 import org.bitbucket.openkilda.messaging.Utils;
 
@@ -30,6 +30,7 @@ public class FlowEndpointPayload implements Serializable {
      * The constant serialVersionUID.
      */
     private static final long serialVersionUID = 1L;
+
     /**
      * Allocated meter id.
      */
@@ -53,12 +54,6 @@ public class FlowEndpointPayload implements Serializable {
      */
     @JsonProperty("vlan-id")
     private Integer vlanId;
-
-    /**
-     * Default constructor.
-     */
-    public FlowEndpointPayload() {
-    }
 
     /**
      * Instance constructor.
@@ -86,9 +81,7 @@ public class FlowEndpointPayload implements Serializable {
      * @param portId   port id
      * @param vlanId   vlan id
      */
-    public FlowEndpointPayload(@JsonProperty("switch-id") final String switchId,
-                               @JsonProperty("port-id") final Integer portId,
-                               @JsonProperty("vlan-id") final Integer vlanId) {
+    public FlowEndpointPayload(final String switchId, final Integer portId, final Integer vlanId) {
         setSwitchId(switchId);
         setPortId(portId);
         setVlanId(vlanId);

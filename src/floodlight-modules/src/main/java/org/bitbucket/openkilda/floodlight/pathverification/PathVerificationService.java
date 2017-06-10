@@ -376,7 +376,7 @@ public class PathVerificationService
 
         IslInfoData path = new IslInfoData(latency.getValue(), nodes, sw.getPort(inPort).getCurrSpeed());
 
-        Message message = new InfoMessage(path, System.currentTimeMillis(), "system");
+        Message message = new InfoMessage(path, System.currentTimeMillis(), "system", null);
         try {
             final String json = MAPPER.writeValueAsString(message);
             logger.debug("about to send {}", json);

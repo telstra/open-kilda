@@ -1,8 +1,8 @@
 package org.bitbucket.openkilda.messaging.command.discovery;
 
-import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.command.CommandData;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
@@ -15,7 +15,6 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
         "command",
-        "destination",
         "source_switch_id",
         "source_port_no",
         "destination_switch_id"})
@@ -56,13 +55,13 @@ public class DiscoverPathCommandData extends CommandData {
      * @param srcPortNo   source ort number
      * @param dstSwitchId destination switch id
      */
+    @JsonCreator
     public DiscoverPathCommandData(@JsonProperty("source_switch_id") final String srcSwitchId,
                                    @JsonProperty("source_port_no") final int srcPortNo,
                                    @JsonProperty("destination_switch_id") final String dstSwitchId) {
         this.srcSwitchId = srcSwitchId;
         this.srcPortNo = srcPortNo;
         this.dstSwitchId = dstSwitchId;
-        setDestination(Destination.CONTROLLER);
     }
 
     /**
@@ -70,7 +69,6 @@ public class DiscoverPathCommandData extends CommandData {
      *
      * @return source switch id
      */
-    @JsonProperty("source_switch_id")
     public String getSrcSwitchId() {
         return srcSwitchId;
     }
@@ -80,7 +78,6 @@ public class DiscoverPathCommandData extends CommandData {
      *
      * @param switchId source switch id to set
      */
-    @JsonProperty("source_switch_id")
     public void setSrcSwitchId(String switchId) {
         this.srcSwitchId = switchId;
     }
@@ -90,7 +87,6 @@ public class DiscoverPathCommandData extends CommandData {
      *
      * @return source port number
      */
-    @JsonProperty("source_port_no")
     public int getSrcPortNo() {
         return srcPortNo;
     }
@@ -100,7 +96,6 @@ public class DiscoverPathCommandData extends CommandData {
      *
      * @param portNo source port number to set
      */
-    @JsonProperty("source_port_no")
     public void setSrcPortNo(int portNo) {
         this.srcPortNo = portNo;
     }
@@ -110,7 +105,6 @@ public class DiscoverPathCommandData extends CommandData {
      *
      * @return switch id
      */
-    @JsonProperty("destination_switch_id")
     public String getDstSwitchId() {
         return dstSwitchId;
     }
@@ -120,7 +114,6 @@ public class DiscoverPathCommandData extends CommandData {
      *
      * @param switchId destination switch id to set
      */
-    @JsonProperty("destination_switch_id")
     public void setDstSwitchId(String switchId) {
         this.dstSwitchId = switchId;
     }

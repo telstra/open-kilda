@@ -1,6 +1,6 @@
 package org.bitbucket.openkilda.messaging.payload.flow;
 
-import static com.google.common.base.Objects.toStringHelper;
+import static com.google.common.base.MoreObjects.toStringHelper;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -80,12 +80,6 @@ public class FlowPayload implements Serializable {
     private String lastUpdated;
 
     /**
-     * Constructs the flow model.
-     */
-    public FlowPayload() {
-    }
-
-    /**
      * Instance constructor.
      *
      * @param id               flow id
@@ -126,12 +120,9 @@ public class FlowPayload implements Serializable {
      * @param description      flow description
      * @param lastUpdated      flow last updated timestamp
      */
-    public FlowPayload(@JsonProperty("id") final String id,
-                       @JsonProperty("source") final FlowEndpointPayload source,
-                       @JsonProperty("destination") final FlowEndpointPayload destination,
-                       @JsonProperty("maximum-bandwidth") final Long maximumBandwidth,
-                       @JsonProperty("description") final String description,
-                       @JsonProperty("last-updated") final String lastUpdated) {
+    public FlowPayload(final String id, final FlowEndpointPayload source,
+                       final FlowEndpointPayload destination, final Long maximumBandwidth,
+                       final String description, final String lastUpdated) {
         setId(id);
         setSource(source);
         setDestination(destination);

@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import org.bitbucket.openkilda.messaging.AbstractSerializer;
+import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.Message;
 import org.bitbucket.openkilda.messaging.command.CommandMessage;
 import org.bitbucket.openkilda.messaging.error.ErrorData;
@@ -54,6 +55,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     private static final FlowStatusType FLOW_STATUS = FlowStatusType.UP;
     private static final PortChangeType PORT_CHANGE = PortChangeType.OTHER_UPDATE;
     private static final SwitchEventType SWITCH_EVENT = SwitchEventType.CHANGED;
+    private static final Destination DESTINATION = null;
 
     private static final FlowIdStatusPayload flowsIdStatusRequest = new FlowIdStatusPayload();
     private static final FlowIdStatusPayload flowIdStatusRequest = new FlowIdStatusPayload(FLOW_NAME);
@@ -73,7 +75,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
                 SWITCH_ID, INPUT_PORT, OUTPUT_PORT, TRANSIT_VLAN_ID, OUTPUT_VLAN_ID, OUTPUT_VLAN_TYPE);
         System.out.println(data);
 
-        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID);
+        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
         serialize(command);
 
         Message message = (Message) deserialize();
@@ -94,7 +96,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
                 INPUT_PORT, OUTPUT_PORT, INPUT_VLAN_ID, TRANSIT_VLAN_ID, OUTPUT_VLAN_TYPE, BANDWIDTH, METER_ID);
         System.out.println(data);
 
-        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID);
+        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
         serialize(command);
 
         Message message = (Message) deserialize();
@@ -115,7 +117,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
                 SWITCH_ID, INPUT_PORT, OUTPUT_PORT, TRANSIT_VLAN_ID);
         System.out.println(data);
 
-        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID);
+        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
         serialize(command);
 
         Message message = (Message) deserialize();
@@ -136,7 +138,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
                 OUTPUT_PORT, INPUT_VLAN_ID, OUTPUT_VLAN_ID, OUTPUT_VLAN_TYPE, BANDWIDTH, METER_ID, METER_ID);
         System.out.println(data);
 
-        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID);
+        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
         serialize(command);
 
         Message message = (Message) deserialize();
@@ -156,7 +158,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         FlowCreateRequest data = new FlowCreateRequest(flow);
         System.out.println(data);
 
-        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID);
+        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
         serialize(command);
 
         Message message = (Message) deserialize();
@@ -177,7 +179,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         FlowUpdateRequest data = new FlowUpdateRequest(cookieFlow);
         System.out.println(data);
 
-        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID);
+        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
         serialize(command);
 
         Message message = (Message) deserialize();
@@ -198,7 +200,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         FlowDeleteRequest data = new FlowDeleteRequest(flowIdStatusRequest);
         System.out.println(data);
 
-        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID);
+        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
         serialize(command);
 
         Message message = (Message) deserialize();
@@ -219,7 +221,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         FlowGetRequest data = new FlowGetRequest(flowIdStatusRequest);
         System.out.println(data);
 
-        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID);
+        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
         serialize(command);
 
         Message message = (Message) deserialize();
@@ -240,7 +242,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         FlowStatusRequest data = new FlowStatusRequest(flowIdStatusRequest);
         System.out.println(data);
 
-        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID);
+        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
         serialize(command);
 
         Message message = (Message) deserialize();
@@ -261,7 +263,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         FlowPathRequest data = new FlowPathRequest(flowIdStatusRequest);
         System.out.println(data);
 
-        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID);
+        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
         serialize(command);
 
         Message message = (Message) deserialize();
@@ -282,7 +284,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         FlowsGetRequest data = new FlowsGetRequest(flowsIdStatusRequest);
         System.out.println(data);
 
-        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID);
+        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
         serialize(command);
 
         Message message = (Message) deserialize();
@@ -304,7 +306,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         FlowPathResponse data = new FlowPathResponse(payload);
         System.out.println(data);
 
-        InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID);
+        InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
         serialize(info);
 
         Message message = (Message) deserialize();
@@ -325,7 +327,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         FlowStatusResponse data = new FlowStatusResponse(flowIdStatusResponse);
         System.out.println(data);
 
-        InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID);
+        InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
         serialize(info);
 
         Message message = (Message) deserialize();
@@ -346,7 +348,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         FlowResponse data = new FlowResponse(flow);
         System.out.println(data);
 
-        InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID);
+        InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
         serialize(info);
 
         Message message = (Message) deserialize();
@@ -368,7 +370,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         FlowsResponse data = new FlowsResponse(payload);
         System.out.println(data);
 
-        InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID);
+        InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
         serialize(info);
 
         Message message = (Message) deserialize();
@@ -390,7 +392,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         IslInfoData data = new IslInfoData(0L, Collections.singletonList(payload), 1000000);
         System.out.println(data);
 
-        InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID);
+        InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
         serialize(info);
 
         Message message = (Message) deserialize();
@@ -411,7 +413,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         PathInfoData data = new PathInfoData();
         System.out.println(data);
 
-        InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID);
+        InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
         serialize(info);
 
         Message message = (Message) deserialize();
@@ -431,7 +433,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         PortInfoData data = new PortInfoData(SWITCH_ID, INPUT_PORT, 0, PORT_CHANGE);
         System.out.println(data);
 
-        InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID);
+        InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
         serialize(info);
 
         Message message = (Message) deserialize();
@@ -451,7 +453,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         SwitchInfoData data = new SwitchInfoData(SWITCH_ID, SWITCH_EVENT, "127.0.0.1", "localhost", "Unknown");
         System.out.println(data);
 
-        InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID);
+        InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
         serialize(info);
 
         Message message = (Message) deserialize();
@@ -471,7 +473,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         ErrorData data = new ErrorData(ErrorType.AUTH_FAILED, FLOW_NAME);
         System.out.println(data);
 
-        ErrorMessage info = new ErrorMessage(data, System.currentTimeMillis(), CORRELATION_ID);
+        ErrorMessage info = new ErrorMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
         info.setData(data);
         serialize(info);
 
@@ -492,7 +494,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         RemoveFlow data = new RemoveFlow(TIMESTAMP, FLOW_NAME, COOKIE, SWITCH_ID, METER_ID);
         System.out.println(data);
 
-        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID);
+        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
         command.setData(data);
         serialize(command);
 

@@ -16,7 +16,6 @@ import org.bitbucket.openkilda.messaging.command.flow.FlowPathRequest;
 import org.bitbucket.openkilda.messaging.command.flow.FlowStatusRequest;
 import org.bitbucket.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.bitbucket.openkilda.messaging.command.flow.FlowsGetRequest;
-import org.bitbucket.openkilda.messaging.error.ErrorMessage;
 import org.bitbucket.openkilda.messaging.error.ErrorType;
 import org.bitbucket.openkilda.messaging.info.InfoMessage;
 import org.bitbucket.openkilda.wfm.topology.flow.StreamType;
@@ -48,16 +47,6 @@ public class NorthboundRequestBolt extends BaseRichBolt {
      */
     private OutputCollector outputCollector;
 
-    private Destination destination(final Message message) {
-        if (message instanceof CommandMessage) {
-            return ((CommandMessage) message).getData().getDestination();
-        } else if (message instanceof InfoMessage) {
-            return ((InfoMessage) message).getData().getDestination();
-        } else {
-            return Destination.NORTHBOUND;
-        }
-    }
-
     /**
      * {@inheritDoc}
      */
@@ -71,7 +60,7 @@ public class NorthboundRequestBolt extends BaseRichBolt {
 
         try {
             Message message = MAPPER.readValue(request, Message.class);
-            if (!Destination.WFM.equals(destination(message)) || message instanceof InfoMessage) {
+            if (!Destination.WFM.equals(message.getDestination()) || !(message instanceof CommandMessage)) {
                 return;
             }
             CommandData data = ((CommandMessage) message).getData();

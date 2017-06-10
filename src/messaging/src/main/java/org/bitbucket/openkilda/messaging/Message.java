@@ -1,7 +1,9 @@
 package org.bitbucket.openkilda.messaging;
 
-import static com.google.common.base.Objects.toStringHelper;
+import static com.google.common.base.MoreObjects.toStringHelper;
 import static org.bitbucket.openkilda.messaging.Utils.CORRELATION_ID;
+import static org.bitbucket.openkilda.messaging.Utils.DESTINATION;
+import static org.bitbucket.openkilda.messaging.Utils.PAYLOAD;
 import static org.bitbucket.openkilda.messaging.Utils.TIMESTAMP;
 
 import org.bitbucket.openkilda.messaging.command.CommandMessage;
@@ -25,9 +27,10 @@ import java.io.Serializable;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
         "type",
+        DESTINATION,
+        PAYLOAD,
         TIMESTAMP,
-        CORRELATION_ID,
-        "payload"})
+        CORRELATION_ID})
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME,
         include = JsonTypeInfo.As.PROPERTY,
         property = "type")
@@ -54,16 +57,25 @@ public class Message implements Serializable {
     protected String correlationId;
 
     /**
+     * Message destination.
+     */
+    @JsonProperty(DESTINATION)
+    protected Destination destination;
+
+    /**
      * Instance constructor.
      *
      * @param timestamp     message timestamp
      * @param correlationId message correlation id
+     * @param destination   message destination
      */
     @JsonCreator
     public Message(@JsonProperty(TIMESTAMP) final long timestamp,
-                   @JsonProperty(CORRELATION_ID) final String correlationId) {
+                   @JsonProperty(CORRELATION_ID) final String correlationId,
+                   @JsonProperty(DESTINATION) final Destination destination) {
         this.timestamp = timestamp;
         this.correlationId = correlationId;
+        this.destination = destination;
     }
 
     /**
@@ -71,7 +83,6 @@ public class Message implements Serializable {
      *
      * @return message timestamp
      */
-    @JsonProperty(TIMESTAMP)
     public long getTimestamp() {
         return timestamp;
     }
@@ -81,9 +92,26 @@ public class Message implements Serializable {
      *
      * @return message correlation id
      */
-    @JsonProperty(CORRELATION_ID)
     public String getCorrelationId() {
         return correlationId;
+    }
+
+    /**
+     * Returns message destination.
+     *
+     * @return message destination
+     */
+    public Destination getDestination() {
+        return destination;
+    }
+
+    /**
+     * Sets message destination.
+     *
+     * @param destination message destination
+     */
+    public void setDestination(final Destination destination) {
+        this.destination = destination;
     }
 
     /**
@@ -94,6 +122,7 @@ public class Message implements Serializable {
         return toStringHelper(this)
                 .add(TIMESTAMP, timestamp)
                 .add(CORRELATION_ID, correlationId)
+                .add(DESTINATION, destination)
                 .toString();
     }
 }

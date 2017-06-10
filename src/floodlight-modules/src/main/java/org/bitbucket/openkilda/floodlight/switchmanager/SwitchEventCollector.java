@@ -2,7 +2,6 @@ package org.bitbucket.openkilda.floodlight.switchmanager;
 
 import org.bitbucket.openkilda.floodlight.kafka.KafkaMessageProducer;
 import org.bitbucket.openkilda.messaging.Message;
-import org.bitbucket.openkilda.messaging.Topic;
 import org.bitbucket.openkilda.messaging.info.InfoData;
 import org.bitbucket.openkilda.messaging.info.InfoMessage;
 import org.bitbucket.openkilda.messaging.info.event.PortInfoData;
@@ -32,7 +31,7 @@ import java.util.Map;
 
 public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListener, IFloodlightService {
     private static final Logger logger = LoggerFactory.getLogger(SwitchEventCollector.class);
-    private static final String TOPIC = "kilda-test";//Topic.OFS_WFM_DISCOVERY.getId();
+    private static final String TOPIC = "kilda-test";
     private IOFSwitchService switchService;
     private KafkaMessageProducer kafkaProducer;
     private ISwitchManager switchManager;
@@ -217,7 +216,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
      * @return Message
      */
     private Message buildMessage(final InfoData data) {
-        return new InfoMessage(data, System.currentTimeMillis(), "system");
+        return new InfoMessage(data, System.currentTimeMillis(), "system", null);
     }
 
     /**
@@ -229,7 +228,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
      * @return Message
      */
     private Message buildPortMessage(final DatapathId switchId, final OFPort port, final PortChangeType type) {
-        InfoData data = new PortInfoData(switchId.toString(), port.getPortNumber(), toJsonType(type));
+        InfoData data = new PortInfoData(switchId.toString(), port.getPortNumber(), null, toJsonType(type));
         return buildMessage(data);
     }
 
@@ -242,7 +241,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
      * @return Message
      */
     private Message buildPortMessage(final DatapathId switchId, final OFPortDesc port, final PortChangeType type) {
-        InfoData data = new PortInfoData(switchId.toString(), port.getPortNo().getPortNumber(), toJsonType(type));
+        InfoData data = new PortInfoData(switchId.toString(), port.getPortNo().getPortNumber(), null, toJsonType(type));
         return buildMessage(data);
     }
 }

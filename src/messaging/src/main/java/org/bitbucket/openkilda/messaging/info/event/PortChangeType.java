@@ -43,7 +43,7 @@ public enum PortChangeType {
     private final String type;
 
     /**
-     * Constructs entity.
+     * Instance constructor.
      *
      * @param type info message type
      */

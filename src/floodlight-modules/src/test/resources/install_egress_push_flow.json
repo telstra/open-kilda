@@ -1,5 +1,6 @@
 {
 	"type": "COMMAND",
+	"destination": "CONTROLLER",
 	"timestamp": 42,
 	"payload": {
 		"command": "install_egress_flow",

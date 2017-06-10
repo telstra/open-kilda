@@ -5,9 +5,6 @@ import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
 
-/**
- * Created by atopilin on 10/04/2017.
- */
 public class DefaultFlowsCommandDataTest {
     @Test
     public void switchId() throws Exception {

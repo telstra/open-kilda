@@ -34,7 +34,7 @@ public enum FlowStatusType {
     private final String status;
 
     /**
-     * Constructs entity.
+     * Instance constructor.
      *
      * @param status flow status
      */

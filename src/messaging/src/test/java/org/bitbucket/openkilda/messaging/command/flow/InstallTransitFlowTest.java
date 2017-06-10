@@ -11,9 +11,6 @@ import static org.junit.Assert.assertNotNull;
 
 import org.junit.Test;
 
-/**
- * Created by atopilin on 10/04/2017.
- */
 public class InstallTransitFlowTest {
     private InstallTransitFlow flow = new InstallTransitFlow(0L,
             flowName, 0L, switchId, inputPort, outputPort, transitVlanId);

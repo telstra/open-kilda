@@ -18,8 +18,6 @@ import java.util.Arrays;
 /**
  * Represent OF commands.
  * Code duplication is for more clear commands representation.
- * <p>
- * Created by atopilin on 11/04/2017.
  */
 public class PushSchemeOutputCommands implements OutputCommands {
     @Override

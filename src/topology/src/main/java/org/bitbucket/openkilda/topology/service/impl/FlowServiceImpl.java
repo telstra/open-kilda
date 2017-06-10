@@ -2,6 +2,7 @@ package org.bitbucket.openkilda.topology.service.impl;
 
 import static java.util.stream.Collectors.toMap;
 
+import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.command.CommandMessage;
 import org.bitbucket.openkilda.messaging.error.ErrorType;
 import org.bitbucket.openkilda.messaging.error.MessageException;
@@ -46,29 +47,26 @@ import java.util.function.Function;
 @Transactional
 public class FlowServiceImpl implements FlowService {
     /**
-     * Cookie value mask.
-     */
-    private static final long COOKIE_MASK = 0x00000000FFFFFFFFL;
-
-    /**
      * Direct flow cookie mask.
      */
     public static final long DIRECT_FLOW_COOKIE = 0x4000000000000000L;
-
     /**
      * Reverse flow cookie mask.
      */
     public static final long REVERSE_FLOW_COOKIE = 0x2000000000000000L;
-
+    /**
+     * Cookie value mask.
+     */
+    private static final long COOKIE_MASK = 0x00000000FFFFFFFFL;
     /**
      * Minimum vlan id value.
      */
-    private static final int MIN_COOKIE_VALUE = 0;
+    private static final int MIN_COOKIE_VALUE = 1;
 
     /**
      * Maximum vlan id value.
      */
-    private static final int MAX_COOKIE_VALUE = 0x7FFFFFFF;
+    private static final int MAX_COOKIE_VALUE = 0x7FFFFFFE;
 
     /**
      * Minimum vlan id value.
@@ -112,6 +110,39 @@ public class FlowServiceImpl implements FlowService {
      */
     @Autowired
     private FlowRepository flowRepository;
+
+    /**
+     * Converts {@link Flow} instance to {@link FlowPayload} instance.
+     *
+     * @param flow {@link Flow} instance
+     * @return {@link FlowPayload} instance
+     */
+    private static FlowPayload getFlowPayloadByFlow(final Flow flow) {
+        return new FlowPayload(flow.getFlowId(), flow.getCookie() & COOKIE_MASK, new FlowEndpointPayload(
+                flow.getSourceSwitch(), flow.getSourcePort(), flow.getSourceVlan(), null), new FlowEndpointPayload(
+                flow.getDestinationSwitch(), flow.getDestinationPort(), flow.getDestinationVlan(), null),
+                flow.getBandwidth(), flow.getDescription(), flow.getLastUpdated(), null);
+    }
+
+    /**
+     * Sorts path between two switches.
+     *
+     * @param source source switch datapath id
+     * @param links  list of {@link Isl} instances
+     * @return sorted path of {@link Isl} instances
+     */
+    private static List<Isl> sortPath(String source, List<Isl> links) {
+        Map<String, Isl> map = links.stream().collect(toMap(Isl::getSourceSwitch, Function.identity()));
+        List<Isl> path = new ArrayList<>(links.size());
+        Isl first = map.get(source);
+        path.add(first);
+        Isl next = map.get(first.getDestinationSwitch());
+        while (next != null) {
+            path.add(next);
+            next = map.get(next.getDestinationSwitch());
+        }
+        return path;
+    }
 
     /**
      * {@inheritDoc}
@@ -182,17 +213,17 @@ public class FlowServiceImpl implements FlowService {
             throw new MessageException(ErrorType.NOT_FOUND, System.currentTimeMillis());
         }
 
-        FlowResponse response = new FlowResponse();
+        FlowResponse response = null;
 
         for (Flow flow : flows) {
             if ((flow.getCookie() & DIRECT_FLOW_COOKIE) == DIRECT_FLOW_COOKIE) {
-                response.setPayload(getFlowPayloadByFlow(flow));
+                response = new FlowResponse(getFlowPayloadByFlow(flow));
             }
         }
 
-        logger.debug("Flow with id={} get: {}", payload.getId(), response.getPayload());
+        logger.debug("Flow with id={} get: {}", payload.getId(), response);
 
-        return new InfoMessage(response, System.currentTimeMillis(), correlationId);
+        return new InfoMessage(response, System.currentTimeMillis(), correlationId, Destination.WFM);
     }
 
     /**
@@ -213,7 +244,7 @@ public class FlowServiceImpl implements FlowService {
         logger.debug("Flows get: {}", flowsPayload);
 
         return new InfoMessage(new FlowsResponse(new FlowsPayload(flowsPayload)),
-                System.currentTimeMillis(), correlationId);
+                System.currentTimeMillis(), correlationId, Destination.WFM);
     }
 
     /**
@@ -223,19 +254,18 @@ public class FlowServiceImpl implements FlowService {
     public InfoMessage pathFlow(final FlowIdStatusPayload payload, final String correlationId) {
         Set<Flow> flows = flowRepository.findByFlowId(payload.getId());
 
-        FlowPathPayload flowPathPayload = new FlowPathPayload();
+        FlowPathPayload flowPathPayload = null;
         for (Flow flow : flows) {
             if ((flow.getCookie() & DIRECT_FLOW_COOKIE) == DIRECT_FLOW_COOKIE) {
-                flowPathPayload.setPath(flow.getFlowPath());
+                flowPathPayload = new FlowPathPayload(flow.getFlowId(), flow.getFlowPath());
             }
         }
 
         logger.debug("Flow with id={} path: {}", payload.getId(), flowPathPayload);
 
         return new InfoMessage(new FlowPathResponse(flowPathPayload),
-                System.currentTimeMillis(), correlationId);
+                System.currentTimeMillis(), correlationId, Destination.WFM);
     }
-
 
     /**
      * {@inheritDoc}
@@ -264,39 +294,6 @@ public class FlowServiceImpl implements FlowService {
         }
         logger.debug("Flows delete command message list: {}", response);
         return response;
-    }
-
-    /**
-     * Converts {@link Flow} instance to {@link FlowPayload} instance.
-     *
-     * @param flow {@link Flow} instance
-     * @return {@link FlowPayload} instance
-     */
-    private static FlowPayload getFlowPayloadByFlow(final Flow flow) {
-        return new FlowPayload(flow.getFlowId(), flow.getCookie() & COOKIE_MASK, new FlowEndpointPayload(
-                flow.getSourceSwitch(), flow.getSourcePort(), flow.getSourceVlan(), null), new FlowEndpointPayload(
-                flow.getDestinationSwitch(), flow.getDestinationPort(), flow.getDestinationVlan(), null),
-                flow.getBandwidth(), flow.getDescription(), flow.getLastUpdated(), null);
-    }
-
-    /**
-     * Sorts path between two switches.
-     *
-     * @param source source switch datapath id
-     * @param links  list of {@link Isl} instances
-     * @return sorted path of {@link Isl} instances
-     */
-    private static List<Isl> sortPath(String source, List<Isl> links) {
-        Map<String, Isl> map = links.stream().collect(toMap(Isl::getSourceSwitch, Function.identity()));
-        List<Isl> path = new ArrayList<>(links.size());
-        Isl first = map.get(source);
-        path.add(first);
-        Isl next = map.get(first.getDestinationSwitch());
-        while (next != null) {
-            path.add(next);
-            next = map.get(next.getDestinationSwitch());
-        }
-        return path;
     }
 
     /**

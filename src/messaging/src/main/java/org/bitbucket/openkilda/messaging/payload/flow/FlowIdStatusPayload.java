@@ -1,6 +1,6 @@
 package org.bitbucket.openkilda.messaging.payload.flow;
 
-import static com.google.common.base.Objects.toStringHelper;
+import static com.google.common.base.MoreObjects.toStringHelper;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -39,7 +39,7 @@ public class FlowIdStatusPayload implements Serializable {
     private FlowStatusType status;
 
     /**
-     * Constructs the flow model.
+     * Instance constructor.
      */
     public FlowIdStatusPayload() {
     }

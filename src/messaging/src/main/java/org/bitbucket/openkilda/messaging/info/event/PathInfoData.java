@@ -15,7 +15,7 @@ public class PathInfoData extends IslInfoData {
     private static final long serialVersionUID = 1L;
 
     /**
-     * Default constructor.
+     * Instance constructor.
      */
     public PathInfoData() {
     }

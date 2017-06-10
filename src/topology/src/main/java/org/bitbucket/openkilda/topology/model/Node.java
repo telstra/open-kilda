@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- *  Node representation class.
+ * Node representation class.
  */
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -33,12 +33,6 @@ public class Node implements Serializable {
      */
     @JsonProperty("outgoing_relationships")
     private List<String> outgoingRelationships;
-
-    /**
-     * Default constructor.
-     */
-    public Node() {
-    }
 
     /**
      * Constructs instance.

@@ -59,7 +59,7 @@ public enum ErrorType {
     private final String type;
 
     /**
-     * Constructs instance by type value.
+     * Instance constructor.
      *
      * @param type the type value
      */

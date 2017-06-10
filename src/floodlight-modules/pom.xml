@@ -10,6 +10,8 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     </properties>
 
+    <packaging>jar</packaging>
+
     <repositories>
         <repository>
             <id>maven-restlet</id>
@@ -79,6 +81,8 @@
         </dependency>
     </dependencies>
     <build>
+        <finalName>floodlight-modules</finalName>
+
         <pluginManagement>
             <plugins>
                 <plugin>
@@ -95,7 +99,7 @@
                         <dependency>
                             <groupId>com.puppycrawl.tools</groupId>
                             <artifactId>checkstyle</artifactId>
-                            <version>7.6.1</version>
+                            <version>7.7</version>
                         </dependency>
                     </dependencies>
                     <executions>
@@ -132,7 +136,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
-                <version>2.3</version>
+                <version>3.0.0</version>
                 <executions>
                     <!-- Run shade goal on package phase -->
                     <execution>
@@ -153,10 +157,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
-                <version>2.3.2</version>
-                <configuration>
-                    <finalName>floodlight-modules</finalName>
-                </configuration>
+                <version>3.0.2</version>
             </plugin>
             <plugin>
                 <groupId>org.jacoco</groupId>

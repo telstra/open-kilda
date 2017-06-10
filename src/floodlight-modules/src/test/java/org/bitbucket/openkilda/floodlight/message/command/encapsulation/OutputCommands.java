@@ -23,9 +23,6 @@ import org.projectfloodlight.openflow.types.U64;
 import java.util.Arrays;
 import java.util.HashSet;
 
-/**
- * Created by atopilin on 14/04/2017.
- */
 public interface OutputCommands {
     OFFactory ofFactory = new OFFactoryMock();
 

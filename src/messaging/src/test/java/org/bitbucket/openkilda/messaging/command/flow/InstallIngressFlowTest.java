@@ -15,9 +15,6 @@ import static org.junit.Assert.assertNotNull;
 
 import org.junit.Test;
 
-/**
- * Created by atopilin on 10/04/2017.
- */
 public class InstallIngressFlowTest {
     private InstallIngressFlow flow = new InstallIngressFlow(0L, flowName, 0L, switchId, inputPort,
             outputPort, inputVlanId, transitVlanId, outputVlanType, bandwidth, meterId);

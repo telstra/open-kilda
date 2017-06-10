@@ -24,9 +24,6 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-/**
- * Created by atopilin on 20/04/2017.
- */
 public class TestKafkaConsumer extends Thread {
     private static final long CONSUMER_QUEUE_OFFER_TIMEOUT = 1000;
     private static final long KAFKA_MESSAGE_POLL_TIMEOUT = 10000;
@@ -87,21 +84,8 @@ public class TestKafkaConsumer extends Thread {
         boolean result = false;
         try {
             Message message = MAPPER.readValue(recordValue, Message.class);
-            if (message instanceof InfoMessage) {
-                InfoData data = ((InfoMessage) message).getData();
-                if (destination.equals(data.getDestination())) {
-                    result = true;
-                }
-            } else if (message instanceof CommandMessage) {
-                CommandData data = ((CommandMessage) message).getData();
-                if (destination.equals(data.getDestination())) {
-                    result = true;
-                }
-            } else if (message instanceof ErrorMessage) {
-                ErrorData data = ((ErrorMessage) message).getData();
-                if (destination.equals(data.getDestination())) {
-                    result = true;
-                }
+            if (destination.equals(message.getDestination())) {
+                result = true;
             }
         } catch (IOException exception) {
             System.out.println(String.format("Can not deserialize %s with destination %s ", recordValue, destination));

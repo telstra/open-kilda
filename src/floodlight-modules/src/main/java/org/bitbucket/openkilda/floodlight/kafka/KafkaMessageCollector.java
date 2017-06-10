@@ -7,7 +7,6 @@ import org.bitbucket.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.bitbucket.openkilda.floodlight.switchmanager.MeterPool;
 import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.Message;
-import org.bitbucket.openkilda.messaging.Topic;
 import org.bitbucket.openkilda.messaging.command.CommandData;
 import org.bitbucket.openkilda.messaging.command.CommandMessage;
 import org.bitbucket.openkilda.messaging.command.discovery.DiscoverIslCommandData;
@@ -165,7 +164,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
 
             if (!meterInstalled.getRight()) {
                 ErrorMessage error = new ErrorMessage(new ErrorData(ErrorType.INTERNAL_ERROR, command.getId()),
-                        System.currentTimeMillis(), message.getCorrelationId());
+                        System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM);
                 kafkaProducer.postMessage(OUTPUT_TOPIC, error);
             }
 
@@ -182,10 +181,10 @@ public class KafkaMessageCollector implements IFloodlightModule {
 
             if (!flowInstalled.getRight()) {
                 ErrorMessage error = new ErrorMessage(new ErrorData(ErrorType.INTERNAL_ERROR, command.getId()),
-                        System.currentTimeMillis(), message.getCorrelationId());
+                        System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM);
                 kafkaProducer.postMessage(OUTPUT_TOPIC, error);
             } else {
-                command.setDestination(Destination.WFM_TRANSACTION);
+                message.setDestination(Destination.WFM_TRANSACTION);
                 kafkaProducer.postMessage(OUTPUT_TOPIC, message);
             }
         }
@@ -211,10 +210,10 @@ public class KafkaMessageCollector implements IFloodlightModule {
 
             if (!flowInstalled.getRight()) {
                 ErrorMessage error = new ErrorMessage(new ErrorData(ErrorType.INTERNAL_ERROR, command.getId()),
-                        System.currentTimeMillis(), message.getCorrelationId());
+                        System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM);
                 kafkaProducer.postMessage(OUTPUT_TOPIC, error);
             } else {
-                command.setDestination(Destination.WFM_TRANSACTION);
+                message.setDestination(Destination.WFM_TRANSACTION);
                 kafkaProducer.postMessage(OUTPUT_TOPIC, message);
             }
         }
@@ -238,10 +237,10 @@ public class KafkaMessageCollector implements IFloodlightModule {
 
             if (!flowInstalled.getRight()) {
                 ErrorMessage error = new ErrorMessage(new ErrorData(ErrorType.INTERNAL_ERROR, command.getId()),
-                        System.currentTimeMillis(), message.getCorrelationId());
+                        System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM);
                 kafkaProducer.postMessage(OUTPUT_TOPIC, error);
             } else {
-                command.setDestination(Destination.WFM_TRANSACTION);
+                message.setDestination(Destination.WFM_TRANSACTION);
                 kafkaProducer.postMessage(OUTPUT_TOPIC, message);
             }
         }
@@ -266,7 +265,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
 
             if (!sourceMeterInstalled.getRight()) {
                 ErrorMessage error = new ErrorMessage(new ErrorData(ErrorType.INTERNAL_ERROR, command.getId()),
-                        System.currentTimeMillis(), message.getCorrelationId());
+                        System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM);
                 kafkaProducer.postMessage(OUTPUT_TOPIC, error);
             }
 
@@ -284,10 +283,10 @@ public class KafkaMessageCollector implements IFloodlightModule {
 
             if (!forwardFlowInstalled.getRight()) {
                 ErrorMessage error = new ErrorMessage(new ErrorData(ErrorType.INTERNAL_ERROR, command.getId()),
-                        System.currentTimeMillis(), message.getCorrelationId());
+                        System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM);
                 kafkaProducer.postMessage(OUTPUT_TOPIC, error);
             } else {
-                command.setDestination(Destination.WFM_TRANSACTION);
+                message.setDestination(Destination.WFM_TRANSACTION);
                 kafkaProducer.postMessage(OUTPUT_TOPIC, message);
             }
 
@@ -299,7 +298,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
 
             if (!destinationMeterInstalled.getRight()) {
                 ErrorMessage error = new ErrorMessage(new ErrorData(ErrorType.INTERNAL_ERROR, command.getId()),
-                        System.currentTimeMillis(), message.getCorrelationId());
+                        System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM);
                 kafkaProducer.postMessage(OUTPUT_TOPIC, error);
             }
 
@@ -328,10 +327,10 @@ public class KafkaMessageCollector implements IFloodlightModule {
 
             if (!reverseFlowInstalled.getRight()) {
                 ErrorMessage error = new ErrorMessage(new ErrorData(ErrorType.INTERNAL_ERROR, command.getId()),
-                        System.currentTimeMillis(), message.getCorrelationId());
+                        System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM);
                 kafkaProducer.postMessage(OUTPUT_TOPIC, error);
             } else {
-                command.setDestination(Destination.WFM_TRANSACTION);
+                message.setDestination(Destination.WFM_TRANSACTION);
                 kafkaProducer.postMessage(OUTPUT_TOPIC, message);
             }
         }
@@ -351,10 +350,10 @@ public class KafkaMessageCollector implements IFloodlightModule {
 
             if (!flowDeleted.getRight()) {
                 ErrorMessage error = new ErrorMessage(new ErrorData(ErrorType.INTERNAL_ERROR, command.getId()),
-                        System.currentTimeMillis(), message.getCorrelationId());
+                        System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM);
                 kafkaProducer.postMessage(OUTPUT_TOPIC, error);
             } else {
-                command.setDestination(Destination.WFM_TRANSACTION);
+                message.setDestination(Destination.WFM_TRANSACTION);
                 kafkaProducer.postMessage(OUTPUT_TOPIC, message);
             }
 
@@ -364,7 +363,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
                 ImmutablePair<Long, Boolean> meterDeleted = switchManager.deleteMeter(dpid, meterId);
                 if (!meterDeleted.getRight()) {
                     ErrorMessage error = new ErrorMessage(new ErrorData(ErrorType.INTERNAL_ERROR, command.getId()),
-                            System.currentTimeMillis(), message.getCorrelationId());
+                            System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM);
                     kafkaProducer.postMessage(OUTPUT_TOPIC, error);
                 }
             }
@@ -375,22 +374,17 @@ public class KafkaMessageCollector implements IFloodlightModule {
                 if (record.value() instanceof String) {
                     String value = (String) record.value();
                     Message message = MAPPER.readValue(value, Message.class);
-                    if (message instanceof CommandMessage) {
-                        logger.debug("got a command message");
-                        CommandMessage cmdMessage = (CommandMessage) message;
-                        switch (cmdMessage.getData().getDestination()) {
-                            case CONTROLLER:
-                                doControllerMsg(cmdMessage);
-                                break;
-                            default:
-                                break;
-                        }
+                    if (Destination.CONTROLLER.equals(message.getDestination()) && message instanceof CommandMessage) {
+                        logger.debug("Got a command message for controller: {}", value);
+                        doControllerMsg((CommandMessage) message);
+                    } else {
+                        logger.debug("Skip message: {}", message);
                     }
                 } else {
                     logger.error("{} not of type String", record.value());
                 }
             } catch (Exception exception) {
-                logger.error("error parsing record.", exception);
+                logger.error("error parsing record={}", record.value(), exception);
             }
         }
 

@@ -4,10 +4,8 @@ import static org.bitbucket.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 import static org.bitbucket.openkilda.messaging.Utils.MAPPER;
 
 import org.bitbucket.openkilda.floodlight.switchmanager.ISwitchManager;
-import org.bitbucket.openkilda.messaging.Message;
-import org.bitbucket.openkilda.messaging.error.ErrorData;
-import org.bitbucket.openkilda.messaging.error.ErrorMessage;
 import org.bitbucket.openkilda.messaging.error.ErrorType;
+import org.bitbucket.openkilda.messaging.error.MessageError;
 
 import org.apache.commons.httpclient.HttpStatus;
 import org.projectfloodlight.openflow.protocol.OFMeterConfig;
@@ -21,9 +19,6 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Created by atopilin on 22/04/2017.
- */
 public class MetersResource extends ServerResource {
     private static final Logger logger = LoggerFactory.getLogger(MetersResource.class);
 
@@ -48,9 +43,8 @@ public class MetersResource extends ServerResource {
         } catch (IllegalArgumentException exception) {
             logger.error("No such switch: {}", switchId, exception);
             int code = HttpStatus.SC_BAD_REQUEST;
-            Message responseMessage = new ErrorMessage(new ErrorData(code, HttpStatus.getStatusText(code),
-                    ErrorType.PARAMETERS_INVALID, exception.getMessage()),
-                    System.currentTimeMillis(), DEFAULT_CORRELATION_ID);
+            MessageError responseMessage = new MessageError(DEFAULT_CORRELATION_ID, System.currentTimeMillis(), code,
+                    HttpStatus.getStatusText(code), ErrorType.PARAMETERS_INVALID.toString(), exception.getMessage());
             response.putAll(MAPPER.convertValue(responseMessage, Map.class));
         }
         return response;

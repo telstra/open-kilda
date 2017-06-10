@@ -67,7 +67,7 @@ public class Switch {
      * @param name        switch datapath id
      * @param state       switch state
      * @param address     switch address
-     * @param hostname        switch hostname
+     * @param hostname    switch hostname
      * @param description switch description
      */
     public Switch(final String name, final String state,

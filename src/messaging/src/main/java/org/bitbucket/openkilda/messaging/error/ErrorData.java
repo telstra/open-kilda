@@ -1,8 +1,7 @@
 package org.bitbucket.openkilda.messaging.error;
 
-import static com.google.common.base.Objects.toStringHelper;
+import static com.google.common.base.MoreObjects.toStringHelper;
 
-import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.MessageData;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -19,7 +18,6 @@ import java.util.Objects;
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
-        "destination",
         "error-code",
         "error-message",
         "error-type",
@@ -29,12 +27,6 @@ public class ErrorData extends MessageData {
      * Serialization version number constant.
      */
     private static final long serialVersionUID = 1L;
-
-    /**
-     * Message destination.
-     */
-    @JsonProperty("destination")
-    private Destination destination;
 
     /**
      * Error code.
@@ -66,11 +58,9 @@ public class ErrorData extends MessageData {
      * @param errorType        error type
      * @param errorDescription error exception
      */
-    public ErrorData(@JsonProperty("error-type") final ErrorType errorType,
-                     @JsonProperty("error-description") final String errorDescription) {
+    public ErrorData(final ErrorType errorType, final String errorDescription) {
         this.errorType = errorType;
         this.errorDescription = errorDescription;
-        this.destination = Destination.WFM_TRANSACTION;
     }
 
     /**
@@ -90,25 +80,6 @@ public class ErrorData extends MessageData {
         this.errorMessage = errorMessage;
         this.errorType = errorType;
         this.errorDescription = errorDescription;
-        this.destination = Destination.WFM_TRANSACTION;
-    }
-
-    /**
-     * Gets message destination.
-     *
-     * @return message destination
-     */
-    public Destination getDestination() {
-        return destination;
-    }
-
-    /**
-     * Sets message destination.
-     *
-     * @param destination message destination
-     */
-    public void setDestination(Destination destination) {
-        this.destination = destination;
     }
 
     /**

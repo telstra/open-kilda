@@ -1,7 +1,7 @@
 package org.bitbucket.openkilda.messaging.error;
 
-import static com.google.common.base.Objects.firstNonNull;
-import static com.google.common.base.Objects.toStringHelper;
+import static com.google.common.base.MoreObjects.firstNonNull;
+import static com.google.common.base.MoreObjects.toStringHelper;
 import static org.bitbucket.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.bitbucket.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 import static org.bitbucket.openkilda.messaging.Utils.TIMESTAMP;
@@ -60,12 +60,6 @@ public class MessageError implements Serializable {
      */
     @JsonProperty("error-exception")
     private String exception;
-
-    /**
-     * Constructs the error.
-     */
-    public MessageError() {
-    }
 
     /**
      * Constructs the error.

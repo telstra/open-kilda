@@ -9,9 +9,6 @@ import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
 
-/**
- * Created by atopilin on 11/04/2017.
- */
 public class BaseInstallFlowTest {
     private static BaseInstallFlow flow = new BaseInstallFlow(0L, flowName, 0L, switchId, inputPort, outputPort);
 

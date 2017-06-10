@@ -1,8 +1,7 @@
 package org.bitbucket.openkilda.messaging.info.flow;
 
-import static com.google.common.base.Objects.toStringHelper;
+import static com.google.common.base.MoreObjects.toStringHelper;
 
-import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.info.InfoData;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowPathPayload;
 
@@ -21,7 +20,6 @@ import java.util.Objects;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
         "message_type",
-        "destination",
         "payload"})
 public class FlowPathResponse extends InfoData {
     /**
@@ -36,13 +34,7 @@ public class FlowPathResponse extends InfoData {
     protected FlowPathPayload payload;
 
     /**
-     * Default constructor.
-     */
-    public FlowPathResponse() {
-    }
-
-    /**
-     * Constructs instance.
+     * Instance constructor.
      *
      * @param payload response payload
      * @throws IllegalArgumentException if payload is null
@@ -50,7 +42,6 @@ public class FlowPathResponse extends InfoData {
     @JsonCreator
     public FlowPathResponse(@JsonProperty("payload") final FlowPathPayload payload) {
         setPayload(payload);
-        setDestination(Destination.NORTHBOUND);
     }
 
     /**

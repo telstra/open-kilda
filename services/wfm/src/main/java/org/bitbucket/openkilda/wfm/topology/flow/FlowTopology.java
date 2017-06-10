@@ -56,7 +56,7 @@ public class FlowTopology extends AbstractTopology {
         StormTopology stormTopology = flowTopology.createTopology();
         final Config config = new Config();
         config.setNumWorkers(flowTopology.workers);
-        config.put(Config.TOPOLOGY_STATE_PROVIDER, InMemoryKeyValueStateProvider.class.getCanonicalName());
+        //config.put(Config.TOPOLOGY_STATE_PROVIDER, InMemoryKeyValueStateProvider.class.getCanonicalName());
 
         if (args != null && args.length > 0) {
             logger.info("Start Topology: {}", flowTopology.getTopologyName());

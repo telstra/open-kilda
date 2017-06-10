@@ -7,9 +7,6 @@ import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.TRANSACTION
 import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.fieldMessage;
 import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.fieldsFlowStatus;
 
-import org.bitbucket.openkilda.messaging.Destination;
-import org.bitbucket.openkilda.messaging.command.CommandData;
-import org.bitbucket.openkilda.messaging.command.CommandMessage;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowStatusType;
 import org.bitbucket.openkilda.wfm.topology.flow.ComponentType;
 import org.bitbucket.openkilda.wfm.topology.flow.StreamType;

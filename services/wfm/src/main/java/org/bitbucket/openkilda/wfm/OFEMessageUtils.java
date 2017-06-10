@@ -127,14 +127,13 @@ public class OFEMessageUtils {
      */
     public static String createIslDiscovery(String switchID, String portID) {
         StringBuffer sb = new StringBuffer("{\"type\": \"COMMAND\"");
+        sb.append(", \"destination\": \"CONTROLLER\"");
         sb.append(", \"timestamp\": ").append(System.currentTimeMillis());
         sb.append(", \"payload\": ");
-        sb.append("{\"destination\": \"CONTROLLER\"");
-        sb.append(", \"command\": \"discover_isl\"");
+        sb.append("{\"command\": \"discover_isl\"");
         sb.append(", \"switch_id\": \"").append(switchID).append("\"");
         sb.append(", \"port_no\": \"").append(portID).append("\"");
         sb.append("}}");
         return sb.toString();
     }
-
 }

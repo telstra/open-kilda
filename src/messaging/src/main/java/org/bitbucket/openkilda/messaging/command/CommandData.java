@@ -1,6 +1,5 @@
 package org.bitbucket.openkilda.messaging.command;
 
-import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.MessageData;
 import org.bitbucket.openkilda.messaging.command.discovery.DiscoverIslCommandData;
 import org.bitbucket.openkilda.messaging.command.discovery.DiscoverPathCommandData;
@@ -19,7 +18,6 @@ import org.bitbucket.openkilda.messaging.command.flow.InstallTransitFlow;
 import org.bitbucket.openkilda.messaging.command.flow.RemoveFlow;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonSubTypes.Type;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
@@ -54,30 +52,6 @@ public abstract class CommandData extends MessageData {
      * Serialization version number constant.
      */
     private static final long serialVersionUID = 1L;
-
-    /**
-     * Message destination.
-     */
-    @JsonProperty("destination")
-    private Destination destination;
-
-    /**
-     * Gets message destination.
-     *
-     * @return message destination
-     */
-    public Destination getDestination() {
-        return destination;
-    }
-
-    /**
-     * Sets message destination.
-     *
-     * @param destination message destination
-     */
-    public void setDestination(Destination destination) {
-        this.destination = destination;
-    }
 
     /**
      * {@inheritDoc}

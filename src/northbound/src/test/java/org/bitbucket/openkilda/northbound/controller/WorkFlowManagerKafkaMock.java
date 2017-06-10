@@ -1,26 +1,37 @@
 package org.bitbucket.openkilda.northbound.controller;
 
+import static java.util.Collections.singletonList;
+import static org.bitbucket.openkilda.messaging.Utils.MAPPER;
+
 import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.Message;
-import org.bitbucket.openkilda.messaging.Topic;
 import org.bitbucket.openkilda.messaging.command.CommandData;
 import org.bitbucket.openkilda.messaging.command.CommandMessage;
-import org.bitbucket.openkilda.messaging.command.flow.*;
+import org.bitbucket.openkilda.messaging.command.flow.FlowCreateRequest;
+import org.bitbucket.openkilda.messaging.command.flow.FlowDeleteRequest;
+import org.bitbucket.openkilda.messaging.command.flow.FlowGetRequest;
+import org.bitbucket.openkilda.messaging.command.flow.FlowPathRequest;
+import org.bitbucket.openkilda.messaging.command.flow.FlowStatusRequest;
+import org.bitbucket.openkilda.messaging.command.flow.FlowUpdateRequest;
+import org.bitbucket.openkilda.messaging.command.flow.FlowsGetRequest;
 import org.bitbucket.openkilda.messaging.error.ErrorData;
 import org.bitbucket.openkilda.messaging.error.ErrorMessage;
 import org.bitbucket.openkilda.messaging.error.ErrorType;
-import org.bitbucket.openkilda.messaging.info.InfoData;
 import org.bitbucket.openkilda.messaging.info.InfoMessage;
 import org.bitbucket.openkilda.messaging.info.flow.FlowPathResponse;
 import org.bitbucket.openkilda.messaging.info.flow.FlowResponse;
 import org.bitbucket.openkilda.messaging.info.flow.FlowStatusResponse;
 import org.bitbucket.openkilda.messaging.info.flow.FlowsResponse;
-import org.bitbucket.openkilda.messaging.payload.flow.*;
+import org.bitbucket.openkilda.messaging.payload.flow.FlowEndpointPayload;
+import org.bitbucket.openkilda.messaging.payload.flow.FlowIdStatusPayload;
+import org.bitbucket.openkilda.messaging.payload.flow.FlowPathPayload;
+import org.bitbucket.openkilda.messaging.payload.flow.FlowPayload;
+import org.bitbucket.openkilda.messaging.payload.flow.FlowStatusType;
+import org.bitbucket.openkilda.messaging.payload.flow.FlowsPayload;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.PropertySource;
-import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
@@ -28,10 +39,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.concurrent.ListenableFutureCallback;
 
 import java.io.IOException;
-
-import static java.util.Collections.singletonList;
-import static org.bitbucket.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
-import static org.bitbucket.openkilda.messaging.Utils.MAPPER;
 
 /**
  * Spring component which mocks WorkFlow Manager.
@@ -58,7 +65,7 @@ public class WorkFlowManagerKafkaMock {
     /**
      * Kafka outgoing topic.
      */
-    private static final String topic = "kilda-test";//Topic.WFM_NB.getId();
+    private static final String topic = "kilda-test";
 
     /**
      * Spring KafkaProducer wrapper.
@@ -71,29 +78,29 @@ public class WorkFlowManagerKafkaMock {
      *
      * @param record received kafka message
      */
-    //@KafkaListener(topics = "#{T(org.bitbucket.openkilda.messaging.Topic).NB_WFM.getId()}")
     @KafkaListener(id = "test-listener", topics = "${kafka.topic}")
     public void testReceive(final String record) {
         logger.debug("Test message");
         try {
-            Message message = (Message) MAPPER.readValue(record, Message.class);
-            if (message instanceof CommandMessage) {
-                CommandData commandData = ((CommandMessage) message).getData();
-                if (Destination.WFM.equals(commandData.getDestination())) {
-                    logger.debug("Test message received: record={}", record);
-                    String response = MAPPER.writeValueAsString(formatResponse(message.getCorrelationId(), commandData));
-                    kafkaTemplate.send(topic, response).addCallback(new ListenableFutureCallback<SendResult<String, String>>() {
-                        @Override
-                        public void onSuccess(SendResult<String, String> result) {
-                            logger.debug("Test message sent: topic={}, message={}", topic, response);
-                        }
+            Message message = MAPPER.readValue(record, Message.class);
 
-                        @Override
-                        public void onFailure(Throwable exception) {
-                            logger.error("Unable to send test message: topic={}, message={}", topic, response, exception);
-                        }
-                    });
-                }
+            if (Destination.WFM.equals(message.getDestination()) && message instanceof CommandMessage) {
+                CommandData commandData = ((CommandMessage) message).getData();
+
+                logger.debug("Test message received: record={}", record);
+                String response = MAPPER.writeValueAsString(formatResponse(message.getCorrelationId(), commandData));
+
+                kafkaTemplate.send(topic, response).addCallback(new ListenableFutureCallback<SendResult<String, String>>() {
+                    @Override
+                    public void onSuccess(SendResult<String, String> result) {
+                        logger.debug("Test message sent: topic={}, message={}", topic, response);
+                    }
+
+                    @Override
+                    public void onFailure(Throwable exception) {
+                        logger.error("Unable to send test message: topic={}, message={}", topic, response, exception);
+                    }
+                });
             }
         } catch (IOException exception) {
             logger.error("Could not deserialize test message: {}", record, exception);
@@ -108,23 +115,23 @@ public class WorkFlowManagerKafkaMock {
      */
     private Message formatResponse(final String correlationId, final CommandData data) {
         if (data instanceof FlowCreateRequest) {
-            return new InfoMessage(flowResponse, 0, correlationId);
+            return new InfoMessage(flowResponse, 0, correlationId, Destination.NORTHBOUND);
         } else if (data instanceof FlowDeleteRequest) {
-            return new InfoMessage(flowDeleteResponse, 0, correlationId);
+            return new InfoMessage(flowDeleteResponse, 0, correlationId, Destination.NORTHBOUND);
         } else if (data instanceof FlowUpdateRequest) {
-            return new InfoMessage(flowResponse, 0, correlationId);
+            return new InfoMessage(flowResponse, 0, correlationId, Destination.NORTHBOUND);
         } else if (data instanceof FlowGetRequest) {
             if (ERROR_FLOW_ID.equals(((FlowGetRequest) data).getPayload().getId())) {
-                return new ErrorMessage(new ErrorData(ErrorType.NOT_FOUND, FLOW_ID), 0, correlationId);
+                return new ErrorMessage(new ErrorData(ErrorType.NOT_FOUND, FLOW_ID), 0, correlationId, Destination.NORTHBOUND);
             } else {
-                return new InfoMessage(flowResponse, 0, correlationId);
+                return new InfoMessage(flowResponse, 0, correlationId, Destination.NORTHBOUND);
             }
         } else if (data instanceof FlowsGetRequest) {
-            return new InfoMessage(flowsResponse, 0, correlationId);
+            return new InfoMessage(flowsResponse, 0, correlationId, Destination.NORTHBOUND);
         } else if (data instanceof FlowStatusRequest) {
-            return new InfoMessage(flowStatusResponse, 0, correlationId);
+            return new InfoMessage(flowStatusResponse, 0, correlationId, Destination.NORTHBOUND);
         } else if (data instanceof FlowPathRequest) {
-            return new InfoMessage(flowPathResponse, 0, correlationId);
+            return new InfoMessage(flowPathResponse, 0, correlationId, Destination.NORTHBOUND);
         } else {
             return null;
         }

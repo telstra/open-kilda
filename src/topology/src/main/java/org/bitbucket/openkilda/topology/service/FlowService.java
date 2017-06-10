@@ -5,8 +5,6 @@ import org.bitbucket.openkilda.messaging.info.InfoMessage;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowPayload;
 
-import org.apache.commons.lang3.tuple.ImmutablePair;
-
 import java.util.Set;
 
 /**

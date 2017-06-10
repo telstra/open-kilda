@@ -35,9 +35,6 @@ import org.projectfloodlight.openflow.protocol.OFMeterMod;
 import org.projectfloodlight.openflow.protocol.OFMeterModCommand;
 import org.projectfloodlight.openflow.types.DatapathId;
 
-/**
- * Created by atopilin on 10/04/2017.
- */
 public class SwitchManagerTest {
     private static final OutputCommands scheme = new ReplaceSchemeOutputCommands();
     private static final FloodlightModuleContext context = new FloodlightModuleContext();

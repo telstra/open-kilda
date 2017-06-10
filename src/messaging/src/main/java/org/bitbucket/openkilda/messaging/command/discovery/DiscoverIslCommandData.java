@@ -1,6 +1,5 @@
 package org.bitbucket.openkilda.messaging.command.discovery;
 
-import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.command.CommandData;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -16,7 +15,6 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
         "command",
-        "destination",
         "switch_id",
         "port_no"})
 public class DiscoverIslCommandData extends CommandData {
@@ -54,7 +52,6 @@ public class DiscoverIslCommandData extends CommandData {
                                   @JsonProperty("port_no") final int portNo) {
         this.switchId = switchId;
         this.portNo = portNo;
-        setDestination(Destination.CONTROLLER);
     }
 
     /**
@@ -62,7 +59,6 @@ public class DiscoverIslCommandData extends CommandData {
      *
      * @return switch id
      */
-    @JsonProperty("switch_id")
     public String getSwitchId() {
         return switchId;
     }
@@ -72,7 +68,6 @@ public class DiscoverIslCommandData extends CommandData {
      *
      * @param switchId switch id to set
      */
-    @JsonProperty("switch_id")
     public void setSwitchId(final String switchId) {
         this.switchId = switchId;
     }
@@ -82,7 +77,6 @@ public class DiscoverIslCommandData extends CommandData {
      *
      * @return port number
      */
-    @JsonProperty("port_no")
     public int getPortNo() {
         return portNo;
     }
@@ -92,7 +86,6 @@ public class DiscoverIslCommandData extends CommandData {
      *
      * @param portNo port number to set
      */
-    @JsonProperty("port_no")
     public void setPortNo(int portNo) {
         this.portNo = portNo;
     }

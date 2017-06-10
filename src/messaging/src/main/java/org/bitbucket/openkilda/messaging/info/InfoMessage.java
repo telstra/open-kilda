@@ -1,9 +1,12 @@
 package org.bitbucket.openkilda.messaging.info;
 
-import static com.google.common.base.Objects.toStringHelper;
+import static com.google.common.base.MoreObjects.toStringHelper;
 import static org.bitbucket.openkilda.messaging.Utils.CORRELATION_ID;
+import static org.bitbucket.openkilda.messaging.Utils.DESTINATION;
+import static org.bitbucket.openkilda.messaging.Utils.PAYLOAD;
 import static org.bitbucket.openkilda.messaging.Utils.TIMESTAMP;
 
+import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.Message;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -18,7 +21,8 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder(value = {
-        "payload",
+        DESTINATION,
+        PAYLOAD,
         TIMESTAMP,
         CORRELATION_ID})
 public class InfoMessage extends Message {
@@ -38,13 +42,15 @@ public class InfoMessage extends Message {
      *
      * @param data          info message payload
      * @param timestamp     timestamp value
-     * @param correlationId request correlation id
+     * @param correlationId message correlation id
+     * @param destination   message destination
      */
     @JsonCreator
-    public InfoMessage(@JsonProperty("payload") final InfoData data,
+    public InfoMessage(@JsonProperty(PAYLOAD) final InfoData data,
                        @JsonProperty(TIMESTAMP) final long timestamp,
-                       @JsonProperty(CORRELATION_ID) final String correlationId) {
-        super(timestamp, correlationId);
+                       @JsonProperty(CORRELATION_ID) final String correlationId,
+                       @JsonProperty(DESTINATION) final Destination destination) {
+        super(timestamp, correlationId, destination);
         setData(data);
     }
 
@@ -53,7 +59,6 @@ public class InfoMessage extends Message {
      *
      * @return information message payload
      */
-    @JsonProperty("payload")
     public InfoData getData() {
         return data;
     }
@@ -63,7 +68,6 @@ public class InfoMessage extends Message {
      *
      * @param data information message payload
      */
-    @JsonProperty("payload")
     public void setData(final InfoData data) {
         this.data = data;
     }
@@ -76,7 +80,8 @@ public class InfoMessage extends Message {
         return toStringHelper(this)
                 .add(TIMESTAMP, timestamp)
                 .add(CORRELATION_ID, correlationId)
-                .add("payload", data)
+                .add(DESTINATION, destination)
+                .add(PAYLOAD, data)
                 .toString();
     }
 }

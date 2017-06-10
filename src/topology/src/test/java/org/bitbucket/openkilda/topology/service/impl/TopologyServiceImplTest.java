@@ -5,7 +5,7 @@ import static org.bitbucket.openkilda.topology.TestUtils.dstSwitchId;
 import static org.bitbucket.openkilda.topology.TestUtils.firstTransitSwitchId;
 import static org.bitbucket.openkilda.topology.TestUtils.secondTransitSwitchId;
 import static org.bitbucket.openkilda.topology.TestUtils.srcSwitchId;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 import org.bitbucket.openkilda.topology.TestConfig;
 import org.bitbucket.openkilda.topology.TestUtils;

@@ -1,6 +1,6 @@
 package org.bitbucket.openkilda.messaging.command.flow;
 
-import static com.google.common.base.Objects.toStringHelper;
+import static com.google.common.base.MoreObjects.toStringHelper;
 import static org.bitbucket.openkilda.messaging.Utils.TRANSACTION_ID;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -16,7 +16,6 @@ import java.util.Objects;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
         "command",
-        "destination",
         TRANSACTION_ID,
         "id",
         "cookie",
@@ -30,7 +29,7 @@ public class RemoveFlow extends BaseFlow {
     private Long meterId;
 
     /**
-     * Constructs a flow deletion command.
+     * Instance constructor.
      *
      * @param transactionId transaction id
      * @param id            flow id

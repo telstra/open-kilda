@@ -10,9 +10,6 @@ import org.bitbucket.openkilda.messaging.command.discovery.DiscoverPathCommandDa
 
 import org.junit.Test;
 
-/**
- * Created by atopilin on 10/04/2017.
- */
 public class DiscoverPathCommandDataTest {
     @Test
     public void toStringTest() throws Exception {

@@ -7,14 +7,11 @@ import static org.bitbucket.openkilda.wfm.topology.AbstractTopology.fieldMessage
 
 import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.Message;
-import org.bitbucket.openkilda.messaging.command.CommandData;
 import org.bitbucket.openkilda.messaging.command.CommandMessage;
 import org.bitbucket.openkilda.messaging.command.flow.FlowCreateRequest;
 import org.bitbucket.openkilda.messaging.command.flow.FlowDeleteRequest;
 import org.bitbucket.openkilda.messaging.command.flow.FlowUpdateRequest;
-import org.bitbucket.openkilda.messaging.error.ErrorData;
 import org.bitbucket.openkilda.messaging.error.ErrorMessage;
-import org.bitbucket.openkilda.messaging.info.InfoData;
 import org.bitbucket.openkilda.messaging.info.InfoMessage;
 import org.bitbucket.openkilda.messaging.info.flow.FlowResponse;
 import org.bitbucket.openkilda.messaging.info.flow.FlowStatusResponse;
@@ -61,9 +58,7 @@ public class NorthboundReplyBolt extends BaseRichBolt {
         StreamType streamId = StreamType.valueOf(tuple.getSourceStreamId());
         Message message = (Message) tuple.getValueByField(MESSAGE_FIELD);
         CommandMessage commandMessage;
-        CommandData commandData;
         InfoMessage infoMessage;
-        InfoData infoData;
         FlowPayload flow;
         Values values;
 
@@ -72,109 +67,102 @@ public class NorthboundReplyBolt extends BaseRichBolt {
 
                 case CREATE:
                     commandMessage = (CommandMessage) message;
-                    commandData = commandMessage.getData();
-                    flow = ((FlowCreateRequest) commandData).getPayload();
-                    infoData = new FlowResponse(flow);
-                    infoMessage = new InfoMessage(infoData, commandMessage.getTimestamp(),
-                            commandMessage.getCorrelationId());
+                    flow = ((FlowCreateRequest) commandMessage.getData()).getPayload();
+
+                    infoMessage = new InfoMessage(new FlowResponse(flow), commandMessage.getTimestamp(),
+                            commandMessage.getCorrelationId(), Destination.NORTHBOUND);
 
                     logger.debug("Flow create response: {}={}, component={}, stream={}, message={}",
                             CORRELATION_ID, message.getCorrelationId(), componentId, streamId, message);
 
-                    infoData.setDestination(Destination.NORTHBOUND);
+                    infoMessage.setDestination(Destination.NORTHBOUND);
                     values = new Values(MAPPER.writeValueAsString(infoMessage));
                     outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
 
-                    commandData.setDestination(Destination.TOPOLOGY_ENGINE);
+                    commandMessage.setDestination(Destination.TOPOLOGY_ENGINE);
                     values = new Values(MAPPER.writeValueAsString(commandMessage));
                     outputCollector.emit(StreamType.CREATE.toString(), tuple, values);
                     break;
 
                 case DELETE:
                     commandMessage = (CommandMessage) message;
-                    commandData = commandMessage.getData();
-                    FlowIdStatusPayload flowId = ((FlowDeleteRequest) commandData).getPayload();
-                    infoData = new FlowStatusResponse(flowId);
-                    infoMessage = new InfoMessage(infoData, commandMessage.getTimestamp(),
-                            commandMessage.getCorrelationId());
+                    FlowIdStatusPayload flowId = ((FlowDeleteRequest) commandMessage.getData()).getPayload();
+
+                    infoMessage = new InfoMessage(new FlowStatusResponse(flowId), commandMessage.getTimestamp(),
+                            commandMessage.getCorrelationId(), Destination.NORTHBOUND);
 
                     logger.debug("Flow delete response: {}={}, component={}, stream={}, message={}",
                             CORRELATION_ID, message.getCorrelationId(), componentId, streamId, message);
 
-                    infoData.setDestination(Destination.NORTHBOUND);
+                    infoMessage.setDestination(Destination.NORTHBOUND);
                     values = new Values(MAPPER.writeValueAsString(infoMessage));
                     outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
 
-                    commandData.setDestination(Destination.TOPOLOGY_ENGINE);
+                    commandMessage.setDestination(Destination.TOPOLOGY_ENGINE);
                     values = new Values(MAPPER.writeValueAsString(commandMessage));
                     outputCollector.emit(StreamType.DELETE.toString(), tuple, values);
                     break;
 
                 case UPDATE:
                     commandMessage = (CommandMessage) message;
-                    commandData = commandMessage.getData();
-                    flow = ((FlowUpdateRequest) commandData).getPayload();
-                    infoData = new FlowResponse(flow);
-                    infoMessage = new InfoMessage(infoData, commandMessage.getTimestamp(),
-                            commandMessage.getCorrelationId());
+                    flow = ((FlowUpdateRequest) commandMessage.getData()).getPayload();
+
+                    infoMessage = new InfoMessage(new FlowResponse(flow), commandMessage.getTimestamp(),
+                            commandMessage.getCorrelationId(), Destination.NORTHBOUND);
 
                     logger.debug("Flow update response: {}={}, component={}, stream={}, message={}",
                             CORRELATION_ID, message.getCorrelationId(), componentId, streamId, message);
 
-                    infoData.setDestination(Destination.NORTHBOUND);
+                    infoMessage.setDestination(Destination.NORTHBOUND);
                     values = new Values(MAPPER.writeValueAsString(infoMessage));
                     outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
 
-                    commandData.setDestination(Destination.TOPOLOGY_ENGINE);
+                    commandMessage.setDestination(Destination.TOPOLOGY_ENGINE);
                     values = new Values(MAPPER.writeValueAsString(commandMessage));
                     outputCollector.emit(StreamType.UPDATE.toString(), tuple, values);
                     break;
 
                 case READ:
                     infoMessage = (InfoMessage) message;
-                    infoData = infoMessage.getData();
 
                     logger.debug("Flow get response: {}={}, component={}, stream={}, message={}",
                             CORRELATION_ID, message.getCorrelationId(), componentId, streamId, message);
 
-                    infoData.setDestination(Destination.NORTHBOUND);
+                    infoMessage.setDestination(Destination.NORTHBOUND);
                     values = new Values(MAPPER.writeValueAsString(infoMessage));
                     outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
                     break;
 
                 case PATH:
                     infoMessage = (InfoMessage) message;
-                    infoData = infoMessage.getData();
 
                     logger.debug("Flow path response: {}={}, component={}, stream={}, message={}",
                             CORRELATION_ID, message.getCorrelationId(), componentId, streamId, message);
 
-                    infoData.setDestination(Destination.NORTHBOUND);
+                    infoMessage.setDestination(Destination.NORTHBOUND);
                     values = new Values(MAPPER.writeValueAsString(message));
                     outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
                     break;
 
                 case STATUS:
                     infoMessage = (InfoMessage) message;
-                    infoData = infoMessage.getData();
 
                     logger.debug("Flow status response: {}={}, component={}, stream={}, message={}",
                             CORRELATION_ID, message.getCorrelationId(), componentId, streamId, message);
 
-                    infoData.setDestination(Destination.NORTHBOUND);
+                    infoMessage.setDestination(Destination.NORTHBOUND);
                     values = new Values(MAPPER.writeValueAsString(infoMessage));
                     outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
                     break;
 
                 case ERROR:
-                    ErrorMessage error = (ErrorMessage) message;
-                    ErrorData errorData = error.getData();
+                    ErrorMessage errorMessage = (ErrorMessage) message;
 
                     logger.debug("Flow error response: {}={}, component={}, stream={}, message={}",
                             CORRELATION_ID, message.getCorrelationId(), componentId, streamId, message);
 
-                    errorData.setDestination(Destination.NORTHBOUND);
-                    values = new Values(MAPPER.writeValueAsString(error));
+                    errorMessage.setDestination(Destination.NORTHBOUND);
+                    values = new Values(MAPPER.writeValueAsString(errorMessage));
                     outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
                     break;
             }

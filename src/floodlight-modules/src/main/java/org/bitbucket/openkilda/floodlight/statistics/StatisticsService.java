@@ -3,9 +3,7 @@ package org.bitbucket.openkilda.floodlight.statistics;
 import static java.util.stream.Collectors.toList;
 
 import org.bitbucket.openkilda.floodlight.kafka.KafkaMessageProducer;
-import org.bitbucket.openkilda.messaging.Topic;
 import org.bitbucket.openkilda.messaging.info.InfoData;
-import org.bitbucket.openkilda.messaging.info.InfoMessage;
 import org.bitbucket.openkilda.messaging.info.stats.FlowStatsData;
 import org.bitbucket.openkilda.messaging.info.stats.FlowStatsEntry;
 import org.bitbucket.openkilda.messaging.info.stats.FlowStatsReply;
@@ -143,7 +141,8 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
 
         @Override
         public void onSuccess(List<T> data) {
-            InfoMessage infoMessage = new InfoMessage(transform.apply(data), System.currentTimeMillis(), "system");
+            //InfoMessage infoMessage = new InfoMessage(
+            // transform.apply(data), System.currentTimeMillis(), "system", Destination.WFM_STATS);
             //kafkaProducer.postMessage(Topic.OFS_WFM_STATS.getId(), infoMessage);
         }
 

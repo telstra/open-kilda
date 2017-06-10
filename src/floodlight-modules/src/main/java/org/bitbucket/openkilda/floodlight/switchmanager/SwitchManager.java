@@ -10,6 +10,7 @@ import static org.projectfloodlight.openflow.protocol.OFVersion.OF_13;
 
 import org.bitbucket.openkilda.floodlight.kafka.KafkaMessageProducer;
 import org.bitbucket.openkilda.floodlight.switchmanager.web.SwitchManagerWebRoutable;
+import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.error.ErrorData;
 import org.bitbucket.openkilda.messaging.error.ErrorMessage;
 import org.bitbucket.openkilda.messaging.error.ErrorType;
@@ -196,7 +197,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         logger.debug("OF_ERROR: {}", msg);
         if (OFType.ERROR.equals(msg.getType())) {
             ErrorMessage error = new ErrorMessage(new ErrorData(ErrorType.INTERNAL_ERROR,
-                    ((OFErrorMsg) msg).getErrType().toString()), System.currentTimeMillis(), DEFAULT_CORRELATION_ID);
+                    ((OFErrorMsg) msg).getErrType().toString()),
+                    System.currentTimeMillis(), DEFAULT_CORRELATION_ID, Destination.WFM);
             kafkaProducer.postMessage("kilda-test", error);
         }
         return Command.CONTINUE;

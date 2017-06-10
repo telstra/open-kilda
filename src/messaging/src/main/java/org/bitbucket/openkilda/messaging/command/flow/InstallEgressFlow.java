@@ -1,6 +1,6 @@
 package org.bitbucket.openkilda.messaging.command.flow;
 
-import static com.google.common.base.Objects.toStringHelper;
+import static com.google.common.base.MoreObjects.toStringHelper;
 import static org.bitbucket.openkilda.messaging.Utils.TRANSACTION_ID;
 
 import org.bitbucket.openkilda.messaging.Utils;
@@ -24,7 +24,6 @@ import java.util.Objects;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder(value = {
         "command",
-        "destination",
         TRANSACTION_ID,
         "id",
         "cookie",

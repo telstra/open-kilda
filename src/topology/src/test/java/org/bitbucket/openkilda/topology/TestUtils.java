@@ -3,6 +3,7 @@ package org.bitbucket.openkilda.topology;
 import static java.util.Arrays.asList;
 import static org.bitbucket.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 
+import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.command.CommandMessage;
 import org.bitbucket.openkilda.messaging.command.flow.InstallEgressFlow;
 import org.bitbucket.openkilda.messaging.command.flow.InstallIngressFlow;
@@ -21,9 +22,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-/**
- * Created by atopilin on 05/06/2017.
- */
 public class TestUtils {
     public static final String srcSwitchId = "00:00:00:00:00:01";
     public static final String firstTransitSwitchId = "00:00:00:00:00:02";
@@ -88,25 +86,30 @@ public class TestUtils {
 
         commands.add(new CommandMessage(new InstallIngressFlow(0L, flowId, COOKIE, srcSwitchId,
                 DIRECT_INCOMING_PORT, DIRECT_OUTGOING_PORT, INPUT_VLAN_ID, TRANSIT_VLAN_ID,
-                OutputVlanType.REPLACE, 10000L, 0L), METER_ID, DEFAULT_CORRELATION_ID));
+                OutputVlanType.REPLACE, 10000L, 0L),
+                METER_ID, DEFAULT_CORRELATION_ID, Destination.WFM));
         commands.add(new CommandMessage(new InstallTransitFlow(0L, flowId, COOKIE, firstTransitSwitchId,
-                DIRECT_INCOMING_PORT, DIRECT_OUTGOING_PORT, TRANSIT_VLAN_ID), 0L, DEFAULT_CORRELATION_ID));
+                DIRECT_INCOMING_PORT, DIRECT_OUTGOING_PORT, TRANSIT_VLAN_ID),
+                0L, DEFAULT_CORRELATION_ID, Destination.WFM));
         commands.add(new CommandMessage(new InstallTransitFlow(0L, flowId, COOKIE, secondTransitSwitchId,
-                DIRECT_INCOMING_PORT, DIRECT_OUTGOING_PORT, TRANSIT_VLAN_ID), 0L, DEFAULT_CORRELATION_ID));
+                DIRECT_INCOMING_PORT, DIRECT_OUTGOING_PORT, TRANSIT_VLAN_ID),
+                0L, DEFAULT_CORRELATION_ID, Destination.WFM));
         commands.add(new CommandMessage(new InstallEgressFlow(0L, flowId, COOKIE, dstSwitchId,
-                DIRECT_INCOMING_PORT, DIRECT_OUTGOING_PORT, TRANSIT_VLAN_ID, OUTPUT_VLAN_ID,
-                OutputVlanType.REPLACE), 0L, DEFAULT_CORRELATION_ID));
+                DIRECT_INCOMING_PORT, DIRECT_OUTGOING_PORT, TRANSIT_VLAN_ID, OUTPUT_VLAN_ID, OutputVlanType.REPLACE),
+                0L, DEFAULT_CORRELATION_ID, Destination.WFM));
 
         commands.add(new CommandMessage(new InstallIngressFlow(0L, flowId, COOKIE, srcSwitchId,
-                REVERSE_INGOING_PORT, REVERSE_OUTGOING_PORT, OUTPUT_VLAN_ID, TRANSIT_VLAN_ID,
-                OutputVlanType.REPLACE, 10000L, 0L), METER_ID, DEFAULT_CORRELATION_ID));
+                REVERSE_INGOING_PORT, REVERSE_OUTGOING_PORT, OUTPUT_VLAN_ID, TRANSIT_VLAN_ID, OutputVlanType.REPLACE,
+                10000L, 0L), METER_ID, DEFAULT_CORRELATION_ID, Destination.WFM));
         commands.add(new CommandMessage(new InstallTransitFlow(0L, flowId, COOKIE, srcSwitchId,
-                REVERSE_INGOING_PORT, REVERSE_OUTGOING_PORT, TRANSIT_VLAN_ID), 0L, DEFAULT_CORRELATION_ID));
+                REVERSE_INGOING_PORT, REVERSE_OUTGOING_PORT, TRANSIT_VLAN_ID),
+                0L, DEFAULT_CORRELATION_ID, Destination.WFM));
         commands.add(new CommandMessage(new InstallTransitFlow(0L, flowId, COOKIE, srcSwitchId,
-                REVERSE_INGOING_PORT, REVERSE_OUTGOING_PORT, TRANSIT_VLAN_ID), 0L, DEFAULT_CORRELATION_ID));
+                REVERSE_INGOING_PORT, REVERSE_OUTGOING_PORT, TRANSIT_VLAN_ID),
+                0L, DEFAULT_CORRELATION_ID, Destination.WFM));
         commands.add(new CommandMessage(new InstallEgressFlow(0L, flowId, COOKIE, srcSwitchId,
-                REVERSE_INGOING_PORT, REVERSE_OUTGOING_PORT, 2, INPUT_VLAN_ID,
-                OutputVlanType.REPLACE), 0L, DEFAULT_CORRELATION_ID));
+                REVERSE_INGOING_PORT, REVERSE_OUTGOING_PORT, 2, INPUT_VLAN_ID, OutputVlanType.REPLACE),
+                0L, DEFAULT_CORRELATION_ID, Destination.WFM));
 
         return commands;
     }

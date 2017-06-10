@@ -1,8 +1,7 @@
 package org.bitbucket.openkilda.messaging.command.flow;
 
-import static com.google.common.base.Objects.toStringHelper;
+import static com.google.common.base.MoreObjects.toStringHelper;
 
-import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.command.CommandData;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 
@@ -21,7 +20,6 @@ import java.util.Objects;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
         "command",
-        "destination",
         "payload"})
 public class FlowDeleteRequest extends CommandData {
     /**
@@ -36,13 +34,7 @@ public class FlowDeleteRequest extends CommandData {
     protected FlowIdStatusPayload payload;
 
     /**
-     * Default constructor.
-     */
-    public FlowDeleteRequest() {
-    }
-
-    /**
-     * Constructs instance.
+     * Instance constructor.
      *
      * @param payload request payload
      * @throws IllegalArgumentException if payload is null
@@ -50,7 +42,6 @@ public class FlowDeleteRequest extends CommandData {
     @JsonCreator
     public FlowDeleteRequest(@JsonProperty("payload") final FlowIdStatusPayload payload) {
         setPayload(payload);
-        setDestination(Destination.WFM);
     }
 
     /**

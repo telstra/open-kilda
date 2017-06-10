@@ -39,7 +39,7 @@ public enum Destination {
     private final String destination;
 
     /**
-     * Constructs entity.
+     * Instance constructor.
      *
      * @param destination message destination
      */

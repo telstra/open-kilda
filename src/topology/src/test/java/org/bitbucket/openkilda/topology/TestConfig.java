@@ -1,7 +1,5 @@
 package org.bitbucket.openkilda.topology;
 
-import org.bitbucket.openkilda.topology.controller.TopologyController;
-
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.ogm.session.SessionFactory;
 import org.neo4j.server.CommunityBootstrapper;

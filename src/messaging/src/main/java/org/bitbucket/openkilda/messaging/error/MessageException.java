@@ -20,7 +20,7 @@ public class MessageException extends RuntimeException {
     private long timestamp;
 
     /**
-     * Constructs exception.
+     * Instance constructor.
      *
      * @param errorType the error type
      * @param timestamp the error timestamp

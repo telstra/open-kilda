@@ -4,6 +4,7 @@ import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
+import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.Message;
 import org.bitbucket.openkilda.messaging.command.CommandData;
 import org.bitbucket.openkilda.messaging.command.CommandMessage;
@@ -29,16 +30,16 @@ import java.io.IOException;
 public class MessageTest {
     private static final String CORRELATION_ID = "f37530b6-02f1-493e-b28b-2d98a48cf4cc";
     private static final long TIMESTAMP = 23478952134L;
-    private static final String DISCOVER_ISL = "{\"type\":\"COMMAND\","
-            + "\"payload\":{\"command\":\"discover_isl\",\"destination\":\"CONTROLLER\","
+    private static final String DISCOVER_ISL = "{\"type\":\"COMMAND\",\"destination\":\"CONTROLLER\","
+            + "\"payload\":{\"command\":\"discover_isl\","
             + "\"switch_id\":\"0000000000000001\",\"port_no\":1},\"timestamp\""
             + ":23478952134,\"correlation-id\":\"f37530b6-02f1-493e-b28b-2d98a48cf4cc\"}";
     private static final String DEFAULT_FLOWS = "{\"type\":\"COMMAND\","
-            + "\"payload\":{\"command\":\"install_default_flows\",\"destination\":\"CONTROLLER\","
+            + "\"payload\":{\"command\":\"install_default_flows\","
             + "\"switch_id\":\"0x0000000000000001\"},"
             + "\"timestamp\":23478952134,\"correlation-id\":\"f37530b6-02f1-493e-b28b-2d98a48cf4cc\"}";
-    private static final String DISCOVER_PATH = "{\"type\":\"COMMAND\","
-            + "\"payload\":{\"command\":\"discover_path\",\"destination\":\"CONTROLLER\","
+    private static final String DISCOVER_PATH = "{\"type\":\"COMMAND\",\"destination\":\"CONTROLLER\","
+            + "\"payload\":{\"command\":\"discover_path\","
             + "\"source_switch_id\":\"0x0000000000000001\",\"source_port_no\":1,"
             + "\"destination_switch_id\":\"0x0000000000000002\"},"
             + "\"timestamp\":23478952134,\"correlation-id\":\"f37530b6-02f1-493e-b28b-2d98a48cf4cc\"}";
@@ -85,7 +86,7 @@ public class MessageTest {
     @Test
     public void testSerializer() throws JsonProcessingException {
         CommandData data = new DiscoverIslCommandData("0000000000000001", 1);
-        Message message = new CommandMessage(data, TIMESTAMP, CORRELATION_ID);
+        Message message = new CommandMessage(data, TIMESTAMP, CORRELATION_ID, Destination.CONTROLLER);
         String json = mapper.writeValueAsString(message);
         assertEquals(DISCOVER_ISL, json);
     }
@@ -108,7 +109,7 @@ public class MessageTest {
         System.out.println(testJson);
         System.out.println(json);
         assertThat(message, instanceOf(targetClass));
-//    assertThat(message.getData(), instanceOf(dataClass));
+        //assertThat(message.getData(), instanceOf(dataClass));
         assertEquals(testJson, json);
     }
 }

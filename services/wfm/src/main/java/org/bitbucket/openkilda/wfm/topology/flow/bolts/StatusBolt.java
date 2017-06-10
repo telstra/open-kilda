@@ -11,10 +11,7 @@ import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.fieldsMessa
 
 import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.Message;
-import org.bitbucket.openkilda.messaging.command.CommandData;
-import org.bitbucket.openkilda.messaging.command.CommandMessage;
 import org.bitbucket.openkilda.messaging.error.ErrorType;
-import org.bitbucket.openkilda.messaging.info.InfoData;
 import org.bitbucket.openkilda.messaging.info.InfoMessage;
 import org.bitbucket.openkilda.messaging.info.flow.FlowStatusResponse;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowIdStatusPayload;
@@ -66,8 +63,6 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
         ComponentType componentId = ComponentType.valueOf(tuple.getSourceComponent());
         StreamType streamId = StreamType.valueOf(tuple.getSourceStreamId());
         String flowId = (String) tuple.getValueByField(FLOW_ID_FIELD);
-        CommandMessage commandMessage;
-        CommandData commandData;
         Values values;
         FlowStatusType flowStatus;
 
@@ -146,14 +141,11 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
                             flowStatus = flowStates.get(flowId);
 
                             if (flowStatus != null || flowId == null) {
-                                commandMessage = (CommandMessage) message;
-                                commandData = commandMessage.getData();
-
                                 logger.debug("Flow get message: {}={}, flow-id={}, component={}, stream={}",
                                         CORRELATION_ID, message.getCorrelationId(), flowId, componentId, streamId);
 
-                                commandData.setDestination(Destination.TOPOLOGY_ENGINE);
-                                values = new Values(MAPPER.writeValueAsString(commandMessage));
+                                message.setDestination(Destination.TOPOLOGY_ENGINE);
+                                values = new Values(MAPPER.writeValueAsString(message));
                                 outputCollector.emit(StreamType.READ.toString(), tuple, values);
 
                             } else {
@@ -169,14 +161,11 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
                             flowStatus = flowStates.get(flowId);
 
                             if (flowStatus != null) {
-                                commandMessage = (CommandMessage) message;
-                                commandData = commandMessage.getData();
-
                                 logger.debug("Flow path message: {}={}, flow-id={}, component={}, stream={}",
                                         CORRELATION_ID, message.getCorrelationId(), flowId, componentId, streamId);
 
-                                commandData.setDestination(Destination.TOPOLOGY_ENGINE);
-                                values = new Values(MAPPER.writeValueAsString(commandMessage));
+                                message.setDestination(Destination.TOPOLOGY_ENGINE);
+                                values = new Values(MAPPER.writeValueAsString(message));
                                 outputCollector.emit(StreamType.PATH.toString(), tuple, values);
 
                             } else {
@@ -195,9 +184,9 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
                                 logger.debug("Flow status message: {}={}, flow-id={}, component={}, stream={}",
                                         CORRELATION_ID, message.getCorrelationId(), flowId, componentId, streamId);
 
-                                InfoData data = new FlowStatusResponse(new FlowIdStatusPayload(flowId, flowStatus));
-                                InfoMessage responseMessage = new InfoMessage(data,
-                                        message.getTimestamp(), message.getCorrelationId());
+                                InfoMessage responseMessage = new InfoMessage(
+                                        new FlowStatusResponse(new FlowIdStatusPayload(flowId, flowStatus)),
+                                        message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND);
 
                                 values = new Values(responseMessage);
                                 outputCollector.emit(StreamType.STATUS.toString(), tuple, values);

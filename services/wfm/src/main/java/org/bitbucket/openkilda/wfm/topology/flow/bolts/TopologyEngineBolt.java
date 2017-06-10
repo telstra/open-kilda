@@ -63,14 +63,12 @@ public class TopologyEngineBolt extends BaseRichBolt {
 
         try {
             Message message = MAPPER.readValue(request, Message.class);
+            if (!Destination.WFM.equals(message.getDestination())) {
+                return;
+            }
 
             if (message instanceof CommandMessage) {
                 CommandData data = ((CommandMessage) message).getData();
-
-                if (!Destination.WFM.equals(data.getDestination())) {
-                    outputCollector.ack(tuple);
-                    return;
-                }
 
                 if (data instanceof BaseInstallFlow) {
                     BaseInstallFlow installData = (BaseInstallFlow) data;
@@ -82,7 +80,7 @@ public class TopologyEngineBolt extends BaseRichBolt {
                     logger.debug("Flow install message: {}={}, switch-id={}, flow-id={}, transaction-id={}, message={}",
                             CORRELATION_ID, message.getCorrelationId(), switchId, flowId, transactionId, request);
 
-                    installData.setDestination(Destination.CONTROLLER);
+                    message.setDestination(Destination.CONTROLLER);
                     values = new Values(MAPPER.writeValueAsString(message), switchId, flowId, transactionId);
                     outputCollector.emit(StreamType.CREATE.toString(), tuple, values);
 
@@ -96,7 +94,7 @@ public class TopologyEngineBolt extends BaseRichBolt {
                     logger.debug("Flow remove message: {}={}, switch-id={}, flow-id={}, transaction-id={}, message={}",
                             CORRELATION_ID, message.getCorrelationId(), switchId, flowId, transactionId, request);
 
-                    removeData.setDestination(Destination.CONTROLLER);
+                    message.setDestination(Destination.CONTROLLER);
                     values = new Values(MAPPER.writeValueAsString(message), switchId, flowId, transactionId);
                     outputCollector.emit(StreamType.DELETE.toString(), tuple, values);
 
@@ -107,11 +105,6 @@ public class TopologyEngineBolt extends BaseRichBolt {
             } else if (message instanceof InfoMessage) {
                 InfoData data = ((InfoMessage) message).getData();
                 values = new Values(message);
-
-                if (!Destination.WFM.equals(data.getDestination())) {
-                    outputCollector.ack(tuple);
-                    return;
-                }
 
                 if (data instanceof FlowPathResponse) {
                     logger.debug("Flow path message: {}={}, message={}",

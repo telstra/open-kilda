@@ -2,9 +2,6 @@ package org.bitbucket.openkilda.messaging.command;
 
 import org.bitbucket.openkilda.messaging.payload.flow.OutputVlanType;
 
-/**
- * Created by atopilin on 11/04/2017.
- */
 public final class Constants {
     public static final String flowName = "test_flow";
     public static final String switchId = "00:00:00:00:00:00:00:01";

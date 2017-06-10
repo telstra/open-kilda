@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- *  Network topology representation class.
+ * Network topology representation class.
  */
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -27,12 +27,6 @@ public class Topology implements Serializable {
      */
     @JsonProperty("nodes")
     private List<Node> nodes;
-
-    /**
-     * Default constructor.
-     */
-    public Topology() {
-    }
 
     /**
      * Constructs entity.

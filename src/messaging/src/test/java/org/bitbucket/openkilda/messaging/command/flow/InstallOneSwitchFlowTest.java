@@ -17,9 +17,6 @@ import org.bitbucket.openkilda.messaging.payload.flow.OutputVlanType;
 
 import org.junit.Test;
 
-/**
- * Created by atopilin on 10/04/2017.
- */
 public class InstallOneSwitchFlowTest {
     private InstallOneSwitchFlow flow = new InstallOneSwitchFlow(0L, flowName, 0L, switchId, inputPort, outputPort,
             inputVlanId, outputVlanId, outputVlanType, bandwidth, meterId, meterId + 1);

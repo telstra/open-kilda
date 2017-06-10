@@ -30,9 +30,6 @@ import java.util.UUID;
 
 import static org.junit.Assert.*;
 
-/**
- * Created by atopilin on 19/04/2017.
- */
 public class FlowTopologyTest extends AbstractStormTest {
     private static final long COOKIE = 0x1FFFFFFFFL;
     private static final FlowEndpointPayload flowEndpointPayload = new FlowEndpointPayload("test-switch", 1, 2);
@@ -427,7 +424,6 @@ public class FlowTopologyTest extends AbstractStormTest {
         responseData.setTransactionId(0L);
         assertEquals(data, responseData);
         responseData.setTransactionId(transactionId);
-        responseData.setDestination(Destination.WFM_TRANSACTION);
 
         statusFlow(flowId);
 
@@ -446,6 +442,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         assertEquals(flowId, flowNbPayload.getId());
         assertEquals(FlowStatusType.IN_PROGRESS, flowNbPayload.getStatus());
 
+        response.setDestination(Destination.WFM_TRANSACTION);
         baseInstallRuleCommand(response);
 
         statusFlow(flowId);
@@ -507,7 +504,6 @@ public class FlowTopologyTest extends AbstractStormTest {
         responseData.setTransactionId(0L);
         assertEquals(data, responseData);
         responseData.setTransactionId(transactionId);
-        responseData.setDestination(Destination.WFM_TRANSACTION);
 
         statusFlow(flowId);
 
@@ -526,6 +522,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         assertEquals(flowId, flowNbPayload.getId());
         assertEquals(FlowStatusType.IN_PROGRESS, flowNbPayload.getStatus());
 
+        response.setDestination(Destination.WFM_TRANSACTION);
         removeRuleCommand(response);
 
         statusFlow(flowId);
@@ -697,8 +694,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         System.out.println("NORTHBOUND: Delete flow");
         FlowIdStatusPayload payload = new FlowIdStatusPayload(flowId);
         FlowDeleteRequest commandData = new FlowDeleteRequest(payload);
-        commandData.setDestination(Destination.WFM);
-        CommandMessage message = new CommandMessage(commandData, 0, "delete-flow");
+        CommandMessage message = new CommandMessage(commandData, 0, "delete-flow", Destination.WFM);
         sendNorthboundMessage(message);
         return payload;
     }
@@ -707,8 +703,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         System.out.println("NORTHBOUND: Create flow");
         FlowPayload flowPayload = new FlowPayload(flowId, flowEndpointPayload, flowEndpointPayload, 10000L, "", "");
         FlowCreateRequest commandData = new FlowCreateRequest(flowPayload);
-        commandData.setDestination(Destination.WFM);
-        CommandMessage message = new CommandMessage(commandData, 0, "create-flow");
+        CommandMessage message = new CommandMessage(commandData, 0, "create-flow", Destination.WFM);
         sendNorthboundMessage(message);
         return flowPayload;
     }
@@ -717,8 +712,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         System.out.println("NORTHBOUND: Update flow");
         FlowPayload payload = new FlowPayload(flowId, flowEndpointPayload, flowEndpointPayload, 10000L, "", "");
         FlowUpdateRequest commandData = new FlowUpdateRequest(payload);
-        commandData.setDestination(Destination.WFM);
-        CommandMessage message = new CommandMessage(commandData, 0, "update-flow");
+        CommandMessage message = new CommandMessage(commandData, 0, "update-flow", Destination.WFM);
         sendNorthboundMessage(message);
         return payload;
     }
@@ -727,8 +721,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         System.out.println("NORTHBOUND: Status flow");
         FlowIdStatusPayload payload = new FlowIdStatusPayload(flowId);
         FlowStatusRequest commandData = new FlowStatusRequest(payload);
-        commandData.setDestination(Destination.WFM);
-        CommandMessage message = new CommandMessage(commandData, 0, "status-flow");
+        CommandMessage message = new CommandMessage(commandData, 0, "status-flow", Destination.WFM);
         sendNorthboundMessage(message);
         return payload;
     }
@@ -737,8 +730,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         System.out.println("NORTHBOUND: Path flow");
         FlowIdStatusPayload payload = new FlowIdStatusPayload(flowId);
         FlowPathRequest commandData = new FlowPathRequest(payload);
-        commandData.setDestination(Destination.WFM);
-        CommandMessage message = new CommandMessage(commandData, 0, "path-flow");
+        CommandMessage message = new CommandMessage(commandData, 0, "path-flow", Destination.WFM);
         sendNorthboundMessage(message);
         return payload;
     }
@@ -747,8 +739,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         System.out.println("NORTHBOUND: Get flow");
         FlowIdStatusPayload payload = new FlowIdStatusPayload(flowId);
         FlowGetRequest commandData = new FlowGetRequest(payload);
-        commandData.setDestination(Destination.WFM);
-        CommandMessage message = new CommandMessage(commandData, 0, "get-flow");
+        CommandMessage message = new CommandMessage(commandData, 0, "get-flow", Destination.WFM);
         sendNorthboundMessage(message);
         return payload;
     }
@@ -757,8 +748,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         System.out.println("NORTHBOUND: Get flows");
         FlowIdStatusPayload payload = new FlowIdStatusPayload(flowId);
         FlowsGetRequest commandData = new FlowsGetRequest(payload);
-        commandData.setDestination(Destination.WFM);
-        CommandMessage message = new CommandMessage(commandData, 0, "get-flows");
+        CommandMessage message = new CommandMessage(commandData, 0, "get-flows", Destination.WFM);
         sendNorthboundMessage(message);
         return payload;
     }
@@ -772,8 +762,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         System.out.println("TOPOLOGY: Install flow");
         InstallOneSwitchFlow commandData = new InstallOneSwitchFlow(0L, flowId,
                 COOKIE, "switch-id", 1, 2, 0, 0, OutputVlanType.NONE, 10000L, 0L, 0L);
-        commandData.setDestination(Destination.WFM);
-        CommandMessage commandMessage = new CommandMessage(commandData, 0, "install-flow");
+        CommandMessage commandMessage = new CommandMessage(commandData, 0, "install-flow", Destination.WFM);
         sendTopologyEngineMessage(commandMessage);
         return commandData;
     }
@@ -781,8 +770,7 @@ public class FlowTopologyTest extends AbstractStormTest {
     private RemoveFlow removeFlowCommand(final String flowId) throws IOException {
         System.out.println("TOPOLOGY: Remove flow");
         RemoveFlow commandData = new RemoveFlow(0L, flowId, COOKIE, "switch-id", 0L);
-        commandData.setDestination(Destination.WFM);
-        CommandMessage commandMessage = new CommandMessage(commandData, 0, "remove-flow");
+        CommandMessage commandMessage = new CommandMessage(commandData, 0, "remove-flow", Destination.WFM);
         sendTopologyEngineMessage(commandMessage);
         return commandData;
     }
@@ -791,8 +779,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         System.out.println("TOPOLOGY: Get flow");
         FlowPayload payload = new FlowPayload(flowId, flowEndpointPayload, flowEndpointPayload, 10000L, "", "");
         FlowResponse infoData = new FlowResponse(payload);
-        infoData.setDestination(Destination.WFM);
-        InfoMessage infoMessage = new InfoMessage(infoData, 0, "get-flow");
+        InfoMessage infoMessage = new InfoMessage(infoData, 0, "get-flow", Destination.WFM);
         sendTopologyEngineMessage(infoMessage);
         return payload;
     }
@@ -802,8 +789,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         FlowPayload flow = new FlowPayload(flowId, flowEndpointPayload, flowEndpointPayload, 10000L, "", "");
         FlowsPayload payload = new FlowsPayload(Collections.singletonList(flow));
         FlowsResponse infoData = new FlowsResponse(payload);
-        infoData.setDestination(Destination.WFM);
-        InfoMessage infoMessage = new InfoMessage(infoData, 0, "dump-flows");
+        InfoMessage infoMessage = new InfoMessage(infoData, 0, "dump-flows", Destination.WFM);
         sendTopologyEngineMessage(infoMessage);
         return payload;
     }
@@ -812,8 +798,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         System.out.println("TOPOLOGY: Path flow");
         FlowPathPayload payload = new FlowPathPayload(flowId, Collections.singletonList("switch-id"));
         FlowPathResponse infoData = new FlowPathResponse(payload);
-        infoData.setDestination(Destination.WFM);
-        InfoMessage infoMessage = new InfoMessage(infoData, 0, "path-flow");
+        InfoMessage infoMessage = new InfoMessage(infoData, 0, "path-flow", Destination.WFM);
         sendTopologyEngineMessage(infoMessage);
         return payload;
     }
@@ -821,7 +806,7 @@ public class FlowTopologyTest extends AbstractStormTest {
     private ErrorMessage errorFlowTopologyEngineCommand(final String flowId) throws IOException {
         System.out.println("TOPOLOGY: Error flow");
         ErrorData errorData = new ErrorData(0, null, ErrorType.REQUEST_INVALID, flowId);
-        ErrorMessage errorMessage = new ErrorMessage(errorData, 0, "error-flow");
+        ErrorMessage errorMessage = new ErrorMessage(errorData, 0, "error-flow", Destination.WFM);
         sendTopologyEngineMessage(errorMessage);
         return errorMessage;
     }
@@ -846,7 +831,7 @@ public class FlowTopologyTest extends AbstractStormTest {
     private ErrorMessage errorFlowSpeakerCommand(final String flowId) throws IOException {
         System.out.println("TOPOLOGY: Error rule");
         ErrorData errorData = new ErrorData(0, null, ErrorType.REQUEST_INVALID, flowId);
-        ErrorMessage errorMessage = new ErrorMessage(errorData, 0, "error-flow");
+        ErrorMessage errorMessage = new ErrorMessage(errorData, 0, "error-flow", Destination.WFM);
         sendSpeakerMessage(errorMessage);
         return errorMessage;
     }

@@ -4,6 +4,7 @@ import static org.bitbucket.openkilda.wfm.topology.AbstractTopology.MESSAGE_FIEL
 import static org.bitbucket.openkilda.wfm.topology.AbstractTopology.fieldMessage;
 import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.ERROR_TYPE_FIELD;
 
+import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.Message;
 import org.bitbucket.openkilda.messaging.error.ErrorData;
 import org.bitbucket.openkilda.messaging.error.ErrorMessage;
@@ -56,8 +57,8 @@ public class ErrorBolt extends BaseRichBolt {
         ErrorType param = (ErrorType) tuple.getValueByField(ERROR_TYPE_FIELD);
         Message message = (Message) tuple.getValueByField(MESSAGE_FIELD);
 
-        ErrorData data = new ErrorData(0, null, param, componentId.toString());
-        ErrorMessage error = new ErrorMessage(data, message.getTimestamp(), message.getCorrelationId());
+        ErrorMessage error = new ErrorMessage(new ErrorData(0, null, param, componentId.toString()),
+                message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND);
         Values values = new Values(error);
 
         logger.debug("Error message: values={}", values);

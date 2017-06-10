@@ -13,9 +13,6 @@ import org.projectfloodlight.openflow.types.U64;
 
 import java.util.Arrays;
 
-/**
- * Created by atopilin on 14/04/2017.
- */
 public class ReplaceSchemeOutputCommands extends PushSchemeOutputCommands {
     @Override
     public OFFlowAdd ingressMatchVlanIdFlowMod(int inputPort, int outputPort, int inputVlan, int transitVlan,

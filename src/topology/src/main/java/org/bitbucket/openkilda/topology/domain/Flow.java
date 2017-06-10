@@ -3,6 +3,7 @@ package org.bitbucket.openkilda.topology.domain;
 import static com.google.common.base.Objects.toStringHelper;
 import static org.bitbucket.openkilda.topology.service.impl.FlowServiceImpl.DIRECT_FLOW_COOKIE;
 
+import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.command.CommandMessage;
 import org.bitbucket.openkilda.messaging.command.flow.InstallEgressFlow;
 import org.bitbucket.openkilda.messaging.command.flow.InstallIngressFlow;
@@ -180,6 +181,29 @@ public class Flow implements Serializable {
         this.lastUpdated = lastUpdated;
         this.transitVlan = transitVlan;
         this.flowType = getFlowType(sourceVlan, destinationVlan);
+    }
+
+    /**
+     * Identifies flow type.
+     *
+     * @param sourceVlanId      flow source vlan id
+     * @param destinationVlanId flow source vlan id
+     * @return flow type name
+     */
+    private static OutputVlanType getFlowType(final int sourceVlanId, final int destinationVlanId) {
+        OutputVlanType flowType;
+
+        if (sourceVlanId == 0 && destinationVlanId == 0) {
+            flowType = OutputVlanType.NONE;
+        } else if (sourceVlanId == 0) {
+            flowType = OutputVlanType.PUSH;
+        } else if (destinationVlanId == 0) {
+            flowType = OutputVlanType.POP;
+        } else {
+            flowType = OutputVlanType.REPLACE;
+        }
+
+        return flowType;
     }
 
     /**
@@ -408,29 +432,6 @@ public class Flow implements Serializable {
     }
 
     /**
-     * Identifies flow type.
-     *
-     * @param sourceVlanId      flow source vlan id
-     * @param destinationVlanId flow source vlan id
-     * @return flow type name
-     */
-    private static OutputVlanType getFlowType(final int sourceVlanId, final int destinationVlanId) {
-        OutputVlanType flowType;
-
-        if (sourceVlanId == 0 && destinationVlanId == 0) {
-            flowType = OutputVlanType.NONE;
-        } else if (sourceVlanId == 0) {
-            flowType = OutputVlanType.PUSH;
-        } else if (destinationVlanId == 0) {
-            flowType = OutputVlanType.POP;
-        } else {
-            flowType = OutputVlanType.REPLACE;
-        }
-
-        return flowType;
-    }
-
-    /**
      * Sets flow output vlan type.
      *
      * @param flowType flow output vlan type
@@ -476,34 +477,34 @@ public class Flow implements Serializable {
         Isl firstIsl = path.get(0);
         Isl lastIsl = path.get(path.size() - 1);
         if ((cookie & DIRECT_FLOW_COOKIE) == DIRECT_FLOW_COOKIE) {
-            commands.add(new CommandMessage(new InstallIngressFlow(
-                    0L, flowId, cookie, sourceSwitch, sourcePort, firstIsl.getSourcePort(), sourceVlan,
-                    transitVlan, flowType, bandwidth, 0L), System.currentTimeMillis(), correlationId));
+            commands.add(new CommandMessage(new InstallIngressFlow(0L, flowId, cookie,
+                    sourceSwitch, sourcePort, firstIsl.getSourcePort(), sourceVlan,
+                    transitVlan, flowType, bandwidth, 0L), now(), correlationId, Destination.WFM));
 
-            commands.add(new CommandMessage(new InstallEgressFlow(
-                    0L, flowId, cookie, destinationSwitch, lastIsl.getDestinationPort(), destinationPort,
-                    transitVlan, destinationVlan, flowType), System.currentTimeMillis(), correlationId));
+            commands.add(new CommandMessage(new InstallEgressFlow(0L, flowId, cookie,
+                    destinationSwitch, lastIsl.getDestinationPort(), destinationPort,
+                    transitVlan, destinationVlan, flowType), now(), correlationId, Destination.WFM));
         } else {
-            commands.add(new CommandMessage(new InstallIngressFlow(
-                    0L, flowId, cookie, destinationSwitch, sourcePort, lastIsl.getDestinationPort(),
-                    destinationVlan, transitVlan, flowType, bandwidth, 0L), System.currentTimeMillis(), correlationId));
+            commands.add(new CommandMessage(new InstallIngressFlow(0L, flowId, cookie,
+                    destinationSwitch, sourcePort, lastIsl.getDestinationPort(), destinationVlan,
+                    transitVlan, flowType, bandwidth, 0L), now(), correlationId, Destination.WFM));
 
-            commands.add(new CommandMessage(new InstallEgressFlow(
-                    0L, flowId, cookie, sourceSwitch, firstIsl.getSourcePort(), sourcePort,
-                    transitVlan, sourceVlan, flowType), System.currentTimeMillis(), correlationId));
+            commands.add(new CommandMessage(new InstallEgressFlow(0L, flowId, cookie,
+                    sourceSwitch, firstIsl.getSourcePort(), sourcePort,
+                    transitVlan, sourceVlan, flowType), now(), correlationId, Destination.WFM));
         }
 
-        for (int i = 0; i < path.size() - 2; i++) {
+        for (int i = 0; i < path.size() - 1; i++) {
             Isl currentIsl = path.get(i);
             Isl nextIsl = path.get(i + 1);
             if ((cookie & DIRECT_FLOW_COOKIE) == DIRECT_FLOW_COOKIE) {
-                commands.add(new CommandMessage(new InstallTransitFlow(
-                        0L, flowId, cookie, currentIsl.getDestinationSwitch(), currentIsl.getDestinationPort(),
-                        nextIsl.getSourcePort(), transitVlan), System.currentTimeMillis(), correlationId));
+                commands.add(new CommandMessage(new InstallTransitFlow(0L, flowId, cookie,
+                        currentIsl.getDestinationSwitch(), currentIsl.getDestinationPort(), nextIsl.getSourcePort(),
+                        transitVlan), now(), correlationId, Destination.WFM));
             } else {
-                commands.add(new CommandMessage(new InstallTransitFlow(
-                        0L, flowId, cookie, currentIsl.getDestinationSwitch(), nextIsl.getSourcePort(),
-                        currentIsl.getDestinationPort(), transitVlan), System.currentTimeMillis(), correlationId));
+                commands.add(new CommandMessage(new InstallTransitFlow(0L, flowId, cookie,
+                        currentIsl.getDestinationSwitch(), nextIsl.getSourcePort(), currentIsl.getDestinationPort(),
+                        transitVlan), now(), correlationId, Destination.WFM));
             }
         }
 
@@ -521,9 +522,13 @@ public class Flow implements Serializable {
 
         for (String sw : flowPath) {
             commands.add(new CommandMessage(new RemoveFlow(0L, flowId, cookie, sw, 0L),
-                    System.currentTimeMillis(), correlationId));
+                    System.currentTimeMillis(), correlationId, Destination.WFM));
         }
 
         return commands;
+    }
+
+    private long now() {
+        return System.currentTimeMillis();
     }
 }

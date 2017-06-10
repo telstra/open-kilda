@@ -1,6 +1,6 @@
 package org.bitbucket.openkilda.messaging.info.event;
 
-import static com.google.common.base.Objects.toStringHelper;
+import static com.google.common.base.MoreObjects.toStringHelper;
 
 import org.bitbucket.openkilda.messaging.info.InfoData;
 
@@ -19,7 +19,6 @@ import java.util.Objects;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
         "message_type",
-        "destination",
         "switch_id",
         "state",
         "address",

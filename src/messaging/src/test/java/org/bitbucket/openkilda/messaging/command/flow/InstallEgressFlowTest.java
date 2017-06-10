@@ -15,9 +15,6 @@ import org.bitbucket.openkilda.messaging.payload.flow.OutputVlanType;
 
 import org.junit.Test;
 
-/**
- * Created by atopilin on 10/04/2017.
- */
 public class InstallEgressFlowTest {
     private InstallEgressFlow flow = new InstallEgressFlow(0L, flowName, 0L, switchId, inputPort,
             outputPort, transitVlanId, outputVlanId, outputVlanType);
