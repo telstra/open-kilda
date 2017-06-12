@@ -123,7 +123,7 @@ public class TransactionBolt extends BaseStatefulBolt<InMemoryKeyValueState<Stri
                             logger.warn("Transaction removing failure: flow id not found");
                         }
                         if (flowTransactions.isEmpty()) {
-                            //transactions.delete(switchId);
+                            transactions.delete(switchId);
                         }
                     } else {
                         logger.warn("Transaction removing failure: switch id not found");

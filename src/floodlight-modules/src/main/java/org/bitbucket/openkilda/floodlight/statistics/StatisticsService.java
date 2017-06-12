@@ -3,7 +3,9 @@ package org.bitbucket.openkilda.floodlight.statistics;
 import static java.util.stream.Collectors.toList;
 
 import org.bitbucket.openkilda.floodlight.kafka.KafkaMessageProducer;
+import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.info.InfoData;
+import org.bitbucket.openkilda.messaging.info.InfoMessage;
 import org.bitbucket.openkilda.messaging.info.stats.FlowStatsData;
 import org.bitbucket.openkilda.messaging.info.stats.FlowStatsEntry;
 import org.bitbucket.openkilda.messaging.info.stats.FlowStatsReply;
@@ -49,6 +51,7 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
     private static final Logger logger = LoggerFactory.getLogger(StatisticsService.class);
     private static final U64 SYSTEM_MASK = U64.of(0x8000000000000000L);
     private static final long OFPM_ALL = 0xffffffffL;
+    private static final String TOPIC = "kilda-test";
 
     private IOFSwitchService switchService;
     private KafkaMessageProducer kafkaProducer;
@@ -141,9 +144,9 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
 
         @Override
         public void onSuccess(List<T> data) {
-            //InfoMessage infoMessage = new InfoMessage(
-            // transform.apply(data), System.currentTimeMillis(), "system", Destination.WFM_STATS);
-            //kafkaProducer.postMessage(Topic.OFS_WFM_STATS.getId(), infoMessage);
+            InfoMessage infoMessage = new InfoMessage(transform.apply(data),
+                    System.currentTimeMillis(), "system", Destination.WFM_STATS);
+            kafkaProducer.postMessage(TOPIC, infoMessage);
         }
 
         @Override

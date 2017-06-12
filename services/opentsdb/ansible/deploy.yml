@@ -4,8 +4,8 @@
 
   - name: get opentsdb
     get_url:
-      url="https://github.com/OpenTSDB/opentsdb/releases/download/v2.2.1/opentsdb-2.2.1_all.deb"
-      dest="/tmp/opentsdb-2.2.1.deb"
+      url="https://github.com/OpenTSDB/opentsdb/releases/download/v2.3.0/opentsdb-2.3.0_all.deb"
+      dest="/tmp/opentsdb-2.3.0.deb"
 
   - name: install apt packages
     apt:
@@ -14,12 +14,12 @@
     with_items:
       - gnuplot
       - python-happybase
-    #become_method: sudo
-    #become_user: root
-    #become: true
+    become_method: sudo
+    become_user: root
+    become: true
 
   - name: install opentsdb
-    apt: deb="/tmp/opentsdb-2.2.1.deb"
-    #become_method: sudo
-    #become_user: root
-    #become: true
+    apt: deb="/tmp/opentsdb-2.3.0.deb"
+    become_method: sudo
+    become_user: root
+    become: true

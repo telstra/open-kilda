@@ -1,7 +1,6 @@
 #!/bin/bash
 
-/opt/hbase/bin/hbase regionserver start > logregion.log 2>&1 &
-/opt/hbase/bin/hbase master start --localRegionServers=0
-sleep 60
 /opt/hbase/bin/hbase-daemon.sh start rest
 /opt/hbase/bin/hbase-daemon.sh start thrift
+/opt/hbase/bin/hbase regionserver start > logregion.log 2>&1 &
+/opt/hbase/bin/hbase master start --localRegionServers=0
