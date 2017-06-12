@@ -20,6 +20,13 @@ up-log-mode: up-test-mode
 # keeping run-test for backwards compatibility (documentation) .. should depracate
 run-test: up-log-mode
 
+clean-sources:
+	mvn -f ./src/floodlight-modules/pom.xml clean
+	mvn -f ./src/topology/pom.xml clean
+	mvn -f ./src/northbound/pom.xml clean
+	mvn -f ./src/messaging/pom.xml clean
+	mvn -f ./services/wfm/pom.xml clean
+
 clean-test:
 	docker-compose down
 	docker-compose rm -fv

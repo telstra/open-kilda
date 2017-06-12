@@ -207,6 +207,29 @@ public class Flow implements Serializable {
     }
 
     /**
+     * Returns output vlan type for reverse flow.
+     *
+     * @param directFlowType direct flow output vlan type
+     * @return reverse flow output vlan type
+     */
+    private static OutputVlanType getReverseFlowType(final OutputVlanType directFlowType) {
+        OutputVlanType reverseFlowType;
+        switch (directFlowType) {
+            case POP:
+                reverseFlowType = OutputVlanType.PUSH;
+                break;
+            case PUSH:
+                reverseFlowType = OutputVlanType.POP;
+                break;
+            case REPLACE:
+            case NONE:
+            default:
+                reverseFlowType = directFlowType;
+        }
+        return reverseFlowType;
+    }
+
+    /**
      * Gets start relationship node entity.
      *
      * @return start relationship node entity
@@ -487,11 +510,11 @@ public class Flow implements Serializable {
         } else {
             commands.add(new CommandMessage(new InstallIngressFlow(0L, flowId, cookie,
                     destinationSwitch, sourcePort, lastIsl.getDestinationPort(), destinationVlan,
-                    transitVlan, flowType, bandwidth, 0L), now(), correlationId, Destination.WFM));
+                    transitVlan, getReverseFlowType(flowType), bandwidth, 0L), now(), correlationId, Destination.WFM));
 
             commands.add(new CommandMessage(new InstallEgressFlow(0L, flowId, cookie,
                     sourceSwitch, firstIsl.getSourcePort(), sourcePort,
-                    transitVlan, sourceVlan, flowType), now(), correlationId, Destination.WFM));
+                    transitVlan, sourceVlan, getReverseFlowType(flowType)), now(), correlationId, Destination.WFM));
         }
 
         for (int i = 0; i < path.size() - 1; i++) {
@@ -528,6 +551,11 @@ public class Flow implements Serializable {
         return commands;
     }
 
+    /**
+     * Returns timestamp.
+     *
+     * @return current time
+     */
     private long now() {
         return System.currentTimeMillis();
     }

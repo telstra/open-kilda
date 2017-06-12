@@ -1,4 +1,4 @@
-KAFKA_BIN ?= /usr/local/Cellar/kafka/0.10.2.0/bin
+KAFKA_BIN ?= /usr/local/Cellar/kafka/0.10.2.1/bin
 
 start-k: start-z
 	${KAFKA_BIN}/kafka-server-start /usr/local/etc/kafka/server.properties &

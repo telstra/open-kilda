@@ -21,7 +21,7 @@
         <jackson.version>2.8.8</jackson.version>
         <checkstyle.version>7.7</checkstyle.version>
         <checkstyle.plugin.version>2.17</checkstyle.plugin.version>
-        <spring.kafka.version>1.2.1.RELEASE</spring.kafka.version>
+        <spring.kafka.version>1.2.2.RELEASE</spring.kafka.version>
         <spring.webmvc.version>4.3.8.RELEASE</spring.webmvc.version>
         <spring.hateos>0.23.0.RELEASE</spring.hateos>
         <messaging.version>1.0-SNAPSHOT</messaging.version>
@@ -88,6 +88,22 @@
             <groupId>org.springframework.kafka</groupId>
             <artifactId>spring-kafka</artifactId>
             <version>${spring.kafka.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.apache.kafka</groupId>
+                    <artifactId>kafka-clients</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka_2.11</artifactId>
+            <version>0.10.2.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-clients</artifactId>
+            <version>0.10.2.1</version>
         </dependency>
         <dependency>
             <groupId>org.springframework</groupId>

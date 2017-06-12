@@ -4,18 +4,11 @@ import static org.bitbucket.openkilda.messaging.Utils.MAPPER;
 
 import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.Message;
-import org.bitbucket.openkilda.messaging.command.CommandData;
-import org.bitbucket.openkilda.messaging.command.CommandMessage;
-import org.bitbucket.openkilda.messaging.error.ErrorData;
-import org.bitbucket.openkilda.messaging.error.ErrorMessage;
-import org.bitbucket.openkilda.messaging.info.InfoData;
-import org.bitbucket.openkilda.messaging.info.InfoMessage;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.errors.WakeupException;
-import sun.security.krb5.internal.crypto.Des;
 
 import java.io.IOException;
 import java.util.Collections;
