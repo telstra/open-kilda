@@ -5,13 +5,12 @@ import os
 print "Connecting to kafka using application defined configuration:"
 
 def create_consumer():
-    
     bootstrapServer = os.environ['bootstrapserver']
     topic = os.environ['topic']
     group = os.environ['group']
 
     while True:
-        try: 
+        try:
             consumer = KafkaConsumer(bootstrap_servers=bootstrapServer, group_id=group, auto_offset_reset='earliest')
             consumer.subscribe(['{}'.format(topic)])
             print "Connected to kafka"
@@ -24,7 +23,7 @@ def create_consumer():
 
 def read_message(consumer):
     try:
-        message = consumer.next()   
+        message = consumer.next()
         if message.value is not "":
             return message.value
         else:
