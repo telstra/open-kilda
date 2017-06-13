@@ -312,9 +312,11 @@ def switch_insert_default_flows(switch_id):
     Args:
         switch_id: datapathID of the switch
     """
-    data = {"destination": "CONTROLLER", "command": "install_default_flows",
+    data = {
+            "command": "install_default_flows",
             "switch_id": switch_id}
-    message = {"type": "COMMAND",
+    message = {"destination": "CONTROLLER",
+        "type": "COMMAND",
                "timestamp": long(time.time()*1000),
                "payload": data}
     logger.info(message)
@@ -329,11 +331,12 @@ def send_isl_discover_packet(switch_id, port):
         switch_id: datapathID of switch
         port: port number as int
     """
-    data = {"destination": "CONTROLLER",
+    data = {
             "command": "discover_isl",
             "switch_id": switch_id,
             "port_no": port}
-    message = {"type": "COMMAND",
+    message = { "destination": "CONTROLLER",
+                "type": "COMMAND",
                "timestamp": long(time.time()*1000),
                "payload": data}
 
