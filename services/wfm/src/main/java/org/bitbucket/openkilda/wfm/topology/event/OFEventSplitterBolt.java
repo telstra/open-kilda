@@ -1,5 +1,7 @@
 package org.bitbucket.openkilda.wfm.topology.event;
 
+import static org.bitbucket.openkilda.messaging.Utils.PAYLOAD;
+
 import org.bitbucket.openkilda.wfm.OFEMessageUtils;
 
 import org.apache.logging.log4j.LogManager;
@@ -39,9 +41,9 @@ public class OFEventSplitterBolt extends BaseRichBolt {
         try {
             Map<String, ?> root = OFEMessageUtils.fromJson(json);
             String type = ((String) root.get("type")).toLowerCase();
-            Map<String, ?> data = (Map<String, ?>) root.get("payload");
+            Map<String, ?> data = (Map<String, ?>) root.get(PAYLOAD);
             // TODO: data should be converted back to json string .. or use json serializer
-            Values dataVal = new Values("payload", OFEMessageUtils.toJson(data));
+            Values dataVal = new Values(PAYLOAD, OFEMessageUtils.toJson(data));
             switch (type) {
                 case JSON_INFO:
                     _collector.emit(INFO, tuple, dataVal);
@@ -51,7 +53,7 @@ public class OFEventSplitterBolt extends BaseRichBolt {
                     break;
                 default:
                     // NB: we'll push the original message onto the CONFUSED channel
-                    _collector.emit(OTHER, tuple, new Values("payload", json));
+                    _collector.emit(OTHER, tuple, new Values(PAYLOAD, json));
                     logger.warn("WARNING: Unknown Message Type: " + type);
             }
         } catch (IOException e) {

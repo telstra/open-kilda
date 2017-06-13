@@ -18,6 +18,9 @@ def get_events(threadcount):
         try:
             rawevent = kafkareader.read_message(consumer)
             event = MessageItem(**json.loads(rawevent))
+            if "TOPOLOGY_ENGINE" != event.destination:
+                print "Skip message for {}".format(event.destination)
+                continue
             if event.get_message_type() in handleableMessages:
                 t = threading.Thread(target=topo_event_handler, args=(event,))
                 t.daemon =True

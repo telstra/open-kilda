@@ -1,5 +1,7 @@
 package org.bitbucket.openkilda.wfm.topology.event;
 
+import static org.bitbucket.openkilda.messaging.Utils.PAYLOAD;
+
 import org.bitbucket.openkilda.wfm.OFEMessageUtils;
 import org.bitbucket.openkilda.wfm.topology.utils.AbstractTickStatefulBolt;
 import org.bitbucket.openkilda.wfm.topology.utils.LinkTracker;
@@ -79,7 +81,7 @@ public class OFELinkBolt extends AbstractTickStatefulBolt<KeyValueState<String, 
         for (String switchID : links.getSwitches()) {
             for (String portID : links.getSwitchPorts(switchID).keySet()) {
                 String discoJson = OFEMessageUtils.createIslDiscovery(switchID, portID);
-                collector.emit(islDiscoTopic, tuple, new Values("payload", discoJson));
+                collector.emit(islDiscoTopic, tuple, new Values(PAYLOAD, discoJson));
 
             }
         }
@@ -127,7 +129,7 @@ public class OFELinkBolt extends AbstractTickStatefulBolt<KeyValueState<String, 
         if (updown.equals(OFEMessageUtils.PORT_UP) || updown.equals(OFEMessageUtils.PORT_ADD)) {
             // Send ISL Discovery Packet
             String discoJson = OFEMessageUtils.createIslDiscovery(switchID, portID);
-            collector.emit(islDiscoTopic, tuple, new Values("payload", discoJson));
+            collector.emit(islDiscoTopic, tuple, new Values(PAYLOAD, discoJson));
             // TODO: will we put the link info?
             // TODO: check if port already exists? is there business logic (UP on existing port)
             ports.put(portID, portID);

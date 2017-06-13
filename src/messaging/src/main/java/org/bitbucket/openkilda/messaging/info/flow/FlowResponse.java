@@ -1,6 +1,7 @@
 package org.bitbucket.openkilda.messaging.info.flow;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
+import static org.bitbucket.openkilda.messaging.Utils.PAYLOAD;
 
 import org.bitbucket.openkilda.messaging.info.InfoData;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowPayload;
@@ -20,7 +21,7 @@ import java.util.Objects;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
         "message_type",
-        "payload"})
+        PAYLOAD})
 public class FlowResponse extends InfoData {
     /**
      * Serialization version number constant.
@@ -30,7 +31,7 @@ public class FlowResponse extends InfoData {
     /**
      * The response payload.
      */
-    @JsonProperty("payload")
+    @JsonProperty(PAYLOAD)
     protected FlowPayload payload;
 
     /**
@@ -40,7 +41,7 @@ public class FlowResponse extends InfoData {
      * @throws IllegalArgumentException if payload is null
      */
     @JsonCreator
-    public FlowResponse(@JsonProperty("payload") final FlowPayload payload) {
+    public FlowResponse(@JsonProperty(PAYLOAD) final FlowPayload payload) {
         setPayload(payload);
     }
 
@@ -71,7 +72,7 @@ public class FlowResponse extends InfoData {
     @Override
     public String toString() {
         return toStringHelper(this)
-                .add("payload", payload)
+                .add(PAYLOAD, payload)
                 .toString();
     }
 

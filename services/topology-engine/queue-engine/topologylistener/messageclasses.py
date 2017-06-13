@@ -33,10 +33,12 @@ def repair_flows(switchid):
 
 
 class MessageItem(object):
-    def __init__(self, type, payload, timestamp, **kwargs):
-        self.type = type
-        self.timestamp = timestamp
-        self.payload = payload
+    def __init__(self, **kwargs):
+        self.type = kwargs.get("type")
+        self.timestamp = kwargs.get("timestamp")
+        self.payload = kwargs.get("payload")
+        # make message processable in case of no destination in body
+        self.destination = kwargs.get("destination", "TOPOLOGY_ENGINE")
 
     def to_json(self):
         return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4)

@@ -1,5 +1,7 @@
 package org.bitbucket.openkilda.wfm.topology.event;
 
+import static org.bitbucket.openkilda.messaging.Utils.PAYLOAD;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.logging.log4j.LogManager;
@@ -54,7 +56,7 @@ public class InfoEventSplitterBolt extends BaseRichBolt {
      * @param root the "payload" field of an "INFO" message
      */
     private void splitInfoMessage(Map<String, ?> root, Tuple tuple) throws JsonProcessingException {
-        Values dataVal = new Values("payload", new ObjectMapper().writeValueAsString(root));
+        Values dataVal = new Values(PAYLOAD, new ObjectMapper().writeValueAsString(root));
         String key = ((String) root.get("message_type")).toLowerCase();
         String state = (String) root.get("state");
         switch (key) {
