@@ -51,6 +51,32 @@ services:
       dockerfile: Dockerfile
     image: "kilda/topology-engine:${full_build_number:-latest}"
     command: ./entrypoint.sh
+    links:
+      - neo4j
+      - kafka:kafka.pendev
+      - topology-engine-rest
+    environment:
+      neo4jhost: 'neo4j'
+      neo4juser: 'neo4j'
+      neo4jpass: 'temppass'
+      neo4jbolt: 'http://neo4j:7474/db/data/cypher'
+      bootstrapserver: 'kafka.pendev:9092'
+      topic: 'kilda-test'
+      group: 'python-tpe-tl-consumer'
+      OK_TESTS: "${OK_TESTS:-none}"
+    depends_on:
+      kafka:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+
+  topology-engine-rest:
+    container_name: topology-engine-rest
+    build:
+      context: services/topology-engine-rest/
+      dockerfile: Dockerfile
+    image: "kilda/topology-engine-rest:${full_build_number:-latest}"
+    command: ./entrypoint.sh
     volumes:
       - app_server_data:/var/data
     ports:
@@ -159,35 +185,41 @@ services:
         condition: service_healthy
       storm_supervisor:
         condition: service_healthy
-#      hbase:
-#        condition: service_healthy
     links:
       - kafka:kafka.pendev
       - storm_nimbus:nimbus.pendev
       - zookeeper:zookeeper.pendev
 
-#  hbase:
-#    build:
-#      context: .
-#      dockerfile: services/hbase/Dockerfile
-#    image: "kilda/hbase:${full_build_number:-latest}"
-#    command: /opt/hbase/bin/start-hbase
-#    volumes:
-#      - hbase_data:/data/hbase
-#    depends_on:
-#      zookeeper:
-#        condition: service_healthy
-#    links:
-#      - zookeeper:zookeeper.pendev
-#    ports:
-#      - "60000:60000"
-#      - "60010:60010"
-#      - "60020:60020"
-#      - "60030:60030"
-#      - "8070:8070"
-#      - "8090:8090"
-#      - "9070:9070"
-#      - "9090:9090"
+  hbase:
+    container_name: hbase
+    hostname: hbase.pendev
+    build:
+      context: .
+      dockerfile: services/hbase/Dockerfile
+    image: "kilda/hbase:${full_build_number:-latest}"
+    command: /opt/hbase/bin/start-hbase
+    volumes:
+      - hbase_data:/data/hbase
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    links:
+      - zookeeper:zookeeper.pendev
+    ports:
+      - "60000:60000"
+      - "60010:60010"
+      - "60020:60020"
+      - "60030:60030"
+      - "8070:8070"
+      - "8090:8090"
+      - "9070:9070"
+      - "9080:9080"
+      - "9090:9090"
+    healthcheck:
+      test: ["CMD-SHELL", "jps | grep --silent HMaster"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 #  tools:
 #    build:
@@ -220,9 +252,11 @@ services:
     depends_on:
       zookeeper:
         condition: service_healthy
+      opentsdb:
+        condition: service_started
     links:
       - zookeeper:zookeeper.pendev
-#      - hbase:hbase.pendev
+      - opentsdb:opentsdb.pendev
     ports:
       - "6627:6627"
       - "3772:3772"
@@ -250,7 +284,6 @@ services:
         condition: service_healthy
     links:
       - zookeeper:zookeeper.pendev
-#      - hbase:hbase.pendev
       - storm_nimbus:nimbus.pendev
       - storm_supervisor:supervisor.pendev
     ports:
@@ -277,7 +310,7 @@ services:
     links:
       - zookeeper:zookeeper.pendev
       - kafka:kafka.pendev
-#      - hbase:hbase.pendev
+      - opentsdb:opentsdb.pendev
       - storm_nimbus:nimbus.pendev
     ports:
       - "6700:6700"
@@ -337,10 +370,28 @@ services:
       kafka:
         condition: service_healthy
 
+  opentsdb:
+    container_name: opentsdb
+    hostname: opentsdb.pendev
+    build:
+      context: .
+      dockerfile: services/opentsdb/Dockerfile
+    image: "kilda/opentsdb:${full_build_number:-latest}"
+    command: /app/wait-for-it.sh -t 120 -h hbase.pendev -p 9090 -- /app/start-opentsdb
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+      hbase:
+        condition: service_healthy
+    links:
+      - zookeeper:zookeeper.pendev
+      - hbase:hbase.pendev
+    ports:
+      - "4242:4242"
 
 volumes:
   zookeeper_data:
   kafka_data:
   app_server_data:
+  hbase_data:
 # mininet_data:
-# hbase_data:

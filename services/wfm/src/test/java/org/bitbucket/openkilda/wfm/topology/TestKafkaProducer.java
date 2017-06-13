@@ -1,5 +1,7 @@
 package org.bitbucket.openkilda.wfm.topology;
 
+import static org.bitbucket.openkilda.messaging.Utils.PAYLOAD;
+
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.storm.utils.Utils;
@@ -18,7 +20,7 @@ public class TestKafkaProducer {
     }
 
     public void pushMessage(final String topic, final String data) {
-        ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topic, "payload", data);
+        ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topic, PAYLOAD, data);
         try {
             producer.send(producerRecord).get(SEND_TIMEOUT, TimeUnit.MILLISECONDS);
             producer.flush();

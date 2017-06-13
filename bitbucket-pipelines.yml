@@ -1,0 +1,25 @@
+image: python:3.5.1
+
+pipelines:
+  branches:
+    feature/*:
+      - step:
+          script:
+            - git fetch
+            - git checkout -b rc
+            - git push -v --tags origin rc:rc
+    rc:
+      - step:
+          script:
+            - make build-base
+            - git fetch
+            - git checkout -b master
+            - git merge rc
+            - git push -v --tags origin master:master       
+    master:
+      - step:
+          script:
+            - echo "this is the master branch"
+
+options:
+  docker: true

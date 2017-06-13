@@ -34,7 +34,7 @@ public class InfoMessage extends Message {
     /**
      * Data of the information message.
      */
-    @JsonProperty("payload")
+    @JsonProperty(PAYLOAD)
     private InfoData data;
 
     /**

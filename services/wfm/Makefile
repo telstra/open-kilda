@@ -39,5 +39,13 @@ deploy-flow:
 kill-flow:
 	storm kill flow >/dev/null 2>&1
 
+deploy-stats:
+	storm jar target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar \
+        org.bitbucket.openkilda.wfm.topology.stats.StatsTopology \
+        stats
+
+kill-stats:
+	storm kill stats >/dev/null 2>&1
+
 create-topics:
 	src/main/resources/create-channels.sh

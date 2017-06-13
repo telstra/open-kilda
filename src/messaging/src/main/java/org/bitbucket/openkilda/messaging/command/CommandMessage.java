@@ -34,7 +34,7 @@ public class CommandMessage extends Message {
     /**
      * Data of the command message.
      */
-    @JsonProperty("payload")
+    @JsonProperty(PAYLOAD)
     private CommandData data;
 
     /**

@@ -1,5 +1,7 @@
 package org.bitbucket.openkilda.wfm;
 
+import static org.bitbucket.openkilda.messaging.Utils.PAYLOAD;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
@@ -112,7 +114,7 @@ public class OFEMessageUtils {
     public static Map<String, ?> getData(String json) throws IOException {
         Map<String, ?> root = OFEMessageUtils.fromJson(json);
         if (root.containsKey("type")) {
-            root = (Map<String, ?>) root.get("payload");
+            root = (Map<String, ?>) root.get(PAYLOAD);
         }
         return root;
     }

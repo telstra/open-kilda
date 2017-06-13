@@ -1,4 +1,5 @@
-FROM ubuntu:wily
+FROM ubuntu:xenial
+
 RUN apt-get update
 
 #############################
@@ -35,6 +36,13 @@ RUN apt-get install -y oracle-java8-installer
 ENV JAVA_VER 8
 ENV JAVA_HOME /usr/lib/jvm/java-8-oracle
 RUN echo "export JAVA_HOME=/usr/lib/jvm/java-8-oracle" >> ~/.bashrc
+
+# openjdk
+#RUN apt-get install -y openjdk-8-jdk
+#ENV export JAVA_VER=8
+#ENV export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+#RUN echo "export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64" >> ~/.bashrc
+#RUN echo "export JAVA_VER=8" >> ~/.bashrc
 
 RUN apt-get clean
 ADD app /app

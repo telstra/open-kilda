@@ -1,5 +1,7 @@
 package org.bitbucket.openkilda.wfm.topology.event;
 
+import static org.bitbucket.openkilda.messaging.Utils.PAYLOAD;
+
 import org.bitbucket.openkilda.wfm.OFEMessageUtils;
 
 import org.apache.logging.log4j.LogManager;
@@ -70,7 +72,7 @@ public class OFESwitchBolt extends BaseStatefulBolt<KeyValueState<String, String
                 logger.debug("OLD SWITCH: {}, state: {}", switchID, updown);
             }
             // NB: The KafkaBolt will pickup the first 2 fields, and the LinkBolt the last two
-            Values dataVal = new Values("payload", json, switchID, updown);
+            Values dataVal = new Values(PAYLOAD, json, switchID, updown);
             collector.emit(outputStreamId, tuple, dataVal);
         } catch (IOException e) {
             e.printStackTrace();

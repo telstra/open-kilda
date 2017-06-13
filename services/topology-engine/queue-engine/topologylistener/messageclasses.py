@@ -14,7 +14,7 @@ def repair_flows(switchid):
     for flow in flows:
         if flow['r']['flowid'] not in repairedFlowIDs:
             repairedFlowIDs.append(flow['r']['flowid'])
-            url = "http://localhost/api/v1/flow"
+            url = "http://topology-engine-rest/api/v1/flow"
             headers = {'Content-Type': 'application/json'}
             j_data = {"src_switch":"{}".format(flow['r']['src_switch']),
                       "src_port":1,
@@ -25,15 +25,20 @@ def repair_flows(switchid):
             if result.status_code == 200:
                 deleteURL = url + "/" + flow['r']['flowid']
                 result = requests.delete(deleteURL)
+            else:
+                #create logic to alert on failed reroute
+                print "Unable to reroute flow: {}".format(flow['r']['flowid'])
     return True
     
 
 
 class MessageItem(object):
-    def __init__(self, type, payload, timestamp, **kwargs):
-        self.type = type
-        self.timestamp = timestamp
-        self.payload = payload
+    def __init__(self, **kwargs):
+        self.type = kwargs.get("type")
+        self.timestamp = kwargs.get("timestamp")
+        self.payload = kwargs.get("payload")
+        # make message processable in case of no destination in body
+        self.destination = kwargs.get("destination", "TOPOLOGY_ENGINE")
 
     def to_json(self):
         return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4)
@@ -66,22 +71,28 @@ class MessageItem(object):
 
     def create_switch(self):
         switchid = self.payload['switch_id']
-        switch = graph.find_one('switch', property_key='name', property_value='{}'.format(switchid))
+        switch = graph.find_one('switch',
+                                property_key='name',
+                                property_value='{}'.format(switchid))
         if not switch:
-            newSwitch = Node("switch", name="{}".format(switchid), state="active")
+            newSwitch = Node("switch", 
+                             name="{}".format(switchid), 
+                             state="active")
             graph.create(newSwitch)
-            #print "Adding switch: {}".format(switchid)
+            print "Adding switch: {}".format(switchid)
             return True
         else:
             graph.merge(switch)
             switch['state'] = "active"
             switch.push()
-            #print "Activating switch: {}".format(switchid)
+            print "Activating switch: {}".format(switchid)
             return True
 
     def deactivate_switch(self):
         switchid = self.payload['switch_id']
-        switch = graph.find_one('switch', property_key='name', property_value='{}'.format(switchid))
+        switch = graph.find_one('switch',
+                                property_key='name',
+                                property_value='{}'.format(switchid))
         if switch:
             graph.merge(switch)
             switch['state'] = "inactive"
@@ -105,8 +116,12 @@ class MessageItem(object):
         b_switch = path[1]['switch_id']
         b_port = path[1]['port_no']
 
-        a_switchNode = graph.find_one('switch', property_key='name', property_value='{}'.format(a_switch))
-        b_switchNode = graph.find_one('switch', property_key='name', property_value='{}'.format(b_switch))
+        a_switchNode = graph.find_one('switch', 
+                                      property_key='name', 
+                                      property_value='{}'.format(a_switch))
+        b_switchNode = graph.find_one('switch', 
+                                      property_key='name', 
+                                      property_value='{}'.format(b_switch))
 
         if not a_switchNode or not b_switchNode:
             return False
@@ -127,7 +142,8 @@ class MessageItem(object):
                                       b_switch,
                                       latency))
 
-            #print "ISL between {} and {} created".format(a_switchNode['name'], b_switchNode['name'])
+            print "ISL between {} and {} created".format(a_switchNode['name'], 
+                                                         b_switchNode['name'])
         else:
             islUpdateQuery = "MATCH (a:switch)-[r:isl {{src_switch: '{}', src_port: '{}', dst_switch: '{}', dst_port: '{}'}}]->(b:switch) set r.latency = {} return r"
             graph.run(islUpdateQuery.format(a_switch, 
@@ -135,9 +151,7 @@ class MessageItem(object):
                                             b_switch, 
                                             b_port, 
                                             latency)).data()
-            #print "ISL between {} and {} updated".format(a_switchNode['name'], b_switchNode['name'])
+            #print "ISL between {} and {} updated".format(a_switchNode['name'], 
+            #                                             b_switchNode['name'])
         return True
-        
-
-
 

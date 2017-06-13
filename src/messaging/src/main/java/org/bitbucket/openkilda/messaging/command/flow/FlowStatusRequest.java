@@ -1,6 +1,7 @@
 package org.bitbucket.openkilda.messaging.command.flow;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
+import static org.bitbucket.openkilda.messaging.Utils.PAYLOAD;
 
 import org.bitbucket.openkilda.messaging.command.CommandData;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowIdStatusPayload;
@@ -20,7 +21,7 @@ import java.util.Objects;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
         "command",
-        "payload"})
+        PAYLOAD})
 public class FlowStatusRequest extends CommandData {
     /**
      * Serialization version number constant.
@@ -30,7 +31,7 @@ public class FlowStatusRequest extends CommandData {
     /**
      * The request payload.
      */
-    @JsonProperty("payload")
+    @JsonProperty(PAYLOAD)
     protected FlowIdStatusPayload payload;
 
     /**
@@ -40,7 +41,7 @@ public class FlowStatusRequest extends CommandData {
      * @throws IllegalArgumentException if payload is null
      */
     @JsonCreator
-    public FlowStatusRequest(@JsonProperty("payload") final FlowIdStatusPayload payload) {
+    public FlowStatusRequest(@JsonProperty(PAYLOAD) final FlowIdStatusPayload payload) {
         setPayload(payload);
     }
 
@@ -71,7 +72,7 @@ public class FlowStatusRequest extends CommandData {
     @Override
     public String toString() {
         return toStringHelper(this)
-                .add("payload", payload)
+                .add(PAYLOAD, payload)
                 .toString();
     }
 

@@ -123,7 +123,7 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
                                 logger.debug("Flow delete message: {}={}, flow-id={}, component={}, stream={}",
                                         CORRELATION_ID, message.getCorrelationId(), flowId, componentId, streamId);
 
-                                //flowStates.delete(flowId);
+                                flowStates.delete(flowId);
 
                                 values = new Values(message, flowId);
                                 outputCollector.emit(StreamType.DELETE.toString(), tuple, values);
