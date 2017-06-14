@@ -52,14 +52,16 @@ class MessageItem(object):
             eventHandled = False
             if self.get_message_type() == "switch" and self.data['state'] == "ADDED":
                 eventHandled = self.create_switch()
-            if self.get_message_type() == "switch" and self.data['state'] == "ACTIVATED":
+            elif self.get_message_type() == "switch" and self.data['state'] == "ACTIVATED":
                 eventHandled = self.activate_switch()
-            if self.get_message_type() == "isl":
+            elif self.get_message_type() == "isl":
                 eventHandled = self.create_isl()
-            if self.get_message_type() == "port":
-                eventHandled = True #needs to handled
-            if self.get_message_type() == "switch" and self.data['state'] == "DEACTIVATED":
+            elif self.get_message_type() == "switch" and self.data['state'] == "DEACTIVATED":
                 eventHandled = self.deactivate_switch()
+            elif self.get_message_type() == "port":
+                eventHandled = True #needs to handled
+            elif self.get_message_type() == "switch" and self.data['state'] == "REMOVED":
+                eventHandled = True #needs to handled
             return eventHandled
         except Exception as e:
             print e
