@@ -1,5 +1,5 @@
 diff --git a/pom.xml b/pom.xml
-index 2c451763..5a2b48cb 100644
+index 2c451763..f1defd74 100644
 --- a/pom.xml
 +++ b/pom.xml
 @@ -143,7 +143,7 @@
@@ -51,7 +51,7 @@ index b31c3796..8902019b 100644
 \ No newline at end of file
 +}
 diff --git a/src/main/java/net/floodlightcontroller/core/internal/OFSwitchHandshakeHandler.java b/src/main/java/net/floodlightcontroller/core/internal/OFSwitchHandshakeHandler.java
-index 2ad7e5e3..2ec8ef72 100644
+index 2ad7e5e3..1c02820c 100644
 --- a/src/main/java/net/floodlightcontroller/core/internal/OFSwitchHandshakeHandler.java
 +++ b/src/main/java/net/floodlightcontroller/core/internal/OFSwitchHandshakeHandler.java
 @@ -442,8 +442,10 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
@@ -67,3 +67,12 @@ index 2ad7e5e3..2ec8ef72 100644
  			delgroup.setGroupType(OFGroupType.SELECT);
  			this.sw.write(delgroup.build());
  
+@@ -1360,7 +1362,7 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
+ 			}
+ 
+ 			sendBarrier(); /* Need to make sure the tables are clear before adding default flows */
+-			addDefaultFlows();
++			// addDefaultFlows();
+ 
+ 			/*
+ 			 * We also need a barrier between adding flows and notifying modules of the

@@ -2,6 +2,7 @@ package org.bitbucket.openkilda.northbound.controller;
 
 import static org.bitbucket.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.bitbucket.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
+import static org.bitbucket.openkilda.messaging.Utils.FLOW_ID;
 import static org.springframework.http.MediaType.APPLICATION_JSON_UTF8_VALUE;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
@@ -93,7 +94,7 @@ public class FlowController {
     public ResponseEntity<FlowPayload> getFlow(
             @PathVariable(name = "flow-id") String flowId,
             @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
-        logger.debug("Get flow: {}={}, flow-id={}", CORRELATION_ID, correlationId, flowId);
+        logger.debug("Get flow: {}={}, {}={}", CORRELATION_ID, correlationId, FLOW_ID, flowId);
         FlowPayload response = flowService.getFlow(flowId, correlationId);
         return new ResponseEntity<>(response, new HttpHeaders(), HttpStatus.OK);
     }
@@ -119,7 +120,7 @@ public class FlowController {
     public ResponseEntity<FlowIdStatusPayload> deleteFlow(
             @PathVariable(name = "flow-id") String flowId,
             @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
-        logger.debug("Delete flow: {}={}, flow-id={}", CORRELATION_ID, correlationId, flowId);
+        logger.debug("Delete flow: {}={}, {}={}", CORRELATION_ID, correlationId, FLOW_ID, flowId);
         FlowIdStatusPayload response = flowService.deleteFlow(flowId, correlationId);
         return new ResponseEntity<>(response, new HttpHeaders(), HttpStatus.OK);
     }
@@ -148,7 +149,7 @@ public class FlowController {
             @PathVariable(name = "flow-id") String flowId,
             @RequestBody FlowPayload flow,
             @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
-        logger.debug("Update flow: {}={}, flow-id={}, flow={}", CORRELATION_ID, correlationId, flowId, flow);
+        logger.debug("Update flow: {}={}, {}={}, flow={}", CORRELATION_ID, correlationId, FLOW_ID, flowId, flow);
         FlowPayload response = flowService.updateFlow(flow, correlationId);
         return new ResponseEntity<>(response, new HttpHeaders(), HttpStatus.OK);
     }
@@ -227,7 +228,7 @@ public class FlowController {
     public ResponseEntity<FlowPathPayload> pathFlow(
             @PathVariable(name = "flow-id") String flowId,
             @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
-        logger.debug("Flow path: {}={}, flow-id={}", CORRELATION_ID, correlationId, flowId);
+        logger.debug("Flow path: {}={}, {}={}", CORRELATION_ID, correlationId, FLOW_ID, flowId);
         FlowPathPayload response = flowService.pathFlow(flowId, correlationId);
         return new ResponseEntity<>(response, new HttpHeaders(), HttpStatus.OK);
     }

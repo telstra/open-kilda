@@ -4,7 +4,7 @@
 	"timestamp": 42,
 	"payload": {
 		"command": "install_ingress_flow",
-		"id": "7B",
+		"flowid": "7B",
 		"cookie": 123,
 		"switch_id": "00:00:00:00:00:00:00:09",
 		"input_port": 3,

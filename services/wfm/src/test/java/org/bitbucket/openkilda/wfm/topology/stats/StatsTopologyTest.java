@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.stream.IntStream;
 
 import static java.util.stream.Collectors.toList;
+import static org.bitbucket.openkilda.messaging.Utils.CORRELATION_ID;
 
 public class StatsTopologyTest extends AbstractStormTest {
     private static final ObjectMapper objectMapper = new ObjectMapper();
@@ -47,7 +48,7 @@ public class StatsTopologyTest extends AbstractStormTest {
         }).collect(toList());
         final List<PortStatsReply> replies = Collections.singletonList(new PortStatsReply(1, entries));
         InfoMessage message = new InfoMessage(new PortStatsData("00:00:00:00:00:00:00:01", replies),
-                timestamp, "correlation-id", Destination.WFM_STATS);
+                timestamp, CORRELATION_ID, Destination.WFM_STATS);
         kProducer.pushMessage(TOPIC, objectMapper.writeValueAsString(message));
     }
 
@@ -55,7 +56,7 @@ public class StatsTopologyTest extends AbstractStormTest {
     public void meterConfigStatsTest() throws Exception {
         final List<MeterConfigReply> stats = Collections.singletonList(new MeterConfigReply(2, Arrays.asList(1L, 2L, 3L)));
         InfoMessage message = new InfoMessage(new MeterConfigStatsData("00:00:00:00:00:00:00:01", stats),
-                timestamp, "correlation-id", Destination.WFM_STATS);
+                timestamp, CORRELATION_ID, Destination.WFM_STATS);
         kProducer.pushMessage(TOPIC, objectMapper.writeValueAsString(message));
     }
 
@@ -64,7 +65,7 @@ public class StatsTopologyTest extends AbstractStormTest {
         List<FlowStatsEntry> entries = Collections.singletonList(new FlowStatsEntry((short) 1, 0x1FFFFFFFFL, 1500L, 3000L));
         final List<FlowStatsReply> stats = Collections.singletonList(new FlowStatsReply(3, entries));
         InfoMessage message = new InfoMessage(new FlowStatsData("00:00:00:00:00:00:00:01", stats),
-                timestamp, "correlation-id", Destination.WFM_STATS);
+                timestamp, CORRELATION_ID, Destination.WFM_STATS);
         kProducer.pushMessage(TOPIC, objectMapper.writeValueAsString(message));
     }
 }

@@ -53,21 +53,25 @@ public class ErrorBolt extends BaseRichBolt {
     public void execute(Tuple tuple) {
         logger.debug("Ingoing tuple: {}", tuple);
 
-        ComponentType componentId = ComponentType.valueOf(tuple.getSourceComponent());
-        ErrorType param = (ErrorType) tuple.getValueByField(ERROR_TYPE_FIELD);
-        Message message = (Message) tuple.getValueByField(MESSAGE_FIELD);
+        try {
 
-        ErrorMessage error = new ErrorMessage(new ErrorData(0, null, param, componentId.toString()),
-                message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND);
-        Values values = new Values(error);
+            ComponentType componentId = ComponentType.valueOf(tuple.getSourceComponent());
+            ErrorType param = (ErrorType) tuple.getValueByField(ERROR_TYPE_FIELD);
+            Message message = (Message) tuple.getValueByField(MESSAGE_FIELD);
 
-        logger.debug("Error message: values={}", values);
+            ErrorMessage error = new ErrorMessage(new ErrorData(0, null, param, componentId.toString()),
+                    message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND);
+            Values values = new Values(error);
 
-        outputCollector.emit(StreamType.ERROR.toString(), tuple, values);
+            logger.debug("Error message: values={}", values);
 
-        logger.debug("Error message ack: values={}", values);
+            outputCollector.emit(StreamType.ERROR.toString(), tuple, values);
 
-        outputCollector.ack(tuple);
+            logger.debug("Error message ack: values={}", values);
+        } catch (Exception exception) {
+            logger.error("Could not process message: {}", tuple);
+            outputCollector.ack(tuple);
+        }
     }
 
     /**

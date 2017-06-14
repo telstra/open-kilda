@@ -88,7 +88,7 @@ import java.util.concurrent.TimeoutException;
  */
 public class SwitchManager implements IFloodlightModule, IFloodlightService, ISwitchManager, IOFMessageListener {
     public static final long FLOW_COOKIE_MASK = 0x60000000FFFFFFFFL;
-    static final U64 NON_SYSTEM_MASK = U64.of(0x7fffffffffffffffL);
+    static final U64 NON_SYSTEM_MASK = U64.of(0x80000000FFFFFFFFL);
     private static final long DROP_COOKIE = 0x8000000000000001L;
     private static final Logger logger = LoggerFactory.getLogger(SwitchManager.class);
     private IFloodlightProviderService floodlightProvider;
@@ -532,7 +532,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         OFFlowDelete flowDelete = ofFactory.buildFlowDelete()
                 .setCookie(U64.of(cookie))
                 .setCookieMask(NON_SYSTEM_MASK)
-                .setFlags(Collections.singleton(OFFlowModFlags.SEND_FLOW_REM))
                 .build();
 
         boolean response = sw.write(flowDelete);

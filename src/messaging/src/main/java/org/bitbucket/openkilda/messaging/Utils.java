@@ -19,11 +19,11 @@ public final class Utils {
     /**
      * The transaction ID property name.
      */
-    public static final String TRANSACTION_ID = "transaction-id";
+    public static final String TRANSACTION_ID = "transaction_id";
     /**
      * The correlation ID header name.
      */
-    public static final String CORRELATION_ID = "correlation-id";
+    public static final String CORRELATION_ID = "correlation_id";
     /**
      * The destination property.
      */
@@ -32,6 +32,10 @@ public final class Utils {
      * The payload property.
      */
     public static final String PAYLOAD = "payload";
+    /**
+     * The payload property.
+     */
+    public static final String FLOW_ID = "flowid";
     /**
      * The default correlation ID value.
      */

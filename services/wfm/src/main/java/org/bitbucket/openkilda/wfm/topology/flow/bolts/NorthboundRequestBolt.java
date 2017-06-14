@@ -108,8 +108,8 @@ public class NorthboundRequestBolt extends BaseRichBolt {
             } else if (data instanceof FlowsGetRequest) {
                 logger.debug("Flows get message: values={}", values);
 
-                values = new Values(message, ErrorType.NOT_IMPLEMENTED);
-                outputCollector.emit(StreamType.ERROR.toString(), tuple, values);
+                values = new Values(message, null);
+                outputCollector.emit(StreamType.READ.toString(), tuple, values);
 
             } else if (data instanceof FlowPathRequest) {
                 String flowId = ((FlowPathRequest) data).getPayload().getId();
