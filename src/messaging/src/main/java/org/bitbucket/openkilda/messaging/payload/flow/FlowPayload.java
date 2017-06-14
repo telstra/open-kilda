@@ -1,8 +1,10 @@
 package org.bitbucket.openkilda.messaging.payload.flow;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
+import static org.bitbucket.openkilda.messaging.Utils.FLOW_ID;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
@@ -16,8 +18,9 @@ import java.util.Objects;
  */
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonIgnoreProperties(ignoreUnknown = true)
 @JsonPropertyOrder({
-        "id",
+        FLOW_ID,
         "source",
         "destination",
         "maximum-bandwidth",
@@ -46,7 +49,7 @@ public class FlowPayload implements Serializable {
     /**
      * Flow id.
      */
-    @JsonProperty("id")
+    @JsonProperty(FLOW_ID)
     private String id;
 
     /**
@@ -92,7 +95,7 @@ public class FlowPayload implements Serializable {
      * @param outputVlanType   flow output vlan tag action
      */
     @JsonCreator
-    public FlowPayload(@JsonProperty("id") final String id,
+    public FlowPayload(@JsonProperty(FLOW_ID) final String id,
                        @JsonProperty("cooke") final Long cookie,
                        @JsonProperty("source") final FlowEndpointPayload source,
                        @JsonProperty("destination") final FlowEndpointPayload destination,
@@ -297,7 +300,7 @@ public class FlowPayload implements Serializable {
     @Override
     public String toString() {
         return toStringHelper(this)
-                .add("id", id)
+                .add(FLOW_ID, id)
                 .add("cookie", cookie)
                 .add("source", source)
                 .add("destination", destination)

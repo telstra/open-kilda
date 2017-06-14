@@ -64,7 +64,7 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
         StreamType streamId = StreamType.valueOf(tuple.getSourceStreamId());
         String flowId = (String) tuple.getValueByField(FLOW_ID_FIELD);
         Values values;
-        FlowStatusType flowStatus;
+        FlowStatusType flowStatus = null;
 
         try {
             switch (componentId) {
@@ -138,7 +138,9 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
                             break;
 
                         case READ:
-                            flowStatus = flowStates.get(flowId);
+                            if (flowId != null) {
+                                flowStatus = flowStates.get(flowId);
+                            }
 
                             if (flowStatus != null || flowId == null) {
                                 logger.debug("Flow get message: {}={}, flow-id={}, component={}, stream={}",

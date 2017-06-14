@@ -1,6 +1,7 @@
 package org.bitbucket.openkilda.messaging.payload.flow;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
+import static org.bitbucket.openkilda.messaging.Utils.FLOW_ID;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -18,7 +19,7 @@ import java.util.Objects;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
         "command",
-        "id",
+        FLOW_ID,
         "status"})
 public class FlowIdStatusPayload implements Serializable {
     /**
@@ -29,7 +30,7 @@ public class FlowIdStatusPayload implements Serializable {
     /**
      * Flow id.
      */
-    @JsonProperty("id")
+    @JsonProperty(FLOW_ID)
     private String id;
 
     /**
@@ -60,7 +61,7 @@ public class FlowIdStatusPayload implements Serializable {
      * @param status flow status
      */
     @JsonCreator
-    public FlowIdStatusPayload(@JsonProperty("id") final String id,
+    public FlowIdStatusPayload(@JsonProperty(FLOW_ID) final String id,
                                @JsonProperty("status") final FlowStatusType status) {
         setId(id);
         setStatus(status);
@@ -109,7 +110,7 @@ public class FlowIdStatusPayload implements Serializable {
     @Override
     public String toString() {
         return toStringHelper(this)
-                .add("id", id)
+                .add(FLOW_ID, id)
                 .add("status", status)
                 .toString();
     }

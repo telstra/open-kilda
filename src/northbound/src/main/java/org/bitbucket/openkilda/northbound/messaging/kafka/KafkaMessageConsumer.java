@@ -86,4 +86,11 @@ public class KafkaMessageConsumer {
         }
         throw new MessageException(OPERATION_TIMED_OUT, System.currentTimeMillis());
     }
+
+    /**
+     * Clears message queue.
+     */
+    public void clear() {
+        messages.clear();
+    }
 }

@@ -1,5 +1,6 @@
 package org.bitbucket.openkilda.messaging.command.flow;
 
+import static org.bitbucket.openkilda.messaging.Utils.FLOW_ID;
 import static org.bitbucket.openkilda.messaging.Utils.TRANSACTION_ID;
 
 import org.bitbucket.openkilda.messaging.Utils;
@@ -17,7 +18,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 @JsonPropertyOrder({
         "command",
         TRANSACTION_ID,
-        "id",
+        FLOW_ID,
         "cookie",
         "switch_id"})
 public class BaseFlow extends CommandData {
@@ -30,7 +31,7 @@ public class BaseFlow extends CommandData {
     /**
      * The flow id.
      */
-    @JsonProperty("id")
+    @JsonProperty(FLOW_ID)
     protected String id;
 
     /**
@@ -56,7 +57,7 @@ public class BaseFlow extends CommandData {
      */
     @JsonCreator
     public BaseFlow(@JsonProperty(TRANSACTION_ID) final Long transactionId,
-                    @JsonProperty("id") final String id,
+                    @JsonProperty(FLOW_ID) final String id,
                     @JsonProperty("cookie") final Long cookie,
                     @JsonProperty("switch_id") final String switchId) {
         setTransactionId(transactionId);

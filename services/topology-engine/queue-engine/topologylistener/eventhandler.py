@@ -9,6 +9,7 @@ from pprint import pprint
 
 print "Topology engine started."
 handleableMessages = ['switch', 'isl', 'port']
+handleableCommands = ['flow_create', 'flow_delete', 'flow_update', 'flow_path', 'flow_get', 'flows_get']
 
 def get_events(threadcount):
     global workerthreadcount
@@ -21,7 +22,8 @@ def get_events(threadcount):
             if "TOPOLOGY_ENGINE" != event.destination:
                 print "Skip message for {}".format(event.destination)
                 continue
-            if event.get_message_type() in handleableMessages:
+            if event.get_message_type() in handleableMessages or event.get_command() in handleableCommands:
+                print "Processing message for {}".format(event.destination)
                 t = threading.Thread(target=topo_event_handler, args=(event,))
                 t.daemon =True
                 t.start()

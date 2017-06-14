@@ -1,6 +1,7 @@
 package org.bitbucket.openkilda.messaging.payload.flow;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
+import static org.bitbucket.openkilda.messaging.Utils.FLOW_ID;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -20,8 +21,8 @@ import java.util.Objects;
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
-        "id",
-        "path"})
+        FLOW_ID,
+        "flowpath"})
 public class FlowPathPayload implements Serializable {
     /**
      * Serialization version number constant.
@@ -31,13 +32,13 @@ public class FlowPathPayload implements Serializable {
     /**
      * The id of the flow.
      */
-    @JsonProperty("id")
+    @JsonProperty(FLOW_ID)
     protected String id;
 
     /**
      * The path of the flow.
      */
-    @JsonProperty("path")
+    @JsonProperty("flowpath")
     protected List<String> path;
 
     /**
@@ -48,8 +49,8 @@ public class FlowPathPayload implements Serializable {
      * @throws IllegalArgumentException if flow id or flow path is null or empty
      */
     @JsonCreator
-    public FlowPathPayload(@JsonProperty("id") final String id,
-                           @JsonProperty("path") final List<String> path) {
+    public FlowPathPayload(@JsonProperty(FLOW_ID) final String id,
+                           @JsonProperty("flowpath") final List<String> path) {
         setFlowName(id);
         setPath(path);
     }
@@ -102,8 +103,8 @@ public class FlowPathPayload implements Serializable {
     @Override
     public String toString() {
         return toStringHelper(this)
-                .add("id", id)
-                .add("path", path)
+                .add(FLOW_ID, id)
+                .add("flowpath", path)
                 .toString();
     }
 

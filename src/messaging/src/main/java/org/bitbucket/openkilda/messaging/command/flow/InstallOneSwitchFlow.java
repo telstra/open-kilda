@@ -1,6 +1,7 @@
 package org.bitbucket.openkilda.messaging.command.flow;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
+import static org.bitbucket.openkilda.messaging.Utils.FLOW_ID;
 import static org.bitbucket.openkilda.messaging.Utils.TRANSACTION_ID;
 
 import org.bitbucket.openkilda.messaging.Utils;
@@ -25,7 +26,7 @@ import java.util.Objects;
 @JsonPropertyOrder({
         "command",
         TRANSACTION_ID,
-        "id",
+        FLOW_ID,
         "cookie",
         "switch_id",
         "input_port",
@@ -33,7 +34,9 @@ import java.util.Objects;
         "input_vlan_id",
         "output_vlan_id",
         "output_vlan_type",
-        "bandwidth"})
+        "bandwidth",
+        "src_meter_id",
+        "dst_meter_id"})
 public class InstallOneSwitchFlow extends BaseInstallFlow {
     /**
      * Serialization version number constant.
@@ -95,7 +98,7 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
      */
     @JsonCreator
     public InstallOneSwitchFlow(@JsonProperty(TRANSACTION_ID) final Long transactionId,
-                                @JsonProperty("id") final String id,
+                                @JsonProperty(FLOW_ID) final String id,
                                 @JsonProperty("cookie") final Long cookie,
                                 @JsonProperty("switch_id") final String switchId,
                                 @JsonProperty("input_port") final Integer inputPort,
@@ -267,7 +270,7 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
     public String toString() {
         return toStringHelper(this)
                 .add(TRANSACTION_ID, transactionId)
-                .add("id", id)
+                .add(FLOW_ID, id)
                 .add("cookie", cookie)
                 .add("switch_id", switchId)
                 .add("input_port", inputPort)

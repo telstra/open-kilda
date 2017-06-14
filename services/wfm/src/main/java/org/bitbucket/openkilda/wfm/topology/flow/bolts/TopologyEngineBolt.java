@@ -2,6 +2,7 @@ package org.bitbucket.openkilda.wfm.topology.flow.bolts;
 
 import static org.bitbucket.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.bitbucket.openkilda.messaging.Utils.MAPPER;
+import static org.bitbucket.openkilda.messaging.Utils.TRANSACTION_ID;
 import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.fieldMessage;
 import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.fieldsFlowStatus;
 import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.fieldsMessageErrorType;
@@ -77,8 +78,9 @@ public class TopologyEngineBolt extends BaseRichBolt {
                     String switchId = installData.getSwitchId();
                     String flowId = installData.getId();
 
-                    logger.debug("Flow install message: {}={}, switch-id={}, flow-id={}, transaction-id={}, message={}",
-                            CORRELATION_ID, message.getCorrelationId(), switchId, flowId, transactionId, request);
+                    logger.debug("Flow install message: {}={}, switch-id={}, flow-id={}, {}={}, message={}",
+                            CORRELATION_ID, message.getCorrelationId(), switchId,
+                            flowId, TRANSACTION_ID, transactionId, request);
 
                     message.setDestination(Destination.CONTROLLER);
                     values = new Values(MAPPER.writeValueAsString(message), switchId, flowId, transactionId);
@@ -91,8 +93,9 @@ public class TopologyEngineBolt extends BaseRichBolt {
                     String switchId = removeData.getSwitchId();
                     String flowId = removeData.getId();
 
-                    logger.debug("Flow remove message: {}={}, switch-id={}, flow-id={}, transaction-id={}, message={}",
-                            CORRELATION_ID, message.getCorrelationId(), switchId, flowId, transactionId, request);
+                    logger.debug("Flow remove message: {}={}, switch-id={}, flow-id={}, {}={}, message={}",
+                            CORRELATION_ID, message.getCorrelationId(), switchId,
+                            flowId, TRANSACTION_ID, transactionId, request);
 
                     message.setDestination(Destination.CONTROLLER);
                     values = new Values(MAPPER.writeValueAsString(message), switchId, flowId, transactionId);

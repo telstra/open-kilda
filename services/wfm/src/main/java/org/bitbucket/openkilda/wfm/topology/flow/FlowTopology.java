@@ -1,5 +1,7 @@
 package org.bitbucket.openkilda.wfm.topology.flow;
 
+import static org.bitbucket.openkilda.messaging.Utils.TRANSACTION_ID;
+
 import org.bitbucket.openkilda.wfm.topology.AbstractTopology;
 import org.bitbucket.openkilda.wfm.topology.flow.bolts.ErrorBolt;
 import org.bitbucket.openkilda.wfm.topology.flow.bolts.NorthboundReplyBolt;
@@ -27,7 +29,6 @@ import org.apache.storm.tuple.Fields;
 public class FlowTopology extends AbstractTopology {
     public static final String FLOW_ID_FIELD = "flow-id";
     public static final String SWITCH_ID_FIELD = "switch-id";
-    public static final String TRANSACTION_ID_FIELD = "transaction-id";
     public static final String STATUS_FIELD = "status";
     public static final String ERROR_TYPE_FIELD = "error-type";
     public static final Fields fieldFlowId = new Fields(FLOW_ID_FIELD);
@@ -36,7 +37,7 @@ public class FlowTopology extends AbstractTopology {
     public static final Fields fieldsMessageFlowId = new Fields(MESSAGE_FIELD, FLOW_ID_FIELD);
     public static final Fields fieldsMessageErrorType = new Fields(MESSAGE_FIELD, ERROR_TYPE_FIELD);
     public static final Fields fieldsMessageSwitchFlowTransaction =
-            new Fields(MESSAGE_FIELD, SWITCH_ID_FIELD, FLOW_ID_FIELD, TRANSACTION_ID_FIELD);
+            new Fields(MESSAGE_FIELD, SWITCH_ID_FIELD, FLOW_ID_FIELD, TRANSACTION_ID);
     private static final Logger logger = LogManager.getLogger(FlowTopology.class);
     private static final String TOPIC = "kilda-test";
 
