@@ -5,7 +5,9 @@ pipelines:
     mvp1rc:
       - step:
           script:
-            - apt-get update && apt-get install -y maven
+            - apt-get update && apt-get install -y maven openjdk-8-jdk
+            - export JAVA_VER=8
+            - export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
             - pip install -r bitbucket-python-pipeline-requirements.txt
             - pip install docker-compose
             - make build-base
