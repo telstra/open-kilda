@@ -5,6 +5,7 @@ pipelines:
     mvp1rc:
       - step:
           script:
+            - echo "deb http://http.debian.net/debian jessie-backports main" >> /etc/apt/sources.list
             - apt-get update && apt-get install -y maven openjdk-8-jdk
             - export JAVA_VER=8
             - export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
