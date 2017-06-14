@@ -7,4 +7,3 @@ TBD: This README is currently out of date and needs to be updated. This is the t
 
 # How to Build Kilda Controller
 
-From the base directory run these commands:
