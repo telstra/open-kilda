@@ -2,12 +2,13 @@ image: python:3.5.1
 
 pipelines:
   branches:
-    feature/*:
+    mvp1rc:
       - step:
           script:
-            - git fetch
-            - git checkout -b rc
-            - git push -v --tags origin rc:rc
+            - make build-base
+            #- git fetch
+            #- git checkout -b rc
+            #- git push -v --tags origin rc:rc
     rc:
       - step:
           script:
