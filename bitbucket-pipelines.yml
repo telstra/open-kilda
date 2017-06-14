@@ -1,4 +1,4 @@
-image: java:1.8u66
+image: java
 
 pipelines:
   branches:
