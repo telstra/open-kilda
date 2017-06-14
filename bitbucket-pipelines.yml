@@ -5,6 +5,9 @@ pipelines:
     mvp1rc:
       - step:
           script:
+            - apt-get update && apt-get install -y maven
+            - pip install -r bitbucket-python-pipeline-requirements.txt
+            - pip install docker-compose
             - make build-base
             - make atdd
             #- git fetch
