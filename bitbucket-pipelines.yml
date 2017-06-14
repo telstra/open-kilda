@@ -6,6 +6,7 @@ pipelines:
       - step:
           script:
             - make build-base
+            - make atdd
             #- git fetch
             #- git checkout -b rc
             #- git push -v --tags origin rc:rc
