@@ -5,6 +5,7 @@ pipelines:
     mvp1rc:
       - step:
           script:
+            - git submodule update --init --recursive
             - apt-get update && apt-get install -y maven python python-pip
             - pip install --upgrade pip
             - pip install -r bitbucket-python-pipeline-requirements.txt
