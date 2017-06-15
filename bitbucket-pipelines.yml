@@ -6,8 +6,8 @@ pipelines:
       - step:
           script:
             - apt-get update && apt-get install -y maven python python-pip
+            - pip install --upgrade pip
             - pip install -r bitbucket-python-pipeline-requirements.txt
-            - pip install docker-compose
             - make build-base
             - make atdd
             #- git fetch
