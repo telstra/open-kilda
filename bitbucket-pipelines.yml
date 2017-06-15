@@ -5,6 +5,7 @@ pipelines:
     mvp1rc:
       - step:
           script:
+            - apt-get update && apt-get install -y apt-utils
             - git submodule update --init --recursive
             - add-apt-repository "deb http://ppa.launchpad.net/webupd8team/java/ubuntu jessie main"
             - apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys EEA14886
