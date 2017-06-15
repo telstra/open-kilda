@@ -69,7 +69,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
      */
     @Override
     public void switchRemoved(final DatapathId switchId) {
-        Message message = buildSwitchMessage(switchService.getSwitch(switchId), SwitchEventType.REMOVED);
+        Message message = buildSwitchMessage(switchId, SwitchEventType.REMOVED);
         kafkaProducer.postMessage(TOPIC, message);
     }
 
@@ -117,7 +117,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
      */
     @Override
     public void switchDeactivated(final DatapathId switchId) {
-        Message message = buildSwitchMessage(switchService.getSwitch(switchId), SwitchEventType.DEACTIVATED);
+        Message message = buildSwitchMessage(switchId, SwitchEventType.DEACTIVATED);
         kafkaProducer.postMessage(TOPIC, message);
     }
 
@@ -188,7 +188,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
             InetAddress inetAddress = InetAddress.getByName(switchAddress);
             host = inetAddress.getHostName();
         } catch (UnknownHostException exception) {
-            host = "Unknown host";
+            host = "unknown";
         }
         return host;
     }
@@ -201,11 +201,29 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
      * @return Message
      */
     private Message buildSwitchMessage(final IOFSwitch sw, final SwitchEventType eventType) {
-        String switchAddress = sw.getInetAddress().toString();
+        String switchId = sw.getId().toString();
+        String switchAddress = sw.getInetAddress().toString().substring(1);
+        String switchHostname = getNameByAddress(switchAddress);
         String description = String.format("%s %s", sw.getSwitchDescription().getManufacturerDescription(),
                 sw.getSwitchDescription().getSoftwareDescription());
-        InfoData data = new SwitchInfoData(sw.getId().toString(), eventType,
-                switchAddress, getNameByAddress(switchAddress), description);
+
+        InfoData data = new SwitchInfoData(switchId, eventType, switchAddress, switchHostname, description);
+
+        return buildMessage(data);
+    }
+
+    /**
+     * Builds a switch message type.
+     *
+     * @param switchId  switch id
+     * @param eventType type of event
+     * @return Message
+     */
+    private Message buildSwitchMessage(final DatapathId switchId, final SwitchEventType eventType) {
+        final String unknown = "unknown";
+
+        InfoData data = new SwitchInfoData(switchId.toString(), eventType, unknown, unknown, unknown);
+
         return buildMessage(data);
     }
 

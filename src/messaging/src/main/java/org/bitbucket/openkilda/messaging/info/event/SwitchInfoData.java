@@ -22,7 +22,7 @@ import java.util.Objects;
         "switch_id",
         "state",
         "address",
-        "name",
+        "hostname",
         "description"})
 public class SwitchInfoData extends InfoData {
     /**
@@ -143,18 +143,18 @@ public class SwitchInfoData extends InfoData {
     }
 
     /**
-     * Gets switch name.
+     * Gets switch hostname.
      *
-     * @return switch name
+     * @return switch hostname
      */
     public String getHostname() {
         return hostname;
     }
 
     /**
-     * Sets switch name.
+     * Sets switch hostname.
      *
-     * @param hostname switch name
+     * @param hostname switch hostname
      */
     public void setHostname(String hostname) {
         this.hostname = hostname;

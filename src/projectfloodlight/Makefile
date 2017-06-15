@@ -14,6 +14,7 @@ default: $(OPENFLOWJ_JAR) openflow.lua $(FLOODLIGHT_JAR)
 
 $(LOXIGEN_DIR):
 	git clone https://github.com/floodlight/loxigen.git $(LOXIGEN_DIR)
+	cd $(LOXIGEN_DIR) && git checkout bec5ec03459ae60c8da0ef6a4791e9ceeb7c1939
 	cp ../../base/base-floodlight/app/legacy_meter $(LOXIGEN_DIR)/openflow_input/
 	cp ../../base/base-floodlight/app/nicira_l2 $(LOXIGEN_DIR)/openflow_input/
 	cd $(LOXIGEN_DIR) && patch -p1 < ../../../base/base-floodlight/app/loxigen.diff

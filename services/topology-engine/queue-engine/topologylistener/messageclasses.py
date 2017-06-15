@@ -1,20 +1,10 @@
 #!/usr/bin/python
 import json
-import db
 import requests
-import time
-from jsonschema import validate
-from py2neo import Node, Relationship
-from kafka import KafkaProducer
-import datetime
+from py2neo import Node
 
 from flow import *
 
-
-graph = db.create_p2n_driver()
-bootstrapServer = 'kafka.pendev:9092'
-topic = 'kilda-test'
-producer = KafkaProducer(bootstrap_servers=bootstrapServer)
 
 def repair_flows(switchid):
     flows = (graph.run("MATCH (n)-[r:flow]-(m) where any(i in r.flowpath where i = '{}') return r".format(switchid))).data()
@@ -77,6 +67,8 @@ class MessageItem(object):
                 eventHandled = True #needs to handled correctly
             if self.get_message_type() == "switch" and self.payload['state'] == "DEACTIVATED":
                 eventHandled = self.deactivate_switch()
+            if self.get_message_type() == "switch" and self.payload['state'] == "REMOVED":
+                eventHandled = self.remove_switch()
             if self.get_command() == "flow_create":
                 eventHandled = self.create_flow()
             if self.get_command() == "flow_delete":
@@ -94,6 +86,15 @@ class MessageItem(object):
             print e
 
     def activate_switch(self):
+        switchid = self.payload['switch_id']
+        switch = graph.find_one('switch',
+                                property_key='name',
+                                property_value='{}'.format(switchid))
+        if switch:
+            graph.merge(switch)
+            switch['state'] = "active"
+            switch.push()
+            print "Activating switch: {}".format(switchid)
         return True
 
     def create_switch(self):
@@ -104,13 +105,19 @@ class MessageItem(object):
         if not switch:
             newSwitch = Node("switch", 
                              name="{}".format(switchid), 
-                             state="active")
+                             state="active",
+                             address=self.payload['address'],
+                             hostname=self.payload['hostname'],
+                             description=self.payload['description'])
             graph.create(newSwitch)
             print "Adding switch: {}".format(switchid)
             return True
         else:
             graph.merge(switch)
             switch['state'] = "active"
+            switch['address'] = self.payload['address']
+            switch['hostname'] = self.payload['hostname']
+            switch['description'] = self.payload['description']
             switch.push()
             print "Activating switch: {}".format(switchid)
             return True
@@ -133,6 +140,18 @@ class MessageItem(object):
         else:
             print "Switch '{0}' does not exist in topology.".format(switchid)
             return True
+
+    def remove_switch(self):
+        switchid = self.payload['switch_id']
+        switch = graph.find_one('switch',
+                                property_key='name',
+                                property_value='{}'.format(switchid))
+        if switch:
+            graph.merge(switch)
+            switch['state'] = "removed"
+            switch.push()
+            print "Removing switch: {}".format(switchid)
+        return True
 
     def create_isl(self):
 
@@ -190,15 +209,16 @@ class MessageItem(object):
         flow_id = content['flowid']
         source = content['source']
         destination = content['destination']
-        transit_vlan_forward = assign_transit_vlan()
-        transit_vlan_reverse = assign_transit_vlan()
+        cookie = allocate_cookie()
+        transit_vlan_forward = allocate_transit_vlan_id()
+        transit_vlan_reverse = allocate_transit_vlan_id()
 
         print "Create flow: correlation_id={}, flow_id={}".format(self.correlation_id, flow_id)
 
-        (all_flows, forward_flow_switches, reverse_flow_switches) = prepare_flows(
-            content, source, destination, transit_vlan_forward, transit_vlan_reverse)
+        (all_flows, forward_flow_switches, reverse_flow_switches) = create_flows(
+            content, source, destination, transit_vlan_forward, transit_vlan_reverse, cookie)
 
-        if not all_flows or not forward_flow_switches or not reverse_flow_switches:
+        if not all_flows:
             print "ERROR: flows were not build: all_flows={}".format(all_flows)
             return False
 
@@ -210,9 +230,8 @@ class MessageItem(object):
             print "ERROR: switches were not found: start_node={}, end_node={}".format(start, end)
             return False
 
-        store_flows(start, end, content, source, destination,
-                    transit_vlan_forward, transit_vlan_reverse,
-                    forward_flow_switches, reverse_flow_switches)
+        store_flows(start, end, content, source, destination, transit_vlan_forward, transit_vlan_reverse,
+                    forward_flow_switches, reverse_flow_switches, cookie)
 
         print 'Flow stored: flow_id={}'.format(flow_id)
 
@@ -223,13 +242,17 @@ class MessageItem(object):
 
         print "Delete flow: correlation_id={}, flow_id={}".format(self.correlation_id, flow_id)
 
-        switches = find_flow_switches(flow_id)
+        (switches, old_cookie, old_transit_vlan_forward, old_transit_vlan_reverse) = find_flow_path(flow_id)
 
         print "Deletion flow path={}".format(switches)
 
-        send_remove_commands(switches, flow_id, self.correlation_id)
+        send_remove_commands(switches, flow_id, self.correlation_id, old_cookie)
 
         delete_flows_from_database_by_flow_id(flow_id)
+
+        deallocate_cookie(old_cookie)
+        deallocate_transit_vlan_id(old_transit_vlan_forward)
+        deallocate_transit_vlan_id(old_transit_vlan_reverse)
 
         print 'Flow deleted: flow_id={}'.format(flow_id)
 
@@ -240,8 +263,9 @@ class MessageItem(object):
         flow_id = content['flowid']
         source = content['source']
         destination = content['destination']
-        transit_vlan_forward = assign_transit_vlan()
-        transit_vlan_reverse = assign_transit_vlan()
+        new_cookie = allocate_cookie()
+        new_transit_vlan_forward = allocate_transit_vlan_id()
+        new_transit_vlan_reverse = allocate_transit_vlan_id()
 
         print "Update flow: correlation_id={}, flow_id={}".format(self.correlation_id, flow_id)
 
@@ -249,13 +273,13 @@ class MessageItem(object):
 
         print "Deletion flow ids={}".format(relationships_ids)
 
-        switches = find_flow_switches(flow_id)
+        (switches, old_cookie, old_transit_vlan_forward, old_transit_vlan_reverse) = find_flow_path(flow_id)
 
         for relationship_id in relationships_ids:
             delete_flows_from_database_by_relationship_id(relationship_id['ID(r)'])
 
-        (all_flows, forward_flow_switches, reverse_flow_switches) = prepare_flows(
-            content, source, destination, transit_vlan_forward, transit_vlan_reverse)
+        (all_flows, forward_flow_switches, reverse_flow_switches) = create_flows(
+            content, source, destination, new_transit_vlan_forward, new_transit_vlan_reverse, new_cookie)
 
         (start, end) = find_nodes(source, destination)
 
@@ -263,12 +287,16 @@ class MessageItem(object):
             print "ERROR: switches were not found: start_node={}, end_node={}".format(start, end)
             return False
 
-        store_flows(start, end, content, source, destination,
-                    transit_vlan_forward, transit_vlan_reverse, forward_flow_switches, reverse_flow_switches)
+        store_flows(start, end, content, source, destination, new_transit_vlan_forward, new_transit_vlan_reverse,
+                    forward_flow_switches, reverse_flow_switches, new_cookie)
 
         send_install_commands(all_flows, self.correlation_id)
 
-        send_remove_commands(switches, flow_id, self.correlation_id)
+        send_remove_commands(switches, flow_id, self.correlation_id, old_cookie)
+
+        deallocate_cookie(old_cookie)
+        deallocate_transit_vlan_id(old_transit_vlan_forward)
+        deallocate_transit_vlan_id(old_transit_vlan_reverse)
 
         print 'Flow updated: flow_id={}'.format(flow_id)
 
@@ -277,13 +305,14 @@ class MessageItem(object):
     def get_flow(self):
         flow_id = self.payload['payload']['flowid']
 
-        found_flow = find_flow_by_id(flow_id)
-        flow = flow_response(found_flow[0]['r'])
+        flows = find_flow_by_id(flow_id)
 
-        print 'Got flow={}'.format(flow)
-
-        payload = {'payload': flow, 'message_type': "flow"}
-        send_message(payload, self.correlation_id, "INFO")
+        for data in flows:
+            flow = flow_response(data['r'])
+            if flow:
+                print 'Got flow={}'.format(flow)
+                payload = {'payload': flow, 'message_type': "flow"}
+                send_message(payload, self.correlation_id, "INFO")
 
         return True
 
@@ -313,88 +342,3 @@ class MessageItem(object):
         send_message(payload, self.correlation_id, "INFO")
 
         return True
-
-
-def get_timestamp():
-    return int(round(time.time() * 1000))
-
-
-def send_message(payload, correlation_id, message_type):
-    message = Message()
-    message.payload = payload
-    message.type = message_type
-    message.destination = "WFM"
-    message.timestamp = get_timestamp()
-    message.correlation_id = correlation_id
-    kafka_message = b'{}'.format(message.toJSON())
-    print 'topic: {}, message: {}'.format(topic, kafka_message)
-    message_result = producer.send(topic, kafka_message)
-    message_result.get(timeout=5)
-
-
-def send_install_commands(all_flows, correlation_id):
-    for flows in all_flows:
-        for flow in flows:
-            send_message(flow, correlation_id, "COMMAND")
-
-
-def send_remove_commands(switches, flow_id, correlation_id):
-    for switch in switches:
-        send_message(build_delete_flow(switch, str(flow_id)), correlation_id, "COMMAND")
-
-
-def find_nodes(source, destination):
-    start = graph.find_one('switch', property_key='name', property_value='{}'.format(source['switch-id']))
-    end = graph.find_one('switch', property_key='name', property_value='{}'.format(destination['switch-id']))
-    return start, end
-
-
-def find_flow_relationships_ids(flow_id):
-    query = "MATCH (a:switch)-[r:flow {{flowid: '{}'}}]->(b:switch) {} ID(r)"
-    relationships_ids = graph.run(query.format(flow_id, "return")).data()
-    return relationships_ids
-
-
-def find_flow_by_id(flow_id):
-    query = "MATCH (a:switch)-[r:flow {{flowid: '{}'}}]->(b:switch) {} r"
-    flow = graph.run(query.format(flow_id, "return")).data()
-    return flow
-
-
-def find_flow_switches(flow_id):
-    query = "MATCH (a:switch)-[r:flow {{flowid: '{}'}}]->(b:switch) return r.flowpath limit 1"
-    switches = graph.run(query.format(flow_id)).evaluate()
-    return switches
-
-
-def delete_flows_from_database_by_flow_id(flow_id):
-    query = "MATCH (a:switch)-[r:flow {{flowid: '{}'}}]->(b:switch) {} r"
-    graph.run(query.format(flow_id, "delete")).data()
-
-
-def delete_flows_from_database_by_relationship_id(rel_id):
-    query = "MATCH (a:switch)-[r:flow]-(b:switch) WHERE id(r)={} {} r"
-    graph.run(query.format(rel_id, "delete")).data()
-
-
-def store_flows(start, end, content, source, destination, forward_vlan, reverse_vlan, forward_switches, reverse_switches):
-    cookie = assign_cookie()
-    timestamp = datetime.datetime.utcnow().isoformat()
-
-    query = "MATCH (u:switch {{name:'{}'}}), (r:switch {{name:'{}'}}) MERGE (u)-[:flow " \
-            "{{flowid:'{}', cookie:'{}', bandwidth:'{}', " \
-            "src_port: '{}', dst_port: '{}', src_switch: '{}', dst_switch: '{}', src_vlan: '{}', dst_vlan: '{}'," \
-            "transit_vlan: '{}', description: '{}', last_updated: '{}', flowpath: {}}}]->(r)"
-
-    forward_path = query.format(start['name'], end['name'], content['flowid'], cookie, content['maximum-bandwidth'],
-                                source['port-id'], destination['port-id'], source['switch-id'], destination['switch-id'],
-                                source['vlan-id'], destination['vlan-id'], forward_vlan, content['description'],
-                                timestamp, str(forward_switches))
-
-    reverse_path = query.format(end['name'], start['name'], content['flowid'], cookie, content['maximum-bandwidth'],
-                                destination['port-id'], source['port-id'], destination['switch-id'], source['switch-id'],
-                                destination['vlan-id'], source['vlan-id'], reverse_vlan, content['description'],
-                                timestamp, str(reverse_switches))
-
-    graph.run(forward_path)
-    graph.run(reverse_path)
