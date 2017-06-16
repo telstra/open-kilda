@@ -26,11 +26,25 @@ pipelines:
     rc:
       - step:
           script:
+            - apt-get update && apt-get install -y apt-utils software-properties-common python-software-properties
+            - git submodule update --init --recursive
+            - add-apt-repository "deb http://ppa.launchpad.net/webupd8team/java/ubuntu yakkety main"
+            - apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys EEA14886
+            - apt-get update
+            - echo oracle-java8-installer shared/accepted-oracle-license-v1-1 select true | /usr/bin/debconf-set-selections
+            - apt-get install -y oracle-java8-installer
+            - export JAVA_VER=8
+            - export JAVA_HOME=/usr/lib/jvm/java-8-oracle
+            - apt-get install -y maven python python-pip
+            - pip install --upgrade pip
+            - pip install -r bitbucket-python-pipeline-requirements.txt
             - make build-base
-            - git fetch
-            - git checkout -b master
-            - git merge rc
-            - git push -v --tags origin master:master       
+            - make build-latest
+            #- make build-base
+            #- git fetch
+            #- git checkout -b master
+            #- git merge rc
+            #- git push -v --tags origin master:master       
     master:
       - step:
           script:
