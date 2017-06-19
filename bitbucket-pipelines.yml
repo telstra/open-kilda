@@ -19,7 +19,7 @@ pipelines:
             - pip install --upgrade pip
             - pip install -r bitbucket-python-pipeline-requirements.txt
             - make build-base
-            - dh -h
+            - df -h
             - make build-latest
             #- make atdd
             #- git fetch
