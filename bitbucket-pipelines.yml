@@ -5,6 +5,7 @@ pipelines:
     mvp1rc:
       - step:
           script:
+            - df -h
             - apt-get update && apt-get install -y apt-utils software-properties-common python-software-properties
             - git submodule update --init --recursive
             - add-apt-repository "deb http://ppa.launchpad.net/webupd8team/java/ubuntu yakkety main"
