@@ -1,5 +1,6 @@
 from flask import Flask, flash, redirect, render_template, request, session, abort, url_for, Response
 from flask_login import LoginManager, UserMixin, login_required, login_user, logout_user, current_user
+from py2neo import Graph
 
 from app import application
 from app import db
@@ -107,3 +108,27 @@ def api_v1_topo_clear():
 @login_required
 def topology_network():
     return render_template('topologynetwork.html')
+
+
+def create_p2n_driver():
+    graph = Graph("http://{}:{}@{}:7474/db/data/".format(
+        os.environ['neo4juser'], os.environ['neo4jpass'], os.environ['neo4jhost']))
+    return graph
+
+
+@application.route('/api/v1/topology/flows')
+@login_required
+def api_v1_topology_flows():
+    graph = create_p2n_driver()
+
+    try:
+        query = "MATCH (a:switch)-[r:flow ]->(b:switch) {} r"
+        result = graph.run(query.format("return")).data()
+
+        flows = []
+        for flow in result:
+            flows.append(flow['r'])
+
+        return str(json.dumps(flows, default=lambda o: o.__dict__, sort_keys=True))
+    except Exception as e:
+        return "error: {}".format(str(e))

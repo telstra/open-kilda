@@ -1,10 +1,7 @@
 package org.bitbucket.openkilda.topo;
 
-import static java.util.Base64.getEncoder;
 import static org.bitbucket.openkilda.DefaultParameters.mininetEndpoint;
 import static org.bitbucket.openkilda.DefaultParameters.topologyEndpoint;
-import static org.bitbucket.openkilda.DefaultParameters.topologyPassword;
-import static org.bitbucket.openkilda.DefaultParameters.topologyUsername;
 
 import org.glassfish.jersey.client.ClientConfig;
 
@@ -12,7 +9,6 @@ import java.io.IOException;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.Entity;
-import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
@@ -20,9 +16,6 @@ import javax.ws.rs.core.Response;
  * Helper methods for doing Topology tests.
  */
 public class TopologyHelp {
-    private static final String auth = topologyUsername + ":" + topologyPassword;
-    private static final String authHeaderValue = "Basic " + getEncoder().encodeToString(auth.getBytes());
-
     public static boolean DeleteMininetTopology() {
         long current = System.currentTimeMillis();
         Client client = ClientBuilder.newClient(new ClientConfig());
@@ -92,7 +85,6 @@ public class TopologyHelp {
                 .target(topologyEndpoint)
                 .path("/api/v1/topology/network")
                 .request()
-                .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
                 .get(String.class);
 
         return result;
@@ -111,7 +103,6 @@ public class TopologyHelp {
                 .target(topologyEndpoint)
                 .path("/api/v1/topology/clear")
                 .request()
-                .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
                 .get(String.class);
 
         return result;

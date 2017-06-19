@@ -2,6 +2,7 @@ package org.bitbucket.openkilda.atdd;
 
 import cucumber.api.java.en.Given;
 
+import org.bitbucket.openkilda.flow.FlowUtils;
 import org.bitbucket.openkilda.topo.TestUtils;
 
 /**
@@ -36,5 +37,11 @@ public class Common {
         TestUtils.clearEverything(kildaHost);
     }
 
-
+    /**
+     * This code will make sure there aren't any flows
+     */
+    @Given("^a clean flow topology$")
+    public void a_clean_flow_topology() throws Throwable {
+        FlowUtils.cleanupFlows();
+    }
 }
