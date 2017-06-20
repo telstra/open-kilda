@@ -6,6 +6,9 @@ from py2neo import Node
 from flow import *
 
 
+available_bandwidth_limit_factor = 0.9 #Kbps
+
+
 def repair_flows(switchid):
     flows = (graph.run("MATCH (n)-[r:flow]-(m) where any(i in r.flowpath where i = '{}') return r".format(switchid))).data()
     repairedFlowIDs = []
@@ -161,6 +164,8 @@ class MessageItem(object):
         a_port = path[0]['port_no']
         b_switch = path[1]['switch_id']
         b_port = path[1]['port_no']
+        speed = self.payload['speed']
+        available_bandwidth = int(speed * available_bandwidth_limit_factor)
 
         a_switchNode = graph.find_one('switch', 
                                       property_key='name', 
@@ -179,14 +184,24 @@ class MessageItem(object):
                                                     b_port)).data()
 
         if not islExists:
-            islQuery = "MATCH (u:switch {{name:'{}'}}), (r:switch {{name:'{}'}}) MERGE (u)-[:isl {{src_port: '{}', dst_port: '{}', src_switch: '{}', dst_switch: '{}', latency: '{}'}}]->(r)"
+            islQuery = "MATCH (u:switch {{name:'{}'}}), (r:switch {{name:'{}'}}) " \
+                       "MERGE (u)-[:isl {{" \
+                       "src_port: '{}',   " \
+                       "dst_port: '{}',   " \
+                       "src_switch: '{}', " \
+                       "dst_switch: '{}', " \
+                       "latency: '{}',    " \
+                       "speed: '{}',      " \
+                       "available_bandwidth: {}}}]->(r)"
             graph.run(islQuery.format(a_switchNode['name'],
                                       b_switchNode['name'],
                                       a_port,
                                       b_port,
                                       a_switch,
                                       b_switch,
-                                      latency))
+                                      latency,
+                                      speed,
+                                      int(available_bandwidth)))
 
             print "ISL between {} and {} created".format(a_switchNode['name'], 
                                                          b_switchNode['name'])
@@ -215,7 +230,7 @@ class MessageItem(object):
 
         print "Create flow: correlation_id={}, flow_id={}".format(self.correlation_id, flow_id)
 
-        (all_flows, forward_flow_switches, reverse_flow_switches) = create_flows(
+        (all_flows, forward_flow_switches, reverse_flow_switches, forward_isls, reverse_isls) = create_flows(
             content, source, destination, transit_vlan_forward, transit_vlan_reverse, cookie)
 
         if not all_flows:
@@ -231,24 +246,26 @@ class MessageItem(object):
             return False
 
         store_flows(start, end, content, source, destination, transit_vlan_forward, transit_vlan_reverse,
-                    forward_flow_switches, reverse_flow_switches, cookie)
+                    forward_flow_switches, reverse_flow_switches, cookie, forward_isls, reverse_isls)
 
         print 'Flow stored: flow_id={}'.format(flow_id)
 
         return True
 
     def delete_flow(self):
-        flow_id = self.payload['payload']['flowid']
+        content = self.payload['payload']
+        flow_id = content['flowid']
 
         print "Delete flow: correlation_id={}, flow_id={}".format(self.correlation_id, flow_id)
 
-        (switches, old_cookie, old_transit_vlan_forward, old_transit_vlan_reverse) = find_flow_path(flow_id)
+        (switches, old_cookie, old_transit_vlan_forward, old_transit_vlan_reverse,
+         forward_isls, reverse_isls, bandwidth) = find_flow_path(flow_id)
 
         print "Deletion flow path={}".format(switches)
 
         send_remove_commands(switches, flow_id, self.correlation_id, old_cookie)
 
-        delete_flows_from_database_by_flow_id(flow_id)
+        delete_flows_from_database_by_flow_id(flow_id, forward_isls, reverse_isls, bandwidth)
 
         deallocate_cookie(old_cookie)
         deallocate_transit_vlan_id(old_transit_vlan_forward)
@@ -273,12 +290,14 @@ class MessageItem(object):
 
         print "Deletion flow ids={}".format(relationships_ids)
 
-        (switches, old_cookie, old_transit_vlan_forward, old_transit_vlan_reverse) = find_flow_path(flow_id)
+        (switches, old_cookie, old_transit_vlan_forward, old_transit_vlan_reverse,
+         forward_isls, reverse_isls, bandwidth) = find_flow_path(flow_id)
 
         for relationship_id in relationships_ids:
-            delete_flows_from_database_by_relationship_id(relationship_id['ID(r)'])
+            delete_flows_from_database_by_relationship_id(
+                relationship_id['ID(r)'], forward_isls, reverse_isls, bandwidth)
 
-        (all_flows, forward_flow_switches, reverse_flow_switches) = create_flows(
+        (all_flows, forward_flow_switches, reverse_flow_switches, forward_isls, reverse_isls) = create_flows(
             content, source, destination, new_transit_vlan_forward, new_transit_vlan_reverse, new_cookie)
 
         (start, end) = find_nodes(source, destination)
@@ -288,7 +307,7 @@ class MessageItem(object):
             return False
 
         store_flows(start, end, content, source, destination, new_transit_vlan_forward, new_transit_vlan_reverse,
-                    forward_flow_switches, reverse_flow_switches, new_cookie)
+                    forward_flow_switches, reverse_flow_switches, new_cookie, forward_isls, reverse_isls)
 
         send_install_commands(all_flows, self.correlation_id)
 
