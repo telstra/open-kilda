@@ -1,4 +1,5 @@
 import os
+import re
 import time
 import datetime
 import requests
@@ -10,7 +11,7 @@ import db
 
 __all__ = ['allocate_cookie', 'deallocate_cookie', 'allocate_transit_vlan_id', 'deallocate_transit_vlan_id',
            'find_flow_by_id', 'store_flows', 'find_nodes', 'find_flow_relationships_ids', 'find_flow_path',
-           'delete_flows_from_database_by_relationship_id', 'delete_flows_from_database_by_flow_id', 'create_flows',
+           'delete_flows_from_database_by_relationship_ids', 'delete_flows_from_database_by_flow_id', 'create_flows',
            'send_install_commands', 'send_remove_commands', 'send_message', 'flow_response', 'graph']
 
 
@@ -241,6 +242,14 @@ def get_one_switch_flows(src_switch, src_port, src_vlan, dst_switch, dst_port, d
     return [[forward_flow], [reverse_flow]]
 
 
+def form_flow_links(isls):
+    flow_links = []
+    for relationship in isls:
+        isl = relationship['data']
+        flow_links.append("{}-{}".format(str(isl['src_switch']), str(isl['src_port'])))
+    return flow_links
+
+
 def get_path(src_switch, src_port, src_vlan, dst_switch, dst_port, dst_vlan, bandwidth, transit_vlan, flow_id, cookie):
     relationships = get_relationships(src_switch, dst_switch)
     output_action = choose_output_action(int(src_vlan), int(dst_vlan))
@@ -269,20 +278,23 @@ def flow_response(flow):
     return data if is_forward_cookie(flow['cookie']) else None
 
 
-def create_flows(content, source, destination, transit_vlan_forward, transit_vlan_reverse, cookie):
+def create_flows(content, transit_vlan_forward, transit_vlan_reverse, cookie):
+    source = content['source']
+    destination = content['destination']
+
     if source['switch-id'] == destination['switch-id']:
-        print "Create one switch flow"
 
         all_flows = get_one_switch_flows(
-            source['switch-id'], source['port-id'], source['vlan-id'], destination['switch-id'], destination['port-id'],
-            destination['vlan-id'], content['maximum-bandwidth'], content['flowid'], cookie)
+            source['switch-id'], source['port-id'], source['vlan-id'],
+            destination['switch-id'], destination['port-id'], destination['vlan-id'],
+            content['maximum-bandwidth'], content['flowid'], cookie)
 
         forward_isls = []
         reverse_isls = []
         forward_flow_switches = [str(source['switch-id'])]
         reverse_flow_switches = [str(destination['switch-id'])]
+
     else:
-        print "Create flow"
 
         forward_flows, forward_isls = get_path(
             source['switch-id'], source['port-id'], source['vlan-id'],
@@ -299,7 +311,8 @@ def create_flows(content, source, destination, transit_vlan_forward, transit_vla
         forward_flow_switches = [str(f.switch_id) for f in forward_flows]
         reverse_flow_switches = [str(f.switch_id) for f in reverse_flows]
 
-    return all_flows, forward_flow_switches, reverse_flow_switches, forward_isls, reverse_isls
+    return all_flows, forward_flow_switches, reverse_flow_switches,\
+           form_flow_links(forward_isls), form_flow_links(reverse_isls)
 
 
 class Message(object):
@@ -363,75 +376,80 @@ def find_flow_path(flow_id):
         forward_flow = flows[1]['r']
         reverse_flow = flows[0]['r']
 
-    switches = forward_flow['flowpath']
     cookie = cookie_value(forward_flow['cookie'])
-    forward_transit_vlan = int(forward_flow['transit_vlan'])
-    reverse_transit_vlan = int(reverse_flow['transit_vlan'])
+    bandwidth = int(forward_flow['bandwidth'])
 
-    # TODO: store isls as flow path instead of switches dpid
-    forward_isl_relationships = get_relationships(forward_flow['src_switch'], forward_flow['dst_switch'])
-    forward_isls = expand_relationships(forward_isl_relationships)
-    reverse_isl_relationships = get_relationships(reverse_flow['src_switch'], reverse_flow['dst_switch'])
-    reverse_isls = expand_relationships(reverse_isl_relationships)
-
-    return switches, cookie, forward_transit_vlan, reverse_transit_vlan,\
-           forward_isls, reverse_isls, int(forward_flow['bandwidth'])
+    return cookie, bandwidth, int(forward_flow['transit_vlan']), int(reverse_flow['transit_vlan']), \
+           forward_flow['flowpath'], reverse_flow['flowpath'], forward_flow['isl_path'], reverse_flow['isl_path']
 
 
-def delete_flows_from_database_by_flow_id(flow_id, forward_isls, reverse_isls, bandwidth):
+def update_isl_available_bandwidth(links, bandwidth):
+    query = "MATCH (a:switch)-[r:isl {{" \
+            "src_switch: '{}', " \
+            "src_port: '{}'}}]->(b:switch) " \
+            "set r.available_bandwidth = r.available_bandwidth - {} return r"
+
+    for link in links:
+        isl = re.search('([\w:]+)-(\w+)', link)
+        update = query.format(isl.group(1), isl.group(2), bandwidth)
+        graph.run(update).data()
+        print "isl bandwidth updated: link={}, bandwidth={}".format(link, bandwidth)
+
+
+def delete_flows_from_database_by_flow_id(flow_id, bandwidth, forward_links, reverse_links):
     query = "MATCH (a:switch)-[r:flow {{flowid: '{}'}}]->(b:switch) {} r"
     graph.run(query.format(flow_id, "delete")).data()
-    # TODO: store isls as flow path instead of switches dpid
-    update_isl_available_bandwidth(forward_isls, (- int(bandwidth)))
-    update_isl_available_bandwidth(reverse_isls, (- int(bandwidth)))
+
+    update_isl_available_bandwidth(forward_links, (- int(bandwidth)))
+    update_isl_available_bandwidth(reverse_links, (- int(bandwidth)))
 
 
-def delete_flows_from_database_by_relationship_id(rel_id, forward_isls, reverse_isls, bandwidth):
+def delete_flows_from_database_by_relationship_ids(rel_ids, forward_links, reverse_links, bandwidth):
     query = "MATCH (a:switch)-[r:flow]-(b:switch) WHERE id(r)={} {} r"
-    graph.run(query.format(rel_id, "delete")).data()
-    # TODO: store isls as flow path instead of switches dpid
-    update_isl_available_bandwidth(forward_isls, (- int(bandwidth)))
-    update_isl_available_bandwidth(reverse_isls, (- int(bandwidth)))
+
+    for rel_id in rel_ids:
+        graph.run(query.format(rel_id['ID(r)'], "delete")).data()
+
+    update_isl_available_bandwidth(forward_links, (- int(bandwidth)))
+    update_isl_available_bandwidth(reverse_links, (- int(bandwidth)))
 
 
-def update_isl_available_bandwidth(isls, bandwidth):
-    print "update_isl_available_bandwidth bandwidth: {}".format(bandwidth)
-    update_query = "MATCH (a:switch)-[r:isl {{" \
-                   "src_switch: '{}', " \
-                   "src_port: '{}',   " \
-                   "dst_switch: '{}', " \
-                   "dst_port: '{}'}}]->(b:switch) " \
-                   "set r.available_bandwidth = r.available_bandwidth - {} return r"
-
-    for relationship in isls:
-        isl = relationship['data']
-        print "update_isl_available_bandwidth isl: {}".format(isl)
-        query = update_query.format(isl['src_switch'], isl['src_port'], isl['dst_switch'], isl['dst_port'], bandwidth)
-        print "update_isl_available_bandwidth query: {}".format(query)
-        graph.run(query).data()
-
-
-def store_flows(start, end, content, source, destination, forward_vlan, reverse_vlan,
-                forward_switches, reverse_switches, cookie, forward_isls, reverse_isls):
+def store_flows(start, end, content, cookie, forward_vlan, reverse_vlan,
+                forward_flow_switches, reverse_flow_switches, forward_links, reverse_links):
+    bandwidth = content['maximum-bandwidth']
+    source = content['source']
+    destination = content['destination']
     timestamp = datetime.datetime.utcnow().isoformat()
-    # TODO: store isls as flow path instead of switches dpid
-    update_isl_available_bandwidth(forward_isls, int(content['maximum-bandwidth']))
-    update_isl_available_bandwidth(reverse_isls, int(content['maximum-bandwidth']))
 
-    query = "MATCH (u:switch {{name:'{}'}}), (r:switch {{name:'{}'}}) MERGE (u)-[:flow " \
-            "{{flowid:'{}', cookie:'{}', bandwidth:'{}', " \
-            "src_port: '{}', dst_port: '{}', src_switch: '{}', dst_switch: '{}', src_vlan: '{}', dst_vlan: '{}'," \
-            "transit_vlan: '{}', description: '{}', last_updated: '{}', flowpath: {}}}]->(r)"
+    query = "MATCH (u:switch {{name:'{}'}}), (r:switch {{name:'{}'}}) " \
+            "MERGE (u)-[:flow {{" \
+            "flowid:'{}', " \
+            "cookie:'{}', " \
+            "bandwidth:'{}', " \
+            "src_port: '{}', " \
+            "dst_port: '{}', " \
+            "src_switch: '{}', " \
+            "dst_switch: '{}', " \
+            "src_vlan: '{}', " \
+            "dst_vlan: '{}'," \
+            "transit_vlan: '{}', " \
+            "description: '{}', " \
+            "last_updated: '{}', " \
+            "flowpath: {}, " \
+            "isl_path: {}}}]->(r)"
+
+    update_isl_available_bandwidth(forward_links, int(bandwidth))
+    update_isl_available_bandwidth(reverse_links, int(bandwidth))
 
     forward_path = query.format(
-        start['name'], end['name'], content['flowid'], forward_cookie(cookie), content['maximum-bandwidth'],
-        source['port-id'], destination['port-id'], source['switch-id'], destination['switch-id'], source['vlan-id'],
-        destination['vlan-id'], forward_vlan, content['description'], timestamp, str(forward_switches))
+        start['name'], end['name'], content['flowid'], forward_cookie(cookie), bandwidth, source['port-id'],
+        destination['port-id'], source['switch-id'], destination['switch-id'], source['vlan-id'],
+        destination['vlan-id'], forward_vlan, content['description'], timestamp, forward_flow_switches, forward_links)
 
     reverse_path = query.format(
-        end['name'], start['name'], content['flowid'], reverse_cookie(cookie), content['maximum-bandwidth'],
-        destination['port-id'], source['port-id'], destination['switch-id'], source['switch-id'], destination['vlan-id'],
-        source['vlan-id'], reverse_vlan, content['description'], timestamp, str(reverse_switches))
+        end['name'], start['name'], content['flowid'], reverse_cookie(cookie), bandwidth, destination['port-id'],
+        source['port-id'], destination['switch-id'], source['switch-id'], destination['vlan-id'],
+        source['vlan-id'], reverse_vlan, content['description'], timestamp, reverse_flow_switches, reverse_links)
 
     graph.run(forward_path)
     graph.run(reverse_path)

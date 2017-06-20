@@ -38,14 +38,6 @@
   {
    "node1": "s6",
    "node2": "s7"
-  },
-  {
-   "node1": "s3",
-   "node2": "s4"
-  },
-  {
-   "node1": "s3",
-   "node2": "s6"
   }
  ],
  "switches": [
