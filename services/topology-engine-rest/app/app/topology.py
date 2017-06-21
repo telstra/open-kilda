@@ -115,20 +115,36 @@ def create_p2n_driver():
         os.environ['neo4juser'], os.environ['neo4jpass'], os.environ['neo4jhost']))
     return graph
 
+graph = create_p2n_driver()
+
 
 @application.route('/api/v1/topology/flows')
 @login_required
 def api_v1_topology_flows():
-    graph = create_p2n_driver()
-
     try:
-        query = "MATCH (a:switch)-[r:flow ]->(b:switch) {} r"
-        result = graph.run(query.format("return")).data()
+        query = "MATCH (a:switch)-[r:flow]->(b:switch) RETURN r"
+        result = graph.run(query).data()
 
         flows = []
         for flow in result:
             flows.append(flow['r'])
 
         return str(json.dumps(flows, default=lambda o: o.__dict__, sort_keys=True))
+    except Exception as e:
+        return "error: {}".format(str(e))
+
+
+@application.route('/api/v1/topology/links')
+@login_required
+def api_v1_topology_links():
+    try:
+        query = "MATCH (a:switch)-[r:isl]->(b:switch) RETURN r"
+        result = graph.run(query).data()
+
+        links = []
+        for link in result:
+            links.append(link['r'])
+
+        return str(json.dumps(links, default=lambda o: o.__dict__, sort_keys=True))
     except Exception as e:
         return "error: {}".format(str(e))

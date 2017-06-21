@@ -40,10 +40,14 @@ def allocate_cookie(cookie=None):
             return cookies.pop()
     except ValueError:
         pass
+    except IndexError:
+        print "ERROR: could not allocate cookie, resource is exhausted"
+        return None
 
 
 def deallocate_cookie(cookie):
-    cookies.append(cookie)
+    if cookie:
+        cookies.append(cookie)
 
 
 def allocate_transit_vlan_id(transit_vlan_id=None):
@@ -54,10 +58,14 @@ def allocate_transit_vlan_id(transit_vlan_id=None):
             return transit_vlan_ids.pop()
     except ValueError:
         pass
+    except IndexError:
+        print "ERROR: could not allocate transit vlan id, resource is exhausted"
+        return None
 
 
 def deallocate_transit_vlan_id(transit_vlan_id):
-    transit_vlan_ids.append(int(transit_vlan_id))
+    if transit_vlan_id:
+        transit_vlan_ids.append(int(transit_vlan_id))
 
 
 def is_forward_cookie(cookie):
@@ -204,12 +212,13 @@ def expand_relationships(relationships):
     return full_relationships
 
 
-def get_relationships(src_switch, dst_switch):
+def get_relationships(src_switch, dst_switch, bandwidth):
     query = "MATCH (a:switch{{name:'{}'}}),(b:switch{{name:'{}'}}), " \
-            "p = shortestPath((a)-[:isl*..100]->(b)) " \
+            "p = shortestPath((a)-[r:isl*..100]->(b)) " \
             "where ALL(x in nodes(p) WHERE x.state = 'active') " \
+            "AND ALL(y in r WHERE y.available_bandwidth >= {}) " \
             "RETURN p"
-    data = {'query': query.format(src_switch, dst_switch)}
+    data = {'query': query.format(src_switch, dst_switch, bandwidth)}
     result_path = requests.post('http://{}:7474/db/data/cypher'.format(neo4j_host), data=data, auth=auth)
     jpath = json.loads(result_path.text)
     if jpath['data']:
@@ -251,7 +260,7 @@ def form_flow_links(isls):
 
 
 def get_path(src_switch, src_port, src_vlan, dst_switch, dst_port, dst_vlan, bandwidth, transit_vlan, flow_id, cookie):
-    relationships = get_relationships(src_switch, dst_switch)
+    relationships = get_relationships(src_switch, dst_switch, bandwidth)
     output_action = choose_output_action(int(src_vlan), int(dst_vlan))
 
     if relationships:

@@ -232,14 +232,23 @@ class MessageItem(object):
         transit_vlan_forward = allocate_transit_vlan_id()
         transit_vlan_reverse = allocate_transit_vlan_id()
 
+        if not cookie or not transit_vlan_forward or not transit_vlan_reverse:
+            deallocate_cookie(cookie)
+            deallocate_transit_vlan_id(transit_vlan_forward)
+            deallocate_transit_vlan_id(transit_vlan_reverse)
+            print "ERROR: resource allocation failure: cookie={}, transit_vlans f={} r={}".format(
+                cookie, transit_vlan_forward, transit_vlan_reverse)
+            return False
+
         print "Flow resources were allocated: correlation_id={}, flow_id={}, cookie={}, transit_vlans f={} r={}".format(
             cor_id, flow_id, cookie, transit_vlan_forward, transit_vlan_reverse)
 
         (all_flows, forward_flow_switches, reverse_flow_switches, forward_links, reverse_links) = \
             create_flows(content, transit_vlan_forward, transit_vlan_reverse, cookie)
 
-        if not all_flows:
-            print "ERROR: flows were not build: all_flows={}".format(all_flows)
+        if not forward_flow_switches or not reverse_flow_switches:
+            print "ERROR: could not find path: all_flows={}, flow_path f={} r={}, isl_path f={} r={}".format(
+                all_flows, forward_flow_switches, reverse_flow_switches, forward_links, reverse_links)
             return False
 
         print "Flow was prepared: correlation_id={}, flow_id={}, flow_path f={} r={}, isl_path f={} r={}".format(

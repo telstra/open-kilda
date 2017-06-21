@@ -44,7 +44,7 @@ public class FlowCrudBasicRunTest {
                                   final String destinationSwitch, final int destinationPort, final int destinationVlan,
                                   final int bandwidth) throws Throwable {
         Flow expectedFlow = new Flow(flowName, bandwidth, FLOW_COOKIE, BASE_FLOW_NAME, null, sourceSwitch,
-                destinationSwitch, sourcePort, destinationPort, sourceVlan, destinationVlan, 0, null);
+                destinationSwitch, sourcePort, destinationPort, sourceVlan, destinationVlan, 0, null, null);
         List<Flow> flows = validateFlowStored();
         assertFalse(flows.isEmpty());
         storedFlows = flows.size();
@@ -130,11 +130,12 @@ public class FlowCrudBasicRunTest {
     }
 
     private List<Flow> validateFlowStored() throws Exception {
-        for (int i = 50; i > 0; i++) {
+        for (int i = 5; i > 0; i++) {
+            Thread.sleep(100);
             List<Flow> flows = FlowUtils.dumpFlows();
             System.out.print(String.format("===> Flows retrieved: %d\n", flows.size()));
             if (flows.isEmpty() && flows.size() % 2 == 1) {
-                Thread.sleep(100);
+                Thread.sleep(1000);
             } else {
                 return flows;
             }
