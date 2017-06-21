@@ -30,63 +30,29 @@ public class StatisticsBasicTest {
        public StatisticsBasicTest() {
        }
 
-       @Given("^Clean setup$")
-       public void createCleanSetup() throws Throwable {
-            String topology = Resources.toString(getClass().getResource("/topologies/rand-5-20.json"),
-                                                 Charsets.UTF_8);
-            TestUtils.clearEverything();
-            Client client = ClientBuilder.newClient(new ClientConfig());
-            Response result = client
-                    .target(mininetEndpoint)
-                    .path("/create_random_linear_topology")
-                    .request(MediaType.APPLICATION_JSON)
-                    .post(Entity.entity(topology, MediaType.APPLICATION_JSON));
-       }
-
-       @When("^any topology is created$")
-       public void topologyIsCreated() throws Throwable {
-            Client client = ClientBuilder.newClient(new ClientConfig());
-            String result = client
-                    .target(topologyEndpoint)
-                    .path("/api/v1/topology/network")
-                    .request()
-                    .get(String.class);
-            assertNotEquals(result, "{\"nodes\": []}");
+       private int getNumberOfDatapoints() throws Throwable {
+           Client client = ClientBuilder.newClient(new ClientConfig());
+           int result = client
+                   .target(opentsdbEndpoint)
+                   .path("/api/query")
+                   .queryParam("start","100h-ago")
+                   .queryParam("m","count:collisions")
+                   .request()
+                   .get(String.class).length();
+           return result;
        }
 
        @Then("^data go to database$")
        public void dataCreated() throws Throwable {
-            Client client = ClientBuilder.newClient(new ClientConfig());
-            String result = client
-                    .target(opentsdbEndpoint)
-                    .path("/api/query")
-                    .queryParam("start","100h-ago")
-                    .queryParam("m","count:collisions")
-                    .request()
-                    .get(String.class);
-            assertNotEquals(result.length(), 0);
+	   int result = getNumberOfDatapoints();
+           assertNotEquals(result, 0);
        }
 
        @Then("^database keeps growing$")
        public void database_keeps_growing() throws Throwable {
-           // NOTE: the test checks collisions, however any timeseries
-           // could be checked.
-           Client client = ClientBuilder.newClient(new ClientConfig());
-           String result1 = client
-                   .target(opentsdbEndpoint)
-                   .path("/api/query")
-                   .queryParam("start","100h-ago")
-                   .queryParam("m","count:collisions")
-                   .request()
-                   .get(String.class);
+	   int result1 = getNumberOfDatapoints();
            TimeUnit.SECONDS.sleep(5);
-           String result2 = client
-                   .target(opentsdbEndpoint)
-                   .path("/api/query")
-                   .queryParam("start","100h-ago")
-                   .queryParam("m","count:collisions")
-                   .request()
-                   .get(String.class);
-           assertNotEquals(result1.length(), result2.length());
+	   int result2 = getNumberOfDatapoints();
+           assertNotEquals(result1, result2);
        }
 }
