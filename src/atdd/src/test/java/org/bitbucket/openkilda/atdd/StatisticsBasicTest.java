@@ -44,15 +44,15 @@ public class StatisticsBasicTest {
 
        @Then("^data go to database$")
        public void dataCreated() throws Throwable {
-	   int result = getNumberOfDatapoints();
+           int result = getNumberOfDatapoints();
            assertNotEquals(result, 0);
        }
 
        @Then("^database keeps growing$")
        public void database_keeps_growing() throws Throwable {
-	   int result1 = getNumberOfDatapoints();
+           int result1 = getNumberOfDatapoints();
            TimeUnit.SECONDS.sleep(5);
-	   int result2 = getNumberOfDatapoints();
+           int result2 = getNumberOfDatapoints();
            assertNotEquals(result1, result2);
        }
 }
