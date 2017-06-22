@@ -65,7 +65,7 @@ public class ErrorBolt extends BaseRichBolt {
 
             logger.debug("Error message: values={}", values);
 
-            outputCollector.emit(StreamType.ERROR.toString(), tuple, values);
+            outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
 
             logger.debug("Error message ack: values={}", values);
         } catch (Exception exception) {
@@ -79,6 +79,6 @@ public class ErrorBolt extends BaseRichBolt {
      */
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
-        outputFieldsDeclarer.declareStream(StreamType.ERROR.toString(), fieldMessage);
+        outputFieldsDeclarer.declareStream(StreamType.RESPONSE.toString(), fieldMessage);
     }
 }

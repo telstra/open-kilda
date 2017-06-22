@@ -1,7 +1,6 @@
 import os
 import re
 import time
-import datetime
 import requests
 import json
 from kafka import KafkaProducer
@@ -9,10 +8,10 @@ from kafka import KafkaProducer
 import db
 
 
-__all__ = ['allocate_cookie', 'deallocate_cookie', 'allocate_transit_vlan_id', 'deallocate_transit_vlan_id',
-           'find_flow_by_id', 'store_flows', 'find_nodes', 'find_flow_relationships_ids', 'find_flow_path',
-           'delete_flows_from_database_by_relationship_ids', 'delete_flows_from_database_by_flow_id', 'create_flows',
-           'send_install_commands', 'send_remove_commands', 'send_message', 'flow_response', 'graph']
+__all__ = ['allocate_cookie', 'allocate_resources', 'deallocate_resources', 'graph',  'store_flows', 'create_flows',
+           'find_flow_by_id', 'find_nodes', 'find_flow_relationships_ids', 'find_flow_path',
+           'delete_flows_from_database_by_relationship_ids', 'delete_flows_from_database_by_flow_id',
+           'send_install_commands', 'send_remove_commands', 'send_error_message', 'send_message', 'flow_response']
 
 
 neo4j_host = os.environ['neo4jhost']
@@ -68,6 +67,26 @@ def deallocate_transit_vlan_id(transit_vlan_id):
         transit_vlan_ids.append(int(transit_vlan_id))
 
 
+def deallocate_resources(cookie, transit_vlan_forward, transit_vlan_reverse):
+    deallocate_cookie(cookie)
+    deallocate_transit_vlan_id(transit_vlan_forward)
+    deallocate_transit_vlan_id(transit_vlan_reverse)
+
+    print "Flow resources were deallocated: cookie={}, transit_vlans f={} r={}".format(
+        cookie, transit_vlan_forward, transit_vlan_reverse)
+
+
+def allocate_resources():
+    cookie = allocate_cookie()
+    transit_vlan_forward = allocate_transit_vlan_id()
+    transit_vlan_reverse = allocate_transit_vlan_id()
+
+    print "Flow resources were allocated: cookie={}, transit_vlans f={} r={}".format(
+        cookie, transit_vlan_forward, transit_vlan_reverse)
+
+    return cookie, transit_vlan_forward, transit_vlan_reverse
+
+
 def is_forward_cookie(cookie):
     return int(cookie) & 0x4000000000000000
 
@@ -121,7 +140,7 @@ def build_ingress_flow(expanded_relationships, src_switch, src_port, src_vlan, b
     flow.flowid = flow_id
     flow.cookie = int(cookie)
     flow.switch_id = src_switch
-    flow.input_port= int(src_port)
+    flow.input_port = int(src_port)
     flow.output_port = action
     flow.input_vlan_id = int(src_vlan)
     flow.transit_vlan_id = int(transit_vlan)
@@ -157,7 +176,7 @@ def build_egress_flow(expanded_relationships, dst_switch, dst_port, dst_vlan, tr
 def build_intermediate_flows(expanded_relationships, transit_vlan, i, flow_id, cookie):
     # output action is always NONE for transit vlan id
     match = expanded_relationships[i]['data']['dst_port']
-    action = expanded_relationships[i+1]['data']['src_port']
+    action = expanded_relationships[i + 1]['data']['src_port']
     switch = expanded_relationships[i]['data']['dst_switch']
 
     flow = Flow()
@@ -320,8 +339,8 @@ def create_flows(content, transit_vlan_forward, transit_vlan_reverse, cookie):
         forward_flow_switches = [str(f.switch_id) for f in forward_flows]
         reverse_flow_switches = [str(f.switch_id) for f in reverse_flows]
 
-    return all_flows, forward_flow_switches, reverse_flow_switches,\
-           form_flow_links(forward_isls), form_flow_links(reverse_isls)
+    return [all_flows, forward_flow_switches, reverse_flow_switches,
+            form_flow_links(forward_isls), form_flow_links(reverse_isls)]
 
 
 class Message(object):
@@ -344,6 +363,11 @@ def send_message(payload, correlation_id, message_type):
     print 'topic: {}, message: {}'.format(topic, kafka_message)
     message_result = producer.send(topic, kafka_message)
     message_result.get(timeout=5)
+
+
+def send_error_message(correlation_id, error_type, error_description):
+    payload = {"error-code": 0, "error-message": None, "error-type": error_type, "error-description": error_description}
+    send_message(payload, correlation_id, "ERROR")
 
 
 def send_install_commands(all_flows, correlation_id):
@@ -388,8 +412,8 @@ def find_flow_path(flow_id):
     cookie = cookie_value(forward_flow['cookie'])
     bandwidth = int(forward_flow['bandwidth'])
 
-    return cookie, bandwidth, int(forward_flow['transit_vlan']), int(reverse_flow['transit_vlan']), \
-           forward_flow['flowpath'], reverse_flow['flowpath'], forward_flow['isl_path'], reverse_flow['isl_path']
+    return [forward_flow, cookie, bandwidth, int(forward_flow['transit_vlan']), int(reverse_flow['transit_vlan']),
+            forward_flow['flowpath'], reverse_flow['flowpath'], forward_flow['isl_path'], reverse_flow['isl_path']]
 
 
 def update_isl_available_bandwidth(links, bandwidth):
@@ -423,12 +447,11 @@ def delete_flows_from_database_by_relationship_ids(rel_ids, forward_links, rever
     update_isl_available_bandwidth(reverse_links, (- int(bandwidth)))
 
 
-def store_flows(start, end, content, cookie, forward_vlan, reverse_vlan,
+def store_flows(start, end, content, cookie, forward_vlan, reverse_vlan, timestamp,
                 forward_flow_switches, reverse_flow_switches, forward_links, reverse_links):
     bandwidth = content['maximum-bandwidth']
     source = content['source']
     destination = content['destination']
-    timestamp = datetime.datetime.utcnow().isoformat()
 
     query = "MATCH (u:switch {{name:'{}'}}), (r:switch {{name:'{}'}}) " \
             "MERGE (u)-[:flow {{" \

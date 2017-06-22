@@ -55,17 +55,6 @@ public class ErrorData extends MessageData {
     /**
      * Instance constructor.
      *
-     * @param errorType        error type
-     * @param errorDescription error exception
-     */
-    public ErrorData(final ErrorType errorType, final String errorDescription) {
-        this.errorType = errorType;
-        this.errorDescription = errorDescription;
-    }
-
-    /**
-     * Instance constructor.
-     *
      * @param errorCode        error code
      * @param errorMessage     error message
      * @param errorType        error type

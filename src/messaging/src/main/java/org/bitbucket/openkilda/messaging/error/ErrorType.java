@@ -13,6 +13,21 @@ public enum ErrorType {
     INTERNAL_ERROR("Internal service error"),
 
     /**
+     * The error message for internal service error.
+     */
+    CREATION_FAILURE("Internal service error during creation"),
+
+    /**
+     * The error message for internal service error.
+     */
+    UPDATE_FAILURE("Internal service error during update"),
+
+    /**
+     * The error message for internal service error.
+     */
+    DELETION_FAILURE("Internal service error during deletion"),
+
+    /**
      * The error message for not implemented error.
      */
     NOT_IMPLEMENTED("Feature not implemented"),

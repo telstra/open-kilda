@@ -1,6 +1,8 @@
 #!/usr/bin/python
 import json
 import requests
+import traceback
+import datetime
 from py2neo import Node
 
 from flow import *
@@ -30,7 +32,7 @@ def repair_flows(switchid):
                 #create logic to alert on failed reroute
                 print "Unable to reroute flow: {}".format(flow['r']['flowid'])
     return True
-    
+
 
 
 class MessageItem(object):
@@ -225,51 +227,63 @@ class MessageItem(object):
         cor_id = self.correlation_id
         source = content['source']
         destination = content['destination']
+        timestamp = datetime.datetime.utcnow().isoformat()
 
         print "Flow create request process: correlation_id={}, flow_id={}".format(cor_id, flow_id)
 
-        cookie = allocate_cookie()
-        transit_vlan_forward = allocate_transit_vlan_id()
-        transit_vlan_reverse = allocate_transit_vlan_id()
+        if source['switch-id'] == destination['switch-id']:
+            cookie = allocate_cookie()
+            transit_vlan_forward = transit_vlan_reverse = 0
+        else:
+            cookie, transit_vlan_forward, transit_vlan_reverse = allocate_resources()
 
-        if not cookie or not transit_vlan_forward or not transit_vlan_reverse:
-            deallocate_cookie(cookie)
-            deallocate_transit_vlan_id(transit_vlan_forward)
-            deallocate_transit_vlan_id(transit_vlan_reverse)
-            print "ERROR: resource allocation failure: cookie={}, transit_vlans f={} r={}".format(
-                cookie, transit_vlan_forward, transit_vlan_reverse)
-            return False
+        if cookie is None or transit_vlan_forward is None or transit_vlan_reverse is None:
+            print "ERROR: resource allocation failure"
+            deallocate_resources(cookie, transit_vlan_forward, transit_vlan_reverse)
+            send_error_message(cor_id, "CREATION_FAILURE", flow_id)
 
-        print "Flow resources were allocated: correlation_id={}, flow_id={}, cookie={}, transit_vlans f={} r={}".format(
-            cor_id, flow_id, cookie, transit_vlan_forward, transit_vlan_reverse)
+        try:
+            (all_flows, forward_flow_switches, reverse_flow_switches, forward_links, reverse_links) = \
+                create_flows(content, transit_vlan_forward, transit_vlan_reverse, cookie)
 
-        (all_flows, forward_flow_switches, reverse_flow_switches, forward_links, reverse_links) = \
-            create_flows(content, transit_vlan_forward, transit_vlan_reverse, cookie)
+            if not forward_flow_switches or not reverse_flow_switches:
+                print "ERROR: could not find path: all_flows={}, flow_path f={} r={}, isl_path f={} r={}".format(
+                    all_flows, forward_flow_switches, reverse_flow_switches, forward_links, reverse_links)
+                deallocate_resources(cookie, transit_vlan_forward, transit_vlan_reverse)
+                send_error_message(cor_id, "CREATION_FAILURE", flow_id)
+                return False
 
-        if not forward_flow_switches or not reverse_flow_switches:
-            print "ERROR: could not find path: all_flows={}, flow_path f={} r={}, isl_path f={} r={}".format(
-                all_flows, forward_flow_switches, reverse_flow_switches, forward_links, reverse_links)
-            return False
+            print "Flow was prepared: correlation_id={}, flow_id={}, flow_path f={} r={}, isl_path f={} r={}".format(
+                cor_id, flow_id, forward_flow_switches, reverse_flow_switches, forward_links, reverse_links)
 
-        print "Flow was prepared: correlation_id={}, flow_id={}, flow_path f={} r={}, isl_path f={} r={}".format(
-            cor_id, flow_id, forward_flow_switches, reverse_flow_switches, forward_links, reverse_links)
+            (start, end) = find_nodes(source, destination)
 
-        (start, end) = find_nodes(source, destination)
+            if not start or not end:
+                print "ERROR: switches were not found: start_node={}, end_node={}".format(start, end)
+                deallocate_resources(cookie, transit_vlan_forward, transit_vlan_reverse)
+                send_error_message(cor_id, "CREATION_FAILURE", flow_id)
+                return False
 
-        if not start or not end:
-            print "ERROR: switches were not found: start_node={}, end_node={}".format(start, end)
-            return False
+            print "Nodes were found: correlation_id={}, flow_id={}, start={}, end={}".format(cor_id, flow_id, start, end)
 
-        print "Nodes were found: correlation_id={}, flow_id={}, start={}, end={}".format(cor_id, flow_id, start, end)
+            store_flows(start, end, content, cookie, transit_vlan_forward, transit_vlan_reverse, timestamp,
+                        forward_flow_switches, reverse_flow_switches, forward_links, reverse_links)
 
-        store_flows(start, end, content, cookie, transit_vlan_forward, transit_vlan_reverse,
-                    forward_flow_switches, reverse_flow_switches, forward_links, reverse_links)
+            print 'Flow was stored: correlation_id={}, flow_id={}'.format(cor_id, flow_id)
 
-        print 'Flow was stored: correlation_id={}, flow_id={}'.format(cor_id, flow_id)
+            send_install_commands(all_flows, cor_id)
 
-        send_install_commands(all_flows, cor_id)
+            print 'Flow rules were installed: correlation_id={}, flow_id={}'.format(cor_id, flow_id)
 
-        print 'Flow rules were installed: correlation_id={}, flow_id={}'.format(cor_id, flow_id)
+            content['cookie'] = cookie
+            content['last-updated'] = timestamp
+            payload = {'payload': content, 'message_type': "flow"}
+            send_message(payload, cor_id, "INFO")
+
+        except Exception:
+            deallocate_resources(cookie, transit_vlan_forward, transit_vlan_reverse)
+            traceback.print_exc()
+            raise
 
         return True
 
@@ -278,30 +292,40 @@ class MessageItem(object):
         flow_id = content['flowid']
         cor_id = self.correlation_id
 
-        print "Flow delete request process: correlation_id={}, flow_id={}".format(cor_id, flow_id)
+        try:
+            print "Flow delete request process: correlation_id={}, flow_id={}".format(cor_id, flow_id)
 
-        (cookie, bandwidth, transit_vlan_forward, transit_vlan_reverse,
-         forward_flow_switches, reverse_flow_switches, forward_links, reverse_links) = find_flow_path(flow_id)
+            (data, cookie, bandwidth, transit_vlan_forward, transit_vlan_reverse,
+             forward_flow_switches, reverse_flow_switches, forward_links, reverse_links) = find_flow_path(flow_id)
 
-        print "Flow path was found: correlation_id={}, flow_id={}".format(cor_id, flow_id)
+            if not forward_flow_switches or not reverse_flow_switches:
+                print "ERROR: could not find path: flow_path f={} r={}, isl_path f={} r={}".format(
+                    forward_flow_switches, reverse_flow_switches, forward_links, reverse_links)
+                send_error_message(cor_id, "DELETION_FAILURE", flow_id)
+                return False
 
-        delete_flows_from_database_by_flow_id(flow_id, bandwidth, forward_links, reverse_links)
+            print "Flow path was found: correlation_id={}, flow_id={}".format(cor_id, flow_id)
 
-        print "Flow was removed from database: correlation_id={}, flow_id={}, bandwidth={}, isl_paths f={} r={}".format(
-            cor_id, flow_id, bandwidth, forward_links, reverse_links)
+            delete_flows_from_database_by_flow_id(flow_id, bandwidth, forward_links, reverse_links)
 
-        switches = list(set(forward_flow_switches + reverse_flow_switches))
-        send_remove_commands(switches, flow_id, cor_id, cookie)
+            print "Flow was removed from database: correlation_id={}, flow_id={}, bandwidth={}, isl_paths f={} r={}".format(
+                cor_id, flow_id, bandwidth, forward_links, reverse_links)
 
-        print "Flow rules were removed: correlation_id={}, flow_id={}, cookie={}, switches={},".format(
-            cor_id, flow_id, cookie, switches)
+            switches = list(set(forward_flow_switches + reverse_flow_switches))
+            send_remove_commands(switches, flow_id, cor_id, cookie)
 
-        deallocate_cookie(cookie)
-        deallocate_transit_vlan_id(transit_vlan_forward)
-        deallocate_transit_vlan_id(transit_vlan_reverse)
+            print "Flow rules were removed: correlation_id={}, flow_id={}, cookie={}, switches={},".format(
+                cor_id, flow_id, cookie, switches)
 
-        print "Flow resources were released: correlation_id={}, flow_id={}, cookie={}, transit_vlans f={} r={}".format(
-            cor_id, flow_id, cookie, transit_vlan_forward, transit_vlan_reverse)
+            deallocate_resources(cookie, transit_vlan_forward, transit_vlan_reverse)
+
+            flow = flow_response(data)
+            payload = {'payload': flow, 'message_type': "flow"}
+            send_message(payload, cor_id, "INFO")
+
+        except Exception:
+            traceback.print_exc()
+            raise
 
         return True
 
@@ -311,103 +335,145 @@ class MessageItem(object):
         cor_id = self.correlation_id
         source = content['source']
         destination = content['destination']
+        timestamp = datetime.datetime.utcnow().isoformat()
 
         print "Flow update request process: correlation_id={}, flow_id={}".format(cor_id, flow_id)
 
-        new_cookie = allocate_cookie()
-        new_transit_vlan_forward = allocate_transit_vlan_id()
-        new_transit_vlan_reverse = allocate_transit_vlan_id()
+        if source['switch-id'] == destination['switch-id']:
+            new_cookie = allocate_cookie()
+            new_transit_vlan_forward = new_transit_vlan_reverse = 0
+        else:
+            new_cookie, new_transit_vlan_forward, new_transit_vlan_reverse = allocate_resources()
 
-        print "Flow resources were allocated: correlation_id={}, flow_id={}, cookie={}, transit_vlans f={} r={}".format(
-            cor_id, flow_id, new_cookie, new_transit_vlan_forward, new_transit_vlan_reverse)
+        if new_cookie is None or new_transit_vlan_forward is None or new_transit_vlan_reverse is None:
+            print "ERROR: resource allocation failure"
+            deallocate_resources(new_cookie, new_transit_vlan_forward, new_transit_vlan_reverse)
+            send_error_message(cor_id, "UPDATE_FAILURE", flow_id)
 
-        (old_cookie, old_bandwidth, old_transit_vlan_forward, old_transit_vlan_reverse, old_forward_flow_switches,
-         old_reverse_flow_switches, old_forward_links, old_reverse_links) = find_flow_path(flow_id)
+        try:
+            (data, old_cookie, old_bandwidth, old_transit_vlan_forward, old_transit_vlan_reverse, old_forward_flow_switches,
+             old_reverse_flow_switches, old_forward_links, old_reverse_links) = find_flow_path(flow_id)
 
-        print "Flow path was found: correlation_id={}, flow_id={}".format(cor_id, flow_id)
+            if not old_forward_flow_switches or not old_reverse_flow_switches:
+                print "ERROR: could not find path: flow_path f={} r={}, isl_path f={} r={}".format(
+                    old_forward_flow_switches, old_reverse_flow_switches, old_forward_links, old_reverse_links)
+                deallocate_resources(new_cookie, new_transit_vlan_forward, new_transit_vlan_reverse)
+                send_error_message(cor_id, "UPDATE_FAILURE", flow_id)
+                return False
 
-        relationships_ids = find_flow_relationships_ids(flow_id)
-        delete_flows_from_database_by_relationship_ids(relationships_ids, old_forward_links,
-                                                       old_reverse_links, old_bandwidth)
+            print "Flow path was found: correlation_id={}, flow_id={}".format(cor_id, flow_id)
 
-        print "Flow was removed from database: correlation_id={}, flow_id={}, bandwidth={}, isl_paths f={} r={}".format(
-            cor_id, flow_id, old_bandwidth, old_forward_links, old_reverse_links)
+            relationships_ids = find_flow_relationships_ids(flow_id)
+            delete_flows_from_database_by_relationship_ids(relationships_ids, old_forward_links,
+                                                           old_reverse_links, old_bandwidth)
 
-        (all_flows, new_forward_flow_switches, new_reverse_flow_switches, new_forward_links, new_reverse_links) = \
-            create_flows(content, new_transit_vlan_forward, new_transit_vlan_reverse, new_cookie)
+            print "Flow was removed from database: correlation_id={}, flow_id={}, bandwidth={}, isl_paths f={} r={}".format(
+                cor_id, flow_id, old_bandwidth, old_forward_links, old_reverse_links)
 
-        print "Flow was prepared: correlation_id={}, flow_id={}, flow_path f={} r={}, isl_path f={} r={}".format(
-            cor_id, flow_id, new_forward_flow_switches, new_reverse_flow_switches, new_forward_links, new_reverse_links)
+            (all_flows, new_forward_flow_switches, new_reverse_flow_switches, new_forward_links, new_reverse_links) = \
+                create_flows(content, new_transit_vlan_forward, new_transit_vlan_reverse, new_cookie)
 
-        (start, end) = find_nodes(source, destination)
+            if not new_forward_flow_switches or not new_reverse_flow_switches:
+                deallocate_resources(new_cookie, new_transit_vlan_forward, new_transit_vlan_reverse)
+                print "ERROR: could not find path: all_flows={}, flow_path f={} r={}, isl_path f={} r={}".format(
+                    all_flows, new_forward_flow_switches, new_reverse_flow_switches, new_forward_links, new_reverse_links)
+                send_error_message(cor_id, "UPDATE_FAILURE", flow_id)
+                return False
 
-        if not start or not end:
-            print "ERROR: switches were not found: start_node={}, end_node={}".format(start, end)
-            return False
+            print "Flow was prepared: correlation_id={}, flow_id={}, flow_path f={} r={}, isl_path f={} r={}".format(
+                cor_id, flow_id, new_forward_flow_switches, new_reverse_flow_switches, new_forward_links, new_reverse_links)
 
-        print "Nodes were found: correlation_id={}, flow_id={}, start={}, end={}".format(cor_id, flow_id, start, end)
+            (start, end) = find_nodes(source, destination)
 
-        store_flows(start, end, content, new_cookie, new_transit_vlan_forward, new_transit_vlan_reverse,
-                    new_forward_flow_switches, new_reverse_flow_switches, new_forward_links, new_reverse_links)
+            if not start or not end:
+                print "ERROR: switches were not found: start_node={}, end_node={}".format(start, end)
+                deallocate_resources(new_cookie, new_transit_vlan_forward, new_transit_vlan_reverse)
+                send_error_message(cor_id, "UPDATE_FAILURE", flow_id)
+                return False
 
-        print 'Flow was stored: correlation_id={}, flow_id={}'.format(cor_id, flow_id)
+            print "Nodes were found: correlation_id={}, flow_id={}, start={}, end={}".format(cor_id, flow_id, start, end)
 
-        send_install_commands(all_flows, cor_id)
+            store_flows(start, end, content, new_cookie, new_transit_vlan_forward, new_transit_vlan_reverse, timestamp,
+                        new_forward_flow_switches, new_reverse_flow_switches, new_forward_links, new_reverse_links)
 
-        print 'Flow rules were installed: correlation_id={}, flow_id={}'.format(cor_id, flow_id)
+            print 'Flow was stored: correlation_id={}, flow_id={}'.format(cor_id, flow_id)
 
-        old_switches = list(set(old_forward_flow_switches + old_reverse_flow_switches))
-        send_remove_commands(old_switches, flow_id, cor_id, old_cookie)
+            send_install_commands(all_flows, cor_id)
 
-        print "Flow rules were removed: correlation_id={}, flow_id={}, cookie={}, switches={},".format(
-            cor_id, flow_id, old_cookie, old_switches)
+            print 'Flow rules were installed: correlation_id={}, flow_id={}'.format(cor_id, flow_id)
 
-        deallocate_cookie(old_cookie)
-        deallocate_transit_vlan_id(old_transit_vlan_forward)
-        deallocate_transit_vlan_id(old_transit_vlan_reverse)
+            old_switches = list(set(old_forward_flow_switches + old_reverse_flow_switches))
+            send_remove_commands(old_switches, flow_id, cor_id, old_cookie)
 
-        print "Flow resources were released: correlation_id={}, flow_id={}, cookie={}, transit_vlans f={} r={}".format(
-            cor_id, flow_id, old_cookie, old_transit_vlan_forward, old_transit_vlan_reverse)
+            print "Flow rules were removed: correlation_id={}, flow_id={}, cookie={}, switches={},".format(
+                cor_id, flow_id, old_cookie, old_switches)
+
+            deallocate_resources(old_cookie, old_transit_vlan_forward, old_transit_vlan_reverse)
+
+            content['cookie'] = new_cookie
+            content['last-updated'] = timestamp
+            payload = {'payload': content, 'message_type': "flow"}
+            send_message(payload, cor_id, "INFO")
+
+        except Exception:
+            deallocate_resources(new_cookie, new_transit_vlan_forward, new_transit_vlan_reverse)
+            traceback.print_exc()
+            raise
 
         return True
 
     def get_flow(self):
         flow_id = self.payload['payload']['flowid']
 
-        flows = find_flow_by_id(flow_id)
+        try:
+            flows = find_flow_by_id(flow_id)
 
-        for data in flows:
-            flow = flow_response(data['r'])
-            if flow:
-                print 'Got flow={}'.format(flow)
-                payload = {'payload': flow, 'message_type': "flow"}
-                send_message(payload, self.correlation_id, "INFO")
+            for data in flows:
+                flow = flow_response(data['r'])
+                if flow:
+                    print 'Got flow={}'.format(flow)
+                    payload = {'payload': flow, 'message_type': "flow"}
+                    send_message(payload, self.correlation_id, "INFO")
+
+        except Exception:
+            traceback.print_exc()
+            raise
 
         return True
 
     def get_flow_path(self):
         flow_id = self.payload['payload']['flowid']
 
-        found_flow = find_flow_by_id(flow_id)
-        flow = found_flow[0]['r']
+        try:
+            found_flow = find_flow_by_id(flow_id)
+            flow = found_flow[0]['r']
 
-        print 'Got flow={}'.format(flow)
+            print 'Got flow={}'.format(flow)
 
-        payload = {'payload': {'flowid': flow_id, 'flowpath': flow['flowpath']}, 'message_type': "flow_path"}
-        send_message(payload, self.correlation_id, "INFO")
+            payload = {'payload': {'flowid': flow_id, 'flowpath': flow['flowpath']}, 'message_type': "flow_path"}
+            send_message(payload, self.correlation_id, "INFO")
+
+        except Exception:
+            traceback.print_exc()
+            raise
 
         return True
 
     def dump_flows(self):
-        query = "MATCH (a:switch)-[r:flow ]->(b:switch) {} r"
-        result = graph.run(query.format("return")).data()
+        try:
+            query = "MATCH (a:switch)-[r:flow ]->(b:switch) {} r"
+            result = graph.run(query.format("return")).data()
 
-        flows = []
-        for flow in result:
-            flows.append(flow_response(flow['r']))
-        print 'Got flows={}'.format(flows)
+            flows = []
+            for flow in result:
+                flows.append(flow_response(flow['r']))
+            print 'Got flows={}'.format(flows)
 
-        payload = {'payload': {'flow-list': flows}, 'message_type': "flows"}
-        send_message(payload, self.correlation_id, "INFO")
+            payload = {'payload': {'flow-list': flows}, 'message_type': "flows"}
+            send_message(payload, self.correlation_id, "INFO")
+
+        except Exception:
+            traceback.print_exc()
+            raise
 
         return True

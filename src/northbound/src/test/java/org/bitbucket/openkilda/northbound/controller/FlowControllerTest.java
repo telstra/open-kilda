@@ -148,9 +148,8 @@ public class FlowControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
                 .andReturn();
-        FlowIdStatusPayload response =
-                MAPPER.readValue(result.getResponse().getContentAsString(), FlowIdStatusPayload.class);
-        assertEquals(WorkFlowManagerKafkaMock.flowDelete, response);
+        FlowPayload response = MAPPER.readValue(result.getResponse().getContentAsString(), FlowPayload.class);
+        assertEquals(WorkFlowManagerKafkaMock.flow, response);
     }
 
     @Test

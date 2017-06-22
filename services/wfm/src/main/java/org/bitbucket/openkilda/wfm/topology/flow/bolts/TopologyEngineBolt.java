@@ -6,6 +6,7 @@ import static org.bitbucket.openkilda.messaging.Utils.TRANSACTION_ID;
 import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.fieldMessage;
 import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.fieldsFlowStatus;
 import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.fieldsMessageErrorType;
+import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.fieldsMessageFlowId;
 import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.fieldsMessageSwitchFlowTransaction;
 
 import org.bitbucket.openkilda.messaging.Destination;
@@ -14,12 +15,9 @@ import org.bitbucket.openkilda.messaging.command.CommandData;
 import org.bitbucket.openkilda.messaging.command.CommandMessage;
 import org.bitbucket.openkilda.messaging.command.flow.BaseInstallFlow;
 import org.bitbucket.openkilda.messaging.command.flow.RemoveFlow;
+import org.bitbucket.openkilda.messaging.error.ErrorData;
 import org.bitbucket.openkilda.messaging.error.ErrorMessage;
-import org.bitbucket.openkilda.messaging.info.InfoData;
 import org.bitbucket.openkilda.messaging.info.InfoMessage;
-import org.bitbucket.openkilda.messaging.info.flow.FlowPathResponse;
-import org.bitbucket.openkilda.messaging.info.flow.FlowResponse;
-import org.bitbucket.openkilda.messaging.info.flow.FlowsResponse;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowStatusType;
 import org.bitbucket.openkilda.wfm.topology.flow.StreamType;
 
@@ -106,39 +104,20 @@ public class TopologyEngineBolt extends BaseRichBolt {
                             CORRELATION_ID, message.getCorrelationId(), request);
                 }
             } else if (message instanceof InfoMessage) {
-                InfoData data = ((InfoMessage) message).getData();
                 values = new Values(message);
 
-                if (data instanceof FlowPathResponse) {
-                    logger.debug("Flow path message: {}={}, message={}",
-                            CORRELATION_ID, message.getCorrelationId(), request);
+                logger.debug("Flow response message: {}={}, message={}",
+                        CORRELATION_ID, message.getCorrelationId(), request);
 
-                    outputCollector.emit(StreamType.PATH.toString(), tuple, values);
+                outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
 
-                } else if (data instanceof FlowResponse) {
-                    logger.debug("Flow get message: {}={}, message={}",
-                            CORRELATION_ID, message.getCorrelationId(), request);
-
-                    outputCollector.emit(StreamType.READ.toString(), tuple, values);
-
-                } else if (data instanceof FlowsResponse) {
-                    logger.debug("Flows get message: {}={}, message={}",
-                            CORRELATION_ID, message.getCorrelationId(), request);
-
-                    outputCollector.emit(StreamType.READ.toString(), tuple, values);
-
-                } else {
-                    logger.warn("Skip undefined info message: {}={}, message={}",
-                            CORRELATION_ID, message.getCorrelationId(), values);
-                }
             } else if (message instanceof ErrorMessage) {
                 String flowId = ((ErrorMessage) message).getData().getErrorDescription();
-                FlowStatusType status = FlowStatusType.DOWN;
 
                 logger.error("Flow error message: {}={}, flow-id={}, message={}",
                         CORRELATION_ID, message.getCorrelationId(), flowId, request);
 
-                values = new Values(flowId, status);
+                values = new Values(message, flowId);
                 outputCollector.emit(StreamType.STATUS.toString(), tuple, values);
 
             } else {
@@ -161,9 +140,8 @@ public class TopologyEngineBolt extends BaseRichBolt {
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
         outputFieldsDeclarer.declareStream(StreamType.CREATE.toString(), fieldsMessageSwitchFlowTransaction);
         outputFieldsDeclarer.declareStream(StreamType.DELETE.toString(), fieldsMessageSwitchFlowTransaction);
-        outputFieldsDeclarer.declareStream(StreamType.READ.toString(), fieldMessage);
-        outputFieldsDeclarer.declareStream(StreamType.PATH.toString(), fieldMessage);
-        outputFieldsDeclarer.declareStream(StreamType.STATUS.toString(), fieldsFlowStatus);
+        outputFieldsDeclarer.declareStream(StreamType.RESPONSE.toString(), fieldMessage);
+        outputFieldsDeclarer.declareStream(StreamType.STATUS.toString(), fieldsMessageFlowId);
         outputFieldsDeclarer.declareStream(StreamType.ERROR.toString(), fieldsMessageErrorType);
     }
 

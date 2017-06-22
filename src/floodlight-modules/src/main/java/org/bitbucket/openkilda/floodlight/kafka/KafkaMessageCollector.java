@@ -163,8 +163,9 @@ public class KafkaMessageCollector implements IFloodlightModule {
                     meterId);
 
             if (!meterInstalled.getRight()) {
-                ErrorMessage error = new ErrorMessage(new ErrorData(ErrorType.INTERNAL_ERROR, command.getId()),
-                        System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM);
+                ErrorMessage error = new ErrorMessage(
+                        new ErrorData(0, null, ErrorType.CREATION_FAILURE, command.getId()),
+                        System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM_TRANSACTION);
                 kafkaProducer.postMessage(OUTPUT_TOPIC, error);
             }
 
@@ -180,8 +181,9 @@ public class KafkaMessageCollector implements IFloodlightModule {
                     meterId);
 
             if (!flowInstalled.getRight()) {
-                ErrorMessage error = new ErrorMessage(new ErrorData(ErrorType.INTERNAL_ERROR, command.getId()),
-                        System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM);
+                ErrorMessage error = new ErrorMessage(
+                        new ErrorData(0, null, ErrorType.CREATION_FAILURE, command.getId()),
+                        System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM_TRANSACTION);
                 kafkaProducer.postMessage(OUTPUT_TOPIC, error);
             } else {
                 message.setDestination(Destination.WFM_TRANSACTION);
@@ -209,8 +211,9 @@ public class KafkaMessageCollector implements IFloodlightModule {
                     command.getOutputVlanType());
 
             if (!flowInstalled.getRight()) {
-                ErrorMessage error = new ErrorMessage(new ErrorData(ErrorType.INTERNAL_ERROR, command.getId()),
-                        System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM);
+                ErrorMessage error = new ErrorMessage(
+                        new ErrorData(0, null, ErrorType.CREATION_FAILURE, command.getId()),
+                        System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM_TRANSACTION);
                 kafkaProducer.postMessage(OUTPUT_TOPIC, error);
             } else {
                 message.setDestination(Destination.WFM_TRANSACTION);
@@ -236,8 +239,9 @@ public class KafkaMessageCollector implements IFloodlightModule {
                     command.getTransitVlanId());
 
             if (!flowInstalled.getRight()) {
-                ErrorMessage error = new ErrorMessage(new ErrorData(ErrorType.INTERNAL_ERROR, command.getId()),
-                        System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM);
+                ErrorMessage error = new ErrorMessage(
+                        new ErrorData(0, null, ErrorType.CREATION_FAILURE, command.getId()),
+                        System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM_TRANSACTION);
                 kafkaProducer.postMessage(OUTPUT_TOPIC, error);
             } else {
                 message.setDestination(Destination.WFM_TRANSACTION);
@@ -264,8 +268,9 @@ public class KafkaMessageCollector implements IFloodlightModule {
                     sourceMeterId);
 
             if (!sourceMeterInstalled.getRight()) {
-                ErrorMessage error = new ErrorMessage(new ErrorData(ErrorType.INTERNAL_ERROR, command.getId()),
-                        System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM);
+                ErrorMessage error = new ErrorMessage(
+                        new ErrorData(0, null, ErrorType.CREATION_FAILURE, command.getId()),
+                        System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM_TRANSACTION);
                 kafkaProducer.postMessage(OUTPUT_TOPIC, error);
             }
 
@@ -282,8 +287,9 @@ public class KafkaMessageCollector implements IFloodlightModule {
                     sourceMeterId);
 
             if (!forwardFlowInstalled.getRight()) {
-                ErrorMessage error = new ErrorMessage(new ErrorData(ErrorType.INTERNAL_ERROR, command.getId()),
-                        System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM);
+                ErrorMessage error = new ErrorMessage(
+                        new ErrorData(0, null, ErrorType.CREATION_FAILURE, command.getId()),
+                        System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM_TRANSACTION);
                 kafkaProducer.postMessage(OUTPUT_TOPIC, error);
             } else {
                 message.setDestination(Destination.WFM_TRANSACTION);
@@ -297,8 +303,9 @@ public class KafkaMessageCollector implements IFloodlightModule {
                     destinationMeterId);
 
             if (!destinationMeterInstalled.getRight()) {
-                ErrorMessage error = new ErrorMessage(new ErrorData(ErrorType.INTERNAL_ERROR, command.getId()),
-                        System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM);
+                ErrorMessage error = new ErrorMessage(
+                        new ErrorData(0, null, ErrorType.CREATION_FAILURE, command.getId()),
+                        System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM_TRANSACTION);
                 kafkaProducer.postMessage(OUTPUT_TOPIC, error);
             }
 
@@ -326,8 +333,9 @@ public class KafkaMessageCollector implements IFloodlightModule {
                     destinationMeterId);
 
             if (!reverseFlowInstalled.getRight()) {
-                ErrorMessage error = new ErrorMessage(new ErrorData(ErrorType.INTERNAL_ERROR, command.getId()),
-                        System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM);
+                ErrorMessage error = new ErrorMessage(
+                        new ErrorData(0, null, ErrorType.CREATION_FAILURE, command.getId()),
+                        System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM_TRANSACTION);
                 kafkaProducer.postMessage(OUTPUT_TOPIC, error);
             } else {
                 message.setDestination(Destination.WFM_TRANSACTION);
@@ -349,8 +357,9 @@ public class KafkaMessageCollector implements IFloodlightModule {
                     dpid, command.getId(), command.getCookie());
 
             if (!flowDeleted.getRight()) {
-                ErrorMessage error = new ErrorMessage(new ErrorData(ErrorType.INTERNAL_ERROR, command.getId()),
-                        System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM);
+                ErrorMessage error = new ErrorMessage(
+                        new ErrorData(0, null, ErrorType.DELETION_FAILURE, command.getId()),
+                        System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM_TRANSACTION);
                 kafkaProducer.postMessage(OUTPUT_TOPIC, error);
             } else {
                 message.setDestination(Destination.WFM_TRANSACTION);
@@ -362,8 +371,9 @@ public class KafkaMessageCollector implements IFloodlightModule {
             if (flowDeleted.getRight() && meterId != null) {
                 ImmutablePair<Long, Boolean> meterDeleted = switchManager.deleteMeter(dpid, meterId);
                 if (!meterDeleted.getRight()) {
-                    ErrorMessage error = new ErrorMessage(new ErrorData(ErrorType.INTERNAL_ERROR, command.getId()),
-                            System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM);
+                    ErrorMessage error = new ErrorMessage(
+                            new ErrorData(0, null, ErrorType.DELETION_FAILURE, command.getId()),
+                            System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM_TRANSACTION);
                     kafkaProducer.postMessage(OUTPUT_TOPIC, error);
                 }
             }

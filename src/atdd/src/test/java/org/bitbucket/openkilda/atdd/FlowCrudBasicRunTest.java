@@ -9,7 +9,6 @@ import static org.junit.Assert.assertTrue;
 import org.bitbucket.openkilda.flow.Flow;
 import org.bitbucket.openkilda.flow.FlowUtils;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowEndpointPayload;
-import org.bitbucket.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowPayload;
 
 import cucumber.api.java.en.Then;
@@ -35,7 +34,11 @@ public class FlowCrudBasicRunTest {
                 new FlowEndpointPayload(sourceSwitch, sourcePort, sourceVlan),
                 new FlowEndpointPayload(destinationSwitch, destinationPort, destinationVlan),
                 bandwidth, BASE_FLOW_NAME, null);
+
         FlowPayload response = FlowUtils.putFlow(flowPayload);
+        response.setCookie(null);
+        response.setLastUpdated(null);
+
         assertEquals(flowPayload, response);
     }
 
@@ -45,9 +48,13 @@ public class FlowCrudBasicRunTest {
                                   final int bandwidth) throws Throwable {
         Flow expectedFlow = new Flow(flowName, bandwidth, FLOW_COOKIE, BASE_FLOW_NAME, null, sourceSwitch,
                 destinationSwitch, sourcePort, destinationPort, sourceVlan, destinationVlan, 0, null, null);
+
         List<Flow> flows = validateFlowStored();
+
         assertFalse(flows.isEmpty());
+
         storedFlows = flows.size();
+
         assertTrue(flows.contains(expectedFlow));
     }
 
@@ -57,7 +64,9 @@ public class FlowCrudBasicRunTest {
                               final int bandwidth) throws Throwable {
         FlowPayload flow = FlowUtils.getFlow(flowName);
         assertNotNull(flow);
+
         System.out.println(String.format("===> Flow was created at %s\n", flow.getLastUpdated()));
+
         assertEquals(flowName, flow.getId());
         assertEquals(sourceSwitch, flow.getSource().getSwitchId());
         assertEquals(sourcePort, flow.getSource().getPortId().longValue());
@@ -75,8 +84,13 @@ public class FlowCrudBasicRunTest {
                                 final String destinationSwitch, final int destinationPort, final int destinationVlan,
                                 final int bandwidth, final int newBandwidth) throws Throwable {
         flowPayload.setMaximumBandwidth((long) newBandwidth);
+
         FlowPayload response = FlowUtils.updateFlow(flowName, flowPayload);
+        response.setCookie(null);
+        response.setLastUpdated(null);
+
         assertEquals(flowPayload, response);
+
         checkFlowCreation(sourceSwitch, sourcePort, sourceVlan, destinationSwitch,
                 destinationPort, destinationVlan, newBandwidth);
     }
@@ -85,12 +99,18 @@ public class FlowCrudBasicRunTest {
     public void checkFlowDeletion(final String sourceSwitch, final int sourcePort, final int sourceVlan,
                                   final String destinationSwitch, final int destinationPort, final int destinationVlan,
                                   final int bandwidth) throws Throwable {
-        FlowIdStatusPayload flowId = FlowUtils.deleteFlow(flowName);
-        assertEquals(flowName, flowId.getId());
+        FlowPayload response = FlowUtils.deleteFlow(flowName);
+        response.setCookie(null);
+        response.setLastUpdated(null);
+
+        assertEquals(flowPayload, response);
+
         FlowPayload flow = FlowUtils.getFlow(flowName);
+
         assertNull(flow);
 
         List<Flow> flows = validateFlowStored();
+
         assertEquals(storedFlows - 2, flows.size());
     }
 

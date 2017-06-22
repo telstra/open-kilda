@@ -136,7 +136,7 @@ public class TransactionBolt extends BaseStatefulBolt<InMemoryKeyValueState<Stri
             }
         } catch (RuntimeException exception) {
             logger.error("Set status {}: switch-id={}, flow-id={}, {}={}",
-                    FlowStatusType.UP, switchId, flowId, TRANSACTION_ID, transactionId, exception);
+                    FlowStatusType.DOWN, switchId, flowId, TRANSACTION_ID, transactionId, exception);
 
             values = new Values(flowId, FlowStatusType.DOWN);
             outputCollector.emit(StreamType.STATUS.toString(), tuple, values);

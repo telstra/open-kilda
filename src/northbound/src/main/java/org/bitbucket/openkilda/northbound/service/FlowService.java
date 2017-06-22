@@ -25,7 +25,7 @@ public interface FlowService extends BasicService {
      * @param correlationId request correlation Id
      * @return deleted flow
      */
-    FlowIdStatusPayload deleteFlow(final String id, final String correlationId);
+    FlowPayload deleteFlow(final String id, final String correlationId);
 
     /**
      * Updates flow.

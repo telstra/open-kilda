@@ -19,7 +19,6 @@ import org.apache.storm.StormSubmitter;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.KafkaSpout;
 import org.apache.storm.kafka.bolt.KafkaBolt;
-import org.apache.storm.state.InMemoryKeyValueStateProvider;
 import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Fields;
 
@@ -57,7 +56,6 @@ public class FlowTopology extends AbstractTopology {
         StormTopology stormTopology = flowTopology.createTopology();
         final Config config = new Config();
         config.setNumWorkers(flowTopology.workers);
-        //config.put(Config.TOPOLOGY_STATE_PROVIDER, InMemoryKeyValueStateProvider.class.getCanonicalName());
 
         if (args != null && args.length > 0) {
             logger.info("Start Topology: {}", flowTopology.getTopologyName());
@@ -121,9 +119,9 @@ public class FlowTopology extends AbstractTopology {
          */
         KafkaBolt topologyKafkaBolt = createKafkaBolt(TOPIC);
         builder.setBolt(ComponentType.TE_KAFKA_BOLT.toString(), topologyKafkaBolt, parallelism)
-                .shuffleGrouping(ComponentType.NB_REPLY_BOLT.toString(), StreamType.CREATE.toString())
-                .shuffleGrouping(ComponentType.NB_REPLY_BOLT.toString(), StreamType.UPDATE.toString())
-                .shuffleGrouping(ComponentType.NB_REPLY_BOLT.toString(), StreamType.DELETE.toString())
+                .shuffleGrouping(ComponentType.STATUS_BOLT.toString(), StreamType.CREATE.toString())
+                .shuffleGrouping(ComponentType.STATUS_BOLT.toString(), StreamType.UPDATE.toString())
+                .shuffleGrouping(ComponentType.STATUS_BOLT.toString(), StreamType.DELETE.toString())
                 .shuffleGrouping(ComponentType.STATUS_BOLT.toString(), StreamType.READ.toString())
                 .shuffleGrouping(ComponentType.STATUS_BOLT.toString(), StreamType.PATH.toString());
 
@@ -176,7 +174,6 @@ public class FlowTopology extends AbstractTopology {
          */
         ErrorBolt errorProcessingBolt = new ErrorBolt();
         builder.setBolt(ComponentType.ERROR_BOLT.toString(), errorProcessingBolt, parallelism)
-                //.shuffleGrouping(ComponentType.TRANSACTION_BOLT.toString(), StreamType.ERROR.toString())
                 .shuffleGrouping(ComponentType.NB_REQUEST_BOLT.toString(), StreamType.ERROR.toString())
                 .shuffleGrouping(ComponentType.STATUS_BOLT.toString(), StreamType.ERROR.toString())
                 .shuffleGrouping(ComponentType.STATUS_BOLT.toString(), StreamType.ERROR.toString())
@@ -188,13 +185,9 @@ public class FlowTopology extends AbstractTopology {
          */
         NorthboundReplyBolt northboundReplyBolt = new NorthboundReplyBolt();
         builder.setBolt(ComponentType.NB_REPLY_BOLT.toString(), northboundReplyBolt, parallelism)
-                .shuffleGrouping(ComponentType.STATUS_BOLT.toString(), StreamType.CREATE.toString())
-                .shuffleGrouping(ComponentType.STATUS_BOLT.toString(), StreamType.UPDATE.toString())
-                .shuffleGrouping(ComponentType.STATUS_BOLT.toString(), StreamType.DELETE.toString())
-                .shuffleGrouping(ComponentType.STATUS_BOLT.toString(), StreamType.STATUS.toString())
-                .shuffleGrouping(ComponentType.TE_BOLT.toString(), StreamType.READ.toString())
-                .shuffleGrouping(ComponentType.TE_BOLT.toString(), StreamType.PATH.toString())
-                .shuffleGrouping(ComponentType.ERROR_BOLT.toString(), StreamType.ERROR.toString());
+                .shuffleGrouping(ComponentType.TE_BOLT.toString(), StreamType.RESPONSE.toString())
+                .shuffleGrouping(ComponentType.STATUS_BOLT.toString(), StreamType.RESPONSE.toString())
+                .shuffleGrouping(ComponentType.ERROR_BOLT.toString(), StreamType.RESPONSE.toString());
 
         /*
          * Bolt sends Northbound responses

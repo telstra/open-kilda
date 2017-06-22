@@ -470,7 +470,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
 
     @Test
     public void errorMessageTest() throws IOException, ClassNotFoundException {
-        ErrorData data = new ErrorData(ErrorType.AUTH_FAILED, FLOW_NAME);
+        ErrorData data = new ErrorData(0, null, ErrorType.AUTH_FAILED, FLOW_NAME);
         System.out.println(data);
 
         ErrorMessage info = new ErrorMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);

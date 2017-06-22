@@ -111,7 +111,7 @@ public class FlowUtils {
      * @param flowId flow id
      * @return The JSON document of the specified flow
      */
-    public static FlowIdStatusPayload deleteFlow(final String flowId) {
+    public static FlowPayload deleteFlow(final String flowId) {
         long current = System.currentTimeMillis();
         Client client = ClientBuilder.newClient(new ClientConfig()).register(JacksonFeature.class);
 
@@ -128,7 +128,7 @@ public class FlowUtils {
         System.out.println(String.format("==> response = %s", response.toString()));
         System.out.println(String.format("==> Northbound Delete Flow Time: %,.3f", getTimeDuration(current)));
 
-        return response.getStatus() == 404 ? null : response.readEntity(FlowIdStatusPayload.class);
+        return response.readEntity(FlowPayload.class);
     }
 
     /**

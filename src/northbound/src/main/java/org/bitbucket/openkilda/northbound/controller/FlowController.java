@@ -106,7 +106,7 @@ public class FlowController {
      * @param correlationId correlation ID header value
      * @return flow
      */
-    @TypeHint(FlowIdStatusPayload.class)
+    @TypeHint(FlowPayload.class)
     @StatusCodes({
             @ResponseCode(code = 200, condition = "Operation is successful"),
             @ResponseCode(code = 400, condition = "Invalid input data"),
@@ -117,11 +117,11 @@ public class FlowController {
             value = "/flows/{flow-id}",
             method = RequestMethod.DELETE,
             produces = APPLICATION_JSON_UTF8_VALUE)
-    public ResponseEntity<FlowIdStatusPayload> deleteFlow(
+    public ResponseEntity<FlowPayload> deleteFlow(
             @PathVariable(name = "flow-id") String flowId,
             @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
         logger.debug("Delete flow: {}={}, {}={}", CORRELATION_ID, correlationId, FLOW_ID, flowId);
-        FlowIdStatusPayload response = flowService.deleteFlow(flowId, correlationId);
+        FlowPayload response = flowService.deleteFlow(flowId, correlationId);
         return new ResponseEntity<>(response, new HttpHeaders(), HttpStatus.OK);
     }
 
