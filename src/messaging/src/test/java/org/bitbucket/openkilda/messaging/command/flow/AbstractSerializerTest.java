@@ -135,7 +135,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     @Test
     public void serializeInstallOneSwitchFlowMessageTest() throws IOException, ClassNotFoundException {
         InstallOneSwitchFlow data = new InstallOneSwitchFlow(TIMESTAMP, FLOW_NAME, COOKIE, SWITCH_ID, INPUT_PORT,
-                OUTPUT_PORT, INPUT_VLAN_ID, OUTPUT_VLAN_ID, OUTPUT_VLAN_TYPE, BANDWIDTH, METER_ID, METER_ID);
+                OUTPUT_PORT, INPUT_VLAN_ID, OUTPUT_VLAN_ID, OUTPUT_VLAN_TYPE, BANDWIDTH, METER_ID);
         System.out.println(data);
 
         CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
@@ -470,7 +470,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
 
     @Test
     public void errorMessageTest() throws IOException, ClassNotFoundException {
-        ErrorData data = new ErrorData(0, null, ErrorType.AUTH_FAILED, FLOW_NAME);
+        ErrorData data = new ErrorData(ErrorType.AUTH_FAILED, FLOW_NAME, "Bad credentials");
         System.out.println(data);
 
         ErrorMessage info = new ErrorMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);

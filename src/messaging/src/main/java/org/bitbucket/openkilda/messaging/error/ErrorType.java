@@ -1,11 +1,15 @@
 package org.bitbucket.openkilda.messaging.error;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 /**
  * The entity exception type enum.
  */
+@JsonSerialize
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public enum ErrorType {
     /**
      * The error message for internal service error.
@@ -13,19 +17,19 @@ public enum ErrorType {
     INTERNAL_ERROR("Internal service error"),
 
     /**
-     * The error message for internal service error.
+     * The error message for flow creation failure.
      */
-    CREATION_FAILURE("Internal service error during creation"),
+    CREATION_FAILURE("Flow creation error"),
 
     /**
-     * The error message for internal service error.
+     * The error message for flow update failure.
      */
-    UPDATE_FAILURE("Internal service error during update"),
+    UPDATE_FAILURE("Flow update error"),
 
     /**
-     * The error message for internal service error.
+     * The error message for flow deletion failure.
      */
-    DELETION_FAILURE("Internal service error during deletion"),
+    DELETION_FAILURE("Flow deletion error"),
 
     /**
      * The error message for not implemented error.
@@ -70,17 +74,17 @@ public enum ErrorType {
     /**
      * The text type value.
      */
-    @JsonProperty("type")
-    private final String type;
+    @JsonProperty("error-type")
+    private final String errorType;
 
     /**
      * Instance constructor.
      *
-     * @param type the type value
+     * @param errorType the type value
      */
     @JsonCreator
-    ErrorType(@JsonProperty("type") final String type) {
-        this.type = type;
+    ErrorType(@JsonProperty("error-type") final String errorType) {
+        this.errorType = errorType;
     }
 
     /**
@@ -88,6 +92,6 @@ public enum ErrorType {
      */
     @Override
     public String toString() {
-        return type;
+        return errorType;
     }
 }

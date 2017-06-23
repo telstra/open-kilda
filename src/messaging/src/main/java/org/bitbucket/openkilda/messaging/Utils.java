@@ -41,6 +41,10 @@ public final class Utils {
      */
     public static final String DEFAULT_CORRELATION_ID = "admin-request";
     /**
+     * The default correlation ID value.
+     */
+    public static final String SYSTEM_CORRELATION_ID = "system-request";
+    /**
      * VLAN TAG Ether type value.
      */
     public static final int ETH_TYPE = 0x8100;

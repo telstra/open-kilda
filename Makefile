@@ -21,11 +21,17 @@ up-log-mode: up-test-mode
 run-test: up-log-mode
 
 clean-sources:
-	mvn -f ./src/floodlight-modules/pom.xml clean
-	mvn -f ./src/topology/pom.xml clean
-	mvn -f ./src/northbound/pom.xml clean
-	mvn -f ./src/messaging/pom.xml clean
-	mvn -f ./services/wfm/pom.xml clean
+	mvn -f src/floodlight-modules/pom.xml clean
+	mvn -f src/northbound/pom.xml clean
+	mvn -f src/messaging/pom.xml clean
+	mvn -f services/wfm/pom.xml clean
+
+unit:
+	$(MAKE) -C src/projectfloodlight
+	mvn -f src/messaging/pom.xml clean install
+	mvn -f src/floodlight-modules/pom.xml clean test
+	mvn -f src/northbound/pom.xml clean test
+	mvn -f services/wfm/pom.xml clean test
 
 clean-test:
 	docker-compose down
@@ -75,5 +81,5 @@ run-floodlight: build-floodlight
 
 .PHONY: default run-dev build-latest build-base
 .PHONY: up-test-mode up-log-mode run-test clean-test
-.PHONY: smoke acceptance perf sec
+.PHONY: smoke acceptance perf sec unit
 .PHONY: build-floodlight clean-floodlight run-floodlight

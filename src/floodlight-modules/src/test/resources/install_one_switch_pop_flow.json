@@ -13,8 +13,7 @@
 		"output_vlan_id": 0,
 		"output_vlan_type": "POP",
 		"bandwidth": 10000,
-		"src_meter_id": 1,
-		"dst_meter_id": 2
+		"meter_id": 1
 	}
 }
 

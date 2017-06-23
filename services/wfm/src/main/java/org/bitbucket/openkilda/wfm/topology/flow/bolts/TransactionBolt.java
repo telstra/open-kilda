@@ -5,7 +5,7 @@ import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.FLOW_ID_FIE
 import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.MESSAGE_FIELD;
 import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.SWITCH_ID_FIELD;
 import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.fieldMessage;
-import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.fieldsFlowStatus;
+import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.fieldsFlowIdStatus;
 
 import org.bitbucket.openkilda.messaging.payload.flow.FlowStatusType;
 import org.bitbucket.openkilda.wfm.topology.flow.ComponentType;
@@ -64,7 +64,7 @@ public class TransactionBolt extends BaseStatefulBolt<InMemoryKeyValueState<Stri
         try {
             switch (componentId) {
 
-                case TE_BOLT:
+                case TOPOLOGY_ENGINE_BOLT:
                     logger.debug("Transaction from TopologyEngine: switch-id={}, flow-id={}, {}={}",
                             switchId, flowId, TRANSACTION_ID, transactionId);
 
@@ -95,7 +95,7 @@ public class TransactionBolt extends BaseStatefulBolt<InMemoryKeyValueState<Stri
                     outputCollector.emit(streamId.toString(), tuple, values);
                     break;
 
-                case OFS_BOLT:
+                case SPEAKER_BOLT:
                     logger.debug("Transaction from Speaker: switch-id={}, flow-id={}, {}={}",
                             switchId, flowId, TRANSACTION_ID, transactionId);
 
@@ -166,7 +166,7 @@ public class TransactionBolt extends BaseStatefulBolt<InMemoryKeyValueState<Stri
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
         outputFieldsDeclarer.declareStream(StreamType.CREATE.toString(), fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.DELETE.toString(), fieldMessage);
-        outputFieldsDeclarer.declareStream(StreamType.STATUS.toString(), fieldsFlowStatus);
+        outputFieldsDeclarer.declareStream(StreamType.STATUS.toString(), fieldsFlowIdStatus);
     }
 
     /**

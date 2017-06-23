@@ -129,10 +129,10 @@ public class FlowsResource extends ServerResource {
                 }
             }
         } catch (IllegalArgumentException exception) {
-            logger.error("No such switch: {}", switchId, exception);
-            int code = HttpStatus.SC_BAD_REQUEST;
-            MessageError responseMessage = new MessageError(DEFAULT_CORRELATION_ID, System.currentTimeMillis(), code,
-                    HttpStatus.getStatusText(code), ErrorType.PARAMETERS_INVALID.toString(), exception.getMessage());
+            String messageString = "No such switch";
+            logger.error("{}: {}", messageString, switchId, exception);
+            MessageError responseMessage = new MessageError(DEFAULT_CORRELATION_ID, System.currentTimeMillis(),
+                    ErrorType.PARAMETERS_INVALID.toString(), messageString, exception.getMessage());
             response.putAll(MAPPER.convertValue(responseMessage, Map.class));
         }
         return response;

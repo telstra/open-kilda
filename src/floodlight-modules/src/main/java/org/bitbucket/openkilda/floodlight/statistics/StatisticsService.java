@@ -1,6 +1,7 @@
 package org.bitbucket.openkilda.floodlight.statistics;
 
 import static java.util.stream.Collectors.toList;
+import static org.bitbucket.openkilda.messaging.Utils.SYSTEM_CORRELATION_ID;
 
 import org.bitbucket.openkilda.floodlight.kafka.KafkaMessageProducer;
 import org.bitbucket.openkilda.messaging.Destination;
@@ -145,7 +146,7 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
         @Override
         public void onSuccess(List<T> data) {
             InfoMessage infoMessage = new InfoMessage(transform.apply(data),
-                    System.currentTimeMillis(), "system", Destination.WFM_STATS);
+                    System.currentTimeMillis(), SYSTEM_CORRELATION_ID, Destination.WFM_STATS);
             kafkaProducer.postMessage(TOPIC, infoMessage);
         }
 

@@ -120,7 +120,7 @@ public class WorkFlowManagerKafkaMock {
             return new InfoMessage(flowResponse, 0, correlationId, Destination.NORTHBOUND);
         } else if (data instanceof FlowGetRequest) {
             if (ERROR_FLOW_ID.equals(((FlowGetRequest) data).getPayload().getId())) {
-                return new ErrorMessage(new ErrorData(0, null, ErrorType.NOT_FOUND, FLOW_ID),
+                return new ErrorMessage(new ErrorData(ErrorType.NOT_FOUND, "Flow was not found", ERROR_FLOW_ID),
                         0, correlationId, Destination.NORTHBOUND);
             } else {
                 return new InfoMessage(flowResponse, 0, correlationId, Destination.NORTHBOUND);

@@ -1,5 +1,6 @@
 package org.bitbucket.openkilda.northbound.controller;
 
+import static org.bitbucket.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 import static org.bitbucket.openkilda.messaging.error.ErrorType.INTERNAL_ERROR;
 
 import org.bitbucket.openkilda.messaging.error.MessageException;
@@ -49,7 +50,8 @@ public class HealthCheckController {
     public ResponseEntity<HealthCheck> getHealthCheck() {
         logger.debug("getHealthCheck");
         if (healthCheck == null) {
-            throw new MessageException(INTERNAL_ERROR, System.currentTimeMillis());
+            throw new MessageException(DEFAULT_CORRELATION_ID, System.currentTimeMillis(),
+                    INTERNAL_ERROR, "Service unavailable", "Could not get initial data");
         }
         return new ResponseEntity<>(healthCheck, new HttpHeaders(), HttpStatus.OK);
     }

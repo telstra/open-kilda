@@ -103,52 +103,40 @@ public class ReplaceInstallFlowTest {
     public void installOneSwitchNoneFlow() throws IOException, InterruptedException {
         String value = Resources.toString(getClass().getResource("/install_one_switch_none_flow.json"), Charsets.UTF_8);
         InstallOneSwitchFlow data = (InstallOneSwitchFlow) prepareData(value);
-        OFMeterMod directMeterCommand = scheme.installMeter(data.getBandwidth(), 1024, data.getSourceMeterId());
-        OFFlowAdd directFlowCommand = scheme.oneSwitchNoneFlowMod(data.getInputPort(), data.getOutputPort(),
-                data.getSourceMeterId(), 123L);
-        OFMeterMod reverseMeterCommand = scheme.installMeter(data.getBandwidth(), 1024, data.getDestinationMeterId());
-        OFFlowAdd reverseFlowCommand = scheme.oneSwitchNoneFlowMod(data.getOutputPort(), data.getInputPort(),
-                data.getDestinationMeterId(), 123L);
-        runTest(value, directFlowCommand, directMeterCommand, reverseFlowCommand, reverseMeterCommand);
+        OFMeterMod meterCommand = scheme.installMeter(data.getBandwidth(), 1024, data.getMeterId());
+        OFFlowAdd flowCommand = scheme.oneSwitchNoneFlowMod(data.getInputPort(), data.getOutputPort(),
+                data.getMeterId(), 123L);
+        runTest(value, flowCommand, meterCommand, null, null);
     }
 
     @Test
     public void installOneSwitchReplaceFlow() throws IOException, InterruptedException {
         String value = Resources.toString(getClass().getResource("/install_one_switch_replace_flow.json"), Charsets.UTF_8);
         InstallOneSwitchFlow data = (InstallOneSwitchFlow) prepareData(value);
-        OFMeterMod directMeterCommand = scheme.installMeter(data.getBandwidth(), 1024, data.getSourceMeterId());
-        OFFlowAdd directFlowCommand = scheme.oneSwitchReplaceFlowMod(data.getInputPort(), data.getOutputPort(),
-                data.getInputVlanId(), data.getOutputVlanId(), data.getSourceMeterId(), 123L);
-        OFMeterMod reverseMeterCommand = scheme.installMeter(data.getBandwidth(), 1024, data.getDestinationMeterId());
-        OFFlowAdd reverseFlowCommand = scheme.oneSwitchReplaceFlowMod(data.getOutputPort(), data.getInputPort(),
-                data.getOutputVlanId(), data.getInputVlanId(), data.getDestinationMeterId(), 123L);
-        runTest(value, directFlowCommand, directMeterCommand, reverseFlowCommand, reverseMeterCommand);
+        OFMeterMod meterCommand = scheme.installMeter(data.getBandwidth(), 1024, data.getMeterId());
+        OFFlowAdd flowCommand = scheme.oneSwitchReplaceFlowMod(data.getInputPort(), data.getOutputPort(),
+                data.getInputVlanId(), data.getOutputVlanId(), data.getMeterId(), 123L);
+        runTest(value, flowCommand, meterCommand, null, null);
     }
 
     @Test
     public void installOneSwitchPushFlow() throws IOException, InterruptedException {
         String value = Resources.toString(getClass().getResource("/install_one_switch_push_flow.json"), Charsets.UTF_8);
         InstallOneSwitchFlow data = (InstallOneSwitchFlow) prepareData(value);
-        OFMeterMod directMeterCommand = scheme.installMeter(data.getBandwidth(), 1024, data.getSourceMeterId());
-        OFFlowAdd directFlowCommand = scheme.oneSwitchPushFlowMod(data.getInputPort(), data.getOutputPort(),
-                data.getOutputVlanId(), data.getSourceMeterId(), 123L);
-        OFMeterMod reverseMeterCommand = scheme.installMeter(data.getBandwidth(), 1024, data.getDestinationMeterId());
-        OFFlowAdd reverseFlowCommand = scheme.oneSwitchPopFlowMod(data.getOutputPort(), data.getInputPort(),
-                data.getOutputVlanId(), data.getDestinationMeterId(), 123L);
-        runTest(value, directFlowCommand, directMeterCommand, reverseFlowCommand, reverseMeterCommand);
+        OFMeterMod meterCommand = scheme.installMeter(data.getBandwidth(), 1024, data.getMeterId());
+        OFFlowAdd flowCommand = scheme.oneSwitchPushFlowMod(data.getInputPort(), data.getOutputPort(),
+                data.getOutputVlanId(), data.getMeterId(), 123L);
+        runTest(value, flowCommand, meterCommand, null, null);
     }
 
     @Test
     public void installOneSwitchPopFlow() throws IOException, InterruptedException {
         String value = Resources.toString(getClass().getResource("/install_one_switch_pop_flow.json"), Charsets.UTF_8);
         InstallOneSwitchFlow data = (InstallOneSwitchFlow) prepareData(value);
-        OFMeterMod directMeterCommand = scheme.installMeter(data.getBandwidth(), 1024, data.getSourceMeterId());
-        OFFlowAdd directFlowCommand = scheme.oneSwitchPopFlowMod(data.getInputPort(), data.getOutputPort(),
-                data.getInputVlanId(), data.getSourceMeterId(), 123L);
-        OFMeterMod reverseMeterCommand = scheme.installMeter(data.getBandwidth(), 1024, data.getDestinationMeterId());
-        OFFlowAdd reverseFlowCommand = scheme.oneSwitchPushFlowMod(data.getOutputPort(), data.getInputPort(),
-                data.getInputVlanId(), data.getDestinationMeterId(), 123L);
-        runTest(value, directFlowCommand, directMeterCommand, reverseFlowCommand, reverseMeterCommand);
+        OFMeterMod meterCommand = scheme.installMeter(data.getBandwidth(), 1024, data.getMeterId());
+        OFFlowAdd flowCommand = scheme.oneSwitchPopFlowMod(data.getInputPort(), data.getOutputPort(),
+                data.getInputVlanId(), data.getMeterId(), 123L);
+        runTest(value, flowCommand, meterCommand, null, null);
     }
 
     @Test

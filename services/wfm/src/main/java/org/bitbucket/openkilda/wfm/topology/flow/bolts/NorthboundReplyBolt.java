@@ -53,7 +53,7 @@ public class NorthboundReplyBolt extends BaseRichBolt {
         try {
             switch (componentId) {
 
-                case TE_BOLT:
+                case TOPOLOGY_ENGINE_BOLT:
                     logger.debug("Flow response: {}={}, component={}, stream={}, message={}",
                             CORRELATION_ID, message.getCorrelationId(), componentId, streamId, message);
 

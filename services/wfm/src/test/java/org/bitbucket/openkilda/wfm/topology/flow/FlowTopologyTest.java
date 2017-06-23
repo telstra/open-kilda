@@ -946,7 +946,7 @@ public class FlowTopologyTest extends AbstractStormTest {
     private InstallOneSwitchFlow baseInstallFlowCommand(final String flowId) throws IOException {
         System.out.println("TOPOLOGY: Install flow");
         InstallOneSwitchFlow commandData = new InstallOneSwitchFlow(0L, flowId,
-                COOKIE, "switch-id", 1, 2, 0, 0, OutputVlanType.NONE, 10000L, 0L, 0L);
+                COOKIE, "switch-id", 1, 2, 0, 0, OutputVlanType.NONE, 10000L, 0L);
         CommandMessage commandMessage = new CommandMessage(commandData, 0, "install-flow", Destination.WFM);
         sendTopologyEngineMessage(commandMessage);
         return commandData;
@@ -999,7 +999,7 @@ public class FlowTopologyTest extends AbstractStormTest {
 
     private ErrorMessage errorFlowTopologyEngineCommand(final String flowId, final ErrorType type) throws IOException {
         System.out.println("TOPOLOGY: Error flow");
-        ErrorData errorData = new ErrorData(0, null, type, flowId);
+        ErrorData errorData = new ErrorData(type, "Could not operate with flow", flowId);
         ErrorMessage errorMessage = new ErrorMessage(errorData, 0, "error-flow", Destination.WFM);
         sendTopologyEngineMessage(errorMessage);
         return errorMessage;
@@ -1024,7 +1024,7 @@ public class FlowTopologyTest extends AbstractStormTest {
 
     private ErrorMessage errorFlowSpeakerCommand(final String flowId) throws IOException {
         System.out.println("TOPOLOGY: Error rule");
-        ErrorData errorData = new ErrorData(0, null, ErrorType.REQUEST_INVALID, flowId);
+        ErrorData errorData = new ErrorData(ErrorType.REQUEST_INVALID, "Could not operate with flow", flowId);
         ErrorMessage errorMessage = new ErrorMessage(errorData, 0, "error-flow", Destination.WFM_TRANSACTION);
         sendSpeakerMessage(errorMessage);
         return errorMessage;

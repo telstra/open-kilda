@@ -1,6 +1,7 @@
 package org.bitbucket.openkilda.northbound.service;
 
 import static org.bitbucket.openkilda.messaging.Utils.CORRELATION_ID;
+import static org.bitbucket.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 import static org.bitbucket.openkilda.messaging.error.ErrorType.INTERNAL_ERROR;
 
 import org.bitbucket.openkilda.messaging.Message;
@@ -40,24 +41,30 @@ public interface BasicService {
                 ErrorData error = ((ErrorMessage) message).getData();
                 logger.error("Response message is error: {}={}, command={}, error={}",
                         CORRELATION_ID, correlationId, commandMessage, error);
-                throw new MessageException(error.getErrorType(), message.getTimestamp());
+                throw new MessageException((ErrorMessage) message);
             } else if (message instanceof InfoMessage) {
                 InfoMessage info = (InfoMessage) message;
                 data = info.getData();
                 if (data == null) {
-                    logger.error("Response message data is empty: {}={}, command={}, info={}",
+                    String errorMessage = "Response message data is empty";
+                    logger.error("{}: {}={}, command={}, info={}", errorMessage,
                             CORRELATION_ID, correlationId, commandMessage, info);
-                    throw new MessageException(INTERNAL_ERROR, message.getTimestamp());
+                    throw new MessageException(message.getCorrelationId(), message.getTimestamp(),
+                            INTERNAL_ERROR, errorMessage, commandMessage.toString());
                 }
             } else {
-                logger.error("Response message type is unexpected: {}:{}, command={}, message={}",
+                String errorMessage = "Response message type is unexpected";
+                logger.error("{}: {}:{}, command={}, message={}", errorMessage,
                         CORRELATION_ID, correlationId, commandMessage, message);
-                throw new MessageException(INTERNAL_ERROR, message.getTimestamp());
+                throw new MessageException(message.getCorrelationId(), message.getTimestamp(),
+                        INTERNAL_ERROR, errorMessage, commandMessage.toString());
             }
         } else {
-            logger.error("Response message is empty: {}={}, command={}",
+            String errorMessage = "Response message is empty";
+            logger.error("{}: {}={}, command={}", errorMessage,
                     CORRELATION_ID, correlationId, commandMessage);
-            throw new MessageException(INTERNAL_ERROR, System.currentTimeMillis());
+            throw new MessageException(DEFAULT_CORRELATION_ID, System.currentTimeMillis(),
+                    INTERNAL_ERROR, errorMessage, commandMessage.toString());
         }
         return data;
     }

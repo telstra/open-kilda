@@ -2,6 +2,7 @@ package org.bitbucket.openkilda.northbound.messaging.kafka;
 
 import static org.bitbucket.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.bitbucket.openkilda.messaging.Utils.MAPPER;
+import static org.bitbucket.openkilda.messaging.Utils.SYSTEM_CORRELATION_ID;
 import static org.bitbucket.openkilda.messaging.error.ErrorType.INTERNAL_ERROR;
 import static org.bitbucket.openkilda.messaging.error.ErrorType.OPERATION_TIMED_OUT;
 
@@ -77,14 +78,21 @@ public class KafkaMessageConsumer {
             for (int i = POLL_TIMEOUT / POLL_PAUSE; i < POLL_TIMEOUT; i += POLL_PAUSE) {
                 if (messages.containsKey(correlationId)) {
                     return messages.remove(correlationId);
+                } else if (messages.containsKey(SYSTEM_CORRELATION_ID)) {
+                    return messages.remove(SYSTEM_CORRELATION_ID);
                 }
                 Thread.sleep(POLL_PAUSE);
             }
         } catch (InterruptedException exception) {
-            logger.error("Unable to poll message: {}={}", CORRELATION_ID, correlationId);
-            throw new MessageException(INTERNAL_ERROR, System.currentTimeMillis());
+            String errorMessage = "Unable to poll message";
+            logger.error("{}: {}={}", errorMessage, CORRELATION_ID, correlationId);
+            throw new MessageException(correlationId, System.currentTimeMillis(),
+                    INTERNAL_ERROR, errorMessage, "kilda-test");
         }
-        throw new MessageException(OPERATION_TIMED_OUT, System.currentTimeMillis());
+        String errorMessage = "Timeout for message poll";
+        logger.error("{}: {}={}", errorMessage, CORRELATION_ID, correlationId);
+        throw new MessageException(correlationId, System.currentTimeMillis(),
+                OPERATION_TIMED_OUT, errorMessage, "kilda-test");
     }
 
     /**

@@ -17,6 +17,7 @@ import org.bitbucket.openkilda.messaging.info.InfoMessage;
 import org.bitbucket.openkilda.messaging.info.flow.FlowStatusResponse;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowStatusType;
+import org.bitbucket.openkilda.wfm.topology.Topology;
 import org.bitbucket.openkilda.wfm.topology.flow.ComponentType;
 import org.bitbucket.openkilda.wfm.topology.flow.StreamType;
 
@@ -67,11 +68,13 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
         FlowStatusType flowStatus = null;
         Values values;
         Message message;
+        ErrorMessage errorMessage;
+        String logMessage;
 
         try {
             switch (componentId) {
 
-                case NB_REQUEST_BOLT:
+                case NORTHBOUND_REQUEST_BOLT:
                     message = (Message) tuple.getValueByField(MESSAGE_FIELD);
 
                     switch (streamId) {
@@ -90,10 +93,14 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
                                 outputCollector.emit(StreamType.CREATE.toString(), tuple, values);
 
                             } else {
-                                logger.error("Flow already exists: {}={}, flow-id={}, component={}, stream={}",
+                                logMessage = String.format("Flow already exists: flow-id=%s", flowId);
+                                logger.error("{}, {}={}, component={}, stream={}", logMessage,
                                         CORRELATION_ID, message.getCorrelationId(), flowId, componentId, streamId);
 
-                                values = new Values(message, ErrorType.ALREADY_EXISTS);
+                                errorMessage = getErrorMessage(message.getCorrelationId(),
+                                        ErrorType.ALREADY_EXISTS, logMessage, componentId.toString().toLowerCase());
+
+                                values = new Values(errorMessage, ErrorType.ALREADY_EXISTS);
                                 outputCollector.emit(StreamType.ERROR.toString(), tuple, values);
                             }
                             break;
@@ -112,10 +119,14 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
                                 outputCollector.emit(StreamType.UPDATE.toString(), tuple, values);
 
                             } else {
-                                logger.error("Flow not found: {}={}, flow-id={}, component={}, stream={}",
+                                logMessage = String.format("Flow not found: flow-id=%s", flowId);
+                                logger.error("{}, {}={}, component={}, stream={}", logMessage,
                                         CORRELATION_ID, message.getCorrelationId(), flowId, componentId, streamId);
 
-                                values = new Values(message, ErrorType.NOT_FOUND);
+                                errorMessage = getErrorMessage(message.getCorrelationId(),
+                                        ErrorType.NOT_FOUND, logMessage, componentId.toString().toLowerCase());
+
+                                values = new Values(errorMessage, ErrorType.NOT_FOUND);
                                 outputCollector.emit(StreamType.ERROR.toString(), tuple, values);
                             }
                             break;
@@ -134,10 +145,14 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
                                 outputCollector.emit(StreamType.DELETE.toString(), tuple, values);
 
                             } else {
-                                logger.error("Flow not found: {}={}, flow-id={}, component={}, stream={}",
+                                logMessage = String.format("Flow not found: flow-id=%s", flowId);
+                                logger.error("{}, {}={}, component={}, stream={}", logMessage,
                                         CORRELATION_ID, message.getCorrelationId(), flowId, componentId, streamId);
 
-                                values = new Values(message, ErrorType.NOT_FOUND);
+                                errorMessage = getErrorMessage(message.getCorrelationId(),
+                                        ErrorType.NOT_FOUND, logMessage, componentId.toString().toLowerCase());
+
+                                values = new Values(errorMessage, ErrorType.NOT_FOUND);
                                 outputCollector.emit(StreamType.ERROR.toString(), tuple, values);
                             }
                             break;
@@ -156,10 +171,14 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
                                 outputCollector.emit(StreamType.READ.toString(), tuple, values);
 
                             } else {
-                                logger.error("Flow not found: {}={}, flow-id={}, component={}, stream={}",
+                                logMessage = String.format("Flow not found: flow-id=%s", flowId);
+                                logger.error("{}, {}={}, component={}, stream={}", logMessage,
                                         CORRELATION_ID, message.getCorrelationId(), flowId, componentId, streamId);
 
-                                values = new Values(message, ErrorType.NOT_FOUND);
+                                errorMessage = getErrorMessage(message.getCorrelationId(),
+                                        ErrorType.NOT_FOUND, logMessage, componentId.toString().toLowerCase());
+
+                                values = new Values(errorMessage, ErrorType.NOT_FOUND);
                                 outputCollector.emit(StreamType.ERROR.toString(), tuple, values);
                             }
                             break;
@@ -176,10 +195,14 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
                                 outputCollector.emit(StreamType.PATH.toString(), tuple, values);
 
                             } else {
-                                logger.error("Flow not found: {}={}, flow-id={}, component={}, stream={}",
+                                logMessage = String.format("Flow not found: flow-id=%s", flowId);
+                                logger.error("{}, {}={}, component={}, stream={}", logMessage,
                                         CORRELATION_ID, message.getCorrelationId(), flowId, componentId, streamId);
 
-                                values = new Values(message, ErrorType.NOT_FOUND);
+                                errorMessage = getErrorMessage(message.getCorrelationId(),
+                                        ErrorType.NOT_FOUND, logMessage, componentId.toString().toLowerCase());
+
+                                values = new Values(errorMessage, ErrorType.NOT_FOUND);
                                 outputCollector.emit(StreamType.ERROR.toString(), tuple, values);
                             }
                             break;
@@ -199,10 +222,14 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
                                 outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
 
                             } else {
-                                logger.error("Flow not found: {}={}, flow-id={}, component={}, stream={}",
+                                logMessage = String.format("Flow not found: flow-id=%s", flowId);
+                                logger.error("{}, {}={}, component={}, stream={}", logMessage,
                                         CORRELATION_ID, message.getCorrelationId(), flowId, componentId, streamId);
 
-                                values = new Values(message, ErrorType.NOT_FOUND);
+                                errorMessage = getErrorMessage(message.getCorrelationId(),
+                                        ErrorType.NOT_FOUND, logMessage, componentId.toString().toLowerCase());
+
+                                values = new Values(errorMessage, ErrorType.NOT_FOUND);
                                 outputCollector.emit(StreamType.ERROR.toString(), tuple, values);
                             }
                             break;
@@ -214,9 +241,9 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
                     }
                     break;
 
-                case TE_BOLT:
-                    message = (Message) tuple.getValueByField(MESSAGE_FIELD);
-                    ErrorData errorData = ((ErrorMessage) message).getData();
+                case TOPOLOGY_ENGINE_BOLT:
+                    errorMessage = (ErrorMessage) tuple.getValueByField(MESSAGE_FIELD);
+                    ErrorData errorData = errorMessage.getData();
 
                     switch (errorData.getErrorType()) {
 
@@ -244,12 +271,14 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
                             break;
                     }
 
-                    values = new Values(message);
+                    errorMessage.setDestination(Destination.NORTHBOUND);
+                    errorData.setErrorDescription(componentId.toString().toLowerCase());
+                    values = new Values(errorMessage);
                     outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
 
                     break;
 
-                case OFS_BOLT:
+                case SPEAKER_BOLT:
 
                 case TRANSACTION_BOLT:
                     FlowStatusType newStatus = (FlowStatusType) tuple.getValueByField(STATUS_FIELD);
@@ -311,5 +340,11 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
     @Override
     public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
         this.outputCollector = outputCollector;
+    }
+
+    private ErrorMessage getErrorMessage(final String correlationId, final ErrorType errorType,
+                                         final String errorMessage, final String errorDescription) {
+        return new ErrorMessage(new ErrorData(errorType, errorMessage, errorDescription),
+                System.currentTimeMillis(), correlationId, Destination.NORTHBOUND);
     }
 }
