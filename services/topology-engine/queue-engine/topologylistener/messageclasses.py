@@ -330,7 +330,8 @@ class MessageItem(object):
             flow_utils.send_error_message(
                 cor_id, "CREATION_FAILURE", exception.message, flow_id)
 
-            print "Error: could not create flow: {}".format(exception.message)
+            print "Error: " \
+                  "could not create flow: {}".format(exception.message)
             traceback.print_exc()
             raise
 
@@ -394,7 +395,8 @@ class MessageItem(object):
             flow_utils.send_error_message(
                 cor_id, "DELETION_FAILURE", exception.message, flow_id)
 
-            print "Error: could not delete flow: {}".format(exception.message)
+            print "Error: " \
+                  "could not delete flow: {}".format(exception.message)
             traceback.print_exc()
             raise
 
@@ -551,7 +553,8 @@ class MessageItem(object):
             flow_utils.send_error_message(
                 cor_id, "UPDATE_FAILURE", exception.message, flow_id)
 
-            print "Error: could not update flow: {}".format(exception.message)
+            print "Error: " \
+                  "could not update flow: {}".format(exception.message)
             traceback.print_exc()
             raise
 
@@ -589,7 +592,8 @@ class MessageItem(object):
             flow_utils.send_error_message(
                 cor_id, "INTERNAL_ERROR", exception.message, flow_id)
 
-            print "Error: could not get flow: {}".format(exception.message)
+            print "Error: " \
+                  "could not get flow: {}".format(exception.message)
             traceback.print_exc()
             raise
 
@@ -630,7 +634,8 @@ class MessageItem(object):
             flow_utils.send_error_message(
                 cor_id, "INTERNAL_ERROR", exception.message, flow_id)
 
-            print "Error: could not get flow path: {}".format(exception.message)
+            print "Error: " \
+                  "could not get flow path: {}".format(exception.message)
             traceback.print_exc()
             raise
 
@@ -646,8 +651,10 @@ class MessageItem(object):
             result = graph.run(query.format("return")).data()
 
             flows = []
-            for flow in result:
-                flows.append(flow_utils.flow_response(flow['r']))
+            for data in result:
+                flow = flow_utils.flow_response(data['r'])
+                if flow:
+                    flows.append(flow)
 
             print 'Got flows={}'.format(flows)
 
@@ -661,7 +668,8 @@ class MessageItem(object):
             flow_utils.send_error_message(
                 cor_id, "INTERNAL_ERROR", exception.message, "")
 
-            print "Error: could not dump flows: {}".format(exception.message)
+            print "Error: " \
+                  "could not dump flows: {}".format(exception.message)
             traceback.print_exc()
             raise
 

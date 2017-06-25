@@ -471,9 +471,11 @@ def update_isl_available_bandwidth(links, bandwidth):
     for link in links:
         isl = re.search('([\w:]+)-(\w+)', link)
         update = query.format(isl.group(1), isl.group(2), bandwidth)
-        graph.run(update).data()
-        print "isl bandwidth updated: link={}, bandwidth={}".format(
-            link, bandwidth)
+        response = graph.run(update).data()
+
+        print "ISL bandwidth update: " \
+              "link={}, bandwidth={}, response={}".format(
+                link, bandwidth, response)
 
 
 def delete_flows_from_database_by_flow_id(flow_id, bandwidth,
