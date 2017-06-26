@@ -1,5 +1,6 @@
 package org.bitbucket.openkilda.northbound.messaging.kafka;
 
+import static org.bitbucket.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 import static org.bitbucket.openkilda.messaging.Utils.MAPPER;
 import static org.bitbucket.openkilda.messaging.error.ErrorType.DATA_INVALID;
 import static org.bitbucket.openkilda.messaging.error.ErrorType.INTERNAL_ERROR;
@@ -54,8 +55,10 @@ public class KafkaMessageProducer {
         try {
             message = MAPPER.writeValueAsString(object);
         } catch (JsonProcessingException exception) {
-            logger.error("Unable to serialize object: object={}", object, exception);
-            throw new MessageException(DATA_INVALID, System.currentTimeMillis());
+            String errorMessage = "Unable to serialize object";
+            logger.error("{}: object={}", errorMessage, object, exception);
+            throw new MessageException(DEFAULT_CORRELATION_ID, System.currentTimeMillis(),
+                    DATA_INVALID, errorMessage, object.toString());
         }
 
         future = kafkaTemplate.send(topic, message);
@@ -75,8 +78,10 @@ public class KafkaMessageProducer {
             SendResult<String, String> result = future.get(TIMEOUT, TimeUnit.MILLISECONDS);
             logger.debug("Record sent: record={}, metadata={}", result.getProducerRecord(), result.getRecordMetadata());
         } catch (TimeoutException | ExecutionException | InterruptedException exception) {
-            logger.error("Unable to send message: topic={}, message={}", topic, message, exception);
-            throw new MessageException(INTERNAL_ERROR, System.currentTimeMillis());
+            String errorMessage = "Unable to send message";
+            logger.error("{}: topic={}, message={}", errorMessage, topic, message, exception);
+            throw new MessageException(DEFAULT_CORRELATION_ID, System.currentTimeMillis(),
+                    INTERNAL_ERROR, errorMessage, message);
         }
     }
 }

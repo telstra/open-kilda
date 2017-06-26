@@ -8,49 +8,49 @@ public enum ComponentType {
      * Northbound kafka spout.
      * Receives Northbound requests.
      */
-    NB_KAFKA_SPOUT,
+    NORTHBOUND_KAFKA_SPOUT,
 
     /**
      * Topology Engine kafka spout.
      * Receives Topology Engine responses.
      */
-    TE_KAFKA_SPOUT,
+    TOPOLOGY_ENGINE_KAFKA_SPOUT,
 
     /**
      * OpenFlow Speaker kafka spout.
      * Receives OpenFlow Speaker responses.
      */
-    OFS_KAFKA_SPOUT,
+    SPEAKER_KAFKA_SPOUT,
 
     /**
      * Northbound kafka bolt.
      * Sends Northbound responses.
      */
-    NB_KAFKA_BOLT,
+    NORTHBOUND_KAFKA_BOLT,
 
     /**
      * Northbound reply bolt.
      * Forms Northbound responses.
      */
-    NB_REPLY_BOLT,
+    NORTHBOUND_REPLY_BOLT,
 
     /**
      * Topology Engine kafka bolt.
      * Sends Topology Engine requests.
      */
-    TE_KAFKA_BOLT,
+    TOPOLOGY_ENGINE_KAFKA_BOLT,
 
     /**
      * OpenFlow Speaker kafka bolt.
      * Sends OpenFlow Speaker requests.
      */
-    OFS_KAFKA_BOLT,
+    SPEAKER_KAFKA_BOLT,
 
     /**
      * Northbound bolt.
      * Processes Northbound requests and splits it on streams with flow-id fields.
      */
-    NB_REQUEST_BOLT,
+    NORTHBOUND_REQUEST_BOLT,
 
     /**
      * Status bolt.
@@ -62,13 +62,13 @@ public enum ComponentType {
      * Topology Engine bolt.
      * Processes Topology Engine responses and splits it on streams with flow-id fields.
      */
-    TE_BOLT,
+    TOPOLOGY_ENGINE_BOLT,
 
     /**
      * OpenFlow Speaker bolt.
      * Processes OpenFlow Speaker responses and splits it on streams with flow-id fields.
      */
-    OFS_BOLT,
+    SPEAKER_BOLT,
 
     /**
      * Transaction bolt.

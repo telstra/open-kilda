@@ -5,8 +5,6 @@ import static org.bitbucket.openkilda.wfm.topology.AbstractTopology.fieldMessage
 import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.ERROR_TYPE_FIELD;
 
 import org.bitbucket.openkilda.messaging.Destination;
-import org.bitbucket.openkilda.messaging.Message;
-import org.bitbucket.openkilda.messaging.error.ErrorData;
 import org.bitbucket.openkilda.messaging.error.ErrorMessage;
 import org.bitbucket.openkilda.messaging.error.ErrorType;
 import org.bitbucket.openkilda.wfm.topology.flow.ComponentType;
@@ -54,22 +52,28 @@ public class ErrorBolt extends BaseRichBolt {
         logger.debug("Ingoing tuple: {}", tuple);
 
         try {
-
             ComponentType componentId = ComponentType.valueOf(tuple.getSourceComponent());
-            ErrorType param = (ErrorType) tuple.getValueByField(ERROR_TYPE_FIELD);
-            Message message = (Message) tuple.getValueByField(MESSAGE_FIELD);
-
-            ErrorMessage error = new ErrorMessage(new ErrorData(0, null, param, componentId.toString()),
-                    message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND);
+            StreamType streamId = StreamType.valueOf(tuple.getSourceStreamId());
+            ErrorType errorType = (ErrorType) tuple.getValueByField(ERROR_TYPE_FIELD);
+            ErrorMessage error = (ErrorMessage) tuple.getValueByField(MESSAGE_FIELD);
+            error.setDestination(Destination.NORTHBOUND);
             Values values = new Values(error);
 
-            logger.debug("Error message: values={}", values);
-
-            outputCollector.emit(StreamType.ERROR.toString(), tuple, values);
-
-            logger.debug("Error message ack: values={}", values);
+            switch (componentId) {
+                case STATUS_BOLT:
+                case NORTHBOUND_REQUEST_BOLT:
+                    logger.debug("Error message: data={}", error.getData());
+                    outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
+                    break;
+                default:
+                    logger.warn("Skip message from unknown component: component={}, stream={}, error-type={}",
+                            componentId, streamId, errorType);
+                    break;
+            }
         } catch (Exception exception) {
-            logger.error("Could not process message: {}", tuple);
+            logger.error("Could not process message: {}", tuple, exception);
+        } finally {
+            logger.debug("Error message ack: tuple={}", tuple);
             outputCollector.ack(tuple);
         }
     }
@@ -79,6 +83,6 @@ public class ErrorBolt extends BaseRichBolt {
      */
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
-        outputFieldsDeclarer.declareStream(StreamType.ERROR.toString(), fieldMessage);
+        outputFieldsDeclarer.declareStream(StreamType.RESPONSE.toString(), fieldMessage);
     }
 }

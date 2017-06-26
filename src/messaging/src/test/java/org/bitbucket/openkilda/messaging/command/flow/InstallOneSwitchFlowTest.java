@@ -19,7 +19,7 @@ import org.junit.Test;
 
 public class InstallOneSwitchFlowTest {
     private InstallOneSwitchFlow flow = new InstallOneSwitchFlow(0L, flowName, 0L, switchId, inputPort, outputPort,
-            inputVlanId, outputVlanId, outputVlanType, bandwidth, meterId, meterId + 1);
+            inputVlanId, outputVlanId, outputVlanType, bandwidth, meterId);
 
     @Test
     public void toStringTest() throws Exception {
@@ -39,13 +39,8 @@ public class InstallOneSwitchFlowTest {
     }
 
     @Test
-    public void getInputMeterId() throws Exception {
-        assertEquals(meterId, flow.getSourceMeterId().longValue());
-    }
-
-    @Test
-    public void getOutputMeterId() throws Exception {
-        assertEquals(meterId + 1, flow.getDestinationMeterId().longValue());
+    public void getMeterId() throws Exception {
+        assertEquals(meterId, flow.getMeterId().longValue());
     }
 
     @Test
@@ -75,14 +70,14 @@ public class InstallOneSwitchFlowTest {
     }
 
     @Test
-    public void setInputMeterId() throws Exception {
-        flow.setSourceMeterId(meterId);
-        assertEquals(meterId, flow.getSourceMeterId().longValue());
+    public void setMeterId() throws Exception {
+        flow.setMeterId(meterId);
+        assertEquals(meterId, flow.getMeterId().longValue());
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void setNullInputMeterId() throws Exception {
-        flow.setSourceMeterId(null);
+        flow.setMeterId(null);
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -90,26 +85,14 @@ public class InstallOneSwitchFlowTest {
         flow.setInputVlanId(-1);
     }
 
-    @Test
-    public void setOutputMeterId() throws Exception {
-        flow.setDestinationMeterId(meterId + 2);
-        assertEquals(meterId + 2, flow.getDestinationMeterId().longValue());
+    @Test(expected = IllegalArgumentException.class)
+    public void setNullMeterId() throws Exception {
+        flow.setMeterId(null);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void setNullOutputMeterId() throws Exception {
-        flow.setDestinationMeterId(null);
-    }
-
-    @Test(expected = IllegalArgumentException.class)
-    public void setNegativeOutputMeterId() throws Exception {
-        flow.setDestinationMeterId(-1L);
-    }
-
-    @Test(expected = IllegalArgumentException.class)
-    public void setSameMeterIds() throws Exception {
-        flow.setSourceMeterId(meterId);
-        flow.setDestinationMeterId(meterId);
+    public void setNegativeMeterId() throws Exception {
+        flow.setMeterId(-1L);
     }
 
     @Test

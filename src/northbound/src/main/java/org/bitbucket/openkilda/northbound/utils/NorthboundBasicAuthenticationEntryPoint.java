@@ -47,8 +47,7 @@ public class NorthboundBasicAuthenticationEntryPoint extends BasicAuthentication
         response.setContentType(MediaType.APPLICATION_JSON_UTF8_VALUE);
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         MessageError error = new MessageError(request.getHeader(CORRELATION_ID), System.currentTimeMillis(),
-                HttpStatus.UNAUTHORIZED.value(), HttpStatus.UNAUTHORIZED.getReasonPhrase(),
-                ErrorType.AUTH_FAILED.toString(), exception.getClass().getSimpleName());
+                ErrorType.AUTH_FAILED.toString(), DEFAULT_REALM, exception.getClass().getSimpleName());
         response.getWriter().print(MAPPER.writeValueAsString(error));
     }
 }

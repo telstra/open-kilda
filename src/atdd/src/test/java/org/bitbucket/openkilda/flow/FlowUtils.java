@@ -75,7 +75,7 @@ public class FlowUtils {
         System.out.println(String.format("==> response = %s", response.toString()));
         System.out.println(String.format("==> Northbound Create Flow Time: %,.3f", getTimeDuration(current)));
 
-        return response.readEntity(FlowPayload.class);
+        return response.getStatus() == 200 ? response.readEntity(FlowPayload.class) : null;
     }
 
     /**
@@ -111,7 +111,7 @@ public class FlowUtils {
      * @param flowId flow id
      * @return The JSON document of the specified flow
      */
-    public static FlowIdStatusPayload deleteFlow(final String flowId) {
+    public static FlowPayload deleteFlow(final String flowId) {
         long current = System.currentTimeMillis();
         Client client = ClientBuilder.newClient(new ClientConfig()).register(JacksonFeature.class);
 
@@ -128,11 +128,11 @@ public class FlowUtils {
         System.out.println(String.format("==> response = %s", response.toString()));
         System.out.println(String.format("==> Northbound Delete Flow Time: %,.3f", getTimeDuration(current)));
 
-        return response.getStatus() == 404 ? null : response.readEntity(FlowIdStatusPayload.class);
+        return response.readEntity(FlowPayload.class);
     }
 
     /**
-     * Returns flow through Topology-Engine-Rest service.
+     * Returns flows through Topology-Engine-Rest service.
      *
      * @return The JSON document of all flows
      */
@@ -147,17 +147,74 @@ public class FlowUtils {
                 .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
                 .get();
 
-        System.out.println("\n== Northbound Dump Flows");
+        System.out.println("\n== Topology-Engine Dump Flows");
         System.out.println(String.format("==> response = %s", response));
-        System.out.println(String.format("==> Northbound Dump Flows Time: %,.3f", getTimeDuration(current)));
+        System.out.println(String.format("==> Topology-Engine Dump Flows Time: %,.3f", getTimeDuration(current)));
 
         return new ObjectMapper().readValue(response.readEntity(String.class), new TypeReference<List<Flow>>(){});
     }
 
     /**
+     * Returns links through Topology-Engine-Rest service.
+     *
+     * @return The JSON document of all flows
+     */
+    public static List<Link> dumpLinks() throws Exception {
+        long current = System.currentTimeMillis();
+        Client client = ClientBuilder.newClient(new ClientConfig());
+
+        Response response = client
+                .target(topologyEndpoint)
+                .path("/api/v1/topology/links")
+                .request()
+                .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
+                .get();
+
+        System.out.println("\n== Topology-Engine Dump Links");
+        System.out.println(String.format("==> response = %s", response));
+        System.out.println(String.format("==> Topology-Engine Dump Links Time: %,.3f", getTimeDuration(current)));
+
+        List<Link> links = new ObjectMapper().readValue(
+                response.readEntity(String.class), new TypeReference<List<Link>>(){});
+        System.out.println(String.format("===> Data = %s", links));
+
+        return links;
+    }
+
+    /**
+     * Returns link available bandwidth through Topology-Engine-Rest service.
+     *
+     * @return The JSON document of all flows
+     */
+    public static Integer getLinkBandwidth(final String src_switch, final String src_port) throws Exception {
+        long current = System.currentTimeMillis();
+        Client client = ClientBuilder.newClient(new ClientConfig());
+
+        Response response = client
+                .target(topologyEndpoint)
+                .path("/api/v1/topology/links/bandwidth/")
+                .path("{src_switch}")
+                .path("{src_port}")
+                .resolveTemplate("src_switch", src_switch)
+                .resolveTemplate("src_port", src_port)
+                .request()
+                .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
+                .get();
+
+        System.out.println("\n==> Topology-Engine Dump Links");
+        System.out.println(String.format("==> Response = %s", response));
+        System.out.println(String.format("==> Topology-Engine Dump Links Time: %,.3f", getTimeDuration(current)));
+
+        Integer bandwidth = new ObjectMapper().readValue(response.readEntity(String.class), Integer.class);
+        System.out.println(String.format("===> Link switch=%s port=%s bandwidth=%d", src_switch, src_port, bandwidth));
+
+        return bandwidth;
+    }
+
+    /**
      * Cleanups all flows.
      */
-    public static void cleanupFlows() {
+    public static void cleanupFlows() throws Exception {
         try {
             List<Flow> flows = dumpFlows();
             for (Flow flow : flows) {

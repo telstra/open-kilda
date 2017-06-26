@@ -52,14 +52,12 @@ public class WorkFlowManagerKafkaMock {
     static final FlowEndpointPayload flowEndpoint = new FlowEndpointPayload(FLOW_ID, 1, 1);
     static final FlowPayload flow = new FlowPayload(FLOW_ID, flowEndpoint, flowEndpoint, 10000L, "", "");
     static final FlowIdStatusPayload flowStatus = new FlowIdStatusPayload(FLOW_ID, FlowStatusType.IN_PROGRESS);
-    static final FlowIdStatusPayload flowDelete = new FlowIdStatusPayload(FLOW_ID);
     static final FlowsPayload flows = new FlowsPayload(singletonList(flow));
     static final FlowPathPayload flowPath = new FlowPathPayload(FLOW_ID, singletonList(FLOW_ID));
     private static final FlowResponse flowResponse = new FlowResponse(flow);
     private static final FlowsResponse flowsResponse = new FlowsResponse(flows);
     private static final FlowPathResponse flowPathResponse = new FlowPathResponse(flowPath);
     private static final FlowStatusResponse flowStatusResponse = new FlowStatusResponse(flowStatus);
-    private static final FlowStatusResponse flowDeleteResponse = new FlowStatusResponse(flowDelete);
     private static final Logger logger = LoggerFactory.getLogger(WorkFlowManagerKafkaMock.class);
 
     /**
@@ -117,12 +115,13 @@ public class WorkFlowManagerKafkaMock {
         if (data instanceof FlowCreateRequest) {
             return new InfoMessage(flowResponse, 0, correlationId, Destination.NORTHBOUND);
         } else if (data instanceof FlowDeleteRequest) {
-            return new InfoMessage(flowDeleteResponse, 0, correlationId, Destination.NORTHBOUND);
+            return new InfoMessage(flowResponse, 0, correlationId, Destination.NORTHBOUND);
         } else if (data instanceof FlowUpdateRequest) {
             return new InfoMessage(flowResponse, 0, correlationId, Destination.NORTHBOUND);
         } else if (data instanceof FlowGetRequest) {
             if (ERROR_FLOW_ID.equals(((FlowGetRequest) data).getPayload().getId())) {
-                return new ErrorMessage(new ErrorData(ErrorType.NOT_FOUND, FLOW_ID), 0, correlationId, Destination.NORTHBOUND);
+                return new ErrorMessage(new ErrorData(ErrorType.NOT_FOUND, "Flow was not found", ERROR_FLOW_ID),
+                        0, correlationId, Destination.NORTHBOUND);
             } else {
                 return new InfoMessage(flowResponse, 0, correlationId, Destination.NORTHBOUND);
             }

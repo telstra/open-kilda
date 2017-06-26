@@ -195,10 +195,11 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     @Override
     public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
         logger.debug("OF_ERROR: {}", msg);
+        // TODO: track xid for flow id
         if (OFType.ERROR.equals(msg.getType())) {
-            ErrorMessage error = new ErrorMessage(new ErrorData(ErrorType.INTERNAL_ERROR,
-                    ((OFErrorMsg) msg).getErrType().toString()),
-                    System.currentTimeMillis(), DEFAULT_CORRELATION_ID, Destination.WFM);
+            ErrorMessage error = new ErrorMessage(
+                    new ErrorData(ErrorType.INTERNAL_ERROR, ((OFErrorMsg) msg).getErrType().toString(), ""),
+                    System.currentTimeMillis(), DEFAULT_CORRELATION_ID, Destination.WFM_TRANSACTION);
             kafkaProducer.postMessage("kilda-test", error);
         }
         return Command.CONTINUE;

@@ -2,6 +2,7 @@ package org.bitbucket.openkilda.wfm.topology.flow.bolts;
 
 import static org.bitbucket.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.bitbucket.openkilda.messaging.Utils.MAPPER;
+import static org.bitbucket.openkilda.messaging.Utils.SYSTEM_CORRELATION_ID;
 import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.fieldsMessageErrorType;
 import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.fieldsMessageFlowId;
 
@@ -16,8 +17,9 @@ import org.bitbucket.openkilda.messaging.command.flow.FlowPathRequest;
 import org.bitbucket.openkilda.messaging.command.flow.FlowStatusRequest;
 import org.bitbucket.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.bitbucket.openkilda.messaging.command.flow.FlowsGetRequest;
+import org.bitbucket.openkilda.messaging.error.ErrorData;
+import org.bitbucket.openkilda.messaging.error.ErrorMessage;
 import org.bitbucket.openkilda.messaging.error.ErrorType;
-import org.bitbucket.openkilda.messaging.info.InfoMessage;
 import org.bitbucket.openkilda.wfm.topology.flow.StreamType;
 
 import org.apache.logging.log4j.LogManager;
@@ -123,9 +125,14 @@ public class NorthboundRequestBolt extends BaseRichBolt {
                 logger.debug("Skip undefined message: {}={}", CORRELATION_ID, message.getCorrelationId());
             }
         } catch (IOException exception) {
-            logger.error("Could not deserialize message={}", request, exception);
+            String message = String.format("Could not deserialize message: %s", request);
+            logger.error("{}", message, exception);
 
-            values = new Values(request, ErrorType.REQUEST_INVALID);
+            ErrorMessage errorMessage = new ErrorMessage(
+                    new ErrorData(ErrorType.REQUEST_INVALID, message, exception.getMessage()),
+                    System.currentTimeMillis(), SYSTEM_CORRELATION_ID, Destination.NORTHBOUND);
+
+            values = new Values(errorMessage, ErrorType.INTERNAL_ERROR);
             outputCollector.emit(StreamType.ERROR.toString(), tuple, values);
 
         } finally {

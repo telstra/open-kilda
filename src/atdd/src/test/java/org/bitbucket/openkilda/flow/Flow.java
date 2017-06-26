@@ -35,6 +35,8 @@ public class Flow {
     private int transitVlan;
     @JsonProperty("flowpath")
     private List<String> flowPath;
+    @JsonProperty("isl_path")
+    private List<String> islPath;
 
     @JsonCreator
     public Flow(@JsonProperty("flowid") final String flowId,
@@ -49,7 +51,8 @@ public class Flow {
                 @JsonProperty("src_vlan") final int sourceVlan,
                 @JsonProperty("dst_vlan") final int destinationVlan,
                 @JsonProperty("transit_vlan") final int transitVlan,
-                @JsonProperty("flowpath") final List<String> flowPath) {
+                @JsonProperty("flowpath") final List<String> flowPath,
+                @JsonProperty("isl_path") final List<String> islPath) {
         this.flowId = flowId;
         this.bandwidth = bandwidth;
         this.cookie = cookie;
@@ -63,6 +66,7 @@ public class Flow {
         this.destinationVlan = destinationVlan;
         this.transitVlan = transitVlan;
         this.flowPath = flowPath;
+        this.islPath = islPath;
     }
 
     /**

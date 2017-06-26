@@ -115,20 +115,56 @@ def create_p2n_driver():
         os.environ['neo4juser'], os.environ['neo4jpass'], os.environ['neo4jhost']))
     return graph
 
+graph = create_p2n_driver()
+
 
 @application.route('/api/v1/topology/flows')
 @login_required
 def api_v1_topology_flows():
-    graph = create_p2n_driver()
-
     try:
-        query = "MATCH (a:switch)-[r:flow ]->(b:switch) {} r"
-        result = graph.run(query.format("return")).data()
+        query = "MATCH (a:switch)-[r:flow]->(b:switch) RETURN r"
+        result = graph.data(query)
 
         flows = []
         for flow in result:
             flows.append(flow['r'])
 
         return str(json.dumps(flows, default=lambda o: o.__dict__, sort_keys=True))
+    except Exception as e:
+        return "error: {}".format(str(e))
+
+
+@application.route('/api/v1/topology/links')
+@login_required
+def api_v1_topology_links():
+    try:
+        query = "MATCH (a:switch)-[r:isl]->(b:switch) RETURN r"
+        result = graph.data(query)
+
+        links = []
+        for link in result:
+            links.append(link['r'])
+
+        return str(json.dumps(links, default=lambda o: o.__dict__, sort_keys=True))
+    except Exception as e:
+        return "error: {}".format(str(e))
+
+
+@application.route('/api/v1/topology/links/bandwidth/<src_switch>/<src_port>')
+@login_required
+def api_v1_topology_link_bandwidth(src_switch, src_port):
+    try:
+        data = {'query': "MATCH (a:switch)-[r:isl]->(b:switch) "
+                         "WHERE r.src_switch = '{}' AND r.src_port = '{}' "
+                         "RETURN r.available_bandwidth".format(
+                            src_switch, src_port)}
+        auth = (os.environ['neo4juser'], os.environ['neo4jpass'])
+
+        response = requests.post(os.environ['neo4jbolt'], data=data, auth=auth)
+        data = json.loads(response.text)
+        bandwidth = data['data'][0][0]
+
+        return str(bandwidth)
+
     except Exception as e:
         return "error: {}".format(str(e))

@@ -2,6 +2,7 @@ package org.bitbucket.openkilda.northbound.utils;
 
 import static org.bitbucket.openkilda.messaging.Utils.CORRELATION_ID;
 
+import org.bitbucket.openkilda.messaging.error.ErrorType;
 import org.bitbucket.openkilda.messaging.error.MessageError;
 import org.bitbucket.openkilda.messaging.error.MessageException;
 
@@ -51,7 +52,7 @@ public class NorthboundExceptionHandler extends ResponseEntityExceptionHandler {
         }
 
         MessageError error = new MessageError(request.getHeader(CORRELATION_ID), exception.getTimestamp(),
-                status.value(), status.getReasonPhrase(), exception.getMessage(), exception.getClass().getSimpleName());
+                exception.getErrorType().toString(), exception.getMessage(), exception.getErrorDescription());
         return super.handleExceptionInternal(exception, error, new HttpHeaders(), status, request);
     }
 
@@ -62,7 +63,7 @@ public class NorthboundExceptionHandler extends ResponseEntityExceptionHandler {
     protected ResponseEntity<Object> handleExceptionInternal(Exception exception, Object body, HttpHeaders headers,
                                                              HttpStatus status, WebRequest request) {
         MessageError error = new MessageError(request.getHeader(CORRELATION_ID), System.currentTimeMillis(),
-                status.value(), status.getReasonPhrase(), exception.getMessage(), exception.getClass().getSimpleName());
+                ErrorType.REQUEST_INVALID.toString(), exception.getMessage(), exception.getClass().getSimpleName());
         return super.handleExceptionInternal(exception, error, headers, status, request);
     }
 }

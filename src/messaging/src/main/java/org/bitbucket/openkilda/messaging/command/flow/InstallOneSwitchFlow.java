@@ -19,7 +19,7 @@ import java.util.Objects;
  * Class represents flow through one switch installation info.
  * Input and output vlan ids are optional, because flow could be untagged on ingoing or outgoing side.
  * Output action depends on flow input and output vlan presence.
- * Bandwidth and two meter ids are used for flow throughput limitation.
+ * Bandwidth and meter id are used for flow throughput limitation.
  */
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -35,8 +35,7 @@ import java.util.Objects;
         "output_vlan_id",
         "output_vlan_type",
         "bandwidth",
-        "src_meter_id",
-        "dst_meter_id"})
+        "meter_id"})
 public class InstallOneSwitchFlow extends BaseInstallFlow {
     /**
      * Serialization version number constant.
@@ -46,14 +45,8 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
     /**
      * Allocated meter id.
      */
-    @JsonProperty("src_meter_id")
-    protected Long sourceMeterId;
-
-    /**
-     * Allocated meter id.
-     */
-    @JsonProperty("dst_meter_id")
-    protected Long destinationMeterId;
+    @JsonProperty("meter_id")
+    protected Long meterId;
 
     /**
      * Flow bandwidth value.
@@ -92,8 +85,7 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
      * @param outputVlanId       output vlan id value
      * @param outputVlanType     output vlan tag action
      * @param bandwidth          flow bandwidth
-     * @param sourceMeterId      source meter id
-     * @param destinationMeterId destination meter id
+     * @param meterId            source meter id
      * @throws IllegalArgumentException if any of arguments is null
      */
     @JsonCreator
@@ -107,15 +99,13 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
                                 @JsonProperty("output_vlan_id") final Integer outputVlanId,
                                 @JsonProperty("output_vlan_type") final OutputVlanType outputVlanType,
                                 @JsonProperty("bandwidth") final Long bandwidth,
-                                @JsonProperty("src_meter_id") final Long sourceMeterId,
-                                @JsonProperty("dst_meter_id") final Long destinationMeterId) {
+                                @JsonProperty("meter_id") final Long meterId) {
         super(transactionId, id, cookie, switchId, inputPort, outputPort);
         setInputVlanId(inputVlanId);
         setOutputVlanId(outputVlanId);
         setOutputVlanType(outputVlanType);
         setBandwidth(bandwidth);
-        setSourceMeterId(sourceMeterId);
-        setDestinationMeterId(destinationMeterId);
+        setMeterId(meterId);
     }
 
     /**
@@ -214,53 +204,26 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
     }
 
     /**
-     * Returns source meter id for the flow.
+     * Returns meter id for the flow.
      *
-     * @return source meter id for the flow
+     * @return meter id for the flow
      */
-    public Long getSourceMeterId() {
-        return sourceMeterId;
+    public Long getMeterId() {
+        return meterId;
     }
 
     /**
-     * Sets source meter id for the flow.
+     * Sets meter id for the flow.
      *
-     * @param sourceMeterId source meter id for the flow
+     * @param meterId meter id for the flow
      */
-    public void setSourceMeterId(final Long sourceMeterId) {
-        if (sourceMeterId == null) {
-            throw new IllegalArgumentException("need to set src_meter_id");
-        } else if (sourceMeterId < 0) {
-            throw new IllegalArgumentException("need to set non negative src_meter_id");
-        } else if (destinationMeterId != null && destinationMeterId != 0 && destinationMeterId.equals(sourceMeterId)) {
-            throw new IllegalArgumentException("need to set different src_meter_id and dst_meter_id");
+    public void setMeterId(final Long meterId) {
+        if (meterId == null) {
+            throw new IllegalArgumentException("need to set meterId");
+        } else if (meterId < 0) {
+            throw new IllegalArgumentException("need to set non negative meterId");
         }
-        this.sourceMeterId = sourceMeterId;
-    }
-
-    /**
-     * Returns destination meter id for the flow.
-     *
-     * @return destination meter id for the flow
-     */
-    public Long getDestinationMeterId() {
-        return destinationMeterId;
-    }
-
-    /**
-     * Sets destination meter id for the flow.
-     *
-     * @param destinationMeterId destination meter id for the flow
-     */
-    public void setDestinationMeterId(final Long destinationMeterId) {
-        if (destinationMeterId == null) {
-            throw new IllegalArgumentException("need to set dst_meter_id");
-        } else if (destinationMeterId < 0L) {
-            throw new IllegalArgumentException("need to set non negative dst_meter_id");
-        } else if (sourceMeterId != null && sourceMeterId != 0 && sourceMeterId.equals(destinationMeterId)) {
-            throw new IllegalArgumentException("need to set different src_meter_id and dst_meter_id");
-        }
-        this.destinationMeterId = destinationMeterId;
+        this.meterId = meterId;
     }
 
     /**
@@ -279,8 +242,7 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
                 .add("output_vlan_id", outputVlanId)
                 .add("output_vlan_type", outputVlanType)
                 .add("bandwidth", bandwidth)
-                .add("src_meter_id", sourceMeterId)
-                .add("dst_meter_id", destinationMeterId)
+                .add("meter_id", meterId)
                 .toString();
     }
 
@@ -307,8 +269,7 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
                 && Objects.equals(getOutputVlanId(), that.getOutputVlanId())
                 && Objects.equals(getOutputVlanType(), that.getOutputVlanType())
                 && Objects.equals(getBandwidth(), that.getBandwidth())
-                && Objects.equals(getSourceMeterId(), that.getSourceMeterId())
-                && Objects.equals(getDestinationMeterId(), that.getDestinationMeterId());
+                && Objects.equals(getMeterId(), that.getMeterId());
     }
 
     /**
@@ -317,6 +278,6 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
     @Override
     public int hashCode() {
         return Objects.hash(transactionId, id, cookie, switchId, inputPort, outputPort,
-                inputVlanId, outputVlanId, outputVlanType, bandwidth, sourceMeterId, destinationMeterId);
+                inputVlanId, outputVlanId, outputVlanType, bandwidth, meterId);
     }
 }

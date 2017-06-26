@@ -38,160 +38,43 @@ public class MessageError implements Serializable {
     private long timestamp;
 
     /**
-     * The error code.
+     * Error type.
      */
-    @JsonProperty("error-code")
-    private long code;
+    @JsonProperty("error-type")
+    private String errorType;
 
     /**
-     * The error message.
+     * Error message.
      */
     @JsonProperty("error-message")
-    private String message;
+    private String errorMessage;
 
     /**
-     * The error description.
+     * Error description.
      */
     @JsonProperty("error-description")
-    private String description;
+    private String errorDescription;
 
     /**
-     * The caused exception.
-     */
-    @JsonProperty("error-exception")
-    private String exception;
-
-    /**
-     * Constructs the error.
+     * Instance constructor.
      *
      * @param correlationId the failed request correlation id
      * @param timestamp     the error timestamp
-     * @param code          the error HttpStatus code
-     * @param message       the error HttpStatus reason phrase
+     * @param type          the error type
+     * @param message       the error message
      * @param description   the error description
-     * @param exception     the caused error exception name
      */
     @JsonCreator
     public MessageError(@JsonProperty(CORRELATION_ID) final String correlationId,
                         @JsonProperty(TIMESTAMP) final long timestamp,
-                        @JsonProperty("error-code") final long code,
+                        @JsonProperty("error-type") final String type,
                         @JsonProperty("error-message") final String message,
-                        @JsonProperty("error-description") final String description,
-                        @JsonProperty("error-exception") final String exception) {
+                        @JsonProperty("error-description") final String description) {
         this.correlationId = firstNonNull(correlationId, DEFAULT_CORRELATION_ID);
         this.timestamp = timestamp;
-        this.code = code;
-        this.message = message;
-        this.description = description;
-        this.exception = exception;
-    }
-
-    /**
-     * Gets the error description.
-     *
-     * @return the error description
-     */
-    public String getDescription() {
-        return description;
-    }
-
-    /**
-     * Sets the error description.
-     *
-     * @param error the error description
-     */
-    public void setDescription(String error) {
-        this.description = error;
-    }
-
-    /**
-     * Gets the error message.
-     *
-     * @return the error message
-     */
-    public String getMessage() {
-        return message;
-    }
-
-    /**
-     * Sets the error message.
-     *
-     * @param message the error message
-     */
-    public void setMessage(String message) {
-        this.message = message;
-    }
-
-    /**
-     * Gets the failed request correlation ID.
-     *
-     * @return the failed request correlation ID
-     */
-    public String getCorrelationId() {
-        return correlationId;
-    }
-
-    /**
-     * Sets the failed request correlation ID.
-     *
-     * @param correlationId the failed request correlation ID
-     */
-    public void setCorrelationId(String correlationId) {
-        this.correlationId = correlationId;
-    }
-
-    /**
-     * Gets the error code.
-     *
-     * @return the error code
-     */
-    public long getCode() {
-        return code;
-    }
-
-    /**
-     * Sets the error code.
-     *
-     * @param code the error code
-     */
-    public void setCode(long code) {
-        this.code = code;
-    }
-
-    /**
-     * Gets the error timestamp.
-     *
-     * @return the error timestamp
-     */
-    public long getTimestamp() {
-        return timestamp;
-    }
-
-    /**
-     * Sets the error timestamp.
-     *
-     * @param timestamp the error timestamp
-     */
-    public void setTimestamp(long timestamp) {
-        this.timestamp = timestamp;
-    }
-
-    /**
-     * Gets the caused error exception.
-     *
-     * @return the exception
-     */
-    public String getException() {
-        return exception;
-    }
-
-    /**
-     * Sets the caused error exception.
-     *
-     * @param exception the caused error exception
-     */
-    public void setException(String exception) {
-        this.exception = exception;
+        this.errorType = type;
+        this.errorMessage = message;
+        this.errorDescription = description;
     }
 
     /**
@@ -202,10 +85,9 @@ public class MessageError implements Serializable {
         return toStringHelper(this)
                 .add(CORRELATION_ID, correlationId)
                 .add(TIMESTAMP, timestamp)
-                .add("error-code", code)
-                .add("error-message", message)
-                .add("error-description", description)
-                .add("error-exception", exception)
+                .add("error-type", errorType)
+                .add("error-message", errorMessage)
+                .add("error-description", errorDescription)
                 .toString();
     }
 
@@ -214,7 +96,7 @@ public class MessageError implements Serializable {
      */
     @Override
     public int hashCode() {
-        return Objects.hash(correlationId, timestamp, code, message, description, exception);
+        return Objects.hash(correlationId, timestamp, errorType, errorMessage, errorDescription);
     }
 
     /**
@@ -230,11 +112,9 @@ public class MessageError implements Serializable {
         }
 
         MessageError that = (MessageError) object;
-        return Objects.equals(getCorrelationId(), that.getCorrelationId())
-                && Objects.equals(getTimestamp(), that.getTimestamp())
-                && Objects.equals(getCode(), that.getCode())
-                && Objects.equals(getMessage(), that.getMessage())
-                && Objects.equals(getDescription(), that.getDescription())
-                && Objects.equals(getException(), that.getException());
+        return Objects.equals(this.correlationId, that.correlationId)
+                && Objects.equals(this.errorType, that.errorType)
+                && Objects.equals(this.errorMessage, that.errorMessage)
+                && Objects.equals(this.errorDescription, that.errorDescription);
     }
 }

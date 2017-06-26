@@ -51,7 +51,8 @@ public class StatisticsBasicTest {
        @Then("^database keeps growing$")
        public void database_keeps_growing() throws Throwable {
            int result1 = getNumberOfDatapoints();
-           TimeUnit.SECONDS.sleep(5);
+           // floodlight-modules statistics gathering interval
+           TimeUnit.SECONDS.sleep(10);
            int result2 = getNumberOfDatapoints();
            assertNotEquals(result1, result2);
        }

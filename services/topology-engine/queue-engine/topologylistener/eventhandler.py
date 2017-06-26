@@ -39,4 +39,4 @@ def topo_event_handler(event):
             print "Message body: "
             print event.to_json()
             time.sleep(.1)
-    print "{} Event processed for: {}".format("{:%d %b, %Y %H:%M:%S}".format(datetime.now()), event.get_message_type())
+    print "{} Event processed for: {}".format("{:%d %b, %Y %H:%M:%S}".format(datetime.now()), event.get_type())

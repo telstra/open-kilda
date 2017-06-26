@@ -3,9 +3,8 @@ package org.bitbucket.openkilda.wfm.topology.flow.bolts;
 import static org.bitbucket.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.bitbucket.openkilda.messaging.Utils.MAPPER;
 import static org.bitbucket.openkilda.messaging.Utils.TRANSACTION_ID;
-import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.fieldsFlowStatus;
-import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.fieldsMessageErrorType;
-import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.fieldsMessageSwitchFlowTransaction;
+import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.fieldsFlowIdStatus;
+import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.fieldsMessageSwitchIdFlowIdTransactionId;
 
 import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.Message;
@@ -121,10 +120,9 @@ public class SpeakerBolt extends BaseRichBolt {
      */
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
-        outputFieldsDeclarer.declareStream(StreamType.CREATE.toString(), fieldsMessageSwitchFlowTransaction);
-        outputFieldsDeclarer.declareStream(StreamType.DELETE.toString(), fieldsMessageSwitchFlowTransaction);
-        outputFieldsDeclarer.declareStream(StreamType.STATUS.toString(), fieldsFlowStatus);
-        outputFieldsDeclarer.declareStream(StreamType.ERROR.toString(), fieldsMessageErrorType);
+        outputFieldsDeclarer.declareStream(StreamType.CREATE.toString(), fieldsMessageSwitchIdFlowIdTransactionId);
+        outputFieldsDeclarer.declareStream(StreamType.DELETE.toString(), fieldsMessageSwitchIdFlowIdTransactionId);
+        outputFieldsDeclarer.declareStream(StreamType.STATUS.toString(), fieldsFlowIdStatus);
     }
 
     /**

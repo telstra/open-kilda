@@ -77,14 +77,14 @@ public class FlowServiceImpl implements FlowService {
      * {@inheritDoc}
      */
     @Override
-    public FlowIdStatusPayload deleteFlow(final String id, final String correlationId) {
+    public FlowPayload deleteFlow(final String id, final String correlationId) {
         logger.debug("Delete flow: {}={}", CORRELATION_ID, correlationId);
         FlowDeleteRequest data = new FlowDeleteRequest(new FlowIdStatusPayload(id, null));
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
         kafkaMessageConsumer.clear();
         kafkaMessageProducer.send(topic, request);
         Message message = (Message) kafkaMessageConsumer.poll(correlationId);
-        FlowStatusResponse response = (FlowStatusResponse) validateInfoMessage(request, message, correlationId);
+        FlowResponse response = (FlowResponse) validateInfoMessage(request, message, correlationId);
         return response.getPayload();
     }
 
