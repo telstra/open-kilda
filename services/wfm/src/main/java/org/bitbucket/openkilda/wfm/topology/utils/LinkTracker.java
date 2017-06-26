@@ -11,23 +11,18 @@ public class LinkTracker implements Serializable {
     /**
      * SwitchID -> PortID,PortID (maybe LinkID someday)
      */
-    protected ConcurrentHashMap<String,
-            ConcurrentHashMap<String,String>> state = new ConcurrentHashMap<>();
+    protected ConcurrentHashMap<String, ConcurrentHashMap<String,String>> state = new ConcurrentHashMap<>();
 
     public ConcurrentHashMap<String,String> getSwitchPorts(String switchID){
         return state.get(switchID);
     }
 
     public ConcurrentHashMap<String,String> getOrNewSwitchPorts(String switchID){
-        ConcurrentHashMap<String,String> result = state.get(switchID);
-        if (result == null)
-            result = new ConcurrentHashMap<String,String>();
-        return result;
+        return state.computeIfAbsent(switchID, k -> new ConcurrentHashMap<>());
     }
 
     /** for use in foreach */
     public ConcurrentHashMap.KeySetView<String, ConcurrentHashMap<String, String>> getSwitches() {
         return state.keySet();
     }
-
 }

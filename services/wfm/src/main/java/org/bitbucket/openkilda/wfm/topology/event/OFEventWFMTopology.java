@@ -40,7 +40,7 @@ public class OFEventWFMTopology {
     private final String kafkaOutputTopic = DEFAULT_KAFKA_OUTPUT;
     private final String topoName = "WFM_OFEvents";
     private final KafkaUtils kutils;
-    private final int parallelism = 3;
+    private final int parallelism = 1;
     /**
      * This is the primary input topics
      */

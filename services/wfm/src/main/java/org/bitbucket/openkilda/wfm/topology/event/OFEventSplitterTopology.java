@@ -32,7 +32,7 @@ public class OFEventSplitterTopology {
     public String defaultTopoName = "OF_Event_Splitter";
     public KafkaUtils kutils = new KafkaUtils();
     public Properties kafkaProps = kutils.createStringsKafkaProps();
-    public int parallelism = 3;
+    public int parallelism = 1;
     // TODO: KafkaUtils should be passed the configured Kafka server.
     KafkaProducer<String, String> kProducer = new KafkaUtils().createStringsProducer();
 
@@ -48,7 +48,7 @@ public class OFEventSplitterTopology {
 
         //If there are arguments, we are running on a cluster; otherwise, we are running locally
         if (args != null && args.length > 0) {
-            conf.setNumWorkers(3);
+            conf.setNumWorkers(1);
             StormSubmitter.submitTopology(args[0], conf, topo);
         } else {
             conf.setMaxTaskParallelism(3);
