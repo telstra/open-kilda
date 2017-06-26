@@ -1,14 +1,7 @@
 FROM kilda/base-ubuntu
-
-ARG VERSION=3.4.9
-ARG MIRROR=http://apache.mirror.digitalpacific.com.au
-LABEL name="zookeeper" version=$VERSION
-
-RUN wget -q -O - $MIRROR/zookeeper/zookeeper-$VERSION/zookeeper-$VERSION.tar.gz | tar -xzf - -C /opt \
-    && mv /opt/zookeeper-$VERSION /opt/zookeeper \
-    && cp /opt/zookeeper/conf/zoo_sample.cfg /opt/zookeeper/conf/zoo.cfg \
-    && mkdir -p /tmp/zookeeper
-
-EXPOSE 2181 2888 3888
-
-WORKDIR /opt/zookeeper
+ADD services/zookeeper/ansible /ansible
+ADD kilda-bins/apache/ /src
+ADD services/zookeeper/ubuntu/sources.list /etc/apt/sources.list
+RUN ansible-playbook -s /ansible/deploy.yml
+ADD services/zookeeper/zookeeper-conf/zoo.cfg /opt/zookeeper/conf/zoo.cfg
+ADD services/zookeeper/zookeeper-conf/log4j.properties /opt/zookeeper/conf/log4j.properties
