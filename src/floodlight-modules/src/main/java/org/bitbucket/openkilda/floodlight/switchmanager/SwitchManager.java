@@ -6,6 +6,7 @@ import static org.bitbucket.openkilda.floodlight.pathverification.PathVerificati
 import static org.bitbucket.openkilda.floodlight.pathverification.PathVerificationService.VERIFICATION_PACKET_UDP_PORT;
 import static org.bitbucket.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 import static org.bitbucket.openkilda.messaging.Utils.ETH_TYPE;
+import static org.projectfloodlight.openflow.protocol.OFVersion.OF_12;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_13;
 
 import org.bitbucket.openkilda.floodlight.kafka.KafkaMessageProducer;
@@ -239,7 +240,10 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public boolean installDefaultRules(final DatapathId dpid) {
         final boolean dropFlow = installDropFlow(dpid);
         final boolean broadcastVerification = installVerificationRule(dpid, true);
-        final boolean unicastVerification = installVerificationRule(dpid, false);
+        if (ofSwitchService.getSwitch(dpid).getOFFactory().getVersion().compareTo(OF_12) > 0) {
+            final boolean unicastVerification = installVerificationRule(dpid, false);
+        }
+
         return dropFlow & broadcastVerification & unicastVerification;
     }
 
