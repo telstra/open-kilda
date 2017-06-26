@@ -240,9 +240,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public boolean installDefaultRules(final DatapathId dpid) {
         final boolean dropFlow = installDropFlow(dpid);
         final boolean broadcastVerification = installVerificationRule(dpid, true);
-        final boolean unicastVerification = installVerificationRule(dpid, false);
         if (ofSwitchService.getSwitch(dpid).getOFFactory().getVersion().compareTo(OF_12) > 0) {
             logger.debug("installing unicast verification match for {}", dpid.toString());
+            final boolean unicastVerification = installVerificationRule(dpid, false);
             return dropFlow & broadcastVerification & unicastVerification;
         }
         logger.debug("not installing unicast verification match for {}", dpid.toString());
