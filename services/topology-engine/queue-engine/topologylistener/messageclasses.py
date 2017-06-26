@@ -1,5 +1,7 @@
 #!/usr/bin/python
 import json
+from threading import Lock
+
 import requests
 import traceback
 import datetime
@@ -10,6 +12,7 @@ from flow_utils import graph
 
 
 available_bandwidth_limit_factor = 0.9
+isl_lock = Lock()
 
 
 def repair_flows(switchid):
@@ -33,7 +36,6 @@ def repair_flows(switchid):
                 #create logic to alert on failed reroute
                 print "Unable to reroute flow: {}".format(flow['r']['flowid'])
     return True
-
 
 
 class MessageItem(object):
@@ -166,7 +168,6 @@ class MessageItem(object):
         return True
 
     def create_isl(self):
-
         path = self.payload['path']
         latency = self.payload['latency_ns']
         a_switch = path[0]['switch_id']
@@ -186,47 +187,62 @@ class MessageItem(object):
         if not a_switchNode or not b_switchNode:
             return False
 
-        islExistsQuery = "MATCH (a:switch)-[r:isl {{src_switch: '{}', src_port: '{}', dst_switch: '{}', dst_port: '{}'}}]->(b:switch) return r"
-        islExists = graph.run(islExistsQuery.format(a_switch,
-                                                    a_port,
-                                                    b_switch,
-                                                    b_port)).data()
+        isl_lock.acquire()
+        try:
+            isl_exists_query = ("MATCH (a:switch)-[r:isl {{"
+                                "src_switch: '{}', "
+                                "src_port: '{}', "
+                                "dst_switch: '{}', "
+                                "dst_port: '{}'}}]->(b:switch) return r")
+            isl_exists = graph.run(isl_exists_query.format(a_switch,
+                                                           a_port,
+                                                           b_switch,
+                                                           b_port)).data()
 
-        if not islExists:
-            islQuery = "MATCH (u:switch {{name:'{}'}}), (r:switch {{name:'{}'}}) " \
-                       "MERGE (u)-[:isl {{" \
-                       "src_port: '{}', " \
-                       "dst_port: '{}', " \
-                       "src_switch: '{}', " \
-                       "dst_switch: '{}', " \
-                       "latency: '{}', " \
-                       "speed: '{}', " \
-                       "available_bandwidth: {}}}]->(r)"
-            graph.run(islQuery.format(a_switchNode['name'],
-                                      b_switchNode['name'],
-                                      a_port,
-                                      b_port,
-                                      a_switch,
-                                      b_switch,
-                                      latency,
-                                      speed,
-                                      int(available_bandwidth)))
+            if not isl_exists:
+                isl_query = ("MATCH (u:switch {{name:'{}'}}), "
+                             "(r:switch {{name:'{}'}}) "
+                             "MERGE (u)-[:isl {{"
+                             "src_port: '{}', "
+                             "dst_port: '{}', "
+                             "src_switch: '{}', "
+                             "dst_switch: '{}', "
+                             "latency: '{}', "
+                             "speed: '{}', "
+                             "available_bandwidth: {}}}]->(r)")
+                graph.run(isl_query.format(a_switchNode['name'],
+                                           b_switchNode['name'],
+                                           a_port,
+                                           b_port,
+                                           a_switch,
+                                           b_switch,
+                                           latency,
+                                           speed,
+                                           int(available_bandwidth)))
 
-            print "ISL between {} and {} created".format(a_switchNode['name'],
-                                                         b_switchNode['name'])
-        else:
-            islUpdateQuery = "MATCH (a:switch)-[r:isl {{src_switch: '{}', src_port: '{}', dst_switch: '{}', dst_port: '{}'}}]->(b:switch) set r.latency = {} return r"
-            graph.run(islUpdateQuery.format(a_switch,
-                                            a_port,
-                                            b_switch,
-                                            b_port,
-                                            latency)).data()
-            #print "ISL between {} and {} updated".format(a_switchNode['name'],
-            #                                             b_switchNode['name'])
+                print "ISL between {} and {} created".format(
+                    a_switchNode['name'], b_switchNode['name'])
+            else:
+                isl_update_query = ("MATCH (a:switch)-[r:isl {{"
+                                    "src_switch: '{}', "
+                                    "src_port: '{}', "
+                                    "dst_switch: '{}', "
+                                    "dst_port: '{}'}}]->(b:switch) "
+                                    "set r.latency = {} return r")
+                graph.run(isl_update_query.format(a_switch,
+                                                  a_port,
+                                                  b_switch,
+                                                  b_port,
+                                                  latency)).data()
+                #print "ISL between {} and {} updated".format(
+                #    a_switchNode['name'], b_switchNode['name'])
+        except Exception as exception:
+            print "ISL creation error: {}".format(exception.message)
+            traceback.print_exc()
+        finally:
+            isl_lock.release()
+
         return True
-
-
-
 
     def create_flow(self):
         cor_id = self.correlation_id
