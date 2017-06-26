@@ -240,11 +240,12 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public boolean installDefaultRules(final DatapathId dpid) {
         final boolean dropFlow = installDropFlow(dpid);
         final boolean broadcastVerification = installVerificationRule(dpid, true);
+        final boolean unicastVerification = installVerificationRule(dpid, false);
         if (ofSwitchService.getSwitch(dpid).getOFFactory().getVersion().compareTo(OF_12) > 0) {
-            final boolean unicastVerification = installVerificationRule(dpid, false);
+            return dropFlow & broadcastVerification & unicastVerification;
         }
+        return dropFlow & broadcastVerification;
 
-        return dropFlow & broadcastVerification & unicastVerification;
     }
 
     /**
