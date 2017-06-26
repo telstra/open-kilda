@@ -245,10 +245,10 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             logger.debug("installing unicast verification match for {}", dpid.toString());
             final boolean unicastVerification = installVerificationRule(dpid, false);
             return dropFlow & broadcastVerification & unicastVerification;
+        } else {
+            logger.debug("not installing unicast verification match for {}", dpid.toString());
+            return dropFlow & broadcastVerification;
         }
-        logger.debug("not installing unicast verification match for {}", dpid.toString());
-        return dropFlow & broadcastVerification;
-
     }
 
     /**

@@ -89,49 +89,51 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
 
     @Override
     public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
-        threadPoolService.getScheduledExecutor().scheduleAtFixedRate(
-                () -> switchService.getAllSwitchMap().values().forEach(iofSwitch -> {
-                    OFFactory factory = iofSwitch.getOFFactory();
-                    OFPortStatsRequest portStatsRequest = factory.buildPortStatsRequest().setPortNo(OFPort.ANY).build();
-                    OFFlowStatsRequest flowStatsRequest = factory.buildFlowStatsRequest().setOutGroup(OFGroup.ANY).setCookieMask(SYSTEM_MASK).build();
-                    OFMeterConfigStatsRequest meterConfigStatsRequest = factory.buildMeterConfigStatsRequest().setMeterId(OFPM_ALL).build();
-                    final String switchId = iofSwitch.getId().toString();
-                    Futures.addCallback(iofSwitch.writeStatsRequest(portStatsRequest),
-                            new RequestCallback<>(data -> {
-                                List<PortStatsReply> replies = data.stream().map(reply -> {
-                                    List<PortStatsEntry> entries = reply.getEntries().stream()
-                                            .map(entry -> new PortStatsEntry(entry.getPortNo().getPortNumber(),
-                                                    entry.getRxPackets().getValue(), entry.getTxPackets().getValue(),
-                                                    entry.getRxBytes().getValue(), entry.getTxBytes().getValue(),
-                                                    entry.getRxDropped().getValue(), entry.getTxDropped().getValue(),
-                                                    entry.getRxErrors().getValue(), entry.getTxErrors().getValue(),
-                                                    entry.getRxFrameErr().getValue(), entry.getRxOverErr().getValue(),
-                                                    entry.getRxCrcErr().getValue(), entry.getCollisions().getValue()))
-                                            .collect(toList());
-                                    return new PortStatsReply(reply.getXid(), entries);
-                                }).collect(toList());
-                                return new PortStatsData(switchId, replies);
-                            }, "port"));
-                    Futures.addCallback(iofSwitch.writeStatsRequest(flowStatsRequest), new RequestCallback<>(data -> {
-                        List<FlowStatsReply> replies = data.stream().map(reply -> {
-                            List<FlowStatsEntry> entries = reply.getEntries().stream()
-                                    .map(entry -> new FlowStatsEntry(entry.getTableId().getValue(),
-                                            entry.getCookie().getValue(),
-                                            entry.getPacketCount().getValue(),
-                                            entry.getByteCount().getValue()))
-                                    .collect(toList());
-                            return new FlowStatsReply(reply.getXid(), entries);
-                        }).collect(toList());
-                        return new FlowStatsData(switchId, replies);
-                    }, "flow"));
-                    Futures.addCallback(iofSwitch.writeStatsRequest(meterConfigStatsRequest), new RequestCallback<>(data -> {
-                        List<MeterConfigReply> replies = data.stream().map(reply -> {
-                            List<Long> meterIds = reply.getEntries().stream().map(OFMeterConfig::getMeterId).collect(toList());
-                            return new MeterConfigReply(reply.getXid(), meterIds);
-                        }).collect(toList());
-                        return new MeterConfigStatsData(switchId, replies);
-                    }, "meter config"));
-                }), interval, interval, TimeUnit.SECONDS);
+        if (interval > 0) {
+            threadPoolService.getScheduledExecutor().scheduleAtFixedRate(
+                    () -> switchService.getAllSwitchMap().values().forEach(iofSwitch -> {
+                        OFFactory factory = iofSwitch.getOFFactory();
+                        OFPortStatsRequest portStatsRequest = factory.buildPortStatsRequest().setPortNo(OFPort.ANY).build();
+                        OFFlowStatsRequest flowStatsRequest = factory.buildFlowStatsRequest().setOutGroup(OFGroup.ANY).setCookieMask(SYSTEM_MASK).build();
+                        OFMeterConfigStatsRequest meterConfigStatsRequest = factory.buildMeterConfigStatsRequest().setMeterId(OFPM_ALL).build();
+                        final String switchId = iofSwitch.getId().toString();
+                        Futures.addCallback(iofSwitch.writeStatsRequest(portStatsRequest),
+                                new RequestCallback<>(data -> {
+                                    List<PortStatsReply> replies = data.stream().map(reply -> {
+                                        List<PortStatsEntry> entries = reply.getEntries().stream()
+                                                .map(entry -> new PortStatsEntry(entry.getPortNo().getPortNumber(),
+                                                        entry.getRxPackets().getValue(), entry.getTxPackets().getValue(),
+                                                        entry.getRxBytes().getValue(), entry.getTxBytes().getValue(),
+                                                        entry.getRxDropped().getValue(), entry.getTxDropped().getValue(),
+                                                        entry.getRxErrors().getValue(), entry.getTxErrors().getValue(),
+                                                        entry.getRxFrameErr().getValue(), entry.getRxOverErr().getValue(),
+                                                        entry.getRxCrcErr().getValue(), entry.getCollisions().getValue()))
+                                                .collect(toList());
+                                        return new PortStatsReply(reply.getXid(), entries);
+                                    }).collect(toList());
+                                    return new PortStatsData(switchId, replies);
+                                }, "port"));
+                        Futures.addCallback(iofSwitch.writeStatsRequest(flowStatsRequest), new RequestCallback<>(data -> {
+                            List<FlowStatsReply> replies = data.stream().map(reply -> {
+                                List<FlowStatsEntry> entries = reply.getEntries().stream()
+                                        .map(entry -> new FlowStatsEntry(entry.getTableId().getValue(),
+                                                entry.getCookie().getValue(),
+                                                entry.getPacketCount().getValue(),
+                                                entry.getByteCount().getValue()))
+                                        .collect(toList());
+                                return new FlowStatsReply(reply.getXid(), entries);
+                            }).collect(toList());
+                            return new FlowStatsData(switchId, replies);
+                        }, "flow"));
+                        Futures.addCallback(iofSwitch.writeStatsRequest(meterConfigStatsRequest), new RequestCallback<>(data -> {
+                            List<MeterConfigReply> replies = data.stream().map(reply -> {
+                                List<Long> meterIds = reply.getEntries().stream().map(OFMeterConfig::getMeterId).collect(toList());
+                                return new MeterConfigReply(reply.getXid(), meterIds);
+                            }).collect(toList());
+                            return new MeterConfigStatsData(switchId, replies);
+                        }, "meter config"));
+                    }), interval, interval, TimeUnit.SECONDS);
+        }
     }
 
     private class RequestCallback<T extends OFStatsReply> implements FutureCallback<List<T>> {

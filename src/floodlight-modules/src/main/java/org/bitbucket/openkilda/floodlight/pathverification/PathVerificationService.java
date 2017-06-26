@@ -5,7 +5,6 @@ import static org.bitbucket.openkilda.messaging.Utils.MAPPER;
 import org.bitbucket.openkilda.floodlight.pathverification.type.PathType;
 import org.bitbucket.openkilda.floodlight.pathverification.web.PathVerificationServiceWebRoutable;
 import org.bitbucket.openkilda.messaging.Message;
-import org.bitbucket.openkilda.messaging.Topic;
 import org.bitbucket.openkilda.messaging.info.InfoMessage;
 import org.bitbucket.openkilda.messaging.info.event.IslInfoData;
 import org.bitbucket.openkilda.messaging.info.event.PathNode;
@@ -13,6 +12,7 @@ import org.bitbucket.openkilda.messaging.info.event.PathNode;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
+import net.floodlightcontroller.core.IListener;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
@@ -33,6 +33,8 @@ import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
+import org.projectfloodlight.openflow.protocol.OFPortDescProp;
+import org.projectfloodlight.openflow.protocol.OFPortDescPropEthernet;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
@@ -59,8 +61,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
-public class PathVerificationService
-        implements IFloodlightModule, IOFMessageListener, IPathVerificationService {
+public class PathVerificationService implements IFloodlightModule, IOFMessageListener, IPathVerificationService {
     public static final String VERIFICATION_BCAST_PACKET_DST = "00:26:e1:ff:ff:ff";
     public static final int VERIFICATION_PACKET_UDP_PORT = 61231;
     public static final String VERIFICATION_PACKET_IP_DST = "192.168.0.255";
@@ -315,75 +316,98 @@ public class PathVerificationService
                 }
             }
         }
-        throw new Exception("Ethernet packet was not a verificaiton packet");
+        throw new Exception("Ethernet packet was not a verification packet");
     }
 
-    private net.floodlightcontroller.core.IListener.Command handlePacketIn(IOFSwitch sw,
-                                                                           OFPacketIn pkt, FloodlightContext context) {
+    private IListener.Command handlePacketIn(IOFSwitch sw, OFPacketIn pkt, FloodlightContext context) {
         long time = System.currentTimeMillis();
+        logger.debug("packet_in {} received from {}", pkt.getXid(), sw.getId());
+
         VerificationPacket verificationPacket = null;
         Command command = Command.CONTINUE;
 
-        Ethernet eth = IFloodlightProviderService.bcStore.get(context,
-                IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+        Ethernet eth = IFloodlightProviderService.bcStore.get(context, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+
         try {
             verificationPacket = deserialize(eth);
             command = Command.STOP;
         } catch (Exception exception) {
-            //
+            logger.error("Deserialization failure: {}", exception.getMessage(), exception);
         }
 
-        OFPort inPort = pkt.getVersion().compareTo(OFVersion.OF_12) < 0 ? pkt.getInPort()
-                : pkt.getMatch().get(MatchField.IN_PORT);
-        ByteBuffer portBB = ByteBuffer.wrap(verificationPacket.getPortId().getValue());
-        portBB.position(1);
-        OFPort remotePort = OFPort.of(portBB.getShort());
-
-        long timestamp = 0;
-        int pathOrdinal = 10;
-        IOFSwitch remoteSwitch = null;
-        for (LLDPTLV lldptlv : verificationPacket.getOptionalTLVList()) {
-            if (lldptlv.getType() == 127 && lldptlv.getLength() == 12
-                    && lldptlv.getValue()[0] == 0x0
-                    && lldptlv.getValue()[1] == 0x26
-                    && lldptlv.getValue()[2] == (byte) 0xe1
-                    && lldptlv.getValue()[3] == 0x0) {
-                ByteBuffer dpidBB = ByteBuffer.wrap(lldptlv.getValue());
-                remoteSwitch = switchService.getSwitch(DatapathId.of(dpidBB.getLong(4)));
-            } else if (lldptlv.getType() == 127 && lldptlv.getLength() == 12
-                    && lldptlv.getValue()[0] == 0x0
-                    && lldptlv.getValue()[1] == 0x26
-                    && lldptlv.getValue()[2] == (byte) 0xe1
-                    && lldptlv.getValue()[3] == 0x01) {
-                ByteBuffer tsBB = ByteBuffer.wrap(lldptlv.getValue()); /* skip OpenFlow OUI (4 bytes above) */
-                long swLatency = sw.getLatency().getValue();
-                timestamp = tsBB.getLong(4); /* include the RX switch latency to "subtract" it */
-                timestamp = timestamp + swLatency;
-            } else if (lldptlv.getType() == 127 && lldptlv.getLength() == 8
-                    && lldptlv.getValue()[0] == 0x0
-                    && lldptlv.getValue()[1] == 0x26
-                    && lldptlv.getValue()[2] == (byte) 0xe1
-                    && lldptlv.getValue()[3] == 0x02) {
-                ByteBuffer typeBB = ByteBuffer.wrap(lldptlv.getValue());
-                pathOrdinal = typeBB.getInt(4);
-            }
-        }
-        U64 latency = (timestamp != 0 && (time - timestamp) > 0) ? U64.of(time - timestamp) : U64.ZERO;
-
-        List<PathNode> nodes = Arrays.asList(
-                new PathNode(sw.getId().toString(), inPort.getPortNumber(), 0, latency.getValue()),
-                new PathNode(remoteSwitch.getId().toString(), remotePort.getPortNumber(), 1));
-
-        IslInfoData path = new IslInfoData(latency.getValue(), nodes, sw.getPort(inPort).getCurrSpeed());
-
-        Message message = new InfoMessage(path, System.currentTimeMillis(), "system", null);
         try {
+            OFPort inPort = pkt.getVersion().compareTo(OFVersion.OF_12) < 0 ? pkt.getInPort()
+                    : pkt.getMatch().get(MatchField.IN_PORT);
+            ByteBuffer portBB = ByteBuffer.wrap(verificationPacket.getPortId().getValue());
+            portBB.position(1);
+            OFPort remotePort = OFPort.of(portBB.getShort());
+
+            long timestamp = 0;
+            int pathOrdinal = 10;
+            IOFSwitch remoteSwitch = null;
+            for (LLDPTLV lldptlv : verificationPacket.getOptionalTLVList()) {
+                if (lldptlv.getType() == 127 && lldptlv.getLength() == 12
+                        && lldptlv.getValue()[0] == 0x0
+                        && lldptlv.getValue()[1] == 0x26
+                        && lldptlv.getValue()[2] == (byte) 0xe1
+                        && lldptlv.getValue()[3] == 0x0) {
+                    ByteBuffer dpidBB = ByteBuffer.wrap(lldptlv.getValue());
+                    remoteSwitch = switchService.getSwitch(DatapathId.of(dpidBB.getLong(4)));
+                } else if (lldptlv.getType() == 127 && lldptlv.getLength() == 12
+                        && lldptlv.getValue()[0] == 0x0
+                        && lldptlv.getValue()[1] == 0x26
+                        && lldptlv.getValue()[2] == (byte) 0xe1
+                        && lldptlv.getValue()[3] == 0x01) {
+                    ByteBuffer tsBB = ByteBuffer.wrap(lldptlv.getValue()); /* skip OpenFlow OUI (4 bytes above) */
+                    long swLatency = sw.getLatency().getValue();
+                    timestamp = tsBB.getLong(4); /* include the RX switch latency to "subtract" it */
+                    timestamp = timestamp + swLatency;
+                } else if (lldptlv.getType() == 127 && lldptlv.getLength() == 8
+                        && lldptlv.getValue()[0] == 0x0
+                        && lldptlv.getValue()[1] == 0x26
+                        && lldptlv.getValue()[2] == (byte) 0xe1
+                        && lldptlv.getValue()[3] == 0x02) {
+                    ByteBuffer typeBB = ByteBuffer.wrap(lldptlv.getValue());
+                    pathOrdinal = typeBB.getInt(4);
+                }
+            }
+
+            U64 latency = (timestamp != 0 && (time - timestamp) > 0) ? U64.of(time - timestamp) : U64.ZERO;
+
+            List<PathNode> nodes = Arrays.asList(
+                    new PathNode(sw.getId().toString(), inPort.getPortNumber(), 0, latency.getValue()),
+                    new PathNode(remoteSwitch.getId().toString(), remotePort.getPortNumber(), 1));
+
+            OFPortDesc port = sw.getPort(inPort);
+            long speed = Integer.MAX_VALUE;
+
+            if (port.getVersion().compareTo(OFVersion.OF_13) > 0) {
+                for (OFPortDescProp prop : port.getProperties()) {
+                    if (prop.getType() == 0x0) {
+                        speed = ((OFPortDescPropEthernet) prop).getCurrSpeed();
+                    }
+                }
+            } else {
+                speed = port.getCurrSpeed();
+            }
+
+            IslInfoData path = new IslInfoData(latency.getValue(), nodes, speed);
+
+            Message message = new InfoMessage(path, System.currentTimeMillis(), "system", null);
+
             final String json = MAPPER.writeValueAsString(message);
             logger.debug("about to send {}", json);
             producer.send(new ProducerRecord<>(TOPIC, json));
+            logger.debug("packet_in {} processed for {}", pkt.getXid(), sw.getId());
+
         } catch (JsonProcessingException exception) {
-            logger.error("could not create json for path.", exception);
+            logger.error("could not create json for path", exception);
+        } catch (UnsupportedOperationException exception) {
+            logger.error("could not parse packet_in message: {}", exception.getMessage(), exception);
+        } catch (Exception exception) {
+            logger.error("unknown error during packet_in message processing: {}", exception.getMessage(), exception);
         }
+
         return command;
     }
 }

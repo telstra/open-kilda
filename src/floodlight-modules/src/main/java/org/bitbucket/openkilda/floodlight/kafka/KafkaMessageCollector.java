@@ -136,8 +136,9 @@ public class KafkaMessageCollector implements IFloodlightModule {
         private void doDiscoverIslCommand(CommandData data) {
             DiscoverIslCommandData command = (DiscoverIslCommandData) data;
             logger.debug("sending discover ISL to {}", command);
-            pathVerificationService.sendDiscoveryMessage(DatapathId.of(command.getSwitchId()),
-                    OFPort.of(command.getPortNo()));
+            boolean result = pathVerificationService.sendDiscoveryMessage(
+                    DatapathId.of(command.getSwitchId()), OFPort.of(command.getPortNo()));
+            logger.debug("packet_out sent to {} is {}", command.getSwitchId(), result);
         }
 
         private void doDiscoverPathCommand(CommandData data) {
