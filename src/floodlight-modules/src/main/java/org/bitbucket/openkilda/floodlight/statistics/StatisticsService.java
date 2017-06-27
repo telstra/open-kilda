@@ -10,8 +10,6 @@ import org.bitbucket.openkilda.messaging.info.InfoMessage;
 import org.bitbucket.openkilda.messaging.info.stats.FlowStatsData;
 import org.bitbucket.openkilda.messaging.info.stats.FlowStatsEntry;
 import org.bitbucket.openkilda.messaging.info.stats.FlowStatsReply;
-import org.bitbucket.openkilda.messaging.info.stats.MeterConfigReply;
-import org.bitbucket.openkilda.messaging.info.stats.MeterConfigStatsData;
 import org.bitbucket.openkilda.messaging.info.stats.PortStatsData;
 import org.bitbucket.openkilda.messaging.info.stats.PortStatsEntry;
 import org.bitbucket.openkilda.messaging.info.stats.PortStatsReply;
@@ -27,10 +25,11 @@ import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsRequest;
-import org.projectfloodlight.openflow.protocol.OFMeterConfig;
-import org.projectfloodlight.openflow.protocol.OFMeterConfigStatsRequest;
+import org.projectfloodlight.openflow.protocol.OFPortStatsProp;
+import org.projectfloodlight.openflow.protocol.OFPortStatsPropEthernet;
 import org.projectfloodlight.openflow.protocol.OFPortStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFStatsReply;
+import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.types.OFGroup;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.U64;
@@ -93,45 +92,97 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
             threadPoolService.getScheduledExecutor().scheduleAtFixedRate(
                     () -> switchService.getAllSwitchMap().values().forEach(iofSwitch -> {
                         OFFactory factory = iofSwitch.getOFFactory();
-                        OFPortStatsRequest portStatsRequest = factory.buildPortStatsRequest().setPortNo(OFPort.ANY).build();
-                        OFFlowStatsRequest flowStatsRequest = factory.buildFlowStatsRequest().setOutGroup(OFGroup.ANY).setCookieMask(SYSTEM_MASK).build();
-                        OFMeterConfigStatsRequest meterConfigStatsRequest = factory.buildMeterConfigStatsRequest().setMeterId(OFPM_ALL).build();
                         final String switchId = iofSwitch.getId().toString();
+
+                        OFPortStatsRequest portStatsRequest = factory
+                                .buildPortStatsRequest()
+                                .setPortNo(OFPort.ANY)
+                                .build();
+
+                        OFFlowStatsRequest flowStatsRequest = factory
+                                .buildFlowStatsRequest()
+                                .setOutGroup(OFGroup.ANY)
+                                .setCookieMask(SYSTEM_MASK)
+                                .build();
+
+                        logger.info("Getting port stats for switch={}", iofSwitch.getId());
+
                         Futures.addCallback(iofSwitch.writeStatsRequest(portStatsRequest),
                                 new RequestCallback<>(data -> {
                                     List<PortStatsReply> replies = data.stream().map(reply -> {
                                         List<PortStatsEntry> entries = reply.getEntries().stream()
-                                                .map(entry -> new PortStatsEntry(entry.getPortNo().getPortNumber(),
-                                                        entry.getRxPackets().getValue(), entry.getTxPackets().getValue(),
-                                                        entry.getRxBytes().getValue(), entry.getTxBytes().getValue(),
-                                                        entry.getRxDropped().getValue(), entry.getTxDropped().getValue(),
-                                                        entry.getRxErrors().getValue(), entry.getTxErrors().getValue(),
-                                                        entry.getRxFrameErr().getValue(), entry.getRxOverErr().getValue(),
-                                                        entry.getRxCrcErr().getValue(), entry.getCollisions().getValue()))
+                                                .map(entry -> {
+                                                    if (entry.getVersion().compareTo(OFVersion.OF_13) > 0) {
+                                                        long rxFrameErr, rxOverErr, rxCrcErr, collisions;
+                                                        rxFrameErr = rxOverErr = rxCrcErr = collisions = 0;
+
+                                                        for (OFPortStatsProp property : entry.getProperties()) {
+                                                            if (property.getType() == 0x0) {
+                                                                OFPortStatsPropEthernet etherProps =
+                                                                        (OFPortStatsPropEthernet) property;
+                                                                rxFrameErr = etherProps.getRxFrameErr().getValue();
+                                                                rxOverErr = etherProps.getRxOverErr().getValue();
+                                                                rxCrcErr = etherProps.getRxCrcErr().getValue();
+                                                                collisions = etherProps.getCollisions().getLength();
+                                                            }
+                                                        }
+
+                                                        return new PortStatsEntry(
+                                                                entry.getPortNo().getPortNumber(),
+                                                                entry.getRxPackets().getValue(),
+                                                                entry.getTxPackets().getValue(),
+                                                                entry.getRxBytes().getValue(),
+                                                                entry.getTxBytes().getValue(),
+                                                                entry.getRxDropped().getValue(),
+                                                                entry.getTxDropped().getValue(),
+                                                                entry.getRxErrors().getValue(),
+                                                                entry.getTxErrors().getValue(),
+                                                                rxFrameErr,
+                                                                rxOverErr,
+                                                                rxCrcErr,
+                                                                collisions);
+                                                    } else {
+                                                        return new PortStatsEntry(
+                                                                entry.getPortNo().getPortNumber(),
+                                                                entry.getRxPackets().getValue(),
+                                                                entry.getTxPackets().getValue(),
+                                                                entry.getRxBytes().getValue(),
+                                                                entry.getTxBytes().getValue(),
+                                                                entry.getRxDropped().getValue(),
+                                                                entry.getTxDropped().getValue(),
+                                                                entry.getRxErrors().getValue(),
+                                                                entry.getTxErrors().getValue(),
+                                                                entry.getRxFrameErr().getValue(),
+                                                                entry.getRxOverErr().getValue(),
+                                                                entry.getRxCrcErr().getValue(),
+                                                                entry.getCollisions().getValue());
+                                                    }
+                                                })
                                                 .collect(toList());
                                         return new PortStatsReply(reply.getXid(), entries);
                                     }).collect(toList());
                                     return new PortStatsData(switchId, replies);
                                 }, "port"));
-                        Futures.addCallback(iofSwitch.writeStatsRequest(flowStatsRequest), new RequestCallback<>(data -> {
-                            List<FlowStatsReply> replies = data.stream().map(reply -> {
-                                List<FlowStatsEntry> entries = reply.getEntries().stream()
-                                        .map(entry -> new FlowStatsEntry(entry.getTableId().getValue(),
-                                                entry.getCookie().getValue(),
-                                                entry.getPacketCount().getValue(),
-                                                entry.getByteCount().getValue()))
-                                        .collect(toList());
-                                return new FlowStatsReply(reply.getXid(), entries);
-                            }).collect(toList());
-                            return new FlowStatsData(switchId, replies);
-                        }, "flow"));
-                        Futures.addCallback(iofSwitch.writeStatsRequest(meterConfigStatsRequest), new RequestCallback<>(data -> {
-                            List<MeterConfigReply> replies = data.stream().map(reply -> {
-                                List<Long> meterIds = reply.getEntries().stream().map(OFMeterConfig::getMeterId).collect(toList());
-                                return new MeterConfigReply(reply.getXid(), meterIds);
-                            }).collect(toList());
-                            return new MeterConfigStatsData(switchId, replies);
-                        }, "meter config"));
+
+                        if (factory.getVersion().compareTo(OFVersion.OF_15) != 0) {
+                            // skip flow stats for OF 1.5 protocol version
+                            logger.info("Getting flow stats for switch={}", iofSwitch.getId());
+
+                            Futures.addCallback(iofSwitch.writeStatsRequest(flowStatsRequest),
+                                    new RequestCallback<>(data -> {
+                                        List<FlowStatsReply> replies = data.stream().map(reply -> {
+                                            List<FlowStatsEntry> entries = reply.getEntries().stream()
+                                                    .map(entry -> new FlowStatsEntry(
+                                                            entry.getTableId().getValue(),
+                                                            entry.getCookie().getValue(),
+                                                            entry.getPacketCount().getValue(),
+                                                            entry.getByteCount().getValue()))
+                                                    .collect(toList());
+                                            return new FlowStatsReply(reply.getXid(), entries);
+                                        }).collect(toList());
+                                        return new FlowStatsData(switchId, replies);
+                                    }, "flow"));
+                        }
                     }), interval, interval, TimeUnit.SECONDS);
         }
     }
@@ -153,8 +204,8 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
         }
 
         @Override
-        public void onFailure(Throwable t) {
-            logger.error("Exception reading " + type + " stats", t);
+        public void onFailure(Throwable throwable) {
+            logger.error("Exception reading {} stats", type, throwable);
         }
     }
 }

@@ -372,6 +372,8 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
                 }
             }
 
+            logger.debug("link discovered: {}-{} -> {}-{}", remoteSwitch.getId(), remotePort, sw.getId(), inPort);
+
             U64 latency = (timestamp != 0 && (time - timestamp) > 0) ? U64.of(time - timestamp) : U64.ZERO;
 
             List<PathNode> nodes = Arrays.asList(

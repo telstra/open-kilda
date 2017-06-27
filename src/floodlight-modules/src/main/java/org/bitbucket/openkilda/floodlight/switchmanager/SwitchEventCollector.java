@@ -1,5 +1,8 @@
 package org.bitbucket.openkilda.floodlight.switchmanager;
 
+import static org.projectfloodlight.openflow.protocol.OFVersion.OF_12;
+import static org.projectfloodlight.openflow.protocol.ver15.OFMeterSerializerVer15.ALL_VAL;
+
 import org.bitbucket.openkilda.floodlight.kafka.KafkaMessageProducer;
 import org.bitbucket.openkilda.messaging.Message;
 import org.bitbucket.openkilda.messaging.info.InfoData;
@@ -16,6 +19,7 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
@@ -78,11 +82,26 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
      */
     @Override
     public void switchActivated(final DatapathId switchId) {
-        Message message = buildSwitchMessage(switchService.getSwitch(switchId), SwitchEventType.ACTIVATED);
-        boolean defaultFlowsInstalled = switchManager.installDefaultRules(switchId);
+        final IOFSwitch sw = switchService.getSwitch(switchId);
+
+        Message message = buildSwitchMessage(sw, SwitchEventType.ACTIVATED);
         kafkaProducer.postMessage(TOPIC, message);
 
-        IOFSwitch sw = switchService.getSwitch(switchId);
+        ImmutablePair<Long, Boolean> metersDeleted;
+        if (sw.getOFFactory().getVersion().compareTo(OF_12) > 0) {
+            metersDeleted = switchManager.deleteMeter(switchId, ALL_VAL);
+        } else {
+            metersDeleted = switchManager.deleteLegacyMeter(switchId, ALL_VAL);
+        }
+        if (!metersDeleted.getRight()) {
+            logger.error("Could not delete meters from switch={} xid={}", switchId, metersDeleted.getLeft());
+        }
+
+        boolean defaultRulesInstalled = switchManager.installDefaultRules(switchId);
+        if (!defaultRulesInstalled) {
+            logger.error("Could not install default rules on switch={}", switchId);
+        }
+
         if (sw.getEnabledPortNumbers() != null) {
             for (OFPort p : sw.getEnabledPortNumbers()) {
                 kafkaProducer.postMessage(TOPIC, buildPortMessage(sw.getId(), p, PortChangeType.UP));
