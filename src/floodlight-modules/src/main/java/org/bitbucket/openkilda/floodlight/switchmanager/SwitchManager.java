@@ -34,7 +34,6 @@ import org.projectfloodlight.openflow.protocol.OFErrorMsg;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowDelete;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
-import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFLegacyMeterBandDrop;
@@ -74,7 +73,6 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -479,12 +477,18 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .setRate(bandwidth)
                 .setBurstSize(burstSize);
 
-        OFMeterMod meterMod = ofFactory.buildMeterMod()
+        OFMeterMod.Builder meterModBuilder = ofFactory.buildMeterMod()
                 .setMeterId(meterId)
                 .setCommand(OFMeterModCommand.ADD)
-                .setMeters(singletonList(bandBuilder.build()))
-                .setFlags(flags)
-                .build();
+                .setFlags(flags);
+
+        if (sw.getOFFactory().getVersion().compareTo(OF_13) > 0) {
+            meterModBuilder.setBands(singletonList(bandBuilder.build()));
+        } else {
+            meterModBuilder.setMeters(singletonList(bandBuilder.build()));
+        }
+
+        OFMeterMod meterMod = meterModBuilder.build();
 
         boolean response = sw.write(meterMod);
         return new ImmutablePair<>(meterMod.getXid(), response);
@@ -494,8 +498,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * {@inheritDoc}
      */
     @Override
-    public ImmutablePair<Long, Boolean> installLegacyMeter(final DatapathId dpid, final long bandwidth, final long burstSize,
-                                                           final long meterId) {
+    public ImmutablePair<Long, Boolean> installLegacyMeter(final DatapathId dpid, final long bandwidth,
+                                                           final long burstSize, final long meterId) {
         if (meterId == 0) {
             logger.info("skip installing meter {} on switch {} width bandwidth {}", meterId, dpid, bandwidth);
             return new ImmutablePair<>(0L, true);
@@ -567,10 +571,17 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         OFFactory ofFactory = sw.getOFFactory();
 
-        OFMeterMod meterDelete = ofFactory.buildMeterMod()
+        OFMeterMod.Builder meterDeleteBuilder = ofFactory.buildMeterMod()
                 .setMeterId(meterId)
-                .setCommand(OFMeterModCommand.DELETE)
-                .build();
+                .setCommand(OFMeterModCommand.DELETE);
+
+        if (sw.getOFFactory().getVersion().compareTo(OF_13) > 0) {
+            meterDeleteBuilder.setBands(emptyList());
+        } else {
+            meterDeleteBuilder.setMeters(emptyList());
+        }
+
+        OFMeterMod meterDelete = meterDeleteBuilder.build();
 
         boolean response = sw.write(meterDelete);
         return new ImmutablePair<>(meterDelete.getXid(), response);
@@ -599,6 +610,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         OFLegacyMeterMod meterDelete = ofFactory.buildLegacyMeterMod()
                 .setMeterId(meterId)
+                .setMeters(emptyList())
                 .setCommand(OFLegacyMeterModCommand.DELETE)
                 .build();
 
