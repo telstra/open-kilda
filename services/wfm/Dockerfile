@@ -18,9 +18,8 @@ RUN echo "PATH=$PATH:/opt/storm/bin" >> ~/.bashrc
 ADD /src/messaging /app/messaging
 RUN mvn -f /app/messaging clean install
 
-COPY /services/wfm /app/wfm
-WORKDIR /app/wfm
-RUN mvn assembly:assembly -DskipTests
+ADD /services/wfm /app/wfm
+RUN mvn -f /app/wfm assembly:assembly -DskipTests
 
 RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
