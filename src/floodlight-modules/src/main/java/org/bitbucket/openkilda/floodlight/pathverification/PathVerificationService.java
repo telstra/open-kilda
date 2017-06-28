@@ -370,13 +370,16 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
                 }
             }
 
-            logger.debug("link discovered: {}-{} -> {}-{}", remoteSwitch.getId(), remotePort, sw.getId(), inPort);
-
             U64 latency = (timestamp != 0 && (time - timestamp) > 0) ? U64.of(time - timestamp) : U64.ZERO;
 
+            logger.debug("link discovered: {}-{} ===( {} ms )===> {}-{}",
+                    remoteSwitch.getId(), remotePort, latency.getValue(), sw.getId(), inPort);
+
+            // this verification packet was sent from remote switch/port to received switch/port
+            // so the link direction is from remote switch/port to received switch/port
             List<PathNode> nodes = Arrays.asList(
-                    new PathNode(sw.getId().toString(), inPort.getPortNumber(), 0, latency.getValue()),
-                    new PathNode(remoteSwitch.getId().toString(), remotePort.getPortNumber(), 1));
+                    new PathNode(remoteSwitch.getId().toString(), remotePort.getPortNumber(), 0, latency.getValue()),
+                    new PathNode(sw.getId().toString(), inPort.getPortNumber(), 1));
 
             OFPortDesc port = sw.getPort(inPort);
             long speed = Integer.MAX_VALUE;
