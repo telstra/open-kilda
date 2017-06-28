@@ -4,6 +4,13 @@ default: build-latest run-dev
 build-base:
 	docker build -t kilda/base-ubuntu:latest base/kilda-base-ubuntu/
 	docker build -t kilda/base-floodlight:latest base/base-floodlight/
+	docker build -f services/zookeeper/Dockerfile -t kilda/zookeeper:latest .
+	docker build -f services/kafka/Dockerfile -t kilda/kafka:latest .
+	docker build -f services/hbase/Dockerfile -t kilda/hbase:latest .
+	docker build -f services/mininet/Dockerfile -t kilda/mininet:latest .
+	docker build -f services/neo4j/Dockerfile -t kilda/neo4j:latest .
+	docker build -f services/storm/Dockerfile -t kilda/storm:latest .
+	docker build -f services/opentsdb/Dockerfile -t kilda/opentsdb:latest .
 
 build-latest: build-base
 	docker-compose build

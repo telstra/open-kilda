@@ -12,9 +12,6 @@ services:
 
   mininet:
     container_name: mininet
-    build:
-      context: .
-      dockerfile:  services/mininet/Dockerfile
     image: "kilda/mininet:${full_build_number:-latest}"
     command: /app/startup
     env_file:
@@ -27,9 +24,6 @@ services:
 
   neo4j:
     container_name: neo4j
-    build:
-      context: .
-      dockerfile:  services/neo4j/Dockerfile
     image: "kilda/neo4j:${full_build_number:-latest}"
     command: neo4j console
     ports:
@@ -128,9 +122,6 @@ services:
 
   zookeeper:
     container_name: zookeeper
-    build:
-      context: .
-      dockerfile:  services/zookeeper/Dockerfile
     image: "kilda/zookeeper:${full_build_number:-latest}"
     command: /opt/zookeeper/bin/zkServer.sh start-foreground
     ports:
@@ -144,9 +135,6 @@ services:
   kafka:
     container_name: kafka
     hostname: kafka.pendev
-    build:
-      context: .
-      dockerfile:  services/kafka/Dockerfile
     image: "kilda/kafka:${full_build_number:-latest}"
     # run_and_configure is in services/kafka/kafka-conf
     # command: /opt/kafka/bin/run_and_configure.sh
@@ -193,9 +181,6 @@ services:
   hbase:
     container_name: hbase
     hostname: hbase.pendev
-    build:
-      context: .
-      dockerfile: services/hbase/Dockerfile
     image: "kilda/hbase:${full_build_number:-latest}"
     command: /opt/hbase/bin/start-hbase
     volumes:
@@ -244,9 +229,6 @@ services:
   storm_nimbus:
     container_name: storm_nimbus
     hostname: nimbus.pendev
-    build:
-      context: .
-      dockerfile:  services/storm/Dockerfile
     image: "kilda/storm:${full_build_number:-latest}"
     command: /app/wait-for-it.sh -t 120 -h zookeeper.pendev -p 2181 -- /opt/storm/bin/storm nimbus
     depends_on:
@@ -270,9 +252,6 @@ services:
 
   storm_ui:
     container_name: storm_ui
-    build:
-      context: .
-      dockerfile:  services/storm/Dockerfile
     image: "kilda/storm:${full_build_number:-latest}"
     command: /app/wait-for-it.sh -t 120 -h zookeeper.pendev -p 2181 -- /opt/storm/bin/storm ui
     depends_on:
@@ -297,9 +276,6 @@ services:
   storm_supervisor:
     container_name: storm_supervisor
     hostname: storm_supervisor.pendev
-    build:
-      context: .
-      dockerfile:  services/storm/Dockerfile
     image: "kilda/storm:${full_build_number:-latest}"
     command: /app/wait-for-it.sh -t 120 -h zookeeper.pendev -p 2181 -- /opt/storm/bin/storm supervisor
     depends_on:
@@ -373,9 +349,6 @@ services:
   opentsdb:
     container_name: opentsdb
     hostname: opentsdb.pendev
-    build:
-      context: .
-      dockerfile: services/opentsdb/Dockerfile
     image: "kilda/opentsdb:${full_build_number:-latest}"
     command: /app/wait-for-it.sh -t 120 -h hbase.pendev -p 9090 -- /app/start-opentsdb
     depends_on:
