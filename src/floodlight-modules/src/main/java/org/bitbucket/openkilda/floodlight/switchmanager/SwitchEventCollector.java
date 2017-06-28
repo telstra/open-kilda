@@ -26,8 +26,7 @@ import org.projectfloodlight.openflow.types.OFPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -196,23 +195,6 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
     }
 
     /**
-     * Gets hostname by ip address.
-     *
-     * @param switchAddress switch ip address
-     * @return switch name
-     */
-    private String getNameByAddress(final String switchAddress) {
-        String host;
-        try {
-            InetAddress inetAddress = InetAddress.getByName(switchAddress);
-            host = inetAddress.getHostName();
-        } catch (UnknownHostException exception) {
-            host = "unknown";
-        }
-        return host;
-    }
-
-    /**
      * Builds a switch message type.
      *
      * @param sw        switch instance
@@ -221,12 +203,19 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
      */
     private Message buildSwitchMessage(final IOFSwitch sw, final SwitchEventType eventType) {
         String switchId = sw.getId().toString();
-        String switchAddress = sw.getInetAddress().toString().substring(1);
-        String switchHostname = getNameByAddress(switchAddress);
-        String description = String.format("%s %s", sw.getSwitchDescription().getManufacturerDescription(),
-                sw.getSwitchDescription().getSoftwareDescription());
+        InetSocketAddress address = (InetSocketAddress) sw.getInetAddress();
 
-        InfoData data = new SwitchInfoData(switchId, eventType, switchAddress, switchHostname, description);
+        InfoData data = new SwitchInfoData(
+                switchId,
+                eventType,
+                String.format("%s:%d",
+                        address.getHostString(),
+                        address.getPort()),
+                address.getHostName(),
+                String.format("%s %s %s",
+                        sw.getSwitchDescription().getManufacturerDescription(),
+                        sw.getOFFactory().getVersion().toString(),
+                        sw.getSwitchDescription().getSoftwareDescription()));
 
         return buildMessage(data);
     }
