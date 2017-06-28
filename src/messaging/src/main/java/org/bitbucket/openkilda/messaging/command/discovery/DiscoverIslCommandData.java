@@ -95,6 +95,6 @@ public class DiscoverIslCommandData extends CommandData {
      */
     @Override
     public String toString() {
-        return String.format("%s:%s", switchId, portNo);
+        return String.format("%s-%s", switchId, portNo);
     }
 }

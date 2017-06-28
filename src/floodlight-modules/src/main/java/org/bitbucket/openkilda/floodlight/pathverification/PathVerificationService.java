@@ -217,7 +217,7 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
             byte[] srcMac = ofPortDesc.getHwAddr().getBytes();
             byte[] zeroMac = {0, 0, 0, 0, 0, 0};
             if (Arrays.equals(srcMac, zeroMac)) {
-                logger.warn("Port {}/{} has zero hardware address" + "overwrite with lower 6 bytes of dpid",
+                logger.warn("Port {}/{} has zero hardware address: overwrite with lower 6 bytes of dpid",
                         dpid.toString(), ofPortDesc.getPortNo().getPortNumber());
                 System.arraycopy(dpidArray, 2, srcMac, 0, 6);
             }
@@ -242,11 +242,9 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
             long swLatency = srcSw.getLatency().getValue();
             byte[] timestampTLVValue = ByteBuffer.allocate(Long.SIZE / 8 + 4).put((byte) 0x00)
                     .put((byte) 0x26).put((byte) 0xe1)
-                    .put((byte) 0x01) /*
-         * 0x01 is what we'll use to differentiate DPID (0x00)
-         * from time (0x01)
-         */
-                    .putLong(time + swLatency /* account for our switch's one-way latency */).array();
+                    .put((byte) 0x01) // 0x01 is what we'll use to differentiate DPID (0x00) from time (0x01)
+                    .putLong(time + swLatency /* account for our switch's one-way latency */)
+                    .array();
 
             LLDPTLV timestampTLV = new LLDPTLV().setType((byte) 127)
                     .setLength((short) timestampTLVValue.length).setValue(timestampTLVValue);
@@ -400,10 +398,10 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
             final String json = MAPPER.writeValueAsString(message);
             logger.debug("about to send {}", json);
             producer.send(new ProducerRecord<>(TOPIC, json));
-            logger.debug("packet_in {} processed for {}", pkt.getXid(), sw.getId());
+            logger.debug("packet_in processed for {}-{}", sw.getId(), inPort);
 
         } catch (JsonProcessingException exception) {
-            logger.error("could not create json for path", exception);
+            logger.error("could not create json for path packet_in: {}", exception.getMessage(), exception);
         } catch (UnsupportedOperationException exception) {
             logger.error("could not parse packet_in message: {}", exception.getMessage(), exception);
         } catch (Exception exception) {

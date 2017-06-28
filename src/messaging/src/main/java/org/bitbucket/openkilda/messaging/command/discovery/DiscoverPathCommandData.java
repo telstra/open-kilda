@@ -123,6 +123,6 @@ public class DiscoverPathCommandData extends CommandData {
      */
     @Override
     public String toString() {
-        return String.format("%s:%s -> %s", srcSwitchId, srcPortNo, dstSwitchId);
+        return String.format("%s-%s -> %s", srcSwitchId, srcPortNo, dstSwitchId);
     }
 }
