@@ -10,15 +10,15 @@ ENV MAVEN_VERSION 3.3.9
 ENV MAVEN_HOME /usr/share/maven
 
 RUN pip install kafka
-ADD services/wfm/app /app
+ADD wfm/app /app
 RUN chmod 777 /app/*
 
 RUN echo "PATH=$PATH:/opt/storm/bin" >> ~/.bashrc
 
-ADD /src/messaging /app/messaging
+ADD src/messaging /app/messaging
 RUN mvn -f /app/messaging clean install
 
-ADD /services/wfm /app/wfm
+ADD wfm /app/wfm
 RUN mvn -f /app/wfm assembly:assembly -DskipTests
 
 RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*

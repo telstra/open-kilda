@@ -3,8 +3,8 @@ services:
 
 #  hello-world:
 #    build:
-#      context: .
-#      dockerfile:  services/hello-world/Dockerfile
+#      context: services
+#      dockerfile:  hello-world/Dockerfile
 #    image: "kilda/hello-world:${full_build_number:-latest}"
 #    command: /app/helloworld.sh
 #    env_file:
@@ -100,8 +100,8 @@ services:
 ####
 #  topology:
 #    build:
-#      context: .
-#      dockerfile:  services/topology/Dockerfile
+#      context: services
+#      dockerfile:  topology/Dockerfile
 #    image: "kilda/topology:${full_build_number:-latest}"
 #    command: java -jar /app/topology/target/topology.jar
 #    ports:
@@ -159,8 +159,8 @@ services:
   wfm:
     container_name: wfm
     build:
-      context: .
-      dockerfile:  services/wfm/Dockerfile
+      context: services
+      dockerfile:  wfm/Dockerfile
     image: "kilda/wfm:${full_build_number:-latest}"
     #command: /app/wfm-poc.py kafka.pendev:9092 kilda-test
     command: /app/deploy_topos_and_monitor.sh kafka.pendev:9092 kilda-test
@@ -208,8 +208,8 @@ services:
 
 #  tools:
 #    build:
-#      context: .
-#      dockerfile:  services/tools/Dockerfile
+#      context: services
+#      dockerfile:  tools/Dockerfile
 #    image: "kilda/tools:${full_build_number:-latest}"
 #    command: sleep 10d
 #    depends_on:
@@ -313,8 +313,8 @@ services:
 
   floodlight:
     build:
-      context: .
-      dockerfile:  services/floodlight/Dockerfile
+      context: services
+      dockerfile:  floodlight/Dockerfile
     image: "kilda/floodlight:${full_build_number:-latest}"
     command: java -Dlogback.configurationFile=/app/logback.xml -cp /app/floodlight/target/floodlight.jar:/app/floodlight-modules/target/floodlight-modules.jar net.floodlightcontroller.core.Main -cf /app/floodlightkilda.properties
     ports:
@@ -331,8 +331,8 @@ services:
 
   northbound:
     build:
-      context: .
-      dockerfile:  services/northbound/Dockerfile
+      context: services/
+      dockerfile:  northbound/Dockerfile
     image: "kilda/northbound:${full_build_number:-latest}"
     command: java -jar /app/northbound/target/northbound.jar
     ports:

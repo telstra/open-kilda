@@ -28,16 +28,16 @@ up-log-mode: up-test-mode
 run-test: up-log-mode
 
 clean-sources:
-	mvn -f src/floodlight-modules/pom.xml clean
-	mvn -f src/northbound/pom.xml clean
-	mvn -f src/messaging/pom.xml clean
+	mvn -f services/src/floodlight-modules/pom.xml clean
+	mvn -f services/src/northbound/pom.xml clean
+	mvn -f services/src/messaging/pom.xml clean
 	mvn -f services/wfm/pom.xml clean
 
 unit:
-	$(MAKE) -C src/projectfloodlight
-	mvn -f src/messaging/pom.xml clean install
-	mvn -f src/floodlight-modules/pom.xml clean test
-	mvn -f src/northbound/pom.xml clean test
+	$(MAKE) -C services/src/projectfloodlight
+	mvn -f services/src/messaging/pom.xml clean install
+	mvn -f services/src/floodlight-modules/pom.xml clean test
+	mvn -f services/src/northbound/pom.xml clean test
 	mvn -f services/wfm/pom.xml clean test
 
 clean-test:
@@ -46,45 +46,45 @@ clean-test:
 	docker volume list -q | grep kilda | xargs docker volume rm
 
 # NB: To override the default (localhost) kilda location, you can make a call like this:
-#		cd src/atdd && \
+#		cd services/src/atdd && \
 #		mvn "-Dtest=org.bitbucket.openkilda.atdd.*" \
 #			-DargLine="-Dkilda.host=127.0.0.1" \
 #			test
 atdd:
-	cd src/atdd && mvn "-Dtest=org.bitbucket.openkilda.atdd.*" test
+	cd services/src/atdd && mvn "-Dtest=org.bitbucket.openkilda.atdd.*" test
 
 smoke:
-	cd src/atdd && mvn "-Dtest=org.bitbucket.openkilda.smoke.*" test
+	cd services/src/atdd && mvn "-Dtest=org.bitbucket.openkilda.smoke.*" test
 
 perf:
-	cd src/atdd && mvn "-Dtest=org.bitbucket.openkilda.perf.*" test
+	cd services/src/atdd && mvn "-Dtest=org.bitbucket.openkilda.perf.*" test
 
 sec:
-	cd src/atdd && mvn "-Dtest=org.bitbucket.openkilda.sec.*" test
+	cd services/src/atdd && mvn "-Dtest=org.bitbucket.openkilda.sec.*" test
 
 FLOODLIGHT_JAR := ~/.m2/repository/org/projectfloodlight/floodlight/1.2-SNAPSHOT/floodlight-1.2-SNAPSHOT.jar
-FM_JAR := src/floodlight-modules/target/floodlight-modules.jar
+FM_JAR := services/src/floodlight-modules/target/floodlight-modules.jar
 MSG_JAR := ~/.m2/repository/org/bitbucket/openkilda/messaging/1.0-SNAPSHOT/messaging-1.0-SNAPSHOT.jar
 
 $(MSG_JAR):
-	mvn -f src/messaging/pom.xml install
+	mvn -f services/src/messaging/pom.xml install
 
 $(FM_JAR): $(MSG_JAR)
-	$(MAKE) -C src/projectfloodlight
-	mvn -f src/floodlight-modules/pom.xml package
+	$(MAKE) -C services/src/projectfloodlight
+	mvn -f services/src/floodlight-modules/pom.xml package
 
 build-floodlight: $(FM_JAR)
 
 clean-floodlight:
 	rm -rf ~/.m2/repository/org/bitbucket/openkilda/messaging/
-	mvn -f src/messaging/pom.xml clean
-	mvn -f src/floodlight-modules/pom.xml clean
-	$(MAKE) -C src/projectfloodlight clean
+	mvn -f services/src/messaging/pom.xml clean
+	mvn -f services/src/floodlight-modules/pom.xml clean
+	$(MAKE) -C services/src/projectfloodlight clean
 
 run-floodlight: build-floodlight
-	java -Dlogback.configurationFile=src/floodlight-modules/src/test/resources/logback.xml \
+	java -Dlogback.configurationFile=services/src/floodlight-modules/src/test/resources/logback.xml \
 	-cp $(FLOODLIGHT_JAR):$(FM_JAR) net.floodlightcontroller.core.Main \
-	-cf src/floodlight-modules/src/main/resources/floodlightkilda.properties
+	-cf services/src/floodlight-modules/src/main/resources/floodlightkilda.properties
 
 .PHONY: default run-dev build-latest build-base
 .PHONY: up-test-mode up-log-mode run-test clean-test
