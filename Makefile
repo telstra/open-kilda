@@ -29,11 +29,14 @@ run-test: up-log-mode
 
 clean-sources:
 	$(MAKE) -C services/src clean
+	mvn -f services/wfm/pom.xml clean
 
 unit:
 	$(MAKE) -C services/src
+	mvn -f services/wfm/pom.xml clean package
 
 run-speaker:
+	docker-compose stop floodlight
 	$(MAKE) -C services/src run-speaker
 
 clean-test:
