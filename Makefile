@@ -28,17 +28,13 @@ up-log-mode: up-test-mode
 run-test: up-log-mode
 
 clean-sources:
-	mvn -f services/src/floodlight-modules/pom.xml clean
-	mvn -f services/src/northbound/pom.xml clean
-	mvn -f services/src/messaging/pom.xml clean
-	mvn -f services/wfm/pom.xml clean
+	$(MAKE) -C services/src clean
 
 unit:
-	$(MAKE) -C services/src/projectfloodlight
-	mvn -f services/src/messaging/pom.xml clean install
-	mvn -f services/src/floodlight-modules/pom.xml clean test
-	mvn -f services/src/northbound/pom.xml clean test
-	mvn -f services/wfm/pom.xml clean test
+	$(MAKE) -C services/src
+
+run-speaker:
+	$(MAKE) -C services/src run-speaker
 
 clean-test:
 	docker-compose down
@@ -67,31 +63,7 @@ perf:
 sec:
 	mvn -f services/src/atdd/pom.xml -P$@ test -Dkilda.host="$(kilda)"
 
-FLOODLIGHT_JAR := ~/.m2/repository/org/projectfloodlight/floodlight/1.2-SNAPSHOT/floodlight-1.2-SNAPSHOT.jar
-FM_JAR := services/src/floodlight-modules/target/floodlight-modules.jar
-MSG_JAR := ~/.m2/repository/org/bitbucket/openkilda/messaging/1.0-SNAPSHOT/messaging-1.0-SNAPSHOT.jar
-
-$(MSG_JAR):
-	mvn -f services/src/messaging/pom.xml install
-
-$(FM_JAR): $(MSG_JAR)
-	$(MAKE) -C services/src/projectfloodlight
-	mvn -f services/src/floodlight-modules/pom.xml package
-
-build-floodlight: $(FM_JAR)
-
-clean-floodlight:
-	rm -rf ~/.m2/repository/org/bitbucket/openkilda/messaging/
-	mvn -f services/src/messaging/pom.xml clean
-	mvn -f services/src/floodlight-modules/pom.xml clean
-	$(MAKE) -C services/src/projectfloodlight clean
-
-run-floodlight: build-floodlight
-	java -Dlogback.configurationFile=services/src/floodlight-modules/src/test/resources/logback.xml \
-	-cp $(FLOODLIGHT_JAR):$(FM_JAR) net.floodlightcontroller.core.Main \
-	-cf services/src/floodlight-modules/src/main/resources/floodlightkilda.properties
-
 .PHONY: default run-dev build-latest build-base
 .PHONY: up-test-mode up-log-mode run-test clean-test
-.PHONY: smoke acceptance perf sec unit
-.PHONY: build-floodlight clean-floodlight run-floodlight
+.PHONY: atdd smoke perf sec
+.PHONY: clean-sources unit run-speaker
