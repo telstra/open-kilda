@@ -50,17 +50,22 @@ clean-test:
 #		mvn "-Dtest=org.bitbucket.openkilda.atdd.*" \
 #			-DargLine="-Dkilda.host=127.0.0.1" \
 #			test
+
+
+kilda := 127.0.0.1
+# make atdd kilda=<kilda host ip address>
+
 atdd:
-	cd services/src/atdd && mvn "-Dtest=org.bitbucket.openkilda.atdd.*" test
+	mvn -f services/src/atdd/pom.xml -P$@ test -Dkilda.host="$(kilda)"
 
 smoke:
-	cd services/src/atdd && mvn "-Dtest=org.bitbucket.openkilda.smoke.*" test
+	mvn -f services/src/atdd/pom.xml -P$@ test -Dkilda.host="$(kilda)"
 
 perf:
-	cd services/src/atdd && mvn "-Dtest=org.bitbucket.openkilda.perf.*" test
+	mvn -f services/src/atdd/pom.xml -P$@ test -Dkilda.host="$(kilda)"
 
 sec:
-	cd services/src/atdd && mvn "-Dtest=org.bitbucket.openkilda.sec.*" test
+	mvn -f services/src/atdd/pom.xml -P$@ test -Dkilda.host="$(kilda)"
 
 FLOODLIGHT_JAR := ~/.m2/repository/org/projectfloodlight/floodlight/1.2-SNAPSHOT/floodlight-1.2-SNAPSHOT.jar
 FM_JAR := services/src/floodlight-modules/target/floodlight-modules.jar
