@@ -13,7 +13,8 @@ pipelines:
             - maven
           script:
             - echo "this is the MVP1RC branch"
-            - cd services/src/projectfloodlight && make
+            - cd services/src/projectfloodlight
+            - make
             - cd services/src && mvn install
             - cd services/wfm && mvn assembly:assembly   # test WFM
 #            - df -h
