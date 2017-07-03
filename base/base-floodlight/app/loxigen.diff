@@ -147,3 +147,161 @@ index e0bf157..9e0fdfb 100644
          </plugins>
          <resources>
              <resource>
+diff --git a/openflow_input/legacy_meter b/openflow_input/legacy_meter
+new file mode 100644
+index 0000000..5749f17
+--- /dev/null
++++ b/openflow_input/legacy_meter
+@@ -0,0 +1,108 @@
++#version 3
++
++enum ofp_legacy_meter(wire_type=uint32_t, complete=False) {
++    OFPM_MAX = 0xffff0000,
++    OFPM_SLOWPATH = 0xfffffffd,
++    OFPM_CONTROLLER = 0xfffffffe,
++    OFPM_ALL = 0xffffffff,
++};
++
++enum ofp_legacy_meter_band_type(wire_type=uint16_t) {
++    OFPMBT_DROP = 0x1,
++    OFPMBT_DSCP_REMARK = 0x2,
++    OFPMBT_EXPERIMENTER = 0xffff,
++};
++
++enum ofp_legacy_meter_mod_command(wire_type=uint16_t) {
++    OFPMC_ADD = 0,
++    OFPMC_MODIFY = 1,
++    OFPMC_DELETE = 2,
++};
++
++enum ofp_legacy_meter_flags(wire_type=uint16_t, bitmask=True) {
++    OFPMF_KBPS = 0x1,
++    OFPMF_PKTPS = 0x2,
++    OFPMF_BURST = 0x4,
++    OFPMF_STATS = 0x8,
++};
++
++enum ofp_legacy_meter_mod_failed_code(wire_type=uint16_t) {
++    OFPMMFC_UNKNOWN = 0,
++    OFPMMFC_METER_EXISTS = 1,
++    OFPMMFC_INVALID_METER = 2,
++    OFPMMFC_UNKNOWN_METER = 3,
++    OFPMMFC_BAD_COMMAND = 4,
++    OFPMMFC_BAD_FLAGS = 5,
++    OFPMMFC_BAD_RATE = 6,
++    OFPMMFC_BAD_BURST = 7,
++    OFPMMFC_BAD_BAND = 8,
++    OFPMMFC_BAD_BAND_VALUE = 9,
++    OFPMMFC_OUT_OF_METERS = 10,
++    OFPMMFC_OUT_OF_BANDS = 11,
++};
++
++struct of_legacy_meter_band {
++    uint16_t        type == ?;
++    uint16_t        len;
++//    uint32_t        rate;  // These are excluded b/c this is the header
++//    uint32_t        burst_size;  // These are excluded b/c this is the header
++};
++
++struct of_legacy_meter_band_drop : of_legacy_meter_band {
++    uint16_t        type == 1;
++    uint16_t        len;
++    uint32_t        rate;
++    uint32_t        burst_size;
++    pad(4);
++};
++
++struct of_legacy_meter_band_dscp_remark : of_legacy_meter_band {
++    uint16_t        type == 2;
++    uint16_t        len;
++    uint32_t        rate;
++    uint32_t        burst_size;
++    uint8_t         prec_level;
++    pad(3);
++};
++
++struct of_legacy_meter_experimenter_band : of_legacy_meter_band {
++    uint16_t        type == 65535;
++    uint16_t        len;
++    uint32_t        rate;
++    uint32_t        burst_size;
++    uint32_t        experimenter;
++};
++
++struct of_legacy_meter_mod : of_nicira_header {
++    uint8_t version;
++    uint8_t type == 4;
++    uint16_t length;
++    uint32_t xid;
++    uint32_t experimenter == 0x2320;
++    uint32_t subtype == 18;
++    enum ofp_legacy_meter_mod_command command;
++    enum ofp_legacy_meter_flags flags;
++    uint32_t meter_id;
++    list(of_legacy_meter_band_t) meters;
++};
++
++struct of_legacy_meter_mod_failed_error_msg : of_experimenter_error_msg {
++    uint8_t version;
++    uint8_t type == 1;
++    uint16_t length;
++    uint32_t xid;
++    uint16_t err_type == 0xffff;
++    uint16_t subtype == ?;
++    uint32_t experimenter == 0x2320;
++    enum ofp_legacy_meter_mod_failed_code code;
++    of_octets_t data;
++};
++
++struct of_action_nicira_legacy_meter : of_action_nicira {
++    uint16_t type == 65535;
++    uint16_t len;
++    uint32_t experimenter == 0x2320;
++    uint16_t subtype == 29;
++    pad(2);
++    uint32_t meter_id;
++};
+diff --git a/openflow_input/nicira_l2 b/openflow_input/nicira_l2
+new file mode 100644
+index 0000000..55fbf98
+--- /dev/null
++++ b/openflow_input/nicira_l2
+@@ -0,0 +1,19 @@
++#version 4
++
++struct of_action_nicira_popl2 : of_action_nicira {
++    uint16_t type == 65535;
++    uint16_t len;
++    uint32_t experimenter == 0x2320;
++    uint16_t subtype == 26;
++    pad(2);
++    pad(4);
++};
++
++struct of_action_nicira_pushl2 : of_action_nicira {
++    uint16_t type == 65535;
++    uint16_t len;
++    uint32_t experimenter == 0x2320;
++    uint16_t subtype == 25;
++    pad(2);
++    pad(4);
++};
+diff --git a/openflow_input/standard-1.3 b/openflow_input/standard-1.3
+index 43490ac..d802b44 100644
+--- a/openflow_input/standard-1.3
++++ b/openflow_input/standard-1.3
+@@ -853,7 +853,13 @@ struct of_action_set_field(align=8, length_includes_align=True) : of_action {
+     of_oxm_t field;
+ };
+ 
+-struct of_action_experimenter(align=8, length_includes_align=True): of_action {
++struct of_action_experimenter_cut : of_action {
++    uint16_t type == 65535;
++    uint16_t len;
++    pad(4);
++};
++
++struct of_action_experimenter(align=8, length_includes_align=True): of_action_experimenter_cut {
+     uint16_t type == 65535;
+     uint16_t len;
+     uint32_t experimenter == ?;
