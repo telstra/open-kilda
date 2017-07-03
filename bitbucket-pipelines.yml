@@ -13,10 +13,9 @@ pipelines:
             - maven
           script:
             - echo "this is the MVP1RC branch"
-            - cd services/src
-            - mvn install
-            - cd ../wfm
-            - mvn assembly:assembly   # test WFM
+            - cd services/src/projectfloodlight && make
+            - cd services/src && mvn install
+            - cd services/wfm && mvn assembly:assembly   # test WFM
 #            - df -h
 #            - apt-get update && apt-get install -y apt-utils software-properties-common python-software-properties
 #            - git submodule update --init --recursive
