@@ -171,8 +171,7 @@ public class FlowController {
     @RequestMapping(
             value = "/flows",
             method = RequestMethod.GET,
-            produces = APPLICATION_JSON_UTF8_VALUE,
-            consumes = APPLICATION_JSON_VALUE)
+            produces = APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<FlowsPayload> getFlows(
             @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
         logger.debug("Get flows: {}={}", CORRELATION_ID, correlationId);
@@ -197,8 +196,7 @@ public class FlowController {
     @RequestMapping(
             value = "/flows/status/{flow-id}",
             method = RequestMethod.GET,
-            produces = APPLICATION_JSON_UTF8_VALUE,
-            consumes = APPLICATION_JSON_VALUE)
+            produces = APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<FlowIdStatusPayload> statusFlow(
             @PathVariable(name = "flow-id") String flowId,
             @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
@@ -223,8 +221,7 @@ public class FlowController {
             @ResponseCode(code = 503, condition = "Service unavailable")})
     @RequestMapping(
             value = "/flows/path/{flow-id}", method = RequestMethod.GET,
-            produces = APPLICATION_JSON_UTF8_VALUE,
-            consumes = APPLICATION_JSON_VALUE)
+            produces = APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<FlowPathPayload> pathFlow(
             @PathVariable(name = "flow-id") String flowId,
             @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {

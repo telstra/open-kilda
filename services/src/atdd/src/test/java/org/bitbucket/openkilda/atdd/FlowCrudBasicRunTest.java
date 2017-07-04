@@ -14,26 +14,21 @@ import org.bitbucket.openkilda.messaging.payload.flow.FlowPayload;
 import cucumber.api.java.en.Then;
 import cucumber.api.java.en.When;
 
-import java.util.Collections;
 import java.util.List;
-import java.util.UUID;
 
 public class FlowCrudBasicRunTest {
     private static final long FLOW_COOKIE = 1L;
-    private static final String BASE_FLOW_NAME = "atdd-flow-";
     private FlowPayload flowPayload;
-    private String flowName;
     private int storedFlows;
 
-    @When("^flow creation request with (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) is successful$")
-    public void successfulFlowCreation(final String sourceSwitch, final int sourcePort, final int sourceVlan,
-                                       final String destinationSwitch, final int destinationPort,
+    @When("^flow (.*) creation request with (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) is successful$")
+    public void successfulFlowCreation(final String flowId, final String sourceSwitch, final int sourcePort,
+                                       final int sourceVlan, final String destinationSwitch, final int destinationPort,
                                        final int destinationVlan, final long bandwidth) throws Exception {
-        flowName = BASE_FLOW_NAME + UUID.randomUUID().toString();
-        flowPayload = new FlowPayload(flowName,
+        flowPayload = new FlowPayload(FlowUtils.getFlowName(flowId),
                 new FlowEndpointPayload(sourceSwitch, sourcePort, sourceVlan),
                 new FlowEndpointPayload(destinationSwitch, destinationPort, destinationVlan),
-                bandwidth, BASE_FLOW_NAME, null);
+                bandwidth, flowId, null);
 
         FlowPayload response = FlowUtils.putFlow(flowPayload);
         response.setCookie(null);
@@ -42,26 +37,25 @@ public class FlowCrudBasicRunTest {
         assertEquals(flowPayload, response);
     }
 
-    @When("^flow creation request with (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) is failed$")
-    public void failedFlowCreation(final String sourceSwitch, final int sourcePort, final int sourceVlan,
-                                   final String destinationSwitch, final int destinationPort,
+    @When("^flow (.*) creation request with (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) is failed$")
+    public void failedFlowCreation(final String flowId, final String sourceSwitch, final int sourcePort,
+                                   final int sourceVlan, final String destinationSwitch, final int destinationPort,
                                    final int destinationVlan, final long bandwidth) throws Exception {
-        flowName = BASE_FLOW_NAME + UUID.randomUUID().toString();
-        flowPayload = new FlowPayload(flowName,
+        flowPayload = new FlowPayload(FlowUtils.getFlowName(flowId),
                 new FlowEndpointPayload(sourceSwitch, sourcePort, sourceVlan),
                 new FlowEndpointPayload(destinationSwitch, destinationPort, destinationVlan),
-                bandwidth, BASE_FLOW_NAME, null);
+                bandwidth, flowId, null);
 
         FlowPayload response = FlowUtils.putFlow(flowPayload);
 
         assertNull(response);
     }
 
-    @Then("^flow with (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) could be created$")
-    public void checkFlowCreation(final String sourceSwitch, final int sourcePort, final int sourceVlan,
-                                  final String destinationSwitch, final int destinationPort, final int destinationVlan,
-                                  final int bandwidth) throws Exception {
-        Flow expectedFlow = new Flow(flowName, bandwidth, FLOW_COOKIE, BASE_FLOW_NAME, null, sourceSwitch,
+    @Then("^flow (.*) with (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) could be created$")
+    public void checkFlowCreation(final String flowId, final String sourceSwitch, final int sourcePort,
+                                  final int sourceVlan, final String destinationSwitch, final int destinationPort,
+                                  final int destinationVlan, final int bandwidth) throws Exception {
+        Flow expectedFlow = new Flow(FlowUtils.getFlowName(flowId), bandwidth, FLOW_COOKIE, flowId, null, sourceSwitch,
                 destinationSwitch, sourcePort, destinationPort, sourceVlan, destinationVlan, 0, null, null);
 
         List<Flow> flows = validateFlowStored();
@@ -73,16 +67,16 @@ public class FlowCrudBasicRunTest {
         assertTrue(flows.contains(expectedFlow));
     }
 
-    @Then("^flow with (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) could be read$")
-    public void checkFlowRead(final String sourceSwitch, final int sourcePort, final int sourceVlan,
-                              final String destinationSwitch, final int destinationPort, final int destinationVlan,
-                              final int bandwidth) throws Exception {
-        FlowPayload flow = FlowUtils.getFlow(flowName);
+    @Then("^flow (.*) with (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) could be read$")
+    public void checkFlowRead(final String flowId, final String sourceSwitch, final int sourcePort,
+                              final int sourceVlan, final String destinationSwitch, final int destinationPort,
+                              final int destinationVlan, final int bandwidth) throws Exception {
+        FlowPayload flow = FlowUtils.getFlow(FlowUtils.getFlowName(flowId));
         assertNotNull(flow);
 
         System.out.println(String.format("===> Flow was created at %s\n", flow.getLastUpdated()));
 
-        assertEquals(flowName, flow.getId());
+        assertEquals(FlowUtils.getFlowName(flowId), flow.getId());
         assertEquals(sourceSwitch, flow.getSource().getSwitchId());
         assertEquals(sourcePort, flow.getSource().getPortId().longValue());
         assertEquals(sourceVlan, flow.getSource().getVlanId().longValue());
@@ -94,33 +88,33 @@ public class FlowCrudBasicRunTest {
         assertNotNull(flow.getCookie());
     }
 
-    @Then("^flow with (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) could be updated with (\\d+)$")
-    public void checkFlowUpdate(final String sourceSwitch, final int sourcePort, final int sourceVlan,
-                                final String destinationSwitch, final int destinationPort, final int destinationVlan,
-                                final int bandwidth, final int newBandwidth) throws Exception {
-        flowPayload.setMaximumBandwidth((long) newBandwidth);
+    @Then("^flow (.*) with (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) could be updated with (\\d+)$")
+    public void checkFlowUpdate(final String flowId, final String sourceSwitch, final int sourcePort,
+                                final int sourceVlan, final String destinationSwitch, final int destinationPort,
+                                final int destinationVlan, final int band, final int newBand) throws Exception {
+        flowPayload.setMaximumBandwidth((long) newBand);
 
-        FlowPayload response = FlowUtils.updateFlow(flowName, flowPayload);
+        FlowPayload response = FlowUtils.updateFlow(FlowUtils.getFlowName(flowId), flowPayload);
         response.setCookie(null);
         response.setLastUpdated(null);
 
         assertEquals(flowPayload, response);
 
-        checkFlowCreation(sourceSwitch, sourcePort, sourceVlan, destinationSwitch,
-                destinationPort, destinationVlan, newBandwidth);
+        checkFlowCreation(flowId, sourceSwitch, sourcePort, sourceVlan, destinationSwitch,
+                destinationPort, destinationVlan, newBand);
     }
 
-    @Then("^flow with (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) could be deleted$")
-    public void checkFlowDeletion(final String sourceSwitch, final int sourcePort, final int sourceVlan,
+    @Then("^flow (.*) with (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) could be deleted$")
+    public void checkFlowDeletion(final String flowId, final String sourceSwitch, final int sourcePort, final int sourceVlan,
                                   final String destinationSwitch, final int destinationPort, final int destinationVlan,
                                   final int bandwidth) throws Exception {
-        FlowPayload response = FlowUtils.deleteFlow(flowName);
+        FlowPayload response = FlowUtils.deleteFlow(FlowUtils.getFlowName(flowId));
         response.setCookie(null);
         response.setLastUpdated(null);
 
         assertEquals(flowPayload, response);
 
-        FlowPayload flow = FlowUtils.getFlow(flowName);
+        FlowPayload flow = FlowUtils.getFlow(FlowUtils.getFlowName(flowId));
 
         assertNull(flow);
 
