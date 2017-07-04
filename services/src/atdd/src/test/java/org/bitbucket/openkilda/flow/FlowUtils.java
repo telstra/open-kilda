@@ -7,7 +7,9 @@ import static org.bitbucket.openkilda.DefaultParameters.topologyPassword;
 import static org.bitbucket.openkilda.DefaultParameters.topologyUsername;
 
 import org.bitbucket.openkilda.messaging.payload.flow.FlowIdStatusPayload;
+import org.bitbucket.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowPayload;
+import org.bitbucket.openkilda.messaging.payload.flow.FlowsPayload;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -27,6 +29,7 @@ import javax.ws.rs.core.Response;
 public class FlowUtils {
     private static final String auth = topologyUsername + ":" + topologyPassword;
     private static final String authHeaderValue = "Basic " + getEncoder().encodeToString(auth.getBytes());
+    private static final String FEATURE_TIME = String.valueOf(System.currentTimeMillis());
 
     /**
      * Gets flow through Northbound service.
@@ -128,7 +131,82 @@ public class FlowUtils {
         System.out.println(String.format("==> response = %s", response.toString()));
         System.out.println(String.format("==> Northbound Delete Flow Time: %,.3f", getTimeDuration(current)));
 
-        return response.readEntity(FlowPayload.class);
+        return response.getStatus() == 404 ? null : response.readEntity(FlowPayload.class);
+    }
+
+    /**
+     * Gets flow path through Northbound service.
+     *
+     * @param flowId flow id
+     * @return The JSON document of the specified flow path
+     */
+    public static FlowPathPayload getFlowPath(final String flowId) {
+        long current = System.currentTimeMillis();
+        Client client = ClientBuilder.newClient(new ClientConfig()).register(JacksonFeature.class);
+
+        Response response = client
+                .target(northboundEndpoint)
+                .path("/api/v1/flows/path")
+                .path("{flowid}")
+                .resolveTemplate("flowid", flowId)
+                .request(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
+                .get();
+
+        System.out.println("\n== Northbound Get Flow Path");
+        System.out.println(String.format("==> response = %s", response.toString()));
+        System.out.println(String.format("==> Northbound Get Flow Path Time: %,.3f", getTimeDuration(current)));
+
+        return response.getStatus() == 404 ? null : response.readEntity(FlowPathPayload.class);
+    }
+
+    /**
+     * Gets flow status through Northbound service.
+     *
+     * @param flowId flow id
+     * @return The JSON document of the specified flow status
+     */
+    public static FlowIdStatusPayload getFlowStatus(final String flowId) {
+        long current = System.currentTimeMillis();
+        Client client = ClientBuilder.newClient(new ClientConfig()).register(JacksonFeature.class);
+
+        Response response = client
+                .target(northboundEndpoint)
+                .path("/api/v1/flows/status")
+                .path("{flowid}")
+                .resolveTemplate("flowid", flowId)
+                .request(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
+                .get();
+
+        System.out.println("\n== Northbound Get Flow Status");
+        System.out.println(String.format("==> response = %s", response.toString()));
+        System.out.println(String.format("==> Northbound Get Flow Status Time: %,.3f", getTimeDuration(current)));
+
+        return response.getStatus() == 404 ? null : response.readEntity(FlowIdStatusPayload.class);
+    }
+
+    /**
+     * Gets flows dump through Northbound service.
+     *
+     * @return The JSON document of the dump flows
+     */
+    public static FlowsPayload getFlowDump() {
+        long current = System.currentTimeMillis();
+        Client client = ClientBuilder.newClient(new ClientConfig()).register(JacksonFeature.class);
+
+        Response response = client
+                .target(northboundEndpoint)
+                .path("/api/v1/flows")
+                .request(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
+                .get();
+
+        System.out.println("\n== Northbound Get Flow Dump");
+        System.out.println(String.format("==> response = %s", response.toString()));
+        System.out.println(String.format("==> Northbound Get Flow Dump Time: %,.3f", getTimeDuration(current)));
+
+        return response.getStatus() == 404 ? null : response.readEntity(FlowsPayload.class);
     }
 
     /**
@@ -226,6 +304,22 @@ public class FlowUtils {
         }
     }
 
+    /**
+     * Builds flow name by flow id.
+     *
+     * @param flowId flow id
+     * @return flow name
+     */
+    public static String getFlowName(final String flowId) {
+        return String.format("%s-%s", flowId, FEATURE_TIME);
+    }
+
+    /**
+     * Returns timestamp difference.
+     *
+     * @param current current timestamp
+     * @return timestamp difference
+     */
     private static double getTimeDuration(final long current) {
         return (System.currentTimeMillis() - current) / 1000.0;
     }

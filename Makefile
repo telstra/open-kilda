@@ -31,6 +31,9 @@ clean-sources:
 	$(MAKE) -C services/src clean
 	mvn -f services/wfm/pom.xml clean
 
+messaging:
+	$(MAKE) -C services/src messaging
+
 unit:
 	$(MAKE) -C services/src
 	mvn -f services/wfm/pom.xml clean package
@@ -54,19 +57,19 @@ clean-test:
 kilda := 127.0.0.1
 # make atdd kilda=<kilda host ip address>
 
-atdd:
+atdd: messaging
 	mvn -f services/src/atdd/pom.xml -P$@ test -Dkilda.host="$(kilda)"
 
-smoke:
+smoke: messaging
 	mvn -f services/src/atdd/pom.xml -P$@ test -Dkilda.host="$(kilda)"
 
-perf:
+perf: messaging
 	mvn -f services/src/atdd/pom.xml -P$@ test -Dkilda.host="$(kilda)"
 
-sec:
+sec: messaging
 	mvn -f services/src/atdd/pom.xml -P$@ test -Dkilda.host="$(kilda)"
 
 .PHONY: default run-dev build-latest build-base
 .PHONY: up-test-mode up-log-mode run-test clean-test
 .PHONY: atdd smoke perf sec
-.PHONY: clean-sources unit run-speaker
+.PHONY: clean-sources unit run-speaker messaging

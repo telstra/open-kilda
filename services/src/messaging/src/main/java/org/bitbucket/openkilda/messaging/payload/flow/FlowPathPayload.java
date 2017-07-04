@@ -51,7 +51,7 @@ public class FlowPathPayload implements Serializable {
     @JsonCreator
     public FlowPathPayload(@JsonProperty(FLOW_ID) final String id,
                            @JsonProperty("flowpath") final List<String> path) {
-        setFlowName(id);
+        setId(id);
         setPath(path);
     }
 
@@ -69,7 +69,7 @@ public class FlowPathPayload implements Serializable {
      *
      * @param id id of the flow
      */
-    public void setFlowName(String id) {
+    public void setId(final String id) {
         if (id == null || id.isEmpty()) {
             throw new IllegalArgumentException("need to set id");
         }
