@@ -36,8 +36,7 @@ public class SimpleSplitterTest extends AbstractStormTest {
          * Need to ensure everything is pointing to the right testing URLS
          */
 
-        OFEventSplitterTopology splitter = new OFEventSplitterTopology();
-        splitter.kutils = kutils;
+        OFEventSplitterTopology splitter = new OFEventSplitterTopology(kutils);
 
         cluster.submitTopology(splitter.defaultTopoName, TestUtils.stormConfig(), splitter
                 .createTopology());

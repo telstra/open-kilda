@@ -30,13 +30,17 @@ public class OFEventSplitterTopology {
 
     public String topic = "kilda-test";//Topic.OFS_WFM_DISCOVERY.getId();
     public String defaultTopoName = "OF_Event_Splitter";
-    public KafkaUtils kutils = new KafkaUtils();
-    public Properties kafkaProps = kutils.createStringsKafkaProps();
+    public KafkaUtils kutils;
+    public Properties kafkaProps;
     public int parallelism = 1;
-    // TODO: KafkaUtils should be passed the configured Kafka server.
-    KafkaProducer<String, String> kProducer = new KafkaUtils().createStringsProducer();
 
     public OFEventSplitterTopology() {
+        this(new KafkaUtils());
+    }
+
+    public OFEventSplitterTopology(KafkaUtils kutils) {
+        this.kutils = kutils;
+        this.kafkaProps = kutils.createStringsKafkaProps();
     }
 
     //Entry point for the topology
@@ -127,8 +131,6 @@ public class OFEventSplitterTopology {
         if (!kutils.topicExists(topic)) {
             kutils.createTopics(new String[]{topic});
         }
-        // the old approach - just send a message to autocreate the topic
-        //kProducer.send(new ProducerRecord<>(topic, "no_op", "{\"type\": \"NO_OP\"}"));
     }
 
 }
