@@ -1,4 +1,4 @@
-Feature: Deinitialisation of Basic Flow CRUD
+Feature: Deinitialisation of Northbound tests
 
   Cucumber framework does not support feature setup/teardown.
   This feature is run after the actual tests based on alphabetical order.

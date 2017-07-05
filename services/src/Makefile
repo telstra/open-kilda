@@ -1,6 +1,7 @@
 #
-MESSAGING_MAVEN :=  ~/.m2/repository/org/bitbucket/openkilda/messaging
-MESSAGING_JAR :=  $(MESSAGING_MAVEN)/1.0-SNAPSHOT/messaging-1.0-SNAPSHOT.jar 
+KILDA_MAVEN := ~/.m2/repository/org/bitbucket/openkilda
+PARENT_JAR := $(KILDA_MAVEN)/kilda-parent/1.0-SNAPSHOT/kilda-parent-1.0-SNAPSHOT.pom
+MESSAGING_JAR :=  $(KILDA_MAVEN)/messaging/1.0-SNAPSHOT/messaging-1.0-SNAPSHOT.jar
 FLOODLIGHT_JAR := ~/.m2/repository/org/projectfloodlight/floodlight/1.2-SNAPSHOT/floodlight-1.2-SNAPSHOT.jar
 FM_JAR := floodlight-modules/target/floodlight-modules.jar
 
@@ -12,7 +13,10 @@ speaker:
 $(MESSAGING_JAR):
 	mvn -f messaging/pom.xml clean install
 
-messaging: $(MESSAGING_JAR)
+$(PARENT_JAR):
+	mvn --non-recursive clean install
+
+messaging: $(PARENT_JAR) $(MESSAGING_JAR)
 
 northbound: $(MESSAGING_JAR)
 	mvn -f northbound/pom.xml clean package
@@ -34,6 +38,6 @@ clean:
 	mvn -f northbound/pom.xml clean
 	mvn -f messaging/pom.xml clean
 	$(MAKE) -C projectfloodlight clean
-	rm -rf $(MESSAGING_MAVEN)
+	rm -rf $(KILDA_MAVEN)
 
 .PHONY: default speaker messaging northbound floodlight-modules atdd run-speaker clean

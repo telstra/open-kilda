@@ -18,7 +18,6 @@ import java.util.Objects;
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
-        "command",
         FLOW_ID,
         "status"})
 public class FlowIdStatusPayload implements Serializable {
