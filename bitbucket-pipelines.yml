@@ -17,8 +17,8 @@ pipelines:
             - apt-get install -y --no-install-recommends apt-utils
             - apt-get install -y make patch rsync
             - make -C services/src/projectfloodlight  # several modules depend on this
-#            - mvn -f services/src install             # install the parent pom
-#            - mvn -f services/wfm assembly:assembly   # test WFM
+            - mvn -f services/src install             # install the parent pom
+            - mvn -f services/wfm assembly:assembly   # test WFM
 #            - df -h
 #            - apt-get update && apt-get install -y apt-utils software-properties-common python-software-properties
 #            - git submodule update --init --recursive

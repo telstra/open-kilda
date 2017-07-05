@@ -1,7 +1,6 @@
 package org.bitbucket.openkilda.topo;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import javafx.util.Pair;
 
 import java.io.IOException;
 import java.util.*;
@@ -212,7 +211,6 @@ public class TopologyBuilder {
 
         /** @return the root switch */
         private Switch build(int depth){
-            LinkedList<Pair<String,String>> tuples = new LinkedList<>();
             String switchID = intToSwitchId(switchId++);
             Switch s1 = new Switch(switchID);
             t.getSwitches().put(switchID, s1);
