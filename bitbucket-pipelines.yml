@@ -14,7 +14,8 @@ pipelines:
           script:
             - echo "this is the MVP1RC branch"
             - apt-get update
-            - apt-get install -y make patch   
+            - apt-get install -y --no-install-recommends apt-utils
+            - apt-get install -y make patch rsync
             - cd services/src/projectfloodlight && make
             - cd services/src && mvn install
             - cd services/wfm && mvn assembly:assembly   # test WFM
