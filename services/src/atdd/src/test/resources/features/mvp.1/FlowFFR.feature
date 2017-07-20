@@ -13,7 +13,7 @@ Feature: Flow failover, failure and recovery
        And traffic flows through this flow
 
        When a route in use fails
-       And there is alternative route
+       And there is an alternative route
        Then traffic flows through this flow
 
        When a route in use fails
