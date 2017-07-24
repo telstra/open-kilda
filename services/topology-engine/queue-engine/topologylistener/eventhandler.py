@@ -9,7 +9,8 @@ from pprint import pprint
 
 print "Topology engine started."
 handleableMessages = ['switch', 'isl', 'port']
-handleableCommands = ['flow_create', 'flow_delete', 'flow_update', 'flow_path', 'flow_get', 'flows_get']
+handleableCommands = ['flow_create', 'flow_delete', 'flow_update', 'flow_path',
+                      'flow_get', 'flows_get', 'flow_reroute']
 
 def get_events(threadcount):
     global workerthreadcount
@@ -35,7 +36,7 @@ def topo_event_handler(event):
     while not eventHandled:
         eventHandled = event.handle()
         if not eventHandled:
-            print "{} Unable to process event: {}".format("{:%d %b, %Y %H:%M:%S}".format(datetime.now()), event.get_message_type())
+            print "{} Unable to process event: {}".format("{:%d %b, %Y %H:%M:%S}".format(datetime.now()), event.get_type())
             print "Message body: "
             print event.to_json()
             time.sleep(.1)

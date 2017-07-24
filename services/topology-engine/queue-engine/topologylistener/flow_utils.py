@@ -542,3 +542,45 @@ def store_flows(start, end, content, timestamp, cookie, forward_vlan,
 
     graph.run(forward_path)
     graph.run(reverse_path)
+
+
+def get_flow(flow_id):
+    found_flow = find_flow_by_id(flow_id)
+    if found_flow:
+        for data in found_flow:
+            flow = flow_response(data['r'])
+            if flow:
+                print 'Flow was found: flow={}'.format(flow)
+                return flow
+
+
+def get_affected_flows(switch_id, port_id):
+
+    if port_id and int(port_id):
+
+        isl = "{}-{}".format(switch_id, port_id)
+        print "Get affected flows by link id={}".format(isl)
+
+        query = "MATCH (n)-[r:flow]-(m) " \
+                "where any(i in r.isl_path where i = '{}') " \
+                "return r.flowid"
+        flow_ids = (graph.run(query.format(isl))).data()
+
+    else:
+        print "Get affected flows by switch id={}".format(switch_id)
+
+        query = "MATCH (n)-[r:flow]-(m) " \
+                "where any(i in r.flowpath where i = '{}') " \
+                "return r.flowid"
+        flow_ids = (graph.run(query.format(switch_id))).data()
+
+    print "Affected flow ids: {}".format(flow_ids)
+
+    affected_flows = {}
+    for flow_id in flow_ids:
+        flow_name = flow_id['r.flowid']
+        affected_flows[flow_name] = get_flow(flow_name)
+
+    print "Affected flows: {}".format(affected_flows)
+
+    return affected_flows.values()

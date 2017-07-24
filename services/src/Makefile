@@ -16,7 +16,8 @@ $(MESSAGING_JAR):
 $(PARENT_JAR):
 	mvn --non-recursive clean install
 
-messaging: $(PARENT_JAR) $(MESSAGING_JAR)
+messaging: $(PARENT_JAR)
+	mvn -f messaging/pom.xml clean install
 
 northbound: $(MESSAGING_JAR)
 	mvn -f northbound/pom.xml clean package

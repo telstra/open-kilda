@@ -16,6 +16,7 @@ import org.bitbucket.openkilda.messaging.command.flow.InstallIngressFlow;
 import org.bitbucket.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.bitbucket.openkilda.messaging.command.flow.InstallTransitFlow;
 import org.bitbucket.openkilda.messaging.command.flow.RemoveFlow;
+import org.bitbucket.openkilda.messaging.command.routing.FlowReroute;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
@@ -46,7 +47,8 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
         @Type(value = InstallOneSwitchFlow.class, name = "install_one_switch_flow"),
         @Type(value = RemoveFlow.class, name = "delete_flow"),
         @Type(value = DiscoverIslCommandData.class, name = "discover_isl"),
-        @Type(value = DiscoverPathCommandData.class, name = "discover_path")})
+        @Type(value = DiscoverPathCommandData.class, name = "discover_path"),
+        @Type(value = FlowReroute.class, name = "flow_reroute")})
 public abstract class CommandData extends MessageData {
     /**
      * Serialization version number constant.

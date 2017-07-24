@@ -7,10 +7,12 @@ import org.bitbucket.openkilda.messaging.AbstractSerializer;
 import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.Message;
 import org.bitbucket.openkilda.messaging.command.CommandMessage;
+import org.bitbucket.openkilda.messaging.command.routing.FlowReroute;
 import org.bitbucket.openkilda.messaging.error.ErrorData;
 import org.bitbucket.openkilda.messaging.error.ErrorMessage;
 import org.bitbucket.openkilda.messaging.error.ErrorType;
 import org.bitbucket.openkilda.messaging.info.InfoMessage;
+import org.bitbucket.openkilda.messaging.info.event.IslChangeType;
 import org.bitbucket.openkilda.messaging.info.event.IslInfoData;
 import org.bitbucket.openkilda.messaging.info.event.PathInfoData;
 import org.bitbucket.openkilda.messaging.info.event.PathNode;
@@ -389,7 +391,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     @Test
     public void eventIslInfoTest() throws IOException, ClassNotFoundException {
         PathNode payload = new PathNode(SWITCH_ID, INPUT_PORT, 0);
-        IslInfoData data = new IslInfoData(0L, Collections.singletonList(payload), 1000000);
+        IslInfoData data = new IslInfoData(0L, Collections.singletonList(payload), 1000000, IslChangeType.DISCOVERED);
         System.out.println(data);
 
         InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
@@ -505,6 +507,48 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         assertTrue(resultCommand.getData() != null);
 
         RemoveFlow resultData = (RemoveFlow) resultCommand.getData();
+        System.out.println(resultData);
+        assertEquals(data, resultData);
+        assertEquals(data.hashCode(), resultData.hashCode());
+    }
+
+    @Test
+    public void flowRerouteCommandTest() throws IOException, ClassNotFoundException {
+        FlowReroute data = new FlowReroute(FLOW_NAME, SWITCH_ID, OUTPUT_PORT);
+        System.out.println(data);
+
+        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
+        command.setData(data);
+        serialize(command);
+
+        Message message = (Message) deserialize();
+        assertTrue(message instanceof CommandMessage);
+
+        CommandMessage resultCommand = (CommandMessage) message;
+        assertTrue(resultCommand.getData() != null);
+
+        FlowReroute resultData = (FlowReroute) resultCommand.getData();
+        System.out.println(resultData);
+        assertEquals(data, resultData);
+        assertEquals(data.hashCode(), resultData.hashCode());
+    }
+
+    @Test
+    public void flowRerouteEmptyCommandTest() throws IOException, ClassNotFoundException {
+        FlowReroute data = new FlowReroute();
+        System.out.println(data);
+
+        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
+        command.setData(data);
+        serialize(command);
+
+        Message message = (Message) deserialize();
+        assertTrue(message instanceof CommandMessage);
+
+        CommandMessage resultCommand = (CommandMessage) message;
+        assertTrue(resultCommand.getData() != null);
+
+        FlowReroute resultData = (FlowReroute) resultCommand.getData();
         System.out.println(resultData);
         assertEquals(data, resultData);
         assertEquals(data.hashCode(), resultData.hashCode());
