@@ -20,7 +20,7 @@ import cucumber.api.java.en.When;
 import java.io.File;
 import java.nio.file.Files;
 
-public class FlowStatusTest{
+public class FlowFFRTest{
     private static final String fileName = "topologies/barebones-topology.json";
     private static final long FLOW_COOKIE = 1L;
     private static final String flowId = "1";
