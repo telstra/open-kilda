@@ -7,6 +7,14 @@ pipelines:
           - echo "Ignore builds for random branches"
 
   branches:
+    dev*:
+      - step:
+          caches:
+            - maven
+          script:
+            - echo "this is a DEV branch"
+            - base/hacks/ensure.buildtools.sh  # ensure make and other build stuff is available
+            - make unit
     mvp1rc:
       - step:
           caches:
