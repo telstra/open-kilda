@@ -1,0 +1,4 @@
+#!/bin/bash
+
+[ -d base/hacks/git/hooks ] && cp -f base/hacks/git/hooks/* .git/hooks/
+

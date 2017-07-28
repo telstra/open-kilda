@@ -2,7 +2,6 @@
 default: build-latest run-dev
 
 build-base:
-	mvn -f services
 	docker build -t kilda/base-ubuntu:latest base/kilda-base-ubuntu/
 	docker build -t kilda/base-floodlight:latest base/base-floodlight/
 	docker build -f services/zookeeper/Dockerfile -t kilda/zookeeper:latest .
@@ -32,6 +31,9 @@ clean-sources:
 	$(MAKE) -C services/src clean
 	mvn -f services/wfm/pom.xml clean
 
+parent:
+	mvn -f services/src install
+
 messaging:
 	$(MAKE) -C services/src messaging
 
@@ -58,16 +60,16 @@ clean-test:
 kilda := 127.0.0.1
 # make atdd kilda=<kilda host ip address>
 
-atdd: messaging
+atdd: parent messaging
 	mvn -f services/src/atdd/pom.xml -P$@ test -Dkilda.host="$(kilda)"
 
-smoke: messaging
+smoke: parent messaging
 	mvn -f services/src/atdd/pom.xml -P$@ test -Dkilda.host="$(kilda)"
 
-perf: messaging
+perf: parent messaging
 	mvn -f services/src/atdd/pom.xml -P$@ test -Dkilda.host="$(kilda)"
 
-sec: messaging
+sec: parent messaging
 	mvn -f services/src/atdd/pom.xml -P$@ test -Dkilda.host="$(kilda)"
 
 .PHONY: default run-dev build-latest build-base

@@ -1,0 +1,18 @@
+#!/bin/bash
+
+
+echo
+echo -•-•-•-•-•-•-•-•-•-•-•-•-•-•-•-•-•-
+echo Verifying the commit with:
+echo     make unit
+echo -•-•-•-•-•-•-•-•-•-•-•-•-•-•-•-•-•-
+echo
+
+time make unit
+
+echo
+echo -•-•-•-•-•-•-•-•-•-•-•-•-•-•-•-•-•-
+echo Done
+echo -•-•-•-•-•-•-•-•-•-•-•-•-•-•-•-•-•-
+echo
+echo
