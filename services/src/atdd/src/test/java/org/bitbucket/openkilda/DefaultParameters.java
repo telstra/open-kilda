@@ -11,6 +11,7 @@ public final class DefaultParameters {
     public static final String topologyUsername = firstNonNull(System.getProperty("kilda.topology.username"), "kilda");
     public static final String topologyPassword = firstNonNull(System.getProperty("kilda.topology.password"), "kilda");
     public static final String mininetEndpoint = String.format("http://%s:%s", host, mininetPort);
+    public static final String trafficEndpoint = String.format("http://%s:%s", host, "17191");
     public static final String topologyEndpoint = String.format("http://%s:%s", host, topologyPort);
     public static final String northboundEndpoint = String.format("http://%s:%s", host, northboundPort);
     public static final String opentsdbEndpoint = String.format("http://%s:%s", host, opentsdbPort);
