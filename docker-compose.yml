@@ -18,6 +18,7 @@ services:
       - services/mininet/variables.env
     ports:
       - "38080:38080"
+      - "17191:17191"
     links:
       - floodlight:kilda
     privileged: true

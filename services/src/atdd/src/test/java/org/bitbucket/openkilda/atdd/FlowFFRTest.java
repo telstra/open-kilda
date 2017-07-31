@@ -4,10 +4,19 @@ import java.util.Random;
 import java.util.List;
 import java.util.Arrays;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import java.util.concurrent.TimeUnit;
+
+import org.glassfish.jersey.client.ClientConfig;
+import static org.bitbucket.openkilda.DefaultParameters.trafficEndpoint;
+import javax.ws.rs.client.Client;
+import javax.ws.rs.client.ClientBuilder;
+import javax.ws.rs.client.Entity;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
 
 import org.bitbucket.openkilda.flow.FlowUtils;
 import org.bitbucket.openkilda.flow.Flow;
@@ -22,60 +31,63 @@ import java.nio.file.Files;
 
 public class FlowFFRTest{
     private static final String fileName = "topologies/barebones-topology.json";
+    private static int numberOfPathes = 2;
+    private static final List<List<String>> failableLinks = Arrays.asList(
+        Arrays.asList("s3-eth1", "s2-eth3"),
+        Arrays.asList("s3-eth2", "s4-eth2"));
     private static final long FLOW_COOKIE = 1L;
     private static final String flowId = "1";
-    private static final String sourceSwitch = "00:00:00:00:00:00:00:01";
-    private static final String destinationSwitch = "00:00:00:00:00:00:00:04";
+    private static final String sourceSwitch = "00:00:00:00:00:00:00:02";
+    private static final String destinationSwitch = "00:00:00:00:00:00:00:05";
     private static final Integer sourcePort = 1;
     private static final Integer destinationPort = 2;
-    private static final Integer sourceVlan = 1;
-    private static final Integer destinationVlan = 1;
+    private static final Integer sourceVlan = 1000;
+    private static final Integer destinationVlan = 1000;
     private static final long bandwidth = 1000;
-    private static final List<List<String>> existingPathes =  Arrays.asList(
-       Arrays.asList("s1", "s2", "s4"),
-       Arrays.asList("s1", "s3", "s4"));
 
     private FlowPayload flowPayload;
     private Flow flow;
-    private String intermediateSwitch;
-    private List<String> failedSwitches;
+    private List<List<String>> failedLinks;
 
-    private void failSwitch(String switchId) throws Throwable {
-    // Does nothing meaningful so far as more research has to be done
-    // on proper staging of switch failures.
+    private void failLink() throws Throwable {
+        // This method is designed to work with barebones topology.
+        // It might need refactoring in the future when other topologies
+        // are considered
+        Client client = ClientBuilder.newClient(new ClientConfig());
+        Response result = client
+           .target(trafficEndpoint)
+           .path("/linkdown")
+           .request()
+           .get();
+        assertEquals(result.getStatus(), 200);
     }
 
-    private void resurrectSwitch(String switchId) throws Throwable {
-    // Opposite of failSwitch();
-    }
-
-    private List<List<String>> pruneFailedRoutes() throws Throwable {
-         List<List<String>> routes = existingPathes;
-         for(List<String> route : existingPathes){
-             for(String failedSwitch : failedSwitches){
-                 if(route.contains(failedSwitch)){
-                        routes.remove(route);
-                  }
-             }
-         }
-         return routes;
+    private void resurrectLink() throws Throwable {
+        Client client = ClientBuilder.newClient(new ClientConfig());
+        Response result = client
+           .target(trafficEndpoint)
+           .path("/linkup")
+           .request()
+           .get();
+        assertEquals(result.getStatus(), 200);
     }
 
     private boolean trafficIsOk() throws Throwable {
-        // Here will be check for traffic through the flow. Left as a stub due to
-        // possible bug in flow creation.
-        // This method must set intermediateSwitch to id of an intermediate switch
-        // (either s2 or s3 from corresponding topology) to make it possible to
-        // turn off specific switches.
-        return true;
+        Client client = ClientBuilder.newClient(new ClientConfig());
+        Response result = client
+           .target(trafficEndpoint)
+           .path("/checkflowtraffic")
+           .request()
+           .get();
+        return result.getStatus() == 200;
     }
 
     @Given("^basic multi-path topology$")
     public void a_multi_path_topology() throws Throwable {
-        ClassLoader classLoader = getClass().getClassLoader();
-        File file = new File(classLoader.getResource(fileName).getFile());
-        String json = new String(Files.readAllBytes(file.toPath()));
-        assert TopologyHelp.CreateMininetTopology(json);
+         ClassLoader classLoader = getClass().getClassLoader();
+         File file = new File(classLoader.getResource(fileName).getFile());
+         String json = new String(Files.readAllBytes(file.toPath()));
+         assert TopologyHelp.CreateMininetTopology(json);
     }
 
     @When("^a flow is successfully created$")
@@ -110,18 +122,18 @@ public class FlowFFRTest{
 
     @When("^a route in use fails$")
     public void routeInUseFails() throws Throwable {
-         failSwitch(intermediateSwitch);
-         failedSwitches.add(intermediateSwitch);
+        failLink();
+        numberOfPathes--;
     }
 
     @When("^there is an alternative route$")
     public void alternativeRouteExists() throws Throwable {
-         assertFalse(pruneFailedRoutes().isEmpty());
+         assertNotEquals(numberOfPathes, 0);
     }
 
     @When("^there is no alternative route$")
     public void noRoutesInFlow() throws Throwable {
-         assertTrue(pruneFailedRoutes().isEmpty());
+         assertEquals(numberOfPathes, 0);
     }
 
     @When("^system is operational$")
@@ -133,7 +145,7 @@ public class FlowFFRTest{
 
     @When("^a failed route comes back up$")
     public void resurrectRoute() throws Throwable {
-        resurrectSwitch(failedSwitches.get(0));
+        resurrectLink();
+        numberOfPathes++;
     }
-
 }
