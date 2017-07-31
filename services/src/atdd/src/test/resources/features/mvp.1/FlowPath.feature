@@ -1,7 +1,7 @@
 Feature: Flow path computation tests
 
 
-  @MVP1
+  @MVP1.1
   Scenario: Link Bandwidth Tracking
 
     This scenario creates small multi-path network topology
@@ -41,7 +41,7 @@ Feature: Flow path computation tests
     Then alternative path links available bandwidth have available bandwidth 4000000
 
 
-  @MVP1
+  @MVP1.1
   Scenario: Link Bandwidth No Enough Bandwidth
 
     This scenario creates small multi-path network topology
