@@ -9,10 +9,13 @@ echo -•-•-•-•-•-•-•-•-•-•-•-•-•-•-•-•-•-
 echo
 
 time make unit
+RESULT=${?}
 
 echo
 echo -•-•-•-•-•-•-•-•-•-•-•-•-•-•-•-•-•-
-echo Done
+echo Done .. RESULT = ${RESULT}
 echo -•-•-•-•-•-•-•-•-•-•-•-•-•-•-•-•-•-
 echo
 echo
+
+exit ${RESULT}
