@@ -1,4 +1,5 @@
 #!/bin/bash
 
 service openvswitch-switch start
-/app/mininet_rest.py
+/app/mininet_rest.py &
+/app/flow_tool.py

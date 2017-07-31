@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 from bottle import run, get, response, post
 import os
 import scapy.all as scapy
@@ -40,6 +42,7 @@ def link_down():
 @get('/checkflowtraffic')
 def send_traffic_through_flow():
      def _rx_snapshot():
+         rx = 0
          with open("/proc/net/dev", "r") as f:
              for line in f.readlines():
                  if line.startswith("s5-eth2"):
