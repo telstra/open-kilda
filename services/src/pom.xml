@@ -45,6 +45,7 @@
 
     <modules>
         <module>messaging</module>
+        <module>pce</module>
         <module>floodlight-modules</module>
         <!--module>northbound</module-->
         <module>atdd</module>
