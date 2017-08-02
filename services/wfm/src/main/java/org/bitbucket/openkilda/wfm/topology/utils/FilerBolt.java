@@ -51,7 +51,7 @@ public class FilerBolt extends BaseRichBolt {
     @Override
     public void execute(Tuple tuple) {
         File file = getFile();
-        logger.debug("FILER: Writing tuple to disk: File = {}", file.getAbsolutePath());
+        logger.debug("FILER: Writing tuple to disk: File = {}, tuple={}", file.getAbsolutePath(), tuple);
 
         try {
             // Start with just the values; determine later if the fields are needed.

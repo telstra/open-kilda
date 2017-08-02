@@ -6,6 +6,7 @@ import org.bitbucket.openkilda.floodlight.pathverification.type.PathType;
 import org.bitbucket.openkilda.floodlight.pathverification.web.PathVerificationServiceWebRoutable;
 import org.bitbucket.openkilda.messaging.Message;
 import org.bitbucket.openkilda.messaging.info.InfoMessage;
+import org.bitbucket.openkilda.messaging.info.event.IslChangeType;
 import org.bitbucket.openkilda.messaging.info.event.IslInfoData;
 import org.bitbucket.openkilda.messaging.info.event.PathNode;
 
@@ -394,7 +395,7 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
                 speed = port.getCurrSpeed();
             }
 
-            IslInfoData path = new IslInfoData(latency.getValue(), nodes, speed);
+            IslInfoData path = new IslInfoData(latency.getValue(), nodes, speed, IslChangeType.DISCOVERED);
 
             Message message = new InfoMessage(path, System.currentTimeMillis(), "system", null);
 

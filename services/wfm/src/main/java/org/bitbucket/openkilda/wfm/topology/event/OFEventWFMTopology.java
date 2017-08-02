@@ -34,7 +34,11 @@ public class OFEventWFMTopology {
      * (8) ◊ Add simple pass through for verification (w/ speaker) & validation (w/ TPE)
      */
 
+    public static final Integer DEFAULT_DISCOVERY_INTERVAL = 3;
+    public static final Integer DEFAULT_DISCOVERY_TIMEOUT = 9;
     public static final String DEFAULT_KAFKA_OUTPUT = "kilda.wfm.topo.updown";
+    public static final String DEFAULT_DISCOVERY_TOPIC = "kilda-test";
+    private static final String DEFAULT_TOPOLOGY_ENGINE_TOPIC = "kilda-test";
     private static Logger logger = LogManager.getLogger(OFEventWFMTopology.class);
 
     private final String kafkaOutputTopic = DEFAULT_KAFKA_OUTPUT;
@@ -53,7 +57,7 @@ public class OFEventWFMTopology {
     private IStatefulBolt[] bolts = {
             new OFESwitchBolt().withOutputStreamId(kafkaOutputTopic),
             new OFEPortBolt().withOutputStreamId(kafkaOutputTopic),
-            new OFELinkBolt().withOutputStreamId(kafkaOutputTopic)
+            new OFELinkBolt(DEFAULT_DISCOVERY_INTERVAL, DEFAULT_DISCOVERY_TIMEOUT).withOutputStreamId(kafkaOutputTopic)
     };
 
     public OFEventWFMTopology() {
@@ -121,6 +125,17 @@ public class OFEventWFMTopology {
         builder.setBolt("ISL_Discovery-kafkabolt",
                 kutils.createKafkaBolt(discoTopic), parallelism)
                 .shuffleGrouping(topics[2] + "-bolt", discoTopic);
+
+        String reRouteBoltId = ReRouteBolt.class.getSimpleName();
+        ReRouteBolt reRouteBolt = new ReRouteBolt();
+        builder.setBolt(reRouteBoltId, reRouteBolt, parallelism)
+                .shuffleGrouping(topics[0] + "-bolt", kafkaOutputTopic)
+                .shuffleGrouping(topics[1] + "-bolt", kafkaOutputTopic)
+                .shuffleGrouping(topics[2] + "-bolt", kafkaOutputTopic);
+
+        builder.setBolt("TopologyEngine-kafkabolt",
+                kutils.createKafkaBolt(DEFAULT_TOPOLOGY_ENGINE_TOPIC), parallelism)
+                .shuffleGrouping(reRouteBoltId, ReRouteBolt.DEFAULT_OUTPUT_STREAM_ID);
 
         return builder.createTopology();
     }

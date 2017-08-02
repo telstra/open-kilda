@@ -22,7 +22,8 @@ import java.util.Objects;
         "message_type",
         "latency_ns",
         "path",
-        "speed"})
+        "speed",
+        "state"})
 public class IslInfoData extends InfoData {
     /**
      * Serialization version number constant.
@@ -48,6 +49,12 @@ public class IslInfoData extends InfoData {
     private long speed;
 
     /**
+     * Isl state.
+     */
+    @JsonProperty("state")
+    private IslChangeType state;
+
+    /**
      * Default constructor.
      */
     public IslInfoData() {
@@ -59,14 +66,17 @@ public class IslInfoData extends InfoData {
      * @param latency latency
      * @param path    path
      * @param speed   port speed
+     * @param state   isl discovery result
      */
     @JsonCreator
     public IslInfoData(@JsonProperty("latency_ns") final long latency,
                        @JsonProperty("path") final List<PathNode> path,
-                       @JsonProperty("speed") final long speed) {
+                       @JsonProperty("speed") final long speed,
+                       @JsonProperty("state") final IslChangeType state) {
         this.latency = latency;
         this.path = path;
         this.speed = speed;
+        this.state = state;
     }
 
     /**
@@ -124,6 +134,24 @@ public class IslInfoData extends InfoData {
     }
 
     /**
+     * Returns isl state.
+     *
+     * @return isl state
+     */
+    public IslChangeType getState() {
+        return state;
+    }
+
+    /**
+     * Sets isl state.
+     *
+     * @param state isl state to set
+     */
+    public void setState(final IslChangeType state) {
+        this.state = state;
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
@@ -132,6 +160,7 @@ public class IslInfoData extends InfoData {
                 .add("latency_ns", latency)
                 .add("path", path)
                 .add("speed", speed)
+                .add("state", state)
                 .toString();
     }
 
@@ -140,7 +169,7 @@ public class IslInfoData extends InfoData {
      */
     @Override
     public int hashCode() {
-        return Objects.hash(latency, path, speed);
+        return Objects.hash(latency, path, speed, state);
     }
 
     /**
@@ -158,6 +187,7 @@ public class IslInfoData extends InfoData {
         IslInfoData that = (IslInfoData) object;
         return Objects.equals(getLatency(), that.getLatency())
                 && Objects.equals(getPath(), that.getPath())
-                && Objects.equals(getSpeed(), that.getSpeed());
+                && Objects.equals(getSpeed(), that.getSpeed())
+                && Objects.equals(getState(), that.getState());
     }
 }

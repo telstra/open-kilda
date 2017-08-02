@@ -33,7 +33,7 @@ public class DiscoverIslCommandData extends CommandData {
      * Port number.
      */
     @JsonProperty("port_no")
-    private int portNo;
+    protected int portNo;
 
     /**
      * Default constructor.

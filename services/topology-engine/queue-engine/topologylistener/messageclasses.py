@@ -13,29 +13,7 @@ from flow_utils import graph
 
 available_bandwidth_limit_factor = 0.9
 isl_lock = Lock()
-
-
-def repair_flows(switchid):
-    flows = (graph.run("MATCH (n)-[r:flow]-(m) where any(i in r.flowpath where i = '{}') return r".format(switchid))).data()
-    repairedFlowIDs = []
-    for flow in flows:
-        if flow['r']['flowid'] not in repairedFlowIDs:
-            repairedFlowIDs.append(flow['r']['flowid'])
-            url = "http://topology-engine-rest/api/v1/flow"
-            headers = {'Content-Type': 'application/json'}
-            j_data = {"src_switch":"{}".format(flow['r']['src_switch']),
-                      "src_port":1,
-                      "src_vlan":0,
-                      "dst_switch":"{}".format(flow['r']['dst_switch']),
-                      "dst_port":1, "dst_vlan":0, "bandwidth": 2000}
-            result = requests.post(url, json=j_data, headers=headers)
-            if result.status_code == 200:
-                deleteURL = url + "/" + flow['r']['flowid']
-                result = requests.delete(deleteURL)
-            else:
-                #create logic to alert on failed reroute
-                print "Unable to reroute flow: {}".format(flow['r']['flowid'])
-    return True
+reroute_lock = Lock()
 
 
 class MessageItem(object):
@@ -75,10 +53,15 @@ class MessageItem(object):
                 eventHandled = self.create_switch()
             if self.get_message_type() == "switch" and self.payload['state'] == "ACTIVATED":
                 eventHandled = self.activate_switch()
-            if self.get_message_type() == "isl":
+            if self.get_message_type() == "isl" and self.payload['state'] == "DISCOVERED":
                 eventHandled = self.create_isl()
+            if self.get_message_type() == "isl" and self.payload['state'] == "FAILED":
+                eventHandled = self.isl_discovery_failed()
             if self.get_message_type() == "port":
-                eventHandled = True #needs to handled correctly
+                if self.payload['state'] == "DOWN":
+                    eventHandled = self.port_down()
+                else:
+                    eventHandled = True
             if self.get_message_type() == "switch" and self.payload['state'] == "DEACTIVATED":
                 eventHandled = self.deactivate_switch()
             if self.get_message_type() == "switch" and self.payload['state'] == "REMOVED":
@@ -95,6 +78,8 @@ class MessageItem(object):
                 eventHandled = self.get_flow()
             if self.get_command() == "flows_get":
                 eventHandled = self.dump_flows()
+            if self.get_command() == "flow_reroute":
+                eventHandled = self.reroute_flow()
             return eventHandled
         except Exception as e:
             print e
@@ -146,10 +131,7 @@ class MessageItem(object):
             switch['state'] = "inactive"
             switch.push()
             print "Deactivating switch: {}".format(switchid)
-            if repair_flows(switchid):
-                return True
-            else:
-                return False
+            return True
 
         else:
             print "Switch '{0}' does not exist in topology.".format(switchid)
@@ -165,7 +147,57 @@ class MessageItem(object):
             switch['state'] = "removed"
             switch.push()
             print "Removing switch: {}".format(switchid)
+
+            if self.isl_exists(switchid, None):
+                self.delete_isl(switchid, None)
+
         return True
+
+    def isl_exists(self, src_switch, src_port):
+        if src_port and int(src_port):
+            exists_query = ("MATCH (a:switch)-[r:isl {{"
+                            "src_switch: '{}', "
+                            "src_port: '{}'}}]->(b:switch) return r")
+            return graph.run(exists_query.format(src_switch, src_port)).data()
+        else:
+            exists_query = ("MATCH (a:switch)-[r:isl {{"
+                            "src_switch: '{}'}}]->(b:switch) return r")
+            return graph.run(exists_query.format(src_switch)).data()
+
+    def delete_isl(self, src_switch, src_port):
+        print "Removing ISL:" \
+              "src_switch={}, src_port={}".format(src_switch, src_port)
+
+        if src_port and int(src_port):
+            delete_query = ("MATCH (a:switch)-[r:isl {{"
+                            "src_switch: '{}', "
+                            "src_port: '{}'}}]->(b:switch) delete r")
+            result = graph.run(delete_query.format(src_switch, src_port)).data()
+        else:
+            delete_query = ("MATCH (a:switch)-[r:isl {{"
+                            "src_switch: '{}'}}]->(b:switch) delete r")
+            result = graph.run(delete_query.format(src_switch)).data()
+
+        print "Removed ISL: {}".format(result)
+
+        return True
+
+    def isl_discovery_failed(self):
+        path = self.payload['path']
+        switch_id = path[0]['switch_id']
+        port_id = path[0]['port_no']
+        if self.isl_exists(switch_id, port_id):
+            return self.delete_isl(switch_id, port_id)
+        else:
+            return True
+
+    def port_down(self):
+        switch_id = self.payload['switch_id']
+        port_id = self.payload['port_no']
+        if self.isl_exists(switch_id, port_id):
+            return self.delete_isl(switch_id, port_id)
+        else:
+            return True
 
     def create_isl(self):
         path = self.payload['path']
@@ -584,25 +616,21 @@ class MessageItem(object):
               "correlation_id={}, flow_id={}".format(cor_id, flow_id)
 
         try:
-            found_flow = flow_utils.find_flow_by_id(flow_id)
+            flow = flow_utils.get_flow(flow_id)
 
-            if not found_flow:
+            if not flow:
                 msg = "Flow was not found: " \
-                      "correlation_id={}, flow_id={}".format(cor_id, flow_id)
+                      "flow_id={}".format(cor_id, flow_id)
                 print "ERROR: {}".format(msg)
 
                 flow_utils.send_error_message(
                     cor_id, "NOT_FOUND", msg, flow_id)
 
                 return True
-
-            for data in found_flow:
-                flow = flow_utils.flow_response(data['r'])
-
-                if flow:
-                    print 'Flow was found: flow={}'.format(flow)
-                    payload = {'payload': flow, 'message_type': "flow"}
-                    flow_utils.send_message(payload, cor_id, "INFO")
+            else:
+                print 'Flow was found: flow={}'.format(flow)
+                payload = {'payload': flow, 'message_type': "flow"}
+                flow_utils.send_message(payload, cor_id, "INFO")
 
         except Exception as exception:
             flow_utils.send_error_message(
@@ -690,3 +718,47 @@ class MessageItem(object):
             raise
 
         return True
+
+    def reroute_flow(self):
+        result = False
+        cor_id = self.correlation_id
+        flow_id = self.payload.get('flowid')
+        switch_id = self.payload.get('switch_id')
+        port_id = self.payload.get('port_no')
+
+        # TODO: use with flow_id only
+        try:
+            reroute_lock.acquire()
+            print "Flow reroute: correlation_id={}".format(cor_id)
+
+            if flow_id:
+                print 'Reroute by flow: ' \
+                      'flow_id={}'.format(flow_id)
+
+                content = flow_utils.get_flow(flow_id)
+                self.payload = {'payload': content}
+                result = self.update_flow()
+
+            elif switch_id:
+                print 'Reroute by event: ' \
+                      'switch_id={}, port_id={}'.format(switch_id, port_id)
+
+                contents = flow_utils.get_affected_flows(switch_id, port_id)
+                result = True
+                for content in contents:
+                    self.payload = {'payload': content}
+                    result &= self.update_flow()
+
+            else:
+                msg = "Bad command for flow reroute: " \
+                      "flow_id={}, switch_id={}, port_id={}".format(
+                        flow_id, switch_id, port_id)
+                print "ERROR: {}".format(msg)
+        except Exception as exception:
+            print "Error: " \
+                  "could not reroute flow: ".format(exception.message)
+            traceback.print_exc()
+        finally:
+            reroute_lock.release()
+
+        return result

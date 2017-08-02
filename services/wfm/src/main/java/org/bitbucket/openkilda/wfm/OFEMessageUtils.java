@@ -1,10 +1,17 @@
 package org.bitbucket.openkilda.wfm;
 
+import static org.bitbucket.openkilda.messaging.Utils.MAPPER;
 import static org.bitbucket.openkilda.messaging.Utils.PAYLOAD;
+
+import org.bitbucket.openkilda.messaging.info.InfoData;
+import org.bitbucket.openkilda.messaging.info.event.IslChangeType;
+import org.bitbucket.openkilda.messaging.info.event.IslInfoData;
+import org.bitbucket.openkilda.messaging.info.event.PathNode;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Map;
 
 /**
@@ -47,6 +54,9 @@ public class OFEMessageUtils {
     public static final String PORT_UP = "UP";
     public static final String PORT_ADD = "ADD";
     public static final String PORT_DOWN = "DOWN";
+    public static final String LINK_UP = "DISCOVERED";
+    public static final String LINK_DOWN = "FAILED";
+
     // ==============  ==============  ==============  ==============  ==============
     // Parsing Routines
     // ==============  ==============  ==============  ==============  ==============
@@ -119,6 +129,11 @@ public class OFEMessageUtils {
         return root;
     }
 
+    public static String createIslFail(String switchId, String portId) throws IOException {
+        PathNode node = new PathNode(switchId, Integer.parseInt(portId), 0, 0L);
+        InfoData data = new IslInfoData(0L, Collections.singletonList(node), 0L, IslChangeType.FAILED);
+        return MAPPER.writeValueAsString(data);
+    }
 
     // ==============  ==============  ==============  ==============  ==============
     // ISL Discovery

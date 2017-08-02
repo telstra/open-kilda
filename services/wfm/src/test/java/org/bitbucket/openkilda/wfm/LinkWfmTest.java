@@ -7,7 +7,7 @@ import org.junit.*;
  *
  * 1)
  */
-public class LinkWfmTest extends AbstractStormTest {
+public class LinkWfmTest {
 
     // Leaving these here as a tickler if needed.
     @Before public void setupEach() {}
