@@ -10,7 +10,7 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
  */
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public enum SwitchEventType {
+public enum SwitchState {
     /**
      * Activated switch event message type.
      */
@@ -48,7 +48,7 @@ public enum SwitchEventType {
      * @param type info message type
      */
     @JsonCreator
-    SwitchEventType(final String type) {
+    SwitchState(final String type) {
         this.type = type;
     }
 

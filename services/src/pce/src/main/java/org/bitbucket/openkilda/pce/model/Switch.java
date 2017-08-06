@@ -2,7 +2,7 @@ package org.bitbucket.openkilda.pce.model;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 
-import org.bitbucket.openkilda.messaging.info.event.SwitchEventType;
+import org.bitbucket.openkilda.messaging.info.event.SwitchState;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -49,7 +49,7 @@ public class Switch implements Serializable {
      * Switch state.
      */
     @JsonProperty("state")
-    private SwitchEventType state;
+    private SwitchState state;
 
     /**
      * Switch controller ip address.
@@ -72,7 +72,7 @@ public class Switch implements Serializable {
                   @JsonProperty("address") String address,
                   @JsonProperty("hostname") String hostname,
                   @JsonProperty("description") String description,
-                  @JsonProperty("state") SwitchEventType state,
+                  @JsonProperty("state") SwitchState state,
                   @JsonProperty("controller") String controller) {
         this.switchId = switchId;
         this.address = address;
@@ -105,7 +105,7 @@ public class Switch implements Serializable {
      *
      * @return switch state
      */
-    public SwitchEventType getState() {
+    public SwitchState getState() {
         return state;
     }
 
@@ -114,7 +114,7 @@ public class Switch implements Serializable {
      *
      * @param state switch state to set
      */
-    public void setState(final SwitchEventType state) {
+    public void setState(final SwitchState state) {
         this.state = state;
     }
 

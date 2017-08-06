@@ -58,7 +58,7 @@ public class SwitchInfoData extends InfoData {
      * Switch state.
      */
     @JsonProperty("state")
-    private SwitchEventType state;
+    private SwitchState state;
 
     /**
      * Default constructor.
@@ -77,7 +77,7 @@ public class SwitchInfoData extends InfoData {
      */
     @JsonCreator
     public SwitchInfoData(@JsonProperty("switch_id") final String switchId,
-                          @JsonProperty("state") final SwitchEventType state,
+                          @JsonProperty("state") final SwitchState state,
                           @JsonProperty("address") final String address,
                           @JsonProperty("hostname") final String hostname,
                           @JsonProperty("description") final String description) {
@@ -111,7 +111,7 @@ public class SwitchInfoData extends InfoData {
      *
      * @return switch state
      */
-    public SwitchEventType getState() {
+    public SwitchState getState() {
         return state;
     }
 
@@ -120,7 +120,7 @@ public class SwitchInfoData extends InfoData {
      *
      * @param state switch state to set
      */
-    public void setState(final SwitchEventType state) {
+    public void setState(final SwitchState state) {
         this.state = state;
     }
 

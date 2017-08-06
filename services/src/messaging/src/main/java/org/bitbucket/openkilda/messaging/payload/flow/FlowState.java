@@ -4,52 +4,52 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * Class represents status of flow.
+ * Class represents state of flow.
  */
-public enum FlowStatusType {
+public enum FlowState {
     /**
-     * Flow allocated status.
+     * Flow allocated state.
      */
     ALLOCATED("Allocated"),
 
     /**
-     * Flow creating/deleting status.
+     * Flow creating/deleting state.
      */
     IN_PROGRESS("In progress"),
 
     /**
-     * Flow up status.
+     * Flow up state.
      */
     UP("Up"),
 
     /**
-     * Flow down status.
+     * Flow down state.
      */
     DOWN("Down");
 
     /**
-     * Flow status.
+     * Flow state.
      */
-    @JsonProperty("status")
-    private final String status;
+    @JsonProperty("state")
+    private final String state;
 
     /**
      * Instance constructor.
      *
-     * @param status flow status
+     * @param state flow state
      */
     @JsonCreator
-    FlowStatusType(@JsonProperty("status") final String status) {
-        this.status = status;
+    FlowState(@JsonProperty("state") final String state) {
+        this.state = state;
     }
 
     /**
-     * Returns flow status.
+     * Returns flow state.
      *
-     * @return flow status
+     * @return flow state
      */
-    public String getStatus() {
-        return this.status;
+    public String getState() {
+        return this.state;
     }
 
     /**
@@ -57,7 +57,7 @@ public enum FlowStatusType {
      */
     @Override
     public String toString() {
-        return status;
+        return state;
     }
 }
 

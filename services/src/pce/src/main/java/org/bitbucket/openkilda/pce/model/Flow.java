@@ -2,6 +2,8 @@ package org.bitbucket.openkilda.pce.model;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 
+import org.bitbucket.openkilda.messaging.payload.flow.FlowState;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
@@ -18,20 +20,20 @@ public class Flow implements Serializable {
     /**
      * Flow id.
      */
-    @JsonProperty("flowid")
+    @JsonProperty("flow_id")
     private String flowId;
 
     /**
      * FLow bandwidth.
      */
     @JsonProperty("bandwidth")
-    private long bandwidth;
+    private int bandwidth;
 
     /**
      * Flow cookie.
      */
     @JsonProperty("cookie")
-    private long cookie;
+    private int cookie;
 
     /**
      * Flow description.
@@ -82,22 +84,28 @@ public class Flow implements Serializable {
     private int destinationVlan;
 
     /**
-     * Flow transit vlan id.
+     * Flow forward transit vlan id.
      */
-    @JsonProperty("transit_vlan")
-    private int transitVlan;
+    @JsonProperty("forward_vlan")
+    private int forwardVlan;
+
+    /**
+     * Flow reverse transit vlan id.
+     */
+    @JsonProperty("reverse_vlan")
+    private int reverseVlan;
 
     /**
      * Flow switch path.
      */
-    @JsonProperty("flowpath")
-    private Set<Node> flowPath;
+    @JsonProperty("flow_path")
+    private Set<Isl> flowPath;
 
     /**
-     * Flow isl path.
+     * Flow state.
      */
-    @JsonProperty("isl_path")
-    private Set<Node> islPath;
+    @JsonProperty("state")
+    private FlowState state;
 
     /**
      * Default constructor.
@@ -119,14 +127,14 @@ public class Flow implements Serializable {
      * @param destinationPort   destination port
      * @param sourceVlan        source vlan id
      * @param destinationVlan   destination vlan id
-     * @param transitVlan       transit vlan id
+     * @param forwardVlan       forward transit vlan id
+     * @param reverseVlan       reverse transit vlan id
      * @param flowPath          flow switch path
-     * @param islPath           flow isl path
      */
     @JsonCreator
-    public Flow(@JsonProperty("flowid") final String flowId,
-                @JsonProperty("bandwidth") final long bandwidth,
-                @JsonProperty("cookie") final long cookie,
+    public Flow(@JsonProperty("flow_id") final String flowId,
+                @JsonProperty("bandwidth") final int bandwidth,
+                @JsonProperty("cookie") final int cookie,
                 @JsonProperty("description") final String description,
                 @JsonProperty("last_updated") final String lastUpdated,
                 @JsonProperty("src_switch") final String sourceSwitch,
@@ -135,9 +143,9 @@ public class Flow implements Serializable {
                 @JsonProperty("dst_port") final int destinationPort,
                 @JsonProperty("src_vlan") final int sourceVlan,
                 @JsonProperty("dst_vlan") final int destinationVlan,
-                @JsonProperty("transit_vlan") final int transitVlan,
-                @JsonProperty("flowpath") final Set<Node> flowPath,
-                @JsonProperty("isl_path") final Set<Node> islPath) {
+                @JsonProperty("forward_vlan") final int forwardVlan,
+                @JsonProperty("reverse_vlan") final int reverseVlan,
+                @JsonProperty("flow_path") final Set<Isl> flowPath) {
         this.flowId = flowId;
         this.bandwidth = bandwidth;
         this.cookie = cookie;
@@ -149,9 +157,9 @@ public class Flow implements Serializable {
         this.destinationPort = destinationPort;
         this.sourceVlan = sourceVlan;
         this.destinationVlan = destinationVlan;
-        this.transitVlan = transitVlan;
+        this.forwardVlan = forwardVlan;
+        this.reverseVlan = reverseVlan;
         this.flowPath = flowPath;
-        this.islPath = islPath;
     }
 
     /**
@@ -173,11 +181,29 @@ public class Flow implements Serializable {
     }
 
     /**
+     * Gets flow state.
+     *
+     * @return flow state
+     */
+    public FlowState getFlowState() {
+        return state;
+    }
+
+    /**
+     * Sets flow state.
+     *
+     * @param state flow state
+     */
+    public void setFlowState(FlowState state) {
+        this.state = state;
+    }
+
+    /**
      * Gets flow bandwidth.
      *
      * @return flow bandwidth
      */
-    public long getBandwidth() {
+    public int getBandwidth() {
         return bandwidth;
     }
 
@@ -186,7 +212,7 @@ public class Flow implements Serializable {
      *
      * @param bandwidth flow bandwidth
      */
-    public void setBandwidth(long bandwidth) {
+    public void setBandwidth(int bandwidth) {
         this.bandwidth = bandwidth;
     }
 
@@ -195,7 +221,7 @@ public class Flow implements Serializable {
      *
      * @return flow cookie
      */
-    public long getCookie() {
+    public int getCookie() {
         return cookie;
     }
 
@@ -204,7 +230,7 @@ public class Flow implements Serializable {
      *
      * @param cookie flow cookie
      */
-    public void setCookie(long cookie) {
+    public void setCookie(int cookie) {
         this.cookie = cookie;
     }
 
@@ -353,21 +379,39 @@ public class Flow implements Serializable {
     }
 
     /**
-     * Gets flow transit vlan id.
+     * Gets flow forward transit vlan id.
      *
-     * @return flow transit vlan id
+     * @return flow forward transit vlan id
      */
-    public int getTransitVlan() {
-        return transitVlan;
+    public int getForwardVlan() {
+        return forwardVlan;
     }
 
     /**
-     * Sets flow transit vlan id.
+     * Sets flow forward transit vlan id.
      *
-     * @param transitVlan flow transit vlan id
+     * @param forwardVlan flow forward transit vlan id
      */
-    public void setTransitVlan(int transitVlan) {
-        this.transitVlan = transitVlan;
+    public void setForwardVlan(int forwardVlan) {
+        this.forwardVlan = forwardVlan;
+    }
+
+    /**
+     * Gets flow reverse transit vlan id.
+     *
+     * @return flow reverse transit vlan id
+     */
+    public int getReverseVlan() {
+        return reverseVlan;
+    }
+
+    /**
+     * Sets flow reverse transit vlan id.
+     *
+     * @param reverseVlan flow reverse transit vlan id
+     */
+    public void setReverseVlan(int reverseVlan) {
+        this.reverseVlan = reverseVlan;
     }
 
     /**
@@ -375,7 +419,7 @@ public class Flow implements Serializable {
      *
      * @return flow switch path
      */
-    public Set<Node> getFlowPath() {
+    public Set<Isl> getFlowPath() {
         return flowPath;
     }
 
@@ -384,26 +428,28 @@ public class Flow implements Serializable {
      *
      * @param flowPath flow switch path
      */
-    public void setFlowPath(Set<Node> flowPath) {
+    public void setFlowPath(Set<Isl> flowPath) {
         this.flowPath = flowPath;
     }
 
     /**
-     * Gets flow isl path.
+     * Checks if flow path contains specified switch.
      *
-     * @return flow isl path
+     * @param switchId switch id
+     * @return true if flow path contains specified switch
      */
-    public Set<Node> getIslPath() {
-        return islPath;
+    public boolean containsSwitchInPath(String switchId) {
+        return flowPath.stream().anyMatch(isl -> isl.getSourceSwitch().equals(switchId));
     }
 
     /**
-     * Sets flow isl path.
+     * Checks if flow path contains specified isl.
      *
-     * @param islPath flow isl path
+     * @param islId isl id
+     * @return true if flow path contains specified isl
      */
-    public void setIslPath(Set<Node> islPath) {
-        this.islPath = islPath;
+    public boolean containsIslInPath(String islId) {
+        return flowPath.stream().anyMatch(isl -> isl.getId().equals(islId));
     }
 
     /**
@@ -420,19 +466,14 @@ public class Flow implements Serializable {
 
         Flow flow = (Flow) object;
         return getBandwidth() == flow.getBandwidth() &&
-                getCookie() == flow.getCookie() &&
                 getSourcePort() == flow.getSourcePort() &&
                 getDestinationPort() == flow.getDestinationPort() &&
                 getSourceVlan() == flow.getSourceVlan() &&
                 getDestinationVlan() == flow.getDestinationVlan() &&
-                getTransitVlan() == flow.getTransitVlan() &&
                 Objects.equals(getFlowId(), flow.getFlowId()) &&
                 Objects.equals(getDescription(), flow.getDescription()) &&
-                Objects.equals(getLastUpdated(), flow.getLastUpdated()) &&
                 Objects.equals(getSourceSwitch(), flow.getSourceSwitch()) &&
-                Objects.equals(getDestinationSwitch(), flow.getDestinationSwitch()) &&
-                Objects.equals(getFlowPath(), flow.getFlowPath()) &&
-                Objects.equals(getIslPath(), flow.getIslPath());
+                Objects.equals(getDestinationSwitch(), flow.getDestinationSwitch());
     }
 
     /**
@@ -440,8 +481,8 @@ public class Flow implements Serializable {
      */
     @Override
     public int hashCode() {
-        return Objects.hash(flowId, bandwidth, cookie, description, lastUpdated, sourceSwitch, destinationSwitch,
-                sourcePort, destinationPort, sourceVlan, destinationVlan, transitVlan, flowPath, islPath);
+        return Objects.hash(flowId, state, bandwidth, cookie, description, lastUpdated, sourceSwitch, destinationSwitch,
+                sourcePort, destinationPort, sourceVlan, destinationVlan, forwardVlan, reverseVlan);
     }
 
     /**
@@ -450,7 +491,8 @@ public class Flow implements Serializable {
     @Override
     public String toString() {
         return toStringHelper(this)
-                .add("flowid", flowId)
+                .add("flow_id", flowId)
+                .add("state", state)
                 .add("src_switch", sourceSwitch)
                 .add("src_port", sourcePort)
                 .add("src_vlan", sourceVlan)
@@ -460,7 +502,8 @@ public class Flow implements Serializable {
                 .add("bandwidth", bandwidth)
                 .add("description", description)
                 .add("cookie", cookie)
-                .add("transit_vlan", transitVlan)
+                .add("forward_vlan", forwardVlan)
+                .add("reverse_vlan", reverseVlan)
                 .add("last_updated", lastUpdated)
                 .toString();
     }

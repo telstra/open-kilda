@@ -8,7 +8,7 @@ import org.bitbucket.openkilda.flow.FlowUtils;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowPayload;
-import org.bitbucket.openkilda.messaging.payload.flow.FlowStatusType;
+import org.bitbucket.openkilda.messaging.payload.flow.FlowState;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowsPayload;
 
 import cucumber.api.java.en.Then;
@@ -17,7 +17,7 @@ import java.util.Arrays;
 import java.util.List;
 
 public class NorthboundRunTest {
-    private static final FlowStatusType expectedFlowStatus = FlowStatusType.UP;
+    private static final FlowState expectedFlowStatus = FlowState.UP;
     private static final List<String> expectedFlowPath =
             Arrays.asList("de:ad:be:ef:00:00:00:02", "de:ad:be:ef:00:00:00:03", "de:ad:be:ef:00:00:00:04");
 

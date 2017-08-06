@@ -2,7 +2,6 @@ package org.bitbucket.openkilda.pce.storage;
 
 import org.bitbucket.openkilda.pce.model.Flow;
 import org.bitbucket.openkilda.pce.model.Isl;
-import org.bitbucket.openkilda.pce.model.Node;
 import org.bitbucket.openkilda.pce.model.Switch;
 
 import java.util.List;
@@ -121,22 +120,4 @@ public interface Storage {
      * @return list of flows
      */
     List<Flow> dumpFlows();
-
-    /**
-     * Gets switch path between nodes.
-     *
-     * @param srcSwitch source switch id
-     * @param destinationSwitch destination switch id
-     * @return list of nodes
-     */
-    List<Node> getSwitchPath(String srcSwitch, String destinationSwitch);
-
-    /**
-     * Gets isl path between nodes.
-     *
-     * @param srcSwitch source switch id
-     * @param destinationSwitch destination switch id
-     * @return list of nodes
-     */
-    List<Node> getIslPath(String srcSwitch, String destinationSwitch);
 }

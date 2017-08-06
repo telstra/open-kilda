@@ -18,7 +18,7 @@ import org.bitbucket.openkilda.messaging.info.event.PathInfoData;
 import org.bitbucket.openkilda.messaging.info.event.PathNode;
 import org.bitbucket.openkilda.messaging.info.event.PortChangeType;
 import org.bitbucket.openkilda.messaging.info.event.PortInfoData;
-import org.bitbucket.openkilda.messaging.info.event.SwitchEventType;
+import org.bitbucket.openkilda.messaging.info.event.SwitchState;
 import org.bitbucket.openkilda.messaging.info.event.SwitchInfoData;
 import org.bitbucket.openkilda.messaging.info.flow.FlowPathResponse;
 import org.bitbucket.openkilda.messaging.info.flow.FlowResponse;
@@ -28,7 +28,7 @@ import org.bitbucket.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowPayload;
-import org.bitbucket.openkilda.messaging.payload.flow.FlowStatusType;
+import org.bitbucket.openkilda.messaging.payload.flow.FlowState;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowsPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.OutputVlanType;
 
@@ -54,9 +54,9 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     private static final long COOKIE = 0x1L;
     private static final long METER_ID = 0L;
     private static final OutputVlanType OUTPUT_VLAN_TYPE = OutputVlanType.REPLACE;
-    private static final FlowStatusType FLOW_STATUS = FlowStatusType.UP;
+    private static final FlowState FLOW_STATUS = FlowState.UP;
     private static final PortChangeType PORT_CHANGE = PortChangeType.OTHER_UPDATE;
-    private static final SwitchEventType SWITCH_EVENT = SwitchEventType.CHANGED;
+    private static final SwitchState SWITCH_EVENT = SwitchState.CHANGED;
     private static final Destination DESTINATION = null;
 
     private static final FlowIdStatusPayload flowsIdStatusRequest = new FlowIdStatusPayload();

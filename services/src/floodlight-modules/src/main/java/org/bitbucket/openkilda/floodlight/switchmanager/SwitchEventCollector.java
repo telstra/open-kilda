@@ -8,7 +8,7 @@ import org.bitbucket.openkilda.messaging.Message;
 import org.bitbucket.openkilda.messaging.info.InfoData;
 import org.bitbucket.openkilda.messaging.info.InfoMessage;
 import org.bitbucket.openkilda.messaging.info.event.PortInfoData;
-import org.bitbucket.openkilda.messaging.info.event.SwitchEventType;
+import org.bitbucket.openkilda.messaging.info.event.SwitchState;
 import org.bitbucket.openkilda.messaging.info.event.SwitchInfoData;
 
 import net.floodlightcontroller.core.IOFSwitch;
@@ -63,7 +63,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
      */
     @Override
     public void switchAdded(final DatapathId switchId) {
-        Message message = buildSwitchMessage(switchService.getSwitch(switchId), SwitchEventType.ADDED);
+        Message message = buildSwitchMessage(switchService.getSwitch(switchId), SwitchState.ADDED);
         kafkaProducer.postMessage(TOPIC, message);
     }
 
@@ -72,7 +72,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
      */
     @Override
     public void switchRemoved(final DatapathId switchId) {
-        Message message = buildSwitchMessage(switchId, SwitchEventType.REMOVED);
+        Message message = buildSwitchMessage(switchId, SwitchState.REMOVED);
         kafkaProducer.postMessage(TOPIC, message);
     }
 
@@ -83,7 +83,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
     public void switchActivated(final DatapathId switchId) {
         final IOFSwitch sw = switchService.getSwitch(switchId);
 
-        Message message = buildSwitchMessage(sw, SwitchEventType.ACTIVATED);
+        Message message = buildSwitchMessage(sw, SwitchState.ACTIVATED);
         kafkaProducer.postMessage(TOPIC, message);
 
         ImmutablePair<Long, Boolean> metersDeleted;
@@ -118,7 +118,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
      */
     @Override
     public void switchChanged(final DatapathId switchId) {
-        Message message = buildSwitchMessage(switchService.getSwitch(switchId), SwitchEventType.CHANGED);
+        Message message = buildSwitchMessage(switchService.getSwitch(switchId), SwitchState.CHANGED);
         kafkaProducer.postMessage(TOPIC, message);
     }
 
@@ -131,7 +131,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
      */
     @Override
     public void switchDeactivated(final DatapathId switchId) {
-        Message message = buildSwitchMessage(switchId, SwitchEventType.DEACTIVATED);
+        Message message = buildSwitchMessage(switchId, SwitchState.DEACTIVATED);
         kafkaProducer.postMessage(TOPIC, message);
     }
 
@@ -197,7 +197,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
      * @param eventType type of event
      * @return Message
      */
-    private Message buildSwitchMessage(final IOFSwitch sw, final SwitchEventType eventType) {
+    private Message buildSwitchMessage(final IOFSwitch sw, final SwitchState eventType) {
         String switchId = sw.getId().toString();
         InetSocketAddress address = (InetSocketAddress) sw.getInetAddress();
 
@@ -223,7 +223,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
      * @param eventType type of event
      * @return Message
      */
-    private Message buildSwitchMessage(final DatapathId switchId, final SwitchEventType eventType) {
+    private Message buildSwitchMessage(final DatapathId switchId, final SwitchState eventType) {
         final String unknown = "unknown";
 
         InfoData data = new SwitchInfoData(switchId.toString(), eventType, unknown, unknown, unknown);

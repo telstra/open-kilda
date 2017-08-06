@@ -5,6 +5,7 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 
 import java.io.Serializable;
 import java.util.Objects;
@@ -18,6 +19,12 @@ public class Isl implements Serializable {
      * Serialization version number constant.
      */
     private static final long serialVersionUID = 1L;
+
+    /**
+     * Isl id.
+     */
+    @JsonProperty("isl_id")
+    private String islId;
 
     /**
      * Isl source switch.
@@ -93,6 +100,7 @@ public class Isl implements Serializable {
         this.latency = latency;
         this.speed = speed;
         this.availableBandwidth = availableBandwidth;
+        this.islId = String.format("%s_%d", sourceSwitch, sourcePort);
     }
 
     /**
@@ -227,7 +235,7 @@ public class Isl implements Serializable {
      * @return isl id
      */
     public String getId() {
-        return String.format("%s_%d", sourceSwitch, sourcePort);
+        return islId;
     }
 
     /**
@@ -236,6 +244,7 @@ public class Isl implements Serializable {
     @Override
     public String toString() {
         return toStringHelper(this)
+                .add("isl_id", islId)
                 .add("src_switch", sourceSwitch)
                 .add("src_port", sourcePort)
                 .add("dst_switch", destinationSwitch)

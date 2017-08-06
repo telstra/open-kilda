@@ -40,6 +40,18 @@ public class ResourcePool {
     }
 
     /**
+     * Allocates resource id.
+     *
+     * @return allocated resource id
+     */
+    public Integer allocate(Integer id) {
+        if (!resources.add(id)) {
+            throw new ArrayIndexOutOfBoundsException("Could not allocate resource: pool is full");
+        }
+        return id;
+    }
+
+    /**
      * Deallocates previously allocated resource id.
      *
      * @param resourceId resource id

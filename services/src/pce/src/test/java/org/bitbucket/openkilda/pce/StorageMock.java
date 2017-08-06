@@ -2,7 +2,6 @@ package org.bitbucket.openkilda.pce;
 
 import org.bitbucket.openkilda.pce.model.Flow;
 import org.bitbucket.openkilda.pce.model.Isl;
-import org.bitbucket.openkilda.pce.model.Node;
 import org.bitbucket.openkilda.pce.storage.Storage;
 import org.bitbucket.openkilda.pce.model.Switch;
 
@@ -89,17 +88,5 @@ public class StorageMock implements Storage {
     public List<Flow> dumpFlows() {
         System.out.println("dumpFlows");
         return Collections.emptyList();
-    }
-
-    @Override
-    public List<Node> getSwitchPath(String srcSwitch, String destinationSwitch) {
-        System.out.println("getSwitchPath");
-        return null;
-    }
-
-    @Override
-    public List<Node> getIslPath(String srcSwitch, String destinationSwitch) {
-        System.out.println("getIslPath");
-        return null;
     }
 }
