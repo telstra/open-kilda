@@ -2,16 +2,20 @@ package org.bitbucket.openkilda.pce;
 
 import org.bitbucket.openkilda.pce.model.Flow;
 import org.bitbucket.openkilda.pce.model.Isl;
-import org.bitbucket.openkilda.pce.storage.Storage;
 import org.bitbucket.openkilda.pce.model.Switch;
+import org.bitbucket.openkilda.pce.storage.Storage;
 
 import java.util.Collections;
 import java.util.List;
 
 public class StorageMock implements Storage {
+    int switches = 0;
+    int isls = 0;
+
     @Override
     public void deleteSwitch(String switchId) {
         System.out.println("deleteSwitch");
+        --switches;
     }
 
     @Override
@@ -28,6 +32,7 @@ public class StorageMock implements Storage {
     @Override
     public void createSwitch(Switch newSwitch) {
         System.out.println("createSwitch");
+        ++switches;
     }
 
     @Override
@@ -39,11 +44,13 @@ public class StorageMock implements Storage {
     @Override
     public void createIsl(Isl isl) {
         System.out.println("createIsl");
+        ++isls;
     }
 
     @Override
     public void deleteIsl(String islId) {
         System.out.println("deleteIsl");
+        --isls;
     }
 
     @Override

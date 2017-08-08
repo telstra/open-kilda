@@ -35,7 +35,7 @@ public interface Storage {
     /**
      * Updates switch.
      *
-     * @param switchId switch id
+     * @param switchId  switch id
      * @param newSwitch switch
      */
     void updateSwitch(String switchId, Switch newSwitch);
@@ -73,7 +73,7 @@ public interface Storage {
      * Updates isl.
      *
      * @param islId isl id
-     * @param isl isl
+     * @param isl   isl
      */
     void updateIsl(String islId, Isl isl);
 
@@ -110,7 +110,7 @@ public interface Storage {
      * Updates flow.
      *
      * @param flowId flow id
-     * @param flow flow
+     * @param flow   flow
      */
     void updateFlow(String flowId, Flow flow);
 

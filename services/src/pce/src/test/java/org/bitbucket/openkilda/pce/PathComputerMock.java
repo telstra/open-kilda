@@ -5,37 +5,98 @@ import org.bitbucket.openkilda.pce.model.Switch;
 import org.bitbucket.openkilda.pce.path.PathComputer;
 
 import com.google.common.graph.MutableNetwork;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class PathComputerMock implements PathComputer {
+    private static MutableNetwork<Switch, Isl> network;
+
     @Override
-    public Set<Isl> getPath(Switch srcSwitch, Switch dstSwitch, int bandwidth) {
-        System.out.println("getPath");
-        return null;
+    public Long getWeight(Isl isl) {
+        return 1L;
     }
 
     @Override
-    public Set<Isl> getPath(String srcSwitchId, String dstSwitchId, int bandwidth) {
-        System.out.println("getPath");
-        return null;
+    public LinkedList<Isl> getPath(Switch srcSwitch, Switch dstSwitch, int bandwidth) {
+        System.out.println("getPathBySwitchInstances");
+
+        LinkedList<Isl> path = new LinkedList<>();
+        Set<Switch> nodesToProcess = new HashSet<>(new HashSet<>(network.nodes()));
+        Set<Switch> nodesWereProcess = new HashSet<>();
+        Map<Switch, ImmutablePair<Switch, Isl>> predecessors = new HashMap<>();
+
+        Map<Switch, Long> distances = network.nodes().stream()
+                .collect(Collectors.toMap(k -> k, v -> Long.MAX_VALUE));
+
+        distances.put(srcSwitch, 0L);
+
+        while (!nodesToProcess.isEmpty()) {
+            Switch source = nodesToProcess.stream()
+                    .min(Comparator.comparingLong(distances::get))
+                    .orElseThrow(() -> new IllegalArgumentException("Error: No nodes to process left"));
+            nodesToProcess.remove(source);
+            nodesWereProcess.add(source);
+
+            for (Switch target : network.successors(source)) {
+                if (!nodesWereProcess.contains(target)) {
+                    Isl edge = network.edgesConnecting(source, target).stream()
+                            .filter(isl -> isl.getAvailableBandwidth() >= bandwidth)
+                            .findFirst()
+                            .orElseThrow(() -> new IllegalArgumentException("Error: No enough bandwidth"));
+
+                    Long distance = distances.get(source) + getWeight(edge);
+                    if (distances.get(target) >= distance) {
+                        distances.put(target, distance);
+                        nodesToProcess.add(target);
+                        predecessors.put(target, new ImmutablePair<>(source, edge));
+                    }
+                }
+            }
+        }
+
+        ImmutablePair<Switch, Isl> nextHop = predecessors.get(dstSwitch);
+        if (nextHop == null) {
+            return null;
+        }
+        path.add(nextHop.getRight());
+
+        while (predecessors.get(nextHop.getLeft()) != null) {
+            nextHop = predecessors.get(nextHop.getLeft());
+            path.add(nextHop.getRight());
+        }
+
+        Collections.reverse(path);
+
+        updatePathBandwidth(path, bandwidth);
+
+        return path;
     }
 
     @Override
-    public Set<Isl> getPathIntersection(Set<Isl> firstPath, Set<Isl> secondPath) {
+    public Set<Isl> getPathIntersection(LinkedList<Isl> firstPath, LinkedList<Isl> secondPath) {
         System.out.println("getPathInterception");
-        return null;
+        Set<Isl> intersection = new HashSet<>(firstPath);
+        intersection.retainAll(secondPath);
+        return intersection;
     }
 
     @Override
-    public void updatePathBandwidth(Set<Isl> path, int bandwidth) {
+    public void updatePathBandwidth(LinkedList<Isl> path, int bandwidth) {
         System.out.println("updatePathBandwidth");
-        return;
+        path.forEach(isl -> isl.setAvailableBandwidth(isl.getAvailableBandwidth() - bandwidth));
     }
+
 
     @Override
     public void setNetwork(MutableNetwork<Switch, Isl> network) {
-        System.out.println("setNetwork");
-        return;
+        PathComputerMock.network = network;
     }
 }

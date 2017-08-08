@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -86,7 +87,7 @@ public class Topology {
         Topology.pathComputer = pathComputer;
 
         if (network == null) {
-            network = NetworkBuilder.directed().allowsParallelEdges(true).build();
+            network = NetworkBuilder.directed().allowsSelfLoops(false).allowsParallelEdges(true).build();
             pathComputer.setNetwork(network);
 
             logger.info("Load Switch Pool");
@@ -120,6 +121,19 @@ public class Topology {
         }
 
         return TOPOLOGY;
+    }
+
+    /**
+     * Clears the inner network and pools.
+     */
+    static void clear() {
+        islPool.values().forEach(isl -> network.removeEdge(isl));
+        islPool.clear();
+
+        switchPool.values().forEach(node -> network.removeNode(node));
+        switchPool.clear();
+
+        //flowPool.clear();
     }
 
     /**
@@ -167,7 +181,7 @@ public class Topology {
     /**
      * Updates {@link Switch} instance.
      *
-     * @param switchId {@link Switch} instance id
+     * @param switchId  {@link Switch} instance id
      * @param newSwitch {@link Switch} instance
      * @return {@link Switch} instance before update
      * @throws IllegalArgumentException if {@link Switch} instance with specified id does not exist
@@ -175,12 +189,8 @@ public class Topology {
     public Switch updateSwitch(String switchId, Switch newSwitch) throws IllegalArgumentException {
         logger.debug("Update {} switch with {} parameters", switchId, newSwitch);
 
-        Switch oldSwitch = getSwitch(switchId);
-
-        storage.updateSwitch(switchId, newSwitch);
-        network.removeNode(oldSwitch);
-        network.addNode(newSwitch);
-        switchPool.put(switchId, newSwitch);
+        Switch oldSwitch = deleteSwitch(switchId);
+        createSwitch(newSwitch);
 
         return oldSwitch;
     }
@@ -213,8 +223,7 @@ public class Topology {
      */
     public Set<Switch> dumpSwitches() {
         logger.debug("Get all switches");
-
-        return new HashSet<>(switchPool.values());
+        return new HashSet<>(network.nodes());
     }
 
     /**
@@ -294,7 +303,7 @@ public class Topology {
      */
     public Isl createOrUpdateIsl(Isl isl) throws IllegalArgumentException {
         String islId = isl.getId();
-        logger.debug("Create an isl: isl_id={}, isl={}", islId, isl);
+        logger.debug("Create or update {} isl with {} parameters", islId, isl);
 
         EndpointPair<Switch> nodes;
         Isl oldIsl = islPool.get(islId);
@@ -357,8 +366,7 @@ public class Topology {
      */
     public Set<Isl> dumpIsls() {
         logger.debug("Get all isls");
-
-        return new HashSet<>(islPool.values());
+        return new HashSet<>(network.edges());
     }
 
     /**
@@ -403,50 +411,20 @@ public class Topology {
 
         Switch endNode = getSwitch(switchId);
 
-        return network.incidentEdges(endNode);
+        return network.inEdges(endNode);
     }
 
     /**
-     * Gets path between source and destination switch.
+     * Gets path between source and destination switches.
      *
      * @param srcSwitch source {@link Switch} instance
      * @param dstSwitch destination {@link Switch} instance
      * @return {@link Set} of {@link Isl} instances
      */
-    public Set<Isl> getPath(Switch srcSwitch, Switch dstSwitch, int bandwidth) {
+    public LinkedList<Isl> getPath(Switch srcSwitch, Switch dstSwitch, int bandwidth) {
         logger.debug("Get path between source switch {} and destination switch {}", srcSwitch, dstSwitch);
 
         return pathComputer.getPath(srcSwitch, dstSwitch, bandwidth);
-    }
-
-    /**
-     * Gets path between source and destination switch.
-     *
-     * @param srcSwitchId source {@link Switch} instance id
-     * @param dstSwitchId destination {@link Switch} instance id
-     * @return {@link Set} of {@link Isl} instances
-     */
-    public Set<Isl> getPath(String srcSwitchId, String dstSwitchId, int bandwidth) {
-        logger.debug("Get isl path between source switch {} and destination switch {}", srcSwitchId, dstSwitchId);
-
-        return pathComputer.getPath(srcSwitchId, dstSwitchId, bandwidth);
-    }
-
-    /**
-     * Returns intersection between two paths.
-     *
-     * @param firstPath first {@link Set} of {@link Isl} instances
-     * @param secondPath second {@link Set} of {@link Isl} instances
-     * @return intersection {@link Set} of {@link Isl} instances
-     */
-    public Set<Isl> getPathIntersection(Set<Isl> firstPath, Set<Isl> secondPath) {
-        logger.debug("Get path intersection between {} and {}", firstPath, secondPath);
-
-        Set<Isl> intersection = pathComputer.getPathIntersection(firstPath, secondPath);
-
-        logger.debug("Path intersection is {}", intersection);
-
-        return intersection;
     }
 
     /**
@@ -670,4 +648,21 @@ public class Topology {
         pathComputer.updatePathBandwidth(flow.getFlowPath(), -flow.getBandwidth());
     }
     */
+
+    /**
+     * Returns intersection between two paths.
+     *
+     * @param firstPath  first {@link LinkedList} of {@link Isl} instances
+     * @param secondPath second {@link LinkedList} of {@link Isl} instances
+     * @return intersection {@link Set} of {@link Isl} instances
+     */
+    public Set<Isl> getPathIntersection(LinkedList<Isl> firstPath, LinkedList<Isl> secondPath) {
+        logger.debug("Get path intersection between {} and {}", firstPath, secondPath);
+
+        Set<Isl> intersection = pathComputer.getPathIntersection(firstPath, secondPath);
+
+        logger.debug("Path intersection is {}", intersection);
+
+        return intersection;
+    }
 }

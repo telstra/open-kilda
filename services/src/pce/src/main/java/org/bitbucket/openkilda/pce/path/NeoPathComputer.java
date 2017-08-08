@@ -11,6 +11,7 @@ import org.neo4j.driver.v1.Session;
 import org.neo4j.driver.v1.StatementResult;
 
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.Set;
 
 public class NeoPathComputer implements PathComputer {
@@ -19,17 +20,17 @@ public class NeoPathComputer implements PathComputer {
      */
     private static final String PATH_QUERY_FORMATTER_PATTERN =
             "MATCH (a:switch{{name:'%s'}}),(b:switch{{name:'%s'}}), " +
-            "p = shortestPath((a)-[r:isl*..100]->(b)) " +
-            "where ALL(x in nodes(p) WHERE x.state = 'active') " +
-            "AND ALL(y in r WHERE y.available_bandwidth >= %d) " +
-            "RETURN p";
+                    "p = shortestPath((a)-[r:isl*..100]->(b)) " +
+                    "where ALL(x in nodes(p) WHERE x.state = 'active') " +
+                    "AND ALL(y in r WHERE y.available_bandwidth >= %d) " +
+                    "RETURN p";
 
     /**
      * Update Isl available bandwidth query formatter pattern.
      */
     private static final String AVAILABLE_BANDWIDTH_UPDATE_FORMATTER_PATTERN =
             "MATCH (a:switch)-[r:isl {{src_switch: '%s', src_port: '%s'}}]->(b:switch) " +
-            "set r.available_bandwidth = r.available_bandwidth - %d return r";
+                    "set r.available_bandwidth = r.available_bandwidth - %d return r";
     /**
      * Singleton {@link NeoPathComputer} instance.
      */
@@ -44,6 +45,12 @@ public class NeoPathComputer implements PathComputer {
      * {@link Driver} instance.
      */
     private static Driver driver;
+
+    /**
+     * Singleton {@link NeoPathComputer} instance constructor.
+     */
+    private NeoPathComputer() {
+    }
 
     /**
      * Gets instance.
@@ -64,26 +71,13 @@ public class NeoPathComputer implements PathComputer {
     }
 
     /**
-     * Singleton {@link NeoPathComputer} instance constructor.
-     */
-    private NeoPathComputer() {
-    }
-
-    /**
      * {@inheritDoc}
      */
     @Override
-    public Set<Isl> getPath(Switch srcSwitch, Switch dstSwitch, int bandwidth) {
-        return getPath(srcSwitch.getSwitchId(), dstSwitch.getSwitchId(), bandwidth);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public Set<Isl> getPath(String srcSwitchId, String dstSwitchId, int bandwidth) {
-        Set<Isl> path = null;
-        String query = String.format(PATH_QUERY_FORMATTER_PATTERN, srcSwitchId, dstSwitchId, bandwidth);
+    public LinkedList<Isl> getPath(Switch srcSwitch, Switch dstSwitch, int bandwidth) {
+        LinkedList<Isl> path = null;
+        String query = String.format(PATH_QUERY_FORMATTER_PATTERN,
+                srcSwitch.getSwitchId(), dstSwitch.getSwitchId(), bandwidth);
         try (Session session = driver.session()) {
             StatementResult result = session.run(query);
             // result.forEachRemaining();
@@ -97,7 +91,7 @@ public class NeoPathComputer implements PathComputer {
      * {@inheritDoc}
      */
     @Override
-    public Set<Isl> getPathIntersection(Set<Isl> firstPath, Set<Isl> secondPath) {
+    public Set<Isl> getPathIntersection(LinkedList<Isl> firstPath, LinkedList<Isl> secondPath) {
         Set<Isl> intersection = new HashSet<>(firstPath);
         intersection.retainAll(secondPath);
         return intersection;
@@ -107,7 +101,7 @@ public class NeoPathComputer implements PathComputer {
      * {@inheritDoc}
      */
     @Override
-    public void updatePathBandwidth(Set<Isl> path, int bandwidth) {
+    public void updatePathBandwidth(LinkedList<Isl> path, int bandwidth) {
         try (Session session = driver.session()) {
             for (Isl isl : path) {
                 isl.setAvailableBandwidth(isl.getAvailableBandwidth() - bandwidth);
@@ -127,5 +121,10 @@ public class NeoPathComputer implements PathComputer {
     @Override
     public void setNetwork(MutableNetwork<Switch, Isl> network) {
         NeoPathComputer.network = network;
+    }
+
+    @Override
+    public Long getWeight(Isl isl) {
+        return 1L;
     }
 }

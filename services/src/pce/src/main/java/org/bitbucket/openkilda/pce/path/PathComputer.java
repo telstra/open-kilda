@@ -5,6 +5,7 @@ import org.bitbucket.openkilda.pce.model.Switch;
 
 import com.google.common.graph.MutableNetwork;
 
+import java.util.LinkedList;
 import java.util.Set;
 
 /**
@@ -18,33 +19,24 @@ public interface PathComputer {
      * @param dstSwitch destination {@link Switch} instance
      * @return {@link Set} of {@link Isl} instances
      */
-    Set<Isl> getPath(Switch srcSwitch, Switch dstSwitch, int bandwidth);
-
-    /**
-     * Gets path between source and destination switch.
-     *
-     * @param srcSwitchId source {@link Switch} instance id
-     * @param dstSwitchId destination {@link Switch} instance id
-     * @return {@link Set} of {@link Isl} instances
-     */
-    Set<Isl> getPath(String srcSwitchId, String dstSwitchId, int bandwidth);
+    LinkedList<Isl> getPath(Switch srcSwitch, Switch dstSwitch, int bandwidth);
 
     /**
      * Returns intersection between two paths.
      *
-     * @param firstPath first {@link Set} of {@link Isl} instances
-     * @param secondPath second {@link Set} of {@link Isl} instances
+     * @param firstPath  first {@link LinkedList} of {@link Isl} instances
+     * @param secondPath second {@link LinkedList} of {@link Isl} instances
      * @return intersection {@link Set} of {@link Isl} instances
      */
-    Set<Isl> getPathIntersection(Set<Isl> firstPath, Set<Isl> secondPath);
+    Set<Isl> getPathIntersection(LinkedList<Isl> firstPath, LinkedList<Isl> secondPath);
 
     /**
      * Updates isls available bandwidth.
      *
-     * @param path {@link Set} of {@link Isl} instances
+     * @param path      {@link Set} of {@link Isl} instances
      * @param bandwidth bandwidth
      */
-    void updatePathBandwidth(Set<Isl> path, int bandwidth);
+    void updatePathBandwidth(LinkedList<Isl> path, int bandwidth);
 
     /**
      * Sets network topology.
@@ -52,4 +44,12 @@ public interface PathComputer {
      * @param network network topology represented by {@link MutableNetwork} instance
      */
     void setNetwork(MutableNetwork<Switch, Isl> network);
+
+    /**
+     * Gets isl weight.
+     *
+     * @param isl isl instance
+     * @return isl weight
+     */
+    Long getWeight(Isl isl);
 }

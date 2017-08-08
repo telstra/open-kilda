@@ -8,7 +8,6 @@ import org.bitbucket.openkilda.pce.model.Flow;
 
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
 import java.util.Set;
 
 /**
@@ -42,6 +41,15 @@ final class Utils {
         transitVlanPool.deallocate(transitVlan);
     }
 
+    /**
+     * Return timestamp.
+     *
+     * @return String timestamp
+     */
+    public static String getIsoTimestamp() {
+        return ZonedDateTime.now().format(DateTimeFormatter.ISO_INSTANT);
+    }
+
     Set<BaseInstallFlow> getInstallationCommands(Flow flow) {
         return null;
     }
@@ -52,14 +60,5 @@ final class Utils {
 
     Set<BaseFlow> getDeltaCommands(Flow oldFlow, Flow newFlow) {
         return null;
-    }
-
-    /**
-     * Return timestamp.
-     *
-     * @return String timestamp
-     */
-    public static String getIsoTimestamp() {
-        return ZonedDateTime.now().format(DateTimeFormatter.ISO_INSTANT);
     }
 }
