@@ -286,22 +286,3 @@ index 0000000..55fbf98
 +    pad(2);
 +    pad(4);
 +};
-diff --git a/openflow_input/standard-1.3 b/openflow_input/standard-1.3
-index 43490ac..d802b44 100644
---- a/openflow_input/standard-1.3
-+++ b/openflow_input/standard-1.3
-@@ -853,7 +853,13 @@ struct of_action_set_field(align=8, length_includes_align=True) : of_action {
-     of_oxm_t field;
- };
- 
--struct of_action_experimenter(align=8, length_includes_align=True): of_action {
-+struct of_action_experimenter_cut : of_action {
-+    uint16_t type == 65535;
-+    uint16_t len;
-+    pad(4);
-+};
-+
-+struct of_action_experimenter(align=8, length_includes_align=True): of_action_experimenter_cut {
-     uint16_t type == 65535;
-     uint16_t len;
-     uint32_t experimenter == ?;
