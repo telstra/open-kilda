@@ -25,7 +25,6 @@ openflow.lua: $(LOXIGEN_DIR)
 	sed 's/"eth"/"eth_withoutfcs"/' $(GENERATE_WIRESHARK)/$@ > $@
 
 $(OPENFLOWJ_JAR): $(GENERATE_OPENFLOWJ)
-	cd $(GENERATE_OPENFLOWJ) && patch -p1 < ../../../../../../base/base-floodlight/app/openflowj.diff
 	mvn -f $(GENERATE_OPENFLOWJ)/pom.xml clean install
 
 clean-loxigen:

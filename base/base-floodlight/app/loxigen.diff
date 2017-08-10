@@ -286,3 +286,16 @@ index 0000000..55fbf98
 +    pad(2);
 +    pad(4);
 +};
+diff --git a/openflow_input/noviflow b/openflow_input/noviflow
+new file mode 100644
+index 0000000..0adbac9
+--- /dev/null
++++ b/openflow_input/noviflow
+@@ -0,0 +1,7 @@
++#version 4
++
++struct of_action_experimenter_noviflow: of_action_experimenter {
++    uint16_t type == 65535;
++    uint16_t len;
++    uint32_t experimenter == 0xff000002;
++};
