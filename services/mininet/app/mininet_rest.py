@@ -202,14 +202,15 @@ def list_controllers():
 
 def add_switches(switches):
     for switch in switches:
-        add_switch(switch['name'],switch['dpid'])
+        add_switch(switch['name'],switch['dpid'],
+                   switch.get('protocol_version', 'OpenFlow13'))
 
 
-def add_switch(name,dpid):
+def add_switch(name, dpid, proto_version):
     if type(dpid) is unicode:
         dpid = dpid.encode('ascii','ignore')
 
-    switch = OVSKernelSwitch(name, protocols='OpenFlow13', inNamespace=False, dpid=dpid)
+    switch = OVSKernelSwitch(name, protocols=proto_version, inNamespace=False, dpid=dpid)
     switch.start(controllers)
     switches[name] = switch
     logger.debug("==> added switch name={}; dpid={}".format(name,dpid))
