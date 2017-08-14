@@ -8,6 +8,8 @@ import static org.bitbucket.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 import static org.bitbucket.openkilda.messaging.Utils.ETH_TYPE;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_12;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_13;
+import static org.projectfloodlight.openflow.protocol.OFVersion.OF_14;
+import static org.projectfloodlight.openflow.protocol.OFVersion.OF_15;
 
 import org.bitbucket.openkilda.floodlight.kafka.KafkaMessageProducer;
 import org.bitbucket.openkilda.floodlight.switchmanager.web.SwitchManagerWebRoutable;
@@ -17,6 +19,7 @@ import org.bitbucket.openkilda.messaging.error.ErrorMessage;
 import org.bitbucket.openkilda.messaging.error.ErrorType;
 import org.bitbucket.openkilda.messaging.payload.flow.OutputVlanType;
 
+import org.projectfloodlight.openflow.types.VlanVid;
 import com.google.common.util.concurrent.ListenableFuture;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -106,22 +109,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      */
     private static OFInstructionApplyActions buildInstructionApplyActions(IOFSwitch sw, List<OFAction> actionList) {
         return sw.getOFFactory().instructions().applyActions(actionList).createBuilder().build();
-    }
-
-    /**
-     * Create an OFInstructionMeter which sets the meter ID.
-     *
-     * @param sw      switch object
-     * @param meterId the meter ID
-     * @return {@link OFInstructionMeter}
-     */
-    private static OFInstructionMeter buildInstructionMeter(final IOFSwitch sw, final long meterId) {
-        if (meterId == 0L || sw.getOFFactory().getVersion().compareTo(OF_13) < 0
-                || OVS_MANUFACTURER.equals(sw.getSwitchDescription().getManufacturerDescription())) {
-            return null;
-        } else {
-            return sw.getOFFactory().instructions().buildMeter().setMeterId(meterId).build();
-        }
     }
 
     /**
@@ -265,11 +252,13 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         // build meter instruction
         OFInstructionMeter meter = null;
-        if (meterId != 0L) {
-            if (sw.getOFFactory().getVersion().compareTo(OF_13) < 0) {
+        if (meterId != 0L && !OVS_MANUFACTURER.equals(sw.getSwitchDescription().getManufacturerDescription())) {
+            if (sw.getOFFactory().getVersion().compareTo(OF_12) <= 0) {
                 actionList.add(legacyMeterAction(sw, meterId));
-            } else {
-                meter = buildInstructionMeter(sw, meterId);
+            } else if (sw.getOFFactory().getVersion().compareTo(OF_15) == 0) {
+                actionList.add(sw.getOFFactory().actions().buildMeter().setMeterId(meterId).build());
+            } else /* OF_13, OF_14 */ {
+                meter = sw.getOFFactory().instructions().buildMeter().setMeterId(meterId).build();
             }
         }
 
@@ -368,11 +357,13 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         // build meter instruction
         OFInstructionMeter meter = null;
-        if (meterId != 0L) {
-            if (sw.getOFFactory().getVersion().compareTo(OF_13) < 0) {
+        if (meterId != 0L && !OVS_MANUFACTURER.equals(sw.getSwitchDescription().getManufacturerDescription())) {
+            if (sw.getOFFactory().getVersion().compareTo(OF_12) <= 0) {
                 actionList.add(legacyMeterAction(sw, meterId));
-            } else {
-                meter = buildInstructionMeter(sw, meterId);
+            } else if (sw.getOFFactory().getVersion().compareTo(OF_15) == 0) {
+                actionList.add(sw.getOFFactory().actions().buildMeter().setMeterId(meterId).build());
+            } else /* OF_13, OF_14 */ {
+                meter = sw.getOFFactory().instructions().buildMeter().setMeterId(meterId).build();
             }
         }
 
@@ -453,8 +444,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * {@inheritDoc}
      */
     @Override
-    public ImmutablePair<Long, Boolean> installMeter(final DatapathId dpid, final long bandwidth, final long burstSize,
-                                                     final long meterId) {
+    public ImmutablePair<Long, Boolean> installMeter(final DatapathId dpid, final long bandwidth,
+                                                      final long burstSize, final long meterId) {
         if (meterId == 0) {
             logger.info("skip installing meter {} on switch {} width bandwidth {}", meterId, dpid, bandwidth);
             return new ImmutablePair<>(0L, true);
@@ -463,11 +454,20 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         IOFSwitch sw = ofSwitchService.getSwitch(dpid);
 
         if (OVS_MANUFACTURER.equals(sw.getSwitchDescription().getManufacturerDescription())) {
-            logger.info("skip installing meter {} on switch {} width bandwidth {}", meterId, dpid, bandwidth);
+            logger.info("skip installing meter {} on OVS switch {} width bandwidth {}", meterId, dpid, bandwidth);
             return new ImmutablePair<>(0L, true);
         }
 
-        logger.debug("installing meter {} on OVS switch {} width bandwidth {}", meterId, dpid, bandwidth);
+        if (sw.getOFFactory().getVersion().compareTo(OF_12) <= 0) {
+            return installLegacyMeter(sw, dpid, bandwidth, burstSize, meterId);
+        } else {
+            return installMeter(sw, dpid, bandwidth, burstSize, meterId);
+        }
+    }
+
+    private ImmutablePair<Long, Boolean> installMeter(final IOFSwitch sw, final DatapathId dpid, final long bandwidth,
+                                                     final long burstSize, final long meterId) {
+        logger.debug("installing meter {} on switch {} width bandwidth {}", meterId, dpid, bandwidth);
 
         Set<OFMeterFlags> flags = new HashSet<>(Arrays.asList(OFMeterFlags.KBPS, OFMeterFlags.BURST));
         OFFactory ofFactory = sw.getOFFactory();
@@ -494,25 +494,10 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         return new ImmutablePair<>(meterMod.getXid(), response);
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public ImmutablePair<Long, Boolean> installLegacyMeter(final DatapathId dpid, final long bandwidth,
-                                                           final long burstSize, final long meterId) {
-        if (meterId == 0) {
-            logger.info("skip installing meter {} on switch {} width bandwidth {}", meterId, dpid, bandwidth);
-            return new ImmutablePair<>(0L, true);
-        }
-
-        IOFSwitch sw = ofSwitchService.getSwitch(dpid);
-
-        if (OVS_MANUFACTURER.equals(sw.getSwitchDescription().getManufacturerDescription())) {
-            logger.info("skip installing meter {} on switch {} width bandwidth {}", meterId, dpid, bandwidth);
-            return new ImmutablePair<>(0L, true);
-        }
-
-        logger.debug("installing meter {} on OVS switch {} width bandwidth {}", meterId, dpid, bandwidth);
+    private ImmutablePair<Long, Boolean> installLegacyMeter(final IOFSwitch sw, final DatapathId dpid,
+                                                            final long bandwidth, final long burstSize,
+                                                            final long meterId) {
+        logger.debug("installing legacy meter {} on OVS switch {} width bandwidth {}", meterId, dpid, bandwidth);
 
         Set<OFLegacyMeterFlags> flags = new HashSet<>(Arrays.asList(OFLegacyMeterFlags.KBPS, OFLegacyMeterFlags.BURST));
         OFFactory ofFactory = sw.getOFFactory();
@@ -567,6 +552,14 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             return new ImmutablePair<>(0L, true);
         }
 
+        if (sw.getOFFactory().getVersion().compareTo(OF_12) <= 0) {
+            return deleteLegacyMeter(sw, dpid, meterId);
+        } else {
+            return deleteMeter(sw, dpid, meterId);
+        }
+    }
+
+    public ImmutablePair<Long, Boolean> deleteMeter(IOFSwitch sw, final DatapathId dpid, final long meterId) {
         logger.debug("deleting meter {} from switch {}", meterId, dpid);
 
         OFFactory ofFactory = sw.getOFFactory();
@@ -587,24 +580,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         return new ImmutablePair<>(meterDelete.getXid(), response);
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public ImmutablePair<Long, Boolean> deleteLegacyMeter(final DatapathId dpid, final long meterId) {
-        if (meterId == 0) {
-            logger.info("skip deleting meter {} from switch {}", meterId, dpid);
-            return new ImmutablePair<>(0L, true);
-        }
-
-        IOFSwitch sw = ofSwitchService.getSwitch(dpid);
-
-        if (OVS_MANUFACTURER.equals(sw.getSwitchDescription().getManufacturerDescription())) {
-            logger.info("skip deleting meter {} from OVS switch {}", meterId, dpid);
-            return new ImmutablePair<>(0L, true);
-        }
-
-        logger.debug("deleting meter {} from switch {}", meterId, dpid);
+    public ImmutablePair<Long, Boolean> deleteLegacyMeter(final IOFSwitch sw, final DatapathId dpid, final long meterId) {
+        logger.debug("deleting legacy meter {} from switch {}", meterId, dpid);
 
         OFFactory ofFactory = sw.getOFFactory();
 
@@ -748,10 +725,19 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * @return {@link OFAction}
      */
     private OFAction actionReplaceVlan(final IOFSwitch sw, final int newVlan) {
-        OFOxms oxms = sw.getOFFactory().oxms();
-        OFActions actions = sw.getOFFactory().actions();
-        return actions.buildSetField()
-                .setField(oxms.buildVlanVid().setValue(OFVlanVidMatch.ofVlan(newVlan)).build()).build();
+        OFFactory factory = sw.getOFFactory();
+        OFOxms oxms = factory.oxms();
+        OFActions actions = factory.actions();
+
+        if (OF_12.compareTo(factory.getVersion()) == 0) {
+            return actions.buildSetField().setField(oxms.buildVlanVid()
+                    .setValue(OFVlanVidMatch.ofRawVid((short) newVlan))
+                    .build()).build();
+        } else {
+            return actions.buildSetField().setField(oxms.buildVlanVid()
+                    .setValue(OFVlanVidMatch.ofVlan(newVlan))
+                    .build()).build();
+        }
     }
 
     /**
@@ -918,7 +904,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * SLAVE mode
      */
     private boolean pushFlow(final String flowId, final DatapathId dpid, final OFFlowMod flowMod) {
-        logger.info("installing flow: {}", flowId);
+        logger.info("installing {} flow: {}", flowId, flowMod);
         return ofSwitchService.getSwitch(dpid).write(flowMod);
     }
 }

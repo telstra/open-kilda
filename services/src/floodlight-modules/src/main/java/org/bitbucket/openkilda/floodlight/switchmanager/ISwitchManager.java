@@ -121,20 +121,6 @@ public interface ISwitchManager extends IFloodlightService {
                                               final long meterId);
 
     /**
-     * Installs a meter on ingress switch OF_12.
-     * TODO: describe params meaning in accordance with OF
-     *
-     * @param dpid      datapath ID of the switch
-     * @param bandwidth the bandwidth limit value
-     * @param burstSize the size of the burst
-     * @param meterId   the meter ID
-     * @return {@link ImmutablePair}<Long, Boolean>, where key is OF transaction id and value is true if the command was
-     * accepted to be sent to switch, false otherwise - switch is disconnected or in SLAVE mode
-     */
-    ImmutablePair<Long, Boolean> installLegacyMeter(final DatapathId dpid, final long bandwidth, final long burstSize,
-                                                    final long meterId);
-
-    /**
      * Deletes the flow from the switch
      *
      * @param dpid   datapath ID of the switch
@@ -153,14 +139,4 @@ public interface ISwitchManager extends IFloodlightService {
      * accepted to be sent to switch, false otherwise - switch is disconnected or in SLAVE mode
      */
     ImmutablePair<Long, Boolean> deleteMeter(final DatapathId dpid, final long meterId);
-
-    /**
-     * Deletes the meter from the switch OF_12.
-     *
-     * @param dpid    datapath ID of the switch
-     * @param meterId meter identifier
-     * @return {@link ImmutablePair}<Long, Boolean>, where key is OF transaction id and value is true if the command was
-     * accepted to be sent to switch, false otherwise - switch is disconnected or in SLAVE mode
-     */
-    ImmutablePair<Long, Boolean> deleteLegacyMeter(final DatapathId dpid, final long meterId);
 }
