@@ -2,7 +2,7 @@ package org.bitbucket.openkilda.pce;
 
 import org.bitbucket.openkilda.pce.model.Isl;
 import org.bitbucket.openkilda.pce.model.Switch;
-import org.bitbucket.openkilda.pce.path.PathComputer;
+import org.bitbucket.openkilda.pce.provider.PathComputer;
 
 import com.google.common.graph.MutableNetwork;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -81,19 +81,10 @@ public class PathComputerMock implements PathComputer {
     }
 
     @Override
-    public Set<Isl> getPathIntersection(LinkedList<Isl> firstPath, LinkedList<Isl> secondPath) {
-        System.out.println("getPathInterception");
-        Set<Isl> intersection = new HashSet<>(firstPath);
-        intersection.retainAll(secondPath);
-        return intersection;
-    }
-
-    @Override
     public void updatePathBandwidth(LinkedList<Isl> path, int bandwidth) {
         System.out.println("updatePathBandwidth");
         path.forEach(isl -> isl.setAvailableBandwidth(isl.getAvailableBandwidth() - bandwidth));
     }
-
 
     @Override
     public void setNetwork(MutableNetwork<Switch, Isl> network) {

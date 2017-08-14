@@ -58,6 +58,12 @@ public class Switch implements Serializable {
     private String controller;
 
     /**
+     * Default constructor.
+     */
+    public Switch() {
+    }
+
+    /**
      * Instance constructor.
      *
      * @param switchId    switch id

@@ -45,10 +45,7 @@ public class ResourcePool {
      * @return allocated resource id
      */
     public Integer allocate(Integer id) {
-        if (!resources.add(id)) {
-            throw new ArrayIndexOutOfBoundsException("Could not allocate resource: pool is full");
-        }
-        return id;
+        return resources.add(id) ? id : null;
     }
 
     /**
@@ -57,8 +54,8 @@ public class ResourcePool {
      * @param resourceId resource id
      * @return true if specified resource id was previously allocated
      */
-    public boolean deallocate(final Integer resourceId) {
-        return resources.remove(resourceId);
+    public Integer deallocate(final Integer resourceId) {
+        return resources.remove(resourceId) ? resourceId : null;
     }
 
     /**

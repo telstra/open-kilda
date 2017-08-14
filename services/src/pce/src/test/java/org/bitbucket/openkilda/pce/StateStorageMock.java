@@ -2,15 +2,27 @@ package org.bitbucket.openkilda.pce;
 
 import org.bitbucket.openkilda.pce.model.Flow;
 import org.bitbucket.openkilda.pce.model.Isl;
+import org.bitbucket.openkilda.pce.model.Rule;
 import org.bitbucket.openkilda.pce.model.Switch;
-import org.bitbucket.openkilda.pce.storage.Storage;
+import org.bitbucket.openkilda.pce.provider.FlowStorage;
+import org.bitbucket.openkilda.pce.provider.NetworkStorage;
+
+import org.apache.commons.lang3.tuple.ImmutablePair;
 
 import java.util.Collections;
-import java.util.List;
+import java.util.Set;
 
-public class StorageMock implements Storage {
-    int switches = 0;
-    int isls = 0;
+public class StateStorageMock implements NetworkStorage, FlowStorage {
+    private int switches = 0;
+    private int isls = 0;
+
+    public int getSwitchesCount() {
+        return switches;
+    }
+
+    public int getIslsCount() {
+        return isls;
+    }
 
     @Override
     public void deleteSwitch(String switchId) {
@@ -36,9 +48,9 @@ public class StorageMock implements Storage {
     }
 
     @Override
-    public List<Switch> dumpSwitches() {
+    public Set<Switch> dumpSwitches() {
         System.out.println("dumpSwitches");
-        return Collections.emptyList();
+        return Collections.emptySet();
     }
 
     @Override
@@ -65,35 +77,34 @@ public class StorageMock implements Storage {
     }
 
     @Override
-    public List<Isl> dumpIsls() {
+    public Set<Isl> dumpIsls() {
         System.out.println("dumpIsls");
-        return Collections.emptyList();
+        return Collections.emptySet();
     }
 
     @Override
-    public Flow getFlow(String flowId) {
-        System.out.println("getFlow");
+    public ImmutablePair<Flow, Flow> getFlow(String flowId) {
         return null;
     }
 
     @Override
-    public void createFlow(Flow flow) {
-        System.out.println("createFlow");
+    public void createFlow(ImmutablePair<Flow, Flow> flow) {
+
     }
 
     @Override
     public void deleteFlow(String flowId) {
-        System.out.println("deleteFlow");
+
     }
 
     @Override
-    public void updateFlow(String flowId, Flow flow) {
-        System.out.println("updateFlow");
+    public void updateFlow(String flowId, ImmutablePair<Flow, Flow> flow) {
+
     }
 
     @Override
-    public List<Flow> dumpFlows() {
+    public Set<ImmutablePair<Flow, Flow>> dumpFlows() {
         System.out.println("dumpFlows");
-        return Collections.emptyList();
+        return Collections.emptySet();
     }
 }

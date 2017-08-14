@@ -65,7 +65,7 @@ public class MeterPool {
         Integer meterId = null;
 
         for (Integer meter : flowPool) {
-            if (switchPool.deallocate(meter)) {
+            if (switchPool.deallocate(meter) != null) {
                 meterId = meter;
             }
         }

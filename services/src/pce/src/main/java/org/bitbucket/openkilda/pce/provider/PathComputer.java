@@ -1,4 +1,4 @@
-package org.bitbucket.openkilda.pce.path;
+package org.bitbucket.openkilda.pce.provider;
 
 import org.bitbucket.openkilda.pce.model.Isl;
 import org.bitbucket.openkilda.pce.model.Switch;
@@ -17,24 +17,16 @@ public interface PathComputer {
      *
      * @param srcSwitch source {@link Switch} instance
      * @param dstSwitch destination {@link Switch} instance
+     * @param bandwidth available bandwidth
      * @return {@link Set} of {@link Isl} instances
      */
     LinkedList<Isl> getPath(Switch srcSwitch, Switch dstSwitch, int bandwidth);
 
     /**
-     * Returns intersection between two paths.
-     *
-     * @param firstPath  first {@link LinkedList} of {@link Isl} instances
-     * @param secondPath second {@link LinkedList} of {@link Isl} instances
-     * @return intersection {@link Set} of {@link Isl} instances
-     */
-    Set<Isl> getPathIntersection(LinkedList<Isl> firstPath, LinkedList<Isl> secondPath);
-
-    /**
      * Updates isls available bandwidth.
      *
      * @param path      {@link Set} of {@link Isl} instances
-     * @param bandwidth bandwidth
+     * @param bandwidth available bandwidth
      */
     void updatePathBandwidth(LinkedList<Isl> path, int bandwidth);
 

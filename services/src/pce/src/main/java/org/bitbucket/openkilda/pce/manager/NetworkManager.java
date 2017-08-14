@@ -1,11 +1,9 @@
-package org.bitbucket.openkilda.pce;
+package org.bitbucket.openkilda.pce.manager;
 
 import org.bitbucket.openkilda.messaging.info.event.SwitchState;
-import org.bitbucket.openkilda.pce.model.Flow;
 import org.bitbucket.openkilda.pce.model.Isl;
 import org.bitbucket.openkilda.pce.model.Switch;
-import org.bitbucket.openkilda.pce.path.PathComputer;
-import org.bitbucket.openkilda.pce.storage.Storage;
+import org.bitbucket.openkilda.pce.provider.NetworkStorage;
 
 import com.google.common.graph.EndpointPair;
 import com.google.common.graph.MutableNetwork;
@@ -14,126 +12,92 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
- * Topology class contains basic operations on network topology.
+ * NetworkManager class contains basic operations on network topology.
  */
-public class Topology {
+public class NetworkManager {
     /**
      * Logger.
      */
-    private static final Logger logger = LoggerFactory.getLogger(Topology.class);
-
-    /**
-     * Singleton {@link Topology} instance.
-     */
-    private static final Topology TOPOLOGY = new Topology();
-
-    /**
-     * Flows in process of reconfiguration.
-     */
-    private static final Map<String, Flow> flowsInReconfiguration = new ConcurrentHashMap<>();
+    private static final Logger logger = LoggerFactory.getLogger(NetworkManager.class);
 
     /**
      * Network cache.
      */
-    private static MutableNetwork<Switch, Isl> network;
+    private MutableNetwork<Switch, Isl> network;
 
     /**
      * Switches pool.
      */
-    private static Map<String, Switch> switchPool;
-
-    /**
-     * Flow pool.
-     */
-    private static Map<String, Flow> flowPool;
+    private Map<String, Switch> switchPool;
 
     /**
      * Isl pool.
      */
-    private static Map<String, Isl> islPool;
+    private Map<String, Isl> islPool;
 
     /**
-     * {@link Storage} instance.
+     * {@link NetworkStorage} instance.
      */
-    private static Storage storage;
+    private NetworkStorage networkStorage;
+
 
     /**
-     * {@link PathComputer} instance.
-     */
-    private static PathComputer pathComputer;
-
-    /**
-     * Singleton {@link Topology} instance constructor.
-     */
-    private Topology() {
-    }
-
-    /**
-     * Returns topology instance with lazy initialization.
+     * Instance constructor.
      *
-     * @param storage {@link Storage} instance
-     * @return singleton {@link Topology} instance
+     * @param networkStorage {@link NetworkStorage} instance
      */
-    public static Topology getTopologyManager(Storage storage, PathComputer pathComputer) {
-        Topology.storage = storage;
-        Topology.pathComputer = pathComputer;
+    public NetworkManager(NetworkStorage networkStorage) {
+        this.networkStorage = networkStorage;
 
         if (network == null) {
-            network = NetworkBuilder.directed().allowsSelfLoops(false).allowsParallelEdges(true).build();
-            pathComputer.setNetwork(network);
+            network = NetworkBuilder.directed()
+                    .allowsSelfLoops(false)
+                    .allowsParallelEdges(true)
+                    .build();
 
             logger.info("Load Switch Pool");
-            List<Switch> switchList = storage.dumpSwitches();
+            Set<Switch> switchList = networkStorage.dumpSwitches();
 
             logger.debug("Switch List: {}", switchList);
             switchPool = switchList.stream()
-                    .collect(Collectors.toMap(Switch::getSwitchId, item -> item));
+                    .collect(Collectors.toMap(Switch::getSwitchId, sw -> sw));
             switchList.forEach(network::addNode);
 
             logger.info("Load Isl Pool");
-            List<Isl> islList = storage.dumpIsls();
+            Set<Isl> islList = networkStorage.dumpIsls();
 
             logger.debug("Isl List: {}", islList);
             islPool = islList.stream()
-                    .collect(Collectors.toMap(Isl::getId, item -> item));
+                    .collect(Collectors.toMap(Isl::getId, isl -> isl));
             islList.forEach(isl -> network.addEdge(
                     switchPool.get(isl.getSourceSwitch()),
                     switchPool.get(isl.getDestinationSwitch()),
                     isl));
-
-            /*
-            logger.info("Load Flow Pool");
-            List<Flow> flowList = storage.dumpFlows();
-
-            logger.debug("Flow List: {}", flowList);
-            flowPool = flowList.stream()
-                    .collect(Collectors.toMap(Flow::getFlowId, item -> item));
-            flowList.forEach(Topology::loadResources);
-            */
         }
-
-        return TOPOLOGY;
     }
 
     /**
      * Clears the inner network and pools.
      */
-    static void clear() {
+    public void clear() {
         islPool.values().forEach(isl -> network.removeEdge(isl));
         islPool.clear();
-
         switchPool.values().forEach(node -> network.removeNode(node));
         switchPool.clear();
+    }
 
-        //flowPool.clear();
+    /**
+     * Gets internal network.
+     *
+     * @return internal network
+     */
+    public MutableNetwork<Switch, Isl> getNetwork() {
+        return network;
     }
 
     /**
@@ -166,14 +130,15 @@ public class Topology {
 
         logger.debug("Create {} switch with {} parameters", switchId, newSwitch);
 
-        Switch node = switchPool.get(switchId);
-        if (node != null) {
+        Switch oldSwitch = switchPool.get(switchId);
+        if (oldSwitch != null) {
             throw new IllegalArgumentException(String.format("Switch %s already exists", switchId));
         }
 
-        storage.createSwitch(newSwitch);
+        networkStorage.createSwitch(newSwitch);
         network.addNode(newSwitch);
         switchPool.put(switchId, newSwitch);
+
 
         return newSwitch;
     }
@@ -210,7 +175,7 @@ public class Topology {
             throw new IllegalArgumentException(String.format("Switch %s not found", switchId));
         }
 
-        storage.deleteSwitch(switchId);
+        networkStorage.deleteSwitch(switchId);
         network.removeNode(node);
 
         return node;
@@ -308,10 +273,10 @@ public class Topology {
         EndpointPair<Switch> nodes;
         Isl oldIsl = islPool.get(islId);
         if (oldIsl == null) {
-            storage.createIsl(isl);
+            networkStorage.createIsl(isl);
             nodes = getIslSwitches(isl);
         } else {
-            storage.updateIsl(islId, isl);
+            networkStorage.updateIsl(islId, isl);
             nodes = network.incidentNodes(oldIsl);
             network.removeEdge(oldIsl);
         }
@@ -335,7 +300,7 @@ public class Topology {
             throw new IllegalArgumentException(String.format("Isl %s not found", islId));
         }
 
-        storage.deleteIsl(islId);
+        networkStorage.deleteIsl(islId);
         network.removeEdge(isl);
 
         return isl;
@@ -370,7 +335,7 @@ public class Topology {
     }
 
     /**
-     * Gets all {@link Isl} instances which start or end node is specified {@link Switch} instance
+     * Gets all {@link Isl} instances which start or end node is specified {@link Switch} instance.
      *
      * @param switchId {@link Switch} instance id
      * @return {@link Set} of {@link Isl} instances
@@ -385,7 +350,7 @@ public class Topology {
     }
 
     /**
-     * Gets all {@link Isl} instances which start node is specified {@link Switch} instance
+     * Gets all {@link Isl} instances which start node is specified {@link Switch} instance.
      *
      * @param switchId {@link Switch} instance id
      * @return {@link Set} of {@link Isl} instances
@@ -400,7 +365,7 @@ public class Topology {
     }
 
     /**
-     * Gets all {@link Isl} instances which end node is specified {@link Switch} instance
+     * Gets all {@link Isl} instances which end node is specified {@link Switch} instance.
      *
      * @param switchId {@link Switch} instance id
      * @return {@link Set} of {@link Isl} instances
@@ -412,257 +377,5 @@ public class Topology {
         Switch endNode = getSwitch(switchId);
 
         return network.inEdges(endNode);
-    }
-
-    /**
-     * Gets path between source and destination switches.
-     *
-     * @param srcSwitch source {@link Switch} instance
-     * @param dstSwitch destination {@link Switch} instance
-     * @return {@link Set} of {@link Isl} instances
-     */
-    public LinkedList<Isl> getPath(Switch srcSwitch, Switch dstSwitch, int bandwidth) {
-        logger.debug("Get path between source switch {} and destination switch {}", srcSwitch, dstSwitch);
-
-        return pathComputer.getPath(srcSwitch, dstSwitch, bandwidth);
-    }
-
-    /**
-     * Gets {@link Switch} instance.
-     *
-     * @param flowId {@link Flow} instance id
-     * @return {@link Flow} instance with specified {@link Flow} instance id
-     * @throws IllegalArgumentException if {@link Flow} instance with specified id does not exist
-     */
-    /*
-    public Flow getFlow(String flowId) {
-        logger.debug("Get {} flow", flowId);
-
-        Flow flow = flowPool.get(flowId);
-        if (flow == null) {
-            throw new IllegalArgumentException(String.format("Flow %s not found", flowId));
-        }
-
-        return flow;
-    }
-    */
-
-    /**
-     * Creates {@link Flow} instance.
-     *
-     * @param flow {@link Flow} instance
-     * @param path {@link Set} of {@link Isl} instances, computed if null
-     * @return created {@link Flow} instance
-     */
-    /*
-    public Flow createFlow(Flow flow, Set<Isl> path) {
-        String flowId = flow.getFlowId();
-        logger.debug("Create {} flow with {} parameters", flowId, flow);
-
-        Flow oldFlow = flowPool.get(flowId);
-        if (oldFlow != null) {
-            throw new IllegalArgumentException(String.format("Flow %s already exists", flowId));
-        }
-
-        if (path == null) {
-            path = getPath(flow.getSourceSwitch(), flow.getDestinationSwitch(), flow.getBandwidth());
-        }
-        allocateResources(flow, path);
-
-        storage.createFlow(flow);
-        flowPool.put(flowId, flow);
-
-        return flow;
-    }
-    */
-
-    /**
-     * Creates {@link Flow} instance.
-     *
-     * @param flow {@link Flow} instance
-     * @return created {@link Flow} instance
-     */
-    /*
-    public Flow createFlow(Flow flow) {
-        return createFlow(flow, null);
-    }
-    */
-
-    /**
-     * Deletes {@link Flow} instance.
-     *
-     * @param flowId {@link Flow} instance id
-     * @return deleted {@link Flow} instance
-     */
-    /*
-    public Flow deleteFlow(String flowId) {
-        logger.debug("Delete {} flow", flowId);
-
-        Flow flow = flowPool.remove(flowId);
-        if (flow == null) {
-            throw new IllegalArgumentException(String.format("Flow %s not found", flowId));
-        }
-
-        deallocateResources(flow);
-
-        storage.deleteFlow(flowId);
-
-        return flow;
-    }
-    */
-
-    /**
-     * Updates {@link Flow} instance.
-     *
-     * @param flowId {@link Flow} instance id
-     * @param flow {@link Flow} instance
-     * @param path {@link Set} of {@link Isl} instances, computed if null
-     * @return updated {@link Flow} instance
-     */
-    /*
-    public Flow updateFlow(String flowId, Flow flow, Set<Isl> path) {
-        logger.debug("Update {} flow with {} parameters", flowId, flow);
-
-        Flow oldFlow = getFlow(flowId);
-
-        deallocateResources(oldFlow);
-        if (path == null) {
-            path = getPath(flow.getSourceSwitch(), flow.getDestinationSwitch(), flow.getBandwidth());
-        }
-        allocateResources(flow, path);
-
-        storage.updateFlow(flowId, flow);
-        flowPool.put(flowId, flow);
-
-        return oldFlow;
-    }
-    */
-
-    /**
-     * Updates {@link Flow} instance.
-     *
-     * @param flowId {@link Flow} instance id
-     * @param flow {@link Flow} instance
-     * @return updated {@link Flow} instance
-     */
-    /*
-    public Flow updateFlow(String flowId, Flow flow) {
-        return updateFlow(flowId, flow, null);
-    }
-    */
-
-    /**
-     * Gets all {@link Flow} instances.
-     *
-     * @return {@link Set} of {@link Flow} instances
-     */
-    /*
-    public Set<Flow> dumpFlows() {
-        logger.debug("Get all flows");
-
-        return new HashSet<>(flowPool.values());
-    }
-    */
-
-    /**
-     * Gets all {@link Flow} instances witch contain specified {@link Switch} instance id in the path.
-     *
-     * @param switchId {@link Switch} instance id
-     * @return {@link Set} of {@link Flow} instances
-     */
-    /*
-    public Set<Flow> getAffectedBySwitchFlows(String switchId) {
-        logger.debug("Get all flows with switch {} in the path", switchId);
-
-        return flowPool.values().stream()
-                .filter(flow -> flow.containsSwitchInPath(switchId))
-                .collect(Collectors.toSet());
-
-    }
-    */
-
-    /**
-     * Gets all {@link Flow} instances witch contain specified {@link Isl} instance id in the path.
-     *
-     * @param islId {@link Isl} instance id
-     * @return {@link Set} of {@link Flow} instances
-     */
-    /*
-    public Set<Flow> getAffectedByIslFlows(String islId) {
-        logger.debug("Get all flows with isl {} in the path", islId);
-
-        return flowPool.values().stream()
-                .filter(flow -> flow.containsIslInPath(islId))
-                .collect(Collectors.toSet());
-    }
-    */
-
-    /*
-    public void rerouteFlow(String flowId) {
-        return;
-    }
-    */
-
-    /**
-     * Allocates transit vlan ids and cookie.
-     *
-     * @param flow flow {@link Flow} instance
-     */
-    /*
-    private static void loadResources(Flow flow) {
-        Utils.allocateTransitVlan(flow.getForwardVlan());
-        Utils.allocateTransitVlan(flow.getReverseVlan());
-        Utils.allocateCookie(flow.getCookie());
-    }
-    */
-
-    /**
-     * Allocates transit vlan ids and cookie and updates available bandwidth on specified path.
-     *
-     * @param flow {@link Flow} instance
-     */
-    /*
-    private void allocateResources(Flow flow, Set<Isl> path) {
-        flow.setLastUpdated(Utils.getIsoTimestamp());
-        flow.setFlowPath(path);
-        flow.setCookie(Utils.allocateCookie());
-        flow.setForwardVlan(Utils.allocateTransitVlan());
-        flow.setReverseVlan(Utils.allocateTransitVlan());
-        flow.setFlowState(FlowState.ALLOCATED);
-
-        pathComputer.updatePathBandwidth(path, flow.getBandwidth());
-    }
-    */
-
-    /**
-     * Deallocates transit vlan ids and cookie and updates available bandwidth on flow path.
-     *
-     * @param flow {@link Flow} instance
-     */
-    /*
-    private void deallocateResources(Flow flow) {
-        Utils.deallocateTransitVlan(flow.getForwardVlan());
-        Utils.deallocateTransitVlan(flow.getReverseVlan());
-        Utils.deallocateCookie(flow.getCookie());
-
-        pathComputer.updatePathBandwidth(flow.getFlowPath(), -flow.getBandwidth());
-    }
-    */
-
-    /**
-     * Returns intersection between two paths.
-     *
-     * @param firstPath  first {@link LinkedList} of {@link Isl} instances
-     * @param secondPath second {@link LinkedList} of {@link Isl} instances
-     * @return intersection {@link Set} of {@link Isl} instances
-     */
-    public Set<Isl> getPathIntersection(LinkedList<Isl> firstPath, LinkedList<Isl> secondPath) {
-        logger.debug("Get path intersection between {} and {}", firstPath, secondPath);
-
-        Set<Isl> intersection = pathComputer.getPathIntersection(firstPath, secondPath);
-
-        logger.debug("Path intersection is {}", intersection);
-
-        return intersection;
     }
 }

@@ -1,15 +1,14 @@
-package org.bitbucket.openkilda.pce.storage;
+package org.bitbucket.openkilda.pce.provider;
 
-import org.bitbucket.openkilda.pce.model.Flow;
 import org.bitbucket.openkilda.pce.model.Isl;
 import org.bitbucket.openkilda.pce.model.Switch;
 
-import java.util.List;
+import java.util.Set;
 
 /**
- * Storage represents storage interface for topology state storage.
+ * Storage represents storage interface for NetworkManager state.
  */
-public interface Storage {
+public interface NetworkStorage {
     /**
      * Returns switch.
      *
@@ -43,9 +42,9 @@ public interface Storage {
     /**
      * Gets all switches.
      *
-     * @return list of switches
+     * @return all switches
      */
-    List<Switch> dumpSwitches();
+    Set<Switch> dumpSwitches();
 
     /**
      * Gets isl.
@@ -80,44 +79,7 @@ public interface Storage {
     /**
      * Gets all isls.
      *
-     * @return list of isls
+     * @return all isls
      */
-    List<Isl> dumpIsls();
-
-    /**
-     * Gets flow.
-     *
-     * @param flowId flow id
-     * @return flow
-     */
-    Flow getFlow(String flowId);
-
-    /**
-     * Creates flow.
-     *
-     * @param flow flow
-     */
-    void createFlow(Flow flow);
-
-    /**
-     * Deletes flow.
-     *
-     * @param flowId flow id
-     */
-    void deleteFlow(String flowId);
-
-    /**
-     * Updates flow.
-     *
-     * @param flowId flow id
-     * @param flow   flow
-     */
-    void updateFlow(String flowId, Flow flow);
-
-    /**
-     * Gets all flows.
-     *
-     * @return list of flows
-     */
-    List<Flow> dumpFlows();
+    Set<Isl> dumpIsls();
 }
