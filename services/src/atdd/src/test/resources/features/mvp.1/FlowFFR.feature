@@ -8,7 +8,7 @@ Feature: Flow failover, failure and recovery
 
        Given a clean controller
        And a clean flow topology
-       And a multi-path topology
+       And basic multi-path topology
        And a flow is successfully created
        And traffic flows through this flow
 
