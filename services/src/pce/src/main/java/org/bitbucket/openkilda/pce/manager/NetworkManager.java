@@ -5,6 +5,7 @@ import org.bitbucket.openkilda.pce.model.Isl;
 import org.bitbucket.openkilda.pce.model.Switch;
 import org.bitbucket.openkilda.pce.provider.NetworkStorage;
 
+import com.google.common.base.MoreObjects;
 import com.google.common.graph.EndpointPair;
 import com.google.common.graph.MutableNetwork;
 import com.google.common.graph.NetworkBuilder;
@@ -14,6 +15,8 @@ import org.slf4j.LoggerFactory;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -28,23 +31,36 @@ public class NetworkManager {
     /**
      * Network cache.
      */
-    private MutableNetwork<Switch, Isl> network;
+    private final MutableNetwork<Switch, Isl> network = NetworkBuilder
+            .directed()
+            .allowsSelfLoops(false)
+            .allowsParallelEdges(true)
+            .build();
 
     /**
      * Switches pool.
      */
-    private Map<String, Switch> switchPool;
+    private final Map<String, Switch> switchPool = new ConcurrentHashMap<>();
 
     /**
      * Isl pool.
      */
-    private Map<String, Isl> islPool;
+    private final Map<String, Isl> islPool = new ConcurrentHashMap<>();
 
     /**
      * {@link NetworkStorage} instance.
      */
-    private NetworkStorage networkStorage;
+    private final NetworkStorage networkStorage;
 
+    /**
+     * Switch change event callback.
+     */
+    private Function<SwitchChangeEvent, Void> onSwitchChange;
+
+    /**
+     * Isl change event callback.
+     */
+    private Function<IslChangeEvent, Void> onIslChange;
 
     /**
      * Instance constructor.
@@ -54,40 +70,49 @@ public class NetworkManager {
     public NetworkManager(NetworkStorage networkStorage) {
         this.networkStorage = networkStorage;
 
-        if (network == null) {
-            network = NetworkBuilder.directed()
-                    .allowsSelfLoops(false)
-                    .allowsParallelEdges(true)
-                    .build();
+        logger.info("Load Switch Pool");
+        Set<Switch> switchList = networkStorage.dumpSwitches();
 
-            logger.info("Load Switch Pool");
-            Set<Switch> switchList = networkStorage.dumpSwitches();
+        logger.debug("Switch Set: {}", switchList);
+        switchList.forEach(this::createSwitchCache);
 
-            logger.debug("Switch List: {}", switchList);
-            switchPool = switchList.stream()
-                    .collect(Collectors.toMap(Switch::getSwitchId, sw -> sw));
-            switchList.forEach(network::addNode);
+        logger.info("Load Isl Pool");
+        Set<Isl> islList = networkStorage.dumpIsls();
 
-            logger.info("Load Isl Pool");
-            Set<Isl> islList = networkStorage.dumpIsls();
+        logger.debug("Isl Set: {}", islList);
+        islList.forEach(isl -> createIslCache(isl.getId(), isl));
+    }
 
-            logger.debug("Isl List: {}", islList);
-            islPool = islList.stream()
-                    .collect(Collectors.toMap(Isl::getId, isl -> isl));
-            islList.forEach(isl -> network.addEdge(
-                    switchPool.get(isl.getSourceSwitch()),
-                    switchPool.get(isl.getDestinationSwitch()),
-                    isl));
-        }
+    /**
+     * Sets switch change event callback.
+     *
+     * @param onSwitchChange switch change event callback
+     * @return this instance
+     */
+    public NetworkManager withSwitchChange(Function<SwitchChangeEvent, Void> onSwitchChange) {
+        this.onSwitchChange = onSwitchChange;
+        return this;
+    }
+
+    /**
+     * Sets isl change event callback.
+     *
+     * @param onIslChange isl change event callback
+     * @return this instance
+     */
+    public NetworkManager withIslChange(Function<IslChangeEvent, Void> onIslChange) {
+        this.onIslChange = onIslChange;
+        return this;
     }
 
     /**
      * Clears the inner network and pools.
      */
     public void clear() {
-        islPool.values().forEach(isl -> network.removeEdge(isl));
+        islPool.values().forEach(network::removeEdge);
         islPool.clear();
-        switchPool.values().forEach(node -> network.removeNode(node));
+
+        switchPool.values().forEach(network::removeNode);
         switchPool.clear();
     }
 
@@ -126,6 +151,23 @@ public class NetworkManager {
      * @throws IllegalArgumentException if {@link Switch} instance with specified id already exists
      */
     public Switch createSwitch(Switch newSwitch) throws IllegalArgumentException {
+        Switch node = createSwitchCache(newSwitch);
+
+        networkStorage.createSwitch(newSwitch);
+
+        switchChanged(new SwitchChangeEvent(newSwitch, null, null));
+
+        return node;
+    }
+
+    /**
+     * Creates {@link Switch} instance.
+     *
+     * @param newSwitch {@link Switch} instance
+     * @return created {@link Switch} instance
+     * @throws IllegalArgumentException if {@link Switch} instance with specified id already exists
+     */
+    public Switch createSwitchCache(Switch newSwitch) throws IllegalArgumentException {
         String switchId = newSwitch.getSwitchId();
 
         logger.debug("Create {} switch with {} parameters", switchId, newSwitch);
@@ -135,10 +177,8 @@ public class NetworkManager {
             throw new IllegalArgumentException(String.format("Switch %s already exists", switchId));
         }
 
-        networkStorage.createSwitch(newSwitch);
         network.addNode(newSwitch);
         switchPool.put(switchId, newSwitch);
-
 
         return newSwitch;
     }
@@ -152,12 +192,36 @@ public class NetworkManager {
      * @throws IllegalArgumentException if {@link Switch} instance with specified id does not exist
      */
     public Switch updateSwitch(String switchId, Switch newSwitch) throws IllegalArgumentException {
+        Switch node = updateSwitchCache(switchId, newSwitch);
+
+        networkStorage.updateSwitch(switchId, newSwitch);
+
+        switchChanged(new SwitchChangeEvent(null, newSwitch, null));
+
+        return node;
+    }
+
+    /**
+     * Updates {@link Switch} instance.
+     *
+     * @param switchId  {@link Switch} instance id
+     * @param newSwitch {@link Switch} instance
+     * @return {@link Switch} instance before update
+     * @throws IllegalArgumentException if {@link Switch} instance with specified id does not exist
+     */
+    public Switch updateSwitchCache(String switchId, Switch newSwitch) throws IllegalArgumentException {
         logger.debug("Update {} switch with {} parameters", switchId, newSwitch);
 
-        Switch oldSwitch = deleteSwitch(switchId);
-        createSwitch(newSwitch);
+        Switch oldSwitch = switchPool.remove(switchId);
+        if (oldSwitch == null) {
+            throw new IllegalArgumentException(String.format("Switch %s not found", switchId));
+        }
 
-        return oldSwitch;
+        network.removeNode(oldSwitch);
+        network.addNode(newSwitch);
+        switchPool.put(switchId, newSwitch);
+
+        return newSwitch;
     }
 
     /**
@@ -168,6 +232,23 @@ public class NetworkManager {
      * @throws IllegalArgumentException if {@link Switch} instance with specified id does not exist
      */
     public Switch deleteSwitch(String switchId) throws IllegalArgumentException {
+        Switch node = deleteSwitchCache(switchId);
+
+        networkStorage.deleteSwitch(switchId);
+
+        switchChanged(new SwitchChangeEvent(null, null, node));
+
+        return node;
+    }
+
+    /**
+     * Deletes {@link Switch} instance.
+     *
+     * @param switchId {@link Switch} instance id
+     * @return removed {@link Switch} instance
+     * @throws IllegalArgumentException if {@link Switch} instance with specified id does not exist
+     */
+    public Switch deleteSwitchCache(String switchId) throws IllegalArgumentException {
         logger.debug("Delete {} switch", switchId);
 
         Switch node = switchPool.remove(switchId);
@@ -175,7 +256,6 @@ public class NetworkManager {
             throw new IllegalArgumentException(String.format("Switch %s not found", switchId));
         }
 
-        networkStorage.deleteSwitch(switchId);
         network.removeNode(node);
 
         return node;
@@ -188,6 +268,7 @@ public class NetworkManager {
      */
     public Set<Switch> dumpSwitches() {
         logger.debug("Get all switches");
+
         return new HashSet<>(network.nodes());
     }
 
@@ -241,7 +322,7 @@ public class NetworkManager {
      * @return {@link EndpointPair} of {@link Switch} instances
      * @throws IllegalArgumentException if {@link Switch} instances for {@link Isl} instance do not exist
      */
-    private EndpointPair<Switch> getIslSwitches(Isl isl) throws IllegalArgumentException {
+    EndpointPair<Switch> getIslSwitches(Isl isl) throws IllegalArgumentException {
         String srcSwitch = isl.getSourceSwitch();
         if (srcSwitch == null) {
             throw new IllegalArgumentException("Source switch not specified");
@@ -267,19 +348,57 @@ public class NetworkManager {
      * @throws IllegalArgumentException if {@link Switch} instances for {@link Isl} instance do not exist
      */
     public Isl createOrUpdateIsl(Isl isl) throws IllegalArgumentException {
+        Isl newIsl;
         String islId = isl.getId();
         logger.debug("Create or update {} isl with {} parameters", islId, isl);
 
-        EndpointPair<Switch> nodes;
-        Isl oldIsl = islPool.get(islId);
-        if (oldIsl == null) {
-            networkStorage.createIsl(isl);
-            nodes = getIslSwitches(isl);
-        } else {
+        if (islPool.containsKey(islId)) {
+            newIsl = updateIslCache(islId, isl);
+
             networkStorage.updateIsl(islId, isl);
-            nodes = network.incidentNodes(oldIsl);
-            network.removeEdge(oldIsl);
+
+            islChanged(new IslChangeEvent(null, isl, null));
+        } else {
+            newIsl = createIslCache(islId, isl);
+
+            networkStorage.createIsl(isl);
+
+            islChanged(new IslChangeEvent(isl, null, null));
         }
+
+        return newIsl;
+    }
+
+    /**
+     * Creates {@link Isl} instance.
+     *
+     * @param islId {@link Isl} instance id
+     * @param isl   {@link Isl} instance
+     * @return {@link Isl} instance previously associated with this {@link Isl} instance id or null otherwise
+     * @throws IllegalArgumentException if {@link Switch} instances for {@link Isl} instance do not exist
+     */
+    public Isl createIslCache(String islId, Isl isl) throws IllegalArgumentException {
+        logger.debug("Create {} isl with {} parameters", islId, isl);
+
+        EndpointPair<Switch> nodes = getIslSwitches(isl);
+        network.addEdge(nodes.source(), nodes.target(), isl);
+
+        return islPool.put(islId, isl);
+    }
+
+    /**
+     * Updates {@link Isl} instance.
+     *
+     * @param islId {@link Isl} instance id
+     * @param isl   new {@link Isl} instance
+     * @return {@link Isl} instance previously associated with this {@link Isl} instance id or null otherwise
+     * @throws IllegalArgumentException if {@link Switch} instances for {@link Isl} instance do not exist
+     */
+    public Isl updateIslCache(String islId, Isl isl) throws IllegalArgumentException {
+        logger.debug("Update {} isl with {} parameters", islId, isl);
+
+        EndpointPair<Switch> nodes = getIslSwitches(isl);
+        network.removeEdge(islPool.get(islId));
         network.addEdge(nodes.source(), nodes.target(), isl);
 
         return islPool.put(islId, isl);
@@ -293,6 +412,23 @@ public class NetworkManager {
      * @throws IllegalArgumentException if {@link Isl} instance with specified id does not exist
      */
     public Isl deleteIsl(String islId) throws IllegalArgumentException {
+        Isl isl = deleteIslCache(islId);
+
+        networkStorage.deleteIsl(islId);
+
+        islChanged(new IslChangeEvent(null, null, isl));
+
+        return isl;
+    }
+
+    /**
+     * Deletes {@link Isl} instance.
+     *
+     * @param islId {@link Isl} instance id
+     * @return removed {@link Isl} instance
+     * @throws IllegalArgumentException if {@link Isl} instance with specified id does not exist
+     */
+    public Isl deleteIslCache(String islId) throws IllegalArgumentException {
         logger.debug("Delete {} isl", islId);
 
         Isl isl = islPool.remove(islId);
@@ -300,7 +436,6 @@ public class NetworkManager {
             throw new IllegalArgumentException(String.format("Isl %s not found", islId));
         }
 
-        networkStorage.deleteIsl(islId);
         network.removeEdge(isl);
 
         return isl;
@@ -331,6 +466,7 @@ public class NetworkManager {
      */
     public Set<Isl> dumpIsls() {
         logger.debug("Get all isls");
+
         return new HashSet<>(network.edges());
     }
 
@@ -377,5 +513,159 @@ public class NetworkManager {
         Switch endNode = getSwitch(switchId);
 
         return network.inEdges(endNode);
+    }
+
+    /**
+     * Handles switch change event.
+     *
+     * @param event {@link SwitchChangeEvent} instance
+     */
+    public void handleSwitchChange(SwitchChangeEvent event) {
+        if (event.created != null) {
+            createSwitchCache(event.created);
+        }
+
+        if (event.updated != null) {
+            updateSwitchCache(event.updated.getSwitchId(), event.updated);
+        }
+
+        if (event.deleted != null) {
+            deleteSwitchCache(event.deleted.getSwitchId());
+        }
+    }
+
+    /**
+     * Handles isl change event.
+     *
+     * @param event {@link IslChangeEvent} instance
+     */
+    public void handleIslChange(IslChangeEvent event) {
+        if (event.created != null) {
+            createIslCache(event.created.getId(), event.created);
+        }
+
+        if (event.updated != null) {
+            updateIslCache(event.updated.getId(), event.updated);
+        }
+
+        if (event.deleted != null) {
+            deleteIslCache(event.deleted.getId());
+        }
+    }
+
+    /**
+     * Generates event.
+     *
+     * @param event {@link IslChangeEvent} instance
+     */
+    private void islChanged(IslChangeEvent event) {
+        if (onIslChange != null) {
+            onIslChange.apply(event);
+        }
+    }
+
+    /**
+     * Generates event.
+     *
+     * @param event {@link SwitchChangeEvent} instance
+     */
+    private void switchChanged(SwitchChangeEvent event) {
+        if (onSwitchChange != null) {
+            onSwitchChange.apply(event);
+        }
+    }
+
+    /**
+     * Switch changed event representation class.
+     */
+    class SwitchChangeEvent {
+        /**
+         * Created switch instance.
+         */
+        public Switch created;
+
+        /**
+         * Updated switch instance.
+         */
+        public Switch updated;
+
+        /**
+         * Deleted switch instance.
+         */
+        public Switch deleted;
+
+        /**
+         * Instance constructor.
+         *
+         * @param created created switch instance
+         * @param updated updated switch instance
+         * @param deleted deleted switch instance
+         */
+        SwitchChangeEvent(Switch created,
+                          Switch updated,
+                          Switch deleted) {
+            this.created = created;
+            this.updated = updated;
+            this.deleted = deleted;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        public String toString() {
+            return MoreObjects.toStringHelper(this)
+                    .add("created", created)
+                    .add("updated", updated)
+                    .add("deleted", deleted)
+                    .toString();
+        }
+    }
+
+    /**
+     * Isl changed event representation class.
+     */
+    class IslChangeEvent {
+        /**
+         * Created isl instance.
+         */
+        public Isl created;
+
+        /**
+         * Updated isl instance.
+         */
+        public Isl updated;
+
+        /**
+         * Deleted isl instance.
+         */
+        public Isl deleted;
+
+        /**
+         * Instance constructor.
+         *
+         * @param created created isl instance
+         * @param updated updated isl instance
+         * @param deleted deleted isl instance
+         */
+        IslChangeEvent(Isl created,
+                       Isl updated,
+                       Isl deleted) {
+            this.created = created;
+            this.updated = updated;
+            this.deleted = deleted;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        public String toString() {
+            return MoreObjects.toStringHelper(this)
+                    .add("created", created)
+                    .add("updated", updated)
+                    .add("deleted", deleted)
+                    .toString();
+        }
     }
 }

@@ -168,6 +168,39 @@ public class Flow implements Serializable {
     }
 
     /**
+     * Instance constructor.
+     *
+     * @param flowId            flow id
+     * @param bandwidth         bandwidth
+     * @param description       description
+     * @param sourceSwitch      source switch
+     * @param destinationSwitch destination switch
+     * @param sourcePort        source port
+     * @param destinationPort   destination port
+     * @param sourceVlan        source vlan id
+     * @param destinationVlan   destination vlan id
+     */
+    public Flow(@JsonProperty("flow_id") final String flowId,
+                @JsonProperty("bandwidth") final int bandwidth,
+                @JsonProperty("description") final String description,
+                @JsonProperty("src_switch") final String sourceSwitch,
+                @JsonProperty("dst_switch") final String destinationSwitch,
+                @JsonProperty("src_port") final int sourcePort,
+                @JsonProperty("dst_port") final int destinationPort,
+                @JsonProperty("src_vlan") final int sourceVlan,
+                @JsonProperty("dst_vlan") final int destinationVlan) {
+        this.flowId = flowId;
+        this.bandwidth = bandwidth;
+        this.description = description;
+        this.sourceSwitch = sourceSwitch;
+        this.destinationSwitch = destinationSwitch;
+        this.sourcePort = sourcePort;
+        this.destinationPort = destinationPort;
+        this.sourceVlan = sourceVlan;
+        this.destinationVlan = destinationVlan;
+    }
+
+    /**
      * Gets flow id.
      *
      * @return flow id
@@ -476,8 +509,13 @@ public class Flow implements Serializable {
                 getDestinationPort() == flow.getDestinationPort() &&
                 getSourceVlan() == flow.getSourceVlan() &&
                 getDestinationVlan() == flow.getDestinationVlan() &&
+                getTransitVlan() == flow.getTransitVlan() &&
+                getMeterId() == flow.getMeterId() &&
+                getFlowState() == flow.getFlowState() &&
+                getCookie() == flow.getCookie() &&
                 Objects.equals(getFlowId(), flow.getFlowId()) &&
                 Objects.equals(getDescription(), flow.getDescription()) &&
+                Objects.equals(getLastUpdated(), flow.getLastUpdated()) &&
                 Objects.equals(getSourceSwitch(), flow.getSourceSwitch()) &&
                 Objects.equals(getDestinationSwitch(), flow.getDestinationSwitch());
     }

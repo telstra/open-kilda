@@ -26,9 +26,12 @@ public class PathComputerMock implements PathComputer {
 
     @Override
     public LinkedList<Isl> getPath(Switch srcSwitch, Switch dstSwitch, int bandwidth) {
-        System.out.println("getPathBySwitchInstances");
+        System.out.println("Get Path By Switch Instances " + bandwidth + ": " + srcSwitch + " - " + dstSwitch);
 
         LinkedList<Isl> path = new LinkedList<>();
+        if (srcSwitch.equals(dstSwitch)) {
+            return path;
+        }
         Set<Switch> nodesToProcess = new HashSet<>(new HashSet<>(network.nodes()));
         Set<Switch> nodesWereProcess = new HashSet<>();
         Map<Switch, ImmutablePair<Switch, Isl>> predecessors = new HashMap<>();
@@ -82,7 +85,7 @@ public class PathComputerMock implements PathComputer {
 
     @Override
     public void updatePathBandwidth(LinkedList<Isl> path, int bandwidth) {
-        System.out.println("updatePathBandwidth");
+        System.out.println("Update Path Bandwidth " + bandwidth + ": " + path);
         path.forEach(isl -> isl.setAvailableBandwidth(isl.getAvailableBandwidth() - bandwidth));
     }
 

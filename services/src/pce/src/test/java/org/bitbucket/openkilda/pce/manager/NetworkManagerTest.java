@@ -16,8 +16,8 @@ import org.junit.Test;
 
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.Set;
+import java.util.function.Function;
 
 public class NetworkManagerTest {
     private final StateStorageMock storage = new StateStorageMock();
@@ -220,5 +220,40 @@ public class NetworkManagerTest {
         networkManager.createOrUpdateIsl(isl42);
         assertEquals(new HashSet<>(Arrays.asList(isl12, isl32, isl42)),
                 networkManager.getIslsByDestination(sw2.getSwitchId()));
+    }
+
+    @Test
+    public void eventTest() {
+        NetworkManager otherNetworkManager = new NetworkManager(storage);
+        Function<NetworkManager.SwitchChangeEvent, Void> switchChangeCallback =
+                new Function<NetworkManager.SwitchChangeEvent, Void>() {
+                    @Override
+                    public Void apply(NetworkManager.SwitchChangeEvent switchChangeEvent) {
+                        System.out.println(switchChangeEvent);
+                        otherNetworkManager.handleSwitchChange(switchChangeEvent);
+                        return null;
+                    }
+                };
+
+        Function<NetworkManager.IslChangeEvent, Void> islChangeCallback =
+                new Function<NetworkManager.IslChangeEvent, Void>() {
+                    @Override
+                    public Void apply(NetworkManager.IslChangeEvent islChangeEvent) {
+                        System.out.println(islChangeEvent);
+                        otherNetworkManager.handleIslChange(islChangeEvent);
+                        return null;
+                    }
+                };
+
+        networkManager.withSwitchChange(switchChangeCallback);
+        networkManager.withIslChange(islChangeCallback);
+
+        networkManager.createSwitch(sw1);
+        networkManager.createSwitch(sw2);
+        networkManager.createOrUpdateIsl(isl12);
+        networkManager.createOrUpdateIsl(isl21);
+
+        assertEquals(networkManager.dumpIsls(), otherNetworkManager.dumpIsls());
+        assertEquals(networkManager.dumpSwitches(), otherNetworkManager.dumpSwitches());
     }
 }
