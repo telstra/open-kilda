@@ -35,9 +35,9 @@ public class MeterConfigMetricGenBolt extends MetricGenBolt {
         long timestamp = message.getTimestamp();
         data.getStats().forEach(stats -> stats.getMeterIds().forEach(meterId -> {
             Map<String, String> tags = new HashMap<>();
-            tags.put("switch.id", data.getSwitchId().replaceAll(":", ""));
-            tags.put("meter.id", meterId.toString());
-            collector.emit(tuple("meters", timestamp, meterId, tags));
+            tags.put("switchid", data.getSwitchId().replaceAll(":", ""));
+            tags.put("meterid", meterId.toString());
+            collector.emit(tuple("pen.switch.meters", timestamp, meterId, tags));
         }));
         collector.ack(input);
     }

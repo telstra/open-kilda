@@ -35,11 +35,12 @@ public class FlowMetricGenBolt extends MetricGenBolt {
         long timestamp = message.getTimestamp();
         data.getStats().forEach(stats -> stats.getEntries().forEach(entry -> {
             Map<String, String> tags = new HashMap<>();
-            tags.put("switch.id", data.getSwitchId().replaceAll(":", ""));
-            tags.put("flow.cookie", String.valueOf(entry.getCookie()));
-            collector.emit(tuple("table-id", timestamp, entry.getTableId(), tags));
-            collector.emit(tuple("packet-count", timestamp, entry.getPacketCount(), tags));
-            collector.emit(tuple("byte-count", timestamp, entry.getByteCount(), tags));
+            tags.put("switchid", data.getSwitchId().replaceAll(":", ""));
+            tags.put("cookie", String.valueOf(entry.getCookie()));
+            collector.emit(tuple("pen.flow.tableid", timestamp, entry.getTableId(), tags));
+            collector.emit(tuple("pen.flow.packets", timestamp, entry.getPacketCount(), tags));
+            collector.emit(tuple("pen.flow.bytes", timestamp, entry.getByteCount(), tags));
+            collector.emit(tuple("pen.flow.bits", timestamp, entry.getByteCount()*8, tags));
         }));
         collector.ack(input);
     }
