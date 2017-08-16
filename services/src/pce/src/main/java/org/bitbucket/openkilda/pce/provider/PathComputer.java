@@ -34,8 +34,9 @@ public interface PathComputer {
      * Sets network topology.
      *
      * @param network network topology represented by {@link MutableNetwork} instance
+     * @return {@link PathComputer} instance
      */
-    void setNetwork(MutableNetwork<Switch, Isl> network);
+    PathComputer withNetwork(MutableNetwork<Switch, Isl> network);
 
     /**
      * Gets isl weight.

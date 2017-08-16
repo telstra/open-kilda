@@ -26,8 +26,8 @@ import java.util.function.Function;
 public class FlowManagerTest {
     private final StateStorageMock storage = new StateStorageMock();
     private final PathComputer computer = new PathComputerMock();
-    private final NetworkManager networkManager = new NetworkManager(storage);
-    private final FlowManager flowManager = new FlowManager(storage, networkManager, computer);
+    private final NetworkManager networkManager = new NetworkManager(storage, computer);
+    private final FlowManager flowManager = new FlowManager(storage, networkManager);
 
     private final Switch sw1 = new Switch("sw1", "", "", "", SwitchState.ACTIVATED, "localhost");
     private final Switch sw2 = new Switch("sw2", "", "", "", SwitchState.ACTIVATED, "localhost");
@@ -50,9 +50,9 @@ public class FlowManagerTest {
     private final Isl isl53 = new Isl("sw5", "sw3", 3, 1, 1L, 0L, 10);
     private final Isl isl35 = new Isl("sw3", "sw5", 1, 3, 1L, 0L, 10);
 
-    private final Flow firstFlow = new Flow("first-flow", 0, "first-flow", "sw1", "sw3", 11, 11, 100, 200);
-    private final Flow secondFlow = new Flow("second-flow", 0, "second-flow", "sw5", "sw3", 12, 12, 100, 200);
-    private final Flow thirdFlow = new Flow("third-flow", 0, "third-flow", "sw3", "sw3", 21, 22, 100, 200);
+    private final Flow firstFlow = new Flow("first-flow", 0, "first-flow", "sw1",  11, 100, "sw3", 11, 200);
+    private final Flow secondFlow = new Flow("second-flow", 0, "second-flow", "sw5", 12, 100, "sw3", 12, 200);
+    private final Flow thirdFlow = new Flow("third-flow", 0, "third-flow", "sw3", 21, 100, "sw3", 22, 200);
     private final Flow forwardCreatedFlow = new Flow("created-flow", 0, 10L, "description",
             "timestamp", "sw3", "sw3", 21, 22, 100, 200, 4, 4, new LinkedList<>());
     private final Flow reverseCreatedFlow = new Flow("created-flow", 0, 10L, "description",
@@ -120,14 +120,26 @@ public class FlowManagerTest {
     @Test
     public void updateFlow() throws Exception {
         ImmutablePair<Flow, Flow> oldFlow = flowManager.createFlow(firstFlow);
+        assertEquals(1, flowManager.resourceCache.getAllMeterIds("sw1").size());
+        assertEquals(0, flowManager.resourceCache.getAllMeterIds("sw2").size());
+        assertEquals(1, flowManager.resourceCache.getAllMeterIds("sw3").size());
+        assertEquals(0, flowManager.resourceCache.getAllMeterIds("sw4").size());
+        assertEquals(0, flowManager.resourceCache.getAllMeterIds("sw5").size());
+        assertEquals(2, flowManager.resourceCache.getAllVlanIds().size());
+        assertEquals(1, flowManager.resourceCache.getAllCookies().size());
+
         ImmutablePair<Flow, Flow> newFlow = flowManager.updateFlow(firstFlow.getFlowId(), firstFlow);
-        assertNotEquals(newFlow, oldFlow);
+        assertEquals(1, flowManager.resourceCache.getAllMeterIds("sw1").size());
+        assertEquals(0, flowManager.resourceCache.getAllMeterIds("sw2").size());
+        assertEquals(1, flowManager.resourceCache.getAllMeterIds("sw3").size());
+        assertEquals(0, flowManager.resourceCache.getAllMeterIds("sw4").size());
+        assertEquals(0, flowManager.resourceCache.getAllMeterIds("sw5").size());
+        assertEquals(2, flowManager.resourceCache.getAllVlanIds().size());
+        assertEquals(1, flowManager.resourceCache.getAllCookies().size());
+
         assertEquals(1, storage.getFlowsCount());
 
-        newFlow.left.setLastUpdated("");
-        newFlow.right.setLastUpdated("");
-        oldFlow.left.setLastUpdated("");
-        oldFlow.right.setLastUpdated("");
+        assertNotEquals(newFlow.hashCode(), oldFlow.hashCode());
         assertEquals(oldFlow, newFlow);
     }
 
@@ -217,9 +229,9 @@ public class FlowManagerTest {
         flowManager.allocateFlow(new ImmutablePair<>(forwardCreatedFlow, reverseCreatedFlow));
         flowManager.allocateFlow(new ImmutablePair<>(forwardCreatedFlow, reverseCreatedFlow));
 
-        Set<Integer> allocatedCookies = flowManager.resourceManager.getAllCookies();
-        Set<Integer> allocatedVlanIds = flowManager.resourceManager.getAllVlanIds();
-        Set<Integer> allocatedMeterIds = flowManager.resourceManager.getAllMeterIds(sw3.getSwitchId());
+        Set<Integer> allocatedCookies = flowManager.resourceCache.getAllCookies();
+        Set<Integer> allocatedVlanIds = flowManager.resourceCache.getAllVlanIds();
+        Set<Integer> allocatedMeterIds = flowManager.resourceCache.getAllMeterIds(sw3.getSwitchId());
 
         Set<Integer> expectedCookies = new HashSet<>(Arrays.asList(
                 (int) forwardCreatedFlow.getCookie(),
@@ -244,9 +256,9 @@ public class FlowManagerTest {
         flowManager.deallocateFlow(new ImmutablePair<>(forwardCreatedFlow, reverseCreatedFlow));
         flowManager.deallocateFlow(new ImmutablePair<>(forwardCreatedFlow, reverseCreatedFlow));
 
-        Set<Integer> allocatedCookies = flowManager.resourceManager.getAllCookies();
-        Set<Integer> allocatedVlanIds = flowManager.resourceManager.getAllVlanIds();
-        Set<Integer> allocatedMeterIds = flowManager.resourceManager.getAllMeterIds(sw3.getSwitchId());
+        Set<Integer> allocatedCookies = flowManager.resourceCache.getAllCookies();
+        Set<Integer> allocatedVlanIds = flowManager.resourceCache.getAllVlanIds();
+        Set<Integer> allocatedMeterIds = flowManager.resourceCache.getAllMeterIds(sw3.getSwitchId());
 
         assertEquals(Collections.emptySet(), allocatedCookies);
         assertEquals(Collections.emptySet(), allocatedVlanIds);
@@ -255,7 +267,7 @@ public class FlowManagerTest {
 
     @Test
     public void eventTest() {
-        FlowManager otherFlowManager = new FlowManager(storage, networkManager, computer);
+        FlowManager otherFlowManager = new FlowManager(storage, networkManager);
         Function<FlowManager.FlowChangeEvent, Void> switchChangeCallback =
                 new Function<FlowManager.FlowChangeEvent, Void>() {
                     @Override

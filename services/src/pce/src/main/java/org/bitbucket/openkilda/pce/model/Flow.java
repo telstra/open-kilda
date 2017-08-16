@@ -174,21 +174,15 @@ public class Flow implements Serializable {
      * @param bandwidth         bandwidth
      * @param description       description
      * @param sourceSwitch      source switch
-     * @param destinationSwitch destination switch
      * @param sourcePort        source port
-     * @param destinationPort   destination port
      * @param sourceVlan        source vlan id
+     * @param destinationSwitch destination switch
+     * @param destinationPort   destination port
      * @param destinationVlan   destination vlan id
      */
-    public Flow(@JsonProperty("flow_id") final String flowId,
-                @JsonProperty("bandwidth") final int bandwidth,
-                @JsonProperty("description") final String description,
-                @JsonProperty("src_switch") final String sourceSwitch,
-                @JsonProperty("dst_switch") final String destinationSwitch,
-                @JsonProperty("src_port") final int sourcePort,
-                @JsonProperty("dst_port") final int destinationPort,
-                @JsonProperty("src_vlan") final int sourceVlan,
-                @JsonProperty("dst_vlan") final int destinationVlan) {
+    public Flow(String flowId, int bandwidth, String description,
+                String sourceSwitch, int sourcePort, int sourceVlan,
+                String destinationSwitch, int destinationPort, int destinationVlan) {
         this.flowId = flowId;
         this.bandwidth = bandwidth;
         this.description = description;
@@ -504,20 +498,16 @@ public class Flow implements Serializable {
         }
 
         Flow flow = (Flow) object;
-        return getBandwidth() == flow.getBandwidth() &&
-                getSourcePort() == flow.getSourcePort() &&
-                getDestinationPort() == flow.getDestinationPort() &&
-                getSourceVlan() == flow.getSourceVlan() &&
-                getDestinationVlan() == flow.getDestinationVlan() &&
-                getTransitVlan() == flow.getTransitVlan() &&
-                getMeterId() == flow.getMeterId() &&
-                getFlowState() == flow.getFlowState() &&
-                getCookie() == flow.getCookie() &&
-                Objects.equals(getFlowId(), flow.getFlowId()) &&
-                Objects.equals(getDescription(), flow.getDescription()) &&
-                Objects.equals(getLastUpdated(), flow.getLastUpdated()) &&
-                Objects.equals(getSourceSwitch(), flow.getSourceSwitch()) &&
-                Objects.equals(getDestinationSwitch(), flow.getDestinationSwitch());
+        return Objects.equals(getFlowId(), flow.getFlowId())
+                && getBandwidth() == flow.getBandwidth()
+                && Objects.equals(getDescription(), flow.getDescription())
+                && getFlowState() == flow.getFlowState()
+                && Objects.equals(getSourceSwitch(), flow.getSourceSwitch())
+                && getSourcePort() == flow.getSourcePort()
+                && getSourceVlan() == flow.getSourceVlan()
+                && Objects.equals(getDestinationSwitch(), flow.getDestinationSwitch())
+                && getDestinationPort() == flow.getDestinationPort()
+                && getDestinationVlan() == flow.getDestinationVlan();
     }
 
     /**
@@ -525,8 +515,9 @@ public class Flow implements Serializable {
      */
     @Override
     public int hashCode() {
-        return Objects.hash(flowId, state, bandwidth, cookie, description, lastUpdated, sourceSwitch, destinationSwitch,
-                sourcePort, destinationPort, sourceVlan, destinationVlan, transitVlan, meterId);
+        return Objects.hash(flowId, bandwidth, description, state,
+                sourceSwitch, sourcePort, sourceVlan, destinationSwitch, destinationPort, destinationVlan,
+                cookie, transitVlan, meterId, lastUpdated);
     }
 
     /**
@@ -536,6 +527,8 @@ public class Flow implements Serializable {
     public String toString() {
         return toStringHelper(this)
                 .add("flow_id", flowId)
+                .add("bandwidth", bandwidth)
+                .add("description", description)
                 .add("state", state)
                 .add("src_switch", sourceSwitch)
                 .add("src_port", sourcePort)
@@ -543,8 +536,6 @@ public class Flow implements Serializable {
                 .add("dst_switch", destinationSwitch)
                 .add("dst_port", destinationPort)
                 .add("dst_vlan", destinationVlan)
-                .add("bandwidth", bandwidth)
-                .add("description", description)
                 .add("cookie", cookie)
                 .add("transit_vlan", transitVlan)
                 .add("meter_id", meterId)

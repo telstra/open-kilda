@@ -228,7 +228,8 @@ public class NeoDriver implements NetworkStorage, FlowStorage, PathComputer {
      * {@inheritDoc}
      */
     @Override
-    public void setNetwork(MutableNetwork<Switch, Isl> network) {
+    public PathComputer withNetwork(MutableNetwork<Switch, Isl> network) {
+        return this;
     }
 
     /**

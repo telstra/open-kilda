@@ -13,7 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * ResourceManager class contains basic operations on resources.
  */
-class ResourceManager {
+class ResourceCache {
     static final int MAX_METER_ID = 4095;
     static final int MIN_METER_ID = 1;
     static final int MAX_VLAN_ID = 4094;
@@ -24,7 +24,7 @@ class ResourceManager {
     /**
      * Logger.
      */
-    private static final Logger logger = LoggerFactory.getLogger(ResourceManager.class);
+    private static final Logger logger = LoggerFactory.getLogger(ResourceCache.class);
 
     /**
      * Meter pool by switch.
@@ -44,7 +44,7 @@ class ResourceManager {
     /**
      * Instance constructor.
      */
-    ResourceManager() {
+    ResourceCache() {
     }
 
     public void clear() {

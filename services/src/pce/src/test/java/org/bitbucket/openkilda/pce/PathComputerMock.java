@@ -17,7 +17,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class PathComputerMock implements PathComputer {
-    private static MutableNetwork<Switch, Isl> network;
+    private MutableNetwork<Switch, Isl> network;
 
     @Override
     public Long getWeight(Isl isl) {
@@ -90,7 +90,8 @@ public class PathComputerMock implements PathComputer {
     }
 
     @Override
-    public void setNetwork(MutableNetwork<Switch, Isl> network) {
-        PathComputerMock.network = network;
+    public PathComputer withNetwork(MutableNetwork<Switch, Isl> network) {
+        this.network = network;
+        return this;
     }
 }

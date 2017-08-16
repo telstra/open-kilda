@@ -22,7 +22,7 @@ import java.util.function.Function;
 public class NetworkManagerTest {
     private final StateStorageMock storage = new StateStorageMock();
     private final PathComputer computer = new PathComputerMock();
-    private final NetworkManager networkManager = new NetworkManager(storage);
+    private final NetworkManager networkManager = new NetworkManager(storage, computer);
 
     private final Switch sw1 = new Switch("sw1", "", "", "", SwitchState.ACTIVATED, "localhost");
     private final Switch sw2 = new Switch("sw2", "", "", "", SwitchState.ACTIVATED, "localhost");
@@ -224,7 +224,7 @@ public class NetworkManagerTest {
 
     @Test
     public void eventTest() {
-        NetworkManager otherNetworkManager = new NetworkManager(storage);
+        NetworkManager otherNetworkManager = new NetworkManager(storage, computer);
         Function<NetworkManager.SwitchChangeEvent, Void> switchChangeCallback =
                 new Function<NetworkManager.SwitchChangeEvent, Void>() {
                     @Override
