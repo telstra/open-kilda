@@ -31,8 +31,7 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Topology-Engine Bolt.
- * Processes replies from Topology-Engine service.
+ * Topology-Engine Bolt. Processes replies from Topology-Engine service.
  */
 public class TopologyEngineBolt extends BaseRichBolt {
     /**

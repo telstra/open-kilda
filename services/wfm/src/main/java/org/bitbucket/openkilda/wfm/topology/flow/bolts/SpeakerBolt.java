@@ -13,7 +13,7 @@ import org.bitbucket.openkilda.messaging.command.CommandMessage;
 import org.bitbucket.openkilda.messaging.command.flow.BaseInstallFlow;
 import org.bitbucket.openkilda.messaging.command.flow.RemoveFlow;
 import org.bitbucket.openkilda.messaging.error.ErrorMessage;
-import org.bitbucket.openkilda.messaging.payload.flow.FlowStatusType;
+import org.bitbucket.openkilda.messaging.payload.flow.FlowState;
 import org.bitbucket.openkilda.wfm.topology.flow.StreamType;
 
 import org.apache.logging.log4j.LogManager;
@@ -29,8 +29,7 @@ import java.io.IOException;
 import java.util.Map;
 
 /**
- * Speaker Bolt.
- * Processes replies from OpenFlow Speaker service.
+ * Speaker Bolt. Processes replies from OpenFlow Speaker service.
  */
 public class SpeakerBolt extends BaseRichBolt {
     /**
@@ -95,7 +94,7 @@ public class SpeakerBolt extends BaseRichBolt {
                 }
             } else if (message instanceof ErrorMessage) {
                 String flowId = ((ErrorMessage) message).getData().getErrorDescription();
-                FlowStatusType status = FlowStatusType.DOWN;
+                FlowState status = FlowState.DOWN;
 
                 logger.error("Flow error message: {}={}, flow-id={}, message={}",
                         CORRELATION_ID, message.getCorrelationId(), flowId, request);

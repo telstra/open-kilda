@@ -16,8 +16,7 @@ import org.bitbucket.openkilda.messaging.error.ErrorType;
 import org.bitbucket.openkilda.messaging.info.InfoMessage;
 import org.bitbucket.openkilda.messaging.info.flow.FlowStatusResponse;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowIdStatusPayload;
-import org.bitbucket.openkilda.messaging.payload.flow.FlowStatusType;
-import org.bitbucket.openkilda.wfm.topology.Topology;
+import org.bitbucket.openkilda.messaging.payload.flow.FlowState;
 import org.bitbucket.openkilda.wfm.topology.flow.ComponentType;
 import org.bitbucket.openkilda.wfm.topology.flow.StreamType;
 
@@ -35,10 +34,9 @@ import org.apache.storm.tuple.Values;
 import java.util.Map;
 
 /**
- * Status Bolt.
- * Tracks flows status.
+ * Status Bolt. Tracks flows status.
  */
-public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, FlowStatusType>> {
+public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, FlowState>> {
     /**
      * The logger.
      */
@@ -47,7 +45,7 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
     /**
      * Flows state.
      */
-    private InMemoryKeyValueState<String, FlowStatusType> flowStates;
+    private InMemoryKeyValueState<String, FlowState> flowStates;
 
     /**
      * Output collector.
@@ -65,7 +63,7 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
         ComponentType componentId = ComponentType.valueOf(tuple.getSourceComponent());
         StreamType streamId = StreamType.valueOf(tuple.getSourceStreamId());
         String flowId = (String) tuple.getValueByField(FLOW_ID_FIELD);
-        FlowStatusType flowStatus = null;
+        FlowState flowStatus = null;
         Values values;
         Message message;
         ErrorMessage errorMessage;
@@ -86,7 +84,7 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
                                 logger.debug("Flow creation message: {}={}, flow-id={}, component={}, stream={}",
                                         CORRELATION_ID, message.getCorrelationId(), flowId, componentId, streamId);
 
-                                flowStates.put(flowId, FlowStatusType.ALLOCATED);
+                                flowStates.put(flowId, FlowState.ALLOCATED);
 
                                 message.setDestination(Destination.TOPOLOGY_ENGINE);
                                 values = new Values(MAPPER.writeValueAsString(message));
@@ -112,7 +110,7 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
                                 logger.debug("Flow update message: {}={}, flow-id={}, component={}, stream={}",
                                         CORRELATION_ID, message.getCorrelationId(), flowId, componentId, streamId);
 
-                                flowStates.put(flowId, FlowStatusType.ALLOCATED);
+                                flowStates.put(flowId, FlowState.ALLOCATED);
 
                                 message.setDestination(Destination.TOPOLOGY_ENGINE);
                                 values = new Values(MAPPER.writeValueAsString(message));
@@ -256,7 +254,7 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
                         case UPDATE_FAILURE:
                             logger.info("Flow {} update failure: component={}, stream={}",
                                     flowId, componentId, streamId);
-                            flowStates.put(flowId, FlowStatusType.DOWN);
+                            flowStates.put(flowId, FlowState.DOWN);
                             break;
 
                         case DELETION_FAILURE:
@@ -281,7 +279,7 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
                 case SPEAKER_BOLT:
 
                 case TRANSACTION_BOLT:
-                    FlowStatusType newStatus = (FlowStatusType) tuple.getValueByField(STATUS_FIELD);
+                    FlowState newStatus = (FlowState) tuple.getValueByField(STATUS_FIELD);
                     flowStatus = flowStates.get(flowId);
 
                     if (flowStatus != null) {
@@ -316,7 +314,7 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
      * {@inheritDoc}
      */
     @Override
-    public void initState(InMemoryKeyValueState<String, FlowStatusType> state) {
+    public void initState(InMemoryKeyValueState<String, FlowState> state) {
         flowStates = state;
     }
 

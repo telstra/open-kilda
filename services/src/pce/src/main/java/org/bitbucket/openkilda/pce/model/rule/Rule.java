@@ -79,6 +79,8 @@ public class Rule implements Serializable {
 
     /**
      * Sets flow id.
+     *
+     * @param flowId flow id
      */
     public void setFlowId(String flowId) {
         this.flowId = flowId;

@@ -44,7 +44,7 @@ public class FlowFFRTest{
     private static final Integer destinationPort = 1;
     private static final Integer sourceVlan = 1000;
     private static final Integer destinationVlan = 1000;
-    private static final long bandwidth = 1000;
+    private static final int bandwidth = 1000;
 
     private FlowPayload flowPayload;
     private Flow flow;
@@ -178,9 +178,9 @@ public class FlowFFRTest{
         flowPayload = new FlowPayload(FlowUtils.getFlowName(flowId),
                 new FlowEndpointPayload(sourceSwitch, sourcePort, sourceVlan),
                 new FlowEndpointPayload(destinationSwitch, destinationPort, destinationVlan),
-                bandwidth, flowId, null);
+                (long) bandwidth, flowId, null);
         flow = new Flow(FlowUtils.getFlowName(flowId), bandwidth, FLOW_COOKIE, flowId, null, sourceSwitch,
-                destinationSwitch, sourcePort, destinationPort, sourceVlan, destinationVlan, 0, null, null);
+                destinationSwitch, sourcePort, destinationPort, sourceVlan, destinationVlan, 0, 0, null);
 
         FlowPayload response = FlowUtils.putFlow(flowPayload);
         response.setCookie(null);

@@ -55,7 +55,7 @@ public class FlowDelete extends Rule implements Serializable {
     }
 
     /**
-     * Gets match port
+     * Gets match port.
      *
      * @return match port
      */

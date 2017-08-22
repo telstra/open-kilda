@@ -47,6 +47,7 @@ public class NetworkManager extends NetworkCache {
      * Instance constructor.
      *
      * @param networkStorage {@link NetworkStorage} instance
+     * @param pathComputer {@link PathComputer} instance
      */
     public NetworkManager(NetworkStorage networkStorage, PathComputer pathComputer) {
         super(networkStorage.dumpSwitches(), networkStorage.dumpIsls());

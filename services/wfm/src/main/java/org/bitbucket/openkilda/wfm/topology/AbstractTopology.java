@@ -129,7 +129,7 @@ public abstract class AbstractTopology implements Topology {
      *
      * @param topic Kafka topic
      */
-    private void checkAndCreateTopic(final String topic) {
+    protected void checkAndCreateTopic(final String topic) {
         ZkClient zkClient = new ZkClient(zookeeperHosts, ZOOKEEPER_SESSION_TIMEOUT_MS,
                 ZOOKEEPER_CONNECTION_TIMEOUT_MS, ZKStringSerializer$.MODULE$);
         ZkUtils zkUtils = new ZkUtils(zkClient, new ZkConnection(zookeeperHosts), false);
@@ -145,7 +145,7 @@ public abstract class AbstractTopology implements Topology {
      * @param topic Kafka topic
      * @return {@link KafkaSpout}
      */
-    public org.apache.storm.kafka.KafkaSpout createKafkaSpout(String topic) {
+    protected org.apache.storm.kafka.KafkaSpout createKafkaSpout(String topic) {
         String spoutID = topic + "_" + System.currentTimeMillis();
         String zkRoot = "/" + topic; // used to store offset information.
         ZkHosts hosts = new ZkHosts(zookeeperHosts);

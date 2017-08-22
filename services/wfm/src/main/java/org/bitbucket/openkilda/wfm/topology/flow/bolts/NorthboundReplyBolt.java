@@ -24,8 +24,7 @@ import org.apache.storm.tuple.Values;
 import java.util.Map;
 
 /**
- * Northbound Reply Bolt.
- * Forms northbound replies.
+ * Northbound Reply Bolt. Forms northbound replies.
  */
 public class NorthboundReplyBolt extends BaseRichBolt {
     /**

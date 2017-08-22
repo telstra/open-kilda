@@ -7,7 +7,7 @@ import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.SWITCH_ID_F
 import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.fieldMessage;
 import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.fieldsFlowIdStatus;
 
-import org.bitbucket.openkilda.messaging.payload.flow.FlowStatusType;
+import org.bitbucket.openkilda.messaging.payload.flow.FlowState;
 import org.bitbucket.openkilda.wfm.topology.flow.ComponentType;
 import org.bitbucket.openkilda.wfm.topology.flow.StreamType;
 
@@ -27,8 +27,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Transaction Bolt.
- * Tracks OpenFlow Speaker commands transactions.
+ * Transaction Bolt. Tracks OpenFlow Speaker commands transactions.
  */
 public class TransactionBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, Map<String, Set<Long>>>> {
     /**
@@ -86,9 +85,9 @@ public class TransactionBolt extends BaseStatefulBolt<InMemoryKeyValueState<Stri
                     }
 
                     logger.debug("Set status {}: switch-id={}, flow-id={}, {}={}",
-                            FlowStatusType.IN_PROGRESS, switchId, flowId, TRANSACTION_ID, transactionId);
+                            FlowState.IN_PROGRESS, switchId, flowId, TRANSACTION_ID, transactionId);
 
-                    values = new Values(flowId, FlowStatusType.IN_PROGRESS);
+                    values = new Values(flowId, FlowState.IN_PROGRESS);
                     outputCollector.emit(StreamType.STATUS.toString(), tuple, values);
 
                     values = new Values(message);
@@ -109,9 +108,9 @@ public class TransactionBolt extends BaseStatefulBolt<InMemoryKeyValueState<Stri
 
                                 if (flowTransactionIds.isEmpty()) {
                                     logger.debug("Set status {}: switch-id={}, flow-id={}, {}={}",
-                                            FlowStatusType.UP, switchId, flowId, TRANSACTION_ID, transactionId);
+                                            FlowState.UP, switchId, flowId, TRANSACTION_ID, transactionId);
 
-                                    values = new Values(flowId, FlowStatusType.UP);
+                                    values = new Values(flowId, FlowState.UP);
                                     outputCollector.emit(StreamType.STATUS.toString(), tuple, values);
 
                                     flowTransactions.remove(flowId);
@@ -136,9 +135,9 @@ public class TransactionBolt extends BaseStatefulBolt<InMemoryKeyValueState<Stri
             }
         } catch (RuntimeException exception) {
             logger.error("Set status {}: switch-id={}, flow-id={}, {}={}",
-                    FlowStatusType.DOWN, switchId, flowId, TRANSACTION_ID, transactionId, exception);
+                    FlowState.DOWN, switchId, flowId, TRANSACTION_ID, transactionId, exception);
 
-            values = new Values(flowId, FlowStatusType.DOWN);
+            values = new Values(flowId, FlowState.DOWN);
             outputCollector.emit(StreamType.STATUS.toString(), tuple, values);
 
         } finally {

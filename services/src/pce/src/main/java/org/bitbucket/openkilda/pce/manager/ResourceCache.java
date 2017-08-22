@@ -14,11 +14,34 @@ import java.util.concurrent.ConcurrentHashMap;
  * ResourceManager class contains basic operations on resources.
  */
 class ResourceCache {
+    /**
+     * Maximum meter id value.
+     */
     static final int MAX_METER_ID = 4095;
+
+    /**
+     * Minimum meter id value.
+     */
     static final int MIN_METER_ID = 1;
+
+    /**
+     * Maximum vlan id value.
+     */
     static final int MAX_VLAN_ID = 4094;
+
+    /**
+     * Minimum vlan id value.
+     */
     static final int MIN_VLAN_ID = 2;
+
+    /**
+     * Maximum cookie value.
+     */
     static final int MAX_COOKIE = 4095;
+
+    /**
+     * Minimum cookie value.
+     */
     static final int MIN_COOKIE = 1;
 
     /**

@@ -42,6 +42,7 @@ public class ResourcePool {
     /**
      * Allocates resource id.
      *
+     * @param id resource id
      * @return allocated resource id
      */
     public Integer allocate(Integer id) {

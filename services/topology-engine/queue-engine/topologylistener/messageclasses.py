@@ -22,7 +22,7 @@ class MessageItem(object):
         self.timestamp = kwargs.get("timestamp")
         self.payload = kwargs.get("payload")
         # make message processable in case of no destination in body
-        self.destination = kwargs.get("destination", "TOPOLOGY_ENGINE")
+        self.destination = kwargs.get("destination")
         self.correlation_id = kwargs.get("correlation_id", "admin-request")
 
     def to_json(self):
@@ -108,7 +108,7 @@ class MessageItem(object):
                              address=self.payload['address'],
                              hostname=self.payload['hostname'],
                              description=self.payload['description'])
-            graph.create(newSwitch)
+            graph.create(state)
             print "Adding switch: {}".format(switchid)
             return True
         else:

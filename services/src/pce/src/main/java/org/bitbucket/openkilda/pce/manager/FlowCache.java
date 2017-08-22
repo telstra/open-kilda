@@ -17,19 +17,19 @@ import java.util.stream.Collectors;
 
 class FlowCache {
     /**
-     *
+     * Forward flow cookie mask.
      */
     @VisibleForTesting
     static final long FORWARD_FLOW_COOKIE_MASK = 0x4000000000000000L;
 
     /**
-     *
+     * Reverse flow cookie mask.
      */
     @VisibleForTesting
     static final long REVERSE_FLOW_COOKIE_MASK = 0x4000000000000000L;
 
     /**
-     *
+     * Flow cookie value mask.
      */
     private static final long FLOW_COOKIE_VALUE_MASK = 0x00000000FFFFFFFFL;
 
@@ -65,8 +65,8 @@ class FlowCache {
      */
     public Set<ImmutablePair<Flow, Flow>> getAffectedBySwitchFlows(String switchId) {
         return flowPool.values().stream().filter(flow ->
-                flow.getLeft().getFlowPath().stream().anyMatch(isl -> isl.getSourceSwitch().equals(switchId))
-                        || flow.getRight().getFlowPath().stream().anyMatch(isl -> isl.getSourceSwitch().equals(switchId))
+                flow.getLeft().getFlowPath().stream().anyMatch(isl -> isl.getSourceSwitch().equals(switchId)) ||
+                        flow.getRight().getFlowPath().stream().anyMatch(isl -> isl.getSourceSwitch().equals(switchId))
                         || isOneSwitchFlow(flow) && flow.getLeft().getSourceSwitch().equals(switchId))
                 .collect(Collectors.toSet());
     }

@@ -35,8 +35,7 @@ import java.io.IOException;
 import java.util.Map;
 
 /**
- * Northbound Request Bolt.
- * Handles northbound requests.
+ * Northbound Request Bolt. Handles northbound requests.
  */
 public class NorthboundRequestBolt extends BaseRichBolt {
     /**

@@ -9,6 +9,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 import java.io.Serializable;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -61,6 +62,20 @@ public class Switch implements Serializable {
      * Default constructor.
      */
     public Switch() {
+    }
+
+    /**
+     * Instance constructor.
+     *
+     * @param map map with switch properties
+     */
+    public Switch(Map<String, Object> map) {
+        this.switchId = (String) map.get("name");
+        this.address = (String) map.get("address");
+        this.hostname = (String) map.get("hostname");
+        this.description = (String) map.get("description");
+        this.state = SwitchState.valueOf((String) map.get("state"));
+        this.controller = (String) map.get("controller");
     }
 
     /**

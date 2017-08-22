@@ -29,7 +29,7 @@ import org.bitbucket.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowPayload;
-import org.bitbucket.openkilda.messaging.payload.flow.FlowStatusType;
+import org.bitbucket.openkilda.messaging.payload.flow.FlowState;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowsPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.OutputVlanType;
 import org.bitbucket.openkilda.wfm.AbstractStormTest;
@@ -299,7 +299,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         FlowIdStatusPayload flowNbPayload = infoData.getPayload();
         assertNotNull(flowNbPayload);
         assertEquals(flowId, flowNbPayload.getId());
-        assertEquals(FlowStatusType.ALLOCATED, flowNbPayload.getStatus());
+        assertEquals(FlowState.ALLOCATED, flowNbPayload.getStatus());
     }
 
     @Test
@@ -451,7 +451,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         FlowIdStatusPayload flowNbPayload = infoData.getPayload();
         assertNotNull(flowNbPayload);
         assertEquals(flowId, flowNbPayload.getId());
-        assertEquals(FlowStatusType.ALLOCATED, flowNbPayload.getStatus());
+        assertEquals(FlowState.ALLOCATED, flowNbPayload.getStatus());
 
         InstallOneSwitchFlow data = baseInstallFlowCommand(flowId);
 
@@ -483,7 +483,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         flowNbPayload = infoData.getPayload();
         assertNotNull(flowNbPayload);
         assertEquals(flowId, flowNbPayload.getId());
-        assertEquals(FlowStatusType.IN_PROGRESS, flowNbPayload.getStatus());
+        assertEquals(FlowState.IN_PROGRESS, flowNbPayload.getStatus());
 
         response.setDestination(Destination.WFM_TRANSACTION);
         baseInstallRuleCommand(response);
@@ -503,7 +503,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         flowNbPayload = infoData.getPayload();
         assertNotNull(flowNbPayload);
         assertEquals(flowId, flowNbPayload.getId());
-        assertEquals(FlowStatusType.UP, flowNbPayload.getStatus());
+        assertEquals(FlowState.UP, flowNbPayload.getStatus());
     }
 
     @Test
@@ -533,7 +533,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         FlowIdStatusPayload flowNbPayload = infoData.getPayload();
         assertNotNull(flowNbPayload);
         assertEquals(flowId, flowNbPayload.getId());
-        assertEquals(FlowStatusType.ALLOCATED, flowNbPayload.getStatus());
+        assertEquals(FlowState.ALLOCATED, flowNbPayload.getStatus());
 
         RemoveFlow data = removeFlowCommand(flowId);
 
@@ -565,7 +565,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         flowNbPayload = infoData.getPayload();
         assertNotNull(flowNbPayload);
         assertEquals(flowId, flowNbPayload.getId());
-        assertEquals(FlowStatusType.IN_PROGRESS, flowNbPayload.getStatus());
+        assertEquals(FlowState.IN_PROGRESS, flowNbPayload.getStatus());
 
         response.setDestination(Destination.WFM_TRANSACTION);
         removeRuleCommand(response);
@@ -585,7 +585,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         flowNbPayload = infoData.getPayload();
         assertNotNull(flowNbPayload);
         assertEquals(flowId, flowNbPayload.getId());
-        assertEquals(FlowStatusType.UP, flowNbPayload.getStatus());
+        assertEquals(FlowState.UP, flowNbPayload.getStatus());
     }
 
     @Test
@@ -671,7 +671,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         FlowIdStatusPayload flowNbPayloadUp = infoDataUp.getPayload();
         assertNotNull(flowNbPayloadUp);
         assertEquals(flowId, flowNbPayloadUp.getId());
-        assertEquals(FlowStatusType.ALLOCATED, flowNbPayloadUp.getStatus());
+        assertEquals(FlowState.ALLOCATED, flowNbPayloadUp.getStatus());
 
         errorFlowTopologyEngineCommand(flowId, ErrorType.CREATION_FAILURE);
 
@@ -733,7 +733,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         FlowIdStatusPayload flowNbPayloadUp = infoDataUp.getPayload();
         assertNotNull(flowNbPayloadUp);
         assertEquals(flowId, flowNbPayloadUp.getId());
-        assertEquals(FlowStatusType.ALLOCATED, flowNbPayloadUp.getStatus());
+        assertEquals(FlowState.ALLOCATED, flowNbPayloadUp.getStatus());
 
         errorFlowTopologyEngineCommand(flowId, ErrorType.UPDATE_FAILURE);
 
@@ -762,7 +762,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         FlowIdStatusPayload flowNbPayload = infoData.getPayload();
         assertNotNull(flowNbPayload);
         assertEquals(flowId, flowNbPayload.getId());
-        assertEquals(FlowStatusType.DOWN, flowNbPayload.getStatus());
+        assertEquals(FlowState.DOWN, flowNbPayload.getStatus());
     }
 
     @Test
@@ -848,7 +848,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         FlowIdStatusPayload flowNbPayloadUp = infoDataUp.getPayload();
         assertNotNull(flowNbPayloadUp);
         assertEquals(flowId, flowNbPayloadUp.getId());
-        assertEquals(FlowStatusType.ALLOCATED, flowNbPayloadUp.getStatus());
+        assertEquals(FlowState.ALLOCATED, flowNbPayloadUp.getStatus());
 
         errorFlowSpeakerCommand(flowId);
 
@@ -867,7 +867,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         FlowIdStatusPayload flowNbPayloadDown = infoDataDown.getPayload();
         assertNotNull(flowNbPayloadDown);
         assertEquals(flowId, flowNbPayloadDown.getId());
-        assertEquals(FlowStatusType.DOWN, flowNbPayloadDown.getStatus());
+        assertEquals(FlowState.DOWN, flowNbPayloadDown.getStatus());
     }
 
     private void sendNorthboundMessage(final CommandMessage message) throws IOException {

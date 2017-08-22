@@ -76,6 +76,7 @@ public class FlowManager extends FlowCache {
      * Creates flow.
      *
      * @param newFlow flow
+     * @return flow
      */
     public ImmutablePair<Flow, Flow> createFlow(Flow newFlow) {
         String flowId = newFlow.getFlowId();
@@ -89,6 +90,7 @@ public class FlowManager extends FlowCache {
      * Deletes flow.
      *
      * @param flowId flow id
+     * @return flow
      */
     public ImmutablePair<Flow, Flow> deleteFlow(String flowId) {
         ImmutablePair<Flow, Flow> flow = deleteFlowCache(flowId);
@@ -102,6 +104,7 @@ public class FlowManager extends FlowCache {
      *
      * @param flowId  flow id
      * @param newFlow flow
+     * @return flow
      */
     public ImmutablePair<Flow, Flow> updateFlow(String flowId, Flow newFlow) {
         ImmutablePair<Flow, Flow> flow = updateFlowCache(flowId, buildFlow(newFlow));
@@ -135,6 +138,21 @@ public class FlowManager extends FlowCache {
     }
 
     /**
+     * Gets path between source and destination switches.
+     *
+     * @param srcSwitchId source {@link Switch} id
+     * @param dstSwitchId destination {@link Switch} id
+     * @param bandwidth   available bandwidth
+     * @return {@link LinkedList} of {@link Isl} instances
+     */
+    public ImmutablePair<LinkedList<Isl>, LinkedList<Isl>> getPath(String srcSwitchId,
+                                                                   String dstSwitchId, int bandwidth) {
+        Switch srcSwitch = networkManager.getSwitch(srcSwitchId);
+        Switch dstSwitch = networkManager.getSwitch(dstSwitchId);
+        return getPath(srcSwitch, dstSwitch, bandwidth);
+    }
+
+    /**
      * Returns intersection between two paths.
      *
      * @param firstPath  first {@link LinkedList} of {@link Isl} instances
@@ -154,20 +172,6 @@ public class FlowManager extends FlowCache {
         logger.debug("Path intersection is {}", intersection);
 
         return intersection;
-    }
-
-    /**
-     * Gets path between source and destination switches.
-     *
-     * @param srcSwitchId source {@link Switch} id
-     * @param dstSwitchId destination {@link Switch} id
-     * @param bandwidth   available bandwidth
-     * @return {@link LinkedList} of {@link Isl} instances
-     */
-    public ImmutablePair<LinkedList<Isl>, LinkedList<Isl>> getPath(String srcSwitchId, String dstSwitchId, int bandwidth) {
-        Switch srcSwitch = networkManager.getSwitch(srcSwitchId);
-        Switch dstSwitch = networkManager.getSwitch(dstSwitchId);
-        return getPath(srcSwitch, dstSwitch, bandwidth);
     }
 
     /**

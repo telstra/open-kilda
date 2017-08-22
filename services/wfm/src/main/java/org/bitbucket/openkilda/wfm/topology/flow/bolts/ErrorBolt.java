@@ -22,8 +22,7 @@ import org.apache.storm.tuple.Values;
 import java.util.Map;
 
 /**
- * Error Bolt.
- * Processes error messages and forms Northbound responses.
+ * Error Bolt. Processes error messages and forms Northbound responses.
  */
 public class ErrorBolt extends BaseRichBolt {
     /**

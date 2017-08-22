@@ -1,5 +1,15 @@
 package org.bitbucket.openkilda.wfm.topology.stats;
 
+import static org.bitbucket.openkilda.wfm.topology.stats.StatsComponentType.FLOW_STATS_METRIC_GEN;
+import static org.bitbucket.openkilda.wfm.topology.stats.StatsComponentType.METER_CFG_STATS_METRIC_GEN;
+import static org.bitbucket.openkilda.wfm.topology.stats.StatsComponentType.PORT_STATS_METRIC_GEN;
+
+import org.bitbucket.openkilda.wfm.topology.AbstractTopology;
+import org.bitbucket.openkilda.wfm.topology.stats.bolts.SpeakerBolt;
+import org.bitbucket.openkilda.wfm.topology.stats.metrics.FlowMetricGenBolt;
+import org.bitbucket.openkilda.wfm.topology.stats.metrics.MeterConfigMetricGenBolt;
+import org.bitbucket.openkilda.wfm.topology.stats.metrics.PortMetricGenBolt;
+
 import org.apache.storm.Config;
 import org.apache.storm.LocalCluster;
 import org.apache.storm.StormSubmitter;
@@ -9,16 +19,8 @@ import org.apache.storm.opentsdb.bolt.OpenTsdbBolt;
 import org.apache.storm.opentsdb.bolt.TupleOpenTsdbDatapointMapper;
 import org.apache.storm.opentsdb.client.OpenTsdbClient;
 import org.apache.storm.topology.TopologyBuilder;
-import org.bitbucket.openkilda.messaging.Topic;
-import org.bitbucket.openkilda.wfm.topology.AbstractTopology;
-import org.bitbucket.openkilda.wfm.topology.stats.bolts.SpeakerBolt;
-import org.bitbucket.openkilda.wfm.topology.stats.metrics.FlowMetricGenBolt;
-import org.bitbucket.openkilda.wfm.topology.stats.metrics.MeterConfigMetricGenBolt;
-import org.bitbucket.openkilda.wfm.topology.stats.metrics.PortMetricGenBolt;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static org.bitbucket.openkilda.wfm.topology.stats.StatsComponentType.*;
 
 
 public class StatsTopology extends AbstractTopology {

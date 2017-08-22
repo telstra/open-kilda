@@ -78,7 +78,7 @@ public class FlowCrudBasicRunTest {
                                   final int sourceVlan, final String destinationSwitch, final int destinationPort,
                                   final int destinationVlan, final int bandwidth) throws Exception {
         Flow expectedFlow = new Flow(FlowUtils.getFlowName(flowId), bandwidth, FLOW_COOKIE, flowId, null, sourceSwitch,
-                destinationSwitch, sourcePort, destinationPort, sourceVlan, destinationVlan, 0, null, null);
+                destinationSwitch, sourcePort, destinationPort, sourceVlan, destinationVlan, 0, 0, null);
 
         List<Flow> flows = validateFlowStored();
 

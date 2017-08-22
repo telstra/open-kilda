@@ -26,7 +26,7 @@ import org.bitbucket.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowPayload;
-import org.bitbucket.openkilda.messaging.payload.flow.FlowStatusType;
+import org.bitbucket.openkilda.messaging.payload.flow.FlowState;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowsPayload;
 
 import org.slf4j.Logger;
@@ -51,7 +51,7 @@ public class WorkFlowManagerKafkaMock {
     static final String ERROR_FLOW_ID = "error-flow";
     static final FlowEndpointPayload flowEndpoint = new FlowEndpointPayload(FLOW_ID, 1, 1);
     static final FlowPayload flow = new FlowPayload(FLOW_ID, flowEndpoint, flowEndpoint, 10000L, "", "");
-    static final FlowIdStatusPayload flowStatus = new FlowIdStatusPayload(FLOW_ID, FlowStatusType.IN_PROGRESS);
+    static final FlowIdStatusPayload flowStatus = new FlowIdStatusPayload(FLOW_ID, FlowState.IN_PROGRESS);
     static final FlowsPayload flows = new FlowsPayload(singletonList(flow));
     static final FlowPathPayload flowPath = new FlowPathPayload(FLOW_ID, singletonList(FLOW_ID));
     private static final FlowResponse flowResponse = new FlowResponse(flow);
