@@ -2,6 +2,8 @@
 default: build-latest run-dev
 
 build-base:
+	git submodule foreach git pull origin master
+	git submodule update --recursive
 	docker build -t kilda/base-ubuntu:latest base/kilda-base-ubuntu/
 	docker build -t kilda/base-floodlight:latest base/base-floodlight/
 	docker build -f services/zookeeper/Dockerfile -t kilda/zookeeper:latest .
