@@ -6,5 +6,4 @@ patch -p1 < /app/loxigen.diff
 make java
 
 cd /app/loxigen/loxi_output/openflowj
-patch -p1 < /app/openflowj.diff
 MAVEN_OPTS="-Xmx4G" mvn install -DskipTests -Dmaven.javadoc.skip=true

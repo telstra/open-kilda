@@ -2,4 +2,5 @@
 
 service openvswitch-switch start
 /app/mininet_rest.py &
-/app/flow_tool.py
+/app/flow_tool.py &
+sleep infinity

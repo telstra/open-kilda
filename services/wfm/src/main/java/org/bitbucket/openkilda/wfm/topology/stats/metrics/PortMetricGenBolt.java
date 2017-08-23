@@ -35,20 +35,22 @@ public class PortMetricGenBolt extends MetricGenBolt {
         long timestamp = message.getTimestamp();
         data.getStats().forEach(stats -> stats.getEntries().forEach(entry -> {
             Map<String, String> tags = new HashMap<>();
-            tags.put("switch.id", data.getSwitchId().replaceAll(":", ""));
-            tags.put("port.id", String.valueOf(entry.getPortNo()));
-            collector.emit(tuple("rx-packets", timestamp, entry.getRxPackets(), tags));
-            collector.emit(tuple("tx-packets", timestamp, entry.getTxPackets(), tags));
-            collector.emit(tuple("rx-bytes", timestamp, entry.getRxBytes(), tags));
-            collector.emit(tuple("tx-bytes", timestamp, entry.getTxBytes(), tags));
-            collector.emit(tuple("rx-dropped", timestamp, entry.getRxDropped(), tags));
-            collector.emit(tuple("tx-dropped", timestamp, entry.getTxDropped(), tags));
-            collector.emit(tuple("rx-errors", timestamp, entry.getRxErrors(), tags));
-            collector.emit(tuple("tx-errors", timestamp, entry.getTxErrors(), tags));
-            collector.emit(tuple("rx-frame-err", timestamp, entry.getRxFrameErr(), tags));
-            collector.emit(tuple("rx-over-err", timestamp, entry.getRxOverErr(), tags));
-            collector.emit(tuple("rx-crc-err", timestamp, entry.getRxCrcErr(), tags));
-            collector.emit(tuple("collisions", timestamp, entry.getCollisions(), tags));
+            tags.put("switchid", data.getSwitchId().replaceAll(":", ""));
+            tags.put("port", String.valueOf(entry.getPortNo()));
+            collector.emit(tuple("pen.switch.rx-packets", timestamp, entry.getRxPackets(), tags));
+            collector.emit(tuple("pen.switch.tx-packets", timestamp, entry.getTxPackets(), tags));
+            collector.emit(tuple("pen.switch.rx-bytes", timestamp, entry.getRxBytes(), tags));
+            collector.emit(tuple("pen.switch.rx-bits", timestamp, entry.getRxBytes()*8, tags));
+            collector.emit(tuple("pen.switch.tx-bytes", timestamp, entry.getTxBytes(), tags));
+            collector.emit(tuple("pen.switch.tx-bits", timestamp, entry.getTxBytes()*8, tags));
+            collector.emit(tuple("pen.switch.rx-dropped", timestamp, entry.getRxDropped(), tags));
+            collector.emit(tuple("pen.switch.tx-dropped", timestamp, entry.getTxDropped(), tags));
+            collector.emit(tuple("pen.switch.rx-errors", timestamp, entry.getRxErrors(), tags));
+            collector.emit(tuple("pen.switch.tx-errors", timestamp, entry.getTxErrors(), tags));
+            collector.emit(tuple("pen.switch.rx-frame-error", timestamp, entry.getRxFrameErr(), tags));
+            collector.emit(tuple("pen.switch.rx-over-error", timestamp, entry.getRxOverErr(), tags));
+            collector.emit(tuple("pen.switch.rx-crc-error", timestamp, entry.getRxCrcErr(), tags));
+            collector.emit(tuple("pen.switch.collisions", timestamp, entry.getCollisions(), tags));
         }));
         collector.ack(input);
     }

@@ -87,11 +87,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
         kafkaProducer.postMessage(TOPIC, message);
 
         ImmutablePair<Long, Boolean> metersDeleted;
-        if (sw.getOFFactory().getVersion().compareTo(OF_12) > 0) {
-            metersDeleted = switchManager.deleteMeter(switchId, ALL_VAL);
-        } else {
-            metersDeleted = switchManager.deleteLegacyMeter(switchId, ALL_VAL);
-        }
+        metersDeleted = switchManager.deleteMeter(switchId, ALL_VAL);
         if (!metersDeleted.getRight()) {
             logger.error("Could not delete meters from switch={} xid={}", switchId, metersDeleted.getLeft());
         }

@@ -49,6 +49,15 @@ public class FlowFFRTest{
     private Flow flow;
     private List<List<String>> failedLinks;
 
+    public FlowFFRTest() {
+        Client client = ClientBuilder.newClient(new ClientConfig());
+        Response result = client
+           .target(trafficEndpoint)
+           .path("/cleanse")
+           .request()
+           .post(Entity.json(""));
+    }
+
     private void failLink() throws Throwable {
         // This method is designed to work with barebones topology.
         // It might need refactoring in the future when other topologies
@@ -58,8 +67,8 @@ public class FlowFFRTest{
            .target(trafficEndpoint)
            .path("/linkdown")
            .request()
-           .get();
-        assertEquals(result.getStatus(), 200);
+           .post(Entity.json(""));
+        assertEquals(200, result.getStatus());
     }
 
     private void resurrectLink() throws Throwable {
@@ -68,11 +77,12 @@ public class FlowFFRTest{
            .target(trafficEndpoint)
            .path("/linkup")
            .request()
-           .get();
-        assertEquals(result.getStatus(), 200);
+           .post(Entity.json(""));
+        assertEquals(200, result.getStatus());
     }
 
     private boolean trafficIsOk() throws Throwable {
+        TimeUnit.SECONDS.sleep(1);
         Client client = ClientBuilder.newClient(new ClientConfig());
         Response result = client
            .target(trafficEndpoint)
