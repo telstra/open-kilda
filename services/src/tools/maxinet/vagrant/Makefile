@@ -20,8 +20,8 @@ build-dev:
 	./build-kilda-dev.sh
 
 add-dev:
-	vagrant box add --force openkilda/kildadev \
-	 	packer/ubuntu/box/virtualbox/ubuntu1704-17.04.01.box
+	vagrant box add --force --clean openkilda/kildadev \
+	 	packer/ubuntu/box/virtualbox/ubuntu1704-17.04.02.box
 
 test-dev:
 	@rm -fr tmp 2>&1 >> /dev/null

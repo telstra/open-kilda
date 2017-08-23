@@ -22,7 +22,7 @@ iso_path=${iso_path:-$root}
 custom_script=${custom_script:-$root/install_scripts/all-dev.sh}
 
 cd packer/ubuntu && packer build -only=virtualbox-iso -var-file=ubuntu1704.json \
-    -var "version=17.04.01" \
+    -var "version=17.04.02" \
     -var "iso_path=${root}" \
     -var "hostname=kilda" \
     -var "ssh_username=kilda" \
@@ -30,6 +30,7 @@ cd packer/ubuntu && packer build -only=virtualbox-iso -var-file=ubuntu1704.json 
     -var "vagrantfile_template=${root}/vagrantfile.template" \
     -var "cpus=4" \
     -var "memory=10240" \
+    -var "desktop=off" \
     -var "headless=true" \
     -var "custom_script=${custom_script}" \
     ubuntu.json

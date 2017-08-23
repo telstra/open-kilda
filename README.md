@@ -59,13 +59,23 @@ Steps:
 1. From the root directory, look at the Vagrantfile; feel free to change its parameters.
 2. `vagrant up` - create the VM; it'll be running after this step.
 3. `vagrant ssh` - this will log you into the vm.
-4. `ssh-keygen -t rsa -C "your_email@example.com"` - you'll use this for bitbucket
+4. `ssh-keygen -t rsa -C "your_email@example.com"` - you'll use this for bitbucket.  Press 
+<return> for each question; three in total. 
 5. Add the ~/.ssh/id-rsa.pub key to bitbucket so that you can clone kilda
 ```bash
 cat ~/.ssh/id_rsa.pub
 ```
-6. `git clone git@bitbucket.org:pendevops/kilda-controller.git vm-dev` - put kilda-controller 
-into vm-dev
-4. `cd /vagrant` - the contents of kilda-controller are synced here
-4. `base/hacks/load_kilda_dev_ubuntu.sh` - run this to install docker, java, maven, python.
-5. `make build-base`
+6. Clone and Build
+```
+# NB: Instead of putting it in vm-dev, you can use /vagrant/vm-dev
+#     This has the added benefit that the code will appear outside the VM
+#     i.e. /vagrant is shared with the same directory as the Vagrantfile
+git clone --recursive git@bitbucket.org:pendevops/kilda-controller.git vm-dev
+cd vm-dev
+git checkout mvp1rc
+make build-base
+docker-compose build
+make unit
+make up-test-mode
+make atdd
+```

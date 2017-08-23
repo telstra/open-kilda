@@ -1,4 +1,7 @@
 FROM kilda/base-ubuntu
+
+ENV DEBIAN_FRONTEND noninteractive
+
 RUN apt-get install -y python-pip
 RUN apt-get install -y supervisor
 RUN apt-get install -y nginx

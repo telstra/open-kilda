@@ -17,18 +17,29 @@ update() {
     apt-get upgrade -y
 }
 
+install_basics() {
+    echo "--•--•--•--•--•--•--•--•--"
+    echo "--•--•-   BASICS   -•--•--"
+    echo "--•--•--•--•--•--•--•--•--"
+    apt-get install -y apt-utils
+    apt-get install -y --no-install-recommends \
+        sudo \
+        curl \
+        vim \
+        software-properties-common \
+        git
+
+}
+
 install_networking() {
     echo "--•--•--•--•--•--•--•--•--"
     echo "--•--•- NETWORKING -•--•--"
     echo "--•--•--•--•--•--•--•--•--"
-    apt-get install -y apt-utils git sudo net-tools
     apt-get install -y --no-install-recommends \
-        curl \
         iproute2 \
         iputils-ping \
         net-tools \
-        tcpdump \
-        vim
+        tcpdump
 }
 
 install_docker(){
@@ -37,13 +48,13 @@ install_docker(){
     echo "--•--•--•--•--•--•--•--•--"
 
     apt-get update
-    apt-get install -y \
+    apt-get install -y --no-install-recommends \
         apt-transport-https \
         ca-certificates \
         curl \
         software-properties-common
 
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
     apt-key fingerprint 0EBFCD88
 
     add-apt-repository \
@@ -57,6 +68,10 @@ install_docker(){
     usermod -aG docker ${SSH_USER}
 
     docker run hello-world
+
+    curl -L https://github.com/docker/compose/releases/download/1.15.0/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose
+    chmod +x /usr/local/bin/docker-compose
+    docker-compose --version
 }
 
 install_java(){
@@ -65,9 +80,6 @@ install_java(){
     echo "--•--•--•--•--•--•--•--•--"
 
     apt-get update
-
-    # need the following install in order to do add-apt-repository
-    apt-get install -y software-properties-common python-software-properties
 
     export JAVA_VER=8
     export JAVA_HOME=/usr/lib/jvm/java-8-oracle
@@ -102,9 +114,12 @@ install_python(){
     echo "--•--•--  PYTHON  --•--•--"
     echo "--•--•--•--•--•--•--•--•--"
 
-    apt-get install -y apt-utils python python-pip
+    apt-get install -y --no-install-recommends \
+        python \
+        python-pip \
+        python-software-properties
+
     pip install --upgrade pip
-    pip install docker-compose
 }
 
 
@@ -121,23 +136,24 @@ install_ansible() {
     fi
 }
 
-cleanup() {
-    apt-get clean
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-}
+#cleanup() {
+#    # apt-get clean
+#    # rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+#}
 
 main() {
     echo "--•--•--•--•--•--•--•--•--•--•--•--•--•--•--•--•--"
     echo "Install ALL software for this OpenKilda maxinet VM"
     echo "--•--•--•--•--•--•--•--•--•--•--•--•--•--•--•--•--"
     update
+    install_basics
+    install_python
     install_networking
     install_docker
-    #install_java
-    #install_maven
-    #install_python
-    #install_ansible
-    cleanup
+    install_java
+    install_maven
+    install_ansible
+#    cleanup
 }
 
 main
