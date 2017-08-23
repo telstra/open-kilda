@@ -5,12 +5,12 @@
 # INTRODUCTION:
 # => This Vagrant File can be used to standup a new VM
 # => It also serves as the basis for creating openkilda/maxinet, so anyone can do:
-# =>    "vagarant init openkilda/maxinet && vagrant up"
+# =>    "vagrant init openkilda/maxinet && vagrant up"
 # ==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==•==
 
 Vagrant.configure(2) do |config|
   # docs @ https://docs.vagrantup.com.
-  # You can search forvboxes at https://atlas.hashicorp.com/search.
+  # You can search for boxes at https://atlas.hashicorp.com/search.
 
   # ==•==•==•==•==•==•==•==•==•==•==
   # BASICS - OS and SIZE

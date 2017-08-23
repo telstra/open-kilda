@@ -1,11 +1,13 @@
 FROM ubuntu:xenial
 
+ENV DEBIAN_FRONTEND noninteractive
+
 RUN apt-get update
 
 #############################
 #Base container configuration
 #############################
-RUN DEBIAN_FRONTEND=noninteractive apt-get autoremove
+RUN apt-get autoremove
 
 #####################
 #Install Ansible and APT deps

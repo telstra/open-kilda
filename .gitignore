@@ -15,3 +15,5 @@ dependency-reduced-pom.xml
 *.idea/
 *.iml
 reports/
+.vagrant/
+*.log
