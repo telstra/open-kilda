@@ -15,6 +15,8 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <project.java.version>1.8</project.java.version>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
 
         <apache.kafka.version>0.10.2.1</apache.kafka.version>
         <checkstyle.version>7.7</checkstyle.version>
@@ -48,7 +50,7 @@
         <module>messaging</module>
         <module>pce</module>
         <module>floodlight-modules</module>
-        <!--module>northbound</module-->
+        <module>northbound</module>
         <module>atdd</module>
     </modules>
 
@@ -285,6 +287,26 @@
                         <target>1.8</target>
                     </configuration>
                 </plugin>
+
+                <plugin>
+                    <groupId>com.webcohesion.enunciate</groupId>
+                    <artifactId>enunciate-maven-plugin</artifactId>
+                    <version>${enunciate.version}</version>
+                    <executions>
+                        <execution>
+                            <goals>
+                                <goal>docs</goal>
+                            </goals>
+                            <configuration>
+                                <docsDir>${project.build.directory}/docs</docsDir>
+                                <exports>
+                                    <docs>${project.build.directory}/docs.zip</docs>
+                                </exports>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
+
             </plugins>
         </pluginManagement>
 
