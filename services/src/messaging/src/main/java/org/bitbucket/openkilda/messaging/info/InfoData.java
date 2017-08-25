@@ -1,6 +1,7 @@
 package org.bitbucket.openkilda.messaging.info;
 
 import org.bitbucket.openkilda.messaging.MessageData;
+import org.bitbucket.openkilda.messaging.info.discovery.NetworkDump;
 import org.bitbucket.openkilda.messaging.info.event.IslInfoData;
 import org.bitbucket.openkilda.messaging.info.event.PathInfoData;
 import org.bitbucket.openkilda.messaging.info.event.PortInfoData;
@@ -38,7 +39,8 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
         @Type(value = PortInfoData.class, name = "port"),
         @Type(value = PortStatsData.class, name = "port_stats"),
         @Type(value = MeterConfigStatsData.class, name = "meter_config_stats"),
-        @Type(value = FlowStatsData.class, name = "flow_stats")})
+        @Type(value = FlowStatsData.class, name = "flow_stats"),
+        @Type(value = NetworkDump.class, name = "network_dump")})
 public abstract class InfoData extends MessageData {
     /**
      * Serialization version number constant.

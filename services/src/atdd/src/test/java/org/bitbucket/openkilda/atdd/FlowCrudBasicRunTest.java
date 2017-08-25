@@ -9,7 +9,7 @@ import static org.junit.Assert.assertTrue;
 import org.bitbucket.openkilda.flow.FlowUtils;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowPayload;
-import org.bitbucket.openkilda.pce.model.Flow;
+import org.bitbucket.openkilda.messaging.model.Flow;
 
 import cucumber.api.java.en.Given;
 import cucumber.api.java.en.Then;

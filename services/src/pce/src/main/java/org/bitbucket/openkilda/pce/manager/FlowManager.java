@@ -1,9 +1,9 @@
 package org.bitbucket.openkilda.pce.manager;
 
+import org.bitbucket.openkilda.messaging.model.Flow;
+import org.bitbucket.openkilda.messaging.model.Isl;
+import org.bitbucket.openkilda.messaging.model.Switch;
 import org.bitbucket.openkilda.pce.Utils;
-import org.bitbucket.openkilda.pce.model.Flow;
-import org.bitbucket.openkilda.pce.model.Isl;
-import org.bitbucket.openkilda.pce.model.Switch;
 import org.bitbucket.openkilda.pce.provider.FlowStorage;
 
 import com.google.common.base.MoreObjects;

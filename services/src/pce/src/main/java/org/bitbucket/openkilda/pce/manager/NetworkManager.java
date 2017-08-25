@@ -1,7 +1,7 @@
 package org.bitbucket.openkilda.pce.manager;
 
-import org.bitbucket.openkilda.pce.model.Isl;
-import org.bitbucket.openkilda.pce.model.Switch;
+import org.bitbucket.openkilda.messaging.model.Isl;
+import org.bitbucket.openkilda.messaging.model.Switch;
 import org.bitbucket.openkilda.pce.provider.NetworkStorage;
 import org.bitbucket.openkilda.pce.provider.PathComputer;
 
@@ -160,7 +160,7 @@ public class NetworkManager extends NetworkCache {
      */
     public Isl createOrUpdateIsl(Isl isl) throws IllegalArgumentException {
         Isl newIsl;
-        String islId = isl.getId();
+        String islId = isl.getIslId();
         logger.debug("Create or update {} isl with {} parameters", islId, isl);
 
         if (cacheContainsIsl(islId)) {
@@ -225,15 +225,15 @@ public class NetworkManager extends NetworkCache {
      */
     public void handleIslChange(IslChangeEvent event) {
         if (event.created != null) {
-            createIslCache(event.created.getId(), event.created);
+            createIslCache(event.created.getIslId(), event.created);
         }
 
         if (event.updated != null) {
-            updateIslCache(event.updated.getId(), event.updated);
+            updateIslCache(event.updated.getIslId(), event.updated);
         }
 
         if (event.deleted != null) {
-            deleteIslCache(event.deleted.getId());
+            deleteIslCache(event.deleted.getIslId());
         }
     }
 

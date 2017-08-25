@@ -1,4 +1,4 @@
-package org.bitbucket.openkilda.pce.model;
+package org.bitbucket.openkilda.messaging.model;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 

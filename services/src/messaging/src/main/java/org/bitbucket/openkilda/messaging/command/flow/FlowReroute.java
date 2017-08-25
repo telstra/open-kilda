@@ -1,4 +1,4 @@
-package org.bitbucket.openkilda.messaging.command.routing;
+package org.bitbucket.openkilda.messaging.command.flow;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static org.bitbucket.openkilda.messaging.Utils.FLOW_ID;

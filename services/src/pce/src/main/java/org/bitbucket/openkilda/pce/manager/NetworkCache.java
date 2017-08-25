@@ -1,8 +1,8 @@
 package org.bitbucket.openkilda.pce.manager;
 
 import org.bitbucket.openkilda.messaging.info.event.SwitchState;
-import org.bitbucket.openkilda.pce.model.Isl;
-import org.bitbucket.openkilda.pce.model.Switch;
+import org.bitbucket.openkilda.messaging.model.Isl;
+import org.bitbucket.openkilda.messaging.model.Switch;
 
 import com.google.common.graph.EndpointPair;
 import com.google.common.graph.MutableNetwork;
@@ -151,7 +151,7 @@ public class NetworkCache {
         switches.forEach(this::createSwitchCache);
 
         logger.debug("Isls: {}", isls);
-        isls.forEach(isl -> createIslCache(isl.getId(), isl));
+        isls.forEach(isl -> createIslCache(isl.getIslId(), isl));
     }
 
     /**

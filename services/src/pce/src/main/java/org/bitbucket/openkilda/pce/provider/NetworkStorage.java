@@ -1,7 +1,7 @@
 package org.bitbucket.openkilda.pce.provider;
 
-import org.bitbucket.openkilda.pce.model.Isl;
-import org.bitbucket.openkilda.pce.model.Switch;
+import org.bitbucket.openkilda.messaging.model.Isl;
+import org.bitbucket.openkilda.messaging.model.Switch;
 
 import java.util.Set;
 

@@ -1,7 +1,7 @@
-package org.bitbucket.openkilda.wfm.topology.state;
+package org.bitbucket.openkilda.wfm.topology.cache;
 
 /**
- * Represents stream used in {@link StateTopology}.
+ * Represents stream used in {@link CacheTopology}.
  */
 public enum StreamType {
     /**
@@ -10,7 +10,7 @@ public enum StreamType {
     STORE,
 
     /**
-     * Request state dump.
+     * Request cache dump.
      */
     DUMP,
 

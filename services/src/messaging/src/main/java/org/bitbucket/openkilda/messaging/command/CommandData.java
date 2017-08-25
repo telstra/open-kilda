@@ -3,11 +3,13 @@ package org.bitbucket.openkilda.messaging.command;
 import org.bitbucket.openkilda.messaging.MessageData;
 import org.bitbucket.openkilda.messaging.command.discovery.DiscoverIslCommandData;
 import org.bitbucket.openkilda.messaging.command.discovery.DiscoverPathCommandData;
+import org.bitbucket.openkilda.messaging.command.discovery.DumpNetwork;
 import org.bitbucket.openkilda.messaging.command.flow.DefaultFlowsCommandData;
 import org.bitbucket.openkilda.messaging.command.flow.FlowCreateRequest;
 import org.bitbucket.openkilda.messaging.command.flow.FlowDeleteRequest;
 import org.bitbucket.openkilda.messaging.command.flow.FlowGetRequest;
 import org.bitbucket.openkilda.messaging.command.flow.FlowPathRequest;
+import org.bitbucket.openkilda.messaging.command.flow.FlowReroute;
 import org.bitbucket.openkilda.messaging.command.flow.FlowStatusRequest;
 import org.bitbucket.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.bitbucket.openkilda.messaging.command.flow.FlowsGetRequest;
@@ -16,7 +18,6 @@ import org.bitbucket.openkilda.messaging.command.flow.InstallIngressFlow;
 import org.bitbucket.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.bitbucket.openkilda.messaging.command.flow.InstallTransitFlow;
 import org.bitbucket.openkilda.messaging.command.flow.RemoveFlow;
-import org.bitbucket.openkilda.messaging.command.routing.FlowReroute;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
@@ -48,7 +49,8 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
         @Type(value = RemoveFlow.class, name = "delete_flow"),
         @Type(value = DiscoverIslCommandData.class, name = "discover_isl"),
         @Type(value = DiscoverPathCommandData.class, name = "discover_path"),
-        @Type(value = FlowReroute.class, name = "flow_reroute")})
+        @Type(value = FlowReroute.class, name = "flow_reroute"),
+        @Type(value = DumpNetwork.class, name = "dump_network")})
 public abstract class CommandData extends MessageData {
     /**
      * Serialization version number constant.

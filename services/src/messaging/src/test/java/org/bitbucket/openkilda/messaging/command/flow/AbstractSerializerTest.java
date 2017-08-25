@@ -7,10 +7,11 @@ import org.bitbucket.openkilda.messaging.AbstractSerializer;
 import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.Message;
 import org.bitbucket.openkilda.messaging.command.CommandMessage;
-import org.bitbucket.openkilda.messaging.command.routing.FlowReroute;
+import org.bitbucket.openkilda.messaging.command.discovery.DumpNetwork;
 import org.bitbucket.openkilda.messaging.error.ErrorData;
 import org.bitbucket.openkilda.messaging.error.ErrorMessage;
 import org.bitbucket.openkilda.messaging.error.ErrorType;
+import org.bitbucket.openkilda.messaging.info.discovery.NetworkDump;
 import org.bitbucket.openkilda.messaging.info.InfoMessage;
 import org.bitbucket.openkilda.messaging.info.event.IslChangeType;
 import org.bitbucket.openkilda.messaging.info.event.IslInfoData;
@@ -24,6 +25,9 @@ import org.bitbucket.openkilda.messaging.info.flow.FlowPathResponse;
 import org.bitbucket.openkilda.messaging.info.flow.FlowResponse;
 import org.bitbucket.openkilda.messaging.info.flow.FlowStatusResponse;
 import org.bitbucket.openkilda.messaging.info.flow.FlowsResponse;
+import org.bitbucket.openkilda.messaging.model.Flow;
+import org.bitbucket.openkilda.messaging.model.Isl;
+import org.bitbucket.openkilda.messaging.model.Switch;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowPathPayload;
@@ -36,7 +40,10 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.UUID;
 
 @Ignore
@@ -70,6 +77,13 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
             new FlowEndpointPayload(SWITCH_ID, INPUT_PORT, INPUT_VLAN_ID),
             new FlowEndpointPayload(SWITCH_ID, OUTPUT_PORT, OUTPUT_VLAN_ID),
             BANDWIDTH, CORRELATION_ID, String.valueOf(TIMESTAMP), OUTPUT_VLAN_TYPE);
+
+    private static final String requester = "requester-id";
+    private static final Switch sw1 = new Switch("sw1", "1.1.1.1", "sw1", "switch-1", SwitchState.ACTIVATED, "kilda");
+    private static final Switch sw2 = new Switch("sw2", "2.2.2.2", "sw2", "switch-2", SwitchState.ACTIVATED, "kilda");
+    private static final Isl isl = new Isl("sw1", "sw2", 1, 2, 1L, 1000, 1000);
+    private static final Flow flowModel = new Flow(FLOW_NAME, 1000, COOKIE, FLOW_NAME, String.valueOf(TIMESTAMP),
+            "sw1", "sw2", 10, 20, 100, 200, 1, 1024, new LinkedList<>(Collections.singleton(isl)));
 
     @Test
     public void serializeInstallEgressFlowMessageTest() throws IOException, ClassNotFoundException {
@@ -549,6 +563,51 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         assertTrue(resultCommand.getData() != null);
 
         FlowReroute resultData = (FlowReroute) resultCommand.getData();
+        System.out.println(resultData);
+        assertEquals(data, resultData);
+        assertEquals(data.hashCode(), resultData.hashCode());
+    }
+
+    @Test
+    public void dumpNetworkCommandTest() throws IOException, ClassNotFoundException {
+        DumpNetwork data = new DumpNetwork("requester");
+        System.out.println(data);
+
+        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
+        command.setData(data);
+        serialize(command);
+
+        Message message = (Message) deserialize();
+        assertTrue(message instanceof CommandMessage);
+
+        CommandMessage resultCommand = (CommandMessage) message;
+        assertTrue(resultCommand.getData() != null);
+
+        DumpNetwork resultData = (DumpNetwork) resultCommand.getData();
+        System.out.println(resultData);
+        assertEquals(data, resultData);
+        assertEquals(data.hashCode(), resultData.hashCode());
+    }
+
+    @Test
+    public void dumpNetworkResponseTest() throws IOException, ClassNotFoundException {
+        NetworkDump data = new NetworkDump(requester,
+                new HashSet<>(Arrays.asList(sw1, sw2)),
+                Collections.singleton(isl),
+                Collections.singleton(flowModel));
+        System.out.println(data);
+
+        InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
+        info.setData(data);
+        serialize(info);
+
+        Message message = (Message) deserialize();
+        assertTrue(message instanceof InfoMessage);
+
+        InfoMessage resultInfo = (InfoMessage) message;
+        assertTrue(resultInfo.getData() != null);
+
+        NetworkDump resultData = (NetworkDump) resultInfo.getData();
         System.out.println(resultData);
         assertEquals(data, resultData);
         assertEquals(data.hashCode(), resultData.hashCode());

@@ -1,6 +1,6 @@
 package org.bitbucket.openkilda.pce.provider;
 
-import org.bitbucket.openkilda.pce.model.Flow;
+import org.bitbucket.openkilda.messaging.model.Flow;
 
 import org.apache.commons.lang3.tuple.ImmutablePair;
 

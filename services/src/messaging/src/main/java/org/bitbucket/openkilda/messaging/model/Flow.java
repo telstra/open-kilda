@@ -1,4 +1,4 @@
-package org.bitbucket.openkilda.pce.model;
+package org.bitbucket.openkilda.messaging.model;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 
@@ -482,7 +482,7 @@ public class Flow implements Serializable {
      * @return true if flow path contains specified isl
      */
     public boolean containsIslInPath(String islId) {
-        return flowPath.stream().anyMatch(isl -> isl.getId().equals(islId));
+        return flowPath.stream().anyMatch(isl -> isl.getIslId().equals(islId));
     }
 
     /**

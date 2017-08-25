@@ -5,8 +5,8 @@ import static org.junit.Assert.assertEquals;
 import org.bitbucket.openkilda.messaging.info.event.SwitchState;
 import org.bitbucket.openkilda.pce.PathComputerMock;
 import org.bitbucket.openkilda.pce.StateStorageMock;
-import org.bitbucket.openkilda.pce.model.Isl;
-import org.bitbucket.openkilda.pce.model.Switch;
+import org.bitbucket.openkilda.messaging.model.Isl;
+import org.bitbucket.openkilda.messaging.model.Switch;
 import org.bitbucket.openkilda.pce.provider.PathComputer;
 
 import edu.emory.mathcs.backport.java.util.Collections;
@@ -163,10 +163,10 @@ public class NetworkManagerTest {
     public void deleteIsl() throws Exception {
         createOrUpdateIsl();
 
-        networkManager.deleteIsl(isl12.getId());
-        networkManager.deleteIsl(isl21.getId());
-        networkManager.deleteIsl(isl23.getId());
-        networkManager.deleteIsl(isl32.getId());
+        networkManager.deleteIsl(isl12.getIslId());
+        networkManager.deleteIsl(isl21.getIslId());
+        networkManager.deleteIsl(isl23.getIslId());
+        networkManager.deleteIsl(isl32.getIslId());
 
         assertEquals(0, storage.getIslsCount());
     }
@@ -174,10 +174,10 @@ public class NetworkManagerTest {
     @Test
     public void getIsl() throws Exception {
         createOrUpdateIsl();
-        assertEquals(isl12, networkManager.getIsl(isl12.getId()));
-        assertEquals(isl21, networkManager.getIsl(isl21.getId()));
-        assertEquals(isl23, networkManager.getIsl(isl23.getId()));
-        assertEquals(isl32, networkManager.getIsl(isl32.getId()));
+        assertEquals(isl12, networkManager.getIsl(isl12.getIslId()));
+        assertEquals(isl21, networkManager.getIsl(isl21.getIslId()));
+        assertEquals(isl23, networkManager.getIsl(isl23.getIslId()));
+        assertEquals(isl32, networkManager.getIsl(isl32.getIslId()));
     }
 
     @Test

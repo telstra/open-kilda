@@ -3,8 +3,8 @@ package org.bitbucket.openkilda.pce.provider.neo;
 import static org.junit.Assert.*;
 
 import org.bitbucket.openkilda.messaging.info.event.SwitchState;
-import org.bitbucket.openkilda.pce.model.Isl;
-import org.bitbucket.openkilda.pce.model.Switch;
+import org.bitbucket.openkilda.messaging.model.Isl;
+import org.bitbucket.openkilda.messaging.model.Switch;
 
 import org.junit.After;
 import org.junit.Ignore;

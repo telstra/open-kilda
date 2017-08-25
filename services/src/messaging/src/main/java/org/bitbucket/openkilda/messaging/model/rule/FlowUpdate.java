@@ -1,4 +1,4 @@
-package org.bitbucket.openkilda.pce.model.rule;
+package org.bitbucket.openkilda.messaging.model.rule;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 

@@ -36,9 +36,7 @@ clean-sources:
 update:
 	mvn --non-recursive -f services/src/pom.xml clean install
 	mvn -f services/src/messaging/pom.xml clean install
-
-pce:
-	$(MAKE) -C services/src pce
+	mvn -f services/src/pce/pom.xml clean install
 
 unit:
 	$(MAKE) -C services/src

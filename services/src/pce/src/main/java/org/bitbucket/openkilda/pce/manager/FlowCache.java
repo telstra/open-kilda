@@ -1,7 +1,7 @@
 package org.bitbucket.openkilda.pce.manager;
 
-import org.bitbucket.openkilda.pce.model.Flow;
-import org.bitbucket.openkilda.pce.model.Isl;
+import org.bitbucket.openkilda.messaging.model.Flow;
+import org.bitbucket.openkilda.messaging.model.Isl;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -79,8 +79,8 @@ class FlowCache {
      */
     public Set<ImmutablePair<Flow, Flow>> getAffectedByIslFlows(String islId) {
         return flowPool.values().stream().filter(flow ->
-                flow.getLeft().getFlowPath().stream().anyMatch(isl -> isl.getId().equals(islId))
-                        || flow.getRight().getFlowPath().stream().anyMatch(isl -> isl.getId().equals(islId)))
+                flow.getLeft().getFlowPath().stream().anyMatch(isl -> isl.getIslId().equals(islId))
+                        || flow.getRight().getFlowPath().stream().anyMatch(isl -> isl.getIslId().equals(islId)))
                 .collect(Collectors.toSet());
     }
 

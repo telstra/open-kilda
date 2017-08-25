@@ -21,6 +21,9 @@ import javax.ws.rs.core.Response;
 
 import org.bitbucket.openkilda.flow.FlowUtils;
 import org.bitbucket.openkilda.flow.Flow;
+import org.bitbucket.openkilda.messaging.payload.flow.FlowEndpointPayload;
+import org.bitbucket.openkilda.messaging.payload.flow.FlowPayload;
+import org.bitbucket.openkilda.messaging.model.Flow;
 import org.bitbucket.openkilda.topo.TopologyHelp;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowEndpointPayload;

@@ -54,5 +54,13 @@ deploy-stats:
 kill-stats:
 	storm kill stats >/dev/null 2>&1
 
+deploy-cache:
+	storm jar target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar \
+        org.bitbucket.openkilda.wfm.topology.cache.CacheTopology \
+        cache
+
+kill-cache:
+	storm kill cache >/dev/null 2>&1
+
 create-topics:
 	src/main/resources/create-channels.sh

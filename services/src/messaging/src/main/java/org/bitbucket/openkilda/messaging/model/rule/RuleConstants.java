@@ -1,4 +1,4 @@
-package org.bitbucket.openkilda.pce.model.rule;
+package org.bitbucket.openkilda.messaging.model.rule;
 
 public class RuleConstants {
     /**

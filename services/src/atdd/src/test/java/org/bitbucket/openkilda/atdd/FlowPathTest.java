@@ -4,7 +4,7 @@ import static org.bitbucket.openkilda.flow.FlowUtils.dumpLinks;
 import static org.bitbucket.openkilda.flow.FlowUtils.getLinkBandwidth;
 import static org.junit.Assert.assertEquals;
 
-import org.bitbucket.openkilda.pce.model.Isl;
+import org.bitbucket.openkilda.messaging.model.Isl;
 import org.bitbucket.openkilda.topo.TopologyHelp;
 
 import cucumber.api.java.en.Given;

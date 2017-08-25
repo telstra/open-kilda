@@ -1,31 +1,31 @@
-package org.bitbucket.openkilda.wfm.topology.state;
+package org.bitbucket.openkilda.wfm.topology.cache;
 
 /**
- * Represents components used in {@link StateTopology}.
+ * Represents components used in {@link CacheTopology}.
  */
 public enum ComponentType {
     /**
-     * Receives state from storage.
+     * Receives cache from storage.
      */
     STATE_STORAGE_KAFKA_SPOUT,
 
     /**
-     * Sends state to storage.
+     * Sends cache to storage.
      */
     STATE_STORAGE_KAFKA_BOLT,
 
     /**
-     * Receives state dump request.
+     * Receives cache dump request.
      */
     STATE_DUMP_KAFKA_SPOUT,
 
     /**
-     * Sends state dump response.
+     * Sends cache dump response.
      */
     STATE_DUMP_KAFKA_BOLT,
 
     /**
-     * Receives state updates.
+     * Receives cache updates.
      */
     STATE_UPDATE_KAFKA_SPOUT,
 

@@ -7,7 +7,7 @@ import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.Message;
 import org.bitbucket.openkilda.messaging.command.CommandData;
 import org.bitbucket.openkilda.messaging.command.CommandMessage;
-import org.bitbucket.openkilda.messaging.command.routing.FlowReroute;
+import org.bitbucket.openkilda.messaging.command.flow.FlowReroute;
 import org.bitbucket.openkilda.wfm.OFEMessageUtils;
 import org.bitbucket.openkilda.wfm.topology.AbstractTopology;
 
@@ -25,9 +25,8 @@ import org.apache.storm.tuple.Values;
 import java.util.Map;
 
 /**
- * Events Correlation Bolt.
- * Processes events and implements flow path recomputation logic.
- * TODO: implement flow path recomputation logic
+ * Events Correlation Bolt. Processes events and implements flow path recomputation logic. TODO: implement flow path
+ * recomputation logic
  */
 public class ReRouteBolt extends BaseStatefulBolt<KeyValueState<String, String>> {
     public static final String DEFAULT_OUTPUT_STREAM_ID = "kilda.wfm.tpe.flow";

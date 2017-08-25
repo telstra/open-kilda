@@ -4,11 +4,11 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
 import org.bitbucket.openkilda.messaging.info.event.SwitchState;
+import org.bitbucket.openkilda.messaging.model.Flow;
+import org.bitbucket.openkilda.messaging.model.Isl;
+import org.bitbucket.openkilda.messaging.model.Switch;
 import org.bitbucket.openkilda.pce.PathComputerMock;
 import org.bitbucket.openkilda.pce.StateStorageMock;
-import org.bitbucket.openkilda.pce.model.Flow;
-import org.bitbucket.openkilda.pce.model.Isl;
-import org.bitbucket.openkilda.pce.model.Switch;
 import org.bitbucket.openkilda.pce.provider.PathComputer;
 
 import edu.emory.mathcs.backport.java.util.Collections;
@@ -50,7 +50,7 @@ public class FlowManagerTest {
     private final Isl isl53 = new Isl("sw5", "sw3", 3, 1, 1L, 0L, 10);
     private final Isl isl35 = new Isl("sw3", "sw5", 1, 3, 1L, 0L, 10);
 
-    private final Flow firstFlow = new Flow("first-flow", 0, "first-flow", "sw1",  11, 100, "sw3", 11, 200);
+    private final Flow firstFlow = new Flow("first-flow", 0, "first-flow", "sw1", 11, 100, "sw3", 11, 200);
     private final Flow secondFlow = new Flow("second-flow", 0, "second-flow", "sw5", 12, 100, "sw3", 12, 200);
     private final Flow thirdFlow = new Flow("third-flow", 0, "third-flow", "sw3", 21, 100, "sw3", 22, 200);
     private final Flow forwardCreatedFlow = new Flow("created-flow", 0, 10L, "description",
@@ -183,16 +183,16 @@ public class FlowManagerTest {
         ImmutablePair<Flow, Flow> second = flowManager.createFlow(secondFlow);
         flowManager.createFlow(thirdFlow);
 
-        affected = flowManager.getAffectedByIslFlows(isl12.getId());
+        affected = flowManager.getAffectedByIslFlows(isl12.getIslId());
         assertEquals(Collections.singleton(first), affected);
 
-        affected = flowManager.getAffectedByIslFlows(isl21.getId());
+        affected = flowManager.getAffectedByIslFlows(isl21.getIslId());
         assertEquals(Collections.singleton(first), affected);
 
-        affected = flowManager.getAffectedByIslFlows(isl53.getId());
+        affected = flowManager.getAffectedByIslFlows(isl53.getIslId());
         assertEquals(new HashSet<>(Arrays.asList(first, second)), affected);
 
-        affected = flowManager.getAffectedByIslFlows(isl35.getId());
+        affected = flowManager.getAffectedByIslFlows(isl35.getIslId());
         assertEquals(new HashSet<>(Arrays.asList(first, second)), affected);
     }
 

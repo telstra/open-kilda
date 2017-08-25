@@ -1,4 +1,4 @@
-package org.bitbucket.openkilda.messaging.command.flow;
+package org.bitbucket.openkilda.messaging.command.discovery;
 
 import static org.bitbucket.openkilda.messaging.command.Constants.inputPort;
 import static org.bitbucket.openkilda.messaging.command.Constants.switchId;

@@ -33,6 +33,11 @@ public enum Destination {
     WFM_STATS("WFM_STATS"),
 
     /**
+     * WorkFlow Manager cache handling bolt.
+     */
+    WFM_CACHE("WFM_CACHE"),
+
+    /**
      * WorkFlow Manager transactions handling bolt.
      */
     WFM_TRANSACTION("WFM_TRANSACTION");

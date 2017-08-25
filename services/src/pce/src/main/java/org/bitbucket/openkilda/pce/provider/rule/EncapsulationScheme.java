@@ -1,7 +1,7 @@
 package org.bitbucket.openkilda.pce.provider.rule;
 
-import org.bitbucket.openkilda.pce.model.Flow;
-import org.bitbucket.openkilda.pce.model.rule.FlowInstall;
+import org.bitbucket.openkilda.messaging.model.Flow;
+import org.bitbucket.openkilda.messaging.model.rule.FlowInstall;
 
 public interface EncapsulationScheme {
     FlowInstall buildIngressInstallationFlowRule(Flow flow);

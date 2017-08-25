@@ -1,9 +1,11 @@
-package org.bitbucket.openkilda.wfm.topology.state;
+package org.bitbucket.openkilda.wfm.topology.cache;
 
+import static org.bitbucket.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 import static org.bitbucket.openkilda.messaging.Utils.MAPPER;
 
+import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.Message;
-import org.bitbucket.openkilda.messaging.command.CommandMessage;
+import org.bitbucket.openkilda.messaging.info.InfoData;
 import org.bitbucket.openkilda.messaging.info.InfoMessage;
 
 import org.apache.logging.log4j.LogManager;
@@ -30,7 +32,7 @@ public class StateBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, St
     private static final Logger logger = LogManager.getLogger(StateBolt.class);
 
     /**
-     * Network state state.
+     * Network cache cache.
      */
     private InMemoryKeyValueState<String, String> state;
 
@@ -58,34 +60,25 @@ public class StateBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, St
         logger.trace("State before: {}", state);
         logger.debug("Ingoing tuple: {}", tuple);
 
-        String json;
-        Values values;
-        Message message;
-
+        String json = tuple.getString(0);
         ComponentType componentId = ComponentType.valueOf(tuple.getSourceComponent());
-        StreamType streamId = StreamType.valueOf(tuple.getSourceStreamId());
 
         try {
             switch (componentId) {
 
                 case STATE_UPDATE_KAFKA_SPOUT:
 
-                    json = tuple.getStringByField("message");
-                    message = MAPPER.readValue(json, Message.class);
+                    InfoData data = MAPPER.readValue(json, InfoData.class);
 
-                    if (message instanceof CommandMessage) {
-                        logger.debug("Dump state command message {}", message);
-
-                        // TODO: dump state
-
-                    } else if (message instanceof InfoMessage) {
+                    if (data instanceof InfoData) {
                         logger.debug("State update info message {}", message);
 
-                        //message.setDestination(Destination.TOPOLOGY_ENGINE);
-                        values = new Values(MAPPER.writeValueAsString(message));
+                        Message message = new InfoMessage(data, System.currentTimeMillis(),
+                                DEFAULT_CORRELATION_ID, Destination.TOPOLOGY_ENGINE);
+                        Values values = new Values(MAPPER.writeValueAsString(message));
                         outputCollector.emit(StreamType.STORE.toString(), tuple, values);
 
-                        // TODO: update state
+                        // TODO: update cache
 
                     } else {
                         logger.warn("Skip undefined message type {}", json);
@@ -94,18 +87,21 @@ public class StateBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, St
                     break;
 
                 case STATE_STORAGE_KAFKA_SPOUT:
-
-                    json = tuple.getString(0);
                     logger.debug("Storage content message {}", json);
-
-                    message = MAPPER.readValue(json, Message.class);
 
                     // TODO: fill states
 
                     break;
 
+                case STATE_DUMP_KAFKA_SPOUT:
+                    logger.debug("Dump cache command message {}", json);
+
+                    // TODO: dump cache
+
+                    break;
+
                 default:
-                    logger.warn("Skip undefined state {}", tuple);
+                    logger.warn("Skip undefined cache {}", tuple);
 
                     break;
             }
@@ -114,7 +110,7 @@ public class StateBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, St
             logger.error("Could not deserialize message {}", tuple, exception);
 
         } finally {
-            logger.debug("State ack: component={}, stream={}", componentId, streamId);
+            logger.debug("State ack: component={}", componentId);
 
             outputCollector.ack(tuple);
         }
@@ -130,6 +126,4 @@ public class StateBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, St
         outputFieldsDeclarer.declareStream(StreamType.STORE.toString(), fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.DUMP.toString(), fieldMessage);
     }
-
-
 }

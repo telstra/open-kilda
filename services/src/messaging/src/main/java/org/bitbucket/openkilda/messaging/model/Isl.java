@@ -1,4 +1,4 @@
-package org.bitbucket.openkilda.pce.model;
+package org.bitbucket.openkilda.messaging.model;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 
@@ -233,7 +233,7 @@ public class Isl implements Serializable {
      *
      * @return isl id
      */
-    public String getId() {
+    public String getIslId() {
         return islId;
     }
 

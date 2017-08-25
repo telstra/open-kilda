@@ -125,7 +125,7 @@ public abstract class AbstractTopology implements Topology {
     }
 
     /**
-     * Creates Kafka topic if it does not exists.
+     * Creates Kafka topic if it does not exist.
      *
      * @param topic Kafka topic
      */
