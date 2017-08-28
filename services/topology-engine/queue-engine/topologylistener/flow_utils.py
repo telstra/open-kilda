@@ -71,7 +71,7 @@ def allocate_transit_vlan_id(transit_vlan_id=None):
 def deallocate_transit_vlan_id(transit_vlan_id):
     print "Transit vlan id deallocation: {}".format(transit_vlan_id)
     if transit_vlan_id:
-        transit_vlan_ids.append(int(transit_vlan_id))
+        transit_vlan_ids.append(transit_vlan_id)
 
 
 def deallocate_resources(cookie, transit_vlan_forward, transit_vlan_reverse):
@@ -89,23 +89,23 @@ def allocate_resources():
 
 
 def is_forward_cookie(cookie):
-    return int(cookie) & 0x4000000000000000
+    return cookie & 0x4000000000000000
 
 
 def is_reverse_cookie(cookie):
-    return int(cookie) & 0x2000000000000000
+    return cookie & 0x2000000000000000
 
 
 def forward_cookie(cookie):
-    return int(cookie) | 0x4000000000000000
+    return cookie | 0x4000000000000000
 
 
 def reverse_cookie(cookie):
-    return int(cookie) | 0x2000000000000000
+    return cookie | 0x2000000000000000
 
 
 def cookie_value(cookie):
-    return int(cookie) & 0x00000000FFFFFFFF
+    return cookie & 0x00000000FFFFFFFF
 
 
 def init_resources():
@@ -136,21 +136,21 @@ def build_ingress_flow(relationships, src_switch, src_port, src_vlan,
     # match = src_port
     for relationship in relationships:
         if relationship['data']['src_switch'] == src_switch:
-            action = relationship['data']['src_port']
+            action = int(relationship['data']['src_port'])
 
     flow = Flow()
     flow.command = "install_ingress_flow"
     flow.transaction_id = 0
     flow.flowid = flow_id
-    flow.cookie = int(cookie)
+    flow.cookie = cookie
     flow.switch_id = src_switch
-    flow.input_port = int(src_port)
+    flow.input_port = src_port
     flow.output_port = action
-    flow.input_vlan_id = int(src_vlan)
-    flow.transit_vlan_id = int(transit_vlan)
+    flow.input_vlan_id = src_vlan
+    flow.transit_vlan_id = transit_vlan
     flow.output_vlan_type = output_action
-    flow.bandwidth = int(bandwidth)
-    flow.meter_id = int(meter_id)
+    flow.bandwidth = bandwidth
+    flow.meter_id = meter_id
 
     return flow
 
@@ -160,18 +160,18 @@ def build_egress_flow(relationships, dst_switch, dst_port, dst_vlan,
     # action = dst_port
     for relationship in relationships:
         if relationship['data']['dst_switch'] == dst_switch:
-            match = relationship['data']['dst_port']
+            match = int(relationship['data']['dst_port'])
 
     flow = Flow()
     flow.command = "install_egress_flow"
     flow.transaction_id = 0
     flow.flowid = flow_id
-    flow.cookie = int(cookie)
+    flow.cookie = cookie
     flow.switch_id = dst_switch
-    flow.input_port = int(match)
-    flow.output_port = int(dst_port)
-    flow.transit_vlan_id = int(transit_vlan)
-    flow.output_vlan_id = int(dst_vlan)
+    flow.input_port = match
+    flow.output_port = dst_port
+    flow.transit_vlan_id = transit_vlan
+    flow.output_vlan_id = dst_vlan
     flow.output_vlan_type = output_action
 
     return flow
@@ -179,19 +179,19 @@ def build_egress_flow(relationships, dst_switch, dst_port, dst_vlan,
 
 def build_intermediate_flows(relationships, transit_vlan, i, flow_id, cookie):
     # output action is always NONE for transit vlan id
-    match = relationships[i]['data']['dst_port']
-    action = relationships[i + 1]['data']['src_port']
+    match = int(relationships[i]['data']['dst_port'])
+    action = int(relationships[i + 1]['data']['src_port'])
     switch = relationships[i]['data']['dst_switch']
 
     flow = Flow()
     flow.command = "install_transit_flow"
     flow.transaction_id = 0
     flow.flowid = flow_id
-    flow.cookie = int(cookie)
+    flow.cookie = cookie
     flow.switch_id = switch
-    flow.input_port = int(match)
-    flow.output_port = int(action)
-    flow.transit_vlan_id = int(transit_vlan)
+    flow.input_port = match
+    flow.output_port = action
+    flow.transit_vlan_id = transit_vlan
 
     return flow
 
@@ -203,15 +203,15 @@ def build_one_switch_flow(switch, src_port, src_vlan, dst_port, dst_vlan,
     flow.command = "install_one_switch_flow"
     flow.transaction_id = 0
     flow.flowid = flow_id
-    flow.cookie = int(cookie)
+    flow.cookie = cookie
     flow.switch_id = switch
-    flow.input_port = int(src_port)
-    flow.output_port = int(dst_port)
-    flow.input_vlan_id = int(src_vlan)
-    flow.output_vlan_id = int(dst_vlan)
+    flow.input_port = src_port
+    flow.output_port = dst_port
+    flow.input_vlan_id = src_vlan
+    flow.output_vlan_id = dst_vlan
     flow.output_vlan_type = output_action
-    flow.bandwidth = int(bandwidth)
-    flow.meter_id = int(meter_id)
+    flow.bandwidth = bandwidth
+    flow.meter_id = meter_id
 
     return flow
 
@@ -221,9 +221,9 @@ def delete_flow(switch, flow_id, cookie, meter_id=0):
     flow.command = "delete_flow"
     flow.transaction_id = 0
     flow.flowid = flow_id
-    flow.cookie = int(cookie)
+    flow.cookie = cookie
     flow.switch_id = switch
-    flow.meter_id = int(meter_id)
+    flow.meter_id = meter_id
 
     return flow
 
@@ -270,8 +270,8 @@ def get_one_switch_flows(src_switch, src_port, src_vlan,
                          dst_switch, dst_port, dst_vlan,
                          bandwidth, flow_id, cookie):
 
-    forward_output_action = choose_output_action(int(src_vlan), int(dst_vlan))
-    reverse_output_action = choose_output_action(int(dst_vlan), int(src_vlan))
+    forward_output_action = choose_output_action(src_vlan, dst_vlan)
+    reverse_output_action = choose_output_action(dst_vlan, src_vlan)
 
     forward_flow = build_one_switch_flow(
         src_switch, src_port, src_vlan, dst_port, dst_vlan, bandwidth, flow_id,
@@ -297,7 +297,7 @@ def get_path(src_switch, src_port, src_vlan, dst_switch, dst_port, dst_vlan,
              bandwidth, transit_vlan, flow_id, cookie):
 
     relationships = get_relationships(src_switch, dst_switch, bandwidth)
-    output_action = choose_output_action(int(src_vlan), int(dst_vlan))
+    output_action = choose_output_action(src_vlan, dst_vlan)
 
     if relationships:
         expanded_relationships = expand_relationships(relationships)
@@ -347,10 +347,15 @@ def create_flows(content, transit_vlan_forward, transit_vlan_reverse, cookie):
     if source['switch-id'] == destination['switch-id']:
 
         all_flows = get_one_switch_flows(
-            source['switch-id'], source['port-id'], source['vlan-id'],
-            destination['switch-id'], destination['port-id'],
-            destination['vlan-id'], content['maximum-bandwidth'],
-            content['flowid'], cookie)
+            str(source['switch-id']),
+            int(source['port-id']),
+            int(source['vlan-id']),
+            str(destination['switch-id']),
+            int(destination['port-id']),
+            int(destination['vlan-id']),
+            int(content['maximum-bandwidth']),
+            str(content['flowid']),
+            cookie)
 
         forward_isls = []
         reverse_isls = []
@@ -360,16 +365,28 @@ def create_flows(content, transit_vlan_forward, transit_vlan_reverse, cookie):
     else:
 
         forward_flows, forward_isls = get_path(
-            source['switch-id'], source['port-id'], source['vlan-id'],
-            destination['switch-id'], destination['port-id'],
-            destination['vlan-id'], content['maximum-bandwidth'],
-            transit_vlan_forward, content['flowid'], forward_cookie(cookie))
+            str(source['switch-id']),
+            int(source['port-id']),
+            int(source['vlan-id']),
+            str(destination['switch-id']),
+            int(destination['port-id']),
+            int(destination['vlan-id']),
+            int(content['maximum-bandwidth']),
+            transit_vlan_forward,
+            str(content['flowid']),
+            forward_cookie(cookie))
 
         reverse_flows, reverse_isls = get_path(
-            destination['switch-id'], destination['port-id'],
-            destination['vlan-id'], source['switch-id'], source['port-id'],
-            source['vlan-id'], content['maximum-bandwidth'],
-            transit_vlan_reverse, content['flowid'], reverse_cookie(cookie))
+            str(destination['switch-id']),
+            int(destination['port-id']),
+            int(destination['vlan-id']),
+            str(source['switch-id']),
+            int(source['port-id']),
+            int(source['vlan-id']),
+            int(content['maximum-bandwidth']),
+            transit_vlan_reverse,
+            str(content['flowid']),
+            reverse_cookie(cookie))
 
         all_flows = [forward_flows, reverse_flows]
 
@@ -390,11 +407,11 @@ def get_timestamp():
     return int(round(time.time() * 1000))
 
 
-def send_message(payload, correlation_id, message_type):
+def send_message(payload, correlation_id, message_type, destination="WFM"):
     message = Message()
     message.payload = payload
     message.type = message_type
-    message.destination = "WFM"
+    message.destination = destination
     message.timestamp = get_timestamp()
     message.correlation_id = correlation_id
     kafka_message = b'{}'.format(message.to_json())
@@ -403,12 +420,12 @@ def send_message(payload, correlation_id, message_type):
     message_result.get(timeout=5)
 
 
-def send_error_message(correlation_id, error_type,
-                       error_message, error_description):
+def send_error_message(correlation_id, error_type, error_message,
+                       error_description, destination="WFM"):
     data = {"error-type": error_type,
             "error-message": error_message,
             "error-description": error_description}
-    send_message(data, correlation_id, "ERROR")
+    send_message(data, correlation_id, "ERROR", destination)
 
 
 def send_install_commands(all_flows, correlation_id):
@@ -453,10 +470,11 @@ def find_flow_path(flow_id):
         forward_flow = flows[1]['r']
         reverse_flow = flows[0]['r']
 
-    cookie = cookie_value(forward_flow['cookie'])
+    cookie = cookie_value(int(forward_flow['cookie']))
     bandwidth = int(forward_flow['bandwidth'])
 
-    return [forward_flow, cookie, bandwidth, int(forward_flow['transit_vlan']),
+    return [forward_flow, cookie, bandwidth,
+            int(forward_flow['transit_vlan']),
             int(reverse_flow['transit_vlan']),
             forward_flow['flowpath'], reverse_flow['flowpath'],
             forward_flow['isl_path'], reverse_flow['isl_path']]
@@ -465,7 +483,7 @@ def find_flow_path(flow_id):
 def update_isl_available_bandwidth(links, bandwidth):
     query = "MATCH (a:switch)-[r:isl {{" \
             "src_switch: '{}', " \
-            "src_port: '{}'}}]->(b:switch) " \
+            "src_port: {}}}]->(b:switch) " \
             "set r.available_bandwidth = r.available_bandwidth - {} return r"
 
     for link in links:
@@ -483,8 +501,8 @@ def delete_flows_from_database_by_flow_id(flow_id, bandwidth,
     query = "MATCH (a:switch)-[r:flow {{flowid: '{}'}}]->(b:switch) {} r"
     graph.run(query.format(flow_id, "delete")).data()
 
-    update_isl_available_bandwidth(forward_links, (- int(bandwidth)))
-    update_isl_available_bandwidth(reverse_links, (- int(bandwidth)))
+    update_isl_available_bandwidth(forward_links, -bandwidth)
+    update_isl_available_bandwidth(reverse_links, -bandwidth)
 
 
 def delete_flows_from_database_by_relationship_ids(rel_ids, forward_links,
@@ -494,8 +512,8 @@ def delete_flows_from_database_by_relationship_ids(rel_ids, forward_links,
     for rel_id in rel_ids:
         graph.run(query.format(rel_id['ID(r)'], "delete")).data()
 
-    update_isl_available_bandwidth(forward_links, (- int(bandwidth)))
-    update_isl_available_bandwidth(reverse_links, (- int(bandwidth)))
+    update_isl_available_bandwidth(forward_links, -bandwidth)
+    update_isl_available_bandwidth(reverse_links, -bandwidth)
 
 
 def store_flows(start, end, content, timestamp, cookie, forward_vlan,
@@ -509,35 +527,36 @@ def store_flows(start, end, content, timestamp, cookie, forward_vlan,
     query = "MATCH (u:switch {{name:'{}'}}), (r:switch {{name:'{}'}}) " \
             "MERGE (u)-[:flow {{" \
             "flowid:'{}', " \
-            "cookie:'{}', " \
-            "bandwidth:'{}', " \
-            "src_port: '{}', " \
-            "dst_port: '{}', " \
+            "cookie: {}, " \
+            "bandwidth: {}, " \
+            "src_port: {}, " \
+            "dst_port: {}, " \
             "src_switch: '{}', " \
             "dst_switch: '{}', " \
-            "src_vlan: '{}', " \
-            "dst_vlan: '{}'," \
-            "transit_vlan: '{}', " \
+            "src_vlan: {}, " \
+            "dst_vlan: {}," \
+            "transit_vlan: {}, " \
             "description: '{}', " \
             "last_updated: '{}', " \
             "flowpath: {}, " \
             "isl_path: {}}}]->(r)"
 
-    update_isl_available_bandwidth(forward_links, int(bandwidth))
-    update_isl_available_bandwidth(reverse_links, int(bandwidth))
+    update_isl_available_bandwidth(forward_links, bandwidth)
+    update_isl_available_bandwidth(reverse_links, bandwidth)
 
     forward_path = query.format(
         start['name'], end['name'], content['flowid'], forward_cookie(cookie),
-        bandwidth, source['port-id'], destination['port-id'],
-        source['switch-id'], destination['switch-id'], source['vlan-id'],
-        destination['vlan-id'], forward_vlan, content['description'],
+        bandwidth, int(source['port-id']), int(destination['port-id']),
+        source['switch-id'], destination['switch-id'], int(source['vlan-id']),
+        int(destination['vlan-id']), forward_vlan, content['description'],
         timestamp, forward_flow_switches, forward_links)
 
     reverse_path = query.format(
         end['name'], start['name'], content['flowid'], reverse_cookie(cookie),
-        bandwidth, destination['port-id'], source['port-id'],
-        destination['switch-id'], source['switch-id'], destination['vlan-id'],
-        source['vlan-id'], reverse_vlan, content['description'],
+        bandwidth, int(destination['port-id']), int(source['port-id']),
+        destination['switch-id'], source['switch-id'],
+        int(destination['vlan-id']), int(source['vlan-id']),
+        reverse_vlan, content['description'],
         timestamp, reverse_flow_switches, reverse_links)
 
     graph.run(forward_path)
@@ -556,7 +575,7 @@ def get_flow(flow_id):
 
 def get_affected_flows(switch_id, port_id):
 
-    if port_id and int(port_id):
+    if port_id:
 
         isl = "{}-{}".format(switch_id, port_id)
         print "Get affected flows by link id={}".format(isl)

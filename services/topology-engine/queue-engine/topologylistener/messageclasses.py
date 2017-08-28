@@ -2,7 +2,6 @@
 import json
 from threading import Lock
 
-import requests
 import traceback
 import datetime
 from py2neo import Node
@@ -80,6 +79,8 @@ class MessageItem(object):
                 eventHandled = self.dump_flows()
             if self.get_command() == "flow_reroute":
                 eventHandled = self.reroute_flow()
+            if self.get_command() == "dump_network":
+                eventHandled = self.dump_network()
             return eventHandled
         except Exception as e:
             print e
@@ -108,7 +109,7 @@ class MessageItem(object):
                              address=self.payload['address'],
                              hostname=self.payload['hostname'],
                              description=self.payload['description'])
-            graph.create(state)
+            graph.create(newSwitch)
             print "Adding switch: {}".format(switchid)
             return True
         else:
@@ -154,10 +155,10 @@ class MessageItem(object):
         return True
 
     def isl_exists(self, src_switch, src_port):
-        if src_port and int(src_port):
+        if src_port:
             exists_query = ("MATCH (a:switch)-[r:isl {{"
                             "src_switch: '{}', "
-                            "src_port: '{}'}}]->(b:switch) return r")
+                            "src_port: {}}}]->(b:switch) return r")
             return graph.run(exists_query.format(src_switch, src_port)).data()
         else:
             exists_query = ("MATCH (a:switch)-[r:isl {{"
@@ -168,10 +169,10 @@ class MessageItem(object):
         print "Removing ISL:" \
               "src_switch={}, src_port={}".format(src_switch, src_port)
 
-        if src_port and int(src_port):
+        if src_port:
             delete_query = ("MATCH (a:switch)-[r:isl {{"
                             "src_switch: '{}', "
-                            "src_port: '{}'}}]->(b:switch) delete r")
+                            "src_port: {}}}]->(b:switch) delete r")
             result = graph.run(delete_query.format(src_switch, src_port)).data()
         else:
             delete_query = ("MATCH (a:switch)-[r:isl {{"
@@ -185,7 +186,7 @@ class MessageItem(object):
     def isl_discovery_failed(self):
         path = self.payload['path']
         switch_id = path[0]['switch_id']
-        port_id = path[0]['port_no']
+        port_id = int(path[0]['port_no'])
         if self.isl_exists(switch_id, port_id):
             return self.delete_isl(switch_id, port_id)
         else:
@@ -193,7 +194,7 @@ class MessageItem(object):
 
     def port_down(self):
         switch_id = self.payload['switch_id']
-        port_id = self.payload['port_no']
+        port_id = int(self.payload['port_no'])
         if self.isl_exists(switch_id, port_id):
             return self.delete_isl(switch_id, port_id)
         else:
@@ -201,13 +202,13 @@ class MessageItem(object):
 
     def create_isl(self):
         path = self.payload['path']
-        latency = self.payload['latency_ns']
+        latency = int(self.payload['latency_ns'])
         a_switch = path[0]['switch_id']
-        a_port = path[0]['port_no']
+        a_port = int(path[0]['port_no'])
         b_switch = path[1]['switch_id']
-        b_port = path[1]['port_no']
-        speed = self.payload['speed']
-        available_bandwidth = int(speed * available_bandwidth_limit_factor)
+        b_port = int(path[1]['port_no'])
+        speed = int(self.payload['speed'])
+        available_bandwidth = speed * available_bandwidth_limit_factor
 
         a_switchNode = graph.find_one('switch',
                                       property_key='name',
@@ -223,9 +224,9 @@ class MessageItem(object):
         try:
             isl_exists_query = ("MATCH (a:switch)-[r:isl {{"
                                 "src_switch: '{}', "
-                                "src_port: '{}', "
+                                "src_port: {}, "
                                 "dst_switch: '{}', "
-                                "dst_port: '{}'}}]->(b:switch) return r")
+                                "dst_port: {}}}]->(b:switch) return r")
             isl_exists = graph.run(isl_exists_query.format(a_switch,
                                                            a_port,
                                                            b_switch,
@@ -235,12 +236,12 @@ class MessageItem(object):
                 isl_query = ("MATCH (u:switch {{name:'{}'}}), "
                              "(r:switch {{name:'{}'}}) "
                              "MERGE (u)-[:isl {{"
-                             "src_port: '{}', "
-                             "dst_port: '{}', "
+                             "src_port: {}, "
+                             "dst_port: {}, "
                              "src_switch: '{}', "
                              "dst_switch: '{}', "
-                             "latency: '{}', "
-                             "speed: '{}', "
+                             "latency: {}, "
+                             "speed: {}, "
                              "available_bandwidth: {}}}]->(r)")
                 graph.run(isl_query.format(a_switchNode['name'],
                                            b_switchNode['name'],
@@ -250,16 +251,16 @@ class MessageItem(object):
                                            b_switch,
                                            latency,
                                            speed,
-                                           int(available_bandwidth)))
+                                           available_bandwidth))
 
                 print "ISL between {} and {} created".format(
                     a_switchNode['name'], b_switchNode['name'])
             else:
                 isl_update_query = ("MATCH (a:switch)-[r:isl {{"
                                     "src_switch: '{}', "
-                                    "src_port: '{}', "
+                                    "src_port: {}, "
                                     "dst_switch: '{}', "
-                                    "dst_port: '{}'}}]->(b:switch) "
+                                    "dst_port: {}}}]->(b:switch) "
                                     "set r.latency = {} return r")
                 graph.run(isl_update_query.format(a_switch,
                                                   a_port,
@@ -685,14 +686,10 @@ class MessageItem(object):
 
         return True
 
-    def dump_flows(self):
-        cor_id = self.correlation_id
-
-        print "Flows dump request: correlation_id={}".format(cor_id)
-
+    def get_flows(self):
         try:
-            query = "MATCH (a:switch)-[r:flow ]->(b:switch) {} r"
-            result = graph.run(query.format("return")).data()
+            query = "MATCH (a:switch)-[r:flow]->(b:switch) RETURN r"
+            result = graph.run(query).data()
 
             flows = []
             for data in result:
@@ -701,6 +698,23 @@ class MessageItem(object):
                     flows.append(flow)
 
             print 'Got flows={}'.format(flows)
+
+        except Exception as exception:
+
+            print "Error: " \
+                  "could not get flows: {}".format(exception.message)
+            traceback.print_exc()
+            raise
+
+        return flows
+
+    def dump_flows(self):
+        cor_id = self.correlation_id
+
+        print "Flows dump request: correlation_id={}".format(cor_id)
+
+        try:
+            flows = self.get_flows()
 
             payload = {
                 'payload': {
@@ -724,7 +738,7 @@ class MessageItem(object):
         cor_id = self.correlation_id
         flow_id = self.payload.get('flowid')
         switch_id = self.payload.get('switch_id')
-        port_id = self.payload.get('port_no')
+        port_id = int(self.payload.get('port_no'))
 
         # TODO: use with flow_id only
         try:
@@ -762,3 +776,75 @@ class MessageItem(object):
             reroute_lock.release()
 
         return result
+
+    def get_switches(self):
+        try:
+            query = "MATCH (n:switch) RETURN n"
+            result = graph.run(query).data()
+
+            switches = []
+            for data in result:
+                switch = data['n']
+                if switch:
+                    switches.append(switch)
+
+            print 'Got switches={}'.format(switches)
+
+        except Exception as exception:
+            print "Error: " \
+                  "could not get switches: {}".format(exception.message)
+            traceback.print_exc()
+            raise
+
+        return switches
+
+    def get_isls(self):
+        try:
+            query = "MATCH (r:isl) RETURN n"
+            result = graph.run(query).data()
+
+            isls = []
+            for data in result:
+                isl = data['r']
+                if isl:
+                    isls.append(isl)
+
+            print 'Got isls={}'.format(isls)
+
+        except Exception as exception:
+            print "Error: " \
+                  "could not get isls: {}".format(exception.message)
+            traceback.print_exc()
+            raise
+
+        return isls
+
+    def dump_network(self):
+        cor_id = self.correlation_id
+
+        print "Dump network request: correlation_id={}".format(cor_id)
+
+        try:
+            switches = self.get_switches()
+            isls = self.get_isls()
+            flows = self.get_flows()
+
+            payload = {
+                'payload': {
+                    'switches': switches,
+                    'isls': isls,
+                    'flows': flows},
+                'message_type': "network"}
+            flow_utils.send_message(payload, cor_id, "INFO", "WFM_CACHE")
+
+        except Exception as exception:
+            msg = "could not dump network"
+
+            flow_utils.send_error_message(
+                cor_id, "INTERNAL_ERROR", exception.message, msg, "WFM_CACHE")
+
+            print "Error: {}: {}".format(msg, exception.message)
+            traceback.print_exc()
+            raise
+
+        return True

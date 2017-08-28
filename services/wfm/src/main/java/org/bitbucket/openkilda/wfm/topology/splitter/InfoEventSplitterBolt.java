@@ -1,4 +1,4 @@
-package org.bitbucket.openkilda.wfm.topology.event;
+package org.bitbucket.openkilda.wfm.topology.splitter;
 
 import static org.bitbucket.openkilda.messaging.Utils.PAYLOAD;
 
@@ -63,7 +63,8 @@ public class InfoEventSplitterBolt extends BaseRichBolt {
             case "switch":
                 _collector.emit(I_SWITCH, tuple, dataVal);
                 logger.debug("EMIT {} : {}", I_SWITCH, dataVal);
-                if (state.equals("ACTIVATED") || state.equals("DEACTIVATED")) {
+                if (state.equals("ACTIVATED") || state.equals("DEACTIVATED")
+                        || state.equals("ADDED") || state.equals("REMOVED")) {
                     _collector.emit(I_SWITCH_UPDOWN, tuple, dataVal);
                     logger.debug("EMIT {} : {}", I_SWITCH_UPDOWN, dataVal);
                 } else {

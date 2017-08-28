@@ -25,8 +25,7 @@ import java.util.Map;
 @Import({MessageConsumerConfig.class, MessageProducerConfig.class, SecurityConfig.class})
 public class TestConfig {
     /**
-     * Kafka consumer configuration bean.
-     * This {@link Map} is used by {@link MessageConsumerConfig#consumerFactory}.
+     * Kafka consumer configuration bean. This {@link Map} is used by {@link MessageConsumerConfig#consumerFactory}.
      * Overrides {@link MessageConsumerConfig#consumerConfigs()}.
      *
      * @return kafka properties
@@ -45,9 +44,8 @@ public class TestConfig {
     }
 
     /**
-     * Kafka producer config bean.
-     * This {@link Map} is used by {@link MessageProducerConfig#producerFactory}.
-     * Overrides {@link MessageProducerConfig#producerConfigs()}.
+     * Kafka producer config bean. This {@link Map} is used by {@link MessageProducerConfig#producerFactory}. Overrides
+     * {@link MessageProducerConfig#producerConfigs()}.
      *
      * @return kafka properties bean
      */

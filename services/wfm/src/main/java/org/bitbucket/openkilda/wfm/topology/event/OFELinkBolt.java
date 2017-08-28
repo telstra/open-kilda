@@ -8,6 +8,7 @@ import static org.bitbucket.openkilda.wfm.topology.event.OFEventWFMTopology.DEFA
 import org.bitbucket.openkilda.messaging.info.event.IslInfoData;
 import org.bitbucket.openkilda.messaging.info.event.PathNode;
 import org.bitbucket.openkilda.wfm.OFEMessageUtils;
+import org.bitbucket.openkilda.wfm.topology.splitter.InfoEventSplitterBolt;
 import org.bitbucket.openkilda.wfm.topology.utils.AbstractTickStatefulBolt;
 import org.bitbucket.openkilda.wfm.topology.utils.LinkTracker;
 

@@ -1,7 +1,9 @@
-package org.bitbucket.openkilda.wfm.topology.event;
+package org.bitbucket.openkilda.wfm.topology.splitter;
 
 import static org.bitbucket.openkilda.messaging.Utils.PAYLOAD;
 
+import org.bitbucket.openkilda.messaging.Destination;
+import org.bitbucket.openkilda.messaging.Utils;
 import org.bitbucket.openkilda.wfm.OFEMessageUtils;
 
 import org.apache.logging.log4j.LogManager;
@@ -42,19 +44,24 @@ public class OFEventSplitterBolt extends BaseRichBolt {
             Map<String, ?> root = OFEMessageUtils.fromJson(json);
             String type = ((String) root.get("type")).toLowerCase();
             Map<String, ?> data = (Map<String, ?>) root.get(PAYLOAD);
-            // TODO: data should be converted back to json string .. or use json serializer
-            Values dataVal = new Values(PAYLOAD, OFEMessageUtils.toJson(data));
-            switch (type) {
-                case JSON_INFO:
-                    _collector.emit(INFO, tuple, dataVal);
-                    break;
-                case JSON_COMMAND:
-                    _collector.emit(COMMAND, tuple, dataVal);
-                    break;
-                default:
-                    // NB: we'll push the original message onto the CONFUSED channel
-                    _collector.emit(OTHER, tuple, new Values(PAYLOAD, json));
-                    logger.warn("WARNING: Unknown Message Type: " + type);
+            logger.info("SPLITTER data");
+            String destination = (String) root.get(Utils.DESTINATION);
+            logger.info("SPLITTER destination: {}", destination);
+            if (!Destination.TOPOLOGY_ENGINE.toString().equals(destination)) {
+                // TODO: data should be converted back to json string .. or use json serializer
+                Values dataVal = new Values(PAYLOAD, OFEMessageUtils.toJson(data));
+                switch (type) {
+                    case JSON_INFO:
+                        _collector.emit(INFO, tuple, dataVal);
+                        break;
+                    case JSON_COMMAND:
+                        _collector.emit(COMMAND, tuple, dataVal);
+                        break;
+                    default:
+                        // NB: we'll push the original message onto the CONFUSED channel
+                        _collector.emit(OTHER, tuple, new Values(PAYLOAD, json));
+                        logger.warn("WARNING: Unknown Message Type: " + type);
+                }
             }
         } catch (IOException e) {
             logger.warn("EXCEPTION during JSON parsing: {}, error: {}", json, e.getMessage());

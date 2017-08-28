@@ -10,6 +10,7 @@ import org.bitbucket.openkilda.flow.FlowUtils;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowPayload;
 import org.bitbucket.openkilda.messaging.model.Flow;
+import org.bitbucket.openkilda.messaging.payload.flow.FlowState;
 
 import cucumber.api.java.en.Given;
 import cucumber.api.java.en.Then;
@@ -78,7 +79,7 @@ public class FlowCrudBasicRunTest {
                                   final int sourceVlan, final String destinationSwitch, final int destinationPort,
                                   final int destinationVlan, final int bandwidth) throws Exception {
         Flow expectedFlow = new Flow(FlowUtils.getFlowName(flowId), bandwidth, FLOW_COOKIE, flowId, null, sourceSwitch,
-                destinationSwitch, sourcePort, destinationPort, sourceVlan, destinationVlan, 0, 0, null);
+                destinationSwitch, sourcePort, destinationPort, sourceVlan, destinationVlan, 0, 0, null, FlowState.UP);
 
         List<Flow> flows = validateFlowStored();
 

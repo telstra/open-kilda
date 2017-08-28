@@ -10,6 +10,7 @@ import org.bitbucket.openkilda.messaging.command.CommandMessage;
 import org.bitbucket.openkilda.messaging.command.flow.FlowReroute;
 import org.bitbucket.openkilda.wfm.OFEMessageUtils;
 import org.bitbucket.openkilda.wfm.topology.AbstractTopology;
+import org.bitbucket.openkilda.wfm.topology.splitter.InfoEventSplitterBolt;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.logging.log4j.LogManager;

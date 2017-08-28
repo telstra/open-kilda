@@ -24,6 +24,7 @@ import org.bitbucket.openkilda.flow.Flow;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowPayload;
 import org.bitbucket.openkilda.messaging.model.Flow;
+import org.bitbucket.openkilda.messaging.payload.flow.FlowState;
 import org.bitbucket.openkilda.topo.TopologyHelp;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowEndpointPayload;
@@ -183,7 +184,7 @@ public class FlowFFRTest{
                 new FlowEndpointPayload(destinationSwitch, destinationPort, destinationVlan),
                 (long) bandwidth, flowId, null);
         flow = new Flow(FlowUtils.getFlowName(flowId), bandwidth, FLOW_COOKIE, flowId, null, sourceSwitch,
-                destinationSwitch, sourcePort, destinationPort, sourceVlan, destinationVlan, 0, 0, null);
+                destinationSwitch, sourcePort, destinationPort, sourceVlan, destinationVlan, 0, 0, null, FlowState.UP);
 
         FlowPayload response = FlowUtils.putFlow(flowPayload);
         response.setCookie(null);

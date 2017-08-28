@@ -10,7 +10,7 @@ import org.bitbucket.openkilda.messaging.info.event.IslChangeType;
 import org.bitbucket.openkilda.messaging.info.event.IslInfoData;
 import org.bitbucket.openkilda.messaging.info.event.PathNode;
 import org.bitbucket.openkilda.wfm.topology.OutputCollectorMock;
-import org.bitbucket.openkilda.wfm.topology.event.InfoEventSplitterBolt;
+import org.bitbucket.openkilda.wfm.topology.splitter.InfoEventSplitterBolt;
 import org.bitbucket.openkilda.wfm.topology.event.OFELinkBolt;
 import org.bitbucket.openkilda.wfm.topology.event.OFEventWFMTopology;
 import org.bitbucket.openkilda.wfm.topology.utils.KafkaFilerTopology;

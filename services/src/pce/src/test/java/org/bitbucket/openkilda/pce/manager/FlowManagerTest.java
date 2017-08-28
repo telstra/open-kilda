@@ -7,6 +7,7 @@ import org.bitbucket.openkilda.messaging.info.event.SwitchState;
 import org.bitbucket.openkilda.messaging.model.Flow;
 import org.bitbucket.openkilda.messaging.model.Isl;
 import org.bitbucket.openkilda.messaging.model.Switch;
+import org.bitbucket.openkilda.messaging.payload.flow.FlowState;
 import org.bitbucket.openkilda.pce.PathComputerMock;
 import org.bitbucket.openkilda.pce.StateStorageMock;
 import org.bitbucket.openkilda.pce.provider.PathComputer;
@@ -54,9 +55,9 @@ public class FlowManagerTest {
     private final Flow secondFlow = new Flow("second-flow", 0, "second-flow", "sw5", 12, 100, "sw3", 12, 200);
     private final Flow thirdFlow = new Flow("third-flow", 0, "third-flow", "sw3", 21, 100, "sw3", 22, 200);
     private final Flow forwardCreatedFlow = new Flow("created-flow", 0, 10L, "description",
-            "timestamp", "sw3", "sw3", 21, 22, 100, 200, 4, 4, new LinkedList<>());
+            "timestamp", "sw3", "sw3", 21, 22, 100, 200, 4, 4, new LinkedList<>(), FlowState.ALLOCATED);
     private final Flow reverseCreatedFlow = new Flow("created-flow", 0, 10L, "description",
-            "timestamp", "sw3", "sw3", 22, 21, 200, 100, 5, 5, new LinkedList<>());
+            "timestamp", "sw3", "sw3", 22, 21, 200, 100, 5, 5, new LinkedList<>(), FlowState.ALLOCATED);
 
     @Before
     public void setUp() {

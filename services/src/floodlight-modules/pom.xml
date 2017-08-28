@@ -47,10 +47,6 @@
             <artifactId>kafka_2.11</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.apache.kafka</groupId>
-            <artifactId>kafka-clients</artifactId>
-        </dependency>
-        <dependency>
             <groupId>org.projectfloodlight</groupId>
             <artifactId>openflowj</artifactId>
             <version>${openflowj.version}</version>

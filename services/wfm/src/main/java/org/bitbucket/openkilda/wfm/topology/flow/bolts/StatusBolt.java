@@ -1,6 +1,5 @@
 package org.bitbucket.openkilda.wfm.topology.flow.bolts;
 
-import static org.bitbucket.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.bitbucket.openkilda.messaging.Utils.MAPPER;
 import static org.bitbucket.openkilda.wfm.topology.AbstractTopology.MESSAGE_FIELD;
 import static org.bitbucket.openkilda.wfm.topology.AbstractTopology.fieldMessage;
@@ -10,6 +9,7 @@ import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.fieldsMessa
 
 import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.Message;
+import org.bitbucket.openkilda.messaging.Utils;
 import org.bitbucket.openkilda.messaging.error.ErrorData;
 import org.bitbucket.openkilda.messaging.error.ErrorMessage;
 import org.bitbucket.openkilda.messaging.error.ErrorType;
@@ -81,8 +81,9 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
                             flowStatus = flowStates.get(flowId);
 
                             if (flowStatus == null) {
-                                logger.debug("Flow creation message: {}={}, flow-id={}, component={}, stream={}",
-                                        CORRELATION_ID, message.getCorrelationId(), flowId, componentId, streamId);
+                                logger.debug("Flow creation message: {}={}, {}={}, component={}, stream={}",
+                                        Utils.CORRELATION_ID, message.getCorrelationId(),
+                                        Utils.FLOW_ID, flowId, componentId, streamId);
 
                                 flowStates.put(flowId, FlowState.ALLOCATED);
 
@@ -91,9 +92,9 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
                                 outputCollector.emit(StreamType.CREATE.toString(), tuple, values);
 
                             } else {
-                                logMessage = String.format("Flow already exists: flow-id=%s", flowId);
+                                logMessage = String.format("Flow already exists: %s=%s", Utils.FLOW_ID, flowId);
                                 logger.error("{}, {}={}, component={}, stream={}", logMessage,
-                                        CORRELATION_ID, message.getCorrelationId(), flowId, componentId, streamId);
+                                        Utils.CORRELATION_ID, message.getCorrelationId(), componentId, streamId);
 
                                 errorMessage = getErrorMessage(message.getCorrelationId(),
                                         ErrorType.ALREADY_EXISTS, logMessage, componentId.toString().toLowerCase());
@@ -107,8 +108,9 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
                             flowStatus = flowStates.get(flowId);
 
                             if (flowStatus != null) {
-                                logger.debug("Flow update message: {}={}, flow-id={}, component={}, stream={}",
-                                        CORRELATION_ID, message.getCorrelationId(), flowId, componentId, streamId);
+                                logger.debug("Flow update message: {}={}, {}={}, component={}, stream={}",
+                                        Utils.CORRELATION_ID, message.getCorrelationId(),
+                                        Utils.FLOW_ID, flowId, componentId, streamId);
 
                                 flowStates.put(flowId, FlowState.ALLOCATED);
 
@@ -117,9 +119,9 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
                                 outputCollector.emit(StreamType.UPDATE.toString(), tuple, values);
 
                             } else {
-                                logMessage = String.format("Flow not found: flow-id=%s", flowId);
+                                logMessage = String.format("Flow not found: %s=%s", Utils.FLOW_ID, flowId);
                                 logger.error("{}, {}={}, component={}, stream={}", logMessage,
-                                        CORRELATION_ID, message.getCorrelationId(), flowId, componentId, streamId);
+                                        Utils.CORRELATION_ID, message.getCorrelationId(), componentId, streamId);
 
                                 errorMessage = getErrorMessage(message.getCorrelationId(),
                                         ErrorType.NOT_FOUND, logMessage, componentId.toString().toLowerCase());
@@ -133,8 +135,9 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
                             flowStatus = flowStates.get(flowId);
 
                             if (flowStatus != null) {
-                                logger.debug("Flow delete message: {}={}, flow-id={}, component={}, stream={}",
-                                        CORRELATION_ID, message.getCorrelationId(), flowId, componentId, streamId);
+                                logger.debug("Flow delete message: {}={}, {}={}, component={}, stream={}",
+                                        Utils.CORRELATION_ID, message.getCorrelationId(),
+                                        Utils.FLOW_ID, flowId, componentId, streamId);
 
                                 flowStates.delete(flowId);
 
@@ -143,9 +146,9 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
                                 outputCollector.emit(StreamType.DELETE.toString(), tuple, values);
 
                             } else {
-                                logMessage = String.format("Flow not found: flow-id=%s", flowId);
+                                logMessage = String.format("Flow not found: %s=%s", Utils.FLOW_ID, flowId);
                                 logger.error("{}, {}={}, component={}, stream={}", logMessage,
-                                        CORRELATION_ID, message.getCorrelationId(), flowId, componentId, streamId);
+                                        Utils.CORRELATION_ID, message.getCorrelationId(), componentId, streamId);
 
                                 errorMessage = getErrorMessage(message.getCorrelationId(),
                                         ErrorType.NOT_FOUND, logMessage, componentId.toString().toLowerCase());
@@ -161,17 +164,18 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
                             }
 
                             if (flowStatus != null || flowId == null) {
-                                logger.debug("Flow get message: {}={}, flow-id={}, component={}, stream={}",
-                                        CORRELATION_ID, message.getCorrelationId(), flowId, componentId, streamId);
+                                logger.debug("Flow get message: {}={}, {}={}, component={}, stream={}",
+                                        Utils.CORRELATION_ID, message.getCorrelationId(),
+                                        Utils.FLOW_ID, flowId, componentId, streamId);
 
                                 message.setDestination(Destination.TOPOLOGY_ENGINE);
                                 values = new Values(MAPPER.writeValueAsString(message));
                                 outputCollector.emit(StreamType.READ.toString(), tuple, values);
 
                             } else {
-                                logMessage = String.format("Flow not found: flow-id=%s", flowId);
+                                logMessage = String.format("Flow not found: %s=%s", Utils.FLOW_ID, flowId);
                                 logger.error("{}, {}={}, component={}, stream={}", logMessage,
-                                        CORRELATION_ID, message.getCorrelationId(), flowId, componentId, streamId);
+                                        Utils.CORRELATION_ID, message.getCorrelationId(), componentId, streamId);
 
                                 errorMessage = getErrorMessage(message.getCorrelationId(),
                                         ErrorType.NOT_FOUND, logMessage, componentId.toString().toLowerCase());
@@ -185,17 +189,18 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
                             flowStatus = flowStates.get(flowId);
 
                             if (flowStatus != null) {
-                                logger.debug("Flow path message: {}={}, flow-id={}, component={}, stream={}",
-                                        CORRELATION_ID, message.getCorrelationId(), flowId, componentId, streamId);
+                                logger.debug("Flow path message: {}={}, {}={}, component={}, stream={}",
+                                        Utils.CORRELATION_ID, message.getCorrelationId(),
+                                        Utils.FLOW_ID, flowId, componentId, streamId);
 
                                 message.setDestination(Destination.TOPOLOGY_ENGINE);
                                 values = new Values(MAPPER.writeValueAsString(message));
                                 outputCollector.emit(StreamType.PATH.toString(), tuple, values);
 
                             } else {
-                                logMessage = String.format("Flow not found: flow-id=%s", flowId);
+                                logMessage = String.format("Flow not found: %s=%s", Utils.FLOW_ID, flowId);
                                 logger.error("{}, {}={}, component={}, stream={}", logMessage,
-                                        CORRELATION_ID, message.getCorrelationId(), flowId, componentId, streamId);
+                                        Utils.CORRELATION_ID, message.getCorrelationId(), componentId, streamId);
 
                                 errorMessage = getErrorMessage(message.getCorrelationId(),
                                         ErrorType.NOT_FOUND, logMessage, componentId.toString().toLowerCase());
@@ -209,8 +214,9 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
                             flowStatus = flowStates.get(flowId);
 
                             if (flowStatus != null) {
-                                logger.debug("Flow status message: {}={}, flow-id={}, component={}, stream={}",
-                                        CORRELATION_ID, message.getCorrelationId(), flowId, componentId, streamId);
+                                logger.debug("Flow status message: {}={}, {}={}, component={}, stream={}",
+                                        Utils.CORRELATION_ID, message.getCorrelationId(),
+                                        Utils.FLOW_ID, flowId, componentId, streamId);
 
                                 InfoMessage responseMessage = new InfoMessage(
                                         new FlowStatusResponse(new FlowIdStatusPayload(flowId, flowStatus)),
@@ -220,9 +226,9 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
                                 outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
 
                             } else {
-                                logMessage = String.format("Flow not found: flow-id=%s", flowId);
+                                logMessage = String.format("Flow not found: %s=%s", Utils.FLOW_ID, flowId);
                                 logger.error("{}, {}={}, component={}, stream={}", logMessage,
-                                        CORRELATION_ID, message.getCorrelationId(), flowId, componentId, streamId);
+                                        Utils.CORRELATION_ID, message.getCorrelationId(), componentId, streamId);
 
                                 errorMessage = getErrorMessage(message.getCorrelationId(),
                                         ErrorType.NOT_FOUND, logMessage, componentId.toString().toLowerCase());
@@ -233,8 +239,9 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
                             break;
 
                         default:
-                            logger.warn("Skip message from unknown stream: {}={}, flow-id={}, component={}, stream={}",
-                                    CORRELATION_ID, message.getCorrelationId(), flowId, componentId, streamId);
+                            logger.warn("Skip message from unknown stream: {}={}, {}={}, component={}, stream={}",
+                                    Utils.CORRELATION_ID, message.getCorrelationId(),
+                                    Utils.FLOW_ID, flowId, componentId, streamId);
                             break;
                     }
                     break;
@@ -293,16 +300,16 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
                     break;
 
                 default:
-                    logger.error("Skip undefined message: flow-id={}, component={}, stream={}",
-                            flowId, componentId, streamId);
+                    logger.error("Skip undefined message: {}={}, component={}, stream={}",
+                            Utils.FLOW_ID, flowId, componentId, streamId);
                     break;
             }
         } catch (JsonProcessingException exception) {
-            logger.error("Could not serialize message: flow-id={}, component={}, stream={}, tuple={}",
-                    flowId, componentId, streamId, tuple);
+            logger.error("Could not serialize message: {}={}, component={}, stream={}, tuple={}",
+                    Utils.FLOW_ID, flowId, componentId, streamId, tuple);
         } finally {
-            logger.debug("Flow message ack: flow-id={}, component={}, stream={}",
-                    flowId, componentId, streamId);
+            logger.debug("Flow message ack: {}={}, component={}, stream={}",
+                    Utils.FLOW_ID, flowId, componentId, streamId);
 
             outputCollector.ack(tuple);
 

@@ -1,13 +1,15 @@
 package org.bitbucket.openkilda.messaging.model.rule;
 
-public class RuleConstants {
+import org.bitbucket.openkilda.messaging.Utils;
+
+public final class RuleConstants {
     /**
      * The command name property.
      */
     public static final String OF_COMMAND = "of_command";
 
     /** The payload property. */
-    public static final String FLOW_ID = "flow_id";
+    public static final String FLOW_ID = Utils.FLOW_ID;
 
     /** The payload property. */
     public static final String SWITCH_ID = "switch_id";

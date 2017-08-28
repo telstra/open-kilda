@@ -41,9 +41,8 @@ import org.springframework.util.concurrent.ListenableFutureCallback;
 import java.io.IOException;
 
 /**
- * Spring component which mocks WorkFlow Manager.
- * This instance listens kafka ingoing requests and sends back appropriate kafka responses.
- * Response type choice is based on request type.
+ * Spring component which mocks WorkFlow Manager. This instance listens kafka ingoing requests and sends back
+ * appropriate kafka responses. Response type choice is based on request type.
  */
 @Component
 public class WorkFlowManagerKafkaMock {

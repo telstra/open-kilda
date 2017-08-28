@@ -10,7 +10,7 @@ from pprint import pprint
 print "Topology engine started."
 handleableMessages = ['switch', 'isl', 'port']
 handleableCommands = ['flow_create', 'flow_delete', 'flow_update', 'flow_path',
-                      'flow_get', 'flows_get', 'flow_reroute']
+                      'flow_get', 'flows_get', 'flow_reroute', 'dump_network']
 
 def get_events(threadcount):
     global workerthreadcount

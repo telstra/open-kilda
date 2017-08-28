@@ -25,11 +25,17 @@
             <artifactId>messaging</artifactId>
             <version>${messaging.version}</version>
         </dependency>
-        <!--dependency>
+        <dependency>
             <groupId>org.bitbucket.openkilda</groupId>
             <artifactId>pce</artifactId>
             <version>${pce.version}</version>
-        </dependency-->
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-log4j12</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
 
         <dependency>
             <groupId>org.apache.storm</groupId>
@@ -41,6 +47,12 @@
             <groupId>org.apache.storm</groupId>
             <artifactId>storm-kafka</artifactId>
             <version>${storm.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.google.guava</groupId>
+                    <artifactId>guava</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.apache.storm</groupId>
@@ -52,6 +64,10 @@
             <artifactId>storm-opentsdb</artifactId>
             <version>${storm.version}</version>
             <exclusions>
+                <exclusion>
+                    <groupId>com.google.guava</groupId>
+                    <artifactId>guava</artifactId>
+                </exclusion>
                 <exclusion>
                     <groupId>com.fasterxml.jackson.core</groupId>
                     <artifactId>jackson-databind</artifactId>
@@ -140,12 +156,6 @@
             <groupId>org.apache.storm</groupId>
             <artifactId>flux-wrappers</artifactId>
             <version>${storm.version}</version>
-        </dependency>
-        <!-- NB: KafkaUtils uses zkclient, at least in tests, possibly in prod -->
-        <dependency>
-            <groupId>com.101tec</groupId>
-            <artifactId>zkclient</artifactId>
-            <version>0.10</version>
         </dependency>
 
         <!-- ~~~~~~~ -->
@@ -256,7 +266,7 @@
                     </descriptorRefs>
                     <archive>
                         <manifest>
-                            <mainClass>org.bitbucket.openkilda.wfm.topology.event.OFEventSplitterTopology</mainClass>
+                            <mainClass>org.bitbucket.openkilda.wfm.topology.splitter.OFEventSplitterTopology</mainClass>
                         </manifest>
                     </archive>
                 </configuration>

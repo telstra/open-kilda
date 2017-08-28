@@ -16,7 +16,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import org.bitbucket.openkilda.messaging.error.ErrorType;
 import org.bitbucket.openkilda.messaging.error.MessageError;
-import org.bitbucket.openkilda.messaging.error.MessageException;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowPayload;
@@ -31,7 +30,6 @@ import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.listener.KafkaMessageListenerContainer;
 import org.springframework.kafka.listener.MessageListener;
@@ -92,6 +90,10 @@ public class FlowControllerTest {
     @AfterClass
     public static void tearDownAfterClass() throws Exception {
         embeddedKafka.after();
+    }
+
+    private static String testCorrelationId() {
+        return UUID.randomUUID().toString();
     }
 
     @Before
@@ -230,9 +232,5 @@ public class FlowControllerTest {
 
         MessageError response = MAPPER.readValue(result.getResponse().getContentAsString(), MessageError.class);
         assertEquals(AUTH_ERROR, response);
-    }
-
-    private static String testCorrelationId() {
-        return UUID.randomUUID().toString();
     }
 }

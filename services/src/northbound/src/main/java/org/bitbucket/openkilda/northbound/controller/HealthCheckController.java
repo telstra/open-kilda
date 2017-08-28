@@ -3,11 +3,13 @@ package org.bitbucket.openkilda.northbound.controller;
 import static org.bitbucket.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 import static org.bitbucket.openkilda.messaging.error.ErrorType.INTERNAL_ERROR;
 
+import org.bitbucket.openkilda.messaging.error.MessageError;
 import org.bitbucket.openkilda.messaging.error.MessageException;
 import org.bitbucket.openkilda.northbound.model.HealthCheck;
 
-import com.webcohesion.enunciate.metadata.rs.ResponseCode;
-import com.webcohesion.enunciate.metadata.rs.StatusCodes;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiResponse;
+import io.swagger.annotations.ApiResponses;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,11 +44,16 @@ public class HealthCheckController {
      *
      * @return health-check model entity
      */
+    @ApiOperation(value = "Gets health-check status", response = HealthCheck.class)
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, response = MessageError.class, message = "Operation is successful"),
+            @ApiResponse(code = 401, response = MessageError.class, message = "Unauthorized"),
+            @ApiResponse(code = 403, response = MessageError.class, message = "Forbidden"),
+            @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
+            @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
     @RequestMapping(value = "/health-check",
             method = RequestMethod.GET,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
-    @StatusCodes({@ResponseCode(code = 200, condition = "Operation is successful"),
-            @ResponseCode(code = 503, condition = "Service unavailable")})
     public ResponseEntity<HealthCheck> getHealthCheck() {
         logger.debug("getHealthCheck");
         if (healthCheck == null) {

@@ -1,6 +1,7 @@
 package org.bitbucket.openkilda.wfm.topology.event;
 
 import org.bitbucket.openkilda.wfm.KafkaUtils;
+import org.bitbucket.openkilda.wfm.topology.splitter.InfoEventSplitterBolt;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;

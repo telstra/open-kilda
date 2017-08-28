@@ -2,6 +2,7 @@ package org.bitbucket.openkilda.wfm.topology.flow;
 
 import static org.bitbucket.openkilda.messaging.Utils.TRANSACTION_ID;
 
+import org.bitbucket.openkilda.messaging.Utils;
 import org.bitbucket.openkilda.wfm.topology.AbstractTopology;
 import org.bitbucket.openkilda.wfm.topology.flow.bolts.ErrorBolt;
 import org.bitbucket.openkilda.wfm.topology.flow.bolts.NorthboundReplyBolt;
@@ -26,7 +27,7 @@ import org.apache.storm.tuple.Fields;
  * Flow topology.
  */
 public class FlowTopology extends AbstractTopology {
-    public static final String FLOW_ID_FIELD = "flow-id";
+    public static final String FLOW_ID_FIELD = Utils.FLOW_ID;
     public static final String SWITCH_ID_FIELD = "switch-id";
     public static final String STATUS_FIELD = "status";
     public static final String ERROR_TYPE_FIELD = "error-type";

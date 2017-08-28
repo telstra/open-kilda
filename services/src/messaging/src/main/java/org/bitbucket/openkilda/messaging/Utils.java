@@ -37,6 +37,10 @@ public final class Utils {
      */
     public static final String FLOW_ID = "flowid";
     /**
+     * The payload property.
+     */
+    public static final String FLOW_PATH = "flowpath";
+    /**
      * The default correlation ID value.
      */
     public static final String DEFAULT_CORRELATION_ID = "admin-request";

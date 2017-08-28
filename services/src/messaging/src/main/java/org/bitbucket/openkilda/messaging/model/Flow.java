@@ -2,6 +2,7 @@ package org.bitbucket.openkilda.messaging.model;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 
+import org.bitbucket.openkilda.messaging.Utils;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowState;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -25,7 +26,7 @@ public class Flow implements Serializable {
     /**
      * Flow id.
      */
-    @JsonProperty("flow_id")
+    @JsonProperty(Utils.FLOW_ID)
     private String flowId;
 
     /**
@@ -103,7 +104,7 @@ public class Flow implements Serializable {
     /**
      * Flow switch path.
      */
-    @JsonProperty("flow_path")
+    @JsonProperty(Utils.FLOW_PATH)
     private LinkedList<Isl> flowPath;
 
     /**
@@ -135,9 +136,10 @@ public class Flow implements Serializable {
      * @param transitVlan       transit vlan id
      * @param meterId           meter id
      * @param flowPath          flow switch path
+     * @param state             flow state
      */
     @JsonCreator
-    public Flow(@JsonProperty("flow_id") final String flowId,
+    public Flow(@JsonProperty(Utils.FLOW_ID) final String flowId,
                 @JsonProperty("bandwidth") final int bandwidth,
                 @JsonProperty("cookie") final long cookie,
                 @JsonProperty("description") final String description,
@@ -150,7 +152,8 @@ public class Flow implements Serializable {
                 @JsonProperty("dst_vlan") final int destinationVlan,
                 @JsonProperty("meter_id") final int meterId,
                 @JsonProperty("transit_vlan") final int transitVlan,
-                @JsonProperty("flow_path") final LinkedList<Isl> flowPath) {
+                @JsonProperty(Utils.FLOW_PATH) final LinkedList<Isl> flowPath,
+                @JsonProperty("state") FlowState state) {
         this.flowId = flowId;
         this.bandwidth = bandwidth;
         this.cookie = cookie;
@@ -165,6 +168,7 @@ public class Flow implements Serializable {
         this.transitVlan = transitVlan;
         this.meterId = meterId;
         this.flowPath = flowPath;
+        this.state = state;
     }
 
     /**
@@ -517,7 +521,7 @@ public class Flow implements Serializable {
     public int hashCode() {
         return Objects.hash(flowId, bandwidth, description, state,
                 sourceSwitch, sourcePort, sourceVlan, destinationSwitch, destinationPort, destinationVlan,
-                cookie, transitVlan, meterId, lastUpdated);
+                cookie, transitVlan, meterId, lastUpdated, flowPath);
     }
 
     /**
@@ -526,7 +530,7 @@ public class Flow implements Serializable {
     @Override
     public String toString() {
         return toStringHelper(this)
-                .add("flow_id", flowId)
+                .add(Utils.FLOW_ID, flowId)
                 .add("bandwidth", bandwidth)
                 .add("description", description)
                 .add("state", state)
@@ -540,6 +544,7 @@ public class Flow implements Serializable {
                 .add("transit_vlan", transitVlan)
                 .add("meter_id", meterId)
                 .add("last_updated", lastUpdated)
+                .add(Utils.FLOW_PATH, flowPath)
                 .toString();
     }
 }

@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
 
 /**
@@ -17,7 +18,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter
 @EnableWebMvc
 @ComponentScan({"org.bitbucket.openkilda.northbound.controller",
         "org.bitbucket.openkilda.northbound.model",
-        "org.bitbucket.openkilda.northbound.service"})
+        "org.bitbucket.openkilda.northbound.service",
+        "org.bitbucket.openkilda.messaging.error"})
 @PropertySource({"classpath:northbound.properties"})
 public class WebConfig extends WebMvcConfigurerAdapter {
     /**
@@ -36,5 +38,18 @@ public class WebConfig extends WebMvcConfigurerAdapter {
     @Bean
     public ExecutionTimeInterceptor timeExecutionInterceptor() {
         return new ExecutionTimeInterceptor();
+    }
+
+    /**
+     * Swagger UI resources.
+     *
+     * @param registry resource registry
+     */
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        registry.addResourceHandler("swagger-ui.html")
+                .addResourceLocations("classpath:/META-INF/resources/");
+        registry.addResourceHandler("/webjars/**")
+                .addResourceLocations("classpath:/META-INF/resources/webjars/");
     }
 }

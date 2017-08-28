@@ -5,17 +5,22 @@ package org.bitbucket.openkilda.wfm.topology.cache;
  */
 public enum StreamType {
     /**
+     * State update.
+     */
+    CACHE_UPDATE,
+
+    /**
      * Storage update.
      */
-    STORE,
+    CACHE_TPE,
+
+    /**
+     * Storage update.
+     */
+    CACHE_REDIS,
 
     /**
      * Request cache dump.
      */
-    DUMP,
-
-    /**
-     * State update.
-     */
-    UPDATE
+    CACHE_WFM
 }

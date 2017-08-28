@@ -14,13 +14,13 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 
 /**
- * The Application configuration.
- * This configuration is used for application run.
- * It includes configs of different components via {@link org.springframework.context.annotation.Import} annotation.
+ * The Application configuration. This configuration is used for application run. It includes configs of different
+ * components via {@link org.springframework.context.annotation.Import} annotation.
  */
 @Configuration
 @EnableAutoConfiguration(exclude = {ErrorMvcAutoConfiguration.class})
-@Import({WebConfig.class, MessageConsumerConfig.class, MessageProducerConfig.class, SecurityConfig.class})
+@Import({WebConfig.class, SecurityConfig.class, SwaggerConfig.class,
+        MessageConsumerConfig.class, MessageProducerConfig.class})
 public class AppConfig {
     /**
      * The logger.

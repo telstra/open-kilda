@@ -1,7 +1,7 @@
 package org.bitbucket.openkilda.wfm;
 
-import org.bitbucket.openkilda.wfm.topology.event.InfoEventSplitterBolt;
-import org.bitbucket.openkilda.wfm.topology.event.OFEventSplitterTopology;
+import org.bitbucket.openkilda.wfm.topology.splitter.InfoEventSplitterBolt;
+import org.bitbucket.openkilda.wfm.topology.splitter.OFEventSplitterTopology;
 import org.bitbucket.openkilda.wfm.topology.utils.KafkaFilerTopology;
 
 import com.google.common.base.Charsets;
@@ -52,7 +52,8 @@ public class SimpleSplitterTest extends AbstractStormTest {
         Utils.sleep(8 * 1000);
 
         // 3 messages .. in I_SWITCH_UPDOWN  .. since we send 3 of those type of messages
-        long messagesExpected = 3;
+        // and 3 messages for ADDED state
+        long messagesExpected = 6;
         long messagesReceived = Files.readLines(kfiler.getFiler().getFile(), Charsets.UTF_8).size();
         Assert.assertEquals(messagesExpected,messagesReceived);
 

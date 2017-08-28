@@ -8,6 +8,7 @@ import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.fieldsMessa
 
 import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.Message;
+import org.bitbucket.openkilda.messaging.Utils;
 import org.bitbucket.openkilda.messaging.command.CommandData;
 import org.bitbucket.openkilda.messaging.command.CommandMessage;
 import org.bitbucket.openkilda.messaging.command.flow.BaseInstallFlow;
@@ -67,9 +68,9 @@ public class SpeakerBolt extends BaseRichBolt {
                     String switchId = ((BaseInstallFlow) data).getSwitchId();
                     String flowId = ((BaseInstallFlow) data).getId();
 
-                    logger.debug("Flow install message: {}={}, switch-id={}, flow-id={}, {}={}, message={}",
+                    logger.debug("Flow install message: {}={}, switch-id={}, {}={}, {}={}, message={}",
                             CORRELATION_ID, message.getCorrelationId(), switchId,
-                            flowId, TRANSACTION_ID, transactionId, request);
+                            Utils.FLOW_ID, flowId, TRANSACTION_ID, transactionId, request);
 
                     message.setDestination(Destination.TOPOLOGY_ENGINE);
                     values = new Values(MAPPER.writeValueAsString(message), switchId, flowId, transactionId);
@@ -80,9 +81,9 @@ public class SpeakerBolt extends BaseRichBolt {
                     String switchId = ((RemoveFlow) data).getSwitchId();
                     String flowId = ((RemoveFlow) data).getId();
 
-                    logger.debug("Flow remove message: {}={}, switch-id={}, flow-id={}, {}={}, message={}",
+                    logger.debug("Flow remove message: {}={}, switch-id={}, {}={}, {}={}, message={}",
                             CORRELATION_ID, message.getCorrelationId(), switchId,
-                            flowId, TRANSACTION_ID, transactionId, request);
+                            Utils.FLOW_ID, flowId, TRANSACTION_ID, transactionId, request);
 
                     message.setDestination(Destination.TOPOLOGY_ENGINE);
                     values = new Values(MAPPER.writeValueAsString(message), switchId, flowId, transactionId);
@@ -96,8 +97,8 @@ public class SpeakerBolt extends BaseRichBolt {
                 String flowId = ((ErrorMessage) message).getData().getErrorDescription();
                 FlowState status = FlowState.DOWN;
 
-                logger.error("Flow error message: {}={}, flow-id={}, message={}",
-                        CORRELATION_ID, message.getCorrelationId(), flowId, request);
+                logger.error("Flow error message: {}={}, {}={}, message={}",
+                        CORRELATION_ID, message.getCorrelationId(), Utils.FLOW_ID, flowId, request);
 
                 values = new Values(flowId, status);
                 outputCollector.emit(StreamType.STATUS.toString(), tuple, values);

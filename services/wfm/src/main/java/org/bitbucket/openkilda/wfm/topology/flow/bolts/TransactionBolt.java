@@ -7,6 +7,7 @@ import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.SWITCH_ID_F
 import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.fieldMessage;
 import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.fieldsFlowIdStatus;
 
+import org.bitbucket.openkilda.messaging.Utils;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowState;
 import org.bitbucket.openkilda.wfm.topology.flow.ComponentType;
 import org.bitbucket.openkilda.wfm.topology.flow.StreamType;
@@ -64,8 +65,8 @@ public class TransactionBolt extends BaseStatefulBolt<InMemoryKeyValueState<Stri
             switch (componentId) {
 
                 case TOPOLOGY_ENGINE_BOLT:
-                    logger.debug("Transaction from TopologyEngine: switch-id={}, flow-id={}, {}={}",
-                            switchId, flowId, TRANSACTION_ID, transactionId);
+                    logger.debug("Transaction from TopologyEngine: switch-id={}, {}={}, {}={}",
+                            switchId, Utils.FLOW_ID, flowId, TRANSACTION_ID, transactionId);
 
                     flowTransactions = transactions.get(switchId);
                     if (flowTransactions == null) {
@@ -84,8 +85,8 @@ public class TransactionBolt extends BaseStatefulBolt<InMemoryKeyValueState<Stri
                                 String.format("Transaction adding failure: id %d already exists", transactionId));
                     }
 
-                    logger.debug("Set status {}: switch-id={}, flow-id={}, {}={}",
-                            FlowState.IN_PROGRESS, switchId, flowId, TRANSACTION_ID, transactionId);
+                    logger.debug("Set status {}: switch-id={}, {}={}, {}={}",
+                            FlowState.IN_PROGRESS, switchId, Utils.FLOW_ID, flowId, TRANSACTION_ID, transactionId);
 
                     values = new Values(flowId, FlowState.IN_PROGRESS);
                     outputCollector.emit(StreamType.STATUS.toString(), tuple, values);
@@ -95,8 +96,8 @@ public class TransactionBolt extends BaseStatefulBolt<InMemoryKeyValueState<Stri
                     break;
 
                 case SPEAKER_BOLT:
-                    logger.debug("Transaction from Speaker: switch-id={}, flow-id={}, {}={}",
-                            switchId, flowId, TRANSACTION_ID, transactionId);
+                    logger.debug("Transaction from Speaker: switch-id={}, {}={}, {}={}",
+                            switchId, Utils.FLOW_ID, flowId, TRANSACTION_ID, transactionId);
 
                     flowTransactions = transactions.get(switchId);
                     if (flowTransactions != null) {
@@ -107,8 +108,8 @@ public class TransactionBolt extends BaseStatefulBolt<InMemoryKeyValueState<Stri
                             if (flowTransactionIds.remove(transactionId)) {
 
                                 if (flowTransactionIds.isEmpty()) {
-                                    logger.debug("Set status {}: switch-id={}, flow-id={}, {}={}",
-                                            FlowState.UP, switchId, flowId, TRANSACTION_ID, transactionId);
+                                    logger.debug("Set status {}: switch-id={}, {}={}, {}={}",
+                                            FlowState.UP, switchId, Utils.FLOW_ID, flowId, TRANSACTION_ID, transactionId);
 
                                     values = new Values(flowId, FlowState.UP);
                                     outputCollector.emit(StreamType.STATUS.toString(), tuple, values);
@@ -134,8 +135,8 @@ public class TransactionBolt extends BaseStatefulBolt<InMemoryKeyValueState<Stri
                     break;
             }
         } catch (RuntimeException exception) {
-            logger.error("Set status {}: switch-id={}, flow-id={}, {}={}",
-                    FlowState.DOWN, switchId, flowId, TRANSACTION_ID, transactionId, exception);
+            logger.error("Set status {}: switch-id={}, {}={}, {}={}",
+                    FlowState.DOWN, switchId, Utils.FLOW_ID, flowId, TRANSACTION_ID, transactionId, exception);
 
             values = new Values(flowId, FlowState.DOWN);
             outputCollector.emit(StreamType.STATUS.toString(), tuple, values);

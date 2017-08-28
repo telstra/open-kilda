@@ -3,6 +3,7 @@ package org.bitbucket.openkilda.pce.manager;
 import org.bitbucket.openkilda.messaging.model.Flow;
 import org.bitbucket.openkilda.messaging.model.Isl;
 import org.bitbucket.openkilda.messaging.model.Switch;
+import org.bitbucket.openkilda.messaging.payload.flow.FlowState;
 import org.bitbucket.openkilda.pce.Utils;
 import org.bitbucket.openkilda.pce.provider.FlowStorage;
 
@@ -219,7 +220,8 @@ public class FlowManager extends FlowCache {
         return new Flow(flow.getFlowId(), flow.getBandwidth(), cookie | FORWARD_FLOW_COOKIE_MASK,
                 flow.getDescription(), timestamp, flow.getSourceSwitch(), flow.getDestinationSwitch(),
                 flow.getSourcePort(), flow.getDestinationPort(), flow.getSourceVlan(), flow.getDestinationVlan(),
-                resourceCache.allocateMeterId(flow.getSourceSwitch()), resourceCache.allocateVlanId(), path);
+                resourceCache.allocateMeterId(flow.getSourceSwitch()), resourceCache.allocateVlanId(),
+                path, FlowState.ALLOCATED);
 
     }
 
@@ -236,7 +238,8 @@ public class FlowManager extends FlowCache {
         return new Flow(flow.getFlowId(), flow.getBandwidth(), cookie | REVERSE_FLOW_COOKIE_MASK,
                 flow.getDescription(), timestamp, flow.getDestinationSwitch(), flow.getSourceSwitch(),
                 flow.getDestinationPort(), flow.getSourcePort(), flow.getDestinationVlan(), flow.getSourceVlan(),
-                resourceCache.allocateMeterId(flow.getDestinationSwitch()), resourceCache.allocateVlanId(), path);
+                resourceCache.allocateMeterId(flow.getDestinationSwitch()), resourceCache.allocateVlanId(),
+                path, FlowState.ALLOCATED);
     }
 
     /**

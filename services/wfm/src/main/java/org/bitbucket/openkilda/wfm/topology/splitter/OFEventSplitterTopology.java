@@ -1,8 +1,7 @@
-package org.bitbucket.openkilda.wfm.topology.event;
+package org.bitbucket.openkilda.wfm.topology.splitter;
 
 import org.bitbucket.openkilda.wfm.KafkaUtils;
 
-import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.storm.Config;

@@ -83,7 +83,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     private static final Switch sw2 = new Switch("sw2", "2.2.2.2", "sw2", "switch-2", SwitchState.ACTIVATED, "kilda");
     private static final Isl isl = new Isl("sw1", "sw2", 1, 2, 1L, 1000, 1000);
     private static final Flow flowModel = new Flow(FLOW_NAME, 1000, COOKIE, FLOW_NAME, String.valueOf(TIMESTAMP),
-            "sw1", "sw2", 10, 20, 100, 200, 1, 1024, new LinkedList<>(Collections.singleton(isl)));
+            "sw1", "sw2", 10, 20, 100, 200, 1, 1024, new LinkedList<>(Collections.singleton(isl)), FLOW_STATUS);
 
     @Test
     public void serializeInstallEgressFlowMessageTest() throws IOException, ClassNotFoundException {

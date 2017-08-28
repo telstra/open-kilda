@@ -58,6 +58,12 @@ public class NetworkDump extends InfoData {
     private Set<Flow> flows;
 
     /**
+     * Default constructor.
+     */
+    public NetworkDump() {
+    }
+
+    /**
      * Instance constructor.
      *
      * @param requester requester
