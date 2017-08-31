@@ -36,7 +36,7 @@ public class StatisticsBasicTest {
                    .target(opentsdbEndpoint)
                    .path("/api/query")
                    .queryParam("start","100h-ago")
-                   .queryParam("m","count:collisions")
+                   .queryParam("m","count:pen.switch.collisions")
                    .request()
                    .get(String.class).length();
            return result;

@@ -1,6 +1,6 @@
 Feature: Flow failover, failure and recovery
 
-    @MVP1.1
+    @MVP1
     Scenario: Failover followed by failure followed by recovery
 
        This scenario checks that failover and recovery happens orderly and that

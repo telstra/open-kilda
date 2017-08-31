@@ -1,15 +1,12 @@
 #!/usr/bin/python
 
-from bottle import run, get, response, post, error
+from bottle import run, get, response, request, post, error
 import ctypes
 import multiprocessing
 import os
 import scapy.all as scapy
 
 
-links = ("s3-eth1", "s3-eth2")
-links_up = list(links)
-links_down = []
 number_of_packets = 1000
 
 
@@ -20,79 +17,60 @@ Thank you, Mario! but our princess is in another castle!\n"""
     return retval
 
 
-@get('/debug/linkstate')
-def link_state():
-    retval = """links up: [%s]
-links down: [%s]\n""" % (", ".join(links_up), ", ".join(links_down))
-    return retval
-
-
-@post('/linkdown')
-def link_down():
-    try:
-        link_to_down = links_up[0]
-    except IndexError:
-        response.status = 500
-        return "No more links to cut!\n"
-    else:
-        result = os.system("ifconfig %s down" % (link_to_down))
-        if result == 0:
-            links_up.pop(0)
-            links_down.append(link_to_down)
-            response.status = 200
-        else:
+@post('/set_link_state')
+def link_update():
+    required_parameters = ("switch", "port", "newstate")
+    for _ in required_parameters:
+        if request.query.get(_) is None:
             response.status = 500
-            return "Failed to put existing link down\n"
+            return "%s: %s must be specified" % (request.path, _)
+    p = dict([(_, request.query.get(_)) for _ in required_parameters])
 
-
-@post('/linkup')
-def link_down():
-    try:
-        link_to_up = links_down[-1]
-    except IndexError:
-        response.status = 500
-        return "No more links to restore!\n"
+    iface = "%s-eth%s" % (p['switch'], p['port'])
+    print "Setting", iface, "to", p['newstate']
+    result = os.system("ifconfig %s %s" % (iface, p['newstate']))
+    print "result is", result
+    if result == 0:
+        response.status = 200
+        return "Successfully put link %s in state %s\n" % (iface,
+                                                           p['newstate'])
     else:
-        result = os.system("ifconfig %s up" % (link_to_up))
-        if result == 0:
-            links_down.pop()
-            links_up.append(link_to_up)
-            response.status = 200
-        else:
-            response.status = 500
+        return "Failed to put link %s in state %s\n" % (iface, p['newstate'])
 
 
-@post('/cleanse')
-def cleanse():
-    while links_down:
-        links_down.pop()
-    while links_up:
-        links_up.pop()
-    for link in links:
-        result = os.system("ifconfig %s up" % (link))
-        links_up.append(link)
+def traffic_sender(linkid, vlanid):
+    scapy.sendp(
+        scapy.Ether()/scapy.Dot1Q(vlan=int(vlanid))/scapy.IP()/scapy.ICMP(),
+        iface=linkid, count=number_of_packets)
 
 
-def traffic_sender():
-    scapy.sendp(scapy.Ether()/scapy.Dot1Q(vlan=1000)/scapy.IP()/scapy.ICMP(),
-                iface="s1-eth1", count=number_of_packets)
-
-
-def traffic_listener(traffic_goes_through):
+def traffic_listener(traffic_goes_through, vlanid, link):
     result = scapy.sniff(count=number_of_packets,
-                         filter='icmp and (vlan 1000)',
-                         iface='s5-eth1')
+                         filter='icmp and (vlan %s)' % vlanid,
+                         iface='%s' % link)
     received = len([_ for _ in result if _.payload.payload.name == 'ICMP'])
-    if number_of_packets - received < 200:
+    if number_of_packets - received < 250:
         traffic_goes_through.value = True
 
 
 @get('/checkflowtraffic')
 def check_traffic():
+    required_parameters = ("srcswitch", "dstswitch", "srcport", "dstport",
+                           "srcvlan", "dstvlan")
+    for _ in required_parameters:
+        if request.query.get(_) is None:
+            response.status = 500
+            return "%s: %s must be specified\n" % (request.path, _)
+    p = dict([(_, request.query.get(_)) for _ in required_parameters])
+
     traffic_goes_through = multiprocessing.Value(ctypes.c_bool, False)
-    sender = multiprocessing.Process(target=traffic_sender)
-    checker = multiprocessing.Process(target=traffic_listener,
-                                      args=(traffic_goes_through,))
+    sender = multiprocessing.Process(
+        target=traffic_sender,
+        args=("%s-eth%s" % (p['srcswitch'], p['srcport']), p['srcvlan']))
+    checker = multiprocessing.Process(
+        target=traffic_listener,
+        args=(traffic_goes_through, p['dstvlan'],
+              "%s-eth%s" % (p['dstswitch'], p['dstport'])))
     checker.start()
     sender.start()
     sender.join(5)

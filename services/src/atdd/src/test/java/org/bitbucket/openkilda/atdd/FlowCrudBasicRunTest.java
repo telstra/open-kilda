@@ -11,15 +11,37 @@ import org.bitbucket.openkilda.flow.FlowUtils;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowPayload;
 
+import cucumber.api.java.en.Given;
 import cucumber.api.java.en.Then;
 import cucumber.api.java.en.When;
 
 import java.util.List;
 
+import org.glassfish.jersey.client.ClientConfig;
+import static org.bitbucket.openkilda.DefaultParameters.trafficEndpoint;
+import javax.ws.rs.client.Client;
+import javax.ws.rs.client.ClientBuilder;
+import javax.ws.rs.client.Entity;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+import java.util.concurrent.TimeUnit;
+import org.bitbucket.openkilda.topo.TopologyHelp;
+import java.io.File;
+import java.nio.file.Files;
+
 public class FlowCrudBasicRunTest {
     private static final long FLOW_COOKIE = 1L;
     private FlowPayload flowPayload;
     private int storedFlows;
+    private static final String fileName = "topologies/nonrandom-topology.json";
+
+    @Given("^a nonrandom linear topology of 5 switches$")
+    public void a_multi_path_topology() throws Throwable {
+         ClassLoader classLoader = getClass().getClassLoader();
+         File file = new File(classLoader.getResource(fileName).getFile());
+         String json = new String(Files.readAllBytes(file.toPath()));
+         assert TopologyHelp.CreateMininetTopology(json);
+    }
 
     @When("^flow (.*) creation request with (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) is successful$")
     public void successfulFlowCreation(final String flowId, final String sourceSwitch, final int sourcePort,
@@ -148,14 +170,42 @@ public class FlowCrudBasicRunTest {
     public void checkTrafficIsForwarded(final String sourceSwitch, final int sourcePort, final int sourceVlan,
                                         final String destinationSwitch, final int destinationPort,
                                         final int destinationVlan, final int bandwidth) throws Throwable {
-        // TODO: implement
+        TimeUnit.SECONDS.sleep(2);
+        Client client = ClientBuilder.newClient(new ClientConfig());
+        Response result = client
+           .target(trafficEndpoint)
+           .path("/checkflowtraffic")
+           .queryParam("srcswitch", "00000001")
+           .queryParam("dstswitch", "00000005")
+           .queryParam("srcport", 1)
+           .queryParam("dstport", 1)
+           .queryParam("srcvlan", sourceVlan)
+           .queryParam("dstvlan", destinationVlan)
+           .request()
+           .get();
+         System.out.println("STATUS =" + result.getStatus());
+        assert result.getStatus() == 200;
     }
 
     @Then("^traffic through (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) is not forwarded$")
     public void checkTrafficIsNotForwarded(final String sourceSwitch, final int sourcePort, final int sourceVlan,
                                            final String destinationSwitch, final int destinationPort,
                                            final int destinationVlan, final int bandwidth) throws Throwable {
-        // TODO: implement
+        TimeUnit.SECONDS.sleep(2);
+        Client client = ClientBuilder.newClient(new ClientConfig());
+        Response result = client
+           .target(trafficEndpoint)
+           .path("/checkflowtraffic")
+           .queryParam("srcswitch", "00000001")
+           .queryParam("dstswitch", "00000005")
+           .queryParam("srcport", 1)
+           .queryParam("dstport", 1)
+           .queryParam("srcvlan", sourceVlan)
+           .queryParam("dstvlan", destinationVlan)
+           .request()
+           .get();
+         System.out.println("STATUS =" + result.getStatus());
+        assert result.getStatus() != 200;
     }
 
     @Then("^flows count is (\\d+)$")
