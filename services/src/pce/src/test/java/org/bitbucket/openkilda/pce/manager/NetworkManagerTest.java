@@ -2,11 +2,11 @@ package org.bitbucket.openkilda.pce.manager;
 
 import static org.junit.Assert.assertEquals;
 
+import org.bitbucket.openkilda.messaging.info.event.SwitchInfoData;
 import org.bitbucket.openkilda.messaging.info.event.SwitchState;
+import org.bitbucket.openkilda.pce.NetworkTopologyConstants;
 import org.bitbucket.openkilda.pce.PathComputerMock;
 import org.bitbucket.openkilda.pce.StateStorageMock;
-import org.bitbucket.openkilda.messaging.model.Isl;
-import org.bitbucket.openkilda.messaging.model.Switch;
 import org.bitbucket.openkilda.pce.provider.PathComputer;
 
 import edu.emory.mathcs.backport.java.util.Collections;
@@ -24,29 +24,6 @@ public class NetworkManagerTest {
     private final PathComputer computer = new PathComputerMock();
     private final NetworkManager networkManager = new NetworkManager(storage, computer);
 
-    private final Switch sw1 = new Switch("sw1", "", "", "", SwitchState.ACTIVATED, "localhost");
-    private final Switch sw2 = new Switch("sw2", "", "", "", SwitchState.ACTIVATED, "localhost");
-    private final Switch sw3 = new Switch("sw3", "", "", "", SwitchState.ADDED, "remote");
-    private final Switch sw4 = new Switch("sw4", "", "", "", SwitchState.ADDED, "remote");
-    private final Switch sw5 = new Switch("sw5", "", "", "", SwitchState.REMOVED, "remote");
-
-    private final Isl isl12 = new Isl("sw1", "sw2", 1, 2, 1L, 0L, 10);
-    private final Isl isl21 = new Isl("sw2", "sw1", 2, 1, 1L, 0L, 10);
-    private final Isl isl23 = new Isl("sw2", "sw3", 1, 2, 1L, 0L, 10);
-    private final Isl isl32 = new Isl("sw3", "sw2", 2, 1, 1L, 0L, 10);
-
-    private final Isl isl14 = new Isl("sw1", "sw4", 2, 1, 1L, 0L, 10);
-    private final Isl isl41 = new Isl("sw4", "sw1", 1, 2, 1L, 0L, 10);
-    private final Isl isl24 = new Isl("sw2", "sw4", 3, 2, 1L, 0L, 10);
-    private final Isl isl42 = new Isl("sw4", "sw2", 2, 3, 1L, 0L, 10);
-
-    private final Isl isl54 = new Isl("sw5", "sw4", 1, 3, 1L, 0L, 10);
-    private final Isl isl45 = new Isl("sw4", "sw5", 3, 1, 1L, 0L, 10);
-    private final Isl isl52 = new Isl("sw5", "sw2", 2, 4, 1L, 0L, 10);
-    private final Isl isl25 = new Isl("sw2", "sw5", 4, 2, 1L, 0L, 10);
-    private final Isl isl53 = new Isl("sw5", "sw3", 3, 1, 1L, 0L, 10);
-    private final Isl isl35 = new Isl("sw3", "sw5", 1, 3, 1L, 0L, 10);
-
     @Before
     public void setUp() throws Exception {
     }
@@ -58,103 +35,109 @@ public class NetworkManagerTest {
 
     @Test
     public void getSwitch() throws Exception {
-        networkManager.createSwitch(sw1);
-        networkManager.createSwitch(sw2);
-        assertEquals(sw1, networkManager.getSwitch(sw1.getSwitchId()));
-        assertEquals(sw2, networkManager.getSwitch(sw2.getSwitchId()));
+        networkManager.createSwitch(NetworkTopologyConstants.sw1);
+        networkManager.createSwitch(NetworkTopologyConstants.sw2);
+        assertEquals(NetworkTopologyConstants.sw1,
+                networkManager.getSwitch(NetworkTopologyConstants.sw1.getSwitchId()));
+        assertEquals(NetworkTopologyConstants.sw2,
+                networkManager.getSwitch(NetworkTopologyConstants.sw2.getSwitchId()));
     }
 
     @Test
     public void createSwitch() throws Exception {
-        networkManager.createSwitch(sw1);
-        networkManager.createSwitch(sw2);
+        networkManager.createSwitch(NetworkTopologyConstants.sw1);
+        networkManager.createSwitch(NetworkTopologyConstants.sw2);
         assertEquals(2, storage.getSwitchesCount());
     }
 
     @Test
     public void updateSwitch() throws Exception {
         String swId = "sw7";
-        Switch sw7 = new Switch(swId, "", "", "", SwitchState.ADDED, "");
+        SwitchInfoData sw7 = new SwitchInfoData(swId, SwitchState.ACTIVATED, "", "", "", "");
         networkManager.createSwitch(sw7);
         assertEquals(sw7, networkManager.getSwitch(swId));
 
-        Switch sw7updated = new Switch(swId, "", "", "", SwitchState.ACTIVATED, "");
+        SwitchInfoData sw7updated = new SwitchInfoData(swId, SwitchState.ACTIVATED, "", "", "", "");
         networkManager.updateSwitch(swId, sw7updated);
         assertEquals(sw7updated, networkManager.getSwitch(swId));
 
         networkManager.deleteSwitch(swId);
-        Set<Switch> switches = networkManager.dumpSwitches();
+        Set<SwitchInfoData> switches = networkManager.dumpSwitches();
         assertEquals(Collections.emptySet(), switches);
     }
 
     @Test
     public void deleteSwitch() throws Exception {
         createSwitch();
-        networkManager.deleteSwitch(sw1.getSwitchId());
-        networkManager.deleteSwitch(sw2.getSwitchId());
+        networkManager.deleteSwitch(NetworkTopologyConstants.sw1.getSwitchId());
+        networkManager.deleteSwitch(NetworkTopologyConstants.sw2.getSwitchId());
         assertEquals(0, storage.getSwitchesCount());
     }
 
     @Test
     public void dumpSwitches() throws Exception {
         createSwitch();
-        Set<Switch> switches = networkManager.dumpSwitches();
-        assertEquals(new HashSet<>(Arrays.asList(sw1, sw2)), switches);
+        Set<SwitchInfoData> switches = networkManager.dumpSwitches();
+        assertEquals(new HashSet<>(Arrays.asList(NetworkTopologyConstants.sw1,
+                NetworkTopologyConstants.sw2)), switches);
     }
 
     @Test
     public void getStateSwitches() throws Exception {
-        networkManager.createSwitch(sw1);
-        networkManager.createSwitch(sw2);
-        networkManager.createSwitch(sw3);
-        Set<Switch> activeSwitches = networkManager.getStateSwitches(SwitchState.ACTIVATED);
-        assertEquals(new HashSet<>(Arrays.asList(sw1, sw2)), activeSwitches);
+        networkManager.createSwitch(NetworkTopologyConstants.sw1);
+        networkManager.createSwitch(NetworkTopologyConstants.sw2);
+        networkManager.createSwitch(NetworkTopologyConstants.sw3);
+        Set<SwitchInfoData> activeSwitches = networkManager.getStateSwitches(SwitchState.ACTIVATED);
+        assertEquals(new HashSet<>(Arrays.asList(NetworkTopologyConstants.sw1,
+                NetworkTopologyConstants.sw2)), activeSwitches);
     }
 
     @Test
     public void getControllerSwitches() throws Exception {
-        networkManager.createSwitch(sw1);
-        networkManager.createSwitch(sw2);
-        networkManager.createSwitch(sw3);
-        Set<Switch> activeSwitches = networkManager.getControllerSwitches("localhost");
-        assertEquals(new HashSet<>(Arrays.asList(sw1, sw2)), activeSwitches);
+        networkManager.createSwitch(NetworkTopologyConstants.sw1);
+        networkManager.createSwitch(NetworkTopologyConstants.sw2);
+        networkManager.createSwitch(NetworkTopologyConstants.sw3);
+        Set<SwitchInfoData> activeSwitches = networkManager.getControllerSwitches("localhost");
+        assertEquals(new HashSet<>(Arrays.asList(NetworkTopologyConstants.sw1,
+                NetworkTopologyConstants.sw2)), activeSwitches);
     }
 
     @Test
     public void getDirectlyConnectedSwitches() throws Exception {
-        networkManager.createSwitch(sw1);
-        networkManager.createSwitch(sw2);
-        networkManager.createSwitch(sw3);
+        networkManager.createSwitch(NetworkTopologyConstants.sw1);
+        networkManager.createSwitch(NetworkTopologyConstants.sw2);
+        networkManager.createSwitch(NetworkTopologyConstants.sw3);
 
-        Set<Switch> directlyConnected = networkManager.getDirectlyConnectedSwitches(sw2.getSwitchId());
+        Set<SwitchInfoData> directlyConnected = networkManager.getDirectlyConnectedSwitches(
+                NetworkTopologyConstants.sw2.getSwitchId());
         assertEquals(new HashSet<>(), directlyConnected);
 
-        networkManager.createOrUpdateIsl(isl12);
-        networkManager.createOrUpdateIsl(isl21);
-        networkManager.createOrUpdateIsl(isl23);
-        networkManager.createOrUpdateIsl(isl32);
+        networkManager.createOrUpdateIsl(NetworkTopologyConstants.isl12);
+        networkManager.createOrUpdateIsl(NetworkTopologyConstants.isl21);
+        networkManager.createOrUpdateIsl(NetworkTopologyConstants.isl23);
+        networkManager.createOrUpdateIsl(NetworkTopologyConstants.isl32);
 
-        directlyConnected = networkManager.getDirectlyConnectedSwitches(sw2.getSwitchId());
-        assertEquals(new HashSet<>(Arrays.asList(sw1, sw3)), directlyConnected);
+        directlyConnected = networkManager.getDirectlyConnectedSwitches(NetworkTopologyConstants.sw2.getSwitchId());
+        assertEquals(new HashSet<>(Arrays.asList(NetworkTopologyConstants.sw1, NetworkTopologyConstants.sw3)), directlyConnected);
     }
 
     @Test
     public void createOrUpdateIsl() throws Exception {
-        networkManager.createSwitch(sw1);
-        networkManager.createSwitch(sw2);
-        networkManager.createSwitch(sw3);
+        networkManager.createSwitch(NetworkTopologyConstants.sw1);
+        networkManager.createSwitch(NetworkTopologyConstants.sw2);
+        networkManager.createSwitch(NetworkTopologyConstants.sw3);
 
-        networkManager.createOrUpdateIsl(isl12);
-        networkManager.createOrUpdateIsl(isl21);
-        networkManager.createOrUpdateIsl(isl23);
-        networkManager.createOrUpdateIsl(isl32);
+        networkManager.createOrUpdateIsl(NetworkTopologyConstants.isl12);
+        networkManager.createOrUpdateIsl(NetworkTopologyConstants.isl21);
+        networkManager.createOrUpdateIsl(NetworkTopologyConstants.isl23);
+        networkManager.createOrUpdateIsl(NetworkTopologyConstants.isl32);
 
         assertEquals(4, storage.getIslsCount());
 
-        networkManager.createOrUpdateIsl(isl12);
-        networkManager.createOrUpdateIsl(isl21);
-        networkManager.createOrUpdateIsl(isl23);
-        networkManager.createOrUpdateIsl(isl32);
+        networkManager.createOrUpdateIsl(NetworkTopologyConstants.isl12);
+        networkManager.createOrUpdateIsl(NetworkTopologyConstants.isl21);
+        networkManager.createOrUpdateIsl(NetworkTopologyConstants.isl23);
+        networkManager.createOrUpdateIsl(NetworkTopologyConstants.isl32);
 
         assertEquals(4, storage.getIslsCount());
     }
@@ -163,10 +146,10 @@ public class NetworkManagerTest {
     public void deleteIsl() throws Exception {
         createOrUpdateIsl();
 
-        networkManager.deleteIsl(isl12.getIslId());
-        networkManager.deleteIsl(isl21.getIslId());
-        networkManager.deleteIsl(isl23.getIslId());
-        networkManager.deleteIsl(isl32.getIslId());
+        networkManager.deleteIsl(NetworkTopologyConstants.isl12.getId());
+        networkManager.deleteIsl(NetworkTopologyConstants.isl21.getId());
+        networkManager.deleteIsl(NetworkTopologyConstants.isl23.getId());
+        networkManager.deleteIsl(NetworkTopologyConstants.isl32.getId());
 
         assertEquals(0, storage.getIslsCount());
     }
@@ -174,84 +157,83 @@ public class NetworkManagerTest {
     @Test
     public void getIsl() throws Exception {
         createOrUpdateIsl();
-        assertEquals(isl12, networkManager.getIsl(isl12.getIslId()));
-        assertEquals(isl21, networkManager.getIsl(isl21.getIslId()));
-        assertEquals(isl23, networkManager.getIsl(isl23.getIslId()));
-        assertEquals(isl32, networkManager.getIsl(isl32.getIslId()));
+        assertEquals(NetworkTopologyConstants.isl12, networkManager.getIsl(NetworkTopologyConstants.isl12.getId()));
+        assertEquals(NetworkTopologyConstants.isl21, networkManager.getIsl(NetworkTopologyConstants.isl21.getId()));
+        assertEquals(NetworkTopologyConstants.isl23, networkManager.getIsl(NetworkTopologyConstants.isl23.getId()));
+        assertEquals(NetworkTopologyConstants.isl32, networkManager.getIsl(NetworkTopologyConstants.isl32.getId()));
     }
 
     @Test
     public void dumpIsls() throws Exception {
         createOrUpdateIsl();
-        assertEquals(new HashSet<>(Arrays.asList(isl12, isl21, isl23, isl32)), networkManager.dumpIsls());
+        assertEquals(new HashSet<>(Arrays.asList(NetworkTopologyConstants.isl12, NetworkTopologyConstants.isl21,
+                NetworkTopologyConstants.isl23, NetworkTopologyConstants.isl32)), networkManager.dumpIsls());
     }
 
     @Test
     public void getIslsBySwitch() throws Exception {
         createOrUpdateIsl();
-        networkManager.createSwitch(sw4);
-        networkManager.createOrUpdateIsl(isl14);
-        networkManager.createOrUpdateIsl(isl41);
-        networkManager.createOrUpdateIsl(isl24);
-        networkManager.createOrUpdateIsl(isl42);
-        assertEquals(new HashSet<>(Arrays.asList(isl12, isl21, isl23, isl32, isl24, isl42)),
-                networkManager.getIslsBySwitch(sw2.getSwitchId()));
+        networkManager.createSwitch(NetworkTopologyConstants.sw4);
+        networkManager.createOrUpdateIsl(NetworkTopologyConstants.isl14);
+        networkManager.createOrUpdateIsl(NetworkTopologyConstants.isl41);
+        networkManager.createOrUpdateIsl(NetworkTopologyConstants.isl24);
+        networkManager.createOrUpdateIsl(NetworkTopologyConstants.isl42);
+        assertEquals(new HashSet<>(Arrays.asList(
+                NetworkTopologyConstants.isl12, NetworkTopologyConstants.isl21, NetworkTopologyConstants.isl23,
+                NetworkTopologyConstants.isl32, NetworkTopologyConstants.isl24, NetworkTopologyConstants.isl42)),
+                networkManager.getIslsBySwitch(NetworkTopologyConstants.sw2.getSwitchId()));
     }
 
     @Test
     public void getIslsBySource() throws Exception {
         createOrUpdateIsl();
-        networkManager.createSwitch(sw4);
-        networkManager.createOrUpdateIsl(isl14);
-        networkManager.createOrUpdateIsl(isl41);
-        networkManager.createOrUpdateIsl(isl24);
-        networkManager.createOrUpdateIsl(isl42);
-        assertEquals(new HashSet<>(Arrays.asList(isl21, isl23, isl24)),
-                networkManager.getIslsBySource(sw2.getSwitchId()));
+        networkManager.createSwitch(NetworkTopologyConstants.sw4);
+        networkManager.createOrUpdateIsl(NetworkTopologyConstants.isl14);
+        networkManager.createOrUpdateIsl(NetworkTopologyConstants.isl41);
+        networkManager.createOrUpdateIsl(NetworkTopologyConstants.isl24);
+        networkManager.createOrUpdateIsl(NetworkTopologyConstants.isl42);
+        assertEquals(new HashSet<>(Arrays.asList(NetworkTopologyConstants.isl21,
+                NetworkTopologyConstants.isl23, NetworkTopologyConstants.isl24)),
+                networkManager.getIslsBySource(NetworkTopologyConstants.sw2.getSwitchId()));
     }
 
     @Test
     public void getIslsByDestination() throws Exception {
         createOrUpdateIsl();
-        networkManager.createSwitch(sw4);
-        networkManager.createOrUpdateIsl(isl14);
-        networkManager.createOrUpdateIsl(isl41);
-        networkManager.createOrUpdateIsl(isl24);
-        networkManager.createOrUpdateIsl(isl42);
-        assertEquals(new HashSet<>(Arrays.asList(isl12, isl32, isl42)),
-                networkManager.getIslsByDestination(sw2.getSwitchId()));
+        networkManager.createSwitch(NetworkTopologyConstants.sw4);
+        networkManager.createOrUpdateIsl(NetworkTopologyConstants.isl14);
+        networkManager.createOrUpdateIsl(NetworkTopologyConstants.isl41);
+        networkManager.createOrUpdateIsl(NetworkTopologyConstants.isl24);
+        networkManager.createOrUpdateIsl(NetworkTopologyConstants.isl42);
+        assertEquals(new HashSet<>(Arrays.asList(NetworkTopologyConstants.isl12,
+                NetworkTopologyConstants.isl32, NetworkTopologyConstants.isl42)),
+                networkManager.getIslsByDestination(NetworkTopologyConstants.sw2.getSwitchId()));
     }
 
     @Test
     public void eventTest() {
         NetworkManager otherNetworkManager = new NetworkManager(storage, computer);
         Function<NetworkManager.SwitchChangeEvent, Void> switchChangeCallback =
-                new Function<NetworkManager.SwitchChangeEvent, Void>() {
-                    @Override
-                    public Void apply(NetworkManager.SwitchChangeEvent switchChangeEvent) {
-                        System.out.println(switchChangeEvent);
-                        otherNetworkManager.handleSwitchChange(switchChangeEvent);
-                        return null;
-                    }
+                switchChangeEvent -> {
+                    System.out.println(switchChangeEvent);
+                    otherNetworkManager.handleSwitchChange(switchChangeEvent);
+                    return null;
                 };
 
         Function<NetworkManager.IslChangeEvent, Void> islChangeCallback =
-                new Function<NetworkManager.IslChangeEvent, Void>() {
-                    @Override
-                    public Void apply(NetworkManager.IslChangeEvent islChangeEvent) {
-                        System.out.println(islChangeEvent);
-                        otherNetworkManager.handleIslChange(islChangeEvent);
-                        return null;
-                    }
+                islChangeEvent -> {
+                    System.out.println(islChangeEvent);
+                    otherNetworkManager.handleIslChange(islChangeEvent);
+                    return null;
                 };
 
         networkManager.withSwitchChange(switchChangeCallback);
         networkManager.withIslChange(islChangeCallback);
 
-        networkManager.createSwitch(sw1);
-        networkManager.createSwitch(sw2);
-        networkManager.createOrUpdateIsl(isl12);
-        networkManager.createOrUpdateIsl(isl21);
+        networkManager.createSwitch(NetworkTopologyConstants.sw1);
+        networkManager.createSwitch(NetworkTopologyConstants.sw2);
+        networkManager.createOrUpdateIsl(NetworkTopologyConstants.isl12);
+        networkManager.createOrUpdateIsl(NetworkTopologyConstants.isl21);
 
         assertEquals(networkManager.dumpIsls(), otherNetworkManager.dumpIsls());
         assertEquals(networkManager.dumpSwitches(), otherNetworkManager.dumpSwitches());

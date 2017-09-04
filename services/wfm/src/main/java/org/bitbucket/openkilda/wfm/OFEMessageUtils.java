@@ -131,7 +131,7 @@ public class OFEMessageUtils {
 
     public static String createIslFail(String switchId, String portId) throws IOException {
         PathNode node = new PathNode(switchId, Integer.parseInt(portId), 0, 0L);
-        InfoData data = new IslInfoData(0L, Collections.singletonList(node), 0L, IslChangeType.FAILED);
+        InfoData data = new IslInfoData(0L, Collections.singletonList(node), 0L, IslChangeType.FAILED, 0L);
         return MAPPER.writeValueAsString(data);
     }
 

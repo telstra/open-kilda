@@ -2,7 +2,6 @@ package org.bitbucket.openkilda.wfm.topology.cache;
 
 import org.bitbucket.openkilda.wfm.topology.AbstractTopology;
 
-import com.google.common.annotations.VisibleForTesting;
 import org.apache.storm.Config;
 import org.apache.storm.LocalCluster;
 import org.apache.storm.StormSubmitter;
@@ -15,9 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class CacheTopology extends AbstractTopology {
-
-    @VisibleForTesting
-    static final String MESSAGE_FIELD = "message";
+    private static final String MESSAGE_FIELD = "message";
     static final Fields MESSAGE_FIELDS = new Fields(MESSAGE_FIELD);
 
 
@@ -83,42 +80,36 @@ public class CacheTopology extends AbstractTopology {
          * Receives cache from storage.
          */
         KafkaSpout storageSpout = createKafkaSpout(STATE_TPE_TOPIC);
-        builder.setSpout(ComponentType.CACHE_STORAGE_KAFKA_SPOUT.toString(), storageSpout, parallelism);
+        builder.setSpout(ComponentType.TPE_KAFKA_SPOUT.toString(), storageSpout, parallelism);
 
         /*
          * Receives cache updates from WFM topology.
          */
         KafkaSpout stateSpout = createKafkaSpout(STATE_UPDATE_TOPIC);
-        builder.setSpout(ComponentType.CACHE_UPDATE_KAFKA_SPOUT.toString(), stateSpout, parallelism);
-
-        /*
-         * Receives cache dump request from WFM topology.
-         */
-        KafkaSpout dumpSpout = createKafkaSpout(STATE_DUMP_TOPIC);
-        builder.setSpout(ComponentType.CACHE_DUMP_KAFKA_SPOUT.toString(), dumpSpout, parallelism);
+        builder.setSpout(ComponentType.WFM_UPDATE_KAFKA_SPOUT.toString(), stateSpout, parallelism);
 
         /*
          * Stores network cache.
          */
         StateBolt stateBolt = new StateBolt();
         builder.setBolt(ComponentType.CACHE_BOLT.toString(), stateBolt, parallelism)
-                .shuffleGrouping(ComponentType.CACHE_STORAGE_KAFKA_SPOUT.toString())
-                .shuffleGrouping(ComponentType.CACHE_UPDATE_KAFKA_SPOUT.toString())
-                .shuffleGrouping(ComponentType.CACHE_DUMP_KAFKA_SPOUT.toString());
+                .shuffleGrouping(ComponentType.WFM_UPDATE_KAFKA_SPOUT.toString())
+                .shuffleGrouping(ComponentType.TPE_KAFKA_SPOUT.toString());
 
         /*
          * Sends network events to storage.
          */
         KafkaBolt storageBolt = createKafkaBolt(STATE_TPE_TOPIC);
-        builder.setBolt(ComponentType.CACHE_STORAGE_KAFKA_BOLT.toString(), storageBolt, parallelism)
-                .shuffleGrouping(ComponentType.CACHE_BOLT.toString(), StreamType.CACHE_TPE.toString());
+        builder.setBolt(ComponentType.TPE_KAFKA_BOLT.toString(), storageBolt, parallelism)
+                .shuffleGrouping(ComponentType.CACHE_BOLT.toString(), StreamType.TPE.toString());
+
 
         /*
          * Sends cache dump to WFM topology.
          */
         KafkaBolt stateDump = createKafkaBolt(STATE_DUMP_TOPIC);
-        builder.setBolt(ComponentType.CACHE_DUMP_KAFKA_BOLT.toString(), stateDump, parallelism)
-                .shuffleGrouping(ComponentType.CACHE_BOLT.toString(), StreamType.CACHE_WFM.toString());
+        builder.setBolt(ComponentType.WFM_DUMP_KAFKA_BOLT.toString(), stateDump, parallelism)
+                .shuffleGrouping(ComponentType.CACHE_BOLT.toString(), StreamType.WFM_DUMP.toString());
 
         return builder.createTopology();
     }

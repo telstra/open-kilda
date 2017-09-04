@@ -7,30 +7,25 @@ public enum ComponentType {
     /**
      * Receives cache from storage.
      */
-    CACHE_STORAGE_KAFKA_SPOUT,
+    TPE_KAFKA_SPOUT,
 
     /**
      * Sends cache to storage.
      */
-    CACHE_STORAGE_KAFKA_BOLT,
+    TPE_KAFKA_BOLT,
 
     /**
-     * Receives cache dump request.
+     * Sends cache dump to wfm.
      */
-    CACHE_DUMP_KAFKA_SPOUT,
-
-    /**
-     * Sends cache dump response.
-     */
-    CACHE_DUMP_KAFKA_BOLT,
+    WFM_DUMP_KAFKA_BOLT,
 
     /**
      * Receives cache updates.
      */
-    CACHE_UPDATE_KAFKA_SPOUT,
+    WFM_UPDATE_KAFKA_SPOUT,
 
     /**
      * State bolt.
      */
-    CACHE_BOLT,
+    CACHE_BOLT
 }

@@ -5,11 +5,10 @@ import static org.bitbucket.openkilda.messaging.Utils.MAPPER;
 
 import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.Message;
-import org.bitbucket.openkilda.messaging.MessageData;
-import org.bitbucket.openkilda.messaging.command.discovery.DumpNetwork;
 import org.bitbucket.openkilda.messaging.info.InfoData;
 import org.bitbucket.openkilda.messaging.info.InfoMessage;
-import org.bitbucket.openkilda.messaging.info.discovery.NetworkDump;
+import org.bitbucket.openkilda.messaging.info.event.IslInfoData;
+import org.bitbucket.openkilda.messaging.info.event.SwitchInfoData;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -64,46 +63,40 @@ public class StateBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, St
         try {
             switch (componentId) {
 
-                case CACHE_UPDATE_KAFKA_SPOUT:
+                case WFM_UPDATE_KAFKA_SPOUT:
                     InfoData data = MAPPER.readValue(json, InfoData.class);
 
                     if (data != null) {
                         logger.debug("State update info data {}", data);
 
-                        Message message = new InfoMessage(data, System.currentTimeMillis(),
-                                DEFAULT_CORRELATION_ID, Destination.TOPOLOGY_ENGINE);
+                        outputCollector.emit(StreamType.TPE.toString(), tuple, getValues(data));
+                        logger.debug("State update info message sent");
 
-                        Values values = new Values(MAPPER.writeValueAsString(message));
+                        if (data instanceof SwitchInfoData) {
+                            logger.debug("State update switch info message");
 
-                        // TODO: update cache
-                        outputCollector.emit(StreamType.CACHE_TPE.toString(), tuple, values);
 
+                        } else if (data instanceof IslInfoData) {
+                            logger.debug("State update isl info message");
+
+
+                    } else {
+                            logger.warn("Skip undefined info data type {}", json);
+                        }
+                        // TODO: FLOW , RULE
                     } else {
                         logger.warn("Skip undefined message type {}", json);
                     }
 
                     break;
 
-                case CACHE_STORAGE_KAFKA_SPOUT:
+                case TPE_KAFKA_SPOUT:
                     Message message = MAPPER.readValue(json, Message.class);
 
                     if (message instanceof InfoMessage && Destination.WFM_CACHE == message.getDestination()) {
                         logger.debug("Storage content message {}", json);
 
                         // TODO: fill states
-                    }
-
-                    break;
-
-                case CACHE_DUMP_KAFKA_SPOUT:
-                    MessageData messageData = MAPPER.readValue(json, MessageData.class);
-
-                    if (messageData instanceof DumpNetwork) {
-                        logger.debug("Dump cache command message {}", json);
-
-                        NetworkDump dump = new NetworkDump(/* TODO: prepare dump */);
-                        Values values = new Values(MAPPER.writeValueAsString(dump));
-                        outputCollector.emit(StreamType.CACHE_WFM.toString(), tuple, values);
                     }
 
                     break;
@@ -131,8 +124,13 @@ public class StateBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, St
      */
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
-        outputFieldsDeclarer.declareStream(StreamType.CACHE_TPE.toString(), CacheTopology.MESSAGE_FIELDS);
-        outputFieldsDeclarer.declareStream(StreamType.CACHE_WFM.toString(), CacheTopology.MESSAGE_FIELDS);
-        outputFieldsDeclarer.declareStream(StreamType.CACHE_REDIS.toString(), CacheTopology.REDIS_SWITCH_FIELDS);
+        outputFieldsDeclarer.declareStream(StreamType.TPE.toString(), CacheTopology.MESSAGE_FIELDS);
+        outputFieldsDeclarer.declareStream(StreamType.WFM_DUMP.toString(), CacheTopology.MESSAGE_FIELDS);
+    }
+
+    private Values getValues(InfoData data) throws IOException {
+        Message message = new InfoMessage(data, System.currentTimeMillis(),
+                DEFAULT_CORRELATION_ID, Destination.TOPOLOGY_ENGINE);
+        return new Values(MAPPER.writeValueAsString(message));
     }
 }

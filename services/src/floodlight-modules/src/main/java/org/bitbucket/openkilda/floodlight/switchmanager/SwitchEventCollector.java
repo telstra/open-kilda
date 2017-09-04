@@ -13,8 +13,10 @@ import org.bitbucket.openkilda.messaging.info.event.SwitchInfoData;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchListener;
+import net.floodlightcontroller.core.LogicalOFMessageCategory;
 import net.floodlightcontroller.core.PortChangeType;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
+import net.floodlightcontroller.core.internal.OFConnection;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
@@ -200,6 +202,8 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
     private Message buildSwitchMessage(final IOFSwitch sw, final SwitchState eventType) {
         String switchId = sw.getId().toString();
         InetSocketAddress address = (InetSocketAddress) sw.getInetAddress();
+        InetSocketAddress controller =(InetSocketAddress) sw.getConnectionByCategory(
+                LogicalOFMessageCategory.MAIN).getRemoteInetAddress();
 
         InfoData data = new SwitchInfoData(
                 switchId,
@@ -211,7 +215,8 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
                 String.format("%s %s %s",
                         sw.getSwitchDescription().getManufacturerDescription(),
                         sw.getOFFactory().getVersion().toString(),
-                        sw.getSwitchDescription().getSoftwareDescription()));
+                        sw.getSwitchDescription().getSoftwareDescription()),
+                controller.getHostString());
 
         return buildMessage(data);
     }
@@ -226,7 +231,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
     private Message buildSwitchMessage(final DatapathId switchId, final SwitchState eventType) {
         final String unknown = "unknown";
 
-        InfoData data = new SwitchInfoData(switchId.toString(), eventType, unknown, unknown, unknown);
+        InfoData data = new SwitchInfoData(switchId.toString(), eventType, unknown, unknown, unknown, unknown);
 
         return buildMessage(data);
     }

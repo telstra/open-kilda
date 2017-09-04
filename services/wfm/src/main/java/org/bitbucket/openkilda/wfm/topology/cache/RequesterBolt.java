@@ -47,7 +47,7 @@ public class RequesterBolt extends BaseRichBolt {
                 System.currentTimeMillis(), Utils.DEFAULT_CORRELATION_ID, Destination.TOPOLOGY_ENGINE);
         try {
             Values values = new Values(Utils.MAPPER.writeValueAsString(command));
-            outputCollector.emit(StreamType.CACHE_TPE.toString(), values);
+            outputCollector.emit(StreamType.TPE.toString(), values);
         } catch (IOException exception) {
             logger.error("Could not send dump network request: {}", command, exception);
         }
@@ -55,6 +55,6 @@ public class RequesterBolt extends BaseRichBolt {
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declareStream(StreamType.CACHE_TPE.toString(), CacheTopology.fieldMessage);
+        declarer.declareStream(StreamType.TPE.toString(), CacheTopology.fieldMessage);
     }
 }

@@ -3,9 +3,9 @@ package org.bitbucket.openkilda.messaging.info.discovery;
 import static com.google.common.base.MoreObjects.toStringHelper;
 
 import org.bitbucket.openkilda.messaging.info.InfoData;
+import org.bitbucket.openkilda.messaging.info.event.IslInfoData;
+import org.bitbucket.openkilda.messaging.info.event.SwitchInfoData;
 import org.bitbucket.openkilda.messaging.model.Flow;
-import org.bitbucket.openkilda.messaging.model.Isl;
-import org.bitbucket.openkilda.messaging.model.Switch;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -43,13 +43,13 @@ public class NetworkDump extends InfoData {
      * Switches.
      */
     @JsonProperty("switches")
-    private Set<Switch> switches;
+    private Set<SwitchInfoData> switches;
 
     /**
      * ISLs.
      */
     @JsonProperty("isls")
-    private Set<Isl> isls;
+    private Set<IslInfoData> isls;
 
     /**
      * Flows.
@@ -73,8 +73,8 @@ public class NetworkDump extends InfoData {
      */
     @JsonCreator
     public NetworkDump(@JsonProperty("requester") String requester,
-                       @JsonProperty("switches") Set<Switch> switches,
-                       @JsonProperty("isls") Set<Isl> isls,
+                       @JsonProperty("switches") Set<SwitchInfoData> switches,
+                       @JsonProperty("isls") Set<IslInfoData> isls,
                        @JsonProperty("flows") Set<Flow> flows) {
         this.requester = requester;
         this.switches = switches;
@@ -105,7 +105,7 @@ public class NetworkDump extends InfoData {
      *
      * @return switches
      */
-    public Set<Switch> getSwitches() {
+    public Set<SwitchInfoData> getSwitches() {
         return switches;
     }
 
@@ -114,7 +114,7 @@ public class NetworkDump extends InfoData {
      *
      * @param switches switches
      */
-    public void setSwitches(Set<Switch> switches) {
+    public void setSwitches(Set<SwitchInfoData> switches) {
         this.switches = switches;
     }
 
@@ -123,7 +123,7 @@ public class NetworkDump extends InfoData {
      *
      * @return isls
      */
-    public Set<Isl> getIsls() {
+    public Set<IslInfoData> getIsls() {
         return isls;
     }
 
@@ -132,7 +132,7 @@ public class NetworkDump extends InfoData {
      *
      * @param isls isls
      */
-    public void setIsls(Set<Isl> isls) {
+    public void setIsls(Set<IslInfoData> isls) {
         this.isls = isls;
     }
 

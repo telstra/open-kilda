@@ -205,8 +205,6 @@ public class PathNode implements Serializable {
 
         PathNode that = (PathNode) object;
         return Objects.equals(getSwitchId(), that.getSwitchId())
-                && Objects.equals(getPortNo(), that.getPortNo())
-                && Objects.equals(getSeqId(), that.getSeqId())
-                && Objects.equals(getSegLatency(), that.getSegLatency());
+                && Objects.equals(getPortNo(), that.getPortNo());
     }
 }

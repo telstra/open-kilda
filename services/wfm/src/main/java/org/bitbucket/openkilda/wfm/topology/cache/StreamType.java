@@ -7,17 +7,17 @@ public enum StreamType {
     /**
      * State update.
      */
-    CACHE_UPDATE,
+    WFM_UPDATE,
 
     /**
-     * Storage update.
+     * Dump cache.
      */
-    CACHE_TPE,
+    WFM_DUMP,
 
     /**
-     * Storage update.
+     * Network storage update.
      */
-    CACHE_REDIS,
+    TPE,
 
     /**
      * Request cache dump.

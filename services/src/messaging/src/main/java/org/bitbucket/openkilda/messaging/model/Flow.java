@@ -3,6 +3,7 @@ package org.bitbucket.openkilda.messaging.model;
 import static com.google.common.base.MoreObjects.toStringHelper;
 
 import org.bitbucket.openkilda.messaging.Utils;
+import org.bitbucket.openkilda.messaging.info.event.PathInfoData;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowState;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -10,7 +11,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 import java.io.Serializable;
-import java.util.LinkedList;
 import java.util.Objects;
 
 /**
@@ -105,7 +105,7 @@ public class Flow implements Serializable {
      * Flow switch path.
      */
     @JsonProperty(Utils.FLOW_PATH)
-    private LinkedList<Isl> flowPath;
+    private PathInfoData flowPath;
 
     /**
      * Flow state.
@@ -152,7 +152,7 @@ public class Flow implements Serializable {
                 @JsonProperty("dst_vlan") final int destinationVlan,
                 @JsonProperty("meter_id") final int meterId,
                 @JsonProperty("transit_vlan") final int transitVlan,
-                @JsonProperty(Utils.FLOW_PATH) final LinkedList<Isl> flowPath,
+                @JsonProperty(Utils.FLOW_PATH) final PathInfoData flowPath,
                 @JsonProperty("state") FlowState state) {
         this.flowId = flowId;
         this.bandwidth = bandwidth;
@@ -455,7 +455,7 @@ public class Flow implements Serializable {
      *
      * @return flow switch path
      */
-    public LinkedList<Isl> getFlowPath() {
+    public PathInfoData getFlowPath() {
         return flowPath;
     }
 
@@ -464,7 +464,7 @@ public class Flow implements Serializable {
      *
      * @param flowPath flow switch path
      */
-    public void setFlowPath(LinkedList<Isl> flowPath) {
+    public void setFlowPath(PathInfoData flowPath) {
         this.flowPath = flowPath;
     }
 
@@ -475,18 +475,8 @@ public class Flow implements Serializable {
      * @return true if flow path contains specified switch
      */
     public boolean containsSwitchInPath(String switchId) {
-        return flowPath.stream()
-                .anyMatch(isl -> isl.getSourceSwitch().equals(switchId) || isl.getDestinationSwitch().equals(switchId));
-    }
-
-    /**
-     * Checks if flow path contains specified isl.
-     *
-     * @param islId isl id
-     * @return true if flow path contains specified isl
-     */
-    public boolean containsIslInPath(String islId) {
-        return flowPath.stream().anyMatch(isl -> isl.getIslId().equals(islId));
+        return flowPath.getPath().stream()
+                .anyMatch(node -> node.getSwitchId().equals(switchId));
     }
 
     /**

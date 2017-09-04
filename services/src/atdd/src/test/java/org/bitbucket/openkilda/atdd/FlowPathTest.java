@@ -4,7 +4,7 @@ import static org.bitbucket.openkilda.flow.FlowUtils.dumpLinks;
 import static org.bitbucket.openkilda.flow.FlowUtils.getLinkBandwidth;
 import static org.junit.Assert.assertEquals;
 
-import org.bitbucket.openkilda.messaging.model.Isl;
+import org.bitbucket.openkilda.messaging.info.event.IslInfoData;
 import org.bitbucket.openkilda.topo.TopologyHelp;
 
 import cucumber.api.java.en.Given;
@@ -45,9 +45,9 @@ public class FlowPathTest {
 
     @When("^all links have available bandwidth (\\d+)$")
     public void checkAvailableBandwidth(int expectedAvailableBandwidth) throws Exception {
-        List<Isl> links = dumpLinks();
-        for (Isl link : links) {
-            assertEquals(expectedAvailableBandwidth, link.getAvailableBandwidth());
+        List<IslInfoData> links = dumpLinks();
+        for (IslInfoData link : links) {
+            assertEquals(new Long(expectedAvailableBandwidth), link.getAvailableBandwidth());
         }
     }
 

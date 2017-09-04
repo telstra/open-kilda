@@ -1,8 +1,8 @@
 package org.bitbucket.openkilda.pce;
 
+import org.bitbucket.openkilda.messaging.info.event.IslInfoData;
+import org.bitbucket.openkilda.messaging.info.event.SwitchInfoData;
 import org.bitbucket.openkilda.messaging.model.Flow;
-import org.bitbucket.openkilda.messaging.model.Isl;
-import org.bitbucket.openkilda.messaging.model.Switch;
 import org.bitbucket.openkilda.pce.provider.FlowStorage;
 import org.bitbucket.openkilda.pce.provider.NetworkStorage;
 
@@ -35,30 +35,30 @@ public class StateStorageMock implements NetworkStorage, FlowStorage {
     }
 
     @Override
-    public void updateSwitch(String switchId, Switch newSwitch) {
+    public void updateSwitch(String switchId, SwitchInfoData newSwitch) {
         System.out.println("Update Switch: " + newSwitch);
     }
 
     @Override
-    public Switch getSwitch(String switchId) {
+    public SwitchInfoData getSwitch(String switchId) {
         System.out.println("Get Switch: " + switchId);
         return null;
     }
 
     @Override
-    public void createSwitch(Switch newSwitch) {
+    public void createSwitch(SwitchInfoData newSwitch) {
         System.out.println("Create Switch: " + newSwitch);
         ++switches;
     }
 
     @Override
-    public Set<Switch> dumpSwitches() {
+    public Set<SwitchInfoData> dumpSwitches() {
         System.out.println("Dump Switches");
         return Collections.emptySet();
     }
 
     @Override
-    public void createIsl(Isl isl) {
+    public void createIsl(IslInfoData isl) {
         System.out.println("Create Isl: " + isl);
         ++isls;
     }
@@ -70,18 +70,18 @@ public class StateStorageMock implements NetworkStorage, FlowStorage {
     }
 
     @Override
-    public void updateIsl(String islId, Isl isl) {
+    public void updateIsl(String islId, IslInfoData isl) {
         System.out.println("Update Isl: " + isl);
     }
 
     @Override
-    public Isl getIsl(String islId) {
+    public IslInfoData getIsl(String islId) {
         System.out.println("Get Isl: " + islId);
         return null;
     }
 
     @Override
-    public Set<Isl> dumpIsls() {
+    public Set<IslInfoData> dumpIsls() {
         System.out.println("Dump Isls");
         return Collections.emptySet();
     }

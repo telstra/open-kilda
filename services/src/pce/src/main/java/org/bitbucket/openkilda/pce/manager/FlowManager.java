@@ -1,8 +1,9 @@
 package org.bitbucket.openkilda.pce.manager;
 
+import org.bitbucket.openkilda.messaging.info.event.PathInfoData;
+import org.bitbucket.openkilda.messaging.info.event.PathNode;
+import org.bitbucket.openkilda.messaging.info.event.SwitchInfoData;
 import org.bitbucket.openkilda.messaging.model.Flow;
-import org.bitbucket.openkilda.messaging.model.Isl;
-import org.bitbucket.openkilda.messaging.model.Switch;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowState;
 import org.bitbucket.openkilda.pce.Utils;
 import org.bitbucket.openkilda.pce.provider.FlowStorage;
@@ -47,7 +48,7 @@ public class FlowManager extends FlowCache {
      * @param networkManager {@link NetworkManager} instance
      */
     public FlowManager(FlowStorage flowStorage, NetworkManager networkManager) {
-        super(flowStorage.dumpFlows());
+        load(flowStorage.dumpFlows());
         this.flowStorage = flowStorage;
         this.networkManager = networkManager;
     }
@@ -126,49 +127,51 @@ public class FlowManager extends FlowCache {
     /**
      * Gets path between source and destination switches.
      *
-     * @param srcSwitch source {@link Switch} instance
-     * @param dstSwitch destination {@link Switch} instance
+     * @param srcSwitch source {@link SwitchInfoData} instance
+     * @param dstSwitch destination {@link SwitchInfoData} instance
      * @param bandwidth available bandwidth
-     * @return {@link LinkedList} of {@link Isl} instances
+     * @return {@link PathInfoData} instance
      */
-    public ImmutablePair<LinkedList<Isl>, LinkedList<Isl>> getPath(Switch srcSwitch, Switch dstSwitch, int bandwidth) {
+    public ImmutablePair<PathInfoData, PathInfoData> getPath(SwitchInfoData srcSwitch, SwitchInfoData dstSwitch,
+                                                             int bandwidth) {
         logger.debug("Get path between source switch {} and destination switch {}", srcSwitch, dstSwitch);
-        LinkedList<Isl> forwardPath = networkManager.getPath(srcSwitch, dstSwitch, bandwidth);
-        LinkedList<Isl> reversePath = networkManager.getPath(dstSwitch, srcSwitch, bandwidth);
+        PathInfoData forwardPath = networkManager.getPath(srcSwitch, dstSwitch, bandwidth);
+        PathInfoData reversePath = networkManager.getPath(dstSwitch, srcSwitch, bandwidth);
         return new ImmutablePair<>(forwardPath, reversePath);
     }
 
     /**
      * Gets path between source and destination switches.
      *
-     * @param srcSwitchId source {@link Switch} id
-     * @param dstSwitchId destination {@link Switch} id
+     * @param srcSwitchId source {@link SwitchInfoData} id
+     * @param dstSwitchId destination {@link SwitchInfoData} id
      * @param bandwidth   available bandwidth
-     * @return {@link LinkedList} of {@link Isl} instances
+     * @return {@link PathInfoData}
      */
-    public ImmutablePair<LinkedList<Isl>, LinkedList<Isl>> getPath(String srcSwitchId,
-                                                                   String dstSwitchId, int bandwidth) {
-        Switch srcSwitch = networkManager.getSwitch(srcSwitchId);
-        Switch dstSwitch = networkManager.getSwitch(dstSwitchId);
+    public ImmutablePair<PathInfoData, PathInfoData> getPath(String srcSwitchId,
+                                                             String dstSwitchId, int bandwidth) {
+        SwitchInfoData srcSwitch = networkManager.getSwitch(srcSwitchId);
+        SwitchInfoData dstSwitch = networkManager.getSwitch(dstSwitchId);
         return getPath(srcSwitch, dstSwitch, bandwidth);
     }
 
     /**
      * Returns intersection between two paths.
      *
-     * @param firstPath  first {@link LinkedList} of {@link Isl} instances
-     * @param secondPath second {@link LinkedList} of {@link Isl} instances
-     * @return intersection {@link Set} of {@link Isl} instances
+     * @param firstPath  first {@link LinkedList} of {@link PathInfoData} instances
+     * @param secondPath second {@link LinkedList} of {@link PathInfoData} instances
+     * @return intersection {@link Set} of {@link PathNode} instances
      */
-    public ImmutablePair<Set<Isl>, Set<Isl>> getPathIntersection(
-            ImmutablePair<LinkedList<Isl>, LinkedList<Isl>> firstPath,
-            ImmutablePair<LinkedList<Isl>, LinkedList<Isl>> secondPath) {
+    public ImmutablePair<Set<PathNode>, Set<PathNode>> getPathIntersection(
+            ImmutablePair<PathInfoData, PathInfoData> firstPath,
+            ImmutablePair<PathInfoData, PathInfoData> secondPath) {
         logger.debug("Get path intersection between {} and {}", firstPath, secondPath);
 
-        Set<Isl> forwardIntersection = networkManager.getPathIntersection(firstPath.left, secondPath.left);
-        Set<Isl> reverseIntersection = networkManager.getPathIntersection(firstPath.right, secondPath.right);
+        Set<PathNode> forwardIntersection = networkManager.getPathIntersection(firstPath.left, secondPath.left);
+        Set<PathNode> reverseIntersection = networkManager.getPathIntersection(firstPath.right, secondPath.right);
 
-        ImmutablePair<Set<Isl>, Set<Isl>> intersection = new ImmutablePair<>(forwardIntersection, reverseIntersection);
+        ImmutablePair<Set<PathNode>, Set<PathNode>> intersection =
+                new ImmutablePair<>(forwardIntersection, reverseIntersection);
 
         logger.debug("Path intersection is {}", intersection);
 
@@ -181,7 +184,7 @@ public class FlowManager extends FlowCache {
      * @param flowId flow id
      * @return flow path
      */
-    public ImmutablePair<LinkedList<Isl>, LinkedList<Isl>> getFlowPath(String flowId) {
+    public ImmutablePair<PathInfoData, PathInfoData> getFlowPath(String flowId) {
         return getFlowPathCache(flowId);
     }
 
@@ -195,7 +198,7 @@ public class FlowManager extends FlowCache {
         String timestamp = Utils.getIsoTimestamp();
         int cookie = resourceCache.allocateCookie();
 
-        ImmutablePair<LinkedList<Isl>, LinkedList<Isl>> path =
+        ImmutablePair<PathInfoData, PathInfoData> path =
                 getPath(flow.getSourceSwitch(), flow.getDestinationSwitch(), flow.getBandwidth());
 
         Flow forward = buildForwardFlow(flow, cookie, path.left, timestamp);
@@ -216,7 +219,7 @@ public class FlowManager extends FlowCache {
      * @param timestamp timestamp
      * @return forward flow
      */
-    Flow buildForwardFlow(Flow flow, int cookie, LinkedList<Isl> path, String timestamp) {
+    Flow buildForwardFlow(Flow flow, int cookie, PathInfoData path, String timestamp) {
         return new Flow(flow.getFlowId(), flow.getBandwidth(), cookie | FORWARD_FLOW_COOKIE_MASK,
                 flow.getDescription(), timestamp, flow.getSourceSwitch(), flow.getDestinationSwitch(),
                 flow.getSourcePort(), flow.getDestinationPort(), flow.getSourceVlan(), flow.getDestinationVlan(),
@@ -234,7 +237,7 @@ public class FlowManager extends FlowCache {
      * @param timestamp timestamp
      * @return reverse flow
      */
-    Flow buildReverseFlow(Flow flow, int cookie, LinkedList<Isl> path, String timestamp) {
+    Flow buildReverseFlow(Flow flow, int cookie, PathInfoData path, String timestamp) {
         return new Flow(flow.getFlowId(), flow.getBandwidth(), cookie | REVERSE_FLOW_COOKIE_MASK,
                 flow.getDescription(), timestamp, flow.getDestinationSwitch(), flow.getSourceSwitch(),
                 flow.getDestinationPort(), flow.getSourcePort(), flow.getDestinationVlan(), flow.getSourceVlan(),

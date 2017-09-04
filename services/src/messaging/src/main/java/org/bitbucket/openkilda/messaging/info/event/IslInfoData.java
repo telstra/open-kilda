@@ -2,8 +2,6 @@ package org.bitbucket.openkilda.messaging.info.event;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 
-import org.bitbucket.openkilda.messaging.info.InfoData;
-
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -20,39 +18,29 @@ import java.util.Objects;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
         "message_type",
+        "id",
         "latency_ns",
         "path",
         "speed",
+        "available_bandwidth",
         "state"})
-public class IslInfoData extends InfoData {
+public class IslInfoData extends PathInfoData {
     /**
      * Serialization version number constant.
      */
     private static final long serialVersionUID = 1L;
 
     /**
-     * Latency value in nseconds.
-     */
-    @JsonProperty("latency_ns")
-    private long latency;
-
-    /**
-     * Path.
-     */
-    @JsonProperty("path")
-    private List<PathNode> path;
-
-    /**
      * Port speed.
      */
     @JsonProperty("speed")
-    private long speed;
+    private Long speed;
 
     /**
-     * Isl state.
+     * Available bandwidth.
      */
-    @JsonProperty("state")
-    private IslChangeType state;
+    @JsonProperty("available_bandwidth")
+    private Long availableBandwidth;
 
     /**
      * Default constructor.
@@ -69,50 +57,17 @@ public class IslInfoData extends InfoData {
      * @param state   isl discovery result
      */
     @JsonCreator
-    public IslInfoData(@JsonProperty("latency_ns") final long latency,
-                       @JsonProperty("path") final List<PathNode> path,
-                       @JsonProperty("speed") final long speed,
-                       @JsonProperty("state") final IslChangeType state) {
+    public IslInfoData(@JsonProperty("latency_ns") long latency,
+                       @JsonProperty("path") List<PathNode> path,
+                       @JsonProperty("speed") Long speed,
+                       @JsonProperty("state") IslChangeType state,
+                       @JsonProperty("available_bandwidth") Long availableBandwidth) {
         this.latency = latency;
         this.path = path;
         this.speed = speed;
         this.state = state;
-    }
-
-    /**
-     * Returns latency.
-     *
-     * @return latency
-     */
-    public long getLatency() {
-        return latency;
-    }
-
-    /**
-     * Sets latency.
-     *
-     * @param latency latency to set
-     */
-    public void setLatency(final long latency) {
-        this.latency = latency;
-    }
-
-    /**
-     * Returns path.
-     *
-     * @return path
-     */
-    public List<PathNode> getPath() {
-        return path;
-    }
-
-    /**
-     * Sets path.
-     *
-     * @param path latency to set
-     */
-    public void setPath(final List<PathNode> path) {
-        this.path = path;
+        this.availableBandwidth = availableBandwidth;
+        this.id = String.format("%s_%s", path.get(0).getSwitchId(), String.valueOf(path.get(0).getPortNo()));
     }
 
     /**
@@ -120,7 +75,7 @@ public class IslInfoData extends InfoData {
      *
      * @return port speed
      */
-    public long getSpeed() {
+    public Long getSpeed() {
         return speed;
     }
 
@@ -129,26 +84,26 @@ public class IslInfoData extends InfoData {
      *
      * @param speed port speed
      */
-    public void setSpeed(long speed) {
+    public void setSpeed(Long speed) {
         this.speed = speed;
     }
 
     /**
-     * Returns isl state.
+     * Gets available bandwidth.
      *
-     * @return isl state
+     * @return available bandwidth
      */
-    public IslChangeType getState() {
-        return state;
+    public Long getAvailableBandwidth() {
+        return availableBandwidth;
     }
 
     /**
-     * Sets isl state.
+     * Sets available bandwidth.
      *
-     * @param state isl state to set
+     * @param availableBandwidth available bandwidth
      */
-    public void setState(final IslChangeType state) {
-        this.state = state;
+    public void setAvailableBandwidth(Long availableBandwidth) {
+        this.availableBandwidth = availableBandwidth;
     }
 
     /**
@@ -160,6 +115,7 @@ public class IslInfoData extends InfoData {
                 .add("latency_ns", latency)
                 .add("path", path)
                 .add("speed", speed)
+                .add("available_bandwidth", availableBandwidth)
                 .add("state", state)
                 .toString();
     }
@@ -188,6 +144,7 @@ public class IslInfoData extends InfoData {
         return Objects.equals(getLatency(), that.getLatency())
                 && Objects.equals(getPath(), that.getPath())
                 && Objects.equals(getSpeed(), that.getSpeed())
+                && Objects.equals(getAvailableBandwidth(), that.getAvailableBandwidth())
                 && Objects.equals(getState(), that.getState());
     }
 }

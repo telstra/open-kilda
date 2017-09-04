@@ -11,23 +11,21 @@ import org.bitbucket.openkilda.messaging.command.discovery.DumpNetwork;
 import org.bitbucket.openkilda.messaging.error.ErrorData;
 import org.bitbucket.openkilda.messaging.error.ErrorMessage;
 import org.bitbucket.openkilda.messaging.error.ErrorType;
-import org.bitbucket.openkilda.messaging.info.discovery.NetworkDump;
 import org.bitbucket.openkilda.messaging.info.InfoMessage;
+import org.bitbucket.openkilda.messaging.info.discovery.NetworkDump;
 import org.bitbucket.openkilda.messaging.info.event.IslChangeType;
 import org.bitbucket.openkilda.messaging.info.event.IslInfoData;
 import org.bitbucket.openkilda.messaging.info.event.PathInfoData;
 import org.bitbucket.openkilda.messaging.info.event.PathNode;
 import org.bitbucket.openkilda.messaging.info.event.PortChangeType;
 import org.bitbucket.openkilda.messaging.info.event.PortInfoData;
-import org.bitbucket.openkilda.messaging.info.event.SwitchState;
 import org.bitbucket.openkilda.messaging.info.event.SwitchInfoData;
+import org.bitbucket.openkilda.messaging.info.event.SwitchState;
 import org.bitbucket.openkilda.messaging.info.flow.FlowPathResponse;
 import org.bitbucket.openkilda.messaging.info.flow.FlowResponse;
 import org.bitbucket.openkilda.messaging.info.flow.FlowStatusResponse;
 import org.bitbucket.openkilda.messaging.info.flow.FlowsResponse;
 import org.bitbucket.openkilda.messaging.model.Flow;
-import org.bitbucket.openkilda.messaging.model.Isl;
-import org.bitbucket.openkilda.messaging.model.Switch;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowPathPayload;
@@ -43,7 +41,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.LinkedList;
+import java.util.List;
 import java.util.UUID;
 
 @Ignore
@@ -79,11 +77,17 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
             BANDWIDTH, CORRELATION_ID, String.valueOf(TIMESTAMP), OUTPUT_VLAN_TYPE);
 
     private static final String requester = "requester-id";
-    private static final Switch sw1 = new Switch("sw1", "1.1.1.1", "sw1", "switch-1", SwitchState.ACTIVATED, "kilda");
-    private static final Switch sw2 = new Switch("sw2", "2.2.2.2", "sw2", "switch-2", SwitchState.ACTIVATED, "kilda");
-    private static final Isl isl = new Isl("sw1", "sw2", 1, 2, 1L, 1000, 1000);
+    private static final SwitchInfoData sw1 = new SwitchInfoData("sw1",
+            SwitchState.ACTIVATED, "1.1.1.1", "sw1", "switch-1", "kilda");
+    private static final SwitchInfoData sw2 = new SwitchInfoData("sw2",
+            SwitchState.ACTIVATED, "2.2.2.2", "sw2", "switch-2", "kilda");
+    private static final List<PathNode> nodes = Arrays.asList(
+            new PathNode("sw1", 1, 0, 0L),
+            new PathNode("sw2", 2, 1, 0L));
+    private static final IslInfoData isl = new IslInfoData(0L, nodes, 1000L, IslChangeType.DISCOVERED, 900L);
+    private static final PathInfoData path = new PathInfoData("", 0L, nodes, IslChangeType.DISCOVERED);
     private static final Flow flowModel = new Flow(FLOW_NAME, 1000, COOKIE, FLOW_NAME, String.valueOf(TIMESTAMP),
-            "sw1", "sw2", 10, 20, 100, 200, 1, 1024, new LinkedList<>(Collections.singleton(isl)), FLOW_STATUS);
+            "sw1", "sw2", 10, 20, 100, 200, 1, 1024, path, FLOW_STATUS);
 
     @Test
     public void serializeInstallEgressFlowMessageTest() throws IOException, ClassNotFoundException {
@@ -405,7 +409,8 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     @Test
     public void eventIslInfoTest() throws IOException, ClassNotFoundException {
         PathNode payload = new PathNode(SWITCH_ID, INPUT_PORT, 0);
-        IslInfoData data = new IslInfoData(0L, Collections.singletonList(payload), 1000000, IslChangeType.DISCOVERED);
+        IslInfoData data = new IslInfoData(0L, Collections.singletonList(payload),
+                1000000L, IslChangeType.DISCOVERED, 900000L);
         System.out.println(data);
 
         InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
@@ -466,7 +471,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
 
     @Test
     public void eventSwitchInfoTest() throws IOException, ClassNotFoundException {
-        SwitchInfoData data = new SwitchInfoData(SWITCH_ID, SWITCH_EVENT, "127.0.0.1", "localhost", "Unknown");
+        SwitchInfoData data = new SwitchInfoData(SWITCH_ID, SWITCH_EVENT, "127.0.0.1", "localhost", "sw", "controller");
         System.out.println(data);
 
         InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);

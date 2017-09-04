@@ -1,8 +1,9 @@
 package org.bitbucket.openkilda.pce.provider.neo;
 
+import org.bitbucket.openkilda.messaging.info.event.IslInfoData;
+import org.bitbucket.openkilda.messaging.info.event.PathInfoData;
+import org.bitbucket.openkilda.messaging.info.event.SwitchInfoData;
 import org.bitbucket.openkilda.messaging.model.Flow;
-import org.bitbucket.openkilda.messaging.model.Isl;
-import org.bitbucket.openkilda.messaging.model.Switch;
 import org.bitbucket.openkilda.pce.provider.FlowStorage;
 import org.bitbucket.openkilda.pce.provider.NetworkStorage;
 import org.bitbucket.openkilda.pce.provider.PathComputer;
@@ -20,7 +21,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.Set;
 
 public class NeoDriver implements NetworkStorage, FlowStorage, PathComputer {
@@ -105,8 +105,8 @@ public class NeoDriver implements NetworkStorage, FlowStorage, PathComputer {
      * {@inheritDoc}
      */
     @Override
-    public Switch getSwitch(String switchId) {
-        Switch sw = null;
+    public SwitchInfoData getSwitch(String switchId) {
+        SwitchInfoData sw = null;
         String query = String.format(Constants.GET_SWITCH_FORMATTER_PATTERN, switchId);
 
         logger.info("Get switch query: {}", query);
@@ -117,7 +117,7 @@ public class NeoDriver implements NetworkStorage, FlowStorage, PathComputer {
 
         if (result.hasNext()) {
             Value value = result.next().get("n");
-            sw = new Switch(value.asMap());
+            sw = new SwitchInfoData(value.asMap());
             logger.info("Switch found: {}", sw.toString());
         } else {
             logger.info("Switch {} was not found", switchId);
@@ -130,7 +130,7 @@ public class NeoDriver implements NetworkStorage, FlowStorage, PathComputer {
      * {@inheritDoc}
      */
     @Override
-    public void createSwitch(Switch sw) {
+    public void createSwitch(SwitchInfoData sw) {
         String query = String.format(Constants.CREATE_SWITCH_FORMATTER_PATTERN,
                 sw.getSwitchId(), sw.getState(), sw.getAddress(),
                 sw.getHostname(), sw.getController(), sw.getDescription());
@@ -164,7 +164,7 @@ public class NeoDriver implements NetworkStorage, FlowStorage, PathComputer {
      * {@inheritDoc}
      */
     @Override
-    public void updateSwitch(String switchId, Switch newSwitch) {
+    public void updateSwitch(String switchId, SwitchInfoData newSwitch) {
         String query = String.format(Constants.UPDATE_SWITCH_FORMATTER_PATTERN, switchId,
                 newSwitch.getSwitchId(), newSwitch.getState(), newSwitch.getAddress(),
                 newSwitch.getHostname(), newSwitch.getController(), newSwitch.getDescription());
@@ -182,8 +182,8 @@ public class NeoDriver implements NetworkStorage, FlowStorage, PathComputer {
      * {@inheritDoc}
      */
     @Override
-    public Set<Switch> dumpSwitches() {
-        Set<Switch> switches = new HashSet<>();
+    public Set<SwitchInfoData> dumpSwitches() {
+        Set<SwitchInfoData> switches = new HashSet<>();
         String query = Constants.DUMP_SWITCH_FORMATTER_PATTERN;
 
         logger.info("Dump switch query: {}", query);
@@ -194,7 +194,7 @@ public class NeoDriver implements NetworkStorage, FlowStorage, PathComputer {
 
         for (Record record : result.list()) {
             Value value = record.get("n");
-            switches.add(new Switch(value.asMap()));
+            switches.add(new SwitchInfoData(value.asMap()));
         }
 
         logger.info("Switches: {}", switches.toString());
@@ -206,7 +206,7 @@ public class NeoDriver implements NetworkStorage, FlowStorage, PathComputer {
      * {@inheritDoc}
      */
     @Override
-    public Isl getIsl(String islId) {
+    public IslInfoData getIsl(String islId) {
         return null;
     }
 
@@ -214,7 +214,7 @@ public class NeoDriver implements NetworkStorage, FlowStorage, PathComputer {
      * {@inheritDoc}
      */
     @Override
-    public void createIsl(Isl isl) {
+    public void createIsl(IslInfoData isl) {
     }
 
     /**
@@ -228,14 +228,14 @@ public class NeoDriver implements NetworkStorage, FlowStorage, PathComputer {
      * {@inheritDoc}
      */
     @Override
-    public void updateIsl(String islId, Isl isl) {
+    public void updateIsl(String islId, IslInfoData isl) {
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public Set<Isl> dumpIsls() {
+    public Set<IslInfoData> dumpIsls() {
         return null;
     }
 
@@ -243,15 +243,16 @@ public class NeoDriver implements NetworkStorage, FlowStorage, PathComputer {
      * {@inheritDoc}
      */
     @Override
-    public LinkedList<Isl> getPath(Switch srcSwitch, Switch dstSwitch, int bandwidth) {
-        LinkedList<Isl> path = null;
-        String query = String.format(Constants.PATH_QUERY_FORMATTER_PATTERN,
+    public PathInfoData getPath(SwitchInfoData srcSwitch, SwitchInfoData dstSwitch, int bandwidth) {
+        PathInfoData path = null;
+
+        /*String query = String.format(Constants.PATH_QUERY_FORMATTER_PATTERN,
                 srcSwitch.getSwitchId(), dstSwitch.getSwitchId(), bandwidth);
         Session session = driver.session();
         StatementResult result = session.run(query);
-        // result.forEachRemaining();
+        result.forEachRemaining();
 
-        session.close();
+        session.close();*/
 
         return path;
     }
@@ -260,22 +261,22 @@ public class NeoDriver implements NetworkStorage, FlowStorage, PathComputer {
      * {@inheritDoc}
      */
     @Override
-    public void updatePathBandwidth(LinkedList<Isl> path, int bandwidth) {
-        Session session = driver.session();
+    public void updatePathBandwidth(PathInfoData path, int bandwidth) {
+        /*Session session = driver.session();
         for (Isl isl : path) {
             isl.setAvailableBandwidth(isl.getAvailableBandwidth() - bandwidth);
             String query = String.format(Constants.AVAILABLE_BANDWIDTH_UPDATE_FORMATTER_PATTERN,
                     isl.getSourceSwitch(), isl.getSourcePort(), bandwidth);
             StatementResult result = session.run(query);
         }
-        session.close();
+        session.close();*/
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public PathComputer withNetwork(MutableNetwork<Switch, Isl> network) {
+    public PathComputer withNetwork(MutableNetwork<SwitchInfoData, IslInfoData> network) {
         return this;
     }
 
@@ -283,7 +284,7 @@ public class NeoDriver implements NetworkStorage, FlowStorage, PathComputer {
      * {@inheritDoc}
      */
     @Override
-    public Long getWeight(Isl isl) {
+    public Long getWeight(IslInfoData isl) {
         return 1L;
     }
 }

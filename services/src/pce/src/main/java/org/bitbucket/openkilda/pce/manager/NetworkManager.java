@@ -1,7 +1,9 @@
 package org.bitbucket.openkilda.pce.manager;
 
-import org.bitbucket.openkilda.messaging.model.Isl;
-import org.bitbucket.openkilda.messaging.model.Switch;
+import org.bitbucket.openkilda.messaging.info.event.IslInfoData;
+import org.bitbucket.openkilda.messaging.info.event.PathInfoData;
+import org.bitbucket.openkilda.messaging.info.event.PathNode;
+import org.bitbucket.openkilda.messaging.info.event.SwitchInfoData;
 import org.bitbucket.openkilda.pce.provider.NetworkStorage;
 import org.bitbucket.openkilda.pce.provider.PathComputer;
 
@@ -10,7 +12,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.Set;
 import java.util.function.Function;
 
@@ -47,10 +48,10 @@ public class NetworkManager extends NetworkCache {
      * Instance constructor.
      *
      * @param networkStorage {@link NetworkStorage} instance
-     * @param pathComputer {@link PathComputer} instance
+     * @param pathComputer   {@link PathComputer} instance
      */
     public NetworkManager(NetworkStorage networkStorage, PathComputer pathComputer) {
-        super(networkStorage.dumpSwitches(), networkStorage.dumpIsls());
+        load(networkStorage.dumpSwitches(), networkStorage.dumpIsls());
         this.networkStorage = networkStorage;
         this.pathComputer = pathComputer.withNetwork(getNetwork());
     }
@@ -78,89 +79,89 @@ public class NetworkManager extends NetworkCache {
     }
 
     /**
-     * Gets {@link Switch} instance.
+     * Gets {@link SwitchInfoData} instance.
      *
-     * @param switchId {@link Switch} instance id
-     * @return {@link Switch} instance with specified {@link Switch} instance id
-     * @throws IllegalArgumentException if {@link Switch} instance with specified id does not exist
+     * @param switchId {@link SwitchInfoData} instance id
+     * @return {@link SwitchInfoData} instance with specified {@link SwitchInfoData} instance id
+     * @throws IllegalArgumentException if {@link SwitchInfoData} instance with specified id does not exist
      */
-    public Switch getSwitch(String switchId) throws IllegalArgumentException {
+    public SwitchInfoData getSwitch(String switchId) throws IllegalArgumentException {
         return getSwitchCache(switchId);
     }
 
     /**
-     * Creates {@link Switch} instance.
+     * Creates {@link SwitchInfoData} instance.
      *
-     * @param newSwitch {@link Switch} instance
-     * @return created {@link Switch} instance
-     * @throws IllegalArgumentException if {@link Switch} instance with specified id already exists
+     * @param newSwitch {@link SwitchInfoData} instance
+     * @return created {@link SwitchInfoData} instance
+     * @throws IllegalArgumentException if {@link SwitchInfoData} instance with specified id already exists
      */
-    public Switch createSwitch(Switch newSwitch) throws IllegalArgumentException {
-        Switch node = createSwitchCache(newSwitch);
+    public SwitchInfoData createSwitch(SwitchInfoData newSwitch) throws IllegalArgumentException {
+        SwitchInfoData node = createSwitchCache(newSwitch);
         networkStorage.createSwitch(newSwitch);
         switchChanged(new SwitchChangeEvent(newSwitch, null, null));
         return node;
     }
 
     /**
-     * Updates {@link Switch} instance.
+     * Updates {@link SwitchInfoData} instance.
      *
-     * @param switchId  {@link Switch} instance id
-     * @param newSwitch {@link Switch} instance
-     * @return {@link Switch} instance before update
-     * @throws IllegalArgumentException if {@link Switch} instance with specified id does not exist
+     * @param switchId  {@link SwitchInfoData} instance id
+     * @param newSwitch {@link SwitchInfoData} instance
+     * @return {@link SwitchInfoData} instance before update
+     * @throws IllegalArgumentException if {@link SwitchInfoData} instance with specified id does not exist
      */
-    public Switch updateSwitch(String switchId, Switch newSwitch) throws IllegalArgumentException {
-        Switch node = updateSwitchCache(switchId, newSwitch);
+    public SwitchInfoData updateSwitch(String switchId, SwitchInfoData newSwitch) throws IllegalArgumentException {
+        SwitchInfoData node = updateSwitchCache(switchId, newSwitch);
         networkStorage.updateSwitch(switchId, newSwitch);
         switchChanged(new SwitchChangeEvent(null, newSwitch, null));
         return node;
     }
 
     /**
-     * Deletes {@link Switch} instance.
+     * Deletes {@link SwitchInfoData} instance.
      *
-     * @param switchId {@link Switch} instance id
-     * @return removed {@link Switch} instance
-     * @throws IllegalArgumentException if {@link Switch} instance with specified id does not exist
+     * @param switchId {@link SwitchInfoData} instance id
+     * @return removed {@link SwitchInfoData} instance
+     * @throws IllegalArgumentException if {@link SwitchInfoData} instance with specified id does not exist
      */
-    public Switch deleteSwitch(String switchId) throws IllegalArgumentException {
-        Switch node = deleteSwitchCache(switchId);
+    public SwitchInfoData deleteSwitch(String switchId) throws IllegalArgumentException {
+        SwitchInfoData node = deleteSwitchCache(switchId);
         networkStorage.deleteSwitch(switchId);
         switchChanged(new SwitchChangeEvent(null, null, node));
         return node;
     }
 
     /**
-     * Gets all {@link Switch} instances.
+     * Gets all {@link SwitchInfoData} instances.
      *
-     * @return {@link Set} of {@link Switch} instances
+     * @return {@link Set} of {@link SwitchInfoData} instances
      */
-    public Set<Switch> dumpSwitches() {
+    public Set<SwitchInfoData> dumpSwitches() {
         return dumpSwitchesCache();
     }
 
     /**
-     * Get {@link Isl} instance.
+     * Get {@link IslInfoData} instance.
      *
-     * @param islId {@link Isl} instance id
-     * @return {@link Isl} instance with specified {@link Isl} instance id
-     * @throws IllegalArgumentException if {@link Isl} instance with specified id does not exist
+     * @param islId {@link IslInfoData} instance id
+     * @return {@link IslInfoData} instance with specified {@link IslInfoData} instance id
+     * @throws IllegalArgumentException if {@link IslInfoData} instance with specified id does not exist
      */
-    public Isl getIsl(String islId) throws IllegalArgumentException {
+    public IslInfoData getIsl(String islId) throws IllegalArgumentException {
         return getIslCache(islId);
     }
 
     /**
-     * Creates {@link Isl} instance.
+     * Creates {@link IslInfoData} instance.
      *
-     * @param isl {@link Isl} instance
-     * @return {@link Isl} instance previously associated with this {@link Isl} instance id or null otherwise
-     * @throws IllegalArgumentException if {@link Switch} instances for {@link Isl} instance do not exist
+     * @param isl {@link IslInfoData} instance
+     * @return {@link IslInfoData} instance previously associated with {@link IslInfoData} instance id or null otherwise
+     * @throws IllegalArgumentException if {@link SwitchInfoData} instances for {@link IslInfoData} do not exist
      */
-    public Isl createOrUpdateIsl(Isl isl) throws IllegalArgumentException {
-        Isl newIsl;
-        String islId = isl.getIslId();
+    public IslInfoData createOrUpdateIsl(IslInfoData isl) throws IllegalArgumentException {
+        IslInfoData newIsl;
+        String islId = isl.getId();
         logger.debug("Create or update {} isl with {} parameters", islId, isl);
 
         if (cacheContainsIsl(islId)) {
@@ -177,25 +178,25 @@ public class NetworkManager extends NetworkCache {
     }
 
     /**
-     * Deletes {@link Isl} instance.
+     * Deletes {@link IslInfoData} instance.
      *
-     * @param islId {@link Isl} instance id
-     * @return removed {@link Isl} instance
-     * @throws IllegalArgumentException if {@link Isl} instance with specified id does not exist
+     * @param islId {@link IslInfoData} instance id
+     * @return removed {@link IslInfoData} instance
+     * @throws IllegalArgumentException if {@link IslInfoData} instance with specified id does not exist
      */
-    public Isl deleteIsl(String islId) throws IllegalArgumentException {
-        Isl isl = deleteIslCache(islId);
+    public IslInfoData deleteIsl(String islId) throws IllegalArgumentException {
+        IslInfoData isl = deleteIslCache(islId);
         networkStorage.deleteIsl(islId);
         islChanged(new IslChangeEvent(null, null, isl));
         return isl;
     }
 
     /**
-     * Gets all {@link Isl} instances.
+     * Gets all {@link IslInfoData} instances.
      *
-     * @return {@link Set} of {@link Isl} instances
+     * @return {@link Set} of {@link IslInfoData} instances
      */
-    public Set<Isl> dumpIsls() {
+    public Set<IslInfoData> dumpIsls() {
         return dumpIslsCache();
     }
 
@@ -225,27 +226,27 @@ public class NetworkManager extends NetworkCache {
      */
     public void handleIslChange(IslChangeEvent event) {
         if (event.created != null) {
-            createIslCache(event.created.getIslId(), event.created);
+            createIslCache(event.created.getId(), event.created);
         }
 
         if (event.updated != null) {
-            updateIslCache(event.updated.getIslId(), event.updated);
+            updateIslCache(event.updated.getId(), event.updated);
         }
 
         if (event.deleted != null) {
-            deleteIslCache(event.deleted.getIslId());
+            deleteIslCache(event.deleted.getId());
         }
     }
 
     /**
      * Gets path between source and destination switches.
      *
-     * @param srcSwitch source {@link Switch} instance
-     * @param dstSwitch destination {@link Switch} instance
+     * @param srcSwitch source {@link SwitchInfoData} instance
+     * @param dstSwitch destination {@link SwitchInfoData} instance
      * @param bandwidth available bandwidth
-     * @return {@link LinkedList} of {@link Isl} instances
+     * @return {@link PathInfoData} instance
      */
-    public LinkedList<Isl> getPath(Switch srcSwitch, Switch dstSwitch, int bandwidth) {
+    public PathInfoData getPath(SwitchInfoData srcSwitch, SwitchInfoData dstSwitch, int bandwidth) {
         logger.debug("Get single path between source switch {} and destination switch {}", srcSwitch, dstSwitch);
         return pathComputer.getPath(srcSwitch, dstSwitch, bandwidth);
     }
@@ -253,38 +254,38 @@ public class NetworkManager extends NetworkCache {
     /**
      * Gets path between source and destination switches.
      *
-     * @param srcSwitchId source {@link Switch} id
-     * @param dstSwitchId destination {@link Switch} id
+     * @param srcSwitchId source {@link SwitchInfoData} id
+     * @param dstSwitchId destination {@link SwitchInfoData} id
      * @param bandwidth   available bandwidth
-     * @return {@link LinkedList} of {@link Isl} instances
+     * @return {@link PathInfoData} instances
      */
-    public LinkedList<Isl> getPath(String srcSwitchId, String dstSwitchId, int bandwidth) {
-        Switch srcSwitch = getSwitchCache(srcSwitchId);
-        Switch dstSwitch = getSwitchCache(dstSwitchId);
+    public PathInfoData getPath(String srcSwitchId, String dstSwitchId, int bandwidth) {
+        SwitchInfoData srcSwitch = getSwitchCache(srcSwitchId);
+        SwitchInfoData dstSwitch = getSwitchCache(dstSwitchId);
         return getPath(srcSwitch, dstSwitch, bandwidth);
     }
 
     /**
      * Returns intersection between two paths.
      *
-     * @param firstPath  first {@link LinkedList} of {@link Isl} instances
-     * @param secondPath second {@link LinkedList} of {@link Isl} instances
-     * @return intersection {@link Set} of {@link Isl} instances
+     * @param firstPath  first {@link PathInfoData} instances
+     * @param secondPath second {@link PathInfoData} instances
+     * @return intersection {@link Set} of {@link IslInfoData} instances
      */
-    public Set<Isl> getPathIntersection(LinkedList<Isl> firstPath, LinkedList<Isl> secondPath) {
+    public Set<PathNode> getPathIntersection(PathInfoData firstPath, PathInfoData secondPath) {
         logger.debug("Get single path intersection between {} and {}", firstPath, secondPath);
-        Set<Isl> intersection = new HashSet<>(firstPath);
-        intersection.retainAll(secondPath);
+        Set<PathNode> intersection = new HashSet<>(firstPath.getPath());
+        intersection.retainAll(secondPath.getPath());
         return intersection;
     }
 
     /**
      * Updates isls available bandwidth.
      *
-     * @param path      {@link Set} of {@link Isl} instances
+     * @param path      {@link Set} of {@link IslInfoData} instances
      * @param bandwidth available bandwidth
      */
-    public void updatePathBandwidth(LinkedList<Isl> path, int bandwidth) {
+    public void updatePathBandwidth(PathInfoData path, int bandwidth) {
         logger.debug("Update bandwidth {} for path {}", bandwidth, path);
         pathComputer.updatePathBandwidth(path, bandwidth);
     }
@@ -316,13 +317,13 @@ public class NetworkManager extends NetworkCache {
      */
     class SwitchChangeEvent {
         /** Created switch instance. */
-        Switch created;
+        SwitchInfoData created;
 
         /** Updated switch instance. */
-        Switch updated;
+        SwitchInfoData updated;
 
         /** Deleted switch instance. */
-        Switch deleted;
+        SwitchInfoData deleted;
 
         /**
          * Instance constructor.
@@ -331,7 +332,7 @@ public class NetworkManager extends NetworkCache {
          * @param updated updated switch instance
          * @param deleted deleted switch instance
          */
-        SwitchChangeEvent(Switch created, Switch updated, Switch deleted) {
+        SwitchChangeEvent(SwitchInfoData created, SwitchInfoData updated, SwitchInfoData deleted) {
             this.created = created;
             this.updated = updated;
             this.deleted = deleted;
@@ -355,13 +356,13 @@ public class NetworkManager extends NetworkCache {
      */
     class IslChangeEvent {
         /** Created isl instance. */
-        Isl created;
+        IslInfoData created;
 
         /** Updated isl instance. */
-        Isl updated;
+        IslInfoData updated;
 
         /** Deleted isl instance. */
-        Isl deleted;
+        IslInfoData deleted;
 
         /**
          * Instance constructor.
@@ -370,7 +371,7 @@ public class NetworkManager extends NetworkCache {
          * @param updated updated isl instance
          * @param deleted deleted isl instance
          */
-        IslChangeEvent(Isl created, Isl updated, Isl deleted) {
+        IslChangeEvent(IslInfoData created, IslInfoData updated, IslInfoData deleted) {
             this.created = created;
             this.updated = updated;
             this.deleted = deleted;

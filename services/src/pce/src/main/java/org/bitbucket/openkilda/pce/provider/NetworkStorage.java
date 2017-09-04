@@ -1,7 +1,7 @@
 package org.bitbucket.openkilda.pce.provider;
 
-import org.bitbucket.openkilda.messaging.model.Isl;
-import org.bitbucket.openkilda.messaging.model.Switch;
+import org.bitbucket.openkilda.messaging.info.event.IslInfoData;
+import org.bitbucket.openkilda.messaging.info.event.SwitchInfoData;
 
 import java.util.Set;
 
@@ -15,14 +15,14 @@ public interface NetworkStorage {
      * @param switchId switch id
      * @return switch
      */
-    Switch getSwitch(String switchId);
+    SwitchInfoData getSwitch(String switchId);
 
     /**
      * Creates switch.
      *
      * @param newSwitch switch
      */
-    void createSwitch(Switch newSwitch);
+    void createSwitch(SwitchInfoData newSwitch);
 
     /**
      * Deletes switch.
@@ -37,14 +37,14 @@ public interface NetworkStorage {
      * @param switchId  switch id
      * @param newSwitch switch
      */
-    void updateSwitch(String switchId, Switch newSwitch);
+    void updateSwitch(String switchId, SwitchInfoData newSwitch);
 
     /**
      * Gets all switches.
      *
      * @return all switches
      */
-    Set<Switch> dumpSwitches();
+    Set<SwitchInfoData> dumpSwitches();
 
     /**
      * Gets isl.
@@ -52,14 +52,14 @@ public interface NetworkStorage {
      * @param islId isl id
      * @return isl
      */
-    Isl getIsl(String islId);
+    IslInfoData getIsl(String islId);
 
     /**
      * Creates isl.
      *
      * @param isl isl
      */
-    void createIsl(Isl isl);
+    void createIsl(IslInfoData isl);
 
     /**
      * Deletes isl.
@@ -74,12 +74,12 @@ public interface NetworkStorage {
      * @param islId isl id
      * @param isl   isl
      */
-    void updateIsl(String islId, Isl isl);
+    void updateIsl(String islId, IslInfoData isl);
 
     /**
      * Gets all isls.
      *
      * @return all isls
      */
-    Set<Isl> dumpIsls();
+    Set<IslInfoData> dumpIsls();
 }

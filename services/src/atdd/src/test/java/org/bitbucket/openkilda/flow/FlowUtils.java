@@ -6,12 +6,12 @@ import static org.bitbucket.openkilda.DefaultParameters.topologyEndpoint;
 import static org.bitbucket.openkilda.DefaultParameters.topologyPassword;
 import static org.bitbucket.openkilda.DefaultParameters.topologyUsername;
 
+import org.bitbucket.openkilda.messaging.info.event.IslInfoData;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowsPayload;
 import org.bitbucket.openkilda.messaging.model.Flow;
-import org.bitbucket.openkilda.messaging.model.Isl;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -239,7 +239,7 @@ public class FlowUtils {
      *
      * @return The JSON document of all flows
      */
-    public static List<Isl> dumpLinks() throws Exception {
+    public static List<IslInfoData> dumpLinks() throws Exception {
         long current = System.currentTimeMillis();
         Client client = ClientBuilder.newClient(new ClientConfig());
 
@@ -254,8 +254,8 @@ public class FlowUtils {
         System.out.println(String.format("==> response = %s", response));
         System.out.println(String.format("==> Topology-Engine Dump Links Time: %,.3f", getTimeDuration(current)));
 
-        List<Isl> links = new ObjectMapper().readValue(
-                response.readEntity(String.class), new TypeReference<List<Isl>>(){});
+        List<IslInfoData> links = new ObjectMapper().readValue(
+                response.readEntity(String.class), new TypeReference<List<IslInfoData>>(){});
         System.out.println(String.format("===> Data = %s", links));
 
         return links;
