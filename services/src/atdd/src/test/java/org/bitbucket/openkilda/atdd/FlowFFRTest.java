@@ -2,6 +2,7 @@ package org.bitbucket.openkilda.atdd;
 
 import java.util.Random;
 import java.util.List;
+import java.util.LinkedList;
 import java.util.Arrays;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
@@ -32,9 +33,9 @@ import java.nio.file.Files;
 public class FlowFFRTest{
     private static final String fileName = "topologies/barebones-topology.json";
     private static int numberOfPathes = 2;
-    private static final List<List<String>> failableLinks = Arrays.asList(
-        Arrays.asList("s3-eth1", "s2-eth3"),
-        Arrays.asList("s3-eth2", "s4-eth2"));
+    private static final List<List<String>> failebleLinks = new LinkedList<List<String>>(Arrays.asList(
+        new LinkedList<String>(Arrays.asList("s3", "1")), new LinkedList<String>(Arrays.asList("s3", "2"))));
+
     private static final long FLOW_COOKIE = 1L;
     private static final String flowId = "1";
     private static final String sourceSwitch = "00:00:00:00:00:00:00:02";
@@ -47,35 +48,40 @@ public class FlowFFRTest{
 
     private FlowPayload flowPayload;
     private Flow flow;
-    private List<List<String>> failedLinks;
-
-    public FlowFFRTest() {
-        Client client = ClientBuilder.newClient(new ClientConfig());
-        Response result = client
-           .target(trafficEndpoint)
-           .path("/cleanse")
-           .request()
-           .post(Entity.json(""));
-    }
+    private List<List<String>> failedLinks = new LinkedList<List<String>>();
 
     private void failLink() throws Throwable {
         // This method is designed to work with barebones topology.
         // It might need refactoring in the future when other topologies
         // are considered
+        List<String> linkToFail = failebleLinks.remove(0);
+        failedLinks.add(linkToFail);
+        String switchName = linkToFail.get(0);
+        String portNum = linkToFail.get(1);
         Client client = ClientBuilder.newClient(new ClientConfig());
         Response result = client
            .target(trafficEndpoint)
-           .path("/linkdown")
+           .path("/set_link_state")
+           .queryParam("switch", switchName)
+           .queryParam("port", portNum)
+           .queryParam("newstate", "down")
            .request()
            .post(Entity.json(""));
         assertEquals(200, result.getStatus());
     }
 
     private void resurrectLink() throws Throwable {
+        List<String> linkToRestore = failedLinks.remove(1);
+        failedLinks.add(linkToRestore);
+        String switchName = linkToRestore.get(0);
+        String portNum = linkToRestore.get(1);
         Client client = ClientBuilder.newClient(new ClientConfig());
         Response result = client
            .target(trafficEndpoint)
-           .path("/linkup")
+           .path("/set_link_state")
+           .queryParam("switch", switchName)
+           .queryParam("port", portNum)
+           .queryParam("newstate", "up")
            .request()
            .post(Entity.json(""));
         assertEquals(200, result.getStatus());
@@ -87,6 +93,12 @@ public class FlowFFRTest{
         Response result = client
            .target(trafficEndpoint)
            .path("/checkflowtraffic")
+           .queryParam("srcswitch", "s1")
+           .queryParam("dstswitch", "s5")
+           .queryParam("srcport", "1")
+           .queryParam("dstport", "1")
+           .queryParam("srcvlan", "1000")
+           .queryParam("dstvlan", "1000")
            .request()
            .get();
         return result.getStatus() == 200;
