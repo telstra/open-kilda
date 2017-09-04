@@ -85,7 +85,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
             new PathNode("sw1", 1, 0, 0L),
             new PathNode("sw2", 2, 1, 0L));
     private static final IslInfoData isl = new IslInfoData(0L, nodes, 1000L, IslChangeType.DISCOVERED, 900L);
-    private static final PathInfoData path = new PathInfoData("", 0L, nodes, IslChangeType.DISCOVERED);
+    private static final PathInfoData path = new PathInfoData(0L, nodes, IslChangeType.DISCOVERED);
     private static final Flow flowModel = new Flow(FLOW_NAME, 1000, COOKIE, FLOW_NAME, String.valueOf(TIMESTAMP),
             "sw1", "sw2", 10, 20, 100, 200, 1, 1024, path, FLOW_STATUS);
 

@@ -28,9 +28,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * This class is the main class for tracking links and generating health checks.
- * Regarding Storm's KeyValueState .. it doesn't have a keys() feature .. so there is
- * at this stage only one object in it, which holds hashmaps, etc.
+ * This class is the main class for tracking links and generating health checks. Regarding Storm's KeyValueState .. it
+ * doesn't have a keys() feature .. so there is at this stage only one object in it, which holds hashmaps, etc.
  */
 public class OFELinkBolt extends AbstractTickStatefulBolt<KeyValueState<String, LinkTracker>> {
     private static final Logger logger = LogManager.getLogger(OFELinkBolt.class);

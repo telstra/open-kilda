@@ -109,7 +109,7 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
         restApiService = context.getServiceImpl(IRestApiService.class);
         Map<String, String> configParameters = context.getConfigParams(this);
         logger.debug("main pathverification service: " + this);
-        islBandwidthQuotient = Integer.valueOf(configParameters.get("isl_bandwidth_quotient"));
+        islBandwidthQuotient = Double.parseDouble(configParameters.get("isl_bandwidth_quotient"));
 
         Properties kafkaProps = new Properties();
         kafkaProps.put("bootstrap.servers", configParameters.get("bootstrap-servers"));

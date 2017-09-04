@@ -9,6 +9,10 @@ import org.bitbucket.openkilda.messaging.info.InfoData;
 import org.bitbucket.openkilda.messaging.info.InfoMessage;
 import org.bitbucket.openkilda.messaging.info.event.IslInfoData;
 import org.bitbucket.openkilda.messaging.info.event.SwitchInfoData;
+import org.bitbucket.openkilda.pce.manager.BaseCache;
+import org.bitbucket.openkilda.pce.manager.FlowCache;
+import org.bitbucket.openkilda.pce.manager.NetworkCache;
+import org.bitbucket.openkilda.wfm.topology.AbstractTopology;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -23,25 +27,60 @@ import org.apache.storm.tuple.Values;
 import java.io.IOException;
 import java.util.Map;
 
-public class StateBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, String>> {
+public class StateBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, BaseCache>> {
     /**
      * The logger.
      */
     private static final Logger logger = LogManager.getLogger(StateBolt.class);
 
     /**
+     * Network cache key.
+     */
+    private static final String NETWORK_CACHE = "network";
+
+    /**
+     * Flow cache key.
+     */
+    private static final String FLOW_CACHE = "flow";
+
+    /**
+     * Flow cache.
+     */
+    private FlowCache flowCache;
+
+    /**
+     * Network cache.
+     */
+    private NetworkCache networkCache;
+
+    /**
      * Network cache cache.
      */
-    private InMemoryKeyValueState<String, String> state;
+    private InMemoryKeyValueState<String, BaseCache> state;
 
     /**
      * Output collector.
      */
     private OutputCollector outputCollector;
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public void initState(InMemoryKeyValueState<String, String> state) {
+    public void initState(InMemoryKeyValueState<String, BaseCache> state) {
         this.state = state;
+
+        networkCache = (NetworkCache) state.get(NETWORK_CACHE);
+        if (networkCache == null) {
+            networkCache = new NetworkCache();
+            this.state.put(NETWORK_CACHE, networkCache);
+        }
+
+        flowCache = (FlowCache) state.get(FLOW_CACHE);
+        if (flowCache == null) {
+            flowCache = new FlowCache();
+            this.state.put(FLOW_CACHE, flowCache);
+        }
     }
 
     /**
@@ -75,12 +114,14 @@ public class StateBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, St
                         if (data instanceof SwitchInfoData) {
                             logger.debug("State update switch info message");
 
+                            handleSwitchEvent((SwitchInfoData) data);
 
                         } else if (data instanceof IslInfoData) {
                             logger.debug("State update isl info message");
 
+                            handleIslEvent((IslInfoData) data);
 
-                    } else {
+                        } else {
                             logger.warn("Skip undefined info data type {}", json);
                         }
                         // TODO: FLOW , RULE
@@ -124,8 +165,56 @@ public class StateBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, St
      */
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
-        outputFieldsDeclarer.declareStream(StreamType.TPE.toString(), CacheTopology.MESSAGE_FIELDS);
-        outputFieldsDeclarer.declareStream(StreamType.WFM_DUMP.toString(), CacheTopology.MESSAGE_FIELDS);
+        outputFieldsDeclarer.declareStream(StreamType.TPE.toString(), AbstractTopology.fieldMessage);
+        outputFieldsDeclarer.declareStream(StreamType.WFM_DUMP.toString(), AbstractTopology.fieldMessage);
+    }
+
+    private void handleSwitchEvent(SwitchInfoData sw) {
+        logger.debug("State update switch info message {}", sw.getState().toString());
+
+        switch (sw.getState()) {
+            case ADDED:
+            case ACTIVATED:
+                if (networkCache.cacheContainsSwitch(sw.getSwitchId())) {
+                    networkCache.updateSwitchCache(sw.getSwitchId(), sw);
+                } else {
+                    networkCache.createSwitchCache(sw);
+                }
+                break;
+            case DEACTIVATED:
+            case REMOVED:
+                if (networkCache.cacheContainsSwitch(sw.getSwitchId())) {
+                    networkCache.updateSwitchCache(sw.getSwitchId(), sw);
+                }
+                break;
+            case CHANGED:
+                break;
+            default:
+                logger.warn("Unknown state update switch info message");
+                break;
+        }
+    }
+
+    private void handleIslEvent(IslInfoData isl) {
+        logger.debug("State update isl info message cached {}", isl.getState().toString());
+
+        switch (isl.getState()) {
+            case DISCOVERED:
+                if (networkCache.cacheContainsIsl(isl.getId())) {
+                    networkCache.updateIslCache(isl.getId(), isl);
+                } else {
+                    networkCache.createIslCache(isl.getId(), isl);
+                }
+                break;
+            case FAILED:
+                networkCache.deleteIslCache(isl.getId());
+                break;
+            case OTHER_UPDATE:
+                break;
+            default:
+                logger.warn("Unknown state update isl info message");
+                break;
+        }
     }
 
     private Values getValues(InfoData data) throws IOException {

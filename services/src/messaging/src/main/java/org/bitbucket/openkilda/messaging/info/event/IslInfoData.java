@@ -31,6 +31,12 @@ public class IslInfoData extends PathInfoData {
     private static final long serialVersionUID = 1L;
 
     /**
+     * Instance id.
+     */
+    @JsonProperty("id")
+    protected String id;
+
+    /**
      * Port speed.
      */
     @JsonProperty("speed")
@@ -51,10 +57,11 @@ public class IslInfoData extends PathInfoData {
     /**
      * Instance constructor.
      *
-     * @param latency latency
-     * @param path    path
-     * @param speed   port speed
-     * @param state   isl discovery result
+     * @param latency            latency
+     * @param path               path
+     * @param speed              port speed
+     * @param state              isl discovery result
+     * @param availableBandwidth isl available bandwidth
      */
     @JsonCreator
     public IslInfoData(@JsonProperty("latency_ns") long latency,
@@ -68,6 +75,24 @@ public class IslInfoData extends PathInfoData {
         this.state = state;
         this.availableBandwidth = availableBandwidth;
         this.id = String.format("%s_%s", path.get(0).getSwitchId(), String.valueOf(path.get(0).getPortNo()));
+    }
+
+    /**
+     * Returns id.
+     *
+     * @return id
+     */
+    public String getId() {
+        return id;
+    }
+
+    /**
+     * Sets id.
+     *
+     * @param id id to set
+     */
+    public void setIs(String id) {
+        this.id = id;
     }
 
     /**

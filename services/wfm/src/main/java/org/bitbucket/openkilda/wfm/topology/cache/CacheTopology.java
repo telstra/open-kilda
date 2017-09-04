@@ -9,15 +9,10 @@ import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.KafkaSpout;
 import org.apache.storm.kafka.bolt.KafkaBolt;
 import org.apache.storm.topology.TopologyBuilder;
-import org.apache.storm.tuple.Fields;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class CacheTopology extends AbstractTopology {
-    private static final String MESSAGE_FIELD = "message";
-    static final Fields MESSAGE_FIELDS = new Fields(MESSAGE_FIELD);
-
-
     private static final String STATE_UPDATE_TOPIC = "kilda.wfm.topo.updown";
     private static final String STATE_DUMP_TOPIC = "kilda.wfm.topo.dump";
     private static final String STATE_TPE_TOPIC = "kilda-test";
@@ -72,8 +67,6 @@ public class CacheTopology extends AbstractTopology {
     public StormTopology createTopology() {
         logger.info("Creating Topology: {}", topologyName);
 
-        checkAndCreateTopic(STATE_DUMP_TOPIC);
-
         TopologyBuilder builder = new TopologyBuilder();
 
         /*
@@ -102,7 +95,6 @@ public class CacheTopology extends AbstractTopology {
         KafkaBolt storageBolt = createKafkaBolt(STATE_TPE_TOPIC);
         builder.setBolt(ComponentType.TPE_KAFKA_BOLT.toString(), storageBolt, parallelism)
                 .shuffleGrouping(ComponentType.CACHE_BOLT.toString(), StreamType.TPE.toString());
-
 
         /*
          * Sends cache dump to WFM topology.

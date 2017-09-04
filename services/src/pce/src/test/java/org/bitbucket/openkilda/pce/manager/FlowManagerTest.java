@@ -189,7 +189,7 @@ public class FlowManagerTest {
         direct.addAll(NetworkTopologyConstants.isl12.getPath());
         direct.addAll(NetworkTopologyConstants.isl25.getPath());
         direct.addAll(NetworkTopologyConstants.isl53.getPath());
-        PathInfoData expectedDirect = new PathInfoData("", 0L, direct, IslChangeType.DISCOVERED);
+        PathInfoData expectedDirect = new PathInfoData(0L, direct, IslChangeType.DISCOVERED);
 
         assertEquals(expectedDirect, path.left);
 
@@ -197,7 +197,7 @@ public class FlowManagerTest {
         reverse.addAll(NetworkTopologyConstants.isl35.getPath());
         reverse.addAll(NetworkTopologyConstants.isl52.getPath());
         reverse.addAll(NetworkTopologyConstants.isl21.getPath());
-        PathInfoData expectedReverse = new PathInfoData("", 0L, reverse, IslChangeType.DISCOVERED);
+        PathInfoData expectedReverse = new PathInfoData(0L, reverse, IslChangeType.DISCOVERED);
 
         assertEquals(expectedReverse, path.right);
     }

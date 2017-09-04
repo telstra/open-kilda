@@ -31,12 +31,6 @@ public class PathInfoData extends InfoData {
     private static final long serialVersionUID = 1L;
 
     /**
-     * Instance id.
-     */
-    @JsonProperty("id")
-    protected String id;
-
-    /**
      * Latency value in nseconds.
      */
     @JsonProperty("latency_ns")
@@ -63,38 +57,17 @@ public class PathInfoData extends InfoData {
     /**
      * Instance constructor.
      *
-     * @param id      id
      * @param latency latency
      * @param path    path
      * @param state   isl discovery result
      */
     @JsonCreator
-    public PathInfoData(@JsonProperty("id") String id,
-                        @JsonProperty("latency_ns") long latency,
+    public PathInfoData(@JsonProperty("latency_ns") long latency,
                         @JsonProperty("path") List<PathNode> path,
                         @JsonProperty("state") IslChangeType state) {
-        this.id = id;
         this.latency = latency;
         this.path = path;
         this.state = state;
-    }
-
-    /**
-     * Returns id.
-     *
-     * @return id
-     */
-    public String getId() {
-        return id;
-    }
-
-    /**
-     * Sets id.
-     *
-     * @param id id to set
-     */
-    public void setIs(String id) {
-        this.id = id;
     }
 
     /**
@@ -157,7 +130,6 @@ public class PathInfoData extends InfoData {
     @Override
     public String toString() {
         return toStringHelper(this)
-                .add("id", id)
                 .add("latency_ns", latency)
                 .add("path", path)
                 .add("state", state)
@@ -169,7 +141,7 @@ public class PathInfoData extends InfoData {
      */
     @Override
     public int hashCode() {
-        return Objects.hash(id, latency, path, state);
+        return Objects.hash(latency, path, state);
     }
 
     /**
@@ -185,8 +157,7 @@ public class PathInfoData extends InfoData {
         }
 
         PathInfoData that = (PathInfoData) object;
-        return Objects.equals(getId(), that.getId())
-                && Objects.equals(getLatency(), that.getLatency())
+        return Objects.equals(getLatency(), that.getLatency())
                 && Objects.equals(getPath(), that.getPath())
                 && Objects.equals(getState(), that.getState());
     }

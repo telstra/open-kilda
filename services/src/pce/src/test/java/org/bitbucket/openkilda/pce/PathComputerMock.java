@@ -35,7 +35,7 @@ public class PathComputerMock implements PathComputer {
 
         LinkedList<IslInfoData> islInfoDataLinkedList = new LinkedList<>();
         List<PathNode> nodes = new ArrayList<>();
-        PathInfoData path = new PathInfoData("", 0L, nodes, IslChangeType.DISCOVERED);
+        PathInfoData path = new PathInfoData(0L, nodes, IslChangeType.DISCOVERED);
 
         if (srcSwitch.equals(dstSwitch)) {
             return path;
