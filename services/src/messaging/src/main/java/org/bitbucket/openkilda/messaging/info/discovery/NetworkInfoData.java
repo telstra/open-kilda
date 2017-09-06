@@ -27,7 +27,7 @@ import java.util.Set;
         "switches",
         "isls",
         "flows"})
-public class NetworkDump extends InfoData {
+public class NetworkInfoData extends InfoData {
     /**
      * Serialization version number constant.
      */
@@ -60,7 +60,7 @@ public class NetworkDump extends InfoData {
     /**
      * Default constructor.
      */
-    public NetworkDump() {
+    public NetworkInfoData() {
     }
 
     /**
@@ -72,10 +72,10 @@ public class NetworkDump extends InfoData {
      * @param flows     flows
      */
     @JsonCreator
-    public NetworkDump(@JsonProperty("requester") String requester,
-                       @JsonProperty("switches") Set<SwitchInfoData> switches,
-                       @JsonProperty("isls") Set<IslInfoData> isls,
-                       @JsonProperty("flows") Set<Flow> flows) {
+    public NetworkInfoData(@JsonProperty("requester") String requester,
+                           @JsonProperty("switches") Set<SwitchInfoData> switches,
+                           @JsonProperty("isls") Set<IslInfoData> isls,
+                           @JsonProperty("flows") Set<Flow> flows) {
         this.requester = requester;
         this.switches = switches;
         this.isls = isls;
@@ -187,7 +187,7 @@ public class NetworkDump extends InfoData {
             return false;
         }
 
-        NetworkDump that = (NetworkDump) object;
+        NetworkInfoData that = (NetworkInfoData) object;
         return Objects.equals(getRequester(), that.getRequester())
                 && Objects.equals(getSwitches(), that.getSwitches())
                 && Objects.equals(getIsls(), that.getIsls())

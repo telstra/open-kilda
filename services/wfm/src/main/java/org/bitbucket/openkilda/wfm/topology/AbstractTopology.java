@@ -26,7 +26,14 @@ import java.util.Properties;
  * Represents abstract topology.
  */
 public abstract class AbstractTopology implements Topology {
+    /**
+     * Message key.
+     */
     public static final String MESSAGE_FIELD = "message";
+
+    /**
+     * Message field.
+     */
     public static final Fields fieldMessage = new Fields(MESSAGE_FIELD);
 
     /**

@@ -9,9 +9,9 @@ import org.bitbucket.openkilda.messaging.info.InfoData;
 import org.bitbucket.openkilda.messaging.info.InfoMessage;
 import org.bitbucket.openkilda.messaging.info.event.IslInfoData;
 import org.bitbucket.openkilda.messaging.info.event.SwitchInfoData;
-import org.bitbucket.openkilda.pce.manager.BaseCache;
-import org.bitbucket.openkilda.pce.manager.FlowCache;
-import org.bitbucket.openkilda.pce.manager.NetworkCache;
+import org.bitbucket.openkilda.pce.cache.Cache;
+import org.bitbucket.openkilda.pce.cache.FlowCache;
+import org.bitbucket.openkilda.pce.cache.NetworkCache;
 import org.bitbucket.openkilda.wfm.topology.AbstractTopology;
 
 import org.apache.logging.log4j.LogManager;
@@ -27,21 +27,21 @@ import org.apache.storm.tuple.Values;
 import java.io.IOException;
 import java.util.Map;
 
-public class StateBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, BaseCache>> {
-    /**
-     * The logger.
-     */
-    private static final Logger logger = LogManager.getLogger(StateBolt.class);
-
+public class StateBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, Cache>> {
     /**
      * Network cache key.
      */
-    private static final String NETWORK_CACHE = "network";
+    public static final String NETWORK_CACHE = "network";
 
     /**
      * Flow cache key.
      */
-    private static final String FLOW_CACHE = "flow";
+    public static final String FLOW_CACHE = "flow";
+
+    /**
+     * The logger.
+     */
+    private static final Logger logger = LogManager.getLogger(StateBolt.class);
 
     /**
      * Flow cache.
@@ -56,7 +56,7 @@ public class StateBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, Ba
     /**
      * Network cache cache.
      */
-    private InMemoryKeyValueState<String, BaseCache> state;
+    private InMemoryKeyValueState<String, Cache> state;
 
     /**
      * Output collector.
@@ -67,7 +67,7 @@ public class StateBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, Ba
      * {@inheritDoc}
      */
     @Override
-    public void initState(InMemoryKeyValueState<String, BaseCache> state) {
+    public void initState(InMemoryKeyValueState<String, Cache> state) {
         this.state = state;
 
         networkCache = (NetworkCache) state.get(NETWORK_CACHE);
@@ -176,15 +176,15 @@ public class StateBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, Ba
             case ADDED:
             case ACTIVATED:
                 if (networkCache.cacheContainsSwitch(sw.getSwitchId())) {
-                    networkCache.updateSwitchCache(sw.getSwitchId(), sw);
+                    networkCache.updateSwitch(sw);
                 } else {
-                    networkCache.createSwitchCache(sw);
+                    networkCache.createSwitch(sw);
                 }
                 break;
             case DEACTIVATED:
             case REMOVED:
                 if (networkCache.cacheContainsSwitch(sw.getSwitchId())) {
-                    networkCache.updateSwitchCache(sw.getSwitchId(), sw);
+                    networkCache.updateSwitch(sw);
                 }
                 break;
             case CHANGED:
@@ -201,13 +201,13 @@ public class StateBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, Ba
         switch (isl.getState()) {
             case DISCOVERED:
                 if (networkCache.cacheContainsIsl(isl.getId())) {
-                    networkCache.updateIslCache(isl.getId(), isl);
+                    networkCache.updateIsl(isl);
                 } else {
-                    networkCache.createIslCache(isl.getId(), isl);
+                    networkCache.createIsl(isl);
                 }
                 break;
             case FAILED:
-                networkCache.deleteIslCache(isl.getId());
+                networkCache.deleteIsl(isl.getId());
                 break;
             case OTHER_UPDATE:
                 break;

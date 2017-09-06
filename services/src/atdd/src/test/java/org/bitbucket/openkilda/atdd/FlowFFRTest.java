@@ -8,6 +8,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import java.util.concurrent.TimeUnit;
 
@@ -182,12 +183,12 @@ public class FlowFFRTest{
         flowPayload = new FlowPayload(FlowUtils.getFlowName(flowId),
                 new FlowEndpointPayload(sourceSwitch, sourcePort, sourceVlan),
                 new FlowEndpointPayload(destinationSwitch, destinationPort, destinationVlan),
-                (long) bandwidth, flowId, null);
+                bandwidth, flowId, null);
         flow = new Flow(FlowUtils.getFlowName(flowId), bandwidth, FLOW_COOKIE, flowId, null, sourceSwitch,
                 destinationSwitch, sourcePort, destinationPort, sourceVlan, destinationVlan, 0, 0, null, FlowState.UP);
 
         FlowPayload response = FlowUtils.putFlow(flowPayload);
-        response.setCookie(null);
+        assertNotNull(response);
         response.setLastUpdated(null);
 
         assertEquals(flowPayload, response);

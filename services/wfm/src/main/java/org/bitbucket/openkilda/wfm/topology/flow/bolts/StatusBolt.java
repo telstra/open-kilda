@@ -1,11 +1,11 @@
 package org.bitbucket.openkilda.wfm.topology.flow.bolts;
 
-import static org.bitbucket.openkilda.messaging.Utils.MAPPER;
 import static org.bitbucket.openkilda.wfm.topology.AbstractTopology.MESSAGE_FIELD;
 import static org.bitbucket.openkilda.wfm.topology.AbstractTopology.fieldMessage;
 import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.FLOW_ID_FIELD;
 import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.STATUS_FIELD;
 import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.fieldsMessageErrorType;
+import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.fieldsMessageFlowId;
 
 import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.Message;
@@ -20,7 +20,6 @@ import org.bitbucket.openkilda.messaging.payload.flow.FlowState;
 import org.bitbucket.openkilda.wfm.topology.flow.ComponentType;
 import org.bitbucket.openkilda.wfm.topology.flow.StreamType;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.storm.state.InMemoryKeyValueState;
@@ -88,7 +87,7 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
                                 flowStates.put(flowId, FlowState.ALLOCATED);
 
                                 message.setDestination(Destination.TOPOLOGY_ENGINE);
-                                values = new Values(MAPPER.writeValueAsString(message));
+                                values = new Values(message, flowId);
                                 outputCollector.emit(StreamType.CREATE.toString(), tuple, values);
 
                             } else {
@@ -115,7 +114,7 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
                                 flowStates.put(flowId, FlowState.ALLOCATED);
 
                                 message.setDestination(Destination.TOPOLOGY_ENGINE);
-                                values = new Values(MAPPER.writeValueAsString(message));
+                                values = new Values(message, flowId);
                                 outputCollector.emit(StreamType.UPDATE.toString(), tuple, values);
 
                             } else {
@@ -142,7 +141,7 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
                                 flowStates.delete(flowId);
 
                                 message.setDestination(Destination.TOPOLOGY_ENGINE);
-                                values = new Values(MAPPER.writeValueAsString(message));
+                                values = new Values(message, flowId);
                                 outputCollector.emit(StreamType.DELETE.toString(), tuple, values);
 
                             } else {
@@ -169,7 +168,7 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
                                         Utils.FLOW_ID, flowId, componentId, streamId);
 
                                 message.setDestination(Destination.TOPOLOGY_ENGINE);
-                                values = new Values(MAPPER.writeValueAsString(message));
+                                values = new Values(message, flowId);
                                 outputCollector.emit(StreamType.READ.toString(), tuple, values);
 
                             } else {
@@ -194,7 +193,7 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
                                         Utils.FLOW_ID, flowId, componentId, streamId);
 
                                 message.setDestination(Destination.TOPOLOGY_ENGINE);
-                                values = new Values(MAPPER.writeValueAsString(message));
+                                values = new Values(message, flowId);
                                 outputCollector.emit(StreamType.PATH.toString(), tuple, values);
 
                             } else {
@@ -304,9 +303,6 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
                             Utils.FLOW_ID, flowId, componentId, streamId);
                     break;
             }
-        } catch (JsonProcessingException exception) {
-            logger.error("Could not serialize message: {}={}, component={}, stream={}, tuple={}",
-                    Utils.FLOW_ID, flowId, componentId, streamId, tuple);
         } finally {
             logger.debug("Flow message ack: {}={}, component={}, stream={}",
                     Utils.FLOW_ID, flowId, componentId, streamId);
@@ -330,11 +326,11 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
      */
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
-        outputFieldsDeclarer.declareStream(StreamType.CREATE.toString(), fieldMessage);
-        outputFieldsDeclarer.declareStream(StreamType.UPDATE.toString(), fieldMessage);
-        outputFieldsDeclarer.declareStream(StreamType.DELETE.toString(), fieldMessage);
-        outputFieldsDeclarer.declareStream(StreamType.READ.toString(), fieldMessage);
-        outputFieldsDeclarer.declareStream(StreamType.PATH.toString(), fieldMessage);
+        outputFieldsDeclarer.declareStream(StreamType.CREATE.toString(), fieldsMessageFlowId);
+        outputFieldsDeclarer.declareStream(StreamType.UPDATE.toString(), fieldsMessageFlowId);
+        outputFieldsDeclarer.declareStream(StreamType.DELETE.toString(), fieldsMessageFlowId);
+        outputFieldsDeclarer.declareStream(StreamType.READ.toString(), fieldsMessageFlowId);
+        outputFieldsDeclarer.declareStream(StreamType.PATH.toString(), fieldsMessageFlowId);
         outputFieldsDeclarer.declareStream(StreamType.RESPONSE.toString(), fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.ERROR.toString(), fieldsMessageErrorType);
     }

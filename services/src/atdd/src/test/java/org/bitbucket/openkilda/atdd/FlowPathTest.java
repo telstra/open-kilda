@@ -4,7 +4,11 @@ import static org.bitbucket.openkilda.flow.FlowUtils.dumpLinks;
 import static org.bitbucket.openkilda.flow.FlowUtils.getLinkBandwidth;
 import static org.junit.Assert.assertEquals;
 
+import org.bitbucket.openkilda.flow.FlowUtils;
 import org.bitbucket.openkilda.messaging.info.event.IslInfoData;
+import org.bitbucket.openkilda.messaging.info.event.PathInfoData;
+import org.bitbucket.openkilda.messaging.info.event.PathNode;
+import org.bitbucket.openkilda.messaging.model.Flow;
 import org.bitbucket.openkilda.topo.TopologyHelp;
 
 import cucumber.api.java.en.Given;
@@ -28,6 +32,17 @@ public class FlowPathTest {
             new ImmutablePair<>("00:00:00:00:00:00:00:05", "1"), new ImmutablePair<>("00:00:00:00:00:00:00:04", "2"),
             new ImmutablePair<>("00:00:00:00:00:00:00:05", "2"), new ImmutablePair<>("00:00:00:00:00:00:00:06", "1"),
             new ImmutablePair<>("00:00:00:00:00:00:00:06", "2"), new ImmutablePair<>("00:00:00:00:00:00:00:07", "3"));
+    private static final ImmutablePair<PathInfoData, PathInfoData> expectedPath = new ImmutablePair<>(
+            new PathInfoData(0L, Arrays.asList(
+                    new PathNode("00:00:00:00:00:00:00:02", 2, 0, 0L),
+                    new PathNode("00:00:00:00:00:00:00:03", 1, 1, 0L),
+                    new PathNode("00:00:00:00:00:00:00:03", 2, 2, 0L),
+                    new PathNode("00:00:00:00:00:00:00:07", 1, 3, 0L))),
+            new PathInfoData(0L, Arrays.asList(
+                    new PathNode("00:00:00:00:00:00:00:07", 1, 0, 0L),
+                    new PathNode("00:00:00:00:00:00:00:03", 2, 1, 0L),
+                    new PathNode("00:00:00:00:00:00:00:03", 1, 2, 0L),
+                    new PathNode("00:00:00:00:00:00:00:02", 2, 3, 0L))));
 
     private long pre_start;
     private long start;
@@ -47,7 +62,7 @@ public class FlowPathTest {
     public void checkAvailableBandwidth(int expectedAvailableBandwidth) throws Exception {
         List<IslInfoData> links = dumpLinks();
         for (IslInfoData link : links) {
-            assertEquals(new Long(expectedAvailableBandwidth), link.getAvailableBandwidth());
+            assertEquals(expectedAvailableBandwidth, link.getAvailableBandwidth());
         }
     }
 
@@ -65,5 +80,15 @@ public class FlowPathTest {
             Integer actualBandwidth = getLinkBandwidth(expectedLink.getLeft(), expectedLink.getRight());
             assertEquals(expectedAvailableBandwidth, actualBandwidth.intValue());
         }
+    }
+
+    @Then("^flow (.*) with (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) path correct$")
+    public void flowPathCorrect(String flowId, String sourceSwitch, int sourcePort, int sourceVlan,
+                                String destinationSwitch, int destinationPort, int destinationVlan, int bandwidth) {
+        Flow flow = new Flow(FlowUtils.getFlowName(flowId), bandwidth, flowId, sourceSwitch,
+                sourcePort, sourceVlan, destinationSwitch, destinationPort, destinationVlan);
+        ImmutablePair<PathInfoData, PathInfoData> path = FlowUtils.getFlowPath(flow);
+        System.out.println(path);
+        assertEquals(expectedPath, path);
     }
 }

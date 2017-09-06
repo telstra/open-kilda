@@ -47,14 +47,14 @@ public class FlowCrudBasicRunTest {
     @When("^flow (.*) creation request with (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) is successful$")
     public void successfulFlowCreation(final String flowId, final String sourceSwitch, final int sourcePort,
                                        final int sourceVlan, final String destinationSwitch, final int destinationPort,
-                                       final int destinationVlan, final long bandwidth) throws Exception {
+                                       final int destinationVlan, final int bandwidth) throws Exception {
         flowPayload = new FlowPayload(FlowUtils.getFlowName(flowId),
                 new FlowEndpointPayload(sourceSwitch, sourcePort, sourceVlan),
                 new FlowEndpointPayload(destinationSwitch, destinationPort, destinationVlan),
                 bandwidth, flowId, null);
 
         FlowPayload response = FlowUtils.putFlow(flowPayload);
-        response.setCookie(null);
+        assertNotNull(response);
         response.setLastUpdated(null);
 
         assertEquals(flowPayload, response);
@@ -63,7 +63,7 @@ public class FlowCrudBasicRunTest {
     @When("^flow (.*) creation request with (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) is failed$")
     public void failedFlowCreation(final String flowId, final String sourceSwitch, final int sourcePort,
                                    final int sourceVlan, final String destinationSwitch, final int destinationPort,
-                                   final int destinationVlan, final long bandwidth) throws Exception {
+                                   final int destinationVlan, final int bandwidth) throws Exception {
         flowPayload = new FlowPayload(FlowUtils.getFlowName(flowId),
                 new FlowEndpointPayload(sourceSwitch, sourcePort, sourceVlan),
                 new FlowEndpointPayload(destinationSwitch, destinationPort, destinationVlan),
@@ -106,19 +106,18 @@ public class FlowCrudBasicRunTest {
         assertEquals(destinationSwitch, flow.getDestination().getSwitchId());
         assertEquals(destinationPort, flow.getDestination().getPortId().longValue());
         assertEquals(destinationVlan, flow.getDestination().getVlanId().longValue());
-        assertEquals(bandwidth, flow.getMaximumBandwidth().longValue());
+        assertEquals(bandwidth, flow.getMaximumBandwidth());
         assertNotNull(flow.getLastUpdated());
-        assertNotNull(flow.getCookie());
     }
 
     @Then("^flow (.*) with (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) could be updated with (\\d+)$")
     public void checkFlowUpdate(final String flowId, final String sourceSwitch, final int sourcePort,
                                 final int sourceVlan, final String destinationSwitch, final int destinationPort,
                                 final int destinationVlan, final int band, final int newBand) throws Exception {
-        flowPayload.setMaximumBandwidth((long) newBand);
+        flowPayload.setMaximumBandwidth(newBand);
 
         FlowPayload response = FlowUtils.updateFlow(FlowUtils.getFlowName(flowId), flowPayload);
-        response.setCookie(null);
+        assertNotNull(response);
         response.setLastUpdated(null);
 
         assertEquals(flowPayload, response);
@@ -132,7 +131,7 @@ public class FlowCrudBasicRunTest {
                                   final String destinationSwitch, final int destinationPort, final int destinationVlan,
                                   final int bandwidth) throws Exception {
         FlowPayload response = FlowUtils.deleteFlow(FlowUtils.getFlowName(flowId));
-        response.setCookie(null);
+        assertNotNull(response);
         response.setLastUpdated(null);
 
         assertEquals(flowPayload, response);

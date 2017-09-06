@@ -3,30 +3,45 @@ package org.bitbucket.openkilda.pce.provider;
 import org.bitbucket.openkilda.messaging.info.event.IslInfoData;
 import org.bitbucket.openkilda.messaging.info.event.PathInfoData;
 import org.bitbucket.openkilda.messaging.info.event.SwitchInfoData;
+import org.bitbucket.openkilda.messaging.model.Flow;
 
 import com.google.common.graph.MutableNetwork;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+
+import java.io.Serializable;
 
 /**
  * PathComputation interface represent operations on flow path.
  */
-public interface PathComputer {
+public interface PathComputer extends Serializable {
+    /**
+     * Gets isl weight.
+     *
+     * @param isl isl instance
+     * @return isl weight
+     */
+    default Long getWeight(IslInfoData isl) {
+        return 1L;
+    }
+
     /**
      * Gets path between source and destination switch.
      *
-     * @param srcSwitch source {@link SwitchInfoData} instance
-     * @param dstSwitch destination {@link SwitchInfoData} instance
-     * @param bandwidth available bandwidth
+     * @param flow {@link Flow} instances
      * @return {@link PathInfoData} instances
      */
-    PathInfoData getPath(SwitchInfoData srcSwitch, SwitchInfoData dstSwitch, int bandwidth);
+    ImmutablePair<PathInfoData, PathInfoData> getPath(Flow flow);
 
     /**
-     * Updates isls available bandwidth.
+     * Gets path between source and destination switch.
      *
-     * @param path      {@link PathInfoData} instances
-     * @param bandwidth available bandwidth
+     * @param source      source {@link SwitchInfoData} instance
+     * @param destination source {@link SwitchInfoData} instance
+     * @param bandwidth   available bandwidth
+     * @return {@link PathInfoData} instances
      */
-    void updatePathBandwidth(PathInfoData path, int bandwidth);
+    ImmutablePair<PathInfoData, PathInfoData> getPath(SwitchInfoData source, SwitchInfoData destination,
+                                                      int bandwidth);
 
     /**
      * Sets network topology.
@@ -37,10 +52,7 @@ public interface PathComputer {
     PathComputer withNetwork(MutableNetwork<SwitchInfoData, IslInfoData> network);
 
     /**
-     * Gets isl weight.
-     *
-     * @param isl isl instance
-     * @return isl weight
+     * Initialises path computer.
      */
-    Long getWeight(IslInfoData isl);
+    void init();
 }

@@ -59,3 +59,13 @@ Feature: Flow path computation tests
     And flow pceb2 with 00:00:00:00:00:00:00:02 1 0 and 00:00:00:00:00:00:00:07 2 0 and 9000000 could be created
     When flow pceb3_failed creation request with 00:00:00:00:00:00:00:02 1 0 and 00:00:00:00:00:00:00:07 2 0 and 1 is failed
     Then flows count is 2
+
+  Scenario: Flow Path
+    Given a clean controller
+    And a clean flow topology
+    And a multi-path topology
+    #When the controller learns the topology
+    Then all links have available bandwidth 9000000
+    And flow pceb1 with 00:00:00:00:00:00:00:02 1 0 and 00:00:00:00:00:00:00:07 2 0 and 9000000 path correct
+    When flow pceb1 creation request with 00:00:00:00:00:00:00:02 1 0 and 00:00:00:00:00:00:00:07 2 0 and 9000000 is successful
+    And flow pceb1 with 00:00:00:00:00:00:00:02 1 0 and 00:00:00:00:00:00:00:07 2 0 and 9000000 could be created

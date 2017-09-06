@@ -1,6 +1,9 @@
 package org.bitbucket.openkilda.wfm.topology.splitter;
 
+import org.bitbucket.openkilda.messaging.ServiceType;
+import org.bitbucket.openkilda.messaging.Topic;
 import org.bitbucket.openkilda.wfm.KafkaUtils;
+import org.bitbucket.openkilda.wfm.topology.utils.HealthCheckBolt;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -8,6 +11,8 @@ import org.apache.storm.Config;
 import org.apache.storm.LocalCluster;
 import org.apache.storm.StormSubmitter;
 import org.apache.storm.generated.StormTopology;
+import org.apache.storm.kafka.KafkaSpout;
+import org.apache.storm.kafka.bolt.KafkaBolt;
 import org.apache.storm.topology.TopologyBuilder;
 
 import java.util.Properties;
@@ -94,6 +99,7 @@ public class OFEventSplitterTopology {
         String primarySpout = topic + "-spout";
         String primaryBolt = topic + "-bolt";
         primeKafkaTopic(topic); // in case the topic doesn't exist yet
+        primeKafkaTopic(Topic.HEALTH_CHECK.getId());
         builder.setSpout(primarySpout, kutils.createKafkaSpout(topic));
         builder.setBolt(primaryBolt,
                 new OFEventSplitterBolt(), parallelism)
@@ -123,6 +129,17 @@ public class OFEventSplitterTopology {
             builder.setBolt(stream + "-kafkabolt", kutils.createKafkaBolt(stream), parallelism)
                     .shuffleGrouping(infoSplitterBoltID, stream);
         }
+
+        String prefix = ServiceType.SPLITTER_TOPOLOGY.getId();
+        KafkaSpout healthCheckKafkaSpout = kutils.createKafkaSpout(Topic.HEALTH_CHECK.getId());
+        builder.setSpout(prefix + "HealthCheckKafkaSpout", healthCheckKafkaSpout, 1);
+        HealthCheckBolt healthCheckBolt = new HealthCheckBolt(ServiceType.SPLITTER_TOPOLOGY);
+        builder.setBolt(prefix + "HealthCheckBolt", healthCheckBolt, 1)
+                .shuffleGrouping(prefix + "HealthCheckKafkaSpout");
+        KafkaBolt healthCheckKafkaBolt = kutils.createKafkaBolt(Topic.HEALTH_CHECK.getId());
+        builder.setBolt(prefix + "HealthCheckKafkaBolt", healthCheckKafkaBolt, 1)
+                .shuffleGrouping(prefix + "HealthCheckBolt", Topic.HEALTH_CHECK.getId());
+
         return builder.createTopology();
     }
 

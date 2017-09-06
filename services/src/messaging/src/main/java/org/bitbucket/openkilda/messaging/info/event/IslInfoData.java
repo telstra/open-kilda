@@ -3,6 +3,7 @@ package org.bitbucket.openkilda.messaging.info.event;
 import static com.google.common.base.MoreObjects.toStringHelper;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
@@ -16,6 +17,7 @@ import java.util.Objects;
  */
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonIgnoreProperties(ignoreUnknown = true)
 @JsonPropertyOrder({
         "message_type",
         "id",
@@ -40,18 +42,38 @@ public class IslInfoData extends PathInfoData {
      * Port speed.
      */
     @JsonProperty("speed")
-    private Long speed;
+    private long speed;
 
     /**
      * Available bandwidth.
      */
     @JsonProperty("available_bandwidth")
-    private Long availableBandwidth;
+    private long availableBandwidth;
+
+    /**
+     * Isl state.
+     */
+    @JsonProperty("state")
+    protected IslChangeType state;
 
     /**
      * Default constructor.
      */
     public IslInfoData() {
+    }
+
+    /**
+     * Copy constructor.
+     *
+     * @param that {@link IslInfoData} instance
+     */
+    public IslInfoData(IslInfoData that) {
+        this.id = that.id;
+        this.path = that.path;
+        this.speed = that.speed;
+        this.state = that.state;
+        this.latency = that.latency;
+        this.availableBandwidth = that.availableBandwidth;
     }
 
     /**
@@ -66,9 +88,9 @@ public class IslInfoData extends PathInfoData {
     @JsonCreator
     public IslInfoData(@JsonProperty("latency_ns") long latency,
                        @JsonProperty("path") List<PathNode> path,
-                       @JsonProperty("speed") Long speed,
+                       @JsonProperty("speed") long speed,
                        @JsonProperty("state") IslChangeType state,
-                       @JsonProperty("available_bandwidth") Long availableBandwidth) {
+                       @JsonProperty("available_bandwidth") long availableBandwidth) {
         this.latency = latency;
         this.path = path;
         this.speed = speed;
@@ -100,7 +122,7 @@ public class IslInfoData extends PathInfoData {
      *
      * @return port speed
      */
-    public Long getSpeed() {
+    public long getSpeed() {
         return speed;
     }
 
@@ -109,7 +131,7 @@ public class IslInfoData extends PathInfoData {
      *
      * @param speed port speed
      */
-    public void setSpeed(Long speed) {
+    public void setSpeed(long speed) {
         this.speed = speed;
     }
 
@@ -118,7 +140,7 @@ public class IslInfoData extends PathInfoData {
      *
      * @return available bandwidth
      */
-    public Long getAvailableBandwidth() {
+    public long getAvailableBandwidth() {
         return availableBandwidth;
     }
 
@@ -127,8 +149,26 @@ public class IslInfoData extends PathInfoData {
      *
      * @param availableBandwidth available bandwidth
      */
-    public void setAvailableBandwidth(Long availableBandwidth) {
+    public void setAvailableBandwidth(long availableBandwidth) {
         this.availableBandwidth = availableBandwidth;
+    }
+
+    /**
+     * Returns isl state.
+     *
+     * @return isl state
+     */
+    public IslChangeType getState() {
+        return state;
+    }
+
+    /**
+     * Sets isl state.
+     *
+     * @param state isl state to set
+     */
+    public void setState(IslChangeType state) {
+        this.state = state;
     }
 
     /**
@@ -150,7 +190,7 @@ public class IslInfoData extends PathInfoData {
      */
     @Override
     public int hashCode() {
-        return Objects.hash(latency, path, speed, state);
+        return Objects.hash(latency, path, speed, availableBandwidth, state);
     }
 
     /**

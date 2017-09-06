@@ -47,7 +47,7 @@ public class MessageTest {
             + "\"payload\":{\"message_type\":\"isl\",\"id\":\"1_20\",\"latency_ns\":1123,"
             + "\"path\":[{\"switch_id\":\"1\",\"port_no\":20,\"seq_id\":0,"
             + "\"segment_latency\":1123},{\"switch_id\":\"2\",\"port_no\":1,"
-            + "\"seq_id\":1}],\"speed\":0},"
+            + "\"seq_id\":1}],\"speed\":0,\"available_bandwidth\":0},"
             + "\"timestamp\":23478952134,\"correlation_id\":\"f37530b6-02f1-493e-b28b-2d98a48cf4cc\"}";
     private static final String PATH_INFO = "{\"type\":\"INFO\","
             + "\"payload\":{\"message_type\":\"path\",\"latency_ns\":1123,"

@@ -1,6 +1,9 @@
 package org.bitbucket.openkilda.wfm.topology.cache;
 
+import org.bitbucket.openkilda.messaging.ServiceType;
+import org.bitbucket.openkilda.messaging.Topic;
 import org.bitbucket.openkilda.wfm.topology.AbstractTopology;
+import org.bitbucket.openkilda.wfm.topology.utils.HealthCheckBolt;
 
 import org.apache.storm.Config;
 import org.apache.storm.LocalCluster;
@@ -23,6 +26,8 @@ public class CacheTopology extends AbstractTopology {
      * Instance constructor.
      */
     public CacheTopology() {
+        checkAndCreateTopic(Topic.HEALTH_CHECK.getId());
+
         logger.debug("Topology built {}: zookeeper={}, kafka={}, parallelism={}, workers={}",
                 topologyName, zookeeperHosts, kafkaHosts, parallelism, workers);
     }
@@ -102,6 +107,16 @@ public class CacheTopology extends AbstractTopology {
         KafkaBolt stateDump = createKafkaBolt(STATE_DUMP_TOPIC);
         builder.setBolt(ComponentType.WFM_DUMP_KAFKA_BOLT.toString(), stateDump, parallelism)
                 .shuffleGrouping(ComponentType.CACHE_BOLT.toString(), StreamType.WFM_DUMP.toString());
+
+        String prefix = ServiceType.CACHE_TOPOLOGY.getId();
+        KafkaSpout healthCheckKafkaSpout = createKafkaSpout(Topic.HEALTH_CHECK.getId());
+        builder.setSpout(prefix + "HealthCheckKafkaSpout", healthCheckKafkaSpout, 1);
+        HealthCheckBolt healthCheckBolt = new HealthCheckBolt(ServiceType.CACHE_TOPOLOGY);
+        builder.setBolt(prefix + "HealthCheckBolt", healthCheckBolt, 1)
+                .shuffleGrouping(prefix + "HealthCheckKafkaSpout");
+        KafkaBolt healthCheckKafkaBolt = createKafkaBolt(Topic.HEALTH_CHECK.getId());
+        builder.setBolt(prefix + "HealthCheckKafkaBolt", healthCheckKafkaBolt, 1)
+                .shuffleGrouping(prefix + "HealthCheckBolt", Topic.HEALTH_CHECK.getId());
 
         return builder.createTopology();
     }

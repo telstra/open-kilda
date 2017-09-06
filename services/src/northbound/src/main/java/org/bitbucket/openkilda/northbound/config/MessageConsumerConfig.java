@@ -1,12 +1,14 @@
 package org.bitbucket.openkilda.northbound.config;
 
+import org.bitbucket.openkilda.northbound.messaging.HealthCheckMessageConsumer;
+import org.bitbucket.openkilda.northbound.messaging.MessageConsumer;
+import org.bitbucket.openkilda.northbound.messaging.kafka.KafkaHealthCheckMessageConsumer;
 import org.bitbucket.openkilda.northbound.messaging.kafka.KafkaMessageConsumer;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.kafka.annotation.EnableKafka;
@@ -23,7 +25,6 @@ import java.util.Map;
 @Configuration
 @EnableKafka
 @PropertySource("classpath:northbound.properties")
-@ComponentScan("org.bitbucket.openkilda.northbound")
 public class MessageConsumerConfig {
     /**
      * Kafka queue poll timeout.
@@ -98,7 +99,18 @@ public class MessageConsumerConfig {
      * @return kafka message consumer
      */
     @Bean
-    public KafkaMessageConsumer kafkaMessageConsumer() {
+    public MessageConsumer messageConsumer() {
         return new KafkaMessageConsumer();
+    }
+
+    /**
+     * Kafka message consumer bean. Instance of {@link KafkaHealthCheckMessageConsumer} contains {@link
+     * org.springframework.kafka.annotation.KafkaListener} to be run in {@link org.springframework.kafka.listener.ConcurrentMessageListenerContainer}.
+     *
+     * @return kafka health-check message consumer
+     */
+    @Bean
+    public HealthCheckMessageConsumer healthCheckMessageConsumer() {
+        return new KafkaHealthCheckMessageConsumer();
     }
 }

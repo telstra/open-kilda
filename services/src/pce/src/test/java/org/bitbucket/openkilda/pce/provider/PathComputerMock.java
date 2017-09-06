@@ -1,11 +1,10 @@
-package org.bitbucket.openkilda.pce;
+package org.bitbucket.openkilda.pce.provider;
 
-import org.bitbucket.openkilda.messaging.info.event.IslChangeType;
 import org.bitbucket.openkilda.messaging.info.event.IslInfoData;
 import org.bitbucket.openkilda.messaging.info.event.PathInfoData;
 import org.bitbucket.openkilda.messaging.info.event.PathNode;
 import org.bitbucket.openkilda.messaging.info.event.SwitchInfoData;
-import org.bitbucket.openkilda.pce.provider.PathComputer;
+import org.bitbucket.openkilda.messaging.model.Flow;
 
 import com.google.common.graph.MutableNetwork;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -30,18 +29,44 @@ public class PathComputerMock implements PathComputer {
     }
 
     @Override
-    public PathInfoData getPath(SwitchInfoData srcSwitch, SwitchInfoData dstSwitch, int bandwidth) {
+    public ImmutablePair<PathInfoData, PathInfoData> getPath(Flow flow) {
+        SwitchInfoData source = network.nodes().stream()
+                .filter(sw -> sw.getSwitchId().equals(flow.getSourceSwitch())).findFirst().orElse(null);
+        if (source == null) {
+            throw new IllegalArgumentException("Error: No node found source=" + flow.getSourceSwitch());
+        }
+
+        SwitchInfoData destination = network.nodes().stream()
+                .filter(sw -> sw.getSwitchId().equals(flow.getDestinationSwitch())).findFirst().orElse(null);
+        if (destination == null) {
+            throw new IllegalArgumentException("Error: No node found destination=" + flow.getDestinationSwitch());
+        }
+
+        return new ImmutablePair<>(
+                path(source, destination, flow.getBandwidth()),
+                path(destination, source, flow.getBandwidth()));
+    }
+
+    @Override
+    public ImmutablePair<PathInfoData, PathInfoData> getPath(SwitchInfoData source, SwitchInfoData destination,
+                                                             int bandwidth) {
+        PathInfoData forwardPath = path(source, destination, bandwidth);
+        PathInfoData reversePath = path(destination, source, bandwidth);
+        return new ImmutablePair<>(forwardPath, reversePath);
+    }
+
+    private PathInfoData path(SwitchInfoData srcSwitch, SwitchInfoData dstSwitch, int bandwidth) {
         System.out.println("Get Path By Switch Instances " + bandwidth + ": " + srcSwitch + " - " + dstSwitch);
 
         LinkedList<IslInfoData> islInfoDataLinkedList = new LinkedList<>();
         List<PathNode> nodes = new ArrayList<>();
-        PathInfoData path = new PathInfoData(0L, nodes, IslChangeType.DISCOVERED);
+        PathInfoData path = new PathInfoData(0L, nodes);
 
         if (srcSwitch.equals(dstSwitch)) {
             return path;
         }
 
-        Set<SwitchInfoData> nodesToProcess = new HashSet<>(new HashSet<>(network.nodes()));
+        Set<SwitchInfoData> nodesToProcess = new HashSet<>(network.nodes());
         Set<SwitchInfoData> nodesWereProcess = new HashSet<>();
         Map<SwitchInfoData, ImmutablePair<SwitchInfoData, IslInfoData>> predecessors = new HashMap<>();
 
@@ -87,16 +112,15 @@ public class PathComputerMock implements PathComputer {
 
         Collections.reverse(islInfoDataLinkedList);
 
-        islInfoDataLinkedList.forEach(node -> nodes.addAll(node.getPath()));
+        int i = 0;
+        for (IslInfoData isl : islInfoDataLinkedList) {
+            collect(isl, path, i);
+            i += 2;
+        }
 
         updatePathBandwidth(path, bandwidth, islInfoDataLinkedList);
 
         return path;
-    }
-
-    @Override
-    public void updatePathBandwidth(PathInfoData path, int bandwidth) {
-        return;
     }
 
     @Override
@@ -105,8 +129,26 @@ public class PathComputerMock implements PathComputer {
         return this;
     }
 
+    @Override
+    public void init() {
+
+    }
+
     private void updatePathBandwidth(PathInfoData path, int bandwidth, LinkedList<IslInfoData> islInfoDataLinkedList) {
         System.out.println("Update Path Bandwidth " + bandwidth + ": " + path);
         islInfoDataLinkedList.forEach(isl -> isl.setAvailableBandwidth(isl.getAvailableBandwidth() - bandwidth));
+    }
+
+    private void collect(IslInfoData isl, PathInfoData path, int seqId) {
+        PathNode source = new PathNode(isl.getPath().get(0));
+        source.setSeqId(seqId);
+        source.setSegLatency(isl.getLatency());
+        path.getPath().add(source);
+
+        PathNode destination = new PathNode(isl.getPath().get(1));
+        destination.setSeqId(seqId + 1);
+        path.getPath().add(destination);
+
+        path.setLatency(path.getLatency() + isl.getLatency());
     }
 }

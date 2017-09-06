@@ -2,11 +2,14 @@ package org.bitbucket.openkilda.northbound.model;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 
+import org.bitbucket.openkilda.messaging.Utils;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 import java.io.Serializable;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -36,6 +39,11 @@ public class HealthCheck implements Serializable {
     private String description;
 
     /**
+     * Components status.
+     */
+    private Map<String, String> status;
+
+    /**
      * Constructs the health-check model.
      */
     public HealthCheck() {
@@ -47,12 +55,14 @@ public class HealthCheck implements Serializable {
      * @param name        service name
      * @param version     service version
      * @param description service description
+     * @param status      topologies status
      */
     @JsonCreator
-    public HealthCheck(final String name, final String version, final String description) {
+    public HealthCheck(String name, String version, String description, Map<String, String> status) {
         setName(name);
         setServiceVersion(version);
         setDescription(description);
+        setStatus(status);
     }
 
     /**
@@ -110,6 +120,24 @@ public class HealthCheck implements Serializable {
     }
 
     /**
+     * Get components statuses.
+     *
+     * @return components statuses
+     */
+    public Map<String, String> getStatus() {
+        return status;
+    }
+
+    /**
+     * Sets components statuses.
+     *
+     * @param status components statuses
+     */
+    public void setStatus(Map<String, String> status) {
+        this.status = status;
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
@@ -118,6 +146,7 @@ public class HealthCheck implements Serializable {
                 .add("name", name)
                 .add("version", version)
                 .add("description", description)
+                .add("topologies-status", status)
                 .toString();
     }
 
@@ -137,7 +166,8 @@ public class HealthCheck implements Serializable {
         HealthCheck that = (HealthCheck) obj;
         return Objects.equals(this.getName(), that.getName())
                 && Objects.equals(this.getVersion(), that.getVersion())
-                && Objects.equals(this.getDescription(), that.getDescription());
+                && Objects.equals(this.getDescription(), that.getDescription())
+                && Objects.equals(this.getStatus(), that.getStatus());
     }
 
     /**
@@ -145,6 +175,15 @@ public class HealthCheck implements Serializable {
      */
     @Override
     public int hashCode() {
-        return Objects.hash(name, version, description);
+        return Objects.hash(name, version, description, status);
+    }
+
+    /**
+     * Checks topologies status.
+     *
+     * @return true in case of any non operational topologies
+     */
+    public boolean hasNonOperational() {
+        return status.values().stream().anyMatch(Utils.HEALTH_CHECK_NON_OPERATIONAL_STATUS::equals);
     }
 }

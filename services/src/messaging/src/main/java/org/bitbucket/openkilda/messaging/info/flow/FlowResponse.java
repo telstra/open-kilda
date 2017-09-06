@@ -1,10 +1,10 @@
 package org.bitbucket.openkilda.messaging.info.flow;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
-import static org.bitbucket.openkilda.messaging.Utils.PAYLOAD;
 
+import org.bitbucket.openkilda.messaging.Utils;
 import org.bitbucket.openkilda.messaging.info.InfoData;
-import org.bitbucket.openkilda.messaging.payload.flow.FlowPayload;
+import org.bitbucket.openkilda.messaging.model.Flow;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -21,7 +21,7 @@ import java.util.Objects;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
         "message_type",
-        PAYLOAD})
+        Utils.PAYLOAD})
 public class FlowResponse extends InfoData {
     /**
      * Serialization version number constant.
@@ -31,8 +31,8 @@ public class FlowResponse extends InfoData {
     /**
      * The response payload.
      */
-    @JsonProperty(PAYLOAD)
-    protected FlowPayload payload;
+    @JsonProperty(Utils.PAYLOAD)
+    protected Flow payload;
 
     /**
      * Instance constructor.
@@ -41,7 +41,7 @@ public class FlowResponse extends InfoData {
      * @throws IllegalArgumentException if payload is null
      */
     @JsonCreator
-    public FlowResponse(@JsonProperty(PAYLOAD) final FlowPayload payload) {
+    public FlowResponse(@JsonProperty(Utils.PAYLOAD) Flow payload) {
         setPayload(payload);
     }
 
@@ -50,7 +50,7 @@ public class FlowResponse extends InfoData {
      *
      * @return response payload
      */
-    public FlowPayload getPayload() {
+    public Flow getPayload() {
         return payload;
     }
 
@@ -59,7 +59,7 @@ public class FlowResponse extends InfoData {
      *
      * @param payload response payload
      */
-    public void setPayload(final FlowPayload payload) {
+    public void setPayload(Flow payload) {
         if (payload == null) {
             throw new IllegalArgumentException("need to set payload");
         }
@@ -72,7 +72,7 @@ public class FlowResponse extends InfoData {
     @Override
     public String toString() {
         return toStringHelper(this)
-                .add(PAYLOAD, payload)
+                .add(Utils.PAYLOAD, payload)
                 .toString();
     }
 

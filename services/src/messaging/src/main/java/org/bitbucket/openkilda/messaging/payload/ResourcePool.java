@@ -1,5 +1,6 @@
 package org.bitbucket.openkilda.messaging.payload;
 
+import com.google.common.base.MoreObjects;
 import com.google.common.collect.ContiguousSet;
 import com.google.common.collect.DiscreteDomain;
 import com.google.common.collect.ImmutableSet;
@@ -66,5 +67,13 @@ public class ResourcePool {
      */
     public Set<Integer> dumpPool() {
         return ImmutableSet.copyOf(resources);
+    }
+
+    @Override
+    public String toString() {
+        return MoreObjects.toStringHelper(this)
+                .add("range", range)
+                .add("resources", resources)
+                .toString();
     }
 }

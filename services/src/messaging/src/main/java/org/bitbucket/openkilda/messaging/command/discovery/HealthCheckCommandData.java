@@ -20,7 +20,7 @@ import java.util.Objects;
 @JsonPropertyOrder({
         "command",
         "requester"})
-public class DumpNetwork extends CommandData {
+public class HealthCheckCommandData extends CommandData {
     /**
      * Serialization version number constant.
      */
@@ -30,12 +30,12 @@ public class DumpNetwork extends CommandData {
      * Requester.
      */
     @JsonProperty("requester")
-    protected String requester;
+    private String requester;
 
     /**
      * Default constructor.
      */
-    public DumpNetwork() {
+    public HealthCheckCommandData() {
     }
 
     /**
@@ -44,7 +44,7 @@ public class DumpNetwork extends CommandData {
      * @param requester requester
      */
     @JsonCreator
-    public DumpNetwork(@JsonProperty("requester") String requester) {
+    public HealthCheckCommandData(@JsonProperty("requester") String requester) {
         this.requester = requester;
     }
 
@@ -88,7 +88,7 @@ public class DumpNetwork extends CommandData {
             return false;
         }
 
-        DumpNetwork that = (DumpNetwork) object;
+        HealthCheckCommandData that = (HealthCheckCommandData) object;
         return Objects.equals(getRequester(), that.getRequester());
     }
 

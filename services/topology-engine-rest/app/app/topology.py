@@ -134,6 +134,24 @@ def api_v1_topology_flows():
         return "error: {}".format(str(e))
 
 
+def format_isl(link):
+    return {
+        'message_type': 'isl',
+        'latency_ns': int(link['latency']),
+        'path': [{'switch_id': link['src_switch'],
+                  'port_no': int(link['src_port']),
+                  'seq_id': 0,
+                  'segment_latency': int(link['latency'])},
+                 {'switch_id': link['dst_switch'],
+                  'port_no': int(link['dst_port']),
+                  'seq_id': 1,
+                  'segment_latency': 0}],
+        'speed': link['speed'],
+        'state': 'DISCOVERED',
+        'available_bandwidth': link['available_bandwidth']
+    }
+
+
 @application.route('/api/v1/topology/links')
 @login_required
 def api_v1_topology_links():
@@ -143,7 +161,7 @@ def api_v1_topology_links():
 
         links = []
         for link in result:
-            links.append(link['r'])
+            links.append(format_isl(link['r']))
 
         return str(json.dumps(links, default=lambda o: o.__dict__, sort_keys=True))
     except Exception as e:

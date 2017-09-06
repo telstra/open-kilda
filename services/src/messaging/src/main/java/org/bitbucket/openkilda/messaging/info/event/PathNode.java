@@ -59,6 +59,18 @@ public class PathNode implements Serializable {
     }
 
     /**
+     * Copy constructor.
+     *
+     * @param that {@link PathNode} instance
+     */
+    public PathNode(PathNode that) {
+        this.seqId = that.seqId;
+        this.portNo = that.portNo;
+        this.switchId = that.switchId;
+        this.segmentLatency = that.segmentLatency;
+    }
+
+    /**
      * Instance creator without segment latency value.
      *
      * @param switchId switch id

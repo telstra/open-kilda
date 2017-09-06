@@ -3,7 +3,7 @@ package org.bitbucket.openkilda.wfm.topology.cache;
 import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.Utils;
 import org.bitbucket.openkilda.messaging.command.CommandMessage;
-import org.bitbucket.openkilda.messaging.command.discovery.DumpNetwork;
+import org.bitbucket.openkilda.messaging.command.discovery.NetworkCommandData;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -43,7 +43,7 @@ public class RequesterBolt extends BaseRichBolt {
     }
 
     private void requestNetworkDump() {
-        CommandMessage command = new CommandMessage(new DumpNetwork(),
+        CommandMessage command = new CommandMessage(new NetworkCommandData(),
                 System.currentTimeMillis(), Utils.DEFAULT_CORRELATION_ID, Destination.TOPOLOGY_ENGINE);
         try {
             Values values = new Values(Utils.MAPPER.writeValueAsString(command));

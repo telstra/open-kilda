@@ -2,8 +2,13 @@ package org.bitbucket.openkilda.wfm.topology.flow;
 
 import static org.bitbucket.openkilda.messaging.Utils.TRANSACTION_ID;
 
+import org.bitbucket.openkilda.messaging.ServiceType;
+import org.bitbucket.openkilda.messaging.Topic;
 import org.bitbucket.openkilda.messaging.Utils;
+import org.bitbucket.openkilda.pce.provider.NeoDriver;
+import org.bitbucket.openkilda.pce.provider.PathComputer;
 import org.bitbucket.openkilda.wfm.topology.AbstractTopology;
+import org.bitbucket.openkilda.wfm.topology.flow.bolts.CrudBolt;
 import org.bitbucket.openkilda.wfm.topology.flow.bolts.ErrorBolt;
 import org.bitbucket.openkilda.wfm.topology.flow.bolts.NorthboundReplyBolt;
 import org.bitbucket.openkilda.wfm.topology.flow.bolts.NorthboundRequestBolt;
@@ -11,6 +16,7 @@ import org.bitbucket.openkilda.wfm.topology.flow.bolts.SpeakerBolt;
 import org.bitbucket.openkilda.wfm.topology.flow.bolts.StatusBolt;
 import org.bitbucket.openkilda.wfm.topology.flow.bolts.TopologyEngineBolt;
 import org.bitbucket.openkilda.wfm.topology.flow.bolts.TransactionBolt;
+import org.bitbucket.openkilda.wfm.topology.utils.HealthCheckBolt;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -41,7 +47,16 @@ public class FlowTopology extends AbstractTopology {
     private static final Logger logger = LogManager.getLogger(FlowTopology.class);
     private static final String TOPIC = "kilda-test";
 
-    public FlowTopology() {
+    /**
+     * Path computation instance.
+     */
+    private final PathComputer pathComputer;
+
+    public FlowTopology(PathComputer pathComputer) {
+        this.pathComputer = pathComputer;
+
+        checkAndCreateTopic(Topic.HEALTH_CHECK.getId());
+
         logger.debug("Topology built {}: zookeeper={}, kafka={}, parallelism={}, workers={}",
                 topologyName, zookeeperHosts, kafkaHosts, parallelism, workers);
     }
@@ -53,7 +68,7 @@ public class FlowTopology extends AbstractTopology {
      * @throws Exception if topology submitting fails
      */
     public static void main(String[] args) throws Exception {
-        final FlowTopology flowTopology = new FlowTopology();
+        final FlowTopology flowTopology = new FlowTopology(new NeoDriver());
         StormTopology stormTopology = flowTopology.createTopology();
         final Config config = new Config();
         config.setNumWorkers(flowTopology.workers);
@@ -115,16 +130,22 @@ public class FlowTopology extends AbstractTopology {
                 .fieldsGrouping(ComponentType.SPEAKER_BOLT.toString(), StreamType.STATUS.toString(), fieldFlowId)
                 .fieldsGrouping(ComponentType.TOPOLOGY_ENGINE_BOLT.toString(), StreamType.STATUS.toString(), fieldFlowId);
 
+        CrudBolt crudBolt = new CrudBolt(pathComputer);
+        builder.setBolt(ComponentType.CRUD_BOLT.toString(), crudBolt, parallelism)
+                .fieldsGrouping(ComponentType.STATUS_BOLT.toString(), StreamType.CREATE.toString(), fieldFlowId)
+                .fieldsGrouping(ComponentType.STATUS_BOLT.toString(), StreamType.READ.toString(), fieldFlowId)
+                .fieldsGrouping(ComponentType.STATUS_BOLT.toString(), StreamType.UPDATE.toString(), fieldFlowId)
+                .fieldsGrouping(ComponentType.STATUS_BOLT.toString(), StreamType.DELETE.toString(), fieldFlowId)
+                .fieldsGrouping(ComponentType.STATUS_BOLT.toString(), StreamType.PATH.toString(), fieldFlowId);
+
         /*
          * Bolt sends Topology Engine requests
          */
         KafkaBolt topologyKafkaBolt = createKafkaBolt(TOPIC);
         builder.setBolt(ComponentType.TOPOLOGY_ENGINE_KAFKA_BOLT.toString(), topologyKafkaBolt, parallelism)
-                .shuffleGrouping(ComponentType.STATUS_BOLT.toString(), StreamType.CREATE.toString())
-                .shuffleGrouping(ComponentType.STATUS_BOLT.toString(), StreamType.UPDATE.toString())
-                .shuffleGrouping(ComponentType.STATUS_BOLT.toString(), StreamType.DELETE.toString())
-                .shuffleGrouping(ComponentType.STATUS_BOLT.toString(), StreamType.READ.toString())
-                .shuffleGrouping(ComponentType.STATUS_BOLT.toString(), StreamType.PATH.toString());
+                .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.CREATE.toString())
+                .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.UPDATE.toString())
+                .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.DELETE.toString());
 
         /*
          * Spout receives Topology Engine response
@@ -176,6 +197,7 @@ public class FlowTopology extends AbstractTopology {
         ErrorBolt errorProcessingBolt = new ErrorBolt();
         builder.setBolt(ComponentType.ERROR_BOLT.toString(), errorProcessingBolt, parallelism)
                 .shuffleGrouping(ComponentType.NORTHBOUND_REQUEST_BOLT.toString(), StreamType.ERROR.toString())
+                .shuffleGrouping(ComponentType.STATUS_BOLT.toString(), StreamType.ERROR.toString())
                 .shuffleGrouping(ComponentType.STATUS_BOLT.toString(), StreamType.ERROR.toString());
 
         /*
@@ -185,6 +207,7 @@ public class FlowTopology extends AbstractTopology {
         builder.setBolt(ComponentType.NORTHBOUND_REPLY_BOLT.toString(), northboundReplyBolt, parallelism)
                 .shuffleGrouping(ComponentType.TOPOLOGY_ENGINE_BOLT.toString(), StreamType.RESPONSE.toString())
                 .shuffleGrouping(ComponentType.STATUS_BOLT.toString(), StreamType.RESPONSE.toString())
+                .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.RESPONSE.toString())
                 .shuffleGrouping(ComponentType.ERROR_BOLT.toString(), StreamType.RESPONSE.toString());
 
         /*
@@ -193,6 +216,16 @@ public class FlowTopology extends AbstractTopology {
         KafkaBolt northboundKafkaBolt = createKafkaBolt(TOPIC);
         builder.setBolt(ComponentType.NORTHBOUND_KAFKA_BOLT.toString(), northboundKafkaBolt, parallelism)
                 .shuffleGrouping(ComponentType.NORTHBOUND_REPLY_BOLT.toString(), StreamType.RESPONSE.toString());
+
+        String prefix = ServiceType.FLOW_TOPOLOGY.getId();
+        KafkaSpout healthCheckKafkaSpout = createKafkaSpout(Topic.HEALTH_CHECK.getId());
+        builder.setSpout(prefix + "HealthCheckKafkaSpout", healthCheckKafkaSpout, 1);
+        HealthCheckBolt healthCheckBolt = new HealthCheckBolt(ServiceType.FLOW_TOPOLOGY);
+        builder.setBolt(prefix + "HealthCheckBolt", healthCheckBolt, 1)
+                .shuffleGrouping(prefix + "HealthCheckKafkaSpout");
+        KafkaBolt healthCheckKafkaBolt = createKafkaBolt(Topic.HEALTH_CHECK.getId());
+        builder.setBolt(prefix + "HealthCheckKafkaBolt", healthCheckKafkaBolt, 1)
+                .shuffleGrouping(prefix + "HealthCheckBolt", Topic.HEALTH_CHECK.getId());
 
         return builder.createTopology();
     }

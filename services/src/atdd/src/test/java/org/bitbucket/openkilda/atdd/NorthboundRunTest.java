@@ -9,7 +9,6 @@ import org.bitbucket.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowState;
-import org.bitbucket.openkilda.messaging.payload.flow.FlowsPayload;
 
 import cucumber.api.java.en.Then;
 
@@ -45,10 +44,7 @@ public class NorthboundRunTest {
 
     @Then("^flows dump contains (\\d+) flows$")
     public void checkDumpFlows(final int flowCount) {
-        FlowsPayload payload = FlowUtils.getFlowDump();
-        assertNotNull(payload);
-
-        List<FlowPayload> flows = payload.getFlowList();
+        List<FlowPayload> flows = FlowUtils.getFlowDump();
         assertNotNull(flows);
 
         assertEquals(flowCount, flows.size());

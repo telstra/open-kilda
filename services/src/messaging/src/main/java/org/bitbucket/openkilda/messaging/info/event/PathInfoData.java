@@ -20,10 +20,8 @@ import java.util.Objects;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
         "message_type",
-        "id",
         "latency_ns",
-        "path",
-        "state"})
+        "path"})
 public class PathInfoData extends InfoData {
     /**
      * Serialization version number constant.
@@ -43,12 +41,6 @@ public class PathInfoData extends InfoData {
     protected List<PathNode> path;
 
     /**
-     * Isl state.
-     */
-    @JsonProperty("state")
-    protected IslChangeType state;
-
-    /**
      * Instance constructor.
      */
     public PathInfoData() {
@@ -59,15 +51,12 @@ public class PathInfoData extends InfoData {
      *
      * @param latency latency
      * @param path    path
-     * @param state   isl discovery result
      */
     @JsonCreator
     public PathInfoData(@JsonProperty("latency_ns") long latency,
-                        @JsonProperty("path") List<PathNode> path,
-                        @JsonProperty("state") IslChangeType state) {
+                        @JsonProperty("path") List<PathNode> path) {
         this.latency = latency;
         this.path = path;
-        this.state = state;
     }
 
     /**
@@ -107,24 +96,6 @@ public class PathInfoData extends InfoData {
     }
 
     /**
-     * Returns isl state.
-     *
-     * @return isl state
-     */
-    public IslChangeType getState() {
-        return state;
-    }
-
-    /**
-     * Sets isl state.
-     *
-     * @param state isl state to set
-     */
-    public void setState(IslChangeType state) {
-        this.state = state;
-    }
-
-    /**
      * {@inheritDoc}
      */
     @Override
@@ -132,7 +103,6 @@ public class PathInfoData extends InfoData {
         return toStringHelper(this)
                 .add("latency_ns", latency)
                 .add("path", path)
-                .add("state", state)
                 .toString();
     }
 
@@ -141,7 +111,7 @@ public class PathInfoData extends InfoData {
      */
     @Override
     public int hashCode() {
-        return Objects.hash(latency, path, state);
+        return Objects.hash(latency, path);
     }
 
     /**
@@ -157,8 +127,6 @@ public class PathInfoData extends InfoData {
         }
 
         PathInfoData that = (PathInfoData) object;
-        return Objects.equals(getLatency(), that.getLatency())
-                && Objects.equals(getPath(), that.getPath())
-                && Objects.equals(getState(), that.getState());
+        return Objects.equals(getPath(), that.getPath());
     }
 }

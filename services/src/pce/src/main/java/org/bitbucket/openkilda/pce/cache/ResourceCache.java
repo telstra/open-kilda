@@ -1,7 +1,8 @@
-package org.bitbucket.openkilda.pce.manager;
+package org.bitbucket.openkilda.pce.cache;
 
 import org.bitbucket.openkilda.messaging.payload.ResourcePool;
 
+import com.google.common.base.MoreObjects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,7 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * ResourceManager class contains basic operations on resources.
  */
-class ResourceCache {
+class ResourceCache extends Cache {
     /**
      * Maximum meter id value.
      */
@@ -126,5 +127,14 @@ class ResourceCache {
 
     Set<Integer> getAllMeterIds(String switchId) {
         return meterPool.containsKey(switchId) ? meterPool.get(switchId).dumpPool() : Collections.emptySet();
+    }
+
+    @Override
+    public String toString() {
+        return MoreObjects.toStringHelper(this)
+                .add("meters", meterPool)
+                .add("cookies", cookiePool)
+                .add("vlans", vlanPool)
+                .toString();
     }
 }

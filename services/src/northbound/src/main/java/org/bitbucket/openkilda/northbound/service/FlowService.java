@@ -3,7 +3,8 @@ package org.bitbucket.openkilda.northbound.service;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowPayload;
-import org.bitbucket.openkilda.messaging.payload.flow.FlowsPayload;
+
+import java.util.List;
 
 /**
  * FlowService is for operations on flows.
@@ -51,7 +52,7 @@ public interface FlowService extends BasicService {
      * @param correlationId request correlation id
      * @return the list of all flows with specified status
      */
-    FlowsPayload getFlows(final String correlationId);
+    List<FlowPayload> getFlows(final String correlationId);
 
     /**
      * Gets flow status by id.

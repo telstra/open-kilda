@@ -1,4 +1,4 @@
-package org.bitbucket.openkilda.pce.manager;
+package org.bitbucket.openkilda.pce.cache;
 
 import static org.junit.Assert.assertEquals;
 

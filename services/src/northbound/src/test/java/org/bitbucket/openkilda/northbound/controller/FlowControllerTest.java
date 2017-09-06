@@ -3,7 +3,7 @@ package org.bitbucket.openkilda.northbound.controller;
 import static org.bitbucket.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.bitbucket.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 import static org.bitbucket.openkilda.messaging.Utils.MAPPER;
-import static org.bitbucket.openkilda.northbound.controller.WorkFlowManagerKafkaMock.ERROR_FLOW_ID;
+import static org.bitbucket.openkilda.northbound.controller.TestMessageMock.ERROR_FLOW_ID;
 import static org.junit.Assert.assertEquals;
 import static org.springframework.http.MediaType.APPLICATION_JSON_UTF8_VALUE;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
@@ -19,24 +19,12 @@ import org.bitbucket.openkilda.messaging.error.MessageError;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowPayload;
-import org.bitbucket.openkilda.messaging.payload.flow.FlowsPayload;
 
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.junit.After;
-import org.junit.AfterClass;
+import com.fasterxml.jackson.core.type.TypeReference;
 import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
-import org.springframework.kafka.listener.KafkaMessageListenerContainer;
-import org.springframework.kafka.listener.MessageListener;
-import org.springframework.kafka.listener.config.ContainerProperties;
-import org.springframework.kafka.test.rule.KafkaEmbedded;
-import org.springframework.kafka.test.utils.ContainerTestUtils;
-import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestPropertySource;
@@ -47,7 +35,8 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
-import java.util.Map;
+import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 
 @RunWith(SpringJUnit4ClassRunner.class)
@@ -58,59 +47,20 @@ public class FlowControllerTest {
     private static final String USERNAME = "kilda";
     private static final String PASSWORD = "kilda";
     private static final String ROLE = "ADMIN";
-    private static final String SENDER_TOPIC = "kilda-test";
-    //private static final String RECEIVER_TOPIC = "kilda-test";
-    private static final ContainerProperties containerProperties =
-            new ContainerProperties(SENDER_TOPIC /*, RECEIVER_TOPIC*/);
+
     private static final MessageError AUTH_ERROR = new MessageError(DEFAULT_CORRELATION_ID, 0,
             ErrorType.AUTH_FAILED.toString(), "Kilda", "InsufficientAuthenticationException");
     private static final MessageError NOT_FOUND_ERROR = new MessageError(DEFAULT_CORRELATION_ID, 0,
-            ErrorType.NOT_FOUND.toString(), "Flow was not found", ERROR_FLOW_ID);
-    @ClassRule
-    public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, SENDER_TOPIC /*, RECEIVER_TOPIC*/);
-    private final Map<String, Object> consumerProperties =
-            KafkaTestUtils.consumerProps("test", "true", embeddedKafka);
-    private final DefaultKafkaConsumerFactory<String, String> consumerFactory =
-            new DefaultKafkaConsumerFactory<>(consumerProperties);
-    private final KafkaMessageListenerContainer<String, String> container =
-            new KafkaMessageListenerContainer<>(consumerFactory, containerProperties);
+            ErrorType.NOT_FOUND.toString(), "Flow was not found", TestMessageMock.ERROR_FLOW_ID);
 
     private MockMvc mockMvc;
 
     @Autowired
     private WebApplicationContext webApplicationContext;
 
-    @BeforeClass
-    public static void setUpBeforeClass() throws Exception {
-        String kafkaBootstrapServers = embeddedKafka.getBrokersAsString();
-        System.setProperty("kafka.bootstrap-servers", kafkaBootstrapServers);
-        embeddedKafka.before();
-    }
-
-    @AfterClass
-    public static void tearDownAfterClass() throws Exception {
-        embeddedKafka.after();
-    }
-
-    private static String testCorrelationId() {
-        return UUID.randomUUID().toString();
-    }
-
     @Before
     public void setUp() throws Exception {
         this.mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).apply(springSecurity()).build();
-        container.setupMessageListener(new MessageListener<String, String>() {
-            @Override
-            public void onMessage(ConsumerRecord<String, String> record) {
-            }
-        });
-        container.start();
-        ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
-    }
-
-    @After
-    public void tearDown() throws InterruptedException {
-        container.stop();
     }
 
     @Test
@@ -119,71 +69,73 @@ public class FlowControllerTest {
         MvcResult result = mockMvc.perform(put("/flows")
                 .header(CORRELATION_ID, testCorrelationId())
                 .contentType(APPLICATION_JSON_VALUE)
-                .content(MAPPER.writeValueAsString(WorkFlowManagerKafkaMock.flow)))
+                .content(MAPPER.writeValueAsString(TestMessageMock.flow)))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
                 .andReturn();
         FlowPayload response = MAPPER.readValue(result.getResponse().getContentAsString(), FlowPayload.class);
-        assertEquals(WorkFlowManagerKafkaMock.flow, response);
+        assertEquals(TestMessageMock.flow, response);
     }
 
     @Test
     @WithMockUser(username = USERNAME, password = PASSWORD, roles = ROLE)
     public void getFlow() throws Exception {
-        MvcResult result = mockMvc.perform(get("/flows/{flow-id}", WorkFlowManagerKafkaMock.FLOW_ID)
+        MvcResult result = mockMvc.perform(get("/flows/{flow-id}", TestMessageMock.FLOW_ID)
                 .header(CORRELATION_ID, testCorrelationId())
                 .contentType(APPLICATION_JSON_VALUE))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
                 .andReturn();
         FlowPayload response = MAPPER.readValue(result.getResponse().getContentAsString(), FlowPayload.class);
-        assertEquals(WorkFlowManagerKafkaMock.flow, response);
+        assertEquals(TestMessageMock.flow, response);
     }
 
     @Test
     @WithMockUser(username = USERNAME, password = PASSWORD, roles = ROLE)
     public void deleteFlow() throws Exception {
-        MvcResult result = mockMvc.perform(delete("/flows/{flow-id}", WorkFlowManagerKafkaMock.FLOW_ID)
+        MvcResult result = mockMvc.perform(delete("/flows/{flow-id}", TestMessageMock.FLOW_ID)
                 .header(CORRELATION_ID, testCorrelationId())
                 .contentType(APPLICATION_JSON_VALUE))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
                 .andReturn();
         FlowPayload response = MAPPER.readValue(result.getResponse().getContentAsString(), FlowPayload.class);
-        assertEquals(WorkFlowManagerKafkaMock.flow, response);
+        assertEquals(TestMessageMock.flow, response);
     }
 
     @Test
     @WithMockUser(username = USERNAME, password = PASSWORD, roles = ROLE)
     public void updateFlow() throws Exception {
-        MvcResult result = mockMvc.perform(put("/flows/{flow-id}", WorkFlowManagerKafkaMock.FLOW_ID)
+        MvcResult result = mockMvc.perform(put("/flows/{flow-id}", TestMessageMock.FLOW_ID)
                 .header(CORRELATION_ID, testCorrelationId())
                 .contentType(APPLICATION_JSON_VALUE)
-                .content(MAPPER.writeValueAsString(WorkFlowManagerKafkaMock.flow)))
+                .content(MAPPER.writeValueAsString(TestMessageMock.flow)))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
                 .andReturn();
         FlowPayload response = MAPPER.readValue(result.getResponse().getContentAsString(), FlowPayload.class);
-        assertEquals(WorkFlowManagerKafkaMock.flow, response);
+        assertEquals(TestMessageMock.flow, response);
     }
 
     @Test
     @WithMockUser(username = USERNAME, password = PASSWORD, roles = ROLE)
     public void getFlows() throws Exception {
-        MvcResult result = mockMvc.perform(get("/flows", WorkFlowManagerKafkaMock.FLOW_ID)
+        MvcResult result = mockMvc.perform(get("/flows", TestMessageMock.FLOW_ID)
                 .header(CORRELATION_ID, testCorrelationId())
                 .contentType(APPLICATION_JSON_VALUE))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
                 .andReturn();
-        FlowsPayload response = MAPPER.readValue(result.getResponse().getContentAsString(), FlowsPayload.class);
-        assertEquals(WorkFlowManagerKafkaMock.flows, response);
+        List<FlowPayload> response = MAPPER.readValue(
+                result.getResponse().getContentAsString(),
+                new TypeReference<List<FlowPayload>>() {});
+        assertEquals(Collections.singletonList(TestMessageMock.flow), response);
     }
 
     @Test
     @WithMockUser(username = USERNAME, password = PASSWORD, roles = ROLE)
     public void statusFlow() throws Exception {
-        MvcResult result = mockMvc.perform(get("/flows/status/{flow-id}", WorkFlowManagerKafkaMock.FLOW_ID)
+        MvcResult result = mockMvc.perform(get("/flows/status/{flow-id}", TestMessageMock.FLOW_ID)
                 .header(CORRELATION_ID, testCorrelationId())
                 .contentType(APPLICATION_JSON_VALUE))
                 .andExpect(status().isOk())
@@ -191,20 +143,20 @@ public class FlowControllerTest {
                 .andReturn();
         FlowIdStatusPayload response =
                 MAPPER.readValue(result.getResponse().getContentAsString(), FlowIdStatusPayload.class);
-        assertEquals(WorkFlowManagerKafkaMock.flowStatus, response);
+        assertEquals(TestMessageMock.flowStatus, response);
     }
 
     @Test
     @WithMockUser(username = USERNAME, password = PASSWORD, roles = ROLE)
     public void pathFlow() throws Exception {
-        MvcResult result = mockMvc.perform(get("/flows/path/{flow-id}", WorkFlowManagerKafkaMock.FLOW_ID)
+        MvcResult result = mockMvc.perform(get("/flows/path/{flow-id}", TestMessageMock.FLOW_ID)
                 .header(CORRELATION_ID, testCorrelationId())
                 .contentType(APPLICATION_JSON_VALUE))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
                 .andReturn();
         FlowPathPayload response = MAPPER.readValue(result.getResponse().getContentAsString(), FlowPathPayload.class);
-        assertEquals(WorkFlowManagerKafkaMock.flowPath, response);
+        assertEquals(TestMessageMock.flowPath, response);
     }
 
     @Test
@@ -223,7 +175,7 @@ public class FlowControllerTest {
 
     @Test
     public void emptyCredentials() throws Exception {
-        MvcResult result = mockMvc.perform(get("/flows/path/{flow-id}", WorkFlowManagerKafkaMock.FLOW_ID)
+        MvcResult result = mockMvc.perform(get("/flows/path/{flow-id}", TestMessageMock.FLOW_ID)
                 .header(CORRELATION_ID, DEFAULT_CORRELATION_ID)
                 .contentType(APPLICATION_JSON_VALUE))
                 .andExpect(status().isUnauthorized())
@@ -232,5 +184,9 @@ public class FlowControllerTest {
 
         MessageError response = MAPPER.readValue(result.getResponse().getContentAsString(), MessageError.class);
         assertEquals(AUTH_ERROR, response);
+    }
+
+    private static String testCorrelationId() {
+        return UUID.randomUUID().toString();
     }
 }

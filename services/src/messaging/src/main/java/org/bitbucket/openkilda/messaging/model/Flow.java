@@ -120,6 +120,29 @@ public class Flow implements Serializable {
     }
 
     /**
+     * Copy constructor.
+     *
+     * @param flow flow
+     */
+    public Flow(Flow flow) {
+        this.flowId = flow.getFlowId();
+        this.bandwidth = flow.getBandwidth();
+        this.cookie = flow.getCookie();
+        this.description = flow.getDescription();
+        this.lastUpdated = flow.getLastUpdated();
+        this.sourceSwitch = flow.getSourceSwitch();
+        this.destinationSwitch = flow.getDestinationSwitch();
+        this.sourcePort = flow.getSourcePort();
+        this.destinationPort = flow.getDestinationPort();
+        this.sourceVlan = flow.getSourceVlan();
+        this.destinationVlan = flow.getDestinationVlan();
+        this.transitVlan = flow.getTransitVlan();
+        this.meterId = flow.getMeterId();
+        this.flowPath = flow.getFlowPath();
+        this.state = flow.getFlowState();
+    }
+
+    /**
      * Instance constructor.
      *
      * @param flowId            flow id

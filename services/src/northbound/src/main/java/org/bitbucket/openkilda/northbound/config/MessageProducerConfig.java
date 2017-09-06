@@ -1,12 +1,12 @@
 package org.bitbucket.openkilda.northbound.config;
 
+import org.bitbucket.openkilda.northbound.messaging.MessageProducer;
 import org.bitbucket.openkilda.northbound.messaging.kafka.KafkaMessageProducer;
 
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
@@ -21,7 +21,6 @@ import java.util.Map;
  */
 @Configuration
 @PropertySource("classpath:northbound.properties")
-@ComponentScan("org.bitbucket.openkilda.northbound")
 public class MessageProducerConfig {
     /**
      * Kafka bootstrap servers.
@@ -30,7 +29,8 @@ public class MessageProducerConfig {
     private String kafkaHosts;
 
     /**
-     * Kafka producer config bean. This {@link Map} is used by {@link MessageProducerConfig#producerFactory}.
+     * Kafka producer config bean.
+     * This {@link Map} is used by {@link MessageProducerConfig#producerFactory}.
      *
      * @return kafka properties bean
      */
@@ -49,9 +49,10 @@ public class MessageProducerConfig {
     }
 
     /**
-     * Kafka producer factory bean. The strategy to produce a {@link org.apache.kafka.clients.producer.Producer}
-     * instance with {@link MessageProducerConfig#producerConfigs} on each {@link org.springframework.kafka.core.DefaultKafkaProducerFactory#createProducer}
-     * invocation.
+     * Kafka producer factory bean.
+     * The strategy to produce a {@link org.apache.kafka.clients.producer.Producer} instance
+     * with {@link MessageProducerConfig#producerConfigs}
+     * on each {@link org.springframework.kafka.core.DefaultKafkaProducerFactory#createProducer} invocation.
      *
      * @return kafka producer factory
      */
@@ -61,7 +62,8 @@ public class MessageProducerConfig {
     }
 
     /**
-     * Kafka template bean. Wraps {@link org.apache.kafka.clients.producer.KafkaProducer}.
+     * Kafka template bean.
+     * Wraps {@link org.apache.kafka.clients.producer.KafkaProducer}.
      *
      * @return kafka template
      */
@@ -71,13 +73,15 @@ public class MessageProducerConfig {
     }
 
     /**
-     * Kafka message producer bean. Instance of {@link org.bitbucket.openkilda.northbound.messaging.kafka.KafkaMessageProducer}
-     * contains {@link org.springframework.kafka.core.KafkaTemplate} to be used to send messages.
+     * Kafka message producer bean.
+     * Instance of {@link org.bitbucket.openkilda.northbound.messaging.kafka.KafkaMessageProducer}
+     * contains {@link org.springframework.kafka.core.KafkaTemplate}
+     * to be used to send messages.
      *
      * @return kafka message producer
      */
     @Bean
-    public KafkaMessageProducer kafkaMessageProducer() {
+    public MessageProducer messageProducer() {
         return new KafkaMessageProducer();
     }
 }

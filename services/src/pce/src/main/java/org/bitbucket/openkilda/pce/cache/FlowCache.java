@@ -1,37 +1,40 @@
-package org.bitbucket.openkilda.pce.manager;
+package org.bitbucket.openkilda.pce.cache;
 
 import org.bitbucket.openkilda.messaging.info.event.IslInfoData;
 import org.bitbucket.openkilda.messaging.info.event.PathInfoData;
+import org.bitbucket.openkilda.messaging.info.event.PathNode;
 import org.bitbucket.openkilda.messaging.model.Flow;
+import org.bitbucket.openkilda.messaging.payload.flow.FlowState;
+import org.bitbucket.openkilda.pce.Utils;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.MoreObjects;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-public class FlowCache extends BaseCache {
+public class FlowCache extends Cache {
     /**
      * Forward flow cookie mask.
      */
-    @VisibleForTesting
-    static final long FORWARD_FLOW_COOKIE_MASK = 0x4000000000000000L;
+    public static final long FORWARD_FLOW_COOKIE_MASK = 0x4000000000000000L;
 
     /**
      * Reverse flow cookie mask.
      */
-    @VisibleForTesting
-    static final long REVERSE_FLOW_COOKIE_MASK = 0x4000000000000000L;
+    public static final long REVERSE_FLOW_COOKIE_MASK = 0x2000000000000000L;
 
     /**
      * Flow cookie value mask.
      */
-    private static final long FLOW_COOKIE_VALUE_MASK = 0x00000000FFFFFFFFL;
+    public static final long FLOW_COOKIE_VALUE_MASK = 0x00000000FFFFFFFFL;
 
     /**
      * Logger.
@@ -56,7 +59,7 @@ public class FlowCache extends BaseCache {
      */
     public void load(Set<ImmutablePair<Flow, Flow>> flows) {
         logger.debug("Flows: {}", flows);
-        flows.forEach(flow -> createFlowCache(flow.left.getFlowId(), flow));
+        flows.forEach(this::createFlow);
     }
 
     /**
@@ -104,8 +107,8 @@ public class FlowCache extends BaseCache {
      * @param flowId flow id
      * @return flow path
      */
-    public ImmutablePair<PathInfoData, PathInfoData> getFlowPathCache(String flowId) {
-        return new ImmutablePair<>(getFlowCache(flowId).left.getFlowPath(), getFlowCache(flowId).right.getFlowPath());
+    public ImmutablePair<PathInfoData, PathInfoData> getFlowPath(String flowId) {
+        return new ImmutablePair<>(getFlow(flowId).left.getFlowPath(), getFlow(flowId).right.getFlowPath());
     }
 
     /**
@@ -114,7 +117,7 @@ public class FlowCache extends BaseCache {
      * @param flowId flow id
      * @return flow
      */
-    public ImmutablePair<Flow, Flow> getFlowCache(String flowId) {
+    public ImmutablePair<Flow, Flow> getFlow(String flowId) {
         logger.debug("Get {} flow", flowId);
 
         ImmutablePair<Flow, Flow> flow = flowPool.get(flowId);
@@ -128,12 +131,14 @@ public class FlowCache extends BaseCache {
     /**
      * Creates flow.
      *
-     * @param flowId  flow id
-     * @param newFlow flow
+     * @param flow flow
+     * @param path flow path
      * @return flow
      */
-    public ImmutablePair<Flow, Flow> createFlowCache(String flowId, ImmutablePair<Flow, Flow> newFlow) {
-        logger.debug("Create {} flow with {} parameters", flowId, newFlow);
+    public ImmutablePair<Flow, Flow> createFlow(Flow flow, ImmutablePair<PathInfoData, PathInfoData> path) {
+        String flowId = flow.getFlowId();
+        logger.debug("Create {} flow with {} parameters", flowId, flow);
+        ImmutablePair<Flow, Flow> newFlow = buildFlow(flow, path);
 
         ImmutablePair<Flow, Flow> oldFlow = flowPool.get(flowId);
         if (oldFlow != null) {
@@ -147,12 +152,33 @@ public class FlowCache extends BaseCache {
     }
 
     /**
+     * Creates flow.
+     *
+     * @param flow flow
+     * @return flow
+     */
+    public ImmutablePair<Flow, Flow> createFlow(ImmutablePair<Flow, Flow> flow) {
+        String flowId = flow.left.getFlowId();
+        logger.debug("Create {} flow with {} parameters", flowId, flow);
+
+        ImmutablePair<Flow, Flow> oldFlow = flowPool.get(flowId);
+        if (oldFlow != null) {
+            throw new IllegalArgumentException(String.format("Flow %s already exists", flowId));
+        }
+
+        allocateFlow(flow);
+        flowPool.put(flowId, flow);
+
+        return flow;
+    }
+
+    /**
      * Deletes flow.
      *
      * @param flowId flow id
      * @return flow
      */
-    public ImmutablePair<Flow, Flow> deleteFlowCache(String flowId) {
+    public ImmutablePair<Flow, Flow> deleteFlow(String flowId) {
         logger.debug("Delete {} flow", flowId);
 
         ImmutablePair<Flow, Flow> flow = flowPool.remove(flowId);
@@ -168,12 +194,14 @@ public class FlowCache extends BaseCache {
     /**
      * Updates flow.
      *
-     * @param flowId  flow id
-     * @param newFlow flow
+     * @param flow flow
+     * @param path flow path
      * @return flow
      */
-    public ImmutablePair<Flow, Flow> updateFlowCache(String flowId, ImmutablePair<Flow, Flow> newFlow) {
-        logger.debug("Update {} flow with {} parameters", flowId, newFlow);
+    public ImmutablePair<Flow, Flow> updateFlow(Flow flow, ImmutablePair<PathInfoData, PathInfoData> path) {
+        String flowId = flow.getFlowId();
+        logger.debug("Update {} flow with {} parameters", flowId, flow);
+        ImmutablePair<Flow, Flow> newFlow = buildFlow(flow, path);
 
         ImmutablePair<Flow, Flow> odlFlow = flowPool.remove(flowId);
         if (odlFlow == null) {
@@ -192,9 +220,97 @@ public class FlowCache extends BaseCache {
      *
      * @return all flows
      */
-    public Set<ImmutablePair<Flow, Flow>> dumpFlowsCache() {
+    public Set<ImmutablePair<Flow, Flow>> dumpFlows() {
         logger.debug("Get all flows");
         return new HashSet<>(flowPool.values());
+    }
+
+    /**
+     * Returns intersection between two paths.
+     *
+     * @param firstPath  first {@link PathInfoData} instances
+     * @param secondPath second {@link PathInfoData} instances
+     * @return intersection {@link Set} of {@link IslInfoData} instances
+     */
+    public Set<PathNode> getPathIntersection(PathInfoData firstPath, PathInfoData secondPath) {
+        logger.debug("Get single path intersection between {} and {}", firstPath, secondPath);
+        Set<PathNode> intersection = new HashSet<>(firstPath.getPath());
+        intersection.retainAll(secondPath.getPath());
+        return intersection;
+    }
+
+    /**
+     * Returns intersection between two paths.
+     *
+     * @param firstPath  first {@link LinkedList} of {@link PathInfoData} instances
+     * @param secondPath second {@link LinkedList} of {@link PathInfoData} instances
+     * @return intersection {@link Set} of {@link PathNode} instances
+     */
+    public ImmutablePair<Set<PathNode>, Set<PathNode>> getPathIntersection(
+            ImmutablePair<PathInfoData, PathInfoData> firstPath,
+            ImmutablePair<PathInfoData, PathInfoData> secondPath) {
+        logger.debug("Get path intersection between {} and {}", firstPath, secondPath);
+
+        Set<PathNode> forwardIntersection = getPathIntersection(firstPath.left, secondPath.left);
+        Set<PathNode> reverseIntersection = getPathIntersection(firstPath.right, secondPath.right);
+
+        ImmutablePair<Set<PathNode>, Set<PathNode>> intersection =
+                new ImmutablePair<>(forwardIntersection, reverseIntersection);
+
+        logger.debug("Path intersection is {}", intersection);
+
+        return intersection;
+    }
+
+    /**
+     * Builds new forward and reverse flow pair.
+     *
+     * @param flow source flow
+     * @return new forward and reverse flow pair
+     */
+    ImmutablePair<Flow, Flow> buildFlow(Flow flow, ImmutablePair<PathInfoData, PathInfoData> path) {
+        String timestamp = Utils.getIsoTimestamp();
+        int cookie = resourceCache.allocateCookie();
+
+        Flow forward = buildForwardFlow(flow, cookie, path.left, timestamp);
+        Flow reverse = buildReverseFlow(flow, cookie, path.right, timestamp);
+
+        return new ImmutablePair<>(forward, reverse);
+    }
+
+    /**
+     * Builds new forward flow.
+     *
+     * @param flow      source flow
+     * @param cookie    allocated cookie
+     * @param path      found path
+     * @param timestamp timestamp
+     * @return forward flow
+     */
+    Flow buildForwardFlow(Flow flow, int cookie, PathInfoData path, String timestamp) {
+        return new Flow(flow.getFlowId(), flow.getBandwidth(), cookie | FORWARD_FLOW_COOKIE_MASK,
+                flow.getDescription(), timestamp, flow.getSourceSwitch(), flow.getDestinationSwitch(),
+                flow.getSourcePort(), flow.getDestinationPort(), flow.getSourceVlan(), flow.getDestinationVlan(),
+                resourceCache.allocateMeterId(flow.getSourceSwitch()), resourceCache.allocateVlanId(),
+                path, FlowState.ALLOCATED);
+
+    }
+
+    /**
+     * Builds new reverse flow.
+     *
+     * @param flow      source flow
+     * @param cookie    allocated cookie
+     * @param path      found path
+     * @param timestamp timestamp
+     * @return reverse flow
+     */
+    Flow buildReverseFlow(Flow flow, int cookie, PathInfoData path, String timestamp) {
+        return new Flow(flow.getFlowId(), flow.getBandwidth(), cookie | REVERSE_FLOW_COOKIE_MASK,
+                flow.getDescription(), timestamp, flow.getDestinationSwitch(), flow.getSourceSwitch(),
+                flow.getDestinationPort(), flow.getSourcePort(), flow.getDestinationVlan(), flow.getSourceVlan(),
+                resourceCache.allocateMeterId(flow.getDestinationSwitch()), resourceCache.allocateVlanId(),
+                path, FlowState.ALLOCATED);
     }
 
     /**
@@ -241,5 +357,13 @@ public class FlowCache extends BaseCache {
      */
     private boolean isOneSwitchFlow(ImmutablePair<Flow, Flow> flow) {
         return flow.getLeft().getSourceSwitch().equals(flow.getRight().getSourceSwitch());
+    }
+
+    @Override
+    public String toString() {
+        return MoreObjects.toStringHelper(this)
+                .add("resources", resourceCache)
+                .add("flows", flowPool)
+                .toString();
     }
 }

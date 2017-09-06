@@ -49,6 +49,14 @@ public final class Utils {
      */
     public static final String SYSTEM_CORRELATION_ID = "system-request";
     /**
+     * The health check operational status.
+     */
+    public static final String HEALTH_CHECK_OPERATIONAL_STATUS = "operational";
+    /**
+     * The health check non operational status.
+     */
+    public static final String HEALTH_CHECK_NON_OPERATIONAL_STATUS = "non-operational";
+    /**
      * VLAN TAG Ether type value.
      */
     public static final int ETH_TYPE = 0x8100;

@@ -53,32 +53,14 @@ public class NorthboundReplyBolt extends BaseRichBolt {
             switch (componentId) {
 
                 case TOPOLOGY_ENGINE_BOLT:
+                case STATUS_BOLT:
+                case CRUD_BOLT:
+                case ERROR_BOLT:
                     logger.debug("Flow response: {}={}, component={}, stream={}, message={}",
                             CORRELATION_ID, message.getCorrelationId(), componentId, streamId, message);
 
                     message.setDestination(Destination.NORTHBOUND);
                     values = new Values(MAPPER.writeValueAsString(message));
-                    outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
-                    break;
-
-                case STATUS_BOLT:
-                    logger.debug("Flow status response: {}={}, component={}, stream={}, message={}",
-                            CORRELATION_ID, message.getCorrelationId(), componentId, streamId, message);
-
-                    message.setDestination(Destination.NORTHBOUND);
-                    values = new Values(MAPPER.writeValueAsString(message));
-                    outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
-
-                    break;
-
-                case ERROR_BOLT:
-                    ErrorMessage errorMessage = (ErrorMessage) message;
-
-                    logger.debug("Flow error response: {}={}, component={}, stream={}, message={}",
-                            CORRELATION_ID, message.getCorrelationId(), componentId, streamId, message);
-
-                    errorMessage.setDestination(Destination.NORTHBOUND);
-                    values = new Values(MAPPER.writeValueAsString(errorMessage));
                     outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
 
                     break;

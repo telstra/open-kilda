@@ -67,7 +67,7 @@ public class NorthboundRequestBolt extends BaseRichBolt {
             CommandData data = ((CommandMessage) message).getData();
 
             if (data instanceof FlowCreateRequest) {
-                String flowId = ((FlowCreateRequest) data).getPayload().getId();
+                String flowId = ((FlowCreateRequest) data).getPayload().getFlowId();
 
                 logger.debug("Flow {} crate message: values={}", flowId, values);
 
@@ -83,7 +83,7 @@ public class NorthboundRequestBolt extends BaseRichBolt {
                 outputCollector.emit(StreamType.DELETE.toString(), tuple, values);
 
             } else if (data instanceof FlowUpdateRequest) {
-                String flowId = ((FlowUpdateRequest) data).getPayload().getId();
+                String flowId = ((FlowUpdateRequest) data).getPayload().getFlowId();
 
                 logger.debug("Flow {} update message: values={}", flowId, values);
 

@@ -1,10 +1,10 @@
 package org.bitbucket.openkilda.messaging.info.flow;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
-import static org.bitbucket.openkilda.messaging.Utils.PAYLOAD;
 
+import org.bitbucket.openkilda.messaging.Utils;
 import org.bitbucket.openkilda.messaging.info.InfoData;
-import org.bitbucket.openkilda.messaging.payload.flow.FlowsPayload;
+import org.bitbucket.openkilda.messaging.model.Flow;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -12,6 +12,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -21,7 +22,7 @@ import java.util.Objects;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
         "message_type",
-        PAYLOAD})
+        Utils.PAYLOAD})
 public class FlowsResponse extends InfoData {
     /**
      * Serialization version number constant.
@@ -31,8 +32,8 @@ public class FlowsResponse extends InfoData {
     /**
      * The response payload.
      */
-    @JsonProperty(PAYLOAD)
-    protected FlowsPayload payload;
+    @JsonProperty(Utils.PAYLOAD)
+    protected List<Flow> payload;
 
     /**
      * Instance constructor.
@@ -41,7 +42,7 @@ public class FlowsResponse extends InfoData {
      * @throws IllegalArgumentException if payload is null
      */
     @JsonCreator
-    public FlowsResponse(@JsonProperty(PAYLOAD) final FlowsPayload payload) {
+    public FlowsResponse(@JsonProperty(Utils.PAYLOAD) List<Flow> payload) {
         setPayload(payload);
     }
 
@@ -50,7 +51,7 @@ public class FlowsResponse extends InfoData {
      *
      * @return response payload
      */
-    public FlowsPayload getPayload() {
+    public List<Flow> getPayload() {
         return payload;
     }
 
@@ -59,7 +60,7 @@ public class FlowsResponse extends InfoData {
      *
      * @param payload response payload
      */
-    public void setPayload(final FlowsPayload payload) {
+    public void setPayload(List<Flow> payload) {
         if (payload == null) {
             throw new IllegalArgumentException("need to set payload");
         }
@@ -72,7 +73,7 @@ public class FlowsResponse extends InfoData {
     @Override
     public String toString() {
         return toStringHelper(this)
-                .add(PAYLOAD, payload)
+                .add(Utils.PAYLOAD, payload)
                 .toString();
     }
 

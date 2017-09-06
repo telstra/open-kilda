@@ -50,6 +50,11 @@ public enum ComponentType {
     STATUS_BOLT,
 
     /**
+     * Crud bolt. Processes CRUD flow operations.
+     */
+    CRUD_BOLT,
+
+    /**
      * Topology Engine bolt. Processes Topology Engine responses and splits it on streams with flow-id fields.
      */
     TOPOLOGY_ENGINE_BOLT,

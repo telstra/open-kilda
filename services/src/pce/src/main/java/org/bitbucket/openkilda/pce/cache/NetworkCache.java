@@ -1,9 +1,11 @@
-package org.bitbucket.openkilda.pce.manager;
+package org.bitbucket.openkilda.pce.cache;
 
 import org.bitbucket.openkilda.messaging.info.event.IslInfoData;
 import org.bitbucket.openkilda.messaging.info.event.SwitchInfoData;
 import org.bitbucket.openkilda.messaging.info.event.SwitchState;
 
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.MoreObjects;
 import com.google.common.graph.EndpointPair;
 import com.google.common.graph.MutableNetwork;
 import com.google.common.graph.NetworkBuilder;
@@ -16,7 +18,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-public class NetworkCache extends BaseCache {
+public class NetworkCache extends Cache {
     /**
      * Logger.
      */
@@ -49,10 +51,10 @@ public class NetworkCache extends BaseCache {
      */
     public void load(Set<SwitchInfoData> switches, Set<IslInfoData> isls) {
         logger.debug("Switches: {}", switches);
-        switches.forEach(this::createSwitchCache);
+        switches.forEach(this::createSwitch);
 
         logger.debug("Isls: {}", isls);
-        isls.forEach(isl -> createIslCache(isl.getId(), isl));
+        isls.forEach(this::createIsl);
     }
 
     /**
@@ -65,7 +67,7 @@ public class NetworkCache extends BaseCache {
     public Set<IslInfoData> getIslsBySource(String switchId) {
         logger.debug("Get all isls by source switch {}", switchId);
 
-        SwitchInfoData startNode = getSwitchCache(switchId);
+        SwitchInfoData startNode = getSwitch(switchId);
 
         return network.outEdges(startNode);
     }
@@ -80,7 +82,7 @@ public class NetworkCache extends BaseCache {
     public Set<IslInfoData> getIslsByDestination(String switchId) {
         logger.debug("Get all isls by destination switch {}", switchId);
 
-        SwitchInfoData endNode = getSwitchCache(switchId);
+        SwitchInfoData endNode = getSwitch(switchId);
 
         return network.inEdges(endNode);
     }
@@ -95,7 +97,7 @@ public class NetworkCache extends BaseCache {
     public Set<IslInfoData> getIslsBySwitch(String switchId) throws IllegalArgumentException {
         logger.debug("Get all isls incident switch {}", switchId);
 
-        SwitchInfoData node = getSwitchCache(switchId);
+        SwitchInfoData node = getSwitch(switchId);
 
         return network.incidentEdges(node);
     }
@@ -138,7 +140,7 @@ public class NetworkCache extends BaseCache {
     public Set<SwitchInfoData> getDirectlyConnectedSwitches(String switchId) throws IllegalArgumentException {
         logger.debug("Get all switches directly connected to {} switch ", switchId);
 
-        SwitchInfoData node = getSwitchCache(switchId);
+        SwitchInfoData node = getSwitch(switchId);
 
         return network.adjacentNodes(node);
     }
@@ -161,7 +163,7 @@ public class NetworkCache extends BaseCache {
      * @return {@link SwitchInfoData} instance with specified {@link SwitchInfoData} instance id
      * @throws IllegalArgumentException if {@link SwitchInfoData} instance with specified id does not exist
      */
-    public SwitchInfoData getSwitchCache(String switchId) throws IllegalArgumentException {
+    public SwitchInfoData getSwitch(String switchId) throws IllegalArgumentException {
         logger.debug("Get {} switch", switchId);
 
         SwitchInfoData node = switchPool.get(switchId);
@@ -179,7 +181,7 @@ public class NetworkCache extends BaseCache {
      * @return created {@link SwitchInfoData} instance
      * @throws IllegalArgumentException if {@link SwitchInfoData} instance with specified id already exists
      */
-    public SwitchInfoData createSwitchCache(SwitchInfoData newSwitch) throws IllegalArgumentException {
+    public SwitchInfoData createSwitch(SwitchInfoData newSwitch) throws IllegalArgumentException {
         String switchId = newSwitch.getSwitchId();
 
         logger.debug("Create {} switch with {} parameters", switchId, newSwitch);
@@ -198,12 +200,12 @@ public class NetworkCache extends BaseCache {
     /**
      * Updates {@link SwitchInfoData} instance.
      *
-     * @param switchId  {@link SwitchInfoData} instance id
      * @param newSwitch {@link SwitchInfoData} instance
      * @return {@link SwitchInfoData} instance before update
      * @throws IllegalArgumentException if {@link SwitchInfoData} instance with specified id does not exist
      */
-    public SwitchInfoData updateSwitchCache(String switchId, SwitchInfoData newSwitch) throws IllegalArgumentException {
+    public SwitchInfoData updateSwitch(SwitchInfoData newSwitch) throws IllegalArgumentException {
+        String switchId = newSwitch.getSwitchId();
         logger.debug("Update {} switch with {} parameters", switchId, newSwitch);
 
         SwitchInfoData oldSwitch = switchPool.remove(switchId);
@@ -219,13 +221,30 @@ public class NetworkCache extends BaseCache {
     }
 
     /**
+     * Creates or updates {@link SwitchInfoData} instance.
+     *
+     * @param newSwitch {@link SwitchInfoData} instance
+     * @return created {@link SwitchInfoData} instance
+     * @throws IllegalArgumentException if {@link SwitchInfoData} instance with specified id already exists
+     */
+    public SwitchInfoData createOrUpdateSwitch(SwitchInfoData newSwitch) {
+        logger.debug("Create Or Update {} switch with {} parameters", newSwitch);
+
+        if (cacheContainsSwitch(newSwitch.getSwitchId())) {
+            return updateSwitch(newSwitch);
+        } else {
+            return createSwitch(newSwitch);
+        }
+    }
+
+    /**
      * Deletes {@link SwitchInfoData} instance.
      *
      * @param switchId {@link SwitchInfoData} instance id
      * @return removed {@link SwitchInfoData} instance
      * @throws IllegalArgumentException if {@link SwitchInfoData} instance with specified id does not exist
      */
-    public SwitchInfoData deleteSwitchCache(String switchId) throws IllegalArgumentException {
+    public SwitchInfoData deleteSwitch(String switchId) throws IllegalArgumentException {
         logger.debug("Delete {} switch", switchId);
 
         SwitchInfoData node = switchPool.remove(switchId);
@@ -243,7 +262,7 @@ public class NetworkCache extends BaseCache {
      *
      * @return {@link Set} of {@link SwitchInfoData} instances
      */
-    public Set<SwitchInfoData> dumpSwitchesCache() {
+    public Set<SwitchInfoData> dumpSwitches() {
         logger.debug("Get all switches");
 
         return new HashSet<>(network.nodes());
@@ -268,7 +287,7 @@ public class NetworkCache extends BaseCache {
      * @return {@link IslInfoData} instance with specified {@link IslInfoData} instance id
      * @throws IllegalArgumentException if {@link IslInfoData} instance with specified id does not exist
      */
-    public IslInfoData getIslCache(String islId) throws IllegalArgumentException {
+    public IslInfoData getIsl(String islId) throws IllegalArgumentException {
         logger.debug("Get {} isl", islId);
 
         IslInfoData isl = islPool.get(islId);
@@ -282,12 +301,12 @@ public class NetworkCache extends BaseCache {
     /**
      * Creates {@link IslInfoData} instance.
      *
-     * @param islId {@link IslInfoData} instance id
-     * @param isl   {@link IslInfoData} instance
+     * @param isl {@link IslInfoData} instance
      * @return {@link IslInfoData} instance previously associated with {@link IslInfoData} instance id or null otherwise
      * @throws IllegalArgumentException if {@link SwitchInfoData} related to {@link IslInfoData} instance do not exist
      */
-    public IslInfoData createIslCache(String islId, IslInfoData isl) throws IllegalArgumentException {
+    public IslInfoData createIsl(IslInfoData isl) throws IllegalArgumentException {
+        String islId = isl.getId();
         logger.debug("Create {} isl with {} parameters", islId, isl);
 
         EndpointPair<SwitchInfoData> nodes = getIslSwitches(isl);
@@ -299,12 +318,12 @@ public class NetworkCache extends BaseCache {
     /**
      * Updates {@link IslInfoData} instance.
      *
-     * @param islId {@link IslInfoData} instance id
-     * @param isl   new {@link IslInfoData} instance
+     * @param isl new {@link IslInfoData} instance
      * @return {@link IslInfoData} instance previously associated with {@link IslInfoData} instance id or null otherwise
      * @throws IllegalArgumentException if {@link SwitchInfoData} related to {@link IslInfoData} instance do not exist
      */
-    public IslInfoData updateIslCache(String islId, IslInfoData isl) throws IllegalArgumentException {
+    public IslInfoData updateIsl(IslInfoData isl) throws IllegalArgumentException {
+        String islId = isl.getId();
         logger.debug("Update {} isl with {} parameters", islId, isl);
 
         EndpointPair<SwitchInfoData> nodes = getIslSwitches(isl);
@@ -315,13 +334,30 @@ public class NetworkCache extends BaseCache {
     }
 
     /**
+     * Creates {@link IslInfoData} instance.
+     *
+     * @param isl {@link IslInfoData} instance
+     * @return {@link IslInfoData} instance previously associated with {@link IslInfoData} instance id or null otherwise
+     * @throws IllegalArgumentException if {@link SwitchInfoData} related to {@link IslInfoData} instance do not exist
+     */
+    public IslInfoData createOrUpdateIsl(IslInfoData isl) {
+        logger.debug("Create or Update {} isl with {} parameters", isl);
+
+        if (cacheContainsIsl(isl.getId())) {
+            return updateIsl(isl);
+        } else {
+            return createIsl(isl);
+        }
+    }
+
+    /**
      * Deletes {@link IslInfoData} instance.
      *
      * @param islId {@link IslInfoData} instance id
      * @return removed {@link IslInfoData} instance
      * @throws IllegalArgumentException if {@link IslInfoData} instance with specified id does not exist
      */
-    public IslInfoData deleteIslCache(String islId) throws IllegalArgumentException {
+    public IslInfoData deleteIsl(String islId) throws IllegalArgumentException {
         logger.debug("Delete {} isl", islId);
 
         IslInfoData isl = islPool.remove(islId);
@@ -339,7 +375,7 @@ public class NetworkCache extends BaseCache {
      *
      * @return {@link Set} of {@link IslInfoData} instances
      */
-    public Set<IslInfoData> dumpIslsCache() {
+    public Set<IslInfoData> dumpIsls() {
         logger.debug("Get all isls");
 
         return new HashSet<>(network.edges());
@@ -362,7 +398,8 @@ public class NetworkCache extends BaseCache {
      *
      * @return internal network
      */
-    protected MutableNetwork<SwitchInfoData, IslInfoData> getNetwork() {
+    @VisibleForTesting
+    MutableNetwork<SwitchInfoData, IslInfoData> getNetwork() {
         return network;
     }
 
@@ -380,15 +417,23 @@ public class NetworkCache extends BaseCache {
             throw new IllegalArgumentException("Source switch not specified");
         }
 
-        SwitchInfoData startNode = getSwitchCache(srcSwitch);
+        SwitchInfoData startNode = getSwitch(srcSwitch);
 
         String dstSwitch = isl.getPath().get(1).getSwitchId();
         if (dstSwitch == null) {
             throw new IllegalArgumentException("Destination switch not specified");
         }
 
-        SwitchInfoData endNode = getSwitchCache(dstSwitch);
+        SwitchInfoData endNode = getSwitch(dstSwitch);
 
         return EndpointPair.ordered(startNode, endNode);
+    }
+
+    @Override
+    public String toString() {
+        return MoreObjects.toStringHelper(this)
+                .add("switches", switchPool)
+                .add("isls", islPool)
+                .toString();
     }
 }

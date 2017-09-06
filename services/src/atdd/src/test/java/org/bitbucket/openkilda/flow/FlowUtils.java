@@ -2,19 +2,21 @@ package org.bitbucket.openkilda.flow;
 
 import static java.util.Base64.getEncoder;
 import static org.bitbucket.openkilda.DefaultParameters.northboundEndpoint;
+import static org.bitbucket.openkilda.DefaultParameters.pathComputer;
 import static org.bitbucket.openkilda.DefaultParameters.topologyEndpoint;
 import static org.bitbucket.openkilda.DefaultParameters.topologyPassword;
 import static org.bitbucket.openkilda.DefaultParameters.topologyUsername;
 
 import org.bitbucket.openkilda.messaging.info.event.IslInfoData;
+import org.bitbucket.openkilda.messaging.info.event.PathInfoData;
+import org.bitbucket.openkilda.messaging.model.Flow;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowPayload;
-import org.bitbucket.openkilda.messaging.payload.flow.FlowsPayload;
-import org.bitbucket.openkilda.messaging.model.Flow;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.jackson.JacksonFeature;
 
@@ -23,6 +25,7 @@ import java.util.List;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.Entity;
+import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -193,7 +196,7 @@ public class FlowUtils {
      *
      * @return The JSON document of the dump flows
      */
-    public static FlowsPayload getFlowDump() {
+    public static List<FlowPayload> getFlowDump() {
         long current = System.currentTimeMillis();
         Client client = ClientBuilder.newClient(new ClientConfig()).register(JacksonFeature.class);
 
@@ -208,7 +211,8 @@ public class FlowUtils {
         System.out.println(String.format("==> response = %s", response.toString()));
         System.out.println(String.format("==> Northbound Get Flow Dump Time: %,.3f", getTimeDuration(current)));
 
-        return response.getStatus() == 404 ? null : response.readEntity(FlowsPayload.class);
+        return response.getStatus() == 404 ? null : response.readEntity(new GenericType<List<FlowPayload>>() {
+        });
     }
 
     /**
@@ -231,7 +235,8 @@ public class FlowUtils {
         System.out.println(String.format("==> response = %s", response));
         System.out.println(String.format("==> Topology-Engine Dump Flows Time: %,.3f", getTimeDuration(current)));
 
-        return new ObjectMapper().readValue(response.readEntity(String.class), new TypeReference<List<Flow>>(){});
+        return new ObjectMapper().readValue(response.readEntity(String.class), new TypeReference<List<Flow>>() {
+        });
     }
 
     /**
@@ -255,7 +260,7 @@ public class FlowUtils {
         System.out.println(String.format("==> Topology-Engine Dump Links Time: %,.3f", getTimeDuration(current)));
 
         List<IslInfoData> links = new ObjectMapper().readValue(
-                response.readEntity(String.class), new TypeReference<List<IslInfoData>>(){});
+                response.readEntity(String.class), new TypeReference<List<IslInfoData>>() {});
         System.out.println(String.format("===> Data = %s", links));
 
         return links;
@@ -324,5 +329,16 @@ public class FlowUtils {
      */
     private static double getTimeDuration(final long current) {
         return (System.currentTimeMillis() - current) / 1000.0;
+    }
+
+    /**
+     * Gets flow path.
+     *
+     * @param flow flow
+     * @return flow path
+     */
+    public static ImmutablePair<PathInfoData, PathInfoData> getFlowPath(Flow flow) {
+        pathComputer.init();
+        return pathComputer.getPath(flow);
     }
 }

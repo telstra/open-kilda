@@ -3,7 +3,8 @@ package org.bitbucket.openkilda.messaging.command;
 import org.bitbucket.openkilda.messaging.MessageData;
 import org.bitbucket.openkilda.messaging.command.discovery.DiscoverIslCommandData;
 import org.bitbucket.openkilda.messaging.command.discovery.DiscoverPathCommandData;
-import org.bitbucket.openkilda.messaging.command.discovery.DumpNetwork;
+import org.bitbucket.openkilda.messaging.command.discovery.HealthCheckCommandData;
+import org.bitbucket.openkilda.messaging.command.discovery.NetworkCommandData;
 import org.bitbucket.openkilda.messaging.command.flow.DefaultFlowsCommandData;
 import org.bitbucket.openkilda.messaging.command.flow.FlowCreateRequest;
 import org.bitbucket.openkilda.messaging.command.flow.FlowDeleteRequest;
@@ -50,7 +51,8 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
         @Type(value = DiscoverIslCommandData.class, name = "discover_isl"),
         @Type(value = DiscoverPathCommandData.class, name = "discover_path"),
         @Type(value = FlowReroute.class, name = "flow_reroute"),
-        @Type(value = DumpNetwork.class, name = "dump_network")})
+        @Type(value = NetworkCommandData.class, name = "network"),
+        @Type(value = HealthCheckCommandData.class, name = "health_check")})
 public abstract class CommandData extends MessageData {
     /**
      * Serialization version number constant.
