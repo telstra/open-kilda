@@ -33,19 +33,13 @@ clean-sources:
 	$(MAKE) -C services/src clean
 	mvn -f services/wfm/pom.xml clean
 
-parent:
-	mvn -f services/src install
-
-messaging:
-	$(MAKE) -C services/src messaging
+update:
+	mvn --non-recursive -f services/src/pom.xml clean install
+	mvn -f services/src/messaging/pom.xml clean install
 
 unit:
 	$(MAKE) -C services/src
 	mvn -f services/wfm/pom.xml clean package
-
-run-speaker:
-	docker-compose stop floodlight
-	$(MAKE) -C services/src run-speaker
 
 clean-test:
 	docker-compose down
@@ -62,19 +56,19 @@ clean-test:
 kilda := 127.0.0.1
 # make atdd kilda=<kilda host ip address>
 
-atdd: parent messaging
+atdd: update
 	mvn -f services/src/atdd/pom.xml -P$@ test -Dkilda.host="$(kilda)"
 
-smoke: parent messaging
+smoke: update
 	mvn -f services/src/atdd/pom.xml -P$@ test -Dkilda.host="$(kilda)"
 
-perf: parent messaging
+perf: update
 	mvn -f services/src/atdd/pom.xml -P$@ test -Dkilda.host="$(kilda)"
 
-sec: parent messaging
+sec: update
 	mvn -f services/src/atdd/pom.xml -P$@ test -Dkilda.host="$(kilda)"
 
 .PHONY: default run-dev build-latest build-base
 .PHONY: up-test-mode up-log-mode run-test clean-test
 .PHONY: atdd smoke perf sec
-.PHONY: clean-sources unit run-speaker messaging
+.PHONY: clean-sources unit update
