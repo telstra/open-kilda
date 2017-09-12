@@ -34,14 +34,14 @@ public class FlowFFRTest{
     private static final String fileName = "topologies/barebones-topology.json";
     private static int numberOfPathes = 2;
     private static final List<List<String>> failebleLinks = new LinkedList<List<String>>(Arrays.asList(
-        new LinkedList<String>(Arrays.asList("s3", "1")), new LinkedList<String>(Arrays.asList("s3", "2"))));
+        new LinkedList<String>(Arrays.asList("s3", "1")), new LinkedList<String>(Arrays.asList("s4", "1"))));
 
     private static final long FLOW_COOKIE = 1L;
     private static final String flowId = "1";
     private static final String sourceSwitch = "00:00:00:00:00:00:00:02";
-    private static final String destinationSwitch = "00:00:00:00:00:00:00:05";
+    private static final String destinationSwitch = "00:00:00:00:00:00:00:06";
     private static final Integer sourcePort = 1;
-    private static final Integer destinationPort = 2;
+    private static final Integer destinationPort = 1;
     private static final Integer sourceVlan = 1000;
     private static final Integer destinationVlan = 1000;
     private static final long bandwidth = 1000;
@@ -70,6 +70,36 @@ public class FlowFFRTest{
         assertEquals(200, result.getStatus());
     }
 
+    private void failISL() throws Throwable {
+        List<String> linkToFail = failebleLinks.remove(0);
+        failedLinks.add(linkToFail);
+        String switchName = linkToFail.get(0);
+        String portNum = linkToFail.get(1);
+        Client client = ClientBuilder.newClient(new ClientConfig());
+        Response result = client
+           .target(trafficEndpoint)
+           .path("/cutlink")
+           .queryParam("switch", switchName)
+           .queryParam("port", portNum)
+           .request()
+           .post(Entity.json(""));
+        assertEquals(200, result.getStatus());
+    }
+
+    private void failSwitch() throws Throwable {
+        List<String> linkToFail = failebleLinks.remove(0);
+        failedLinks.add(linkToFail);
+        String switchName = linkToFail.get(0);
+        String portNum = linkToFail.get(1);
+        Client client = ClientBuilder.newClient(new ClientConfig());
+        Response result = client
+           .target(trafficEndpoint)
+           .path("/knockoutswitch")
+           .queryParam("switch", switchName)
+           .request()
+           .post(Entity.json(""));
+        assertEquals(200, result.getStatus());
+    }
     private void resurrectLink() throws Throwable {
         List<String> linkToRestore = failedLinks.remove(1);
         failedLinks.add(linkToRestore);
@@ -87,6 +117,37 @@ public class FlowFFRTest{
         assertEquals(200, result.getStatus());
     }
 
+    private void resurrectISL() throws Throwable {
+        List<String> linkToRestore = failedLinks.remove(1);
+        failedLinks.add(linkToRestore);
+        String switchName = linkToRestore.get(0);
+        String portNum = linkToRestore.get(1);
+        Client client = ClientBuilder.newClient(new ClientConfig());
+        Response result = client
+           .target(trafficEndpoint)
+           .path("/restorelink")
+           .queryParam("switch", switchName)
+           .request()
+           .post(Entity.json(""));
+        assertEquals(200, result.getStatus());
+    }
+
+    private void resurrectSwitch() throws Throwable {
+        List<String> linkToRestore = failedLinks.remove(1);
+        failedLinks.add(linkToRestore);
+        String switchName = linkToRestore.get(0);
+        String portNum = linkToRestore.get(1);
+        Client client = ClientBuilder.newClient(new ClientConfig());
+        Response result = client
+           .target(trafficEndpoint)
+           .path("/reviveswitch")
+           .queryParam("switch", switchName)
+           .queryParam("controller", "tcp:172.19.0.6:6653")
+           .request()
+           .post(Entity.json(""));
+        assertEquals(200, result.getStatus());
+    }
+
     private boolean trafficIsOk() throws Throwable {
         TimeUnit.SECONDS.sleep(1);
         Client client = ClientBuilder.newClient(new ClientConfig());
@@ -94,7 +155,7 @@ public class FlowFFRTest{
            .target(trafficEndpoint)
            .path("/checkflowtraffic")
            .queryParam("srcswitch", "s1")
-           .queryParam("dstswitch", "s5")
+           .queryParam("dstswitch", "s6")
            .queryParam("srcport", "1")
            .queryParam("dstport", "1")
            .queryParam("srcvlan", "1000")
@@ -148,6 +209,12 @@ public class FlowFFRTest{
         numberOfPathes--;
     }
 
+    @When("^an ISL in use fails$")
+    public void ISLInUseFails() throws Throwable {
+        failISL();
+        numberOfPathes--;
+    }
+
     @When("^there is an alternative route$")
     public void alternativeRouteExists() throws Throwable {
          assertNotEquals(numberOfPathes, 0);
@@ -168,6 +235,24 @@ public class FlowFFRTest{
     @When("^a failed route comes back up$")
     public void resurrectRoute() throws Throwable {
         resurrectLink();
+        numberOfPathes++;
+    }
+
+    @When("^a failed ISL comes back up$")
+    public void restoreISL() throws Throwable {
+        resurrectISL();
+        numberOfPathes++;
+    }
+
+    @When("^a switch in use fails$")
+    public void switchInUseFails() throws Throwable {
+        failSwitch();
+        numberOfPathes--;
+    }
+
+    @When("^a failed switch comes back up$")
+    public void restoreSwitch() throws Throwable {
+        resurrectSwitch();
         numberOfPathes++;
     }
 }
