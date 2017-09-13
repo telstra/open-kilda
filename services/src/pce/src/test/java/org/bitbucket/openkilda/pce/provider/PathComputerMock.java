@@ -1,13 +1,15 @@
 package org.bitbucket.openkilda.pce.provider;
 
+import org.bitbucket.openkilda.messaging.error.CacheException;
+import org.bitbucket.openkilda.messaging.error.ErrorType;
 import org.bitbucket.openkilda.messaging.info.event.IslInfoData;
 import org.bitbucket.openkilda.messaging.info.event.PathInfoData;
 import org.bitbucket.openkilda.messaging.info.event.PathNode;
 import org.bitbucket.openkilda.messaging.info.event.SwitchInfoData;
 import org.bitbucket.openkilda.messaging.model.Flow;
+import org.bitbucket.openkilda.messaging.model.ImmutablePair;
 
 import com.google.common.graph.MutableNetwork;
-import org.apache.commons.lang3.tuple.ImmutablePair;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -33,13 +35,15 @@ public class PathComputerMock implements PathComputer {
         SwitchInfoData source = network.nodes().stream()
                 .filter(sw -> sw.getSwitchId().equals(flow.getSourceSwitch())).findFirst().orElse(null);
         if (source == null) {
-            throw new IllegalArgumentException("Error: No node found source=" + flow.getSourceSwitch());
+            throw new CacheException(ErrorType.NOT_FOUND, "Can not find path",
+                    String.format("Error: No node found source=%s", flow.getSourceSwitch()));
         }
 
         SwitchInfoData destination = network.nodes().stream()
                 .filter(sw -> sw.getSwitchId().equals(flow.getDestinationSwitch())).findFirst().orElse(null);
         if (destination == null) {
-            throw new IllegalArgumentException("Error: No node found destination=" + flow.getDestinationSwitch());
+            throw new CacheException(ErrorType.NOT_FOUND, "Can not find path",
+                    String.format("Error: No node found destination=%s", flow.getDestinationSwitch()));
         }
 
         return new ImmutablePair<>(
@@ -78,7 +82,8 @@ public class PathComputerMock implements PathComputer {
         while (!nodesToProcess.isEmpty()) {
             SwitchInfoData source = nodesToProcess.stream()
                     .min(Comparator.comparingLong(distances::get))
-                    .orElseThrow(() -> new IllegalArgumentException("Error: No nodes to process left"));
+                    .orElseThrow(() -> new CacheException(ErrorType.NOT_FOUND,
+                            "Can not find path", "Error: No nodes to process left"));
             nodesToProcess.remove(source);
             nodesWereProcess.add(source);
 
@@ -87,7 +92,8 @@ public class PathComputerMock implements PathComputer {
                     IslInfoData edge = network.edgesConnecting(source, target).stream()
                             .filter(isl -> isl.getAvailableBandwidth() >= bandwidth)
                             .findFirst()
-                            .orElseThrow(() -> new IllegalArgumentException("Error: No enough bandwidth"));
+                            .orElseThrow(() -> new CacheException(ErrorType.NOT_FOUND,
+                                    "Can not find path", "Error: No enough bandwidth"));
 
                     Long distance = distances.get(source) + getWeight(edge);
                     if (distances.get(target) >= distance) {

@@ -25,6 +25,16 @@ public enum StreamType {
     DELETE,
 
     /**
+     * Restore flow topology stream.
+     */
+    RESTORE,
+
+    /**
+     * Reroute flow topology stream.
+     */
+    REROUTE,
+
+    /**
      * Get flow path topology stream.
      */
     PATH,

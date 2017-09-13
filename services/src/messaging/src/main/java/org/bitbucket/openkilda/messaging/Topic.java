@@ -5,7 +5,7 @@ package org.bitbucket.openkilda.messaging;
  */
 public enum Topic {
     TEST("kilda-test"),
-    HEALTH_CHECK("kilda-health-check");
+    HEALTH_CHECK("kilda.health.check");
     /*
     NB_WFM("kilda.nb.wfm"),
     WFM_NB("kilda.wfm.nb"),

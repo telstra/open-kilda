@@ -11,7 +11,7 @@ import org.bitbucket.openkilda.wfm.topology.AbstractTopology;
 import org.bitbucket.openkilda.wfm.topology.flow.bolts.CrudBolt;
 import org.bitbucket.openkilda.wfm.topology.flow.bolts.ErrorBolt;
 import org.bitbucket.openkilda.wfm.topology.flow.bolts.NorthboundReplyBolt;
-import org.bitbucket.openkilda.wfm.topology.flow.bolts.NorthboundRequestBolt;
+import org.bitbucket.openkilda.wfm.topology.flow.bolts.SplitterBolt;
 import org.bitbucket.openkilda.wfm.topology.flow.bolts.SpeakerBolt;
 import org.bitbucket.openkilda.wfm.topology.flow.bolts.StatusBolt;
 import org.bitbucket.openkilda.wfm.topology.flow.bolts.TopologyEngineBolt;
@@ -44,8 +44,10 @@ public class FlowTopology extends AbstractTopology {
     public static final Fields fieldsMessageErrorType = new Fields(MESSAGE_FIELD, ERROR_TYPE_FIELD);
     public static final Fields fieldsMessageSwitchIdFlowIdTransactionId =
             new Fields(MESSAGE_FIELD, SWITCH_ID_FIELD, FLOW_ID_FIELD, TRANSACTION_ID);
+    static final String STATE_UPDATE_TOPIC = "kilda.wfm.topo.updown";
     private static final Logger logger = LogManager.getLogger(FlowTopology.class);
     private static final String TOPIC = "kilda-test";
+    private static final String NETWORK_CACHE_TOPIC = "kilda.wfm.topo.dump";
 
     /**
      * Path computation instance.
@@ -56,6 +58,7 @@ public class FlowTopology extends AbstractTopology {
         this.pathComputer = pathComputer;
 
         checkAndCreateTopic(Topic.HEALTH_CHECK.getId());
+        checkAndCreateTopic(NETWORK_CACHE_TOPIC);
 
         logger.debug("Topology built {}: zookeeper={}, kafka={}, parallelism={}, workers={}",
                 topologyName, zookeeperHosts, kafkaHosts, parallelism, workers);
@@ -101,17 +104,24 @@ public class FlowTopology extends AbstractTopology {
         TopologyBuilder builder = new TopologyBuilder();
 
         /*
+         * Spout receives network cache dump.
+         */
+        KafkaSpout networkCacheKafkaSpout = createKafkaSpout(NETWORK_CACHE_TOPIC);
+        builder.setSpout(ComponentType.NETWORK_CACHE_SPOUT.toString(), networkCacheKafkaSpout, parallelism);
+
+        /*
          * Spout receives all Northbound requests.
          */
         KafkaSpout northboundKafkaSpout = createKafkaSpout(TOPIC);
         builder.setSpout(ComponentType.NORTHBOUND_KAFKA_SPOUT.toString(), northboundKafkaSpout, parallelism);
 
         /*
-         * Bolt splits Northbound requests on streams.
+         * Bolt splits requests on streams.
          * It groups requests by flow-id.
          */
-        NorthboundRequestBolt northboundRequestBolt = new NorthboundRequestBolt();
-        builder.setBolt(ComponentType.NORTHBOUND_REQUEST_BOLT.toString(), northboundRequestBolt, parallelism)
+        SplitterBolt splitterBolt = new SplitterBolt();
+        builder.setBolt(ComponentType.SPLITTER_BOLT.toString(), splitterBolt, parallelism)
+                .shuffleGrouping(ComponentType.NETWORK_CACHE_SPOUT.toString())
                 .shuffleGrouping(ComponentType.NORTHBOUND_KAFKA_SPOUT.toString());
 
         /*
@@ -120,16 +130,20 @@ public class FlowTopology extends AbstractTopology {
          */
         StatusBolt statusBolt = new StatusBolt();
         builder.setBolt(ComponentType.STATUS_BOLT.toString(), statusBolt, parallelism)
-                .fieldsGrouping(ComponentType.NORTHBOUND_REQUEST_BOLT.toString(), StreamType.CREATE.toString(), fieldFlowId)
-                .fieldsGrouping(ComponentType.NORTHBOUND_REQUEST_BOLT.toString(), StreamType.READ.toString(), fieldFlowId)
-                .fieldsGrouping(ComponentType.NORTHBOUND_REQUEST_BOLT.toString(), StreamType.UPDATE.toString(), fieldFlowId)
-                .fieldsGrouping(ComponentType.NORTHBOUND_REQUEST_BOLT.toString(), StreamType.DELETE.toString(), fieldFlowId)
-                .fieldsGrouping(ComponentType.NORTHBOUND_REQUEST_BOLT.toString(), StreamType.PATH.toString(), fieldFlowId)
-                .fieldsGrouping(ComponentType.NORTHBOUND_REQUEST_BOLT.toString(), StreamType.STATUS.toString(), fieldFlowId)
+                .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.CREATE.toString(), fieldFlowId)
+                .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.READ.toString(), fieldFlowId)
+                .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.UPDATE.toString(), fieldFlowId)
+                .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.DELETE.toString(), fieldFlowId)
+                .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.PATH.toString(), fieldFlowId)
+                .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.STATUS.toString(), fieldFlowId)
                 .fieldsGrouping(ComponentType.TRANSACTION_BOLT.toString(), StreamType.STATUS.toString(), fieldFlowId)
                 .fieldsGrouping(ComponentType.SPEAKER_BOLT.toString(), StreamType.STATUS.toString(), fieldFlowId)
                 .fieldsGrouping(ComponentType.TOPOLOGY_ENGINE_BOLT.toString(), StreamType.STATUS.toString(), fieldFlowId);
 
+        /*
+         * Bolt handles flow CRUD operations.
+         * It groups requests by flow-id.
+         */
         CrudBolt crudBolt = new CrudBolt(pathComputer);
         builder.setBolt(ComponentType.CRUD_BOLT.toString(), crudBolt, parallelism)
                 .fieldsGrouping(ComponentType.STATUS_BOLT.toString(), StreamType.CREATE.toString(), fieldFlowId)
@@ -139,10 +153,10 @@ public class FlowTopology extends AbstractTopology {
                 .fieldsGrouping(ComponentType.STATUS_BOLT.toString(), StreamType.PATH.toString(), fieldFlowId);
 
         /*
-         * Bolt sends Topology Engine requests
+         * Bolt sends cache updates.
          */
-        KafkaBolt topologyKafkaBolt = createKafkaBolt(TOPIC);
-        builder.setBolt(ComponentType.TOPOLOGY_ENGINE_KAFKA_BOLT.toString(), topologyKafkaBolt, parallelism)
+        KafkaBolt cacheKafkaBolt = createKafkaBolt(STATE_UPDATE_TOPIC);
+        builder.setBolt(ComponentType.CACHE_KAFKA_BOLT.toString(), cacheKafkaBolt, parallelism)
                 .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.CREATE.toString())
                 .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.UPDATE.toString())
                 .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.DELETE.toString());
@@ -196,8 +210,8 @@ public class FlowTopology extends AbstractTopology {
          */
         ErrorBolt errorProcessingBolt = new ErrorBolt();
         builder.setBolt(ComponentType.ERROR_BOLT.toString(), errorProcessingBolt, parallelism)
-                .shuffleGrouping(ComponentType.NORTHBOUND_REQUEST_BOLT.toString(), StreamType.ERROR.toString())
-                .shuffleGrouping(ComponentType.STATUS_BOLT.toString(), StreamType.ERROR.toString())
+                .shuffleGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.ERROR.toString())
+                .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.ERROR.toString())
                 .shuffleGrouping(ComponentType.STATUS_BOLT.toString(), StreamType.ERROR.toString());
 
         /*

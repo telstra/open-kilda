@@ -4,9 +4,9 @@ import org.bitbucket.openkilda.messaging.info.event.IslInfoData;
 import org.bitbucket.openkilda.messaging.info.event.PathInfoData;
 import org.bitbucket.openkilda.messaging.info.event.SwitchInfoData;
 import org.bitbucket.openkilda.messaging.model.Flow;
+import org.bitbucket.openkilda.messaging.model.ImmutablePair;
 
 import com.google.common.graph.MutableNetwork;
-import org.apache.commons.lang3.tuple.ImmutablePair;
 
 import java.io.Serializable;
 

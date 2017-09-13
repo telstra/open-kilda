@@ -4,7 +4,7 @@ import static org.bitbucket.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.bitbucket.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 
 import org.bitbucket.openkilda.messaging.error.MessageError;
-import org.bitbucket.openkilda.northbound.model.HealthCheck;
+import org.bitbucket.openkilda.messaging.model.HealthCheck;
 import org.bitbucket.openkilda.northbound.service.HealthCheckService;
 
 import io.swagger.annotations.ApiOperation;
@@ -48,9 +48,10 @@ public class HealthCheckController {
      */
     @ApiOperation(value = "Gets health-check status", response = HealthCheck.class)
     @ApiResponses(value = {
-            @ApiResponse(code = 200, response = MessageError.class, message = "Operation is successful"),
+            @ApiResponse(code = 200, response = HealthCheck.class, message = "Operation is successful"),
             @ApiResponse(code = 401, response = MessageError.class, message = "Unauthorized"),
             @ApiResponse(code = 403, response = MessageError.class, message = "Forbidden"),
+            @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
             @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
     @RequestMapping(value = "/health-check",
             method = RequestMethod.GET,

@@ -1,5 +1,6 @@
 package org.bitbucket.openkilda.messaging.command.flow;
 
+import static org.bitbucket.openkilda.messaging.command.Constants.flowName;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -26,6 +27,7 @@ import org.bitbucket.openkilda.messaging.info.flow.FlowResponse;
 import org.bitbucket.openkilda.messaging.info.flow.FlowStatusResponse;
 import org.bitbucket.openkilda.messaging.info.flow.FlowsResponse;
 import org.bitbucket.openkilda.messaging.model.Flow;
+import org.bitbucket.openkilda.messaging.model.ImmutablePair;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowState;
 import org.bitbucket.openkilda.messaging.payload.flow.OutputVlanType;
@@ -205,7 +207,9 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
 
     @Test
     public void flowDeleteRequestTest() throws IOException, ClassNotFoundException {
-        FlowDeleteRequest data = new FlowDeleteRequest(flowIdStatusRequest);
+        Flow deleteFlow = new Flow();
+        deleteFlow.setFlowId(flowName);
+        FlowDeleteRequest data = new FlowDeleteRequest(deleteFlow);
         System.out.println(data);
 
         CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
@@ -221,7 +225,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         System.out.println(resultData);
         assertEquals(data, resultData);
         assertEquals(data.hashCode(), resultData.hashCode());
-        assertEquals(flowIdStatusRequest.hashCode(), resultData.getPayload().hashCode());
+        assertEquals(deleteFlow.hashCode(), resultData.getPayload().hashCode());
     }
 
     @Test
@@ -520,7 +524,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
 
     @Test
     public void flowRerouteCommandTest() throws IOException, ClassNotFoundException {
-        FlowReroute data = new FlowReroute(FLOW_NAME, SWITCH_ID, OUTPUT_PORT);
+        FlowRerouteRequest data = new FlowRerouteRequest(flowModel);
         System.out.println(data);
 
         CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
@@ -533,7 +537,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         CommandMessage resultCommand = (CommandMessage) message;
         assertTrue(resultCommand.getData() != null);
 
-        FlowReroute resultData = (FlowReroute) resultCommand.getData();
+        FlowRerouteRequest resultData = (FlowRerouteRequest) resultCommand.getData();
         System.out.println(resultData);
         assertEquals(data, resultData);
         assertEquals(data.hashCode(), resultData.hashCode());
@@ -541,7 +545,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
 
     @Test
     public void flowRerouteEmptyCommandTest() throws IOException, ClassNotFoundException {
-        FlowReroute data = new FlowReroute();
+        FlowRerouteRequest data = new FlowRerouteRequest(flowModel);
         System.out.println(data);
 
         CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
@@ -554,7 +558,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         CommandMessage resultCommand = (CommandMessage) message;
         assertTrue(resultCommand.getData() != null);
 
-        FlowReroute resultData = (FlowReroute) resultCommand.getData();
+        FlowRerouteRequest resultData = (FlowRerouteRequest) resultCommand.getData();
         System.out.println(resultData);
         assertEquals(data, resultData);
         assertEquals(data.hashCode(), resultData.hashCode());
@@ -586,7 +590,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         NetworkInfoData data = new NetworkInfoData(requester,
                 new HashSet<>(Arrays.asList(sw1, sw2)),
                 Collections.singleton(isl),
-                Collections.singleton(flowModel));
+                Collections.singleton(new ImmutablePair<>(flowModel, flowModel)));
         System.out.println(data);
 
         InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);

@@ -55,10 +55,14 @@ clean-test:
 
 
 kilda := 127.0.0.1
-# make atdd kilda=<kilda host ip address>
+tags := "@MVP1"
+
+# ( @NB OR @STATS ) AND @MVP1
+# --tags @NB,@STATS --tags @MVP1
+# make atdd kilda=127.0.0.1 tags=@MVP1
 
 atdd: update
-	mvn -f services/src/atdd/pom.xml -P$@ test -Dkilda.host="$(kilda)"
+	mvn -f services/src/atdd/pom.xml -P$@ test -Dkilda.host="$(kilda)" -Dcucumber.options="--tags $(tags)"
 
 smoke: update
 	mvn -f services/src/atdd/pom.xml -P$@ test -Dkilda.host="$(kilda)"

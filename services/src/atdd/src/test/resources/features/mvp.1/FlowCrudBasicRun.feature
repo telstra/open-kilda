@@ -1,3 +1,4 @@
+@FCRUD
 Feature: Basic Flow CRUD
 
   This feature tests basic flow CRUD operations.

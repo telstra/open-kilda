@@ -59,8 +59,9 @@ public class ErrorBolt extends BaseRichBolt {
             Values values = new Values(error);
 
             switch (componentId) {
+                case CRUD_BOLT:
                 case STATUS_BOLT:
-                case NORTHBOUND_REQUEST_BOLT:
+                case SPLITTER_BOLT:
                     logger.debug("Error message: data={}", error.getData());
                     outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
                     break;

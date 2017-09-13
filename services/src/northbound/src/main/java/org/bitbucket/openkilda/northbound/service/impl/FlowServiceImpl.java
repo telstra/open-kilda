@@ -16,6 +16,7 @@ import org.bitbucket.openkilda.messaging.info.flow.FlowPathResponse;
 import org.bitbucket.openkilda.messaging.info.flow.FlowResponse;
 import org.bitbucket.openkilda.messaging.info.flow.FlowStatusResponse;
 import org.bitbucket.openkilda.messaging.info.flow.FlowsResponse;
+import org.bitbucket.openkilda.messaging.model.Flow;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowPayload;
@@ -81,7 +82,9 @@ public class FlowServiceImpl implements FlowService {
     @Override
     public FlowPayload deleteFlow(final String id, final String correlationId) {
         logger.debug("Delete flow: {}={}", CORRELATION_ID, correlationId);
-        FlowDeleteRequest data = new FlowDeleteRequest(new FlowIdStatusPayload(id, null));
+        Flow flow = new Flow();
+        flow.setFlowId(id);
+        FlowDeleteRequest data = new FlowDeleteRequest(flow);
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
         messageConsumer.clear();
         messageProducer.send(topic, request);

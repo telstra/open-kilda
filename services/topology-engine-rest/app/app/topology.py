@@ -126,8 +126,13 @@ def api_v1_topology_flows():
         result = graph.data(query)
 
         flows = []
-        for flow in result:
-            flows.append(flow['r'])
+        for data in result:
+            path = json.loads(data['r']['flowpath'])
+            flow = json.loads(json.dumps(data['r'],
+                                         default=lambda o: o.__dict__,
+                                         sort_keys=True))
+            flow['flowpath'] = path
+            flows.append(flow)
 
         return str(json.dumps(flows, default=lambda o: o.__dict__, sort_keys=True))
     except Exception as e:
@@ -173,9 +178,9 @@ def api_v1_topology_links():
 def api_v1_topology_link_bandwidth(src_switch, src_port):
     try:
         data = {'query': "MATCH (a:switch)-[r:isl]->(b:switch) "
-                         "WHERE r.src_switch = '{}' AND r.src_port = '{}' "
+                         "WHERE r.src_switch = '{}' AND r.src_port = {} "
                          "RETURN r.available_bandwidth".format(
-                            src_switch, src_port)}
+                            str(src_switch), int(src_port))}
         auth = (os.environ['neo4juser'], os.environ['neo4jpass'])
 
         response = requests.post(os.environ['neo4jbolt'], data=data, auth=auth)

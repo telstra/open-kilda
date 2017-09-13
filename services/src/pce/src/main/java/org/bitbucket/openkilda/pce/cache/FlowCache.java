@@ -1,15 +1,18 @@
 package org.bitbucket.openkilda.pce.cache;
 
+import org.bitbucket.openkilda.messaging.error.CacheException;
+import org.bitbucket.openkilda.messaging.error.ErrorType;
 import org.bitbucket.openkilda.messaging.info.event.IslInfoData;
 import org.bitbucket.openkilda.messaging.info.event.PathInfoData;
 import org.bitbucket.openkilda.messaging.info.event.PathNode;
+import org.bitbucket.openkilda.messaging.info.event.PortInfoData;
 import org.bitbucket.openkilda.messaging.model.Flow;
+import org.bitbucket.openkilda.messaging.model.ImmutablePair;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowState;
 import org.bitbucket.openkilda.pce.Utils;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.MoreObjects;
-import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,12 +74,33 @@ public class FlowCache extends Cache {
     }
 
     /**
+     * Puts flow directly to the cache.
+     *
+     * @param flowId fow id
+     * @param flow   flow
+     * @return previous flow
+     */
+    public ImmutablePair<Flow, Flow> putFlow(String flowId, ImmutablePair<Flow, Flow> flow) {
+        return flowPool.put(flowId, flow);
+    }
+
+    /**
+     * Removes flow directly from the cache.
+     *
+     * @param flowId flow id
+     * @return removed flow
+     */
+    public ImmutablePair<Flow, Flow> removeFlow(String flowId) {
+        return flowPool.remove(flowId);
+    }
+
+    /**
      * Gets flows with specified switch in the path.
      *
      * @param switchId switch id
      * @return set of flows
      */
-    public Set<ImmutablePair<Flow, Flow>> getAffectedBySwitchFlows(String switchId) {
+    public Set<ImmutablePair<Flow, Flow>> getAffectedFlows(String switchId) {
         return flowPool.values().stream().filter(flow ->
                 flow.getLeft().getFlowPath().getPath().stream()
                         .anyMatch(node -> node.getSwitchId().equals(switchId))
@@ -92,12 +116,26 @@ public class FlowCache extends Cache {
      * @param islData isl
      * @return set of flows
      */
-    public Set<ImmutablePair<Flow, Flow>> getAffectedByIslFlows(IslInfoData islData) {
+    public Set<ImmutablePair<Flow, Flow>> getAffectedFlows(IslInfoData islData) {
         return flowPool.values().stream().filter(flow ->
                 flow.getLeft().getFlowPath().getPath().contains(islData.getPath().get(0))
                         || flow.getLeft().getFlowPath().getPath().contains(islData.getPath().get(1))
                         || flow.getRight().getFlowPath().getPath().contains(islData.getPath().get(0))
                         || flow.getRight().getFlowPath().getPath().contains(islData.getPath().get(1)))
+                .collect(Collectors.toSet());
+    }
+
+    /**
+     * Gets flows with specified switch and port in the path.
+     *
+     * @param portData port
+     * @return set of flows
+     */
+    public Set<ImmutablePair<Flow, Flow>> getAffectedFlows(PortInfoData portData) {
+        PathNode node = new PathNode(portData.getSwitchId(), portData.getPortNo(), 0);
+        return flowPool.values().stream().filter(flow ->
+                flow.getLeft().getFlowPath().getPath().contains(node)
+                        || flow.getRight().getFlowPath().getPath().contains(node))
                 .collect(Collectors.toSet());
     }
 
@@ -122,7 +160,8 @@ public class FlowCache extends Cache {
 
         ImmutablePair<Flow, Flow> flow = flowPool.get(flowId);
         if (flow == null) {
-            throw new IllegalArgumentException(String.format("Flow %s not found", flowId));
+            throw new CacheException(ErrorType.NOT_FOUND, "Can not get flow",
+                    String.format("Flow %s not found", flowId));
         }
 
         return flow;
@@ -142,7 +181,8 @@ public class FlowCache extends Cache {
 
         ImmutablePair<Flow, Flow> oldFlow = flowPool.get(flowId);
         if (oldFlow != null) {
-            throw new IllegalArgumentException(String.format("Flow %s already exists", flowId));
+            throw new CacheException(ErrorType.ALREADY_EXISTS, "Can not create flow",
+                    String.format("Flow %s already exists", flowId));
         }
 
         allocateFlow(newFlow);
@@ -163,7 +203,8 @@ public class FlowCache extends Cache {
 
         ImmutablePair<Flow, Flow> oldFlow = flowPool.get(flowId);
         if (oldFlow != null) {
-            throw new IllegalArgumentException(String.format("Flow %s already exists", flowId));
+            throw new CacheException(ErrorType.ALREADY_EXISTS, "Can not create flow",
+                    String.format("Flow %s already exists", flowId));
         }
 
         allocateFlow(flow);
@@ -183,7 +224,8 @@ public class FlowCache extends Cache {
 
         ImmutablePair<Flow, Flow> flow = flowPool.remove(flowId);
         if (flow == null) {
-            throw new IllegalArgumentException(String.format("Flow %s not found", flowId));
+            throw new CacheException(ErrorType.NOT_FOUND, "Can not delete flow",
+                    String.format("Flow %s not found", flowId));
         }
 
         deallocateFlow(flow);
@@ -205,7 +247,8 @@ public class FlowCache extends Cache {
 
         ImmutablePair<Flow, Flow> odlFlow = flowPool.remove(flowId);
         if (odlFlow == null) {
-            throw new IllegalArgumentException(String.format("Flow %s not found", flowId));
+            throw new CacheException(ErrorType.NOT_FOUND, "Can not update flow",
+                    String.format("Flow %s not found", flowId));
         }
         deallocateFlow(odlFlow);
 

@@ -61,6 +61,17 @@ public class PortInfoData extends InfoData {
     /**
      * Instance constructor.
      *
+     * @param path path node
+     */
+    public PortInfoData(PathNode path) {
+        this.switchId = path.getSwitchId();
+        this.portNo = path.getPortNo();
+        this.state = PortChangeType.OTHER_UPDATE;
+    }
+
+    /**
+     * Instance constructor.
+     *
      * @param switchId switch id
      * @param portNo   port number
      * @param state    port state

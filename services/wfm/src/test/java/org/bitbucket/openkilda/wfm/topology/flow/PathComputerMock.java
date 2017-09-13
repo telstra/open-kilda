@@ -4,10 +4,10 @@ import org.bitbucket.openkilda.messaging.info.event.IslInfoData;
 import org.bitbucket.openkilda.messaging.info.event.PathInfoData;
 import org.bitbucket.openkilda.messaging.info.event.SwitchInfoData;
 import org.bitbucket.openkilda.messaging.model.Flow;
+import org.bitbucket.openkilda.messaging.model.ImmutablePair;
 import org.bitbucket.openkilda.pce.provider.PathComputer;
 
 import com.google.common.graph.MutableNetwork;
-import org.apache.commons.lang3.tuple.ImmutablePair;
 
 import java.util.Collections;
 
@@ -29,7 +29,7 @@ public class PathComputerMock implements PathComputer {
 
     @Override
     public void init() {
-        
+
     }
 
     private static ImmutablePair<PathInfoData, PathInfoData> emptyPath() {

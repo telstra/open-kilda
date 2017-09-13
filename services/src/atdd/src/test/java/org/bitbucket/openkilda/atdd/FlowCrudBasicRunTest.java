@@ -7,9 +7,9 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import org.bitbucket.openkilda.flow.FlowUtils;
+import org.bitbucket.openkilda.messaging.model.Flow;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowPayload;
-import org.bitbucket.openkilda.messaging.model.Flow;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowState;
 
 import cucumber.api.java.en.Given;
@@ -31,7 +31,6 @@ import java.io.File;
 import java.nio.file.Files;
 
 public class FlowCrudBasicRunTest {
-    private static final long FLOW_COOKIE = 1L;
     private FlowPayload flowPayload;
     private int storedFlows;
     private static final String fileName = "topologies/nonrandom-topology.json";
@@ -57,6 +56,8 @@ public class FlowCrudBasicRunTest {
         assertNotNull(response);
         response.setLastUpdated(null);
 
+        Thread.sleep(1500);
+
         assertEquals(flowPayload, response);
     }
 
@@ -78,8 +79,8 @@ public class FlowCrudBasicRunTest {
     public void checkFlowCreation(final String flowId, final String sourceSwitch, final int sourcePort,
                                   final int sourceVlan, final String destinationSwitch, final int destinationPort,
                                   final int destinationVlan, final int bandwidth) throws Exception {
-        Flow expectedFlow = new Flow(FlowUtils.getFlowName(flowId), bandwidth, FLOW_COOKIE, flowId, null, sourceSwitch,
-                destinationSwitch, sourcePort, destinationPort, sourceVlan, destinationVlan, 0, 0, null, FlowState.UP);
+        Flow expectedFlow = new Flow(FlowUtils.getFlowName(flowId), bandwidth, 0, flowId, null, sourceSwitch,
+                destinationSwitch, sourcePort, destinationPort, sourceVlan, destinationVlan, 0, 0, null, null);
 
         List<Flow> flows = validateFlowStored();
 
@@ -122,6 +123,8 @@ public class FlowCrudBasicRunTest {
 
         assertEquals(flowPayload, response);
 
+        Thread.sleep(1000);
+
         checkFlowCreation(flowId, sourceSwitch, sourcePort, sourceVlan, destinationSwitch,
                 destinationPort, destinationVlan, newBand);
     }
@@ -135,6 +138,8 @@ public class FlowCrudBasicRunTest {
         response.setLastUpdated(null);
 
         assertEquals(flowPayload, response);
+
+        Thread.sleep(1000);
 
         FlowPayload flow = FlowUtils.getFlow(FlowUtils.getFlowName(flowId));
 
@@ -216,8 +221,19 @@ public class FlowCrudBasicRunTest {
     }
 
     private List<Flow> validateFlowStored() throws Exception {
+        Thread.sleep(1000);
         List<Flow> flows = FlowUtils.dumpFlows();
         System.out.print(String.format("===> Flows retrieved: %d\n", flows.size()));
+        flows.forEach(this::resetImmaterialFields);
         return flows;
+    }
+
+    private void resetImmaterialFields(Flow flow) {
+        flow.setTransitVlan(0);
+        flow.setMeterId(0);
+        flow.setCookie(0);
+        flow.setLastUpdated(null);
+        flow.setFlowPath(null);
+        flow.setState(null);
     }
 }

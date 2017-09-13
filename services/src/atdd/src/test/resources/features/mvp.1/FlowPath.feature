@@ -1,7 +1,8 @@
+@FPATH
 Feature: Flow path computation tests
 
 
-  @MVP1.1
+  @MVP1
   Scenario: Link Bandwidth Tracking
 
     This scenario creates small multi-path network topology
@@ -41,7 +42,7 @@ Feature: Flow path computation tests
     Then alternative path links available bandwidth have available bandwidth 4000000
 
 
-  @MVP1.1
+  @MVP1
   Scenario: Link Bandwidth No Enough Bandwidth
 
     This scenario creates small multi-path network topology
@@ -60,6 +61,7 @@ Feature: Flow path computation tests
     When flow pceb3_failed creation request with 00:00:00:00:00:00:00:02 1 0 and 00:00:00:00:00:00:00:07 2 0 and 1 is failed
     Then flows count is 2
 
+  @MVP1
   Scenario: Flow Path
     Given a clean controller
     And a clean flow topology

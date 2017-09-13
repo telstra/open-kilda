@@ -19,13 +19,13 @@ import org.bitbucket.openkilda.messaging.command.flow.RemoveFlow;
 import org.bitbucket.openkilda.messaging.error.ErrorData;
 import org.bitbucket.openkilda.messaging.error.ErrorMessage;
 import org.bitbucket.openkilda.messaging.error.ErrorType;
+import org.bitbucket.openkilda.messaging.model.ImmutablePair;
 import org.bitbucket.openkilda.messaging.payload.flow.OutputVlanType;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
-import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;

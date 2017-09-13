@@ -71,7 +71,7 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
         try {
             switch (componentId) {
 
-                case NORTHBOUND_REQUEST_BOLT:
+                case SPLITTER_BOLT:
                     message = (Message) tuple.getValueByField(MESSAGE_FIELD);
 
                     switch (streamId) {
@@ -143,6 +143,60 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
                                 message.setDestination(Destination.TOPOLOGY_ENGINE);
                                 values = new Values(message, flowId);
                                 outputCollector.emit(StreamType.DELETE.toString(), tuple, values);
+
+                            } else {
+                                logMessage = String.format("Flow not found: %s=%s", Utils.FLOW_ID, flowId);
+                                logger.error("{}, {}={}, component={}, stream={}", logMessage,
+                                        Utils.CORRELATION_ID, message.getCorrelationId(), componentId, streamId);
+
+                                errorMessage = getErrorMessage(message.getCorrelationId(),
+                                        ErrorType.NOT_FOUND, logMessage, componentId.toString().toLowerCase());
+
+                                values = new Values(errorMessage, ErrorType.NOT_FOUND);
+                                outputCollector.emit(StreamType.ERROR.toString(), tuple, values);
+                            }
+                            break;
+
+                        case RESTORE:
+                            flowStatus = flowStates.get(flowId);
+
+                            if (flowStatus == null) {
+                                logger.debug("Flow restore message: {}={}, {}={}, component={}, stream={}",
+                                        Utils.CORRELATION_ID, message.getCorrelationId(),
+                                        Utils.FLOW_ID, flowId, componentId, streamId);
+
+                                flowStates.put(flowId, FlowState.ALLOCATED);
+
+                                message.setDestination(Destination.TOPOLOGY_ENGINE);
+                                values = new Values(message, flowId);
+                                outputCollector.emit(StreamType.CREATE.toString(), tuple, values);
+
+                            } else {
+                                logMessage = String.format("Flow already exists: %s=%s", Utils.FLOW_ID, flowId);
+                                logger.error("{}, {}={}, component={}, stream={}", logMessage,
+                                        Utils.CORRELATION_ID, message.getCorrelationId(), componentId, streamId);
+
+                                errorMessage = getErrorMessage(message.getCorrelationId(),
+                                        ErrorType.ALREADY_EXISTS, logMessage, componentId.toString().toLowerCase());
+
+                                values = new Values(errorMessage, ErrorType.ALREADY_EXISTS);
+                                outputCollector.emit(StreamType.ERROR.toString(), tuple, values);
+                            }
+                            break;
+
+                        case REROUTE:
+                            flowStatus = flowStates.get(flowId);
+
+                            if (flowStatus != null) {
+                                logger.debug("Flow reroute message: {}={}, {}={}, component={}, stream={}",
+                                        Utils.CORRELATION_ID, message.getCorrelationId(),
+                                        Utils.FLOW_ID, flowId, componentId, streamId);
+
+                                flowStates.put(flowId, FlowState.ALLOCATED);
+
+                                message.setDestination(Destination.TOPOLOGY_ENGINE);
+                                values = new Values(message, flowId);
+                                outputCollector.emit(StreamType.UPDATE.toString(), tuple, values);
 
                             } else {
                                 logMessage = String.format("Flow not found: %s=%s", Utils.FLOW_ID, flowId);

@@ -14,6 +14,8 @@ import org.bitbucket.openkilda.messaging.command.flow.FlowCreateRequest;
 import org.bitbucket.openkilda.messaging.command.flow.FlowDeleteRequest;
 import org.bitbucket.openkilda.messaging.command.flow.FlowGetRequest;
 import org.bitbucket.openkilda.messaging.command.flow.FlowPathRequest;
+import org.bitbucket.openkilda.messaging.command.flow.FlowRerouteRequest;
+import org.bitbucket.openkilda.messaging.command.flow.FlowRestoreRequest;
 import org.bitbucket.openkilda.messaging.command.flow.FlowStatusRequest;
 import org.bitbucket.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.bitbucket.openkilda.messaging.command.flow.FlowsGetRequest;
@@ -37,11 +39,11 @@ import java.util.Map;
 /**
  * Northbound Request Bolt. Handles northbound requests.
  */
-public class NorthboundRequestBolt extends BaseRichBolt {
+public class SplitterBolt extends BaseRichBolt {
     /**
      * The logger.
      */
-    private static final Logger logger = LogManager.getLogger(NorthboundRequestBolt.class);
+    private static final Logger logger = LogManager.getLogger(SplitterBolt.class);
 
     /**
      * Output collector.
@@ -75,7 +77,7 @@ public class NorthboundRequestBolt extends BaseRichBolt {
                 outputCollector.emit(StreamType.CREATE.toString(), tuple, values);
 
             } else if (data instanceof FlowDeleteRequest) {
-                String flowId = ((FlowDeleteRequest) data).getPayload().getId();
+                String flowId = ((FlowDeleteRequest) data).getPayload().getFlowId();
 
                 logger.debug("Flow {} delete message: values={}", flowId, values);
 
@@ -89,6 +91,22 @@ public class NorthboundRequestBolt extends BaseRichBolt {
 
                 values = new Values(message, flowId);
                 outputCollector.emit(StreamType.UPDATE.toString(), tuple, values);
+
+            } else if (data instanceof FlowRestoreRequest) {
+                String flowId = ((FlowRestoreRequest) data).getPayload().getFlowId();
+
+                logger.debug("Flow {} restore message: values={}", flowId, values);
+
+                values = new Values(message, flowId);
+                outputCollector.emit(StreamType.RESTORE.toString(), tuple, values);
+
+            } else if (data instanceof FlowRerouteRequest) {
+                String flowId = ((FlowRerouteRequest) data).getPayload().getFlowId();
+
+                logger.debug("Flow {} reroute message: values={}", flowId, values);
+
+                values = new Values(message, flowId);
+                outputCollector.emit(StreamType.REROUTE.toString(), tuple, values);
 
             } else if (data instanceof FlowStatusRequest) {
                 String flowId = ((FlowStatusRequest) data).getPayload().getId();

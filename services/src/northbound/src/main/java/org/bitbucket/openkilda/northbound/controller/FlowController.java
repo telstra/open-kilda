@@ -56,7 +56,7 @@ public class FlowController {
      */
     @ApiOperation(value = "Creates new flow", response = FlowPayload.class)
     @ApiResponses(value = {
-            @ApiResponse(code = 200, response = MessageError.class, message = "Operation is successful"),
+            @ApiResponse(code = 200, response = FlowPayload.class, message = "Operation is successful"),
             @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
             @ApiResponse(code = 401, response = MessageError.class, message = "Unauthorized"),
             @ApiResponse(code = 403, response = MessageError.class, message = "Forbidden"),
@@ -85,7 +85,7 @@ public class FlowController {
      */
     @ApiOperation(value = "Gets flow", response = FlowPayload.class)
     @ApiResponses(value = {
-            @ApiResponse(code = 200, response = MessageError.class, message = "Operation is successful"),
+            @ApiResponse(code = 200, response = FlowPayload.class, message = "Operation is successful"),
             @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
             @ApiResponse(code = 401, response = MessageError.class, message = "Unauthorized"),
             @ApiResponse(code = 403, response = MessageError.class, message = "Forbidden"),
@@ -113,7 +113,7 @@ public class FlowController {
      */
     @ApiOperation(value = "Deletes flow", response = FlowPayload.class)
     @ApiResponses(value = {
-            @ApiResponse(code = 200, response = MessageError.class, message = "Operation is successful"),
+            @ApiResponse(code = 200, response = FlowPayload.class, message = "Operation is successful"),
             @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
             @ApiResponse(code = 401, response = MessageError.class, message = "Unauthorized"),
             @ApiResponse(code = 403, response = MessageError.class, message = "Forbidden"),
@@ -142,7 +142,7 @@ public class FlowController {
      */
     @ApiOperation(value = "Updates flow", response = FlowPayload.class)
     @ApiResponses(value = {
-            @ApiResponse(code = 200, response = MessageError.class, message = "Operation is successful"),
+            @ApiResponse(code = 200, response = FlowPayload.class, message = "Operation is successful"),
             @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
             @ApiResponse(code = 401, response = MessageError.class, message = "Unauthorized"),
             @ApiResponse(code = 403, response = MessageError.class, message = "Forbidden"),
@@ -171,7 +171,7 @@ public class FlowController {
      */
     @ApiOperation(value = "Dumps all flows", response = FlowPayload.class)
     @ApiResponses(value = {
-            @ApiResponse(code = 200, response = MessageError.class, message = "Operation is successful"),
+            @ApiResponse(code = 200, response = FlowPayload.class, message = "Operation is successful"),
             @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
             @ApiResponse(code = 401, response = MessageError.class, message = "Unauthorized"),
             @ApiResponse(code = 403, response = MessageError.class, message = "Forbidden"),
@@ -198,7 +198,7 @@ public class FlowController {
      */
     @ApiOperation(value = "Gets flow status", response = FlowIdStatusPayload.class)
     @ApiResponses(value = {
-            @ApiResponse(code = 200, response = MessageError.class, message = "Operation is successful"),
+            @ApiResponse(code = 200, response = FlowIdStatusPayload.class, message = "Operation is successful"),
             @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
             @ApiResponse(code = 401, response = MessageError.class, message = "Unauthorized"),
             @ApiResponse(code = 403, response = MessageError.class, message = "Forbidden"),
@@ -226,7 +226,7 @@ public class FlowController {
      */
     @ApiOperation(value = "Gets flow path", response = FlowPathPayload.class)
     @ApiResponses(value = {
-            @ApiResponse(code = 200, response = MessageError.class, message = "Operation is successful"),
+            @ApiResponse(code = 200, response = FlowPathPayload.class, message = "Operation is successful"),
             @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
             @ApiResponse(code = 401, response = MessageError.class, message = "Unauthorized"),
             @ApiResponse(code = 403, response = MessageError.class, message = "Forbidden"),

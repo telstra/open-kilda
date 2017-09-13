@@ -1,6 +1,6 @@
 package org.bitbucket.openkilda.northbound.service;
 
-import org.bitbucket.openkilda.northbound.model.HealthCheck;
+import org.bitbucket.openkilda.messaging.model.HealthCheck;
 
 /**
  * HealthCheckService is for getting info about components status.

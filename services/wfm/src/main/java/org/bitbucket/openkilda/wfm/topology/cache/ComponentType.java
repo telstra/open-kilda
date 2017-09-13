@@ -27,5 +27,10 @@ public enum ComponentType {
     /**
      * State bolt.
      */
-    CACHE_BOLT
+    CACHE_BOLT,
+
+    /**
+     * Requester bolt.
+     */
+    REQUESTER_BOLT
 }

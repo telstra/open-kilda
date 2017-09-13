@@ -3,6 +3,7 @@ package org.bitbucket.openkilda.wfm.topology.cache;
 import org.bitbucket.openkilda.messaging.ServiceType;
 import org.bitbucket.openkilda.messaging.Topic;
 import org.bitbucket.openkilda.wfm.topology.AbstractTopology;
+import org.bitbucket.openkilda.wfm.topology.event.OFEventWFMTopology;
 import org.bitbucket.openkilda.wfm.topology.utils.HealthCheckBolt;
 
 import org.apache.storm.Config;
@@ -27,6 +28,9 @@ public class CacheTopology extends AbstractTopology {
      */
     public CacheTopology() {
         checkAndCreateTopic(Topic.HEALTH_CHECK.getId());
+        checkAndCreateTopic(STATE_TPE_TOPIC);
+        checkAndCreateTopic(STATE_UPDATE_TOPIC);
+        checkAndCreateTopic(STATE_DUMP_TOPIC);
 
         logger.debug("Topology built {}: zookeeper={}, kafka={}, parallelism={}, workers={}",
                 topologyName, zookeeperHosts, kafkaHosts, parallelism, workers);
@@ -74,7 +78,7 @@ public class CacheTopology extends AbstractTopology {
 
         TopologyBuilder builder = new TopologyBuilder();
 
-        /*
+       /*
          * Receives cache from storage.
          */
         KafkaSpout storageSpout = createKafkaSpout(STATE_TPE_TOPIC);
@@ -89,8 +93,8 @@ public class CacheTopology extends AbstractTopology {
         /*
          * Stores network cache.
          */
-        StateBolt stateBolt = new StateBolt();
-        builder.setBolt(ComponentType.CACHE_BOLT.toString(), stateBolt, parallelism)
+        CacheBolt cacheBolt = new CacheBolt(OFEventWFMTopology.DEFAULT_DISCOVERY_TIMEOUT);
+        builder.setBolt(ComponentType.CACHE_BOLT.toString(), cacheBolt, parallelism)
                 .shuffleGrouping(ComponentType.WFM_UPDATE_KAFKA_SPOUT.toString())
                 .shuffleGrouping(ComponentType.TPE_KAFKA_SPOUT.toString());
 

@@ -1,25 +1,33 @@
-from kafka import KafkaConsumer, TopicPartition
-import json
+from kafka import KafkaConsumer
 import time
 import os
-print "Connecting to kafka using application defined configuration:"
+
+from logger import get_logger
+
+logger = get_logger()
+logger.info('Connecting to kafka using application defined configuration')
+
 
 def create_consumer():
-    bootstrapServer = os.environ['bootstrapserver']
+    bootstrap_server = os.environ['bootstrapserver']
     topic = os.environ['topic']
     group = os.environ['group']
 
     while True:
         try:
-            consumer = KafkaConsumer(bootstrap_servers=bootstrapServer, group_id=group, auto_offset_reset='earliest')
+            consumer = KafkaConsumer(bootstrap_servers=bootstrap_server,
+                                     group_id=group,
+                                     auto_offset_reset='earliest')
             consumer.subscribe(['{}'.format(topic)])
-            print "Connected to kafka"
+            logger.info('Connected to kafka')
             break
+
         except Exception as e:
-            print "The follow error was generated:"
-            print e
+            logger.exception('Can not connect to Kafka: %s', e.message)
             time.sleep(5)
+
     return consumer
+
 
 def read_message(consumer):
     try:
@@ -27,7 +35,8 @@ def read_message(consumer):
         if message.value is not "":
             return message.value
         else:
-            print "sleeping"
+            logger.debug('sleeping')
             time.sleep(1)
+
     except Exception as e:
-        print e
+        logger.exception('Can not read message: %s', e.message)

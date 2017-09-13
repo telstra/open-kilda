@@ -17,6 +17,7 @@ import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.error.ErrorData;
 import org.bitbucket.openkilda.messaging.error.ErrorMessage;
 import org.bitbucket.openkilda.messaging.error.ErrorType;
+import org.bitbucket.openkilda.messaging.model.ImmutablePair;
 import org.bitbucket.openkilda.messaging.payload.flow.OutputVlanType;
 
 import org.projectfloodlight.openflow.types.VlanVid;
@@ -32,7 +33,6 @@ import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.util.FlowModUtils;
-import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.projectfloodlight.openflow.protocol.OFErrorMsg;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowDelete;

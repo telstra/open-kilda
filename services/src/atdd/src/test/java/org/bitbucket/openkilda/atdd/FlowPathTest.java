@@ -9,12 +9,12 @@ import org.bitbucket.openkilda.messaging.info.event.IslInfoData;
 import org.bitbucket.openkilda.messaging.info.event.PathInfoData;
 import org.bitbucket.openkilda.messaging.info.event.PathNode;
 import org.bitbucket.openkilda.messaging.model.Flow;
+import org.bitbucket.openkilda.messaging.model.ImmutablePair;
 import org.bitbucket.openkilda.topo.TopologyHelp;
 
 import cucumber.api.java.en.Given;
 import cucumber.api.java.en.Then;
 import cucumber.api.java.en.When;
-import org.apache.commons.lang3.tuple.ImmutablePair;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -84,7 +84,8 @@ public class FlowPathTest {
 
     @Then("^flow (.*) with (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) path correct$")
     public void flowPathCorrect(String flowId, String sourceSwitch, int sourcePort, int sourceVlan,
-                                String destinationSwitch, int destinationPort, int destinationVlan, int bandwidth) {
+                                String destinationSwitch, int destinationPort, int destinationVlan, int bandwidth)
+            throws Exception {
         Flow flow = new Flow(FlowUtils.getFlowName(flowId), bandwidth, flowId, sourceSwitch,
                 sourcePort, sourceVlan, destinationSwitch, destinationPort, destinationVlan);
         ImmutablePair<PathInfoData, PathInfoData> path = FlowUtils.getFlowPath(flow);

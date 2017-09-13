@@ -5,6 +5,11 @@ package org.bitbucket.openkilda.wfm.topology.flow;
  */
 public enum ComponentType {
     /**
+     * Network cache dump spout. Receives network cache dump.
+     */
+    NETWORK_CACHE_SPOUT,
+
+    /**
      * Northbound kafka spout. Receives Northbound requests.
      */
     NORTHBOUND_KAFKA_SPOUT,
@@ -40,9 +45,14 @@ public enum ComponentType {
     SPEAKER_KAFKA_BOLT,
 
     /**
-     * Northbound bolt. Processes Northbound requests and splits it on streams with flow-id fields.
+     * Cache kafka bolt. Sends flows to cache topology.
      */
-    NORTHBOUND_REQUEST_BOLT,
+    CACHE_KAFKA_BOLT,
+
+    /**
+     * Splitter bolt. Processes flow requests and splits it on streams with flow-id fields.
+     */
+    SPLITTER_BOLT,
 
     /**
      * Status bolt. Processes all flow requests and tracks flows status.

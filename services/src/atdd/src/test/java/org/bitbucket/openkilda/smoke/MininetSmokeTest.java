@@ -13,7 +13,7 @@ import java.net.URL;
  */
 public class MininetSmokeTest {
 
-    private void testIt(URL url) throws IOException {
+    private void testIt(URL url) throws Exception {
         TestUtils.clearEverything();
 
         TopologyHelp.TestMininetCreate(
@@ -22,7 +22,7 @@ public class MininetSmokeTest {
     }
 
     @Test
-    public void test5_20() throws IOException {
+    public void test5_20() throws Exception {
         testIt(Resources.getResource("topologies/rand-5-20.json"));
     }
 

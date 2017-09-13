@@ -139,7 +139,7 @@ public class Flow implements Serializable {
         this.transitVlan = flow.getTransitVlan();
         this.meterId = flow.getMeterId();
         this.flowPath = flow.getFlowPath();
-        this.state = flow.getFlowState();
+        this.state = flow.getState();
     }
 
     /**
@@ -244,7 +244,7 @@ public class Flow implements Serializable {
      *
      * @return flow state
      */
-    public FlowState getFlowState() {
+    public FlowState getState() {
         return state;
     }
 
@@ -253,7 +253,7 @@ public class Flow implements Serializable {
      *
      * @param state flow state
      */
-    public void setFlowState(FlowState state) {
+    public void setState(FlowState state) {
         this.state = state;
     }
 
@@ -518,7 +518,7 @@ public class Flow implements Serializable {
         return Objects.equals(getFlowId(), flow.getFlowId())
                 && getBandwidth() == flow.getBandwidth()
                 && Objects.equals(getDescription(), flow.getDescription())
-                && getFlowState() == flow.getFlowState()
+                && getState() == flow.getState()
                 && Objects.equals(getSourceSwitch(), flow.getSourceSwitch())
                 && getSourcePort() == flow.getSourcePort()
                 && getSourceVlan() == flow.getSourceVlan()

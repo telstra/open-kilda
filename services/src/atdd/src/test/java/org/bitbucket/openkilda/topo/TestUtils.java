@@ -137,18 +137,19 @@ public class TestUtils {
     /**
      * Default behavior - hit localhost
      */
-    public static void clearEverything(){
+    public static void clearEverything() throws Exception {
         clearEverything("localhost");
     }
 
     /**
      * @param endpoint the kilda endpoint to clear
      */
-    public static void clearEverything(String endpoint){
+    public static void clearEverything(String endpoint) throws Exception {
         TopologyHelp.DeleteMininetTopology();
 
         // verify it is empty
         String entity = TopologyHelp.ClearTopology();
+        Thread.sleep(500);
         String expected = "{\"nodes\": []}";
         assertEquals("Default, initial, response from TopologyEngine", expected, entity);
 

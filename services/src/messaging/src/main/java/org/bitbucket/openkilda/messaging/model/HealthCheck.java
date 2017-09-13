@@ -1,4 +1,4 @@
-package org.bitbucket.openkilda.northbound.model;
+package org.bitbucket.openkilda.messaging.model;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 
@@ -6,6 +6,7 @@ import org.bitbucket.openkilda.messaging.Utils;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 import java.io.Serializable;
@@ -26,22 +27,26 @@ public class HealthCheck implements Serializable {
     /**
      * The service name.
      */
+    @JsonProperty("name")
     private String name;
 
     /**
      * The service version.
      */
+    @JsonProperty("version")
     private String version;
 
     /**
      * The service description.
      */
+    @JsonProperty("description")
     private String description;
 
     /**
      * Components status.
      */
-    private Map<String, String> status;
+    @JsonProperty("components")
+    private Map<String, String> components;
 
     /**
      * Constructs the health-check model.
@@ -55,14 +60,17 @@ public class HealthCheck implements Serializable {
      * @param name        service name
      * @param version     service version
      * @param description service description
-     * @param status      topologies status
+     * @param components  components status
      */
     @JsonCreator
-    public HealthCheck(String name, String version, String description, Map<String, String> status) {
+    public HealthCheck(@JsonProperty("name") String name,
+                       @JsonProperty("version") String version,
+                       @JsonProperty("description") String description,
+                       @JsonProperty("components") Map<String, String> components) {
         setName(name);
         setServiceVersion(version);
         setDescription(description);
-        setStatus(status);
+        setComponents(components);
     }
 
     /**
@@ -124,17 +132,17 @@ public class HealthCheck implements Serializable {
      *
      * @return components statuses
      */
-    public Map<String, String> getStatus() {
-        return status;
+    public Map<String, String> getComponents() {
+        return components;
     }
 
     /**
      * Sets components statuses.
      *
-     * @param status components statuses
+     * @param components components statuses
      */
-    public void setStatus(Map<String, String> status) {
-        this.status = status;
+    public void setComponents(Map<String, String> components) {
+        this.components = components;
     }
 
     /**
@@ -146,7 +154,7 @@ public class HealthCheck implements Serializable {
                 .add("name", name)
                 .add("version", version)
                 .add("description", description)
-                .add("topologies-status", status)
+                .add("components", components)
                 .toString();
     }
 
@@ -167,7 +175,7 @@ public class HealthCheck implements Serializable {
         return Objects.equals(this.getName(), that.getName())
                 && Objects.equals(this.getVersion(), that.getVersion())
                 && Objects.equals(this.getDescription(), that.getDescription())
-                && Objects.equals(this.getStatus(), that.getStatus());
+                && Objects.equals(this.getComponents(), that.getComponents());
     }
 
     /**
@@ -175,7 +183,7 @@ public class HealthCheck implements Serializable {
      */
     @Override
     public int hashCode() {
-        return Objects.hash(name, version, description, status);
+        return Objects.hash(name, version, description, components);
     }
 
     /**
@@ -184,6 +192,6 @@ public class HealthCheck implements Serializable {
      * @return true in case of any non operational topologies
      */
     public boolean hasNonOperational() {
-        return status.values().stream().anyMatch(Utils.HEALTH_CHECK_NON_OPERATIONAL_STATUS::equals);
+        return components.values().stream().anyMatch(Utils.HEALTH_CHECK_NON_OPERATIONAL_STATUS::equals);
     }
 }

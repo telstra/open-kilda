@@ -1,43 +1,55 @@
-import db, kafkareader
+import kafkareader
 import json
 import time
 import threading
 
-from datetime import datetime
 from messageclasses import MessageItem
-from pprint import pprint
+from logger import get_logger
 
-print "Topology engine started."
-handleableMessages = ['switch', 'isl', 'port']
-handleableCommands = ['flow_create', 'flow_delete', 'flow_update', 'flow_path',
-                      'flow_get', 'flows_get', 'flow_reroute', 'dump_network']
 
-def get_events(threadcount):
+logger = get_logger()
+logger.info('Topology engine started')
+known_messages = ['switch', 'isl', 'port']
+known_commands = ['flow_create', 'flow_delete', 'flow_update', 'flow_path',
+                  'flow_get', 'flows_get', 'flow_reroute', 'network']
+
+
+def get_events(thread_count):
     global workerthreadcount
-    print "starting thread: {}".format(threadcount)
+
+    logger.info('starting thread: %s', str(thread_count))
     consumer = kafkareader.create_consumer()
+
     while True:
         try:
-            rawevent = kafkareader.read_message(consumer)
-            event = MessageItem(**json.loads(rawevent))
-            if "TOPOLOGY_ENGINE" != event.destination:
-                print "Skip message for {}".format(event.destination)
-                continue
-            if event.get_message_type() in handleableMessages or event.get_command() in handleableCommands:
-                print "Processing message for {}".format(event.destination)
-                t = threading.Thread(target=topo_event_handler, args=(event,))
-                t.daemon =True
-                t.start()
-        except Exception as e:
-            print e
+            raw_event = kafkareader.read_message(consumer)
+            event = MessageItem(**json.loads(raw_event))
 
-def topo_event_handler(event):
-    eventHandled = False
-    while not eventHandled:
-        eventHandled = event.handle()
-        if not eventHandled:
-            print "{} Unable to process event: {}".format("{:%d %b, %Y %H:%M:%S}".format(datetime.now()), event.get_type())
-            print "Message body: "
-            print event.to_json()
+            if "TOPOLOGY_ENGINE" != event.destination:
+                logger.debug('Skip message for %s', event.destination)
+                continue
+
+            if event.get_message_type() in known_messages\
+                    or event.get_command() in known_commands:
+                logger.debug('Processing message for %s', event.destination)
+                t = threading.Thread(target=topology_event_handler,
+                                     args=(event,))
+                t.daemon = True
+                t.start()
+
+        except Exception as e:
+            logger.exception(e.message)
+
+
+def topology_event_handler(event):
+    event_handled = False
+
+    while not event_handled:
+        event_handled = event.handle()
+
+        if not event_handled:
+            logger.error('Unable to process event: %s', event.get_type())
+            logger.error('Message body: %s', event.to_json())
             time.sleep(.1)
-    print "{} Event processed for: {}".format("{:%d %b, %Y %H:%M:%S}".format(datetime.now()), event.get_type())
+
+    logger.debug('Event processed for: %s', event.get_type())

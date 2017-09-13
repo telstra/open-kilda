@@ -1,3 +1,4 @@
+@FCRUD
 Feature: Initialisation of Basic Flow CRUD
 
   Cucumber framework does not support feature setup/teardown.

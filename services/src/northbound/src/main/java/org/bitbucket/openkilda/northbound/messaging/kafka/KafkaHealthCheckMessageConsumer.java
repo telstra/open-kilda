@@ -44,7 +44,7 @@ public class KafkaHealthCheckMessageConsumer implements HealthCheckMessageConsum
      *
      * @param record the message object instance
      */
-    @KafkaListener(id = "northbound-listener-health-check", topics = "kilda-health-check")
+    @KafkaListener(id = "northbound-listener-health-check", topics = "kilda.health.check")
     public void receive(final String record) {
         try {
             logger.debug("message received");

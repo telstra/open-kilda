@@ -2,12 +2,13 @@ package org.bitbucket.openkilda.northbound.service.impl;
 
 import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.ServiceType;
+import org.bitbucket.openkilda.messaging.Topic;
 import org.bitbucket.openkilda.messaging.Utils;
 import org.bitbucket.openkilda.messaging.command.CommandMessage;
 import org.bitbucket.openkilda.messaging.command.discovery.HealthCheckCommandData;
+import org.bitbucket.openkilda.messaging.model.HealthCheck;
 import org.bitbucket.openkilda.northbound.messaging.HealthCheckMessageConsumer;
 import org.bitbucket.openkilda.northbound.messaging.MessageProducer;
-import org.bitbucket.openkilda.northbound.model.HealthCheck;
 import org.bitbucket.openkilda.northbound.service.HealthCheckService;
 
 import org.slf4j.Logger;
@@ -28,6 +29,11 @@ public class HealthCheckImpl implements HealthCheckService {
      * The logger.
      */
     private static final Logger logger = LoggerFactory.getLogger(HealthCheckImpl.class);
+
+    /**
+     * Health-Check topic.
+     */
+    private static final String topic = Topic.HEALTH_CHECK.getId();
 
     /**
      * Health-Check dump command requester.
@@ -52,12 +58,6 @@ public class HealthCheckImpl implements HealthCheckService {
      */
     @Value("${service.description}")
     private String serviceDescription;
-
-    /**
-     * The kafka health-check topic.
-     */
-    @Value("${kafka.health.check.topic}")
-    private String topic;
 
     /**
      * Kafka message consumer.

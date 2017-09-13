@@ -3,17 +3,19 @@ package org.bitbucket.openkilda.pce.cache;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
+import org.bitbucket.openkilda.messaging.error.CacheException;
 import org.bitbucket.openkilda.messaging.info.event.IslInfoData;
 import org.bitbucket.openkilda.messaging.info.event.PathInfoData;
 import org.bitbucket.openkilda.messaging.info.event.PathNode;
+import org.bitbucket.openkilda.messaging.info.event.PortInfoData;
 import org.bitbucket.openkilda.messaging.model.Flow;
+import org.bitbucket.openkilda.messaging.model.ImmutablePair;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowState;
 import org.bitbucket.openkilda.pce.NetworkTopologyConstants;
 import org.bitbucket.openkilda.pce.provider.PathComputer;
 import org.bitbucket.openkilda.pce.provider.PathComputerMock;
 
 import edu.emory.mathcs.backport.java.util.Collections;
-import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -48,7 +50,7 @@ public class FlowCacheTest {
         flowCache.clear();
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test(expected = CacheException.class)
     public void getNotExistentFlow() throws Exception {
         flowCache.getFlow(firstFlow.getFlowId());
     }
@@ -80,7 +82,7 @@ public class FlowCacheTest {
         assertEquals(1, flowCache.dumpFlows().size());
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test(expected = CacheException.class)
     public void createAlreadyExistentFlow() throws Exception {
         ImmutablePair<PathInfoData, PathInfoData> path = computer.getPath(firstFlow);
         flowCache.createFlow(firstFlow, path);
@@ -146,13 +148,13 @@ public class FlowCacheTest {
         ImmutablePair<Flow, Flow> second = flowCache.createFlow(secondFlow, computer.getPath(secondFlow));
         ImmutablePair<Flow, Flow> third = flowCache.createFlow(thirdFlow, computer.getPath(thirdFlow));
 
-        affected = flowCache.getAffectedBySwitchFlows(NetworkTopologyConstants.sw5.getSwitchId());
+        affected = flowCache.getAffectedFlows(NetworkTopologyConstants.sw5.getSwitchId());
         assertEquals(new HashSet<>(Arrays.asList(first, second)), affected);
 
-        affected = flowCache.getAffectedBySwitchFlows(NetworkTopologyConstants.sw3.getSwitchId());
+        affected = flowCache.getAffectedFlows(NetworkTopologyConstants.sw3.getSwitchId());
         assertEquals(new HashSet<>(Arrays.asList(first, second, third)), affected);
 
-        affected = flowCache.getAffectedBySwitchFlows(NetworkTopologyConstants.sw1.getSwitchId());
+        affected = flowCache.getAffectedFlows(NetworkTopologyConstants.sw1.getSwitchId());
         assertEquals(Collections.singleton(first), affected);
     }
 
@@ -163,16 +165,36 @@ public class FlowCacheTest {
         ImmutablePair<Flow, Flow> second = flowCache.createFlow(secondFlow, computer.getPath(secondFlow));
         flowCache.createFlow(thirdFlow, computer.getPath(thirdFlow));
 
-        affected = flowCache.getAffectedByIslFlows(NetworkTopologyConstants.isl12);
+        affected = flowCache.getAffectedFlows(NetworkTopologyConstants.isl12);
         assertEquals(Collections.singleton(first), affected);
 
-        affected = flowCache.getAffectedByIslFlows(NetworkTopologyConstants.isl21);
+        affected = flowCache.getAffectedFlows(NetworkTopologyConstants.isl21);
         assertEquals(Collections.singleton(first), affected);
 
-        affected = flowCache.getAffectedByIslFlows(NetworkTopologyConstants.isl53);
+        affected = flowCache.getAffectedFlows(NetworkTopologyConstants.isl53);
         assertEquals(new HashSet<>(Arrays.asList(first, second)), affected);
 
-        affected = flowCache.getAffectedByIslFlows(NetworkTopologyConstants.isl35);
+        affected = flowCache.getAffectedFlows(NetworkTopologyConstants.isl35);
+        assertEquals(new HashSet<>(Arrays.asList(first, second)), affected);
+    }
+
+    @Test
+    public void getAffectedByPortFlows() throws Exception {
+        Set<ImmutablePair<Flow, Flow>> affected;
+        ImmutablePair<Flow, Flow> first = flowCache.createFlow(firstFlow, computer.getPath(firstFlow));
+        ImmutablePair<Flow, Flow> second = flowCache.createFlow(secondFlow, computer.getPath(secondFlow));
+        flowCache.createFlow(thirdFlow, computer.getPath(thirdFlow));
+
+        affected = flowCache.getAffectedFlows(new PortInfoData(NetworkTopologyConstants.isl12.getPath().get(0)));
+        assertEquals(Collections.singleton(first), affected);
+
+        affected = flowCache.getAffectedFlows(new PortInfoData(NetworkTopologyConstants.isl21.getPath().get(0)));
+        assertEquals(Collections.singleton(first), affected);
+
+        affected = flowCache.getAffectedFlows(new PortInfoData(NetworkTopologyConstants.isl53.getPath().get(0)));
+        assertEquals(new HashSet<>(Arrays.asList(first, second)), affected);
+
+        affected = flowCache.getAffectedFlows(new PortInfoData(NetworkTopologyConstants.isl35.getPath().get(0)));
         assertEquals(new HashSet<>(Arrays.asList(first, second)), affected);
     }
 
@@ -370,7 +392,7 @@ public class FlowCacheTest {
         assertEquals(expected, flowCache.getPathIntersection(path23, path43));
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test(expected = CacheException.class)
     public void getPathWithNoEnoughAvailableBandwidth() throws Exception {
         getPathIntersection();
         System.out.println(networkCache.dumpIsls());

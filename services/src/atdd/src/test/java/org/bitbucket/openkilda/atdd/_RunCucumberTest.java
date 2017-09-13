@@ -1,9 +1,8 @@
 package org.bitbucket.openkilda.atdd;
 
-import org.junit.runner.RunWith;
-
 import cucumber.api.CucumberOptions;
 import cucumber.api.junit.Cucumber;
+import org.junit.runner.RunWith;
 
 /*
  * The features option allows us to filter which directories to look at for features.

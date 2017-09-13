@@ -1,3 +1,4 @@
+@NB
 Feature: Initialisation of Northbound tests
 
   Cucumber framework does not support feature setup/teardown.

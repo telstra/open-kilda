@@ -5,9 +5,9 @@ import org.bitbucket.openkilda.messaging.info.event.PathInfoData;
 import org.bitbucket.openkilda.messaging.info.event.PathNode;
 import org.bitbucket.openkilda.messaging.info.event.SwitchInfoData;
 import org.bitbucket.openkilda.messaging.model.Flow;
+import org.bitbucket.openkilda.messaging.model.ImmutablePair;
 
 import com.google.common.graph.MutableNetwork;
-import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.neo4j.driver.v1.AuthTokens;
 import org.neo4j.driver.v1.Driver;
 import org.neo4j.driver.v1.GraphDatabase;
@@ -35,11 +35,6 @@ public class NeoDriver implements PathComputer {
      * Clean database query.
      */
     private static final String CLEAN_FORMATTER_PATTERN = "MATCH (n) DETACH DELETE n";
-
-    /**
-     * Isl query formatter pattern.
-     */
-    private static final String ISL_QUERY_FORMATTER_PATTERN = "MATCH (r:isl) WHERE isl.id = {id} RETURN r";
 
     /**
      * Path query formatter pattern.
@@ -131,53 +126,57 @@ public class NeoDriver implements PathComputer {
         List<PathNode> forwardNodes = new LinkedList<>();
         List<PathNode> reverseNodes = new LinkedList<>();
 
-        Statement pathStatement = new Statement(PATH_QUERY_FORMATTER_PATTERN);
-        Value pathValue = Values.parameters("src_switch", srcSwitch, "dst_switch", dstSwitch, "bandwidth", bandwidth);
+        if (!srcSwitch.equals(dstSwitch)) {
+            Statement pathStatement = new Statement(PATH_QUERY_FORMATTER_PATTERN);
+            Value value = Values.parameters("src_switch", srcSwitch, "dst_switch", dstSwitch, "bandwidth", bandwidth);
 
-        if (driver != null) {
-            Session session = driver.session();
-            StatementResult result = session.run(pathStatement.withParameters(pathValue));
+            if (driver != null) {
+                Session session = driver.session();
+                StatementResult result = session.run(pathStatement.withParameters(value));
 
-            if (result.hasNext()) {
+                if (result.hasNext()) {
 
-                Record record = result.next();
+                    Record record = result.next();
 
-                if (record != null) {
-                    LinkedList<Relationship> isls = new LinkedList<>();
-                    record.fields().get(0).value().asPath().relationships().forEach(isls::add);
+                    if (record != null) {
+                        LinkedList<Relationship> isls = new LinkedList<>();
+                        record.fields().get(0).value().asPath().relationships().forEach(isls::add);
 
-                    int seqId = 0;
-                    for (Relationship isl : isls) {
-                        latency += isl.get("latency").asLong();
+                        int seqId = 0;
+                        for (Relationship isl : isls) {
+                            latency += isl.get("latency").asLong();
 
-                        forwardNodes.add(new PathNode(isl.get("src_switch").asString(),
-                                isl.get("src_port").asInt(), seqId, isl.get("latency").asLong()));
-                        seqId++;
+                            forwardNodes.add(new PathNode(isl.get("src_switch").asString(),
+                                    isl.get("src_port").asInt(), seqId, isl.get("latency").asLong()));
+                            seqId++;
 
-                        forwardNodes.add(new PathNode(isl.get("dst_switch").asString(),
-                                isl.get("dst_port").asInt(), seqId, 0L));
-                        seqId++;
-                    }
+                            forwardNodes.add(new PathNode(isl.get("dst_switch").asString(),
+                                    isl.get("dst_port").asInt(), seqId, 0L));
+                            seqId++;
+                        }
 
-                    seqId = 0;
-                    Collections.reverse(isls);
+                        seqId = 0;
+                        Collections.reverse(isls);
 
-                    for (Relationship isl : isls) {
-                        reverseNodes.add(new PathNode(isl.get("dst_switch").asString(),
-                                isl.get("dst_port").asInt(), seqId, isl.get("latency").asLong()));
-                        seqId++;
+                        for (Relationship isl : isls) {
+                            reverseNodes.add(new PathNode(isl.get("dst_switch").asString(),
+                                    isl.get("dst_port").asInt(), seqId, isl.get("latency").asLong()));
+                            seqId++;
 
-                        reverseNodes.add(new PathNode(isl.get("src_switch").asString(),
-                                isl.get("src_port").asInt(), seqId, 0L));
-                        seqId++;
+                            reverseNodes.add(new PathNode(isl.get("src_switch").asString(),
+                                    isl.get("src_port").asInt(), seqId, 0L));
+                            seqId++;
+                        }
                     }
                 }
+
+                session.close();
+
+            } else {
+                logger.error("NeoDriver was not created");
             }
-
-            session.close();
-
         } else {
-            logger.error("NeoDriver was not created");
+            logger.info("No path computation for one-switch flow");
         }
 
         return new ImmutablePair<>(new PathInfoData(latency, forwardNodes), new PathInfoData(latency, reverseNodes));
