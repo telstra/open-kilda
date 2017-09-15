@@ -57,7 +57,9 @@ public class SimpleSplitterTest extends AbstractStormTest {
         long messagesReceived = Files.readLines(kfiler.getFiler().getFile(), Charsets.UTF_8).size();
         Assert.assertEquals(messagesExpected,messagesReceived);
 
-        Utils.sleep( 2 * 1000);
+        cluster.killTopology(splitter.defaultTopoName);
+        cluster.killTopology("utils-1");
+        Utils.sleep(4 * 1000);
 
 // This code block was preferred but didn't work - ie interrogate Kafka and get number of
 // messages sent. Unfortunately, the code returned 0 each time.  So, plan B was to dump to file.

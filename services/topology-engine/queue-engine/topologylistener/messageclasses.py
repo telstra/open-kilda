@@ -406,24 +406,6 @@ class MessageItem(object):
         return True
 
     @staticmethod
-    def get_flows():
-        try:
-            flows = []
-            for data in flow_utils.get_flows():
-                flows.append(data['r'])
-
-            print 'Got flows={}'.format(flows)
-
-        except Exception as exception:
-
-            print "Error: " \
-                  "could not get flows: {}".format(exception.message)
-            traceback.print_exc()
-            raise
-
-        return flows
-
-    @staticmethod
     def get_switches():
         try:
             query = "MATCH (n:switch) RETURN n"
@@ -435,12 +417,10 @@ class MessageItem(object):
                 if switch:
                     switches.append(switch)
 
-            print 'Got switches={}'.format(switches)
+            logger.info('Got switches: %s', switches)
 
-        except Exception as exception:
-            print "Error: " \
-                  "could not get switches: {}".format(exception.message)
-            traceback.print_exc()
+        except Exception as e:
+            logger.exception('Can not get switches', e.message)
             raise
 
         return switches
@@ -448,21 +428,33 @@ class MessageItem(object):
     @staticmethod
     def get_isls():
         try:
-            query = "MATCH (r:isl) RETURN r"
+            query = "MATCH (a:switch)-[r:isl]->(b:switch) RETURN r"
             result = graph.run(query).data()
 
             isls = []
             for data in result:
-                isl = data['r']
-                if isl:
-                    isls.append(isl)
+                link = data['r']
+                isl = {
+                    'id': str(link['src_switch'] + '_' + str(link['src_port'])),
+                    'speed': int(link['speed']),
+                    'latency_ns': int(link['latency']),
+                    'available_bandwidth': int(link['available_bandwidth']),
+                    'state': "DISCOVERED",
+                    'path': [
+                        {'switch_id': str(link['src_switch']),
+                         'port_no': int(link['src_port']),
+                         'seq_id': 0,
+                         'segment_latency': int(link['latency'])},
+                        {'switch_id': str(link['dst_switch']),
+                         'port_no': int(link['dst_port']),
+                         'seq_id': 1,
+                         'segment_latency': 0}]}
+                isls.append(isl)
 
-            print 'Got isls={}'.format(isls)
+            logger.info('Got isls: %s', isls)
 
-        except Exception as exception:
-            print "Error: " \
-                  "could not get isls: {}".format(exception.message)
-            traceback.print_exc()
+        except Exception as e:
+            logger.exception('Can not get isls', e.message)
             raise
 
         return isls
@@ -482,7 +474,7 @@ class MessageItem(object):
             logger.debug("%s: %s", step, isls)
 
             step = "Flows"
-            flows = self.get_flows()
+            flows = flow_utils.get_flows()
             logger.debug("%s: %s", step, flows)
 
             step = "Send"

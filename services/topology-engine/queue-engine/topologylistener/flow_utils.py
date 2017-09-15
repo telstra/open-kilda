@@ -207,7 +207,11 @@ def get_flows():
         result = graph.run(query).data()
 
         for data in result:
-            flow = data['r']
+            path = json.loads(data['r']['flowpath'])
+            flow = json.loads(json.dumps(data['r'],
+                                         default=lambda o: o.__dict__,
+                                         sort_keys=True))
+            flow['flowpath'] = path
             flow_pair = flows.get(flow['flowid'], {})
 
             if is_forward_cookie(int(flow['cookie'])):
@@ -216,7 +220,7 @@ def get_flows():
                 flow_pair['reverse'] = flow
             flows[flow['flowid']] = flow_pair
 
-        logger.info('Got flows=%s', flows)
+        logger.info('Got flows: %s', flows.values())
 
     except Exception as e:
         logger.exception('"Can not get flows: %s', e.message)

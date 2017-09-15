@@ -2,7 +2,9 @@ package org.bitbucket.openkilda.atdd;
 
 import static org.bitbucket.openkilda.DefaultParameters.opentsdbEndpoint;
 import static org.bitbucket.openkilda.flow.FlowUtils.getTimeDuration;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
 
 import org.bitbucket.openkilda.messaging.model.Metric;
 
@@ -18,6 +20,7 @@ import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.core.Response;
 
 public class StatisticsBasicTest {
+    private static final int TIMEOUT = 15;
 
     public boolean test = false;
 
@@ -30,7 +33,7 @@ public class StatisticsBasicTest {
         Response response = client
                 .target(opentsdbEndpoint)
                 .path("/api/query")
-                .queryParam("start", "4h-ago")
+                .queryParam("start", "24h-ago")
                 .queryParam("m", "sum:pen.switch.tx-bytes")
                 .queryParam("timezone", "Australia/Melbourne")
                 .request().get();
@@ -50,17 +53,18 @@ public class StatisticsBasicTest {
 
     @Then("^data go to database$")
     public void dataCreated() throws Throwable {
-        TimeUnit.SECONDS.sleep(10);
+        TimeUnit.SECONDS.sleep(TIMEOUT);
         List<Metric> result = getNumberOfDatapoints();
-        assertNotEquals(result, 0);
+
+        assertFalse(result.isEmpty());
     }
 
     @Then("^database keeps growing$")
     public void database_keeps_growing() throws Throwable {
-        List<Metric> result1 = getNumberOfDatapoints();
-        // floodlight-modules statistics gathering interval
-        TimeUnit.SECONDS.sleep(10);
-        List<Metric> result2 = getNumberOfDatapoints();
-        assertNotEquals(result1, result2);
+        List<Metric> firstResult = getNumberOfDatapoints();
+        TimeUnit.SECONDS.sleep(TIMEOUT);
+        List<Metric> secondResult = getNumberOfDatapoints();
+
+        assertNotEquals(firstResult, secondResult);
     }
 }

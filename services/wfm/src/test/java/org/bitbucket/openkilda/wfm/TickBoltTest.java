@@ -10,6 +10,7 @@ import org.apache.storm.testing.FeederSpout;
 import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
+import org.apache.storm.utils.Utils;
 import org.junit.*;
 
 import java.io.IOException;
@@ -83,5 +84,8 @@ public class TickBoltTest {
 
         Assert.assertEquals(3, tickBolt.tickFile.numLines());
         Assert.assertEquals(1, tickBolt.workFile.numLines());
+
+        cluster.killTopology(topoId);
+        Utils.sleep(4 * 1000);
     }
 }

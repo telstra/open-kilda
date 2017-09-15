@@ -30,6 +30,8 @@ public class CacheTopologyTest extends AbstractStormTest {
 
     @AfterClass
     public static void teardownOnce() throws Exception {
+        cluster.killTopology(CacheTopologyTest.class.getSimpleName());
+        Utils.sleep(4 * 1000);
         AbstractStormTest.teardownOnce();
     }
 

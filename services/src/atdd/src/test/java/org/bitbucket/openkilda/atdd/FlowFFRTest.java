@@ -1,45 +1,39 @@
 package org.bitbucket.openkilda.atdd;
 
-import java.util.Random;
-import java.util.List;
-import java.util.LinkedList;
-import java.util.Arrays;
+import static org.bitbucket.openkilda.DefaultParameters.trafficEndpoint;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
-import java.util.concurrent.TimeUnit;
 
+import org.bitbucket.openkilda.flow.FlowUtils;
+import org.bitbucket.openkilda.messaging.model.Flow;
+import org.bitbucket.openkilda.messaging.payload.flow.FlowEndpointPayload;
+import org.bitbucket.openkilda.messaging.payload.flow.FlowPayload;
+import org.bitbucket.openkilda.messaging.payload.flow.FlowState;
+import org.bitbucket.openkilda.topo.TopologyHelp;
+
+import cucumber.api.java.en.Given;
+import cucumber.api.java.en.When;
 import org.glassfish.jersey.client.ClientConfig;
-import static org.bitbucket.openkilda.DefaultParameters.trafficEndpoint;
+
+import java.io.File;
+import java.nio.file.Files;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.Entity;
-import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
-import org.bitbucket.openkilda.flow.FlowUtils;
-import org.bitbucket.openkilda.flow.Flow;
-import org.bitbucket.openkilda.messaging.payload.flow.FlowEndpointPayload;
-import org.bitbucket.openkilda.messaging.payload.flow.FlowPayload;
-import org.bitbucket.openkilda.messaging.model.Flow;
-import org.bitbucket.openkilda.messaging.payload.flow.FlowState;
-import org.bitbucket.openkilda.topo.TopologyHelp;
-import org.bitbucket.openkilda.messaging.payload.flow.FlowPayload;
-import org.bitbucket.openkilda.messaging.payload.flow.FlowEndpointPayload;
-import cucumber.api.java.en.Given;
-import cucumber.api.java.en.Then;
-import cucumber.api.java.en.When;
-import java.io.File;
-import java.nio.file.Files;
-
-public class FlowFFRTest{
+public class FlowFFRTest {
     private static final String fileName = "topologies/barebones-topology.json";
     private static int numberOfPathes = 2;
     private static final List<List<String>> failebleLinks = new LinkedList<List<String>>(Arrays.asList(
-        new LinkedList<String>(Arrays.asList("s3", "1")), new LinkedList<String>(Arrays.asList("s4", "1"))));
+            new LinkedList<String>(Arrays.asList("s3", "1")), new LinkedList<String>(Arrays.asList("s4", "1"))));
 
     private static final long FLOW_COOKIE = 1L;
     private static final String flowId = "1";
@@ -65,13 +59,13 @@ public class FlowFFRTest{
         String portNum = linkToFail.get(1);
         Client client = ClientBuilder.newClient(new ClientConfig());
         Response result = client
-           .target(trafficEndpoint)
-           .path("/set_link_state")
-           .queryParam("switch", switchName)
-           .queryParam("port", portNum)
-           .queryParam("newstate", "down")
-           .request()
-           .post(Entity.json(""));
+                .target(trafficEndpoint)
+                .path("/set_link_state")
+                .queryParam("switch", switchName)
+                .queryParam("port", portNum)
+                .queryParam("newstate", "down")
+                .request()
+                .post(Entity.json(""));
         assertEquals(200, result.getStatus());
     }
 
@@ -82,12 +76,12 @@ public class FlowFFRTest{
         String portNum = linkToFail.get(1);
         Client client = ClientBuilder.newClient(new ClientConfig());
         Response result = client
-           .target(trafficEndpoint)
-           .path("/cutlink")
-           .queryParam("switch", switchName)
-           .queryParam("port", portNum)
-           .request()
-           .post(Entity.json(""));
+                .target(trafficEndpoint)
+                .path("/cutlink")
+                .queryParam("switch", switchName)
+                .queryParam("port", portNum)
+                .request()
+                .post(Entity.json(""));
         assertEquals(200, result.getStatus());
     }
 
@@ -98,13 +92,14 @@ public class FlowFFRTest{
         String portNum = linkToFail.get(1);
         Client client = ClientBuilder.newClient(new ClientConfig());
         Response result = client
-           .target(trafficEndpoint)
-           .path("/knockoutswitch")
-           .queryParam("switch", switchName)
-           .request()
-           .post(Entity.json(""));
+                .target(trafficEndpoint)
+                .path("/knockoutswitch")
+                .queryParam("switch", switchName)
+                .request()
+                .post(Entity.json(""));
         assertEquals(200, result.getStatus());
     }
+
     private void resurrectLink() throws Throwable {
         List<String> linkToRestore = failedLinks.remove(1);
         failedLinks.add(linkToRestore);
@@ -112,13 +107,13 @@ public class FlowFFRTest{
         String portNum = linkToRestore.get(1);
         Client client = ClientBuilder.newClient(new ClientConfig());
         Response result = client
-           .target(trafficEndpoint)
-           .path("/set_link_state")
-           .queryParam("switch", switchName)
-           .queryParam("port", portNum)
-           .queryParam("newstate", "up")
-           .request()
-           .post(Entity.json(""));
+                .target(trafficEndpoint)
+                .path("/set_link_state")
+                .queryParam("switch", switchName)
+                .queryParam("port", portNum)
+                .queryParam("newstate", "up")
+                .request()
+                .post(Entity.json(""));
         assertEquals(200, result.getStatus());
     }
 
@@ -129,11 +124,11 @@ public class FlowFFRTest{
         String portNum = linkToRestore.get(1);
         Client client = ClientBuilder.newClient(new ClientConfig());
         Response result = client
-           .target(trafficEndpoint)
-           .path("/restorelink")
-           .queryParam("switch", switchName)
-           .request()
-           .post(Entity.json(""));
+                .target(trafficEndpoint)
+                .path("/restorelink")
+                .queryParam("switch", switchName)
+                .request()
+                .post(Entity.json(""));
         assertEquals(200, result.getStatus());
     }
 
@@ -144,12 +139,12 @@ public class FlowFFRTest{
         String portNum = linkToRestore.get(1);
         Client client = ClientBuilder.newClient(new ClientConfig());
         Response result = client
-           .target(trafficEndpoint)
-           .path("/reviveswitch")
-           .queryParam("switch", switchName)
-           .queryParam("controller", "tcp:172.19.0.6:6653")
-           .request()
-           .post(Entity.json(""));
+                .target(trafficEndpoint)
+                .path("/reviveswitch")
+                .queryParam("switch", switchName)
+                .queryParam("controller", "tcp:172.19.0.6:6653")
+                .request()
+                .post(Entity.json(""));
         assertEquals(200, result.getStatus());
     }
 
@@ -157,25 +152,25 @@ public class FlowFFRTest{
         TimeUnit.SECONDS.sleep(1);
         Client client = ClientBuilder.newClient(new ClientConfig());
         Response result = client
-           .target(trafficEndpoint)
-           .path("/checkflowtraffic")
-           .queryParam("srcswitch", "s1")
-           .queryParam("dstswitch", "s6")
-           .queryParam("srcport", "1")
-           .queryParam("dstport", "1")
-           .queryParam("srcvlan", "1000")
-           .queryParam("dstvlan", "1000")
-           .request()
-           .get();
+                .target(trafficEndpoint)
+                .path("/checkflowtraffic")
+                .queryParam("srcswitch", "s1")
+                .queryParam("dstswitch", "s6")
+                .queryParam("srcport", "1")
+                .queryParam("dstport", "1")
+                .queryParam("srcvlan", "1000")
+                .queryParam("dstvlan", "1000")
+                .request()
+                .get();
         return result.getStatus() == 200;
     }
 
     @Given("^basic multi-path topology$")
     public void a_multi_path_topology() throws Throwable {
-         ClassLoader classLoader = getClass().getClassLoader();
-         File file = new File(classLoader.getResource(fileName).getFile());
-         String json = new String(Files.readAllBytes(file.toPath()));
-         assert TopologyHelp.CreateMininetTopology(json);
+        ClassLoader classLoader = getClass().getClassLoader();
+        File file = new File(classLoader.getResource(fileName).getFile());
+        String json = new String(Files.readAllBytes(file.toPath()));
+        assert TopologyHelp.CreateMininetTopology(json);
     }
 
     @When("^a flow is successfully created$")
@@ -222,19 +217,19 @@ public class FlowFFRTest{
 
     @When("^there is an alternative route$")
     public void alternativeRouteExists() throws Throwable {
-         assertNotEquals(numberOfPathes, 0);
+        assertNotEquals(numberOfPathes, 0);
     }
 
     @When("^there is no alternative route$")
     public void noRoutesInFlow() throws Throwable {
-         assertEquals(numberOfPathes, 0);
+        assertEquals(numberOfPathes, 0);
     }
 
     @When("^system is operational$")
     public void systemIsOperational() throws Throwable {
-    // Makes sure that turning switches off does not render system inoperational.
-    // TODO: implement it or remove it from scenario (since a switch down should never
-    // lead to system degradation and that should porbably be checked elsewhere).
+        // Makes sure that turning switches off does not render system inoperational.
+        // TODO: implement it or remove it from scenario (since a switch down should never
+        // lead to system degradation and that should porbably be checked elsewhere).
     }
 
     @When("^a failed route comes back up$")

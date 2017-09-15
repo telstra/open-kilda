@@ -144,6 +144,11 @@ public class OFEventWfmTest extends AbstractStormTest {
         }
         // NB: ISL discovery messages will be generated .. multiple .. at present 9-11.
         Assert.assertTrue(messagesReceived > 0);
+
+        cluster.killTopology(topo.getTopoName());
+        cluster.killTopology("utils-1");
+        cluster.killTopology("utils-2");
+        Utils.sleep(4 * 1000);
     }
 
     protected long safeLinesCount(File filename) {
