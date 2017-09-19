@@ -1,6 +1,11 @@
 ---
 - hosts: localhost
   tasks:
+  - name: check linux version
+    shell: uname -r
+    ignore_errors: yes
+    register: uname_result
+
   - name: install apt packages
     apt:
       name: "{{ item }}"
@@ -24,5 +29,17 @@
     become_user: root
     become: true
 
-
+  - name: add xenial repo
+    apt_repository:
+      repo: deb http://security.ubuntu.com/ubuntu xenial-security main
+      state: present
+  - name: install linux image with modules.dep.bin
+    apt:
+      name: "{{ item }}"
+      update_cache: yes
+    with_items:
+    - linux-image-{{ uname_result.stdout }}
+    become_method: sudo
+    become_user: root
+    become: true
 
