@@ -9,7 +9,7 @@ import scapy.all as s
 
 
 number_of_packets = 1000
-expected_delta = 250
+expected_delta = 500
 
 
 def required_parameters(*pars):
@@ -57,10 +57,20 @@ def check_traffic(p):
         s.sendp(payload, iface=linkid, count=number_of_packets)
 
     def traffic_listener(traffic_goes_through, vlanid, link):
-        result = s.sniff(count=number_of_packets,
-                         filter='icmp and (vlan %s)' % vlanid,
-                         iface='%s' % link)
-        received = len([_ for _ in result if _.payload.payload.name == 'ICMP'])
+        # NOTE: sniff() takes optional filter argument which is supposed to
+        # contain BPF string. This filter is then supposed to be applied to
+        # captured packets in a manner similar to other traffic capture tools.
+        # However in case sniff() fails to use filtering it apparently just
+        # returns any packet instead of failing. It appears that running
+        # scapy in a container with insufficient (i.e. any other set than full
+        # set) privileges results exactly in this behavior. lfilter argument
+        # apparently makes things even worse since sniff appears to loose
+        # packets when lfilter is used.
+        # That is why an approach with a delta of packets and sniff timeout
+        # is used now. It appears to be the most reliable way to test traffic
+        # through flow.
+        result = s.sniff(timeout=5, iface=link)
+        received = sum(1 for _ in result if _.haslayer(s.ICMP))
         if number_of_packets - received < expected_delta:
             traffic_goes_through.value = True
 
@@ -72,7 +82,7 @@ def check_traffic(p):
         target=traffic_listener,
         args=(traffic_goes_through, p['dstvlan'],
               "%s-eth%s" % (p['dstswitch'], p['dstport'])))
-    checker.start(), sender.start(), sender.join(5), checker.join(5)
+    checker.start(), sender.start(), sender.join(5), checker.join(7)
 
     return respond(traffic_goes_through.value,
                    "Traffic seems to go through\n",
