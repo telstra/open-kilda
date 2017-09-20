@@ -1,6 +1,7 @@
 package org.bitbucket.openkilda.atdd;
 
 import static org.bitbucket.openkilda.DefaultParameters.trafficEndpoint;
+import static org.bitbucket.openkilda.flow.FlowUtils.isTrafficTestsEnabled;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
@@ -148,21 +149,25 @@ public class FlowFFRTest {
         assertEquals(200, result.getStatus());
     }
 
-    private boolean trafficIsOk() throws Throwable {
-        TimeUnit.SECONDS.sleep(1);
-        Client client = ClientBuilder.newClient(new ClientConfig());
-        Response result = client
-                .target(trafficEndpoint)
-                .path("/checkflowtraffic")
-                .queryParam("srcswitch", "s1")
-                .queryParam("dstswitch", "s6")
-                .queryParam("srcport", "1")
-                .queryParam("dstport", "1")
-                .queryParam("srcvlan", "1000")
-                .queryParam("dstvlan", "1000")
-                .request()
-                .get();
-        return result.getStatus() == 200;
+    private boolean trafficIsOk(boolean expectedResult) throws Throwable {
+        if (isTrafficTestsEnabled()) {
+            TimeUnit.SECONDS.sleep(1);
+            Client client = ClientBuilder.newClient(new ClientConfig());
+            Response result = client
+                    .target(trafficEndpoint)
+                    .path("/checkflowtraffic")
+                    .queryParam("srcswitch", "s1")
+                    .queryParam("dstswitch", "s6")
+                    .queryParam("srcport", "1")
+                    .queryParam("dstport", "1")
+                    .queryParam("srcvlan", "1000")
+                    .queryParam("dstvlan", "1000")
+                    .request()
+                    .get();
+            return result.getStatus() == 200;
+        } else {
+            return expectedResult;
+        }
     }
 
     @Given("^basic multi-path topology$")
@@ -194,12 +199,12 @@ public class FlowFFRTest {
 
     @When("^traffic flows through this flow$")
     public void trafficFlows() throws Throwable {
-        assertTrue(trafficIsOk());
+        assertTrue(trafficIsOk(true));
     }
 
     @When("^traffic does not flow through this flow$")
     public void trafficNotFlows() throws Throwable {
-        assertFalse(trafficIsOk());
+        assertFalse(trafficIsOk(false));
     }
 
 
@@ -223,13 +228,6 @@ public class FlowFFRTest {
     @When("^there is no alternative route$")
     public void noRoutesInFlow() throws Throwable {
         assertEquals(numberOfPathes, 0);
-    }
-
-    @When("^system is operational$")
-    public void systemIsOperational() throws Throwable {
-        // Makes sure that turning switches off does not render system inoperational.
-        // TODO: implement it or remove it from scenario (since a switch down should never
-        // lead to system degradation and that should porbably be checked elsewhere).
     }
 
     @When("^a failed route comes back up$")

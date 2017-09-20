@@ -221,7 +221,6 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
                                         Utils.CORRELATION_ID, message.getCorrelationId(),
                                         Utils.FLOW_ID, flowId, componentId, streamId);
 
-                                message.setDestination(Destination.TOPOLOGY_ENGINE);
                                 values = new Values(message, flowId);
                                 outputCollector.emit(StreamType.READ.toString(), tuple, values);
 
@@ -246,7 +245,6 @@ public class StatusBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, F
                                         Utils.CORRELATION_ID, message.getCorrelationId(),
                                         Utils.FLOW_ID, flowId, componentId, streamId);
 
-                                message.setDestination(Destination.TOPOLOGY_ENGINE);
                                 values = new Values(message, flowId);
                                 outputCollector.emit(StreamType.PATH.toString(), tuple, values);
 

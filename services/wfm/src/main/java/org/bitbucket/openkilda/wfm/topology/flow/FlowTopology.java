@@ -219,7 +219,7 @@ public class FlowTopology extends AbstractTopology {
          */
         NorthboundReplyBolt northboundReplyBolt = new NorthboundReplyBolt();
         builder.setBolt(ComponentType.NORTHBOUND_REPLY_BOLT.toString(), northboundReplyBolt, parallelism)
-                .shuffleGrouping(ComponentType.TOPOLOGY_ENGINE_BOLT.toString(), StreamType.RESPONSE.toString())
+                //.shuffleGrouping(ComponentType.TOPOLOGY_ENGINE_BOLT.toString(), StreamType.RESPONSE.toString())
                 .shuffleGrouping(ComponentType.STATUS_BOLT.toString(), StreamType.RESPONSE.toString())
                 .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.RESPONSE.toString())
                 .shuffleGrouping(ComponentType.ERROR_BOLT.toString(), StreamType.RESPONSE.toString());

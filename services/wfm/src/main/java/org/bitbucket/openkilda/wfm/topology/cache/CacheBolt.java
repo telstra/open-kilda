@@ -40,8 +40,10 @@ import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class CacheBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<String, Cache>> {
     /**
@@ -92,14 +94,14 @@ public class CacheBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<St
     /**
      * Flows dump.
      */
-    private Set<Flow> flows;
+    private final Set<Flow> flows = new HashSet<>();
 
     /**
      * Instance constructor.
      *
      * @param discoveryInterval discovery interval
      */
-    public CacheBolt(int discoveryInterval) {
+    CacheBolt(int discoveryInterval) {
         this.discoveryInterval = discoveryInterval;
     }
 
@@ -244,6 +246,7 @@ public class CacheBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<St
         }
         if (timePassed == discoveryInterval) {
             emitRestoreCommands(flows, tuple);
+            flows.clear();
         }
         if (timePassed <= discoveryInterval) {
             timePassed += 1;
@@ -266,6 +269,7 @@ public class CacheBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<St
             logger.debug("Fill network state {}", data);
             networkCache.load(data.getSwitches(), data.getIsls());
             flowCache.load(data.getFlows());
+            flows.addAll(formatFlows(data.getFlows()));
         } else {
             logger.warn("Incorrect network state {}", info);
         }
@@ -395,5 +399,20 @@ public class CacheBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<St
         }
 
         return values;
+    }
+
+    private Set<Flow> formatFlows(Set<ImmutablePair<Flow, Flow>> flows) {
+        return flows.stream()
+                .map(flow -> new Flow(
+                        flow.left.getFlowId(),
+                        flow.left.getBandwidth(),
+                        flow.left.getDescription(),
+                        flow.left.getSourceSwitch(),
+                        flow.left.getSourcePort(),
+                        flow.left.getSourceVlan(),
+                        flow.left.getDestinationSwitch(),
+                        flow.left.getDestinationPort(),
+                        flow.left.getDestinationVlan()))
+                .collect(Collectors.toSet());
     }
 }

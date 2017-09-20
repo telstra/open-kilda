@@ -1,7 +1,10 @@
 package org.bitbucket.openkilda.atdd;
 
+import static org.bitbucket.openkilda.DefaultParameters.trafficEndpoint;
+import static org.bitbucket.openkilda.flow.FlowUtils.isTrafficTestsEnabled;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -10,37 +13,31 @@ import org.bitbucket.openkilda.flow.FlowUtils;
 import org.bitbucket.openkilda.messaging.model.Flow;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowPayload;
-import org.bitbucket.openkilda.messaging.payload.flow.FlowState;
+import org.bitbucket.openkilda.topo.TopologyHelp;
 
 import cucumber.api.java.en.Given;
 import cucumber.api.java.en.Then;
 import cucumber.api.java.en.When;
-
-import java.util.List;
-
 import org.glassfish.jersey.client.ClientConfig;
-import static org.bitbucket.openkilda.DefaultParameters.trafficEndpoint;
-import javax.ws.rs.client.Client;
-import javax.ws.rs.client.ClientBuilder;
-import javax.ws.rs.client.Entity;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import java.util.concurrent.TimeUnit;
-import org.bitbucket.openkilda.topo.TopologyHelp;
+
 import java.io.File;
 import java.nio.file.Files;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+import javax.ws.rs.client.Client;
+import javax.ws.rs.client.ClientBuilder;
+import javax.ws.rs.core.Response;
 
 public class FlowCrudBasicRunTest {
     private FlowPayload flowPayload;
-    private int storedFlows;
     private static final String fileName = "topologies/nonrandom-topology.json";
 
     @Given("^a nonrandom linear topology of 5 switches$")
     public void a_multi_path_topology() throws Throwable {
-         ClassLoader classLoader = getClass().getClassLoader();
-         File file = new File(classLoader.getResource(fileName).getFile());
-         String json = new String(Files.readAllBytes(file.toPath()));
-         assert TopologyHelp.CreateMininetTopology(json);
+        ClassLoader classLoader = getClass().getClassLoader();
+        File file = new File(classLoader.getResource(fileName).getFile());
+        String json = new String(Files.readAllBytes(file.toPath()));
+        assert TopologyHelp.CreateMininetTopology(json);
     }
 
     @When("^flow (.*) creation request with (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) is successful$")
@@ -55,8 +52,6 @@ public class FlowCrudBasicRunTest {
         FlowPayload response = FlowUtils.putFlow(flowPayload);
         assertNotNull(response);
         response.setLastUpdated(null);
-
-        Thread.sleep(1500);
 
         assertEquals(flowPayload, response);
     }
@@ -82,12 +77,9 @@ public class FlowCrudBasicRunTest {
         Flow expectedFlow = new Flow(FlowUtils.getFlowName(flowId), bandwidth, 0, flowId, null, sourceSwitch,
                 destinationSwitch, sourcePort, destinationPort, sourceVlan, destinationVlan, 0, 0, null, null);
 
-        List<Flow> flows = validateFlowStored();
+        List<Flow> flows = validateFlowStored(expectedFlow);
 
         assertFalse(flows.isEmpty());
-
-        storedFlows = flows.size();
-
         assertTrue(flows.contains(expectedFlow));
     }
 
@@ -123,8 +115,6 @@ public class FlowCrudBasicRunTest {
 
         assertEquals(flowPayload, response);
 
-        Thread.sleep(1000);
-
         checkFlowCreation(flowId, sourceSwitch, sourcePort, sourceVlan, destinationSwitch,
                 destinationPort, destinationVlan, newBand);
     }
@@ -133,21 +123,24 @@ public class FlowCrudBasicRunTest {
     public void checkFlowDeletion(final String flowId, final String sourceSwitch, final int sourcePort, final int sourceVlan,
                                   final String destinationSwitch, final int destinationPort, final int destinationVlan,
                                   final int bandwidth) throws Exception {
+        int expectedFlowCount = getFlowCount(0) - 2;
+
         FlowPayload response = FlowUtils.deleteFlow(FlowUtils.getFlowName(flowId));
         assertNotNull(response);
         response.setLastUpdated(null);
 
         assertEquals(flowPayload, response);
 
-        Thread.sleep(1000);
-
         FlowPayload flow = FlowUtils.getFlow(FlowUtils.getFlowName(flowId));
+        if (flow != null) {
+            TimeUnit.SECONDS.sleep(2);
+            flow = FlowUtils.getFlow(FlowUtils.getFlowName(flowId));
+        }
 
         assertNull(flow);
 
-        List<Flow> flows = validateFlowStored();
-
-        assertEquals(storedFlows - 2, flows.size());
+        int actualFlowCount = getFlowCount(expectedFlowCount);
+        assertEquals(expectedFlowCount, actualFlowCount);
     }
 
     @Then("^rules with (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) are installed$")
@@ -171,25 +164,35 @@ public class FlowCrudBasicRunTest {
         // TODO: implement
     }
 
+    private int checkTraffic(int sourceVlan, int destinationVlan, int expectedStatus) {
+        if (isTrafficTestsEnabled()) {
+            Client client = ClientBuilder.newClient(new ClientConfig());
+            Response result = client
+                    .target(trafficEndpoint)
+                    .path("/checkflowtraffic")
+                    .queryParam("srcswitch", "00000001")
+                    .queryParam("dstswitch", "00000005")
+                    .queryParam("srcport", 1)
+                    .queryParam("dstport", 1)
+                    .queryParam("srcvlan", sourceVlan)
+                    .queryParam("dstvlan", destinationVlan)
+                    .request()
+                    .get();
+            System.out.println("STATUS =" + result.getStatus());
+
+            return result.getStatus();
+        } else {
+            return expectedStatus;
+        }
+    }
+
     @Then("^traffic through (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) is forwarded$")
     public void checkTrafficIsForwarded(final String sourceSwitch, final int sourcePort, final int sourceVlan,
                                         final String destinationSwitch, final int destinationPort,
                                         final int destinationVlan, final int bandwidth) throws Throwable {
         TimeUnit.SECONDS.sleep(2);
-        Client client = ClientBuilder.newClient(new ClientConfig());
-        Response result = client
-           .target(trafficEndpoint)
-           .path("/checkflowtraffic")
-           .queryParam("srcswitch", "00000001")
-           .queryParam("dstswitch", "00000005")
-           .queryParam("srcport", 1)
-           .queryParam("dstport", 1)
-           .queryParam("srcvlan", sourceVlan)
-           .queryParam("dstvlan", destinationVlan)
-           .request()
-           .get();
-         System.out.println("STATUS =" + result.getStatus());
-        assert result.getStatus() == 200;
+        int status = checkTraffic(sourceVlan, destinationVlan, 200);
+        assertEquals(200, status);
     }
 
     @Then("^traffic through (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) is not forwarded$")
@@ -197,35 +200,36 @@ public class FlowCrudBasicRunTest {
                                            final String destinationSwitch, final int destinationPort,
                                            final int destinationVlan, final int bandwidth) throws Throwable {
         TimeUnit.SECONDS.sleep(2);
-        Client client = ClientBuilder.newClient(new ClientConfig());
-        Response result = client
-           .target(trafficEndpoint)
-           .path("/checkflowtraffic")
-           .queryParam("srcswitch", "00000001")
-           .queryParam("dstswitch", "00000005")
-           .queryParam("srcport", 1)
-           .queryParam("dstport", 1)
-           .queryParam("srcvlan", sourceVlan)
-           .queryParam("dstvlan", destinationVlan)
-           .request()
-           .get();
-         System.out.println("STATUS =" + result.getStatus());
-        assert result.getStatus() != 200;
+        int status = checkTraffic(sourceVlan, destinationVlan, 503);
+        assertNotEquals(200, status);
     }
 
     @Then("^flows count is (\\d+)$")
-    public void checkFlowCount(final int expectedFlowsCount) throws Exception {
-        List<Flow> flows = validateFlowStored();
-        // one reverse flow and one forward flow for every created flow
-        assertEquals(expectedFlowsCount * 2, flows.size());
+    public void checkFlowCount(int expectedFlowsCount) throws Exception {
+        int actualFlowCount = getFlowCount(expectedFlowsCount * 2);
+        assertEquals(expectedFlowsCount * 2, actualFlowCount);
     }
 
-    private List<Flow> validateFlowStored() throws Exception {
-        Thread.sleep(1000);
+    private List<Flow> validateFlowStored(Flow expectedFlow) throws Exception {
         List<Flow> flows = FlowUtils.dumpFlows();
-        System.out.print(String.format("===> Flows retrieved: %d\n", flows.size()));
         flows.forEach(this::resetImmaterialFields);
+
+        if (!flows.contains(expectedFlow) || flows.size() % 2 != 0) {
+            TimeUnit.SECONDS.sleep(2);
+            flows = FlowUtils.dumpFlows();
+            flows.forEach(this::resetImmaterialFields);
+        }
+
         return flows;
+    }
+
+    private int getFlowCount(int expectedFlowsCount) throws Exception {
+        List<Flow> flows = FlowUtils.dumpFlows();
+        if (expectedFlowsCount != 0 && expectedFlowsCount != flows.size()) {
+            TimeUnit.SECONDS.sleep(2);
+            flows = FlowUtils.dumpFlows();
+        }
+        return flows.size();
     }
 
     private void resetImmaterialFields(Flow flow) {

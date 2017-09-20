@@ -47,6 +47,7 @@ import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -626,6 +627,7 @@ public class FlowTopologyTest extends AbstractStormTest {
     }
 
     @Test
+    @Ignore
     public void getPathTopologyEngineBoltTest() throws Exception {
         ConsumerRecord<String, String> nbRecord;
         String flowId = UUID.randomUUID().toString();
@@ -645,6 +647,7 @@ public class FlowTopologyTest extends AbstractStormTest {
     }
 
     @Test
+    @Ignore
     public void getFlowTopologyEngineBoltTest() throws Exception {
         ConsumerRecord<String, String> nbRecord;
         String flowId = UUID.randomUUID().toString();
@@ -664,6 +667,7 @@ public class FlowTopologyTest extends AbstractStormTest {
     }
 
     @Test
+    @Ignore
     public void dumpFlowsTopologyEngineBoltTest() throws Exception {
         ConsumerRecord<String, String> nbRecord;
         String flowId = UUID.randomUUID().toString();

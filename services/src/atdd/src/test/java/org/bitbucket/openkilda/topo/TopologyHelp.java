@@ -2,6 +2,7 @@ package org.bitbucket.openkilda.topo;
 
 import static org.bitbucket.openkilda.DefaultParameters.mininetEndpoint;
 import static org.bitbucket.openkilda.DefaultParameters.topologyEndpoint;
+import static org.bitbucket.openkilda.flow.FlowUtils.getTimeDuration;
 
 import org.glassfish.jersey.client.ClientConfig;
 
@@ -17,6 +18,8 @@ import javax.ws.rs.core.Response;
  */
 public class TopologyHelp {
     public static boolean DeleteMininetTopology() {
+        System.out.println("\n==> Delete Mininet Topology");
+
         long current = System.currentTimeMillis();
         Client client = ClientBuilder.newClient(new ClientConfig());
         Response result = client
@@ -25,9 +28,8 @@ public class TopologyHelp {
                 .request(MediaType.APPLICATION_JSON)
                 .post(null);
 
-        System.out.println("==> DeleteTopology Time: " + (double) (((System.currentTimeMillis() -
-                current)
-                / 1000.0)));
+        System.out.println(String.format("===> Response = %s", result.toString()));
+        System.out.println(String.format("===> Delete Mininet Topology Time: %,.3f", getTimeDuration(current)));
 
         return result.getStatus() == 200;
     }
@@ -38,6 +40,8 @@ public class TopologyHelp {
      * @param json - the json doc that is suitable for the mininet API
      */
     public static boolean CreateMininetTopology(String json) {
+        System.out.println("\n==> Create Mininet Topology");
+
         long current = System.currentTimeMillis();
         Client client = ClientBuilder.newClient(new ClientConfig());
         Response result = client
@@ -46,15 +50,15 @@ public class TopologyHelp {
                 .request(MediaType.APPLICATION_JSON)
                 .post(Entity.entity(json, MediaType.APPLICATION_JSON));
 
-        System.out.println("\n== Create Topology\n==> result = " + result);
-        System.out.println("==> CreateTopology Time: " + (double) (((System.currentTimeMillis() -
-                current)
-                / 1000.0)));
+        System.out.println(String.format("===> Response = %s", result.toString()));
+        System.out.println(String.format("===> Create Mininet Topology Time: %,.3f", getTimeDuration(current)));
 
         return result.getStatus() == 200;
     }
 
     public static boolean TestMininetCreate(String json) {
+        System.out.println("\n==> Create Mininet Random Topology");
+
         long current = System.currentTimeMillis();
         Client client = ClientBuilder.newClient(new ClientConfig());
         Response result = client
@@ -63,11 +67,8 @@ public class TopologyHelp {
                 .request(MediaType.APPLICATION_JSON)
                 .post(Entity.entity(json, MediaType.APPLICATION_JSON));
 
-        System.out.println("\n== Mininet Create Random Topology\n==> result = " + result);
-        System.out.println("==> Mininet Create Random Topology Time: " + (double) (((System
-                .currentTimeMillis() -
-                current)
-                / 1000.0)));
+        System.out.println(String.format("===> Response = %s", result.toString()));
+        System.out.println(String.format("===> Create Mininet Random Topology Time: %,.3f", getTimeDuration(current)));
 
         return result.getStatus() == 200;
     }
@@ -78,14 +79,20 @@ public class TopologyHelp {
      * @return The JSON document of the Topology from the Topology Engine
      */
     public static String GetTopology() {
+        System.out.println("\n==> Get Topology-Engine Topology");
 
+        long current = System.currentTimeMillis();
         Client client = ClientBuilder.newClient(new ClientConfig());
-
-        String result = client
+        Response response = client
                 .target(topologyEndpoint)
                 .path("/api/v1/topology/network")
                 .request()
-                .get(String.class);
+                .get();
+
+        System.out.println(String.format("===> Response = %s", response.toString()));
+        System.out.println(String.format("===> Get Topology-Engine Topology Time: %,.3f", getTimeDuration(current)));
+        String result = response.readEntity(String.class);
+        System.out.println(String.format("====> Topology-Engine Topology = %s", result));
 
         return result;
     }
@@ -96,15 +103,20 @@ public class TopologyHelp {
      * @return The JSON document of the Topology from the Topology Engine
      */
     public static String ClearTopology() {
+        System.out.println("\n==> Clear Topology-Engine Topology");
 
+        long current = System.currentTimeMillis();
         Client client = ClientBuilder.newClient(new ClientConfig());
-
-        String result = client
+        Response response = client
                 .target(topologyEndpoint)
                 .path("/api/v1/topology/clear")
                 .request()
-                .get(String.class);
+                .get();
 
+        System.out.println(String.format("===> Response = %s", response.toString()));
+        System.out.println(String.format("===> Clear Topology-Engine Topology Time: %,.3f", getTimeDuration(current)));
+        String result = response.readEntity(String.class);
+        System.out.println(String.format("====> Topology-Engine Topology = %s", result));
         return result;
     }
 

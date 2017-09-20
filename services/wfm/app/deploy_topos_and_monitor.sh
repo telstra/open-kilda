@@ -19,4 +19,3 @@ make deploy-flow
 make deploy-stats
 make deploy-cache
 
-/app/wfm/app/wfm.py $@

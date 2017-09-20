@@ -1,8 +1,12 @@
 package org.bitbucket.openkilda.atdd;
 
+import static org.bitbucket.openkilda.flow.FlowUtils.dumpFlows;
 import static org.bitbucket.openkilda.flow.FlowUtils.dumpLinks;
 import static org.bitbucket.openkilda.flow.FlowUtils.getLinkBandwidth;
+import static org.bitbucket.openkilda.flow.FlowUtils.restoreFlows;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
 
 import org.bitbucket.openkilda.flow.FlowUtils;
 import org.bitbucket.openkilda.messaging.info.event.IslInfoData;
@@ -12,6 +16,8 @@ import org.bitbucket.openkilda.messaging.model.Flow;
 import org.bitbucket.openkilda.messaging.model.ImmutablePair;
 import org.bitbucket.openkilda.topo.TopologyHelp;
 
+import cucumber.api.PendingException;
+import cucumber.api.java.en.And;
 import cucumber.api.java.en.Given;
 import cucumber.api.java.en.Then;
 import cucumber.api.java.en.When;
@@ -20,6 +26,7 @@ import java.io.File;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 
 public class FlowPathTest {
@@ -44,6 +51,8 @@ public class FlowPathTest {
                     new PathNode("00:00:00:00:00:00:00:03", 1, 2, 0L),
                     new PathNode("00:00:00:00:00:00:00:02", 2, 3, 0L))));
 
+    private String previousLastUpdated;
+    private String actualFlowName;
     private long pre_start;
     private long start;
 
@@ -62,14 +71,18 @@ public class FlowPathTest {
     public void checkAvailableBandwidth(int expectedAvailableBandwidth) throws Exception {
         List<IslInfoData> links = dumpLinks();
         for (IslInfoData link : links) {
-            assertEquals(expectedAvailableBandwidth, link.getAvailableBandwidth());
+            int actualBandwidth = getBandwidth(expectedAvailableBandwidth,
+                    link.getPath().get(0).getSwitchId(),
+                    String.valueOf(link.getPath().get(0).getPortNo()));
+            assertEquals(expectedAvailableBandwidth, actualBandwidth);
         }
     }
 
     @Then("^shortest path links available bandwidth have available bandwidth (\\d+)$")
     public void checkShortestPathAvailableBandwidthDecreased(int expectedAvailableBandwidth) throws Exception {
         for (ImmutablePair<String, String> expectedLink : shortestPathLinks) {
-            Integer actualBandwidth = getLinkBandwidth(expectedLink.getLeft(), expectedLink.getRight());
+            Integer actualBandwidth = getBandwidth(expectedAvailableBandwidth,
+                    expectedLink.getLeft(), expectedLink.getRight());
             assertEquals(expectedAvailableBandwidth, actualBandwidth.intValue());
         }
     }
@@ -77,7 +90,8 @@ public class FlowPathTest {
     @Then("^alternative path links available bandwidth have available bandwidth (\\d+)$")
     public void checkAlternativePathAvailableBandwidthDecreased(int expectedAvailableBandwidth) throws Exception {
         for (ImmutablePair<String, String> expectedLink : alternativePathLinks) {
-            Integer actualBandwidth = getLinkBandwidth(expectedLink.getLeft(), expectedLink.getRight());
+            Integer actualBandwidth = getBandwidth(expectedAvailableBandwidth,
+                    expectedLink.getLeft(), expectedLink.getRight());
             assertEquals(expectedAvailableBandwidth, actualBandwidth.intValue());
         }
     }
@@ -91,5 +105,75 @@ public class FlowPathTest {
         ImmutablePair<PathInfoData, PathInfoData> path = FlowUtils.getFlowPath(flow);
         System.out.println(path);
         assertEquals(expectedPath, path);
+    }
+
+    private int getBandwidth(int expectedBandwidth, String src_switch, String src_port) throws Exception {
+        int actualBandwidth = getLinkBandwidth(src_switch, src_port);
+        if (actualBandwidth != expectedBandwidth) {
+            TimeUnit.SECONDS.sleep(2);
+            actualBandwidth = getLinkBandwidth(src_switch, src_port);
+        }
+        return actualBandwidth;
+    }
+
+    @Given("^topology contains (\\d+) links$")
+    public void topologyContainsLinks(int expectedLinks) throws Throwable {
+        int actualLinks = getLinksCount(expectedLinks);
+        assertEquals(expectedLinks, actualLinks);
+    }
+
+    private int getLinksCount(int expectedLinks) throws Exception {
+        int actualLinks = 0;
+
+        for (int i = 0; i < 5; i++) {
+            List<IslInfoData> links = dumpLinks();
+            actualLinks = links.size();
+
+            if (actualLinks == expectedLinks) {
+                break;
+            }
+
+            TimeUnit.SECONDS.sleep(2);
+        }
+        return actualLinks;
+    }
+
+    @When("^delete mininet topology$")
+    public void deleteMininetTopology() throws Throwable {
+        TopologyHelp.DeleteMininetTopology();
+    }
+
+    @When("^(\\d+) seconds passed$")
+    public void secondsPassed(int timeout) throws Throwable {
+        System.out.println(String.format("\n==> Sleep for %d seconds", timeout));
+        System.out.println(String.format("===> Sleep start at = %d", System.currentTimeMillis()));
+        TimeUnit.SECONDS.sleep(timeout);
+        System.out.println(String.format("===> Sleep end at = %d", System.currentTimeMillis()));
+    }
+
+    @Then("^flow (.*) has updated timestamp$")
+    public void flowRestoredHasValidLastUpdatedTimestamp(String flowId) throws Throwable {
+        List<Flow> flows = dumpFlows();
+
+        if (flows == null || flows.isEmpty()) {
+            TimeUnit.SECONDS.sleep(2);
+            flows = dumpFlows();
+        }
+
+        assertNotNull(flows);
+        assertEquals(2, flows.size());
+
+        Flow flow = flows.get(0);
+        String currentLastUpdated = flow.getLastUpdated();
+        System.out.println(String.format("=====> Flow %s previous timestamp = %s", flowId, previousLastUpdated));
+        System.out.println(String.format("=====> Flow %s current timestamp = %s", flowId, currentLastUpdated));
+
+        assertNotEquals(previousLastUpdated, currentLastUpdated);
+        previousLastUpdated = currentLastUpdated;
+    }
+
+    @When("^restore flows$")
+    public void flowRestore() throws Throwable {
+        restoreFlows();
     }
 }

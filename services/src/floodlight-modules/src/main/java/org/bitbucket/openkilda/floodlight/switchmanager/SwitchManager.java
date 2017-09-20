@@ -184,7 +184,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         // TODO: track xid for flow id
         if (OFType.ERROR.equals(msg.getType())) {
             ErrorMessage error = new ErrorMessage(
-                    new ErrorData(ErrorType.INTERNAL_ERROR, ((OFErrorMsg) msg).getErrType().toString(), ""),
+                    new ErrorData(ErrorType.INTERNAL_ERROR, ((OFErrorMsg) msg).getErrType().toString(), null),
                     System.currentTimeMillis(), DEFAULT_CORRELATION_ID, Destination.WFM_TRANSACTION);
             kafkaProducer.postMessage("kilda-test", error);
         }

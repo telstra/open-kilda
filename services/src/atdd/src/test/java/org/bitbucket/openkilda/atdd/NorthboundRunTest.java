@@ -19,31 +19,15 @@ import cucumber.api.java.en.Then;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class NorthboundRunTest {
     private static final FlowState expectedFlowStatus = FlowState.UP;
-    private static final PathInfoData expectedFlowPath1 = new PathInfoData(0L, Arrays.asList(
-            new PathNode("de:ad:be:ef:00:00:00:03", 4, 0),
-            new PathNode("de:ad:be:ef:00:00:00:04", 4, 1),
-            new PathNode("de:ad:be:ef:00:00:00:04", 3, 2),
-            new PathNode("de:ad:be:ef:00:00:00:05", 2, 3)));
-    private static final PathInfoData expectedFlowPath2 = new PathInfoData(0L, Arrays.asList(
-            new PathNode("de:ad:be:ef:00:00:00:03", 3, 0),
-            new PathNode("de:ad:be:ef:00:00:00:04", 1, 1),
-            new PathNode("de:ad:be:ef:00:00:00:04", 3, 2),
-            new PathNode("de:ad:be:ef:00:00:00:05", 2, 3)));
-    private static final PathInfoData expectedFlowPath3 = new PathInfoData(0L, Arrays.asList(
-            new PathNode("de:ad:be:ef:00:00:00:03", 4, 0),
-            new PathNode("de:ad:be:ef:00:00:00:04", 4, 1),
-            new PathNode("de:ad:be:ef:00:00:00:04", 2, 2),
-            new PathNode("de:ad:be:ef:00:00:00:05", 3, 3)));
-    private static final PathInfoData expectedFlowPath4 = new PathInfoData(0L, Arrays.asList(
-            new PathNode("de:ad:be:ef:00:00:00:03", 3, 0),
+    private static final PathInfoData expectedFlowPath = new PathInfoData(0L, Arrays.asList(
+            new PathNode("de:ad:be:ef:00:00:00:03", 2, 0),
             new PathNode("de:ad:be:ef:00:00:00:04", 1, 1),
             new PathNode("de:ad:be:ef:00:00:00:04", 2, 2),
-            new PathNode("de:ad:be:ef:00:00:00:05", 3, 3)));
-    private static final List<PathInfoData> expectedAlternativePaths = Arrays.asList(
-            expectedFlowPath1, expectedFlowPath2, expectedFlowPath3, expectedFlowPath4);
+            new PathNode("de:ad:be:ef:00:00:00:05", 1, 3)));
 
     @Then("^path of flow (.*) could be read$")
     public void checkFlowPath(final String flowId) {
@@ -53,14 +37,14 @@ public class NorthboundRunTest {
         assertNotNull(payload);
 
         assertEquals(flowName, payload.getId());
-        assertTrue(expectedAlternativePaths.contains(payload.getPath()));
+        assertEquals(expectedFlowPath, payload.getPath());
     }
 
     @Then("^status of flow (.*) could be read$")
-    public void checkFlowStatus(final String flowId) {
+    public void checkFlowStatus(final String flowId) throws Exception {
         String flowName = FlowUtils.getFlowName(flowId);
+        FlowIdStatusPayload payload = getFlowState(flowName, expectedFlowStatus);
 
-        FlowIdStatusPayload payload = FlowUtils.getFlowStatus(flowName);
         assertNotNull(payload);
 
         assertEquals(flowName, payload.getId());
@@ -78,5 +62,14 @@ public class NorthboundRunTest {
     @Given("^health check$")
     public void healthCheck() throws Throwable {
         assertEquals(200, getHealthCheck());
+    }
+
+    private FlowIdStatusPayload getFlowState(String flowName, FlowState expectedFlowStatus) throws Exception {
+        FlowIdStatusPayload payload = FlowUtils.getFlowStatus(flowName);
+        if (payload == null || expectedFlowStatus != payload.getStatus()) {
+            TimeUnit.SECONDS.sleep(2);
+            payload = FlowUtils.getFlowStatus(flowName);
+        }
+        return payload;
     }
 }

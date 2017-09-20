@@ -117,11 +117,9 @@ public class FlowCache extends Cache {
      * @return set of flows
      */
     public Set<ImmutablePair<Flow, Flow>> getAffectedFlows(IslInfoData islData) {
-        return flowPool.values().stream().filter(flow ->
-                flow.getLeft().getFlowPath().getPath().contains(islData.getPath().get(0))
-                        || flow.getLeft().getFlowPath().getPath().contains(islData.getPath().get(1))
-                        || flow.getRight().getFlowPath().getPath().contains(islData.getPath().get(0))
-                        || flow.getRight().getFlowPath().getPath().contains(islData.getPath().get(1)))
+        return flowPool.values().stream()
+                .filter(flow -> flow.getLeft().getFlowPath().getPath().contains(islData.getPath().get(0))
+                        || flow.getRight().getFlowPath().getPath().contains(islData.getPath().get(0)))
                 .collect(Collectors.toSet());
     }
 

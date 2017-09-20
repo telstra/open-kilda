@@ -4,7 +4,6 @@ import static org.bitbucket.openkilda.DefaultParameters.opentsdbEndpoint;
 import static org.bitbucket.openkilda.flow.FlowUtils.getTimeDuration;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertTrue;
 
 import org.bitbucket.openkilda.messaging.model.Metric;
 
@@ -20,16 +19,17 @@ import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.core.Response;
 
 public class StatisticsBasicTest {
-    private static final int TIMEOUT = 15;
-
     public boolean test = false;
 
     public StatisticsBasicTest() {
     }
 
     private List<Metric> getNumberOfDatapoints() throws Throwable {
+        System.out.println("\n==> OpenTSDB Metrics request");
+
         long current = System.currentTimeMillis();
         Client client = ClientBuilder.newClient(new ClientConfig());
+
         Response response = client
                 .target(opentsdbEndpoint)
                 .path("/api/query")
@@ -38,22 +38,20 @@ public class StatisticsBasicTest {
                 .queryParam("timezone", "Australia/Melbourne")
                 .request().get();
 
-        System.out.println("\n== OpenTSDB Metrics request");
-        System.out.println(String.format("==> response = %s", response));
-        System.out.println(String.format("==> OpenTSDB Metrics Time: %,.3f", getTimeDuration(current)));
+        System.out.println(String.format("===> Response = %s", response));
+        System.out.println(String.format("===> OpenTSDB Metrics Time: %,.3f", getTimeDuration(current)));
 
         List<Metric> metrics = new ObjectMapper().readValue(
-                response.readEntity(String.class), new TypeReference<List<Metric>>() {
-                });
+                response.readEntity(String.class), new TypeReference<List<Metric>>() {});
 
-        System.out.println(String.format("===> Metrics = %s", metrics));
+        System.out.println(String.format("====> Metrics = %s", metrics));
 
         return metrics;
     }
 
     @Then("^data go to database$")
     public void dataCreated() throws Throwable {
-        TimeUnit.SECONDS.sleep(TIMEOUT);
+        TimeUnit.SECONDS.sleep(15);
         List<Metric> result = getNumberOfDatapoints();
 
         assertFalse(result.isEmpty());
@@ -62,7 +60,7 @@ public class StatisticsBasicTest {
     @Then("^database keeps growing$")
     public void database_keeps_growing() throws Throwable {
         List<Metric> firstResult = getNumberOfDatapoints();
-        TimeUnit.SECONDS.sleep(TIMEOUT);
+        TimeUnit.SECONDS.sleep(15);
         List<Metric> secondResult = getNumberOfDatapoints();
 
         assertNotEquals(firstResult, secondResult);

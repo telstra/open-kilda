@@ -13,6 +13,11 @@ from logger import get_logger
 
 isl_lock = Lock()
 logger = get_logger()
+switch_states = {
+    'active': 'ACTIVATED',
+    'inactive': 'DEACTIVATED',
+    'removed': 'REMOVED'
+}
 
 
 class MessageItem(object):
@@ -41,6 +46,7 @@ class MessageItem(object):
     def handle(self):
         try:
             event_handled = False
+            logger.debug('Processing message for %s', self.get_type())
 
             if self.get_message_type() == "switch"\
                     and self.payload['state'] == "ADDED":
@@ -112,7 +118,8 @@ class MessageItem(object):
                               state="active",
                               address=self.payload['address'],
                               hostname=self.payload['hostname'],
-                              description=self.payload['description'])
+                              description=self.payload['description'],
+                              controller=self.payload['controller'])
             graph.create(new_switch)
             logger.info('Adding switch: %s', switch_id)
             return True
@@ -122,6 +129,7 @@ class MessageItem(object):
             switch['address'] = self.payload['address']
             switch['hostname'] = self.payload['hostname']
             switch['description'] = self.payload['description']
+            switch['controller'] = self.payload['controller']
             switch.push()
             logger.info('Activating switch: %s', switch_id)
             return True
@@ -179,14 +187,11 @@ class MessageItem(object):
             delete_query = ("MATCH (a:switch)-[r:isl {{"
                             "src_switch: '{}', "
                             "src_port: {}}}]->(b:switch) delete r")
-            result = graph.run(
-                delete_query.format(src_switch, src_port)).data()
+            graph.run(delete_query.format(src_switch, src_port)).data()
         else:
             delete_query = ("MATCH (a:switch)-[r:isl {{"
                             "src_switch: '{}'}}]->(b:switch) delete r")
-            result = graph.run(delete_query.format(src_switch)).data()
-
-        logger.info('Removed ISL: %s', result)
+            graph.run(delete_query.format(src_switch)).data()
 
         return True
 
@@ -413,9 +418,17 @@ class MessageItem(object):
 
             switches = []
             for data in result:
-                switch = data['n']
-                if switch:
-                    switches.append(switch)
+                node = data['n']
+                switch = {
+                    'switch_id': node['name'],
+                    'state': switch_states[node['state']],
+                    'address': node['address'],
+                    'hostname': node['hostname'],
+                    'description': node['description'],
+                    'controller': node['controller'],
+                    'message_type': 'switch',
+                }
+                switches.append(switch)
 
             logger.info('Got switches: %s', switches)
 
@@ -448,7 +461,9 @@ class MessageItem(object):
                         {'switch_id': str(link['dst_switch']),
                          'port_no': int(link['dst_port']),
                          'seq_id': 1,
-                         'segment_latency': 0}]}
+                         'segment_latency': 0}],
+                    'message_type': 'isl'
+                }
                 isls.append(isl)
 
             logger.info('Got isls: %s', isls)
@@ -479,10 +494,9 @@ class MessageItem(object):
 
             step = "Send"
             payload = {
-                'payload': {
-                    'switches': switches,
-                    'isls': isls,
-                    'flows': flows},
+                'switches': switches,
+                'isls': isls,
+                'flows': flows,
                 'message_type': "network"}
             message_utils.send_message(
                 payload, correlation_id, "INFO", "WFM_CACHE")
