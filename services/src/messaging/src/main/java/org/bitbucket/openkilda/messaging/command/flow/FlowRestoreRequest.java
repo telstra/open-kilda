@@ -5,6 +5,7 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import org.bitbucket.openkilda.messaging.Utils;
 import org.bitbucket.openkilda.messaging.command.CommandData;
 import org.bitbucket.openkilda.messaging.model.Flow;
+import org.bitbucket.openkilda.messaging.model.ImmutablePair;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -32,7 +33,7 @@ public class FlowRestoreRequest extends CommandData {
      * The request payload.
      */
     @JsonProperty(Utils.PAYLOAD)
-    protected Flow payload;
+    protected ImmutablePair<Flow, Flow> payload;
 
     /**
      * Instance constructor.
@@ -41,7 +42,7 @@ public class FlowRestoreRequest extends CommandData {
      * @throws IllegalArgumentException if payload is null
      */
     @JsonCreator
-    public FlowRestoreRequest(@JsonProperty(Utils.PAYLOAD) Flow payload) {
+    public FlowRestoreRequest(@JsonProperty(Utils.PAYLOAD) ImmutablePair<Flow, Flow> payload) {
         setPayload(payload);
     }
 
@@ -50,7 +51,7 @@ public class FlowRestoreRequest extends CommandData {
      *
      * @return request payload
      */
-    public Flow getPayload() {
+    public ImmutablePair<Flow, Flow> getPayload() {
         return payload;
     }
 
@@ -59,7 +60,7 @@ public class FlowRestoreRequest extends CommandData {
      *
      * @param payload request payload
      */
-    public void setPayload(Flow payload) {
+    public void setPayload(ImmutablePair<Flow, Flow> payload) {
         if (payload == null) {
             throw new IllegalArgumentException("need to set payload");
         }

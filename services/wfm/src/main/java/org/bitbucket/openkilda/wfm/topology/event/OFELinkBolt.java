@@ -87,15 +87,15 @@ public class OFELinkBolt extends AbstractTickStatefulBolt<KeyValueState<String, 
                         String discoFail = OFEMessageUtils.createIslFail(switchId, portId);
                         Values dataVal = new Values(PAYLOAD, discoFail, switchId, portId, OFEMessageUtils.LINK_DOWN);
                         collector.emit(outputStreamId, tuple, dataVal);
-                        logger.warn("LINK: ISL Discovery failure {}", discoFail);
+                        logger.warn("LINK: Send ISL discovery failure message={}", discoFail);
                     } catch (IOException exception) {
-                        logger.debug("LINK: ISL Discovery failure message creation error", exception);
+                        logger.error("LINK: ISL discovery failure message creation error", exception);
                     }
                 }
 
                 String discoJson = OFEMessageUtils.createIslDiscovery(switchId, portId);
                 collector.emit(islDiscoTopic, tuple, new Values(PAYLOAD, discoJson));
-                logger.trace("LINK: Send ISL Discovery command");
+                logger.debug("LINK: Send ISL discovery command: {}", discoJson);
             }
         }
     }
@@ -110,7 +110,7 @@ public class OFELinkBolt extends AbstractTickStatefulBolt<KeyValueState<String, 
         } else if (source.startsWith(InfoEventSplitterBolt.I_ISL_UPDOWN)) {
             handleIslEvent(tuple);
         } else {
-            logger.error("Unknown source component: {}", source);
+            logger.error("LINK: Unknown source component={}", source);
         }
         collector.ack(tuple);
     }
@@ -118,7 +118,7 @@ public class OFELinkBolt extends AbstractTickStatefulBolt<KeyValueState<String, 
     protected void handleSwitchEvent(Tuple tuple) {
         String switchID = tuple.getStringByField(OFEMessageUtils.FIELD_SWITCH_ID);
         String updown = tuple.getStringByField(OFEMessageUtils.FIELD_STATE);
-        logger.debug("LINK: SWITCH EVENT {} / {}", switchID, updown);
+        logger.info("LINK: Event switch={} state={}", switchID, updown);
         ConcurrentHashMap<String, AtomicInteger> ports = links.getOrNewSwitchPorts(switchID);
         if (updown.equals(OFEMessageUtils.SWITCH_DOWN)) {
             // current logic: switch down means stop checking associated ports/links.
@@ -134,38 +134,38 @@ public class OFELinkBolt extends AbstractTickStatefulBolt<KeyValueState<String, 
         String switchID = tuple.getStringByField(OFEMessageUtils.FIELD_SWITCH_ID);
         String portID = tuple.getStringByField(OFEMessageUtils.FIELD_PORT_ID);
         String updown = tuple.getStringByField(OFEMessageUtils.FIELD_STATE);
-        logger.debug("LINK: PORT EVENT {} {} {}", switchID, portID, updown);
+        logger.info("LINK: Event switch={} port={} state={}", switchID, portID, updown);
 
         ConcurrentHashMap<String, AtomicInteger> ports = links.getOrNewSwitchPorts(switchID);
         if (updown.equals(OFEMessageUtils.PORT_UP) || updown.equals(OFEMessageUtils.PORT_ADD)) {
             // Send ISL Discovery Packet
             String discoJson = OFEMessageUtils.createIslDiscovery(switchID, portID);
             collector.emit(islDiscoTopic, tuple, new Values(PAYLOAD, discoJson));
-            logger.trace("LINK: Send ISL Discovery command {}", discoJson);
+            logger.debug("LINK: Send ISL discovery command: {}", discoJson);
             // TODO: will we put the link info?
             // TODO: check if port already exists? is there business logic (UP on existing port)
             ports.put(portID, new AtomicInteger(0));
         } else if (updown.equals(OFEMessageUtils.PORT_DOWN)) {
             // Clear the check, if it exists.
-            logger.trace("LINK: REMOVING Port from health checks: {}:{}", switchID, portID);
+            logger.info("LINK: Remove switch={} port={} from health checks", switchID, portID);
             ports.remove(portID);
         } else {
-            logger.error("LINK: PORT EVENT: Unknown state type: {}", updown);
+            logger.error("LINK: Unknown state={} for switch={} port={}", updown, switchID, portID);
         }
     }
 
     protected void handleIslEvent(Tuple tuple) {
-        logger.trace("LINK: ISL Discovered {}", tuple);
+        logger.info("LINK: Event ISL Discovered {}", tuple);
         try {
             String data = tuple.getString(0);
             IslInfoData discoveredIsl = MAPPER.readValue(data, IslInfoData.class);
             PathNode node = discoveredIsl.getPath().get(0);
-            links.islDiscovered(node);
+            links.clearCountOfSentPackets(node.getSwitchId(), String.valueOf(node.getPortNo()));
             Values dataVal = new Values(PAYLOAD, data, node.getSwitchId(),
                     String.valueOf(node.getPortNo()), OFEMessageUtils.LINK_UP);
             collector.emit(outputStreamId, tuple, dataVal);
         } catch (IOException exception) {
-            logger.error("LINK: ISL Discovered info message deserialization failed", exception);
+            logger.error("LINK: ISL discovered message deserialization failed", exception);
         }
     }
 

@@ -25,6 +25,16 @@ public interface PathComputer extends Serializable {
     }
 
     /**
+     * Checks is path empty.
+     *
+     * @param path path
+     * @return true if path is empty. otherwise false
+     */
+    default boolean isEmpty(ImmutablePair<PathInfoData, PathInfoData> path) {
+        return path.getLeft().getPath().isEmpty() || path.getRight().getPath().isEmpty();
+    }
+
+    /**
      * Gets path between source and destination switch.
      *
      * @param flow {@link Flow} instances

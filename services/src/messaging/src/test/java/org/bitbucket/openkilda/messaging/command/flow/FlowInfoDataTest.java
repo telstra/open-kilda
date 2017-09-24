@@ -4,6 +4,7 @@ import static org.bitbucket.openkilda.messaging.Utils.MAPPER;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 
+import org.bitbucket.openkilda.messaging.Utils;
 import org.bitbucket.openkilda.messaging.info.flow.FlowInfoData;
 import org.bitbucket.openkilda.messaging.info.flow.FlowOperation;
 import org.bitbucket.openkilda.messaging.model.Flow;
@@ -14,7 +15,8 @@ import org.junit.Test;
 public class FlowInfoDataTest {
     @Test
     public void toStringTest() throws Exception {
-        FlowInfoData data = new FlowInfoData(new ImmutablePair<>(new Flow(), new Flow()), FlowOperation.CREATE);
+        FlowInfoData data = new FlowInfoData(new ImmutablePair<>(new Flow(), new Flow()),
+                FlowOperation.CREATE, Utils.DEFAULT_CORRELATION_ID);
         String dataString = data.toString();
         assertNotNull(dataString);
         assertFalse(dataString.isEmpty());

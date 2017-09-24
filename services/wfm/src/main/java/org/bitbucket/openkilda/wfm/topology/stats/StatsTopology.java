@@ -71,8 +71,8 @@ public class StatsTopology extends AbstractTopology {
 
         TopologyBuilder builder = new TopologyBuilder();
 
-        KafkaSpout kafkaSpout = createKafkaSpout(TOPIC);
         final String kafkaSpoutId = StatsComponentType.STATS_OFS_KAFKA_SPOUT.toString();
+        KafkaSpout kafkaSpout = createKafkaSpout(TOPIC, kafkaSpoutId);
         builder.setSpout(kafkaSpoutId, kafkaSpout, parallelism);
 
         SpeakerBolt speakerBolt = new SpeakerBolt();
@@ -99,7 +99,7 @@ public class StatsTopology extends AbstractTopology {
                 .shuffleGrouping(FLOW_STATS_METRIC_GEN.name());
 
         String prefix = ServiceType.STATS_TOPOLOGY.getId();
-        KafkaSpout healthCheckKafkaSpout = createKafkaSpout(Topic.HEALTH_CHECK.getId());
+        KafkaSpout healthCheckKafkaSpout = createKafkaSpout(Topic.HEALTH_CHECK.getId(), prefix);
         builder.setSpout(prefix + "HealthCheckKafkaSpout", healthCheckKafkaSpout, 1);
         HealthCheckBolt healthCheckBolt = new HealthCheckBolt(ServiceType.STATS_TOPOLOGY);
         builder.setBolt(prefix + "HealthCheckBolt", healthCheckBolt, 1)

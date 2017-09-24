@@ -1,13 +1,10 @@
 package org.bitbucket.openkilda.wfm.topology.flow.bolts;
 
-import static org.bitbucket.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.bitbucket.openkilda.messaging.Utils.MAPPER;
-import static org.bitbucket.openkilda.messaging.Utils.SYSTEM_CORRELATION_ID;
-import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.fieldsMessageErrorType;
-import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.fieldsMessageFlowId;
 
 import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.Message;
+import org.bitbucket.openkilda.messaging.Utils;
 import org.bitbucket.openkilda.messaging.command.CommandData;
 import org.bitbucket.openkilda.messaging.command.CommandMessage;
 import org.bitbucket.openkilda.messaging.command.flow.FlowCreateRequest;
@@ -22,6 +19,7 @@ import org.bitbucket.openkilda.messaging.command.flow.FlowsGetRequest;
 import org.bitbucket.openkilda.messaging.error.ErrorData;
 import org.bitbucket.openkilda.messaging.error.ErrorMessage;
 import org.bitbucket.openkilda.messaging.error.ErrorType;
+import org.bitbucket.openkilda.wfm.topology.flow.FlowTopology;
 import org.bitbucket.openkilda.wfm.topology.flow.StreamType;
 
 import org.apache.logging.log4j.LogManager;
@@ -55,10 +53,7 @@ public class SplitterBolt extends BaseRichBolt {
      */
     @Override
     public void execute(Tuple tuple) {
-        logger.debug("Ingoing tuple: {}", tuple);
-
         String request = tuple.getString(0);
-        //String request = tuple.getStringByField("value");
         Values values = new Values(request);
 
         try {
@@ -66,12 +61,13 @@ public class SplitterBolt extends BaseRichBolt {
             if (!Destination.WFM.equals(message.getDestination()) || !(message instanceof CommandMessage)) {
                 return;
             }
+            logger.debug("Request tuple={}", tuple);
             CommandData data = ((CommandMessage) message).getData();
 
             if (data instanceof FlowCreateRequest) {
                 String flowId = ((FlowCreateRequest) data).getPayload().getFlowId();
 
-                logger.debug("Flow {} crate message: values={}", flowId, values);
+                logger.info("Flow {} crate message: values={}", flowId, values);
 
                 values = new Values(message, flowId);
                 outputCollector.emit(StreamType.CREATE.toString(), tuple, values);
@@ -79,7 +75,7 @@ public class SplitterBolt extends BaseRichBolt {
             } else if (data instanceof FlowDeleteRequest) {
                 String flowId = ((FlowDeleteRequest) data).getPayload().getFlowId();
 
-                logger.debug("Flow {} delete message: values={}", flowId, values);
+                logger.info("Flow {} delete message: values={}", flowId, values);
 
                 values = new Values(message, flowId);
                 outputCollector.emit(StreamType.DELETE.toString(), tuple, values);
@@ -87,15 +83,15 @@ public class SplitterBolt extends BaseRichBolt {
             } else if (data instanceof FlowUpdateRequest) {
                 String flowId = ((FlowUpdateRequest) data).getPayload().getFlowId();
 
-                logger.debug("Flow {} update message: values={}", flowId, values);
+                logger.info("Flow {} update message: values={}", flowId, values);
 
                 values = new Values(message, flowId);
                 outputCollector.emit(StreamType.UPDATE.toString(), tuple, values);
 
             } else if (data instanceof FlowRestoreRequest) {
-                String flowId = ((FlowRestoreRequest) data).getPayload().getFlowId();
+                String flowId = ((FlowRestoreRequest) data).getPayload().getLeft().getFlowId();
 
-                logger.debug("Flow {} restore message: values={}", flowId, values);
+                logger.info("Flow {} restore message: values={}", flowId, values);
 
                 values = new Values(message, flowId);
                 outputCollector.emit(StreamType.RESTORE.toString(), tuple, values);
@@ -103,7 +99,7 @@ public class SplitterBolt extends BaseRichBolt {
             } else if (data instanceof FlowRerouteRequest) {
                 String flowId = ((FlowRerouteRequest) data).getPayload().getFlowId();
 
-                logger.debug("Flow {} reroute message: values={}", flowId, values);
+                logger.info("Flow {} reroute message: values={}", flowId, values);
 
                 values = new Values(message, flowId);
                 outputCollector.emit(StreamType.REROUTE.toString(), tuple, values);
@@ -111,7 +107,7 @@ public class SplitterBolt extends BaseRichBolt {
             } else if (data instanceof FlowStatusRequest) {
                 String flowId = ((FlowStatusRequest) data).getPayload().getId();
 
-                logger.debug("Flow {} status message: values={}", flowId, values);
+                logger.info("Flow {} status message: values={}", flowId, values);
 
                 values = new Values(message, flowId);
                 outputCollector.emit(StreamType.STATUS.toString(), tuple, values);
@@ -119,13 +115,13 @@ public class SplitterBolt extends BaseRichBolt {
             } else if (data instanceof FlowGetRequest) {
                 String flowId = ((FlowGetRequest) data).getPayload().getId();
 
-                logger.debug("Flow {} get message: values={}", flowId, values);
+                logger.info("Flow {} get message: values={}", flowId, values);
 
                 values = new Values(message, flowId);
                 outputCollector.emit(StreamType.READ.toString(), tuple, values);
 
             } else if (data instanceof FlowsGetRequest) {
-                logger.debug("Flows get message: values={}", values);
+                logger.info("Flows get message: values={}", values);
 
                 values = new Values(message, null);
                 outputCollector.emit(StreamType.READ.toString(), tuple, values);
@@ -133,13 +129,13 @@ public class SplitterBolt extends BaseRichBolt {
             } else if (data instanceof FlowPathRequest) {
                 String flowId = ((FlowPathRequest) data).getPayload().getId();
 
-                logger.debug("Flow {} path message: values={}", flowId, values);
+                logger.info("Flow {} path message: values={}", flowId, values);
 
                 values = new Values(message, flowId);
                 outputCollector.emit(StreamType.PATH.toString(), tuple, values);
 
             } else {
-                logger.debug("Skip undefined message: {}={}", CORRELATION_ID, message.getCorrelationId());
+                logger.debug("Skip undefined message: {}={}", Utils.CORRELATION_ID, message.getCorrelationId());
             }
         } catch (IOException exception) {
             String message = String.format("Could not deserialize message: %s", request);
@@ -147,13 +143,15 @@ public class SplitterBolt extends BaseRichBolt {
 
             ErrorMessage errorMessage = new ErrorMessage(
                     new ErrorData(ErrorType.REQUEST_INVALID, message, exception.getMessage()),
-                    System.currentTimeMillis(), SYSTEM_CORRELATION_ID, Destination.NORTHBOUND);
+                    System.currentTimeMillis(), Utils.SYSTEM_CORRELATION_ID, Destination.NORTHBOUND);
 
             values = new Values(errorMessage, ErrorType.INTERNAL_ERROR);
             outputCollector.emit(StreamType.ERROR.toString(), tuple, values);
 
         } finally {
-            logger.debug("Northbound message ack: values={}", values);
+            logger.debug("Splitter message ack: component={}, stream={}, tuple={}, values={}",
+                    tuple.getSourceComponent(), tuple.getSourceStreamId(), tuple, values);
+
 
             outputCollector.ack(tuple);
         }
@@ -164,13 +162,15 @@ public class SplitterBolt extends BaseRichBolt {
      */
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
-        outputFieldsDeclarer.declareStream(StreamType.CREATE.toString(), fieldsMessageFlowId);
-        outputFieldsDeclarer.declareStream(StreamType.READ.toString(), fieldsMessageFlowId);
-        outputFieldsDeclarer.declareStream(StreamType.UPDATE.toString(), fieldsMessageFlowId);
-        outputFieldsDeclarer.declareStream(StreamType.DELETE.toString(), fieldsMessageFlowId);
-        outputFieldsDeclarer.declareStream(StreamType.PATH.toString(), fieldsMessageFlowId);
-        outputFieldsDeclarer.declareStream(StreamType.STATUS.toString(), fieldsMessageFlowId);
-        outputFieldsDeclarer.declareStream(StreamType.ERROR.toString(), fieldsMessageErrorType);
+        outputFieldsDeclarer.declareStream(StreamType.CREATE.toString(), FlowTopology.fieldsMessageFlowId);
+        outputFieldsDeclarer.declareStream(StreamType.READ.toString(), FlowTopology.fieldsMessageFlowId);
+        outputFieldsDeclarer.declareStream(StreamType.UPDATE.toString(), FlowTopology.fieldsMessageFlowId);
+        outputFieldsDeclarer.declareStream(StreamType.DELETE.toString(), FlowTopology.fieldsMessageFlowId);
+        outputFieldsDeclarer.declareStream(StreamType.PATH.toString(), FlowTopology.fieldsMessageFlowId);
+        outputFieldsDeclarer.declareStream(StreamType.STATUS.toString(), FlowTopology.fieldsMessageFlowId);
+        outputFieldsDeclarer.declareStream(StreamType.RESTORE.toString(), FlowTopology.fieldsMessageFlowId);
+        outputFieldsDeclarer.declareStream(StreamType.REROUTE.toString(), FlowTopology.fieldsMessageFlowId);
+        outputFieldsDeclarer.declareStream(StreamType.ERROR.toString(), FlowTopology.fieldsMessageErrorType);
     }
 
     /**

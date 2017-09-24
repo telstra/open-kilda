@@ -152,8 +152,8 @@ public abstract class AbstractTopology implements Topology {
      * @param topic Kafka topic
      * @return {@link KafkaSpout}
      */
-    protected org.apache.storm.kafka.KafkaSpout createKafkaSpout(String topic) {
-        String spoutID = topic + "_" + System.currentTimeMillis();
+    protected org.apache.storm.kafka.KafkaSpout createKafkaSpout(String topic, String spoutId) {
+        String spoutID = topic + "." + spoutId;
         String zkRoot = "/" + topic; // used to store offset information.
         ZkHosts hosts = new ZkHosts(zookeeperHosts);
         SpoutConfig cfg = new SpoutConfig(hosts, topic, zkRoot, spoutID);

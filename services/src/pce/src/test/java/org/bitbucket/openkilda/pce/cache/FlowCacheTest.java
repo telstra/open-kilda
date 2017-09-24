@@ -34,10 +34,6 @@ public class FlowCacheTest {
     private final Flow firstFlow = new Flow("first-flow", 0, "first-flow", "sw1", 11, 100, "sw3", 11, 200);
     private final Flow secondFlow = new Flow("second-flow", 0, "second-flow", "sw5", 12, 100, "sw3", 12, 200);
     private final Flow thirdFlow = new Flow("third-flow", 0, "third-flow", "sw3", 21, 100, "sw3", 22, 200);
-    private final Flow forwardCreatedFlow = new Flow("created-flow", 0, 10L, "description",
-            "timestamp", "sw3", "sw3", 21, 22, 100, 200, 4, 4, new PathInfoData(), FlowState.ALLOCATED);
-    private final Flow reverseCreatedFlow = new Flow("created-flow", 0, 10L, "description",
-            "timestamp", "sw3", "sw3", 22, 21, 200, 100, 5, 5, new PathInfoData(), FlowState.ALLOCATED);
 
     @Before
     public void setUp() {
@@ -68,13 +64,13 @@ public class FlowCacheTest {
         ImmutablePair<Flow, Flow> newFlow = flowCache.createFlow(firstFlow, path);
 
         Flow forward = newFlow.left;
-        assertEquals(1 | FlowCache.FORWARD_FLOW_COOKIE_MASK, forward.getCookie());
+        assertEquals(1 | ResourceCache.FORWARD_FLOW_COOKIE_MASK, forward.getCookie());
         assertEquals(2, forward.getTransitVlan());
         assertEquals(1, forward.getMeterId());
         assertEquals(path.getLeft(), forward.getFlowPath());
 
         Flow reverse = newFlow.right;
-        assertEquals(1 | FlowCache.REVERSE_FLOW_COOKIE_MASK, reverse.getCookie());
+        assertEquals(1 | ResourceCache.REVERSE_FLOW_COOKIE_MASK, reverse.getCookie());
         assertEquals(3, reverse.getTransitVlan());
         assertEquals(1, reverse.getMeterId());
         assertEquals(path.getRight(), reverse.getFlowPath());
@@ -397,49 +393,6 @@ public class FlowCacheTest {
         getPathIntersection();
         System.out.println(networkCache.dumpIsls());
         computer.getPath(NetworkTopologyConstants.sw5, NetworkTopologyConstants.sw3, 1);
-    }
-
-    @Test
-    public void allocateFlow() throws Exception {
-        flowCache.allocateFlow(new ImmutablePair<>(forwardCreatedFlow, reverseCreatedFlow));
-        flowCache.allocateFlow(new ImmutablePair<>(forwardCreatedFlow, reverseCreatedFlow));
-
-        Set<Integer> allocatedCookies = flowCache.resourceCache.getAllCookies();
-        Set<Integer> allocatedVlanIds = flowCache.resourceCache.getAllVlanIds();
-        Set<Integer> allocatedMeterIds = flowCache.resourceCache.getAllMeterIds(
-                NetworkTopologyConstants.sw3.getSwitchId());
-
-        Set<Integer> expectedCookies = new HashSet<>(Arrays.asList(
-                (int) forwardCreatedFlow.getCookie(),
-                (int) reverseCreatedFlow.getCookie()));
-
-        Set<Integer> expectedVlanIds = new HashSet<>(Arrays.asList(
-                forwardCreatedFlow.getTransitVlan(),
-                reverseCreatedFlow.getTransitVlan()));
-
-        Set<Integer> expectedMeterIds = new HashSet<>(Arrays.asList(
-                forwardCreatedFlow.getMeterId(),
-                reverseCreatedFlow.getMeterId()));
-
-        assertEquals(expectedCookies, allocatedCookies);
-        assertEquals(expectedVlanIds, allocatedVlanIds);
-        assertEquals(expectedMeterIds, allocatedMeterIds);
-    }
-
-    @Test
-    public void deallocateFlow() throws Exception {
-        allocateFlow();
-        flowCache.deallocateFlow(new ImmutablePair<>(forwardCreatedFlow, reverseCreatedFlow));
-        flowCache.deallocateFlow(new ImmutablePair<>(forwardCreatedFlow, reverseCreatedFlow));
-
-        Set<Integer> allocatedCookies = flowCache.resourceCache.getAllCookies();
-        Set<Integer> allocatedVlanIds = flowCache.resourceCache.getAllVlanIds();
-        Set<Integer> allocatedMeterIds = flowCache.resourceCache.getAllMeterIds(
-                NetworkTopologyConstants.sw3.getSwitchId());
-
-        assertEquals(Collections.emptySet(), allocatedCookies);
-        assertEquals(Collections.emptySet(), allocatedVlanIds);
-        assertEquals(Collections.emptySet(), allocatedMeterIds);
     }
 
     private void buildNetworkTopology(NetworkCache networkCache) {

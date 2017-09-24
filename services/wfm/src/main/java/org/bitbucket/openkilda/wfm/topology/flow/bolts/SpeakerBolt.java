@@ -1,10 +1,6 @@
 package org.bitbucket.openkilda.wfm.topology.flow.bolts;
 
-import static org.bitbucket.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.bitbucket.openkilda.messaging.Utils.MAPPER;
-import static org.bitbucket.openkilda.messaging.Utils.TRANSACTION_ID;
-import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.fieldsFlowIdStatus;
-import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.fieldsMessageSwitchIdFlowIdTransactionId;
 
 import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.Message;
@@ -15,6 +11,7 @@ import org.bitbucket.openkilda.messaging.command.flow.BaseInstallFlow;
 import org.bitbucket.openkilda.messaging.command.flow.RemoveFlow;
 import org.bitbucket.openkilda.messaging.error.ErrorMessage;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowState;
+import org.bitbucket.openkilda.wfm.topology.flow.FlowTopology;
 import org.bitbucket.openkilda.wfm.topology.flow.StreamType;
 
 import org.apache.logging.log4j.LogManager;
@@ -48,17 +45,15 @@ public class SpeakerBolt extends BaseRichBolt {
      */
     @Override
     public void execute(Tuple tuple) {
-        logger.debug("Ingoing tuple: {}", tuple);
-
         String request = tuple.getString(0);
-        //String request = tuple.getStringByField("value");
-        Values values;
+        Values values = null;
 
         try {
             Message message = MAPPER.readValue(request, Message.class);
             if (!Destination.WFM_TRANSACTION.equals(message.getDestination())) {
                 return;
             }
+            logger.debug("Request tuple={}", tuple);
 
             if (message instanceof CommandMessage) {
                 CommandData data = ((CommandMessage) message).getData();
@@ -69,8 +64,8 @@ public class SpeakerBolt extends BaseRichBolt {
                     String flowId = ((BaseInstallFlow) data).getId();
 
                     logger.debug("Flow install message: {}={}, switch-id={}, {}={}, {}={}, message={}",
-                            CORRELATION_ID, message.getCorrelationId(), switchId,
-                            Utils.FLOW_ID, flowId, TRANSACTION_ID, transactionId, request);
+                            Utils.CORRELATION_ID, message.getCorrelationId(), switchId,
+                            Utils.FLOW_ID, flowId, Utils.TRANSACTION_ID, transactionId, request);
 
                     message.setDestination(Destination.TOPOLOGY_ENGINE);
                     values = new Values(MAPPER.writeValueAsString(message), switchId, flowId, transactionId);
@@ -82,35 +77,42 @@ public class SpeakerBolt extends BaseRichBolt {
                     String flowId = ((RemoveFlow) data).getId();
 
                     logger.debug("Flow remove message: {}={}, switch-id={}, {}={}, {}={}, message={}",
-                            CORRELATION_ID, message.getCorrelationId(), switchId,
-                            Utils.FLOW_ID, flowId, TRANSACTION_ID, transactionId, request);
+                            Utils.CORRELATION_ID, message.getCorrelationId(), switchId,
+                            Utils.FLOW_ID, flowId, Utils.TRANSACTION_ID, transactionId, request);
 
                     message.setDestination(Destination.TOPOLOGY_ENGINE);
                     values = new Values(MAPPER.writeValueAsString(message), switchId, flowId, transactionId);
                     outputCollector.emit(StreamType.DELETE.toString(), tuple, values);
 
                 } else {
-                    logger.warn("Skip undefined command message: {}={}, message={}",
-                            CORRELATION_ID, message.getCorrelationId(), request);
+                    logger.debug("Skip undefined command message: {}={}, message={}",
+                            Utils.CORRELATION_ID, message.getCorrelationId(), request);
                 }
             } else if (message instanceof ErrorMessage) {
                 String flowId = ((ErrorMessage) message).getData().getErrorDescription();
                 FlowState status = FlowState.DOWN;
 
-                logger.error("Flow error message: {}={}, {}={}, message={}",
-                        CORRELATION_ID, message.getCorrelationId(), Utils.FLOW_ID, flowId, request);
+                if (flowId != null) {
+                    logger.error("Flow error message: {}={}, {}={}, message={}",
+                            Utils.CORRELATION_ID, message.getCorrelationId(), Utils.FLOW_ID, flowId, request);
 
-                values = new Values(flowId, status);
-                outputCollector.emit(StreamType.STATUS.toString(), tuple, values);
+                    values = new Values(flowId, status);
+                    outputCollector.emit(StreamType.STATUS.toString(), tuple, values);
+                } else {
+                    logger.debug("Skip error message without flow-id: {}={}, message={}",
+                            Utils.CORRELATION_ID, message.getCorrelationId(), request);
+                }
 
             } else {
-                logger.warn("Skip undefined message: {}={}, message={}",
-                        CORRELATION_ID, message.getCorrelationId(), request);
+                logger.debug("Skip undefined message: {}={}, message={}",
+                        Utils.CORRELATION_ID, message.getCorrelationId(), request);
             }
         } catch (IOException exception) {
             logger.error("Could not deserialize message={}", request, exception);
         } finally {
-            logger.debug("Speaker request ack: message={}", request);
+            logger.debug("Speaker message ack: component={}, stream={}, tuple={}, values={}",
+                    tuple.getSourceComponent(), tuple.getSourceStreamId(), tuple, values);
+
             outputCollector.ack(tuple);
         }
     }
@@ -120,9 +122,9 @@ public class SpeakerBolt extends BaseRichBolt {
      */
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
-        outputFieldsDeclarer.declareStream(StreamType.CREATE.toString(), fieldsMessageSwitchIdFlowIdTransactionId);
-        outputFieldsDeclarer.declareStream(StreamType.DELETE.toString(), fieldsMessageSwitchIdFlowIdTransactionId);
-        outputFieldsDeclarer.declareStream(StreamType.STATUS.toString(), fieldsFlowIdStatus);
+        outputFieldsDeclarer.declareStream(StreamType.CREATE.toString(), FlowTopology.fieldsMessageSwitchIdFlowIdTransactionId);
+        outputFieldsDeclarer.declareStream(StreamType.DELETE.toString(), FlowTopology.fieldsMessageSwitchIdFlowIdTransactionId);
+        outputFieldsDeclarer.declareStream(StreamType.STATUS.toString(), FlowTopology.fieldsFlowIdStatus);
     }
 
     /**

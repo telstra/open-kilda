@@ -23,7 +23,7 @@ switch_states = {
 class MessageItem(object):
     def __init__(self, **kwargs):
         self.type = kwargs.get("type")
-        self.timestamp = kwargs.get("timestamp")
+        self.timestamp = str(kwargs.get("timestamp"))
         self.payload = kwargs.get("payload", {})
         self.destination = kwargs.get("destination")
         self.correlation_id = kwargs.get("correlation_id", "admin-request")
@@ -46,7 +46,6 @@ class MessageItem(object):
     def handle(self):
         try:
             event_handled = False
-            logger.debug('Processing message for %s', self.get_type())
 
             if self.get_message_type() == "switch"\
                     and self.payload['state'] == "ADDED":
@@ -97,6 +96,10 @@ class MessageItem(object):
 
     def activate_switch(self):
         switch_id = self.payload['switch_id']
+
+        logger.info('Switch %s activation request: timestamp=%s',
+                    switch_id, self.timestamp)
+
         switch = graph.find_one('switch',
                                 property_key='name',
                                 property_value='{}'.format(switch_id))
@@ -109,6 +112,10 @@ class MessageItem(object):
 
     def create_switch(self):
         switch_id = self.payload['switch_id']
+
+        logger.info('Switch %s creation request: timestamp=%s',
+                    switch_id, self.timestamp)
+
         switch = graph.find_one('switch',
                                 property_key='name',
                                 property_value='{}'.format(switch_id))
@@ -136,6 +143,10 @@ class MessageItem(object):
 
     def deactivate_switch(self):
         switch_id = self.payload['switch_id']
+
+        logger.info('Switch %s deactivation request: timestamp=%s, ',
+                    switch_id, self.timestamp)
+
         switch = graph.find_one('switch',
                                 property_key='name',
                                 property_value='{}'.format(switch_id))
@@ -152,6 +163,10 @@ class MessageItem(object):
 
     def remove_switch(self):
         switch_id = self.payload['switch_id']
+
+        logger.info('Switch %s removing request: timestamp=%s',
+                    switch_id, self.timestamp)
+
         switch = graph.find_one('switch',
                                 property_key='name',
                                 property_value='{}'.format(switch_id))
@@ -199,6 +214,10 @@ class MessageItem(object):
         path = self.payload['path']
         switch_id = path[0]['switch_id']
         port_id = int(path[0]['port_no'])
+
+        logger.info('Isl %s_%d deletion request: timestamp=%s',
+                    switch_id, port_id, self.timestamp)
+
         if self.isl_exists(switch_id, port_id):
             return self.delete_isl(switch_id, port_id)
         else:
@@ -207,6 +226,10 @@ class MessageItem(object):
     def port_down(self):
         switch_id = self.payload['switch_id']
         port_id = int(self.payload['port_no'])
+
+        logger.info('Port %s_%d deletion request: timestamp=%s',
+                    switch_id, port_id, self.timestamp)
+
         if self.isl_exists(switch_id, port_id):
             return self.delete_isl(switch_id, port_id)
         else:
@@ -225,11 +248,15 @@ class MessageItem(object):
         a_switch_node = graph.find_one('switch',
                                        property_key='name',
                                        property_value='{}'.format(a_switch))
+        if not a_switch_node:
+            logger.error('Isl source was not found: %s', a_switch_node)
+            return False
+
         b_switch_node = graph.find_one('switch',
                                        property_key='name',
                                        property_value='{}'.format(b_switch))
-
-        if not a_switch_node or not b_switch_node:
+        if not b_switch_node:
+            logger.error('Isl destination was not found: %s', b_switch_node)
             return False
 
         isl_lock.acquire()
@@ -245,6 +272,9 @@ class MessageItem(object):
                                                            b_port)).data()
 
             if not isl_exists:
+                logger.info('Isl %s_%d creation request: timestamp=%s',
+                            a_switch, a_port, self.timestamp)
+
                 isl_query = ("MATCH (u:switch {{name:'{}'}}), "
                              "(r:switch {{name:'{}'}}) "
                              "MERGE (u)-[:isl {{"
@@ -268,6 +298,9 @@ class MessageItem(object):
                 logger.info('ISL between %s and %s created',
                             a_switch_node['name'], b_switch_node['name'])
             else:
+                logger.debug('Isl %s_%d update request: timestamp=%s',
+                             a_switch, a_port, self.timestamp)
+
                 isl_update_query = ("MATCH (a:switch)-[r:isl {{"
                                     "src_switch: '{}', "
                                     "src_port: {}, "
@@ -298,8 +331,8 @@ class MessageItem(object):
         flow = self.payload['payload']
         flow_id = flow['flowid']
 
-        logger.info('Flow create request: correlation_id=%s, flow=%s',
-                    correlation_id, flow)
+        logger.info('Flow create request: timestamp=%s, correlation_id=%s,'
+                    ' flow=%s', self.timestamp, correlation_id, flow)
 
         try:
             rules = flow_utils.build_rules(flow)
@@ -334,8 +367,8 @@ class MessageItem(object):
         flow_id = flow['flowid']
 
         try:
-            logger.info('Flow delete request: correlation_id=%s, flow=%s',
-                        correlation_id, flow)
+            logger.info('Flow delete request: timestamp=%s, correlation_id=%s,'
+                        ' flow=%s', self.timestamp, correlation_id, flow)
 
             flow_utils.remove_flow(flow, flow['flowpath'])
 
@@ -364,8 +397,8 @@ class MessageItem(object):
         flow = self.payload['payload']
         flow_id = flow['flowid']
 
-        logger.info('Flow update request: correlation_id=%s, flow=%s',
-                    correlation_id, flow)
+        logger.info('Flow update request: timestamp=%s, correlation_id=%s,'
+                    ' flow=%s', self.timestamp, correlation_id, flow)
 
         try:
 
@@ -477,7 +510,8 @@ class MessageItem(object):
     def dump_network(self):
         correlation_id = self.correlation_id
         step = "Init"
-        logger.info('Dump network request: correlation_id=%s', correlation_id)
+        logger.info('Dump network request: timestamp=%s, correlation_id=%s',
+                    self.timestamp, correlation_id)
 
         try:
             step = "Switches"

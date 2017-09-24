@@ -55,13 +55,13 @@ public class KafkaMessageConsumer implements MessageConsumer<Object> {
     @KafkaListener(id = "northbound-listener", topics = "kilda-test")
     public void receive(final String record) {
         try {
-            logger.debug("message received");
+            logger.trace("message received");
             Message message = MAPPER.readValue(record, Message.class);
             if (Destination.NORTHBOUND.equals(message.getDestination())) {
                 logger.debug("message received: {}", record);
                 messages.put(message.getCorrelationId(), message);
             } else {
-                logger.debug("Skip message: {}", message);
+                logger.trace("Skip message: {}", message);
             }
         } catch (IOException exception) {
             logger.error("Could not deserialize message: {}", record, exception);

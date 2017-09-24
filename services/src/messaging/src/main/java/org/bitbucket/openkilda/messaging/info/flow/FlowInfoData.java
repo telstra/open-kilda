@@ -15,13 +15,15 @@ import com.google.common.base.MoreObjects;
 import java.util.Objects;
 
 /**
- * Represents flow data.
+ * Represents flow operation.
  */
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
         "message_type",
-        Utils.PAYLOAD})
+        Utils.PAYLOAD,
+        "operation",
+        Utils.CORRELATION_ID})
 public class FlowInfoData extends InfoData {
     /**
      * Serialization version number constant.
@@ -35,42 +37,108 @@ public class FlowInfoData extends InfoData {
     private ImmutablePair<Flow, Flow> payload;
 
     /**
-     *  The flow operation type.
+     * Flow request correlation id.
+     */
+    @JsonProperty(Utils.CORRELATION_ID)
+    protected String correlationId;
+
+    /**
+     * The flow operation type.
      */
     @JsonProperty("operation")
     private FlowOperation operation;
 
-    @JsonCreator
-    public FlowInfoData(@JsonProperty(Utils.PAYLOAD) ImmutablePair<Flow, Flow> payload,
-                        @JsonProperty("operation") FlowOperation operation) {
-        this.payload = payload;
-        this.operation = operation;
+    /**
+     * Default constructor.
+     */
+    public FlowInfoData() {
     }
 
+    /**
+     * Instance constructor.
+     *
+     * @param payload       flow operation payload
+     * @param operation     flow operation type
+     * @param correlationId flow request correlation id
+     */
+    @JsonCreator
+    public FlowInfoData(@JsonProperty(Utils.PAYLOAD) ImmutablePair<Flow, Flow> payload,
+                        @JsonProperty("operation") FlowOperation operation,
+                        @JsonProperty(Utils.CORRELATION_ID) String correlationId) {
+        this.payload = payload;
+        this.operation = operation;
+        this.correlationId = correlationId;
+    }
+
+    /**
+     * Gets flow operation payload.
+     *
+     * @return flow operation payload
+     */
     public ImmutablePair<Flow, Flow> getPayload() {
         return payload;
     }
 
+    /**
+     * Sets flow operation payload.
+     *
+     * @param payload flow operation payload
+     */
     public void setPayload(ImmutablePair<Flow, Flow> payload) {
         this.payload = payload;
     }
 
+    /**
+     * Gets flow operation type.
+     *
+     * @return flow operation type
+     */
     public FlowOperation getOperation() {
         return operation;
     }
 
+    /**
+     * Sets flow operation type.
+     *
+     * @param operation flow operation type
+     */
     public void setOperation(FlowOperation operation) {
         this.operation = operation;
     }
 
+    /**
+     * Gets flow request correlation id.
+     *
+     * @return flow request correlation id
+     */
+    public String getCorrelationId() {
+        return correlationId;
+    }
+
+    /**
+     * Sets flow request correlation id.
+     *
+     * @param correlationId flow request correlation id
+     */
+    public void setCorrelationId(String correlationId) {
+        this.correlationId = correlationId;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public String toString() {
         return MoreObjects.toStringHelper(this)
                 .add(Utils.PAYLOAD, payload)
                 .add("operation", operation)
+                .add(Utils.CORRELATION_ID, correlationId)
                 .toString();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean equals(Object object) {
         if (this == object) {
@@ -82,11 +150,15 @@ public class FlowInfoData extends InfoData {
 
         FlowInfoData that = (FlowInfoData) object;
         return Objects.equals(getPayload(), that.getPayload())
-                && Objects.equals(getOperation(), that.getOperation());
+                && Objects.equals(getOperation(), that.getOperation())
+                && Objects.equals(getCorrelationId(), that.getCorrelationId());
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public int hashCode() {
-        return Objects.hash(getPayload(), getOperation());
+        return Objects.hash(getPayload(), getOperation(), getCorrelationId());
     }
 }

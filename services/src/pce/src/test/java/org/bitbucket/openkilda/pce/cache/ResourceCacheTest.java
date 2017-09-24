@@ -2,12 +2,27 @@ package org.bitbucket.openkilda.pce.cache;
 
 import static org.junit.Assert.assertEquals;
 
+import org.bitbucket.openkilda.messaging.info.event.PathInfoData;
+import org.bitbucket.openkilda.messaging.model.Flow;
+import org.bitbucket.openkilda.messaging.model.ImmutablePair;
+import org.bitbucket.openkilda.messaging.payload.flow.FlowState;
+import org.bitbucket.openkilda.pce.NetworkTopologyConstants;
+
+import edu.emory.mathcs.backport.java.util.Collections;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+
 public class ResourceCacheTest {
     private static final String SWITCH_ID = "switch-id";
+    private final Flow forwardCreatedFlow = new Flow("created-flow", 0, 10L, "description",
+            "timestamp", "sw3", "sw3", 21, 22, 100, 200, 4, 4, new PathInfoData(), FlowState.ALLOCATED);
+    private final Flow reverseCreatedFlow = new Flow("created-flow", 0, 10L, "description",
+            "timestamp", "sw3", "sw3", 22, 21, 200, 100, 5, 5, new PathInfoData(), FlowState.ALLOCATED);
     private ResourceCache resourceCache;
 
     @After
@@ -122,5 +137,48 @@ public class ResourceCacheTest {
         while (i++ <= ResourceCache.MAX_METER_ID) {
             resourceCache.allocateMeterId(SWITCH_ID);
         }
+    }
+
+    @Test
+    public void allocateFlow() throws Exception {
+        resourceCache.allocateFlow(new ImmutablePair<>(forwardCreatedFlow, reverseCreatedFlow));
+        resourceCache.allocateFlow(new ImmutablePair<>(forwardCreatedFlow, reverseCreatedFlow));
+
+        Set<Integer> allocatedCookies = resourceCache.getAllCookies();
+        Set<Integer> allocatedVlanIds = resourceCache.getAllVlanIds();
+        Set<Integer> allocatedMeterIds = resourceCache.getAllMeterIds(
+                NetworkTopologyConstants.sw3.getSwitchId());
+
+        Set<Integer> expectedCookies = new HashSet<>(Arrays.asList(
+                (int) forwardCreatedFlow.getCookie(),
+                (int) reverseCreatedFlow.getCookie()));
+
+        Set<Integer> expectedVlanIds = new HashSet<>(Arrays.asList(
+                forwardCreatedFlow.getTransitVlan(),
+                reverseCreatedFlow.getTransitVlan()));
+
+        Set<Integer> expectedMeterIds = new HashSet<>(Arrays.asList(
+                forwardCreatedFlow.getMeterId(),
+                reverseCreatedFlow.getMeterId()));
+
+        assertEquals(expectedCookies, allocatedCookies);
+        assertEquals(expectedVlanIds, allocatedVlanIds);
+        assertEquals(expectedMeterIds, allocatedMeterIds);
+    }
+
+    @Test
+    public void deallocateFlow() throws Exception {
+        allocateFlow();
+        resourceCache.deallocateFlow(new ImmutablePair<>(forwardCreatedFlow, reverseCreatedFlow));
+        resourceCache.deallocateFlow(new ImmutablePair<>(forwardCreatedFlow, reverseCreatedFlow));
+
+        Set<Integer> allocatedCookies = resourceCache.getAllCookies();
+        Set<Integer> allocatedVlanIds = resourceCache.getAllVlanIds();
+        Set<Integer> allocatedMeterIds = resourceCache.getAllMeterIds(
+                NetworkTopologyConstants.sw3.getSwitchId());
+
+        assertEquals(Collections.emptySet(), allocatedCookies);
+        assertEquals(Collections.emptySet(), allocatedVlanIds);
+        assertEquals(Collections.emptySet(), allocatedMeterIds);
     }
 }

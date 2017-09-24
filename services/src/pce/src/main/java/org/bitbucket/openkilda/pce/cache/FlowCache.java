@@ -25,21 +25,6 @@ import java.util.stream.Collectors;
 
 public class FlowCache extends Cache {
     /**
-     * Forward flow cookie mask.
-     */
-    public static final long FORWARD_FLOW_COOKIE_MASK = 0x4000000000000000L;
-
-    /**
-     * Reverse flow cookie mask.
-     */
-    public static final long REVERSE_FLOW_COOKIE_MASK = 0x2000000000000000L;
-
-    /**
-     * Flow cookie value mask.
-     */
-    public static final long FLOW_COOKIE_VALUE_MASK = 0x00000000FFFFFFFFL;
-
-    /**
      * Logger.
      */
     private static final Logger logger = LoggerFactory.getLogger(FlowCache.class);
@@ -62,7 +47,7 @@ public class FlowCache extends Cache {
      */
     public void load(Set<ImmutablePair<Flow, Flow>> flows) {
         logger.debug("Flows: {}", flows);
-        flows.forEach(this::createFlow);
+        flows.forEach(this::putFlow);
     }
 
     /**
@@ -76,12 +61,11 @@ public class FlowCache extends Cache {
     /**
      * Puts flow directly to the cache.
      *
-     * @param flowId fow id
-     * @param flow   flow
+     * @param flow flow
      * @return previous flow
      */
-    public ImmutablePair<Flow, Flow> putFlow(String flowId, ImmutablePair<Flow, Flow> flow) {
-        return flowPool.put(flowId, flow);
+    public ImmutablePair<Flow, Flow> putFlow(ImmutablePair<Flow, Flow> flow) {
+        return flowPool.put(flow.getLeft().getFlowId(), flow);
     }
 
     /**
@@ -92,6 +76,18 @@ public class FlowCache extends Cache {
      */
     public ImmutablePair<Flow, Flow> removeFlow(String flowId) {
         return flowPool.remove(flowId);
+    }
+
+    /**
+     * Checks if flow pool contains {@link Flow} instance.
+     *
+     * @param flowId {@link Flow} instance id
+     * @return true if flow pool contains {@link Flow} instance
+     */
+    public boolean cacheContainsFlow(String flowId) {
+        logger.debug("Is flow {} in cache", flowId);
+
+        return flowPool.containsKey(flowId);
     }
 
     /**
@@ -175,7 +171,7 @@ public class FlowCache extends Cache {
     public ImmutablePair<Flow, Flow> createFlow(Flow flow, ImmutablePair<PathInfoData, PathInfoData> path) {
         String flowId = flow.getFlowId();
         logger.debug("Create {} flow with {} parameters", flowId, flow);
-        ImmutablePair<Flow, Flow> newFlow = buildFlow(flow, path);
+        ImmutablePair<Flow, Flow> newFlow = buildFlow(flow, path, resourceCache);
 
         ImmutablePair<Flow, Flow> oldFlow = flowPool.get(flowId);
         if (oldFlow != null) {
@@ -183,7 +179,7 @@ public class FlowCache extends Cache {
                     String.format("Flow %s already exists", flowId));
         }
 
-        allocateFlow(newFlow);
+        resourceCache.allocateFlow(newFlow);
         flowPool.put(flowId, newFlow);
 
         return newFlow;
@@ -193,11 +189,14 @@ public class FlowCache extends Cache {
      * Creates flow.
      *
      * @param flow flow
+     * @param path flow path
      * @return flow
      */
-    public ImmutablePair<Flow, Flow> createFlow(ImmutablePair<Flow, Flow> flow) {
+    public ImmutablePair<Flow, Flow> createFlow(ImmutablePair<Flow, Flow> flow,
+                                                ImmutablePair<PathInfoData, PathInfoData> path) {
         String flowId = flow.left.getFlowId();
         logger.debug("Create {} flow with {} parameters", flowId, flow);
+        ImmutablePair<Flow, Flow> newFlow = buildFlow(flow, path, resourceCache);
 
         ImmutablePair<Flow, Flow> oldFlow = flowPool.get(flowId);
         if (oldFlow != null) {
@@ -205,10 +204,10 @@ public class FlowCache extends Cache {
                     String.format("Flow %s already exists", flowId));
         }
 
-        allocateFlow(flow);
-        flowPool.put(flowId, flow);
+        resourceCache.allocateFlow(newFlow);
+        flowPool.put(flowId, newFlow);
 
-        return flow;
+        return newFlow;
     }
 
     /**
@@ -226,7 +225,7 @@ public class FlowCache extends Cache {
                     String.format("Flow %s not found", flowId));
         }
 
-        deallocateFlow(flow);
+        resourceCache.deallocateFlow(flow);
 
         return flow;
     }
@@ -241,16 +240,42 @@ public class FlowCache extends Cache {
     public ImmutablePair<Flow, Flow> updateFlow(Flow flow, ImmutablePair<PathInfoData, PathInfoData> path) {
         String flowId = flow.getFlowId();
         logger.debug("Update {} flow with {} parameters", flowId, flow);
-        ImmutablePair<Flow, Flow> newFlow = buildFlow(flow, path);
+        ImmutablePair<Flow, Flow> newFlow = buildFlow(flow, path, resourceCache);
 
         ImmutablePair<Flow, Flow> odlFlow = flowPool.remove(flowId);
         if (odlFlow == null) {
             throw new CacheException(ErrorType.NOT_FOUND, "Can not update flow",
                     String.format("Flow %s not found", flowId));
         }
-        deallocateFlow(odlFlow);
+        resourceCache.deallocateFlow(odlFlow);
 
-        allocateFlow(newFlow);
+        resourceCache.allocateFlow(newFlow);
+        flowPool.put(flowId, newFlow);
+
+        return newFlow;
+    }
+
+    /**
+     * Updates flow.
+     *
+     * @param flow flow
+     * @param path flow path
+     * @return flow
+     */
+    public ImmutablePair<Flow, Flow> updateFlow(ImmutablePair<Flow, Flow> flow,
+                                                ImmutablePair<PathInfoData, PathInfoData> path) {
+        String flowId = flow.getLeft().getFlowId();
+        logger.debug("Update {} flow with {} parameters", flowId, flow);
+        ImmutablePair<Flow, Flow> newFlow = buildFlow(flow, path, resourceCache);
+
+        ImmutablePair<Flow, Flow> odlFlow = flowPool.remove(flowId);
+        if (odlFlow == null) {
+            throw new CacheException(ErrorType.NOT_FOUND, "Can not update flow",
+                    String.format("Flow %s not found", flowId));
+        }
+        resourceCache.deallocateFlow(odlFlow);
+
+        resourceCache.allocateFlow(newFlow);
         flowPool.put(flowId, newFlow);
 
         return newFlow;
@@ -307,87 +332,102 @@ public class FlowCache extends Cache {
      * Builds new forward and reverse flow pair.
      *
      * @param flow source flow
+     * @param path flow path
+     * @param cache resource cache
      * @return new forward and reverse flow pair
      */
-    ImmutablePair<Flow, Flow> buildFlow(Flow flow, ImmutablePair<PathInfoData, PathInfoData> path) {
+    public ImmutablePair<Flow, Flow> buildFlow(final ImmutablePair<Flow, Flow> flow,
+                                                ImmutablePair<PathInfoData, PathInfoData> path,
+                                                ResourceCache cache) {
         String timestamp = Utils.getIsoTimestamp();
-        int cookie = resourceCache.allocateCookie();
+        int cookie = cache.allocateCookie((int) flow.getLeft().getCookie());
 
-        Flow forward = buildForwardFlow(flow, cookie, path.left, timestamp);
-        Flow reverse = buildReverseFlow(flow, cookie, path.right, timestamp);
+        Flow forward = new Flow(
+                flow.getLeft().getFlowId(),
+                flow.getLeft().getBandwidth(),
+                cookie | ResourceCache.FORWARD_FLOW_COOKIE_MASK,
+                flow.getLeft().getDescription(),
+                timestamp,
+                flow.getLeft().getSourceSwitch(),
+                flow.getLeft().getDestinationSwitch(),
+                flow.getLeft().getSourcePort(),
+                flow.getLeft().getDestinationPort(),
+                flow.getLeft().getSourceVlan(),
+                flow.getLeft().getDestinationVlan(),
+                cache.allocateMeterId(flow.getLeft().getSourceSwitch(), flow.getLeft().getMeterId()),
+                cache.allocateVlanId(flow.getLeft().getTransitVlan()),
+                path.getLeft(),
+                FlowState.ALLOCATED);
+
+        Flow reverse = new Flow(
+                flow.getRight().getFlowId(),
+                flow.getRight().getBandwidth(),
+                cookie | ResourceCache.REVERSE_FLOW_COOKIE_MASK,
+                flow.getRight().getDescription(),
+                timestamp,
+                flow.getRight().getSourceSwitch(),
+                flow.getRight().getDestinationSwitch(),
+                flow.getRight().getSourcePort(),
+                flow.getRight().getDestinationPort(),
+                flow.getRight().getSourceVlan(),
+                flow.getRight().getDestinationVlan(),
+                cache.allocateMeterId(flow.getRight().getSourceSwitch(), flow.getRight().getMeterId()),
+                cache.allocateVlanId(flow.getRight().getTransitVlan()),
+                path.getRight(),
+                FlowState.ALLOCATED);
 
         return new ImmutablePair<>(forward, reverse);
     }
 
     /**
-     * Builds new forward flow.
+     * Builds new forward and reverse flow pair.
      *
-     * @param flow      source flow
-     * @param cookie    allocated cookie
-     * @param path      found path
-     * @param timestamp timestamp
-     * @return forward flow
+     * @param flow source flow
+     * @param path flow path
+     * @param cache resource cache
+     * @return new forward and reverse flow pair
      */
-    Flow buildForwardFlow(Flow flow, int cookie, PathInfoData path, String timestamp) {
-        return new Flow(flow.getFlowId(), flow.getBandwidth(), cookie | FORWARD_FLOW_COOKIE_MASK,
-                flow.getDescription(), timestamp, flow.getSourceSwitch(), flow.getDestinationSwitch(),
-                flow.getSourcePort(), flow.getDestinationPort(), flow.getSourceVlan(), flow.getDestinationVlan(),
-                resourceCache.allocateMeterId(flow.getSourceSwitch()), resourceCache.allocateVlanId(),
-                path, FlowState.ALLOCATED);
+    public ImmutablePair<Flow, Flow> buildFlow(final Flow flow,
+                                               ImmutablePair<PathInfoData, PathInfoData> path,
+                                               ResourceCache cache) {
+        String timestamp = Utils.getIsoTimestamp();
+        int cookie = cache.allocateCookie();
 
-    }
+        Flow forward = new Flow(
+                flow.getFlowId(),
+                flow.getBandwidth(),
+                cookie | ResourceCache.FORWARD_FLOW_COOKIE_MASK,
+                flow.getDescription(),
+                timestamp,
+                flow.getSourceSwitch(),
+                flow.getDestinationSwitch(),
+                flow.getSourcePort(),
+                flow.getDestinationPort(),
+                flow.getSourceVlan(),
+                flow.getDestinationVlan(),
+                cache.allocateMeterId(flow.getSourceSwitch()),
+                cache.allocateVlanId(),
+                path.getLeft(),
+                FlowState.ALLOCATED);
 
-    /**
-     * Builds new reverse flow.
-     *
-     * @param flow      source flow
-     * @param cookie    allocated cookie
-     * @param path      found path
-     * @param timestamp timestamp
-     * @return reverse flow
-     */
-    Flow buildReverseFlow(Flow flow, int cookie, PathInfoData path, String timestamp) {
-        return new Flow(flow.getFlowId(), flow.getBandwidth(), cookie | REVERSE_FLOW_COOKIE_MASK,
-                flow.getDescription(), timestamp, flow.getDestinationSwitch(), flow.getSourceSwitch(),
-                flow.getDestinationPort(), flow.getSourcePort(), flow.getDestinationVlan(), flow.getSourceVlan(),
-                resourceCache.allocateMeterId(flow.getDestinationSwitch()), resourceCache.allocateVlanId(),
-                path, FlowState.ALLOCATED);
-    }
+        Flow reverse = new Flow(
+                flow.getFlowId(),
+                flow.getBandwidth(),
+                cookie | ResourceCache.REVERSE_FLOW_COOKIE_MASK,
+                flow.getDescription(),
+                timestamp,
+                flow.getDestinationSwitch(),
+                flow.getSourceSwitch(),
+                flow.getDestinationPort(),
+                flow.getSourcePort(),
+                flow.getDestinationVlan(),
+                flow.getSourceVlan(),
+                cache.allocateMeterId(flow.getDestinationSwitch()),
+                cache.allocateVlanId(),
+                path.getRight(),
+                FlowState.ALLOCATED);
 
-    /**
-     * Allocates flow resources.
-     *
-     * @param flow flow
-     */
-    @VisibleForTesting
-    void allocateFlow(ImmutablePair<Flow, Flow> flow) {
-        resourceCache.allocateCookie((int) (flow.left.getCookie() & FLOW_COOKIE_VALUE_MASK));
-        resourceCache.allocateVlanId(flow.left.getTransitVlan());
-        resourceCache.allocateMeterId(flow.left.getSourceSwitch(), flow.left.getMeterId());
-
-        if (flow.right != null) {
-            resourceCache.allocateCookie((int) (flow.right.getCookie() & FLOW_COOKIE_VALUE_MASK));
-            resourceCache.allocateVlanId(flow.right.getTransitVlan());
-            resourceCache.allocateMeterId(flow.right.getSourceSwitch(), flow.right.getMeterId());
-        }
-    }
-
-    /**
-     * Deallocates flow resources.
-     *
-     * @param flow flow
-     */
-    @VisibleForTesting
-    void deallocateFlow(ImmutablePair<Flow, Flow> flow) {
-        resourceCache.deallocateCookie((int) (flow.left.getCookie() & FLOW_COOKIE_VALUE_MASK));
-        resourceCache.deallocateVlanId(flow.left.getTransitVlan());
-        resourceCache.deallocateMeterId(flow.left.getSourceSwitch(), flow.left.getMeterId());
-
-        if (flow.right != null) {
-            resourceCache.deallocateCookie((int) (flow.right.getCookie() & FLOW_COOKIE_VALUE_MASK));
-            resourceCache.deallocateVlanId(flow.right.getTransitVlan());
-            resourceCache.deallocateMeterId(flow.right.getSourceSwitch(), flow.right.getMeterId());
-        }
+        return new ImmutablePair<>(forward, reverse);
     }
 
     /**
@@ -396,8 +436,19 @@ public class FlowCache extends Cache {
      * @param flow flow
      * @return true if source and destination switches are same for specified flow, otherwise false
      */
-    private boolean isOneSwitchFlow(ImmutablePair<Flow, Flow> flow) {
-        return flow.getLeft().getSourceSwitch().equals(flow.getRight().getSourceSwitch());
+    public boolean isOneSwitchFlow(ImmutablePair<Flow, Flow> flow) {
+        return flow.getLeft().getSourceSwitch().equals(flow.getLeft().getDestinationSwitch())
+                && flow.getRight().getSourceSwitch().equals(flow.getRight().getDestinationSwitch());
+    }
+
+    /**
+     * Checks if flow is through single switch.
+     *
+     * @param flow flow
+     * @return true if source and destination switches are same for specified flow, otherwise false
+     */
+    public boolean isOneSwitchFlow(Flow flow) {
+        return flow.getSourceSwitch().equals(flow.getDestinationSwitch());
     }
 
     @Override

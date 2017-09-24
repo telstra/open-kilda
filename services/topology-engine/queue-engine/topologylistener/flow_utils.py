@@ -145,6 +145,7 @@ def store_flow(flow):
             "MERGE (u)-[:flow {{" \
             "flowid:'{}', " \
             "cookie: {}, " \
+            "meter_id: {}, " \
             "bandwidth: {}, " \
             "src_port: {}, " \
             "dst_port: {}, " \
@@ -162,6 +163,7 @@ def store_flow(flow):
         flow['dst_switch'],
         flow['flowid'],
         int(flow['cookie']),
+        int(flow['meter_id']),
         int(flow['bandwidth']),
         int(flow['src_port']),
         int(flow['dst_port']),

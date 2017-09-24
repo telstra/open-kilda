@@ -38,14 +38,18 @@ public class HealthCheckInfoData extends InfoData {
     @JsonProperty("state")
     protected String state;
 
+    /**
+     * Default constructor.
+     */
     public HealthCheckInfoData() {
     }
 
-    @Override
-    public int hashCode() {
-        return Objects.hash(getId(), getState());
-    }
-
+    /**
+     * Instance constructor.
+     *
+     * @param id    component id
+     * @param state component state
+     */
     @JsonCreator
     public HealthCheckInfoData(@JsonProperty("id") String id,
                                @JsonProperty("state") String state) {
@@ -54,6 +58,53 @@ public class HealthCheckInfoData extends InfoData {
 
     }
 
+    /**
+     * Gets component id.
+     *
+     * @return component id
+     */
+    public String getId() {
+        return id;
+    }
+
+    /**
+     * Sets component id.
+     *
+     * @param id component id
+     */
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    /**
+     * Gets component state.
+     *
+     * @return component state
+     */
+    public String getState() {
+        return state;
+    }
+
+    /**
+     * Sets component state.
+     *
+     * @param state component state
+     */
+    public void setState(String state) {
+        this.state = state;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int hashCode() {
+        return Objects.hash(getId(), getState());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public String toString() {
         return MoreObjects.toStringHelper(this)
@@ -62,19 +113,20 @@ public class HealthCheckInfoData extends InfoData {
                 .toString();
     }
 
-    public String getId() {
-        return id;
-    }
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean equals(Object object) {
+        if (this == object) {
+            return true;
+        }
+        if (object == null || getClass() != object.getClass()) {
+            return false;
+        }
 
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getState() {
-        return state;
-    }
-
-    public void setState(String state) {
-        this.state = state;
+        HealthCheckInfoData that = (HealthCheckInfoData) object;
+        return Objects.equals(getId(), that.getId())
+                && Objects.equals(getState(), that.getState());
     }
 }

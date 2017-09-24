@@ -1,5 +1,7 @@
 package org.bitbucket.openkilda.pce.cache;
 
+import org.bitbucket.openkilda.messaging.model.Flow;
+import org.bitbucket.openkilda.messaging.model.ImmutablePair;
 import org.bitbucket.openkilda.messaging.payload.ResourcePool;
 
 import com.google.common.base.MoreObjects;
@@ -14,7 +16,22 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * ResourceManager class contains basic operations on resources.
  */
-class ResourceCache extends Cache {
+public class ResourceCache extends Cache {
+    /**
+     * Flow cookie value mask.
+     */
+    public static final long FLOW_COOKIE_VALUE_MASK = 0x00000000FFFFFFFFL;
+
+    /**
+     * Forward flow cookie mask.
+     */
+    public static final long FORWARD_FLOW_COOKIE_MASK = 0x4000000000000000L;
+
+    /**
+     * Reverse flow cookie mask.
+     */
+    public static final long REVERSE_FLOW_COOKIE_MASK = 0x2000000000000000L;
+
     /**
      * Maximum meter id value.
      */
@@ -68,67 +85,200 @@ class ResourceCache extends Cache {
     /**
      * Instance constructor.
      */
-    ResourceCache() {
+    public ResourceCache() {
     }
 
+    /**
+     * Clears allocated resources.
+     */
     public void clear() {
         cookiePool.dumpPool().forEach(cookiePool::deallocate);
         vlanPool.dumpPool().forEach(vlanPool::deallocate);
         meterPool.clear();
     }
 
-    Integer allocateCookie() {
+    /**
+     * Allocates cookie.
+     *
+     * @return allocated cookie value
+     */
+    public Integer allocateCookie() {
         return cookiePool.allocate();
     }
 
-    Integer allocateCookie(Integer cookie) {
-        return cookiePool.allocate(cookie);
+    /**
+     * Allocates cookie.
+     *
+     * @param cookie cookie value
+     * @return allocated cookie value
+     */
+    public Integer allocateCookie(Integer cookie) {
+        if (cookie == 0) {
+            return cookiePool.allocate();
+        } else {
+            cookiePool.allocate(cookie);
+            return cookie;
+        }
     }
 
-    Integer deallocateCookie(Integer cookie) {
+    /**
+     * Deallocates cookie.
+     *
+     * @param cookie cookie value
+     * @return deallocated cookie value or null if value was not allocated earlier
+     */
+    public Integer deallocateCookie(Integer cookie) {
         return cookiePool.deallocate(cookie);
     }
 
-    Integer allocateVlanId() {
+    /**
+     * Allocates vlan id.
+     *
+     * @return allocated vlan id value
+     */
+    public Integer allocateVlanId() {
         return vlanPool.allocate();
     }
 
-    Integer allocateVlanId(Integer vlanId) {
-        return vlanPool.allocate(vlanId);
+    /**
+     * Allocates vlan id.
+     *
+     * @param vlanId vlan id value
+     * @return allocated vlan id value
+     */
+    public Integer allocateVlanId(Integer vlanId) {
+        if (vlanId == 0) {
+            return vlanPool.allocate();
+        } else {
+            vlanPool.allocate(vlanId);
+            return vlanId;
+        }
     }
 
-    Integer deallocateVlanId(Integer vlanId) {
+    /**
+     * Deallocates vlan id.
+     *
+     * @param vlanId vlan id value
+     * @return deallocated vlan id value or null if value was not allocated earlier
+     */
+    public Integer deallocateVlanId(Integer vlanId) {
         return vlanPool.deallocate(vlanId);
     }
 
-    synchronized Integer allocateMeterId(String switchId) {
+    /**
+     * Allocates meter id.
+     *
+     * @param switchId switch id
+     * @return allocated meter id value
+     */
+    public synchronized Integer allocateMeterId(String switchId) {
         return meterPool.computeIfAbsent(switchId, k -> new ResourcePool(MIN_METER_ID, MAX_METER_ID)).allocate();
     }
 
-    synchronized Integer allocateMeterId(String switchId, Integer meterId) {
-        return meterPool.computeIfAbsent(switchId, k -> new ResourcePool(MIN_METER_ID, MAX_METER_ID)).allocate(meterId);
+    /**
+     * Allocates meter id.
+     *
+     * @param switchId switch id
+     * @param meterId  meter id value
+     * @return allocated meter id value
+     */
+    public synchronized Integer allocateMeterId(String switchId, Integer meterId) {
+        if (meterId == 0) {
+            return meterPool.computeIfAbsent(switchId, k -> new ResourcePool(MIN_METER_ID, MAX_METER_ID))
+                    .allocate();
+        } else {
+            meterPool.computeIfAbsent(switchId, k -> new ResourcePool(MIN_METER_ID, MAX_METER_ID))
+                    .allocate(meterId);
+            return meterId;
+        }
     }
 
-    synchronized Integer deallocateMeterId(String switchId, Integer meterId) {
+    /**
+     * Deallocates meter id.
+     *
+     * @param switchId switch id
+     * @param meterId meter id value
+     * @return deallocated meter id value or null if value was not allocated earlier
+     */
+    public synchronized Integer deallocateMeterId(String switchId, Integer meterId) {
         return meterPool.get(switchId).deallocate(meterId);
     }
 
-    synchronized Set<Integer> deallocateMeterId(String switchId) {
+    /**
+     * Deallocates meter id for switch.
+     *
+     * @param switchId switch id
+     * @return deallocated meter id values
+     */
+    public synchronized Set<Integer> deallocateMeterId(String switchId) {
         return meterPool.remove(switchId).dumpPool();
     }
 
-    Set<Integer> getAllCookies() {
+    /**
+     * Gets all allocated cookie values.
+     *
+     * @return all allocated cookie values
+     */
+    public Set<Integer> getAllCookies() {
         return cookiePool.dumpPool();
     }
 
-    Set<Integer> getAllVlanIds() {
+    /**
+     * Gets all vlan id values.
+     *
+     * @return all allocated vlan id values
+     */
+    public Set<Integer> getAllVlanIds() {
         return vlanPool.dumpPool();
     }
 
-    Set<Integer> getAllMeterIds(String switchId) {
+    /**
+     * Gets all allocated meter id values.
+     *
+     * @param switchId switch id
+     * @return all allocated meter id values
+     */
+    public Set<Integer> getAllMeterIds(String switchId) {
         return meterPool.containsKey(switchId) ? meterPool.get(switchId).dumpPool() : Collections.emptySet();
     }
 
+    /**
+     * Allocates flow resources.
+     *
+     * @param flow flow
+     */
+    public void allocateFlow(ImmutablePair<Flow, Flow> flow) {
+        allocateCookie((int) (FLOW_COOKIE_VALUE_MASK & flow.left.getCookie()));
+
+        allocateVlanId(flow.left.getTransitVlan());
+        allocateMeterId(flow.left.getSourceSwitch(), flow.left.getMeterId());
+
+        if (flow.right != null) {
+            allocateVlanId(flow.right.getTransitVlan());
+            allocateMeterId(flow.right.getSourceSwitch(), flow.right.getMeterId());
+        }
+    }
+
+    /**
+     * Deallocates flow resources.
+     *
+     * @param flow flow
+     */
+    public void deallocateFlow(ImmutablePair<Flow, Flow> flow) {
+        deallocateCookie((int) (FLOW_COOKIE_VALUE_MASK & flow.left.getCookie()));
+
+        deallocateVlanId(flow.left.getTransitVlan());
+        deallocateMeterId(flow.left.getSourceSwitch(), flow.left.getMeterId());
+
+        if (flow.right != null) {
+            deallocateVlanId(flow.right.getTransitVlan());
+            deallocateMeterId(flow.right.getSourceSwitch(), flow.right.getMeterId());
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public String toString() {
         return MoreObjects.toStringHelper(this)

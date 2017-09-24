@@ -55,11 +55,6 @@ public enum ComponentType {
     SPLITTER_BOLT,
 
     /**
-     * Status bolt. Processes all flow requests and tracks flows status.
-     */
-    STATUS_BOLT,
-
-    /**
      * Crud bolt. Processes CRUD flow operations.
      */
     CRUD_BOLT,

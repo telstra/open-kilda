@@ -47,7 +47,7 @@ public class KafkaHealthCheckMessageConsumer implements HealthCheckMessageConsum
     @KafkaListener(id = "northbound-listener-health-check", topics = "kilda.health.check")
     public void receive(final String record) {
         try {
-            logger.debug("message received");
+            logger.trace("message received");
             Message message = MAPPER.readValue(record, Message.class);
             if (Destination.NORTHBOUND.equals(message.getDestination())) {
                 logger.debug("message received: {}", record);
@@ -55,7 +55,7 @@ public class KafkaHealthCheckMessageConsumer implements HealthCheckMessageConsum
                 HealthCheckInfoData healthCheck = (HealthCheckInfoData) info.getData();
                 messages.put(healthCheck.getId(), healthCheck);
             } else {
-                logger.debug("Skip message: {}", message);
+                logger.trace("Skip message: {}", message);
             }
         } catch (IOException exception) {
             logger.error("Could not deserialize message: {}", record, exception);

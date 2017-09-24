@@ -13,7 +13,14 @@ import java.util.concurrent.ConcurrentHashMap;
  * Class represents resource allocator/deallocator.
  */
 public class ResourcePool {
+    /**
+     * Resource values pool.
+     */
     private final Set<Integer> resources = ConcurrentHashMap.newKeySet();
+
+    /**
+     * Resource range of values.
+     */
     private final Range<Integer> range;
 
     /**
@@ -69,6 +76,9 @@ public class ResourcePool {
         return ImmutableSet.copyOf(resources);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public String toString() {
         return MoreObjects.toStringHelper(this)

@@ -1,15 +1,13 @@
 package org.bitbucket.openkilda.wfm.topology.flow.bolts;
 
 import static org.bitbucket.openkilda.messaging.Utils.MAPPER;
-import static org.bitbucket.openkilda.wfm.topology.AbstractTopology.MESSAGE_FIELD;
-import static org.bitbucket.openkilda.wfm.topology.AbstractTopology.fieldMessage;
-import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.FLOW_ID_FIELD;
-import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.fieldsMessageErrorType;
 
 import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.Utils;
 import org.bitbucket.openkilda.messaging.command.CommandMessage;
 import org.bitbucket.openkilda.messaging.command.flow.FlowCreateRequest;
+import org.bitbucket.openkilda.messaging.command.flow.FlowRerouteRequest;
+import org.bitbucket.openkilda.messaging.command.flow.FlowRestoreRequest;
 import org.bitbucket.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.bitbucket.openkilda.messaging.error.CacheException;
 import org.bitbucket.openkilda.messaging.error.ErrorData;
@@ -22,12 +20,18 @@ import org.bitbucket.openkilda.messaging.info.flow.FlowInfoData;
 import org.bitbucket.openkilda.messaging.info.flow.FlowOperation;
 import org.bitbucket.openkilda.messaging.info.flow.FlowPathResponse;
 import org.bitbucket.openkilda.messaging.info.flow.FlowResponse;
+import org.bitbucket.openkilda.messaging.info.flow.FlowStatusResponse;
 import org.bitbucket.openkilda.messaging.info.flow.FlowsResponse;
 import org.bitbucket.openkilda.messaging.model.Flow;
 import org.bitbucket.openkilda.messaging.model.ImmutablePair;
+import org.bitbucket.openkilda.messaging.payload.flow.FlowIdStatusPayload;
+import org.bitbucket.openkilda.messaging.payload.flow.FlowState;
 import org.bitbucket.openkilda.pce.cache.FlowCache;
+import org.bitbucket.openkilda.pce.cache.ResourceCache;
 import org.bitbucket.openkilda.pce.provider.PathComputer;
+import org.bitbucket.openkilda.wfm.topology.AbstractTopology;
 import org.bitbucket.openkilda.wfm.topology.flow.ComponentType;
+import org.bitbucket.openkilda.wfm.topology.flow.FlowTopology;
 import org.bitbucket.openkilda.wfm.topology.flow.StreamType;
 
 import org.apache.logging.log4j.LogManager;
@@ -106,11 +110,11 @@ public class CrudBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, Flo
      */
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
-        outputFieldsDeclarer.declareStream(StreamType.CREATE.toString(), fieldMessage);
-        outputFieldsDeclarer.declareStream(StreamType.UPDATE.toString(), fieldMessage);
-        outputFieldsDeclarer.declareStream(StreamType.DELETE.toString(), fieldMessage);
-        outputFieldsDeclarer.declareStream(StreamType.RESPONSE.toString(), fieldMessage);
-        outputFieldsDeclarer.declareStream(StreamType.ERROR.toString(), fieldsMessageErrorType);
+        outputFieldsDeclarer.declareStream(StreamType.CREATE.toString(), AbstractTopology.fieldMessage);
+        outputFieldsDeclarer.declareStream(StreamType.UPDATE.toString(), AbstractTopology.fieldMessage);
+        outputFieldsDeclarer.declareStream(StreamType.DELETE.toString(), AbstractTopology.fieldMessage);
+        outputFieldsDeclarer.declareStream(StreamType.RESPONSE.toString(), AbstractTopology.fieldMessage);
+        outputFieldsDeclarer.declareStream(StreamType.ERROR.toString(), FlowTopology.fieldsMessageErrorType);
     }
 
     /**
@@ -128,55 +132,110 @@ public class CrudBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, Flo
     public void execute(Tuple tuple) {
         logger.trace("Flow Cache before: {}", flowCache);
 
-        logger.debug("Ingoing tuple: {}", tuple);
-
         ComponentType componentId = ComponentType.valueOf(tuple.getSourceComponent());
-        StreamType streamType = StreamType.valueOf(tuple.getSourceStreamId());
-        String flowId = (String) tuple.getValueByField(FLOW_ID_FIELD);
-        CommandMessage message = (CommandMessage) tuple.getValueByField(MESSAGE_FIELD);
+        StreamType streamId = StreamType.valueOf(tuple.getSourceStreamId());
+        String flowId = tuple.getStringByField(Utils.FLOW_ID);
+        String correlationId = Utils.DEFAULT_CORRELATION_ID;
 
         try {
-            if (ComponentType.STATUS_BOLT == componentId) {
+            logger.debug("Request tuple={}", tuple);
 
-                switch (streamType) {
-                    case CREATE:
-                        emitFlowResponse(handleCreateRequest(message, tuple), tuple);
-                        break;
-                    case UPDATE:
-                        emitFlowResponse(handleUpdateRequest(message, tuple), tuple);
-                        break;
-                    case DELETE:
-                        emitFlowResponse(handleDeleteRequest(flowId, message, tuple), tuple);
-                        break;
-                    case READ:
-                        emitFlowResponse(handleReadRequest(flowId, message), tuple);
-                        break;
-                    case PATH:
-                        emitFlowResponse(handlePathRequest(flowId, message), tuple);
-                        break;
-                    default:
-                        logger.warn("Unexpected stream: {}", streamType);
-                        break;
-                }
-            } else {
-                logger.warn("Unexpected component: {}", componentId);
+            switch (componentId) {
+
+                case SPLITTER_BOLT:
+                    CommandMessage message = (CommandMessage) tuple.getValueByField(AbstractTopology.MESSAGE_FIELD);
+                    correlationId = message.getCorrelationId();
+
+                    logger.info("Flow request: {}={}, {}={}, component={}, stream={}",
+                            Utils.CORRELATION_ID, correlationId, Utils.FLOW_ID, flowId, componentId, streamId);
+
+                    switch (streamId) {
+                        case CREATE:
+                            handleCreateRequest(message, tuple);
+                            break;
+                        case UPDATE:
+                            handleUpdateRequest(message, tuple);
+                            break;
+                        case DELETE:
+                            handleDeleteRequest(flowId, message, tuple);
+                            break;
+                        case PATH:
+                            handlePathRequest(flowId, message, tuple);
+                            break;
+                        case RESTORE:
+                            handleRestoreRequest(message, tuple);
+                            break;
+                        case REROUTE:
+                            handleRerouteRequest(message, tuple);
+                            break;
+                        case STATUS:
+                            handleStatusRequest(flowId, message, tuple);
+                            break;
+                        case READ:
+                            if (flowId != null) {
+                                handleReadRequest(flowId, message, tuple);
+                            } else {
+                                handleDumpRequest(message, tuple);
+                            }
+                            break;
+                        default:
+                            logger.debug("Unexpected stream: component={}, stream={}", componentId, streamId);
+                            break;
+                    }
+                    break;
+
+                case SPEAKER_BOLT:
+                case TRANSACTION_BOLT:
+                    FlowState newStatus = (FlowState) tuple.getValueByField(FlowTopology.STATUS_FIELD);
+
+                    logger.info("Flow {} status {}: component={}, stream={}", flowId, newStatus, componentId, streamId);
+
+                    switch (streamId) {
+                        case STATUS:
+                            handleStateRequest(flowId, newStatus);
+                            break;
+                        default:
+                            logger.debug("Unexpected stream: component={}, stream={}", componentId, streamId);
+                            break;
+                    }
+                    break;
+
+                case TOPOLOGY_ENGINE_BOLT:
+                    ErrorMessage errorMessage = (ErrorMessage) tuple.getValueByField(AbstractTopology.MESSAGE_FIELD);
+
+                    logger.info("Flow {} error: component={}, stream={}", flowId, componentId, streamId);
+
+                    switch (streamId) {
+                        case STATUS:
+                            handleErrorRequest(flowId, errorMessage, tuple);
+                            break;
+                        default:
+                            logger.debug("Unexpected stream: component={}, stream={}", componentId, streamId);
+                            break;
+                    }
+                    break;
+
+                default:
+                    logger.debug("Unexpected component: {}", componentId);
+                    break;
             }
         } catch (CacheException exception) {
             String logMessage = String.format("%s: %s", exception.getErrorMessage(), exception.getErrorDescription());
             logger.error("{}, {}={}, {}={}, component={}, stream={}", logMessage, Utils.CORRELATION_ID,
-                    message.getCorrelationId(), Utils.FLOW_ID, flowId, componentId, streamType, exception);
+                    correlationId, Utils.FLOW_ID, flowId, componentId, streamId, exception);
 
-            ErrorMessage errorMessage = buildErrorMessage(message.getCorrelationId(),
-                    exception.getErrorType(), logMessage, componentId.toString().toLowerCase());
+            ErrorMessage errorMessage = buildErrorMessage(correlationId, exception.getErrorType(),
+                    logMessage, componentId.toString().toLowerCase());
 
-            Values values = new Values(errorMessage, exception.getErrorType());
-            outputCollector.emit(StreamType.ERROR.toString(), tuple, values);
+            Values error = new Values(errorMessage, exception.getErrorType());
+            outputCollector.emit(StreamType.ERROR.toString(), tuple, error);
 
         } catch (IOException exception) {
             logger.error("Could not deserialize message {}", tuple, exception);
 
         } finally {
-            logger.debug("Command ack: component={}, stream={}", componentId, streamType);
+            logger.debug("Command message ack: component={}, stream={}, tuple={}",
+                    tuple.getSourceComponent(), tuple.getSourceStreamId(), tuple);
 
             outputCollector.ack(tuple);
         }
@@ -184,105 +243,191 @@ public class CrudBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, Flo
         logger.trace("Flow Cache after: {}", flowCache);
     }
 
-    private InfoMessage handleDeleteRequest(String flowId, CommandMessage message, Tuple tuple) throws IOException {
-
+    private void handleDeleteRequest(String flowId, CommandMessage message, Tuple tuple) throws IOException {
         ImmutablePair<Flow, Flow> flow = flowCache.deleteFlow(flowId);
 
-        logger.debug("Deleted flow: {}", flow);
+        logger.info("Deleted flow: {}", flow);
 
-        Values values = new Values(MAPPER.writeValueAsString(new FlowInfoData(flow, FlowOperation.DELETE)));
-        outputCollector.emit(StreamType.DELETE.toString(), tuple, values);
+        Values topology = new Values(MAPPER.writeValueAsString(
+                new FlowInfoData(flow, FlowOperation.DELETE, message.getCorrelationId())));
+        outputCollector.emit(StreamType.DELETE.toString(), tuple, topology);
 
-        return new InfoMessage(new FlowResponse(buildFlowResponse(flow)),
-                message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND);
+        Values northbound = new Values(new InfoMessage(new FlowResponse(buildFlowResponse(flow)),
+                message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
+        outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
     }
 
-    private InfoMessage handleCreateRequest(CommandMessage message, Tuple tuple) throws IOException {
+    private void handleCreateRequest(CommandMessage message, Tuple tuple) throws IOException {
+        Flow requestedFlow = ((FlowCreateRequest) message.getData()).getPayload();
 
-        FlowCreateRequest creation = (FlowCreateRequest) message.getData();
+        ImmutablePair<PathInfoData, PathInfoData> path = pathComputer.getPath(requestedFlow);
+        logger.info("Created flow path: {}", path);
 
-        ImmutablePair<PathInfoData, PathInfoData> path = pathComputer.getPath(creation.getPayload());
-        if (!creation.getPayload().getSourceSwitch().equals(creation.getPayload().getDestinationSwitch())
-                && (path.getLeft().getPath().isEmpty() || path.getRight().getPath().isEmpty())) {
+        if (!flowCache.isOneSwitchFlow(requestedFlow) && pathComputer.isEmpty(path)) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.CREATION_FAILURE, "Could not create flow", "Path was not found");
         }
 
-        ImmutablePair<Flow, Flow> flow = flowCache.createFlow(creation.getPayload(), path);
+        ImmutablePair<Flow, Flow> flow = flowCache.createFlow(requestedFlow, path);
+        logger.info("Created flow: {}", flow);
 
-        logger.debug("Created flow path: {}", path);
-        logger.debug("Created flow: {}", flow);
+        Values topology = new Values(Utils.MAPPER.writeValueAsString(
+                new FlowInfoData(flow, FlowOperation.CREATE, message.getCorrelationId())));
+        outputCollector.emit(StreamType.CREATE.toString(), tuple, topology);
 
-        Values values = new Values(Utils.MAPPER.writeValueAsString(new FlowInfoData(flow, FlowOperation.CREATE)));
-        outputCollector.emit(StreamType.CREATE.toString(), tuple, values);
-
-        return new InfoMessage(new FlowResponse(buildFlowResponse(flow)),
-                message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND);
+        Values northbound = new Values(new InfoMessage(new FlowResponse(buildFlowResponse(flow)),
+                message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
+        outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
     }
 
-    private InfoMessage handleUpdateRequest(CommandMessage message, Tuple tuple) throws IOException {
+    private void handleRerouteRequest(CommandMessage message, Tuple tuple) throws IOException {
+        Flow requestedFlow = ((FlowRerouteRequest) message.getData()).getPayload();
 
-        FlowUpdateRequest update = (FlowUpdateRequest) message.getData();
+        ImmutablePair<PathInfoData, PathInfoData> path = pathComputer.getPath(requestedFlow);
+        logger.info("Rerouted flow path: {}", path);
 
-        ImmutablePair<PathInfoData, PathInfoData> path = pathComputer.getPath(update.getPayload());
-        if (!update.getPayload().getSourceSwitch().equals(update.getPayload().getDestinationSwitch())
-                && (path.getLeft().getPath().isEmpty() || path.getRight().getPath().isEmpty())) {
+        if (!flowCache.isOneSwitchFlow(requestedFlow) && pathComputer.isEmpty(path)) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.UPDATE_FAILURE, "Could not create flow", "Path was not found");
         }
 
-        ImmutablePair<Flow, Flow> flow = flowCache.updateFlow(update.getPayload(), path);
+        ImmutablePair<Flow, Flow> flow = flowCache.updateFlow(requestedFlow, path);
+        logger.info("Rerouted flow: {}", flow);
 
-        logger.debug("Updated flow path: {}", path);
-        logger.debug("Updated flow: {}", flow);
+        Values topology = new Values(Utils.MAPPER.writeValueAsString(
+                new FlowInfoData(flow, FlowOperation.UPDATE, message.getCorrelationId())));
+        outputCollector.emit(StreamType.UPDATE.toString(), tuple, topology);
 
-        Values values = new Values(Utils.MAPPER.writeValueAsString(new FlowInfoData(flow, FlowOperation.UPDATE)));
-        outputCollector.emit(StreamType.UPDATE.toString(), tuple, values);
-
-        return new InfoMessage(new FlowResponse(buildFlowResponse(flow)),
-                message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND);
+        Values northbound = new Values(new InfoMessage(new FlowResponse(buildFlowResponse(flow)),
+                message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
+        outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
     }
 
-    private InfoMessage handleReadRequest(String flowId, CommandMessage message) {
-        InfoMessage response;
+    private void handleRestoreRequest(CommandMessage message, Tuple tuple) throws IOException {
+        ImmutablePair<Flow, Flow> requestedFlow = ((FlowRestoreRequest) message.getData()).getPayload();
 
-        if (flowId != null) {
+        ImmutablePair<PathInfoData, PathInfoData> path = pathComputer.getPath(requestedFlow.getLeft());
+        logger.info("Restored flow path: {}", path);
 
-            ImmutablePair<Flow, Flow> flow = flowCache.getFlow(flowId);
-
-            logger.debug("Red flow: {}", flow);
-
-            response = new InfoMessage(new FlowResponse(buildFlowResponse(flow)),
-                    message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND);
-
-        } else {
-
-            logger.debug("Dump flows");
-
-            List<Flow> flows = flowCache.dumpFlows().stream()
-                    .map(this::buildFlowResponse)
-                    .collect(Collectors.toList());
-
-            response = new InfoMessage(new FlowsResponse(flows),
-                    message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND);
+        if (!flowCache.isOneSwitchFlow(requestedFlow) && pathComputer.isEmpty(path)) {
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    ErrorType.CREATION_FAILURE, "Could not restore flow", "Path was not found");
         }
 
-        return response;
+        ImmutablePair<Flow, Flow> flow;
+        if (flowCache.cacheContainsFlow(requestedFlow.getLeft().getFlowId())) {
+            flow = flowCache.updateFlow(requestedFlow, path);
+        } else {
+            flow = flowCache.createFlow(requestedFlow, path);
+        }
+        logger.info("Restored flow: {}", flow);
+
+        Values topology = new Values(Utils.MAPPER.writeValueAsString(
+                new FlowInfoData(flow, FlowOperation.UPDATE, message.getCorrelationId())));
+        outputCollector.emit(StreamType.UPDATE.toString(), tuple, topology);
     }
 
-    private InfoMessage handlePathRequest(String flowId, CommandMessage message) throws IOException {
+    private void handleUpdateRequest(CommandMessage message, Tuple tuple) throws IOException {
+        Flow requestedFlow = ((FlowUpdateRequest) message.getData()).getPayload();
 
+        ImmutablePair<PathInfoData, PathInfoData> path = pathComputer.getPath(requestedFlow);
+        logger.info("Updated flow path: {}", path);
+
+        if (!flowCache.isOneSwitchFlow(requestedFlow) && pathComputer.isEmpty(path)) {
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    ErrorType.UPDATE_FAILURE, "Could not create flow", "Path was not found");
+        }
+
+        ImmutablePair<Flow, Flow> flow = flowCache.updateFlow(requestedFlow, path);
+        logger.info("Updated flow: {}", flow);
+
+        Values topology = new Values(Utils.MAPPER.writeValueAsString(
+                new FlowInfoData(flow, FlowOperation.UPDATE, message.getCorrelationId())));
+        outputCollector.emit(StreamType.UPDATE.toString(), tuple, topology);
+
+        Values northbound = new Values(new InfoMessage(new FlowResponse(buildFlowResponse(flow)),
+                message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
+        outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
+    }
+
+    private void handleDumpRequest(CommandMessage message, Tuple tuple) {
+        List<Flow> flows = flowCache.dumpFlows().stream().map(this::buildFlowResponse).collect(Collectors.toList());
+
+        logger.info("Dump flows: {}", flows);
+
+        Values northbound = new Values(new InfoMessage(new FlowsResponse(flows),
+                message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
+        outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
+    }
+
+    private void handleReadRequest(String flowId, CommandMessage message, Tuple tuple) {
         ImmutablePair<Flow, Flow> flow = flowCache.getFlow(flowId);
 
-        logger.debug("Path flow: {}", flow);
+        logger.info("Got flow: {}", flow);
 
-        return new InfoMessage(new FlowPathResponse(flow.left.getFlowPath()),
-                message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND);
+        Values northbound = new Values(new InfoMessage(new FlowResponse(buildFlowResponse(flow)),
+                message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
+        outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
     }
 
-    private void emitFlowResponse(InfoMessage response, Tuple tuple) {
-        Values values = new Values(response);
-        outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
+    private void handlePathRequest(String flowId, CommandMessage message, Tuple tuple) throws IOException {
+        ImmutablePair<Flow, Flow> flow = flowCache.getFlow(flowId);
+
+        logger.info("Path flow: {}", flow);
+
+        Values northbound = new Values(new InfoMessage(new FlowPathResponse(flow.left.getFlowPath()),
+                message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
+        outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
+    }
+
+    private void handleStatusRequest(String flowId, CommandMessage message, Tuple tuple) throws IOException {
+        ImmutablePair<Flow, Flow> flow = flowCache.getFlow(flowId);
+        FlowState status = flow.getLeft().getState();
+
+        logger.info("Status flow: {}={}", flowId, status);
+
+        Values northbound = new Values(new InfoMessage(new FlowStatusResponse(new FlowIdStatusPayload(flowId, status)),
+                message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
+        outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
+    }
+
+    private void handleStateRequest(String flowId, FlowState state) {
+        ImmutablePair<Flow, Flow> flow = flowCache.getFlow(flowId);
+
+        logger.info("State flow: {}={}", flowId, state);
+
+        flow.left.setState(state);
+        flow.right.setState(state);
+    }
+
+    private void handleErrorRequest(String flowId, ErrorMessage message, Tuple tuple) throws IOException {
+        ErrorType errorType = message.getData().getErrorType();
+        message.getData().setErrorDescription("topology-engine internal error");
+
+        logger.info("Flow {} {} failure", errorType, flowId);
+
+        switch (errorType) {
+            case CREATION_FAILURE:
+                flowCache.removeFlow(flowId);
+                break;
+
+            case UPDATE_FAILURE:
+                handleStateRequest(flowId, FlowState.DOWN);
+                break;
+
+            case DELETION_FAILURE:
+                break;
+
+            case INTERNAL_ERROR:
+                break;
+
+            default:
+                logger.warn("Flow {} undefined failure", flowId);
+
+        }
+
+        Values error = new Values(message, errorType);
+        outputCollector.emit(StreamType.ERROR.toString(), tuple, error);
     }
 
     /**
@@ -293,7 +438,7 @@ public class CrudBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, Flo
      */
     private Flow buildFlowResponse(ImmutablePair<Flow, Flow> flow) {
         Flow response = new Flow(flow.left);
-        response.setCookie(response.getCookie() & FlowCache.FLOW_COOKIE_VALUE_MASK);
+        response.setCookie(response.getCookie() & ResourceCache.FLOW_COOKIE_VALUE_MASK);
         return response;
     }
 
