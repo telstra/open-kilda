@@ -3,18 +3,15 @@ package org.bitbucket.openkilda.wfm.topology.cache;
 import static org.bitbucket.openkilda.messaging.Utils.MAPPER;
 import static org.bitbucket.openkilda.wfm.topology.flow.StreamType.REROUTE;
 import static org.bitbucket.openkilda.wfm.topology.flow.StreamType.RESTORE;
+import static org.bitbucket.openkilda.wfm.topology.flow.StreamType.STATUS;
 
 import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.Message;
 import org.bitbucket.openkilda.messaging.Utils;
-import org.bitbucket.openkilda.messaging.command.CommandData;
 import org.bitbucket.openkilda.messaging.command.CommandMessage;
 import org.bitbucket.openkilda.messaging.command.discovery.NetworkCommandData;
-import org.bitbucket.openkilda.messaging.command.flow.FlowCreateRequest;
-import org.bitbucket.openkilda.messaging.command.flow.FlowDeleteRequest;
 import org.bitbucket.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.bitbucket.openkilda.messaging.command.flow.FlowRestoreRequest;
-import org.bitbucket.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.bitbucket.openkilda.messaging.error.CacheException;
 import org.bitbucket.openkilda.messaging.info.InfoData;
 import org.bitbucket.openkilda.messaging.info.InfoMessage;
@@ -23,6 +20,7 @@ import org.bitbucket.openkilda.messaging.info.event.IslInfoData;
 import org.bitbucket.openkilda.messaging.info.event.PortInfoData;
 import org.bitbucket.openkilda.messaging.info.event.SwitchInfoData;
 import org.bitbucket.openkilda.messaging.info.flow.FlowInfoData;
+import org.bitbucket.openkilda.messaging.info.flow.FlowOperation;
 import org.bitbucket.openkilda.messaging.model.Flow;
 import org.bitbucket.openkilda.messaging.model.ImmutablePair;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowState;
@@ -46,6 +44,7 @@ import org.apache.storm.tuple.Values;
 import java.io.IOException;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class CacheBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<String, Cache>> {
     /**
@@ -130,6 +129,9 @@ public class CacheBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<St
         this.outputCollector = outputCollector;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void doWork(Tuple tuple) {
         logger.trace("State before: {}", state);
@@ -151,56 +153,50 @@ public class CacheBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<St
                         if (data instanceof SwitchInfoData) {
                             logger.info("Cache update switch info data: {}", data);
 
+                            emitNetworkMessage(data, tuple, Utils.SYSTEM_CORRELATION_ID);
                             handleSwitchEvent((SwitchInfoData) data, tuple);
-                            emitInfoMessage(data, tuple);
 
                         } else if (data instanceof IslInfoData) {
                             logger.info("Cache update isl info data: {}", data);
 
+                            emitNetworkMessage(data, tuple, Utils.SYSTEM_CORRELATION_ID);
                             handleIslEvent((IslInfoData) data, tuple);
-                            emitInfoMessage(data, tuple);
 
                         } else if (data instanceof PortInfoData) {
                             logger.info("Cache update port info data: {}", data);
 
+                            emitNetworkMessage(data, tuple, Utils.SYSTEM_CORRELATION_ID);
                             handlePortEvent((PortInfoData) data, tuple);
-                            emitInfoMessage(data, tuple);
 
                         } else if (data instanceof FlowInfoData) {
-                            logger.info("Cache update info data: {}", data);
-
                             FlowInfoData flowData = (FlowInfoData) data;
-                            Flow forward = flowData.getPayload().getLeft();
-                            Flow reverse = flowData.getPayload().getRight();
+                            logger.info("Cache update info data: {}", flowData.getPayload());
 
                             switch (flowData.getOperation()) {
+
                                 case CREATE:
                                     flowCache.putFlow(flowData.getPayload());
-                                    emitCommandMessage(new FlowCreateRequest(forward),
-                                            tuple, flowData.getCorrelationId());
-                                    logger.info("Flow {} forward create command sent", forward.getFlowId());
-                                    emitCommandMessage(new FlowCreateRequest(reverse),
-                                            tuple, flowData.getCorrelationId());
-                                    logger.info("Flow {} reverse create command sent", forward.getFlowId());
+                                    emitFlowMessage(flowData, tuple, flowData.getCorrelationId());
+                                    logger.info("Flow create message sent: {}", flowData);
                                     break;
+
                                 case DELETE:
-                                    flowCache.removeFlow(forward.getFlowId());
-                                    emitCommandMessage(new FlowDeleteRequest(forward),
-                                            tuple, flowData.getCorrelationId());
-                                    logger.info("Flow {} forward remove command sent", forward.getFlowId());
-                                    emitCommandMessage(new FlowDeleteRequest(reverse),
-                                            tuple, flowData.getCorrelationId());
-                                    logger.info("Flow {} forward remove command sent", forward.getFlowId());
+                                    flowCache.removeFlow(flowData.getPayload().getLeft().getFlowId());
+                                    emitFlowMessage(flowData, tuple, flowData.getCorrelationId());
+                                    logger.info("Flow remove message sent: {}", flowData);
                                     break;
+
                                 case UPDATE:
                                     flowCache.putFlow(flowData.getPayload());
-                                    emitCommandMessage(new FlowUpdateRequest(forward),
-                                            tuple, flowData.getCorrelationId());
-                                    logger.info("Flow {} forward update command sent", forward.getFlowId());
-                                    emitCommandMessage(new FlowUpdateRequest(reverse),
-                                            tuple, flowData.getCorrelationId());
-                                    logger.info("Flow {} forward update command sent", forward.getFlowId());
+                                    emitFlowMessage(flowData, tuple, flowData.getCorrelationId());
+                                    logger.info("Flow update message sent: {}", flowData);
                                     break;
+
+                                case STATE:
+                                    flowCache.putFlow(flowData.getPayload());
+                                    logger.info("Flow state changed: {}", flowData);
+                                    break;
+
                                 default:
                                     logger.warn("Skip undefined flow operation {}", json);
                                     break;
@@ -211,22 +207,18 @@ public class CacheBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<St
                     } else {
                         logger.debug("Skip undefined message type {}", json);
                     }
-
                     break;
 
                 case TPE_KAFKA_SPOUT:
                     Message message = MAPPER.readValue(json, Message.class);
-
                     if (message instanceof InfoMessage && Destination.WFM_CACHE == message.getDestination()) {
                         logger.info("Storage content message {}", json);
                         handleNetworkDump(((InfoMessage) message).getData(), tuple);
                     }
-
                     break;
 
                 default:
                     logger.debug("Skip undefined cache update {}", tuple);
-
                     break;
             }
 
@@ -246,6 +238,9 @@ public class CacheBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<St
         logger.trace("State after: {}", state);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     protected void doTick(Tuple tuple) {
         if (timePassed == discoveryInterval) {
@@ -271,13 +266,10 @@ public class CacheBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<St
     }
 
     private void handleNetworkDump(InfoData info, Tuple tuple) {
-
         if (info instanceof NetworkInfoData) {
             NetworkInfoData data = (NetworkInfoData) info;
             logger.info("Fill network state {}", data);
-
             emitRestoreCommands(data.getFlows(), tuple);
-
             logger.info("Flows restore commands sent");
         } else {
             logger.warn("Incorrect network state {}", info);
@@ -286,8 +278,10 @@ public class CacheBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<St
 
     private void handleSwitchEvent(SwitchInfoData sw, Tuple tuple) {
         logger.info("State update switch {} message {}", sw.getSwitchId(), sw.getState());
+        Set<ImmutablePair<Flow, Flow>> affectedFlows;
 
         switch (sw.getState()) {
+
             case ADDED:
             case ACTIVATED:
                 if (networkCache.cacheContainsSwitch(sw.getSwitchId())) {
@@ -295,16 +289,23 @@ public class CacheBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<St
                 } else {
                     networkCache.createSwitch(sw);
                 }
+
                 break;
-            case DEACTIVATED:
+
             case REMOVED:
+            case DEACTIVATED:
                 if (networkCache.cacheContainsSwitch(sw.getSwitchId())) {
                     networkCache.updateSwitch(sw);
                 }
-                emitRerouteCommands(flowCache.getAffectedFlows(sw.getSwitchId()), tuple, "SWITCH");
+
+                affectedFlows = flowCache.getFlowsWithAffectedPath(sw.getSwitchId());
+                emitRerouteCommands(affectedFlows, tuple, "SWITCH", FlowOperation.UPDATE);
+
                 break;
+
             case CHANGED:
                 break;
+
             default:
                 logger.warn("Unknown state update switch info message");
                 break;
@@ -313,6 +314,7 @@ public class CacheBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<St
 
     private void handleIslEvent(IslInfoData isl, Tuple tuple) {
         logger.info("State update isl {} message cached {}", isl.getId(), isl.getState());
+        Set<ImmutablePair<Flow, Flow>> affectedFlows;
 
         switch (isl.getState()) {
             case DISCOVERED:
@@ -321,17 +323,25 @@ public class CacheBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<St
                 } else {
                     networkCache.createIsl(isl);
                 }
+                affectedFlows = flowCache.dumpFlows().stream()
+                        .filter(flow -> FlowState.DOWN.equals(flow.getLeft().getState()))
+                        .collect(Collectors.toSet());
+                emitRerouteCommands(affectedFlows, tuple, "ISL", FlowOperation.UPDATE);
                 break;
+
             case FAILED:
                 try {
                     networkCache.deleteIsl(isl.getId());
                 } catch (CacheException exception) {
                     logger.warn("{}:{}", exception.getErrorMessage(), exception.getErrorDescription());
                 }
-                emitRerouteCommands(flowCache.getAffectedFlows(isl), tuple, "ISL");
+                affectedFlows = flowCache.getFlowsWithAffectedPath(isl);
+                emitRerouteCommands(affectedFlows, tuple, "ISL", FlowOperation.UPDATE);
                 break;
+
             case OTHER_UPDATE:
                 break;
+
             default:
                 logger.warn("Unknown state update isl info message");
                 break;
@@ -344,33 +354,38 @@ public class CacheBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<St
         switch (port.getState()) {
             case DOWN:
             case DELETE:
-                emitRerouteCommands(flowCache.getAffectedFlows(port), tuple, "PORT");
                 break;
-            case ADD:
+
             case UP:
+            case ADD:
+                break;
+
             case OTHER_UPDATE:
                 break;
+
             default:
                 logger.warn("Unknown state update isl info message");
                 break;
         }
     }
 
-    private void emitInfoMessage(InfoData data, Tuple tuple) throws IOException {
+    private void emitNetworkMessage(InfoData data, Tuple tuple, String correlationId) throws IOException {
         Message message = new InfoMessage(data, System.currentTimeMillis(),
-                Utils.SYSTEM_CORRELATION_ID, Destination.TOPOLOGY_ENGINE);
+                correlationId, Destination.TOPOLOGY_ENGINE);
         outputCollector.emit(StreamType.TPE.toString(), tuple, new Values(MAPPER.writeValueAsString(message)));
         logger.info("Network info message sent");
     }
 
-    private void emitCommandMessage(CommandData data, Tuple tuple, String correlationId) throws IOException {
-        Message message = new CommandMessage(data, System.currentTimeMillis(),
+    private void emitFlowMessage(InfoData data, Tuple tuple, String correlationId) throws IOException {
+        Message message = new InfoMessage(data, System.currentTimeMillis(),
                 correlationId, Destination.TOPOLOGY_ENGINE);
         outputCollector.emit(StreamType.TPE.toString(), tuple, new Values(MAPPER.writeValueAsString(message)));
         logger.info("Flow command message sent");
     }
 
     private void emitRestoreCommands(Set<ImmutablePair<Flow, Flow>> flows, Tuple tuple) {
+        String rerouteCorrelationId = RESTORE.toString();
+
         if (flows != null) {
 
             ResourceCache resourceCache = new ResourceCache();
@@ -385,7 +400,7 @@ public class CacheBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<St
                     resourceCache.deallocateFlow(flow);
 
                     Values values = new Values(Utils.MAPPER.writeValueAsString(new CommandMessage(
-                            request, System.currentTimeMillis(), RESTORE.toString(), Destination.WFM)));
+                            request, System.currentTimeMillis(), rerouteCorrelationId, Destination.WFM)));
                     outputCollector.emit(StreamType.WFM_DUMP.toString(), tuple, values);
 
                     logger.info("Flow {} restore command message sent", flow.getLeft().getFlowId());
@@ -396,14 +411,18 @@ public class CacheBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<St
         }
     }
 
-    private void emitRerouteCommands(Set<ImmutablePair<Flow, Flow>> flows, Tuple tuple, String correlationId) {
+    private void emitRerouteCommands(Set<ImmutablePair<Flow, Flow>> flows, Tuple tuple,
+                                     String correlationId, FlowOperation operation) {
+        String rerouteCorrelationId = String.format("%s-%s", correlationId, REROUTE.toString());
+
         for (ImmutablePair<Flow, Flow> flow : flows) {
             try {
-                FlowRerouteRequest request = new FlowRerouteRequest(flow.getLeft());
-                CommandMessage command = new CommandMessage(request, System.currentTimeMillis(),
-                        String.format("%s-%s", correlationId, REROUTE.toString()), Destination.WFM);
-                Values values = new Values(Utils.MAPPER.writeValueAsString(command));
+                FlowRerouteRequest request = new FlowRerouteRequest(flow.getLeft(), operation);
+
+                Values values = new Values(Utils.MAPPER.writeValueAsString(new CommandMessage(
+                        request, System.currentTimeMillis(), rerouteCorrelationId, Destination.WFM)));
                 outputCollector.emit(StreamType.WFM_DUMP.toString(), tuple, values);
+
                 logger.info("Flow {} reroute command message sent", flow.getLeft().getFlowId());
             } catch (JsonProcessingException exception) {
                 logger.error("Could not format flow reroute request by flow={}", flow, exception);

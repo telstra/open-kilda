@@ -4,7 +4,6 @@ package org.bitbucket.openkilda.atdd;
 import static org.bitbucket.openkilda.flow.FlowUtils.getHealthCheck;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 
 import org.bitbucket.openkilda.flow.FlowUtils;
 import org.bitbucket.openkilda.messaging.info.event.PathInfoData;
@@ -64,11 +63,24 @@ public class NorthboundRunTest {
         assertEquals(200, getHealthCheck());
     }
 
+    @Then("^flow (\\w+) in (\\w+) state$")
+    public void flowState(String flowId, String state) throws Throwable {
+        String flowName = FlowUtils.getFlowName(flowId);
+        FlowState flowState = FlowState.valueOf(state);
+        FlowIdStatusPayload payload = getFlowState(flowName, flowState);
+        assertNotNull(payload);
+        assertEquals(flowName, payload.getId());
+        assertEquals(flowState, payload.getStatus());
+    }
+
     private FlowIdStatusPayload getFlowState(String flowName, FlowState expectedFlowStatus) throws Exception {
         FlowIdStatusPayload payload = FlowUtils.getFlowStatus(flowName);
-        if (payload == null || expectedFlowStatus != payload.getStatus()) {
-            TimeUnit.SECONDS.sleep(2);
+        for (int i = 0; i < 10; i++) {
             payload = FlowUtils.getFlowStatus(flowName);
+            if (payload != null && expectedFlowStatus.equals(payload.getStatus())) {
+                break;
+            }
+            TimeUnit.SECONDS.sleep(2);
         }
         return payload;
     }

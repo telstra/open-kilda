@@ -116,13 +116,13 @@ def build_rules(flow):
     return flow_rules
 
 
-def update_path_bandwidth(flow_path, bandwidth):
+def update_path_bandwidth(nodes, bandwidth):
     query = "MATCH (a:switch)-[r:isl {{" \
             "src_switch: '{}', " \
             "src_port: {}}}]->(b:switch) " \
             "set r.available_bandwidth = r.available_bandwidth - {} return r"
 
-    for node in flow_path.get("path"):
+    for node in nodes:
         update = query.format(node['switch_id'], node['port_no'], bandwidth)
         response = graph.run(update).data()
 
@@ -179,7 +179,7 @@ def store_flow(flow):
     graph.run(formatter_query)
 
     if is_forward_cookie(int(flow['cookie'])):
-        update_path_bandwidth(flow['flowpath'], int(flow['bandwidth']))
+        update_path_bandwidth(flow['flowpath']['path'], int(flow['bandwidth']))
 
 
 def get_old_flow(new_flow):
@@ -197,6 +197,10 @@ def get_old_flow(new_flow):
 
     for data in old_flows:
         old_flow = data['r']
+
+        logger.info('check cookies: %s ? %s',
+                    new_flow['cookie'], old_flow['cookie'])
+
         if is_same_direction(int(new_flow['cookie']), int(old_flow['cookie'])):
             logger.info('Flow was found: flow=%s', old_flow)
             return old_flow

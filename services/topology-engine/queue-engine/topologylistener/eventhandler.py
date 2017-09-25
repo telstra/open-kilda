@@ -9,7 +9,7 @@ from logger import get_logger
 
 logger = get_logger()
 logger.info('Topology engine started')
-known_messages = ['switch', 'isl', 'port']
+known_messages = ['switch', 'isl', 'port', 'flow_operation']
 known_commands = ['flow_create', 'flow_delete', 'flow_update', 'flow_path',
                   'flow_get', 'flows_get', 'flow_reroute', 'network']
 

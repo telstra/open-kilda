@@ -7,10 +7,10 @@ import org.bitbucket.openkilda.messaging.error.CacheException;
 import org.bitbucket.openkilda.messaging.info.event.IslInfoData;
 import org.bitbucket.openkilda.messaging.info.event.PathInfoData;
 import org.bitbucket.openkilda.messaging.info.event.PathNode;
+import org.bitbucket.openkilda.messaging.info.event.PortChangeType;
 import org.bitbucket.openkilda.messaging.info.event.PortInfoData;
 import org.bitbucket.openkilda.messaging.model.Flow;
 import org.bitbucket.openkilda.messaging.model.ImmutablePair;
-import org.bitbucket.openkilda.messaging.payload.flow.FlowState;
 import org.bitbucket.openkilda.pce.NetworkTopologyConstants;
 import org.bitbucket.openkilda.pce.provider.PathComputer;
 import org.bitbucket.openkilda.pce.provider.PathComputerMock;
@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class FlowCacheTest {
@@ -138,60 +139,82 @@ public class FlowCacheTest {
     }
 
     @Test
-    public void getAffectedBySwitchFlows() throws Exception {
+    public void getFlowsWithAffectedPathBySwitch() throws Exception {
         Set<ImmutablePair<Flow, Flow>> affected;
         ImmutablePair<Flow, Flow> first = flowCache.createFlow(firstFlow, computer.getPath(firstFlow));
         ImmutablePair<Flow, Flow> second = flowCache.createFlow(secondFlow, computer.getPath(secondFlow));
         ImmutablePair<Flow, Flow> third = flowCache.createFlow(thirdFlow, computer.getPath(thirdFlow));
 
-        affected = flowCache.getAffectedFlows(NetworkTopologyConstants.sw5.getSwitchId());
+        affected = flowCache.getFlowsWithAffectedPath(NetworkTopologyConstants.sw5.getSwitchId());
         assertEquals(new HashSet<>(Arrays.asList(first, second)), affected);
 
-        affected = flowCache.getAffectedFlows(NetworkTopologyConstants.sw3.getSwitchId());
+        affected = flowCache.getFlowsWithAffectedPath(NetworkTopologyConstants.sw3.getSwitchId());
         assertEquals(new HashSet<>(Arrays.asList(first, second, third)), affected);
 
-        affected = flowCache.getAffectedFlows(NetworkTopologyConstants.sw1.getSwitchId());
+        affected = flowCache.getFlowsWithAffectedPath(NetworkTopologyConstants.sw1.getSwitchId());
         assertEquals(Collections.singleton(first), affected);
     }
 
     @Test
-    public void getAffectedByIslFlows() throws Exception {
+    public void getFlowsWithAffectedPathByIsl() throws Exception {
         Set<ImmutablePair<Flow, Flow>> affected;
         ImmutablePair<Flow, Flow> first = flowCache.createFlow(firstFlow, computer.getPath(firstFlow));
         ImmutablePair<Flow, Flow> second = flowCache.createFlow(secondFlow, computer.getPath(secondFlow));
         flowCache.createFlow(thirdFlow, computer.getPath(thirdFlow));
 
-        affected = flowCache.getAffectedFlows(NetworkTopologyConstants.isl12);
+        affected = flowCache.getFlowsWithAffectedPath(NetworkTopologyConstants.isl12);
         assertEquals(Collections.singleton(first), affected);
 
-        affected = flowCache.getAffectedFlows(NetworkTopologyConstants.isl21);
+        affected = flowCache.getFlowsWithAffectedPath(NetworkTopologyConstants.isl21);
         assertEquals(Collections.singleton(first), affected);
 
-        affected = flowCache.getAffectedFlows(NetworkTopologyConstants.isl53);
+        affected = flowCache.getFlowsWithAffectedPath(NetworkTopologyConstants.isl53);
         assertEquals(new HashSet<>(Arrays.asList(first, second)), affected);
 
-        affected = flowCache.getAffectedFlows(NetworkTopologyConstants.isl35);
+        affected = flowCache.getFlowsWithAffectedPath(NetworkTopologyConstants.isl35);
         assertEquals(new HashSet<>(Arrays.asList(first, second)), affected);
     }
 
     @Test
-    public void getAffectedByPortFlows() throws Exception {
+    public void getFlowsWithAffectedPathByPort() throws Exception {
         Set<ImmutablePair<Flow, Flow>> affected;
         ImmutablePair<Flow, Flow> first = flowCache.createFlow(firstFlow, computer.getPath(firstFlow));
         ImmutablePair<Flow, Flow> second = flowCache.createFlow(secondFlow, computer.getPath(secondFlow));
         flowCache.createFlow(thirdFlow, computer.getPath(thirdFlow));
 
-        affected = flowCache.getAffectedFlows(new PortInfoData(NetworkTopologyConstants.isl12.getPath().get(0)));
+        affected = flowCache.getFlowsWithAffectedPath(new PortInfoData(
+                NetworkTopologyConstants.isl12.getPath().get(0)));
         assertEquals(Collections.singleton(first), affected);
 
-        affected = flowCache.getAffectedFlows(new PortInfoData(NetworkTopologyConstants.isl21.getPath().get(0)));
+        affected = flowCache.getFlowsWithAffectedPath(new PortInfoData(
+                NetworkTopologyConstants.isl21.getPath().get(0)));
         assertEquals(Collections.singleton(first), affected);
 
-        affected = flowCache.getAffectedFlows(new PortInfoData(NetworkTopologyConstants.isl53.getPath().get(0)));
+        affected = flowCache.getFlowsWithAffectedPath(new PortInfoData(
+                NetworkTopologyConstants.isl53.getPath().get(0)));
         assertEquals(new HashSet<>(Arrays.asList(first, second)), affected);
 
-        affected = flowCache.getAffectedFlows(new PortInfoData(NetworkTopologyConstants.isl35.getPath().get(0)));
+        affected = flowCache.getFlowsWithAffectedPath(new PortInfoData(
+                NetworkTopologyConstants.isl35.getPath().get(0)));
         assertEquals(new HashSet<>(Arrays.asList(first, second)), affected);
+    }
+
+    @Test
+    public void getFlowsForUpState() throws Exception {
+        Map<String, String> affected;
+        ImmutablePair<Flow, Flow> first = flowCache.createFlow(firstFlow, computer.getPath(firstFlow));
+        ImmutablePair<Flow, Flow> second = flowCache.createFlow(secondFlow, computer.getPath(secondFlow));
+        ImmutablePair<Flow, Flow> third = flowCache.createFlow(thirdFlow, computer.getPath(thirdFlow));
+
+        affected = flowCache.getFlowsWithAffectedEndpoint(NetworkTopologyConstants.sw5.getSwitchId());
+        assertEquals(Collections.singleton(second.getLeft().getFlowId()), affected.keySet());
+
+        affected = flowCache.getFlowsWithAffectedEndpoint(NetworkTopologyConstants.sw3.getSwitchId());
+        assertEquals(new HashSet<>(Arrays.asList(first.getLeft().getFlowId(),
+                second.getLeft().getFlowId(), third.getLeft().getFlowId())), affected.keySet());
+
+        affected = flowCache.getFlowsWithAffectedEndpoint(NetworkTopologyConstants.sw1.getSwitchId());
+        assertEquals(Collections.singleton(first.getLeft().getFlowId()), affected.keySet());
     }
 
     @Test

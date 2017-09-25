@@ -504,7 +504,7 @@ public class FlowUtils {
 
     public static boolean isTrafficTestsEnabled() {
         boolean isEnabled = Boolean.valueOf(System.getProperty("traffic", "true"));
-        System.out.println(String.format("=====> Traffic check is %s", isEnabled ? "enabled" : "disabled"));
+        System.out.println(String.format("\n=====> Traffic check is %s", isEnabled ? "enabled" : "disabled"));
         return isEnabled;
     }
 }

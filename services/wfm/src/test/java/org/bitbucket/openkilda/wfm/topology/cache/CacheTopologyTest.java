@@ -101,26 +101,16 @@ public class CacheTopologyTest extends AbstractStormTest {
 
         sendFlowUpdate(thirdFlow);
 
-        ConsumerRecord<String, String> forwardFlow = teConsumer.pollMessage();
-        ConsumerRecord<String, String> reverseFlow = teConsumer.pollMessage();
+        ConsumerRecord<String, String> flow = teConsumer.pollMessage();
 
-        assertNotNull(forwardFlow);
-        assertNotNull(forwardFlow.value());
+        assertNotNull(flow);
+        assertNotNull(flow.value());
 
-        CommandMessage commandMessage = objectMapper.readValue(forwardFlow.value(), CommandMessage.class);
-        FlowCreateRequest commandData = (FlowCreateRequest) commandMessage.getData();
-        assertNotNull(commandData);
+        InfoMessage infoMessage = objectMapper.readValue(flow.value(), InfoMessage.class);
+        FlowInfoData infoData = (FlowInfoData) infoMessage.getData();
+        assertNotNull(infoData);
 
-        assertEquals(thirdFlow.getLeft(), commandData.getPayload());
-
-        assertNotNull(reverseFlow);
-        assertNotNull(reverseFlow.value());
-
-        commandMessage = objectMapper.readValue(reverseFlow.value(), CommandMessage.class);
-        commandData = (FlowCreateRequest) commandMessage.getData();
-        assertNotNull(commandData);
-
-        assertEquals(thirdFlow.getRight(), commandData.getPayload());
+        assertEquals(thirdFlow, infoData.getPayload());
     }
 
     @Test
@@ -189,7 +179,8 @@ public class CacheTopologyTest extends AbstractStormTest {
 
     private void sendFlowUpdate(ImmutablePair<Flow, Flow> flow) throws IOException {
         System.out.println("Flow Topology: Send Flow Creation Request");
-        FlowInfoData data = new FlowInfoData(flow, FlowOperation.CREATE, DEFAULT_CORRELATION_ID);
+        FlowInfoData data = new FlowInfoData(flow.getLeft().getFlowId(),
+                flow, FlowOperation.CREATE, DEFAULT_CORRELATION_ID);
         sendMessage(data, CacheTopology.STATE_UPDATE_TOPIC);
     }
 }

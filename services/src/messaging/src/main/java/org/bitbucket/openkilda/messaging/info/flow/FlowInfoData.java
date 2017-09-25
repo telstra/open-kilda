@@ -31,6 +31,12 @@ public class FlowInfoData extends InfoData {
     private static final long serialVersionUID = 1L;
 
     /**
+     * Flow id.
+     */
+    @JsonProperty(Utils.FLOW_ID)
+    private String flowId;
+
+    /**
      * The flow operation payload.
      */
     @JsonProperty(Utils.PAYLOAD)
@@ -62,12 +68,32 @@ public class FlowInfoData extends InfoData {
      * @param correlationId flow request correlation id
      */
     @JsonCreator
-    public FlowInfoData(@JsonProperty(Utils.PAYLOAD) ImmutablePair<Flow, Flow> payload,
+    public FlowInfoData(@JsonProperty(Utils.FLOW_ID) final String flowId,
+                        @JsonProperty(Utils.PAYLOAD) ImmutablePair<Flow, Flow> payload,
                         @JsonProperty("operation") FlowOperation operation,
                         @JsonProperty(Utils.CORRELATION_ID) String correlationId) {
+        this.flowId = flowId;
         this.payload = payload;
         this.operation = operation;
         this.correlationId = correlationId;
+    }
+
+    /**
+     * Gets flow id.
+     *
+     * @return flow id
+     */
+    public String getFlowId() {
+        return flowId;
+    }
+
+    /**
+     * Sets flow id.
+     *
+     * @param flowId flow id
+     */
+    public void setFlowId(String flowId) {
+        this.flowId = flowId;
     }
 
     /**
@@ -130,6 +156,7 @@ public class FlowInfoData extends InfoData {
     @Override
     public String toString() {
         return MoreObjects.toStringHelper(this)
+                .add(Utils.FLOW_ID, flowId)
                 .add(Utils.PAYLOAD, payload)
                 .add("operation", operation)
                 .add(Utils.CORRELATION_ID, correlationId)
@@ -149,8 +176,9 @@ public class FlowInfoData extends InfoData {
         }
 
         FlowInfoData that = (FlowInfoData) object;
-        return Objects.equals(getPayload(), that.getPayload())
+        return Objects.equals(getFlowId(), that.getFlowId())
                 && Objects.equals(getOperation(), that.getOperation())
+                && Objects.equals(getPayload(), that.getPayload())
                 && Objects.equals(getCorrelationId(), that.getCorrelationId());
     }
 
@@ -159,6 +187,6 @@ public class FlowInfoData extends InfoData {
      */
     @Override
     public int hashCode() {
-        return Objects.hash(getPayload(), getOperation(), getCorrelationId());
+        return Objects.hash(getFlowId(), getPayload(), getOperation(), getCorrelationId());
     }
 }

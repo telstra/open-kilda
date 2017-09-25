@@ -12,6 +12,8 @@ from logger import get_logger
 
 
 isl_lock = Lock()
+flow_lock = Lock()
+
 logger = get_logger()
 switch_states = {
     'active': 'ACTIVATED',
@@ -73,12 +75,8 @@ class MessageItem(object):
                 else:
                     event_handled = True
 
-            if self.get_command() == "flow_create":
-                event_handled = self.create_flow()
-            if self.get_command() == "flow_delete":
-                event_handled = self.delete_flow()
-            if self.get_command() == "flow_update":
-                event_handled = self.update_flow()
+            if self.get_message_type() == "flow_operation":
+                event_handled = self.flow_operation()
 
             if self.get_command() == "network":
                 event_handled = self.dump_network()
@@ -195,18 +193,24 @@ class MessageItem(object):
 
     @staticmethod
     def delete_isl(src_switch, src_port):
-        logger.info('Removing ISL: src_switch=%s, src_port=%s',
-                    src_switch, src_port)
+        flow_lock.acquire()
 
-        if src_port:
-            delete_query = ("MATCH (a:switch)-[r:isl {{"
-                            "src_switch: '{}', "
-                            "src_port: {}}}]->(b:switch) delete r")
-            graph.run(delete_query.format(src_switch, src_port)).data()
-        else:
-            delete_query = ("MATCH (a:switch)-[r:isl {{"
-                            "src_switch: '{}'}}]->(b:switch) delete r")
-            graph.run(delete_query.format(src_switch)).data()
+        try:
+            logger.info('Removing ISL: src_switch=%s, src_port=%s',
+                        src_switch, src_port)
+
+            if src_port:
+                delete_query = ("MATCH (a:switch)-[r:isl {{"
+                                "src_switch: '{}', "
+                                "src_port: {}}}]->(b:switch) delete r")
+                graph.run(delete_query.format(src_switch, src_port)).data()
+            else:
+                delete_query = ("MATCH (a:switch)-[r:isl {{"
+                                "src_switch: '{}'}}]->(b:switch) delete r")
+                graph.run(delete_query.format(src_switch)).data()
+
+        finally:
+            flow_lock.release()
 
         return True
 
@@ -326,14 +330,8 @@ class MessageItem(object):
 
         return True
 
-    def create_flow(self):
-        correlation_id = self.correlation_id
-        flow = self.payload['payload']
-        flow_id = flow['flowid']
-
-        logger.info('Flow create request: timestamp=%s, correlation_id=%s,'
-                    ' flow=%s', self.timestamp, correlation_id, flow)
-
+    @staticmethod
+    def create_flow(flow_id, flow, correlation_id):
         try:
             rules = flow_utils.build_rules(flow)
 
@@ -361,22 +359,19 @@ class MessageItem(object):
 
         return True
 
-    def delete_flow(self):
-        correlation_id = self.correlation_id
-        flow = self.payload['payload']
-        flow_id = flow['flowid']
-
+    @staticmethod
+    def delete_flow(flow_id, flow, correlation_id):
         try:
-            logger.info('Flow delete request: timestamp=%s, correlation_id=%s,'
-                        ' flow=%s', self.timestamp, correlation_id, flow)
+            flow_path = flow['flowpath']['path']
+            logger.info('Flow path remove: %s', flow_path)
 
-            flow_utils.remove_flow(flow, flow['flowpath'])
+            flow_utils.remove_flow(flow, flow_path)
 
             logger.info('Flow was removed: correlation_id=%s, flow_id=%s',
                         correlation_id, flow_id)
 
             message_utils.send_delete_commands(
-                flow['flowpath'], flow_id, correlation_id, int(flow['cookie']))
+                flow_path, flow_id, correlation_id, int(flow['cookie']))
 
             logger.info('Flow rules removed: correlation_id=%s, flow_id=%s',
                         correlation_id, flow_id)
@@ -392,18 +387,14 @@ class MessageItem(object):
 
         return True
 
-    def update_flow(self):
-        correlation_id = self.correlation_id
-        flow = self.payload['payload']
-        flow_id = flow['flowid']
-
-        logger.info('Flow update request: timestamp=%s, correlation_id=%s,'
-                    ' flow=%s', self.timestamp, correlation_id, flow)
-
+    @staticmethod
+    def update_flow(flow_id, flow, correlation_id):
         try:
-
             old_flow = flow_utils.get_old_flow(flow)
-            old_flow_path = json.loads(old_flow['flowpath'])
+
+            old_flow_path = json.loads(old_flow['flowpath'])['path']
+
+            logger.info('Flow path remove: %s', old_flow_path)
 
             flow_utils.remove_flow(old_flow, old_flow_path)
 
@@ -440,6 +431,47 @@ class MessageItem(object):
             message_utils.send_error_message(
                 correlation_id, "UPDATE_FAILURE", e.message, flow_id)
             raise
+
+        return True
+
+    def flow_operation(self):
+        correlation_id = self.correlation_id
+        timestamp = self.timestamp
+        payload = self.payload
+
+        operation = payload['operation']
+        flows = payload['payload']
+        forward = flows['forward']
+        reverse = flows['reverse']
+        flow_id = forward['flowid']
+
+        logger.info('Flow %s request processing: '
+                    'timestamp=%s, correlation_id=%s, payload=%s',
+                    operation, timestamp, correlation_id, payload)
+
+        flow_lock.acquire()
+
+        try:
+            if operation == "CREATE":
+                self.create_flow(flow_id, forward, correlation_id)
+                self.create_flow(flow_id, reverse, correlation_id)
+            elif operation == "DELETE":
+                self.delete_flow(flow_id, forward, correlation_id)
+                self.delete_flow(flow_id, reverse, correlation_id)
+            elif operation == "UPDATE":
+                self.update_flow(flow_id, forward, correlation_id)
+                self.update_flow(flow_id, reverse, correlation_id)
+            else:
+                logger.warn('Flow operation is not supported: '
+                            'operation=%s, timestamp=%s, correlation_id=%s,',
+                            operation, timestamp, correlation_id)
+
+            logger.info('Flow %s request processed: '
+                        'timestamp=%s, correlation_id=%s, payload=%s',
+                        operation, timestamp, correlation_id, payload)
+
+        finally:
+            flow_lock.release()
 
         return True
 

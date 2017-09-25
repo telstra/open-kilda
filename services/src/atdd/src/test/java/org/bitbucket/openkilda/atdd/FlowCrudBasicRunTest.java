@@ -1,6 +1,7 @@
 package org.bitbucket.openkilda.atdd;
 
 import static org.bitbucket.openkilda.DefaultParameters.trafficEndpoint;
+import static org.bitbucket.openkilda.flow.FlowUtils.getTimeDuration;
 import static org.bitbucket.openkilda.flow.FlowUtils.isTrafficTestsEnabled;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -166,6 +167,9 @@ public class FlowCrudBasicRunTest {
 
     private int checkTraffic(int sourceVlan, int destinationVlan, int expectedStatus) {
         if (isTrafficTestsEnabled()) {
+            System.out.println("=====> Send traffic");
+
+            long current = System.currentTimeMillis();
             Client client = ClientBuilder.newClient(new ClientConfig());
             Response result = client
                     .target(trafficEndpoint)
@@ -178,7 +182,8 @@ public class FlowCrudBasicRunTest {
                     .queryParam("dstvlan", destinationVlan)
                     .request()
                     .get();
-            System.out.println("STATUS =" + result.getStatus());
+            System.out.println(String.format("======> Response = %s", result.toString()));
+            System.out.println(String.format("======> Send traffic Time: %,.3f", getTimeDuration(current)));
 
             return result.getStatus();
         } else {

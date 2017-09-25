@@ -287,6 +287,22 @@ public class NetworkCache extends Cache {
     }
 
     /**
+     * Checks if switch in operational state.
+     *
+     * @param switchId switch id
+     * @return true if switch in operational state, otherwise false
+     */
+    public boolean switchIsOperable(String switchId) {
+        if (cacheContainsSwitch(switchId)) {
+            SwitchState switchState = switchPool.get(switchId).getState();
+            if (SwitchState.ADDED == switchState || SwitchState.ACTIVATED == switchState) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Get {@link IslInfoData} instance.
      *
      * @param islId {@link IslInfoData} instance id

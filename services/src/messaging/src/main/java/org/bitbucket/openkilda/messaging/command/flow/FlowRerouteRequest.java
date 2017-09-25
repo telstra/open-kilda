@@ -1,10 +1,10 @@
 package org.bitbucket.openkilda.messaging.command.flow;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
-import static org.bitbucket.openkilda.messaging.Utils.FLOW_ID;
 
 import org.bitbucket.openkilda.messaging.Utils;
 import org.bitbucket.openkilda.messaging.command.CommandData;
+import org.bitbucket.openkilda.messaging.info.flow.FlowOperation;
 import org.bitbucket.openkilda.messaging.model.Flow;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -22,7 +22,8 @@ import java.util.Objects;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
         "command",
-        Utils.PAYLOAD})
+        Utils.PAYLOAD,
+        "operation"})
 public class FlowRerouteRequest extends CommandData {
     /**
      * Serialization version number constant.
@@ -36,14 +37,29 @@ public class FlowRerouteRequest extends CommandData {
     protected Flow payload;
 
     /**
+     * The flow operation type.
+     */
+    @JsonProperty("operation")
+    private FlowOperation operation;
+
+    /**
+     * Default constructor.
+     */
+    public FlowRerouteRequest() {
+    }
+
+    /**
      * Instance constructor.
      *
-     * @param payload request payload
+     * @param payload flow operation payload
+     * @param operation flow operation type
      * @throws IllegalArgumentException if payload is null
      */
     @JsonCreator
-    public FlowRerouteRequest(@JsonProperty(Utils.PAYLOAD) Flow payload) {
+    public FlowRerouteRequest(@JsonProperty(Utils.PAYLOAD) Flow payload,
+                              @JsonProperty("operation") FlowOperation operation) {
         setPayload(payload);
+        setOperation(operation);
     }
 
     /**
@@ -68,12 +84,31 @@ public class FlowRerouteRequest extends CommandData {
     }
 
     /**
+     * Gets flow operation type.
+     *
+     * @return flow operation type
+     */
+    public FlowOperation getOperation() {
+        return operation;
+    }
+
+    /**
+     * Sets flow operation type.
+     *
+     * @param operation flow operation type
+     */
+    public void setOperation(FlowOperation operation) {
+        this.operation = operation;
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
     public String toString() {
         return toStringHelper(this)
                 .add(Utils.PAYLOAD, payload)
+                .add("operation", operation)
                 .toString();
     }
 
@@ -82,7 +117,7 @@ public class FlowRerouteRequest extends CommandData {
      */
     @Override
     public int hashCode() {
-        return Objects.hash(payload);
+        return Objects.hash(getPayload(), getOperation());
     }
 
     /**
@@ -98,6 +133,7 @@ public class FlowRerouteRequest extends CommandData {
         }
 
         FlowRerouteRequest that = (FlowRerouteRequest) object;
-        return Objects.equals(getPayload(), that.getPayload());
+        return Objects.equals(getPayload(), that.getPayload())
+                && Objects.equals(getOperation(), that.getOperation());
     }
 }

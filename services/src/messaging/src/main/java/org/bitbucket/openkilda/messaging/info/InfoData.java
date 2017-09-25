@@ -35,7 +35,7 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
         @Type(value = FlowsResponse.class, name = "flows"),
         @Type(value = FlowStatusResponse.class, name = "flow_status"),
         @Type(value = FlowPathResponse.class, name = "flow_path"),
-        @Type(value = FlowInfoData.class, name = "flow_cache"),
+        @Type(value = FlowInfoData.class, name = "flow_operation"),
         @Type(value = PathInfoData.class, name = "path"),
         @Type(value = IslInfoData.class, name = "isl"),
         @Type(value = SwitchInfoData.class, name = "switch"),

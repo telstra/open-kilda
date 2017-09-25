@@ -6,10 +6,12 @@ import ctypes
 import multiprocessing
 import os
 import scapy.all as s
+import socket
 
 
 number_of_packets = 1000
 expected_delta = 500
+of_ctl = "ovs-ofctl -O openflow13"
 
 
 def required_parameters(*pars):
@@ -101,8 +103,11 @@ def switch_knock_out(p):
 @post("/reviveswitch")
 @required_parameters("switch", "controller")
 def switch_revive(p):
+    params = p['controller'].split(":", 3)
+    ip = socket.gethostbyname(params[1])
+    controller = params[0] + ":" + ip + ":" + params[2]
     result = os.system("ovs-vsctl set-controller %s %s" %
-                       (p['switch'], p["controller"]))
+                       (p['switch'], controller))
     return respond(result == 0,
                    "Switch %s is successfully revived\n" % p['switch'],
                    "Failed to revive switch %s\n" % p['switch'])
@@ -129,5 +134,26 @@ def restore_link(p):
                    "Link to switch %s port %s is restored\n" % sppair,
                    "Failed to restore link to switch %s port %s\n" % sppair)
 
+
+def port_mod(switch, port, action):
+    return os.system("%s mod-port %s %s %s" % (of_ctl, switch, port, action))
+
+
+@post("/port/down")
+@required_parameters("switch", "port")
+def port_down(p):
+    result = port_mod(p['switch'], p['port'], 'down')
+    return respond(result == 0,
+                   "Switch %s port %s down\n" % (p['switch'], p['port']),
+                   "Fail switch %s port %s down\n" % (p['switch'], p['port']))
+
+
+@post("/port/up")
+@required_parameters("switch", "port")
+def port_up(p):
+    result = port_mod(p['switch'], p['port'], 'up')
+    return respond(result == 0,
+                   "Switch %s port %s up\n" % (p['switch'], p['port']),
+                   "Fail switch %s port %s up\n" % (p['switch'], p['port']))
 
 run(host='0.0.0.0', port=17191, debug=True)

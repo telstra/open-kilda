@@ -6,7 +6,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 public enum FlowOperation {
     CREATE("Create"),
     DELETE("Delete"),
-    UPDATE("Update");
+    UPDATE("Update"),
+    STATE("State");
 
     @JsonProperty("operation")
     private final String operation;

@@ -22,6 +22,7 @@ import org.bitbucket.openkilda.messaging.info.event.PortChangeType;
 import org.bitbucket.openkilda.messaging.info.event.PortInfoData;
 import org.bitbucket.openkilda.messaging.info.event.SwitchInfoData;
 import org.bitbucket.openkilda.messaging.info.event.SwitchState;
+import org.bitbucket.openkilda.messaging.info.flow.FlowOperation;
 import org.bitbucket.openkilda.messaging.info.flow.FlowPathResponse;
 import org.bitbucket.openkilda.messaging.info.flow.FlowResponse;
 import org.bitbucket.openkilda.messaging.info.flow.FlowStatusResponse;
@@ -524,28 +525,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
 
     @Test
     public void flowRerouteCommandTest() throws IOException, ClassNotFoundException {
-        FlowRerouteRequest data = new FlowRerouteRequest(flowModel);
-        System.out.println(data);
-
-        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
-        command.setData(data);
-        serialize(command);
-
-        Message message = (Message) deserialize();
-        assertTrue(message instanceof CommandMessage);
-
-        CommandMessage resultCommand = (CommandMessage) message;
-        assertTrue(resultCommand.getData() != null);
-
-        FlowRerouteRequest resultData = (FlowRerouteRequest) resultCommand.getData();
-        System.out.println(resultData);
-        assertEquals(data, resultData);
-        assertEquals(data.hashCode(), resultData.hashCode());
-    }
-
-    @Test
-    public void flowRerouteEmptyCommandTest() throws IOException, ClassNotFoundException {
-        FlowRerouteRequest data = new FlowRerouteRequest(flowModel);
+        FlowRerouteRequest data = new FlowRerouteRequest(flowModel, FlowOperation.CREATE);
         System.out.println(data);
 
         CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);

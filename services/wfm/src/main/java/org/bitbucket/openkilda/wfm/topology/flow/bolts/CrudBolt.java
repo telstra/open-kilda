@@ -113,6 +113,7 @@ public class CrudBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, Flo
         outputFieldsDeclarer.declareStream(StreamType.CREATE.toString(), AbstractTopology.fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.UPDATE.toString(), AbstractTopology.fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.DELETE.toString(), AbstractTopology.fieldMessage);
+        outputFieldsDeclarer.declareStream(StreamType.STATUS.toString(), AbstractTopology.fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.RESPONSE.toString(), AbstractTopology.fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.ERROR.toString(), FlowTopology.fieldsMessageErrorType);
     }
@@ -192,7 +193,7 @@ public class CrudBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, Flo
 
                     switch (streamId) {
                         case STATUS:
-                            handleStateRequest(flowId, newStatus);
+                            handleStateRequest(flowId, newStatus, tuple);
                             break;
                         default:
                             logger.debug("Unexpected stream: component={}, stream={}", componentId, streamId);
@@ -249,7 +250,7 @@ public class CrudBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, Flo
         logger.info("Deleted flow: {}", flow);
 
         Values topology = new Values(MAPPER.writeValueAsString(
-                new FlowInfoData(flow, FlowOperation.DELETE, message.getCorrelationId())));
+                new FlowInfoData(flowId, flow, FlowOperation.DELETE, message.getCorrelationId())));
         outputCollector.emit(StreamType.DELETE.toString(), tuple, topology);
 
         Values northbound = new Values(new InfoMessage(new FlowResponse(buildFlowResponse(flow)),
@@ -272,7 +273,7 @@ public class CrudBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, Flo
         logger.info("Created flow: {}", flow);
 
         Values topology = new Values(Utils.MAPPER.writeValueAsString(
-                new FlowInfoData(flow, FlowOperation.CREATE, message.getCorrelationId())));
+                new FlowInfoData(requestedFlow.getFlowId(), flow, FlowOperation.CREATE, message.getCorrelationId())));
         outputCollector.emit(StreamType.CREATE.toString(), tuple, topology);
 
         Values northbound = new Values(new InfoMessage(new FlowResponse(buildFlowResponse(flow)),
@@ -281,26 +282,56 @@ public class CrudBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, Flo
     }
 
     private void handleRerouteRequest(CommandMessage message, Tuple tuple) throws IOException {
-        Flow requestedFlow = ((FlowRerouteRequest) message.getData()).getPayload();
+        FlowRerouteRequest request = (FlowRerouteRequest) message.getData();
+        Flow requestedFlow = request.getPayload();
+        ImmutablePair<Flow, Flow> flow;
 
-        ImmutablePair<PathInfoData, PathInfoData> path = pathComputer.getPath(requestedFlow);
-        logger.info("Rerouted flow path: {}", path);
+        switch (request.getOperation()) {
 
-        if (!flowCache.isOneSwitchFlow(requestedFlow) && pathComputer.isEmpty(path)) {
-            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
-                    ErrorType.UPDATE_FAILURE, "Could not create flow", "Path was not found");
+            case UPDATE:
+                flow = flowCache.getFlow(requestedFlow.getFlowId());
+                flow.getLeft().setState(FlowState.DOWN);
+                flow.getRight().setState(FlowState.DOWN);
+
+                ImmutablePair<PathInfoData, PathInfoData> path = pathComputer.getPath(requestedFlow);
+                logger.info("Rerouted flow path: {}", path);
+
+                if (!flowCache.isOneSwitchFlow(requestedFlow) && pathComputer.isEmpty(path)) {
+                    throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                            ErrorType.UPDATE_FAILURE, "Could not create flow", "Path was not found");
+                }
+
+                flow = flowCache.updateFlow(requestedFlow, path);
+                logger.info("Rerouted flow: {}", flow);
+
+                Values topology = new Values(Utils.MAPPER.writeValueAsString(
+                        new FlowInfoData(requestedFlow.getFlowId(), flow,
+                                FlowOperation.UPDATE, message.getCorrelationId())));
+                outputCollector.emit(StreamType.UPDATE.toString(), tuple, topology);
+
+                Values northbound = new Values(new InfoMessage(new FlowResponse(buildFlowResponse(flow)),
+                        message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
+                outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
+                break;
+
+            case CREATE:
+                flow = flowCache.getFlow(requestedFlow.getFlowId());
+                logger.info("State flow: {}={}", flow.getLeft().getFlowId(), FlowState.UP);
+                flow.getLeft().setState(FlowState.UP);
+                flow.getRight().setState(FlowState.UP);
+                break;
+
+            case DELETE:
+                flow = flowCache.getFlow(requestedFlow.getFlowId());
+                logger.info("State flow: {}={}", flow.getLeft().getFlowId(), FlowState.DOWN);
+                flow.getLeft().setState(FlowState.DOWN);
+                flow.getRight().setState(FlowState.DOWN);
+                break;
+
+            default:
+                logger.warn("Flow {} undefined reroute operation", request.getOperation());
+                break;
         }
-
-        ImmutablePair<Flow, Flow> flow = flowCache.updateFlow(requestedFlow, path);
-        logger.info("Rerouted flow: {}", flow);
-
-        Values topology = new Values(Utils.MAPPER.writeValueAsString(
-                new FlowInfoData(flow, FlowOperation.UPDATE, message.getCorrelationId())));
-        outputCollector.emit(StreamType.UPDATE.toString(), tuple, topology);
-
-        Values northbound = new Values(new InfoMessage(new FlowResponse(buildFlowResponse(flow)),
-                message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
-        outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
     }
 
     private void handleRestoreRequest(CommandMessage message, Tuple tuple) throws IOException {
@@ -323,7 +354,8 @@ public class CrudBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, Flo
         logger.info("Restored flow: {}", flow);
 
         Values topology = new Values(Utils.MAPPER.writeValueAsString(
-                new FlowInfoData(flow, FlowOperation.UPDATE, message.getCorrelationId())));
+                new FlowInfoData(requestedFlow.getLeft().getFlowId(), flow,
+                        FlowOperation.UPDATE, message.getCorrelationId())));
         outputCollector.emit(StreamType.UPDATE.toString(), tuple, topology);
     }
 
@@ -342,7 +374,7 @@ public class CrudBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, Flo
         logger.info("Updated flow: {}", flow);
 
         Values topology = new Values(Utils.MAPPER.writeValueAsString(
-                new FlowInfoData(flow, FlowOperation.UPDATE, message.getCorrelationId())));
+                new FlowInfoData(requestedFlow.getFlowId(), flow, FlowOperation.UPDATE, message.getCorrelationId())));
         outputCollector.emit(StreamType.UPDATE.toString(), tuple, topology);
 
         Values northbound = new Values(new InfoMessage(new FlowResponse(buildFlowResponse(flow)),
@@ -391,13 +423,16 @@ public class CrudBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, Flo
         outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
     }
 
-    private void handleStateRequest(String flowId, FlowState state) {
+    private void handleStateRequest(String flowId, FlowState state, Tuple tuple) throws IOException {
         ImmutablePair<Flow, Flow> flow = flowCache.getFlow(flowId);
-
         logger.info("State flow: {}={}", flowId, state);
+        flow.getLeft().setState(state);
+        flow.getRight().setState(state);
 
-        flow.left.setState(state);
-        flow.right.setState(state);
+        Values topology = new Values(Utils.MAPPER.writeValueAsString(
+                new FlowInfoData(flowId, flow, FlowOperation.STATE, Utils.SYSTEM_CORRELATION_ID)));
+        outputCollector.emit(StreamType.STATUS.toString(), tuple, topology);
+
     }
 
     private void handleErrorRequest(String flowId, ErrorMessage message, Tuple tuple) throws IOException {
@@ -412,7 +447,7 @@ public class CrudBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, Flo
                 break;
 
             case UPDATE_FAILURE:
-                handleStateRequest(flowId, FlowState.DOWN);
+                handleStateRequest(flowId, FlowState.DOWN, tuple);
                 break;
 
             case DELETION_FAILURE:

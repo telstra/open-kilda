@@ -248,10 +248,11 @@ public class ResourceCache extends Cache {
      * @param flow flow
      */
     public void allocateFlow(ImmutablePair<Flow, Flow> flow) {
-        allocateCookie((int) (FLOW_COOKIE_VALUE_MASK & flow.left.getCookie()));
-
-        allocateVlanId(flow.left.getTransitVlan());
-        allocateMeterId(flow.left.getSourceSwitch(), flow.left.getMeterId());
+        if (flow.left != null) {
+            allocateCookie((int) (FLOW_COOKIE_VALUE_MASK & flow.left.getCookie()));
+            allocateVlanId(flow.left.getTransitVlan());
+            allocateMeterId(flow.left.getSourceSwitch(), flow.left.getMeterId());
+        }
 
         if (flow.right != null) {
             allocateVlanId(flow.right.getTransitVlan());

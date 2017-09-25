@@ -16,6 +16,7 @@ import com.google.common.base.MoreObjects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Map;
@@ -96,7 +97,7 @@ public class FlowCache extends Cache {
      * @param switchId switch id
      * @return set of flows
      */
-    public Set<ImmutablePair<Flow, Flow>> getAffectedFlows(String switchId) {
+    public Set<ImmutablePair<Flow, Flow>> getFlowsWithAffectedPath(String switchId) {
         return flowPool.values().stream().filter(flow ->
                 flow.getLeft().getFlowPath().getPath().stream()
                         .anyMatch(node -> node.getSwitchId().equals(switchId))
@@ -112,7 +113,7 @@ public class FlowCache extends Cache {
      * @param islData isl
      * @return set of flows
      */
-    public Set<ImmutablePair<Flow, Flow>> getAffectedFlows(IslInfoData islData) {
+    public Set<ImmutablePair<Flow, Flow>> getFlowsWithAffectedPath(IslInfoData islData) {
         return flowPool.values().stream()
                 .filter(flow -> flow.getLeft().getFlowPath().getPath().contains(islData.getPath().get(0))
                         || flow.getRight().getFlowPath().getPath().contains(islData.getPath().get(0)))
@@ -125,12 +126,31 @@ public class FlowCache extends Cache {
      * @param portData port
      * @return set of flows
      */
-    public Set<ImmutablePair<Flow, Flow>> getAffectedFlows(PortInfoData portData) {
+    public Set<ImmutablePair<Flow, Flow>> getFlowsWithAffectedPath(PortInfoData portData) {
         PathNode node = new PathNode(portData.getSwitchId(), portData.getPortNo(), 0);
         return flowPool.values().stream().filter(flow ->
                 flow.getLeft().getFlowPath().getPath().contains(node)
                         || flow.getRight().getFlowPath().getPath().contains(node))
                 .collect(Collectors.toSet());
+    }
+
+    /**
+     * Gets flows for state change.
+     *
+     * @param switchId switch id
+     * @return map of flow ids and endpoints
+     */
+    public Map<String, String> getFlowsWithAffectedEndpoint(String switchId) {
+        Map<String, String> response = new HashMap<>();
+
+        for (ImmutablePair<Flow, Flow> flow : flowPool.values()) {
+            String endpoint = getFlowLinkedEndpoint(flow, switchId);
+            if (endpoint != null) {
+                response.put(flow.getLeft().getFlowId(), endpoint);
+            }
+        }
+
+        return response;
     }
 
     /**
@@ -331,14 +351,14 @@ public class FlowCache extends Cache {
     /**
      * Builds new forward and reverse flow pair.
      *
-     * @param flow source flow
-     * @param path flow path
+     * @param flow  source flow
+     * @param path  flow path
      * @param cache resource cache
      * @return new forward and reverse flow pair
      */
     public ImmutablePair<Flow, Flow> buildFlow(final ImmutablePair<Flow, Flow> flow,
-                                                ImmutablePair<PathInfoData, PathInfoData> path,
-                                                ResourceCache cache) {
+                                               ImmutablePair<PathInfoData, PathInfoData> path,
+                                               ResourceCache cache) {
         String timestamp = Utils.getIsoTimestamp();
         int cookie = cache.allocateCookie((int) flow.getLeft().getCookie());
 
@@ -382,8 +402,8 @@ public class FlowCache extends Cache {
     /**
      * Builds new forward and reverse flow pair.
      *
-     * @param flow source flow
-     * @param path flow path
+     * @param flow  source flow
+     * @param path  flow path
      * @param cache resource cache
      * @return new forward and reverse flow pair
      */
@@ -451,6 +471,29 @@ public class FlowCache extends Cache {
         return flow.getSourceSwitch().equals(flow.getDestinationSwitch());
     }
 
+    /**
+     * Gets flow linked with specified switch id.
+     *
+     * @param flow     flow
+     * @param switchId switch id
+     * @return second endpoint if specified switch id one of the flows endpoint, otherwise null
+     */
+    private String getFlowLinkedEndpoint(ImmutablePair<Flow, Flow> flow, String switchId) {
+        Flow forward = flow.getLeft();
+        Flow reverse = flow.getRight();
+        String linkedSwitch = null;
+
+        if (forward.getSourceSwitch().equals(switchId) && reverse.getDestinationSwitch().equals(switchId)) {
+            linkedSwitch = forward.getDestinationSwitch();
+        } else if (forward.getDestinationSwitch().equals(switchId) && reverse.getSourceSwitch().equals(switchId)) {
+            linkedSwitch = forward.getSourceSwitch();
+        }
+        return linkedSwitch;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public String toString() {
         return MoreObjects.toStringHelper(this)

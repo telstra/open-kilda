@@ -145,7 +145,8 @@ public class FlowTopology extends AbstractTopology {
         builder.setBolt(ComponentType.CACHE_KAFKA_BOLT.toString(), cacheKafkaBolt, parallelism)
                 .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.CREATE.toString())
                 .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.UPDATE.toString())
-                .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.DELETE.toString());
+                .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.DELETE.toString())
+                .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.STATUS.toString());
 
         /*
          * Spout receives Topology Engine response

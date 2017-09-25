@@ -60,7 +60,7 @@ public class TransactionBolt extends BaseStatefulBolt<InMemoryKeyValueState<Stri
             switch (componentId) {
 
                 case TOPOLOGY_ENGINE_BOLT:
-                    logger.debug("Transaction from TopologyEngine: switch-id={}, {}={}, {}={}",
+                    logger.info("Transaction from TopologyEngine: switch-id={}, {}={}, {}={}",
                             switchId, Utils.FLOW_ID, flowId, Utils.TRANSACTION_ID, transactionId);
 
                     flowTransactions = transactions.get(switchId);
@@ -80,7 +80,7 @@ public class TransactionBolt extends BaseStatefulBolt<InMemoryKeyValueState<Stri
                                 String.format("Transaction adding failure: id %d already exists", transactionId));
                     }
 
-                    logger.debug("Set status {}: switch-id={}, {}={}, {}={}", FlowState.IN_PROGRESS,
+                    logger.info("Set status {}: switch-id={}, {}={}, {}={}", FlowState.IN_PROGRESS,
                             switchId, Utils.FLOW_ID, flowId, Utils.TRANSACTION_ID, transactionId);
 
                     values = new Values(flowId, FlowState.IN_PROGRESS);
@@ -91,7 +91,7 @@ public class TransactionBolt extends BaseStatefulBolt<InMemoryKeyValueState<Stri
                     break;
 
                 case SPEAKER_BOLT:
-                    logger.debug("Transaction from Speaker: switch-id={}, {}={}, {}={}",
+                    logger.info("Transaction from Speaker: switch-id={}, {}={}, {}={}",
                             switchId, Utils.FLOW_ID, flowId, Utils.TRANSACTION_ID, transactionId);
 
                     flowTransactions = transactions.get(switchId);
@@ -103,7 +103,7 @@ public class TransactionBolt extends BaseStatefulBolt<InMemoryKeyValueState<Stri
                             if (flowTransactionIds.remove(transactionId)) {
 
                                 if (flowTransactionIds.isEmpty()) {
-                                    logger.debug("Set status {}: switch-id={}, {}={}, {}={}", FlowState.UP,
+                                    logger.info("Set status {}: switch-id={}, {}={}, {}={}", FlowState.UP,
                                             switchId, Utils.FLOW_ID, flowId, Utils.TRANSACTION_ID, transactionId);
 
                                     values = new Values(flowId, FlowState.UP);

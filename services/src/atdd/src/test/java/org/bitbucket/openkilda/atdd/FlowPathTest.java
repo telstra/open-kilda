@@ -16,8 +16,6 @@ import org.bitbucket.openkilda.messaging.model.Flow;
 import org.bitbucket.openkilda.messaging.model.ImmutablePair;
 import org.bitbucket.openkilda.topo.TopologyHelp;
 
-import cucumber.api.PendingException;
-import cucumber.api.java.en.And;
 import cucumber.api.java.en.Given;
 import cucumber.api.java.en.Then;
 import cucumber.api.java.en.When;
@@ -39,7 +37,7 @@ public class FlowPathTest {
             new ImmutablePair<>("00:00:00:00:00:00:00:05", "1"), new ImmutablePair<>("00:00:00:00:00:00:00:04", "2"),
             new ImmutablePair<>("00:00:00:00:00:00:00:05", "2"), new ImmutablePair<>("00:00:00:00:00:00:00:06", "1"),
             new ImmutablePair<>("00:00:00:00:00:00:00:06", "2"), new ImmutablePair<>("00:00:00:00:00:00:00:07", "3"));
-    private static final ImmutablePair<PathInfoData, PathInfoData> expectedPath = new ImmutablePair<>(
+    static final ImmutablePair<PathInfoData, PathInfoData> expectedShortestPath = new ImmutablePair<>(
             new PathInfoData(0L, Arrays.asList(
                     new PathNode("00:00:00:00:00:00:00:02", 2, 0, 0L),
                     new PathNode("00:00:00:00:00:00:00:03", 1, 1, 0L),
@@ -50,6 +48,25 @@ public class FlowPathTest {
                     new PathNode("00:00:00:00:00:00:00:03", 2, 1, 0L),
                     new PathNode("00:00:00:00:00:00:00:03", 1, 2, 0L),
                     new PathNode("00:00:00:00:00:00:00:02", 2, 3, 0L))));
+    static final ImmutablePair<PathInfoData, PathInfoData> expectedAlternatePath = new ImmutablePair<>(
+            new PathInfoData(0L, Arrays.asList(
+                    new PathNode("00:00:00:00:00:00:00:02", 3, 0, 0L),
+                    new PathNode("00:00:00:00:00:00:00:04", 1, 1, 0L),
+                    new PathNode("00:00:00:00:00:00:00:04", 2, 2, 0L),
+                    new PathNode("00:00:00:00:00:00:00:05", 1, 3, 0L),
+                    new PathNode("00:00:00:00:00:00:00:05", 2, 0, 0L),
+                    new PathNode("00:00:00:00:00:00:00:06", 1, 1, 0L),
+                    new PathNode("00:00:00:00:00:00:00:06", 2, 2, 0L),
+                    new PathNode("00:00:00:00:00:00:00:07", 3, 3, 0L))),
+            new PathInfoData(0L, Arrays.asList(
+                    new PathNode("00:00:00:00:00:00:00:07", 3, 3, 0L),
+                    new PathNode("00:00:00:00:00:00:00:06", 2, 2, 0L),
+                    new PathNode("00:00:00:00:00:00:00:06", 1, 1, 0L),
+                    new PathNode("00:00:00:00:00:00:00:05", 2, 0, 0L),
+                    new PathNode("00:00:00:00:00:00:00:05", 1, 3, 0L),
+                    new PathNode("00:00:00:00:00:00:00:04", 2, 2, 0L),
+                    new PathNode("00:00:00:00:00:00:00:04", 1, 1, 0L),
+                    new PathNode("00:00:00:00:00:00:00:02", 3, 0, 0L))));
 
     private String previousLastUpdated;
     private String actualFlowName;
@@ -104,7 +121,7 @@ public class FlowPathTest {
                 sourcePort, sourceVlan, destinationSwitch, destinationPort, destinationVlan);
         ImmutablePair<PathInfoData, PathInfoData> path = FlowUtils.getFlowPath(flow);
         System.out.println(path);
-        assertEquals(expectedPath, path);
+        assertEquals(expectedShortestPath, path);
     }
 
     private int getBandwidth(int expectedBandwidth, String src_switch, String src_port) throws Exception {

@@ -23,6 +23,7 @@ import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -81,21 +82,23 @@ public class OFELinkBolt extends AbstractTickStatefulBolt<KeyValueState<String, 
     @Override
     protected void doTick(Tuple tuple) {
         for (String switchId : links.getSwitches()) {
-            for (String portId : links.getSwitchPorts(switchId).keySet()) {
-                if (links.getSwitchPorts(switchId).get(portId).incrementAndGet() >= packetsToFail) {
-                    try {
-                        String discoFail = OFEMessageUtils.createIslFail(switchId, portId);
-                        Values dataVal = new Values(PAYLOAD, discoFail, switchId, portId, OFEMessageUtils.LINK_DOWN);
-                        collector.emit(outputStreamId, tuple, dataVal);
-                        logger.warn("LINK: Send ISL discovery failure message={}", discoFail);
-                    } catch (IOException exception) {
-                        logger.error("LINK: ISL discovery failure message creation error", exception);
-                    }
-                }
+            for (Iterator<Map.Entry<String, AtomicInteger>> it = links.getSwitchPorts(switchId).entrySet().iterator(); it.hasNext(); ) {
+                try {
+                    Map.Entry<String, AtomicInteger> entry = it.next();
 
-                String discoJson = OFEMessageUtils.createIslDiscovery(switchId, portId);
-                collector.emit(islDiscoTopic, tuple, new Values(PAYLOAD, discoJson));
-                logger.debug("LINK: Send ISL discovery command: {}", discoJson);
+                    if (entry.getValue().get() == -1) {
+                        sendDiscoveryFailed(switchId, entry.getKey(), tuple);
+                        it.remove();
+                    } else if (entry.getValue().incrementAndGet() >= packetsToFail) {
+                        sendDiscoveryFailed(switchId, entry.getKey(), tuple);
+                    }
+
+                    String discoJson = OFEMessageUtils.createIslDiscovery(switchId, entry.getKey());
+                    collector.emit(islDiscoTopic, tuple, new Values(PAYLOAD, discoJson));
+                    logger.debug("LINK: Send ISL discovery command: {}", discoJson);
+                } catch (IOException exception) {
+                    logger.error("LINK: ISL discovery failure message creation error", exception);
+                }
             }
         }
     }
@@ -148,7 +151,9 @@ public class OFELinkBolt extends AbstractTickStatefulBolt<KeyValueState<String, 
         } else if (updown.equals(OFEMessageUtils.PORT_DOWN)) {
             // Clear the check, if it exists.
             logger.info("LINK: Remove switch={} port={} from health checks", switchID, portID);
-            ports.remove(portID);
+            String discoJson = OFEMessageUtils.createIslDiscovery(switchID, portID);
+            collector.emit(islDiscoTopic, tuple, new Values(PAYLOAD, discoJson));
+            ports.get(portID).set(-1);
         } else {
             logger.error("LINK: Unknown state={} for switch={} port={}", updown, switchID, portID);
         }
@@ -167,6 +172,13 @@ public class OFELinkBolt extends AbstractTickStatefulBolt<KeyValueState<String, 
         } catch (IOException exception) {
             logger.error("LINK: ISL discovered message deserialization failed", exception);
         }
+    }
+
+    private void sendDiscoveryFailed(String switchId, String portId, Tuple tuple) throws IOException {
+        String discoFail = OFEMessageUtils.createIslFail(switchId, portId);
+        Values dataVal = new Values(PAYLOAD, discoFail, switchId, portId, OFEMessageUtils.LINK_DOWN);
+        collector.emit(outputStreamId, tuple, dataVal);
+        logger.warn("LINK: Send ISL discovery failure message={}", discoFail);
     }
 
     @Override

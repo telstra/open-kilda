@@ -349,7 +349,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
                         logger.debug("Got a command message for controller: {}", value);
                         doControllerMsg((CommandMessage) message);
                     } else {
-                        logger.debug("Skip message: {}", message);
+                        logger.trace("Skip message: {}", message);
                     }
                 } else {
                     logger.error("{} not of type String", record.value());
@@ -384,7 +384,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
             while (true) {
                 ConsumerRecords<String, String> records = consumer.poll(100);
                 for (ConsumerRecord<String, String> record : records) {
-                    logger.debug("received message: {} - {}", record.offset(), record.value());
+                    logger.trace("received message: {} - {}", record.offset(), record.value());
                     parseRecordExecutor.execute(new ParseRecord(record));
                 }
             }
