@@ -3,11 +3,11 @@ import json
 from kafka import KafkaProducer
 
 from logger import get_logger
+from kafkareader import topic
+from kafkareader import bootstrap_servers
 
 
-topic = 'kilda-test'
-bootstrapServer = 'kafka.pendev:9092'
-producer = KafkaProducer(bootstrap_servers=bootstrapServer)
+producer = KafkaProducer(bootstrap_servers=bootstrap_servers)
 logger = get_logger()
 
 
@@ -158,7 +158,7 @@ def send_install_commands(flow_rules, correlation_id):
         send_message(flow_rule, correlation_id, "COMMAND")
 
 
-def send_delete_commands(switches, flow_id, correlation_id, cookie):
-    for switch in switches:
-        data = build_delete_flow(switch, str(flow_id), cookie)
+def send_delete_commands(nodes, flow_id, correlation_id, cookie):
+    for node in nodes:
+        data = build_delete_flow(str(node['switch_id']), str(flow_id), cookie)
         send_message(data, correlation_id, "COMMAND")

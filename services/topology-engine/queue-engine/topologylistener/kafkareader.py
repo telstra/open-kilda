@@ -1,21 +1,31 @@
-from kafka import KafkaConsumer
-import time
 import os
+import time
+
+from kafka import KafkaConsumer
+import ConfigParser
 
 from logger import get_logger
 
+
+config = ConfigParser.RawConfigParser()
+config.read('topology_engine.properties')
+
+group = config.get('kafka', 'consumer.group')
+topic = config.get('kafka', 'topology.topic')
+bootstrap_servers_property = config.get('kafka', 'bootstrap.servers')
+bootstrap_servers = [x.strip() for x in bootstrap_servers_property.split(',')]
+
 logger = get_logger()
-logger.info('Connecting to kafka using application defined configuration')
+logger.info('Connecting to kafka: group=%s, topic=%s, bootstrap_servers=%s',
+            group, topic, str(bootstrap_servers))
 
 
 def create_consumer():
-    bootstrap_server = os.environ['bootstrapserver']
-    topic = os.environ['topic']
     group = os.environ['group']
 
     while True:
         try:
-            consumer = KafkaConsumer(bootstrap_servers=bootstrap_server,
+            consumer = KafkaConsumer(bootstrap_servers=bootstrap_servers,
                                      group_id=group,
                                      auto_offset_reset='earliest')
             consumer.subscribe(['{}'.format(topic)])
