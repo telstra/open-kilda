@@ -20,8 +20,12 @@
 root=${PWD}
 iso_path=${iso_path:-$root}
 custom_script=${custom_script:-$root/install_scripts/all-dev.sh}
+packer_path=${packer_path:-$root/packer}
+# The packer_path should point to the location of https://github.com/kilda/ubuntu
+# A more robust approach could be to download it locally if it doesn't exist (and
+# add to .gitignore)
 
-cd packer/ubuntu && packer build -only=virtualbox-iso -var-file=ubuntu1704.json \
+cd =${packer_path} && packer build -only=virtualbox-iso -var-file=ubuntu1704.json \
     -var "version=17.04.02" \
     -var "iso_path=${root}" \
     -var "hostname=kilda" \
