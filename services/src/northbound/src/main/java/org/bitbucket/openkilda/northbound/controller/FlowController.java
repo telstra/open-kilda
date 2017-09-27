@@ -3,24 +3,23 @@ package org.bitbucket.openkilda.northbound.controller;
 import static org.bitbucket.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.bitbucket.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 import static org.bitbucket.openkilda.messaging.Utils.FLOW_ID;
-import static org.springframework.http.MediaType.APPLICATION_JSON_UTF8_VALUE;
-import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
+import org.bitbucket.openkilda.messaging.error.MessageError;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowPayload;
-import org.bitbucket.openkilda.messaging.payload.flow.FlowsPayload;
 import org.bitbucket.openkilda.northbound.service.FlowService;
 
-import com.webcohesion.enunciate.metadata.rs.ResponseCode;
-import com.webcohesion.enunciate.metadata.rs.StatusCodes;
-import com.webcohesion.enunciate.metadata.rs.TypeHint;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiResponse;
+import io.swagger.annotations.ApiResponses;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -28,6 +27,8 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 /**
  * REST Controller for flow requests.
@@ -53,18 +54,20 @@ public class FlowController {
      * @param correlationId correlation ID header value
      * @return flow
      */
-    @TypeHint(FlowPayload.class)
-    @StatusCodes({
-            @ResponseCode(code = 200, condition = "Operation is successful"),
-            @ResponseCode(code = 400, condition = "Invalid input data"),
-            @ResponseCode(code = 404, condition = "Not found"),
-            @ResponseCode(code = 500, condition = "General error"),
-            @ResponseCode(code = 503, condition = "Service unavailable")})
+    @ApiOperation(value = "Creates new flow", response = FlowPayload.class)
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, response = FlowPayload.class, message = "Operation is successful"),
+            @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
+            @ApiResponse(code = 401, response = MessageError.class, message = "Unauthorized"),
+            @ApiResponse(code = 403, response = MessageError.class, message = "Forbidden"),
+            @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
+            @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
+            @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
     @RequestMapping(
             value = "/flows",
             method = RequestMethod.PUT,
-            produces = APPLICATION_JSON_UTF8_VALUE,
-            consumes = APPLICATION_JSON_VALUE)
+            produces = MediaType.APPLICATION_JSON_UTF8_VALUE,
+            consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<FlowPayload> createFlow(
             @RequestBody FlowPayload flow,
             @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
@@ -80,17 +83,19 @@ public class FlowController {
      * @param correlationId correlation ID header value
      * @return flow
      */
-    @TypeHint(FlowPayload.class)
-    @StatusCodes({
-            @ResponseCode(code = 200, condition = "Operation is successful"),
-            @ResponseCode(code = 400, condition = "Invalid input data"),
-            @ResponseCode(code = 404, condition = "Not found"),
-            @ResponseCode(code = 500, condition = "General error"),
-            @ResponseCode(code = 503, condition = "Service unavailable")})
+    @ApiOperation(value = "Gets flow", response = FlowPayload.class)
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, response = FlowPayload.class, message = "Operation is successful"),
+            @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
+            @ApiResponse(code = 401, response = MessageError.class, message = "Unauthorized"),
+            @ApiResponse(code = 403, response = MessageError.class, message = "Forbidden"),
+            @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
+            @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
+            @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
     @RequestMapping(
             value = "/flows/{flow-id}",
             method = RequestMethod.GET,
-            produces = APPLICATION_JSON_UTF8_VALUE)
+            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<FlowPayload> getFlow(
             @PathVariable(name = "flow-id") String flowId,
             @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
@@ -106,17 +111,19 @@ public class FlowController {
      * @param correlationId correlation ID header value
      * @return flow
      */
-    @TypeHint(FlowPayload.class)
-    @StatusCodes({
-            @ResponseCode(code = 200, condition = "Operation is successful"),
-            @ResponseCode(code = 400, condition = "Invalid input data"),
-            @ResponseCode(code = 404, condition = "Not found"),
-            @ResponseCode(code = 500, condition = "General error"),
-            @ResponseCode(code = 503, condition = "Service unavailable")})
+    @ApiOperation(value = "Deletes flow", response = FlowPayload.class)
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, response = FlowPayload.class, message = "Operation is successful"),
+            @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
+            @ApiResponse(code = 401, response = MessageError.class, message = "Unauthorized"),
+            @ApiResponse(code = 403, response = MessageError.class, message = "Forbidden"),
+            @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
+            @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
+            @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
     @RequestMapping(
             value = "/flows/{flow-id}",
             method = RequestMethod.DELETE,
-            produces = APPLICATION_JSON_UTF8_VALUE)
+            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<FlowPayload> deleteFlow(
             @PathVariable(name = "flow-id") String flowId,
             @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
@@ -133,18 +140,20 @@ public class FlowController {
      * @param correlationId correlation ID header value
      * @return flow
      */
-    @TypeHint(FlowPayload.class)
-    @StatusCodes({
-            @ResponseCode(code = 200, condition = "Operation is successful"),
-            @ResponseCode(code = 400, condition = "Invalid input data"),
-            @ResponseCode(code = 404, condition = "Not found"),
-            @ResponseCode(code = 500, condition = "General error"),
-            @ResponseCode(code = 503, condition = "Service unavailable")})
+    @ApiOperation(value = "Updates flow", response = FlowPayload.class)
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, response = FlowPayload.class, message = "Operation is successful"),
+            @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
+            @ApiResponse(code = 401, response = MessageError.class, message = "Unauthorized"),
+            @ApiResponse(code = 403, response = MessageError.class, message = "Forbidden"),
+            @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
+            @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
+            @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
     @RequestMapping(
             value = "/flows/{flow-id}",
             method = RequestMethod.PUT,
-            produces = APPLICATION_JSON_UTF8_VALUE,
-            consumes = APPLICATION_JSON_VALUE)
+            produces = MediaType.APPLICATION_JSON_UTF8_VALUE,
+            consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<FlowPayload> updateFlow(
             @PathVariable(name = "flow-id") String flowId,
             @RequestBody FlowPayload flow,
@@ -155,27 +164,28 @@ public class FlowController {
     }
 
     /**
-     * Dumps all flows.
-     * Dumps all flows with specific status if specified.
+     * Dumps all flows. Dumps all flows with specific status if specified.
      *
      * @param correlationId correlation ID header value
      * @return list of flow
      */
-    @TypeHint(FlowsPayload.class)
-    @StatusCodes({
-            @ResponseCode(code = 200, condition = "Operation is successful"),
-            @ResponseCode(code = 400, condition = "Invalid input data"),
-            @ResponseCode(code = 404, condition = "Not found"),
-            @ResponseCode(code = 500, condition = "General error"),
-            @ResponseCode(code = 503, condition = "Service unavailable")})
+    @ApiOperation(value = "Dumps all flows", response = FlowPayload.class)
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, response = FlowPayload.class, message = "Operation is successful"),
+            @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
+            @ApiResponse(code = 401, response = MessageError.class, message = "Unauthorized"),
+            @ApiResponse(code = 403, response = MessageError.class, message = "Forbidden"),
+            @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
+            @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
+            @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
     @RequestMapping(
             value = "/flows",
             method = RequestMethod.GET,
-            produces = APPLICATION_JSON_UTF8_VALUE)
-    public ResponseEntity<FlowsPayload> getFlows(
+            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    public ResponseEntity<List<FlowPayload>> getFlows(
             @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
         logger.debug("Get flows: {}={}", CORRELATION_ID, correlationId);
-        FlowsPayload response = flowService.getFlows(correlationId);
+        List<FlowPayload> response = flowService.getFlows(correlationId);
         return new ResponseEntity<>(response, new HttpHeaders(), HttpStatus.OK);
     }
 
@@ -186,17 +196,19 @@ public class FlowController {
      * @param correlationId correlation ID header value
      * @return list of flow
      */
-    @TypeHint(FlowIdStatusPayload.class)
-    @StatusCodes({
-            @ResponseCode(code = 200, condition = "Operation is successful"),
-            @ResponseCode(code = 400, condition = "Invalid input data"),
-            @ResponseCode(code = 404, condition = "Not found"),
-            @ResponseCode(code = 500, condition = "General error"),
-            @ResponseCode(code = 503, condition = "Service unavailable")})
+    @ApiOperation(value = "Gets flow status", response = FlowIdStatusPayload.class)
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, response = FlowIdStatusPayload.class, message = "Operation is successful"),
+            @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
+            @ApiResponse(code = 401, response = MessageError.class, message = "Unauthorized"),
+            @ApiResponse(code = 403, response = MessageError.class, message = "Forbidden"),
+            @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
+            @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
+            @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
     @RequestMapping(
             value = "/flows/status/{flow-id}",
             method = RequestMethod.GET,
-            produces = APPLICATION_JSON_UTF8_VALUE)
+            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<FlowIdStatusPayload> statusFlow(
             @PathVariable(name = "flow-id") String flowId,
             @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
@@ -212,16 +224,18 @@ public class FlowController {
      * @param correlationId correlation ID header value
      * @return list of flow
      */
-    @TypeHint(FlowPathPayload.class)
-    @StatusCodes({
-            @ResponseCode(code = 200, condition = "Operation is successful"),
-            @ResponseCode(code = 400, condition = "Invalid input data"),
-            @ResponseCode(code = 404, condition = "Not found"),
-            @ResponseCode(code = 500, condition = "General error"),
-            @ResponseCode(code = 503, condition = "Service unavailable")})
+    @ApiOperation(value = "Gets flow path", response = FlowPathPayload.class)
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, response = FlowPathPayload.class, message = "Operation is successful"),
+            @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
+            @ApiResponse(code = 401, response = MessageError.class, message = "Unauthorized"),
+            @ApiResponse(code = 403, response = MessageError.class, message = "Forbidden"),
+            @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
+            @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
+            @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
     @RequestMapping(
             value = "/flows/path/{flow-id}", method = RequestMethod.GET,
-            produces = APPLICATION_JSON_UTF8_VALUE)
+            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<FlowPathPayload> pathFlow(
             @PathVariable(name = "flow-id") String flowId,
             @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {

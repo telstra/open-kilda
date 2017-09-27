@@ -11,12 +11,21 @@ import json
 import random 
 import time
 import uuid
+import ConfigParser
 
 from kafka import KafkaConsumer, KafkaProducer
 from py2neo import Graph, Node, Relationship
 
-neo4jhost = os.environ['neo4jhost']
 
+config = ConfigParser.RawConfigParser()
+config.read('topology_engine_rest.properties')
+
+group = config.get('kafka', 'consumer.group')
+topic = config.get('kafka', 'topology.topic')
+bootstrap_servers_property = config.get('kafka', 'bootstrap.servers')
+bootstrap_servers = [x.strip() for x in bootstrap_servers_property.split(',')]
+
+neo4jhost = os.environ['neo4jhost']
 
 class Flow(object):
     def toJSON(self):
@@ -187,9 +196,7 @@ def api_v1_flow(flowid):
     if request.method == 'GET':
         result = graph.run(query.format(flowid, "return")).data()
     if request.method == 'DELETE':
-        bootstrap_server = 'kafka.pendev:9092'
-        topic = 'kilda-test'
-        producer = KafkaProducer(bootstrap_servers=bootstrap_server)
+        producer = KafkaProducer(bootstrap_servers=bootstrap_servers)
         switches =  graph.run("MATCH (a:switch)-[r:flow {{flowid: '{}'}}]->(b:switch) return r.flowpath limit 1".format(flowid)).evaluate()
         for switch in switches:
             message = Message()
@@ -208,9 +215,7 @@ def api_v1_flow(flowid):
 #@login_required
 def api_v1_create_flow():
     if request.method == 'POST':
-        bootstrapServer = 'kafka.pendev:9092'
-        topic = 'kilda-test'
-        producer = KafkaProducer(bootstrap_servers=bootstrapServer)
+        producer = KafkaProducer(bootstrap_servers=bootstrap_servers)
         content = json.loads('{}'.format(request.data))
         flowID = assign_flow_id()
 
@@ -239,8 +244,8 @@ def api_v1_create_flow():
                 return json.dumps(response)
 
         forwardFlowSwitches = [str(f.switch_id) for f in forwardFlows]
-        reverseFlowSwitches = [str(f.switch_id) for f in reverseFlows]    
-            
+        reverseFlowSwitches = [str(f.switch_id) for f in reverseFlows]
+
 
         for flows in allflows:
             for flow in flows:

@@ -1,25 +1,32 @@
 package org.bitbucket.openkilda.atdd;
 
 
+import static org.bitbucket.openkilda.flow.FlowUtils.getHealthCheck;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 import org.bitbucket.openkilda.flow.FlowUtils;
+import org.bitbucket.openkilda.messaging.info.event.PathInfoData;
+import org.bitbucket.openkilda.messaging.info.event.PathNode;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowPayload;
-import org.bitbucket.openkilda.messaging.payload.flow.FlowStatusType;
-import org.bitbucket.openkilda.messaging.payload.flow.FlowsPayload;
+import org.bitbucket.openkilda.messaging.payload.flow.FlowState;
 
+import cucumber.api.java.en.Given;
 import cucumber.api.java.en.Then;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class NorthboundRunTest {
-    private static final FlowStatusType expectedFlowStatus = FlowStatusType.UP;
-    private static final List<String> expectedFlowPath =
-            Arrays.asList("de:ad:be:ef:00:00:00:02", "de:ad:be:ef:00:00:00:03", "de:ad:be:ef:00:00:00:04");
+    private static final FlowState expectedFlowStatus = FlowState.UP;
+    private static final PathInfoData expectedFlowPath = new PathInfoData(0L, Arrays.asList(
+            new PathNode("de:ad:be:ef:00:00:00:03", 2, 0),
+            new PathNode("de:ad:be:ef:00:00:00:04", 1, 1),
+            new PathNode("de:ad:be:ef:00:00:00:04", 2, 2),
+            new PathNode("de:ad:be:ef:00:00:00:05", 1, 3)));
 
     @Then("^path of flow (.*) could be read$")
     public void checkFlowPath(final String flowId) {
@@ -33,10 +40,10 @@ public class NorthboundRunTest {
     }
 
     @Then("^status of flow (.*) could be read$")
-    public void checkFlowStatus(final String flowId) {
+    public void checkFlowStatus(final String flowId) throws Exception {
         String flowName = FlowUtils.getFlowName(flowId);
+        FlowIdStatusPayload payload = getFlowState(flowName, expectedFlowStatus);
 
-        FlowIdStatusPayload payload = FlowUtils.getFlowStatus(flowName);
         assertNotNull(payload);
 
         assertEquals(flowName, payload.getId());
@@ -45,12 +52,36 @@ public class NorthboundRunTest {
 
     @Then("^flows dump contains (\\d+) flows$")
     public void checkDumpFlows(final int flowCount) {
-        FlowsPayload payload = FlowUtils.getFlowDump();
-        assertNotNull(payload);
-
-        List<FlowPayload> flows = payload.getFlowList();
+        List<FlowPayload> flows = FlowUtils.getFlowDump();
         assertNotNull(flows);
-
+        flows.forEach(flow -> System.out.println(flow.getId()));
         assertEquals(flowCount, flows.size());
+    }
+
+    @Given("^health check$")
+    public void healthCheck() throws Throwable {
+        assertEquals(200, getHealthCheck());
+    }
+
+    @Then("^flow (\\w+) in (\\w+) state$")
+    public void flowState(String flowId, String state) throws Throwable {
+        String flowName = FlowUtils.getFlowName(flowId);
+        FlowState flowState = FlowState.valueOf(state);
+        FlowIdStatusPayload payload = getFlowState(flowName, flowState);
+        assertNotNull(payload);
+        assertEquals(flowName, payload.getId());
+        assertEquals(flowState, payload.getStatus());
+    }
+
+    private FlowIdStatusPayload getFlowState(String flowName, FlowState expectedFlowStatus) throws Exception {
+        FlowIdStatusPayload payload = FlowUtils.getFlowStatus(flowName);
+        for (int i = 0; i < 10; i++) {
+            payload = FlowUtils.getFlowStatus(flowName);
+            if (payload != null && expectedFlowStatus.equals(payload.getStatus())) {
+                break;
+            }
+            TimeUnit.SECONDS.sleep(2);
+        }
+        return payload;
     }
 }

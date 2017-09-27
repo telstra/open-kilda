@@ -18,8 +18,10 @@ RUN echo "PATH=$PATH:/opt/storm/bin" >> ~/.bashrc
 ADD src/pom.xml /app/pom.xml
 ADD src/checkstyle.xml /app/checkstyle.xml
 ADD src/messaging /app/messaging
+ADD src/pce /app/pce
 RUN mvn -f /app/pom.xml --non-recursive clean install
 RUN mvn -f /app/messaging/pom.xml clean install
+RUN mvn -f /app/pce/pom.xml clean install
 
 ADD wfm /app/wfm
 RUN mvn -f /app/wfm assembly:assembly -DskipTests

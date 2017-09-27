@@ -1,24 +1,30 @@
 package org.bitbucket.openkilda.wfm.topology.stats;
 
-import org.apache.storm.Config;
-import org.apache.storm.LocalCluster;
-import org.apache.storm.StormSubmitter;
-import org.apache.storm.generated.StormTopology;
-import org.apache.storm.kafka.KafkaSpout;
-import org.apache.storm.opentsdb.bolt.OpenTsdbBolt;
-import org.apache.storm.opentsdb.bolt.TupleOpenTsdbDatapointMapper;
-import org.apache.storm.opentsdb.client.OpenTsdbClient;
-import org.apache.storm.topology.TopologyBuilder;
+import static org.bitbucket.openkilda.wfm.topology.stats.StatsComponentType.FLOW_STATS_METRIC_GEN;
+import static org.bitbucket.openkilda.wfm.topology.stats.StatsComponentType.METER_CFG_STATS_METRIC_GEN;
+import static org.bitbucket.openkilda.wfm.topology.stats.StatsComponentType.PORT_STATS_METRIC_GEN;
+
+import org.bitbucket.openkilda.messaging.ServiceType;
 import org.bitbucket.openkilda.messaging.Topic;
 import org.bitbucket.openkilda.wfm.topology.AbstractTopology;
 import org.bitbucket.openkilda.wfm.topology.stats.bolts.SpeakerBolt;
 import org.bitbucket.openkilda.wfm.topology.stats.metrics.FlowMetricGenBolt;
 import org.bitbucket.openkilda.wfm.topology.stats.metrics.MeterConfigMetricGenBolt;
 import org.bitbucket.openkilda.wfm.topology.stats.metrics.PortMetricGenBolt;
+import org.bitbucket.openkilda.wfm.topology.utils.HealthCheckBolt;
+
+import org.apache.storm.Config;
+import org.apache.storm.LocalCluster;
+import org.apache.storm.StormSubmitter;
+import org.apache.storm.generated.StormTopology;
+import org.apache.storm.kafka.KafkaSpout;
+import org.apache.storm.kafka.bolt.KafkaBolt;
+import org.apache.storm.opentsdb.bolt.OpenTsdbBolt;
+import org.apache.storm.opentsdb.bolt.TupleOpenTsdbDatapointMapper;
+import org.apache.storm.opentsdb.client.OpenTsdbClient;
+import org.apache.storm.topology.TopologyBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static org.bitbucket.openkilda.wfm.topology.stats.StatsComponentType.*;
 
 
 public class StatsTopology extends AbstractTopology {
@@ -26,6 +32,8 @@ public class StatsTopology extends AbstractTopology {
     private static final String TOPIC = "kilda-test";
 
     public StatsTopology() {
+        checkAndCreateTopic(Topic.HEALTH_CHECK.getId());
+
         logger.debug("Topology built {}: zookeeper={}, kafka={}, parallelism={}, workers={}",
                 topologyName, zookeeperHosts, kafkaHosts, parallelism, workers);
     }
@@ -63,8 +71,8 @@ public class StatsTopology extends AbstractTopology {
 
         TopologyBuilder builder = new TopologyBuilder();
 
-        KafkaSpout kafkaSpout = createKafkaSpout(TOPIC);
         final String kafkaSpoutId = StatsComponentType.STATS_OFS_KAFKA_SPOUT.toString();
+        KafkaSpout kafkaSpout = createKafkaSpout(TOPIC, kafkaSpoutId);
         builder.setSpout(kafkaSpoutId, kafkaSpout, parallelism);
 
         SpeakerBolt speakerBolt = new SpeakerBolt();
@@ -89,6 +97,16 @@ public class StatsTopology extends AbstractTopology {
                 .shuffleGrouping(PORT_STATS_METRIC_GEN.name())
                 .shuffleGrouping(METER_CFG_STATS_METRIC_GEN.name())
                 .shuffleGrouping(FLOW_STATS_METRIC_GEN.name());
+
+        String prefix = ServiceType.STATS_TOPOLOGY.getId();
+        KafkaSpout healthCheckKafkaSpout = createKafkaSpout(Topic.HEALTH_CHECK.getId(), prefix);
+        builder.setSpout(prefix + "HealthCheckKafkaSpout", healthCheckKafkaSpout, 1);
+        HealthCheckBolt healthCheckBolt = new HealthCheckBolt(ServiceType.STATS_TOPOLOGY);
+        builder.setBolt(prefix + "HealthCheckBolt", healthCheckBolt, 1)
+                .shuffleGrouping(prefix + "HealthCheckKafkaSpout");
+        KafkaBolt healthCheckKafkaBolt = createKafkaBolt(Topic.HEALTH_CHECK.getId());
+        builder.setBolt(prefix + "HealthCheckKafkaBolt", healthCheckKafkaBolt, 1)
+                .shuffleGrouping(prefix + "HealthCheckBolt", Topic.HEALTH_CHECK.getId());
 
         return builder.createTopology();
     }

@@ -29,10 +29,10 @@ public class LinkTracker implements Serializable {
         return state.keySet();
     }
 
-    public void islDiscovered(PathNode node) {
-        ConcurrentHashMap<String, AtomicInteger> ports = state.get(node.getSwitchId());
+    public void clearCountOfSentPackets(String switchId, String portNo) {
+        ConcurrentHashMap<String, AtomicInteger> ports = state.get(switchId);
         if (ports != null) {
-            AtomicInteger packets = ports.get(String.valueOf(node.getPortNo()));
+            AtomicInteger packets = ports.get(portNo);
             if (packets != null) {
                 packets.set(0);
             }

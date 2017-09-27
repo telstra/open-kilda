@@ -17,3 +17,4 @@ dependency-reduced-pom.xml
 reports/
 .vagrant/
 *.log
+logs/

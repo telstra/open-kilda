@@ -1,9 +1,9 @@
 package org.bitbucket.openkilda.floodlight.switchmanager;
 
+import org.bitbucket.openkilda.messaging.model.ImmutablePair;
 import org.bitbucket.openkilda.messaging.payload.flow.OutputVlanType;
 
 import net.floodlightcontroller.core.module.IFloodlightService;
-import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
 import org.projectfloodlight.openflow.protocol.OFMeterConfigStatsReply;
 import org.projectfloodlight.openflow.types.DatapathId;

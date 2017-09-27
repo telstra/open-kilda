@@ -241,6 +241,7 @@ services:
       opentsdb:
         condition: service_started
     links:
+      - neo4j
       - zookeeper:zookeeper.pendev
       - opentsdb:opentsdb.pendev
     ports:

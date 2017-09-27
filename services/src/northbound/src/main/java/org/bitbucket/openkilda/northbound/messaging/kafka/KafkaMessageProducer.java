@@ -6,6 +6,7 @@ import static org.bitbucket.openkilda.messaging.error.ErrorType.DATA_INVALID;
 import static org.bitbucket.openkilda.messaging.error.ErrorType.INTERNAL_ERROR;
 
 import org.bitbucket.openkilda.messaging.error.MessageException;
+import org.bitbucket.openkilda.northbound.messaging.MessageProducer;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.slf4j.Logger;
@@ -27,15 +28,11 @@ import java.util.concurrent.TimeoutException;
  */
 @Component
 @PropertySource("classpath:northbound.properties")
-public class KafkaMessageProducer {
+public class KafkaMessageProducer implements MessageProducer {
     /**
      * The logger.
      */
     private static final Logger logger = LoggerFactory.getLogger(KafkaMessageProducer.class);
-    /**
-     * Timeout.
-     */
-    private static int TIMEOUT = 1000;
     /**
      * Kafka template.
      */
@@ -43,11 +40,9 @@ public class KafkaMessageProducer {
     private KafkaTemplate<String, String> kafkaTemplate;
 
     /**
-     * Sends messages to WorkFlowManager.
-     *
-     * @param topic  kafka topic
-     * @param object object to serialize and send
+     * {@inheritDoc}
      */
+    @Override
     public void send(final String topic, final Object object) {
         ListenableFuture<SendResult<String, String>> future;
         String message;

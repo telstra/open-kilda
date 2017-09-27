@@ -37,6 +37,10 @@ public final class Utils {
      */
     public static final String FLOW_ID = "flowid";
     /**
+     * The payload property.
+     */
+    public static final String FLOW_PATH = "flowpath";
+    /**
      * The default correlation ID value.
      */
     public static final String DEFAULT_CORRELATION_ID = "admin-request";
@@ -44,6 +48,14 @@ public final class Utils {
      * The default correlation ID value.
      */
     public static final String SYSTEM_CORRELATION_ID = "system-request";
+    /**
+     * The health check operational status.
+     */
+    public static final String HEALTH_CHECK_OPERATIONAL_STATUS = "operational";
+    /**
+     * The health check non operational status.
+     */
+    public static final String HEALTH_CHECK_NON_OPERATIONAL_STATUS = "non-operational";
     /**
      * VLAN TAG Ether type value.
      */

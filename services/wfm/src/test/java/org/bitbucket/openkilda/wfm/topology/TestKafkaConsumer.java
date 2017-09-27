@@ -4,6 +4,9 @@ import static org.bitbucket.openkilda.messaging.Utils.MAPPER;
 
 import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.Message;
+import org.bitbucket.openkilda.messaging.MessageData;
+import org.bitbucket.openkilda.messaging.command.CommandData;
+import org.bitbucket.openkilda.messaging.info.InfoData;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -76,12 +79,20 @@ public class TestKafkaConsumer extends Thread {
     private boolean checkDestination(final String recordValue) {
         boolean result = false;
         try {
-            Message message = MAPPER.readValue(recordValue, Message.class);
-            if (destination.equals(message.getDestination())) {
-                result = true;
+            if (destination != null) {
+                Message message = MAPPER.readValue(recordValue, Message.class);
+                if (destination.equals(message.getDestination())) {
+                    result = true;
+                }
+            } else {
+                InfoData infoData = MAPPER.readValue(recordValue, InfoData.class);
+                if (infoData != null) {
+                    result = true;
+                }
             }
         } catch (IOException exception) {
             System.out.println(String.format("Can not deserialize %s with destination %s ", recordValue, destination));
+            exception.printStackTrace();
         }
         return result;
     }

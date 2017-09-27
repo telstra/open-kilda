@@ -1,3 +1,4 @@
+@TOPO
 Feature: Basic Topology Events
 
   Basic Topology Events includes the following types of events

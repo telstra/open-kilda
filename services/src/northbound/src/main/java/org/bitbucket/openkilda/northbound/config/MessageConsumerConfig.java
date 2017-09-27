@@ -1,12 +1,14 @@
 package org.bitbucket.openkilda.northbound.config;
 
+import org.bitbucket.openkilda.northbound.messaging.HealthCheckMessageConsumer;
+import org.bitbucket.openkilda.northbound.messaging.MessageConsumer;
+import org.bitbucket.openkilda.northbound.messaging.kafka.KafkaHealthCheckMessageConsumer;
 import org.bitbucket.openkilda.northbound.messaging.kafka.KafkaMessageConsumer;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.kafka.annotation.EnableKafka;
@@ -23,7 +25,6 @@ import java.util.Map;
 @Configuration
 @EnableKafka
 @PropertySource("classpath:northbound.properties")
-@ComponentScan("org.bitbucket.openkilda.northbound")
 public class MessageConsumerConfig {
     /**
      * Kafka queue poll timeout.
@@ -43,8 +44,7 @@ public class MessageConsumerConfig {
     private String groupId;
 
     /**
-     * Kafka consumer configuration bean.
-     * This {@link Map} is used by {@link MessageConsumerConfig#consumerFactory}.
+     * Kafka consumer configuration bean. This {@link Map} is used by {@link MessageConsumerConfig#consumerFactory}.
      *
      * @return kafka properties
      */
@@ -64,10 +64,9 @@ public class MessageConsumerConfig {
     }
 
     /**
-     * Kafka consumer factory bean.
-     * The strategy to produce a {@link org.apache.kafka.clients.consumer.Consumer} instance
-     * with {@link MessageConsumerConfig#consumerConfigs}
-     * on each {@link org.springframework.kafka.core.DefaultKafkaConsumerFactory#createConsumer} invocation.
+     * Kafka consumer factory bean. The strategy to produce a {@link org.apache.kafka.clients.consumer.Consumer}
+     * instance with {@link MessageConsumerConfig#consumerConfigs} on each {@link org.springframework.kafka.core.DefaultKafkaConsumerFactory#createConsumer}
+     * invocation.
      *
      * @return kafka consumer factory
      */
@@ -77,8 +76,7 @@ public class MessageConsumerConfig {
     }
 
     /**
-     * Kafka listener container factory bean.
-     * Returned instance builds {@link org.springframework.kafka.listener.ConcurrentMessageListenerContainer}
+     * Kafka listener container factory bean. Returned instance builds {@link org.springframework.kafka.listener.ConcurrentMessageListenerContainer}
      * using the {@link org.apache.kafka.clients.consumer.Consumer}.
      *
      * @return kafka listener container factory
@@ -94,15 +92,25 @@ public class MessageConsumerConfig {
     }
 
     /**
-     * Kafka message consumer bean.
-     * Instance of {@link org.bitbucket.openkilda.northbound.messaging.kafka.KafkaMessageConsumer}
-     * contains {@link org.springframework.kafka.annotation.KafkaListener}
-     * to be run in {@link org.springframework.kafka.listener.ConcurrentMessageListenerContainer}.
+     * Kafka message consumer bean. Instance of {@link org.bitbucket.openkilda.northbound.messaging.kafka.KafkaMessageConsumer}
+     * contains {@link org.springframework.kafka.annotation.KafkaListener} to be run in {@link
+     * org.springframework.kafka.listener.ConcurrentMessageListenerContainer}.
      *
      * @return kafka message consumer
      */
     @Bean
-    public KafkaMessageConsumer kafkaMessageConsumer() {
+    public MessageConsumer messageConsumer() {
         return new KafkaMessageConsumer();
+    }
+
+    /**
+     * Kafka message consumer bean. Instance of {@link KafkaHealthCheckMessageConsumer} contains {@link
+     * org.springframework.kafka.annotation.KafkaListener} to be run in {@link org.springframework.kafka.listener.ConcurrentMessageListenerContainer}.
+     *
+     * @return kafka health-check message consumer
+     */
+    @Bean
+    public HealthCheckMessageConsumer healthCheckMessageConsumer() {
+        return new KafkaHealthCheckMessageConsumer();
     }
 }

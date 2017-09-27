@@ -8,7 +8,7 @@ import java.io.ObjectOutputStream;
 import java.nio.ByteBuffer;
 
 public interface ByteArraySerializer extends AbstractSerializer {
-    ByteBuffer byteBuffer = ByteBuffer.allocate(2048);
+    ByteBuffer byteBuffer = ByteBuffer.allocate(4096);
 
     @Override
     default Object deserialize() throws IOException, ClassNotFoundException {

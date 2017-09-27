@@ -1,28 +1,27 @@
 package org.bitbucket.openkilda.messaging.payload.flow;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
-import static org.bitbucket.openkilda.messaging.Utils.FLOW_ID;
+
+import org.bitbucket.openkilda.messaging.Utils;
+import org.bitbucket.openkilda.messaging.info.event.PathInfoData;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 import java.io.Serializable;
-import java.util.List;
 import java.util.Objects;
 
 /**
  * Flow path representation class.
  */
 @JsonSerialize
-@JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
-        FLOW_ID,
-        "flowpath"})
+        Utils.FLOW_ID,
+        Utils.FLOW_PATH})
 public class FlowPathPayload implements Serializable {
     /**
      * Serialization version number constant.
@@ -32,14 +31,14 @@ public class FlowPathPayload implements Serializable {
     /**
      * The id of the flow.
      */
-    @JsonProperty(FLOW_ID)
+    @JsonProperty(Utils.FLOW_ID)
     protected String id;
 
     /**
      * The path of the flow.
      */
-    @JsonProperty("flowpath")
-    protected List<String> path;
+    @JsonProperty(Utils.FLOW_PATH)
+    protected PathInfoData path;
 
     /**
      * Instance constructor.
@@ -49,8 +48,8 @@ public class FlowPathPayload implements Serializable {
      * @throws IllegalArgumentException if flow id or flow path is null or empty
      */
     @JsonCreator
-    public FlowPathPayload(@JsonProperty(FLOW_ID) final String id,
-                           @JsonProperty("flowpath") final List<String> path) {
+    public FlowPathPayload(@JsonProperty(Utils.FLOW_ID) String id,
+                           @JsonProperty(Utils.FLOW_PATH) PathInfoData path) {
         setId(id);
         setPath(path);
     }
@@ -69,7 +68,7 @@ public class FlowPathPayload implements Serializable {
      *
      * @param id id of the flow
      */
-    public void setId(final String id) {
+    public void setId(String id) {
         if (id == null || id.isEmpty()) {
             throw new IllegalArgumentException("need to set id");
         }
@@ -81,7 +80,7 @@ public class FlowPathPayload implements Serializable {
      *
      * @return path of the flow
      */
-    public List<String> getPath() {
+    public PathInfoData getPath() {
         return path;
     }
 
@@ -90,8 +89,8 @@ public class FlowPathPayload implements Serializable {
      *
      * @param path path of the flow
      */
-    public void setPath(final List<String> path) {
-        if (path == null || path.isEmpty()) {
+    public void setPath(PathInfoData path) {
+        if (path == null || path.getPath() == null) {
             throw new IllegalArgumentException("need to set path");
         }
         this.path = path;
@@ -103,8 +102,8 @@ public class FlowPathPayload implements Serializable {
     @Override
     public String toString() {
         return toStringHelper(this)
-                .add(FLOW_ID, id)
-                .add("flowpath", path)
+                .add(Utils.FLOW_ID, id)
+                .add(Utils.FLOW_PATH, path)
                 .toString();
     }
 

@@ -1,3 +1,4 @@
+@STATS
 Feature: Basic Statistics Collection
 
   @MVP1
@@ -10,7 +11,7 @@ Feature: Basic Statistics Collection
     When the controller learns the topology
     Then data go to database
 
-  @MVP1.1
+  @MVP1
   Scenario: Statistics keeps getting collected
 
     This scenario makes sure statistics keeps getting collected
