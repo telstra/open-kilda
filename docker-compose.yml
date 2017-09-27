@@ -22,6 +22,9 @@ services:
     links:
       - floodlight:kilda
     privileged: true
+    volumes:
+      - /lib/modules:/lib/modules
+
 
   neo4j:
     container_name: neo4j
