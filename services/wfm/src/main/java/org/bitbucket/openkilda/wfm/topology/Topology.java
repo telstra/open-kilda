@@ -29,7 +29,7 @@ public interface Topology {
     /**
      * Default topologies configuration file.
      */
-    String TOPOLOGY_PROPERTIES = "topology.properties";
+    String TOPOLOGY_PROPERTIES = "/topology.properties";
 
     /**
      * Topology creator.

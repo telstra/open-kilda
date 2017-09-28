@@ -1,5 +1,6 @@
 package org.bitbucket.openkilda.wfm;
 
+import org.bitbucket.openkilda.wfm.topology.Topology;
 import org.bitbucket.openkilda.wfm.topology.splitter.InfoEventSplitterBolt;
 import org.bitbucket.openkilda.wfm.topology.splitter.OFEventSplitterTopology;
 import org.bitbucket.openkilda.wfm.topology.utils.KafkaFilerTopology;
@@ -7,11 +8,10 @@ import org.bitbucket.openkilda.wfm.topology.utils.KafkaFilerTopology;
 import com.google.common.base.Charsets;
 import com.google.common.io.Files;
 import org.apache.storm.utils.Utils;
-import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 
+import java.io.File;
 import java.io.IOException;
 
 /**
@@ -21,31 +21,21 @@ import java.io.IOException;
  */
 public class SimpleSplitterTest extends AbstractStormTest {
 
-    @Before
-    public void setupEach() {
-    }
-
-    @After
-    public void teardownEach() {
-    }
-
     @Test
     public void KafkaSplitterTest() throws IOException {
 
         /*
          * Need to ensure everything is pointing to the right testing URLS
          */
+        File file = new File(this.getClass().getResource(Topology.TOPOLOGY_PROPERTIES).getFile());
+        OFEventSplitterTopology splitter = new OFEventSplitterTopology(file);
 
-        OFEventSplitterTopology splitter = new OFEventSplitterTopology(kutils);
-
-        cluster.submitTopology(splitter.defaultTopoName, TestUtils.stormConfig(), splitter
-                .createTopology());
+        cluster.submitTopology(splitter.getTopologyName(), TestUtils.stormConfig(), splitter.createTopology());
 
         // Dumping the Kafka Topic to file so that I can test the results.
-        KafkaFilerTopology kfiler = new KafkaFilerTopology();
-        cluster.submitTopology("utils-1", TestUtils.stormConfig(),
-                kfiler.createTopology(InfoEventSplitterBolt.I_SWITCH_UPDOWN,
-                        server.tempDir.getAbsolutePath(), TestUtils.zookeeperUrl));
+        KafkaFilerTopology kfiler = new KafkaFilerTopology(file,
+                InfoEventSplitterBolt.I_SWITCH_UPDOWN, server.tempDir.getAbsolutePath());
+        cluster.submitTopology("utils-1", TestUtils.stormConfig(), kfiler.createTopology());
 
         Utils.sleep(4 * 1000);
         SendMessages(splitter.topic);
@@ -55,31 +45,18 @@ public class SimpleSplitterTest extends AbstractStormTest {
         // and 3 messages for ADDED state
         long messagesExpected = 6;
         long messagesReceived = Files.readLines(kfiler.getFiler().getFile(), Charsets.UTF_8).size();
-        Assert.assertEquals(messagesExpected,messagesReceived);
+        Assert.assertEquals(messagesExpected, messagesReceived);
 
-        cluster.killTopology(splitter.defaultTopoName);
+        cluster.killTopology(splitter.getTopologyName());
         cluster.killTopology("utils-1");
         Utils.sleep(4 * 1000);
-
-// This code block was preferred but didn't work - ie interrogate Kafka and get number of
-// messages sent. Unfortunately, the code returned 0 each time.  So, plan B was to dump to file.
-//        KafkaLoggerTopology klogger = new KafkaLoggerTopology();
-//        cluster.submitTopology("logger-3", stormConfig(),
-//                klogger.createTopology(InfoEventSplitterBolt.I_SWITCH_UPDOWN, Level.DEBUG,
-//                        InfoEventSplitterBolt.I_SWITCH_UPDOWN,TestUtils.zookeeperUrl));
-//        List<String> messages = kutils
-//                .getMessagesFromTopic(InfoEventSplitterBolt.I_SWITCH_UPDOWN);
-//        long messagesReceived = messages.size();
-
     }
-
-
 
     // =~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=
     // TESTING Area
     // =~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=
 
-    public static void SendMessages(String topic){
+    public static void SendMessages(String topic) {
         System.out.println("==> sending records");
         String added = "ADDED";
         String active = OFEMessageUtils.SWITCH_UP;

@@ -40,7 +40,7 @@ update:
 
 unit:
 	$(MAKE) -C services/src
-	mvn -f services/wfm/pom.xml clean package
+	mvn -f services/wfm/pom.xml clean assembly:assembly
 
 clean-test:
 	docker-compose down

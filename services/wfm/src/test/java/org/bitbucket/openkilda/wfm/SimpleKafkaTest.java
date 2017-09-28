@@ -1,6 +1,12 @@
 package org.bitbucket.openkilda.wfm;
 
-import kafka.consumer.*;
+import static org.hamcrest.core.Is.is;
+import static org.junit.Assert.assertThat;
+
+import kafka.consumer.Consumer;
+import kafka.consumer.ConsumerConfig;
+import kafka.consumer.ConsumerIterator;
+import kafka.consumer.KafkaStream;
 import kafka.javaapi.consumer.ConsumerConnector;
 import kafka.message.MessageAndMetadata;
 import kafka.serializer.StringDecoder;
@@ -15,11 +21,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-
-import static org.bitbucket.openkilda.wfm.TestUtils.kafkaUrl;
-import static org.bitbucket.openkilda.wfm.TestUtils.zookeeperUrl;
-import static org.hamcrest.core.Is.is;
-import static org.junit.Assert.assertThat;
 
 /**
  * This class is mostly an example of how to startup zookeeper/kafka and send/receive messages.
@@ -78,7 +79,7 @@ public class SimpleKafkaTest {
 
     private Properties consumerProperties() {
         Properties props = new Properties();
-        props.put("zookeeper.connect", zookeeperUrl);
+        props.put("zookeeper.connect", TestUtils.zookeeperHosts);
         props.put("group.id", "group1");
         props.put("auto.offset.reset", "smallest");
         return props;
@@ -86,7 +87,7 @@ public class SimpleKafkaTest {
 
     private Properties producerProps() {
         Properties props = new Properties();
-        props.put("bootstrap.servers", kafkaUrl);
+        props.put("bootstrap.servers", TestUtils.kafkaHosts);
         props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         props.put("request.required.acks", "1");

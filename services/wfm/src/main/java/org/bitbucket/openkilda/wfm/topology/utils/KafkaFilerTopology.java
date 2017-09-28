@@ -1,6 +1,7 @@
 package org.bitbucket.openkilda.wfm.topology.utils;
 
-import org.bitbucket.openkilda.wfm.KafkaUtils;
+import org.bitbucket.openkilda.wfm.topology.AbstractTopology;
+import org.bitbucket.openkilda.wfm.topology.Topology;
 
 import org.apache.storm.Config;
 import org.apache.storm.StormSubmitter;
@@ -12,36 +13,43 @@ import java.io.File;
 /**
  * Take a kafka topic and dump it to file.
  */
-public class KafkaFilerTopology {
-
+public class KafkaFilerTopology extends AbstractTopology {
+    private String topoName;
+    private final String topic;
+    private final String dir;
     /**
      * assigned after createTopology() is called
      */
     private FilerBolt filer;
 
+    public KafkaFilerTopology(File file, String topic, String dir) {
+        super(file);
+        this.topic = topic;
+        this.dir = dir;
+        this.topoName = String.format("%s_%s_%s_%d", topologyName, topic, dir, System.currentTimeMillis());
+    }
+
     public static void main(String[] args) throws Exception {
-        // process command line ... topoName topic level watermark zookeeper
-        String topoName = (args != null && args.length > 0) ?
-                args[0] : "kafka.inspector." + System.currentTimeMillis();
+        // process command line
         String topic = (args != null && args.length > 1) ? args[1] : "kilda.speaker";
         String dir = (args != null && args.length > 2) ? args[2] : "";
-        String zookeeper = (args != null && args.length > 3) ? args[3] : "zookeeper.pendev:2181";
 
         Config conf = new Config();
         conf.setDebug(false);
         conf.setNumWorkers(1);
-        StormSubmitter.submitTopology(topoName, conf,
-                new KafkaFilerTopology().createTopology(topic, dir, zookeeper));
+        File file = new File(KafkaFilerTopology.class.getResource(Topology.TOPOLOGY_PROPERTIES).getFile());
+        KafkaFilerTopology kafkaFilerTopology = new KafkaFilerTopology(file, topic, dir);
+        StormSubmitter.submitTopology(kafkaFilerTopology.topoName, conf, kafkaFilerTopology.createTopology());
     }
 
-    public StormTopology createTopology(String topic, String dir, String zookeeper) {
+    @Override
+    public StormTopology createTopology() {
         TopologyBuilder builder = new TopologyBuilder();
 
         String spoutId = "KafkaSpout-" + topic;
         int parallelism = 1;
-        KafkaUtils kutils = new KafkaUtils().withZookeeperHost(zookeeper);
 
-        builder.setSpout(spoutId, kutils.createKafkaSpout(topic), parallelism);
+        builder.setSpout(spoutId, createKafkaSpout(topic, topoName), parallelism);
         filer = new FilerBolt().withFileName("utils-" + topic + ".log");
         if (dir != null && dir.length() > 0)
             filer.withDir(new File(dir));
@@ -54,5 +62,4 @@ public class KafkaFilerTopology {
     public FilerBolt getFiler() {
         return filer;
     }
-
 }

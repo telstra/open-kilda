@@ -31,8 +31,8 @@ public class HealthCheckBolt extends BaseRichBolt {
 
     private OutputCollector collector;
 
-    public HealthCheckBolt(ServiceType service) {
-        healthCheck = new HealthCheckInfoData(service.getId(), Utils.HEALTH_CHECK_OPERATIONAL_STATUS);
+    public HealthCheckBolt(String service) {
+        healthCheck = new HealthCheckInfoData(service, Utils.HEALTH_CHECK_OPERATIONAL_STATUS);
     }
 
     @Override

@@ -1,27 +1,34 @@
 package org.bitbucket.openkilda.wfm.topology.stats;
 
+import static java.util.stream.Collectors.toList;
+import static org.bitbucket.openkilda.messaging.Utils.CORRELATION_ID;
+
+import org.bitbucket.openkilda.messaging.Destination;
+import org.bitbucket.openkilda.messaging.info.InfoMessage;
+import org.bitbucket.openkilda.messaging.info.stats.FlowStatsData;
+import org.bitbucket.openkilda.messaging.info.stats.FlowStatsEntry;
+import org.bitbucket.openkilda.messaging.info.stats.FlowStatsReply;
+import org.bitbucket.openkilda.messaging.info.stats.MeterConfigReply;
+import org.bitbucket.openkilda.messaging.info.stats.MeterConfigStatsData;
+import org.bitbucket.openkilda.messaging.info.stats.PortStatsData;
+import org.bitbucket.openkilda.messaging.info.stats.PortStatsEntry;
+import org.bitbucket.openkilda.messaging.info.stats.PortStatsReply;
+import org.bitbucket.openkilda.wfm.AbstractStormTest;
+import org.bitbucket.openkilda.wfm.topology.Topology;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.storm.Config;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.utils.Utils;
-
-import org.bitbucket.openkilda.messaging.Destination;
-import org.bitbucket.openkilda.messaging.Topic;
-import org.bitbucket.openkilda.messaging.info.InfoMessage;
-import org.bitbucket.openkilda.messaging.info.stats.*;
-import org.bitbucket.openkilda.wfm.AbstractStormTest;
-
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.io.File;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.IntStream;
-
-import static java.util.stream.Collectors.toList;
-import static org.bitbucket.openkilda.messaging.Utils.CORRELATION_ID;
 
 public class StatsTopologyTest extends AbstractStormTest {
     private static final ObjectMapper objectMapper = new ObjectMapper();
@@ -31,8 +38,8 @@ public class StatsTopologyTest extends AbstractStormTest {
     @BeforeClass
     public static void setupOnce() throws Exception {
         AbstractStormTest.setupOnce();
-
-        StatsTopology topology = new StatsTopology();
+        File file = new File(StatsTopologyTest.class.getResource(Topology.TOPOLOGY_PROPERTIES).getFile());
+        StatsTopology topology = new StatsTopology(file);
         StormTopology stormTopology = topology.createTopology();
         Config config = stormConfig();
         cluster.submitTopology(StatsTopologyTest.class.getSimpleName(), config, stormTopology);

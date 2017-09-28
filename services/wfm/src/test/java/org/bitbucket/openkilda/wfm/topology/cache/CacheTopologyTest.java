@@ -8,7 +8,6 @@ import static org.junit.Assert.assertTrue;
 import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.Topic;
 import org.bitbucket.openkilda.messaging.command.CommandMessage;
-import org.bitbucket.openkilda.messaging.command.flow.FlowCreateRequest;
 import org.bitbucket.openkilda.messaging.command.flow.FlowRestoreRequest;
 import org.bitbucket.openkilda.messaging.info.InfoMessage;
 import org.bitbucket.openkilda.messaging.info.discovery.NetworkInfoData;
@@ -20,6 +19,7 @@ import org.bitbucket.openkilda.messaging.model.Flow;
 import org.bitbucket.openkilda.messaging.model.ImmutablePair;
 import org.bitbucket.openkilda.wfm.AbstractStormTest;
 import org.bitbucket.openkilda.wfm.topology.TestKafkaConsumer;
+import org.bitbucket.openkilda.wfm.topology.Topology;
 import org.bitbucket.openkilda.wfm.topology.event.OFEventWFMTopology;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -32,6 +32,7 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -65,8 +66,8 @@ public class CacheTopologyTest extends AbstractStormTest {
     @BeforeClass
     public static void setupOnce() throws Exception {
         AbstractStormTest.setupOnce();
-
-        CacheTopology cacheTopology = new CacheTopology();
+        File file = new File(CacheTopologyTest.class.getResource(Topology.TOPOLOGY_PROPERTIES).getFile());
+        CacheTopology cacheTopology = new CacheTopology(file);
         StormTopology stormTopology = cacheTopology.createTopology();
         Config config = stormConfig();
         cluster.submitTopology(CacheTopologyTest.class.getSimpleName(), config, stormTopology);

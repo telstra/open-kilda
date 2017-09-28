@@ -1,10 +1,9 @@
 package org.bitbucket.openkilda.wfm.topology.cache;
 
 import org.bitbucket.openkilda.messaging.ServiceType;
-import org.bitbucket.openkilda.messaging.Topic;
 import org.bitbucket.openkilda.wfm.topology.AbstractTopology;
+import org.bitbucket.openkilda.wfm.topology.Topology;
 import org.bitbucket.openkilda.wfm.topology.event.OFEventWFMTopology;
-import org.bitbucket.openkilda.wfm.topology.utils.HealthCheckBolt;
 
 import org.apache.storm.Config;
 import org.apache.storm.LocalCluster;
@@ -16,6 +15,8 @@ import org.apache.storm.topology.TopologyBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+
 public class CacheTopology extends AbstractTopology {
     static final String STATE_DUMP_TOPIC = "kilda.wfm.topo.dump";
     static final String STATE_UPDATE_TOPIC = "kilda.wfm.topo.updown";
@@ -26,8 +27,9 @@ public class CacheTopology extends AbstractTopology {
     /**
      * Instance constructor.
      */
-    public CacheTopology() {
-        checkAndCreateTopic(Topic.HEALTH_CHECK.getId());
+    public CacheTopology(File file) {
+        super(file);
+
         checkAndCreateTopic(STATE_TPE_TOPIC);
         checkAndCreateTopic(STATE_UPDATE_TOPIC);
         checkAndCreateTopic(STATE_DUMP_TOPIC);
@@ -43,18 +45,25 @@ public class CacheTopology extends AbstractTopology {
      * @throws Exception if topology submitting fails
      */
     public static void main(String[] args) throws Exception {
-        final CacheTopology cacheTopology = new CacheTopology();
-        StormTopology stormTopology = cacheTopology.createTopology();
-        final Config config = new Config();
-        config.setNumWorkers(cacheTopology.workers);
-
         if (args != null && args.length > 0) {
+            File file = new File(args[1]);
+            final CacheTopology cacheTopology = new CacheTopology(file);
+            StormTopology stormTopology = cacheTopology.createTopology();
+            final Config config = new Config();
+            config.setNumWorkers(cacheTopology.workers);
+
             logger.info("Start Topology: {}", cacheTopology.getTopologyName());
 
             config.setDebug(false);
 
             StormSubmitter.submitTopology(args[0], config, stormTopology);
         } else {
+            File file = new File(CacheTopology.class.getResource(Topology.TOPOLOGY_PROPERTIES).getFile());
+            final CacheTopology cacheTopology = new CacheTopology(file);
+            StormTopology stormTopology = cacheTopology.createTopology();
+            final Config config = new Config();
+            config.setNumWorkers(cacheTopology.workers);
+
             logger.info("Start Topology Locally: {}", cacheTopology.topologyName);
 
             config.setDebug(true);
@@ -112,15 +121,7 @@ public class CacheTopology extends AbstractTopology {
         builder.setBolt(ComponentType.WFM_DUMP_KAFKA_BOLT.toString(), stateDump, parallelism)
                 .shuffleGrouping(ComponentType.CACHE_BOLT.toString(), StreamType.WFM_DUMP.toString());
 
-        String prefix = ServiceType.CACHE_TOPOLOGY.getId();
-        KafkaSpout healthCheckKafkaSpout = createKafkaSpout(Topic.HEALTH_CHECK.getId(), prefix);
-        builder.setSpout(prefix + "HealthCheckKafkaSpout", healthCheckKafkaSpout, 1);
-        HealthCheckBolt healthCheckBolt = new HealthCheckBolt(ServiceType.CACHE_TOPOLOGY);
-        builder.setBolt(prefix + "HealthCheckBolt", healthCheckBolt, 1)
-                .shuffleGrouping(prefix + "HealthCheckKafkaSpout");
-        KafkaBolt healthCheckKafkaBolt = createKafkaBolt(Topic.HEALTH_CHECK.getId());
-        builder.setBolt(prefix + "HealthCheckKafkaBolt", healthCheckKafkaBolt, 1)
-                .shuffleGrouping(prefix + "HealthCheckBolt", Topic.HEALTH_CHECK.getId());
+        createHealthCheckHandler(builder, ServiceType.CACHE_TOPOLOGY.getId());
 
         return builder.createTopology();
     }

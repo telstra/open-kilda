@@ -11,7 +11,8 @@ import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.utils.Utils;
-import org.junit.*;
+import org.junit.Assert;
+import org.junit.Test;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -54,8 +55,8 @@ public class TickBoltTest {
         }
     }
 
-    public static FeederSpout createFeeder(){
-        return new FeederSpout(new Fields("key","message"));
+    public static FeederSpout createFeeder() {
+        return new FeederSpout(new Fields("key", "message"));
     }
 
     @Test
@@ -77,7 +78,7 @@ public class TickBoltTest {
 
         /* Let's Submit Stuff! */
         Uninterruptibles.sleepUninterruptibly(1, TimeUnit.SECONDS);
-        spout.feed(Arrays.asList(new String[]{"key1","msg1"}));
+        spout.feed(Arrays.asList(new String[]{"key1", "msg1"}));
 
         /* And sleep some more */
         Uninterruptibles.sleepUninterruptibly(6, TimeUnit.SECONDS);
