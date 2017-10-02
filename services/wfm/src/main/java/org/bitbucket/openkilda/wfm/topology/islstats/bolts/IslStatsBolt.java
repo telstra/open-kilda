@@ -48,7 +48,7 @@ public class IslStatsBolt extends BaseRichBolt {
 
             // Build Opentsdb entry
             Map<String, String> tags = new HashMap<>();
-            tags.put("src_switch", path.get(0).getSwitchId().replaceAll(":", "");
+            tags.put("src_switch", path.get(0).getSwitchId().replaceAll(":", ""));
             tags.put("src_port", String.valueOf(path.get(0).getPortNo()));
             tags.put("dst_switch", path.get(1).getSwitchId().replaceAll(":", ""));
             tags.put("dst_port", String.valueOf(path.get(1).getPortNo()));
