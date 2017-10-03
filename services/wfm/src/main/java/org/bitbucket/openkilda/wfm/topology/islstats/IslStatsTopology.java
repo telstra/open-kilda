@@ -22,7 +22,7 @@ public class IslStatsTopology extends AbstractTopology {
     private final KafkaUtils kutils;
     private final int parallelism = 1;
 
-    private String topic = InfoEventSplitterBolt.INFO;
+    private String topic = "kilda-test";
 
     public IslStatsTopology() {
         this.kutils = new KafkaUtils();
@@ -48,13 +48,23 @@ public class IslStatsTopology extends AbstractTopology {
             conf.setNumWorkers(kildaTopology.parallelism);
             StormSubmitter.submitTopology(name, conf, topo);
         } else {
-            conf.setMaxTaskParallelism(kildaTopology.parallelism);
+            try {
+                conf.setMaxTaskParallelism(kildaTopology.parallelism);
 
-            LocalCluster cluster = new LocalCluster();
-            cluster.submitTopology(name, conf, topo);
+                LocalCluster cluster = new LocalCluster();
+                cluster.submitTopology(name, conf, topo);
 
-            Thread.sleep(10 * 1000);
-            cluster.shutdown();
+                logger.info("sleeping");
+                while (true) {
+                    //
+                }
+//                Thread.sleep(1000 * 1000);
+//                logger.debug("shutting down topology");
+//                cluster.shutdown();
+            } catch (Exception e) {
+                logger.error("error submitting topology");
+                logger.error(e.toString());
+            }
         }
     }
 
@@ -65,24 +75,28 @@ public class IslStatsTopology extends AbstractTopology {
         TopologyBuilder builder = new TopologyBuilder();
 
         if (!kutils.topicExists(topic)) {
+            logger.debug(topic + " did not exist in Kafka, creating");
             kutils.createTopics(new String[]{topic});
         }
 
         final String spoutName = topic + "-spout";
+        logger.debug("connecting to " + topic + " topic");
         builder.setSpout(spoutName, kutils.createKafkaSpout(topic));
 
         final String verifyIslStatsBoltName = IslStatsBolt.class.getSimpleName();
         IslStatsBolt verifyIslStatsBolt = new IslStatsBolt();
+        logger.debug("starting " + verifyIslStatsBoltName + " bolt");
         builder.setBolt(verifyIslStatsBoltName, verifyIslStatsBolt, parallelism).shuffleGrouping(spoutName);
 
-        OpenTsdbClient.Builder tsdbBuilder = OpenTsdbClient.newBuilder(topologyProperties.getProperty("statstopology.openTsdbUrl"))
-                .sync(30_000).returnDetails();
-        OpenTsdbBolt openTsdbBolt = new OpenTsdbBolt(tsdbBuilder, TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER)
-                .withBatchSize(10)
-                .withFlushInterval(2)
-                .failTupleForFailedMetrics();
-        builder.setBolt("opentsdb", openTsdbBolt)
-                .shuffleGrouping(verifyIslStatsBoltName);
+//        OpenTsdbClient.Builder tsdbBuilder = OpenTsdbClient.newBuilder(topologyProperties.getProperty("statstopology.openTsdbUrl"))
+//                .sync(30_000).returnDetails();
+//        OpenTsdbBolt openTsdbBolt = new OpenTsdbBolt(tsdbBuilder, TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER)
+//                .withBatchSize(10)
+//                .withFlushInterval(2)
+//                .failTupleForFailedMetrics();
+//        logger.debug("starting opentsdb bolt");
+//        builder.setBolt("opentsdb", openTsdbBolt)
+//                .shuffleGrouping(verifyIslStatsBoltName);
 
         return builder.createTopology();
     }

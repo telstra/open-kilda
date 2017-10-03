@@ -3,13 +3,16 @@ package org.bitbucket.openkilda.wfm.topology.islstats.bolts;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.storm.Constants;
+import org.apache.storm.opentsdb.bolt.TupleOpenTsdbDatapointMapper;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseRichBolt;
+import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.bitbucket.openkilda.messaging.Message;
 import org.bitbucket.openkilda.messaging.Utils;
+import org.bitbucket.openkilda.messaging.info.InfoData;
 import org.bitbucket.openkilda.messaging.info.InfoMessage;
 import org.bitbucket.openkilda.messaging.info.event.IslInfoData;
 import org.bitbucket.openkilda.messaging.info.event.PathNode;
@@ -26,24 +29,33 @@ public class IslStatsBolt extends BaseRichBolt {
     private OutputCollector collector;
     private static Logger logger = LogManager.getLogger(IslStatsBolt.class);
 
+    private static final Fields DEFAULT_METRIC_FIELDS =
+            new Fields(TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER.getMetricField(),
+                    TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER.getTimestampField(),
+                    TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER.getValueField(),
+                    TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER.getTagsField());
+
     @Override
-    public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
+    public void prepare(Map map, TopologyContext topologyContext, OutputCollector collector) {
         this.collector = collector;
     }
 
     @Override
     public void execute(Tuple tuple) {
-        // Do we need to verify coming from Spout?
         String json = tuple.getString(0);
         try {
-            Message stats = Utils.MAPPER.readValue(json, Message.class);
-            if (!(stats instanceof InfoMessage)) {
+            Message message = Utils.MAPPER.readValue(json, Message.class);
+            if (!(message instanceof InfoMessage)) {
                 collector.ack(tuple);
                 return;
             }
-            InfoMessage message = (InfoMessage) stats;
-            // TODO:  Probably need to verify that this is a IslInfoData?
-            IslInfoData data = (IslInfoData) message.getData();
+            long timestamp = message.getTimestamp();
+            InfoData infoData = ((InfoMessage) message).getData();
+            if (!(infoData instanceof IslInfoData)) {
+                collector.ack(tuple);
+                return;
+            }
+            IslInfoData data = (IslInfoData) infoData;
             List<PathNode> path = data.getPath();
 
             // Build Opentsdb entry
@@ -52,20 +64,18 @@ public class IslStatsBolt extends BaseRichBolt {
             tags.put("src_port", String.valueOf(path.get(0).getPortNo()));
             tags.put("dst_switch", path.get(1).getSwitchId().replaceAll(":", ""));
             tags.put("dst_port", String.valueOf(path.get(1).getPortNo()));
-            long timestamp = message.getTimestamp();
             collector.emit(tuple("pen.isl.latency", timestamp, data.getLatency(), tags));
 
         } catch(IOException e) {
-            logger.warn("EXCEPTION during JSON parsing: {}, error: {}", json, e.getMessage());
-            e.printStackTrace();
+            logger.error("Could not deserialize message={}", json, e);
         } finally {
             collector.ack(tuple);
         }
     }
 
     @Override
-    public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
-
+    public void declareOutputFields(OutputFieldsDeclarer declarer) {
+//        declarer.declare(DEFAULT_METRIC_FIELDS);
     }
 
     protected static boolean isTickTuple(Tuple tuple) {
