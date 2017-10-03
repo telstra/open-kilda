@@ -5,7 +5,6 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import org.bitbucket.openkilda.messaging.Utils;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
@@ -18,24 +17,16 @@ import java.util.Objects;
  * Flow endpoint representation class.
  */
 @JsonSerialize
-@JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
         "switch-id",
         "port-id",
-        "vlan-id",
-        "meter-id"})
+        "vlan-id"})
 public class FlowEndpointPayload implements Serializable {
     /**
      * The constant serialVersionUID.
      */
     private static final long serialVersionUID = 1L;
-
-    /**
-     * Allocated meter id.
-     */
-    @JsonProperty("meter_id")
-    protected Long meterId;
 
     /**
      * The switch id.
@@ -61,27 +52,11 @@ public class FlowEndpointPayload implements Serializable {
      * @param switchId switch id
      * @param portId   port id
      * @param vlanId   vlan id
-     * @param meterId  meter id
      */
     @JsonCreator
-    public FlowEndpointPayload(@JsonProperty("switch-id") final String switchId,
-                               @JsonProperty("port-id") final Integer portId,
-                               @JsonProperty("vlan-id") final Integer vlanId,
-                               @JsonProperty("meter-id") final Long meterId) {
-        setSwitchId(switchId);
-        setPortId(portId);
-        setVlanId(vlanId);
-        setMeterId(meterId);
-    }
-
-    /**
-     * Instance constructor.
-     *
-     * @param switchId switch id
-     * @param portId   port id
-     * @param vlanId   vlan id
-     */
-    public FlowEndpointPayload(final String switchId, final Integer portId, final Integer vlanId) {
+    public FlowEndpointPayload(@JsonProperty("switch-id") String switchId,
+                               @JsonProperty("port-id") Integer portId,
+                               @JsonProperty("vlan-id") Integer vlanId) {
         setSwitchId(switchId);
         setPortId(portId);
         setVlanId(vlanId);
@@ -101,7 +76,7 @@ public class FlowEndpointPayload implements Serializable {
      *
      * @param switchId switch id
      */
-    public void setSwitchId(final String switchId) {
+    public void setSwitchId(String switchId) {
         if (switchId == null) {
             throw new IllegalArgumentException("need to set switch id");
         } else if (!Utils.validateSwitchId(switchId)) {
@@ -125,7 +100,7 @@ public class FlowEndpointPayload implements Serializable {
      *
      * @param portId port id
      */
-    public void setPortId(final Integer portId) {
+    public void setPortId(Integer portId) {
         if (portId == null) {
             throw new IllegalArgumentException("need to set port id");
         } else if (portId < 0L) {
@@ -148,7 +123,7 @@ public class FlowEndpointPayload implements Serializable {
      *
      * @param vlanId vlan id
      */
-    public void setVlanId(final Integer vlanId) {
+    public void setVlanId(Integer vlanId) {
         if (vlanId == null) {
             this.vlanId = 0;
         } else if (Utils.validateVlanRange(vlanId)) {
@@ -156,24 +131,6 @@ public class FlowEndpointPayload implements Serializable {
         } else {
             throw new IllegalArgumentException("need to set valid value for vlan id");
         }
-    }
-
-    /**
-     * Returns meter id for the flow.
-     *
-     * @return meter id for the flow
-     */
-    public Long getMeterId() {
-        return meterId;
-    }
-
-    /**
-     * Sets meter id for the flow.
-     *
-     * @param meterId meter id for the flow
-     */
-    public void setMeterId(final Long meterId) {
-        this.meterId = meterId;
     }
 
     /**
@@ -192,8 +149,7 @@ public class FlowEndpointPayload implements Serializable {
         FlowEndpointPayload that = (FlowEndpointPayload) obj;
         return Objects.equals(getSwitchId(), that.getSwitchId())
                 && Objects.equals(getPortId(), that.getPortId())
-                && Objects.equals(getVlanId(), that.getVlanId())
-                && Objects.equals(getMeterId(), that.getMeterId());
+                && Objects.equals(getVlanId(), that.getVlanId());
     }
 
     /**
@@ -201,7 +157,7 @@ public class FlowEndpointPayload implements Serializable {
      */
     @Override
     public int hashCode() {
-        return Objects.hash(switchId, portId, vlanId, meterId);
+        return Objects.hash(switchId, portId, vlanId);
     }
 
     /**
@@ -213,7 +169,6 @@ public class FlowEndpointPayload implements Serializable {
                 .add("switch-id", switchId)
                 .add("port-id", portId)
                 .add("vlan-id", vlanId)
-                .add("meter-id", meterId)
                 .toString();
     }
 }

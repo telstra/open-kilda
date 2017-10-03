@@ -1,3 +1,4 @@
+@TOPO
 Feature: Basic Topology Discovery
 
   Basic Topology Discovery involves the basics at small scale:

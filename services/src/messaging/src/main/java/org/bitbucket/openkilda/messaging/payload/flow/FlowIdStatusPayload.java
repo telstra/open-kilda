@@ -36,7 +36,7 @@ public class FlowIdStatusPayload implements Serializable {
      * Flow status.
      */
     @JsonProperty("status")
-    private FlowStatusType status;
+    private FlowState status;
 
     /**
      * Instance constructor.
@@ -61,7 +61,7 @@ public class FlowIdStatusPayload implements Serializable {
      */
     @JsonCreator
     public FlowIdStatusPayload(@JsonProperty(FLOW_ID) final String id,
-                               @JsonProperty("status") final FlowStatusType status) {
+                               @JsonProperty("status") final FlowState status) {
         setId(id);
         setStatus(status);
     }
@@ -89,7 +89,7 @@ public class FlowIdStatusPayload implements Serializable {
      *
      * @return flow status
      */
-    public FlowStatusType getStatus() {
+    public FlowState getStatus() {
         return status;
     }
 
@@ -98,7 +98,7 @@ public class FlowIdStatusPayload implements Serializable {
      *
      * @param status flow status
      */
-    public void setStatus(final FlowStatusType status) {
+    public void setStatus(final FlowState status) {
         this.status = status;
     }
 

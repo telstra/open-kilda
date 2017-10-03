@@ -1,20 +1,17 @@
 package org.bitbucket.openkilda.wfm.topology.flow.bolts;
 
-import static org.bitbucket.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.bitbucket.openkilda.messaging.Utils.MAPPER;
-import static org.bitbucket.openkilda.messaging.Utils.TRANSACTION_ID;
-import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.fieldMessage;
-import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.fieldsMessageFlowId;
-import static org.bitbucket.openkilda.wfm.topology.flow.FlowTopology.fieldsMessageSwitchIdFlowIdTransactionId;
 
 import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.Message;
+import org.bitbucket.openkilda.messaging.Utils;
 import org.bitbucket.openkilda.messaging.command.CommandData;
 import org.bitbucket.openkilda.messaging.command.CommandMessage;
 import org.bitbucket.openkilda.messaging.command.flow.BaseInstallFlow;
 import org.bitbucket.openkilda.messaging.command.flow.RemoveFlow;
 import org.bitbucket.openkilda.messaging.error.ErrorMessage;
 import org.bitbucket.openkilda.messaging.info.InfoMessage;
+import org.bitbucket.openkilda.wfm.topology.flow.FlowTopology;
 import org.bitbucket.openkilda.wfm.topology.flow.StreamType;
 
 import org.apache.logging.log4j.LogManager;
@@ -31,8 +28,7 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Topology-Engine Bolt.
- * Processes replies from Topology-Engine service.
+ * Topology-Engine Bolt. Processes replies from Topology-Engine service.
  */
 public class TopologyEngineBolt extends BaseRichBolt {
     /**
@@ -50,17 +46,15 @@ public class TopologyEngineBolt extends BaseRichBolt {
      */
     @Override
     public void execute(Tuple tuple) {
-        logger.debug("Ingoing tuple: {}", tuple);
-
         String request = tuple.getString(0);
-        //String request = tuple.getStringByField("value");
-        Values values;
+        Values values = null;
 
         try {
             Message message = MAPPER.readValue(request, Message.class);
             if (!Destination.WFM.equals(message.getDestination())) {
                 return;
             }
+            logger.debug("Request tuple={}", tuple);
 
             if (message instanceof CommandMessage) {
                 CommandData data = ((CommandMessage) message).getData();
@@ -72,9 +66,9 @@ public class TopologyEngineBolt extends BaseRichBolt {
                     String switchId = installData.getSwitchId();
                     String flowId = installData.getId();
 
-                    logger.debug("Flow install message: {}={}, switch-id={}, flow-id={}, {}={}, message={}",
-                            CORRELATION_ID, message.getCorrelationId(), switchId,
-                            flowId, TRANSACTION_ID, transactionId, request);
+                    logger.debug("Flow install message: {}={}, switch-id={}, {}={}, {}={}, message={}",
+                            Utils.CORRELATION_ID, message.getCorrelationId(), switchId,
+                            Utils.FLOW_ID, flowId, Utils.TRANSACTION_ID, transactionId, request);
 
                     message.setDestination(Destination.CONTROLLER);
                     values = new Values(MAPPER.writeValueAsString(message), switchId, flowId, transactionId);
@@ -87,43 +81,44 @@ public class TopologyEngineBolt extends BaseRichBolt {
                     String switchId = removeData.getSwitchId();
                     String flowId = removeData.getId();
 
-                    logger.debug("Flow remove message: {}={}, switch-id={}, flow-id={}, {}={}, message={}",
-                            CORRELATION_ID, message.getCorrelationId(), switchId,
-                            flowId, TRANSACTION_ID, transactionId, request);
+                    logger.debug("Flow remove message: {}={}, switch-id={}, {}={}, {}={}, message={}",
+                            Utils.CORRELATION_ID, message.getCorrelationId(), switchId,
+                            Utils.FLOW_ID, flowId, Utils.TRANSACTION_ID, transactionId, request);
 
                     message.setDestination(Destination.CONTROLLER);
                     values = new Values(MAPPER.writeValueAsString(message), switchId, flowId, transactionId);
                     outputCollector.emit(StreamType.DELETE.toString(), tuple, values);
 
                 } else {
-                    logger.warn("Skip undefined command message: {}={}, message={}",
-                            CORRELATION_ID, message.getCorrelationId(), request);
+                    logger.debug("Skip undefined command message: {}={}, message={}",
+                            Utils.CORRELATION_ID, message.getCorrelationId(), request);
                 }
             } else if (message instanceof InfoMessage) {
                 values = new Values(message);
 
                 logger.debug("Flow response message: {}={}, message={}",
-                        CORRELATION_ID, message.getCorrelationId(), request);
+                        Utils.CORRELATION_ID, message.getCorrelationId(), request);
 
                 outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
 
             } else if (message instanceof ErrorMessage) {
                 String flowId = ((ErrorMessage) message).getData().getErrorDescription();
 
-                logger.error("Flow error message: {}={}, flow-id={}, message={}",
-                        CORRELATION_ID, message.getCorrelationId(), flowId, request);
+                logger.error("Flow error message: {}={}, {}={}, message={}",
+                        Utils.CORRELATION_ID, message.getCorrelationId(), Utils.FLOW_ID, flowId, request);
 
                 values = new Values(message, flowId);
                 outputCollector.emit(StreamType.STATUS.toString(), tuple, values);
 
             } else {
-                logger.warn("Skip undefined message: {}={}, message={}",
-                        CORRELATION_ID, message.getCorrelationId(), request);
+                logger.debug("Skip undefined message: {}={}, message={}",
+                        Utils.CORRELATION_ID, message.getCorrelationId(), request);
             }
         } catch (IOException exception) {
             logger.error("Could not deserialize message={}", request, exception);
         } finally {
-            logger.debug("Topology message ack: message={}", request);
+            logger.debug("Topology-Engine message ack: component={}, stream={}, tuple={}, values={}",
+                    tuple.getSourceComponent(), tuple.getSourceStreamId(), tuple, values);
 
             outputCollector.ack(tuple);
         }
@@ -134,10 +129,10 @@ public class TopologyEngineBolt extends BaseRichBolt {
      */
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
-        outputFieldsDeclarer.declareStream(StreamType.CREATE.toString(), fieldsMessageSwitchIdFlowIdTransactionId);
-        outputFieldsDeclarer.declareStream(StreamType.DELETE.toString(), fieldsMessageSwitchIdFlowIdTransactionId);
-        outputFieldsDeclarer.declareStream(StreamType.RESPONSE.toString(), fieldMessage);
-        outputFieldsDeclarer.declareStream(StreamType.STATUS.toString(), fieldsMessageFlowId);
+        outputFieldsDeclarer.declareStream(StreamType.CREATE.toString(), FlowTopology.fieldsMessageSwitchIdFlowIdTransactionId);
+        outputFieldsDeclarer.declareStream(StreamType.DELETE.toString(), FlowTopology.fieldsMessageSwitchIdFlowIdTransactionId);
+        outputFieldsDeclarer.declareStream(StreamType.RESPONSE.toString(), FlowTopology.fieldMessage);
+        outputFieldsDeclarer.declareStream(StreamType.STATUS.toString(), FlowTopology.fieldsMessageFlowId);
     }
 
     /**

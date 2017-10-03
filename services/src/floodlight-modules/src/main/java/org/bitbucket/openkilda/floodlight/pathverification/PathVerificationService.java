@@ -74,6 +74,7 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
     private IRestApiService restApiService;
     private boolean isAlive = false;
     private KafkaProducer<String, String> producer;
+    private double islBandwidthQuotient = 1.0;
 
     /**
      * IFloodlightModule Methods.
@@ -108,6 +109,7 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
         restApiService = context.getServiceImpl(IRestApiService.class);
         Map<String, String> configParameters = context.getConfigParams(this);
         logger.debug("main pathverification service: " + this);
+        islBandwidthQuotient = Double.parseDouble(configParameters.get("isl_bandwidth_quotient"));
 
         Properties kafkaProps = new Properties();
         kafkaProps.put("bootstrap.servers", configParameters.get("bootstrap-servers"));
@@ -171,6 +173,9 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
     @Override
     public boolean sendDiscoveryMessage(DatapathId srcSwId, OFPort port) {
         IOFSwitch srcSwitch = switchService.getSwitch(srcSwId);
+        if (srcSwitch == null) {
+            return false;
+        }
         return srcSwitch.write(generateVerificationPacket(srcSwitch, port));
     }
 
@@ -395,7 +400,8 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
                 speed = port.getCurrSpeed();
             }
 
-            IslInfoData path = new IslInfoData(latency.getValue(), nodes, speed, IslChangeType.DISCOVERED);
+            IslInfoData path = new IslInfoData(latency.getValue(), nodes, speed, IslChangeType.DISCOVERED,
+                    getAvailableBandwidth(speed));
 
             Message message = new InfoMessage(path, System.currentTimeMillis(), "system", null);
 
@@ -413,5 +419,9 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
         }
 
         return command;
+    }
+
+    private long getAvailableBandwidth(long speed) {
+        return (long) (speed * islBandwidthQuotient);
     }
 }

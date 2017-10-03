@@ -1,6 +1,10 @@
 package org.bitbucket.openkilda.wfm.topology.event;
 
+import org.bitbucket.openkilda.messaging.ServiceType;
+import org.bitbucket.openkilda.messaging.Topic;
 import org.bitbucket.openkilda.wfm.KafkaUtils;
+import org.bitbucket.openkilda.wfm.topology.splitter.InfoEventSplitterBolt;
+import org.bitbucket.openkilda.wfm.topology.utils.HealthCheckBolt;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -8,6 +12,8 @@ import org.apache.storm.Config;
 import org.apache.storm.LocalCluster;
 import org.apache.storm.StormSubmitter;
 import org.apache.storm.generated.StormTopology;
+import org.apache.storm.kafka.KafkaSpout;
+import org.apache.storm.kafka.bolt.KafkaBolt;
 import org.apache.storm.topology.BoltDeclarer;
 import org.apache.storm.topology.IStatefulBolt;
 import org.apache.storm.topology.TopologyBuilder;
@@ -38,7 +44,6 @@ public class OFEventWFMTopology {
     public static final Integer DEFAULT_DISCOVERY_TIMEOUT = 9;
     public static final String DEFAULT_KAFKA_OUTPUT = "kilda.wfm.topo.updown";
     public static final String DEFAULT_DISCOVERY_TOPIC = "kilda-test";
-    private static final String DEFAULT_TOPOLOGY_ENGINE_TOPIC = "kilda-test";
     private static Logger logger = LogManager.getLogger(OFEventWFMTopology.class);
 
     private final String kafkaOutputTopic = DEFAULT_KAFKA_OUTPUT;
@@ -100,6 +105,7 @@ public class OFEventWFMTopology {
 
         // Make sure the output Topic exists..
         primeTopic(kafkaOutputTopic);
+        primeTopic(Topic.HEALTH_CHECK.getId());
         BoltDeclarer kbolt = builder.setBolt(kafkaOutputTopic + "-kafkabolt",
                 kutils.createKafkaBolt(kafkaOutputTopic), parallelism);
         // tbolt will save the setBolt() results; will be useed to add switch/port to link
@@ -126,16 +132,15 @@ public class OFEventWFMTopology {
                 kutils.createKafkaBolt(discoTopic), parallelism)
                 .shuffleGrouping(topics[2] + "-bolt", discoTopic);
 
-        String reRouteBoltId = ReRouteBolt.class.getSimpleName();
-        ReRouteBolt reRouteBolt = new ReRouteBolt();
-        builder.setBolt(reRouteBoltId, reRouteBolt, parallelism)
-                .shuffleGrouping(topics[0] + "-bolt", kafkaOutputTopic)
-                .shuffleGrouping(topics[1] + "-bolt", kafkaOutputTopic)
-                .shuffleGrouping(topics[2] + "-bolt", kafkaOutputTopic);
-
-        builder.setBolt("TopologyEngine-kafkabolt",
-                kutils.createKafkaBolt(DEFAULT_TOPOLOGY_ENGINE_TOPIC), parallelism)
-                .shuffleGrouping(reRouteBoltId, ReRouteBolt.DEFAULT_OUTPUT_STREAM_ID);
+        String prefix = ServiceType.WFM_TOPOLOGY.getId();
+        KafkaSpout healthCheckKafkaSpout = kutils.createKafkaSpout(Topic.HEALTH_CHECK.getId());
+        builder.setSpout(prefix + "HealthCheckKafkaSpout", healthCheckKafkaSpout, 1);
+        HealthCheckBolt healthCheckBolt = new HealthCheckBolt(ServiceType.WFM_TOPOLOGY);
+        builder.setBolt(prefix + "HealthCheckBolt", healthCheckBolt, 1)
+                .shuffleGrouping(prefix + "HealthCheckKafkaSpout");
+        KafkaBolt healthCheckKafkaBolt = kutils.createKafkaBolt(Topic.HEALTH_CHECK.getId());
+        builder.setBolt(prefix + "HealthCheckKafkaBolt", healthCheckKafkaBolt, 1)
+                .shuffleGrouping(prefix + "HealthCheckBolt", Topic.HEALTH_CHECK.getId());
 
         return builder.createTopology();
     }

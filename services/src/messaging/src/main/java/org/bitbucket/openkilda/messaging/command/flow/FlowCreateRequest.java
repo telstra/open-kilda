@@ -1,10 +1,10 @@
 package org.bitbucket.openkilda.messaging.command.flow;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
-import static org.bitbucket.openkilda.messaging.Utils.PAYLOAD;
 
+import org.bitbucket.openkilda.messaging.Utils;
 import org.bitbucket.openkilda.messaging.command.CommandData;
-import org.bitbucket.openkilda.messaging.payload.flow.FlowPayload;
+import org.bitbucket.openkilda.messaging.model.Flow;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -21,7 +21,7 @@ import java.util.Objects;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
         "command",
-        PAYLOAD})
+        Utils.PAYLOAD})
 public class FlowCreateRequest extends CommandData {
     /**
      * Serialization version number constant.
@@ -31,8 +31,8 @@ public class FlowCreateRequest extends CommandData {
     /**
      * The request payload.
      */
-    @JsonProperty(PAYLOAD)
-    protected FlowPayload payload;
+    @JsonProperty(Utils.PAYLOAD)
+    protected Flow payload;
 
     /**
      * Instance constructor.
@@ -41,7 +41,7 @@ public class FlowCreateRequest extends CommandData {
      * @throws IllegalArgumentException if payload is null
      */
     @JsonCreator
-    public FlowCreateRequest(@JsonProperty(PAYLOAD) final FlowPayload payload) {
+    public FlowCreateRequest(@JsonProperty(Utils.PAYLOAD) Flow payload) {
         setPayload(payload);
     }
 
@@ -50,7 +50,7 @@ public class FlowCreateRequest extends CommandData {
      *
      * @return request payload
      */
-    public FlowPayload getPayload() {
+    public Flow getPayload() {
         return payload;
     }
 
@@ -59,7 +59,7 @@ public class FlowCreateRequest extends CommandData {
      *
      * @param payload request payload
      */
-    public void setPayload(final FlowPayload payload) {
+    public void setPayload(Flow payload) {
         if (payload == null) {
             throw new IllegalArgumentException("need to set payload");
         }
@@ -72,7 +72,7 @@ public class FlowCreateRequest extends CommandData {
     @Override
     public String toString() {
         return toStringHelper(this)
-                .add(PAYLOAD, payload)
+                .add(Utils.PAYLOAD, payload)
                 .toString();
     }
 

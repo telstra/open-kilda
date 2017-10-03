@@ -10,6 +10,8 @@ import org.bitbucket.openkilda.messaging.Topic;
 import org.bitbucket.openkilda.messaging.info.InfoMessage;
 import org.bitbucket.openkilda.messaging.info.stats.*;
 import org.bitbucket.openkilda.wfm.AbstractStormTest;
+
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -36,6 +38,13 @@ public class StatsTopologyTest extends AbstractStormTest {
         cluster.submitTopology(StatsTopologyTest.class.getSimpleName(), config, stormTopology);
 
         Utils.sleep(10000);
+    }
+
+    @AfterClass
+    public static void teardownOnce() throws Exception {
+        cluster.killTopology(StatsTopologyTest.class.getSimpleName());
+        Utils.sleep(4 * 1000);
+        AbstractStormTest.teardownOnce();
     }
 
     @Test

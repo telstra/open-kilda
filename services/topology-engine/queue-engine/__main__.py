@@ -1,30 +1,37 @@
 #!/usr/bin/python
-print "Topology engine starting."
-import topologylistener
+import traceback
 import threading
 
-threadcount = 0
+print "Topology engine starting."
+
+import topologylistener
+
+thread_count = 0
 
 try:
     print "Starting lister thread."
 
-    
-    threadcount += 1
-    t1 = threading.Thread(target=topologylistener.eventhandler.get_events,args=(threadcount,))
-    t1.daemon =True
+    thread_count += 1
+    t1 = threading.Thread(target=topologylistener.eventhandler.get_events,
+                          name="te-{}".format(thread_count),
+                          args=(thread_count,))
+
+    t1.daemon = True
     t1.start()
-    
-  
-    threadcount += 1
-    t2 = threading.Thread(target=topologylistener.eventhandler.get_events,args=(threadcount,))
-    t2.daemon =True
-    t2.start()     
+
+    thread_count += 1
+    t2 = threading.Thread(target=topologylistener.eventhandler.get_events,
+                          name="te-{}".format(thread_count),
+                          args=(thread_count,))
+
+    t2.daemon = True
+    t2.start()
 
     t1.join()
     t2.join()
 
+    # topologylistener.eventhandler.get_events()
 
-    #topologylistener.eventhandler.get_events()
 except Exception as e:
-    print "Listener thread unhandled exception:"
-    print e
+    print "Listener thread unhandled exception: {}".format(e.message)
+    traceback.print_exc()

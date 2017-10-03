@@ -1,5 +1,6 @@
 package org.bitbucket.openkilda.messaging.command.flow;
 
+import static org.bitbucket.openkilda.messaging.command.Constants.flowName;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -7,36 +8,39 @@ import org.bitbucket.openkilda.messaging.AbstractSerializer;
 import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.Message;
 import org.bitbucket.openkilda.messaging.command.CommandMessage;
-import org.bitbucket.openkilda.messaging.command.routing.FlowReroute;
+import org.bitbucket.openkilda.messaging.command.discovery.HealthCheckCommandData;
 import org.bitbucket.openkilda.messaging.error.ErrorData;
 import org.bitbucket.openkilda.messaging.error.ErrorMessage;
 import org.bitbucket.openkilda.messaging.error.ErrorType;
 import org.bitbucket.openkilda.messaging.info.InfoMessage;
+import org.bitbucket.openkilda.messaging.info.discovery.NetworkInfoData;
 import org.bitbucket.openkilda.messaging.info.event.IslChangeType;
 import org.bitbucket.openkilda.messaging.info.event.IslInfoData;
 import org.bitbucket.openkilda.messaging.info.event.PathInfoData;
 import org.bitbucket.openkilda.messaging.info.event.PathNode;
 import org.bitbucket.openkilda.messaging.info.event.PortChangeType;
 import org.bitbucket.openkilda.messaging.info.event.PortInfoData;
-import org.bitbucket.openkilda.messaging.info.event.SwitchEventType;
 import org.bitbucket.openkilda.messaging.info.event.SwitchInfoData;
+import org.bitbucket.openkilda.messaging.info.event.SwitchState;
+import org.bitbucket.openkilda.messaging.info.flow.FlowOperation;
 import org.bitbucket.openkilda.messaging.info.flow.FlowPathResponse;
 import org.bitbucket.openkilda.messaging.info.flow.FlowResponse;
 import org.bitbucket.openkilda.messaging.info.flow.FlowStatusResponse;
 import org.bitbucket.openkilda.messaging.info.flow.FlowsResponse;
-import org.bitbucket.openkilda.messaging.payload.flow.FlowEndpointPayload;
+import org.bitbucket.openkilda.messaging.model.Flow;
+import org.bitbucket.openkilda.messaging.model.ImmutablePair;
 import org.bitbucket.openkilda.messaging.payload.flow.FlowIdStatusPayload;
-import org.bitbucket.openkilda.messaging.payload.flow.FlowPathPayload;
-import org.bitbucket.openkilda.messaging.payload.flow.FlowPayload;
-import org.bitbucket.openkilda.messaging.payload.flow.FlowStatusType;
-import org.bitbucket.openkilda.messaging.payload.flow.FlowsPayload;
+import org.bitbucket.openkilda.messaging.payload.flow.FlowState;
 import org.bitbucket.openkilda.messaging.payload.flow.OutputVlanType;
 
 import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
 import java.util.UUID;
 
 @Ignore
@@ -50,26 +54,31 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     private static final int INPUT_VLAN_ID = 101;
     private static final int OUTPUT_VLAN_ID = 102;
     private static final int TRANSIT_VLAN_ID = 103;
-    private static final long BANDWIDTH = 10000L;
+    private static final int BANDWIDTH = 10000;
     private static final long COOKIE = 0x1L;
     private static final long METER_ID = 0L;
     private static final OutputVlanType OUTPUT_VLAN_TYPE = OutputVlanType.REPLACE;
-    private static final FlowStatusType FLOW_STATUS = FlowStatusType.UP;
+    private static final FlowState FLOW_STATUS = FlowState.UP;
     private static final PortChangeType PORT_CHANGE = PortChangeType.OTHER_UPDATE;
-    private static final SwitchEventType SWITCH_EVENT = SwitchEventType.CHANGED;
+    private static final SwitchState SWITCH_EVENT = SwitchState.CHANGED;
     private static final Destination DESTINATION = null;
 
     private static final FlowIdStatusPayload flowsIdStatusRequest = new FlowIdStatusPayload();
     private static final FlowIdStatusPayload flowIdStatusRequest = new FlowIdStatusPayload(FLOW_NAME);
     private static final FlowIdStatusPayload flowIdStatusResponse = new FlowIdStatusPayload(FLOW_NAME, FLOW_STATUS);
-    private static final FlowPayload flow = new FlowPayload(FLOW_NAME,
-            new FlowEndpointPayload(SWITCH_ID, INPUT_PORT, INPUT_VLAN_ID),
-            new FlowEndpointPayload(SWITCH_ID, OUTPUT_PORT, OUTPUT_VLAN_ID),
-            BANDWIDTH, CORRELATION_ID, String.valueOf(TIMESTAMP));
-    private static final FlowPayload cookieFlow = new FlowPayload(FLOW_NAME, COOKIE,
-            new FlowEndpointPayload(SWITCH_ID, INPUT_PORT, INPUT_VLAN_ID),
-            new FlowEndpointPayload(SWITCH_ID, OUTPUT_PORT, OUTPUT_VLAN_ID),
-            BANDWIDTH, CORRELATION_ID, String.valueOf(TIMESTAMP), OUTPUT_VLAN_TYPE);
+
+    private static final String requester = "requester-id";
+    private static final SwitchInfoData sw1 = new SwitchInfoData("sw1",
+            SwitchState.ACTIVATED, "1.1.1.1", "sw1", "switch-1", "kilda");
+    private static final SwitchInfoData sw2 = new SwitchInfoData("sw2",
+            SwitchState.ACTIVATED, "2.2.2.2", "sw2", "switch-2", "kilda");
+    private static final List<PathNode> nodes = Arrays.asList(
+            new PathNode("sw1", 1, 0, 0L),
+            new PathNode("sw2", 2, 1, 0L));
+    private static final IslInfoData isl = new IslInfoData(0L, nodes, 1000L, IslChangeType.DISCOVERED, 900L);
+    private static final PathInfoData path = new PathInfoData(0L, nodes);
+    private static final Flow flowModel = new Flow(FLOW_NAME, 1000, COOKIE, FLOW_NAME, String.valueOf(TIMESTAMP),
+            "sw1", "sw2", 10, 20, 100, 200, 1, 1024, path, FLOW_STATUS);
 
     @Test
     public void serializeInstallEgressFlowMessageTest() throws IOException, ClassNotFoundException {
@@ -95,7 +104,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     @Test
     public void serializeInstallIngressFlowMessageTest() throws IOException, ClassNotFoundException {
         InstallIngressFlow data = new InstallIngressFlow(TIMESTAMP, FLOW_NAME, COOKIE, SWITCH_ID,
-                INPUT_PORT, OUTPUT_PORT, INPUT_VLAN_ID, TRANSIT_VLAN_ID, OUTPUT_VLAN_TYPE, BANDWIDTH, METER_ID);
+                INPUT_PORT, OUTPUT_PORT, INPUT_VLAN_ID, TRANSIT_VLAN_ID, OUTPUT_VLAN_TYPE, (long) BANDWIDTH, METER_ID);
         System.out.println(data);
 
         CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
@@ -137,7 +146,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     @Test
     public void serializeInstallOneSwitchFlowMessageTest() throws IOException, ClassNotFoundException {
         InstallOneSwitchFlow data = new InstallOneSwitchFlow(TIMESTAMP, FLOW_NAME, COOKIE, SWITCH_ID, INPUT_PORT,
-                OUTPUT_PORT, INPUT_VLAN_ID, OUTPUT_VLAN_ID, OUTPUT_VLAN_TYPE, BANDWIDTH, METER_ID);
+                OUTPUT_PORT, INPUT_VLAN_ID, OUTPUT_VLAN_ID, OUTPUT_VLAN_TYPE, (long) BANDWIDTH, METER_ID);
         System.out.println(data);
 
         CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
@@ -157,7 +166,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
 
     @Test
     public void flowCreateRequestTest() throws IOException, ClassNotFoundException {
-        FlowCreateRequest data = new FlowCreateRequest(flow);
+        FlowCreateRequest data = new FlowCreateRequest(flowModel);
         System.out.println(data);
 
         CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
@@ -173,12 +182,12 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         System.out.println(resultData);
         assertEquals(data, resultData);
         assertEquals(data.hashCode(), resultData.hashCode());
-        assertEquals(flow.hashCode(), resultData.getPayload().hashCode());
+        assertEquals(flowModel.hashCode(), resultData.getPayload().hashCode());
     }
 
     @Test
     public void flowUpdateRequestTest() throws IOException, ClassNotFoundException {
-        FlowUpdateRequest data = new FlowUpdateRequest(cookieFlow);
+        FlowUpdateRequest data = new FlowUpdateRequest(flowModel);
         System.out.println(data);
 
         CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
@@ -194,12 +203,14 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         System.out.println(resultData);
         assertEquals(data, resultData);
         assertEquals(data.hashCode(), resultData.hashCode());
-        assertEquals(cookieFlow.hashCode(), resultData.getPayload().hashCode());
+        assertEquals(flowModel.hashCode(), resultData.getPayload().hashCode());
     }
 
     @Test
     public void flowDeleteRequestTest() throws IOException, ClassNotFoundException {
-        FlowDeleteRequest data = new FlowDeleteRequest(flowIdStatusRequest);
+        Flow deleteFlow = new Flow();
+        deleteFlow.setFlowId(flowName);
+        FlowDeleteRequest data = new FlowDeleteRequest(deleteFlow);
         System.out.println(data);
 
         CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
@@ -215,7 +226,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         System.out.println(resultData);
         assertEquals(data, resultData);
         assertEquals(data.hashCode(), resultData.hashCode());
-        assertEquals(flowIdStatusRequest.hashCode(), resultData.getPayload().hashCode());
+        assertEquals(deleteFlow.hashCode(), resultData.getPayload().hashCode());
     }
 
     @Test
@@ -304,8 +315,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
 
     @Test
     public void flowPathResponseTest() throws IOException, ClassNotFoundException {
-        FlowPathPayload payload = new FlowPathPayload(FLOW_NAME, Collections.singletonList(SWITCH_ID));
-        FlowPathResponse data = new FlowPathResponse(payload);
+        FlowPathResponse data = new FlowPathResponse(path);
         System.out.println(data);
 
         InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
@@ -321,7 +331,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         System.out.println(resultData);
         assertEquals(data, resultData);
         assertEquals(data.hashCode(), resultData.hashCode());
-        assertEquals(payload.hashCode(), resultData.getPayload().hashCode());
+        assertEquals(path.hashCode(), resultData.getPayload().hashCode());
     }
 
     @Test
@@ -347,7 +357,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
 
     @Test
     public void flowResponseTest() throws IOException, ClassNotFoundException {
-        FlowResponse data = new FlowResponse(flow);
+        FlowResponse data = new FlowResponse(flowModel);
         System.out.println(data);
 
         InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
@@ -363,13 +373,12 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         System.out.println(resultData);
         assertEquals(data, resultData);
         assertEquals(data.hashCode(), resultData.hashCode());
-        assertEquals(flow.hashCode(), resultData.getPayload().hashCode());
+        assertEquals(flowModel.hashCode(), resultData.getPayload().hashCode());
     }
 
     @Test
     public void flowsResponseTest() throws IOException, ClassNotFoundException {
-        FlowsPayload payload = new FlowsPayload(Collections.singletonList(flow));
-        FlowsResponse data = new FlowsResponse(payload);
+        FlowsResponse data = new FlowsResponse(Collections.singletonList(flowModel));
         System.out.println(data);
 
         InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
@@ -385,13 +394,15 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         System.out.println(resultData);
         assertEquals(data, resultData);
         assertEquals(data.hashCode(), resultData.hashCode());
-        assertEquals(payload.hashCode(), resultData.getPayload().hashCode());
+        assertEquals(Collections.singletonList(flowModel).hashCode(), resultData.getPayload().hashCode());
     }
 
     @Test
     public void eventIslInfoTest() throws IOException, ClassNotFoundException {
         PathNode payload = new PathNode(SWITCH_ID, INPUT_PORT, 0);
-        IslInfoData data = new IslInfoData(0L, Collections.singletonList(payload), 1000000, IslChangeType.DISCOVERED);
+        IslInfoData data = new IslInfoData(0L, Collections.singletonList(payload),
+                1000000L, IslChangeType.DISCOVERED, 900000L);
+        assertEquals(SWITCH_ID + "_" + String.valueOf(INPUT_PORT), data.getId());
         System.out.println(data);
 
         InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
@@ -452,7 +463,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
 
     @Test
     public void eventSwitchInfoTest() throws IOException, ClassNotFoundException {
-        SwitchInfoData data = new SwitchInfoData(SWITCH_ID, SWITCH_EVENT, "127.0.0.1", "localhost", "Unknown");
+        SwitchInfoData data = new SwitchInfoData(SWITCH_ID, SWITCH_EVENT, "127.0.0.1", "localhost", "sw", "controller");
         System.out.println(data);
 
         InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
@@ -514,7 +525,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
 
     @Test
     public void flowRerouteCommandTest() throws IOException, ClassNotFoundException {
-        FlowReroute data = new FlowReroute(FLOW_NAME, SWITCH_ID, OUTPUT_PORT);
+        FlowRerouteRequest data = new FlowRerouteRequest(flowModel, FlowOperation.CREATE);
         System.out.println(data);
 
         CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
@@ -527,15 +538,15 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         CommandMessage resultCommand = (CommandMessage) message;
         assertTrue(resultCommand.getData() != null);
 
-        FlowReroute resultData = (FlowReroute) resultCommand.getData();
+        FlowRerouteRequest resultData = (FlowRerouteRequest) resultCommand.getData();
         System.out.println(resultData);
         assertEquals(data, resultData);
         assertEquals(data.hashCode(), resultData.hashCode());
     }
 
     @Test
-    public void flowRerouteEmptyCommandTest() throws IOException, ClassNotFoundException {
-        FlowReroute data = new FlowReroute();
+    public void dumpNetworkCommandTest() throws IOException, ClassNotFoundException {
+        HealthCheckCommandData data = new HealthCheckCommandData("requester");
         System.out.println(data);
 
         CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
@@ -548,7 +559,31 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         CommandMessage resultCommand = (CommandMessage) message;
         assertTrue(resultCommand.getData() != null);
 
-        FlowReroute resultData = (FlowReroute) resultCommand.getData();
+        HealthCheckCommandData resultData = (HealthCheckCommandData) resultCommand.getData();
+        System.out.println(resultData);
+        assertEquals(data, resultData);
+        assertEquals(data.hashCode(), resultData.hashCode());
+    }
+
+    @Test
+    public void dumpNetworkResponseTest() throws IOException, ClassNotFoundException {
+        NetworkInfoData data = new NetworkInfoData(requester,
+                new HashSet<>(Arrays.asList(sw1, sw2)),
+                Collections.singleton(isl),
+                Collections.singleton(new ImmutablePair<>(flowModel, flowModel)));
+        System.out.println(data);
+
+        InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
+        info.setData(data);
+        serialize(info);
+
+        Message message = (Message) deserialize();
+        assertTrue(message instanceof InfoMessage);
+
+        InfoMessage resultInfo = (InfoMessage) message;
+        assertTrue(resultInfo.getData() != null);
+
+        NetworkInfoData resultData = (NetworkInfoData) resultInfo.getData();
         System.out.println(resultData);
         assertEquals(data, resultData);
         assertEquals(data.hashCode(), resultData.hashCode());
