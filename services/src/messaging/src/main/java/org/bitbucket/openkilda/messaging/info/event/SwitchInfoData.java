@@ -10,6 +10,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -23,7 +24,8 @@ import java.util.Objects;
         "state",
         "address",
         "hostname",
-        "description"})
+        "description",
+        "controller"})
 public class SwitchInfoData extends InfoData {
     /**
      * Serialization version number constant.
@@ -58,7 +60,13 @@ public class SwitchInfoData extends InfoData {
      * Switch state.
      */
     @JsonProperty("state")
-    private SwitchEventType state;
+    private SwitchState state;
+
+    /**
+     * Switch state.
+     */
+    @JsonProperty("controller")
+    private String controller;
 
     /**
      * Default constructor.
@@ -74,19 +82,37 @@ public class SwitchInfoData extends InfoData {
      * @param address     switch ip address
      * @param hostname    switch name
      * @param description switch description
+     * @param controller  switch controller
      */
     @JsonCreator
     public SwitchInfoData(@JsonProperty("switch_id") final String switchId,
-                          @JsonProperty("state") final SwitchEventType state,
+                          @JsonProperty("state") final SwitchState state,
                           @JsonProperty("address") final String address,
                           @JsonProperty("hostname") final String hostname,
-                          @JsonProperty("description") final String description) {
+                          @JsonProperty("description") final String description,
+                          @JsonProperty("controller") final String controller) {
         this.switchId = switchId;
         this.state = state;
         this.address = address;
         this.hostname = hostname;
         this.description = description;
+        this.controller = controller;
     }
+
+    /**
+     * Instance constructor.
+     *
+     * @param map map with switch properties
+     */
+    public SwitchInfoData(Map<String, Object> map) {
+        this.switchId = (String) map.get("switch_id");
+        this.address = (String) map.get("address");
+        this.hostname = (String) map.get("hostname");
+        this.description = (String) map.get("description");
+        this.state = SwitchState.valueOf((String) map.get("state"));
+        this.controller = (String) map.get("controller");
+    }
+
 
     /**
      * Returns switch id.
@@ -111,7 +137,7 @@ public class SwitchInfoData extends InfoData {
      *
      * @return switch state
      */
-    public SwitchEventType getState() {
+    public SwitchState getState() {
         return state;
     }
 
@@ -120,7 +146,7 @@ public class SwitchInfoData extends InfoData {
      *
      * @param state switch state to set
      */
-    public void setState(final SwitchEventType state) {
+    public void setState(final SwitchState state) {
         this.state = state;
     }
 
@@ -179,6 +205,24 @@ public class SwitchInfoData extends InfoData {
     }
 
     /**
+     * Gets switch controller.
+     *
+     * @return switch controller
+     */
+    public String getController() {
+        return controller;
+    }
+
+    /**
+     * Sets switch controller.
+     *
+     * @param controller switch controller
+     */
+    public void setController(String controller) {
+        this.controller = controller;
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
@@ -189,6 +233,7 @@ public class SwitchInfoData extends InfoData {
                 .add("address", address)
                 .add("hostname", hostname)
                 .add("description", description)
+                .add("controller", controller)
                 .toString();
     }
 
@@ -197,7 +242,7 @@ public class SwitchInfoData extends InfoData {
      */
     @Override
     public int hashCode() {
-        return Objects.hash(switchId, state, address, hostname, description);
+        return Objects.hash(switchId, state, address, hostname, description, controller);
     }
 
     /**
@@ -217,6 +262,7 @@ public class SwitchInfoData extends InfoData {
                 && Objects.equals(getState(), that.getState())
                 && Objects.equals(getAddress(), that.getAddress())
                 && Objects.equals(getHostname(), that.getHostname())
-                && Objects.equals(getDescription(), that.getDescription());
+                && Objects.equals(getDescription(), that.getDescription())
+                && Objects.equals(getController(), that.getController());
     }
 }

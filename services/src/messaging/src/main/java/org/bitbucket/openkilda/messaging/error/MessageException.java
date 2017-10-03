@@ -4,7 +4,7 @@ package org.bitbucket.openkilda.messaging.error;
 /**
  * The exception for notifying errors.
  */
-public class MessageException extends RuntimeException {
+public class MessageException extends CacheException {
     /**
      * The constant serialVersionUID.
      */
@@ -21,21 +21,6 @@ public class MessageException extends RuntimeException {
     protected long timestamp;
 
     /**
-     * The error type.
-     */
-    protected ErrorType errorType;
-
-    /**
-     * The error message.
-     */
-    protected String errorMessage;
-
-    /**
-     * The error description.
-     */
-    protected String errorDescription;
-
-    /**
      * Instance constructor.
      *
      * @param correlationId    error correlation id
@@ -44,14 +29,11 @@ public class MessageException extends RuntimeException {
      * @param errorMessage     error message
      * @param errorDescription error description
      */
-    public MessageException(final String correlationId, final long timestamp, final ErrorType errorType,
-                            final String errorMessage, final String errorDescription) {
-        super(errorMessage);
+    public MessageException(String correlationId, long timestamp, ErrorType errorType,
+                            String errorMessage, String errorDescription) {
+        super(errorType, errorMessage, errorDescription);
         this.correlationId = correlationId;
         this.timestamp = timestamp;
-        this.errorType = errorType;
-        this.errorMessage = errorMessage;
-        this.errorDescription = errorDescription;
     }
 
     /**
@@ -59,13 +41,12 @@ public class MessageException extends RuntimeException {
      *
      * @param message the {@link MessageError}
      */
-    public MessageException(final ErrorMessage message) {
-        super(message.getData().getErrorMessage());
+    public MessageException(ErrorMessage message) {
+        super(message.getData().getErrorType(),
+                message.getData().getErrorMessage(),
+                message.getData().getErrorDescription());
         this.correlationId = message.getCorrelationId();
         this.timestamp = message.getTimestamp();
-        this.errorType = message.getData().getErrorType();
-        this.errorMessage = message.getData().getErrorMessage();
-        this.errorDescription = message.getData().getErrorDescription();
     }
 
     /**
@@ -84,32 +65,5 @@ public class MessageException extends RuntimeException {
      */
     public long getTimestamp() {
         return timestamp;
-    }
-
-    /**
-     * Returns error type.
-     *
-     * @return error type
-     */
-    public ErrorType getErrorType() {
-        return errorType;
-    }
-
-    /**
-     * Returns error message.
-     *
-     * @return error message
-     */
-    public String getErrorMessage() {
-        return errorMessage;
-    }
-
-    /**
-     * Returns error description.
-     *
-     * @return error description
-     */
-    public String getErrorDescription() {
-        return errorDescription;
     }
 }

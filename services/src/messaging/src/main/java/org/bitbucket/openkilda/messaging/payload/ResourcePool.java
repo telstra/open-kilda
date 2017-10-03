@@ -1,5 +1,6 @@
 package org.bitbucket.openkilda.messaging.payload;
 
+import com.google.common.base.MoreObjects;
 import com.google.common.collect.ContiguousSet;
 import com.google.common.collect.DiscreteDomain;
 import com.google.common.collect.ImmutableSet;
@@ -12,7 +13,14 @@ import java.util.concurrent.ConcurrentHashMap;
  * Class represents resource allocator/deallocator.
  */
 public class ResourcePool {
+    /**
+     * Resource values pool.
+     */
     private final Set<Integer> resources = ConcurrentHashMap.newKeySet();
+
+    /**
+     * Resource range of values.
+     */
     private final Range<Integer> range;
 
     /**
@@ -40,13 +48,23 @@ public class ResourcePool {
     }
 
     /**
+     * Allocates resource id.
+     *
+     * @param id resource id
+     * @return allocated resource id
+     */
+    public Integer allocate(Integer id) {
+        return resources.add(id) ? id : null;
+    }
+
+    /**
      * Deallocates previously allocated resource id.
      *
      * @param resourceId resource id
      * @return true if specified resource id was previously allocated
      */
-    public boolean deallocate(final Integer resourceId) {
-        return resources.remove(resourceId);
+    public Integer deallocate(final Integer resourceId) {
+        return resources.remove(resourceId) ? resourceId : null;
     }
 
     /**
@@ -56,5 +74,16 @@ public class ResourcePool {
      */
     public Set<Integer> dumpPool() {
         return ImmutableSet.copyOf(resources);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String toString() {
+        return MoreObjects.toStringHelper(this)
+                .add("range", range)
+                .add("resources", resources)
+                .toString();
     }
 }

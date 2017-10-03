@@ -1,20 +1,20 @@
 package org.bitbucket.openkilda.wfm.topology.stats.metrics;
 
-import org.apache.storm.tuple.Tuple;
+import static org.bitbucket.openkilda.messaging.Utils.CORRELATION_ID;
+import static org.bitbucket.openkilda.wfm.topology.AbstractTopology.MESSAGE_FIELD;
 
 import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.info.InfoMessage;
 import org.bitbucket.openkilda.messaging.info.stats.MeterConfigStatsData;
 import org.bitbucket.openkilda.wfm.topology.stats.StatsComponentType;
 import org.bitbucket.openkilda.wfm.topology.stats.StatsStreamType;
+
+import org.apache.storm.tuple.Tuple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
-
-import static org.bitbucket.openkilda.messaging.Utils.CORRELATION_ID;
-import static org.bitbucket.openkilda.wfm.topology.AbstractTopology.MESSAGE_FIELD;
 
 public class MeterConfigMetricGenBolt extends MetricGenBolt {
     private static final Logger logger = LoggerFactory.getLogger(MeterConfigMetricGenBolt.class);

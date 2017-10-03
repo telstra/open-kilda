@@ -26,7 +26,14 @@ import java.util.Properties;
  * Represents abstract topology.
  */
 public abstract class AbstractTopology implements Topology {
+    /**
+     * Message key.
+     */
     public static final String MESSAGE_FIELD = "message";
+
+    /**
+     * Message field.
+     */
     public static final Fields fieldMessage = new Fields(MESSAGE_FIELD);
 
     /**
@@ -125,11 +132,11 @@ public abstract class AbstractTopology implements Topology {
     }
 
     /**
-     * Creates Kafka topic if it does not exists.
+     * Creates Kafka topic if it does not exist.
      *
      * @param topic Kafka topic
      */
-    private void checkAndCreateTopic(final String topic) {
+    protected void checkAndCreateTopic(final String topic) {
         ZkClient zkClient = new ZkClient(zookeeperHosts, ZOOKEEPER_SESSION_TIMEOUT_MS,
                 ZOOKEEPER_CONNECTION_TIMEOUT_MS, ZKStringSerializer$.MODULE$);
         ZkUtils zkUtils = new ZkUtils(zkClient, new ZkConnection(zookeeperHosts), false);
@@ -145,8 +152,8 @@ public abstract class AbstractTopology implements Topology {
      * @param topic Kafka topic
      * @return {@link KafkaSpout}
      */
-    public org.apache.storm.kafka.KafkaSpout createKafkaSpout(String topic) {
-        String spoutID = topic + "_" + System.currentTimeMillis();
+    protected org.apache.storm.kafka.KafkaSpout createKafkaSpout(String topic, String spoutId) {
+        String spoutID = topic + "." + spoutId;
         String zkRoot = "/" + topic; // used to store offset information.
         ZkHosts hosts = new ZkHosts(zookeeperHosts);
         SpoutConfig cfg = new SpoutConfig(hosts, topic, zkRoot, spoutID);

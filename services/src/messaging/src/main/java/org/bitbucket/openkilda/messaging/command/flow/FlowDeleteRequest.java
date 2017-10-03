@@ -4,7 +4,7 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static org.bitbucket.openkilda.messaging.Utils.PAYLOAD;
 
 import org.bitbucket.openkilda.messaging.command.CommandData;
-import org.bitbucket.openkilda.messaging.payload.flow.FlowIdStatusPayload;
+import org.bitbucket.openkilda.messaging.model.Flow;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -32,7 +32,7 @@ public class FlowDeleteRequest extends CommandData {
      * The request payload.
      */
     @JsonProperty(PAYLOAD)
-    protected FlowIdStatusPayload payload;
+    protected Flow payload;
 
     /**
      * Instance constructor.
@@ -41,7 +41,7 @@ public class FlowDeleteRequest extends CommandData {
      * @throws IllegalArgumentException if payload is null
      */
     @JsonCreator
-    public FlowDeleteRequest(@JsonProperty(PAYLOAD) final FlowIdStatusPayload payload) {
+    public FlowDeleteRequest(@JsonProperty(PAYLOAD) Flow payload) {
         setPayload(payload);
     }
 
@@ -50,7 +50,7 @@ public class FlowDeleteRequest extends CommandData {
      *
      * @return request payload
      */
-    public FlowIdStatusPayload getPayload() {
+    public Flow getPayload() {
         return payload;
     }
 
@@ -59,7 +59,7 @@ public class FlowDeleteRequest extends CommandData {
      *
      * @param payload request payload
      */
-    public void setPayload(final FlowIdStatusPayload payload) {
+    public void setPayload(Flow payload) {
         if (payload == null) {
             throw new IllegalArgumentException("need to set payload");
         }

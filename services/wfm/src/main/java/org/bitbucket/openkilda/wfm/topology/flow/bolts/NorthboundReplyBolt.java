@@ -1,13 +1,11 @@
 package org.bitbucket.openkilda.wfm.topology.flow.bolts;
 
-import static org.bitbucket.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.bitbucket.openkilda.messaging.Utils.MAPPER;
-import static org.bitbucket.openkilda.wfm.topology.AbstractTopology.MESSAGE_FIELD;
-import static org.bitbucket.openkilda.wfm.topology.AbstractTopology.fieldMessage;
 
 import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.Message;
-import org.bitbucket.openkilda.messaging.error.ErrorMessage;
+import org.bitbucket.openkilda.messaging.Utils;
+import org.bitbucket.openkilda.wfm.topology.AbstractTopology;
 import org.bitbucket.openkilda.wfm.topology.flow.ComponentType;
 import org.bitbucket.openkilda.wfm.topology.flow.StreamType;
 
@@ -24,8 +22,7 @@ import org.apache.storm.tuple.Values;
 import java.util.Map;
 
 /**
- * Northbound Reply Bolt.
- * Forms northbound replies.
+ * Northbound Reply Bolt. Forms northbound replies.
  */
 public class NorthboundReplyBolt extends BaseRichBolt {
     /**
@@ -43,57 +40,39 @@ public class NorthboundReplyBolt extends BaseRichBolt {
      */
     @Override
     public void execute(Tuple tuple) {
-        logger.debug("Ingoing tuple: {}", tuple);
-
         ComponentType componentId = ComponentType.valueOf(tuple.getSourceComponent());
         StreamType streamId = StreamType.valueOf(tuple.getSourceStreamId());
-        Message message = (Message) tuple.getValueByField(MESSAGE_FIELD);
-        Values values;
+        Message message = (Message) tuple.getValueByField(AbstractTopology.MESSAGE_FIELD);
+        Values values = null;
 
         try {
+            logger.debug("Request tuple={}", tuple);
+
             switch (componentId) {
 
                 case TOPOLOGY_ENGINE_BOLT:
-                    logger.debug("Flow response: {}={}, component={}, stream={}, message={}",
-                            CORRELATION_ID, message.getCorrelationId(), componentId, streamId, message);
-
-                    message.setDestination(Destination.NORTHBOUND);
-                    values = new Values(MAPPER.writeValueAsString(message));
-                    outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
-                    break;
-
-                case STATUS_BOLT:
-                    logger.debug("Flow status response: {}={}, component={}, stream={}, message={}",
-                            CORRELATION_ID, message.getCorrelationId(), componentId, streamId, message);
-
-                    message.setDestination(Destination.NORTHBOUND);
-                    values = new Values(MAPPER.writeValueAsString(message));
-                    outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
-
-                    break;
-
+                case CRUD_BOLT:
                 case ERROR_BOLT:
-                    ErrorMessage errorMessage = (ErrorMessage) message;
+                    logger.debug("Flow response: {}={}, component={}, stream={}, message={}",
+                            Utils.CORRELATION_ID, message.getCorrelationId(), componentId, streamId, message);
 
-                    logger.debug("Flow error response: {}={}, component={}, stream={}, message={}",
-                            CORRELATION_ID, message.getCorrelationId(), componentId, streamId, message);
-
-                    errorMessage.setDestination(Destination.NORTHBOUND);
-                    values = new Values(MAPPER.writeValueAsString(errorMessage));
+                    message.setDestination(Destination.NORTHBOUND);
+                    values = new Values(MAPPER.writeValueAsString(message));
                     outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
 
                     break;
 
                 default:
-                    logger.warn("Flow unknown response: {}={}, component={}, stream={}, message={}",
-                            CORRELATION_ID, message.getCorrelationId(), componentId, streamId, message);
+                    logger.debug("Flow unknown response: {}={}, component={}, stream={}, message={}",
+                            Utils.CORRELATION_ID, message.getCorrelationId(), componentId, streamId, message);
                     break;
             }
         } catch (JsonProcessingException exception) {
             logger.error("Could not serialize message: component={}, stream={}, message={}",
                     componentId, streamId, message);
         } finally {
-            logger.debug("Flow response ack: component={}, stream={}", componentId, streamId);
+            logger.debug("Northbound-Reply message ack: component={}, stream={}, tuple={}, values={}",
+                    tuple.getSourceComponent(), tuple.getSourceStreamId(), tuple, values);
 
             outputCollector.ack(tuple);
         }
@@ -104,7 +83,7 @@ public class NorthboundReplyBolt extends BaseRichBolt {
      */
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
-        outputFieldsDeclarer.declareStream(StreamType.RESPONSE.toString(), fieldMessage);
+        outputFieldsDeclarer.declareStream(StreamType.RESPONSE.toString(), AbstractTopology.fieldMessage);
     }
 
     /**

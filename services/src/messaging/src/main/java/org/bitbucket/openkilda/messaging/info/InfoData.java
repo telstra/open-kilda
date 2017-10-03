@@ -1,10 +1,13 @@
 package org.bitbucket.openkilda.messaging.info;
 
 import org.bitbucket.openkilda.messaging.MessageData;
+import org.bitbucket.openkilda.messaging.info.discovery.HealthCheckInfoData;
+import org.bitbucket.openkilda.messaging.info.discovery.NetworkInfoData;
 import org.bitbucket.openkilda.messaging.info.event.IslInfoData;
 import org.bitbucket.openkilda.messaging.info.event.PathInfoData;
 import org.bitbucket.openkilda.messaging.info.event.PortInfoData;
 import org.bitbucket.openkilda.messaging.info.event.SwitchInfoData;
+import org.bitbucket.openkilda.messaging.info.flow.FlowInfoData;
 import org.bitbucket.openkilda.messaging.info.flow.FlowPathResponse;
 import org.bitbucket.openkilda.messaging.info.flow.FlowResponse;
 import org.bitbucket.openkilda.messaging.info.flow.FlowStatusResponse;
@@ -32,13 +35,16 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
         @Type(value = FlowsResponse.class, name = "flows"),
         @Type(value = FlowStatusResponse.class, name = "flow_status"),
         @Type(value = FlowPathResponse.class, name = "flow_path"),
+        @Type(value = FlowInfoData.class, name = "flow_operation"),
         @Type(value = PathInfoData.class, name = "path"),
         @Type(value = IslInfoData.class, name = "isl"),
         @Type(value = SwitchInfoData.class, name = "switch"),
         @Type(value = PortInfoData.class, name = "port"),
         @Type(value = PortStatsData.class, name = "port_stats"),
         @Type(value = MeterConfigStatsData.class, name = "meter_config_stats"),
-        @Type(value = FlowStatsData.class, name = "flow_stats")})
+        @Type(value = FlowStatsData.class, name = "flow_stats"),
+        @Type(value = NetworkInfoData.class, name = "network"),
+        @Type(value = HealthCheckInfoData.class, name = "health_check")})
 public abstract class InfoData extends MessageData {
     /**
      * Serialization version number constant.

@@ -10,7 +10,7 @@ import org.bitbucket.openkilda.messaging.info.event.IslChangeType;
 import org.bitbucket.openkilda.messaging.info.event.IslInfoData;
 import org.bitbucket.openkilda.messaging.info.event.PathNode;
 import org.bitbucket.openkilda.wfm.topology.OutputCollectorMock;
-import org.bitbucket.openkilda.wfm.topology.event.InfoEventSplitterBolt;
+import org.bitbucket.openkilda.wfm.topology.splitter.InfoEventSplitterBolt;
 import org.bitbucket.openkilda.wfm.topology.event.OFELinkBolt;
 import org.bitbucket.openkilda.wfm.topology.event.OFEventWFMTopology;
 import org.bitbucket.openkilda.wfm.topology.utils.KafkaFilerTopology;
@@ -120,7 +120,7 @@ public class OFEventWfmTest extends AbstractStormTest {
         kProducer.pushMessage(port_topic, sw1p1_up);
         kProducer.pushMessage(port_topic, sw2p2_up);
 
-        Utils.sleep(5 * 1000);
+        Utils.sleep(4 * 1000);
 
         messagesExpected = 8; // at present, everything is passed through, no filter.
         messagesReceived = safeLinesCount(kafkaFiler.getFiler().getFile());
@@ -144,6 +144,11 @@ public class OFEventWfmTest extends AbstractStormTest {
         }
         // NB: ISL discovery messages will be generated .. multiple .. at present 9-11.
         Assert.assertTrue(messagesReceived > 0);
+
+        cluster.killTopology(topo.getTopoName());
+        cluster.killTopology("utils-1");
+        cluster.killTopology("utils-2");
+        Utils.sleep(4 * 1000);
     }
 
     protected long safeLinesCount(File filename) {
@@ -168,7 +173,7 @@ public class OFEventWfmTest extends AbstractStormTest {
         initMocks();
 
         List<PathNode> nodes = Arrays.asList(new PathNode("sw1", 1, 0, 10L), new PathNode("sw2", 2, 1, 10L));
-        InfoData data = new IslInfoData(10L, nodes, 10000, IslChangeType.DISCOVERED);
+        InfoData data = new IslInfoData(10L, nodes, 10000L, IslChangeType.DISCOVERED, 9000L);
         String isl_discovered = MAPPER.writeValueAsString(data);
 
         OFELinkBolt linkBolt = new OFELinkBolt(DEFAULT_DISCOVERY_INTERVAL, DEFAULT_DISCOVERY_TIMEOUT);

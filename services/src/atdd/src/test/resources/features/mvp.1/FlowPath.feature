@@ -1,16 +1,18 @@
+@FPATH
 Feature: Flow path computation tests
 
 
-  @MVP1.1
+  @MVP1
   Scenario: Link Bandwidth Tracking
 
     This scenario creates small multi-path network topology
     and checks that link available bandwidth is tracked.
 
-    Given a clean controller
+    Given a clean flow topology
+    And a clean controller
     And a clean flow topology
     And a multi-path topology
-    #When the controller learns the topology
+    And topology contains 16 links
     Then all links have available bandwidth 9000000
     When flow pcet creation request with 00:00:00:00:00:00:00:02 1 0 and 00:00:00:00:00:00:00:07 2 0 and 1000000 is successful
     And flow pcet with 00:00:00:00:00:00:00:02 1 0 and 00:00:00:00:00:00:00:07 2 0 and 1000000 could be created
@@ -28,10 +30,11 @@ Feature: Flow path computation tests
     and checks that in case of no enough available bandwidth on the shortest path,
     longer path is chosen.
 
-    Given a clean controller
+    Given a clean flow topology
+    And a clean controller
     And a clean flow topology
     And a multi-path topology
-    #When the controller learns the topology
+    And topology contains 16 links
     Then all links have available bandwidth 9000000
     When flow pcel1 creation request with 00:00:00:00:00:00:00:02 1 0 and 00:00:00:00:00:00:00:07 2 0 and 5000000 is successful
     And flow pcel1 with 00:00:00:00:00:00:00:02 1 0 and 00:00:00:00:00:00:00:07 2 0 and 5000000 could be created
@@ -41,17 +44,18 @@ Feature: Flow path computation tests
     Then alternative path links available bandwidth have available bandwidth 4000000
 
 
-  @MVP1.1
+  @MVP1
   Scenario: Link Bandwidth No Enough Bandwidth
 
     This scenario creates small multi-path network topology
     and checks that in case of no enough available bandwidth on the both shortest and alternative paths,
     flow could not be created.
 
-    Given a clean controller
+    Given a clean flow topology
+    And a clean controller
     And a clean flow topology
     And a multi-path topology
-    #When the controller learns the topology
+    And topology contains 16 links
     Then all links have available bandwidth 9000000
     When flow pceb1 creation request with 00:00:00:00:00:00:00:02 1 0 and 00:00:00:00:00:00:00:07 2 0 and 9000000 is successful
     And flow pceb1 with 00:00:00:00:00:00:00:02 1 0 and 00:00:00:00:00:00:00:07 2 0 and 9000000 could be created
@@ -59,3 +63,14 @@ Feature: Flow path computation tests
     And flow pceb2 with 00:00:00:00:00:00:00:02 1 0 and 00:00:00:00:00:00:00:07 2 0 and 9000000 could be created
     When flow pceb3_failed creation request with 00:00:00:00:00:00:00:02 1 0 and 00:00:00:00:00:00:00:07 2 0 and 1 is failed
     Then flows count is 2
+
+  @MVP1
+  Scenario: Flow Path
+    Given a clean flow topology
+    And a clean controller
+    And a multi-path topology
+    And topology contains 16 links
+    Then all links have available bandwidth 9000000
+    And flow pceb1 with 00:00:00:00:00:00:00:02 1 0 and 00:00:00:00:00:00:00:07 2 0 and 9000000 path correct
+    When flow pceb1 creation request with 00:00:00:00:00:00:00:02 1 0 and 00:00:00:00:00:00:00:07 2 0 and 9000000 is successful
+    And flow pceb1 with 00:00:00:00:00:00:00:02 1 0 and 00:00:00:00:00:00:00:07 2 0 and 9000000 could be created

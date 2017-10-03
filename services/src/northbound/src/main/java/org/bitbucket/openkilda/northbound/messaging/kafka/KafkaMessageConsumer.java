@@ -9,6 +9,7 @@ import static org.bitbucket.openkilda.messaging.error.ErrorType.OPERATION_TIMED_
 import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.Message;
 import org.bitbucket.openkilda.messaging.error.MessageException;
+import org.bitbucket.openkilda.northbound.messaging.MessageConsumer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,16 +26,16 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @Component
 @PropertySource("classpath:northbound.properties")
-public class KafkaMessageConsumer {
+public class KafkaMessageConsumer implements MessageConsumer<Object> {
     /**
-     * Kafka message queue poll timeout.
+     * Error description for interrupted exception.
      */
-    private static final int POLL_TIMEOUT = 5000;
+    public static final String INTERRUPTED_ERROR_MESSAGE = "Unable to poll message";
 
     /**
-     * Kafka message queue poll pause.
+     * Error description for timeout exception.
      */
-    private static final int POLL_PAUSE = 100;
+    public static final String TIMEOUT_ERROR_MESSAGE = "Timeout for message poll";
 
     /**
      * The logger.
@@ -54,13 +55,13 @@ public class KafkaMessageConsumer {
     @KafkaListener(id = "northbound-listener", topics = "kilda-test")
     public void receive(final String record) {
         try {
-            logger.debug("message received");
+            logger.trace("message received");
             Message message = MAPPER.readValue(record, Message.class);
             if (Destination.NORTHBOUND.equals(message.getDestination())) {
                 logger.debug("message received: {}", record);
                 messages.put(message.getCorrelationId(), message);
             } else {
-                logger.debug("Skip message: {}", message);
+                logger.trace("Skip message: {}", message);
             }
         } catch (IOException exception) {
             logger.error("Could not deserialize message: {}", record, exception);
@@ -68,11 +69,9 @@ public class KafkaMessageConsumer {
     }
 
     /**
-     * Polls Kafka message queue.
-     *
-     * @param correlationId correlation id
-     * @return received message
+     * {@inheritDoc}
      */
+    @Override
     public Object poll(final String correlationId) {
         try {
             for (int i = POLL_TIMEOUT / POLL_PAUSE; i < POLL_TIMEOUT; i += POLL_PAUSE) {
@@ -84,20 +83,19 @@ public class KafkaMessageConsumer {
                 Thread.sleep(POLL_PAUSE);
             }
         } catch (InterruptedException exception) {
-            String errorMessage = "Unable to poll message";
-            logger.error("{}: {}={}", errorMessage, CORRELATION_ID, correlationId);
+            logger.error("{}: {}={}", INTERRUPTED_ERROR_MESSAGE, CORRELATION_ID, correlationId);
             throw new MessageException(correlationId, System.currentTimeMillis(),
-                    INTERNAL_ERROR, errorMessage, "kilda-test");
+                    INTERNAL_ERROR, INTERRUPTED_ERROR_MESSAGE, "kilda-test");
         }
-        String errorMessage = "Timeout for message poll";
-        logger.error("{}: {}={}", errorMessage, CORRELATION_ID, correlationId);
+        logger.error("{}: {}={}", TIMEOUT_ERROR_MESSAGE, CORRELATION_ID, correlationId);
         throw new MessageException(correlationId, System.currentTimeMillis(),
-                OPERATION_TIMED_OUT, errorMessage, "kilda-test");
+                OPERATION_TIMED_OUT, TIMEOUT_ERROR_MESSAGE, "kilda-test");
     }
 
     /**
-     * Clears message queue.
+     * {@inheritDoc}
      */
+    @Override
     public void clear() {
         messages.clear();
     }

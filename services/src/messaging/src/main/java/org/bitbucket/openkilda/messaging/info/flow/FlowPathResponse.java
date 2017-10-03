@@ -1,10 +1,10 @@
 package org.bitbucket.openkilda.messaging.info.flow;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
-import static org.bitbucket.openkilda.messaging.Utils.PAYLOAD;
 
+import org.bitbucket.openkilda.messaging.Utils;
 import org.bitbucket.openkilda.messaging.info.InfoData;
-import org.bitbucket.openkilda.messaging.payload.flow.FlowPathPayload;
+import org.bitbucket.openkilda.messaging.info.event.PathInfoData;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -21,7 +21,7 @@ import java.util.Objects;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
         "message_type",
-        PAYLOAD})
+        Utils.PAYLOAD})
 public class FlowPathResponse extends InfoData {
     /**
      * Serialization version number constant.
@@ -31,8 +31,8 @@ public class FlowPathResponse extends InfoData {
     /**
      * The response payload.
      */
-    @JsonProperty(PAYLOAD)
-    protected FlowPathPayload payload;
+    @JsonProperty(Utils.PAYLOAD)
+    protected PathInfoData payload;
 
     /**
      * Instance constructor.
@@ -41,7 +41,7 @@ public class FlowPathResponse extends InfoData {
      * @throws IllegalArgumentException if payload is null
      */
     @JsonCreator
-    public FlowPathResponse(@JsonProperty(PAYLOAD) final FlowPathPayload payload) {
+    public FlowPathResponse(@JsonProperty(Utils.PAYLOAD) PathInfoData payload) {
         setPayload(payload);
     }
 
@@ -50,7 +50,7 @@ public class FlowPathResponse extends InfoData {
      *
      * @return response payload
      */
-    public FlowPathPayload getPayload() {
+    public PathInfoData getPayload() {
         return payload;
     }
 
@@ -59,7 +59,7 @@ public class FlowPathResponse extends InfoData {
      *
      * @param payload response payload
      */
-    public void setPayload(final FlowPathPayload payload) {
+    public void setPayload(PathInfoData payload) {
         if (payload == null) {
             throw new IllegalArgumentException("need to set payload");
         }
@@ -72,7 +72,7 @@ public class FlowPathResponse extends InfoData {
     @Override
     public String toString() {
         return toStringHelper(this)
-                .add(PAYLOAD, payload)
+                .add(Utils.PAYLOAD, payload)
                 .toString();
     }
 

@@ -7,7 +7,6 @@ import org.bitbucket.openkilda.messaging.error.ErrorType;
 import org.bitbucket.openkilda.messaging.error.MessageError;
 
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.authentication.www.BasicAuthenticationEntryPoint;
@@ -29,8 +28,7 @@ public class NorthboundBasicAuthenticationEntryPoint extends BasicAuthentication
     private static final String DEFAULT_REALM = "Kilda";
 
     /**
-     * Instance constructor.
-     * Sets the default basic realm value
+     * Instance constructor. Sets the default basic realm value
      */
     public NorthboundBasicAuthenticationEntryPoint() {
         setRealmName(DEFAULT_REALM);

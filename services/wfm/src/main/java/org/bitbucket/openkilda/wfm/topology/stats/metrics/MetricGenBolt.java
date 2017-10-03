@@ -1,5 +1,7 @@
 package org.bitbucket.openkilda.wfm.topology.stats.metrics;
 
+import static java.util.stream.Collectors.toList;
+
 import org.apache.storm.opentsdb.bolt.TupleOpenTsdbDatapointMapper;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -10,11 +12,6 @@ import org.apache.storm.tuple.Fields;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
-
-import static java.util.stream.Collectors.toList;
-
-import org.bitbucket.openkilda.messaging.Destination;
-import org.bitbucket.openkilda.messaging.info.InfoMessage;
 
 public abstract class MetricGenBolt extends BaseRichBolt {
     private static final Fields DEFAULT_METRIC_FIELDS =
