@@ -75,7 +75,7 @@ public class IslStatsBolt extends BaseRichBolt {
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-//        declarer.declare(DEFAULT_METRIC_FIELDS);
+        declarer.declare(DEFAULT_METRIC_FIELDS);
     }
 
     protected static boolean isTickTuple(Tuple tuple) {

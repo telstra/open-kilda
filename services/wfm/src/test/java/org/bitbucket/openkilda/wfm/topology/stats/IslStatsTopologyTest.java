@@ -35,11 +35,6 @@ public class IslStatsTopologyTest extends AbstractStormTest {
 
     @Test
     public void IslStatsTopologyTest() throws Exception {
-        System.out.println("==> Starting IslStatsTopologyTest");
 
-        kutils.createTopics(new String[]{"kilda-test"});
-
-        IslStatsTopology topo = new IslStatsTopology(kutils);
-        cluster.submitTopology(topo.getTopoName(), stormConfig(), topo.createTopology());
     }
 }
