@@ -5,20 +5,18 @@ import static org.bitbucket.openkilda.wfm.topology.stats.StatsComponentType.METE
 import static org.bitbucket.openkilda.wfm.topology.stats.StatsComponentType.PORT_STATS_METRIC_GEN;
 
 import org.bitbucket.openkilda.messaging.ServiceType;
-import org.bitbucket.openkilda.messaging.Topic;
 import org.bitbucket.openkilda.wfm.topology.AbstractTopology;
+import org.bitbucket.openkilda.wfm.topology.Topology;
 import org.bitbucket.openkilda.wfm.topology.stats.bolts.SpeakerBolt;
 import org.bitbucket.openkilda.wfm.topology.stats.metrics.FlowMetricGenBolt;
 import org.bitbucket.openkilda.wfm.topology.stats.metrics.MeterConfigMetricGenBolt;
 import org.bitbucket.openkilda.wfm.topology.stats.metrics.PortMetricGenBolt;
-import org.bitbucket.openkilda.wfm.topology.utils.HealthCheckBolt;
 
 import org.apache.storm.Config;
 import org.apache.storm.LocalCluster;
 import org.apache.storm.StormSubmitter;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.KafkaSpout;
-import org.apache.storm.kafka.bolt.KafkaBolt;
 import org.apache.storm.opentsdb.bolt.OpenTsdbBolt;
 import org.apache.storm.opentsdb.bolt.TupleOpenTsdbDatapointMapper;
 import org.apache.storm.opentsdb.client.OpenTsdbClient;
@@ -26,31 +24,40 @@ import org.apache.storm.topology.TopologyBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+
 
 public class StatsTopology extends AbstractTopology {
     private static final Logger logger = LoggerFactory.getLogger(StatsTopology.class);
     private static final String TOPIC = "kilda-test";
 
-    public StatsTopology() {
-        checkAndCreateTopic(Topic.HEALTH_CHECK.getId());
+    public StatsTopology(File file) {
+        super(file);
 
         logger.debug("Topology built {}: zookeeper={}, kafka={}, parallelism={}, workers={}",
                 topologyName, zookeeperHosts, kafkaHosts, parallelism, workers);
     }
 
     public static void main(String[] args) throws Exception {
-        final StatsTopology topology = new StatsTopology();
-        StormTopology stormTopology = topology.createTopology();
-        final Config config = new Config();
-        config.setNumWorkers(1);
-
         if (args != null && args.length > 0) {
+            File file = new File(args[1]);
+            final StatsTopology topology = new StatsTopology(file);
+            StormTopology stormTopology = topology.createTopology();
+            final Config config = new Config();
+            config.setNumWorkers(1);
+
             logger.info("Start Topology: {}", topology.getTopologyName());
 
             config.setDebug(false);
 
             StormSubmitter.submitTopology(args[0], config, stormTopology);
         } else {
+            File file = new File(StatsTopology.class.getResource(Topology.TOPOLOGY_PROPERTIES).getFile());
+            final StatsTopology topology = new StatsTopology(file);
+            StormTopology stormTopology = topology.createTopology();
+            final Config config = new Config();
+            config.setNumWorkers(1);
+
             logger.info("Start Topology Locally: {}", topology.topologyName);
 
             config.setDebug(true);
@@ -98,15 +105,7 @@ public class StatsTopology extends AbstractTopology {
                 .shuffleGrouping(METER_CFG_STATS_METRIC_GEN.name())
                 .shuffleGrouping(FLOW_STATS_METRIC_GEN.name());
 
-        String prefix = ServiceType.STATS_TOPOLOGY.getId();
-        KafkaSpout healthCheckKafkaSpout = createKafkaSpout(Topic.HEALTH_CHECK.getId(), prefix);
-        builder.setSpout(prefix + "HealthCheckKafkaSpout", healthCheckKafkaSpout, 1);
-        HealthCheckBolt healthCheckBolt = new HealthCheckBolt(ServiceType.STATS_TOPOLOGY);
-        builder.setBolt(prefix + "HealthCheckBolt", healthCheckBolt, 1)
-                .shuffleGrouping(prefix + "HealthCheckKafkaSpout");
-        KafkaBolt healthCheckKafkaBolt = createKafkaBolt(Topic.HEALTH_CHECK.getId());
-        builder.setBolt(prefix + "HealthCheckKafkaBolt", healthCheckKafkaBolt, 1)
-                .shuffleGrouping(prefix + "HealthCheckBolt", Topic.HEALTH_CHECK.getId());
+        createHealthCheckHandler(builder, ServiceType.STATS_TOPOLOGY.getId());
 
         return builder.createTopology();
     }

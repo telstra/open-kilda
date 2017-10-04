@@ -10,9 +10,10 @@ import org.bitbucket.openkilda.messaging.info.event.IslChangeType;
 import org.bitbucket.openkilda.messaging.info.event.IslInfoData;
 import org.bitbucket.openkilda.messaging.info.event.PathNode;
 import org.bitbucket.openkilda.wfm.topology.OutputCollectorMock;
-import org.bitbucket.openkilda.wfm.topology.splitter.InfoEventSplitterBolt;
+import org.bitbucket.openkilda.wfm.topology.Topology;
 import org.bitbucket.openkilda.wfm.topology.event.OFELinkBolt;
 import org.bitbucket.openkilda.wfm.topology.event.OFEventWFMTopology;
+import org.bitbucket.openkilda.wfm.topology.splitter.InfoEventSplitterBolt;
 import org.bitbucket.openkilda.wfm.topology.utils.KafkaFilerTopology;
 import org.bitbucket.openkilda.wfm.topology.utils.LinkTracker;
 
@@ -27,9 +28,7 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.TupleImpl;
 import org.apache.storm.utils.Utils;
-import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -46,12 +45,6 @@ import java.util.List;
  */
 @RunWith(MockitoJUnitRunner.class)
 public class OFEventWfmTest extends AbstractStormTest {
-    private static final String[] topics = new String[]{
-            InfoEventSplitterBolt.I_SWITCH_UPDOWN,
-            InfoEventSplitterBolt.I_PORT_UPDOWN,
-            InfoEventSplitterBolt.I_ISL_UPDOWN,
-            OFEventWFMTopology.DEFAULT_DISCOVERY_TOPIC,
-            OFEventWFMTopology.DEFAULT_KAFKA_OUTPUT};
     private long messagesExpected;
     private long messagesReceived;
 
@@ -60,35 +53,20 @@ public class OFEventWfmTest extends AbstractStormTest {
     private OutputCollectorMock outputCollectorMock = new OutputCollectorMock();
     private OutputCollector outputCollector = new OutputCollector(outputCollectorMock);
 
-    // Leaving these here as a tickler if needed.
-    @Before
-    public void setupEach() {}
-    @After
-    public void teardownEach() {}
-
     @Test
     public void BasicSwitchPortEventsTest() throws Exception {
         System.out.println("==> Starting BasicSwitchEventTest");
+        File file = new File(OFEventWfmTest.class.getResource(Topology.TOPOLOGY_PROPERTIES).getFile());
+        OFEventWFMTopology topo = new OFEventWFMTopology(file);
+        cluster.submitTopology(topo.getTopologyName(), stormConfig(), topo.createTopology());
 
-        kutils.createTopics(new String[]{
-                InfoEventSplitterBolt.I_SWITCH_UPDOWN,
-                InfoEventSplitterBolt.I_PORT_UPDOWN,
-                InfoEventSplitterBolt.I_ISL_UPDOWN,
-                OFEventWFMTopology.DEFAULT_DISCOVERY_TOPIC,
-                OFEventWFMTopology.DEFAULT_KAFKA_OUTPUT});
+        KafkaFilerTopology kafkaFiler = new KafkaFilerTopology(file,
+                OFEventWFMTopology.DEFAULT_KAFKA_OUTPUT, server.tempDir.getAbsolutePath());
+        cluster.submitTopology("utils-1", stormConfig(), kafkaFiler.createTopology());
 
-        OFEventWFMTopology topo = new OFEventWFMTopology(kutils);
-        cluster.submitTopology(topo.getTopoName(), stormConfig(), topo.createTopology());
-
-        KafkaFilerTopology kafkaFiler = new KafkaFilerTopology();
-        cluster.submitTopology("utils-1", stormConfig(),
-                kafkaFiler.createTopology(OFEventWFMTopology.DEFAULT_KAFKA_OUTPUT,
-                        server.tempDir.getAbsolutePath(), TestUtils.zookeeperUrl));
-
-        KafkaFilerTopology discoFiler = new KafkaFilerTopology();
-        cluster.submitTopology("utils-2", stormConfig(),
-                discoFiler.createTopology(OFEventWFMTopology.DEFAULT_DISCOVERY_TOPIC,
-                        server.tempDir.getAbsolutePath(), TestUtils.zookeeperUrl));
+        KafkaFilerTopology discoFiler = new KafkaFilerTopology(file,
+                OFEventWFMTopology.DEFAULT_DISCOVERY_TOPIC, server.tempDir.getAbsolutePath());
+        cluster.submitTopology("utils-2", stormConfig(), discoFiler.createTopology());
 
         Utils.sleep(5 * 1000);
 
@@ -136,7 +114,7 @@ public class OFEventWfmTest extends AbstractStormTest {
         // TODO: how can we programmatically determine how many ISL messages should be generated?
         messagesReceived = safeLinesCount(discoFiler.getFiler().getFile());
         if (messagesReceived == 0) {
-            System.out.println(String.format("Message count failure; NO MESSAGES RECEIVED!"));
+            System.out.println("Message count failure; NO MESSAGES RECEIVED!");
             for (String s : Files.readLines(discoFiler.getFiler().getFile(), Charsets.UTF_8)) {
                 System.out.println("\t\t > " + s);
             }
@@ -145,13 +123,13 @@ public class OFEventWfmTest extends AbstractStormTest {
         // NB: ISL discovery messages will be generated .. multiple .. at present 9-11.
         Assert.assertTrue(messagesReceived > 0);
 
-        cluster.killTopology(topo.getTopoName());
+        cluster.killTopology(topo.getTopologyName());
         cluster.killTopology("utils-1");
         cluster.killTopology("utils-2");
         Utils.sleep(4 * 1000);
     }
 
-    protected long safeLinesCount(File filename) {
+    private long safeLinesCount(File filename) {
         List<String> lines = null;
         try {
             lines = Files.readLines(filename, Charsets.UTF_8);

@@ -1,6 +1,7 @@
 package org.bitbucket.openkilda.wfm.topology;
 
-import static org.codehaus.plexus.util.PropertyUtils.loadProperties;
+import org.bitbucket.openkilda.messaging.Topic;
+import org.bitbucket.openkilda.wfm.topology.utils.HealthCheckBolt;
 
 import kafka.admin.AdminUtils;
 import kafka.api.OffsetRequest;
@@ -18,8 +19,11 @@ import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
 import org.apache.storm.kafka.bolt.selector.DefaultTopicSelector;
 import org.apache.storm.kafka.spout.KafkaSpout;
 import org.apache.storm.spout.SchemeAsMultiScheme;
+import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Fields;
+import org.codehaus.plexus.util.PropertyUtils;
 
+import java.io.File;
 import java.util.Properties;
 
 /**
@@ -45,16 +49,6 @@ public abstract class AbstractTopology implements Topology {
      * Default zookeeper connection timeout.
      */
     private static final int ZOOKEEPER_CONNECTION_TIMEOUT_MS = 5 * 1000;
-
-    /**
-     * Default zookeeper hosts.
-     */
-    private static final String DEFAULT_ZOOKEEPER = "zookeeper.pendev:2181";
-
-    /**
-     * Default kafka hosts.
-     */
-    private static final String DEFAULT_KAFKA = "kafka.pendev:9092";
 
     /**
      * Default parallelism value.
@@ -102,16 +96,15 @@ public abstract class AbstractTopology implements Topology {
     protected final int workers;
 
     /**
-     * Instance constructor.
-     * Loads topology specific properties from common configuration file.
-     * It uses topology name as properties name prefix.
+     * Instance constructor. Loads topology specific properties from common configuration file. It uses topology name as
+     * properties name prefix.
      */
-    protected AbstractTopology() {
-        Properties properties = loadProperties(getClass().getClassLoader().getResourceAsStream(TOPOLOGY_PROPERTIES));
+    protected AbstractTopology(File file) {
+        Properties properties = PropertyUtils.loadProperties(file);
 
         topologyName = getTopologyName();
-        zookeeperHosts = properties.getProperty(PROPERTY_ZOOKEEPER, DEFAULT_ZOOKEEPER);
-        kafkaHosts = properties.getProperty(PROPERTY_KAFKA, DEFAULT_KAFKA);
+        zookeeperHosts = properties.getProperty(PROPERTY_ZOOKEEPER);
+        kafkaHosts = properties.getProperty(PROPERTY_KAFKA);
 
         // TODO: proper parallelism/workers configuration
         parallelism = Integer.parseInt(properties.getProperty(getTopologyPropertyName(PROPERTY_PARALLELISM), DEFAULT_PARALLELISM));
@@ -175,5 +168,23 @@ public abstract class AbstractTopology implements Topology {
                 .withProducerProperties(kafkaProperties)
                 .withTopicSelector(new DefaultTopicSelector(topic))
                 .withTupleToKafkaMapper(new FieldNameBasedTupleToKafkaMapper<>());
+    }
+
+    /**
+     * Creates health-check handler spout and bolts.
+     *
+     * @param builder topology builder
+     * @param prefix  component id
+     */
+    protected void createHealthCheckHandler(TopologyBuilder builder, String prefix) {
+        checkAndCreateTopic(Topic.HEALTH_CHECK.getId());
+        org.apache.storm.kafka.KafkaSpout healthCheckKafkaSpout = createKafkaSpout(Topic.HEALTH_CHECK.getId(), prefix);
+        builder.setSpout(prefix + "HealthCheckKafkaSpout", healthCheckKafkaSpout, 1);
+        HealthCheckBolt healthCheckBolt = new HealthCheckBolt(prefix);
+        builder.setBolt(prefix + "HealthCheckBolt", healthCheckBolt, 1)
+                .shuffleGrouping(prefix + "HealthCheckKafkaSpout");
+        KafkaBolt healthCheckKafkaBolt = createKafkaBolt(Topic.HEALTH_CHECK.getId());
+        builder.setBolt(prefix + "HealthCheckKafkaBolt", healthCheckKafkaBolt, 1)
+                .shuffleGrouping(prefix + "HealthCheckBolt", Topic.HEALTH_CHECK.getId());
     }
 }

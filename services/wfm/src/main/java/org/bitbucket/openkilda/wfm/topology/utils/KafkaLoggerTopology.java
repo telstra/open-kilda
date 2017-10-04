@@ -1,12 +1,15 @@
 package org.bitbucket.openkilda.wfm.topology.utils;
 
-import org.bitbucket.openkilda.wfm.KafkaUtils;
+import org.bitbucket.openkilda.wfm.topology.AbstractTopology;
+import org.bitbucket.openkilda.wfm.topology.Topology;
 
 import org.apache.logging.log4j.Level;
 import org.apache.storm.Config;
 import org.apache.storm.StormSubmitter;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.topology.TopologyBuilder;
+
+import java.io.File;
 
 /**
  * A topology that will listen to a kafka topic and log the messages at the configured level.
@@ -30,42 +33,51 @@ import org.apache.storm.topology.TopologyBuilder;
  * storm jar target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar \
  * org.bitbucket.openkilda.wfm.KafkaLoggerTopology logger-5 kilda.speaker INFO fred localhost:2181
  */
-public class KafkaLoggerTopology {
+public class KafkaLoggerTopology extends AbstractTopology {
+    private String topoName;
+    private String topic;
+    private Level level;
+    private String watermark;
 
-    /** assigned after createTopology() is called */
-    public LoggerBolt logger;
+    // assigned after createTopology() is called
+    public static LoggerBolt logger;
+
+    public KafkaLoggerTopology(File file, String topic, Level level, String watermark) {
+        super(file);
+        this.topic = topic;
+        this.level = level;
+        this.watermark = watermark;
+        this.topoName = String.format("%s_%s_%d", topologyName, topic, System.currentTimeMillis());
+    }
 
     public static void main(String[] args) throws Exception {
-        // process command line ... topoName topic level watermark zookeeper
-        String topoName = (args != null && args.length > 0) ?
-                args[0] : "kafka.inspector." + System.currentTimeMillis();
+        // process command line
         String topic = (args != null && args.length > 1) ? args[1] : "kilda.speaker";
         Level level = (args != null && args.length > 2) ? Level.valueOf(args[2]) : Level.INFO;
         String watermark = (args != null && args.length > 3) ? args[3] : "";
-        String zookeeper = (args != null && args.length > 4) ? args[4] : "zookeeper.pendev:2181";
         boolean debug = (level == Level.DEBUG || level == Level.TRACE || level == Level.ALL);
 
         Config conf = new Config();
         conf.setDebug(debug);
         conf.setNumWorkers(1);
-        StormSubmitter.submitTopology(topoName, conf,
-                new KafkaLoggerTopology().createTopology(topic, level, watermark, zookeeper));
+        File file = new File(KafkaLoggerTopology.class.getResource(Topology.TOPOLOGY_PROPERTIES).getFile());
+        KafkaLoggerTopology kafkaLoggerTopology = new KafkaLoggerTopology(file, topic, level, watermark);
+        StormSubmitter.submitTopology(kafkaLoggerTopology.topoName, conf, kafkaLoggerTopology.createTopology());
     }
 
-    public StormTopology createTopology(String topic, Level level, String watermark,
-                                        String zookeeper) {
+    @Override
+    public StormTopology createTopology() {
         TopologyBuilder builder = new TopologyBuilder();
 
         String spoutId = "KafkaSpout-" + topic;
         int parallelism = 1;
-        KafkaUtils kutils = new KafkaUtils().withZookeeperHost(zookeeper);
 
-        builder.setSpout(spoutId, kutils.createKafkaSpout(topic), parallelism);
+        builder.setSpout(spoutId, createKafkaSpout(topic, topoName), parallelism);
         logger = new LoggerBolt().withLevel(level).withWatermark(watermark);
 
         builder.setBolt("Logger", logger, parallelism)
                 .shuffleGrouping(spoutId);
+
         return builder.createTopology();
     }
-
 }
