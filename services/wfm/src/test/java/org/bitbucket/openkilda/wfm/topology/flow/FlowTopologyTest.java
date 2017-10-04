@@ -37,6 +37,7 @@ import org.bitbucket.openkilda.messaging.payload.flow.FlowState;
 import org.bitbucket.openkilda.messaging.payload.flow.OutputVlanType;
 import org.bitbucket.openkilda.wfm.AbstractStormTest;
 import org.bitbucket.openkilda.wfm.topology.TestKafkaConsumer;
+import org.bitbucket.openkilda.wfm.topology.Topology;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -50,6 +51,7 @@ import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
@@ -67,8 +69,8 @@ public class FlowTopologyTest extends AbstractStormTest {
     @BeforeClass
     public static void setupOnce() throws Exception {
         AbstractStormTest.setupOnce();
-
-        flowTopology = new FlowTopology(new PathComputerMock());
+        File file = new File(FlowTopologyTest.class.getResource(Topology.TOPOLOGY_PROPERTIES).getFile());
+        flowTopology = new FlowTopology(file, new PathComputerMock());
         StormTopology stormTopology = flowTopology.createTopology();
         Config config = stormConfig();
         cluster.submitTopology(FlowTopologyTest.class.getSimpleName(), config, stormTopology);

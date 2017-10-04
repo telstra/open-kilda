@@ -4,7 +4,13 @@ package org.bitbucket.openkilda.wfm;
  * Created by carmine on 3/20/17.
  */
 
-import kafka.consumer.*;
+import static org.hamcrest.core.Is.is;
+import static org.junit.Assert.assertThat;
+
+import kafka.consumer.Consumer;
+import kafka.consumer.ConsumerConfig;
+import kafka.consumer.ConsumerIterator;
+import kafka.consumer.KafkaStream;
 import kafka.javaapi.consumer.ConsumerConnector;
 import kafka.message.MessageAndMetadata;
 import kafka.serializer.StringDecoder;
@@ -23,9 +29,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-
-import static org.hamcrest.core.Is.is;
-import static org.junit.Assert.assertThat;
 
 
 public class Original {

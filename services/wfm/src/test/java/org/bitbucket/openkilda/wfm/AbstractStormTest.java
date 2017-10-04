@@ -1,10 +1,11 @@
 package org.bitbucket.openkilda.wfm;
 
+import org.bitbucket.openkilda.wfm.topology.TestKafkaProducer;
+
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.storm.Config;
 import org.apache.storm.LocalCluster;
-import org.bitbucket.openkilda.wfm.topology.TestKafkaProducer;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
@@ -14,14 +15,13 @@ import java.util.Properties;
  * Created by carmine on 4/4/17.
  */
 public class AbstractStormTest {
-    static KafkaUtils kutils;
-    static TestUtils.KafkaTestFixture server;
     protected static TestKafkaProducer kProducer;
     protected static LocalCluster cluster;
+    static TestUtils.KafkaTestFixture server;
 
     protected static Properties kafkaProperties() {
         Properties properties = new Properties();
-        properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, TestUtils.kafkaUrl);
+        properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, TestUtils.kafkaHosts);
         properties.put(ConsumerConfig.GROUP_ID_CONFIG, "test");
         properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
         properties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
@@ -51,9 +51,6 @@ public class AbstractStormTest {
         cluster = new LocalCluster();
         server = new TestUtils.KafkaTestFixture();
         server.start();
-        kutils = new KafkaUtils()
-                .withZookeeperHost(TestUtils.zookeeperUrl)
-                .withKafkaHosts(TestUtils.kafkaUrl);
         kProducer = new TestKafkaProducer(kafkaProperties());
     }
 

@@ -4,8 +4,6 @@ import static org.bitbucket.openkilda.messaging.Utils.MAPPER;
 
 import org.bitbucket.openkilda.messaging.Destination;
 import org.bitbucket.openkilda.messaging.Message;
-import org.bitbucket.openkilda.messaging.MessageData;
-import org.bitbucket.openkilda.messaging.command.CommandData;
 import org.bitbucket.openkilda.messaging.info.InfoData;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -24,10 +22,10 @@ public class TestKafkaConsumer extends Thread {
     private static final long CONSUMER_QUEUE_OFFER_TIMEOUT = 1000;
     private static final long KAFKA_MESSAGE_POLL_TIMEOUT = 10000;
     private static final long KAFKA_CONSUMER_POLL_TIMEOUT = 100;
-    private volatile BlockingQueue<ConsumerRecord<String, String>> records = new ArrayBlockingQueue<>(100);
     private final KafkaConsumer<String, String> consumer;
     private final String topic;
     private final Destination destination;
+    private volatile BlockingQueue<ConsumerRecord<String, String>> records = new ArrayBlockingQueue<>(100);
 
     public TestKafkaConsumer(final String topic, final Destination destination, final Properties properties) {
         this.consumer = new KafkaConsumer<>(properties);

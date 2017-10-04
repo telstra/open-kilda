@@ -1,9 +1,8 @@
 package org.bitbucket.openkilda.wfm.topology.splitter;
 
 import org.bitbucket.openkilda.messaging.ServiceType;
-import org.bitbucket.openkilda.messaging.Topic;
-import org.bitbucket.openkilda.wfm.KafkaUtils;
-import org.bitbucket.openkilda.wfm.topology.utils.HealthCheckBolt;
+import org.bitbucket.openkilda.wfm.topology.AbstractTopology;
+import org.bitbucket.openkilda.wfm.topology.Topology;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -11,11 +10,9 @@ import org.apache.storm.Config;
 import org.apache.storm.LocalCluster;
 import org.apache.storm.StormSubmitter;
 import org.apache.storm.generated.StormTopology;
-import org.apache.storm.kafka.KafkaSpout;
-import org.apache.storm.kafka.bolt.KafkaBolt;
 import org.apache.storm.topology.TopologyBuilder;
 
-import java.util.Properties;
+import java.io.File;
 
 /**
  * This topology does the following:
@@ -28,60 +25,44 @@ import java.util.Properties;
  * followed, with the exception that there isn't a need to listen to the INFO kafka topic,
  * since we already have the stream within storm.
  */
-public class OFEventSplitterTopology {
+public class OFEventSplitterTopology extends AbstractTopology {
 
     private static Logger logger = LogManager.getLogger(OFEventSplitterTopology.class);
 
-    public String topic = "kilda-test";//Topic.OFS_WFM_DISCOVERY.getId();
-    public String defaultTopoName = "OF_Event_Splitter";
-    public KafkaUtils kutils;
-    public Properties kafkaProps;
-    public int parallelism = 1;
+    public String topic = "kilda-test";
 
-    public OFEventSplitterTopology() {
-        this(new KafkaUtils());
-    }
-
-    public OFEventSplitterTopology(KafkaUtils kutils) {
-        this.kutils = kutils;
-        this.kafkaProps = kutils.createStringsKafkaProps();
+    public OFEventSplitterTopology(File file) {
+        super(file);
     }
 
     //Entry point for the topology
     public static void main(String[] args) throws Exception {
-        Config conf = new Config();
-        conf.setDebug(false);
-        OFEventSplitterTopology splitterTopology = new OFEventSplitterTopology();
-        StormTopology topo = splitterTopology.createTopology();
-
         //If there are arguments, we are running on a cluster; otherwise, we are running locally
         if (args != null && args.length > 0) {
+            File file = new File(args[1]);
+            Config conf = new Config();
+            conf.setDebug(false);
+            OFEventSplitterTopology splitterTopology = new OFEventSplitterTopology(file);
+            StormTopology topo = splitterTopology.createTopology();
+
             conf.setNumWorkers(1);
             StormSubmitter.submitTopology(args[0], conf, topo);
         } else {
+            File file = new File(OFEventSplitterTopology.class.getResource(Topology.TOPOLOGY_PROPERTIES).getFile());
+            Config conf = new Config();
+            conf.setDebug(false);
+            OFEventSplitterTopology splitterTopology = new OFEventSplitterTopology(file);
+            StormTopology topo = splitterTopology.createTopology();
+
             conf.setMaxTaskParallelism(3);
 
             LocalCluster cluster = new LocalCluster();
-            cluster.submitTopology(splitterTopology.defaultTopoName, conf, topo);
+            cluster.submitTopology(splitterTopology.topologyName, conf, topo);
 
             Thread.sleep(20000);
             cluster.shutdown();
         }
 
-    }
-
-    public OFEventSplitterTopology withKafkaProps(Properties kprops) {
-        kafkaProps.putAll(kprops);
-        return this;
-    }
-
-    /**
-     * The default behavior is to use the default KafkaUtils.
-     * If more specialized behavior is needed, pass in a different one;
-     */
-    public OFEventSplitterTopology withKafkaUtils(KafkaUtils kutils) {
-        this.kutils = kutils;
-        return this;
     }
 
     /**
@@ -98,11 +79,10 @@ public class OFEventSplitterTopology {
          */
         String primarySpout = topic + "-spout";
         String primaryBolt = topic + "-bolt";
-        primeKafkaTopic(topic); // in case the topic doesn't exist yet
-        primeKafkaTopic(Topic.HEALTH_CHECK.getId());
-        builder.setSpout(primarySpout, kutils.createKafkaSpout(topic));
-        builder.setBolt(primaryBolt,
-                new OFEventSplitterBolt(), parallelism)
+        checkAndCreateTopic(topic); // in case the topic doesn't exist yet
+
+        builder.setSpout(primarySpout, createKafkaSpout(topic, topologyName));
+        builder.setBolt(primaryBolt, new OFEventSplitterBolt(), parallelism)
                 .shuffleGrouping(primarySpout);
 
         /*
@@ -111,8 +91,8 @@ public class OFEventSplitterTopology {
          * more streams.  The others just need to write the stream their stream to a kafka topic.
          */
         for (String channel : OFEventSplitterBolt.CHANNELS) {
-            primeKafkaTopic(channel);
-            builder.setBolt(channel + "-kafkabolt", kutils.createKafkaBolt(channel), parallelism)
+            checkAndCreateTopic(channel);
+            builder.setBolt(channel + "-kafkabolt", createKafkaBolt(channel), parallelism)
                     .shuffleGrouping(primaryBolt, channel);
 
         }
@@ -125,28 +105,13 @@ public class OFEventSplitterTopology {
         // Create the output from the InfoSplitter to Kafka
         // TODO: Can convert part of this to a test .. see if the right messages land in right topic
         for (String stream : InfoEventSplitterBolt.outputStreams) {
-            primeKafkaTopic(stream);
-            builder.setBolt(stream + "-kafkabolt", kutils.createKafkaBolt(stream), parallelism)
+            checkAndCreateTopic(stream);
+            builder.setBolt(stream + "-kafkabolt", createKafkaBolt(stream), parallelism)
                     .shuffleGrouping(infoSplitterBoltID, stream);
         }
 
-        String prefix = ServiceType.SPLITTER_TOPOLOGY.getId();
-        KafkaSpout healthCheckKafkaSpout = kutils.createKafkaSpout(Topic.HEALTH_CHECK.getId());
-        builder.setSpout(prefix + "HealthCheckKafkaSpout", healthCheckKafkaSpout, 1);
-        HealthCheckBolt healthCheckBolt = new HealthCheckBolt(ServiceType.SPLITTER_TOPOLOGY);
-        builder.setBolt(prefix + "HealthCheckBolt", healthCheckBolt, 1)
-                .shuffleGrouping(prefix + "HealthCheckKafkaSpout");
-        KafkaBolt healthCheckKafkaBolt = kutils.createKafkaBolt(Topic.HEALTH_CHECK.getId());
-        builder.setBolt(prefix + "HealthCheckKafkaBolt", healthCheckKafkaBolt, 1)
-                .shuffleGrouping(prefix + "HealthCheckBolt", Topic.HEALTH_CHECK.getId());
+        createHealthCheckHandler(builder, ServiceType.SPLITTER_TOPOLOGY.getId());
 
         return builder.createTopology();
     }
-
-    public void primeKafkaTopic(String topic) {
-        if (!kutils.topicExists(topic)) {
-            kutils.createTopics(new String[]{topic});
-        }
-    }
-
 }

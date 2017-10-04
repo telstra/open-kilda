@@ -11,6 +11,11 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <project.java.version>1.8</project.java.version>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+
         <storm.version>1.1.0</storm.version>
         <messaging.version>1.0-SNAPSHOT</messaging.version>
         <pce.version>1.0-SNAPSHOT</pce.version>
@@ -385,29 +390,6 @@
                 <artifactId>maven-checkstyle-plugin</artifactId>
             </plugin>
         </plugins>
-
-        <!--<resources>-->
-            <!--<resource>-->
-                <!--<directory>${basedir}/src/main/resources</directory>-->
-                <!--<filtering>false</filtering>-->
-                <!--<includes>-->
-                    <!--<include>log4j2.xml</include>-->
-                    <!--<include>topology.yaml</include>-->
-                <!--</includes>-->
-            <!--</resource>-->
-        <!--</resources>-->
-
-        <resources>
-            <resource>
-                <directory>${project.basedir}/src/main/resources</directory>
-            </resource>
-        </resources>
-        <testResources>
-            <testResource>
-                <directory>${project.basedir}/src/test/resources</directory>
-            </testResource>
-        </testResources>
-
     </build>
 
 </project>

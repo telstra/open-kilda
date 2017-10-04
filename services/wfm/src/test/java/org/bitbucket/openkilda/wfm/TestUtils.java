@@ -1,31 +1,40 @@
 package org.bitbucket.openkilda.wfm;
 
+import org.bitbucket.openkilda.wfm.topology.Topology;
+
+import com.google.common.io.Files;
 import kafka.server.KafkaConfig;
 import kafka.server.KafkaServerStartable;
 import org.apache.curator.test.TestingServer;
+import org.apache.storm.Config;
+import org.codehaus.plexus.util.PropertyUtils;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.Properties;
-import com.google.common.io.Files;
-import org.apache.storm.Config;
 
 /**
  * Utility classes to facilitate testing.
- *
+ * <p>
  * Key Utilities:
- *
  */
 public class TestUtils {
 
-    public static final String zookeeperUrl = "localhost:2182";
-    public static final String kafkaUrl = "localhost:9092";
+    public static final String zookeeperHosts;
+    public static final String kafkaHosts;
+
+    static {
+        File file = new File(TestUtils.class.getResource(Topology.TOPOLOGY_PROPERTIES).getFile());
+        Properties properties = PropertyUtils.loadProperties(file);
+        zookeeperHosts = properties.getProperty(Topology.PROPERTY_ZOOKEEPER);
+        kafkaHosts = properties.getProperty(Topology.PROPERTY_KAFKA);
+    }
 
     public static Properties serverProperties() {
         Properties props = new Properties();
-        props.put("zookeeper.connect", zookeeperUrl);
+        props.put("zookeeper.connect", zookeeperHosts);
         props.put("broker.id", "1");
-        props.put("delete.topic.enable","true");
+        props.put("delete.topic.enable", "true");
         return props;
     }
 
@@ -39,7 +48,7 @@ public class TestUtils {
     public static class KafkaTestFixture {
         public TestingServer zk;
         public KafkaServerStartable kafka;
-        public File tempDir  = Files.createTempDir();
+        public File tempDir = Files.createTempDir();
 
 
         public void start() throws Exception {
@@ -72,11 +81,5 @@ public class TestUtils {
             String port = url.split(":")[1];
             return Integer.valueOf(port);
         }
-
-//        public BrokerHosts getBrokerHosts(){
-//            return new ZkHosts(zk.getConnectString());
-//        }
     }
-
-
 }

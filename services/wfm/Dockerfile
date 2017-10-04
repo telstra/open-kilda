@@ -25,6 +25,7 @@ RUN mvn -f /app/pce/pom.xml clean install
 
 ADD wfm /app/wfm
 RUN mvn -f /app/wfm assembly:assembly -DskipTests
+RUN cp /app/wfm/src/main/resources/topology.properties /app/wfm/
 
 RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
