@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 from clean_topology import cleanup
 from create_topology import create_topo
 
