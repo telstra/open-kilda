@@ -3,7 +3,6 @@ package org.bitbucket.openkilda.wfm.topology.stats;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.bitbucket.openkilda.wfm.AbstractStormTest;
-import org.bitbucket.openkilda.wfm.KafkaUtils;
 import org.bitbucket.openkilda.wfm.topology.OutputCollectorMock;
 import org.bitbucket.openkilda.wfm.topology.islstats.IslStatsTopology;
 import org.junit.After;
@@ -17,7 +16,6 @@ import org.mockito.junit.MockitoJUnitRunner;
 public class IslStatsTopologyTest extends AbstractStormTest {
     private long messagesExpected;
     private long messagesReceived;
-    private KafkaUtils kutils;
 
     @Mock
     private TopologyContext topologyContext;
