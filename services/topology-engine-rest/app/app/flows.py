@@ -1,3 +1,18 @@
+# Copyright 2017 Telstra Open Source
+#
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+#
+
 from flask import Flask, flash, redirect, render_template, request, session, abort, url_for, Response
 from flask_login import LoginManager, UserMixin, login_required, login_user, logout_user, current_user
 
@@ -8,7 +23,7 @@ from app import utils
 import sys, os
 import requests
 import json
-import random 
+import random
 import time
 import uuid
 import ConfigParser
@@ -126,7 +141,7 @@ def expand_relationships(relationships):
 
 def get_relationships(src_switch, src_port, dst_switch, dst_port):
     query = "MATCH (a:switch{{name:'{}'}}),(b:switch{{name:'{}'}}), p = shortestPath((a)-[:isl*..100]->(b)) where ALL(x in nodes(p) WHERE x.state = 'active') RETURN p".format(src_switch,dst_switch)
-    data = {'query' : query}    
+    data = {'query' : query}
     resultPath = requests.post('http://{}:7474/db/data/cypher'.format(neo4jhost), data=data, auth=('neo4j', 'temppass'))
     jPath = json.loads(resultPath.text)
     if jPath['data']:
