@@ -15,7 +15,7 @@
 
 FROM kilda/base-ubuntu
 ADD services/tools/ansible /ansible
-ADD kilda-bins/apache/ /src
+ADD kilda-bins/ /src
 RUN ansible-playbook -v -s /ansible/deploy.yml
 ADD services/tools/zookeeper-conf/zoo.cfg /opt/zookeeper/conf/zoo.cfg
 ADD services/tools/zookeeper-conf/log4j.properties /opt/zookeeper/conf/log4j.properties

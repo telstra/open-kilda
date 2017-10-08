@@ -14,7 +14,7 @@
 #
 
 FROM kilda/base-ubuntu
-ADD kilda-bins/apache/ /src
+ADD kilda-bins/ /src
 ADD services/kafka/ansible /ansible
 RUN ansible-playbook -s /ansible/deploy.yml
 ADD services/kafka/kafka-conf/server.properties /opt/kafka/config/server.properties
