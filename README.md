@@ -59,9 +59,9 @@ Steps:
 1. From the root directory, look at the Vagrantfile; feel free to change its parameters.
 2. `vagrant up` - create the VM; it'll be running after this step.
 3. `vagrant ssh` - this will log you into the vm.
-4. `ssh-keygen -t rsa -C "your_email@example.com"` - you'll use this for bitbucket.  Press 
+4. `ssh-keygen -t rsa -C "your_email@example.com"` - you'll use this for GitHub.  Press 
 <return> for each question; three in total. 
-5. Add the ~/.ssh/id-rsa.pub key to bitbucket so that you can clone kilda
+5. Add the ~/.ssh/id-rsa.pub key to your GitHub account so that you can clone kilda
 ```bash
 cat ~/.ssh/id_rsa.pub
 ```
@@ -70,7 +70,7 @@ cat ~/.ssh/id_rsa.pub
 # NB: Instead of putting it in vm-dev, you can use /vagrant/vm-dev
 #     This has the added benefit that the code will appear outside the VM
 #     i.e. /vagrant is shared with the same directory as the Vagrantfile
-git clone --recursive git@bitbucket.org:pendevops/kilda-controller.git vm-dev
+git clone git@github.com:<your_github_account>/open-kilda.git vm-dev
 cd vm-dev
 git checkout mvp1rc
 make build-base

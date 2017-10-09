@@ -18,3 +18,4 @@ reports/
 .vagrant/
 *.log
 logs/
+kilda-bins/
