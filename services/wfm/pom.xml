@@ -2,7 +2,7 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>org.bitbucket.openkilda.wfm</groupId>
+    <groupId>org.openkilda.wfm</groupId>
     <artifactId>WorkflowManager</artifactId>
     <packaging>jar</packaging>
     <version>1.0-SNAPSHOT</version>
@@ -42,12 +42,12 @@
 
     <dependencies>
         <dependency>
-            <groupId>org.bitbucket.openkilda</groupId>
+            <groupId>org.openkilda</groupId>
             <artifactId>messaging</artifactId>
             <version>${messaging.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.bitbucket.openkilda</groupId>
+            <groupId>org.openkilda</groupId>
             <artifactId>pce</artifactId>
             <version>${pce.version}</version>
             <exclusions>
@@ -287,7 +287,7 @@
                     </descriptorRefs>
                     <archive>
                         <manifest>
-                            <mainClass>org.bitbucket.openkilda.wfm.topology.splitter.OFEventSplitterTopology</mainClass>
+                            <mainClass>org.openkilda.wfm.topology.splitter.OFEventSplitterTopology</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
