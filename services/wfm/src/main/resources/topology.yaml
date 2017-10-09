@@ -9,15 +9,15 @@ config:
 
 spouts:
   - id: "sentence-spout"
-    className: "org.bitbucket.openkilda.wfm.RandomSentenceSpout"
+    className: "org.openkilda.wfm.RandomSentenceSpout"
     parallelism: 1
 
 bolts:
   - id: "splitter-bolt"
-    className: "org.bitbucket.openkilda.wfm.SplitSentence"
+    className: "org.openkilda.wfm.SplitSentence"
     parallelism: 1
   - id: "counter-bolt"
-    className: "org.bitbucket.openkilda.wfm.WordCount"
+    className: "org.openkilda.wfm.WordCount"
     constructorArgs:
       - 10
     parallelism: 1
