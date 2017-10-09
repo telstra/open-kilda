@@ -19,7 +19,7 @@ A lot of message passing is done through kafka topics.
 * you can deploy the topology (with kilda running):
     ```
     storm jar target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar \
-    org.bitbucket.openkilda.wfm.topology.event.OFEventSplitterTopology \
+    org.openkilda.wfm.topology.event.OFEventSplitterTopology \
     splitter-1
     ```
 
