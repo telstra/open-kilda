@@ -24,7 +24,7 @@ all-in-one:
 
 deploy-splitter:
 	storm jar target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar \
-        org.bitbucket.openkilda.wfm.topology.splitter.OFEventSplitterTopology \
+        org.openkilda.wfm.topology.splitter.OFEventSplitterTopology \
         splitter ${config}
 
 kill-splitter:
@@ -32,7 +32,7 @@ kill-splitter:
 
 deploy-wfm:
 	storm jar target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar \
-        org.bitbucket.openkilda.wfm.topology.event.OFEventWFMTopology \
+        org.openkilda.wfm.topology.event.OFEventWFMTopology \
         wfm ${config}
 
 kill-wfm:
@@ -40,7 +40,7 @@ kill-wfm:
 
 deploy-flow:
 	storm jar target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar \
-        org.bitbucket.openkilda.wfm.topology.flow.FlowTopology \
+        org.openkilda.wfm.topology.flow.FlowTopology \
         flow ${config}
 
 kill-flow:
@@ -48,7 +48,7 @@ kill-flow:
 
 deploy-stats:
 	storm jar target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar \
-        org.bitbucket.openkilda.wfm.topology.stats.StatsTopology \
+        org.openkilda.wfm.topology.stats.StatsTopology \
         stats ${config}
 
 kill-stats:
@@ -56,7 +56,7 @@ kill-stats:
 
 deploy-cache:
 	storm jar target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar \
-        org.bitbucket.openkilda.wfm.topology.cache.CacheTopology \
+        org.openkilda.wfm.topology.cache.CacheTopology \
         cache ${config}
 
 kill-cache:

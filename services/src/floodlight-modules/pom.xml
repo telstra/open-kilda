@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>org.bitbucket.openkilda</groupId>
+        <groupId>org.openkilda</groupId>
         <artifactId>kilda-parent</artifactId>
         <version>1.0-SNAPSHOT</version>
     </parent>
@@ -29,7 +29,7 @@
 
     <dependencies>
         <dependency>
-            <groupId>org.bitbucket.openkilda</groupId>
+            <groupId>org.openkilda</groupId>
             <artifactId>messaging</artifactId>
             <version>${project.version}</version>
         </dependency>
