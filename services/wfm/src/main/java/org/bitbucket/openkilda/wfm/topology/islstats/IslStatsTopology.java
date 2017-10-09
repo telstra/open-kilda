@@ -20,12 +20,12 @@ import java.io.File;
 
 
 public class IslStatsTopology extends AbstractTopology {
-    private static Logger logger = LogManager.getLogger(IslStatsTopology.class);
+    private static final Logger logger = LogManager.getLogger(IslStatsTopology.class);
 
-    private final String topoName = "WFM_IslStats";
+    private final String topoName = "IslStatsTopology";
     private final int parallelism = 1;
 
-    private String topic = "kilda-test";
+    private final String topic = "kilda-test";
 
     public IslStatsTopology(File file) {
         super(file);
@@ -44,6 +44,7 @@ public class IslStatsTopology extends AbstractTopology {
             conf.setNumWorkers(statsTopology.parallelism);
             StormSubmitter.submitTopology(args[0], conf, topo);
         } else {
+            logger.info("starting islStatsTopo in local mode");
             File file = new File(IslStatsTopology.class.getResource(Topology.TOPOLOGY_PROPERTIES).getFile());
             Config conf = new Config();
             conf.setDebug(false);
@@ -55,7 +56,7 @@ public class IslStatsTopology extends AbstractTopology {
             LocalCluster cluster = new LocalCluster();
             cluster.submitTopology(statsTopology.topologyName, conf, topo);
 
-            Thread.sleep(20000);
+            Thread.sleep(60000000);
             cluster.shutdown();
         }
     }
@@ -78,20 +79,15 @@ public class IslStatsTopology extends AbstractTopology {
         logger.debug("starting " + verifyIslStatsBoltName + " bolt");
         builder.setBolt(verifyIslStatsBoltName, verifyIslStatsBolt, parallelism).shuffleGrouping(spoutName);
 
-//        OpenTsdbClient.Builder tsdbBuilder = OpenTsdbClient.newBuilder(topologyProperties.getProperty("statstopology.openTsdbUrl"))
-//                .sync(30_000).returnDetails();
-//        OpenTsdbBolt openTsdbBolt = new OpenTsdbBolt(tsdbBuilder, TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER)
-//                .withBatchSize(10)
-//                .withFlushInterval(2)
-//                .failTupleForFailedMetrics();
-//        logger.debug("starting opentsdb bolt");
-//        builder.setBolt("opentsdb", openTsdbBolt)
-//                .shuffleGrouping(verifyIslStatsBoltName);
+        //TODO: fix this such that it is not hardcoded
+        OpenTsdbClient.Builder tsdbBuilder = OpenTsdbClient.newBuilder("http://opentsdb.pendev:4242")
+                .sync(30_000).returnDetails();
+        OpenTsdbBolt openTsdbBolt = new OpenTsdbBolt(tsdbBuilder, TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER)
+                .withBatchSize(10)
+                .withFlushInterval(2)
+                .failTupleForFailedMetrics();
+        builder.setBolt("opentsdb", openTsdbBolt, parallelism).shuffleGrouping(verifyIslStatsBoltName);
 
         return builder.createTopology();
-    }
-
-    public String getTopoName() {
-        return topoName;
     }
 }
