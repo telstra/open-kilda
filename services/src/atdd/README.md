@@ -19,7 +19,7 @@ Some observations:
 
 ## CODE STRUCTURE
 
-* CUCUMBER OPTIONS - The class org.bitbucket.openkilda.atdd._RunCucumberTest is the 
+* CUCUMBER OPTIONS - The class org.openkilda.atdd._RunCucumberTest is the 
 primary configuration class.
   * This File controls which acceptance tests to run
   * `feature =` - controls which directories to include
