@@ -1,23 +1,29 @@
-package org.bitbucket.openkilda.wfm.topology.islstats.bolts;
+package org.openkilda.wfm.topology.islstats.bolts;
 
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.containsString;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.bitbucket.openkilda.messaging.Destination;
-import org.bitbucket.openkilda.messaging.info.InfoData;
-import org.bitbucket.openkilda.messaging.info.InfoMessage;
-import org.bitbucket.openkilda.messaging.info.event.IslChangeType;
-import org.bitbucket.openkilda.messaging.info.event.IslInfoData;
-import org.bitbucket.openkilda.messaging.info.event.PathNode;
-import org.bitbucket.openkilda.messaging.info.event.PortInfoData;
+import org.apache.storm.task.TopologyContext;
+import org.apache.storm.tuple.Tuple;
+import org.apache.storm.tuple.TupleImpl;
+import org.mockito.Mock;
+import org.openkilda.messaging.Destination;
+import org.openkilda.messaging.Message;
+import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.event.IslChangeType;
+import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.messaging.info.event.PortInfoData;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -51,6 +57,9 @@ public class IslStatsBoltTest {
     private static Destination DESTINATION = null;
     private InfoMessage message = new InfoMessage(islInfoData, TIMESTAMP,CORRELATION, DESTINATION);
 
+    private final String goodJson = "{\"type\":\"INFO\",\"destination\":\"TOPOLOGY_ENGINE\",\"payload\":{\"message_type\":\"isl\",\"id\":\"00:00:00:00:00:00:00:06_1\",\"latency_ns\":19,\"path\":[{\"switch_id\":\"00:00:00:00:00:00:00:06\",\"port_no\":1,\"seq_id\":0,\"segment_latency\":19},{\"switch_id\":\"00:00:00:00:00:00:00:05\",\"port_no\":2,\"seq_id\":1}],\"speed\":10000000,\"available_bandwidth\":9000000,\"state\":\"DISCOVERED\"},\"timestamp\":1507651077860,\"correlation_id\":\"system-request\"}";
+    private final String badJson = "{\"destination\":\"WFM_STATS\",\"payload\":{\"message_type\":\"flow_stats\",\"switch_id\":\"00:00:00:00:00:00:00:03\",\"stats\":[{\"xid\":1852,\"entries\":[]}]},\"timestamp\":1507651267714,\"correlation_id\":\"system-request\"}";
+
     private static Logger logger = LogManager.getLogger(IslStatsBolt.class);
 
     @Rule
@@ -81,11 +90,12 @@ public class IslStatsBoltTest {
     }
 
     @Test
-    public void getJson() throws Exception {
-    }
-
-    @Test
     public void getMessage() throws Exception {
+        Object data = statsBolt.getMessage(goodJson);
+        assertThat(data, instanceOf(Message.class));
+
+        thrown.expect(IOException.class);
+        data = statsBolt.getMessage(badJson);
     }
 
     @Test
