@@ -71,11 +71,11 @@ public class IslStatsBolt extends BaseRichBolt {
         return tsdbTuple("pen.isl.latency", timestamp, data.getLatency(), tags);
     }
 
-    private String getJson(Tuple tuple) {
+    public String getJson(Tuple tuple) {
         return tuple.getString(0);
     }
 
-    private Message getMessage(String json) throws IOException {
+    public Message getMessage(String json) throws IOException {
         return Utils.MAPPER.readValue(json, Message.class);
     }
 
