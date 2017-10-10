@@ -62,5 +62,13 @@ deploy-cache:
 kill-cache:
 	storm kill cache >/dev/null 2>&1
 
+deploy-islstats:
+	storm jar target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar \
+		org.openkilda.wfm.topology.islstats.IslStatsTopology \
+		islstats ${config}
+
+kill-islstats:
+	storm kill islstats >/dev/null 2>&1
+
 create-topics:
 	src/main/resources/create-channels.sh
