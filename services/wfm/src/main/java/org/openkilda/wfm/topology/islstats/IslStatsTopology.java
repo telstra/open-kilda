@@ -41,6 +41,7 @@ public class IslStatsTopology extends AbstractTopology {
     private final int parallelism = 1;
 
     private final String topic = "kilda-test";
+    public static final String SPOUT_NAME = "islstats-spout";
 
     public IslStatsTopology(File file) {
         super(file);
@@ -85,14 +86,13 @@ public class IslStatsTopology extends AbstractTopology {
 
         checkAndCreateTopic(topic);
 
-        final String spoutName = topic + "-spout";
         logger.debug("connecting to " + topic + " topic");
-        builder.setSpout(spoutName, createKafkaSpout(topic, clazzName));
+        builder.setSpout(SPOUT_NAME, createKafkaSpout(topic, clazzName));
 
         final String verifyIslStatsBoltName = IslStatsBolt.class.getSimpleName();
         IslStatsBolt verifyIslStatsBolt = new IslStatsBolt();
         logger.debug("starting " + verifyIslStatsBoltName + " bolt");
-        builder.setBolt(verifyIslStatsBoltName, verifyIslStatsBolt, parallelism).shuffleGrouping(spoutName);
+        builder.setBolt(verifyIslStatsBoltName, verifyIslStatsBolt, parallelism).shuffleGrouping(SPOUT_NAME);
 
         //TODO: fix this such that it is not hardcoded
         OpenTsdbClient.Builder tsdbBuilder = OpenTsdbClient.newBuilder("http://opentsdb.pendev:4242")
