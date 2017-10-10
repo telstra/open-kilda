@@ -64,7 +64,7 @@ kill-cache:
 
 deploy-islstats:
 	storm jar target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar \
-		org.bitbucket.openkilda.wfm.topology.islstats.IslStatsTopology \
+		org.openkilda.wfm.topology.islstats.IslStatsTopology \
 		islstats ${config}
 
 kill-islstats:
