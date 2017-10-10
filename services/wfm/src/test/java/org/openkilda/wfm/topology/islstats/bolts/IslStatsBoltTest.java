@@ -1,17 +1,17 @@
-package org.bitbucket.openkilda.wfm.topology.islstats.bolts;
+package org.openkilda.wfm.topology.islstats.bolts;
 
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.containsString;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.bitbucket.openkilda.messaging.Destination;
-import org.bitbucket.openkilda.messaging.info.InfoData;
-import org.bitbucket.openkilda.messaging.info.InfoMessage;
-import org.bitbucket.openkilda.messaging.info.event.IslChangeType;
-import org.bitbucket.openkilda.messaging.info.event.IslInfoData;
-import org.bitbucket.openkilda.messaging.info.event.PathNode;
-import org.bitbucket.openkilda.messaging.info.event.PortInfoData;
+import org.openkilda.messaging.Destination;
+import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.event.IslChangeType;
+import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.messaging.info.event.PortInfoData;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Rule;
