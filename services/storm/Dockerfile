@@ -14,7 +14,8 @@
 #
 
 FROM kilda/base-ubuntu
-ADD kilda-bins/ /src
-ADD services/storm/ansible /ansible
+# tar should be pre-populated with the tarball; see the top level Makefile (build-base:)
+ADD tar /src
+ADD ansible /ansible
 RUN ansible-playbook -s /ansible/deploy.yml
-ADD services/storm/conf/storm.yaml /opt/storm/conf/storm.yaml
+ADD conf/storm.yaml /opt/storm/conf/storm.yaml
