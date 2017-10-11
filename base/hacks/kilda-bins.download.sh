@@ -141,7 +141,7 @@ main() {
     fi
 
     echo "Download Attempts Remaining: ${Download_Attempts}"
-    Download_Attempts=$(($Download_Attempts - 1))
+    Download_Attempts=$((Download_Attempts - 1))
 
     download_latest ${FILES}
     if (( Bad_Count > 0 )) ; then
