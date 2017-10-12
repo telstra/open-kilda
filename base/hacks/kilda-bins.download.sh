@@ -15,6 +15,7 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 NC='\033[0m' # No Color
 Bad_Count=0
+Download_Attempts=2
 
 debug() {
   if [[ "${DEBUG}" == "1" ]]; then
@@ -38,7 +39,7 @@ verify_file() {
     file=$1
     md5_file=$2
     md5_expected=`cat ${md5_file} | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]'`
-    md5_actual=`md5 -q ${file} | tr '[:upper:]' '[:lower:]'`
+    md5_actual=`${md5} ${file} | tr '[:upper:]' '[:lower:]' | sed -e 's/ .*$//'`
     if [[ ${md5_expected} == ${md5_actual} ]] ; then
         echo -e  " ... ${GREEN} SUCCESFUL MD5 Match ${NC}"
     else
@@ -110,8 +111,15 @@ check_deps() {
 
   $(which md5 &>/dev/null)
   if (( $? != 0 )) ; then
-    echo -e "${RED} Please install md5, this build requires it ${NC}"
-    exit 1
+    $(which md5sum &>/dev/null)
+    if (( $? != 0 )) ; then
+      echo -e "${RED} Please install md5 or md5sum, this build requires it ${NC}"
+      exit 1
+    else
+      md5='md5sum'
+    fi
+  else
+    md5='md5 -q'
   fi
 }
 
@@ -127,12 +135,21 @@ main() {
   debug echo "Count: " ${FILE_COUNT}
 
   while true ; do
+    if (( Download_Attempts < 1 )) ; then
+      echo "Exceeded download attempts"
+      break
+    fi
+
+    echo "Download Attempts Remaining: ${Download_Attempts}"
+    Download_Attempts=$((Download_Attempts - 1))
+
     download_latest ${FILES}
     if (( Bad_Count > 0 )) ; then
       echo "Found ${Bad_Count} failed md5 checksums .. running again to validate"
     else
       break
     fi
+    Bad_Count=0
   done
 }
 
