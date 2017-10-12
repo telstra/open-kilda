@@ -13,22 +13,24 @@
 #   limitations under the License.
 #
 
-FROM kilda/base-ubuntu
-RUN apt-get update
-RUN apt-get install -y python-pip
-RUN apt-get install -y supervisor
-RUN apt-get install -y nginx
-RUN apt-get install -y vim
-RUN pip install --upgrade pip
-RUN pip install neo4j-driver
-RUN pip install kafka
-RUN pip install uwsgi
-RUN pip install pyotp
-RUN pip install jsonschema
-RUN pip install py2neo
-RUN pip install requests
-RUN pip install gevent
-RUN chmod +x /usr/local/bin/uwsgi
-ADD queue-engine/ /queue-engine
-ADD supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-ADD entrypoint.sh /entrypoint.sh
+import ConfigParser
+
+config = ConfigParser.RawConfigParser()
+config.read('topology_engine.properties')
+
+
+def get(section, option):
+    return config.get(section, option)
+
+
+def getint(section, option):
+    return config.getint(section, option)
+
+
+def _get_bootstrap_servers():
+    bootstrap_servers_property = config.get('kafka', 'bootstrap.servers')
+    return [x.strip() for x in bootstrap_servers_property.split(',')]
+
+
+KAFKA_BOOTSTRAP_SERVERS = _get_bootstrap_servers()
+KAFKA_TOPIC = config.get('kafka', 'topology.topic')

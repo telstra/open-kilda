@@ -16,24 +16,29 @@
 import kafkareader
 import json
 import time
-import threading
+
+import gevent
+import gevent.pool
+import gevent.queue
 
 from messageclasses import MessageItem
 from logger import get_logger
-
+import config
 
 logger = get_logger()
-logger.info('Topology engine started')
 known_messages = ['switch', 'isl', 'port', 'flow_operation']
 known_commands = ['flow_create', 'flow_delete', 'flow_update', 'flow_path',
                   'flow_get', 'flows_get', 'flow_reroute', 'network']
 
 
-def get_events(thread_count):
-    global workerthreadcount
+def main_loop():
+    pool_size = config.getint('gevent', 'worker.pool.size')
 
-    logger.info('starting thread: %s', str(thread_count))
-    consumer = kafkareader.create_consumer()
+    logger.info('Start gevent pool with size {}.'.format(pool_size))
+
+    pool = gevent.pool.Pool(pool_size)
+
+    consumer = kafkareader.create_consumer(config)
 
     while True:
         try:
@@ -47,10 +52,7 @@ def get_events(thread_count):
             if event.get_message_type() in known_messages\
                     or event.get_command() in known_commands:
                 logger.debug('Processing message for %s', event.destination)
-                t = threading.Thread(target=topology_event_handler,
-                                     args=(event,))
-                t.daemon = True
-                t.start()
+                pool.spawn(topology_event_handler, event)
 
         except Exception as e:
             logger.exception(e.message)
