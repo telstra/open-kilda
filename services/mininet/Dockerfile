@@ -28,7 +28,7 @@ RUN apt-get -qy install openssh-client patch vim
 RUN apt-get -qy install python-bottle python-jsonschema python-scapy
 RUN ln -s /usr/sbin/tcpdump /usr/bin/tcpdump
 
-ADD services/mininet/app /app
+ADD app /app
 RUN chmod 777 /app/*
 
 WORKDIR /tmp

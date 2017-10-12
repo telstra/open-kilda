@@ -3,15 +3,19 @@ default: build-latest run-dev
 
 build-base:
 	base/hacks/kilda-bins.download.sh
+	rsync -au kilda-bins/zookeeper* services/zookeeper/tar/
+	rsync -au kilda-bins/hbase* services/hbase/tar/
+	rsync -au kilda-bins/kafka* services/kafka/tar/
+	rsync -au kilda-bins/apache-storm* services/storm/tar/
 	docker build -t kilda/base-ubuntu:latest base/kilda-base-ubuntu/
 	docker build -t kilda/base-floodlight:latest base/base-floodlight/
-	docker build -f services/zookeeper/Dockerfile -t kilda/zookeeper:latest .
-	docker build -f services/kafka/Dockerfile -t kilda/kafka:latest .
-	docker build -f services/hbase/Dockerfile -t kilda/hbase:latest .
-	docker build -f services/mininet/Dockerfile -t kilda/mininet:latest .
-	docker build -f services/neo4j/Dockerfile -t kilda/neo4j:latest .
-	docker build -f services/storm/Dockerfile -t kilda/storm:latest .
-	docker build -f services/opentsdb/Dockerfile -t kilda/opentsdb:latest .
+	docker build -t kilda/zookeeper:latest services/zookeeper
+	docker build -t kilda/kafka:latest services/kafka
+	docker build -t kilda/hbase:latest services/hbase
+	docker build -t kilda/storm:latest services/storm
+	docker build -t kilda/neo4j:latest services/neo4j
+	docker build -t kilda/opentsdb:latest services/opentsdb
+	docker build -t kilda/mininet:latest services/mininet
 
 build-latest: build-base
 	docker-compose build
