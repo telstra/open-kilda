@@ -13,40 +13,23 @@
 #   limitations under the License.
 #
 
-#FROM kilda/base-ubuntu
 FROM kilda/storm:latest
 
 ENV DEBIAN_FRONTEND noninteractive
 
-## MAVEN
 RUN apt-get update
-RUN apt-get install -y maven
-ENV MAVEN_VERSION 3.3.9
-ENV MAVEN_HOME /usr/share/maven
-
 RUN pip install kafka
-ADD wfm/app /app
-RUN chmod 777 /app/*
-
 RUN echo "PATH=$PATH:/opt/storm/bin" >> ~/.bashrc
 
-ADD src/pom.xml /app/pom.xml
-ADD src/checkstyle.xml /app/checkstyle.xml
-ADD src/messaging /app/messaging
-ADD src/pce /app/pce
-RUN mvn -f /app/pom.xml --non-recursive clean install
-RUN mvn -f /app/messaging/pom.xml clean install
-RUN mvn -f /app/pce/pom.xml clean install
 
-ADD wfm /app/wfm
-RUN mvn -f /app/wfm assembly:assembly -DskipTests
-RUN cp /app/wfm/src/main/resources/topology.properties /app/wfm/
-
-RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
-WORKDIR /app/wfm
-
+ADD app/deploy_topos_and_monitor.sh /app/
+RUN chmod 777 /app/deploy_topos_and_monitor.sh
+ADD Makefile /app/
+ADD target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar /app/target/
+ADD src/main/resources/topology.properties /app/
 RUN TZ=Australia/Melbourne date >> /container_baked_on.txt
 
+WORKDIR /app
+
 # Default command.
-CMD ["/bin/bash"]
+CMD ["/app/deploy_topos_and_monitor.sh", "topology.properties"]

@@ -15,11 +15,11 @@
 
 FROM kilda/base-floodlight
 
-ADD src/pom.xml /app/pom.xml
-ADD src/checkstyle.xml /app/checkstyle.xml
-ADD src/messaging /app/messaging
-RUN mvn -f /app/pom.xml --non-recursive clean install
-RUN mvn -f /app/messaging/pom.xml clean install
+ADD src/main/resources/floodlightkilda.properties /app
+ADD src/test/resources/logback.xml /app
+ADD target/floodlight-modules.jar /app/floodlight-modules/target/
 
-ADD src/northbound /app/northbound
-RUN mvn -f /app/northbound/pom.xml clean package
+CMD ["java", "-Dlogback.configurationFile=/app/logback.xml", "-cp", \
+     "/app/floodlight/target/floodlight.jar:/app/floodlight-modules/target/floodlight-modules.jar", \
+     "net.floodlightcontroller.core.Main", "-cf", "/app/floodlightkilda.properties"]
+

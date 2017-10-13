@@ -97,33 +97,6 @@ services:
       neo4j:
         condition: service_healthy
 
-####
-#### java-based topology-engine. It could replace python-based topology-engine.
-#### (carmine 17.06.07 - commenting out, migrate back to python based solution)
-#### -- This block is left here for reference.
-####
-#  topology:
-#    build:
-#      context: services
-#      dockerfile:  topology/Dockerfile
-#    image: "kilda/topology:${full_build_number:-latest}"
-#    command: java -jar /app/topology/target/topology.jar
-#    ports:
-#      - "80:80"
-#    links:
-#      - neo4j
-#      - kafka:kafka.pendev
-#    environment:
-#      NEO4J_USERNAME: 'neo4j'
-#      NEO4J_PASSWORD: 'temppass'
-#      REST_USERNAME: 'kilda'
-#      REST_PASSWORD: 'kilda'
-#    depends_on:
-#      kafka:
-#        condition: service_healthy
-#      neo4j:
-#        condition: service_healthy
-
   zookeeper:
     container_name: zookeeper
     image: "kilda/zookeeper:${full_build_number:-latest}"
@@ -163,11 +136,8 @@ services:
   wfm:
     container_name: wfm
     build:
-      context: services
-      dockerfile:  wfm/Dockerfile
+      context: services/wfm
     image: "kilda/wfm:${full_build_number:-latest}"
-    #command: /app/wfm-poc.py kafka.pendev:9092 kilda-test
-    command: /app/deploy_topos_and_monitor.sh topology.properties
     depends_on:
       kafka:
         condition: service_healthy
@@ -318,10 +288,8 @@ services:
 
   floodlight:
     build:
-      context: services
-      dockerfile:  floodlight/Dockerfile
+      context: services/src/floodlight-modules
     image: "kilda/floodlight:${full_build_number:-latest}"
-    command: java -Dlogback.configurationFile=/app/logback.xml -cp /app/floodlight/target/floodlight.jar:/app/floodlight-modules/target/floodlight-modules.jar net.floodlightcontroller.core.Main -cf /app/floodlightkilda.properties
     ports:
       - "6653:6653"
       - "8180:8080"
@@ -336,10 +304,7 @@ services:
 
   northbound:
     build:
-      context: services/
-      dockerfile:  northbound/Dockerfile
-    image: "kilda/northbound:${full_build_number:-latest}"
-    command: java -jar /app/northbound/target/northbound.jar
+      context: services/src/northbound/
     ports:
       - "8088:8080"
     links:
