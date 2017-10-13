@@ -17,7 +17,7 @@ build-base:
 	docker build -t kilda/opentsdb:latest services/opentsdb
 	docker build -t kilda/mininet:latest services/mininet
 
-build-latest: build-base
+build-latest: build-base compile
 	docker-compose build
 
 run-dev:
@@ -36,10 +36,21 @@ clean-sources:
 	$(MAKE) -C services/src clean
 	mvn -f services/wfm/pom.xml clean
 
-update:
-	mvn --non-recursive -f services/src/pom.xml clean install
-	mvn -f services/src/messaging/pom.xml clean install
-	mvn -f services/src/pce/pom.xml clean install
+update-parent:
+	mvn --non-recursive -f services/src/pom.xml install -DskipTests
+
+update-pce:
+	mvn -f services/src/pce/pom.xml install -DskipTests
+
+update-msg:
+	mvn -f services/src/messaging/pom.xml install -DskipTests
+
+update: update-parent update-msg update-pce
+
+
+compile:
+	$(MAKE) -C services/src
+	$(MAKE) -C services/wfm all-in-one
 
 unit:
 	$(MAKE) -C services/src

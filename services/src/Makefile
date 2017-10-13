@@ -9,6 +9,18 @@ projectfloodlight:
 build: projectfloodlight
 	mvn clean install
 
+build-pce:
+	mvn install -pl pce -am -DskipTests
+
+build-atdd:
+	mvn install -pl atdd -am -DskipTests
+
+build-northbound:
+	mvn install -pl northbound -am -DskipTests
+
+build-messaging:
+	mvn install -pl messaging -am -DskipTests
+
 clean:
 	mvn clean
 	$(MAKE) -C projectfloodlight clean
