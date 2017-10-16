@@ -53,6 +53,8 @@ ENV JAVA_VER 8
 ENV JAVA_HOME /usr/lib/jvm/java-8-oracle
 RUN echo "export JAVA_HOME=/usr/lib/jvm/java-8-oracle" >> ~/.bashrc
 
+RUN rm -rf /var/lib/apt/lists/*
 RUN apt-get clean
+RUN apt clean
 ADD app /app
 RUN chmod 777 /app/*

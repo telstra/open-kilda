@@ -15,7 +15,7 @@
 #
 
 
-cd /app/wfm
+cd /app
 
 ##
 ## Add all topologies here .. so that kilda comes up with them.
