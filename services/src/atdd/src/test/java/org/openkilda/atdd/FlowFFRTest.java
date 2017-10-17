@@ -67,7 +67,7 @@ public class FlowFFRTest {
 
         File file = new File(resource.getFile());
         String json = new String(Files.readAllBytes(file.toPath()));
-        assert TopologyHelp.CreateMininetTopology(json);
+        assertTrue(TopologyHelp.CreateMininetTopology(json));
     }
 
     @When("^a flow (.*) is successfully created$")
