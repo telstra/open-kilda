@@ -53,7 +53,7 @@ public class FlowCrudBasicRunTest {
         ClassLoader classLoader = getClass().getClassLoader();
         File file = new File(classLoader.getResource(fileName).getFile());
         String json = new String(Files.readAllBytes(file.toPath()));
-        assert TopologyHelp.CreateMininetTopology(json);
+        assertTrue(TopologyHelp.CreateMininetTopology(json));
     }
 
     @When("^flow (.*) creation request with (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) is successful$")
