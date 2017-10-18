@@ -32,6 +32,21 @@ public interface Topology {
     String PROPERTY_KAFKA = "kafka.hosts";
 
     /**
+     * Neo4J host property name.
+     */
+    String PROPERTY_NEO4J_URL = "neo4j.hosts";
+
+    /**
+     * Neo4J user property name.
+     */
+    String PROPERTY_NEO4J_USER = "neo4j.user";
+
+    /**
+     * Neo4J password property name.
+     */
+    String PROPERTY_NEO4J_PSWD = "neo4j.pswd";
+
+    /**
      * Parallelism value property name.
      */
     String PROPERTY_PARALLELISM = "parallelism";
