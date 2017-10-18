@@ -97,7 +97,7 @@ public class NeoDriver implements PathComputer {
      */
     public void init() {
         if (driver == null) {
-            String address = String.format("bolt://%s:7687", hostname);
+            String address = String.format("bolt://%s", hostname);
             driver = GraphDatabase.driver(address, AuthTokens.basic(password, username));
             logger.info("NeoDriver created: {}", driver.toString());
         }
