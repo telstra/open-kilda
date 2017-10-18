@@ -18,11 +18,10 @@ import json
 from kafka import KafkaProducer
 
 from logger import get_logger
-from kafkareader import topic
-from kafkareader import bootstrap_servers
 
+import config
 
-producer = KafkaProducer(bootstrap_servers=bootstrap_servers)
+producer = KafkaProducer(bootstrap_servers=config.KAFKA_BOOTSTRAP_SERVERS)
 logger = get_logger()
 
 
@@ -155,8 +154,9 @@ def send_message(payload, correlation_id, message_type, destination="WFM"):
     message.timestamp = get_timestamp()
     message.correlation_id = correlation_id
     kafka_message = b'{}'.format(message.to_json())
-    logger.info('Send message: topic=%s, message=%s',topic, kafka_message)
-    message_result = producer.send(topic, kafka_message)
+    logger.info('Send message: topic=%s, message=%s', config.KAFKA_TOPIC,
+                kafka_message)
+    message_result = producer.send(config.KAFKA_TOPIC, kafka_message)
     message_result.get(timeout=5)
 
 
