@@ -96,6 +96,13 @@ public abstract class AbstractTopology implements Topology {
     protected final String kafkaHosts;
 
     /**
+     * Neo4J host.
+     */
+    protected final String neo4jHost;
+    protected final String neo4jUser;
+    protected final String neo4jPswd;
+
+    /**
      * Topology name.
      */
     protected final String topologyName;
@@ -120,6 +127,9 @@ public abstract class AbstractTopology implements Topology {
         topologyName = getTopologyName();
         zookeeperHosts = properties.getProperty(PROPERTY_ZOOKEEPER);
         kafkaHosts = properties.getProperty(PROPERTY_KAFKA);
+        neo4jHost = properties.getProperty(PROPERTY_NEO4J_URL);
+        neo4jUser = properties.getProperty(PROPERTY_NEO4J_USER);
+        neo4jPswd = properties.getProperty(PROPERTY_NEO4J_PSWD);
 
         // TODO: proper parallelism/workers configuration
         parallelism = Integer.parseInt(properties.getProperty(getTopologyPropertyName(PROPERTY_PARALLELISM), DEFAULT_PARALLELISM));

@@ -66,6 +66,16 @@ public class FlowTopology extends AbstractTopology {
      */
     private final PathComputer pathComputer;
 
+    public FlowTopology(File file) {
+        super(file);
+        this.pathComputer = new NeoDriver(neo4jHost,neo4jUser,neo4jPswd);
+
+        logger.debug("Topology built {}: zookeeper={}, kafka={}, parallelism={}, workers={}" +
+                ", neo4j_url{}, neo4j_user{}, neo4j_pswd{}",
+                topologyName, zookeeperHosts, kafkaHosts, parallelism, workers, neo4jHost,
+                neo4jUser, neo4jPswd);
+    }
+
     public FlowTopology(File file, PathComputer pathComputer) {
         super(file);
         this.pathComputer = pathComputer;
@@ -84,7 +94,7 @@ public class FlowTopology extends AbstractTopology {
 
         if (args != null && args.length > 0) {
             File file = new File(args[1]);
-            final FlowTopology flowTopology = new FlowTopology(file, new NeoDriver());
+            final FlowTopology flowTopology = new FlowTopology(file);
             StormTopology stormTopology = flowTopology.createTopology();
             final Config config = new Config();
             config.setNumWorkers(flowTopology.workers);
@@ -96,7 +106,7 @@ public class FlowTopology extends AbstractTopology {
             StormSubmitter.submitTopology(args[0], config, stormTopology);
         } else {
             File file = new File(FlowTopology.class.getResource(Topology.TOPOLOGY_PROPERTIES).getFile());
-            final FlowTopology flowTopology = new FlowTopology(file, new NeoDriver());
+            final FlowTopology flowTopology = new FlowTopology(file);
             StormTopology stormTopology = flowTopology.createTopology();
             final Config config = new Config();
             config.setNumWorkers(flowTopology.workers);
