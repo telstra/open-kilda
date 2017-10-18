@@ -213,7 +213,7 @@ services:
       opentsdb:
         condition: service_started
     links:
-      - neo4j
+      - neo4j:neo4j.pendev
       - zookeeper:zookeeper.pendev
       - opentsdb:opentsdb.pendev
     ports:
@@ -261,6 +261,7 @@ services:
       storm_nimbus:
         condition: service_healthy
     links:
+      - neo4j:neo4j.pendev
       - zookeeper:zookeeper.pendev
       - kafka:kafka.pendev
       - opentsdb:opentsdb.pendev
