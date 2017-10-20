@@ -183,6 +183,8 @@ def api_v1_topology_links():
         for link in result:
             links.append(format_isl(link['r']))
 
+        application.logger.info('links found %d', len(result))
+
         return str(json.dumps(links, default=lambda o: o.__dict__, sort_keys=True))
     except Exception as e:
         return "error: {}".format(str(e))
