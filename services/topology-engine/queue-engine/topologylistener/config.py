@@ -34,3 +34,5 @@ def _get_bootstrap_servers():
 
 KAFKA_BOOTSTRAP_SERVERS = _get_bootstrap_servers()
 KAFKA_TOPIC = config.get('kafka', 'topology.topic')
+
+ZOOKEEPER_HOSTS = config.get('zookeeper', 'hosts')
