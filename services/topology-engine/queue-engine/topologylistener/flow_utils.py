@@ -71,24 +71,22 @@ def get_rules(src_switch, src_port, src_vlan, dst_switch, dst_port, dst_vlan,
               bandwidth, transit_vlan, flow_id, cookie, flow_path, meter_id,
               output_action):
     nodes = flow_path.get("path")
+    if not nodes:
+        return []
+
     flows = []
 
-    if nodes:
-        flows.append(message_utils.build_ingress_flow(
-            nodes, src_switch, src_port, src_vlan, bandwidth,
-            transit_vlan, flow_id, output_action, cookie, meter_id))
+    flows.append(message_utils.build_ingress_flow(
+        nodes, src_switch, src_port, src_vlan, bandwidth,
+        transit_vlan, flow_id, output_action, cookie, meter_id))
 
-        transit_flow_count = (len(nodes) - 2) / 2
-        i = 1
-        while i <= transit_flow_count:
-            flows.append(message_utils.build_intermediate_flows(
-                nodes[i]['switch_id'], nodes[i]['port_no'],
-                nodes[i+1]['port_no'], transit_vlan, flow_id, cookie))
-            i += 2
+    flows.extend(message_utils.build_intermediate_flows(
+        _['switch_id'], _['port_no'], __['port_no'], transit_vlan, flow_id,
+        cookie) for _, __ in zip(nodes[1:-1], nodes[2:]))
 
-        flows.append(message_utils.build_egress_flow(
-            nodes, dst_switch, dst_port, dst_vlan,
-            transit_vlan, flow_id, output_action, cookie))
+    flows.append(message_utils.build_egress_flow(
+        nodes, dst_switch, dst_port, dst_vlan,
+        transit_vlan, flow_id, output_action, cookie))
 
     return flows
 
