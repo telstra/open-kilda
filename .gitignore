@@ -20,3 +20,4 @@ reports/
 logs/
 kilda-bins/
 tar/
+*.retry

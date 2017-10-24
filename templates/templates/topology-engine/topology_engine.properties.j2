@@ -1,0 +1,15 @@
+[kafka]
+consumer.group=python-tpe-tl-consumer
+topology.topic={{ kafka_topic }}
+bootstrap.servers={{ kafka_hosts }}
+
+[gevent]
+worker.pool.size=1024
+
+[zookeeper]
+hosts={{ zookeeper_hosts }}
+
+[neo4j]
+host={{ neo4j_host }}
+user={{ neo4j_user }}
+pass={{ neo4j_password }}
