@@ -45,6 +45,11 @@ import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.messaging.payload.flow.FlowStats;
+import org.openkilda.messaging.payload.flow.ForwardEgressFlow;
+import org.openkilda.messaging.payload.flow.ForwardIngressFlow;
+import org.openkilda.messaging.payload.flow.ReverseEgressFlow;
+import org.openkilda.messaging.payload.flow.ReverseIngressFlow;
 import org.openkilda.northbound.messaging.MessageConsumer;
 import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.messaging.kafka.KafkaMessageConsumer;
@@ -133,4 +138,11 @@ public class TestMessageMock implements MessageProducer, MessageConsumer<Object>
             messages.put(message.getCorrelationId(), ((CommandMessage) message).getData());
         }
     }
+ 
+   
+        
+        static final String STATS_TYPE = "all";
+        static final String ERROR_TYPE ="Invalid request data";
+        static final String WRONG_STATS_TYPE = "other";
+        static final FlowStats flowStat = new FlowStats(FLOW_ID,new ForwardIngressFlow(),new ForwardEgressFlow(),new ReverseIngressFlow(),new ReverseEgressFlow());
 }
