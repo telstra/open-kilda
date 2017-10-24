@@ -61,6 +61,12 @@ clean-test:
 	docker-compose rm -fv
 	docker volume list -q | grep kilda | xargs docker volume rm
 
+update-props:
+	ansible-playbook -D -s config.yml
+
+update-props-dryrun:
+	ansible-playbook -D -C -v -s config.yml
+
 # NB: To override the default (localhost) kilda location, you can make a call like this:
 #		cd services/src/atdd && \
 #		mvn "-Dtest=org.bitbucket.openkilda.atdd.*" \
