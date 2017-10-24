@@ -1,0 +1,11 @@
+---
+- name: Substitute correct endpints to service propertie files
+  hosts: localhost
+  connection: local
+
+  vars_files:
+    - templates/vars/path.yaml
+    - templates/vars/vars.yaml
+
+  roles:
+  - templates
