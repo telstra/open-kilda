@@ -101,7 +101,8 @@ docker-compose build.
 5. run: `make update-props` for applying templates
 
 #### How should I change/add/override default var values
-1. edit templates/vars/vars.yaml
+1. Add new vars, edit: templates/defaults/main.yaml
+2. If you need override default vars, edit: templates/vars/vars.yaml
 2. run: `make update-props-dryrun` for checking that template behaviour is ok
 3. run: `make update-props` for applying templates
 
