@@ -94,6 +94,9 @@ docker-compose build.
 
 #### How should I add new template
 
+Pre-requirements:
+You have to add `localhost ansible_connection=local` to /etc/ansible/hosts
+
 1. create and place jinja template file to templates/templates/ folder
 2. add it to templates/vars/path.yaml
 3. change (if needed) vars in templates/defaults/main.yaml
@@ -101,7 +104,8 @@ docker-compose build.
 5. run: `make update-props` for applying templates
 
 #### How should I change/add/override default var values
-1. edit templates/vars/vars.yaml
+1. Add new vars, edit: templates/defaults/main.yaml
+2. If you need override default vars, edit: templates/vars/vars.yaml
 2. run: `make update-props-dryrun` for checking that template behaviour is ok
 3. run: `make update-props` for applying templates
 
