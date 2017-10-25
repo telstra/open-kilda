@@ -79,3 +79,69 @@ make unit
 make up-test-mode
 make atdd
 ```
+
+### How to use ansible for config/properties templating
+
+We have ansible playbook for managing config/properties files from templates which is 
+placed in templates/ folder.
+This playbook contains three files with variables.
+One for default options (like endpoints, all defaults should be here): templates/defaults/main.yaml
+and second one for paths of template and destinations: templates/vars/path.yaml
+and last one for overriding defaults: templates/vars/vars.yaml
+
+For now default options are the same which was before this playbook implementation and suitable for
+docker-compose build.
+
+#### How should I add new template
+
+1. create and place jinja template file to templates/templates/ folder
+2. add it to templates/vars/path.yaml
+3. change (if needed) vars in templates/defaults/main.yaml
+4. run: `make update-props-dryrun` for checking that template behaviour is ok
+5. run: `make update-props` for applying templates
+
+#### How should I change/add/override default var values
+1. edit templates/vars/vars.yaml
+2. run: `make update-props-dryrun` for checking that template behaviour is ok
+3. run: `make update-props` for applying templates
+
+#### Common use cases
+An exmaplte, you already have neo4j server, and want to use it instead of dockerized neo4j.
+You can add neo4j endpoints to templates/defaults/main.yaml and create properties template for
+services which use neo4j:
+
+templates/defaults/main.yaml:
+```
+neo4j_host: "neo4j"
+neo4j_user: "neo4j"
+neo4j_password: "temppass"
+```
+
+templates/templates/topology-engine/topology_engine.properties.j2:
+```
+[kafka]
+consumer.group=python-tpe-tl-consumer
+topology.topic={{ kafka_topic }}
+bootstrap.servers={{ kafka_hosts }}
+
+[gevent]
+worker.pool.size=1024
+
+[zookeeper]
+hosts={{ zookeeper_hosts }}
+
+[neo4j]
+host={{ neo4j_host }}
+user={{ neo4j_user }}
+pass={{ neo4j_password }}
+```
+
+templates/vars/path.yaml:
+```
+  - topology_engine_properties:
+    dest: services/topology-engine/queue-engine/topology_engine.properties
+    tmpl: templates/topology-engine/topology_engine.properties.j2
+```
+
+In this example we will generate file services/topology-engine/queue-engine/topology_engine.properties 
+from template templates/topology-engine/topology_engine.properties.j2
