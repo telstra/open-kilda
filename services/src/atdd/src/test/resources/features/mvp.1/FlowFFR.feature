@@ -26,6 +26,35 @@ Feature: Flow failover, failure and recovery
     And flow ffr path is alternate
     Then traffic does not flow through ffr flow
 
+    When a switch 00:00:00:00:00:00:00:05 port 1 is enabled
+    Then traffic flows through ffr flow
+
+  @MVP.FUTURE
+  Scenario: Port Failover followed by failure followed by recovery
+
+  This scenario checks that failover and recovery happens orderly and that
+  failures do not break things apart. Also it checks whether alternate route
+  is picked after complet failure.
+
+    Given a clean flow topology
+    And a clean controller
+    And a multi-path topology
+    And topology contains 16 links
+    And a flow ffr is successfully created
+    And flow ffr in UP state
+    And flow ffr path is shortest
+    And traffic flows through ffr flow
+
+    When a switch 00:00:00:00:00:00:00:03 port 1 is disabled
+    And flow ffr in UP state
+    And flow ffr path is alternate
+    Then traffic flows through ffr flow
+
+    When a switch 00:00:00:00:00:00:00:05 port 1 is disabled
+    And flow ffr in DOWN state
+    And flow ffr path is alternate
+    Then traffic does not flow through ffr flow
+
     When a switch 00:00:00:00:00:00:00:03 port 1 is enabled
     And flow ffr in UP state
     And flow ffr path is shortest
