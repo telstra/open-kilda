@@ -19,12 +19,10 @@ import static org.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 import static org.openkilda.messaging.Utils.FLOW_ID;
 
-import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
-import org.openkilda.messaging.payload.flow.FlowStats;
 import org.openkilda.northbound.service.FlowService;
 
 import io.swagger.annotations.ApiOperation;
@@ -259,53 +257,5 @@ public class FlowController {
         logger.debug("Flow path: {}={}, {}={}", CORRELATION_ID, correlationId, FLOW_ID, flowId);
         FlowPathPayload response = flowService.pathFlow(flowId, correlationId);
         return new ResponseEntity<>(response, new HttpHeaders(), HttpStatus.OK);
-    }
-    
-    /**
-     * Gets flow stats.
-     *
-     * @param flowId        flow id
-     * @param statsType     stats type
-     * @param correlationId correlation ID header value
-     * @return list of flow
-     */
-   
-    @ApiOperation(value = "Gets flow stats", response = FlowStats.class)
-    @ApiResponses(value = {
-            @ApiResponse(code = 200, response = FlowStats.class, message = "Operation is successful"),
-            @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
-            @ApiResponse(code = 401, response = MessageError.class, message = "Unauthorized"),
-            @ApiResponse(code = 403, response = MessageError.class, message = "Forbidden"),
-            @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
-            @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
-            @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
-   
-    @RequestMapping(
-            value = "/flows/{flow-id}/stats/{stats-type}", 
-            method = RequestMethod.GET)
-    public ResponseEntity<FlowStats> statsFlow(
-            @PathVariable("flow-id") String flowId,
-            @PathVariable("stats-type") String statsType,
-            @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
-        logger.debug("Flow stats: {}={}", CORRELATION_ID, correlationId +", flowId : "+flowId +" ,statsType : "+statsType);
-       
-        if(!statsType.equalsIgnoreCase("all") && !statsType.equalsIgnoreCase("forward_ingress")
-          && !statsType.equalsIgnoreCase("forward_egress") && !statsType.equalsIgnoreCase("reverse_ingress")
-          && !statsType.equalsIgnoreCase("reverse_egress")){
-         
-         FlowStats errorResponse = new FlowStats();
-         errorResponse.setErrorType(ErrorType.DATA_INVALID);
-         errorResponse.setErrorMessage("Please Enter valid statsType");
-         errorResponse.setErrorDescription("need to set valid stats-type");
-            return new ResponseEntity<>(errorResponse, new HttpHeaders(), HttpStatus.BAD_REQUEST);
-        }
-        
-        FlowStats response = flowService.getFlowStats(flowId, correlationId,statsType);
-        if(response.getErrorMessage() != null){
-          return new ResponseEntity<>(response, new HttpHeaders(), HttpStatus.BAD_REQUEST);
-        }
-        logger.debug("Response : "+response.toString()," flowId : "+response.getFlowId());
-        return new ResponseEntity<>(response, new HttpHeaders(), HttpStatus.OK);
-        
     }
 }

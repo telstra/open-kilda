@@ -33,7 +33,6 @@ import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
-import org.openkilda.messaging.payload.flow.FlowStats;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -522,33 +521,5 @@ public class FlowUtils {
         boolean isEnabled = Boolean.valueOf(System.getProperty("traffic", "true"));
         System.out.println(String.format("\n=====> Traffic check is %s", isEnabled ? "enabled" : "disabled"));
         return isEnabled;
-    }
-    
-    /**
-     * Gets flow stats through Northbound service.
-     *
-     * @param flowId flow id
-     * @return The JSON document of the specified flow stats
-     */
-    public static FlowStats getFlowStats(final String flowId, final String statsType) {
-        long current = System.currentTimeMillis();
-        Client client = ClientBuilder.newClient(new ClientConfig()).register(JacksonFeature.class);
-
-        Response response = client
-                .target(northboundEndpoint)
-                .path("/api/v1/flows")
-                .path("{flowid}")
-                .path("/stats/{statstype}")
-                .resolveTemplate("flowid", flowId)
-                .resolveTemplate("statstype", statsType)
-                .request(MediaType.APPLICATION_JSON)
-                .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
-                .get();
-
-        System.out.println("\n== Northbound Get Flow Stats");
-        System.out.println(String.format("==> response = %s", response.toString()));
-        System.out.println(String.format("==> Northbound Get Flow Stats Time: %,.3f", getTimeDuration(current)));
-
-        return response.getStatus() == 404 ? null : response.readEntity(FlowStats.class);
     }
 }
