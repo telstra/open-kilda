@@ -18,7 +18,6 @@ package org.openkilda.northbound.service;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
-import org.openkilda.messaging.payload.flow.FlowStats;
 
 import java.util.List;
 
@@ -87,14 +86,4 @@ public interface FlowService extends BasicService {
      * @return Flow path
      */
     FlowPathPayload pathFlow(final String id, final String correlationId);
-    
-    /**
-     * Gets flow stats by id.
-     *
-     * @param id            flow id
-     * @param correlationId request correlation Id
-     * @return Flow path
-     */
-    FlowStats getFlowStats(final String id, final String correlationId, final String statsType);
-    
 }
