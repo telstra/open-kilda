@@ -15,12 +15,16 @@
 
 package org.openkilda.atdd;
 
-import cucumber.api.PendingException;
+import static org.junit.Assert.assertTrue;
+
 import cucumber.api.java.en.Given;
 import cucumber.api.java.en.Then;
 import cucumber.api.java.en.When;
-import org.openkilda.topo.*;
-
+import org.openkilda.topo.ITopology;
+import org.openkilda.topo.TestUtils;
+import org.openkilda.topo.TopologyBuilder;
+import org.openkilda.topo.TopologyHelp;
+import org.openkilda.topo.TopologyPrinter;
 public class TopologyDiscoveryBasicTest {
 
     public long pre_start;
@@ -33,7 +37,7 @@ public class TopologyDiscoveryBasicTest {
         expected = t;
         String json = TopologyPrinter.toMininetJson(t);
         pre_start = System.currentTimeMillis();
-        assert TopologyHelp.CreateMininetTopology(json);
+        assertTrue(TopologyHelp.CreateMininetTopology(json));
         start = System.currentTimeMillis();
     }
 
@@ -64,7 +68,7 @@ public class TopologyDiscoveryBasicTest {
         if (!(delta >= (finish - start))){
             System.out.println(String.format("Failed finish-start convergence: delta_ma:%d, actual:%d", delta, (finish-start)));
         }
-	    assert delta >= (finish - start);
+        assertTrue(delta >= (finish - start));
 	    // This next test is a little suspect .. it is unclear how much latency is
         // introduced through mininet. Hypothetically, if mininet took 1 second per switch,
         // then I'd expect the delta between start and finish to be real small, 1-2 seconds, even
@@ -76,7 +80,7 @@ public class TopologyDiscoveryBasicTest {
         if (!(delta >= (finish - pre_start))){
             System.out.println(String.format("Failed finish-pre_start convergence test: delta_ma:%d, actual:%d", delta, (finish-pre_start)));
         }
-        assert delta >= (finish - pre_start);
+        assertTrue(delta >= (finish - pre_start));
 	}
 
 

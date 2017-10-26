@@ -270,6 +270,7 @@ def add_link(node1, node2):
     link.intf1.node.attach(link.intf1)
     link.intf2.node.attach(link.intf2)
     links[link_name(link)] = link
+    logger.debug("==> added link from node1={}; node2={}".format(node1, node2))
 
 
 def list_links():

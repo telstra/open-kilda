@@ -1,0 +1,10 @@
+---
+# defaults file for templates
+kafka_hosts: "kafka.pendev:9092"
+zookeeper_hosts: "zookeeper.pendev:2181"
+opentsdb_hosts: "http://opentsdb.pendev:4242"
+neo4j_hosts: "neo4j.pendev:7687"
+neo4j_host: "neo4j"
+neo4j_user: "neo4j"
+neo4j_password: "temppass"
+kafka_topic: "kilda-test"

@@ -1,0 +1,20 @@
+---
+path:
+  - floodlightkilda_properties: 
+    dest: services/src/floodlight-modules/src/main/resources/floodlightkilda.properties
+    tmpl: templates/floodlight/floodlightkilda.properties.j2
+  - northbound_properties: 
+    dest: services/src/northbound/src/main/resources/northbound.properties
+    tmpl: templates/northbound/northbound.properties.j2
+  - topology_properties:
+    dest: services/src/topology/src/main/resources/topology.properties
+    tmpl: templates/topology/topology.properties.j2
+  - topology_engine_properties:
+    dest: services/topology-engine/queue-engine/topology_engine.properties
+    tmpl: templates/topology-engine/topology_engine.properties.j2
+  - topology_engine_rest_properties:
+    dest: services/topology-engine-rest/app/topology_engine_rest.properties
+    tmpl: templates/topology-engine-rest/topology_engine_rest.properties.j2
+  - wfm_topology_properties:
+    dest: services/wfm/src/main/resources/topology.properties
+    tmpl: templates/wfm/topology.properties.j2
