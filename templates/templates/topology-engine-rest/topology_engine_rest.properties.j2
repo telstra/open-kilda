@@ -2,3 +2,9 @@
 consumer.group=python-tper-flow-consumer
 topology.topic={{ kafka_topic }}
 bootstrap.servers={{ kafka_hosts }}
+
+[neo4j]
+host={{ neo4j_host }}
+user={{ neo4j_user }}
+pass={{ neo4j_password }}
+bolt={{ neo4j_bolt }}

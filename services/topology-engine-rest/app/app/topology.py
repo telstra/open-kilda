@@ -24,6 +24,16 @@ from app import utils
 import sys, os
 import requests
 import json
+import ConfigParser
+
+config = ConfigParser.RawConfigParser()
+config.read('topology_engine_rest.properties')
+
+NEO4J_HOST = os.environ['neo4jhost'] or config.get('neo4j', 'host')
+NEO4J_USER = os.environ['neo4juser'] or config.get('neo4j', 'user')
+NEO4J_PASS = os.environ['neo4jpass'] or config.get('neo4j', 'pass')
+NEO4J_BOLT = os.environ['neo4jbolt'] or config.get('neo4j', 'bolt')
+AUTH = (NEO4J_USER, NEO4J_PASS)
 
 @application.route('/api/v1/topology/network')
 @login_required
@@ -35,8 +45,8 @@ def api_v1_network():
 
     try:
         data = {'query' : 'MATCH (n) return n'}
-        auth = (os.environ['neo4juser'], os.environ['neo4jpass'])
-        result_switches = requests.post(os.environ['neo4jbolt'], data=data, auth=auth)
+
+        result_switches = requests.post(NEO4J_BOLT, data=data, auth=AUTH)
         j_switches = json.loads(result_switches.text)
         nodes = []
         topology = {}
@@ -44,7 +54,7 @@ def api_v1_network():
             for r in n:
                 node = {}
                 node['name'] = (r['data']['name'])
-                result_relationships = requests.get(str(r['outgoing_relationships']), auth=auth)
+                result_relationships = requests.get(str(r['outgoing_relationships']), auth=AUTH)
                 j_paths = json.loads(result_relationships.text)
                 outgoing_relationships = []
                 for j_path in j_paths:
@@ -75,8 +85,7 @@ class Link(object):
 @login_required
 def api_v1_topology_nodes():
     data = {'query' : 'MATCH (n) return n'}
-    auth = (os.environ['neo4juser'], os.environ['neo4jpass'])
-    result_switches = requests.post(os.environ['neo4jbolt'], data=data, auth=auth)
+    result_switches = requests.post(NEO4J_BOLT, data=data, auth=AUTH)
     j_switches = json.loads(result_switches.text)
     nodes = Nodes()
     nodes.edges = []
@@ -112,8 +121,7 @@ def api_v1_topo_clear():
     """
     try:
         data = {'query' : 'MATCH (n) detach delete n'}
-        auth = (os.environ['neo4juser'], os.environ['neo4jpass'])
-        requests.post(os.environ['neo4jbolt'], data=data, auth=auth)
+        requests.post(NEO4J_BOLT, data=data, auth=AUTH)
         return api_v1_network()
     except Exception as e:
         return "error: {}".format(str(e))
@@ -127,7 +135,7 @@ def topology_network():
 
 def create_p2n_driver():
     graph = Graph("http://{}:{}@{}:7474/db/data/".format(
-        os.environ['neo4juser'], os.environ['neo4jpass'], os.environ['neo4jhost']))
+        NEO4J_USER, NEO4J_PASS, NEO4J_HOST))
     return graph
 
 graph = create_p2n_driver()
@@ -198,9 +206,8 @@ def api_v1_topology_link_bandwidth(src_switch, src_port):
                          "WHERE r.src_switch = '{}' AND r.src_port = {} "
                          "RETURN r.available_bandwidth".format(
                             str(src_switch), int(src_port))}
-        auth = (os.environ['neo4juser'], os.environ['neo4jpass'])
 
-        response = requests.post(os.environ['neo4jbolt'], data=data, auth=auth)
+        response = requests.post(NEO4J_BOLT, data=data, auth=AUTH)
         data = json.loads(response.text)
         bandwidth = data['data'][0][0]
 
