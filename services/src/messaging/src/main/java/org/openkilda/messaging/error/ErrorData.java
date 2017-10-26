@@ -42,6 +42,9 @@ public class ErrorData extends MessageData {
      */
     private static final long serialVersionUID = 1L;
 
+    public ErrorData() {
+    	
+    }
     /**
      * Error type.
      */
