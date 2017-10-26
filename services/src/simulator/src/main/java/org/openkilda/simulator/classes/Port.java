@@ -6,8 +6,8 @@ import org.projectfloodlight.openflow.types.DatapathId;
 import java.util.Random;
 
 public class Port {
-    private final int MAX_SMALL = 50;
-    private final int MAX_LARGE = 10000;
+    private static final int MAX_SMALL = 50;
+    private static final int MAX_LARGE = 10000;
 
     private Random rand = new Random();
     private int number;

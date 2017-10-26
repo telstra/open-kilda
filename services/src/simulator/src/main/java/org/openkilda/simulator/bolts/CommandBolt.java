@@ -12,13 +12,10 @@ import org.apache.storm.tuple.Values;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
-import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.simulator.SimulatorTopology;
 import org.openkilda.simulator.messages.TopologyMessage;
 import org.openkilda.wfm.OFEMessageUtils;
 
-import java.io.IOException;
 import java.util.Map;
 
 public class CommandBolt extends BaseRichBolt {
@@ -33,8 +30,7 @@ public class CommandBolt extends BaseRichBolt {
     protected String getType(String json) throws Exception {
         try {
             Map<String, ?> root = OFEMessageUtils.fromJson(json);
-            String type = ((String) root.get("type")).toLowerCase();
-            return type;
+            return ((String) root.get("type")).toLowerCase();
         } catch (Exception e) {
             logger.error("error getting type in: {}", json);
             throw e;
@@ -65,6 +61,7 @@ public class CommandBolt extends BaseRichBolt {
                     break;
                 case "command":
                     processCommand(tuple, json);
+                    break;
                 default:
                     break;
             }

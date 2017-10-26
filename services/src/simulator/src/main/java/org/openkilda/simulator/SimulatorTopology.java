@@ -19,8 +19,8 @@ public class SimulatorTopology extends AbstractTopology {
     private static final Logger logger = LogManager.getLogger(SimulatorTopology.class);
     private final String topoName = "simulatorTopology";
     private final int parallelism = 1;
-    private final String SIMULATOR_TOPIC = "kilda-simulator";
-    private final String COMMAND_TOPIC = "kilda-test";
+    public static final String SIMULATOR_TOPIC = "kilda-simulator";
+    public static  final String COMMAND_TOPIC = "kilda-test";
     public static final String SIMULATOR_SPOUT = "simulator-spout";
     public static final String COMMAND_SPOUT = "command-spout";
     public static final String DEPLOY_TOPOLOGY_BOLT_STREAM = "deploy_topology_stream";

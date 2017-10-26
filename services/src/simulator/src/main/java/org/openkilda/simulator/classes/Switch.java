@@ -10,12 +10,11 @@ import org.openkilda.messaging.info.stats.PortStatsEntry;
 import org.openkilda.messaging.info.stats.PortStatsReply;
 import org.projectfloodlight.openflow.types.DatapathId;
 
-import java.io.Serializable;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Switch implements Serializable {
+public class Switch {
     private static final Logger logger = LogManager.getLogger(Switch.class);
     protected boolean active = true;
     protected int controlPlaneLatency = 0;
@@ -57,9 +56,7 @@ public class Switch implements Serializable {
 
         long now = Instant.now().toEpochMilli();
         String correlationId = "simulator";
-        InfoMessage message = new InfoMessage(data, now, correlationId, Destination.WFM);
-
-        return message;
+        return new InfoMessage(data, now, correlationId, Destination.WFM);
     }
 
     public DatapathId getDpid() {
