@@ -6,7 +6,6 @@ import org.junit.Test;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.PortStatsData;
-import org.openkilda.messaging.info.stats.PortStatsEntry;
 import org.openkilda.messaging.info.stats.PortStatsReply;
 import org.projectfloodlight.openflow.types.DatapathId;
 
@@ -40,7 +39,7 @@ public class SwitchTest {
 
         assertNotNull(message.getData());
         PortStatsData portStatsData = (PortStatsData) message.getData();
-        assertEquals(DPID, portStatsData.getSwitchId().toString());
+        assertEquals(DPID, portStatsData.getSwitchId());
         List<PortStatsReply> portStatsReplies = portStatsData.getStats();
         assertEquals(1, portStatsReplies.size());
         assertEquals(NUM_OF_INTS, portStatsReplies.get(0).getEntries().size());

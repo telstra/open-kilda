@@ -11,9 +11,7 @@ import org.apache.storm.topology.base.BaseStatefulBolt;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
-import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Utils;
-import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.*;
@@ -21,7 +19,6 @@ import org.openkilda.simulator.classes.Port;
 import org.openkilda.simulator.classes.Switch;
 import org.openkilda.simulator.messages.LinkMessage;
 import org.openkilda.simulator.messages.SwitchMessage;
-import org.openkilda.simulator.messages.TopologyMessage;
 import org.projectfloodlight.openflow.types.DatapathId;
 
 import java.io.IOException;
