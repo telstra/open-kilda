@@ -15,6 +15,7 @@
 
 package org.openkilda.atdd;
 
+import static org.junit.Assert.assertTrue;
 import static org.openkilda.flow.FlowUtils.dumpFlows;
 import static org.openkilda.flow.FlowUtils.dumpLinks;
 import static org.openkilda.flow.FlowUtils.getLinkBandwidth;
@@ -95,7 +96,7 @@ public class FlowPathTest {
         String json = new String(Files.readAllBytes(file.toPath()));
 
         pre_start = System.currentTimeMillis();
-        assert TopologyHelp.CreateMininetTopology(json);
+        assertTrue(TopologyHelp.CreateMininetTopology(json));
         start = System.currentTimeMillis();
     }
 

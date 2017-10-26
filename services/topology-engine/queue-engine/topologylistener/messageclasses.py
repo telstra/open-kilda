@@ -15,7 +15,6 @@
 #
 
 import json
-from threading import Lock
 
 import traceback
 from py2neo import Node
@@ -24,7 +23,7 @@ import message_utils
 import flow_utils
 from flow_utils import graph
 from logger import get_logger
-
+import guard
 
 logger = get_logger()
 switch_states = {
@@ -61,23 +60,23 @@ class MessageItem(object):
         try:
             event_handled = False
 
-            if self.get_message_type() == "switch"\
+            if self.get_message_type() == "switch" \
                     and self.payload['state'] == "ADDED":
                 event_handled = self.create_switch()
-            if self.get_message_type() == "switch"\
+            if self.get_message_type() == "switch" \
                     and self.payload['state'] == "ACTIVATED":
                 event_handled = self.activate_switch()
-            if self.get_message_type() == "switch"\
+            if self.get_message_type() == "switch" \
                     and self.payload['state'] == "DEACTIVATED":
                 event_handled = self.deactivate_switch()
-            if self.get_message_type() == "switch"\
+            if self.get_message_type() == "switch" \
                     and self.payload['state'] == "REMOVED":
                 event_handled = self.remove_switch()
 
-            if self.get_message_type() == "isl"\
+            if self.get_message_type() == "isl" \
                     and self.payload['state'] == "DISCOVERED":
                 event_handled = self.create_isl()
-            if self.get_message_type() == "isl"\
+            if self.get_message_type() == "isl" \
                     and self.payload['state'] == "FAILED":
                 event_handled = self.isl_discovery_failed()
 
@@ -229,10 +228,11 @@ class MessageItem(object):
         logger.info('Isl %s_%d deletion request: timestamp=%s',
                     switch_id, port_id, self.timestamp)
 
-        if self.isl_exists(switch_id, port_id):
-            return self.delete_isl(switch_id, port_id)
-        else:
-            return True
+        with guard.get_isl_lock(switch_id, port_id):
+            if self.isl_exists(switch_id, port_id):
+                return self.delete_isl(switch_id, port_id)
+            else:
+                return True
 
     def port_down(self):
         switch_id = self.payload['switch_id']
@@ -241,10 +241,11 @@ class MessageItem(object):
         logger.info('Port %s_%d deletion request: timestamp=%s',
                     switch_id, port_id, self.timestamp)
 
-        if self.isl_exists(switch_id, port_id):
-            return self.delete_isl(switch_id, port_id)
-        else:
-            return True
+        with guard.get_isl_lock(switch_id, port_id):
+            if self.isl_exists(switch_id, port_id):
+                return self.delete_isl(switch_id, port_id)
+            else:
+                return True
 
     def create_isl(self):
         path = self.payload['path']
@@ -270,66 +271,67 @@ class MessageItem(object):
             logger.error('Isl destination was not found: %s', b_switch_node)
             return False
 
-        try:
-            isl_exists_query = ("MATCH (a:switch)-[r:isl {{"
-                                "src_switch: '{}', "
-                                "src_port: {}, "
-                                "dst_switch: '{}', "
-                                "dst_port: {}}}]->(b:switch) return r")
-            isl_exists = graph.run(isl_exists_query.format(a_switch,
-                                                           a_port,
-                                                           b_switch,
-                                                           b_port)).data()
-
-            if not isl_exists:
-                logger.info('Isl %s_%d creation request: timestamp=%s',
-                            a_switch, a_port, self.timestamp)
-
-                isl_query = ("MATCH (u:switch {{name:'{}'}}), "
-                             "(r:switch {{name:'{}'}}) "
-                             "MERGE (u)-[:isl {{"
-                             "src_port: {}, "
-                             "dst_port: {}, "
-                             "src_switch: '{}', "
-                             "dst_switch: '{}', "
-                             "latency: {}, "
-                             "speed: {}, "
-                             "available_bandwidth: {}}}]->(r)")
-                graph.run(isl_query.format(a_switch_node['name'],
-                                           b_switch_node['name'],
-                                           a_port,
-                                           b_port,
-                                           a_switch,
-                                           b_switch,
-                                           latency,
-                                           speed,
-                                           available_bandwidth))
-
-                logger.info('ISL between %s and %s created',
-                            a_switch_node['name'], b_switch_node['name'])
-            else:
-                logger.debug('Isl %s_%d update request: timestamp=%s',
-                             a_switch, a_port, self.timestamp)
-
-                isl_update_query = ("MATCH (a:switch)-[r:isl {{"
+        with guard.get_isl_lock(a_switch, a_port):
+            try:
+                isl_exists_query = ("MATCH (a:switch)-[r:isl {{"
                                     "src_switch: '{}', "
                                     "src_port: {}, "
                                     "dst_switch: '{}', "
-                                    "dst_port: {}}}]->(b:switch) "
-                                    "set r.latency = {} return r")
-                graph.run(isl_update_query.format(a_switch,
-                                                  a_port,
-                                                  b_switch,
-                                                  b_port,
-                                                  latency)).data()
+                                    "dst_port: {}}}]->(b:switch) return r")
+                isl_exists = graph.run(isl_exists_query.format(a_switch,
+                                                               a_port,
+                                                               b_switch,
+                                                               b_port)).data()
 
-                logger.debug('ISL between %s and %s updated',
-                             a_switch_node['name'], b_switch_node['name'])
+                if not isl_exists:
+                    logger.info('Isl %s_%d creation request: timestamp=%s',
+                                a_switch, a_port, self.timestamp)
 
-        except Exception as e:
-            logger.exception('ISL between %s and %s creation error: %s',
-                             a_switch_node['name'], b_switch_node['name'],
-                             e.message)
+                    isl_query = ("MATCH (u:switch {{name:'{}'}}), "
+                                 "(r:switch {{name:'{}'}}) "
+                                 "MERGE (u)-[:isl {{"
+                                 "src_port: {}, "
+                                 "dst_port: {}, "
+                                 "src_switch: '{}', "
+                                 "dst_switch: '{}', "
+                                 "latency: {}, "
+                                 "speed: {}, "
+                                 "available_bandwidth: {}}}]->(r)")
+                    graph.run(isl_query.format(a_switch_node['name'],
+                                               b_switch_node['name'],
+                                               a_port,
+                                               b_port,
+                                               a_switch,
+                                               b_switch,
+                                               latency,
+                                               speed,
+                                               available_bandwidth))
+
+                    logger.info('ISL between %s and %s created',
+                                a_switch_node['name'], b_switch_node['name'])
+                else:
+                    logger.debug('Isl %s_%d update request: timestamp=%s',
+                                 a_switch, a_port, self.timestamp)
+
+                    isl_update_query = ("MATCH (a:switch)-[r:isl {{"
+                                        "src_switch: '{}', "
+                                        "src_port: {}, "
+                                        "dst_switch: '{}', "
+                                        "dst_port: {}}}]->(b:switch) "
+                                        "set r.latency = {} return r")
+                    graph.run(isl_update_query.format(a_switch,
+                                                      a_port,
+                                                      b_switch,
+                                                      b_port,
+                                                      latency)).data()
+
+                    logger.debug('ISL between %s and %s updated',
+                                 a_switch_node['name'], b_switch_node['name'])
+
+            except Exception as e:
+                logger.exception('ISL between %s and %s creation error: %s',
+                                 a_switch_node['name'], b_switch_node['name'],
+                                 e.message)
 
         return True
 
@@ -452,19 +454,20 @@ class MessageItem(object):
                     'timestamp=%s, correlation_id=%s, payload=%s',
                     operation, timestamp, correlation_id, payload)
 
-        if operation == "CREATE":
-            self.create_flow(flow_id, forward, correlation_id)
-            self.create_flow(flow_id, reverse, correlation_id)
-        elif operation == "DELETE":
-            self.delete_flow(flow_id, forward, correlation_id)
-            self.delete_flow(flow_id, reverse, correlation_id)
-        elif operation == "UPDATE":
-            self.update_flow(flow_id, forward, correlation_id)
-            self.update_flow(flow_id, reverse, correlation_id)
-        else:
-            logger.warn('Flow operation is not supported: '
-                        'operation=%s, timestamp=%s, correlation_id=%s,',
-                        operation, timestamp, correlation_id)
+        with guard.get_flow_lock(flow_id):
+            if operation == "CREATE":
+                self.create_flow(flow_id, forward, correlation_id)
+                self.create_flow(flow_id, reverse, correlation_id)
+            elif operation == "DELETE":
+                self.delete_flow(flow_id, forward, correlation_id)
+                self.delete_flow(flow_id, reverse, correlation_id)
+            elif operation == "UPDATE":
+                self.update_flow(flow_id, forward, correlation_id)
+                self.update_flow(flow_id, reverse, correlation_id)
+            else:
+                logger.warn('Flow operation is not supported: '
+                            'operation=%s, timestamp=%s, correlation_id=%s,',
+                            operation, timestamp, correlation_id)
 
         logger.info('Flow %s request processed: '
                     'timestamp=%s, correlation_id=%s, payload=%s',
@@ -510,7 +513,8 @@ class MessageItem(object):
             for data in result:
                 link = data['r']
                 isl = {
-                    'id': str(link['src_switch'] + '_' + str(link['src_port'])),
+                    'id': str(
+                        link['src_switch'] + '_' + str(link['src_port'])),
                     'speed': int(link['speed']),
                     'latency_ns': int(link['latency']),
                     'available_bandwidth': int(link['available_bandwidth']),

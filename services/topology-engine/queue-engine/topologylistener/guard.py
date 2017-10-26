@@ -13,15 +13,20 @@
 #   limitations under the License.
 #
 
-import os
-from py2neo import Graph
+import gevent
+import kazoo.client
 
 import config
 
+kazoo_client = kazoo.client.KazooClient(config.ZOOKEEPER_HOSTS)
+kazoo_client.start()
 
-def create_p2n_driver():
-    graph = Graph("http://{}:{}@{}:7474/db/data/".format(
-        os.environ['neo4juser'] or config.get('neo4j', 'user'),
-        os.environ['neo4jpass'] or config.get('neo4j', 'pass'),
-        os.environ['neo4jhost'] or config.get('neo4j', 'host')))
-    return graph
+
+def get_isl_lock(switch_src, port_src):
+    lock_path = '/isl/{}_{}'.format(switch_src, port_src)
+    return kazoo_client.Lock(lock_path, hex(id(gevent.getcurrent())))
+
+
+def get_flow_lock(flow_id):
+    lock_path = '/flow/{}'.format(flow_id)
+    return kazoo_client.Lock(lock_path, hex(id(gevent.getcurrent())))
