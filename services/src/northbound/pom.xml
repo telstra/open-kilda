@@ -30,6 +30,11 @@
             <artifactId>messaging</artifactId>
             <version>${project.version}</version>
         </dependency>
+        
+        <dependency>
+                <groupId>org.glassfish.jersey.core</groupId>
+                <artifactId>jersey-client</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>com.fasterxml.jackson.datatype</groupId>

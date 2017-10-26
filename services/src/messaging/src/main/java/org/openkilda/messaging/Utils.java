@@ -83,6 +83,62 @@ public final class Utils {
      * Maximum allowable VLAN ID value.
      */
     private static final int MAX_VLAN_ID = 4095;
+    
+    /**
+     * The  forward-ingress  value.
+     */
+    public static final String FORWARD_INGRESS = "forward_ingress";
+    
+    /**
+     * The default statsType value.
+     */
+    public static final String ALL = "all";
+    
+    /**
+     * The forward_egress value.
+     */
+    public static final String FORWARD_EGRESS = "forward_egress";
+    
+    /**
+     * The default reverse_ingress value.
+     */
+    public static final String REVERSE_INGRESS = "reverse_ingress";
+    
+    /**
+     * The default reverse_egress value.
+     */
+    public static final String REVERSE_EGRESS = "reverse_egress";
+    
+    /**
+     * The pen.switch.rx-packets value.
+     */
+    public static final String PEN_SWITCH_RX_PACKETS = "pen.switch.rx-packets";
+    
+    /**
+     * The pen.switch.tx-packets value.
+     */
+    public static final String PEN_SWITCH_TX_PACKETS = "pen.switch.tx-packets";
+    
+    /**
+     * The pen.switch.rx-bytes value.
+     */
+    public static final String PEN_SWITCH_RX_BYTES = "pen.switch.rx-bytes";
+    
+    /**
+     * The pen.switch.tx-bytes value.
+     */
+    public static final String PEN_SWITCH_TX_BYTES = "pen.switch.tx-bytes";
+    
+    /**
+     * The pen.switch.tx-bytes value.
+     */
+    public static final String FORWARD_COOKIE_VALUE = "0x40000000000001";
+    
+    /**
+     * The pen.switch.tx-bytes value.
+     */
+    public static final String REVERSE_COOKIE_VALUE = "0x20000000000001";
+
 
     /**
      * Checks if specified vlan id is in allowable range.
