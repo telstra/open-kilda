@@ -34,7 +34,6 @@ import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
-import org.openkilda.messaging.payload.flow.FlowStats;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import org.junit.Before;
@@ -205,34 +204,4 @@ public class FlowControllerTest {
     private static String testCorrelationId() {
         return UUID.randomUUID().toString();
     }
-    
-    @Test
-    @WithMockUser(username = USERNAME, password = PASSWORD, roles = ROLE)
-    public void getFlowStatsSuccess() throws Exception {
-    	 
-        MvcResult result = mockMvc.perform(get("/flows/{flow-id}/stats/{stats-type}", TestMessageMock.FLOW_ID, TestMessageMock.STATS_TYPE)
-                .header(CORRELATION_ID, testCorrelationId())
-                .contentType(APPLICATION_JSON_VALUE))
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
-                .andReturn();
-        FlowStats response = MAPPER.readValue(result.getResponse().getContentAsString(), FlowStats.class);
-        assertEquals(TestMessageMock.flowStat.getFlowId(), response.getFlowId());
-    }
-    
-   @Test
-    @WithMockUser(username = USERNAME, password = PASSWORD, roles = ROLE)
-    public void getFlowStatsFailure() throws Exception {
-     
-        MvcResult result = mockMvc.perform(get("/flows/{flow-id}/stats/{stats-type}", TestMessageMock.FLOW_ID, TestMessageMock.WRONG_STATS_TYPE)
-                .header(CORRELATION_ID, testCorrelationId())
-                .contentType(APPLICATION_JSON_VALUE))
-                .andExpect(status().isBadRequest())
-                .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
-                .andReturn();
-        FlowStats response = MAPPER.readValue(result.getResponse().getContentAsString(), FlowStats.class);
-        assertEquals(TestMessageMock.ERROR_TYPE, response.getErrorType().toString());
-    }
-    
-   
 }
