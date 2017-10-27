@@ -1,0 +1,30 @@
+{
+  "type": "TOPOLOGY",
+  "switches": [
+    {
+      "dpid": "00:00:00:00:00:01",
+      "num_of_ports": 1,
+      "links": [
+        {
+          "latency": 10,
+          "local_port": 0,
+          "peer_switch": "00:00:00:00:02",
+          "peer_port": 0
+        }
+      ]
+    },
+    {
+      "dpid": "00:00:00:00:00:02",
+      "num_of_ports": 1,
+      "links": [
+        {
+          "latency": 10,
+          "local_port": 0,
+          "peer_switch": "00:00:00:00:01",
+          "peer_port": 0
+        }
+      ]
+
+    }
+  ]
+}
