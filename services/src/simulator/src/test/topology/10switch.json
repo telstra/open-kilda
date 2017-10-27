@@ -1,0 +1,185 @@
+{
+  "type": "TOPOLOGY",
+  "switches": [
+    {
+      "dpid": "00:00:00:00:00:01",
+      "num_of_ports": 52,
+      "links": [
+        {
+          "latency": 10,
+          "local_port": 0,
+          "peer_switch": "00:00:00:00:00:02",
+          "peer_port": 1
+        },
+        {
+          "latency": 10,
+          "local_port": 1,
+          "peer_switch": "00:00:00:00:0A",
+          "peer_port": 0
+        }
+      ]
+    },
+    {
+      "dpid": "00:00:00:00:00:02",
+      "num_of_ports": 52,
+      "links": [
+        {
+          "latency": 10,
+          "local_port": 1,
+          "peer_switch": "00:00:00:00:00:01",
+          "peer_port": 0
+        },
+        {
+          "latency": 10,
+          "local_port": 0,
+          "peer_switch": "00:00:00:00:00:03",
+          "peer_port": 1
+        }
+      ]
+    },
+    {
+      "dpid": "00:00:00:00:00:03",
+      "num_of_ports": 52,
+      "links": [
+        {
+          "latency": 10,
+          "local_port": 1,
+          "peer_switch": "00:00:00:00:00:02",
+          "peer_port": 0
+        },
+        {
+          "latency": 10,
+          "local_port": 0,
+          "peer_switch": "00:00:00:00:00:04",
+          "peer_port": 1
+        }
+      ]
+    },
+    {
+      "dpid": "00:00:00:00:00:04",
+      "num_of_ports": 52,
+      "links": [
+        {
+          "latency": 10,
+          "local_port": 1,
+          "peer_switch": "00:00:00:00:00:03",
+          "peer_port": 0
+        },
+        {
+          "latency": 10,
+          "local_port": 0,
+          "peer_switch": "00:00:00:00:00:05",
+          "peer_port": 1
+        }
+      ]
+    },
+    {
+      "dpid": "00:00:00:00:00:05",
+      "num_of_ports": 52,
+      "links": [
+        {
+          "latency": 10,
+          "local_port": 1,
+          "peer_switch": "00:00:00:00:00:04",
+          "peer_port": 0
+        },
+        {
+          "latency": 10,
+          "local_port": 0,
+          "peer_switch": "00:00:00:00:00:06",
+          "peer_port": 1
+        }
+      ]
+    },
+    {
+      "dpid": "00:00:00:00:00:06",
+      "num_of_ports": 52,
+      "links": [
+        {
+          "latency": 10,
+          "local_port": 1,
+          "peer_switch": "00:00:00:00:00:05",
+          "peer_port": 0
+        },
+        {
+          "latency": 10,
+          "local_port": 0,
+          "peer_switch": "00:00:00:00:00:07",
+          "peer_port": 1
+        }
+      ]
+    },
+    {
+      "dpid": "00:00:00:00:00:07",
+      "num_of_ports": 52,
+      "links": [
+        {
+          "latency": 10,
+          "local_port": 1,
+          "peer_switch": "00:00:00:00:00:06",
+          "peer_port": 0
+        },
+        {
+          "latency": 10,
+          "local_port": 0,
+          "peer_switch": "00:00:00:00:00:08",
+          "peer_port": 1
+        }
+      ]
+    },
+    {
+      "dpid": "00:00:00:00:00:08",
+      "num_of_ports": 52,
+      "links": [
+        {
+          "latency": 10,
+          "local_port": 1,
+          "peer_switch": "00:00:00:00:00:07",
+          "peer_port": 0
+        },
+        {
+          "latency": 10,
+          "local_port": 0,
+          "peer_switch": "00:00:00:00:00:09",
+          "peer_port": 1
+        }
+      ]
+    },
+    {
+      "dpid": "00:00:00:00:00:09",
+      "num_of_ports": 52,
+      "links": [
+        {
+          "latency": 10,
+          "local_port": 1,
+          "peer_switch": "00:00:00:00:00:08",
+          "peer_port": 0
+        },
+        {
+          "latency": 10,
+          "local_port": 0,
+          "peer_switch": "00:00:00:00:00:0A",
+          "peer_port": 1
+        }
+      ]
+    },
+    {
+      "dpid": "00:00:00:00:00:0A",
+      "num_of_ports": 52,
+      "links": [
+        {
+          "latency": 10,
+          "local_port": 1,
+          "peer_switch": "00:00:00:00:00:09",
+          "peer_port": 0
+        },
+        {
+          "latency": 10,
+          "local_port": 0,
+          "peer_switch": "00:00:00:00:00:01",
+          "peer_port": 1
+        }
+      ]
+    }
+  ]
+}
