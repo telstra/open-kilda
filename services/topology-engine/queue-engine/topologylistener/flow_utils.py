@@ -21,14 +21,7 @@ import message_utils
 from logger import get_logger
 
 
-__all__ = ['graph']
-
-
-neo4j_host = os.environ['neo4jhost']
-neo4j_user = os.environ['neo4juser']
-neo4j_pass = os.environ['neo4jpass']
 graph = db.create_p2n_driver()
-auth = (neo4j_user, neo4j_pass)
 logger = get_logger()
 
 
@@ -51,12 +44,12 @@ def choose_output_action(input_vlan_id, output_vlan_id):
     return "REPLACE" if int(output_vlan_id) else "POP"
 
 
-def get_one_switch_rules(switch, src_port, src_vlan, dst_port, dst_vlan,
+def get_one_switch_rules(src_switch, src_port, src_vlan, dst_port, dst_vlan,
                          bandwidth, flowid, cookie, meter_id, output_action,
                          **k):
     return [
         message_utils.build_one_switch_flow(
-            switch, src_port, src_vlan, dst_port, dst_vlan,
+            src_switch, src_port, src_vlan, dst_port, dst_vlan,
             bandwidth, flowid, output_action, cookie, meter_id)]
 
 
