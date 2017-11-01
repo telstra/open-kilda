@@ -49,7 +49,6 @@
         <module>floodlight-modules</module>
         <module>northbound</module>
         <module>atdd</module>
-        <module>simulator</module>
   </modules>
 
     <dependencyManagement>

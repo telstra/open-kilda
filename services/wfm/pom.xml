@@ -16,6 +16,7 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
 
+        <openflowj.version>3.2.0-SNAPSHOT</openflowj.version>
         <storm.version>1.1.0</storm.version>
         <messaging.version>1.0-SNAPSHOT</messaging.version>
         <pce.version>1.0-SNAPSHOT</pce.version>
@@ -56,6 +57,11 @@
                     <artifactId>slf4j-log4j12</artifactId>
                 </exclusion>
             </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.projectfloodlight</groupId>
+            <artifactId>openflowj</artifactId>
+            <version>${openflowj.version}</version>
         </dependency>
 
         <dependency>
