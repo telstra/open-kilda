@@ -40,7 +40,10 @@ topic = config.get('kafka', 'topology.topic')
 bootstrap_servers_property = config.get('kafka', 'bootstrap.servers')
 bootstrap_servers = [x.strip() for x in bootstrap_servers_property.split(',')]
 
-neo4jhost = os.environ['neo4jhost']
+NEO4J_HOST = os.environ['neo4jhost'] or config.get('neo4j', 'host')
+NEO4J_USER = os.environ['neo4juser'] or config.get('neo4j', 'user')
+NEO4J_PASS = os.environ['neo4jpass'] or config.get('neo4j', 'pass')
+
 
 class Flow(object):
     def toJSON(self):
@@ -51,7 +54,7 @@ class Message(object):
         return json.dumps(self, default=lambda o: o.__dict__, sort_keys=False, indent=4)
 
 def create_p2n_driver():
-    graph = Graph("http://{}:{}@{}:7474/db/data/".format(os.environ['neo4juser'], os.environ['neo4jpass'], os.environ['neo4jhost']))
+    graph = Graph("http://{}:{}@{}:7474/db/data/".format(NEO4J_USER, NEO4J_PASS, NEO4J_HOST))
     return graph
 
 
@@ -142,7 +145,7 @@ def expand_relationships(relationships):
 def get_relationships(src_switch, src_port, dst_switch, dst_port):
     query = "MATCH (a:switch{{name:'{}'}}),(b:switch{{name:'{}'}}), p = shortestPath((a)-[:isl*..100]->(b)) where ALL(x in nodes(p) WHERE x.state = 'active') RETURN p".format(src_switch,dst_switch)
     data = {'query' : query}
-    resultPath = requests.post('http://{}:7474/db/data/cypher'.format(neo4jhost), data=data, auth=('neo4j', 'temppass'))
+    resultPath = requests.post('http://{}:7474/db/data/cypher'.format(NEO4J_HOST), data=data, auth=(NEO4J_USER, NEO4J_PASS))
     jPath = json.loads(resultPath.text)
     if jPath['data']:
         return jPath['data'][0][0]['relationships']
