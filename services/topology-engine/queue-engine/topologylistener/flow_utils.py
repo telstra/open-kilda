@@ -24,11 +24,7 @@ from logger import get_logger
 __all__ = ['graph']
 
 
-neo4j_host = os.environ['neo4jhost']
-neo4j_user = os.environ['neo4juser']
-neo4j_pass = os.environ['neo4jpass']
 graph = db.create_p2n_driver()
-auth = (neo4j_user, neo4j_pass)
 logger = get_logger()
 
 
