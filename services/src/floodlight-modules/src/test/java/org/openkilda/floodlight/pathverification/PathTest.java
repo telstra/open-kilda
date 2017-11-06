@@ -117,6 +117,8 @@ public class PathTest extends FloodlightTestCase {
         replay(sw2);
 
         packetIn = EasyMock.createMock(OFPacketIn.class);
+
+        pvs.initAlgorithm("secret");
     }
 
     @After
