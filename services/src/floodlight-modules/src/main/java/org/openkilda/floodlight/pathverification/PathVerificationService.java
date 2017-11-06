@@ -17,15 +17,13 @@ package org.openkilda.floodlight.pathverification;
 
 import static org.openkilda.messaging.Utils.MAPPER;
 
-import org.openkilda.floodlight.pathverification.type.PathType;
-import org.openkilda.floodlight.pathverification.web.PathVerificationServiceWebRoutable;
-import org.openkilda.messaging.Message;
-import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.event.IslChangeType;
-import org.openkilda.messaging.info.event.IslInfoData;
-import org.openkilda.messaging.info.event.PathNode;
-
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.JWTVerifier;
+import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.exceptions.JWTVerificationException;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.common.annotations.VisibleForTesting;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IListener;
@@ -45,6 +43,13 @@ import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.util.OFMessageUtils;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.openkilda.floodlight.pathverification.type.PathType;
+import org.openkilda.floodlight.pathverification.web.PathVerificationServiceWebRoutable;
+import org.openkilda.messaging.Message;
+import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.event.IslChangeType;
+import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.messaging.info.event.PathNode;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
@@ -67,8 +72,10 @@ import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.UnsupportedEncodingException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -90,6 +97,8 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
     private boolean isAlive = false;
     private KafkaProducer<String, String> producer;
     private double islBandwidthQuotient = 1.0;
+    private Algorithm algorithm;
+    private JWTVerifier verifier;
 
     /**
      * IFloodlightModule Methods.
@@ -119,18 +128,50 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
 
     @Override
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
-        floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
-        switchService = context.getServiceImpl(IOFSwitchService.class);
-        restApiService = context.getServiceImpl(IRestApiService.class);
-        Map<String, String> configParameters = context.getConfigParams(this);
         logger.debug("main pathverification service: " + this);
+        Map<String, String> configParameters = context.getConfigParams(this);
+
         islBandwidthQuotient = Double.parseDouble(configParameters.get("isl_bandwidth_quotient"));
 
+        initServices(context);
+
+        initAlgorithm(configParameters.get("hmac256-secret"));
+
+        initKafka(configParameters);
+    }
+
+    @VisibleForTesting
+    void initKafka(Map<String, String> configParameters)
+    {
         Properties kafkaProps = new Properties();
         kafkaProps.put("bootstrap.servers", configParameters.get("bootstrap-servers"));
         kafkaProps.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         kafkaProps.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         producer = new KafkaProducer<>(kafkaProps);
+    }
+
+    @VisibleForTesting
+    void initServices(FloodlightModuleContext context)
+    {
+        floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
+        switchService = context.getServiceImpl(IOFSwitchService.class);
+        restApiService = context.getServiceImpl(IRestApiService.class);
+    }
+
+    @VisibleForTesting
+    void initAlgorithm(String secret) throws FloodlightModuleException {
+        try {
+            algorithm = Algorithm.HMAC256(secret);
+            verifier = JWT.require(algorithm).build();
+        } catch (UnsupportedEncodingException e) {
+            logger.error("Ivalid secret", e);
+            throw new FloodlightModuleException("Invalid secret for HMAC256");
+        }
+    }
+
+    @VisibleForTesting
+    void setKafkaProducer(KafkaProducer<String, String> mockProducer) {
+        producer = mockProducer;
     }
 
     @Override
@@ -213,7 +254,12 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
         return generateVerificationPacket(srcSw, srcPort, null);
     }
 
-    public OFPacketOut generateVerificationPacket(IOFSwitch srcSw, OFPort port, IOFSwitch dstSw) {
+    public OFPacketOut generateVerificationPacket(IOFSwitch srcSw, OFPort srcPort, IOFSwitch dstSw) {
+        return generateVerificationPacket(srcSw, srcPort, dstSw, true);
+    }
+
+    public OFPacketOut generateVerificationPacket(IOFSwitch srcSw, OFPort port, IOFSwitch dstSw,
+            boolean sign) {
         try {
             OFPortDesc ofPortDesc = srcSw.getPort(port);
 
@@ -281,6 +327,24 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
                     .setLength((short) typeTLVValue.length).setValue(typeTLVValue);
             vp.getOptionalTLVList().add(typeTLV);
 
+            if (sign) {
+                String token = JWT.create()
+                        .withClaim("dpid", dpid.getLong())
+                        .withClaim("ts", time + swLatency)
+                        .sign(algorithm);
+
+                byte[] tokenBytes = token.getBytes(Charset.forName("UTF-8"));
+
+                byte[] tokenTLVValue = ByteBuffer.allocate(4 + tokenBytes.length).put((byte) 0x00)
+                        .put((byte) 0x26).put((byte) 0xe1)
+                        .put((byte) 0x03)
+                        .put(tokenBytes).array();
+                LLDPTLV tokenTLV = new LLDPTLV().setType((byte) 127)
+                        .setLength((short) tokenTLVValue.length).setValue(tokenTLVValue);
+
+                vp.getOptionalTLVList().add(tokenTLV);
+            }
+
             MacAddress dstMac = MacAddress.of(VERIFICATION_BCAST_PACKET_DST);
             if (dstSw != null) {
                 OFPortDesc sw2OfPortDesc = dstSw.getPort(port);
@@ -343,15 +407,14 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
         logger.debug("packet_in {} received from {}", pkt.getXid(), sw.getId());
 
         VerificationPacket verificationPacket = null;
-        Command command = Command.CONTINUE;
 
         Ethernet eth = IFloodlightProviderService.bcStore.get(context, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 
         try {
             verificationPacket = deserialize(eth);
-            command = Command.STOP;
         } catch (Exception exception) {
             logger.error("Deserialization failure: {}", exception.getMessage(), exception);
+            return Command.CONTINUE;
         }
 
         try {
@@ -364,6 +427,7 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
             long timestamp = 0;
             int pathOrdinal = 10;
             IOFSwitch remoteSwitch = null;
+            boolean signed = false;
             for (LLDPTLV lldptlv : verificationPacket.getOptionalTLVList()) {
                 if (lldptlv.getType() == 127 && lldptlv.getLength() == 12
                         && lldptlv.getValue()[0] == 0x0
@@ -388,7 +452,33 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
                         && lldptlv.getValue()[3] == 0x02) {
                     ByteBuffer typeBB = ByteBuffer.wrap(lldptlv.getValue());
                     pathOrdinal = typeBB.getInt(4);
+                } else if (lldptlv.getType() == 127
+                        && lldptlv.getValue()[0] == 0x0
+                        && lldptlv.getValue()[1] == 0x26
+                        && lldptlv.getValue()[2] == (byte) 0xe1
+                        && lldptlv.getValue()[3] == 0x03) {
+                    ByteBuffer bb = ByteBuffer.wrap(lldptlv.getValue());
+                    bb.position(4);
+                    byte[] tokenArray = new byte[lldptlv.getLength() - 4];
+                    bb.get(tokenArray, 0, tokenArray.length);
+                    String token = new String(tokenArray);
+
+                    try {
+                        DecodedJWT jwt = verifier.verify(token);
+                        signed = true;
+                    }
+                    catch (JWTVerificationException e)
+                    {
+                        logger.error("Packet verification failed", e);
+                        return Command.STOP;
+                    }
                 }
+            }
+
+            if (!signed)
+            {
+                logger.warn("verification packet without sign");
+                return Command.STOP;
             }
 
             U64 latency = (timestamp != 0 && (time - timestamp) > 0) ? U64.of(time - timestamp) : U64.ZERO;
@@ -428,12 +518,14 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
         } catch (JsonProcessingException exception) {
             logger.error("could not create json for path packet_in: {}", exception.getMessage(), exception);
         } catch (UnsupportedOperationException exception) {
-            logger.error("could not parse packet_in message: {}", exception.getMessage(), exception);
+            logger.error("could not parse packet_in message: {}", exception.getMessage(),
+                    exception);
         } catch (Exception exception) {
             logger.error("unknown error during packet_in message processing: {}", exception.getMessage(), exception);
+            throw exception;
         }
 
-        return command;
+        return Command.STOP;
     }
 
     private long getAvailableBandwidth(long speed) {

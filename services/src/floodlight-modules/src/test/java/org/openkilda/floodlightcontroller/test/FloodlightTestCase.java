@@ -31,19 +31,32 @@
 **/
 package org.openkilda.floodlightcontroller.test;
 
+import static org.easymock.EasyMock.expect;
+
+import net.floodlightcontroller.core.SwitchDescription;
+import org.easymock.EasyMock;
 import org.openkilda.floodlightcontroller.core.test.MockFloodlightProvider;
 import org.openkilda.floodlightcontroller.core.test.MockSwitchManager;
 import org.junit.Before;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
+import org.projectfloodlight.openflow.protocol.OFDescStatsReply;
+import org.projectfloodlight.openflow.protocol.OFFactories;
+import org.projectfloodlight.openflow.protocol.OFFactory;
+import org.projectfloodlight.openflow.protocol.OFFeaturesReply;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.protocol.OFType;
+import org.projectfloodlight.openflow.protocol.OFVersion;
+import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFPort;
 import net.floodlightcontroller.packet.Ethernet;
+import org.projectfloodlight.openflow.types.U64;
+
+import java.net.InetSocketAddress;
 
 /**
  * This class gets a handle on the application context which is used to
@@ -54,6 +67,8 @@ import net.floodlightcontroller.packet.Ethernet;
 public class FloodlightTestCase {
     protected MockFloodlightProvider mockFloodlightProvider;
     protected MockSwitchManager mockSwitchManager;
+    protected OFFeaturesReply swFeatures;
+    protected OFFactory factory = OFFactories.getFactory(OFVersion.OF_13);
 
     public MockFloodlightProvider getMockFloodlightProvider() {
         return mockFloodlightProvider;
@@ -88,6 +103,7 @@ public class FloodlightTestCase {
     public void setUp() throws Exception {
         mockFloodlightProvider = new MockFloodlightProvider();
         mockSwitchManager = new MockSwitchManager();
+        swFeatures = factory.buildFeaturesReply().setNBuffers(1000).build();
     }
 
     public static OFPortDesc createOFPortDesc(IOFSwitch sw, String name, int number) {
@@ -97,5 +113,20 @@ public class FloodlightTestCase {
                 .setName(name)
                 .build();
         return portDesc;
+    }
+
+    public IOFSwitch buildMockIOFSwitch(Long id, OFPortDesc portDesc, OFFactory factory,
+            OFDescStatsReply swDesc, InetSocketAddress inetAddr) {
+        IOFSwitch sw = EasyMock.createMock(IOFSwitch.class);
+        expect(sw.getId()).andReturn(DatapathId.of(id)).anyTimes();
+        expect(sw.getPort(OFPort.of(1))).andReturn(portDesc).anyTimes();
+        expect(sw.getOFFactory()).andReturn(factory).anyTimes();
+        expect(sw.getBuffers()).andReturn(swFeatures.getNBuffers()).anyTimes();
+        expect(sw.hasAttribute(IOFSwitch.PROP_SUPPORTS_OFPP_TABLE)).andReturn(true).anyTimes();
+        expect(sw.getSwitchDescription()).andReturn(new SwitchDescription(swDesc)).anyTimes();
+        expect(sw.isActive()).andReturn(true).anyTimes();
+        expect(sw.getLatency()).andReturn(U64.of(10L)).anyTimes();
+        expect(sw.getInetAddress()).andReturn(inetAddr).anyTimes();
+        return sw;
     }
 }
