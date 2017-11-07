@@ -8,6 +8,7 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.PortStatsData;
 import org.openkilda.messaging.info.stats.PortStatsEntry;
 import org.openkilda.messaging.info.stats.PortStatsReply;
+import org.openkilda.simulator.bolts.SwitchBolt;
 import org.projectfloodlight.openflow.types.DatapathId;
 
 import java.time.Instant;

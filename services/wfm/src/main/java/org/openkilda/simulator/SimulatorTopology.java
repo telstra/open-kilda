@@ -6,8 +6,8 @@ import org.apache.storm.Config;
 import org.apache.storm.LocalCluster;
 import org.apache.storm.StormSubmitter;
 import org.apache.storm.generated.StormTopology;
+import org.apache.storm.tuple.Fields;
 import org.openkilda.simulator.bolts.CommandBolt;
-import org.openkilda.simulator.bolts.DeployTopologyBolt;
 import org.openkilda.simulator.bolts.SwitchBolt;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.apache.storm.topology.TopologyBuilder;
@@ -23,15 +23,18 @@ public class SimulatorTopology extends AbstractTopology {
     public static  final String COMMAND_TOPIC = "kilda-test";
     public static final String SIMULATOR_SPOUT = "simulator-spout";
     public static final String COMMAND_SPOUT = "command-spout";
-    public static final String DEPLOY_TOPOLOGY_BOLT_STREAM = "deploy_topology_stream";
     public static final String COMMAND_BOLT_STREAM = "command_bolt_stream";
+    public static final String COMMAND_BOLT = "command_bolt";
+    public static final String SWITCH_BOLT = "switch_bolt";
+    public static final String SWITCH_BOLT_STREAM = "switch_bolt_stream";
+    public static final String KAFKA_BOLT = "kafka_bolt";
+    public static final String KAFKA_BOLT_STREAM = "kafka_bolt_stream";
 
     public SimulatorTopology(File file) {
         super(file);
     }
 
     public static void main(String[] args) throws Exception {
-
         //If there are arguments, we are running on a cluster; otherwise, we are running locally
         if (args != null && args.length > 0) {
             File file = new File(args[1]);
@@ -43,7 +46,6 @@ public class SimulatorTopology extends AbstractTopology {
             conf.setNumWorkers(simulatorTopology.parallelism);
             StormSubmitter.submitTopology(args[0], conf, topo);
         } else {
-            logger.info("starting islStatsTopo in local mode");
             File file = new File(SimulatorTopology.class.getResource(Topology.TOPOLOGY_PROPERTIES).getFile());
             Config conf = new Config();
             conf.setDebug(false);
@@ -77,33 +79,22 @@ public class SimulatorTopology extends AbstractTopology {
         logger.debug("connecting to " + COMMAND_TOPIC + " topic");
         builder.setSpout(COMMAND_SPOUT, createKafkaSpout(COMMAND_TOPIC, COMMAND_SPOUT));
 
-        final String commandBoltName = CommandBolt.class.getSimpleName();
         CommandBolt commandBolt = new CommandBolt();
-        logger.debug("starting " + commandBoltName + " bolt");
-        builder.setBolt(commandBoltName, commandBolt, parallelism)
+        logger.debug("starting " + COMMAND_BOLT + " bolt");
+        builder.setBolt(COMMAND_BOLT, commandBolt, parallelism)
                 .shuffleGrouping(SIMULATOR_SPOUT)
                 .shuffleGrouping(COMMAND_SPOUT);
 
-        final String deployTopologyBoltName = DeployTopologyBolt.class.getSimpleName();
-        DeployTopologyBolt deployTopologyBolt = new DeployTopologyBolt();
-        logger.debug("starting " + deployTopologyBoltName + " bolt");
-        builder.setBolt(deployTopologyBoltName, deployTopologyBolt, parallelism)
-                .shuffleGrouping(commandBoltName, DEPLOY_TOPOLOGY_BOLT_STREAM);
-
-        final String switchBoltName = SwitchBolt.class.getSimpleName();
         SwitchBolt switchBolt = new SwitchBolt();
-        logger.debug("starting " + switchBoltName + " bolt");
-        builder.setBolt(switchBoltName, switchBolt, parallelism)
-                .shuffleGrouping(deployTopologyBoltName)
-                .shuffleGrouping(commandBoltName, COMMAND_BOLT_STREAM);
-//                .fieldsGrouping(deployTopologyBoltName, new Fields("dpid"));
+        logger.debug("starting " + SWITCH_BOLT + " bolt");
+        builder.setBolt(SWITCH_BOLT, switchBolt, 1)
+                .fieldsGrouping(COMMAND_BOLT, COMMAND_BOLT_STREAM, new Fields("dpid"))
+                .fieldsGrouping(SWITCH_BOLT, SWITCH_BOLT_STREAM, new Fields("dpid"));
 
         final String KILDA_TOPIC = "kilda-test";
-        final String kafkaBoltName = KILDA_TOPIC + "Bolt";
-        final String KAFKA_BOLT_STREAM = kafkaBoltName + "Stream";
         checkAndCreateTopic(KILDA_TOPIC);
-        builder.setBolt(kafkaBoltName, createKafkaBolt(KILDA_TOPIC), parallelism)
-                .shuffleGrouping(switchBoltName);
+        builder.setBolt(KAFKA_BOLT, createKafkaBolt(KILDA_TOPIC), parallelism)
+                .shuffleGrouping(SWITCH_BOLT, KAFKA_BOLT_STREAM);
 
         return builder.createTopology();
     }

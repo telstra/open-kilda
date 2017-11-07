@@ -11,11 +11,18 @@ import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Utils;
+import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
+import org.openkilda.messaging.command.discovery.DiscoverPathCommandData;
+import org.openkilda.messaging.command.flow.*;
 import org.openkilda.simulator.SimulatorTopology;
+import org.openkilda.simulator.classes.Commands;
+import org.openkilda.simulator.messages.SwitchMessage;
 import org.openkilda.simulator.messages.TopologyMessage;
 import org.openkilda.wfm.OFEMessageUtils;
 
+import java.util.List;
 import java.util.Map;
 
 public class CommandBolt extends BaseRichBolt {
@@ -41,32 +48,72 @@ public class CommandBolt extends BaseRichBolt {
         return tuple.getString(0);
     }
 
-    protected void processCommand(Tuple tuple, String json) throws Exception {
-        CommandMessage command = Utils.MAPPER.readValue(json, CommandMessage.class);
+    protected void processCommand(Tuple tuple) throws Exception {
+        CommandMessage command = Utils.MAPPER.readValue(getJson(tuple), CommandMessage.class);
         if (command.getDestination() == Destination.CONTROLLER) {
-            collector.emit(SimulatorTopology.COMMAND_BOLT_STREAM, tuple, new Values(command.getData()));
-
+            CommandData data = command.getData();
+            Commands switchCommand;
+            String sw;
+            if (data instanceof DiscoverIslCommandData) {
+                switchCommand = Commands.DO_DISCOVER_ISL_COMMAND;
+                sw = ((DiscoverIslCommandData) data).getSwitchId();
+            } else if (data instanceof DiscoverPathCommandData) {
+                switchCommand = Commands.DO_DISCOVER_PATH_COMMAND;
+                sw = ((DiscoverPathCommandData) data).getSrcSwitchId();
+            } else if (data instanceof InstallIngressFlow) {
+                switchCommand = Commands.DO_INSTALL_INGRESS_FLOW;
+                sw = ((InstallIngressFlow) data).getSwitchId();
+            } else if (data instanceof InstallEgressFlow) {
+                switchCommand = Commands.DO_INSTALL_EGRESS_FLOW;
+                sw = ((InstallEgressFlow) data).getSwitchId();
+            } else if (data instanceof InstallTransitFlow) {
+                switchCommand = Commands.DO_INSTALL_TRANSIT_FLOW;
+                sw = ((InstallTransitFlow) data).getSwitchId();
+            } else if (data instanceof InstallOneSwitchFlow) {
+                switchCommand = Commands.DO_INSTALL_ONESWITCH_FLOW;
+                sw = ((InstallOneSwitchFlow) data).getSwitchId();
+            } else if (data instanceof RemoveFlow) {
+                switchCommand = Commands.DO_DELETE_FLOW;
+                sw = ((RemoveFlow) data).getSwitchId();
+            } else {
+                logger.error("unknown data type: {}", data.toString());
+                throw new Exception("Unknown command {}".format(data.getClass().getSimpleName()));
+            }
+            List<Integer> taskIDs = collector.emit(SimulatorTopology.COMMAND_BOLT_STREAM, tuple,
+                    new Values(sw.toLowerCase(), switchCommand.name(), command.getData()));
+            logger.info("{}:  {} - {}", switchCommand.name(), sw, taskIDs);
         }
+    }
+
+    protected void createTopology(TopologyMessage topology, Tuple tuple) {
+        List<SwitchMessage> switches = topology.getSwitches();
+        switches.forEach(sw -> {
+            // Need to pre-pend 00:00 as DPID as returned by OpenflowJ has 8 octets
+            List<Integer> taskIDs = collector.emit(SimulatorTopology.COMMAND_BOLT_STREAM, tuple,
+                    new Values(String.format("00:00:%s",sw.getDpid()).toLowerCase(), Commands.DO_ADD_SWITCH.name(), sw));
+            logger.info("Add Switch: {} - {}", sw.getDpid(), taskIDs);
+        });
     }
 
     @Override
     public void execute(Tuple tuple) {
+        logger.debug("got tuple: {}", tuple.toString());
         try {
             String json = getJson(tuple);
             switch (getType(json)) {
                 case "topology":
                     TopologyMessage message = Utils.MAPPER.readValue(json, TopologyMessage.class);
-                    logger.debug("emitting: " + message.toString());
-                    collector.emit(SimulatorTopology.DEPLOY_TOPOLOGY_BOLT_STREAM, tuple, new Values(message));
+                    createTopology(message, tuple);
+//                    collector.emit(SimulatorTopology.DEPLOY_TOPOLOGY_BOLT_STREAM, tuple, new Values(message));
                     break;
                 case "command":
-                    processCommand(tuple, json);
+                    processCommand(tuple);
                     break;
                 default:
                     break;
             }
         } catch (Exception e) {
-            logger.error("Could not parse: ", e);
+            logger.error("Could not parse tuple: {}".format(tuple.toString()), e);
         } finally {
             collector.ack(tuple);
         }
@@ -74,7 +121,7 @@ public class CommandBolt extends BaseRichBolt {
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
-        outputFieldsDeclarer.declareStream(SimulatorTopology.DEPLOY_TOPOLOGY_BOLT_STREAM, new Fields("topology"));
-        outputFieldsDeclarer.declareStream(SimulatorTopology.COMMAND_BOLT_STREAM, new Fields("command"));
+        outputFieldsDeclarer.declareStream(SimulatorTopology.COMMAND_BOLT_STREAM,
+                new Fields("dpid", SwitchBolt.TupleFields.COMMAND.name(), SwitchBolt.TupleFields.DATA.name()));
     }
 }
