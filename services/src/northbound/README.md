@@ -26,6 +26,42 @@ These values could also be changed in ```src/main/resources/northbound.propertie
 
 ## Documentation
 
+### Configuration
+To pass configuration options into northbound you have several ways. 
+
+You can put file application.properties into "current" folder(from where you starts northbound.jar) and override all
+required options/properties. application.properties uses generic java property file format.
+
+Example application.properties file that define kafka connection
+```properties
+kafka.hosts=lab.local:9092
+kafka.groupid=northbound
+kafka.topic=kilda-devel
+```
+
+Location and the name of application.properties file can be passed via CLI
+```bash
+java -jar northbound.jar --spring.config.name=northbound
+```
+to use northbound.properties
+
+```bash
+java -jar northbound.jar --spring.config.location=file:/srv/app/config/ --spring.config.name=northbound
+```
+to use northbound.properties placed into /srv/app/config folder.
+
+Instead of CLI you can use SPRING_CONFIG_NAME and SPRING_CONFIG_LOCATION environment variables for same purposes. 
+
+You can also override properties by passing them via CLI. For example to pass kafka host
+
+```bash
+java -jar northbound.jar --kafka.hosts=lab.local:9092
+```
+
+You can find list of existing properties into "src/main/resources/northbound.propertiesnorthbound.properties"
+
+[Here you can find more details about overriding properties](https://docs.spring.io/spring-boot/docs/current/reference/html/boot-features-external-config.html#boot-features-external-config-application-property-files])
+
 ### REST API
 
 REST API documentation could be generated via __mvn clean package__ command.
