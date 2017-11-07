@@ -42,26 +42,14 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     /**
      * The environment variable for username.
      */
-    @Value("${security.rest.username.env}")
-    private String envUsername;
+    @Value("${security.rest.username}")
+    private String username;
 
     /**
      * The environment variable for password.
      */
-    @Value("${security.rest.password.env}")
-    private String envPassword;
-
-    /**
-     * The service username environment variable name.
-     */
-    @Value("${security.rest.username.default}")
-    private String defaultUsername;
-
-    /**
-     * The service password environment variable name.
-     */
-    @Value("${security.rest.password.default}")
-    private String defaultPassword;
+    @Value("${security.rest.password}")
+    private String password;
 
     /**
      * Basic auth entry point.
@@ -74,16 +62,6 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
      */
     @Override
     protected void configure(AuthenticationManagerBuilder auth) throws Exception {
-        // get username from environment variable, otherwise use default
-        String username = System.getenv(envUsername);
-        if (username == null || username.isEmpty()) {
-            username = defaultUsername;
-        }
-        // get password from environment variable, otherwise use default
-        String password = System.getenv(envPassword);
-        if (password == null || password.isEmpty()) {
-            password = defaultPassword;
-        }
         auth.inMemoryAuthentication().withUser(username).password(password).roles(DEFAULT_ROLE);
     }
 

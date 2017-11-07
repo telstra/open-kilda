@@ -17,4 +17,4 @@ FROM kilda/base-floodlight
 
 ADD target/northbound.jar /app/
 WORKDIR /app
-CMD ["java","-jar","northbound.jar"]
+CMD ["java","-jar","northbound.jar","--spring.config.location=file:/env/config/","--spring.config.name=northbound"]

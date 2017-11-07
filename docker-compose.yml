@@ -313,12 +313,11 @@ services:
       - "8088:8080"
     links:
       - kafka:kafka.pendev
-    environment:
-      REST_USERNAME: 'kilda'
-      REST_PASSWORD: 'kilda'
     depends_on:
       kafka:
         condition: service_healthy
+    volumes:
+      - ./dist/devel-local:/env:ro
 
   opentsdb:
     container_name: opentsdb
