@@ -94,6 +94,18 @@ public class Message implements Serializable {
     }
 
     /**
+     * Instance constructor.
+     *
+     * @param timestamp     message timestamp
+     * @param correlationId message correlation id
+     */
+    public Message(@JsonProperty(TIMESTAMP) final long timestamp,
+                   @JsonProperty(CORRELATION_ID) final String correlationId) {
+        this.timestamp = timestamp;
+        this.correlationId = correlationId;
+    }
+
+    /**
      * Returns message timestamp.
      *
      * @return message timestamp
