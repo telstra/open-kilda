@@ -34,3 +34,4 @@ ${CREATE_SIMPLE} speaker.info.isl.updown
 ${CREATE_SIMPLE} speaker.info.isl.other
 ${CREATE_SIMPLE} speaker.info.other
 ${CREATE_SIMPLE} kilda.wfm.topo.updown
+${CREATE_SIMPLE} opentsdb-topic
