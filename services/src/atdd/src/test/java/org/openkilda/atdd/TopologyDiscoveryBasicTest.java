@@ -15,16 +15,25 @@
 
 package org.openkilda.atdd;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.openkilda.DefaultParameters.trafficEndpoint;
+import static org.openkilda.flow.FlowUtils.getTimeDuration;
 
 import cucumber.api.java.en.Given;
 import cucumber.api.java.en.Then;
 import cucumber.api.java.en.When;
+import org.glassfish.jersey.client.ClientConfig;
 import org.openkilda.topo.ITopology;
 import org.openkilda.topo.TestUtils;
 import org.openkilda.topo.TopologyBuilder;
 import org.openkilda.topo.TopologyHelp;
 import org.openkilda.topo.TopologyPrinter;
+
+import javax.ws.rs.client.Client;
+import javax.ws.rs.client.ClientBuilder;
+import javax.ws.rs.core.Response;
+
 public class TopologyDiscoveryBasicTest {
 
     public long pre_start;
@@ -84,4 +93,27 @@ public class TopologyDiscoveryBasicTest {
 	}
 
 
+    @Then("^the topology is not changed")
+    public void validate_topology() throws Throwable {
+        ITopology actual = TestUtils.translateTopoEngTopo(expected);
+        TestUtils.validateTopos(expected,actual);
+    }
+
+    @When("^send malformed lldp packet$")
+    public void sendMalformedLldpPacket() throws Throwable {
+            System.out.println("=====> Send malformed packet");
+
+            long current = System.currentTimeMillis();
+            Client client = ClientBuilder.newClient(new ClientConfig());
+            Response result = client
+                    .target(trafficEndpoint)
+                    .path("/send_malformed_packet")
+                    .request()
+                    .post(null);
+            System.out.println(String.format("======> Response = %s", result.toString()));
+            System.out.println(String.format("======> Send malformed packet Time: %,.3f", getTimeDuration(current)));
+
+        assertEquals(200, result.getStatus());
+
+    }
 }

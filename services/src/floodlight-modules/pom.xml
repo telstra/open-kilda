@@ -65,6 +65,11 @@
             <groupId>org.jacoco</groupId>
             <artifactId>jacoco-maven-plugin</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.auth0</groupId>
+            <artifactId>java-jwt</artifactId>
+            <version>3.2.0</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -108,9 +113,21 @@
                                     <exclude>org.projectfloodlight:floodlight:*:*</exclude>
                                 </excludes>
                             </artifactSet>
+                            <!-- https://stackoverflow.com/questions/999489/invalid-signature-file-when-attempting-to-run-a-jar -->
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
                         </configuration>
                     </execution>
                 </executions>
+
             </plugin>
         </plugins>
 
