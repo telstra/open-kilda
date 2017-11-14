@@ -56,6 +56,7 @@ public class AbstractStormTest {
     protected static Config stormConfig() {
         Config config = new Config();
         config.setDebug(false);
+        config.setMaxTaskParallelism(1);
         config.setNumWorkers(1);
         return config;
     }

@@ -70,5 +70,13 @@ deploy-islstats:
 kill-islstats:
 	storm kill islstats >/dev/null 2>&1
 
+deploy-opentsdb:
+	storm jar target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar \
+    		org.openkilda.wfm.topology.opentsdb.OpenTSDBTopology \
+    		opentsdb ${config}
+
+kill-opentsdb:
+	storm kill opentsdb >/dev/null 2>&1
+
 create-topics:
 	src/main/resources/create-channels.sh
