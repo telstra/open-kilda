@@ -55,7 +55,7 @@ public class OpenTSDBFilterBoltTest {
 
     @Before
     public void init() {
-        Mockito.reset(outputCollector);
+        Mockito.reset(outputCollector, tuple);
 
         when(outputCollector.emit(anyList())).thenReturn(Collections.emptyList());
     }
@@ -87,7 +87,7 @@ public class OpenTSDBFilterBoltTest {
         target.execute(tuple);
 
         verify(outputCollector, times(1)).emit(argumentCaptor.capture());
-        verify(outputCollector).ack(any(Tuple.class));
+        verify(outputCollector, times(2)).ack(any(Tuple.class));
     }
 
     @Test
@@ -101,7 +101,7 @@ public class OpenTSDBFilterBoltTest {
         target.execute(tuple);
 
         verify(outputCollector, times(1)).emit(argumentCaptor.capture());
-        verify(outputCollector).ack(any(Tuple.class));
+        verify(outputCollector, times(2)).ack(any(Tuple.class));
     }
 
     private void mockTuple(long timestamp) throws Exception {
