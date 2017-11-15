@@ -16,21 +16,16 @@
 package org.openkilda.wfm.topology.cache;
 
 import org.openkilda.messaging.ServiceType;
+import org.openkilda.wfm.ConfigurationException;
 import org.openkilda.wfm.topology.AbstractTopology;
-import org.openkilda.wfm.topology.Topology;
-import org.openkilda.wfm.topology.event.OFEventWFMTopology;
+import org.openkilda.wfm.LaunchEnvironment;
 
-import org.apache.storm.Config;
-import org.apache.storm.LocalCluster;
-import org.apache.storm.StormSubmitter;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.KafkaSpout;
 import org.apache.storm.kafka.bolt.KafkaBolt;
 import org.apache.storm.topology.TopologyBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
 
 public class CacheTopology extends AbstractTopology {
     static final String STATE_DUMP_TOPIC = "kilda.wfm.topo.dump";
@@ -39,58 +34,12 @@ public class CacheTopology extends AbstractTopology {
 
     private static final Logger logger = LoggerFactory.getLogger(CacheTopology.class);
 
-    /**
-     * Instance constructor.
-     */
-    public CacheTopology(File file) {
-        super(file);
-
-        checkAndCreateTopic(STATE_TPE_TOPIC);
-        checkAndCreateTopic(STATE_UPDATE_TOPIC);
-        checkAndCreateTopic(STATE_DUMP_TOPIC);
+    public CacheTopology(LaunchEnvironment env) throws ConfigurationException {
+        super(env);
 
         logger.debug("Topology built {}: zookeeper={}, kafka={}, parallelism={}, workers={}",
-                topologyName, zookeeperHosts, kafkaHosts, parallelism, workers);
-    }
-
-    /**
-     * Loads topology.
-     *
-     * @param args topology args
-     * @throws Exception if topology submitting fails
-     */
-    public static void main(String[] args) throws Exception {
-        if (args != null && args.length > 0) {
-            File file = new File(args[1]);
-            final CacheTopology cacheTopology = new CacheTopology(file);
-            StormTopology stormTopology = cacheTopology.createTopology();
-            final Config config = new Config();
-            config.setNumWorkers(cacheTopology.workers);
-
-            logger.info("Start Topology: {}", cacheTopology.getTopologyName());
-
-            config.setDebug(false);
-
-            StormSubmitter.submitTopology(args[0], config, stormTopology);
-        } else {
-            File file = new File(CacheTopology.class.getResource(Topology.TOPOLOGY_PROPERTIES).getFile());
-            final CacheTopology cacheTopology = new CacheTopology(file);
-            StormTopology stormTopology = cacheTopology.createTopology();
-            final Config config = new Config();
-            config.setNumWorkers(cacheTopology.workers);
-
-            logger.info("Start Topology Locally: {}", cacheTopology.topologyName);
-
-            config.setDebug(true);
-            config.setMaxTaskParallelism(cacheTopology.parallelism);
-
-            LocalCluster cluster = new LocalCluster();
-            cluster.submitTopology(cacheTopology.topologyName, config, stormTopology);
-
-            logger.info("Sleep", cacheTopology.topologyName);
-            Thread.sleep(60000);
-            cluster.shutdown();
-        }
+                getTopologyName(), config.getZookeeperHosts(), config.getKafkaHosts(), config.getParallelism(),
+                config.getWorkers());
     }
 
     /**
@@ -99,6 +48,10 @@ public class CacheTopology extends AbstractTopology {
     @Override
     public StormTopology createTopology() {
         logger.info("Creating Topology: {}", topologyName);
+
+        initKafka();
+
+        Integer parallelism = config.getParallelism();
 
         TopologyBuilder builder = new TopologyBuilder();
 
@@ -117,7 +70,7 @@ public class CacheTopology extends AbstractTopology {
         /*
          * Stores network cache.
          */
-        CacheBolt cacheBolt = new CacheBolt(OFEventWFMTopology.DEFAULT_DISCOVERY_TIMEOUT);
+        CacheBolt cacheBolt = new CacheBolt(config.getDiscoveryTimeout());
         builder.setBolt(ComponentType.CACHE_BOLT.toString(), cacheBolt, parallelism)
                 .shuffleGrouping(ComponentType.WFM_UPDATE_KAFKA_SPOUT.toString())
                 .shuffleGrouping(ComponentType.TPE_KAFKA_SPOUT.toString());
@@ -139,5 +92,20 @@ public class CacheTopology extends AbstractTopology {
         createHealthCheckHandler(builder, ServiceType.CACHE_TOPOLOGY.getId());
 
         return builder.createTopology();
+    }
+
+    private void initKafka() {
+        checkAndCreateTopic(STATE_TPE_TOPIC);
+        checkAndCreateTopic(STATE_UPDATE_TOPIC);
+        checkAndCreateTopic(STATE_DUMP_TOPIC);
+    }
+
+    public static void main(String[] args) {
+        try {
+            LaunchEnvironment env = new LaunchEnvironment(args);
+            (new CacheTopology(env)).setup();
+        } catch (Exception e) {
+            System.exit(handleLaunchException(e));
+        }
     }
 }
