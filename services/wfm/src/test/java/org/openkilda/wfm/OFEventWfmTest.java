@@ -16,16 +16,15 @@
 package org.openkilda.wfm;
 
 import static org.openkilda.messaging.Utils.MAPPER;
-import static org.openkilda.wfm.topology.event.OFEventWFMTopology.DEFAULT_DISCOVERY_INTERVAL;
-import static org.openkilda.wfm.topology.event.OFEventWFMTopology.DEFAULT_DISCOVERY_TIMEOUT;
 import static org.mockito.Mockito.when;
 
+import org.kohsuke.args4j.CmdLineException;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.wfm.topology.OutputCollectorMock;
-import org.openkilda.wfm.topology.Topology;
+import org.openkilda.wfm.topology.TopologyConfig;
 import org.openkilda.wfm.topology.event.OFELinkBolt;
 import org.openkilda.wfm.topology.event.OFEventWFMTopology;
 import org.openkilda.wfm.topology.splitter.InfoEventSplitterBolt;
@@ -54,6 +53,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Properties;
 
 /**
  * OFEventWfmTest tests the critical aspects of OFEventWFMTopology
@@ -71,16 +71,18 @@ public class OFEventWfmTest extends AbstractStormTest {
     @Test
     public void BasicSwitchPortEventsTest() throws Exception {
         System.out.println("==> Starting BasicSwitchEventTest");
-        File file = new File(OFEventWfmTest.class.getResource(Topology.TOPOLOGY_PROPERTIES).getFile());
-        OFEventWFMTopology topo = new OFEventWFMTopology(file);
-        cluster.submitTopology(topo.getTopologyName(), stormConfig(), topo.createTopology());
 
-        KafkaFilerTopology kafkaFiler = new KafkaFilerTopology(file,
-                OFEventWFMTopology.DEFAULT_KAFKA_OUTPUT, server.tempDir.getAbsolutePath());
+        Properties overlay = new Properties();
+        overlay.setProperty("filter.directory", server.tempDir.getAbsolutePath());
+
+        LaunchEnvironment env = makeLaunchEnvironment(overlay);
+        OFEventWFMTopology manager = new OFEventWFMTopology(env);
+        cluster.submitTopology(manager.makeTopologyName(), stormConfig(), manager.createTopology());
+
+        KafkaFilerTopology kafkaFiler = new KafkaFilerTopology(env, manager.getConfig().getKafkaOutputTopic());
         cluster.submitTopology("utils-1", stormConfig(), kafkaFiler.createTopology());
 
-        KafkaFilerTopology discoFiler = new KafkaFilerTopology(file,
-                OFEventWFMTopology.DEFAULT_DISCOVERY_TOPIC, server.tempDir.getAbsolutePath());
+        KafkaFilerTopology discoFiler = new KafkaFilerTopology(env, manager.getConfig().getKafkaDiscoveryTopic());
         cluster.submitTopology("utils-2", stormConfig(), discoFiler.createTopology());
 
         Utils.sleep(5 * 1000);
@@ -138,7 +140,7 @@ public class OFEventWfmTest extends AbstractStormTest {
         // NB: ISL discovery messages will be generated .. multiple .. at present 9-11.
         Assert.assertTrue(messagesReceived > 0);
 
-        cluster.killTopology(topo.getTopologyName());
+        cluster.killTopology(manager.makeTopologyName());
         cluster.killTopology("utils-1");
         cluster.killTopology("utils-2");
         Utils.sleep(4 * 1000);
@@ -159,17 +161,22 @@ public class OFEventWfmTest extends AbstractStormTest {
      * The key results should show up in a kafka topic, which are dumped to file.
      */
     @Test
-    public void BasicLinkDiscoveryTest() throws IOException {
+    public void basicLinkDiscoveryTest() throws IOException, ConfigurationException, CmdLineException {
         System.out.println("==> Starting BasicLinkDiscoveryTest");
+        OFEventWFMTopology manager = new OFEventWFMTopology(makeLaunchEnvironment());
+        TopologyConfig config = manager.getConfig();
+
         Tuple tuple;
         KeyValueState<String, LinkTracker> state = new InMemoryKeyValueState<>();
         initMocks();
 
-        List<PathNode> nodes = Arrays.asList(new PathNode("sw1", 1, 0, 10L), new PathNode("sw2", 2, 1, 10L));
+        List<PathNode> nodes = Arrays.asList(
+                new PathNode("sw1", 1, 0, 10L),
+                new PathNode("sw2", 2, 1, 10L));
         InfoData data = new IslInfoData(10L, nodes, 10000L, IslChangeType.DISCOVERED, 9000L);
         String isl_discovered = MAPPER.writeValueAsString(data);
 
-        OFELinkBolt linkBolt = new OFELinkBolt(DEFAULT_DISCOVERY_INTERVAL, DEFAULT_DISCOVERY_TIMEOUT);
+        OFELinkBolt linkBolt = new OFELinkBolt(config);
 
         linkBolt.prepare(stormConfig(), topologyContext, outputCollector);
         linkBolt.initState(state);
@@ -203,24 +210,24 @@ public class OFEventWfmTest extends AbstractStormTest {
         // 2 isls, 3 seconds interval, 9 seconds test duration == 6 discovery commands
         // +2 discovery commands triggered by port up message
         messagesExpected = 8;
-        messagesReceived = outputCollectorMock.getMessagesCount(OFEventWFMTopology.DEFAULT_DISCOVERY_TOPIC);
+        messagesReceived = outputCollectorMock.getMessagesCount(config.getKafkaDiscoveryTopic());
         Assert.assertEquals(messagesExpected, messagesReceived);
 
         // "isl discovered" x1, "discovery failed" x1
         messagesExpected = 2;
-        messagesReceived = outputCollectorMock.getMessagesCount(OFEventWFMTopology.DEFAULT_KAFKA_OUTPUT);
+        messagesReceived = outputCollectorMock.getMessagesCount(config.getKafkaOutputTopic());
         Assert.assertEquals(messagesExpected, messagesReceived);
 
         linkBolt.execute(tickTuple);
 
         // +2 discovery commands
         messagesExpected = 10;
-        messagesReceived = outputCollectorMock.getMessagesCount(OFEventWFMTopology.DEFAULT_DISCOVERY_TOPIC);
+        messagesReceived = outputCollectorMock.getMessagesCount(config.getKafkaDiscoveryTopic());
         Assert.assertEquals(messagesExpected, messagesReceived);
 
         // +2 discovery fails
         messagesExpected = 4;
-        messagesReceived = outputCollectorMock.getMessagesCount(OFEventWFMTopology.DEFAULT_KAFKA_OUTPUT);
+        messagesReceived = outputCollectorMock.getMessagesCount(config.getKafkaOutputTopic());
         Assert.assertEquals(messagesExpected, messagesReceived);
     }
 

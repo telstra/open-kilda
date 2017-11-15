@@ -1,88 +1,53 @@
 package org.openkilda.simulator;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.apache.storm.Config;
-import org.apache.storm.LocalCluster;
-import org.apache.storm.StormSubmitter;
-import org.apache.storm.generated.StormTopology;
 import org.openkilda.simulator.bolts.CommandBolt;
 import org.openkilda.simulator.bolts.DeployTopologyBolt;
 import org.openkilda.simulator.bolts.SwitchBolt;
+import org.openkilda.wfm.ConfigurationException;
+import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.topology.AbstractTopology;
-import org.apache.storm.topology.TopologyBuilder;
-import org.openkilda.wfm.topology.Topology;
 
-import java.io.File;
+import org.apache.storm.generated.StormTopology;
+import org.apache.storm.topology.TopologyBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SimulatorTopology extends AbstractTopology {
-    private static final Logger logger = LogManager.getLogger(SimulatorTopology.class);
-    private final String topoName = "simulatorTopology";
-    private final int parallelism = 1;
-    public static final String SIMULATOR_TOPIC = "kilda-simulator";
-    public static  final String COMMAND_TOPIC = "kilda-test";
-    public static final String SIMULATOR_SPOUT = "simulator-spout";
-    public static final String COMMAND_SPOUT = "command-spout";
+    private static final Logger logger = LoggerFactory.getLogger(SimulatorTopology.class);
+
     public static final String DEPLOY_TOPOLOGY_BOLT_STREAM = "deploy_topology_stream";
     public static final String COMMAND_BOLT_STREAM = "command_bolt_stream";
 
-    public SimulatorTopology(File file) {
-        super(file);
+    public SimulatorTopology(LaunchEnvironment env) throws ConfigurationException {
+        super(env);
     }
-
-    public static void main(String[] args) throws Exception {
-
-        //If there are arguments, we are running on a cluster; otherwise, we are running locally
-        if (args != null && args.length > 0) {
-            File file = new File(args[1]);
-            Config conf = new Config();
-            conf.setDebug(false);
-            SimulatorTopology simulatorTopology = new SimulatorTopology(file);
-            StormTopology topo = simulatorTopology.createTopology();
-
-            conf.setNumWorkers(simulatorTopology.parallelism);
-            StormSubmitter.submitTopology(args[0], conf, topo);
-        } else {
-            logger.info("starting islStatsTopo in local mode");
-            File file = new File(SimulatorTopology.class.getResource(Topology.TOPOLOGY_PROPERTIES).getFile());
-            Config conf = new Config();
-            conf.setDebug(false);
-            SimulatorTopology simulatorTopology = new SimulatorTopology(file);
-            StormTopology topo = simulatorTopology.createTopology();
-
-            conf.setMaxTaskParallelism(3);
-
-            LocalCluster cluster = new LocalCluster();
-            cluster.submitTopology(simulatorTopology.topologyName, conf, topo);
-
-            while(true) {
-                Thread.sleep(60000);
-            }
-//            cluster.shutdown();
-        }
-    }
-
 
     @Override
     public StormTopology createTopology() {
-        final String className = this.getClass().getSimpleName();
-        logger.debug("Building SimulatorTopology - " + className);
-        TopologyBuilder builder = new TopologyBuilder();
+        final Integer parallelism = config.getParallelism();
+        final String inputTopic = config.getKafkaInputTopic();
+        final String simulatorTopic = config.getKafkaSimulatorTopic();
+        final String simulatorSpout = "simulator-spout";
+        final String commandSpout = "command-spout";
 
-        checkAndCreateTopic(SIMULATOR_TOPIC);
-        logger.debug("connecting to " + SIMULATOR_TOPIC + " topic");
-        builder.setSpout(SIMULATOR_SPOUT, createKafkaSpout(SIMULATOR_TOPIC, className));
+        final TopologyBuilder builder = new TopologyBuilder();
 
-        checkAndCreateTopic(COMMAND_TOPIC);
-        logger.debug("connecting to " + COMMAND_TOPIC + " topic");
-        builder.setSpout(COMMAND_SPOUT, createKafkaSpout(COMMAND_TOPIC, COMMAND_SPOUT));
+        logger.debug("Building SimulatorTopology - {}", getTopologyName());
+
+        checkAndCreateTopic(simulatorTopic);
+        logger.debug("connecting to {} topic", simulatorTopic);
+        builder.setSpout(simulatorSpout, createKafkaSpout(simulatorTopic, getTopologyName()));
+
+        checkAndCreateTopic(inputTopic);
+        logger.debug("connecting to {} topic", inputTopic);
+        builder.setSpout(commandSpout, createKafkaSpout(inputTopic, commandSpout));
 
         final String commandBoltName = CommandBolt.class.getSimpleName();
         CommandBolt commandBolt = new CommandBolt();
         logger.debug("starting " + commandBoltName + " bolt");
         builder.setBolt(commandBoltName, commandBolt, parallelism)
-                .shuffleGrouping(SIMULATOR_SPOUT)
-                .shuffleGrouping(COMMAND_SPOUT);
+                .shuffleGrouping(simulatorSpout)
+                .shuffleGrouping(commandSpout);
 
         final String deployTopologyBoltName = DeployTopologyBolt.class.getSimpleName();
         DeployTopologyBolt deployTopologyBolt = new DeployTopologyBolt();
@@ -98,13 +63,21 @@ public class SimulatorTopology extends AbstractTopology {
                 .shuffleGrouping(commandBoltName, COMMAND_BOLT_STREAM);
 //                .fieldsGrouping(deployTopologyBoltName, new Fields("dpid"));
 
-        final String KILDA_TOPIC = "kilda-test";
-        final String kafkaBoltName = KILDA_TOPIC + "Bolt";
-        final String KAFKA_BOLT_STREAM = kafkaBoltName + "Stream";
-        checkAndCreateTopic(KILDA_TOPIC);
-        builder.setBolt(kafkaBoltName, createKafkaBolt(KILDA_TOPIC), parallelism)
+        // TODO(dbogun): check is it must be output topic
+        final String kafkaBoltName = inputTopic + "Bolt";
+        checkAndCreateTopic(inputTopic);
+        builder.setBolt(kafkaBoltName, createKafkaBolt(inputTopic), parallelism)
                 .shuffleGrouping(switchBoltName);
 
         return builder.createTopology();
+    }
+
+    public static void main(String[] args) {
+        try {
+            LaunchEnvironment env = new LaunchEnvironment(args);
+            (new SimulatorTopology(env)).setup();
+        } catch (Exception e) {
+            System.exit(handleLaunchException(e));
+        }
     }
 }
