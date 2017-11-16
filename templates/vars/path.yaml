@@ -3,9 +3,6 @@ path:
   - floodlightkilda_properties: 
     dest: services/src/floodlight-modules/src/main/resources/floodlightkilda.properties
     tmpl: templates/floodlight/floodlightkilda.properties.j2
-  - northbound_properties: 
-    dest: services/src/northbound/src/main/resources/northbound.properties
-    tmpl: templates/northbound/northbound.properties.j2
   - topology_properties:
     dest: services/src/topology/src/main/resources/topology.properties
     tmpl: templates/topology/topology.properties.j2
