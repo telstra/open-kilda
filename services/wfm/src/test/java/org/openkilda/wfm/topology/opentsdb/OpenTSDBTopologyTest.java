@@ -38,8 +38,7 @@ public class OpenTSDBTopologyTest extends AbstractStormTest {
             .respond(HttpResponse.response());
 
         AbstractStormTest.setupOnce();
-        File file = new File(OpenTSDBTopologyTest.class.getResource(Topology.TOPOLOGY_PROPERTIES).getFile());
-        OpenTSDBTopology topology = new OpenTSDBTopology(file);
+        OpenTSDBTopology topology = new OpenTSDBTopology(makeLaunchEnvironment());
         StormTopology stormTopology = topology.createTopology();
         Config config = stormConfig();
         config.setMaxTaskParallelism(1);

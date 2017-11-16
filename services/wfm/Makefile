@@ -25,7 +25,7 @@ all-in-one:
 deploy-splitter:
 	storm jar target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar \
         org.openkilda.wfm.topology.splitter.OFEventSplitterTopology \
-        splitter ${config}
+        --name=splitter ${config}
 
 kill-splitter:
 	storm kill splitter >/dev/null 2>&1
@@ -33,7 +33,7 @@ kill-splitter:
 deploy-wfm:
 	storm jar target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar \
         org.openkilda.wfm.topology.event.OFEventWFMTopology \
-        wfm ${config}
+        --name=wfm ${config}
 
 kill-wfm:
 	storm kill wfm >/dev/null 2>&1
@@ -41,7 +41,7 @@ kill-wfm:
 deploy-flow:
 	storm jar target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar \
         org.openkilda.wfm.topology.flow.FlowTopology \
-        flow ${config}
+        --name=flow ${config}
 
 kill-flow:
 	storm kill flow >/dev/null 2>&1
@@ -49,7 +49,7 @@ kill-flow:
 deploy-stats:
 	storm jar target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar \
         org.openkilda.wfm.topology.stats.StatsTopology \
-        stats ${config}
+        --name=stats ${config}
 
 kill-stats:
 	storm kill stats >/dev/null 2>&1
@@ -57,7 +57,7 @@ kill-stats:
 deploy-cache:
 	storm jar target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar \
         org.openkilda.wfm.topology.cache.CacheTopology \
-        cache ${config}
+        --name=cache ${config}
 
 kill-cache:
 	storm kill cache >/dev/null 2>&1
@@ -65,15 +65,15 @@ kill-cache:
 deploy-islstats:
 	storm jar target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar \
 		org.openkilda.wfm.topology.islstats.IslStatsTopology \
-		islstats ${config}
+		--name=islstats ${config}
 
 kill-islstats:
 	storm kill islstats >/dev/null 2>&1
 
 deploy-opentsdb:
 	storm jar target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar \
-    		org.openkilda.wfm.topology.opentsdb.OpenTSDBTopology \
-    		opentsdb ${config}
+		org.openkilda.wfm.topology.opentsdb.OpenTSDBTopology \
+		--name=opentsdb ${config}
 
 kill-opentsdb:
 	storm kill opentsdb >/dev/null 2>&1

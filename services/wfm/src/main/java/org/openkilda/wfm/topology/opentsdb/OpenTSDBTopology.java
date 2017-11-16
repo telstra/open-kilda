@@ -27,6 +27,8 @@ import org.apache.storm.opentsdb.bolt.OpenTsdbBolt;
 import org.apache.storm.opentsdb.bolt.TupleOpenTsdbDatapointMapper;
 import org.apache.storm.opentsdb.client.OpenTsdbClient;
 import org.apache.storm.topology.TopologyBuilder;
+import org.openkilda.wfm.ConfigurationException;
+import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.Topology;
 import org.openkilda.wfm.topology.opentsdb.bolts.OpenTSDBFilterBolt;
@@ -40,48 +42,8 @@ public class OpenTSDBTopology extends AbstractTopology {
 
     private static final Logger LOGGER = LogManager.getLogger(OpenTSDBTopology.class);
 
-    private static final String TOPIC_KEY = "opentsdbtopology.kafka.opentsdb-topic";
-    private static final String OPENTSDB_URL_KEY = "opentsdbtopology.open-tsdb.url";
-    private static final String OPENTSDB_TIMEOUT_KEY = "opentsdbtopology.open-tsdb.timeout";
-
-    OpenTSDBTopology(File file) {
-        super(file);
-
-        String topic = topologyProperties.getProperty(TOPIC_KEY);
-        if (StringUtils.isBlank(topic)) {
-            LOGGER.error("OpenTSDBTopology requires {} property", TOPIC_KEY);
-
-            throw new IllegalStateException(TOPIC_KEY + " property should be defined");
-        }
-    }
-
-    public static void main(String[] args) throws Exception {
-
-            //If there are arguments, we are running on a cluster; otherwise, we are running locally
-        if (args != null && args.length > 0) {
-            File file = new File(args[1]);
-            Config conf = new Config();
-            conf.setDebug(false);
-            OpenTSDBTopology topology = new OpenTSDBTopology(file);
-            StormTopology topo = topology.createTopology();
-
-            conf.setNumWorkers(1);
-            StormSubmitter.submitTopology(args[0], conf, topo);
-        } else {
-            File file = new File(OpenTSDBTopology.class.getResource(Topology.TOPOLOGY_PROPERTIES).getFile());
-            Config conf = new Config();
-            conf.setDebug(false);
-            OpenTSDBTopology openTSDBTopology = new OpenTSDBTopology(file);
-            StormTopology topo = openTSDBTopology.createTopology();
-
-            conf.setMaxTaskParallelism(3);
-
-            LocalCluster cluster = new LocalCluster();
-            cluster.submitTopology(openTSDBTopology.topologyName, conf, topo);
-
-            Thread.sleep(60000);
-            cluster.shutdown();
-        }
+    public OpenTSDBTopology(LaunchEnvironment env) throws ConfigurationException {
+        super(env);
     }
 
     @Override
@@ -89,7 +51,7 @@ public class OpenTSDBTopology extends AbstractTopology {
         LOGGER.info("Creating OpenTSDB topology");
         TopologyBuilder tb = new TopologyBuilder();
 
-        final String topic = topologyProperties.getProperty(TOPIC_KEY);
+        final String topic = config.getKafkaTsdbTopic();
         final String spoutId = topic + "-spout";
         final String boltId = topic + "-bolt";
         checkAndCreateTopic(topic);
@@ -101,16 +63,25 @@ public class OpenTSDBTopology extends AbstractTopology {
                 .shuffleGrouping(spoutId);
 
         OpenTsdbClient.Builder tsdbBuilder = OpenTsdbClient
-                .newBuilder(topologyProperties.getProperty(OPENTSDB_URL_KEY))
-                .sync(Long.parseLong(topologyProperties.getProperty(OPENTSDB_TIMEOUT_KEY)))
+                .newBuilder(config.getOpenTsDBHosts())
+                .sync(config.getOpenTsdbTimeout())
                 .returnDetails();
         OpenTsdbBolt openTsdbBolt = new OpenTsdbBolt(tsdbBuilder, TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER)
                 .withBatchSize(10)
                 .withFlushInterval(2)
                 .failTupleForFailedMetrics();
-        tb.setBolt("opentsdb", openTsdbBolt, parallelism)
+        tb.setBolt("opentsdb", openTsdbBolt, config.getParallelism())
                 .shuffleGrouping(boltId);
 
         return tb.createTopology();
+    }
+
+    public static void main(String[] args) {
+        try {
+            LaunchEnvironment env = new LaunchEnvironment(args);
+            (new OpenTSDBTopology(env)).setup();
+        } catch (Exception e) {
+            System.exit(handleLaunchException(e));
+        }
     }
 }

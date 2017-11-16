@@ -20,81 +20,45 @@ import static org.openkilda.wfm.topology.stats.StatsComponentType.METER_CFG_STAT
 import static org.openkilda.wfm.topology.stats.StatsComponentType.PORT_STATS_METRIC_GEN;
 
 import org.openkilda.messaging.ServiceType;
+import org.openkilda.wfm.ConfigurationException;
 import org.openkilda.wfm.topology.AbstractTopology;
-import org.openkilda.wfm.topology.Topology;
+import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.topology.stats.bolts.SpeakerBolt;
 import org.openkilda.wfm.topology.stats.metrics.FlowMetricGenBolt;
 import org.openkilda.wfm.topology.stats.metrics.MeterConfigMetricGenBolt;
 import org.openkilda.wfm.topology.stats.metrics.PortMetricGenBolt;
 
-import org.apache.storm.Config;
-import org.apache.storm.LocalCluster;
-import org.apache.storm.StormSubmitter;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.KafkaSpout;
 import org.apache.storm.opentsdb.bolt.OpenTsdbBolt;
 import org.apache.storm.opentsdb.bolt.TupleOpenTsdbDatapointMapper;
 import org.apache.storm.opentsdb.client.OpenTsdbClient;
 import org.apache.storm.topology.TopologyBuilder;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
 
 
 public class StatsTopology extends AbstractTopology {
     private static final Logger logger = LoggerFactory.getLogger(StatsTopology.class);
-    private static final String TOPIC = "kilda-test";
 
-    public StatsTopology(File file) {
-        super(file);
+    public StatsTopology(LaunchEnvironment env) throws ConfigurationException {
+        super(env);
 
         logger.debug("Topology built {}: zookeeper={}, kafka={}, parallelism={}, workers={}",
-                topologyName, zookeeperHosts, kafkaHosts, parallelism, workers);
-    }
-
-    public static void main(String[] args) throws Exception {
-        if (args != null && args.length > 0) {
-            File file = new File(args[1]);
-            final StatsTopology topology = new StatsTopology(file);
-            StormTopology stormTopology = topology.createTopology();
-            final Config config = new Config();
-            config.setNumWorkers(1);
-
-            logger.info("Start Topology: {}", topology.getTopologyName());
-
-            config.setDebug(false);
-
-            StormSubmitter.submitTopology(args[0], config, stormTopology);
-        } else {
-            File file = new File(StatsTopology.class.getResource(Topology.TOPOLOGY_PROPERTIES).getFile());
-            final StatsTopology topology = new StatsTopology(file);
-            StormTopology stormTopology = topology.createTopology();
-            final Config config = new Config();
-            config.setNumWorkers(1);
-
-            logger.info("Start Topology Locally: {}", topology.topologyName);
-
-            config.setDebug(true);
-            config.setMaxTaskParallelism(topology.parallelism);
-
-            LocalCluster cluster = new LocalCluster();
-            cluster.submitTopology(topology.topologyName, config, stormTopology);
-
-            logger.info("Sleep", topology.topologyName);
-            Thread.sleep(60000);
-            cluster.shutdown();
-        }
+                getTopologyName(), config.getZookeeperHosts(), config.getKafkaHosts(), config.getParallelism(),
+                config.getWorkers());
     }
 
     @Override
     public StormTopology createTopology() {
         logger.info("Creating Topology: {}", topologyName);
 
+        final Integer parallelism = config.getParallelism();
         TopologyBuilder builder = new TopologyBuilder();
 
         final String kafkaSpoutId = StatsComponentType.STATS_OFS_KAFKA_SPOUT.toString();
-        KafkaSpout kafkaSpout = createKafkaSpout(TOPIC, kafkaSpoutId);
+        KafkaSpout kafkaSpout = createKafkaSpout(config.getKafkaInputTopic(), kafkaSpoutId);
         builder.setSpout(kafkaSpoutId, kafkaSpout, parallelism);
 
         SpeakerBolt speakerBolt = new SpeakerBolt();
@@ -109,7 +73,7 @@ public class StatsTopology extends AbstractTopology {
         builder.setBolt(FLOW_STATS_METRIC_GEN.name(), new FlowMetricGenBolt(), parallelism)
                 .fieldsGrouping(statsOfsBolt, StatsStreamType.FLOW_STATS.toString(), fieldMessage);
 
-        OpenTsdbClient.Builder tsdbBuilder = OpenTsdbClient.newBuilder(topologyProperties.getProperty("statstopology.openTsdbUrl"))
+        OpenTsdbClient.Builder tsdbBuilder = OpenTsdbClient.newBuilder(config.getOpenTsDBHosts())
                 .sync(30_000).returnDetails();
         OpenTsdbBolt openTsdbBolt = new OpenTsdbBolt(tsdbBuilder, TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER)
                 .withBatchSize(10)
@@ -123,5 +87,14 @@ public class StatsTopology extends AbstractTopology {
         createHealthCheckHandler(builder, ServiceType.STATS_TOPOLOGY.getId());
 
         return builder.createTopology();
+    }
+
+    public static void main(String[] args) throws Exception {
+        try {
+            LaunchEnvironment env = new LaunchEnvironment(args);
+            (new StatsTopology(env)).setup();
+        } catch (Exception e) {
+            System.exit(handleLaunchException(e));
+        }
     }
 }
