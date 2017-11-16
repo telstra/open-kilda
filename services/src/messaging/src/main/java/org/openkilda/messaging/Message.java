@@ -99,8 +99,7 @@ public class Message implements Serializable {
      * @param timestamp     message timestamp
      * @param correlationId message correlation id
      */
-    public Message(@JsonProperty(TIMESTAMP) final long timestamp,
-                   @JsonProperty(CORRELATION_ID) final String correlationId) {
+    public Message(final long timestamp, final String correlationId) {
         this.timestamp = timestamp;
         this.correlationId = correlationId;
     }

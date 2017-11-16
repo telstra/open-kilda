@@ -76,9 +76,9 @@ public class InfoMessage extends Message {
      * @param timestamp     timestamp value
      * @param correlationId message correlation id
      */
-    public InfoMessage(@JsonProperty(PAYLOAD) final InfoData data,
-                       @JsonProperty(TIMESTAMP) final long timestamp,
-                       @JsonProperty(CORRELATION_ID) final String correlationId) {
+    public InfoMessage(final InfoData data,
+                       final long timestamp,
+                       final String correlationId) {
         super(timestamp, correlationId);
         setData(data);
     }
