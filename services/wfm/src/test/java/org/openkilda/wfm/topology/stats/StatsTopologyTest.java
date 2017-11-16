@@ -29,7 +29,6 @@ import org.openkilda.messaging.info.stats.PortStatsData;
 import org.openkilda.messaging.info.stats.PortStatsEntry;
 import org.openkilda.messaging.info.stats.PortStatsReply;
 import org.openkilda.wfm.AbstractStormTest;
-import org.openkilda.wfm.topology.Topology;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.storm.Config;
@@ -39,7 +38,6 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import java.io.File;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -53,8 +51,8 @@ public class StatsTopologyTest extends AbstractStormTest {
     @BeforeClass
     public static void setupOnce() throws Exception {
         AbstractStormTest.setupOnce();
-        File file = new File(StatsTopologyTest.class.getResource(Topology.TOPOLOGY_PROPERTIES).getFile());
-        StatsTopology topology = new StatsTopology(file);
+
+        StatsTopology topology = new StatsTopology(makeLaunchEnvironment());
         StormTopology stormTopology = topology.createTopology();
         Config config = stormConfig();
         cluster.submitTopology(StatsTopologyTest.class.getSimpleName(), config, stormTopology);

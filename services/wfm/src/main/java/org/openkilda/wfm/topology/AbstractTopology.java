@@ -16,6 +16,9 @@
 package org.openkilda.wfm.topology;
 
 import org.openkilda.messaging.Topic;
+import org.openkilda.wfm.ConfigurationException;
+import org.openkilda.wfm.LaunchEnvironment;
+import org.openkilda.wfm.PropertiesReader;
 import org.openkilda.wfm.topology.utils.HealthCheckBolt;
 
 import kafka.admin.AdminUtils;
@@ -26,6 +29,9 @@ import org.I0Itec.zkclient.ZkClient;
 import org.I0Itec.zkclient.ZkConnection;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.storm.Config;
+import org.apache.storm.LocalCluster;
+import org.apache.storm.StormSubmitter;
 import org.apache.storm.kafka.SpoutConfig;
 import org.apache.storm.kafka.StringScheme;
 import org.apache.storm.kafka.ZkHosts;
@@ -34,119 +40,136 @@ import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
 import org.apache.storm.kafka.bolt.selector.DefaultTopicSelector;
 import org.apache.storm.kafka.spout.KafkaSpout;
 import org.apache.storm.spout.SchemeAsMultiScheme;
+import org.apache.storm.thrift.TException;
 import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Fields;
-import org.codehaus.plexus.util.PropertyUtils;
+import org.kohsuke.args4j.CmdLineException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.util.Properties;
 
 /**
  * Represents abstract topology.
  */
 public abstract class AbstractTopology implements Topology {
-    /**
-     * Message key.
-     */
-    public static final String MESSAGE_FIELD = "message";
+    private static final Logger logger = LoggerFactory.getLogger(AbstractTopology.class);
 
-    /**
-     * Message field.
-     */
+    protected final LaunchEnvironment env;
+    protected final PropertiesReader propertiesReader;
+    protected TopologyConfig config;
+    protected final String topologyName;
+    private final Properties kafkaProperties;
+
+    public static final String MESSAGE_FIELD = "message";
     public static final Fields fieldMessage = new Fields(MESSAGE_FIELD);
 
-    /**
-     * Default zookeeper session timeout.
-     */
-    private static final int ZOOKEEPER_SESSION_TIMEOUT_MS = 5 * 1000;
+    protected AbstractTopology(LaunchEnvironment env) throws ConfigurationException {
+        this.env = env;
 
-    /**
-     * Default zookeeper connection timeout.
-     */
-    private static final int ZOOKEEPER_CONNECTION_TIMEOUT_MS = 5 * 1000;
-
-    /**
-     * Default parallelism value.
-     */
-    private static final String DEFAULT_PARALLELISM = "1";
-
-    /**
-     * Default workers value.
-     */
-    private static final String DEFAULT_WORKERS = "1";
-
-    /**
-     * Kafka properties.
-     */
-    protected final Properties kafkaProperties = new Properties();
-
-    /**
-     * Topology properties.
-     */
-    protected final Properties topologyProperties = new Properties();
-
-    /**
-     * Zookeeper hosts.
-     */
-    protected final String zookeeperHosts;
-
-    /**
-     * Kafka hosts.
-     */
-    protected final String kafkaHosts;
-
-    /**
-     * Neo4J host.
-     */
-    protected final String neo4jHost;
-    protected final String neo4jUser;
-    protected final String neo4jPswd;
-
-    /**
-     * Topology name.
-     */
-    protected final String topologyName;
-
-    /**
-     * Parallelism value.
-     */
-    protected final int parallelism;
-
-    /**
-     * Workers value.
-     */
-    protected final int workers;
-
-    /**
-     * Instance constructor. Loads topology specific properties from common configuration file. It uses topology name as
-     * properties name prefix.
-     */
-    protected AbstractTopology(File file) {
-        Properties properties = PropertyUtils.loadProperties(file);
-
-        topologyName = getTopologyName();
-        zookeeperHosts = properties.getProperty(PROPERTY_ZOOKEEPER);
-        kafkaHosts = properties.getProperty(PROPERTY_KAFKA);
-        neo4jHost = properties.getProperty(PROPERTY_NEO4J_URL);
-        neo4jUser = properties.getProperty(PROPERTY_NEO4J_USER);
-        neo4jPswd = properties.getProperty(PROPERTY_NEO4J_PSWD);
-
-        // TODO: proper parallelism/workers configuration
-        parallelism = Integer.parseInt(properties.getProperty(getTopologyPropertyName(PROPERTY_PARALLELISM), DEFAULT_PARALLELISM));
-        workers = Integer.parseInt(properties.getProperty(getTopologyPropertyName(PROPERTY_WORKERS), DEFAULT_WORKERS));
-
-        kafkaProperties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
-        kafkaProperties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
-        kafkaProperties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaHosts);
-        kafkaProperties.put(ConsumerConfig.GROUP_ID_CONFIG, getTopologyName());
-        kafkaProperties.put("request.required.acks", "1");
-
-        for (String key : properties.stringPropertyNames()) {
-            String value = properties.getProperty(key);
-            if (key.startsWith(topologyName)) {
-                topologyProperties.put(key, value);
-            }
+        String builtinName = makeTopologyName();
+        String name = env.getTopologyName();
+        if (name == null) {
+            name = builtinName;
         }
+        topologyName = name;
+
+        propertiesReader = env.makePropertiesReader(name, builtinName);
+        config = new TopologyConfig(propertiesReader);
+        kafkaProperties = makeKafkaProperties();
+    }
+
+    protected void setup() throws TException {
+        if (config.getLocal()) {
+            setupLocal();
+        } else {
+            setupRemote();
+        }
+    }
+
+    private void setupRemote() throws TException {
+        Config config = makeStormConfig();
+        config.setDebug(false);
+
+        logger.info("Submit Topology: {}", getTopologyName());
+        StormSubmitter.submitTopology(getTopologyName(), config, createTopology());
+    }
+
+    private void setupLocal() {
+        Config config = makeStormConfig();
+        config.setDebug(true);
+
+        LocalCluster cluster = new LocalCluster();
+        cluster.submitTopology(getTopologyName(), config, createTopology());
+
+        logger.info("Start Topology: {} (local)", getTopologyName());
+        localExecutionMainLoop();
+
+        cluster.shutdown();
+    }
+
+    protected static int handleLaunchException(Exception error) {
+        int errorCode;
+
+        try {
+            throw error;
+        } catch (CmdLineException e) {
+            System.err.println(e.getMessage());
+            System.err.println();
+            System.err.println("Allowed options and arguments:");
+            e.getParser().printUsage(System.err);
+            errorCode = 2;
+        } catch (ConfigurationException e) {
+            System.err.println(e.getMessage());
+            errorCode = 3;
+        } catch (TException e) {
+            logger.error("Unable to complete topology setup: {}", e.getMessage());
+            errorCode = 4;
+        } catch (Exception e) {
+            errorCode = 1;
+        }
+
+        return errorCode;
+    }
+
+    private Properties makeKafkaProperties() {
+        Properties kafka = new Properties();
+
+        kafka.setProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
+        kafka.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
+        kafka.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, config.getKafkaHosts());
+        kafka.setProperty(ConsumerConfig.GROUP_ID_CONFIG, getTopologyName());
+        kafka.setProperty("request.required.acks", "1");
+
+        return kafka;
+    }
+
+    protected Config makeStormConfig() {
+        Config stormConfig = new Config();
+
+        stormConfig.setNumWorkers(config.getWorkers());
+        if (config.getLocal()) {
+            stormConfig.setMaxTaskParallelism(config.getParallelism());
+        }
+
+        return stormConfig;
+    }
+
+    protected void localExecutionMainLoop() {
+        logger.info("Sleep while local topology is executing");
+        try {
+            Thread.sleep(config.getLocalExecutionTime());
+        } catch (InterruptedException e) {
+            logger.warn("Execution process have been interrupted.");
+        }
+    }
+
+    public String getTopologyName() {
+        return topologyName;
+    }
+
+    public TopologyConfig getConfig() {
+        return config;
     }
 
     /**
@@ -155,9 +178,12 @@ public abstract class AbstractTopology implements Topology {
      * @param topic Kafka topic
      */
     protected void checkAndCreateTopic(final String topic) {
-        ZkClient zkClient = new ZkClient(zookeeperHosts, ZOOKEEPER_SESSION_TIMEOUT_MS,
-                ZOOKEEPER_CONNECTION_TIMEOUT_MS, ZKStringSerializer$.MODULE$);
-        ZkUtils zkUtils = new ZkUtils(zkClient, new ZkConnection(zookeeperHosts), false);
+        String hosts = config.getZookeeperHosts();
+        ZkClient zkClient = new ZkClient(hosts, config.getZookeeperSessionTimeout(),
+                config.getZookeeperConnectTimeout(), ZKStringSerializer$.MODULE$);
+        ZkUtils zkUtils = new ZkUtils(zkClient, new ZkConnection(hosts), false);
+
+        // FIXME(dbogun): race condition
         if (!AdminUtils.topicExists(zkUtils, topic)) {
             AdminUtils.createTopic(zkUtils, topic, 1, 1,
                     AdminUtils.createTopic$default$5(), AdminUtils.createTopic$default$6());
@@ -173,7 +199,7 @@ public abstract class AbstractTopology implements Topology {
     protected org.apache.storm.kafka.KafkaSpout createKafkaSpout(String topic, String spoutId) {
         String spoutID = topic + "." + spoutId;
         String zkRoot = "/" + topic; // used to store offset information.
-        ZkHosts hosts = new ZkHosts(zookeeperHosts);
+        ZkHosts hosts = new ZkHosts(config.getZookeeperHosts());
         SpoutConfig cfg = new SpoutConfig(hosts, topic, zkRoot, spoutID);
         cfg.startOffsetTime = OffsetRequest.EarliestTime();
         cfg.scheme = new SchemeAsMultiScheme(new StringScheme());

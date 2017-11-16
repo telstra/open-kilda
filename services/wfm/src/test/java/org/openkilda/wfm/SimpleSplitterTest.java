@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm;
 
+import org.junit.Ignore;
+import org.kohsuke.args4j.CmdLineException;
 import org.openkilda.wfm.topology.Topology;
 import org.openkilda.wfm.topology.splitter.InfoEventSplitterBolt;
 import org.openkilda.wfm.topology.splitter.OFEventSplitterTopology;
@@ -35,25 +37,21 @@ import java.io.IOException;
  * The Splitter listens to a kafka queue and splits them into other queues.
  */
 public class SimpleSplitterTest extends AbstractStormTest {
-
     @Test
-    public void KafkaSplitterTest() throws IOException {
-
+    public void KafkaSplitterTest() throws IOException, ConfigurationException, CmdLineException {
         /*
          * Need to ensure everything is pointing to the right testing URLS
          */
-        File file = new File(this.getClass().getResource(Topology.TOPOLOGY_PROPERTIES).getFile());
-        OFEventSplitterTopology splitter = new OFEventSplitterTopology(file);
-
-        cluster.submitTopology(splitter.getTopologyName(), TestUtils.stormConfig(), splitter.createTopology());
+        OFEventSplitterTopology splitter = new OFEventSplitterTopology(makeLaunchEnvironment());
+        cluster.submitTopology(splitter.makeTopologyName(), TestUtils.stormConfig(), splitter.createTopology());
 
         // Dumping the Kafka Topic to file so that I can test the results.
-        KafkaFilerTopology kfiler = new KafkaFilerTopology(file,
-                InfoEventSplitterBolt.I_SWITCH_UPDOWN, server.tempDir.getAbsolutePath());
+        KafkaFilerTopology kfiler = new KafkaFilerTopology(
+                makeLaunchEnvironment(), splitter.getConfig().getKafkaInputTopic());
         cluster.submitTopology("utils-1", TestUtils.stormConfig(), kfiler.createTopology());
 
         Utils.sleep(4 * 1000);
-        SendMessages(splitter.topic);
+        SendMessages(splitter.getConfig().getKafkaInputTopic());
         Utils.sleep(8 * 1000);
 
         // 3 messages .. in I_SWITCH_UPDOWN  .. since we send 3 of those type of messages
@@ -62,7 +60,7 @@ public class SimpleSplitterTest extends AbstractStormTest {
         long messagesReceived = Files.readLines(kfiler.getFiler().getFile(), Charsets.UTF_8).size();
         Assert.assertEquals(messagesExpected, messagesReceived);
 
-        cluster.killTopology(splitter.getTopologyName());
+        cluster.killTopology(splitter.makeTopologyName());
         cluster.killTopology("utils-1");
         Utils.sleep(4 * 1000);
     }
