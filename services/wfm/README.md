@@ -3,6 +3,46 @@
 This project holds the Storm topologies that are used to implement
 the workflow management aspects of Kilda.
 
+# Deployment
+
+To start topology in `local` mode:
+```bash
+java -cp JAR.FILE CLASS --local arguments...
+```
+
+To submit topology into storm:
+```bash
+storm jar JAR.FILE class arguments...
+```
+
+## Topology CLI arguments
+
+In topology submit command you can pass arguments that will be passed into "main" call. 
+
+Supported arguments list:
+* `--name=NAME` - override topology name. If don't passed topology name constructed from topology class name.
+* `--local` - inform topology that is must run into "local" mode. I.e. submit topology into 
+  org.apache.storm.LocalCluster.
+* `--local-execution-time=TIME` - used only in combination with `--local`. Define how long (in seconds) topology will be
+  executed. `TIME` argument parsed as float number.
+* `CONFIG` - path to properties file. This properties will override compiled in properties. You can pass more than one
+  file to pass override on override on override... and so on. 
+
+## Configuration
+
+All topology options are defined as properties. There is compiled in JAR set of properties that provide a reasonable
+default values. You can pass more properties files(via CLI) to override this defaults. 
+
+Properties have different scope that depends from used prefix. Lets show it on option `opentsdb.hosts`.
+* `opentsdb.hosts` - this is `global` scope that will be used by all topologies
+* `$name.opentsdb.hosts` - this is `name` scope.  $name is passed from CLI `--name` argument. Or constructed from
+  topology class name if `--name` is missing.
+* `defaults.statstopology.opentsdb.hosts` - this `topology` scope. In this scope, option `opentsdb.hosts` will be used 
+  only by StatsTopology. Topology name `statstopology` constructed from topology class name.
+  
+Property lookup done in following order: `name scope`, `topology scope`. `global scope`. First found is used. This 
+approach allow to pass options bounded to specific name, to specific topology and unbounded/globally. 
+
 # Developers
 
 ## Debugging Tips
@@ -20,7 +60,7 @@ A lot of message passing is done through kafka topics.
     ```
     storm jar target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar \
     org.openkilda.wfm.topology.event.OFEventSplitterTopology \
-    splitter-1
+    --name splitter-1
     ```
 
 ### Kafka Debugging
@@ -52,7 +92,7 @@ One way to look at what is going on in a topic:
 * With the CLI installed, you should be able to run the following kinds of commands:
     ```
     storm list
-    storm jar ..  # ie deploy a topology
+    storm jar <jar.file> <class> [arguments]  # ie deploy a topology
     stork kill <topology name>
     ```
 

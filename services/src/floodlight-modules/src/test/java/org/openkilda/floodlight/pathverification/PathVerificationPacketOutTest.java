@@ -19,12 +19,9 @@ import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.replay;
 import static org.junit.Assert.assertArrayEquals;
 
-import org.openkilda.floodlightcontroller.test.FloodlightTestCase;
-
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.SwitchDescription;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import org.apache.commons.codec.binary.Hex;
@@ -34,31 +31,23 @@ import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.openkilda.floodlightcontroller.test.FloodlightTestCase;
 import org.projectfloodlight.openflow.protocol.OFDescStatsReply;
-import org.projectfloodlight.openflow.protocol.OFFactories;
-import org.projectfloodlight.openflow.protocol.OFFactory;
-import org.projectfloodlight.openflow.protocol.OFFeaturesReply;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
-import org.projectfloodlight.openflow.protocol.OFVersion;
-import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFPort;
-import org.projectfloodlight.openflow.types.U64;
 
 import java.net.InetSocketAddress;
 import java.util.Arrays;
 
 public class PathVerificationPacketOutTest extends FloodlightTestCase {
     protected FloodlightContext cntx;
-    protected OFFeaturesReply swFeatures;
     protected OFDescStatsReply swDescription;
     protected PathVerificationService pvs;
     protected InetSocketAddress srcIpTarget, dstIpTarget;
     protected String sw1HwAddrTarget, sw2HwAddrTarget;
     protected IOFSwitch sw1, sw2;
-
-    private OFFactory factory = OFFactories.getFactory(OFVersion.OF_13);
 
     @BeforeClass
     public static void setUpBeforeClass() throws Exception {
@@ -70,15 +59,14 @@ public class PathVerificationPacketOutTest extends FloodlightTestCase {
 
     @Before
     public void setUp() throws Exception {
+        super.setUp();
         cntx = new FloodlightContext();
         FloodlightModuleContext fmc = new FloodlightModuleContext();
         fmc.addService(IFloodlightProviderService.class, mockFloodlightProvider);
         fmc.addService(IOFSwitchService.class, getMockSwitchService());
-
         swDescription = factory.buildDescStatsReply().build();
-        swFeatures = factory.buildFeaturesReply().setNBuffers(1000).build();
         pvs = new PathVerificationService();
-
+        pvs.initAlgorithm("secret");
         srcIpTarget = new InetSocketAddress("192.168.10.1", 200);
         dstIpTarget = new InetSocketAddress("192.168.10.101", 100);
         sw1HwAddrTarget = "11:22:33:44:55:66";
@@ -147,22 +135,4 @@ public class PathVerificationPacketOutTest extends FloodlightTestCase {
         byte[] dstIpActual = Arrays.copyOfRange(packet.getData(), 30, 34);
         assertArrayEquals(dstIpTarget.getAddress().getAddress(), dstIpActual);
     }
-
-    /**
-     * Utils
-     */
-    public IOFSwitch buildMockIOFSwitch(Long id, OFPortDesc portDesc, OFFactory factory, OFDescStatsReply swDesc, InetSocketAddress inetAddr) {
-        IOFSwitch sw = EasyMock.createMock(IOFSwitch.class);
-        expect(sw.getId()).andReturn(DatapathId.of(id)).anyTimes();
-        expect(sw.getPort(OFPort.of(1))).andReturn(portDesc).anyTimes();
-        expect(sw.getOFFactory()).andReturn(factory).anyTimes();
-        expect(sw.getBuffers()).andReturn(swFeatures.getNBuffers()).anyTimes();
-        expect(sw.hasAttribute(IOFSwitch.PROP_SUPPORTS_OFPP_TABLE)).andReturn(true).anyTimes();
-        expect(sw.getSwitchDescription()).andReturn(new SwitchDescription(swDesc)).anyTimes();
-        expect(sw.isActive()).andReturn(true).anyTimes();
-        expect(sw.getLatency()).andReturn(U64.of(10L)).anyTimes();
-        expect(sw.getInetAddress()).andReturn(inetAddr).anyTimes();
-        return sw;
-    }
-
 }
