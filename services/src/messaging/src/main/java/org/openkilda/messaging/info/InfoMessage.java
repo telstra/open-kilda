@@ -70,6 +70,20 @@ public class InfoMessage extends Message {
     }
 
     /**
+     * Instance constructor.
+     *
+     * @param data          info message payload
+     * @param timestamp     timestamp value
+     * @param correlationId message correlation id
+     */
+    public InfoMessage(final InfoData data,
+                       final long timestamp,
+                       final String correlationId) {
+        super(timestamp, correlationId);
+        setData(data);
+    }
+
+    /**
      * Returns payload of the information message.
      *
      * @return information message payload

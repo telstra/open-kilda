@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm;
 
+import org.kohsuke.args4j.CmdLineException;
 import org.openkilda.wfm.topology.TestKafkaProducer;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -23,20 +24,31 @@ import org.apache.storm.Config;
 import org.apache.storm.LocalCluster;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.ClassRule;
+import org.junit.rules.TemporaryFolder;
+import org.openkilda.wfm.topology.TopologyConfig;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.Properties;
 
 /**
  * Created by carmine on 4/4/17.
  */
 public class AbstractStormTest {
+    protected static String CONFIG_NAME = "class-level-overlay.properties";
+
     protected static TestKafkaProducer kProducer;
     protected static LocalCluster cluster;
     static TestUtils.KafkaTestFixture server;
 
-    protected static Properties kafkaProperties() {
+    @ClassRule
+    public static TemporaryFolder fsData = new TemporaryFolder();
+
+    protected static Properties kafkaProperties() throws ConfigurationException, CmdLineException {
         Properties properties = new Properties();
-        properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, TestUtils.kafkaHosts);
+        properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, makeUnboundConfig().getKafkaHosts());
         properties.put(ConsumerConfig.GROUP_ID_CONFIG, "test");
         properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
         properties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
@@ -47,7 +59,7 @@ public class AbstractStormTest {
         return properties;
     }
 
-    protected static Properties kafkaProperties(final String groupId) {
+    protected static Properties kafkaProperties(final String groupId) throws ConfigurationException, CmdLineException {
         Properties properties = kafkaProperties();
         properties.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
         return properties;
@@ -56,6 +68,7 @@ public class AbstractStormTest {
     protected static Config stormConfig() {
         Config config = new Config();
         config.setDebug(false);
+        config.setMaxTaskParallelism(1);
         config.setNumWorkers(1);
         return config;
     }
@@ -63,9 +76,13 @@ public class AbstractStormTest {
     @BeforeClass
     public static void setupOnce() throws Exception {
         System.out.println("------> Creating Sheep \uD83D\uDC11\n");
-        cluster = new LocalCluster();
-        server = new TestUtils.KafkaTestFixture();
+
+        makeConfigFile();
+
+        server = new TestUtils.KafkaTestFixture(makeUnboundConfig());
         server.start();
+
+        cluster = new LocalCluster();
         kProducer = new TestKafkaProducer(kafkaProperties());
     }
 
@@ -75,5 +92,48 @@ public class AbstractStormTest {
         kProducer.close();
         cluster.shutdown();
         server.stop();
+    }
+
+    protected static TopologyConfig makeUnboundConfig() throws ConfigurationException, CmdLineException {
+        LaunchEnvironment env = makeLaunchEnvironment();
+        return new TopologyConfig(env.makePropertiesReader());
+    }
+
+    protected static LaunchEnvironment makeLaunchEnvironment() throws CmdLineException, ConfigurationException {
+        String args[] = makeLaunchArgs();
+        return new LaunchEnvironment(args);
+    }
+    protected static LaunchEnvironment makeLaunchEnvironment(Properties overlay)
+            throws CmdLineException, ConfigurationException, IOException {
+        String extra = fsData.newFile().getName();
+        makeConfigFile(overlay, extra);
+
+        String args[] = makeLaunchArgs(extra);
+        return new LaunchEnvironment(args);
+    }
+
+    protected static String[] makeLaunchArgs(String ...extraConfig) {
+        String args[] = new String[extraConfig.length + 1];
+
+        File root = fsData.getRoot();
+        args[0] = new File(root, CONFIG_NAME).toString();
+        for (int idx = 0; idx < extraConfig.length; idx += 1) {
+            args[idx + 1] = new File(root, extraConfig[idx]).toString();
+        }
+
+        return args;
+    }
+
+    protected static void makeConfigFile() throws IOException {
+        makeConfigFile(makeConfigOverlay(), CONFIG_NAME);
+    }
+
+    protected static void makeConfigFile(Properties overlay, String location) throws IOException {
+        File path = new File(fsData.getRoot(), location);
+        overlay.store(new FileWriter(path), null);
+    }
+
+    protected static Properties makeConfigOverlay() {
+        return new Properties();
     }
 }

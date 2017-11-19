@@ -36,3 +36,14 @@ Feature: Basic Topology Discovery
       |  depth | fanout | discovery_time |
       |      3 |      4 |          30000 |
       |      4 |      5 |          30000 |
+
+  @MVP1
+  Scenario: Ignore not signed LLDP packets
+
+    Verify only LLDP packets with right sign approved
+
+    Given a clean controller
+    And a random linear topology of 2 switches
+    And the controller learns the topology
+    When send malformed lldp packet
+    Then the topology is not changed

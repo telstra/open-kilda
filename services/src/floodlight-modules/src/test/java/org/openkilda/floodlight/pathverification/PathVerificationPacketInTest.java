@@ -15,36 +15,36 @@
 
 package org.openkilda.floodlight.pathverification;
 
+import static org.easymock.EasyMock.expect;
+import static org.easymock.EasyMock.replay;
 import static org.junit.Assert.assertArrayEquals;
-
-import org.openkilda.floodlightcontroller.test.FloodlightTestCase;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.packet.Data;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.LLDPTLV;
 import net.floodlightcontroller.packet.UDP;
 import org.apache.commons.codec.binary.Hex;
+import org.easymock.EasyMock;
 import org.junit.After;
-import org.junit.AfterClass;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
+import org.openkilda.floodlightcontroller.test.FloodlightTestCase;
 import org.projectfloodlight.openflow.protocol.OFDescStatsReply;
-import org.projectfloodlight.openflow.protocol.OFFactories;
-import org.projectfloodlight.openflow.protocol.OFFactory;
-import org.projectfloodlight.openflow.protocol.OFFeaturesReply;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketInReason;
+import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IpProtocol;
+import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.TransportPort;
 
@@ -53,15 +53,14 @@ import java.net.InetSocketAddress;
 public class PathVerificationPacketInTest extends FloodlightTestCase {
 
     protected FloodlightContext cntx;
-    protected OFFeaturesReply swFeatures;
     protected OFDescStatsReply swDescription;
     protected PathVerificationService pvs;
-    protected String sw1HwAddrTarget = "aa:bb:cc:dd:ee:ff";
-    protected IOFSwitch sw1;
+    protected String sw1HwAddrTarget, sw2HwAddrTarget;
+    protected IOFSwitch sw1, sw2;
     protected OFPacketIn pktIn;
+    protected InetSocketAddress srcIpTarget, dstIpTarget;
     protected InetSocketAddress swIp = new InetSocketAddress("192.168.10.1", 200);
 
-    private OFFactory factory = OFFactories.getFactory(OFVersion.OF_13);
     private byte[] pkt = {(byte) 0xAA, (byte) 0xBB, (byte) 0xCC, (byte) 0xDD, (byte) 0xEE, (byte) 0xFF, // src mac
             0x11, 0x22, 0x33, 0x44, 0x55, 0x66,                                           // dst mac
             0x08, 0x00,                                                                   // ether-type
@@ -90,24 +89,22 @@ public class PathVerificationPacketInTest extends FloodlightTestCase {
             0x00, 0x00
     };
 
-    @BeforeClass
-    public static void setUpBeforeClass() throws Exception {
-    }
-
-    @AfterClass
-    public static void tearDownAfterClass() throws Exception {
-    }
-
     protected IPacket getPacket() {
         UDP udp = new UDP()
-                .setDestinationPort(TransportPort.of(PathVerificationService.VERIFICATION_PACKET_UDP_PORT))
-                .setSourcePort(TransportPort.of(PathVerificationService.VERIFICATION_PACKET_UDP_PORT));
+                .setDestinationPort(
+                        TransportPort.of(PathVerificationService.VERIFICATION_PACKET_UDP_PORT))
+                .setSourcePort(
+                        TransportPort.of(PathVerificationService.VERIFICATION_PACKET_UDP_PORT));
 
-        udp.setPayload(
-                new VerificationPacket()
-                        .setChassisId(new LLDPTLV().setType((byte) 1).setLength((short) 7).setValue(new byte[]{0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01}))
-                        .setPortId(new LLDPTLV().setType((byte) 2).setLength((short) 3).setValue(new byte[]{0x02, 0x00, 0x01}))
-                        .setTtl(new LLDPTLV().setType((byte) 3).setLength((short) 2).setValue(new byte[]{0x00, 0x78})));
+        VerificationPacket verificationPacket = new VerificationPacket()
+                .setChassisId(new LLDPTLV().setType((byte) 1).setLength((short) 7)
+                        .setValue(new byte[] {0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01}))
+                .setPortId(new LLDPTLV().setType((byte) 2).setLength((short) 3)
+                        .setValue(new byte[] {0x02, 0x00, 0x01}))
+                .setTtl(new LLDPTLV().setType((byte) 3).setLength((short) 2)
+                        .setValue(new byte[] {0x00, 0x78}));
+
+        udp.setPayload(new Data(verificationPacket.serialize()));
 
         IPv4 ip = new IPv4()
                 .setSourceAddress("192.168.0.1")
@@ -127,11 +124,18 @@ public class PathVerificationPacketInTest extends FloodlightTestCase {
 
     @Before
     public void setUp() throws Exception {
+
+        super.setUp();
+
         cntx = new FloodlightContext();
         mockFloodlightProvider = getMockFloodlightProvider();
+        swFeatures = factory.buildFeaturesReply().setNBuffers(1000).build();
+        swDescription = factory.buildDescStatsReply().build();
+
         FloodlightModuleContext fmc = new FloodlightModuleContext();
         fmc.addService(IFloodlightProviderService.class, mockFloodlightProvider);
         fmc.addService(IOFSwitchService.class, getMockSwitchService());
+
 
         OFPacketIn.Builder packetInBuilder = factory.buildPacketIn();
         packetInBuilder
@@ -140,7 +144,38 @@ public class PathVerificationPacketInTest extends FloodlightTestCase {
                 .setReason(OFPacketInReason.NO_MATCH);
         pktIn = packetInBuilder.build();
         System.out.print(Hex.encodeHexString(pktIn.getData()));
+
+        pvs = new PathVerificationService();
+
+        fmc.addConfigParam(pvs, "isl_bandwidth_quotient", "0.0");
+        fmc.addConfigParam(pvs, "hmac256-secret", "secret");
+        fmc.addConfigParam(pvs, "bootstrap-servers", "");
+        pvs.initServices(fmc);
+        pvs.initAlgorithm("secret");
+
+        srcIpTarget = new InetSocketAddress("192.168.10.1", 200);
+        dstIpTarget = new InetSocketAddress("192.168.10.101", 100);
+        sw1HwAddrTarget = "11:22:33:44:55:66";
+        sw2HwAddrTarget = "AA:BB:CC:DD:EE:FF";
+
+        OFPortDesc sw1Port1 = EasyMock.createMock(OFPortDesc.class);
+        expect(sw1Port1.getHwAddr()).andReturn(MacAddress.of(sw1HwAddrTarget)).anyTimes();
+        expect(sw1Port1.getVersion()).andReturn(OFVersion.OF_12).anyTimes();
+        expect(sw1Port1.getCurrSpeed()).andReturn(100000L).anyTimes();
+
+        OFPortDesc sw2Port1 = EasyMock.createMock(OFPortDesc.class);
+        expect(sw2Port1.getHwAddr()).andReturn(MacAddress.of(sw2HwAddrTarget)).anyTimes();
+        expect(sw2Port1.getVersion()).andReturn(OFVersion.OF_12).anyTimes();
+        expect(sw2Port1.getCurrSpeed()).andReturn(100000L).anyTimes();
+        replay(sw1Port1);
+        replay(sw2Port1);
+
+        sw1 = buildMockIOFSwitch(1L, sw1Port1, factory, swDescription, srcIpTarget);
+        sw2 = buildMockIOFSwitch(2L, sw2Port1, factory, swDescription, dstIpTarget);
+        replay(sw1);
+        replay(sw2);
     }
+
 
     @After
     public void tearDown() throws Exception {
@@ -154,4 +189,8 @@ public class PathVerificationPacketInTest extends FloodlightTestCase {
         IPacket expected = getPacket();
         assertArrayEquals(expected.serialize(), ethernet.serialize());
     }
+
+
+
+
 }

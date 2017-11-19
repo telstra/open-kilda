@@ -81,8 +81,8 @@ public class CacheTopologyTest extends AbstractStormTest {
     @BeforeClass
     public static void setupOnce() throws Exception {
         AbstractStormTest.setupOnce();
-        File file = new File(CacheTopologyTest.class.getResource(Topology.TOPOLOGY_PROPERTIES).getFile());
-        CacheTopology cacheTopology = new CacheTopology(file);
+
+        CacheTopology cacheTopology = new CacheTopology(makeLaunchEnvironment());
         StormTopology stormTopology = cacheTopology.createTopology();
         Config config = stormConfig();
         cluster.submitTopology(CacheTopologyTest.class.getSimpleName(), config, stormTopology);
@@ -98,7 +98,7 @@ public class CacheTopologyTest extends AbstractStormTest {
         Utils.sleep(10000);
 
         System.out.println("Waiting For Dump Request");
-        TimeUnit.SECONDS.sleep(OFEventWFMTopology.DEFAULT_DISCOVERY_TIMEOUT);
+        TimeUnit.SECONDS.sleep(cacheTopology.getConfig().getDiscoveryTimeout());
 
         System.out.println("Waited For Dump Request");
         teConsumer.pollMessage();

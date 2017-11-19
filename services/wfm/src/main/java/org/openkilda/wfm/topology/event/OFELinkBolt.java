@@ -17,12 +17,11 @@ package org.openkilda.wfm.topology.event;
 
 import static org.openkilda.messaging.Utils.MAPPER;
 import static org.openkilda.messaging.Utils.PAYLOAD;
-import static org.openkilda.wfm.topology.event.OFEventWFMTopology.DEFAULT_DISCOVERY_TOPIC;
-import static org.openkilda.wfm.topology.event.OFEventWFMTopology.DEFAULT_KAFKA_OUTPUT;
 
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.wfm.OFEMessageUtils;
+import org.openkilda.wfm.topology.TopologyConfig;
 import org.openkilda.wfm.topology.splitter.InfoEventSplitterBolt;
 import org.openkilda.wfm.topology.utils.AbstractTickStatefulBolt;
 import org.openkilda.wfm.topology.utils.LinkTracker;
@@ -50,8 +49,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class OFELinkBolt extends AbstractTickStatefulBolt<KeyValueState<String, LinkTracker>> {
     private static final Logger logger = LogManager.getLogger(OFELinkBolt.class);
 
-    public String outputStreamId = DEFAULT_KAFKA_OUTPUT;
-    public String islDiscoTopic = DEFAULT_DISCOVERY_TOPIC;
+    private final String outputStreamId;
+    private final String islDiscoveryTopic;
 
     /** SwitchID -> PortIDs */
     protected KeyValueState<String, LinkTracker> state;
@@ -63,15 +62,12 @@ public class OFELinkBolt extends AbstractTickStatefulBolt<KeyValueState<String, 
     /**
      * Default constructor .. default health check frequency
      */
-    public OFELinkBolt(int discoveryInterval, int discoveryTimeout) {
-        super(discoveryInterval);
-        // TODO: read health check frequency from config file and/or storm key/value.
-        this.packetsToFail = discoveryTimeout / discoveryInterval;
-    }
+    public OFELinkBolt(TopologyConfig config) {
+        super(config.getDiscoveryInterval());
 
-    public OFELinkBolt withOutputStreamId(String outputStreamId) {
-        this.outputStreamId = outputStreamId;
-        return this;
+        packetsToFail = config.getDiscoveryTimeout() / config.getDiscoveryInterval();
+        outputStreamId = config.getKafkaOutputTopic();
+        islDiscoveryTopic = config.getKafkaDiscoveryTopic();
     }
 
     @Override
@@ -84,10 +80,10 @@ public class OFELinkBolt extends AbstractTickStatefulBolt<KeyValueState<String, 
         this.state = state;
         // NB: First time the worker is created this will be null
         // TODO: what happens to state as workers go up or down
-        links = this.state.get(DEFAULT_DISCOVERY_TOPIC);
+        links = this.state.get(outputStreamId);
         if (links == null) {
             links = new LinkTracker();
-            this.state.put(DEFAULT_DISCOVERY_TOPIC, links);
+            this.state.put(islDiscoveryTopic, links);
         }
     }
 
@@ -109,7 +105,7 @@ public class OFELinkBolt extends AbstractTickStatefulBolt<KeyValueState<String, 
                     }
 
                     String discoJson = OFEMessageUtils.createIslDiscovery(switchId, entry.getKey());
-                    collector.emit(islDiscoTopic, tuple, new Values(PAYLOAD, discoJson));
+                    collector.emit(islDiscoveryTopic, tuple, new Values(PAYLOAD, discoJson));
                     logger.debug("LINK: Send ISL discovery command: {}", discoJson);
                 } catch (IOException exception) {
                     logger.error("LINK: ISL discovery failure message creation error", exception);
@@ -158,7 +154,7 @@ public class OFELinkBolt extends AbstractTickStatefulBolt<KeyValueState<String, 
         if (updown.equals(OFEMessageUtils.PORT_UP) || updown.equals(OFEMessageUtils.PORT_ADD)) {
             // Send ISL Discovery Packet
             String discoJson = OFEMessageUtils.createIslDiscovery(switchID, portID);
-            collector.emit(islDiscoTopic, tuple, new Values(PAYLOAD, discoJson));
+            collector.emit(islDiscoveryTopic, tuple, new Values(PAYLOAD, discoJson));
             logger.debug("LINK: Send ISL discovery command: {}", discoJson);
             // TODO: will we put the link info?
             // TODO: check if port already exists? is there business logic (UP on existing port)
@@ -167,7 +163,7 @@ public class OFELinkBolt extends AbstractTickStatefulBolt<KeyValueState<String, 
             // Clear the check, if it exists.
             logger.info("LINK: Remove switch={} port={} from health checks", switchID, portID);
             String discoJson = OFEMessageUtils.createIslDiscovery(switchID, portID);
-            collector.emit(islDiscoTopic, tuple, new Values(PAYLOAD, discoJson));
+            collector.emit(islDiscoveryTopic, tuple, new Values(PAYLOAD, discoJson));
             ports.get(portID).set(-1);
         } else {
             logger.error("LINK: Unknown state={} for switch={} port={}", updown, switchID, portID);
@@ -198,7 +194,7 @@ public class OFELinkBolt extends AbstractTickStatefulBolt<KeyValueState<String, 
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declareStream(islDiscoTopic, new Fields("key", "message"));
+        declarer.declareStream(islDiscoveryTopic, new Fields("key", "message"));
         declarer.declareStream(outputStreamId, new Fields("key", "message",
                 OFEMessageUtils.FIELD_SWITCH_ID, OFEMessageUtils.FIELD_PORT_ID, OFEMessageUtils.FIELD_STATE));
     }

@@ -16,18 +16,14 @@
 package org.openkilda.wfm.topology.splitter;
 
 import org.openkilda.messaging.ServiceType;
+import org.openkilda.wfm.ConfigurationException;
 import org.openkilda.wfm.topology.AbstractTopology;
-import org.openkilda.wfm.topology.Topology;
+import org.openkilda.wfm.LaunchEnvironment;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.storm.Config;
-import org.apache.storm.LocalCluster;
-import org.apache.storm.StormSubmitter;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.topology.TopologyBuilder;
-
-import java.io.File;
 
 /**
  * This topology does the following:
@@ -41,53 +37,20 @@ import java.io.File;
  * since we already have the stream within storm.
  */
 public class OFEventSplitterTopology extends AbstractTopology {
-
     private static Logger logger = LogManager.getLogger(OFEventSplitterTopology.class);
 
-    public String topic = "kilda-test";
-
-    public OFEventSplitterTopology(File file) {
-        super(file);
-    }
-
-    //Entry point for the topology
-    public static void main(String[] args) throws Exception {
-        //If there are arguments, we are running on a cluster; otherwise, we are running locally
-        if (args != null && args.length > 0) {
-            File file = new File(args[1]);
-            Config conf = new Config();
-            conf.setDebug(false);
-            OFEventSplitterTopology splitterTopology = new OFEventSplitterTopology(file);
-            StormTopology topo = splitterTopology.createTopology();
-
-            conf.setNumWorkers(1);
-            StormSubmitter.submitTopology(args[0], conf, topo);
-        } else {
-            File file = new File(OFEventSplitterTopology.class.getResource(Topology.TOPOLOGY_PROPERTIES).getFile());
-            Config conf = new Config();
-            conf.setDebug(false);
-            OFEventSplitterTopology splitterTopology = new OFEventSplitterTopology(file);
-            StormTopology topo = splitterTopology.createTopology();
-
-            conf.setMaxTaskParallelism(3);
-
-            LocalCluster cluster = new LocalCluster();
-            cluster.submitTopology(splitterTopology.topologyName, conf, topo);
-
-            Thread.sleep(20000);
-            cluster.shutdown();
-        }
-
+    public OFEventSplitterTopology(LaunchEnvironment env) throws ConfigurationException {
+        super(env);
     }
 
     /**
      * Build the Topology .. ie add it to the TopologyBuilder
      */
     public StormTopology createTopology() {
+        logger.debug("Building Topology - {}", getTopologyName());
 
-        logger.debug("Building Topology - OFEventSplitterTopology");
-
-        TopologyBuilder builder = new TopologyBuilder();
+        String topic = config.getKafkaInputTopic();
+        Integer parallelism = config.getParallelism();
 
         /*
          * Setup the initial kafka spout and bolts to write the streams to kafka.
@@ -96,7 +59,8 @@ public class OFEventSplitterTopology extends AbstractTopology {
         String primaryBolt = topic + "-bolt";
         checkAndCreateTopic(topic); // in case the topic doesn't exist yet
 
-        builder.setSpout(primarySpout, createKafkaSpout(topic, topologyName));
+        TopologyBuilder builder = new TopologyBuilder();
+        builder.setSpout(primarySpout, createKafkaSpout(topic, getTopologyName()));
         builder.setBolt(primaryBolt, new OFEventSplitterBolt(), parallelism)
                 .shuffleGrouping(primarySpout);
 
@@ -114,8 +78,8 @@ public class OFEventSplitterTopology extends AbstractTopology {
         // NB: This is the extra bolt for INFO to generate more streams. If the others end up with
         //     their own splitter bolt, then we can move this logic into the for loop above.
         String infoSplitterBoltID = OFEventSplitterBolt.INFO + "-bolt";
-        builder.setBolt(infoSplitterBoltID, new InfoEventSplitterBolt(), 3).shuffleGrouping
-                (primaryBolt, OFEventSplitterBolt.INFO);
+        builder.setBolt(infoSplitterBoltID, new InfoEventSplitterBolt(), 3)
+                .shuffleGrouping(primaryBolt, OFEventSplitterBolt.INFO);
 
         // Create the output from the InfoSplitter to Kafka
         // TODO: Can convert part of this to a test .. see if the right messages land in right topic
@@ -128,5 +92,14 @@ public class OFEventSplitterTopology extends AbstractTopology {
         createHealthCheckHandler(builder, ServiceType.SPLITTER_TOPOLOGY.getId());
 
         return builder.createTopology();
+    }
+
+    public static void main(String[] args) {
+        try {
+            LaunchEnvironment env = new LaunchEnvironment(args);
+            (new OFEventSplitterTopology(env)).setup();
+        } catch (Exception e) {
+            System.exit(handleLaunchException(e));
+        }
     }
 }

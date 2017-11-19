@@ -47,12 +47,12 @@ def choose_output_action(input_vlan_id, output_vlan_id):
     return "REPLACE" if int(output_vlan_id) else "POP"
 
 
-def get_one_switch_rules(switch, src_port, src_vlan, dst_port, dst_vlan,
+def get_one_switch_rules(src_switch, src_port, src_vlan, dst_port, dst_vlan,
                          bandwidth, flowid, cookie, meter_id, output_action,
                          **k):
     return [
         message_utils.build_one_switch_flow(
-            switch, src_port, src_vlan, dst_port, dst_vlan,
+            src_switch, src_port, src_vlan, dst_port, dst_vlan,
             bandwidth, flowid, output_action, cookie, meter_id)]
 
 
