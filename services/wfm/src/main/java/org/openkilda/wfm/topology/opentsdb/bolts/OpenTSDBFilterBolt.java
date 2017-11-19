@@ -58,7 +58,7 @@ public class OpenTSDBFilterBolt extends BaseRichBolt {
     @Override
     public void execute(Tuple tuple) {
         final String data = tuple.getString(0);
-        LOGGER.debug("Processing datapoint with correlationId {}", data);
+        LOGGER.debug("Processing datapoint", data);
         try {
             Datapoint datapoint = MAPPER.readValue(data, Datapoint.class);
             if (isUpdateRequired(datapoint)) {
