@@ -1,7 +1,5 @@
 package org.openkilda.simulator.bolts;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -21,14 +19,15 @@ import org.openkilda.simulator.messages.LinkMessage;
 import org.openkilda.simulator.messages.SwitchMessage;
 import org.openkilda.simulator.messages.simulator.SimulatorMessage;
 import org.openkilda.simulator.messages.simulator.command.SwitchModMessage;
-import org.openkilda.simulator.messages.simulator.command.TopologyMessage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.time.Instant;
 import java.util.*;
 
 public class SwitchBolt extends BaseRichBolt {
-    private static final Logger logger = LogManager.getLogger(SwitchBolt.class);
+    private static final Logger logger = LoggerFactory.getLogger(SwitchBolt.class);
     private OutputCollector collector;
     protected Map<String, ISwitchImpl> switches;
     public enum TupleFields {
@@ -93,7 +92,9 @@ public class SwitchBolt extends BaseRichBolt {
 
             for (IPortImpl p : sw.getPorts()) {
                 PortChangeType changeType = p.isActive() ? PortChangeType.UP : PortChangeType.DOWN; //TODO: see if OF sends DOWN
-                values.add(new Values("INFO", makePortMessage(sw, p.getNumber(), changeType)));
+                if (changeType == PortChangeType.UP) {
+                    values.add(new Values("INFO", makePortMessage(sw, p.getNumber(), changeType)));
+                }
             }
         }
         return values;
@@ -151,7 +152,7 @@ public class SwitchBolt extends BaseRichBolt {
         if (port.isActiveIsl()) {
             long now = Instant.now().toEpochMilli();
             InfoMessage infoMessage = new InfoMessage(data, now, "system", null);
-            logger.info("checking isl on: {}", data.toString());
+            logger.debug("checking isl on: {}", data.toString());
             collector.emit(SimulatorTopology.KAFKA_BOLT_STREAM, tuple,
                     new Values("INFO", Utils.MAPPER.writeValueAsString(infoMessage)));
         }
@@ -266,7 +267,7 @@ public class SwitchBolt extends BaseRichBolt {
                     logger.error("tuple from unknown source: {}", tupleSource);
             }
         } catch (Exception e) {
-            logger.error(e);
+            logger.error(e.toString());
             e.printStackTrace();
         } finally {
             collector.ack(tuple);

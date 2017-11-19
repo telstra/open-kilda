@@ -9,7 +9,7 @@
         </layout>
     </appender>
 
-    <logger name="org.openkilda" level="warn"
+    <logger name="org.openkilda" level="debug"
             additivity="false">
         <appender-ref ref="STDOUT" />
     </logger>

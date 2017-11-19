@@ -33,7 +33,7 @@ public class LaunchEnvironment {
     private Properties makeCliOverlay() {
         Properties overlay = new Properties(getProperties());
 
-        overlay.setProperty(CLI_OVERLAY + ".local", cli.getIsLocal() ? "yes" : "no");
+        overlay.setProperty(CLI_OVERLAY + ".local", cli.getIsLocal() ? "true" : "false");
         if (cli.getLocalExecutionTime() != null) {
             overlay.setProperty(CLI_OVERLAY + ".local.execution.time", cli.getLocalExecutionTime().toString());
         }
