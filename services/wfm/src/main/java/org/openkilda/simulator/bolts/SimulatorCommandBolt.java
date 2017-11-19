@@ -1,7 +1,5 @@
 package org.openkilda.simulator.bolts;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -17,13 +15,15 @@ import org.openkilda.simulator.messages.simulator.SimulatorMessage;
 import org.openkilda.simulator.messages.simulator.command.PortModMessage;
 import org.openkilda.simulator.messages.simulator.command.SwitchModMessage;
 import org.openkilda.simulator.messages.simulator.command.TopologyMessage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 public class SimulatorCommandBolt extends BaseRichBolt {
-    private static final Logger logger = LogManager.getLogger(SimulatorCommandBolt.class);
+    private static final Logger logger =LoggerFactory.getLogger(SimulatorCommandBolt.class);
     private OutputCollector collector;
 
     protected String getJson(Tuple tuple) {
@@ -94,7 +94,7 @@ public class SimulatorCommandBolt extends BaseRichBolt {
                     logger.error("received command from unknown source: {}", tupleSource);
             }
         } catch (Exception e) {
-            logger.error(e);
+            logger.error(e.toString());
         } finally {
             collector.ack(tuple);
         }

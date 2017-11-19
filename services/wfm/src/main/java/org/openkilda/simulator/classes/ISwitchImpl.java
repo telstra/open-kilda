@@ -3,7 +3,6 @@ package org.openkilda.simulator.classes;
 import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.messaging.info.stats.PortStatsEntry;
 import org.openkilda.simulator.interfaces.IFlow;
-import org.openkilda.simulator.interfaces.IPort;
 import org.openkilda.simulator.interfaces.ISwitch;
 import org.projectfloodlight.openflow.types.DatapathId;
 
