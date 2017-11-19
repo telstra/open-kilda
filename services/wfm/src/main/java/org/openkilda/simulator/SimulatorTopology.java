@@ -8,6 +8,7 @@ import org.apache.storm.StormSubmitter;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.tuple.Fields;
 import org.openkilda.simulator.bolts.CommandBolt;
+import org.openkilda.simulator.bolts.SimulatorCommandBolt;
 import org.openkilda.simulator.bolts.SwitchBolt;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.apache.storm.topology.TopologyBuilder;
@@ -29,6 +30,8 @@ public class SimulatorTopology extends AbstractTopology {
     public static final String SWITCH_BOLT_STREAM = "switch_bolt_stream";
     public static final String KAFKA_BOLT = "kafka_bolt";
     public static final String KAFKA_BOLT_STREAM = "kafka_bolt_stream";
+    public static final String SIMULATOR_COMMAND_BOLT = "simulator_command_bolt";
+    public static final String SIMULATOR_COMMAND_STREAM = "simulator_command_stream";
 
     public SimulatorTopology(File file) {
         super(file);
@@ -85,11 +88,17 @@ public class SimulatorTopology extends AbstractTopology {
                 .shuffleGrouping(SIMULATOR_SPOUT)
                 .shuffleGrouping(COMMAND_SPOUT);
 
+        SimulatorCommandBolt simulatorCommandBolt = new SimulatorCommandBolt();
+        logger.debug("starting " + SIMULATOR_COMMAND_BOLT + " bolt");
+        builder.setBolt(SIMULATOR_COMMAND_BOLT, simulatorCommandBolt, parallelism)
+                .shuffleGrouping(SIMULATOR_SPOUT);
+
         SwitchBolt switchBolt = new SwitchBolt();
         logger.debug("starting " + SWITCH_BOLT + " bolt");
         builder.setBolt(SWITCH_BOLT, switchBolt, 1)
                 .fieldsGrouping(COMMAND_BOLT, COMMAND_BOLT_STREAM, new Fields("dpid"))
-                .fieldsGrouping(SWITCH_BOLT, SWITCH_BOLT_STREAM, new Fields("dpid"));
+                .fieldsGrouping(SWITCH_BOLT, SWITCH_BOLT_STREAM, new Fields("dpid"))
+                .fieldsGrouping(SIMULATOR_COMMAND_BOLT, SIMULATOR_COMMAND_STREAM, new Fields("dpid"));
 
         final String KILDA_TOPIC = "kilda-test";
         checkAndCreateTopic(KILDA_TOPIC);

@@ -2,15 +2,10 @@ package org.openkilda.simulator.bolts;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.storm.state.KeyValueState;
-import org.apache.storm.state.State;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
-import org.apache.storm.topology.IStatefulBolt;
 import org.apache.storm.topology.OutputFieldsDeclarer;
-import org.apache.storm.topology.base.BaseBasicBolt;
 import org.apache.storm.topology.base.BaseRichBolt;
-import org.apache.storm.topology.base.BaseStatefulBolt;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
@@ -19,14 +14,14 @@ import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.*;
+import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.simulator.SimulatorTopology;
-import org.openkilda.simulator.classes.Commands;
-import org.openkilda.simulator.classes.Port;
-import org.openkilda.simulator.classes.SimulatorException;
-import org.openkilda.simulator.classes.Switch;
+import org.openkilda.simulator.classes.*;
 import org.openkilda.simulator.messages.LinkMessage;
 import org.openkilda.simulator.messages.SwitchMessage;
-import org.projectfloodlight.openflow.types.DatapathId;
+import org.openkilda.simulator.messages.simulator.SimulatorMessage;
+import org.openkilda.simulator.messages.simulator.command.SwitchModMessage;
+import org.openkilda.simulator.messages.simulator.command.TopologyMessage;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -35,13 +30,13 @@ import java.util.*;
 public class SwitchBolt extends BaseRichBolt {
     private static final Logger logger = LogManager.getLogger(SwitchBolt.class);
     private OutputCollector collector;
-    private Map<String, Switch> switches;
+    protected Map<String, ISwitchImpl> switches;
     public enum TupleFields {
         COMMAND,
         DATA;
     }
 
-    protected String makeSwitchMessage(Switch sw, SwitchState state) throws IOException {
+    protected String makeSwitchMessage(ISwitchImpl sw, SwitchState state) throws IOException {
         SwitchInfoData data = new SwitchInfoData(
                 sw.getDpid().toString(),
                 state,
@@ -58,7 +53,7 @@ public class SwitchBolt extends BaseRichBolt {
         return Utils.MAPPER.writeValueAsString(message);
     }
 
-    protected String makePortMessage(Switch sw, int portNum, PortChangeType type) throws IOException {
+    protected String makePortMessage(ISwitchImpl sw, int portNum, PortChangeType type) throws IOException {
         PortInfoData data = new PortInfoData(
                 sw.getDpid().toString(),
                 portNum,
@@ -72,20 +67,23 @@ public class SwitchBolt extends BaseRichBolt {
         return Utils.MAPPER.writeValueAsString(message);
     }
 
-    protected List<Values> addSwitch(SwitchMessage switchMessage) throws IOException {
-        Switch sw = switches.get(switchMessage.getDpid());
+    protected List<Values> addSwitch(SwitchMessage switchMessage) throws Exception {
+        ISwitchImpl sw = switches.get(switchMessage.getDpid());
         List<Values> values = new ArrayList<>();
 
         if (sw == null) {
             logger.info("switch does not exist, adding it");
-            sw = new Switch(DatapathId.of(switchMessage.getDpid()), switchMessage.getNumOfPorts());
+            sw = new ISwitchImpl(switchMessage.getDpid(),
+                    switchMessage.getNumOfPorts(), PortStateType.DOWN);
+            sw.activate();
 
             List<LinkMessage> links = switchMessage.getLinks();
             for (LinkMessage l : links) {
-                Port localPort = sw.getPort(l.getLocalPort());
+                IPortImpl localPort = sw.getPort(l.getLocalPort());
                 localPort.setLatency(l.getLatency());
                 localPort.setPeerPortNum(l.getPeerPort());
                 localPort.setPeerSwitch(l.getPeerSwitch());
+                localPort.enable();
             }
 
             switches.put(sw.getDpid().toString(), sw);
@@ -93,17 +91,30 @@ public class SwitchBolt extends BaseRichBolt {
             values.add(new Values("INFO", makeSwitchMessage(sw, SwitchState.ADDED)));
             values.add(new Values("INFO", makeSwitchMessage(sw, SwitchState.ACTIVATED)));
 
-            for (Port p : sw.getPorts()) {
-                values.add(new Values("INFO", makePortMessage(sw, p.getNumber(), PortChangeType.UP)));
+            for (IPortImpl p : sw.getPorts()) {
+                PortChangeType changeType = p.isActive() ? PortChangeType.UP : PortChangeType.DOWN; //TODO: see if OF sends DOWN
+                values.add(new Values("INFO", makePortMessage(sw, p.getNumber(), changeType)));
             }
         }
         return values;
     }
 
     protected void discoverIsl(Tuple tuple, DiscoverIslCommandData data) throws Exception {
-        logger.info("doing: {}", data.toString());
-        Switch sw = getSwitch(data.getSwitchId());
-        Port localPort = sw.getPort(data.getPortNo());
+        /*
+         * This process is a bit screwy and does put a loop in the topology:
+         *
+         * 1.  Determine if the source switch is up and the source port is an Active ISL port
+         * 2.  Create the IslInfoData package as if it is a working ISL (both ports are active)
+         * 3.  Emit tha IslInfoData back to SwitchBolt with fields grouping but keyed on the second switch to
+         *     ensure that the tuple goes to the instance which has that switch in it's switches Map and set command
+         *     to DiscoverIslP2
+         */
+
+        ISwitchImpl sw = getSwitch(data.getSwitchId());
+        if (!sw.isActive()) {
+            return;
+        }
+        IPortImpl localPort = sw.getPort(data.getPortNo());
 
         if (localPort.isActiveIsl()) {
             List<PathNode> path = new ArrayList<>();
@@ -124,30 +135,71 @@ public class SwitchBolt extends BaseRichBolt {
     }
 
     protected void discoverIslPartTwo(Tuple tuple, IslInfoData data) throws Exception {
-        Switch sw = getSwitch(data.getPath().get(1).getSwitchId());
-        Port port = sw.getPort(data.getPath().get(1).getPortNo());
+        /*
+         * Second part of the discover process.
+         *
+         * 1.  Grabs a message that has been sent from the first part and thus we know that the source port is
+         *     and active ISL.
+         * 2.  Check the status of the destination port, in Path[1], and if activeISL then emit to Kafka
+         */
+        ISwitchImpl sw = getSwitch(data.getPath().get(1).getSwitchId());
+        if (!sw.isActive()) {
+            return;
+        }
+        IPortImpl port = sw.getPort(data.getPath().get(1).getPortNo());
 
         if (port.isActiveIsl()) {
             long now = Instant.now().toEpochMilli();
             InfoMessage infoMessage = new InfoMessage(data, now, "system", null);
+            logger.info("checking isl on: {}", data.toString());
             collector.emit(SimulatorTopology.KAFKA_BOLT_STREAM, tuple,
                     new Values("INFO", Utils.MAPPER.writeValueAsString(infoMessage)));
         }
     }
 
-    public Switch getSwitch(String name) throws Exception {
-        Switch sw = switches.get(name);
+    public ISwitchImpl getSwitch(String name) throws Exception {
+        ISwitchImpl sw = switches.get(name);
         if (sw == null) {
             throw new SimulatorException(String.format("Switch %s not found", name));
         }
         return sw;
     }
 
+    public void doSimulatorCommand(Tuple tuple) throws Exception {
+        List<Values> values = new ArrayList<>();
+        if (tuple.getFields().contains("command")) {
+            String command = tuple.getStringByField("command");
+            switch (command) {
+                case SimulatorCommands.DO_ADD_SWITCH:
+                    values = addSwitch((SwitchMessage) tuple.getValueByField("data"));
+                    break;
+                default:
+                    logger.error(String.format("Uknown SimulatorCommand %s", command));
+            }
+        } else {
+            SimulatorMessage message = (SimulatorMessage) tuple.getValueByField("data");
+            if (message instanceof SwitchModMessage) {
+                SwitchModMessage switchModMessage = (SwitchModMessage) message;
+                ISwitchImpl sw = getSwitch(switchModMessage.getDpid());
+                //            sw.mod(switchModMessage.getState());
+            } else {
+                logger.error(String.format("Unkown SimulatorMessage %s"), message.getClass().getSimpleName());
+            }
+        }
+
+        if (values.size() > 0) {
+            for (Values value : values) {
+                logger.debug("emitting: {}", value);
+                collector.emit(SimulatorTopology.KAFKA_BOLT_STREAM, tuple, value);
+            }
+        }
+    }
+
     public void doCommand(Tuple tuple) throws Exception {
         String command = tuple.getStringByField(TupleFields.COMMAND.name());
         List<Values> values = new ArrayList<>();
 
-        if (command.equals(Commands.DO_ADD_SWITCH.name())) {
+        if (command.equals(SimulatorCommands.DO_ADD_SWITCH)) {
             values = addSwitch((SwitchMessage) tuple.getValueByField(TupleFields.DATA.name()));
             if (values.size() > 0) {
                 for (Values value : values) {
@@ -168,14 +220,6 @@ public class SwitchBolt extends BaseRichBolt {
             discoverIsl(tuple, (DiscoverIslCommandData) data);
         } else if (command.equals(Commands.DO_DISCOVER_PATH_COMMAND.name())) {
 
-        } else if (command.equals(Commands.DO_GET_FLOWS.name())) {
-
-        } else if (command.equals(Commands.DO_GET_PORT_STATS.name())) {
-
-        } else if (command.equals(Commands.DO_GET_PORT_STATUS.name())) {
-
-        } else if (command.equals(Commands.DO_GET_SWITCH_STATUS.name())) {
-
         } else if (command.equals(Commands.DO_INSTALL_EGRESS_FLOW.name())) {
 
         } else if (command.equals(Commands.DO_INSTALL_INGRESS_FLOW.name())) {
@@ -183,12 +227,6 @@ public class SwitchBolt extends BaseRichBolt {
         } else if (command.equals(Commands.DO_INSTALL_ONESWITCH_FLOW.name())) {
 
         } else if (command.equals(Commands.DO_INSTALL_TRANSIT_FLOW.name())) {
-
-        } else if (command.equals(Commands.DO_PORT_MOD.name())) {
-
-        } else if (command.equals(Commands.DO_REMOVE_SWITCH.name())) {
-
-        } else if (command.equals(Commands.DO_SWITCH_MOD.name())) {
 
         } else {
             logger.error("Unknown switch command: {}".format(command));
@@ -221,11 +259,15 @@ public class SwitchBolt extends BaseRichBolt {
                 case SimulatorTopology.SWITCH_BOLT:
                     doCommand(tuple);
                     break;
+                case SimulatorTopology.SIMULATOR_COMMAND_BOLT:
+                    doSimulatorCommand(tuple);
+                    break;
                 default:
                     logger.error("tuple from unknown source: {}", tupleSource);
             }
         } catch (Exception e) {
             logger.error(e);
+            e.printStackTrace();
         } finally {
             collector.ack(tuple);
         }
