@@ -15,7 +15,6 @@
 
 package org.openkilda.wfm.topology.flow;
 
-import static org.openkilda.wfm.topology.flow.FlowTopology.STATE_UPDATE_TOPIC;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -52,7 +51,6 @@ import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
 import org.openkilda.wfm.AbstractStormTest;
 import org.openkilda.wfm.topology.TestKafkaConsumer;
-import org.openkilda.wfm.topology.Topology;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -65,8 +63,8 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.openkilda.wfm.topology.TopologyConfig;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
@@ -84,8 +82,10 @@ public class FlowTopologyTest extends AbstractStormTest {
     @BeforeClass
     public static void setupOnce() throws Exception {
         AbstractStormTest.setupOnce();
-        File file = new File(FlowTopologyTest.class.getResource(Topology.TOPOLOGY_PROPERTIES).getFile());
-        flowTopology = new FlowTopology(file, new PathComputerMock());
+
+        flowTopology = new FlowTopology(makeLaunchEnvironment(), new PathComputerMock());
+        TopologyConfig topologyConfig = flowTopology.getConfig();
+
         StormTopology stormTopology = flowTopology.createTopology();
         Config config = stormConfig();
         cluster.submitTopology(FlowTopologyTest.class.getSimpleName(), config, stormTopology);
@@ -98,7 +98,7 @@ public class FlowTopologyTest extends AbstractStormTest {
                 kafkaProperties(UUID.nameUUIDFromBytes(Destination.CONTROLLER.toString().getBytes()).toString()));
         ofsConsumer.start();
 
-        cacheConsumer = new TestKafkaConsumer(STATE_UPDATE_TOPIC, null,
+        cacheConsumer = new TestKafkaConsumer(topologyConfig.getKafkaOutputTopic(), null,
                 kafkaProperties(UUID.nameUUIDFromBytes(Destination.TOPOLOGY_ENGINE.toString().getBytes()).toString()));
         cacheConsumer.start();
 

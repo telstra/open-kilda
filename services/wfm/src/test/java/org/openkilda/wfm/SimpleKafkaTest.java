@@ -30,7 +30,10 @@ import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
+import org.kohsuke.args4j.CmdLineException;
+import org.openkilda.wfm.topology.TopologyConfig;
 
 import java.util.HashMap;
 import java.util.List;
@@ -42,16 +45,23 @@ import java.util.Properties;
  * It should be useful when developing Storm Topologies that have a Kafka Spout
  */
 public class SimpleKafkaTest {
+    private static TopologyConfig config;
     public static final String topic = "simple-kafka"; // + System.currentTimeMillis();
 
     private TestUtils.KafkaTestFixture server;
     private Producer<String, String> producer;
     private ConsumerConnector consumerConnector;
 
+    @BeforeClass
+    public static void allocateConfig() throws ConfigurationException, CmdLineException {
+        String args[] = {};
+        config = new TopologyConfig((new LaunchEnvironment(args)).makePropertiesReader());
+    }
+
     @Before
     public void setup() throws Exception {
-        server = new TestUtils.KafkaTestFixture();
-        server.start(TestUtils.serverProperties());
+        server = new TestUtils.KafkaTestFixture(config);
+        server.start();
     }
 
     @After
@@ -94,7 +104,7 @@ public class SimpleKafkaTest {
 
     private Properties consumerProperties() {
         Properties props = new Properties();
-        props.put("zookeeper.connect", TestUtils.zookeeperHosts);
+        props.put("zookeeper.connect", config.getZookeeperHosts());
         props.put("group.id", "group1");
         props.put("auto.offset.reset", "smallest");
         return props;
@@ -102,7 +112,7 @@ public class SimpleKafkaTest {
 
     private Properties producerProps() {
         Properties props = new Properties();
-        props.put("bootstrap.servers", TestUtils.kafkaHosts);
+        props.put("bootstrap.servers", config.getKafkaHosts());
         props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         props.put("request.required.acks", "1");

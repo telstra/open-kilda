@@ -16,21 +16,17 @@
 package org.openkilda.wfm.topology.event;
 
 import org.openkilda.messaging.ServiceType;
+import org.openkilda.wfm.ConfigurationException;
 import org.openkilda.wfm.topology.AbstractTopology;
-import org.openkilda.wfm.topology.Topology;
+import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.topology.splitter.InfoEventSplitterBolt;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.storm.Config;
-import org.apache.storm.LocalCluster;
-import org.apache.storm.StormSubmitter;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.topology.BoltDeclarer;
 import org.apache.storm.topology.IStatefulBolt;
 import org.apache.storm.topology.TopologyBuilder;
-
-import java.io.File;
 
 /**
  * OFEventWFMTopology creates the topology to manage these key aspects of OFEvents:
@@ -54,15 +50,7 @@ public class OFEventWFMTopology extends AbstractTopology {
      * (8) ◊ Add simple pass through for verification (w/ speaker) & validation (w/ TPE)
      */
 
-    public static final Integer DEFAULT_DISCOVERY_INTERVAL = 3;
-    public static final Integer DEFAULT_DISCOVERY_TIMEOUT = 9;
-    public static final String DEFAULT_KAFKA_OUTPUT = "kilda.wfm.topo.updown";
-    public static final String DEFAULT_DISCOVERY_TOPIC = "kilda-test";
-
     private static Logger logger = LogManager.getLogger(OFEventWFMTopology.class);
-
-    private String kafkaOutputTopic = DEFAULT_KAFKA_OUTPUT;
-    private String kafkaInputTopic = DEFAULT_DISCOVERY_TOPIC;
 
     /**
      * This is the primary input topics
@@ -73,64 +61,26 @@ public class OFEventWFMTopology extends AbstractTopology {
             InfoEventSplitterBolt.I_ISL_UPDOWN
     };
 
-    // The order of bolts should match topics, and Link should be last .. logic below relies on it
-    private IStatefulBolt[] bolts = {
-            new OFESwitchBolt().withOutputStreamId(kafkaOutputTopic),
-            new OFEPortBolt().withOutputStreamId(kafkaOutputTopic),
-            new OFELinkBolt(DEFAULT_DISCOVERY_INTERVAL, DEFAULT_DISCOVERY_TIMEOUT).withOutputStreamId(kafkaOutputTopic)
-    };
-
-    public OFEventWFMTopology(File file) {
-        super(file);
-    }
-
-    public static void main(String[] args) throws Exception {
-        //If there are arguments, we are running on a cluster; otherwise, we are running locally
-        if (args != null && args.length > 0) {
-            File file = new File(args[1]);
-            OFEventWFMTopology kildaTopology = new OFEventWFMTopology(file);
-            StormTopology topo = kildaTopology.createTopology();
-            String name = (args != null && args.length > 0) ? args[0] : kildaTopology.topologyName;
-
-            Config conf = new Config();
-
-            conf.setDebug(false);
-            conf.setNumWorkers(kildaTopology.parallelism);
-
-            StormSubmitter.submitTopology(name, conf, topo);
-        } else {
-            File file = new File(OFEventWFMTopology.class.getResource(Topology.TOPOLOGY_PROPERTIES).getFile());
-            OFEventWFMTopology kildaTopology = new OFEventWFMTopology(file);
-            StormTopology topo = kildaTopology.createTopology();
-            String name = (args != null && args.length > 0) ? args[0] : kildaTopology.topologyName;
-
-            Config conf = new Config();
-
-            conf.setDebug(true);
-            conf.setMaxTaskParallelism(kildaTopology.parallelism);
-
-            LocalCluster cluster = new LocalCluster();
-            cluster.submitTopology(name, conf, topo);
-
-            Thread.sleep(10 * 1000);
-            cluster.shutdown();
-        }
+    public OFEventWFMTopology(LaunchEnvironment env) throws ConfigurationException {
+        super(env);
     }
 
     public StormTopology createTopology() {
         logger.debug("Building Topology - " + this.getClass().getSimpleName());
 
+        initKafka();
+
+        String kafkaOutputTopic = config.getKafkaOutputTopic();
         TopologyBuilder builder = new TopologyBuilder();
-
-        // Make sure the output and input topics exist
-        checkAndCreateTopic(kafkaOutputTopic);
-        checkAndCreateTopic(kafkaInputTopic);
-        for (String topic : topics) {
-            checkAndCreateTopic(topic);
-        }
-
         BoltDeclarer kbolt = builder.setBolt(kafkaOutputTopic + "-kafkabolt",
-                createKafkaBolt(kafkaOutputTopic), parallelism);
+                createKafkaBolt(kafkaOutputTopic), config.getParallelism());
+
+        // The order of bolts should match topics, and Link should be last .. logic below relies on it
+        IStatefulBolt[] bolts = {
+                new OFESwitchBolt().withOutputStreamId(kafkaOutputTopic),
+                new OFEPortBolt().withOutputStreamId(kafkaOutputTopic),
+                new OFELinkBolt(config)
+        };
 
         // tbolt will save the setBolt() results; will be useed to add switch/port to link
         BoltDeclarer[] tbolt = new BoltDeclarer[bolts.length];
@@ -140,11 +90,11 @@ public class OFEventWFMTopology extends AbstractTopology {
             String spoutName = topic + "-spout";
             String boltName = topic + "-bolt";
 
-            builder.setSpout(spoutName, createKafkaSpout(topic, topologyName));
+            builder.setSpout(spoutName, createKafkaSpout(topic, getTopologyName()));
 
             // NB: with shuffleGrouping, we can't maintain state .. would need to parse first
             //      just to pull out switchID.
-            tbolt[i] = builder.setBolt(boltName, bolts[i], parallelism).shuffleGrouping(spoutName);
+            tbolt[i] = builder.setBolt(boltName, bolts[i], config.getParallelism()).shuffleGrouping(spoutName);
             kbolt = kbolt.shuffleGrouping(boltName, kafkaOutputTopic);
         }
 
@@ -153,8 +103,8 @@ public class OFEventWFMTopology extends AbstractTopology {
                 .shuffleGrouping(topics[1] + "-bolt", kafkaOutputTopic);
 
         // finally, one more bolt, to write the ISL Discovery requests
-        String discoTopic = ((OFELinkBolt) bolts[2]).islDiscoTopic;
-        builder.setBolt("ISL_Discovery-kafkabolt", createKafkaBolt(discoTopic), parallelism)
+        String discoTopic = config.getKafkaInputTopic();
+        builder.setBolt("ISL_Discovery-kafkabolt", createKafkaBolt(discoTopic), config.getParallelism())
                 .shuffleGrouping(topics[2] + "-bolt", discoTopic);
 
         createHealthCheckHandler(builder, ServiceType.WFM_TOPOLOGY.getId());
@@ -188,4 +138,21 @@ public class OFEventWFMTopology extends AbstractTopology {
      * (8) ◊ -
      * (9) ◊ -
      */
+
+    private void initKafka() {
+        checkAndCreateTopic(config.getKafkaOutputTopic());
+        checkAndCreateTopic(config.getKafkaInputTopic());
+        for (String topic : topics) {
+            checkAndCreateTopic(topic);
+        }
+    }
+
+    public static void main(String[] args) {
+        try {
+            LaunchEnvironment env = new LaunchEnvironment(args);
+            (new OFEventWFMTopology(env)).setup();
+        } catch (Exception e) {
+            System.exit(handleLaunchException(e));
+        }
+    }
 }

@@ -15,16 +15,14 @@
 
 package org.openkilda.wfm.topology.utils;
 
+import org.openkilda.wfm.ConfigurationException;
 import org.openkilda.wfm.topology.AbstractTopology;
-import org.openkilda.wfm.topology.Topology;
+import org.openkilda.wfm.LaunchEnvironment;
 
 import org.apache.logging.log4j.Level;
 import org.apache.storm.Config;
-import org.apache.storm.StormSubmitter;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.topology.TopologyBuilder;
-
-import java.io.File;
 
 /**
  * A topology that will listen to a kafka topic and log the messages at the configured level.
@@ -49,50 +47,46 @@ import java.io.File;
  * org.openkilda.wfm.KafkaLoggerTopology logger-5 kilda.speaker INFO fred localhost:2181
  */
 public class KafkaLoggerTopology extends AbstractTopology {
-    private String topoName;
-    private String topic;
-    private Level level;
-    private String watermark;
-
-    // assigned after createTopology() is called
-    public static LoggerBolt logger;
-
-    public KafkaLoggerTopology(File file, String topic, Level level, String watermark) {
-        super(file);
-        this.topic = topic;
-        this.level = level;
-        this.watermark = watermark;
-        this.topoName = String.format("%s_%s_%d", topologyName, topic, System.currentTimeMillis());
-    }
-
-    public static void main(String[] args) throws Exception {
-        // process command line
-        String topic = (args != null && args.length > 1) ? args[1] : "kilda.speaker";
-        Level level = (args != null && args.length > 2) ? Level.valueOf(args[2]) : Level.INFO;
-        String watermark = (args != null && args.length > 3) ? args[3] : "";
-        boolean debug = (level == Level.DEBUG || level == Level.TRACE || level == Level.ALL);
-
-        Config conf = new Config();
-        conf.setDebug(debug);
-        conf.setNumWorkers(1);
-        File file = new File(KafkaLoggerTopology.class.getResource(Topology.TOPOLOGY_PROPERTIES).getFile());
-        KafkaLoggerTopology kafkaLoggerTopology = new KafkaLoggerTopology(file, topic, level, watermark);
-        StormSubmitter.submitTopology(kafkaLoggerTopology.topoName, conf, kafkaLoggerTopology.createTopology());
+    public KafkaLoggerTopology(LaunchEnvironment env) throws ConfigurationException {
+        super(env);
     }
 
     @Override
     public StormTopology createTopology() {
+        final String topic = config.getKafkaSpeakerTopic();
+        final String name = String.format("%s_%s_%d", getTopologyName(), topic, System.currentTimeMillis());
+        final Integer parallelism = config.getParallelism();
+
         TopologyBuilder builder = new TopologyBuilder();
 
         String spoutId = "KafkaSpout-" + topic;
-        int parallelism = 1;
-
-        builder.setSpout(spoutId, createKafkaSpout(topic, topoName), parallelism);
-        logger = new LoggerBolt().withLevel(level).withWatermark(watermark);
+        builder.setSpout(spoutId, createKafkaSpout(topic, name), parallelism);
+        LoggerBolt logger = new LoggerBolt()
+                .withLevel(config.getLoggerLevel())
+                .withWatermark(config.getLoggerWatermark());
 
         builder.setBolt("Logger", logger, parallelism)
                 .shuffleGrouping(spoutId);
 
         return builder.createTopology();
+    }
+
+    @Override
+    protected Config makeStormConfig() {
+        Config config = super.makeStormConfig();
+        Level level = this.config.getLoggerLevel();
+
+        config.setDebug(level == Level.DEBUG || level == Level.TRACE || level == Level.ALL);
+
+        return config;
+    }
+
+    public static void main(String[] args) {
+        try {
+            LaunchEnvironment env = new LaunchEnvironment(args);
+            (new KafkaLoggerTopology(env)).setup();
+        } catch (Exception e) {
+            System.exit(handleLaunchException(e));
+        }
     }
 }

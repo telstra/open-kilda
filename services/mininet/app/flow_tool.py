@@ -23,7 +23,6 @@ import os
 import scapy.all as s
 import socket
 
-
 number_of_packets = 1000
 expected_delta = 500
 of_ctl = "ovs-ofctl -O openflow13"
@@ -170,5 +169,29 @@ def port_up(p):
     return respond(result == 0,
                    "Switch %s port %s up\n" % (p['switch'], p['port']),
                    "Fail switch %s port %s up\n" % (p['switch'], p['port']))
+
+
+@post("/send_malformed_packet")
+def send_malformed_packet():
+    # This packet create isl between de:ad:be:ef:00:00:00:02 and
+    # de:ad:be:ef:00:00:00:02
+
+    data = '\x02\x07\x04\xbe\xef\x00\x00\x00\x02\x04\x03\x02\x00\x01\x06\x02' \
+           '\x00x\xfe\x0c\x00&\xe1\x00\xde\xad\xbe\xef\x00\x00\x00\x02\xfe' \
+           '\x0c\x00&\xe1\x01\x00\x00\x01_\xb6\x8c\xacG\xfe\x08\x00&\xe1\x02' \
+           '\x00\x00\x00\x00\x00\x00'
+
+    payload = (s.Ether(dst="00:26:e1:ff:ff:ff") /
+               s.IP(dst="192.168.0.255") /
+               s.UDP(dport=61231, sport=61231) /
+               data)
+
+    try:
+        s.sendp(payload, iface="00000001-eth1")
+        return "ok"
+    except Exception as ex:
+        response.status = 500
+        return "can't send malformed packet {}".format(ex)
+
 
 run(host='0.0.0.0', port=17191, debug=True)
