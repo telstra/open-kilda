@@ -26,13 +26,13 @@ import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
-import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.Datapoint;
 
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -47,9 +47,7 @@ public class OpenTSDBFilterBolt extends BaseRichBolt {
                     TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER.getValueField(),
                     TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER.getTagsField());
 
-    private Long prevTimestamp = 0L;
-    private Datapoint prevDatapoint = new Datapoint();
-
+    private Set<Datapoint> storage = new HashSet<>();
     private OutputCollector collector;
 
     @Override
@@ -60,14 +58,11 @@ public class OpenTSDBFilterBolt extends BaseRichBolt {
     @Override
     public void execute(Tuple tuple) {
         final String data = tuple.getString(0);
+        LOGGER.debug("Processing datapoint with correlationId {}", data);
         try {
-            InfoMessage infoMessage = MAPPER.readValue(data, InfoMessage.class);
-            Datapoint datapoint = (Datapoint) infoMessage.getData();
-            LOGGER.info("Processing datapoint with correlationId {}", infoMessage.getCorrelationId());
-
-            if (!Objects.equals(datapoint, prevDatapoint) && datapoint.getTimestamp() - prevTimestamp > TEN_MINUTES) {
-                prevTimestamp = datapoint.getTimestamp();
-                prevDatapoint = datapoint;
+            Datapoint datapoint = MAPPER.readValue(data, Datapoint.class);
+            if (isUpdateRequired(datapoint)) {
+                storage.add(datapoint);
 
                 List<Object> stream = Stream.of(datapoint.getMetric(), datapoint.getTimestamp(), datapoint.getValue(),
                         datapoint.getTags())
@@ -77,7 +72,7 @@ public class OpenTSDBFilterBolt extends BaseRichBolt {
                 collector.emit(stream);
             }
         } catch (IOException e) {
-            LOGGER.error("Failed read datapoint");
+            LOGGER.error("Failed read datapoint", e);
         } finally {
             collector.ack(tuple);
         }
@@ -86,5 +81,15 @@ public class OpenTSDBFilterBolt extends BaseRichBolt {
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         declarer.declare(DECLARED_FIELDS);
+    }
+
+    private boolean isUpdateRequired(Datapoint datapoint) {
+        return !storage.contains(datapoint) || isDatapointOutdated(datapoint);
+    }
+
+    private boolean isDatapointOutdated(Datapoint datapoint) {
+        Datapoint prevDatapoint = storage.stream().filter(item -> item.equals(datapoint)).findFirst()
+                .orElseThrow(() -> new IllegalStateException("Unexpected storage value"));
+        return datapoint.getTimestamp() - prevDatapoint.getTimestamp() >= TEN_MINUTES;
     }
 }

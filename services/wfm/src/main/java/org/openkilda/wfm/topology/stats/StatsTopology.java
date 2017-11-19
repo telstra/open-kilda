@@ -19,22 +19,18 @@ import static org.openkilda.wfm.topology.stats.StatsComponentType.FLOW_STATS_MET
 import static org.openkilda.wfm.topology.stats.StatsComponentType.METER_CFG_STATS_METRIC_GEN;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.PORT_STATS_METRIC_GEN;
 
+import org.apache.storm.generated.StormTopology;
+import org.apache.storm.kafka.KafkaSpout;
+import org.apache.storm.kafka.bolt.KafkaBolt;
+import org.apache.storm.topology.TopologyBuilder;
 import org.openkilda.messaging.ServiceType;
 import org.openkilda.wfm.ConfigurationException;
-import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.LaunchEnvironment;
+import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.stats.bolts.SpeakerBolt;
 import org.openkilda.wfm.topology.stats.metrics.FlowMetricGenBolt;
 import org.openkilda.wfm.topology.stats.metrics.MeterConfigMetricGenBolt;
 import org.openkilda.wfm.topology.stats.metrics.PortMetricGenBolt;
-
-import org.apache.storm.generated.StormTopology;
-import org.apache.storm.kafka.KafkaSpout;
-import org.apache.storm.opentsdb.bolt.OpenTsdbBolt;
-import org.apache.storm.opentsdb.bolt.TupleOpenTsdbDatapointMapper;
-import org.apache.storm.opentsdb.client.OpenTsdbClient;
-import org.apache.storm.topology.TopologyBuilder;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -73,13 +69,9 @@ public class StatsTopology extends AbstractTopology {
         builder.setBolt(FLOW_STATS_METRIC_GEN.name(), new FlowMetricGenBolt(), parallelism)
                 .fieldsGrouping(statsOfsBolt, StatsStreamType.FLOW_STATS.toString(), fieldMessage);
 
-        OpenTsdbClient.Builder tsdbBuilder = OpenTsdbClient.newBuilder(config.getOpenTsDBHosts())
-                .sync(30_000).returnDetails();
-        OpenTsdbBolt openTsdbBolt = new OpenTsdbBolt(tsdbBuilder, TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER)
-                .withBatchSize(10)
-                .withFlushInterval(2)
-                .failTupleForFailedMetrics();
-        builder.setBolt("opentsdb", openTsdbBolt)
+        final String openTsdbTopic = config.getKafkaTsdbTopic();
+        checkAndCreateTopic(openTsdbTopic);
+        builder.setBolt("stats-opentsdb", createKafkaBolt(openTsdbTopic))
                 .shuffleGrouping(PORT_STATS_METRIC_GEN.name())
                 .shuffleGrouping(METER_CFG_STATS_METRIC_GEN.name())
                 .shuffleGrouping(FLOW_STATS_METRIC_GEN.name());
