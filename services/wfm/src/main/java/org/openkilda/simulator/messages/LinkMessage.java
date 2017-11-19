@@ -31,9 +31,11 @@ public class LinkMessage implements Serializable {
     private int peerPort;
 
     public LinkMessage(@JsonProperty("latency") int latency,
+                       @JsonProperty("local-port") int localPort,
                        @JsonProperty("peer_switch") String peerSwitch,
                        @JsonProperty("peer_port") int peerPort) {
         this.latency = latency;
+        this.localPort = localPort;
         this.peerSwitch = peerSwitch;
         this.peerPort = peerPort;
     }

@@ -18,8 +18,6 @@ import org.openkilda.messaging.command.discovery.DiscoverPathCommandData;
 import org.openkilda.messaging.command.flow.*;
 import org.openkilda.simulator.SimulatorTopology;
 import org.openkilda.simulator.classes.Commands;
-import org.openkilda.simulator.messages.SwitchMessage;
-import org.openkilda.simulator.messages.TopologyMessage;
 import org.openkilda.wfm.OFEMessageUtils;
 
 import java.util.List;
@@ -81,18 +79,8 @@ public class CommandBolt extends BaseRichBolt {
             }
             List<Integer> taskIDs = collector.emit(SimulatorTopology.COMMAND_BOLT_STREAM, tuple,
                     new Values(sw.toLowerCase(), switchCommand.name(), command.getData()));
-            logger.info("{}:  {} - {}", switchCommand.name(), sw, taskIDs);
+            logger.info("{}:  {} - {}", switchCommand.name(), sw, command.getData().toString());
         }
-    }
-
-    protected void createTopology(TopologyMessage topology, Tuple tuple) {
-        List<SwitchMessage> switches = topology.getSwitches();
-        switches.forEach(sw -> {
-            // Need to pre-pend 00:00 as DPID as returned by OpenflowJ has 8 octets
-            List<Integer> taskIDs = collector.emit(SimulatorTopology.COMMAND_BOLT_STREAM, tuple,
-                    new Values(String.format("00:00:%s",sw.getDpid()).toLowerCase(), Commands.DO_ADD_SWITCH.name(), sw));
-            logger.info("Add Switch: {} - {}", sw.getDpid(), taskIDs);
-        });
     }
 
     @Override
@@ -101,11 +89,6 @@ public class CommandBolt extends BaseRichBolt {
         try {
             String json = getJson(tuple);
             switch (getType(json)) {
-                case "topology":
-                    TopologyMessage message = Utils.MAPPER.readValue(json, TopologyMessage.class);
-                    createTopology(message, tuple);
-//                    collector.emit(SimulatorTopology.DEPLOY_TOPOLOGY_BOLT_STREAM, tuple, new Values(message));
-                    break;
                 case "command":
                     processCommand(tuple);
                     break;

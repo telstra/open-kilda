@@ -1,11 +1,15 @@
 package org.openkilda.simulator.classes;
 
+import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.stats.PortStatsEntry;
+import org.openkilda.simulator.classes.PortStateType;
+import org.openkilda.simulator.classes.SimulatorException;
+import org.openkilda.simulator.interfaces.IPort;
 import org.projectfloodlight.openflow.types.DatapathId;
 
 import java.util.Random;
 
-public class Port {
+public class IPortImpl implements IPort {
     private static final int MAX_SMALL = 50;
     private static final int MAX_LARGE = 10000;
 
@@ -23,51 +27,102 @@ public class Port {
     private long rxOverErr = 0;
     private long rxCrcErr = 0;
     private long collisions = 0;
-    protected boolean isActive = true;
-    protected boolean isForwarding = true;
-    protected int latency = 0;
-    protected DatapathId peerSwitch;
-    protected int peerPortNum = -1;
+    private boolean isActive = true;
+    private boolean isForwarding = true;
+    private int latency = 0;
+    private DatapathId peerSwitch;
+    private int peerPortNum = -1;
 
-    public Port(int number) {
-        this(number, true, true);
-    }
-
-    public Port(int number, boolean isActive, boolean isForwardig) {
-        this.number = number;
-        this.isActive = isActive;
-        this.isForwarding = isForwardig;
-    }
-
-    public void disable(boolean isActive) {
-        this.isActive = !isActive;
-        if (!this.isActive) {
-            block();
+    public IPortImpl(PortStateType state, int portNumber) throws SimulatorException {
+        if (state == PortStateType.UP) {
+            enable();
+        } else if (state == PortStateType.DOWN) {
+            disable();
+        } else {
+            throw new SimulatorException(String.format("Unknown port state %s", state.toString()));
         }
+        number = portNumber;
     }
 
+    @Override
+    public void enable() {
+        this.isActive = true;
+        this.isForwarding = true;
+    }
+
+    @Override
+    public void disable() {
+        this.isActive = false;
+        this.isForwarding = false;
+    }
+
+    @Override
     public void block() {
         this.isForwarding = false;
     }
 
+    @Override
     public void unblock() {
         this.isForwarding = true;
-        this.isActive = true;
     }
 
+    @Override
+    public boolean isActive() {
+        return isActive;
+    }
+
+    @Override
+    public boolean isForwarding() {
+        return isForwarding;
+    }
+
+    @Override
     public int getNumber() {
         return number;
     }
 
-    public void isl(DatapathId peerSwitch, int perPortNum) {
-        this.peerSwitch = peerSwitch;
-        this.peerPortNum = perPortNum;
+    @Override
+    public void setLatency(int latency) {
+        this.latency = latency;
     }
 
+    @Override
+    public int getLatency() {
+        return latency;
+    }
+
+    @Override
+    public String getPeerSwitch() {
+        return peerSwitch.toString();
+    }
+
+    @Override
+    public void setPeerSwitch(String peerSwitch) {
+        this.peerSwitch = DatapathId.of(peerSwitch);
+    }
+
+    @Override
+    public void setPeerPortNum(int peerPortNum) {
+        this.peerPortNum = peerPortNum;
+    }
+
+    @Override
+    public int getPeerPortNum() {
+        return peerPortNum;
+    }
+
+    @Override
+    public void setIsl(DatapathId peerSwitch, int peerPortNum) {
+        this.peerSwitch = peerSwitch;
+        this.peerPortNum = peerPortNum;
+    }
+
+    @Override
     public boolean isActiveIsl() {
         return (peerSwitch != null && peerPortNum >= 0 && isActive && isForwarding);
     }
 
+    @Override
     public PortStatsEntry getStats() {
         if (isForwarding && isActive) {
             this.rxPackets += rand.nextInt(MAX_LARGE);
@@ -88,28 +143,4 @@ public class Port {
                 this.rxDropped, this.txDropped, this.rxErrors, this.txErrors, this.rxFrameErr, this.rxOverErr,
                 this.rxCrcErr, this.collisions);
     }
-
-    public void setLatency(int latency) {
-        this.latency = latency;
-    }
-
-    public int getLatency() {
-        return latency;
-    }
-
-    public String getPeerSwitch() {
-        return peerSwitch.toString();
-    }
-
-    public void setPeerSwitch(String peerSwitch) {
-        this.peerSwitch = DatapathId.of(peerSwitch);
-    }
-
-    public void setPeerPortNum(int peerPortNum) {
-        this.peerPortNum = peerPortNum;
-    }
-
-    public int getPeerPortNum() { return peerPortNum; }
-
-
 }
