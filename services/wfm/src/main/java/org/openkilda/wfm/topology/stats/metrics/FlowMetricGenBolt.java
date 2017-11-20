@@ -54,7 +54,6 @@ public class FlowMetricGenBolt extends MetricGenBolt {
         String switchId = data.getSwitchId().replaceAll(":", "");
 
         try {
-            LOGGER.error("Error during serialization of datapoint from {}", message);
             for (FlowStatsReply reply : data.getStats()) {
                 for (FlowStatsEntry entry : reply.getEntries()) {
                     emit(entry, timestamp, switchId);
