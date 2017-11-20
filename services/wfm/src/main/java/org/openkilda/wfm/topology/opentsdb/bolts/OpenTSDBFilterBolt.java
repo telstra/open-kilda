@@ -62,7 +62,7 @@ public class OpenTSDBFilterBolt extends BaseRichBolt {
         try {
             Datapoint datapoint = MAPPER.readValue(data, Datapoint.class);
             if (isUpdateRequired(datapoint)) {
-                storage.add(datapoint);
+                addDatapoint(datapoint);
 
                 List<Object> stream = Stream.of(datapoint.getMetric(), datapoint.getTimestamp(), datapoint.getValue(),
                         datapoint.getTags())
@@ -81,6 +81,13 @@ public class OpenTSDBFilterBolt extends BaseRichBolt {
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         declarer.declare(DECLARED_FIELDS);
+    }
+
+    private void addDatapoint(Datapoint datapoint) {
+        if (!storage.add(datapoint)) {
+            storage.remove(datapoint);
+            storage.add(datapoint);
+        }
     }
 
     private boolean isUpdateRequired(Datapoint datapoint) {
