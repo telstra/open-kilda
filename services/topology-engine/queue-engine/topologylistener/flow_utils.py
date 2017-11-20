@@ -16,6 +16,7 @@
 import os
 import json
 import db
+import copy
 
 import message_utils
 from logger import get_logger
@@ -110,6 +111,9 @@ def remove_flow(flow, flow_path):
 
 
 def store_flow(flow):
+
+    flow_data = copy.deepcopy(flow)
+
     query = ("MATCH (u:switch {{name:'{src_switch}'}}), "
              "(r:switch {{name:'{dst_switch}'}}) "
              "MERGE (u)-[:flow {{"
@@ -127,12 +131,12 @@ def store_flow(flow):
              "description: '{description}', "
              "last_updated: '{last_updated}', "
              "flowpath: '{flowpath}'}}]->(r)")
-    path = flow['flowpath']['path']
-    flow['flowpath'] = json.dumps(flow['flowpath'])
-    graph.run(query.format(**flow))
+    path = flow_data['flowpath']['path']
+    flow_data['flowpath'] = json.dumps(flow_data['flowpath'])
+    graph.run(query.format(**flow_data))
 
-    if is_forward_cookie(flow['cookie']):
-        update_path_bandwidth(path, int(flow['bandwidth']))
+    if is_forward_cookie(flow_data['cookie']):
+        update_path_bandwidth(path, int(flow_data['bandwidth']))
 
 
 def get_old_flow(new_flow):
