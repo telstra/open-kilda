@@ -149,3 +149,13 @@ templates/vars/path.yaml:
 
 In this example we will generate file services/topology-engine/queue-engine/topology_engine.properties 
 from template templates/topology-engine/topology_engine.properties.j2
+
+### How enable travis CI
+Someone with admin rights should log in using github account to https://travis-ci.org and on the page 
+https://travis-ci.org/profile/telstra activate telstra/open-kilda repository.
+All configurations for travis are located in .travis.yml. For adding new scripts you should create new line under script parameter.
+```
+script:
+- make run-test
+- new command
+```

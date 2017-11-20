@@ -15,14 +15,13 @@
 
 package org.openkilda.wfm;
 
-import org.openkilda.wfm.topology.Topology;
+import org.openkilda.wfm.topology.TopologyConfig;
 
 import com.google.common.io.Files;
 import kafka.server.KafkaConfig;
 import kafka.server.KafkaServerStartable;
 import org.apache.curator.test.TestingServer;
 import org.apache.storm.Config;
-import org.codehaus.plexus.util.PropertyUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -34,22 +33,11 @@ import java.util.Properties;
  * Key Utilities:
  */
 public class TestUtils {
-
-    public static final String zookeeperHosts;
-    public static final String kafkaHosts;
-
-    static {
-        File file = new File(TestUtils.class.getResource(Topology.TOPOLOGY_PROPERTIES).getFile());
-        Properties properties = PropertyUtils.loadProperties(file);
-        zookeeperHosts = properties.getProperty(Topology.PROPERTY_ZOOKEEPER);
-        kafkaHosts = properties.getProperty(Topology.PROPERTY_KAFKA);
-    }
-
-    public static Properties serverProperties() {
+    public static Properties serverProperties(TopologyConfig config) {
         Properties props = new Properties();
-        props.put("zookeeper.connect", zookeeperHosts);
-        props.put("broker.id", "1");
-        props.put("delete.topic.enable", "true");
+        props.setProperty("zookeeper.connect", config.getZookeeperHosts());
+        props.setProperty("broker.id", "1");
+        props.setProperty("delete.topic.enable", "true");
         return props;
     }
 
@@ -64,10 +52,15 @@ public class TestUtils {
         public TestingServer zk;
         public KafkaServerStartable kafka;
         public File tempDir = Files.createTempDir();
+        private TopologyConfig config;
 
+        public KafkaTestFixture(TopologyConfig config) throws ConfigurationException {
+            this.config = config;
+        }
 
         public void start() throws Exception {
-            this.start(serverProperties());
+            Properties props = serverProperties(config);
+            this.start(props);
         }
 
         public void start(Properties props) throws Exception {

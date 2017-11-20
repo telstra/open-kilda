@@ -22,44 +22,12 @@ import org.apache.storm.generated.StormTopology;
  */
 public interface Topology {
     /**
-     * Zookeeper hosts property name.
-     */
-    String PROPERTY_ZOOKEEPER = "zookeeper.hosts";
-
-    /**
-     * Kafka hosts property name.
-     */
-    String PROPERTY_KAFKA = "kafka.hosts";
-
-    /**
-     * Neo4J host property name.
-     */
-    String PROPERTY_NEO4J_URL = "neo4j.hosts";
-
-    /**
-     * Neo4J user property name.
-     */
-    String PROPERTY_NEO4J_USER = "neo4j.user";
-
-    /**
-     * Neo4J password property name.
-     */
-    String PROPERTY_NEO4J_PSWD = "neo4j.pswd";
-
-    /**
-     * Parallelism value property name.
-     */
-    String PROPERTY_PARALLELISM = "parallelism";
-
-    /**
-     * Workers value property name.
-     */
-    String PROPERTY_WORKERS = "workers";
-
-    /**
      * Default topologies configuration file.
      */
     String TOPOLOGY_PROPERTIES = "/topology.properties";
+    String TOPOLOGY_PROPERTIES_DEFAULTS_PREFIX = "defaults.";
+
+    String getTopologyName();
 
     /**
      * Topology creator.
@@ -75,19 +43,7 @@ public interface Topology {
      *
      * @return topology name
      */
-    default String getTopologyName() {
+    default String makeTopologyName() {
         return getClass().getSimpleName().toLowerCase();
-    }
-
-    /**
-     * Returns topology specific property name.
-     * Adds topology name to property name.
-     * Default implementation.
-     *
-     * @param propertyName property name
-     * @return topology specific property name
-     */
-    default String getTopologyPropertyName(final String propertyName) {
-        return String.format("%s.%s", getTopologyName(), propertyName);
     }
 }

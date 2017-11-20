@@ -21,6 +21,9 @@ import message_utils
 from logger import get_logger
 
 
+__all__ = ['graph']
+
+
 graph = db.create_p2n_driver()
 logger = get_logger()
 

@@ -59,7 +59,9 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
         @Type(value = MeterConfigStatsData.class, name = "meter_config_stats"),
         @Type(value = FlowStatsData.class, name = "flow_stats"),
         @Type(value = NetworkInfoData.class, name = "network"),
-        @Type(value = HealthCheckInfoData.class, name = "health_check")})
+        @Type(value = HealthCheckInfoData.class, name = "health_check"),
+        @Type(value = Datapoint.class, name = "datapoint")
+})
 public abstract class InfoData extends MessageData {
     /**
      * Serialization version number constant.
