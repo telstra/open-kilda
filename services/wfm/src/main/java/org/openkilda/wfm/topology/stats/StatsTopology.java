@@ -21,7 +21,6 @@ import static org.openkilda.wfm.topology.stats.StatsComponentType.PORT_STATS_MET
 
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.KafkaSpout;
-import org.apache.storm.kafka.bolt.KafkaBolt;
 import org.apache.storm.topology.TopologyBuilder;
 import org.openkilda.messaging.ServiceType;
 import org.openkilda.wfm.ConfigurationException;
