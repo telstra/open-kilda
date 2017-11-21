@@ -15,13 +15,19 @@
 
 package org.openkilda.wfm;
 
-import org.apache.storm.Config;
 import org.apache.storm.testing.CompleteTopologyParam;
 import org.apache.storm.testing.MkClusterParam;
+import org.kohsuke.args4j.CmdLineException;
+import org.openkilda.wfm.topology.TestKafkaProducer;
+
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.storm.Config;
+import org.apache.storm.LocalCluster;
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.rules.TemporaryFolder;
-import org.kohsuke.args4j.CmdLineException;
 import org.openkilda.wfm.topology.TopologyConfig;
 
 import java.io.File;
@@ -33,30 +39,63 @@ import java.util.Properties;
  * Created by carmine on 4/4/17.
  */
 public class AbstractStormTest {
-    private static final String CONFIG_NAME = "class-level-overlay.properties";
+    protected static String CONFIG_NAME = "class-level-overlay.properties";
 
-    protected static CompleteTopologyParam completeTopologyParam;
+    protected static TestKafkaProducer kProducer;
+    protected static LocalCluster cluster;
     protected static MkClusterParam clusterParam;
+    protected static CompleteTopologyParam completeTopologyParam;
+    static TestUtils.KafkaTestFixture server;
 
     @ClassRule
     public static TemporaryFolder fsData = new TemporaryFolder();
+
+    protected static Properties kafkaProperties() throws ConfigurationException, CmdLineException {
+        Properties properties = new Properties();
+        properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, makeUnboundConfig().getKafkaHosts());
+        properties.put(ConsumerConfig.GROUP_ID_CONFIG, "test");
+        properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
+        properties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
+        properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer");
+        properties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
+        properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer");
+        properties.put("request.required.acks", "1");
+        return properties;
+    }
+
+    protected static Properties kafkaProperties(final String groupId) throws ConfigurationException, CmdLineException {
+        Properties properties = kafkaProperties();
+        properties.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+        return properties;
+    }
+
+    protected static Config stormConfig() {
+        Config config = new Config();
+        config.setDebug(false);
+        config.setMaxTaskParallelism(1);
+        config.setNumWorkers(1);
+        return config;
+    }
 
     @BeforeClass
     public static void setupOnce() throws Exception {
         System.out.println("------> Creating Sheep \uD83D\uDC11\n");
 
-        clusterParam = new MkClusterParam();
-        clusterParam.setSupervisors(1);
-        Config daemonConfig = new Config();
-        daemonConfig.put(Config.STORM_LOCAL_MODE_ZMQ, false);
-        clusterParam.setDaemonConf(daemonConfig);
         makeConfigFile();
 
-        Config conf = new Config();
-        conf.setNumWorkers(1);
+        server = new TestUtils.KafkaTestFixture(makeUnboundConfig());
+        server.start();
 
-        completeTopologyParam = new CompleteTopologyParam();
-        completeTopologyParam.setStormConf(conf);
+        cluster = new LocalCluster();
+        kProducer = new TestKafkaProducer(kafkaProperties());
+    }
+
+    @AfterClass
+    public static void teardownOnce() throws Exception {
+        System.out.println("------> Killing Sheep \uD83D\uDC11\n");
+        kProducer.close();
+        cluster.shutdown();
+        server.stop();
     }
 
     protected static TopologyConfig makeUnboundConfig() throws ConfigurationException, CmdLineException {
@@ -68,7 +107,6 @@ public class AbstractStormTest {
         String args[] = makeLaunchArgs();
         return new LaunchEnvironment(args);
     }
-
     protected static LaunchEnvironment makeLaunchEnvironment(Properties overlay)
             throws CmdLineException, ConfigurationException, IOException {
         String extra = fsData.newFile().getName();

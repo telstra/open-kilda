@@ -42,7 +42,7 @@ import org.openkilda.messaging.info.stats.MeterConfigStatsData;
 import org.openkilda.messaging.info.stats.PortStatsData;
 import org.openkilda.messaging.info.stats.PortStatsEntry;
 import org.openkilda.messaging.info.stats.PortStatsReply;
-import org.openkilda.wfm.AbstractStormTest;
+import org.openkilda.wfm.StableAbstractStormTest;
 import org.openkilda.wfm.topology.TestingKafkaBolt;
 
 import java.io.IOException;
@@ -53,7 +53,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.IntStream;
 
-public class StatsTopologyTest extends AbstractStormTest {
+public class StatsTopologyTest extends StableAbstractStormTest {
 
     private static final long timestamp = System.currentTimeMillis();
 
@@ -173,6 +173,9 @@ public class StatsTopologyTest extends AbstractStormTest {
         return null;
     }
 
+    /**
+     * We should create child with these overridden methods because we don't want to use real kafka instance,
+     */
     private class TestingTargetTopology extends StatsTopology {
 
         private KafkaBolt kafkaBolt;
