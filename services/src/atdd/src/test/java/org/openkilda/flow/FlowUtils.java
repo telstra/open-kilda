@@ -40,6 +40,7 @@ import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.jackson.JacksonFeature;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -457,13 +458,28 @@ public class FlowUtils {
         try {
             Set<String> flows = new HashSet<>();
 
-            List<Flow> tpeFlows = dumpFlows();
-            tpeFlows.forEach(flow->flows.add(flow.getFlowId()));
-
             List<FlowPayload> nbFlows = getFlowDump();
             nbFlows.forEach(flow->flows.add(flow.getId()));
 
+            List<Flow> tpeFlows = new ArrayList<>();
+
+            for (int i = 0; i < 10; ++i){
+                tpeFlows = dumpFlows();
+                if (tpeFlows.size() == nbFlows.size() * 2) {
+                    tpeFlows.forEach(flow -> flows.add(flow.getFlowId()));
+                    break;
+                }
+                TimeUnit.SECONDS.sleep(1);
+            }
+
             flows.forEach(FlowUtils::cleanUpFlow);
+
+            for (int i = 0; i < 10; ++i){
+                if (dumpFlows().size() == 0 && getFlowDump().size() == 0) {
+                    break;
+                }
+                TimeUnit.SECONDS.sleep(1);
+            }
 
             assertEquals(nbFlows.size() * 2, tpeFlows.size());
             assertEquals(nbFlows.size(), flows.size());
@@ -476,7 +492,7 @@ public class FlowUtils {
 
     private static void cleanUpFlow(String flowId) {
         deleteFlow(flowId);
-        if (getFlow(getFlowName(flowId)) != null) {
+        if (getFlow(flowId) != null) {
             try {
                 TimeUnit.SECONDS.sleep(2);
             } catch (Exception e) {
