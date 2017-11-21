@@ -1,54 +1,41 @@
 package org.openkilda.wfm.topology.opentsdb;
 
 import static org.mockserver.integration.ClientAndServer.startClientAndServer;
+import static org.openkilda.messaging.Utils.MAPPER;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.storm.Config;
+import org.apache.storm.Testing;
 import org.apache.storm.generated.StormTopology;
-import org.apache.storm.utils.Utils;
-import org.junit.AfterClass;
+import org.apache.storm.kafka.bolt.KafkaBolt;
+import org.apache.storm.testing.MockedSources;
+import org.apache.storm.topology.TopologyBuilder;
+import org.apache.storm.tuple.Values;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.mockserver.integration.ClientAndServer;
 import org.mockserver.model.HttpRequest;
 import org.mockserver.model.HttpResponse;
 import org.mockserver.verify.VerificationTimes;
-import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.Datapoint;
-import org.openkilda.wfm.AbstractStormTest;
-import org.openkilda.wfm.topology.Topology;
+import org.openkilda.wfm.StableAbstractStormTest;
+import org.openkilda.wfm.topology.TestingKafkaBolt;
 
-import java.io.File;
 import java.util.Collections;
+import java.util.Map;
 
-//todo: should be fixed in #10
-@Ignore
-public class OpenTSDBTopologyTest extends AbstractStormTest {
-    private static final ObjectMapper objectMapper = new ObjectMapper();
-    private static final String TOPIC = "opentsdb-topic";
+public class OpenTSDBTopologyTest extends StableAbstractStormTest {
     private static final long timestamp = System.currentTimeMillis();
     private static ClientAndServer mockServer;
 
     @BeforeClass
     public static void setupOnce() throws Exception {
+        StableAbstractStormTest.setupOnce();
         mockServer = startClientAndServer(4242);
         mockServer.when(HttpRequest
                 .request()
                 .withMethod("POST")
                 .withPath("api/put"))
             .respond(HttpResponse.response());
-
-        AbstractStormTest.setupOnce();
-        OpenTSDBTopology topology = new OpenTSDBTopology(makeLaunchEnvironment());
-        StormTopology stormTopology = topology.createTopology();
-        Config config = stormConfig();
-        config.setMaxTaskParallelism(1);
-        cluster.submitTopology(OpenTSDBTopologyTest.class.getSimpleName(), config, stormTopology);
-
-        //todo: should be replaced with more suitable wat
-        Utils.sleep(10000);
     }
 
     @Before
@@ -56,34 +43,74 @@ public class OpenTSDBTopologyTest extends AbstractStormTest {
         mockServer.reset();
     }
 
-    @AfterClass
-    public static void teardownOnce() throws Exception {
-        cluster.killTopology(OpenTSDBTopologyTest.class.getSimpleName());
-        Utils.sleep(2000);
-        AbstractStormTest.teardownOnce();
-        mockServer.close();
-    }
-
     @Test
     public void shouldSuccessfulSendDatapoint() throws Exception {
         Datapoint datapoint = new Datapoint("metric", timestamp, Collections.emptyMap(), 123);
-        InfoMessage message = new InfoMessage(datapoint, timestamp, "correlationId");
 
-        kProducer.pushMessage(TOPIC, objectMapper.writeValueAsString(message));
-        Thread.sleep(2000);
-        mockServer.verify(HttpRequest.request(),
-                VerificationTimes.exactly(1));
+        MockedSources sources = new MockedSources();
+        sources.addMockData("opentsdb-topic-spout",
+                new Values(MAPPER.writeValueAsString(datapoint)));
+        completeTopologyParam.setMockedSources(sources);
+
+        Testing.withTrackedCluster(clusterParam, (cluster) ->  {
+            OpenTSDBTopology topology = new TestingTargetTopology(new TestingKafkaBolt());
+            StormTopology stormTopology = topology.createTopology();
+
+            Map result = Testing.completeTopology(cluster, stormTopology, completeTopologyParam);
+        });
+
+        //verify that request is sent to OpenTSDB server
+        mockServer.verify(HttpRequest.request(), VerificationTimes.exactly(1));
     }
 
     @Test
-    public void shouldNotSendDatapointRequests() throws Exception {
+    public void shouldSendDatapointRequestsOnlyOnce() throws Exception {
         Datapoint datapoint = new Datapoint("metric", timestamp, Collections.emptyMap(), 123);
-        InfoMessage message = new InfoMessage(datapoint, timestamp, "correlationId");
+        String jsonDatapoint = MAPPER.writeValueAsString(datapoint);
 
-        kProducer.pushMessage(TOPIC, objectMapper.writeValueAsString(message));
-        kProducer.pushMessage(TOPIC, objectMapper.writeValueAsString(message));
-        Thread.sleep(2000);
-        mockServer.verifyZeroInteractions();
+        MockedSources sources = new MockedSources();
+        sources.addMockData("opentsdb-topic-spout",
+                new Values(jsonDatapoint), new Values(jsonDatapoint));
+        completeTopologyParam.setMockedSources(sources);
+
+        Testing.withTrackedCluster(clusterParam, (cluster) ->  {
+            OpenTSDBTopology topology = new TestingTargetTopology(new TestingKafkaBolt());
+            StormTopology stormTopology = topology.createTopology();
+
+            Testing.completeTopology(cluster, stormTopology, completeTopologyParam);
+        });
+        //verify that request is sent to OpenTSDB server once
+        mockServer.verify(HttpRequest.request(), VerificationTimes.exactly(1));
+    }
+
+    private class TestingTargetTopology extends OpenTSDBTopology {
+
+        private KafkaBolt kafkaBolt;
+
+        TestingTargetTopology(KafkaBolt kafkaBolt) throws Exception {
+            super(makeLaunchEnvironment());
+
+            this.kafkaBolt = kafkaBolt;
+        }
+
+        @Override
+        protected void checkAndCreateTopic(String topic) {
+        }
+
+        @Override
+        protected void createHealthCheckHandler(TopologyBuilder builder, String prefix) {
+        }
+
+        @Override
+        public String makeTopologyName() {
+            return OpenTSDBTopology.class.getSimpleName().toLowerCase();
+        }
+
+        @Override
+        protected KafkaBolt createKafkaBolt(String topic) {
+            return kafkaBolt;
+        }
+
     }
 
 }
