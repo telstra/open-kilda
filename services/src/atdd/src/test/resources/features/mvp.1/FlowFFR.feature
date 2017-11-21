@@ -29,8 +29,8 @@ Feature: Flow failover, failure and recovery
     When a switch 00:00:00:00:00:00:00:05 port 1 is enabled
     Then traffic flows through ffr flow
 
-  @MVP.FUTURE
-  Scenario: Port Failover followed by failure followed by recovery
+  @MVP1
+  Scenario: Port Failover followed by failure followed by recovery 2
 
   This scenario checks that failover and recovery happens orderly and that
   failures do not break things apart. Also it checks whether alternate route
