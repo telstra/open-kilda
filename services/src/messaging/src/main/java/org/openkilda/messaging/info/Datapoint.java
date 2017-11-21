@@ -106,7 +106,6 @@ public class Datapoint extends InfoData {
 
         Datapoint datapoint = (Datapoint) o;
         return Objects.equals(metric, datapoint.getMetric())
-                && Objects.equals(timestamp, datapoint.getTimestamp())
                 && Objects.equals(tags, datapoint.getTags())
                 && Objects.equals(value, datapoint.getValue());
     }
@@ -114,7 +113,6 @@ public class Datapoint extends InfoData {
     @Override
     public int hashCode() {
         int result = metric != null ? metric.hashCode() : 0;
-        result = 31 * result + (timestamp != null ? timestamp.hashCode() : 0);
         result = 31 * result + (tags != null ? tags.hashCode() : 0);
         result = 31 * result + (value != null ? value.hashCode() : 0);
         return result;
