@@ -95,7 +95,7 @@ public class OFEventWFMTopology extends AbstractTopology {
             // NB: with shuffleGrouping, we can't maintain state .. would need to parse first
             //      just to pull out switchID.
             tbolt[i] = builder.setBolt(boltName, bolts[i], config.getParallelism()).shuffleGrouping(spoutName);
-            kbolt = kbolt.shuffleGrouping(boltName, kafkaOutputTopic);
+            kbolt.shuffleGrouping(boltName, kafkaOutputTopic);
         }
 
         // now hookup switch and port to the link bolt so that it can take appropriate action
