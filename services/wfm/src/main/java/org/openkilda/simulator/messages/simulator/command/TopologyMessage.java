@@ -4,8 +4,8 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import org.openkilda.simulator.messages.LinkMessage;
 import org.openkilda.simulator.messages.SwitchMessage;
+import org.openkilda.simulator.messages.LinkMessage;
 import org.openkilda.simulator.messages.simulator.SimulatorMessage;
 
 import java.util.List;

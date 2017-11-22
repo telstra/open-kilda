@@ -32,7 +32,7 @@ public class ISwitchImpl implements ISwitch {
         maxPorts = numOfPorts;
         int count = 0;
         while (count < numOfPorts) {
-            IPortImpl port = new IPortImpl(portState, ports.size());
+            IPortImpl port = new IPortImpl(this, portState, ports.size());
             addPort(port);
             count++;
         }

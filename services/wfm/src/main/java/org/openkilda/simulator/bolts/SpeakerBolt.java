@@ -18,6 +18,8 @@ import org.openkilda.simulator.classes.*;
 import org.openkilda.simulator.messages.LinkMessage;
 import org.openkilda.simulator.messages.SwitchMessage;
 import org.openkilda.simulator.messages.simulator.SimulatorMessage;
+import org.openkilda.simulator.messages.simulator.command.AddLinkCommandMessage;
+import org.openkilda.simulator.messages.simulator.command.PortModMessage;
 import org.openkilda.simulator.messages.simulator.command.SwitchModMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,8 +28,8 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.*;
 
-public class SwitchBolt extends BaseRichBolt {
-    private static final Logger logger = LoggerFactory.getLogger(SwitchBolt.class);
+public class SpeakerBolt extends BaseRichBolt {
+    private static final Logger logger = LoggerFactory.getLogger(SpeakerBolt.class);
     private OutputCollector collector;
     protected Map<String, ISwitchImpl> switches;
     public enum TupleFields {
@@ -106,7 +108,7 @@ public class SwitchBolt extends BaseRichBolt {
          *
          * 1.  Determine if the source switch is up and the source port is an Active ISL port
          * 2.  Create the IslInfoData package as if it is a working ISL (both ports are active)
-         * 3.  Emit tha IslInfoData back to SwitchBolt with fields grouping but keyed on the second switch to
+         * 3.  Emit tha IslInfoData back to SpeakerBolt with fields grouping but keyed on the second switch to
          *     ensure that the tuple goes to the instance which has that switch in it's switches Map and set command
          *     to DiscoverIslP2
          */
@@ -158,6 +160,31 @@ public class SwitchBolt extends BaseRichBolt {
         }
     }
 
+    protected List<Values> addLink(AddLinkCommandMessage message) throws Exception {
+        List<Values> values = new ArrayList<>();
+        ISwitchImpl sw;
+        IPortImpl port;
+
+        sw = getSwitch("00:00:" + message.getDpid());
+        port = sw.getPort(message.getLink().getLocalPort());
+        port.setLatency(message.getLink().getLatency());
+        port.setPeerSwitch(message.getLink().getPeerSwitch());
+        port.setPeerPortNum(message.getLink().getPeerPort());
+        port.enable();
+        values.add(new Values("INFO", Utils.MAPPER.writeValueAsString(port.makePorChangetMessage())));
+
+        return values;
+    }
+
+    protected List<Values> modPort(PortModMessage message) throws Exception {
+        List<Values> values = new ArrayList<>();
+        ISwitchImpl sw = getSwitch("00:00:" + message.getDpid());
+        IPortImpl port = sw.getPort(message.getPortNum());
+        port.modPort(message);
+        values.add(new Values("INFO", Utils.MAPPER.writeValueAsString(port.makePorChangetMessage())));
+        return values;
+    }
+
     public ISwitchImpl getSwitch(String name) throws Exception {
         ISwitchImpl sw = switches.get(name);
         if (sw == null) {
@@ -173,6 +200,12 @@ public class SwitchBolt extends BaseRichBolt {
             switch (command) {
                 case SimulatorCommands.DO_ADD_SWITCH:
                     values = addSwitch((SwitchMessage) tuple.getValueByField("data"));
+                    break;
+                case SimulatorCommands.DO_ADD_LINK:
+                    values = addLink((AddLinkCommandMessage) tuple.getValueByField("data"));
+                    break;
+                case SimulatorCommands.DO_PORT_MOD:
+                    values = modPort((PortModMessage) tuple.getValueByField("data"));
                     break;
                 default:
                     logger.error(String.format("Uknown SimulatorCommand %s", command));

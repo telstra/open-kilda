@@ -1,13 +1,21 @@
 package org.openkilda.simulator.classes;
 
+import org.apache.storm.tuple.Values;
+import org.openkilda.messaging.Utils;
+import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.PortChangeType;
+import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.stats.PortStatsEntry;
 import org.openkilda.simulator.classes.PortStateType;
 import org.openkilda.simulator.classes.SimulatorException;
 import org.openkilda.simulator.interfaces.IPort;
+import org.openkilda.simulator.messages.simulator.command.PortModMessage;
 import org.projectfloodlight.openflow.types.DatapathId;
 
+import java.io.IOException;
+import java.time.Instant;
 import java.util.Random;
+import java.util.UUID;
 
 public class IPortImpl implements IPort {
     private static final int MAX_SMALL = 50;
@@ -32,8 +40,10 @@ public class IPortImpl implements IPort {
     private int latency = 0;
     private DatapathId peerSwitch;
     private int peerPortNum = -1;
+    private ISwitchImpl sw;
 
-    public IPortImpl(PortStateType state, int portNumber) throws SimulatorException {
+    public IPortImpl(ISwitchImpl sw, PortStateType state, int portNumber) throws SimulatorException {
+        setSw(sw);
         if (state == PortStateType.UP) {
             enable();
         } else if (state == PortStateType.DOWN) {
@@ -42,6 +52,17 @@ public class IPortImpl implements IPort {
             throw new SimulatorException(String.format("Unknown port state %s", state.toString()));
         }
         number = portNumber;
+    }
+
+    public InfoMessage makePorChangetMessage() throws IOException {
+        PortChangeType type = isActive ? PortChangeType.UP : PortChangeType.DOWN;
+
+        PortInfoData data = new PortInfoData(
+                sw.getDpid().toString(),
+                number,
+                type
+        );
+        return new InfoMessage(data, Instant.now().toEpochMilli(), UUID.randomUUID().toString(), null);
     }
 
     @Override
@@ -64,6 +85,11 @@ public class IPortImpl implements IPort {
     @Override
     public void unblock() {
         this.isForwarding = true;
+    }
+
+    public void modPort(PortModMessage message) {
+        isActive = message.isActive();
+        isForwarding = message.isForwarding();
     }
 
     @Override
@@ -115,6 +141,14 @@ public class IPortImpl implements IPort {
     public void setIsl(DatapathId peerSwitch, int peerPortNum) {
         this.peerSwitch = peerSwitch;
         this.peerPortNum = peerPortNum;
+    }
+
+    public ISwitchImpl getSw() {
+        return sw;
+    }
+
+    public void setSw(ISwitchImpl sw) {
+        this.sw = sw;
     }
 
     @Override

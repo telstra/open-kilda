@@ -1,7 +1,5 @@
 package org.openkilda.simulator.bolts;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -19,12 +17,14 @@ import org.openkilda.messaging.command.flow.*;
 import org.openkilda.simulator.SimulatorTopology;
 import org.openkilda.simulator.classes.Commands;
 import org.openkilda.wfm.OFEMessageUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
 
 public class CommandBolt extends BaseRichBolt {
-    private static final Logger logger = LogManager.getLogger(CommandBolt.class);
+    private static final Logger logger = LoggerFactory.getLogger(CommandBolt.class);
     private OutputCollector collector;
 
     @Override
@@ -79,13 +79,12 @@ public class CommandBolt extends BaseRichBolt {
             }
             List<Integer> taskIDs = collector.emit(SimulatorTopology.COMMAND_BOLT_STREAM, tuple,
                     new Values(sw.toLowerCase(), switchCommand.name(), command.getData()));
-            logger.info("{}:  {} - {}", switchCommand.name(), sw, command.getData().toString());
+//            logger.info("{}:  {} - {}", switchCommand.name(), sw, command.getData().toString());
         }
     }
 
     @Override
     public void execute(Tuple tuple) {
-        logger.debug("got tuple: {}", tuple.toString());
         try {
             String json = getJson(tuple);
             switch (getType(json)) {
@@ -105,6 +104,6 @@ public class CommandBolt extends BaseRichBolt {
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
         outputFieldsDeclarer.declareStream(SimulatorTopology.COMMAND_BOLT_STREAM,
-                new Fields("dpid", SwitchBolt.TupleFields.COMMAND.name(), SwitchBolt.TupleFields.DATA.name()));
+                new Fields("dpid", SpeakerBolt.TupleFields.COMMAND.name(), SpeakerBolt.TupleFields.DATA.name()));
     }
 }

@@ -3,7 +3,7 @@ package org.openkilda.simulator;
 import org.apache.storm.tuple.Fields;
 import org.openkilda.simulator.bolts.CommandBolt;
 import org.openkilda.simulator.bolts.SimulatorCommandBolt;
-import org.openkilda.simulator.bolts.SwitchBolt;
+import org.openkilda.simulator.bolts.SpeakerBolt;
 import org.openkilda.wfm.ConfigurationException;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.topology.AbstractTopology;
@@ -65,9 +65,9 @@ public class SimulatorTopology extends AbstractTopology {
         builder.setBolt(SIMULATOR_COMMAND_BOLT, simulatorCommandBolt, parallelism)
                 .shuffleGrouping(SIMULATOR_SPOUT);
 
-        SwitchBolt switchBolt = new SwitchBolt();
+        SpeakerBolt speakerBolt = new SpeakerBolt();
         logger.debug("starting " + SWITCH_BOLT + " bolt");
-        builder.setBolt(SWITCH_BOLT, switchBolt, 1)
+        builder.setBolt(SWITCH_BOLT, speakerBolt, 1)
                 .fieldsGrouping(COMMAND_BOLT, COMMAND_BOLT_STREAM, new Fields("dpid"))
                 .fieldsGrouping(SWITCH_BOLT, SWITCH_BOLT_STREAM, new Fields("dpid"))
                 .fieldsGrouping(SIMULATOR_COMMAND_BOLT, SIMULATOR_COMMAND_STREAM, new Fields("dpid"));
