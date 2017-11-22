@@ -149,7 +149,7 @@ public class ISwitchImpl implements ISwitch {
         try {
             return flows.get(cookie);
         } catch (IndexOutOfBoundsException e) {
-            throw new SimulatorException(String.format("Flow %i could not be found.", cookie));
+            throw new SimulatorException(String.format("Flow %d could not be found.", cookie));
         }
     }
 

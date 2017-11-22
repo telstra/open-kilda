@@ -217,7 +217,7 @@ public class SpeakerBolt extends BaseRichBolt {
                 ISwitchImpl sw = getSwitch(switchModMessage.getDpid());
                 //            sw.mod(switchModMessage.getState());
             } else {
-                logger.error(String.format("Unkown SimulatorMessage %s"), message.getClass().getSimpleName());
+                logger.error("Unkown SimulatorMessage {}", message.getClass().getSimpleName());
             }
         }
 
