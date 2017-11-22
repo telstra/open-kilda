@@ -84,7 +84,7 @@ public class ISwitchImplTest {
     @Test
     public void addPort() throws Exception {
         int portNum = sw.getPorts().size();
-        IPortImpl port = new IPortImpl(PortStateType.UP, portNum);
+        IPortImpl port = new IPortImpl(sw, PortStateType.UP, portNum);
 
         thrown.expect(SimulatorException.class);
         thrown.expectMessage("Switch already has reached maxPorts");

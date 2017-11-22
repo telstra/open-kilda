@@ -11,6 +11,7 @@ import static org.junit.Assert.*;
 
 public class IPortImplTest {
     IPortImpl port;
+    ISwitchImpl sw;
     int portNum = 1;
 
     @Rule
@@ -19,7 +20,8 @@ public class IPortImplTest {
 
     @Before
     public void setUp() throws Exception {
-        port = new IPortImpl(PortStateType.DOWN, portNum);
+        sw = new ISwitchImpl();
+        port = new IPortImpl(sw, PortStateType.DOWN, portNum);
     }
 
     @After
@@ -29,11 +31,11 @@ public class IPortImplTest {
     @Test
     public void testInit() throws Exception {
         int portNum = 5;
-        IPortImpl port = new IPortImpl(PortStateType.DOWN, portNum);
+        IPortImpl port = new IPortImpl(sw, PortStateType.DOWN, portNum);
         assertFalse(port.isActive());
         assertEquals(portNum, port.getNumber());
 
-        port = new IPortImpl(PortStateType.UP, portNum);
+        port = new IPortImpl(sw, PortStateType.UP, portNum);
         assertTrue(port.isActive());
     }
 

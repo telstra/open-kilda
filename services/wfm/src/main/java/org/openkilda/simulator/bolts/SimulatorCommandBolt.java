@@ -10,8 +10,10 @@ import org.apache.storm.tuple.Values;
 import org.openkilda.messaging.Utils;
 import org.openkilda.simulator.SimulatorTopology;
 import org.openkilda.simulator.classes.SimulatorCommands;
+import org.openkilda.simulator.messages.LinkMessage;
 import org.openkilda.simulator.messages.SwitchMessage;
 import org.openkilda.simulator.messages.simulator.SimulatorMessage;
+import org.openkilda.simulator.messages.simulator.command.AddLinkCommandMessage;
 import org.openkilda.simulator.messages.simulator.command.PortModMessage;
 import org.openkilda.simulator.messages.simulator.command.SwitchModMessage;
 import org.openkilda.simulator.messages.simulator.command.TopologyMessage;
@@ -19,6 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -30,7 +33,7 @@ public class SimulatorCommandBolt extends BaseRichBolt {
         return tuple.getString(0);
     }
 
-    private void doCommand(Tuple tuple) throws Exception {
+    protected Map<String, Object> doCommand(Tuple tuple) throws Exception {
         SimulatorMessage message = Utils.MAPPER.readValue(getJson(tuple), SimulatorMessage.class);
         List<Values> values = new ArrayList<>();
         String stream = "";
@@ -45,21 +48,31 @@ public class SimulatorCommandBolt extends BaseRichBolt {
         } else if (message instanceof TopologyMessage) {
             stream = SimulatorTopology.SIMULATOR_COMMAND_STREAM;
             values = createTopology((TopologyMessage) message);
+        } else if (message instanceof AddLinkCommandMessage) {
+            stream = SimulatorTopology.SIMULATOR_COMMAND_STREAM;
+            values.add(new Values(((AddLinkCommandMessage) message).getDpid(), message, SimulatorCommands.DO_ADD_LINK));
         } else {
             logger.error("Unknown simulator command received: {}\n{}",
                     message.getClass().getName(), tuple.toString());
         }
 
+        Map<String, Object> map = new HashMap<>();
         if (values.size() > 0) {
-            emit(stream, tuple, values);
+            map.put("stream", stream);
+            map.put("values", values);
         }
+
+        return map;
     }
 
-    private List<Integer> emit(String stream, Tuple tuple, List<Values> values) throws Exception {
+    //private List<Integer> emit(String stream, Tuple tuple, List<Values> values) throws Exception {
+    private List<Integer> emit(Map<String, Object> map) {
         List<Integer> workers = null;
+        List<Values> values = (List<Values>) map.get("values");
+        String stream = (String) map.get("stream");
         if (values.size() > 0) {
             for (Values value : values) {
-                workers = collector.emit(stream, tuple, value);
+                workers = collector.emit(stream, value);
             }
         }
         return workers;
@@ -88,7 +101,7 @@ public class SimulatorCommandBolt extends BaseRichBolt {
             String tupleSource = tuple.getSourceComponent();
             switch (tupleSource) {
                 case SimulatorTopology.SIMULATOR_SPOUT:
-                    doCommand(tuple);
+                    emit(doCommand(tuple));
                     break;
                 default:
                     logger.error("received command from unknown source: {}", tupleSource);
