@@ -10,7 +10,6 @@ import org.apache.storm.tuple.Values;
 import org.openkilda.messaging.Utils;
 import org.openkilda.simulator.SimulatorTopology;
 import org.openkilda.simulator.classes.SimulatorCommands;
-import org.openkilda.simulator.messages.LinkMessage;
 import org.openkilda.simulator.messages.SwitchMessage;
 import org.openkilda.simulator.messages.simulator.SimulatorMessage;
 import org.openkilda.simulator.messages.simulator.command.AddLinkCommandMessage;

@@ -1,7 +1,6 @@
 package org.openkilda.simulator.interfaces;
 
 import org.openkilda.messaging.info.stats.PortStatsEntry;
-import org.openkilda.simulator.classes.PortStateType;
 import org.projectfloodlight.openflow.types.DatapathId;
 
 public interface IPort {
