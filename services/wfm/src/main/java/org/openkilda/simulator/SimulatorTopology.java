@@ -1,5 +1,7 @@
 package org.openkilda.simulator;
 
+import org.apache.storm.generated.StormTopology;
+import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Fields;
 import org.openkilda.simulator.bolts.CommandBolt;
 import org.openkilda.simulator.bolts.SimulatorCommandBolt;
@@ -7,9 +9,6 @@ import org.openkilda.simulator.bolts.SpeakerBolt;
 import org.openkilda.wfm.ConfigurationException;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.topology.AbstractTopology;
-
-import org.apache.storm.generated.StormTopology;
-import org.apache.storm.topology.TopologyBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

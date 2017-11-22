@@ -5,7 +5,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.openkilda.simulator.classes.SwitchState;
-import org.openkilda.simulator.messages.simulator.SimulatorMessage;
 
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)

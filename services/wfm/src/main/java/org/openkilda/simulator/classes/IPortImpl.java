@@ -1,13 +1,9 @@
 package org.openkilda.simulator.classes;
 
-import org.apache.storm.tuple.Values;
-import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.stats.PortStatsEntry;
-import org.openkilda.simulator.classes.PortStateType;
-import org.openkilda.simulator.classes.SimulatorException;
 import org.openkilda.simulator.interfaces.IPort;
 import org.openkilda.simulator.messages.simulator.command.PortModMessage;
 import org.projectfloodlight.openflow.types.DatapathId;
