@@ -58,7 +58,7 @@ public class NeoDriver implements PathComputer {
             "MATCH (a:switch{name:{src_switch}}),(b:switch{name:{dst_switch}}), " +
                     "p = shortestPath((a)-[r:isl*..100]->(b)) " +
                     "where ALL(x in nodes(p) WHERE x.state = 'active') " +
-                    "AND ALL(y in r WHERE y.available_bandwidth >= {bandwidth}) " +
+                    "AND ALL(y in r WHERE y.available_bandwidth >= {bandwidth} AND y.status = 'active') " +
                     "RETURN p";
 
     /**
