@@ -18,12 +18,13 @@ package org.openkilda.messaging.info.stats;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.io.Serializable;
 import java.util.List;
 
 /**
  * TODO: add javadoc.
  */
-public class MeterConfigReply {
+public class MeterConfigReply implements Serializable {
 
     @JsonProperty
     private long xid;

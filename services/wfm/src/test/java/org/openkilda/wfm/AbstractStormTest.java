@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm;
 
+import org.apache.storm.testing.CompleteTopologyParam;
+import org.apache.storm.testing.MkClusterParam;
 import org.kohsuke.args4j.CmdLineException;
 import org.openkilda.wfm.topology.TestKafkaProducer;
 
@@ -41,6 +43,8 @@ public class AbstractStormTest {
 
     protected static TestKafkaProducer kProducer;
     protected static LocalCluster cluster;
+    protected static MkClusterParam clusterParam;
+    protected static CompleteTopologyParam completeTopologyParam;
     static TestUtils.KafkaTestFixture server;
 
     @ClassRule

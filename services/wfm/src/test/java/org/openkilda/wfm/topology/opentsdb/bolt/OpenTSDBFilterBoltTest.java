@@ -37,7 +37,6 @@ import java.util.Map;
 public class OpenTSDBFilterBoltTest {
 
     private static final String METRIC = "METRIC";
-    private static final String CORRELATION_ID = "correlation_id";
     private static final long TIMESTAMP = System.currentTimeMillis();
     private static final Integer VALUE = 123;
 
@@ -106,8 +105,7 @@ public class OpenTSDBFilterBoltTest {
 
     private void mockTuple(long timestamp) throws Exception {
         InfoData infoData = new Datapoint(METRIC, timestamp, Collections.emptyMap(), VALUE);
-        InfoMessage infoMessage = new InfoMessage(infoData, timestamp, CORRELATION_ID);
-        when(tuple.getString(eq(0))).thenReturn(Utils.MAPPER.writeValueAsString(infoMessage));
+        when(tuple.getString(eq(0))).thenReturn(Utils.MAPPER.writeValueAsString(infoData));
     }
 
     private void mockTuple() throws Exception {
