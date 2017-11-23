@@ -18,21 +18,23 @@ package org.openkilda.wfm.topology.stats.metrics;
 import static org.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.openkilda.wfm.topology.AbstractTopology.MESSAGE_FIELD;
 
+import com.google.common.collect.ImmutableMap;
+import org.apache.storm.tuple.Tuple;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.PortStatsData;
+import org.openkilda.messaging.info.stats.PortStatsEntry;
+import org.openkilda.messaging.info.stats.PortStatsReply;
 import org.openkilda.wfm.topology.stats.StatsComponentType;
 import org.openkilda.wfm.topology.stats.StatsStreamType;
-
-import org.apache.storm.tuple.Tuple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
+import java.io.IOException;
 import java.util.Map;
 
 public class PortMetricGenBolt extends MetricGenBolt {
-    private static final Logger logger = LoggerFactory.getLogger(PortMetricGenBolt.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(PortMetricGenBolt.class);
 
     @Override
     public void execute(Tuple input) {
@@ -44,14 +46,30 @@ public class PortMetricGenBolt extends MetricGenBolt {
             return;
         }
 
-        logger.debug("Port stats message: {}={}, component={}, stream={}",
-                CORRELATION_ID, message.getCorrelationId(), componentId, StatsStreamType.valueOf(input.getSourceStreamId()));
+        LOGGER.debug("Port stats message: {}={}, component={}, stream={}", CORRELATION_ID, message.getCorrelationId(),
+                componentId, StatsStreamType.valueOf(input.getSourceStreamId()));
         PortStatsData data = (PortStatsData) message.getData();
         long timestamp = message.getTimestamp();
-        data.getStats().forEach(stats -> stats.getEntries().forEach(entry -> {
-            Map<String, String> tags = new HashMap<>();
-            tags.put("switchid", data.getSwitchId().replaceAll(":", ""));
-            tags.put("port", String.valueOf(entry.getPortNo()));
+
+        try {
+            String switchId = data.getSwitchId().replaceAll(":", "");
+            for (PortStatsReply reply : data.getStats()) {
+                for (PortStatsEntry entry : reply.getEntries()) {
+                    emit(entry, timestamp, switchId);
+                }
+            }
+        } finally {
+            collector.ack(input);
+        }
+    }
+
+    private void emit(PortStatsEntry entry, long timestamp, String switchId) {
+        try {
+            Map<String, String> tags = ImmutableMap.of(
+                    "switchId", switchId,
+                    "port", String.valueOf(entry.getPortNo())
+            );
+
             collector.emit(tuple("pen.switch.rx-packets", timestamp, entry.getRxPackets(), tags));
             collector.emit(tuple("pen.switch.tx-packets", timestamp, entry.getTxPackets(), tags));
             collector.emit(tuple("pen.switch.rx-bytes", timestamp, entry.getRxBytes(), tags));
@@ -66,7 +84,8 @@ public class PortMetricGenBolt extends MetricGenBolt {
             collector.emit(tuple("pen.switch.rx-over-error", timestamp, entry.getRxOverErr(), tags));
             collector.emit(tuple("pen.switch.rx-crc-error", timestamp, entry.getRxCrcErr(), tags));
             collector.emit(tuple("pen.switch.collisions", timestamp, entry.getCollisions(), tags));
-        }));
-        collector.ack(input);
+        } catch (IOException e) {
+            LOGGER.error("Error during serialization of datapoint", e);
+        }
     }
 }
