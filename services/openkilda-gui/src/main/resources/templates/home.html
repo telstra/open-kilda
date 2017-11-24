@@ -1,0 +1,54 @@
+<!doctype html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3">
+<head>
+<meta charset="utf-8"></meta>
+<title>KILDA</title>
+	<!-- CSS Style Sheets -->
+
+		<link th:href="@{css/bootstrap.min.css}" rel="stylesheet"
+			type="text/css"></link>
+
+		<link th:href="@{css/font-awesome.min.css}" rel="stylesheet"
+			type="text/css"></link>
+
+		<!-- Custom CSS Style Sheets -->
+		<link th:href="@{css/custom.css}" rel="stylesheet" type="text/css"></link>
+</head>
+
+<body>
+<div th:replace="fragments/header :: header"/>
+
+<aside class="main-sidebar" id="sidebar-left">
+    <!-- sidebar: style can be found in sidebar.less -->
+    <section class="sidebar">      
+      <!-- sidebar menu: : style can be found in sidebar.less -->
+      <ul class="sidebar-menu tree" data-widget="tree">        
+        <li class="active">
+          <a th:href="@{/home}">
+            <i class="fa fa-home" aria-hidden="true"></i>
+ <span>Home</span>
+          </a>
+        </li>
+        
+        <div th:if="${session.sessionObject.role=='ROLE_ADMIN'}">
+        <li class="">
+          <a th:href="@{/topology}">
+            <i class="icon-topology" aria-hidden="true"></i>
+            <span>Topology</span>
+          </a>          
+        </li>
+      </div>
+      </ul>
+    </section>
+    <!-- /.sidebar -->    
+</aside>
+
+<div class="container">
+<p>WELCOME TO OPEN KILDA</p>
+</div>
+
+<div th:include="fragments/importResources:: commonImports"></div>
+</body>
+</html>
