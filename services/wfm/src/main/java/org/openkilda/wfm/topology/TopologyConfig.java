@@ -37,7 +37,7 @@ public class TopologyConfig {
     private String neo4jPassword;
 
     public TopologyConfig(PropertiesReader config) throws ConfigurationException {
-        isLocal = config.getBoolean("local");
+        isLocal = config.getBoolean("cli.local");
         localExecutionTime = (int)(config.getFloat("local.execution.time") * 1000);
 
         parallelism = config.getInteger("parallelism");
