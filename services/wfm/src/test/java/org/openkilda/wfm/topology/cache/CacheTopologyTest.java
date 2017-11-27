@@ -34,8 +34,6 @@ import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.wfm.AbstractStormTest;
 import org.openkilda.wfm.topology.TestKafkaConsumer;
-import org.openkilda.wfm.topology.Topology;
-import org.openkilda.wfm.topology.event.OFEventWFMTopology;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.emory.mathcs.backport.java.util.Collections;
@@ -47,7 +45,6 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -56,6 +53,7 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 public class CacheTopologyTest extends AbstractStormTest {
+    private static CacheTopology topology;
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private static final String firstFlowId = "first-flow";
     private static final String secondFlowId = "second-flow";
@@ -82,8 +80,8 @@ public class CacheTopologyTest extends AbstractStormTest {
     public static void setupOnce() throws Exception {
         AbstractStormTest.setupOnce();
 
-        CacheTopology cacheTopology = new CacheTopology(makeLaunchEnvironment());
-        StormTopology stormTopology = cacheTopology.createTopology();
+        topology = new CacheTopology(makeLaunchEnvironment());
+        StormTopology stormTopology = topology.createTopology();
         Config config = stormConfig();
         cluster.submitTopology(CacheTopologyTest.class.getSimpleName(), config, stormTopology);
 
@@ -91,14 +89,14 @@ public class CacheTopologyTest extends AbstractStormTest {
                 kafkaProperties(UUID.nameUUIDFromBytes(Destination.TOPOLOGY_ENGINE.toString().getBytes()).toString()));
         teConsumer.start();
 
-        flowConsumer = new TestKafkaConsumer(CacheTopology.STATE_DUMP_TOPIC, Destination.WFM,
+        flowConsumer = new TestKafkaConsumer(topology.getConfig().getKafkaNetCacheTopic(), Destination.WFM,
                 kafkaProperties(UUID.nameUUIDFromBytes(Destination.WFM.toString().getBytes()).toString()));
         flowConsumer.start();
 
         Utils.sleep(10000);
 
         System.out.println("Waiting For Dump Request");
-        TimeUnit.SECONDS.sleep(cacheTopology.getConfig().getDiscoveryTimeout());
+        TimeUnit.SECONDS.sleep(topology.getConfig().getDiscoveryTimeout());
 
         System.out.println("Waited For Dump Request");
         teConsumer.pollMessage();
@@ -190,13 +188,13 @@ public class CacheTopologyTest extends AbstractStormTest {
 
     private void sendSwitchUpdate(SwitchInfoData sw) throws IOException {
         System.out.println("Wfm Topology: Send Switch Add Request");
-        sendMessage(sw, CacheTopology.STATE_UPDATE_TOPIC);
+        sendMessage(sw, topology.getConfig().getKafkaOutputTopic());
     }
 
     private void sendFlowUpdate(ImmutablePair<Flow, Flow> flow) throws IOException {
         System.out.println("Flow Topology: Send Flow Creation Request");
         FlowInfoData data = new FlowInfoData(flow.getLeft().getFlowId(),
                 flow, FlowOperation.CREATE, DEFAULT_CORRELATION_ID);
-        sendMessage(data, CacheTopology.STATE_UPDATE_TOPIC);
+        sendMessage(data, topology.getConfig().getKafkaOutputTopic());
     }
 }

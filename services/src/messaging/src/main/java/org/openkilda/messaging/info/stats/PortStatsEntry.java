@@ -18,10 +18,12 @@ package org.openkilda.messaging.info.stats;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.io.Serializable;
+
 /**
  * TODO: add javadoc.
  */
-public class PortStatsEntry {
+public class PortStatsEntry implements Serializable {
 
     @JsonProperty
     private int portNo;

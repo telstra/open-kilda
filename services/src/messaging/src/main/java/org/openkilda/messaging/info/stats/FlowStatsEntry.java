@@ -17,10 +17,12 @@ package org.openkilda.messaging.info.stats;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.io.Serializable;
+
 /**
  * TODO: add javadoc.
  */
-public class FlowStatsEntry {
+public class FlowStatsEntry implements Serializable {
 
     @JsonProperty
     private int tableId;
