@@ -19,13 +19,14 @@ import json
 import traceback
 from py2neo import Node
 
-import message_utils
+import config
 import flow_utils
-from flow_utils import graph
-from logger import get_logger
 import guard
+import logger
+import message_utils
 
-logger = get_logger()
+logger = logger.get_logger()
+graph = flow_utils.graph
 switch_states = {
     'active': 'ACTIVATED',
     'inactive': 'DEACTIVATED',
@@ -195,11 +196,11 @@ class MessageItem(object):
         if src_port:
             exists_query = ("MATCH (a:switch)-[r:isl {{"
                             "src_switch: '{}', "
-                            "src_port: {}}}]->(b:switch) return r")
+                            "src_port: {}, status: 'active'}}]->(b:switch) return r")
             return graph.run(exists_query.format(src_switch, src_port)).data()
         else:
             exists_query = ("MATCH (a:switch)-[r:isl {{"
-                            "src_switch: '{}'}}]->(b:switch) return r")
+                            "src_switch: '{}', status: 'active'}}]->(b:switch) return r")
             return graph.run(exists_query.format(src_switch)).data()
 
     @staticmethod
@@ -220,6 +221,24 @@ class MessageItem(object):
 
         return True
 
+    @staticmethod
+    def deactivate_isl(src_switch, src_port):
+
+        logger.info('Deactivating ISL: src_switch=%s, src_port=%s',
+                    src_switch, src_port)
+
+        if src_port:
+            query = ("MATCH (a:switch)-[r:isl {{"
+                            "src_switch: '{}', "
+                            "src_port: {}}}]->(b:switch) SET r.status == 'inactive'")
+            graph.run(query.format(src_switch, src_port)).data()
+        else:
+            query = ("MATCH (a:switch)-[r:isl {{"
+                            "src_switch: '{}'}}]->(b:switch) SET r.status == 'inactive'")
+            graph.run(query.format(src_switch)).data()
+
+        return True
+
     def isl_discovery_failed(self):
         path = self.payload['path']
         switch_id = path[0]['switch_id']
@@ -228,10 +247,18 @@ class MessageItem(object):
         logger.info('Isl %s_%d deletion request: timestamp=%s',
                     switch_id, port_id, self.timestamp)
 
-        with guard.get_isl_lock(switch_id, port_id):
-            if self.isl_exists(switch_id, port_id):
-                return self.delete_isl(switch_id, port_id)
-            else:
+        effective_policy = config.get("isl_failover_policy", "effective_policy")
+        logger.info('ISL Failure policy to apply: %s' % effective_policy)
+        if effective_policy == 'delete':
+            with guard.get_isl_lock(switch_id, port_id):
+                if self.isl_exists(switch_id, port_id):
+                    return self.delete_isl(switch_id, port_id)
+                return True
+        elif effective_policy == 'deactivate':
+            logger.info('DEACTIVATING')
+            with guard.get_isl_lock(switch_id, port_id):
+                if self.isl_exists(switch_id, port_id):
+                    return self.deactivate_isl(switch_id, port_id)
                 return True
 
     def port_down(self):
@@ -296,6 +323,7 @@ class MessageItem(object):
                                  "dst_switch: '{}', "
                                  "latency: {}, "
                                  "speed: {}, "
+                                 "status: 'active', "
                                  "available_bandwidth: {}}}]->(r)")
                     graph.run(isl_query.format(a_switch_node['name'],
                                                b_switch_node['name'],
