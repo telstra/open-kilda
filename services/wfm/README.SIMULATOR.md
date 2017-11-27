@@ -86,3 +86,13 @@ link-loss-forwarding is not enabled on the ISL.
   "forwarding": true
 }`
 
+###AddSwitch
+Add a new switch to the topology.
+
+####Message Format
+`{
+   "type": "DO_ADD_SWITCH",
+   "dpid": "00:00:00:00:00:03",
+   "num_of_ports": 52
+ }`
+
