@@ -1,0 +1,12 @@
+package org.openkilda.simulator.classes;
+
+public enum Commands {
+    DO_DISCOVER_ISL_COMMAND,
+    DO_DISCOVER_ISL_P2_COMMAND,
+    DO_DISCOVER_PATH_COMMAND,
+    DO_INSTALL_INGRESS_FLOW,
+    DO_INSTALL_EGRESS_FLOW,
+    DO_INSTALL_TRANSIT_FLOW,
+    DO_INSTALL_ONESWITCH_FLOW,
+    DO_DELETE_FLOW;
+}
