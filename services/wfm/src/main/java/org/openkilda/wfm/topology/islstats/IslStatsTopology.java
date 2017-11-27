@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.islstats;
 
+import org.apache.storm.kafka.bolt.KafkaBolt;
 import org.openkilda.wfm.ConfigurationException;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.LaunchEnvironment;
@@ -54,13 +55,10 @@ public class IslStatsTopology extends AbstractTopology {
         builder.setBolt(verifyIslStatsBoltName, verifyIslStatsBolt, config.getParallelism())
                 .shuffleGrouping(spoutName);
 
-        OpenTsdbClient.Builder tsdbBuilder = OpenTsdbClient.newBuilder(config.getOpenTsDBHosts())
-                .sync(30_000).returnDetails();
-        OpenTsdbBolt openTsdbBolt = new OpenTsdbBolt(tsdbBuilder, TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER)
-                .withBatchSize(10)
-                .withFlushInterval(2)
-                .failTupleForFailedMetrics();
-        builder.setBolt("opentsdb", openTsdbBolt, config.getParallelism())
+        final String openTsdbTopic = config.getKafkaTsdbTopic();
+        checkAndCreateTopic(openTsdbTopic);
+        KafkaBolt openTsdbBolt = createKafkaBolt(openTsdbTopic);
+        builder.setBolt("isl-stats-opentsdb", openTsdbBolt, config.getParallelism())
                 .shuffleGrouping(verifyIslStatsBoltName);
 
         return builder.createTopology();

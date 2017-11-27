@@ -17,42 +17,35 @@ package org.openkilda.wfm.topology.islstats.bolts;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.storm.Constants;
-import org.apache.storm.opentsdb.bolt.TupleOpenTsdbDatapointMapper;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseRichBolt;
-import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
+import org.openkilda.messaging.info.Datapoint;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.wfm.topology.AbstractTopology;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Stream;
-
-import static java.util.stream.Collectors.toList;
 
 public class IslStatsBolt extends BaseRichBolt {
 
     private OutputCollector collector;
     private static final Logger logger = LogManager.getLogger(IslStatsBolt.class);
 
-    private static final Fields DEFAULT_METRIC_FIELDS =
-            new Fields(TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER.getMetricField(),
-                    TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER.getTimestampField(),
-                    TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER.getValueField(),
-                    TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER.getTagsField());
-
-    private static List<Object> tsdbTuple(Object metric, Object timestamp, Number value, Map<String, String> tag) {
-        return Stream.of(metric, timestamp, value, tag).collect(toList());
+    private static List<Object> tsdbTuple(String metric, long timestamp, Number value, Map<String, String> tag)
+            throws IOException{
+        Datapoint datapoint = new Datapoint(metric, timestamp, tag, value);
+        return Collections.singletonList(Utils.MAPPER.writeValueAsString(datapoint));
     }
 
     @Override
@@ -60,7 +53,7 @@ public class IslStatsBolt extends BaseRichBolt {
         this.collector = collector;
     }
 
-    public List<Object> buildTsdbTuple(IslInfoData data, long timestamp) {
+    public List<Object> buildTsdbTuple(IslInfoData data, long timestamp) throws IOException {
         List<PathNode> path = data.getPath();
         Map<String, String> tags = new HashMap<>();
         tags.put("src_switch", path.get(0).getSwitchId().replaceAll(":", ""));
@@ -115,7 +108,7 @@ public class IslStatsBolt extends BaseRichBolt {
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(DEFAULT_METRIC_FIELDS);
+        declarer.declare(AbstractTopology.fieldMessage);
     }
 
 }

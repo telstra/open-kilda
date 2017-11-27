@@ -18,7 +18,6 @@ package org.openkilda.wfm.topology.cache;
 import static org.openkilda.messaging.Utils.MAPPER;
 import static org.openkilda.wfm.topology.flow.StreamType.REROUTE;
 import static org.openkilda.wfm.topology.flow.StreamType.RESTORE;
-import static org.openkilda.wfm.topology.flow.StreamType.STATUS;
 
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
@@ -432,6 +431,8 @@ public class CacheBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<St
 
         for (ImmutablePair<Flow, Flow> flow : flows) {
             try {
+                flow.getLeft().setState(FlowState.DOWN);
+                flow.getRight().setState(FlowState.DOWN);
                 FlowRerouteRequest request = new FlowRerouteRequest(flow.getLeft(), operation);
 
                 Values values = new Values(Utils.MAPPER.writeValueAsString(new CommandMessage(
