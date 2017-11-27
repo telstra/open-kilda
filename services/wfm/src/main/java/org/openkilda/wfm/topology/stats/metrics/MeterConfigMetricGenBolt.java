@@ -18,21 +18,22 @@ package org.openkilda.wfm.topology.stats.metrics;
 import static org.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.openkilda.wfm.topology.AbstractTopology.MESSAGE_FIELD;
 
+import com.google.common.collect.ImmutableMap;
+import org.apache.storm.tuple.Tuple;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.stats.MeterConfigReply;
 import org.openkilda.messaging.info.stats.MeterConfigStatsData;
 import org.openkilda.wfm.topology.stats.StatsComponentType;
 import org.openkilda.wfm.topology.stats.StatsStreamType;
-
-import org.apache.storm.tuple.Tuple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
+import java.io.IOException;
 import java.util.Map;
 
 public class MeterConfigMetricGenBolt extends MetricGenBolt {
-    private static final Logger logger = LoggerFactory.getLogger(MeterConfigMetricGenBolt.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(MeterConfigMetricGenBolt.class);
 
     @Override
     public void execute(Tuple input) {
@@ -44,16 +45,32 @@ public class MeterConfigMetricGenBolt extends MetricGenBolt {
             return;
         }
 
-        logger.debug("Meter config stats message: {}={}, component={}, stream={}",
+        LOGGER.debug("Meter config stats message: {}={}, component={}, stream={}",
                 CORRELATION_ID, message.getCorrelationId(), componentId, StatsStreamType.valueOf(input.getSourceStreamId()));
         MeterConfigStatsData data = (MeterConfigStatsData) message.getData();
         long timestamp = message.getTimestamp();
-        data.getStats().forEach(stats -> stats.getMeterIds().forEach(meterId -> {
-            Map<String, String> tags = new HashMap<>();
-            tags.put("switchid", data.getSwitchId().replaceAll(":", ""));
-            tags.put("meterid", meterId.toString());
+
+        try {
+            String switchId = data.getSwitchId().replaceAll(":", "");
+            for (MeterConfigReply reply : data.getStats()) {
+                for (Long meterId : reply.getMeterIds()) {
+                    emit(timestamp, meterId, switchId);
+                }
+            }
+        } finally {
+            collector.ack(input);
+        }
+    }
+
+    private void emit(long timestamp, Long meterId, String switchId) {
+        try {
+            Map<String, String> tags = ImmutableMap.of(
+                    "switchid", switchId,
+                    "meterId", meterId.toString()
+            );
             collector.emit(tuple("pen.switch.meters", timestamp, meterId, tags));
-        }));
-        collector.ack(input);
+        } catch (IOException e) {
+            LOGGER.error("Error during serialization of datapoint", e);
+        }
     }
 }

@@ -21,6 +21,8 @@ import static org.openkilda.wfm.topology.AbstractTopology.MESSAGE_FIELD;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.FlowStatsData;
+import org.openkilda.messaging.info.stats.FlowStatsEntry;
+import org.openkilda.messaging.info.stats.FlowStatsReply;
 import org.openkilda.wfm.topology.stats.StatsComponentType;
 import org.openkilda.wfm.topology.stats.StatsStreamType;
 
@@ -28,11 +30,12 @@ import org.apache.storm.tuple.Tuple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
 public class FlowMetricGenBolt extends MetricGenBolt {
-    private static final Logger logger = LoggerFactory.getLogger(FlowMetricGenBolt.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(FlowMetricGenBolt.class);
 
     @Override
     public void execute(Tuple input) {
@@ -44,19 +47,34 @@ public class FlowMetricGenBolt extends MetricGenBolt {
             return;
         }
 
-        logger.debug("Flow stats message: {}={}, component={}, stream={}",
+        LOGGER.debug("Flow stats message: {}={}, component={}, stream={}",
                 CORRELATION_ID, message.getCorrelationId(), componentId, StatsStreamType.valueOf(input.getSourceStreamId()));
         FlowStatsData data = (FlowStatsData) message.getData();
         long timestamp = message.getTimestamp();
-        data.getStats().forEach(stats -> stats.getEntries().forEach(entry -> {
+        String switchId = data.getSwitchId().replaceAll(":", "");
+
+        try {
+            for (FlowStatsReply reply : data.getStats()) {
+                for (FlowStatsEntry entry : reply.getEntries()) {
+                    emit(entry, timestamp, switchId);
+                }
+            }
+        } finally {
+            collector.ack(input);
+        }
+    }
+
+    private void emit(FlowStatsEntry entry, long timestamp, String switchId) {
+        try {
             Map<String, String> tags = new HashMap<>();
-            tags.put("switchid", data.getSwitchId().replaceAll(":", ""));
+            tags.put("switchid", switchId);
             tags.put("cookie", String.valueOf(entry.getCookie()));
             collector.emit(tuple("pen.flow.tableid", timestamp, entry.getTableId(), tags));
             collector.emit(tuple("pen.flow.packets", timestamp, entry.getPacketCount(), tags));
             collector.emit(tuple("pen.flow.bytes", timestamp, entry.getByteCount(), tags));
             collector.emit(tuple("pen.flow.bits", timestamp, entry.getByteCount()*8, tags));
-        }));
-        collector.ack(input);
+        } catch (IOException e) {
+            LOGGER.error("Error during serialization of datapoint", e);
+        }
     }
 }
