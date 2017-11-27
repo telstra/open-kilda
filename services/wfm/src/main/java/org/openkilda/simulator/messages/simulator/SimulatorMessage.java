@@ -5,10 +5,7 @@ import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.openkilda.simulator.classes.SimulatorCommands;
-import org.openkilda.simulator.messages.simulator.command.AddLinkCommandMessage;
-import org.openkilda.simulator.messages.simulator.command.PortModMessage;
-import org.openkilda.simulator.messages.simulator.command.SwitchModMessage;
-import org.openkilda.simulator.messages.simulator.command.TopologyMessage;
+import org.openkilda.simulator.messages.simulator.command.*;
 
 import java.io.Serializable;
 
@@ -21,7 +18,8 @@ import java.io.Serializable;
         @JsonSubTypes.Type(value = TopologyMessage.class, name = SimulatorCommands.TOPOLOGY),
         @JsonSubTypes.Type(value = SwitchModMessage.class, name = SimulatorCommands.DO_SWITCH_MOD),
         @JsonSubTypes.Type(value = AddLinkCommandMessage.class, name = SimulatorCommands.DO_ADD_LINK),
-        @JsonSubTypes.Type(value = PortModMessage.class, name = SimulatorCommands.DO_PORT_MOD)
+        @JsonSubTypes.Type(value = PortModMessage.class, name = SimulatorCommands.DO_PORT_MOD),
+        @JsonSubTypes.Type(value = AddSwitchCommand.class, name = SimulatorCommands.DO_ADD_SWITCH)
 })
 
 public class SimulatorMessage implements Serializable {
