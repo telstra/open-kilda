@@ -12,10 +12,7 @@ import org.openkilda.simulator.SimulatorTopology;
 import org.openkilda.simulator.classes.SimulatorCommands;
 import org.openkilda.simulator.messages.SwitchMessage;
 import org.openkilda.simulator.messages.simulator.SimulatorMessage;
-import org.openkilda.simulator.messages.simulator.command.AddLinkCommandMessage;
-import org.openkilda.simulator.messages.simulator.command.PortModMessage;
-import org.openkilda.simulator.messages.simulator.command.SwitchModMessage;
-import org.openkilda.simulator.messages.simulator.command.TopologyMessage;
+import org.openkilda.simulator.messages.simulator.command.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,7 +47,10 @@ public class SimulatorCommandBolt extends BaseRichBolt {
         } else if (message instanceof AddLinkCommandMessage) {
             stream = SimulatorTopology.SIMULATOR_COMMAND_STREAM;
             values.add(new Values(((AddLinkCommandMessage) message).getDpid(), message, SimulatorCommands.DO_ADD_LINK));
-        } else {
+        } else if (message instanceof AddSwitchCommand) {
+            stream = SimulatorTopology.SIMULATOR_COMMAND_STREAM;
+            values.add(new Values(((AddSwitchCommand) message).getDpid(), message, SimulatorCommands.DO_ADD_SWITCH));
+        }else {
             logger.error("Unknown simulator command received: {}\n{}",
                     message.getClass().getName(), tuple.toString());
         }

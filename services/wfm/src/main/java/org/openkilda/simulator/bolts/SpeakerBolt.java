@@ -15,10 +15,12 @@ import org.openkilda.messaging.info.event.*;
 import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.simulator.SimulatorTopology;
 import org.openkilda.simulator.classes.*;
+import org.openkilda.simulator.interfaces.ISwitch;
 import org.openkilda.simulator.messages.LinkMessage;
 import org.openkilda.simulator.messages.SwitchMessage;
 import org.openkilda.simulator.messages.simulator.SimulatorMessage;
 import org.openkilda.simulator.messages.simulator.command.AddLinkCommandMessage;
+import org.openkilda.simulator.messages.simulator.command.AddSwitchCommand;
 import org.openkilda.simulator.messages.simulator.command.PortModMessage;
 import org.openkilda.simulator.messages.simulator.command.SwitchModMessage;
 import org.slf4j.Logger;
@@ -66,6 +68,18 @@ public class SpeakerBolt extends BaseRichBolt {
                 UUID.randomUUID().toString(),
                 null);
         return Utils.MAPPER.writeValueAsString(message);
+    }
+
+    protected List<Values> addSwitch(AddSwitchCommand data) throws Exception {
+        List<Values> values = new ArrayList<>();
+        String dpid = data.getDpid();
+        if (switches.get(dpid) == null) {
+            ISwitchImpl sw = new ISwitchImpl(dpid, data.getNumOfPorts(), PortStateType.DOWN);
+            switches.put(sw.getDpid().toString(), sw);
+            values.add(new Values("INFO", makeSwitchMessage(sw, SwitchState.ADDED)));
+            values.add(new Values("INFO", makeSwitchMessage(sw, SwitchState.ACTIVATED)));
+        }
+        return values;
     }
 
     protected List<Values> addSwitch(SwitchMessage switchMessage) throws Exception {
@@ -199,7 +213,12 @@ public class SpeakerBolt extends BaseRichBolt {
             String command = tuple.getStringByField("command");
             switch (command) {
                 case SimulatorCommands.DO_ADD_SWITCH:
-                    values = addSwitch((SwitchMessage) tuple.getValueByField("data"));
+                    //TODO: this is an ugly hack...
+                    if (tuple.getValueByField("data") instanceof AddSwitchCommand) {
+                        values = addSwitch((AddSwitchCommand) tuple.getValueByField("data"));
+                    } else {
+                        values = addSwitch((SwitchMessage) tuple.getValueByField("data"));
+                    }
                     break;
                 case SimulatorCommands.DO_ADD_LINK:
                     values = addLink((AddLinkCommandMessage) tuple.getValueByField("data"));
