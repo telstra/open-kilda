@@ -1,10 +1,32 @@
-zookeeper.hosts={{ zookeeper_hosts }}
-kafka.hosts={{ kafka_hosts }}
-statstopology.openTsdbUrl={{ opentsdb_hosts }}
-neo4j.hosts={{ neo4j_hosts }}
-neo4j.user={{ neo4j_user }}
-neo4j.pswd={{ neo4j_password }}
+parallelism = 1
+workers = 1
 
-opentsdbtopology.kafka.opentsdb-topic=opentsdb-topic
-opentsdbtopology.open-tsdb.url={{ opentsdb_hosts }}
-opentsdbtopology.open-tsdb.timeout=30000
+zookeeper.hosts = {{ zookeeper_hosts }}
+zookeeper.session.timeout = 5
+zookeeper.connect.timeout = 5
+
+kafka.hosts = {{ kafka_hosts }}
+kafka.topic.input = kilda-test
+kafka.topic.output = kilda.wfm.topo.updown
+kafka.topic.netcache = kilda.wfm.topo.dump
+kafka.topic.speaker = kilda.speaker
+kafka.topic.simulator = kilda-simulator
+kafka.topic.opentsdb = opentsdb-topic
+kafka.topic.discovery = kilda-test
+
+opentsdb.hosts = {{ opentsdb_hosts }}
+opentsdb.timeout = 30
+
+neo4j.hosts = {{ neo4j_hosts }}
+neo4j.user = {{ neo4j_user }}
+neo4j.pswd = {{ neo4j_password }}
+
+filter.directory =
+logger.level = INFO
+logger.watermark =
+
+discovery.interval = 3
+discovery.timeout = 9
+
+local = no
+local.execution.time = 10
