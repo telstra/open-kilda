@@ -15,8 +15,6 @@ import com.spotify.docker.client.DockerClient;
 import com.spotify.docker.client.LogStream;
 import com.spotify.docker.client.messages.Container;
 import com.spotify.docker.client.messages.ExecCreation;
-import cucumber.api.java.After;
-import cucumber.api.java.Before;
 import cucumber.api.java.en.Given;
 import cucumber.api.java.en.Then;
 import cucumber.api.java.en.When;
@@ -26,13 +24,13 @@ import org.apache.log4j.Logger;
 import org.glassfish.jersey.client.ClientConfig;
 import org.openkilda.DefaultParameters;
 import org.openkilda.domain.floodlight.FlowRules;
+import org.openkilda.topo.TestUtils;
 import org.openkilda.topo.TopologyHelp;
 
 import java.util.concurrent.TimeUnit;
 import javax.ws.rs.ProcessingException;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
-import javax.ws.rs.core.Response;
 
 public class ClearTablesTest {
     private static final Logger LOGGER = Logger.getLogger(ClearTablesTest.class);
@@ -49,20 +47,10 @@ public class ClearTablesTest {
     private Container floodlightContainer;
     private DockerClient dockerClient;
 
-    @Before
-    public void init() throws Exception {
-        dockerClient = DefaultDockerClient.fromEnv().build();
-        TopologyHelp.DeleteMininetTopology();
-    }
-
-    @After
-    public void reset() {
-        dockerClient.close();
-        TopologyHelp.DeleteMininetTopology();
-    }
-
     @Given("^started floodlight container")
     public void givenStartedContainer() throws Exception {
+        TestUtils.clearEverything();
+        dockerClient = DefaultDockerClient.fromEnv().build();
         floodlightContainer = dockerClient.listContainers()
                 .stream()
                 .filter(container ->
@@ -112,6 +100,7 @@ public class ClearTablesTest {
         assertTrue("Floodlight should send flow rules", result != null && result.getFlows() != null);
         String expectedCookie = String.valueOf(Long.parseLong(COOKIE.substring(2), 16));
         assertThat(result.getFlows(), hasItem(hasProperty("cookie", is(expectedCookie))));
+        dockerClient.close();
     }
 
     private boolean isFloodlightAlive() {
