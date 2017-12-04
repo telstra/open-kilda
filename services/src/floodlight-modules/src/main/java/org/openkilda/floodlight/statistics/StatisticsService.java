@@ -66,7 +66,7 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
     private static final Logger logger = LoggerFactory.getLogger(StatisticsService.class);
     private static final U64 SYSTEM_MASK = U64.of(0x8000000000000000L);
     private static final long OFPM_ALL = 0xffffffffL;
-    private static final String TOPIC = "kilda-test";
+    private static final String STATISTICS_TOPIC = "speaker.out.stats";
 
     private IOFSwitchService switchService;
     private KafkaMessageProducer kafkaProducer;
@@ -215,7 +215,7 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
         public void onSuccess(List<T> data) {
             InfoMessage infoMessage = new InfoMessage(transform.apply(data),
                     System.currentTimeMillis(), SYSTEM_CORRELATION_ID, Destination.WFM_STATS);
-            kafkaProducer.postMessage(TOPIC, infoMessage);
+            kafkaProducer.postMessage(STATISTICS_TOPIC, infoMessage);
         }
 
         @Override

@@ -88,7 +88,7 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
     public static final String VERIFICATION_BCAST_PACKET_DST = "00:26:e1:ff:ff:ff";
     public static final int VERIFICATION_PACKET_UDP_PORT = 61231;
     public static final String VERIFICATION_PACKET_IP_DST = "192.168.0.255";
-    private static final String TOPIC = "kilda-test";
+    private static final String TOPIC = "speaker.out.path";
     private static final Logger logger = LoggerFactory.getLogger(PathVerificationService.class);
 
     private IFloodlightProviderService floodlightProvider;
