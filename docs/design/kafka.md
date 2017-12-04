@@ -1,8 +1,21 @@
 # Kafka topics
 All messages transferred via kafka are serialized into json format.
 
-## `kilda-test`
-This is most used kafka topic into kilda project. It used into communications between kilda components (northbound,
+## Version 0.8 Kafka Design
+
+
+
+## Version 0.7 Kafka Design
+
+_The [source](https://docs.google.com/drawings/d/1MEwVnkaYMJ829FB_fKmKHiALokLLjoqcYBycvf0F6Pk) for
+ this diagram is in a google drawing_
+
+![0.7 topics diagram](kafka-topics-0.7.png)
+
+
+### Special Mentions
+
+`kilda-test` is most used kafka topic into kilda project. It used into communications between kilda components (northbound,
 topology engine, topology engine REST, workflow manager).
 
 We can say that message divided on two part - first one is transport (used to address destination point), second
@@ -20,7 +33,10 @@ Example message:
   }
 }
 ```
-### `kilda-test` usage
+
+### Usage
+
+#### `kilda-test`
 * (W) Topology engine REST
 * (R/W) Topology engine
 * (R/W) Northbound
@@ -35,62 +51,62 @@ Example message:
   * (R/W) CacheTopology - CacheBolt
   * (R) IslStatsTopology - IslStatsBolt
 
-## `kilda.wfm.topo.updown` usage
+#### `kilda.wfm.topo.updown` 
 * (W) FlowTopology - CrudBolt
 * (R) CacheTopology - CacheBolt
 
-## `kilda.wfm.topo.dump` usage
+#### `kilda.wfm.topo.dump`
 * FlowTopology--SplitterBolt (R)
 * CacheTopology--CacheBolt (W)
 
-## `kilda.speaker` usage
-## `kilda-simulator` usage
+#### `kilda.speaker`
+#### `kilda-simulator` 
 
-## `opentsdb-topic` usage
+#### `opentsdb-topic` 
 * (R) OpenTSDBTopology - OpenTSDBFilterBolt
 
-## `kilda.health.check` usage
+#### `kilda.health.check`
 * (R/W) OFEventSplitterTopology - HealthCheckBolt
 * (R/W) OFEventWFMTopology -HealthCheckBolt
 
-## `speaker.info`
+#### `speaker.info`
 * (W) OFEventSplitterTopology - OFEventSplitterBolt
 
-## `speaker.command` usage
+#### `speaker.command` 
 * (W) OFEventSplitterTopology - OFEventSplitterBolt
 
-## `speaker.other` usage
+#### `speaker.other` 
 * (W) OFEventSplitterTopology - OFEventSplitterBolt
 
-## `speaker.info.other` - usage
+#### `speaker.info.other`
 * (W) OFEventSplitterTopology - InfoEventSplitterBolt
 
-## `speaker.info.switch` usage
+#### `speaker.info.switch` 
 * (W) OFEventSplitterTopology - InfoEventSplitterBolt
 
-## `speaker.info.switch.updown` usage
+#### `speaker.info.switch.updown` 
 * (W) OFEventSplitterTopology - InfoEventSplitterBolt
 * (R) OFEventWFMTopology - OFESwitchBolt
 
-## `speaker.info.switch.other` usage
+#### `speaker.info.switch.other` 
 * (W) OFEventSplitterTopology - InfoEventSplitterBolt
 
-## `speaker.info.port` usage
+#### `speaker.info.port` 
 * (W) OFEventSplitterTopology - InfoEventSplitterBolt
 
-## `speaker.info.port.updown` usage
+#### `speaker.info.port.updown` 
 * (W) OFEventSplitterTopology - InfoEventSplitterBolt
 * (R) OFEventWFMTopology- OFEPortBolt
 
-## `speaker.info.port.other` usage
+#### `speaker.info.port.other` 
 * (W) OFEventSplitterTopology - InfoEventSplitterBolt
 
-## `speaker.info.isl` usage
+#### `speaker.info.isl` 
 * (W) OFEventSplitterTopology - InfoEventSplitterBolt
 
-## `speaker.info.isl.updown` usage
+#### `speaker.info.isl.updown` 
 * (W) OFEventSplitterTopology - InfoEventSplitterBolt
 * (R) OFEventWFMTopology - OFELinkBolt
 
-## `speaker.info.isl.other` usage
+#### `speaker.info.isl.other` 
 * (W) OFEventSplitterTopology - InfoEventSplitterBolt
