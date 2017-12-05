@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<title>OPEN KILDA</title>
+</head>
+<body>
+	<div th:fragment="javascriptServerTags">
+
+		<script th:inline="javascript">
+			/*<![CDATA[*/
+			           
+			/** Used in various place for context path */
+			var APP_CONTEXT = [[${#httpServletRequest.getContextPath()}]];
+
+
+			
+			/*]]>*/
+		</script>
+	</div>
+</body>
+</html>
