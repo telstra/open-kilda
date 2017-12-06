@@ -24,6 +24,9 @@ import org.openkilda.messaging.command.flow.FlowCreateRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowRestoreRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
+import org.openkilda.messaging.ctrl.AbstractDumpState;
+import org.openkilda.messaging.ctrl.state.CrudBoltState;
+import org.openkilda.messaging.ctrl.state.FlowDump;
 import org.openkilda.messaging.error.CacheException;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
@@ -44,6 +47,9 @@ import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.pce.cache.FlowCache;
 import org.openkilda.pce.cache.ResourceCache;
 import org.openkilda.pce.provider.PathComputer;
+import org.openkilda.wfm.ctrl.CtrlAction;
+import org.openkilda.wfm.ctrl.ICtrlBolt;
+import org.openkilda.wfm.protocol.KafkaMessage;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.flow.ComponentType;
 import org.openkilda.wfm.topology.flow.FlowTopology;
@@ -64,7 +70,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class CrudBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, FlowCache>> {
+public class CrudBolt
+        extends BaseStatefulBolt<InMemoryKeyValueState<String, FlowCache>>
+        implements ICtrlBolt {
+
+    public static final String STREAM_ID_CTRL = "ctrl";
+
     /**
      * The logger.
      */
@@ -85,9 +96,7 @@ public class CrudBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, Flo
      */
     private InMemoryKeyValueState<String, FlowCache> caches;
 
-    /**
-     * Output collector.
-     */
+    private TopologyContext context;
     private OutputCollector outputCollector;
 
     /**
@@ -131,6 +140,8 @@ public class CrudBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, Flo
         outputFieldsDeclarer.declareStream(StreamType.STATUS.toString(), AbstractTopology.fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.RESPONSE.toString(), AbstractTopology.fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.ERROR.toString(), FlowTopology.fieldsMessageErrorType);
+        // FIXME(dbogun): use proper tuple format
+        outputFieldsDeclarer.declareStream(STREAM_ID_CTRL, AbstractTopology.fieldMessage);
     }
 
     /**
@@ -138,6 +149,7 @@ public class CrudBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, Flo
      */
     @Override
     public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
+        this.context = topologyContext;
         this.outputCollector = outputCollector;
     }
 
@@ -146,6 +158,9 @@ public class CrudBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, Flo
      */
     @Override
     public void execute(Tuple tuple) {
+        if (CtrlAction.boltHandlerEntrance(this, tuple))
+            return;
+
         logger.trace("Flow Cache before: {}", flowCache);
 
         ComponentType componentId = ComponentType.valueOf(tuple.getSourceComponent());
@@ -495,5 +510,26 @@ public class CrudBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, Flo
     private ErrorMessage buildErrorMessage(String correlationId, ErrorType type, String message, String description) {
         return new ErrorMessage(new ErrorData(type, message, description),
                 System.currentTimeMillis(), correlationId, Destination.NORTHBOUND);
+    }
+
+    @Override
+    public AbstractDumpState dumpState() {
+        FlowDump flowDump = new FlowDump(flowCache.dumpFlows());
+        return new CrudBoltState(flowDump);
+    }
+
+    @Override
+    public String getCtrlStreamId() {
+        return STREAM_ID_CTRL;
+    }
+
+    @Override
+    public TopologyContext getContext() {
+        return context;
+    }
+
+    @Override
+    public OutputCollector getOutput() {
+        return outputCollector;
     }
 }

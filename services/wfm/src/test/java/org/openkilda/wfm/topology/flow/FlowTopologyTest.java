@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.flow;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
@@ -32,6 +33,11 @@ import org.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.openkilda.messaging.command.flow.FlowsGetRequest;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.openkilda.messaging.command.flow.RemoveFlow;
+import org.openkilda.messaging.ctrl.CtrlRequest;
+import org.openkilda.messaging.ctrl.CtrlResponse;
+import org.openkilda.messaging.ctrl.DumpStateResponseData;
+import org.openkilda.messaging.ctrl.RequestData;
+import org.openkilda.messaging.ctrl.ResponseData;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
@@ -77,6 +83,7 @@ public class FlowTopologyTest extends AbstractStormTest {
     private static TestKafkaConsumer ofsConsumer;
     private static TestKafkaConsumer cacheConsumer;
     private static TestKafkaConsumer teResponseConsumer;
+    private static TestKafkaConsumer ctrlConsumer;
     private static FlowTopology flowTopology;
 
     @BeforeClass
@@ -105,6 +112,10 @@ public class FlowTopologyTest extends AbstractStormTest {
         teResponseConsumer = new TestKafkaConsumer(Topic.TEST.getId(), Destination.WFM,
                 kafkaProperties(UUID.nameUUIDFromBytes(Destination.WFM.toString().getBytes()).toString()));
         teResponseConsumer.start();
+
+        ctrlConsumer = new TestKafkaConsumer(flowTopology.getConfig().getKafkaCtrlTopic(), Destination.CTRL_CLIENT,
+                kafkaProperties(UUID.nameUUIDFromBytes(Destination.CTRL_CLIENT.toString().getBytes()).toString()));
+        ctrlConsumer.start();
 
         Utils.sleep(10000);
     }
@@ -948,9 +959,26 @@ public class FlowTopologyTest extends AbstractStormTest {
         assertEquals(FlowState.DOWN, flowNbPayloadDown.getStatus());
     }
 
-    private void sendNorthboundMessage(final CommandMessage message) throws IOException {
-        String request = objectMapper.writeValueAsString(message);
-        kProducer.pushMessage(Topic.TEST.getId(), request);
+    @Test
+    @Ignore("Not reliable during batch run")
+    public void ctrlDumpHandler() throws Exception {
+        CtrlRequest request = new CtrlRequest(
+                "flowtopology/" + ComponentType.CRUD_BOLT.toString(), new RequestData("dump"), 1, "dump-correlation-id", Destination.WFM_CTRL);
+
+        sendMessage(request, flowTopology.getConfig().getKafkaCtrlTopic());
+
+        ConsumerRecord<String, String> raw = ctrlConsumer.pollMessage();
+
+        assertNotNull(raw);
+        assertNotNull(raw.value());
+
+        Message responseGeneric = objectMapper.readValue(raw.value(), Message.class);
+        CtrlResponse response = (CtrlResponse) responseGeneric;
+        ResponseData payload = response.getData();
+
+        assertEquals(request.getCorrelationId(), response.getCorrelationId());
+        assertEquals(ComponentType.CRUD_BOLT.toString(), payload.getComponent());
+        assertTrue(payload instanceof DumpStateResponseData);
     }
 
     private Flow deleteFlow(final String flowId) throws IOException {
@@ -1098,5 +1126,14 @@ public class FlowTopologyTest extends AbstractStormTest {
         ErrorMessage errorMessage = new ErrorMessage(errorData, 0, "error-flow", Destination.WFM_TRANSACTION);
         sendSpeakerMessage(errorMessage);
         return errorMessage;
+    }
+
+    private void sendNorthboundMessage(final CommandMessage message) throws IOException {
+        sendMessage(message, Topic.TEST.getId());
+    }
+
+    private void sendMessage(Object object, String topic) throws IOException {
+        String request = objectMapper.writeValueAsString(object);
+        kProducer.pushMessage(topic, request);
     }
 }
