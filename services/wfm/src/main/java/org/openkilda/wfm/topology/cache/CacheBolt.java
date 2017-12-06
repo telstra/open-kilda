@@ -26,6 +26,10 @@ import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.discovery.NetworkCommandData;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowRestoreRequest;
+import org.openkilda.messaging.ctrl.AbstractDumpState;
+import org.openkilda.messaging.ctrl.state.CacheBoltState;
+import org.openkilda.messaging.ctrl.state.FlowDump;
+import org.openkilda.messaging.ctrl.state.NetworkDump;
 import org.openkilda.messaging.error.CacheException;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
@@ -42,7 +46,10 @@ import org.openkilda.pce.cache.Cache;
 import org.openkilda.pce.cache.FlowCache;
 import org.openkilda.pce.cache.NetworkCache;
 import org.openkilda.pce.cache.ResourceCache;
+import org.openkilda.wfm.ctrl.CtrlAction;
+import org.openkilda.wfm.protocol.KafkaMessage;
 import org.openkilda.wfm.topology.AbstractTopology;
+import org.openkilda.wfm.ctrl.ICtrlBolt;
 import org.openkilda.wfm.topology.utils.AbstractTickStatefulBolt;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -60,7 +67,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class CacheBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<String, Cache>> {
+public class CacheBolt
+        extends AbstractTickStatefulBolt<InMemoryKeyValueState<String, Cache>>
+        implements ICtrlBolt {
+    public static final String STREAM_ID_CTRL = "ctrl";
+
     /**
      * Network cache key.
      */
@@ -91,9 +102,7 @@ public class CacheBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<St
      */
     private InMemoryKeyValueState<String, Cache> state;
 
-    /**
-     * Output collector.
-     */
+    private TopologyContext context;
     private OutputCollector outputCollector;
 
     /**
@@ -140,6 +149,7 @@ public class CacheBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<St
      */
     @Override
     public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
+        this.context = topologyContext;
         this.outputCollector = outputCollector;
     }
 
@@ -148,17 +158,21 @@ public class CacheBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<St
      */
     @Override
     public void doWork(Tuple tuple) {
+
+        if (CtrlAction.boltHandlerEntrance(this, tuple))
+            return;
+
         logger.trace("State before: {}", state);
 
         String json = tuple.getString(0);
-        ComponentType componentId = ComponentType.valueOf(tuple.getSourceComponent());
+        String source = tuple.getSourceComponent();
 
         try {
             logger.info("Request tuple={}", tuple);
 
-            switch (componentId) {
+            switch (source) {
 
-                case WFM_UPDATE_KAFKA_SPOUT:
+                case CacheTopology.SPOUT_ID_TOPOLOGY:
                     InfoData data = MAPPER.readValue(json, InfoData.class);
 
                     if (data != null) {
@@ -223,7 +237,7 @@ public class CacheBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<St
                     }
                     break;
 
-                case TPE_KAFKA_SPOUT:
+                case CacheTopology.SPOUT_ID_COMMON:
                     Message message = MAPPER.readValue(json, Message.class);
                     if (message instanceof InfoMessage && Destination.WFM_CACHE == message.getDestination()) {
                         logger.info("Storage content message {}", json);
@@ -257,6 +271,7 @@ public class CacheBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<St
      */
     @Override
     protected void doTick(Tuple tuple) {
+        // FIXME(dbogun): tick only once, because timePassed never reset
         if (timePassed == discoveryInterval) {
             Values values = getNetworkRequest();
             if (values != null) {
@@ -274,9 +289,11 @@ public class CacheBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<St
      * {@inheritDoc}
      */
     @Override
-    public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
-        outputFieldsDeclarer.declareStream(StreamType.TPE.toString(), AbstractTopology.fieldMessage);
-        outputFieldsDeclarer.declareStream(StreamType.WFM_DUMP.toString(), AbstractTopology.fieldMessage);
+    public void declareOutputFields(OutputFieldsDeclarer output) {
+        output.declareStream(StreamType.TPE.toString(), AbstractTopology.fieldMessage);
+        output.declareStream(StreamType.WFM_DUMP.toString(), AbstractTopology.fieldMessage);
+        // FIXME(dbogun): use proper tuple format
+        output.declareStream(STREAM_ID_CTRL, AbstractTopology.fieldMessage);
     }
 
     private void handleNetworkDump(InfoData info, Tuple tuple) {
@@ -458,5 +475,28 @@ public class CacheBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<St
         }
 
         return values;
+    }
+
+    @Override
+    public AbstractDumpState dumpState() {
+        NetworkDump networkDump = new NetworkDump(
+                networkCache.dumpSwitches(), networkCache.dumpIsls());
+        FlowDump flowDump = new FlowDump(flowCache.dumpFlows());
+        return new CacheBoltState(networkDump, flowDump);
+    }
+
+    @Override
+    public String getCtrlStreamId() {
+        return STREAM_ID_CTRL;
+    }
+
+    @Override
+    public TopologyContext getContext() {
+        return context;
+    }
+
+    @Override
+    public OutputCollector getOutput() {
+        return outputCollector;
     }
 }

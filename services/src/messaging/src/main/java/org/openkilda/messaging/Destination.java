@@ -55,7 +55,10 @@ public enum Destination {
     /**
      * WorkFlow Manager transactions handling bolt.
      */
-    WFM_TRANSACTION("WFM_TRANSACTION");
+    WFM_TRANSACTION("WFM_TRANSACTION"),
+
+    WFM_CTRL("WFM_CTRL"),
+    CTRL_CLIENT("CTRL_CLIENT");
 
     /**
      * Message destination.

@@ -15,9 +15,9 @@
 
 package org.openkilda.wfm.topology.utils;
 
-import org.openkilda.messaging.info.event.PathNode;
-
 import java.io.Serializable;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -52,5 +52,13 @@ public class LinkTracker implements Serializable {
                 packets.set(0);
             }
         }
+    }
+
+    public Map<String, Map<String, AtomicInteger>> makeDump() {
+        Map<String, Map<String, AtomicInteger>> dump = new HashMap<>();
+        for (Map.Entry<String, ConcurrentHashMap<String, AtomicInteger>> item : state.entrySet()) {
+            dump.put(item.getKey(), item.getValue());
+        }
+        return dump;
     }
 }
