@@ -17,6 +17,9 @@ package org.openkilda.wfm.topology.event;
 
 import org.openkilda.messaging.ServiceType;
 import org.openkilda.wfm.ConfigurationException;
+import org.openkilda.wfm.CtrlBoltRef;
+import org.openkilda.wfm.StreamNameCollisionException;
+import org.openkilda.wfm.ctrl.ICtrlBolt;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.topology.splitter.InfoEventSplitterBolt;
@@ -27,6 +30,9 @@ import org.apache.storm.generated.StormTopology;
 import org.apache.storm.topology.BoltDeclarer;
 import org.apache.storm.topology.IStatefulBolt;
 import org.apache.storm.topology.TopologyBuilder;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * OFEventWFMTopology creates the topology to manage these key aspects of OFEvents:
@@ -65,13 +71,15 @@ public class OFEventWFMTopology extends AbstractTopology {
         super(env);
     }
 
-    public StormTopology createTopology() {
+    public StormTopology createTopology() throws StreamNameCollisionException {
         logger.debug("Building Topology - " + this.getClass().getSimpleName());
 
         initKafka();
 
         String kafkaOutputTopic = config.getKafkaOutputTopic();
         TopologyBuilder builder = new TopologyBuilder();
+        List<CtrlBoltRef> ctrlTargets = new ArrayList<>();
+
         BoltDeclarer kbolt = builder.setBolt(kafkaOutputTopic + "-kafkabolt",
                 createKafkaBolt(kafkaOutputTopic), config.getParallelism());
 
@@ -96,6 +104,8 @@ public class OFEventWFMTopology extends AbstractTopology {
             //      just to pull out switchID.
             tbolt[i] = builder.setBolt(boltName, bolts[i], config.getParallelism()).shuffleGrouping(spoutName);
             kbolt.shuffleGrouping(boltName, kafkaOutputTopic);
+
+            ctrlTargets.add(new CtrlBoltRef(boltName, (ICtrlBolt) bolts[i], tbolt[i]));
         }
 
         // now hookup switch and port to the link bolt so that it can take appropriate action
@@ -107,6 +117,7 @@ public class OFEventWFMTopology extends AbstractTopology {
         builder.setBolt("ISL_Discovery-kafkabolt", createKafkaBolt(discoTopic), config.getParallelism())
                 .shuffleGrouping(topics[2] + "-bolt", discoTopic);
 
+        createCtrlBranch(builder, ctrlTargets);
         createHealthCheckHandler(builder, ServiceType.WFM_TOPOLOGY.getId());
 
         return builder.createTopology();

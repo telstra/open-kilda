@@ -15,10 +15,15 @@
 
 package org.openkilda.wfm.topology;
 
+import org.apache.storm.topology.BoltDeclarer;
+import org.openkilda.wfm.NameCollisionException;
+import org.openkilda.wfm.StreamNameCollisionException;
 import org.openkilda.messaging.Topic;
 import org.openkilda.wfm.ConfigurationException;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.PropertiesReader;
+import org.openkilda.wfm.CtrlBoltRef;
+import org.openkilda.wfm.ctrl.RouteBolt;
 import org.openkilda.wfm.topology.utils.HealthCheckBolt;
 
 import kafka.admin.AdminUtils;
@@ -47,6 +52,7 @@ import org.kohsuke.args4j.CmdLineException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.Properties;
 
 /**
@@ -60,6 +66,10 @@ public abstract class AbstractTopology implements Topology {
     protected TopologyConfig config;
     protected final String topologyName;
     private final Properties kafkaProperties;
+
+    public static final String SPOUT_ID_CTRL = "ctrl.in";
+    public static final String BOLT_ID_CTRL_ROUTE = "ctrl.route";
+    public static final String BOLT_ID_CTRL_OUTPUT = "ctrl.out";
 
     public static final String MESSAGE_FIELD = "message";
     public static final Fields fieldMessage = new Fields(MESSAGE_FIELD);
@@ -79,7 +89,7 @@ public abstract class AbstractTopology implements Topology {
         kafkaProperties = makeKafkaProperties();
     }
 
-    protected void setup() throws TException {
+    protected void setup() throws TException, NameCollisionException {
         if (config.getLocal()) {
             setupLocal();
         } else {
@@ -87,7 +97,7 @@ public abstract class AbstractTopology implements Topology {
         }
     }
 
-    private void setupRemote() throws TException {
+    private void setupRemote() throws TException, NameCollisionException {
         Config config = makeStormConfig();
         config.setDebug(false);
 
@@ -95,7 +105,7 @@ public abstract class AbstractTopology implements Topology {
         StormSubmitter.submitTopology(getTopologyName(), config, createTopology());
     }
 
-    private void setupLocal() {
+    private void setupLocal() throws NameCollisionException {
         Config config = makeStormConfig();
         config.setDebug(true);
 
@@ -197,14 +207,15 @@ public abstract class AbstractTopology implements Topology {
      * @return {@link KafkaSpout}
      */
     protected org.apache.storm.kafka.KafkaSpout createKafkaSpout(String topic, String spoutId) {
-        String spoutID = topic + "." + spoutId;
-        String zkRoot = "/" + topic; // used to store offset information.
+        String zkRoot = String.format("/%s/%s", getTopologyName(), topic);
         ZkHosts hosts = new ZkHosts(config.getZookeeperHosts());
-        SpoutConfig cfg = new SpoutConfig(hosts, topic, zkRoot, spoutID);
+
+        SpoutConfig cfg = new SpoutConfig(hosts, topic, zkRoot, spoutId);
         cfg.startOffsetTime = OffsetRequest.EarliestTime();
         cfg.scheme = new SchemeAsMultiScheme(new StringScheme());
         cfg.bufferSizeBytes = 1024 * 1024 * 4;
         cfg.fetchSizeBytes = 1024 * 1024 * 4;
+
         return new org.apache.storm.kafka.KafkaSpout(cfg);
     }
 
@@ -219,6 +230,29 @@ public abstract class AbstractTopology implements Topology {
                 .withProducerProperties(kafkaProperties)
                 .withTopicSelector(new DefaultTopicSelector(topic))
                 .withTupleToKafkaMapper(new FieldNameBasedTupleToKafkaMapper<>());
+    }
+
+    protected void createCtrlBranch(TopologyBuilder builder, List<CtrlBoltRef> targets)
+            throws StreamNameCollisionException {
+        checkAndCreateTopic(config.getKafkaCtrlTopic());
+
+        org.apache.storm.kafka.KafkaSpout kafkaSpout;
+        kafkaSpout = createKafkaSpout(config.getKafkaCtrlTopic(), SPOUT_ID_CTRL);
+        builder.setSpout(SPOUT_ID_CTRL, kafkaSpout);
+
+        RouteBolt route = new RouteBolt(getTopologyName());
+        builder.setBolt(BOLT_ID_CTRL_ROUTE, route)
+                .shuffleGrouping(SPOUT_ID_CTRL);
+
+        KafkaBolt kafkaBolt = createKafkaBolt(config.getKafkaCtrlTopic());
+        BoltDeclarer outputSetup = builder.setBolt(BOLT_ID_CTRL_OUTPUT, kafkaBolt)
+                .shuffleGrouping(BOLT_ID_CTRL_ROUTE, route.STREAM_ID_ERROR);
+
+        for (CtrlBoltRef ref : targets) {
+            String boltId = ref.getBoltId();
+            ref.getDeclarer().allGrouping(BOLT_ID_CTRL_ROUTE, route.registerEndpoint(boltId));
+            outputSetup.shuffleGrouping(boltId, ref.getBolt().getCtrlStreamId());
+        }
     }
 
     /**
