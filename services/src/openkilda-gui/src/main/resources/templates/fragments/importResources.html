@@ -1,0 +1,31 @@
+<!DOCTYPE html >
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+	<!-- Common js/scripts needs to mention here, so that any page can directly include this fragment -->
+	<th:block th:fragment="commonImports">
+		<!-- javascriptServerTags is a file where all server side tag names need to mention, which need to use in js  -->
+		<div
+			th:include="fragments/javascriptServerTags:: javascriptServerTags"></div>
+
+		<!-- jquery js -->
+		<script th:inline="javascript" src="javascript/jquery-3.2.1.min.js" th:src="@{javascript/jquery-3.2.1.min.js}"></script>
+		<!-- bootstrap js -->
+		<script th:inline="javascript" src="javascript/bootstrap.min.js" th:src="@{javascript/bootstrap.min.js}"></script>
+		<!-- <script th:inline="javascript" th:src="@{https://use.fontawesome.com/17006a46a0.js}"></script> -->
+		
+		
+		<!-- <script th:inline="javascript" th:src="@{https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css}"></script> -->
+
+
+	</th:block>
+
+	<th:block th:fragment="graphImports">
+		<!-- 	Bounded force directed graph  -->
+		<script th:inline="javascript" src="http://d3js.org/d3.v3.min.js"></script>
+
+		<!-- 			custom graph -->
+		<script th:inline="javascript" src="javascript/graph.js" th:src="@{javascript/graph.js}"></script>
+			
+	</th:block>
+</body>
+</html>
