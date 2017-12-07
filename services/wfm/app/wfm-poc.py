@@ -24,8 +24,7 @@ from kafka import KafkaConsumer
 from kafka import KafkaProducer
 
 KAFKA_GROUP_ID = 'kilda-workflow-consumers'
-KAFKA_TOPIC = 'kilda-test'
-KAFKA_TOPICS = ['kilda-test']
+KAFKA_SPEAKER_IN = 'speaker.in'
 KAFKA_CONSUMER_COUNT = 5
 KAFKA_PRODUCER_COUNT = 10
 ISL_DISCOVER_FREQUENCY = 30
@@ -94,7 +93,7 @@ class Producer(threading.Thread):
         while not shutting_down:
             message = queue.get()
             logging.info("sending: {}".format(message))
-            producer.send(KAFKA_TOPIC, message)
+            producer.send(KAFKA_SPEAKER_IN, message)
         producer.close()
 
 

@@ -82,7 +82,7 @@ public class SplitterBolt extends BaseRichBolt {
             if (data instanceof FlowCreateRequest) {
                 String flowId = ((FlowCreateRequest) data).getPayload().getFlowId();
 
-                logger.info("Flow {} crate message: values={}", flowId, values);
+                logger.info("Flow {} create message: values={}", flowId, values);
 
                 values = new Values(message, flowId);
                 outputCollector.emit(StreamType.CREATE.toString(), tuple, values);

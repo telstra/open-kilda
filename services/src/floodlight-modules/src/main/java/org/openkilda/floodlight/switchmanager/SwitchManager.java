@@ -201,9 +201,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             ErrorMessage error = new ErrorMessage(
                     new ErrorData(ErrorType.INTERNAL_ERROR, ((OFErrorMsg) msg).getErrType().toString(), null),
                     System.currentTimeMillis(), DEFAULT_CORRELATION_ID, Destination.WFM_TRANSACTION);
-            // TODO: Most/all commands are flow related, but not all. 'speaker.out.flow' might
+            // TODO: Most/all commands are flow related, but not all. 'kilda.flow' might
             // not be the best place to send a generic error.
-            kafkaProducer.postMessage("speaker.out.flow", error);
+            kafkaProducer.postMessage("kilda.flow", error);
         }
         return Command.CONTINUE;
     }

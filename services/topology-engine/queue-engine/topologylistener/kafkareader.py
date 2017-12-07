@@ -25,7 +25,7 @@ logger = get_logger()
 
 def create_consumer(config):
     group = os.environ.get('group', config.get('kafka', 'consumer.group'))
-    topic = config.KAFKA_TOPIC
+    topic = config.KAFKA_TOPO_ENG_TOPIC
 
     bootstrap_servers = config.KAFKA_BOOTSTRAP_SERVERS
 
