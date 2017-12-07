@@ -6,17 +6,18 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.openkilda.messaging.ctrl.AbstractDumpState;
 
+import java.util.List;
 import java.util.Map;
 
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class OFELinkBoltState extends AbstractDumpState {
-    @JsonProperty("state")
-    Map<String, LinkTrackerDump> state;
+    @JsonProperty("discovery")
+    List<?> discovery;
 
     @JsonCreator
     public OFELinkBoltState(
-            @JsonProperty("state") Map<String, LinkTrackerDump> state) {
-        this.state = state;
+            @JsonProperty("state") List<?> discovery) {
+        this.discovery = discovery;
     }
 }
