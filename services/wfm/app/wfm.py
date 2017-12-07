@@ -22,7 +22,6 @@ import json
 from kafka import KafkaConsumer
 
 KAFKA_GROUP_ID = 'wfm-consumer'
-KAFKA_TOPIC = 'kilda-test'
 KAFKA_CONSUMER_COUNT = 5
 
 shutting_down = False

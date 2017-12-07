@@ -60,8 +60,8 @@ import java.util.concurrent.Executors;
 
 public class KafkaMessageCollector implements IFloodlightModule {
     private static final Logger logger = LoggerFactory.getLogger(KafkaMessageCollector.class);
-    private static final String INPUT_TOPIC = "speaker.in";
-    private static final String OUTPUT_FLOW_TOPIC = "speaker.out.flow";
+    private static final String INPUT_TOPIC = "kilda.speaker";
+    private static final String OUTPUT_FLOW_TOPIC = "kilda.flow";
     private final MeterPool meterPool = new MeterPool();
     private Properties kafkaProps;
     private IPathVerificationService pathVerificationService;

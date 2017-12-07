@@ -3,6 +3,52 @@ All messages transferred via kafka are serialized into json format.
 
 ## Version 0.8 Kafka Design
 
+### Introduction
+Version 0.8 has been refactored with a focus on clear topics per inbound component.
+For instance, the floodlight module should have a clear input topic (eg kilda.speaker),
+and it should understand where to send responses to, within reason (eg kilda.flow, 
+kilda.topo.event, etc).
+
+To some degree, the more granular we can make it, the easier it is for components to opt into
+exactly what they want to listen to.
+
+Regarding the components that initiate traffic, and receive it, this document will just use
+some shorthand references to classes or modules to facilitate understand where in the code
+base to look to understand the details better.
+
+### Topology Discovery
+
+### Flow Management
+
+This involves a request to the NB API, through the FLOW WFM, Topology Engine, and OF Speaker
+
+Process:
+```
+FlowTopology::  --> kilda.speaker --> Floodlight::KafkaMessageCollector
+- InstallIngressFlow
+- InstallEgressFlow
+- InstallTransitFlow
+- InstallOneSwitchFlow
+- RemoveFlow
+
+
+```
+
+### Other NorthBound API request
+
+```
+??::?? --> kilda.northbound
+
+
+where do errors go??
+```
+#### from FlowTopology
+
+```
+FlowTopology::CrudBolt --> kilda.northbound
+
+```
+
 
 
 ## Version 0.7 Kafka Design

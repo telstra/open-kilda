@@ -67,7 +67,7 @@ public class KafkaMessageConsumer implements MessageConsumer<Object> {
      *
      * @param record the message object instance
      */
-    @KafkaListener(id = "northbound-listener", topics = "kilda-test")
+    @KafkaListener(id = "northbound-listener", topics = "kilda.northbound")
     public void receive(final String record) {
         try {
             logger.trace("message received");
