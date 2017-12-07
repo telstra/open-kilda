@@ -229,12 +229,12 @@ class MessageItem(object):
 
         if src_port:
             query = ("MATCH (a:switch)-[r:isl {{"
-                            "src_switch: '{}', "
-                            "src_port: {}}}]->(b:switch) SET r.status == 'inactive'")
+                     "src_switch: '{}', "
+                     "src_port: {}}}]->(b:switch) SET r.status = 'inactive'")
             graph.run(query.format(src_switch, src_port)).data()
         else:
             query = ("MATCH (a:switch)-[r:isl {{"
-                            "src_switch: '{}'}}]->(b:switch) SET r.status == 'inactive'")
+                     "src_switch: '{}'}}]->(b:switch) SET r.status = 'inactive'")
             graph.run(query.format(src_switch)).data()
 
         return True
