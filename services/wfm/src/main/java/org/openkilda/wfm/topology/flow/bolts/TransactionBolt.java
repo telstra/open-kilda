@@ -16,7 +16,12 @@
 package org.openkilda.wfm.topology.flow.bolts;
 
 import org.openkilda.messaging.Utils;
+import org.openkilda.messaging.ctrl.AbstractDumpState;
+import org.openkilda.messaging.ctrl.state.TransactionBoltState;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.wfm.ctrl.CtrlAction;
+import org.openkilda.wfm.ctrl.ICtrlBolt;
+import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.flow.ComponentType;
 import org.openkilda.wfm.topology.flow.FlowTopology;
 import org.openkilda.wfm.topology.flow.StreamType;
@@ -32,6 +37,7 @@ import org.apache.storm.topology.base.BaseStatefulBolt;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -39,24 +45,29 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Transaction Bolt. Tracks OpenFlow Speaker commands transactions.
  */
-public class TransactionBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, Map<String, Set<Long>>>> {
+public class TransactionBolt
+        extends BaseStatefulBolt<InMemoryKeyValueState<String, Map<String, Set<Long>>>>
+        implements ICtrlBolt {
     /**
      * The logger.
      */
     private static final Logger logger = LogManager.getLogger(TransactionBolt.class);
+
+    public final String STREAM_ID_CTRL = "ctrl";
 
     /**
      * Transaction ids state.
      */
     private InMemoryKeyValueState<String, Map<String, Set<Long>>> transactions;
 
-    /**
-     * Output collector.
-     */
+    private TopologyContext context;
     private OutputCollector outputCollector;
 
     @Override
     public void execute(Tuple tuple) {
+        if (CtrlAction.boltHandlerEntrance(this, tuple))
+            return;
+
         logger.trace("States before: {}", transactions);
 
         ComponentType componentId = ComponentType.valueOf(tuple.getSourceComponent());
@@ -177,6 +188,8 @@ public class TransactionBolt extends BaseStatefulBolt<InMemoryKeyValueState<Stri
         outputFieldsDeclarer.declareStream(StreamType.CREATE.toString(), FlowTopology.fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.DELETE.toString(), FlowTopology.fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.STATUS.toString(), FlowTopology.fieldsFlowIdStatus);
+        // FIXME(dbogun): use proper tuple format
+        outputFieldsDeclarer.declareStream(STREAM_ID_CTRL, AbstractTopology.fieldMessage);
     }
 
     /**
@@ -184,6 +197,31 @@ public class TransactionBolt extends BaseStatefulBolt<InMemoryKeyValueState<Stri
      */
     @Override
     public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
+        this.context = topologyContext;
         this.outputCollector = outputCollector;
+    }
+
+    @Override
+    public AbstractDumpState dumpState() {
+        Map<String, Map<String, Set<Long>>> dump = new HashMap<>();
+        for (Map.Entry<String, Map<String, Set<Long>>> item : transactions) {
+            dump.put(item.getKey(), item.getValue());
+        }
+        return new TransactionBoltState(dump);
+    }
+
+    @Override
+    public String getCtrlStreamId() {
+        return STREAM_ID_CTRL;
+    }
+
+    @Override
+    public TopologyContext getContext() {
+        return context;
+    }
+
+    @Override
+    public OutputCollector getOutput() {
+        return outputCollector;
     }
 }

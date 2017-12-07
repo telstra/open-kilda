@@ -42,7 +42,16 @@ public enum MessageType {
      * Error message type.
      */
     @JsonProperty("ERROR")
-    ERROR("ERROR");
+    ERROR("ERROR"),
+
+    /**
+     * Degug message type.
+     */
+    @JsonProperty("CTRL_REQUEST")
+    CTRL_REQUEST("CTRL_REQUEST"),
+
+    @JsonProperty("CTRL_RESPONSE")
+    CTRL_RESPONSE("CTRL_RESPONSE");
 
     /**
      * Message type.

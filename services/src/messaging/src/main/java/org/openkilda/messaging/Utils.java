@@ -43,6 +43,8 @@ public final class Utils {
      * The destination property.
      */
     public static final String DESTINATION = "destination";
+
+    public static final String ROUTE = "route";
     /**
      * The payload property.
      */

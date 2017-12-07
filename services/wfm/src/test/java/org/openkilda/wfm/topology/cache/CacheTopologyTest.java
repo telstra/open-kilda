@@ -21,9 +21,16 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import org.openkilda.messaging.Destination;
+import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Topic;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.FlowRestoreRequest;
+import org.openkilda.messaging.ctrl.AbstractDumpState;
+import org.openkilda.messaging.ctrl.CtrlRequest;
+import org.openkilda.messaging.ctrl.CtrlResponse;
+import org.openkilda.messaging.ctrl.DumpStateResponseData;
+import org.openkilda.messaging.ctrl.RequestData;
+import org.openkilda.messaging.ctrl.ResponseData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.NetworkInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
@@ -75,6 +82,7 @@ public class CacheTopologyTest extends AbstractStormTest {
 
     private static TestKafkaConsumer teConsumer;
     private static TestKafkaConsumer flowConsumer;
+    private static TestKafkaConsumer ctrlConsumer;
 
     @BeforeClass
     public static void setupOnce() throws Exception {
@@ -92,6 +100,10 @@ public class CacheTopologyTest extends AbstractStormTest {
         flowConsumer = new TestKafkaConsumer(topology.getConfig().getKafkaNetCacheTopic(), Destination.WFM,
                 kafkaProperties(UUID.nameUUIDFromBytes(Destination.WFM.toString().getBytes()).toString()));
         flowConsumer.start();
+
+        ctrlConsumer = new TestKafkaConsumer(topology.getConfig().getKafkaCtrlTopic(), Destination.CTRL_CLIENT,
+                kafkaProperties(UUID.nameUUIDFromBytes(Destination.CTRL_CLIENT.toString().getBytes()).toString()));
+        ctrlConsumer.start();
 
         Utils.sleep(10000);
 
@@ -173,6 +185,63 @@ public class CacheTopologyTest extends AbstractStormTest {
         commandData = (FlowRestoreRequest) commandMessage.getData();
         assertNotNull(commandData);
         assertTrue(flowIds.contains(commandData.getPayload().getLeft().getFlowId()));
+    }
+
+    @Test
+    public void ctrlListHandler() throws Exception {
+        CtrlRequest request = new CtrlRequest(
+                "cachetopology/*", new RequestData("list"), 1, "list-correlation-id", Destination.WFM_CTRL);
+
+        sendMessage(request, topology.getConfig().getKafkaCtrlTopic());
+
+        ConsumerRecord<String, String> raw = ctrlConsumer.pollMessage();
+
+        assertNotNull(raw);
+        assertNotNull(raw.value());
+
+        Message responseGeneric = objectMapper.readValue(raw.value(), Message.class);
+        CtrlResponse response = (CtrlResponse) responseGeneric;
+        ResponseData payload = response.getData();
+
+        assertEquals(request.getCorrelationId(), response.getCorrelationId());
+        assertEquals(CacheTopology.BOLT_ID_CACHE, payload.getComponent());
+    }
+
+    @Test
+    public void ctrlDumpHandler() throws Exception {
+        CtrlRequest request = new CtrlRequest(
+                "cachetopology/*", new RequestData("dump"), 1, "dump-correlation-id", Destination.WFM_CTRL);
+
+        sendMessage(request, topology.getConfig().getKafkaCtrlTopic());
+
+        ConsumerRecord<String, String> raw = ctrlConsumer.pollMessage();
+
+        assertNotNull(raw);
+        assertNotNull(raw.value());
+
+        Message responseGeneric = objectMapper.readValue(raw.value(), Message.class);
+        CtrlResponse response = (CtrlResponse) responseGeneric;
+        ResponseData payload = response.getData();
+
+        assertEquals(request.getCorrelationId(), response.getCorrelationId());
+        assertEquals(CacheTopology.BOLT_ID_CACHE, payload.getComponent());
+        assertTrue(payload instanceof DumpStateResponseData);
+    }
+
+    @Test
+    public void ctrlSpecificRoute() throws Exception {
+        CtrlRequest request = new CtrlRequest(
+                "cachetopology/cache", new RequestData("dump"), 1, "route-correlation-id", Destination.WFM_CTRL);
+        sendMessage(request, topology.getConfig().getKafkaCtrlTopic());
+
+        ConsumerRecord<String, String> raw = ctrlConsumer.pollMessage();
+
+        assertNotNull(raw);
+        assertNotNull(raw.value());
+
+        Message responseGeneric = objectMapper.readValue(raw.value(), Message.class);
+        CtrlResponse response = (CtrlResponse) responseGeneric;
+        assertEquals(request.getCorrelationId(), response.getCorrelationId());
     }
 
     private void sendMessage(Object object, String topic) throws IOException {
