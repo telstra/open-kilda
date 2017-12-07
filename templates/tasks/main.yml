@@ -1,8 +1,8 @@
 ---
 # tasks file for templates
-- name: Display all variables/facts known for a host
-  debug:
-    var: vars
+#- name: Display all variables/facts known for a host
+#  debug:
+#    var: vars
 
 - name: Floodlight properties
   template:

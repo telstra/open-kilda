@@ -21,6 +21,7 @@ public class TopologyConfig {
     private Integer zookeeperConnectTimeout;
 
     private String kafkaHosts;
+    private String kafkaCtrlTopic;
     private String kafkaInputTopic;
     private String kafkaOutputTopic;
     private String kafkaNetCacheTopic;
@@ -52,6 +53,7 @@ public class TopologyConfig {
         zookeeperSessionTimeout = (int)(config.getFloat("zookeeper.session.timeout") * 1000);
         zookeeperConnectTimeout = (int)(config.getFloat("zookeeper.connect.timeout") * 1000);
         kafkaHosts = config.getString("kafka.hosts");
+        kafkaCtrlTopic = config.getString("kafka.topic.ctrl");
         kafkaInputTopic = config.getString("kafka.topic.input");
         kafkaOutputTopic = config.getString("kafka.topic.output");
         kafkaNetCacheTopic = config.getString("kafka.topic.netcache");
@@ -118,6 +120,10 @@ public class TopologyConfig {
 
     public String getKafkaHosts() {
         return kafkaHosts;
+    }
+
+    public String getKafkaCtrlTopic() {
+        return kafkaCtrlTopic;
     }
 
     public String getKafkaInputTopic() {

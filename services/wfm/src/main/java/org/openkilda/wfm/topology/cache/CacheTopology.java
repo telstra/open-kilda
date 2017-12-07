@@ -15,8 +15,11 @@
 
 package org.openkilda.wfm.topology.cache;
 
+import org.apache.storm.topology.BoltDeclarer;
+import org.openkilda.wfm.NameCollisionException;
 import org.openkilda.messaging.ServiceType;
 import org.openkilda.wfm.ConfigurationException;
+import org.openkilda.wfm.CtrlBoltRef;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.LaunchEnvironment;
 
@@ -27,8 +30,17 @@ import org.apache.storm.topology.TopologyBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class CacheTopology extends AbstractTopology {
     private static final Logger logger = LoggerFactory.getLogger(CacheTopology.class);
+
+    public static final String SPOUT_ID_COMMON = "generic";
+    public static final String SPOUT_ID_TOPOLOGY = "topology";
+    public static final String BOLT_ID_CACHE = "cache";
+    public static final String BOLT_ID_COMMON_OUTPUT = "common.out";
+    public static final String BOLT_ID_TOPOLOGY_OUTPUT = "topology.out";
 
     public CacheTopology(LaunchEnvironment env) throws ConfigurationException {
         super(env);
@@ -42,7 +54,7 @@ public class CacheTopology extends AbstractTopology {
      * {@inheritDoc}
      */
     @Override
-    public StormTopology createTopology() {
+    public StormTopology createTopology() throws NameCollisionException {
         logger.info("Creating Topology: {}", topologyName);
 
         initKafkaTopics();
@@ -50,43 +62,47 @@ public class CacheTopology extends AbstractTopology {
         Integer parallelism = config.getParallelism();
 
         TopologyBuilder builder = new TopologyBuilder();
+        List<CtrlBoltRef> ctrlTargets = new ArrayList<>();
+        BoltDeclarer boltSetup;
 
-       /*
+        KafkaSpout kafkaSpout;
+        /*
          * Receives cache from storage.
          */
-        KafkaSpout storageSpout = createKafkaSpout(
-                config.getKafkaInputTopic(), ComponentType.TPE_KAFKA_SPOUT.toString());
-        builder.setSpout(ComponentType.TPE_KAFKA_SPOUT.toString(), storageSpout, parallelism);
+        kafkaSpout = createKafkaSpout(config.getKafkaInputTopic(), SPOUT_ID_COMMON);
+        builder.setSpout(SPOUT_ID_COMMON, kafkaSpout, parallelism);
 
         /*
          * Receives cache updates from WFM topology.
          */
-        KafkaSpout stateSpout = createKafkaSpout(
-                config.getKafkaOutputTopic(), ComponentType.WFM_UPDATE_KAFKA_SPOUT.toString());
-        builder.setSpout(ComponentType.WFM_UPDATE_KAFKA_SPOUT.toString(), stateSpout, parallelism);
+        kafkaSpout = createKafkaSpout(config.getKafkaOutputTopic(), SPOUT_ID_TOPOLOGY);
+        builder.setSpout(SPOUT_ID_TOPOLOGY, kafkaSpout, parallelism);
 
         /*
          * Stores network cache.
          */
         CacheBolt cacheBolt = new CacheBolt(config.getDiscoveryTimeout());
-        builder.setBolt(ComponentType.CACHE_BOLT.toString(), cacheBolt, parallelism)
-                .shuffleGrouping(ComponentType.WFM_UPDATE_KAFKA_SPOUT.toString())
-                .shuffleGrouping(ComponentType.TPE_KAFKA_SPOUT.toString());
+        boltSetup = builder.setBolt(BOLT_ID_CACHE, cacheBolt, parallelism)
+                .shuffleGrouping(SPOUT_ID_COMMON)
+                .shuffleGrouping(SPOUT_ID_TOPOLOGY);
+        ctrlTargets.add(new CtrlBoltRef(BOLT_ID_CACHE, cacheBolt, boltSetup));
 
+        KafkaBolt kafkaBolt;
         /*
          * Sends network events to storage.
          */
-        KafkaBolt storageBolt = createKafkaBolt(config.getKafkaInputTopic());
-        builder.setBolt(ComponentType.TPE_KAFKA_BOLT.toString(), storageBolt, parallelism)
-                .shuffleGrouping(ComponentType.CACHE_BOLT.toString(), StreamType.TPE.toString());
+        kafkaBolt = createKafkaBolt(config.getKafkaInputTopic());
+        builder.setBolt(BOLT_ID_COMMON_OUTPUT, kafkaBolt, parallelism)
+                .shuffleGrouping(BOLT_ID_CACHE, StreamType.TPE.toString());
 
         /*
          * Sends cache dump to WFM topology.
          */
-        KafkaBolt stateDump = createKafkaBolt(config.getKafkaNetCacheTopic());
-        builder.setBolt(ComponentType.WFM_DUMP_KAFKA_BOLT.toString(), stateDump, parallelism)
-                .shuffleGrouping(ComponentType.CACHE_BOLT.toString(), StreamType.WFM_DUMP.toString());
+        kafkaBolt = createKafkaBolt(config.getKafkaNetCacheTopic());
+        builder.setBolt(BOLT_ID_TOPOLOGY_OUTPUT, kafkaBolt, parallelism)
+                .shuffleGrouping(BOLT_ID_CACHE, StreamType.WFM_DUMP.toString());
 
+        createCtrlBranch(builder, ctrlTargets);
         createHealthCheckHandler(builder, ServiceType.CACHE_TOPOLOGY.getId());
 
         return builder.createTopology();
