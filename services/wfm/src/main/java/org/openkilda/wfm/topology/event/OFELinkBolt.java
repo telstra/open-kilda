@@ -18,9 +18,15 @@ package org.openkilda.wfm.topology.event;
 import static org.openkilda.messaging.Utils.MAPPER;
 import static org.openkilda.messaging.Utils.PAYLOAD;
 
+import org.openkilda.messaging.ctrl.AbstractDumpState;
+import org.openkilda.messaging.ctrl.state.LinkTrackerDump;
+import org.openkilda.messaging.ctrl.state.OFELinkBoltState;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.wfm.OFEMessageUtils;
+import org.openkilda.wfm.ctrl.CtrlAction;
+import org.openkilda.wfm.ctrl.ICtrlBolt;
+import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.TopologyConfig;
 import org.openkilda.wfm.topology.splitter.InfoEventSplitterBolt;
 import org.openkilda.wfm.topology.utils.AbstractTickStatefulBolt;
@@ -37,6 +43,7 @@ import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -46,9 +53,12 @@ import java.util.concurrent.atomic.AtomicInteger;
  * This class is the main class for tracking links and generating health checks. Regarding Storm's KeyValueState .. it
  * doesn't have a keys() feature .. so there is at this stage only one object in it, which holds hashmaps, etc.
  */
-public class OFELinkBolt extends AbstractTickStatefulBolt<KeyValueState<String, LinkTracker>> {
+public class OFELinkBolt
+        extends AbstractTickStatefulBolt<KeyValueState<String, LinkTracker>>
+        implements ICtrlBolt {
     private static final Logger logger = LogManager.getLogger(OFELinkBolt.class);
 
+    private final String STREAM_ID_CTRL = "ctrl";
     private final String outputStreamId;
     private final String islDiscoveryTopic;
 
@@ -56,6 +66,7 @@ public class OFELinkBolt extends AbstractTickStatefulBolt<KeyValueState<String, 
     protected KeyValueState<String, LinkTracker> state;
 
     private final int packetsToFail;
+    private TopologyContext context;
     private OutputCollector collector;
     private LinkTracker links;
 
@@ -72,6 +83,7 @@ public class OFELinkBolt extends AbstractTickStatefulBolt<KeyValueState<String, 
 
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
+        this.context = context;
         this.collector = collector;
     }
 
@@ -116,6 +128,9 @@ public class OFELinkBolt extends AbstractTickStatefulBolt<KeyValueState<String, 
 
     @Override
     protected void doWork(Tuple tuple) {
+        if (CtrlAction.boltHandlerEntrance(this, tuple))
+            return;
+
         String source = tuple.getSourceComponent();
         if (source.startsWith(InfoEventSplitterBolt.I_SWITCH_UPDOWN)) {
             handleSwitchEvent(tuple);
@@ -197,5 +212,31 @@ public class OFELinkBolt extends AbstractTickStatefulBolt<KeyValueState<String, 
         declarer.declareStream(islDiscoveryTopic, new Fields("key", "message"));
         declarer.declareStream(outputStreamId, new Fields("key", "message",
                 OFEMessageUtils.FIELD_SWITCH_ID, OFEMessageUtils.FIELD_PORT_ID, OFEMessageUtils.FIELD_STATE));
+        // FIXME(dbogun): use proper tuple format
+        declarer.declareStream(STREAM_ID_CTRL, AbstractTopology.fieldMessage);
+    }
+
+    @Override
+    public AbstractDumpState dumpState() {
+        Map<String, LinkTrackerDump> dump = new HashMap<>();
+        for (Map.Entry<String, LinkTracker> item : state) {
+            dump.put(item.getKey(), new LinkTrackerDump(item.getValue().makeDump()));
+        }
+        return new OFELinkBoltState(dump);
+    }
+
+    @Override
+    public String getCtrlStreamId() {
+        return STREAM_ID_CTRL;
+    }
+
+    @Override
+    public TopologyContext getContext() {
+        return context;
+    }
+
+    @Override
+    public OutputCollector getOutput() {
+        return collector;
     }
 }

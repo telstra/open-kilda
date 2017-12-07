@@ -15,11 +15,14 @@
 
 package org.openkilda.wfm.topology.flow;
 
+import org.apache.storm.topology.BoltDeclarer;
 import org.openkilda.messaging.ServiceType;
 import org.openkilda.messaging.Utils;
 import org.openkilda.pce.provider.NeoDriver;
 import org.openkilda.pce.provider.PathComputer;
 import org.openkilda.wfm.ConfigurationException;
+import org.openkilda.wfm.CtrlBoltRef;
+import org.openkilda.wfm.StreamNameCollisionException;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.topology.flow.bolts.CrudBolt;
@@ -37,6 +40,9 @@ import org.apache.storm.kafka.KafkaSpout;
 import org.apache.storm.kafka.bolt.KafkaBolt;
 import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Fields;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Flow topology.
@@ -77,12 +83,14 @@ public class FlowTopology extends AbstractTopology {
     }
 
     @Override
-    public StormTopology createTopology() {
+    public StormTopology createTopology() throws StreamNameCollisionException {
         logger.info("Creating Topology: {}", topologyName);
 
         checkAndCreateTopic(config.getKafkaNetCacheTopic());
 
         TopologyBuilder builder = new TopologyBuilder();
+        List<CtrlBoltRef> ctrlTargets = new ArrayList<>();
+        BoltDeclarer boltSetup;
         Integer parallelism = config.getParallelism();
 
         /*
@@ -113,7 +121,7 @@ public class FlowTopology extends AbstractTopology {
          * It groups requests by flow-id.
          */
         CrudBolt crudBolt = new CrudBolt(pathComputer);
-        builder.setBolt(ComponentType.CRUD_BOLT.toString(), crudBolt, parallelism)
+        boltSetup = builder.setBolt(ComponentType.CRUD_BOLT.toString(), crudBolt, parallelism)
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.CREATE.toString(), fieldFlowId)
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.READ.toString(), fieldFlowId)
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.UPDATE.toString(), fieldFlowId)
@@ -125,6 +133,7 @@ public class FlowTopology extends AbstractTopology {
                 .fieldsGrouping(ComponentType.TRANSACTION_BOLT.toString(), StreamType.STATUS.toString(), fieldFlowId)
                 .fieldsGrouping(ComponentType.SPEAKER_BOLT.toString(), StreamType.STATUS.toString(), fieldFlowId)
                 .fieldsGrouping(ComponentType.TOPOLOGY_ENGINE_BOLT.toString(), StreamType.STATUS.toString(), fieldFlowId);
+        ctrlTargets.add(new CtrlBoltRef(ComponentType.CRUD_BOLT.toString(), crudBolt, boltSetup));
 
         /*
          * Bolt sends cache updates.
@@ -176,11 +185,12 @@ public class FlowTopology extends AbstractTopology {
          * Transaction bolt.
          */
         TransactionBolt transactionBolt = new TransactionBolt();
-        builder.setBolt(ComponentType.TRANSACTION_BOLT.toString(), transactionBolt, parallelism)
+        boltSetup = builder.setBolt(ComponentType.TRANSACTION_BOLT.toString(), transactionBolt, parallelism)
                 .fieldsGrouping(ComponentType.TOPOLOGY_ENGINE_BOLT.toString(), StreamType.CREATE.toString(), fieldSwitchId)
                 .fieldsGrouping(ComponentType.TOPOLOGY_ENGINE_BOLT.toString(), StreamType.DELETE.toString(), fieldSwitchId)
                 .fieldsGrouping(ComponentType.SPEAKER_BOLT.toString(), StreamType.CREATE.toString(), fieldSwitchId)
                 .fieldsGrouping(ComponentType.SPEAKER_BOLT.toString(), StreamType.DELETE.toString(), fieldSwitchId);
+        ctrlTargets.add(new CtrlBoltRef(ComponentType.TRANSACTION_BOLT.toString(), transactionBolt, boltSetup));
 
         /*
          * Error processing bolt
@@ -205,6 +215,7 @@ public class FlowTopology extends AbstractTopology {
         builder.setBolt(ComponentType.NORTHBOUND_KAFKA_BOLT.toString(), northboundKafkaBolt, parallelism)
                 .shuffleGrouping(ComponentType.NORTHBOUND_REPLY_BOLT.toString(), StreamType.RESPONSE.toString());
 
+        createCtrlBranch(builder, ctrlTargets);
         createHealthCheckHandler(builder, ServiceType.FLOW_TOPOLOGY.getId());
 
         return builder.createTopology();
