@@ -210,6 +210,8 @@ public class NetworkCache extends Cache {
                     String.format("Switch %s already exists", switchId));
         }
 
+        newSwitch.setCreatedInCacheNow();
+
         network.addNode(newSwitch);
         switchPool.put(switchId, newSwitch);
 
@@ -232,6 +234,9 @@ public class NetworkCache extends Cache {
             throw new CacheException(ErrorType.NOT_FOUND, "Can not update switch",
                     String.format("Switch %s not found", switchId));
         }
+
+        newSwitch.copyTimeTag(oldSwitch);
+        newSwitch.setUpdatedInCacheNow();
 
         network.removeNode(oldSwitch);
         network.addNode(newSwitch);
@@ -347,6 +352,8 @@ public class NetworkCache extends Cache {
         String islId = isl.getId();
         logger.debug("Create {} isl with {} parameters", islId, isl);
 
+        isl.setCreatedInCacheNow();
+
         EndpointPair<SwitchInfoData> nodes = getIslSwitches(isl);
         network.addEdge(nodes.source(), nodes.target(), isl);
 
@@ -364,8 +371,13 @@ public class NetworkCache extends Cache {
         String islId = isl.getId();
         logger.debug("Update {} isl with {} parameters", islId, isl);
 
+        IslInfoData oldIsl = islPool.get(islId);
+        network.removeEdge(oldIsl);
+
+        isl.copyTimeTag(oldIsl);
+        isl.setUpdatedInCacheNow();
+
         EndpointPair<SwitchInfoData> nodes = getIslSwitches(isl);
-        network.removeEdge(islPool.get(islId));
         network.addEdge(nodes.source(), nodes.target(), isl);
 
         return islPool.put(islId, isl);
