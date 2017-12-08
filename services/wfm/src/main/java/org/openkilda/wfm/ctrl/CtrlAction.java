@@ -44,6 +44,14 @@ public class CtrlAction extends AbstractAction {
         action.run();
     }
 
+    @Override
+    protected void commit() {
+        if (! isHandled) {
+            return;
+        }
+        super.commit();
+    }
+
     public Boolean getHandled() {
         return isHandled;
     }
