@@ -57,6 +57,8 @@ public enum Destination {
      */
     WFM_TRANSACTION("WFM_TRANSACTION"),
 
+    WFM_OF_DISCOVERY("WFM_OF_DISCOVERY"),
+
     WFM_CTRL("WFM_CTRL"),
     CTRL_CLIENT("CTRL_CLIENT");
 

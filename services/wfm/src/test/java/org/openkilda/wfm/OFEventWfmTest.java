@@ -18,11 +18,17 @@ package org.openkilda.wfm;
 import static org.openkilda.messaging.Utils.MAPPER;
 import static org.mockito.Mockito.when;
 
+import clojure.lang.ArraySeq;
 import org.kohsuke.args4j.CmdLineException;
+import org.openkilda.messaging.Destination;
+import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.discovery.DiscoveryFilterEntity;
+import org.openkilda.messaging.command.discovery.DiscoveryFilterPopulateData;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.OutputCollectorMock;
 import org.openkilda.wfm.topology.TopologyConfig;
 import org.openkilda.wfm.topology.event.OFELinkBolt;
@@ -50,6 +56,7 @@ import org.mockito.junit.MockitoJUnitRunner;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -167,7 +174,7 @@ public class OFEventWfmTest extends AbstractStormTest {
         TopologyConfig config = manager.getConfig();
 
         Tuple tuple;
-        KeyValueState<String, LinkTracker> state = new InMemoryKeyValueState<>();
+        KeyValueState<String, Object> state = new InMemoryKeyValueState<>();
         initMocks();
 
         List<PathNode> nodes = Arrays.asList(
@@ -180,6 +187,14 @@ public class OFEventWfmTest extends AbstractStormTest {
 
         linkBolt.prepare(stormConfig(), topologyContext, outputCollector);
         linkBolt.initState(state);
+
+        ArrayList<DiscoveryFilterEntity> skipNodes = new ArrayList<>(1);
+        skipNodes.add(new DiscoveryFilterEntity("sw1", "1"));
+        CommandMessage islFilterSetup = new CommandMessage(
+                new DiscoveryFilterPopulateData(skipNodes), 1, "discovery-test", Destination.WFM_OF_DISCOVERY);
+        String json = MAPPER.writeValueAsString(islFilterSetup);
+        tuple = new TupleImpl(topologyContext, Collections.singletonList(json), 4, "message");
+        linkBolt.execute(tuple);
 
         tuple = new TupleImpl(topologyContext, Arrays.asList("sw1", OFEMessageUtils.SWITCH_UP),
                 0, InfoEventSplitterBolt.I_SWITCH_UPDOWN);
@@ -207,26 +222,26 @@ public class OFEventWfmTest extends AbstractStormTest {
         linkBolt.execute(tickTuple);
         linkBolt.execute(tickTuple);
 
-        // 2 isls, 3 seconds interval, 9 seconds test duration == 6 discovery commands
-        // +2 discovery commands triggered by port up message
-        messagesExpected = 8;
+        // 1 isls, 3 seconds interval, 9 seconds test duration == 3 discovery commands
+        // there is only 1 isl each cycle because of isl filter
+        messagesExpected = 3;
         messagesReceived = outputCollectorMock.getMessagesCount(config.getKafkaDiscoveryTopic());
         Assert.assertEquals(messagesExpected, messagesReceived);
 
-        // "isl discovered" x1, "discovery failed" x1
-        messagesExpected = 2;
+        // "isl discovered" x1
+        messagesExpected = 1;
         messagesReceived = outputCollectorMock.getMessagesCount(config.getKafkaOutputTopic());
         Assert.assertEquals(messagesExpected, messagesReceived);
 
         linkBolt.execute(tickTuple);
 
-        // +2 discovery commands
-        messagesExpected = 10;
+        // no new discovery commands
+        messagesExpected = 3;
         messagesReceived = outputCollectorMock.getMessagesCount(config.getKafkaDiscoveryTopic());
         Assert.assertEquals(messagesExpected, messagesReceived);
 
-        // +2 discovery fails
-        messagesExpected = 4;
+        // +1 discovery fails
+        messagesExpected = 2;
         messagesReceived = outputCollectorMock.getMessagesCount(config.getKafkaOutputTopic());
         Assert.assertEquals(messagesExpected, messagesReceived);
     }
@@ -252,5 +267,10 @@ public class OFEventWfmTest extends AbstractStormTest {
         when(topologyContext.getComponentId(3)).thenReturn(InfoEventSplitterBolt.I_ISL_UPDOWN);
         when(topologyContext.getComponentOutputFields(InfoEventSplitterBolt.I_ISL_UPDOWN,
                 InfoEventSplitterBolt.I_ISL_UPDOWN)).thenReturn(islSchema);
+
+        when(topologyContext.getComponentId(4)).thenReturn(OFEventWFMTopology.SPOUT_ID_INPUT);
+        when(topologyContext.getComponentOutputFields(
+                OFEventWFMTopology.SPOUT_ID_INPUT, AbstractTopology.MESSAGE_FIELD))
+                .thenReturn(AbstractTopology.fieldMessage);
     }
 }

@@ -58,6 +58,9 @@ public class OFEventWFMTopology extends AbstractTopology {
 
     private static Logger logger = LogManager.getLogger(OFEventWFMTopology.class);
 
+    public static final String SPOUT_ID_INPUT = "input";
+    public static final String BOLT_ID_OUTPUT = "out";
+
     /**
      * This is the primary input topics
      */
@@ -80,7 +83,9 @@ public class OFEventWFMTopology extends AbstractTopology {
         TopologyBuilder builder = new TopologyBuilder();
         List<CtrlBoltRef> ctrlTargets = new ArrayList<>();
 
-        BoltDeclarer kbolt = builder.setBolt(kafkaOutputTopic + "-kafkabolt",
+        builder.setSpout(SPOUT_ID_INPUT, createKafkaSpout(config.getKafkaInputTopic(), SPOUT_ID_INPUT));
+
+        BoltDeclarer kbolt = builder.setBolt(BOLT_ID_OUTPUT,
                 createKafkaBolt(kafkaOutputTopic), config.getParallelism());
 
         // The order of bolts should match topics, and Link should be last .. logic below relies on it
@@ -109,8 +114,13 @@ public class OFEventWFMTopology extends AbstractTopology {
         }
 
         // now hookup switch and port to the link bolt so that it can take appropriate action
+        /*
+          FIXME(surabujin): use "correct" stream id. Now it works only because stream id matches kafka topic name, but
+          topic name can be changed via config
+        */
         tbolt[2].shuffleGrouping(topics[0] + "-bolt", kafkaOutputTopic)
-                .shuffleGrouping(topics[1] + "-bolt", kafkaOutputTopic);
+                .shuffleGrouping(topics[1] + "-bolt", kafkaOutputTopic)
+                .allGrouping(SPOUT_ID_INPUT);
 
         // finally, one more bolt, to write the ISL Discovery requests
         String discoTopic = config.getKafkaInputTopic();
