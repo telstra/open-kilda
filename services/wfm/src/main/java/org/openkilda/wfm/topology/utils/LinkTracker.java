@@ -24,6 +24,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * Created by carmine on 5/14/17.
  */
+// TODO(surabujin): remove
 public class LinkTracker implements Serializable {
 
     /**

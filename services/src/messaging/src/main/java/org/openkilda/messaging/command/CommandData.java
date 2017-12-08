@@ -18,6 +18,7 @@ package org.openkilda.messaging.command;
 import org.openkilda.messaging.MessageData;
 import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
 import org.openkilda.messaging.command.discovery.DiscoverPathCommandData;
+import org.openkilda.messaging.command.discovery.DiscoveryFilterPopulateData;
 import org.openkilda.messaging.command.discovery.HealthCheckCommandData;
 import org.openkilda.messaging.command.discovery.NetworkCommandData;
 import org.openkilda.messaging.command.flow.DefaultFlowsCommandData;
@@ -69,7 +70,8 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
         @Type(value = DiscoverPathCommandData.class, name = "discover_path"),
         @Type(value = FlowRerouteRequest.class, name = "flow_reroute"),
         @Type(value = NetworkCommandData.class, name = "network"),
-        @Type(value = HealthCheckCommandData.class, name = "health_check")})
+        @Type(value = HealthCheckCommandData.class, name = "health_check"),
+        @Type(value = DiscoveryFilterPopulateData.class, name = "populate_isl_filter")})
 public abstract class CommandData extends MessageData {
     /**
      * Serialization version number constant.
