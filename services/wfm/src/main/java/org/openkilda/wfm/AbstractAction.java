@@ -45,7 +45,7 @@ public abstract class AbstractAction implements Runnable {
     }
 
     protected void rollback() {
-        bolt.getOutput().fail(tuple);
+        getOutputCollector().fail(tuple);
     }
 
     public IKildaBolt getBolt() {

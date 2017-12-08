@@ -6,7 +6,7 @@ import org.openkilda.messaging.ctrl.DumpStateResponseData;
 import org.openkilda.wfm.MessageFormatException;
 import org.openkilda.wfm.UnsupportedActionException;
 
-public class DumpStateAction extends CtrlSubAction {
+public class DumpStateAction extends CtrlEmbeddedAction {
     public DumpStateAction(CtrlAction master, RouteMessage message) {
         super(master, message);
     }
