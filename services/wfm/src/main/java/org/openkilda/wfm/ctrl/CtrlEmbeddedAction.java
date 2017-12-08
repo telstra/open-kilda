@@ -1,17 +1,18 @@
 package org.openkilda.wfm.ctrl;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.ctrl.CtrlResponse;
 import org.openkilda.messaging.ctrl.ResponseData;
-import org.openkilda.wfm.AbstractAction;
+import org.openkilda.wfm.AbstractEmbeddedAction;
 import org.openkilda.wfm.protocol.KafkaMessage;
 
-public abstract class CtrlSubAction extends AbstractAction {
+import com.fasterxml.jackson.core.JsonProcessingException;
+
+public abstract class CtrlEmbeddedAction extends AbstractEmbeddedAction {
     private final CtrlAction master;
     private final RouteMessage message;
 
-    public CtrlSubAction(CtrlAction master, RouteMessage message) {
+    public CtrlEmbeddedAction(CtrlAction master, RouteMessage message) {
         super(master.getBolt(), master.getTuple());
         this.master = master;
         this.message = message;
