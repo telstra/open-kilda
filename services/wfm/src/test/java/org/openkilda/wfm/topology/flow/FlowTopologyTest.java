@@ -85,31 +85,35 @@ public class FlowTopologyTest extends AbstractStormTest {
     private static TestKafkaConsumer teResponseConsumer;
     private static TestKafkaConsumer ctrlConsumer;
     private static FlowTopology flowTopology;
+    private static TopologyConfig topologyConfig;
 
     @BeforeClass
     public static void setupOnce() throws Exception {
         AbstractStormTest.setupOnce();
 
         flowTopology = new FlowTopology(makeLaunchEnvironment(), new PathComputerMock());
-        TopologyConfig topologyConfig = flowTopology.getConfig();
+        topologyConfig = flowTopology.getConfig();
 
         StormTopology stormTopology = flowTopology.createTopology();
         Config config = stormConfig();
         cluster.submitTopology(FlowTopologyTest.class.getSimpleName(), config, stormTopology);
 
-        nbConsumer = new TestKafkaConsumer(Topic.TEST.getId(), Destination.NORTHBOUND,
+        nbConsumer = new TestKafkaConsumer(
+                topologyConfig.getKafkaNorthboundTopic(), Destination.NORTHBOUND,
                 kafkaProperties(UUID.nameUUIDFromBytes(Destination.NORTHBOUND.toString().getBytes()).toString()));
         nbConsumer.start();
 
-        ofsConsumer = new TestKafkaConsumer(Topic.TEST.getId(), Destination.CONTROLLER,
+        ofsConsumer = new TestKafkaConsumer(topologyConfig.getKafkaSpeakerTopic(),
+                Destination.CONTROLLER,
                 kafkaProperties(UUID.nameUUIDFromBytes(Destination.CONTROLLER.toString().getBytes()).toString()));
         ofsConsumer.start();
 
-        cacheConsumer = new TestKafkaConsumer(topologyConfig.getKafkaOutputTopic(), null,
+        cacheConsumer = new TestKafkaConsumer(topologyConfig.getKafkaTopoCacheTopic(), null,
                 kafkaProperties(UUID.nameUUIDFromBytes(Destination.TOPOLOGY_ENGINE.toString().getBytes()).toString()));
         cacheConsumer.start();
 
-        teResponseConsumer = new TestKafkaConsumer(Topic.TEST.getId(), Destination.WFM,
+        teResponseConsumer = new TestKafkaConsumer(topologyConfig.getKafkaTopoEngTopic(),
+                Destination.WFM,
                 kafkaProperties(UUID.nameUUIDFromBytes(Destination.WFM.toString().getBytes()).toString()));
         teResponseConsumer.start();
 
@@ -965,7 +969,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         CtrlRequest request = new CtrlRequest(
                 "flowtopology/" + ComponentType.CRUD_BOLT.toString(), new RequestData("dump"), 1, "dump-correlation-id", Destination.WFM_CTRL);
 
-        sendMessage(request, flowTopology.getConfig().getKafkaCtrlTopic());
+        sendMessage(request, flowTopology.getConfig().getKafkaFlowTopic());
 
         ConsumerRecord<String, String> raw = ctrlConsumer.pollMessage();
 
@@ -1047,7 +1051,7 @@ public class FlowTopologyTest extends AbstractStormTest {
 
     private void sendTopologyEngineMessage(final Message message) throws IOException {
         String request = objectMapper.writeValueAsString(message);
-        kProducer.pushMessage(Topic.TEST.getId(), request);
+        kProducer.pushMessage(topologyConfig.getKafkaTopoEngTopic(), request);
     }
 
     private InstallOneSwitchFlow baseInstallFlowCommand(final String flowId) throws IOException {
@@ -1105,7 +1109,7 @@ public class FlowTopologyTest extends AbstractStormTest {
 
     private void sendSpeakerMessage(final Message message) throws IOException {
         String request = objectMapper.writeValueAsString(message);
-        kProducer.pushMessage(Topic.TEST.getId(), request);
+        kProducer.pushMessage(topologyConfig.getKafkaSpeakerTopic(), request);
     }
 
     private Message baseInstallRuleCommand(final Message message) throws IOException {
@@ -1129,7 +1133,8 @@ public class FlowTopologyTest extends AbstractStormTest {
     }
 
     private void sendNorthboundMessage(final CommandMessage message) throws IOException {
-        sendMessage(message, Topic.TEST.getId());
+        sendMessage(message, topologyConfig.getKafkaFlowTopic());
+        //sendMessage(message, topologyConfig.getKafkaNorthboundTopic());
     }
 
     private void sendMessage(Object object, String topic) throws IOException {

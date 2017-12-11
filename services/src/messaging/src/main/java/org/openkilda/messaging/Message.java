@@ -22,8 +22,8 @@ import static org.openkilda.messaging.Utils.PAYLOAD;
 import static org.openkilda.messaging.Utils.TIMESTAMP;
 
 import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.messaging.ctrl.CtrlResponse;
 import org.openkilda.messaging.ctrl.CtrlRequest;
+import org.openkilda.messaging.ctrl.CtrlResponse;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.info.InfoMessage;
 

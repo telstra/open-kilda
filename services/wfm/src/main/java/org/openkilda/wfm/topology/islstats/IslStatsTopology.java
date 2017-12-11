@@ -43,7 +43,7 @@ public class IslStatsTopology extends AbstractTopology {
 
         TopologyBuilder builder = new TopologyBuilder();
 
-        String topic = config.getKafkaInputTopic();
+        String topic = config.getKafkaTopoDiscoTopic();
         checkAndCreateTopic(topic);
 
         logger.debug("connecting to {} topic", topic);
@@ -55,7 +55,7 @@ public class IslStatsTopology extends AbstractTopology {
         builder.setBolt(verifyIslStatsBoltName, verifyIslStatsBolt, config.getParallelism())
                 .shuffleGrouping(spoutName);
 
-        final String openTsdbTopic = config.getKafkaTsdbTopic();
+        final String openTsdbTopic = config.getKafkaOtsdbTopic();
         checkAndCreateTopic(openTsdbTopic);
         KafkaBolt openTsdbBolt = createKafkaBolt(openTsdbTopic);
         builder.setBolt("isl-stats-opentsdb", openTsdbBolt, config.getParallelism())

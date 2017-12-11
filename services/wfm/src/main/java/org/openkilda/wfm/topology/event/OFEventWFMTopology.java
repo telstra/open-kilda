@@ -76,17 +76,17 @@ public class OFEventWFMTopology extends AbstractTopology {
 
         initKafka();
 
-        String kafkaOutputTopic = config.getKafkaOutputTopic();
+        String kafkaTopoDiscoTopic = config.getKafkaTopoDiscoTopic();
         TopologyBuilder builder = new TopologyBuilder();
         List<CtrlBoltRef> ctrlTargets = new ArrayList<>();
 
-        BoltDeclarer kbolt = builder.setBolt(kafkaOutputTopic + "-kafkabolt",
-                createKafkaBolt(kafkaOutputTopic), config.getParallelism());
+        BoltDeclarer kbolt = builder.setBolt(kafkaTopoDiscoTopic + "-kafkabolt",
+                createKafkaBolt(kafkaTopoDiscoTopic), config.getParallelism());
 
         // The order of bolts should match topics, and Link should be last .. logic below relies on it
         IStatefulBolt[] bolts = {
-                new OFESwitchBolt().withOutputStreamId(kafkaOutputTopic),
-                new OFEPortBolt().withOutputStreamId(kafkaOutputTopic),
+                new OFESwitchBolt().withOutputStreamId(kafkaTopoDiscoTopic),
+                new OFEPortBolt().withOutputStreamId(kafkaTopoDiscoTopic),
                 new OFELinkBolt(config)
         };
 
@@ -103,17 +103,17 @@ public class OFEventWFMTopology extends AbstractTopology {
             // NB: with shuffleGrouping, we can't maintain state .. would need to parse first
             //      just to pull out switchID.
             tbolt[i] = builder.setBolt(boltName, bolts[i], config.getParallelism()).shuffleGrouping(spoutName);
-            kbolt.shuffleGrouping(boltName, kafkaOutputTopic);
+            kbolt.shuffleGrouping(boltName, kafkaTopoDiscoTopic);
 
             ctrlTargets.add(new CtrlBoltRef(boltName, (ICtrlBolt) bolts[i], tbolt[i]));
         }
 
         // now hookup switch and port to the link bolt so that it can take appropriate action
-        tbolt[2].shuffleGrouping(topics[0] + "-bolt", kafkaOutputTopic)
-                .shuffleGrouping(topics[1] + "-bolt", kafkaOutputTopic);
+        tbolt[2].shuffleGrouping(topics[0] + "-bolt", kafkaTopoDiscoTopic)
+                .shuffleGrouping(topics[1] + "-bolt", kafkaTopoDiscoTopic);
 
         // finally, one more bolt, to write the ISL Discovery requests
-        String discoTopic = config.getKafkaInputTopic();
+        String discoTopic = config.getKafkaTopoDiscoTopic();
         builder.setBolt("ISL_Discovery-kafkabolt", createKafkaBolt(discoTopic), config.getParallelism())
                 .shuffleGrouping(topics[2] + "-bolt", discoTopic);
 
@@ -151,8 +151,7 @@ public class OFEventWFMTopology extends AbstractTopology {
      */
 
     private void initKafka() {
-        checkAndCreateTopic(config.getKafkaOutputTopic());
-        checkAndCreateTopic(config.getKafkaInputTopic());
+        checkAndCreateTopic(config.getKafkaTopoDiscoTopic());
         for (String topic : topics) {
             checkAndCreateTopic(topic);
         }

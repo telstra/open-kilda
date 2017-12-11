@@ -61,7 +61,7 @@ public class FlowServiceImpl implements FlowService {
     /**
      * The kafka topic.
      */
-    @Value("${kafka.topic}")
+    @Value("${kafka.flow.topic}")
     private String topic;
 
     /**

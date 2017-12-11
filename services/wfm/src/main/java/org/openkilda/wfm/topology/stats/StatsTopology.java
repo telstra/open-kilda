@@ -53,7 +53,7 @@ public class StatsTopology extends AbstractTopology {
         TopologyBuilder builder = new TopologyBuilder();
 
         final String kafkaSpoutId = StatsComponentType.STATS_OFS_KAFKA_SPOUT.toString();
-        KafkaSpout kafkaSpout = createKafkaSpout(config.getKafkaInputTopic(), kafkaSpoutId);
+        KafkaSpout kafkaSpout = createKafkaSpout(config.getKafkaStatsTopic(), kafkaSpoutId);
         builder.setSpout(kafkaSpoutId, kafkaSpout, parallelism);
 
         SpeakerBolt speakerBolt = new SpeakerBolt();
@@ -68,7 +68,7 @@ public class StatsTopology extends AbstractTopology {
         builder.setBolt(FLOW_STATS_METRIC_GEN.name(), new FlowMetricGenBolt(), parallelism)
                 .fieldsGrouping(statsOfsBolt, StatsStreamType.FLOW_STATS.toString(), fieldMessage);
 
-        final String openTsdbTopic = config.getKafkaTsdbTopic();
+        final String openTsdbTopic = config.getKafkaOtsdbTopic();
         checkAndCreateTopic(openTsdbTopic);
         builder.setBolt("stats-opentsdb", createKafkaBolt(openTsdbTopic))
                 .shuffleGrouping(PORT_STATS_METRIC_GEN.name())

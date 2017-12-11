@@ -79,11 +79,8 @@ public class OFEventWfmTest extends AbstractStormTest {
         OFEventWFMTopology manager = new OFEventWFMTopology(env);
         cluster.submitTopology(manager.makeTopologyName(), stormConfig(), manager.createTopology());
 
-        KafkaFilerTopology kafkaFiler = new KafkaFilerTopology(env, manager.getConfig().getKafkaOutputTopic());
-        cluster.submitTopology("utils-1", stormConfig(), kafkaFiler.createTopology());
-
-        KafkaFilerTopology discoFiler = new KafkaFilerTopology(env, manager.getConfig().getKafkaDiscoveryTopic());
-        cluster.submitTopology("utils-2", stormConfig(), discoFiler.createTopology());
+        KafkaFilerTopology discoFiler = new KafkaFilerTopology(env, manager.getConfig().getKafkaTopoDiscoTopic());
+        cluster.submitTopology("utils-1", stormConfig(), discoFiler.createTopology());
 
         Utils.sleep(5 * 1000);
 
@@ -118,7 +115,7 @@ public class OFEventWfmTest extends AbstractStormTest {
         Utils.sleep(4 * 1000);
 
         messagesExpected = 8; // at present, everything is passed through, no filter.
-        messagesReceived = safeLinesCount(kafkaFiler.getFiler().getFile());
+        messagesReceived = safeLinesCount(discoFiler.getFiler().getFile());
         Assert.assertEquals(messagesExpected, messagesReceived);
 
         Utils.sleep(1 * 1000);
@@ -210,24 +207,24 @@ public class OFEventWfmTest extends AbstractStormTest {
         // 2 isls, 3 seconds interval, 9 seconds test duration == 6 discovery commands
         // +2 discovery commands triggered by port up message
         messagesExpected = 8;
-        messagesReceived = outputCollectorMock.getMessagesCount(config.getKafkaDiscoveryTopic());
+        messagesReceived = outputCollectorMock.getMessagesCount(config.getKafkaTopoDiscoTopic());
         Assert.assertEquals(messagesExpected, messagesReceived);
 
         // "isl discovered" x1, "discovery failed" x1
-        messagesExpected = 2;
-        messagesReceived = outputCollectorMock.getMessagesCount(config.getKafkaOutputTopic());
+        messagesExpected = 10;
+        messagesReceived = outputCollectorMock.getMessagesCount(config.getKafkaTopoDiscoTopic());
         Assert.assertEquals(messagesExpected, messagesReceived);
 
         linkBolt.execute(tickTuple);
 
         // +2 discovery commands
-        messagesExpected = 10;
-        messagesReceived = outputCollectorMock.getMessagesCount(config.getKafkaDiscoveryTopic());
+        messagesExpected = 12;
+        messagesReceived = outputCollectorMock.getMessagesCount(config.getKafkaTopoDiscoTopic());
         Assert.assertEquals(messagesExpected, messagesReceived);
 
         // +2 discovery fails
-        messagesExpected = 4;
-        messagesReceived = outputCollectorMock.getMessagesCount(config.getKafkaOutputTopic());
+        messagesExpected = 14;
+        messagesReceived = outputCollectorMock.getMessagesCount(config.getKafkaTopoDiscoTopic());
         Assert.assertEquals(messagesExpected, messagesReceived);
     }
 

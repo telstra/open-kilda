@@ -49,7 +49,7 @@ public class OFEventSplitterTopology extends AbstractTopology {
     public StormTopology createTopology() {
         logger.debug("Building Topology - {}", getTopologyName());
 
-        String topic = config.getKafkaInputTopic();
+        String topic = config.getKafkaTopoDiscoTopic();
         Integer parallelism = config.getParallelism();
 
         /*
