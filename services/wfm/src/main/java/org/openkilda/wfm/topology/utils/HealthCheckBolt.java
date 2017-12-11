@@ -63,7 +63,7 @@ public class HealthCheckBolt extends BaseRichBolt {
             if (message instanceof CommandMessage) {
                 Values values = new Values(Utils.MAPPER.writeValueAsString(new InfoMessage(healthCheck,
                         System.currentTimeMillis(), message.getCorrelationId(), Destination.NORTHBOUND)));
-                collector.emit(Topic.HEALTH_CHECK.getId(), input, values);
+                collector.emit(Topic.HEALTH_CHECK, input, values);
             }
         } catch (IOException exception) {
             logger.error("Could not deserialize message: ", request, exception);
@@ -74,6 +74,6 @@ public class HealthCheckBolt extends BaseRichBolt {
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declareStream(Topic.HEALTH_CHECK.getId(), fieldMessage);
+        declarer.declareStream(Topic.HEALTH_CHECK, fieldMessage);
     }
 }

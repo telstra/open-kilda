@@ -46,6 +46,7 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.openkilda.floodlight.pathverification.type.PathType;
 import org.openkilda.floodlight.pathverification.web.PathVerificationServiceWebRoutable;
 import org.openkilda.messaging.Message;
+import org.openkilda.messaging.Topic;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
@@ -88,7 +89,7 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
     public static final String VERIFICATION_BCAST_PACKET_DST = "00:26:e1:ff:ff:ff";
     public static final int VERIFICATION_PACKET_UDP_PORT = 61231;
     public static final String VERIFICATION_PACKET_IP_DST = "192.168.0.255";
-    private static final String TOPIC = "kilda.path";
+    private static final String TOPIC = Topic.TOPO_DISCO;
     private static final Logger logger = LoggerFactory.getLogger(PathVerificationService.class);
 
     private IFloodlightProviderService floodlightProvider;

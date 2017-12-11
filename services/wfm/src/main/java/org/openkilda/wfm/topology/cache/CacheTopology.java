@@ -37,7 +37,7 @@ public class CacheTopology extends AbstractTopology {
     private static final Logger logger = LoggerFactory.getLogger(CacheTopology.class);
 
     public static final String SPOUT_ID_COMMON = "generic";
-    public static final String SPOUT_ID_TOPOLOGY = "topology";
+//    public static final String SPOUT_ID_TOPOLOGY = "topology";
     public static final String BOLT_ID_CACHE = "cache";
     public static final String BOLT_ID_COMMON_OUTPUT = "common.out";
     public static final String BOLT_ID_TOPOLOGY_OUTPUT = "topology.out";
@@ -69,14 +69,15 @@ public class CacheTopology extends AbstractTopology {
         /*
          * Receives cache from storage.
          */
-        kafkaSpout = createKafkaSpout(config.getKafkaInputTopic(), SPOUT_ID_COMMON);
+        kafkaSpout = createKafkaSpout(config.getKafkaTopoCacheTopic(), SPOUT_ID_COMMON);
         builder.setSpout(SPOUT_ID_COMMON, kafkaSpout, parallelism);
 
-        /*
-         * Receives cache updates from WFM topology.
-         */
-        kafkaSpout = createKafkaSpout(config.getKafkaOutputTopic(), SPOUT_ID_TOPOLOGY);
-        builder.setSpout(SPOUT_ID_TOPOLOGY, kafkaSpout, parallelism);
+// (carmine) - as part of 0.8 refactor, merged inputs to one topic, so this isn't neccessary
+//        /*
+//         * Receives cache updates from WFM topology.
+//         */
+//        kafkaSpout = createKafkaSpout(config.getKafkaTopoCacheTopic(), SPOUT_ID_TOPOLOGY);
+//        builder.setSpout(SPOUT_ID_TOPOLOGY, kafkaSpout, parallelism);
 
         /*
          * Stores network cache.
@@ -84,21 +85,23 @@ public class CacheTopology extends AbstractTopology {
         CacheBolt cacheBolt = new CacheBolt(config.getDiscoveryTimeout());
         boltSetup = builder.setBolt(BOLT_ID_CACHE, cacheBolt, parallelism)
                 .shuffleGrouping(SPOUT_ID_COMMON)
-                .shuffleGrouping(SPOUT_ID_TOPOLOGY);
+// (carmine) as per above comment, only a single input streamt
+//                .shuffleGrouping(SPOUT_ID_TOPOLOGY)
+        ;
         ctrlTargets.add(new CtrlBoltRef(BOLT_ID_CACHE, cacheBolt, boltSetup));
 
         KafkaBolt kafkaBolt;
         /*
          * Sends network events to storage.
          */
-        kafkaBolt = createKafkaBolt(config.getKafkaInputTopic());
+        kafkaBolt = createKafkaBolt(config.getKafkaTopoEngTopic());
         builder.setBolt(BOLT_ID_COMMON_OUTPUT, kafkaBolt, parallelism)
                 .shuffleGrouping(BOLT_ID_CACHE, StreamType.TPE.toString());
 
         /*
          * Sends cache dump to WFM topology.
          */
-        kafkaBolt = createKafkaBolt(config.getKafkaNetCacheTopic());
+        kafkaBolt = createKafkaBolt(config.getKafkaFlowTopic());
         builder.setBolt(BOLT_ID_TOPOLOGY_OUTPUT, kafkaBolt, parallelism)
                 .shuffleGrouping(BOLT_ID_CACHE, StreamType.WFM_DUMP.toString());
 
@@ -109,9 +112,9 @@ public class CacheTopology extends AbstractTopology {
     }
 
     private void initKafkaTopics() {
-        checkAndCreateTopic(config.getKafkaInputTopic());
-        checkAndCreateTopic(config.getKafkaOutputTopic());
-        checkAndCreateTopic(config.getKafkaNetCacheTopic());
+        checkAndCreateTopic(config.getKafkaFlowTopic());
+        checkAndCreateTopic(config.getKafkaTopoEngTopic());
+        checkAndCreateTopic(config.getKafkaTopoCacheTopic());
     }
 
     public static void main(String[] args) {

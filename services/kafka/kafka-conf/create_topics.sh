@@ -18,20 +18,15 @@
 STD_OPTS="--create --partition 1 --replication-factor 1 "
 CREATE_SIMPLE="/opt/kafka/bin/kafka-topics.sh --zookeeper zookeeper.pendev:2181 ${STD_OPTS} --topic"
 
+${CREATE_SIMPLE} kilda.ctrl
+${CREATE_SIMPLE} kilda.flow
+${CREATE_SIMPLE} kilda.health.check
+${CREATE_SIMPLE} kilda.northbound
+${CREATE_SIMPLE} kilda.otsdb
+${CREATE_SIMPLE} kilda.simulator
 ${CREATE_SIMPLE} kilda.speaker
-${CREATE_SIMPLE} kilda-test
-${CREATE_SIMPLE} speaker.command
-${CREATE_SIMPLE} speaker.other
-${CREATE_SIMPLE} speaker.info
-${CREATE_SIMPLE} speaker.info.switch
-${CREATE_SIMPLE} speaker.info.switch.updown
-${CREATE_SIMPLE} speaker.info.switch.other
-${CREATE_SIMPLE} speaker.info.port
-${CREATE_SIMPLE} speaker.info.port.updown
-${CREATE_SIMPLE} speaker.info.port.other
-${CREATE_SIMPLE} speaker.info.isl
-${CREATE_SIMPLE} speaker.info.isl.updown
-${CREATE_SIMPLE} speaker.info.isl.other
-${CREATE_SIMPLE} speaker.info.other
-${CREATE_SIMPLE} kilda.wfm.topo.updown
-${CREATE_SIMPLE} opentsdb-topic
+${CREATE_SIMPLE} kilda.stats
+${CREATE_SIMPLE} kilda.topo.cache
+${CREATE_SIMPLE} kilda.topo.disco
+${CREATE_SIMPLE} kilda.topo.eng
+

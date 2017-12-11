@@ -80,7 +80,8 @@ public class MessageConsumerConfig {
 
     /**
      * Kafka consumer factory bean. The strategy to produce a {@link org.apache.kafka.clients.consumer.Consumer}
-     * instance with {@link MessageConsumerConfig#consumerConfigs} on each {@link org.springframework.kafka.core.DefaultKafkaConsumerFactory#createConsumer}
+     * instance with {@link MessageConsumerConfig#consumerConfigs} on each
+     * {@link org.springframework.kafka.core.DefaultKafkaConsumerFactory#createConsumer}
      * invocation.
      *
      * @return kafka consumer factory
@@ -91,7 +92,8 @@ public class MessageConsumerConfig {
     }
 
     /**
-     * Kafka listener container factory bean. Returned instance builds {@link org.springframework.kafka.listener.ConcurrentMessageListenerContainer}
+     * Kafka listener container factory bean. Returned instance builds
+     * {@link org.springframework.kafka.listener.ConcurrentMessageListenerContainer}
      * using the {@link org.apache.kafka.clients.consumer.Consumer}.
      *
      * @return kafka listener container factory
@@ -120,7 +122,8 @@ public class MessageConsumerConfig {
 
     /**
      * Kafka message consumer bean. Instance of {@link KafkaHealthCheckMessageConsumer} contains {@link
-     * org.springframework.kafka.annotation.KafkaListener} to be run in {@link org.springframework.kafka.listener.ConcurrentMessageListenerContainer}.
+     * org.springframework.kafka.annotation.KafkaListener} to be run in
+     * {@link org.springframework.kafka.listener.ConcurrentMessageListenerContainer}.
      *
      * @return kafka health-check message consumer
      */

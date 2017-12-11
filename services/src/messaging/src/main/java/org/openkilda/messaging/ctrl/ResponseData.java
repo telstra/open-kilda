@@ -28,6 +28,13 @@ public class ResponseData implements Serializable {
     @JsonProperty("topology")
     private String topology;
 
+    /**
+     * Specify the component directly.
+     *
+     * @param component The component
+     * @param taskId    The taskId
+     * @param topology  The topology
+     */
     public ResponseData(
             @JsonProperty("component") String component,
             @JsonProperty("task_id") Integer taskId,
@@ -37,6 +44,12 @@ public class ResponseData implements Serializable {
         this.topology = topology;
     }
 
+    /**
+     * Derive the component from the context.
+     *
+     * @param context  The context
+     * @param topology  The topology
+     */
     public ResponseData(TopologyContext context, String topology) {
         this.component = context.getThisComponentId();
         this.taskId = context.getThisTaskId();

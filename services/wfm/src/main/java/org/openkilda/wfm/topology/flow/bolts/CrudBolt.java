@@ -158,9 +158,12 @@ public class CrudBolt
      */
     @Override
     public void execute(Tuple tuple) {
+
+        logger.warn("FRED 1");
         if (CtrlAction.boltHandlerEntrance(this, tuple))
             return;
 
+        logger.warn("FRED 2");
         logger.trace("Flow Cache before: {}", flowCache);
 
         ComponentType componentId = ComponentType.valueOf(tuple.getSourceComponent());
@@ -168,9 +171,11 @@ public class CrudBolt
         String flowId = tuple.getStringByField(Utils.FLOW_ID);
         String correlationId = Utils.DEFAULT_CORRELATION_ID;
 
+        logger.warn("FRED 3");
         try {
             logger.debug("Request tuple={}", tuple);
 
+            logger.warn("FRED 4");
             switch (componentId) {
 
                 case SPLITTER_BOLT:
@@ -200,6 +205,7 @@ public class CrudBolt
                             handleRerouteRequest(message, tuple);
                             break;
                         case STATUS:
+                            logger.warn("FRED 5");
                             handleStatusRequest(flowId, message, tuple);
                             break;
                         case READ:
@@ -210,6 +216,8 @@ public class CrudBolt
                             }
                             break;
                         default:
+                            logger.warn("FRED 6");
+
                             logger.debug("Unexpected stream: component={}, stream={}", componentId, streamId);
                             break;
                     }

@@ -262,14 +262,14 @@ public abstract class AbstractTopology implements Topology {
      * @param prefix  component id
      */
     protected void createHealthCheckHandler(TopologyBuilder builder, String prefix) {
-        checkAndCreateTopic(Topic.HEALTH_CHECK.getId());
-        org.apache.storm.kafka.KafkaSpout healthCheckKafkaSpout = createKafkaSpout(Topic.HEALTH_CHECK.getId(), prefix);
+        checkAndCreateTopic(Topic.HEALTH_CHECK);
+        org.apache.storm.kafka.KafkaSpout healthCheckKafkaSpout = createKafkaSpout(Topic.HEALTH_CHECK, prefix);
         builder.setSpout(prefix + "HealthCheckKafkaSpout", healthCheckKafkaSpout, 1);
         HealthCheckBolt healthCheckBolt = new HealthCheckBolt(prefix);
         builder.setBolt(prefix + "HealthCheckBolt", healthCheckBolt, 1)
                 .shuffleGrouping(prefix + "HealthCheckKafkaSpout");
-        KafkaBolt healthCheckKafkaBolt = createKafkaBolt(Topic.HEALTH_CHECK.getId());
+        KafkaBolt healthCheckKafkaBolt = createKafkaBolt(Topic.HEALTH_CHECK);
         builder.setBolt(prefix + "HealthCheckKafkaBolt", healthCheckKafkaBolt, 1)
-                .shuffleGrouping(prefix + "HealthCheckBolt", Topic.HEALTH_CHECK.getId());
+                .shuffleGrouping(prefix + "HealthCheckBolt", Topic.HEALTH_CHECK);
     }
 }

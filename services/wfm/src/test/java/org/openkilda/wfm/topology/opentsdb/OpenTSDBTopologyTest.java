@@ -17,6 +17,7 @@ import org.mockserver.model.HttpRequest;
 import org.mockserver.model.HttpResponse;
 import org.mockserver.verify.VerificationTimes;
 import org.openkilda.messaging.info.Datapoint;
+import org.openkilda.messaging.Topic;
 import org.openkilda.wfm.StableAbstractStormTest;
 import org.openkilda.wfm.topology.TestingKafkaBolt;
 
@@ -48,7 +49,9 @@ public class OpenTSDBTopologyTest extends StableAbstractStormTest {
         Datapoint datapoint = new Datapoint("metric", timestamp, Collections.emptyMap(), 123);
 
         MockedSources sources = new MockedSources();
-        sources.addMockData("opentsdb-topic-spout",
+        // TODO: rather than use Topic.OTSDB, grab it from the TopologyConfig object (which does
+        // not exist at this point in the code.
+        sources.addMockData(Topic.OTSDB+"-spout",
                 new Values(MAPPER.writeValueAsString(datapoint)));
         completeTopologyParam.setMockedSources(sources);
 
@@ -69,7 +72,7 @@ public class OpenTSDBTopologyTest extends StableAbstractStormTest {
         String jsonDatapoint = MAPPER.writeValueAsString(datapoint);
 
         MockedSources sources = new MockedSources();
-        sources.addMockData("opentsdb-topic-spout",
+        sources.addMockData(Topic.OTSDB+"-spout",
                 new Values(jsonDatapoint), new Values(jsonDatapoint));
         completeTopologyParam.setMockedSources(sources);
 
