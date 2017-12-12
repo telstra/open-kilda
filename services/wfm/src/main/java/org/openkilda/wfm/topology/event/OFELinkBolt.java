@@ -215,6 +215,7 @@ public class OFELinkBolt
         String discoFail = OFEMessageUtils.createIslFail(switchId, portId);
         Values dataVal = new Values(PAYLOAD, discoFail, switchId, portId, OFEMessageUtils.LINK_DOWN);
         collector.emit(outputStreamId, tuple, dataVal);
+        discovery.handleFailed(switchId, portId);
         logger.warn("LINK: Send ISL discovery failure message={}", discoFail);
     }
 

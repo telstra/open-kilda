@@ -28,18 +28,26 @@ public class DiscoveryManager {
         for (DiscoveryNode subject : pollQueue) {
             Node node = new Node(subject.getSwitchId(), subject.getPortId());
 
-            if (subject.isStale(consecutiveLostTillFail)) {
+            if (subject.forlorn()) {
+               continue;
+            } else if (subject.isStale(consecutiveLostTillFail) && subject.timeToCheck()) {
                 result.discoveryFailure.add(node);
+                subject.resetTickCounter();
+                continue;
+            } else if (subject.isStale(consecutiveLostTillFail) && !subject.timeToCheck()){
+                subject.logTick();
                 continue;
             }
 
             if (filter.isMatch(subject)) {
                 logger.debug("Skip {} due to ISL filter match", subject);
                 subject.renew();
+                subject.resetTickCounter();
                 continue;
             }
 
             subject.incAge();
+            subject.resetTickCounter();
             result.needDiscovery.add(node);
         }
 
@@ -58,7 +66,18 @@ public class DiscoveryManager {
             logger.info("Handle \"AVAIL\" event for {}", subject);
         }
     }
+    public void handleFailed(String switchId, String portId) {
+        Node node = new Node(switchId, portId);
+        List<DiscoveryNode> subjectList = filterQueue(node);
 
+        if (subjectList.size() == 0) {
+            logger.warn("Ignoring \"FAILED\" request for {}: node not found", node);
+        } else {
+            DiscoveryNode subject = subjectList.get(0);
+            subject.countFailure();
+            logger.info("Successfully handled \"FAILED\" event for {}", subject);
+        }
+    }
     public void handleSwitchUp(String switchId) {
         logger.info("Register switch {} into ISL discovery manager", switchId);
     }
@@ -84,7 +103,7 @@ public class DiscoveryManager {
             return;
         }
 
-        subject = new DiscoveryNode(node.switchId, node.portId);
+        subject = new DiscoveryNode(node.switchId);
         pollQueue.add(subject);
         logger.info("New {}", subject);
     }
