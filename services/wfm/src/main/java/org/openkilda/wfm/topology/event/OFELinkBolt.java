@@ -229,7 +229,7 @@ public class OFELinkBolt
 
     @Override
     public AbstractDumpState dumpState() {
-        return new OFELinkBoltState(discoveryQueue);
+        return new OFELinkBoltState(discoveryQueue, islFilter.getMatchSet());
     }
 
     @Override
