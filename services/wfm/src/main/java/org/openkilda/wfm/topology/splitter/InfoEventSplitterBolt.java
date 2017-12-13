@@ -28,6 +28,9 @@ import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
+import org.openkilda.messaging.info.event.IslChangeType;
+import org.openkilda.messaging.info.event.PortChangeType;
+import org.openkilda.messaging.info.event.SwitchState;
 
 import java.io.IOException;
 import java.util.Map;
@@ -78,8 +81,7 @@ public class InfoEventSplitterBolt extends BaseRichBolt {
             case "switch":
                 _collector.emit(I_SWITCH, tuple, dataVal);
                 logger.debug("EMIT {} : {}", I_SWITCH, dataVal);
-                if (state.equals("ACTIVATED") || state.equals("DEACTIVATED")
-                        || state.equals("ADDED") || state.equals("REMOVED")) {
+                if (isSwitchUpdownStream(state)) {
                     _collector.emit(I_SWITCH_UPDOWN, tuple, dataVal);
                     logger.debug("EMIT {} : {}", I_SWITCH_UPDOWN, dataVal);
                 } else {
@@ -90,7 +92,7 @@ public class InfoEventSplitterBolt extends BaseRichBolt {
             case "port":
                 _collector.emit(I_PORT, tuple, dataVal);
                 logger.debug("EMIT {} : {}", I_PORT, dataVal);
-                if (state.equals("UP") || state.equals("DOWN") || state.equals("ADD")) {
+                if (isPortUpdownStream(state)) {
                     _collector.emit(I_PORT_UPDOWN, tuple, dataVal);
                 } else {
                     _collector.emit(I_PORT_OTHER, tuple, dataVal);
@@ -99,7 +101,7 @@ public class InfoEventSplitterBolt extends BaseRichBolt {
             case "isl":
                 _collector.emit(I_ISL, tuple, dataVal);
                 logger.debug("EMIT {} : {}", I_ISL, dataVal);
-                if (state != null && (state.equals("DISCOVERED") || state.equals("FAILED"))) {
+                if (state != null && isIslUpdownStream(state)) {
                     _collector.emit(I_ISL_UPDOWN, tuple, dataVal);
                 } else {
                     _collector.emit(I_ISL_OTHER, tuple, dataVal);
@@ -139,6 +141,21 @@ public class InfoEventSplitterBolt extends BaseRichBolt {
             logger.trace("Declaring Stream: " + name);
             declarer.declareStream(name, f);
         }
+    }
+
+    private boolean isSwitchUpdownStream(String state) {
+        SwitchState switchState = SwitchState.from(state);
+        return switchState.isActive() || switchState.isInactive();
+    }
+    
+    private boolean isPortUpdownStream(String state) {
+        PortChangeType type = PortChangeType.from(state);
+        return type.isActive() || type == PortChangeType.DOWN || type == PortChangeType.CACHED;
+    }
+
+    private boolean isIslUpdownStream(String state) {
+        IslChangeType changeType = IslChangeType.from(state);
+        return changeType == IslChangeType.DISCOVERED || changeType == IslChangeType.FAILED;
     }
 }
 

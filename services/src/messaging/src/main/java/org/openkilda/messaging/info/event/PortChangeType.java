@@ -20,6 +20,8 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
+import java.util.Arrays;
+
 /**
  * Enum represents port change message types.
  */
@@ -49,7 +51,12 @@ public enum PortChangeType {
     /**
      * Down port change message type.
      */
-    DOWN("DOWN");
+    DOWN("DOWN"),
+
+    /**
+     * Port's switch was cached.
+     */
+    CACHED("CACHED");
 
     /**
      * Info Message type.
@@ -82,5 +89,16 @@ public enum PortChangeType {
     @Override
     public String toString() {
         return type;
+    }
+
+    public static PortChangeType from(String state) {
+        return Arrays.stream(PortChangeType.values())
+                .filter(item -> item.type.equalsIgnoreCase(state))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException(String.format("Incorrect port state: %s", state)));
+    }
+
+    public boolean isActive() {
+        return this == ADD || this == UP;
     }
 }

@@ -40,7 +40,12 @@ public enum FlowState {
     /**
      * Flow down state.
      */
-    DOWN("Down");
+    DOWN("Down"),
+
+    /**
+     * Flow is cached.
+     */
+    CACHED("Cached");
 
     /**
      * Flow state.
