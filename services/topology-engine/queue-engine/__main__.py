@@ -20,10 +20,12 @@ gevent.monkey.patch_all(Event=True)
 
 from topologylistener.eventhandler import main_loop
 from topologylistener import logger
+from topologylistener.topology_reader import read_topologies
 
 LOG = logger.get_logger()
 
 try:
+    read_topologies()
 
     LOG.info('Topology engine starting.')
     main_loop()

@@ -37,5 +37,10 @@ public enum StreamType {
     /**
      * Request cache dump.
      */
-    CACHE_WFM
+    CACHE_WFM,
+
+    /**
+     * OFE stream.
+     */
+    OFE
 }

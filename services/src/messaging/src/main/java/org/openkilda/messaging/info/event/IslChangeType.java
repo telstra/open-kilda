@@ -20,6 +20,8 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
+import java.util.Arrays;
+
 /**
  * Enum represents isl change message types.
  */
@@ -35,6 +37,11 @@ public enum IslChangeType {
      * Isl discovery failed message type.
      */
     FAILED("FAILED"),
+
+    /**
+     * Isl was created via pre-population.
+     */
+    CACHED("CACHED"),
 
     /**
      * Other-update isl change message type.
@@ -73,4 +80,12 @@ public enum IslChangeType {
     public String toString() {
         return type;
     }
+
+    public static IslChangeType from(String state) {
+        return Arrays.stream(IslChangeType.values())
+                .filter(item -> item.type.equalsIgnoreCase(state))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException(String.format("Incorrect isl state: %s", state)));
+    }
+
 }

@@ -15,18 +15,17 @@
 
 package org.openkilda.wfm.topology.cache;
 
-import org.apache.storm.topology.BoltDeclarer;
-import org.openkilda.wfm.NameCollisionException;
-import org.openkilda.messaging.ServiceType;
-import org.openkilda.wfm.ConfigurationException;
-import org.openkilda.wfm.CtrlBoltRef;
-import org.openkilda.wfm.topology.AbstractTopology;
-import org.openkilda.wfm.LaunchEnvironment;
-
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.KafkaSpout;
 import org.apache.storm.kafka.bolt.KafkaBolt;
+import org.apache.storm.topology.BoltDeclarer;
 import org.apache.storm.topology.TopologyBuilder;
+import org.openkilda.messaging.ServiceType;
+import org.openkilda.wfm.ConfigurationException;
+import org.openkilda.wfm.CtrlBoltRef;
+import org.openkilda.wfm.LaunchEnvironment;
+import org.openkilda.wfm.NameCollisionException;
+import org.openkilda.wfm.topology.AbstractTopology;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,11 +35,12 @@ import java.util.List;
 public class CacheTopology extends AbstractTopology {
     private static final Logger logger = LoggerFactory.getLogger(CacheTopology.class);
 
-    public static final String SPOUT_ID_COMMON = "generic";
-    public static final String SPOUT_ID_TOPOLOGY = "topology";
-    public static final String BOLT_ID_CACHE = "cache";
-    public static final String BOLT_ID_COMMON_OUTPUT = "common.out";
-    public static final String BOLT_ID_TOPOLOGY_OUTPUT = "topology.out";
+    private static final String BOLT_ID_COMMON_OUTPUT = "common.out";
+    private static final String BOLD_ID_OFE = "event.out";
+    private static final String BOLT_ID_TOPOLOGY_OUTPUT = "topology.out";
+    static final String BOLT_ID_CACHE = "cache";
+    static final String SPOUT_ID_COMMON = "generic";
+    static final String SPOUT_ID_TOPOLOGY = "topology";
 
     public CacheTopology(LaunchEnvironment env) throws ConfigurationException {
         super(env);
@@ -96,11 +96,18 @@ public class CacheTopology extends AbstractTopology {
                 .shuffleGrouping(BOLT_ID_CACHE, StreamType.TPE.toString());
 
         /*
-         * Sends cache dump to WFM topology.
+         * Sends cache dump and reroute requests to WFM topology.
          */
         kafkaBolt = createKafkaBolt(config.getKafkaNetCacheTopic());
         builder.setBolt(BOLT_ID_TOPOLOGY_OUTPUT, kafkaBolt, parallelism)
                 .shuffleGrouping(BOLT_ID_CACHE, StreamType.WFM_DUMP.toString());
+
+        /*
+         * Sends requests for ISL to OFE topology.
+         */
+        KafkaBolt oFEKafkaBolt = createKafkaBolt(config.getKafkaOutputTopic());
+        builder.setBolt(BOLD_ID_OFE, oFEKafkaBolt, parallelism)
+                .shuffleGrouping(BOLT_ID_CACHE, StreamType.OFE.toString());
 
         createCtrlBranch(builder, ctrlTargets);
         createHealthCheckHandler(builder, ServiceType.CACHE_TOPOLOGY.getId());

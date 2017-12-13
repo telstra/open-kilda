@@ -18,10 +18,21 @@ package org.openkilda.wfm.topology.event;
 import static org.openkilda.messaging.Utils.MAPPER;
 import static org.openkilda.messaging.Utils.PAYLOAD;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.apache.storm.state.KeyValueState;
+import org.apache.storm.task.OutputCollector;
+import org.apache.storm.task.TopologyContext;
+import org.apache.storm.topology.OutputFieldsDeclarer;
+import org.apache.storm.tuple.Fields;
+import org.apache.storm.tuple.Tuple;
+import org.apache.storm.tuple.Values;
 import org.openkilda.messaging.ctrl.AbstractDumpState;
 import org.openkilda.messaging.ctrl.state.OFELinkBoltState;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.messaging.info.event.PortChangeType;
+import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.wfm.OFEMessageUtils;
 import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
@@ -32,16 +43,6 @@ import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.TopologyConfig;
 import org.openkilda.wfm.topology.splitter.InfoEventSplitterBolt;
 import org.openkilda.wfm.topology.utils.AbstractTickStatefulBolt;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.apache.storm.state.KeyValueState;
-import org.apache.storm.task.OutputCollector;
-import org.apache.storm.task.TopologyContext;
-import org.apache.storm.topology.OutputFieldsDeclarer;
-import org.apache.storm.tuple.Fields;
-import org.apache.storm.tuple.Tuple;
-import org.apache.storm.tuple.Values;
 
 import java.io.IOException;
 import java.util.LinkedList;
@@ -158,31 +159,31 @@ public class OFELinkBolt
         }
     }
 
-    protected void handleSwitchEvent(Tuple tuple) {
+    private void handleSwitchEvent(Tuple tuple) {
         String switchID = tuple.getStringByField(OFEMessageUtils.FIELD_SWITCH_ID);
-        String updown = tuple.getStringByField(OFEMessageUtils.FIELD_STATE);
-        logger.info("LINK: Event switch={} state={}", switchID, updown);
+        String state = tuple.getStringByField(OFEMessageUtils.FIELD_STATE);
+        logger.info("LINK: Event switch={} state={}", switchID, state);
 
-        if (updown.equals(OFEMessageUtils.SWITCH_DOWN)) {
+        if (SwitchState.DEACTIVATED.getType().equals(state)) {
             // current logic: switch down means stop checking associated ports/links.
             // - possible extra steps of validation of switch down should occur elsewhere
             // - possible extra steps of generating link down messages aren't important since
             //      the TPE will drop the switch node from its graph.
             discovery.handleSwitchDown(switchID);
-        } else if (updown.equals(OFEMessageUtils.SWITCH_UP)) {
+        } else if (SwitchState.ACTIVATED.getType().equals(state)) {
             discovery.handleSwitchUp(switchID);
         } else {
-            logger.error("DATA ENCODING ISSUE: illegal switch up/down status: {}", updown);
+            logger.error("DATA ENCODING ISSUE: illegal switch up/down status: {}", state);
         }
     }
 
-    protected void handlePortEvent(Tuple tuple) {
+    private void handlePortEvent(Tuple tuple) {
         String switchID = tuple.getStringByField(OFEMessageUtils.FIELD_SWITCH_ID);
         String portID = tuple.getStringByField(OFEMessageUtils.FIELD_PORT_ID);
         String updown = tuple.getStringByField(OFEMessageUtils.FIELD_STATE);
         logger.info("LINK: Event switch={} port={} state={}", switchID, portID, updown);
 
-        if (updown.equals(OFEMessageUtils.PORT_UP) || updown.equals(OFEMessageUtils.PORT_ADD)) {
+        if (isPortUpOrCached(updown)) {
             discovery.handlePortUp(switchID, portID);
         } else if (updown.equals(OFEMessageUtils.PORT_DOWN)) {
             discovery.handlePortDown(switchID, portID);
@@ -191,7 +192,7 @@ public class OFELinkBolt
         }
     }
 
-    protected void handleIslEvent(Tuple tuple) {
+    private void handleIslEvent(Tuple tuple) {
         logger.info("LINK: Event ISL Discovered {}", tuple);
 
         String data = tuple.getString(0);
@@ -216,6 +217,11 @@ public class OFELinkBolt
         Values dataVal = new Values(PAYLOAD, discoFail, switchId, portId, OFEMessageUtils.LINK_DOWN);
         collector.emit(outputStreamId, tuple, dataVal);
         logger.warn("LINK: Send ISL discovery failure message={}", discoFail);
+    }
+
+    private boolean isPortUpOrCached(String state) {
+        return OFEMessageUtils.PORT_UP.equals(state) || OFEMessageUtils.PORT_ADD.equals(state) ||
+                PortChangeType.CACHED.getType().equals(state);
     }
 
     @Override
