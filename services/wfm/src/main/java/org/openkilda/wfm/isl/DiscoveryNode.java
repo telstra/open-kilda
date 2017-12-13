@@ -4,13 +4,14 @@ import java.io.Serializable;
 import java.util.Objects;
 
 public class DiscoveryNode implements Serializable {
+    // FIXME(surabujin): ... is there any better way to define this value?
     private final static int NEVER = 999999;
     private final String switchId;
     private final String portId;
     private int age;
     private int timeCounter;
     private int checkInterval;
-    private int consequitiveFailures;
+    private int consecutiveFailures;
     private int forlornThreshold;
 
 
@@ -21,17 +22,17 @@ public class DiscoveryNode implements Serializable {
         this.timeCounter = 0;
         this.checkInterval = checkInterval;
         this.forlornThreshold = forlornThreshold;
-        consequitiveFailures = 0;
+        consecutiveFailures = 0;
     }
 
     public DiscoveryNode(String switchId, String portId) {
         //FIXME: extract checkInterval & forlornThreshold from a config.
-        this(switchId, portId, 1, NEVER);
+        this(switchId, portId, 0, NEVER);
     }
 
     public DiscoveryNode(String switchId) {
         //FIXME: extract checkInterval & forlornThreshold from a config.
-        this(switchId, "", 1, NEVER);
+        this(switchId, "", 0, NEVER);
     }
 
     public void renew() {
@@ -43,11 +44,11 @@ public class DiscoveryNode implements Serializable {
         if (forlornThreshold == NEVER) { // never gonna give a link up.
              return false;
         }
-        return consequitiveFailures >= forlornThreshold;
+        return consecutiveFailures >= forlornThreshold;
     }
 
     public void redeem() {
-        consequitiveFailures = 0;
+        consecutiveFailures = 0;
     }
 
     public void incAge() {
@@ -67,7 +68,7 @@ public class DiscoveryNode implements Serializable {
     }
 
     public void countFailure() {
-        consequitiveFailures++;
+        consecutiveFailures++;
     }
 
     public boolean timeToCheck() {
