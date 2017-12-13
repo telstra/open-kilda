@@ -7,17 +7,24 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class OFELinkBoltState extends AbstractDumpState {
-    @JsonProperty("state")
-    Map<String, LinkTrackerDump> state;
+    @JsonProperty("discovery")
+    private final List<?> discovery;
+
+    @JsonProperty("filtered")
+    private final Set<?> filtered;
 
     @JsonCreator
     public OFELinkBoltState(
-            @JsonProperty("state") Map<String, LinkTrackerDump> state) {
-        this.state = state;
+            @JsonProperty("state") List<?> discovery,
+            @JsonProperty("filtered") Set<?> filtered) {
+        this.discovery = discovery;
+        this.filtered = filtered;
     }
 }

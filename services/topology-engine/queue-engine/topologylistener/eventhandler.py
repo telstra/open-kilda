@@ -24,6 +24,7 @@ import gevent.queue
 from messageclasses import MessageItem
 from logger import get_logger
 import config
+import topology_reader
 
 logger = get_logger()
 known_messages = ['switch', 'isl', 'port', 'flow_operation']
@@ -39,6 +40,8 @@ def main_loop():
     pool = gevent.pool.Pool(pool_size)
 
     consumer = kafkareader.create_consumer(config)
+
+    topology_reader.read_topologies()
 
     while True:
         try:
