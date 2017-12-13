@@ -22,7 +22,8 @@ public enum FlowOperation {
     CREATE("Create"),
     DELETE("Delete"),
     UPDATE("Update"),
-    STATE("State");
+    STATE("State"),
+    CACHE("Cache");
 
     @JsonProperty("operation")
     private final String operation;

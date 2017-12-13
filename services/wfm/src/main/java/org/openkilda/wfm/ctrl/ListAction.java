@@ -5,7 +5,7 @@ import org.openkilda.messaging.ctrl.ResponseData;
 import org.openkilda.wfm.MessageFormatException;
 import org.openkilda.wfm.UnsupportedActionException;
 
-public class ListAction extends CtrlSubAction {
+public class ListAction extends CtrlEmbeddedAction {
     public ListAction(CtrlAction master, RouteMessage message) {
         super(master, message);
     }
