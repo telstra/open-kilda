@@ -70,9 +70,6 @@ public class OFELinkBolt
     private DiscoveryManager discovery;
     private LinkedList<DiscoveryNode> discoveryQueue;
 
-    // DEBUG
-    private int cycles = 0;
-
     /**
      * Default constructor .. default health check frequency
      */
@@ -114,8 +111,6 @@ public class OFELinkBolt
      */
     @Override
     protected void doTick(Tuple tuple) {
-        cycles++;
-
         DiscoveryManager.Plan discoveryPlan = discovery.makeDiscoveryPlan();
         for (DiscoveryManager.Node node : discoveryPlan.needDiscovery) {
             String json = OFEMessageUtils.createIslDiscovery(node.switchId, node.portId);
@@ -236,7 +231,7 @@ public class OFELinkBolt
 
     @Override
     public AbstractDumpState dumpState() {
-        return new OFELinkBoltState(discoveryQueue);
+        return new OFELinkBoltState(discoveryQueue, islFilter.getMatchSet());
     }
 
     @Override
