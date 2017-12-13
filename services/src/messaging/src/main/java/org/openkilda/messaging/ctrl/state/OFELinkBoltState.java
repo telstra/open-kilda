@@ -8,16 +8,22 @@ import org.openkilda.messaging.ctrl.AbstractDumpState;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class OFELinkBoltState extends AbstractDumpState {
     @JsonProperty("discovery")
-    List<?> discovery;
+    private final List<?> discovery;
+
+    @JsonProperty("filtered")
+    private final Set<?> filtered;
 
     @JsonCreator
     public OFELinkBoltState(
-            @JsonProperty("state") List<?> discovery) {
+            @JsonProperty("state") List<?> discovery,
+            @JsonProperty("filtered") Set<?> filtered) {
         this.discovery = discovery;
+        this.filtered = filtered;
     }
 }

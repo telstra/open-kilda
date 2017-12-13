@@ -13,8 +13,11 @@ import org.openkilda.wfm.MessageFormatException;
 import org.openkilda.wfm.UnsupportedActionException;
 import org.openkilda.wfm.isl.DummyIIslFilter;
 import org.openkilda.wfm.protocol.KafkaMessage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class PopulateIslFilterAction extends AbstractAction {
+    private final Logger logger = LoggerFactory.getLogger(PopulateIslFilterAction.class);
     private final DummyIIslFilter filter;
 
     public PopulateIslFilterAction(IKildaBolt bolt, Tuple tuple, DummyIIslFilter filter) {
@@ -41,8 +44,10 @@ public class PopulateIslFilterAction extends AbstractAction {
 
         DiscoveryFilterPopulateData payload = (DiscoveryFilterPopulateData) command.getData();
 
+        logger.info("Clean ISL filter");
         filter.clear();
         for (DiscoveryFilterEntity entity : payload.getFilter()) {
+            logger.info("Add ISL filter record - switcID=\"{}\" portId=\"{}\"", entity.switchId, entity.portId);
             filter.add(entity.switchId, entity.portId);
         }
     }

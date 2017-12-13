@@ -23,4 +23,8 @@ public class DummyIIslFilter implements IIslFilter {
     public boolean isMatch(DiscoveryNode subject) {
         return matchSet.contains(subject);
     }
+
+    public Set<DiscoveryNode> getMatchSet() {
+        return matchSet;
+    }
 }

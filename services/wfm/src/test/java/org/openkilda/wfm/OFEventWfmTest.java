@@ -35,7 +35,6 @@ import org.openkilda.wfm.topology.event.OFELinkBolt;
 import org.openkilda.wfm.topology.event.OFEventWFMTopology;
 import org.openkilda.wfm.topology.splitter.InfoEventSplitterBolt;
 import org.openkilda.wfm.topology.utils.KafkaFilerTopology;
-import org.openkilda.wfm.topology.utils.LinkTracker;
 
 import com.google.common.base.Charsets;
 import com.google.common.io.Files;
