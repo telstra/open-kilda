@@ -18,3 +18,6 @@ path:
   - wfm_topology_properties:
     dest: services/wfm/src/main/resources/topology.properties
     tmpl: templates/wfm/topology.properties.j2
+  - application_properties:
+    dest: services/src/openkilda-gui/src/main/resources/application.properties
+    tmpl: templates/openkilda-gui/application.properties.j2

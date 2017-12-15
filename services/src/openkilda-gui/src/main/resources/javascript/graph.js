@@ -12,46 +12,73 @@
 
 
 /** ajax call to switch api to get switch details */
+
 var responseData = [];
-$.ajax({                              			
-	url : APP_CONTEXT + "/switch",  
-	type : 'GET',
-	success : function(response) {
-		$("#wait").css("display", "none");
-		responseData.push(response);
-		getLink();
-	},
-	dataType : "json"
-});
-
-
-/** function to retrieve link details from link api*/
-function getLink() {
-	$.ajax({                         		    
-		url : APP_CONTEXT + "/switch/links",
+	$.ajax({                              			
+		url : APP_CONTEXT + "/switch",  
 		type : 'GET',
 		success : function(response) {
 			$("#wait").css("display", "none");
 			responseData.push(response);
-			getFlow();
+			getLink();
 		},
-		dataType : "json"
-	});
-}
-
-/** function to retrieve flow details from flow api*/
-function getFlow() {
-	$.ajax({
-		url : APP_CONTEXT + "/switch/flows",      
-		type : 'GET',
-		success : function(response) {
+		error : function(errResponse) {
 			$("#wait").css("display", "none");
-			responseData.push(response);
-			init(responseData);
+			responseData.push({'switches':[]});
+		
 		},
 		dataType : "json"
 	});
-}
+	
+	
+	/** function to retrieve link details from link api*/
+	function getLink() {
+		$.ajax({                         		    
+			url : APP_CONTEXT + "/switch/links",
+			type : 'GET',
+			success : function(response) {
+				var tempData = JSON.stringify(response);
+				if(tempData == undefined || tempData == "" || tempData == null || tempData == '{}'){
+					responseData.push({'switchrelation':[]});
+				}else{
+					responseData.push(response);
+				}
+				getFlow();
+				$("#wait").css("display", "none");
+			},
+			error : function(errResponse) {
+				responseData.push({'switchrelation':[]});
+				getFlow();
+			},
+			dataType : "json"
+		});
+	}
+	
+	/** function to retrieve flow details from flow api*/
+	function getFlow() {
+		$.ajax({
+			url : APP_CONTEXT + "/switch/flows",      
+			type : 'GET',
+			success : function(response) {
+				var tempFlowData = JSON.stringify(response);
+				if(tempFlowData == undefined ||tempFlowData ==""||tempFlowData==null||tempFlowData=='{}'){
+					responseData.push({'flows':[]});
+				}else{
+					responseData.push(response);
+				}
+				init(responseData);
+				$("#wait").css("display", "none");
+				
+			},
+			error : function(errResponse) {
+				
+				responseData.push({'flows':[]});
+				init(responseData);
+			
+			},
+			dataType : "json"
+		});
+	}
 
 
 //variables declaration
@@ -61,8 +88,8 @@ var threshold = 500;
 
 // When this function executes, the force layout calculations have started.
 function init(data) {
-
-	
+	nodes = [];
+	links =[];
 	/* A force layout requires two data arrays. 
 	 * The first array, here named nodes,
 	 * contains the object that are the focal point of the visualization.
@@ -71,30 +98,36 @@ function init(data) {
 	nodes = data[0].switches;
 	links = data[1].switchrelation;
 	var flows = data[2].flows;
-	flows = flows.concat(flows);
-	links = links.concat(flows);
+	
+		if(JSON.stringify(links) == '[]' ){
 
+		}else{
+			links = links.concat(flows);	
+		}
+	
 	//calculating nodes
 	var nodelength = nodes.length;
 	for (var i = 0; i < nodelength; i++) {
-		for (var j = 0; j < links.length; j++) {
-			if (nodes[i].name == links[j]["source_switch"]) {
-				links[j].source = i;
-			} else if (nodes[i].name == links[j]["target_switch"]) {
-				links[j].target = i;
+	
+		//if(links != undefined){
+			for (var j = 0; j < links.length; j++) {
+				if (nodes[i].name == links[j]["source_switch"]) {
+					links[j].source = i;
+				} else if (nodes[i].name == links[j]["target_switch"]) {
+					links[j].target = i;
+				}
 			}
-		}
+//		}else{
+//			links=[];
+//		}
 	}
 
-	sortLinks();
 	setLinkIndexAndNum();
 
-	
 	/* Define the dimensions of the visualization.*/
 	w = window.innerWidth - 190,
 	h = window.innerHeight - 100;
-	
-	
+
 	radius = 6;
 	fill = d3.scale.category20();
 	
@@ -104,13 +137,15 @@ function init(data) {
 	svg = d3.select('.content').append('svg').attr('width', w)
 			.attr('height', h);
 	
-
-	
 	/*	create a force layout object and define its properties.
 	 * Those include the dimensions of the visualization and the arrays
 	 * of nodes and links.*/
 	force = d3.layout.force().nodes(nodes).links(links).size([ w, h ])
-			.linkDistance(180).charge(-990).gravity(0.12).linkStrength(
+			.linkDistance(180)
+			.charge(-990)
+			.gravity(0.12)
+			.linkDistance(150)
+			.linkStrength(
 					function(l, i) {
 						return 1;
 					})
@@ -123,8 +158,6 @@ function init(data) {
 	 * links to ensure that nodes appear on top of links*/
 	node = svg.selectAll("g").data(force.nodes());
 
-	
-	
 	/*defining links.*/
 	link = svg.selectAll("g").data(force.links());
 
@@ -227,7 +260,6 @@ function init(data) {
 		}
 
 	}).on("mouseover", function(d, index) {
-//		console.log("circle" + index)
 		var cName = document.getElementById("circle" + index).className;
 		circleClass = cName.baseVal;
 
@@ -241,7 +273,6 @@ function init(data) {
 			flagHover = true;
 
 		} else {
-//			console.log(circleClass)
 			if (circleClass == "circle") {
 				var element = $("#circle" + index)[0];
 				element.setAttribute("class", "circle");
@@ -267,7 +298,7 @@ function tick() {
 					function(d) {
 						var dx = d.target.x - d.source.x, dy = d.target.y
 								- d.source.y, dr = Math.sqrt(dx * dx + dy * dy);
-						 dr = dr+250;
+						 dr = dr+180;
 						var lTotalLinkNum = mLinkNum[d.source.index + ","
 								+ d.target.index]
 								|| mLinkNum[d.target.index + ","
@@ -334,45 +365,28 @@ function showdata() {
 	});
 }
 
-
-/*function to sort the links by source, then target */
-function sortLinks() {
-	links.sort(function(a, b) {
-		if (a.source > b.source) {
-			return 1;
-		} else if (a.source < b.source) {
-			return -1;
-		} else {
-			if (a.target > b.target) {
-				return 1;
-			}
-			if (a.target < b.target) {
-				return -1;
-			} else {
-				return 0;
-			}
-		}
-	});
-}
-
-
 /*function to set any links with duplicate source and target get an incremented 'linknum' */
 function setLinkIndexAndNum() {
-	for (var i = 0; i < links.length; i++) {
-		if (i != 0 && links[i].source == links[i - 1].source
-				&& links[i].target == links[i - 1].target) {
-			links[i].linkindex = links[i - 1].linkindex + 1;
-		} else {
-			links[i].linkindex = 1;
-		}
-		// save the total number of links between two nodes
-		if (mLinkNum[links[i].target + "," + links[i].source] !== undefined) {
-			mLinkNum[links[i].target + "," + links[i].source] = links[i].linkindex;
-		} else {
-			mLinkNum[links[i].source + "," + links[i].target] = links[i].linkindex;
 
-		}
-	}
+	//if(links !=undefined){
+		for (var i = 0; i < links.length; i++) {
+			if (i != 0 && links[i].source == links[i - 1].source
+						&& links[i].target == links[i - 1].target) {
+					links[i].linkindex = links[i - 1].linkindex + 1;
+				} else {
+					links[i].linkindex = 1;
+				}
+				// save the total number of links between two nodes
+				if (mLinkNum[links[i].target + "," + links[i].source] !== undefined) {
+					mLinkNum[links[i].target + "," + links[i].source] = links[i].linkindex;
+				} else {
+					mLinkNum[links[i].source + "," + links[i].target] = links[i].linkindex;
+		
+				}
+			}
+//	}else{
+//		links = [];
+//	}
 }
 
 /* function dlclick to check if on circle doubleclick event is fired. */
