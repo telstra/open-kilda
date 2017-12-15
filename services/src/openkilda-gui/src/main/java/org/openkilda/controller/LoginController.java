@@ -56,6 +56,9 @@ public class LoginController extends BaseController {
 
 	/** The Constant VIEW_ISL. */
 	static final String VIEW_ISL = "isldetails";
+	
+	/** The Constant PORT_DETAILS. */
+	static final String VIEW_PORT_DETAILS = "portdetails";
 
 	/** The authentication manager. */
 	@Autowired
@@ -186,6 +189,29 @@ public class LoginController extends BaseController {
 				modelAndView = new ModelAndView(REDIRECT_HOME);
 			} else {
 				modelAndView = new ModelAndView(VIEW_ISL);
+			}
+		} else {
+			modelAndView = new ModelAndView(VIEW_LOGIN);
+		}
+
+		return modelAndView;
+
+	}
+	
+	
+	
+	@RequestMapping(value = "/portdetails")
+	public ModelAndView portDetails(ModelMap model, HttpServletRequest request) {
+
+		ModelAndView modelAndView;
+
+		if (isUserLoggedIn()) {
+			SessionObject sessionObject = getSessionObject();
+
+			if (sessionObject.getRole().equalsIgnoreCase(IConstants.USER_ROLE)) {
+				modelAndView = new ModelAndView(REDIRECT_HOME);
+			} else {
+				modelAndView = new ModelAndView(VIEW_PORT_DETAILS);
 			}
 		} else {
 			modelAndView = new ModelAndView(VIEW_LOGIN);
