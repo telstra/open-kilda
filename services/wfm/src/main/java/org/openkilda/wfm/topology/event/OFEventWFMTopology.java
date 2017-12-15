@@ -79,19 +79,19 @@ public class OFEventWFMTopology extends AbstractTopology {
 
         initKafka();
 
-        String kafkaOutputTopic = config.getKafkaOutputTopic();
+        String kafkaTopoDiscoTopic = config.getKafkaTopoDiscoTopic();
         TopologyBuilder builder = new TopologyBuilder();
         List<CtrlBoltRef> ctrlTargets = new ArrayList<>();
 
-        builder.setSpout(SPOUT_ID_INPUT, createKafkaSpout(config.getKafkaInputTopic(), SPOUT_ID_INPUT));
+        builder.setSpout(SPOUT_ID_INPUT, createKafkaSpout(kafkaTopoDiscoTopic, SPOUT_ID_INPUT));
 
         BoltDeclarer kbolt = builder.setBolt(BOLT_ID_OUTPUT,
-                createKafkaBolt(kafkaOutputTopic), config.getParallelism());
+                createKafkaBolt(kafkaTopoDiscoTopic), config.getParallelism());
 
         // The order of bolts should match topics, and Link should be last .. logic below relies on it
         IStatefulBolt[] bolts = {
-                new OFESwitchBolt().withOutputStreamId(kafkaOutputTopic),
-                new OFEPortBolt().withOutputStreamId(kafkaOutputTopic),
+                new OFESwitchBolt().withOutputStreamId(kafkaTopoDiscoTopic),
+                new OFEPortBolt().withOutputStreamId(kafkaTopoDiscoTopic),
                 new OFELinkBolt(config)
         };
 
@@ -108,7 +108,7 @@ public class OFEventWFMTopology extends AbstractTopology {
             // NB: with shuffleGrouping, we can't maintain state .. would need to parse first
             //      just to pull out switchID.
             tbolt[i] = builder.setBolt(boltName, bolts[i], config.getParallelism()).shuffleGrouping(spoutName);
-            kbolt.shuffleGrouping(boltName, kafkaOutputTopic);
+            kbolt.shuffleGrouping(boltName, kafkaTopoDiscoTopic);
 
             ctrlTargets.add(new CtrlBoltRef(boltName, (ICtrlBolt) bolts[i], tbolt[i]));
         }
@@ -118,12 +118,12 @@ public class OFEventWFMTopology extends AbstractTopology {
           FIXME(surabujin): use "correct" stream id. Now it works only because stream id matches kafka topic name, but
           topic name can be changed via config
         */
-        tbolt[2].shuffleGrouping(topics[0] + "-bolt", kafkaOutputTopic)
-                .shuffleGrouping(topics[1] + "-bolt", kafkaOutputTopic)
+        tbolt[2].shuffleGrouping(topics[0] + "-bolt", kafkaTopoDiscoTopic)
+                .shuffleGrouping(topics[1] + "-bolt", kafkaTopoDiscoTopic)
                 .allGrouping(SPOUT_ID_INPUT);
 
         // finally, one more bolt, to write the ISL Discovery requests
-        String discoTopic = config.getKafkaInputTopic();
+        String discoTopic = config.getKafkaTopoDiscoTopic();
         builder.setBolt("ISL_Discovery-kafkabolt", createKafkaBolt(discoTopic), config.getParallelism())
                 .shuffleGrouping(topics[2] + "-bolt", discoTopic);
 
@@ -140,29 +140,10 @@ public class OFEventWFMTopology extends AbstractTopology {
      * (3) ◊ - Validate the Topology periodically - switches, ports, links
      *          - health checks should validate the known universe; what about missing stuff?
      * (4) ◊ - See if flapping happens .. define window and if there are greater than 4 up/downs?
-     * (5) ◊ -
-     * (6) ◊ -
-     * (7) ◊ -
-     * (8) ◊ -
-     * (9) ◊ -
-     */
-
-    /*
-     * Progress Tracker - Phase 3: ?
-     * (1) ◊ -
-     * (2) ◊ -
-     * (3) ◊ -
-     * (4) ◊ -
-     * (5) ◊ -
-     * (6) ◊ -
-     * (7) ◊ -
-     * (8) ◊ -
-     * (9) ◊ -
      */
 
     private void initKafka() {
-        checkAndCreateTopic(config.getKafkaOutputTopic());
-        checkAndCreateTopic(config.getKafkaInputTopic());
+        checkAndCreateTopic(config.getKafkaTopoDiscoTopic());
         for (String topic : topics) {
             checkAndCreateTopic(topic);
         }

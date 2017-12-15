@@ -47,11 +47,11 @@ public class SimpleSplitterTest extends AbstractStormTest {
 
         // Dumping the Kafka Topic to file so that I can test the results.
         KafkaFilerTopology kfiler = new KafkaFilerTopology(
-                makeLaunchEnvironment(), splitter.getConfig().getKafkaInputTopic());
+                makeLaunchEnvironment(), splitter.getConfig().getKafkaTopoDiscoTopic());
         cluster.submitTopology("utils-1", TestUtils.stormConfig(), kfiler.createTopology());
 
         Utils.sleep(4 * 1000);
-        SendMessages(splitter.getConfig().getKafkaInputTopic());
+        SendMessages(splitter.getConfig().getKafkaTopoDiscoTopic());
         Utils.sleep(8 * 1000);
 
         // 3 messages .. in I_SWITCH_UPDOWN  .. since we send 3 of those type of messages

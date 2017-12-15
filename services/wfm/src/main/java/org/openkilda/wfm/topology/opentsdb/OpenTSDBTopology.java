@@ -51,7 +51,7 @@ public class OpenTSDBTopology extends AbstractTopology {
         LOGGER.info("Creating OpenTSDB topology");
         TopologyBuilder tb = new TopologyBuilder();
 
-        final String topic = config.getKafkaTsdbTopic();
+        final String topic = config.getKafkaOtsdbTopic();
         final String spoutId = topic + "-spout";
         final String boltId = topic + "-bolt";
         checkAndCreateTopic(topic);

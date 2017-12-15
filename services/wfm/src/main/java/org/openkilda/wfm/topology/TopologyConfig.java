@@ -21,14 +21,18 @@ public class TopologyConfig {
     private Integer zookeeperConnectTimeout;
 
     private String kafkaHosts;
+
     private String kafkaCtrlTopic;
-    private String kafkaInputTopic;
-    private String kafkaOutputTopic;
-    private String kafkaNetCacheTopic;
-    private String kafkaSpeakerTopic;
+    private String kafkaFlowTopic;
+    private String kafkaHealthCheckTopic;
+    private String kafkaNorthboundTopic;
+    private String kafkaOtsdbTopic;
     private String kafkaSimulatorTopic;
-    private String kafkaTsdbTopic;
-    private String kafkaDiscoveryTopic;
+    private String kafkaSpeakerTopic;
+    private String kafkaStatsTopic;
+    private String kafkaTopoEngTopic;
+    private String kafkaTopoDiscoTopic;
+    private String kafkaTopoCacheTopic;
 
     private String openTsDBHosts;
     private Integer openTsdbTimeout;
@@ -53,14 +57,18 @@ public class TopologyConfig {
         zookeeperSessionTimeout = (int)(config.getFloat("zookeeper.session.timeout") * 1000);
         zookeeperConnectTimeout = (int)(config.getFloat("zookeeper.connect.timeout") * 1000);
         kafkaHosts = config.getString("kafka.hosts");
+
         kafkaCtrlTopic = config.getString("kafka.topic.ctrl");
-        kafkaInputTopic = config.getString("kafka.topic.input");
-        kafkaOutputTopic = config.getString("kafka.topic.output");
-        kafkaNetCacheTopic = config.getString("kafka.topic.netcache");
-        kafkaSpeakerTopic = config.getString("kafka.topic.speaker");
+        kafkaFlowTopic = config.getString("kafka.topic.flow");
+        kafkaHealthCheckTopic = config.getString("kafka.topic.health.check");
+        kafkaNorthboundTopic = config.getString("kafka.topic.northbound");
+        kafkaOtsdbTopic = config.getString("kafka.topic.opentsdb");
         kafkaSimulatorTopic = config.getString("kafka.topic.simulator");
-        kafkaTsdbTopic = config.getString("kafka.topic.opentsdb");
-        kafkaDiscoveryTopic = config.getString("kafka.topic.discovery");
+        kafkaSpeakerTopic = config.getString("kafka.topic.speaker");
+        kafkaStatsTopic = config.getString("kafka.topic.stats");
+        kafkaTopoCacheTopic = config.getString("kafka.topic.topo.cache");
+        kafkaTopoDiscoTopic = config.getString("kafka.topic.topo.disco");
+        kafkaTopoEngTopic = config.getString("kafka.topic.topo.eng");
 
         openTsDBHosts = config.getString("opentsdb.hosts");
         openTsdbTimeout = (int)(config.getFloat("opentsdb.timeout") * 1000);
@@ -122,37 +130,53 @@ public class TopologyConfig {
         return kafkaHosts;
     }
 
+    // --- kafka topics
+
     public String getKafkaCtrlTopic() {
         return kafkaCtrlTopic;
     }
 
-    public String getKafkaInputTopic() {
-        return kafkaInputTopic;
+    public String getKafkaFlowTopic() {
+        return kafkaFlowTopic;
     }
 
-    public String getKafkaOutputTopic() {
-        return kafkaOutputTopic;
+    public String getKafkaHealthCheckTopic() {
+        return kafkaHealthCheckTopic;
     }
 
-    public String getKafkaNetCacheTopic() {
-        return kafkaNetCacheTopic;
+    public String getKafkaNorthboundTopic() {
+        return kafkaNorthboundTopic;
     }
 
-    public String getKafkaSpeakerTopic() {
-        return kafkaSpeakerTopic;
+    public String getKafkaOtsdbTopic() {
+        return kafkaOtsdbTopic;
     }
 
     public String getKafkaSimulatorTopic() {
         return kafkaSimulatorTopic;
     }
 
-    public String getKafkaTsdbTopic() {
-        return kafkaTsdbTopic;
+    public String getKafkaSpeakerTopic() {
+        return kafkaSpeakerTopic;
     }
 
-    public String getKafkaDiscoveryTopic() {
-        return kafkaDiscoveryTopic;
+    public String getKafkaStatsTopic() {
+        return kafkaStatsTopic;
     }
+
+    public String getKafkaTopoCacheTopic() {
+        return kafkaTopoCacheTopic;
+    }
+
+    public String getKafkaTopoDiscoTopic() {
+        return kafkaTopoDiscoTopic;
+    }
+
+    public String getKafkaTopoEngTopic() {
+        return kafkaTopoEngTopic;
+    }
+
+    // ---
 
     public String getOpenTsDBHosts() {
         return openTsDBHosts;

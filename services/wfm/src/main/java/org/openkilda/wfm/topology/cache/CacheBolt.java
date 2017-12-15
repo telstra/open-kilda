@@ -162,6 +162,38 @@ public class CacheBolt
     }
 
     /**
+     * Tries the parse the json object and return a null if can't
+     *
+     * @param json the json to parse
+     * @return an InfoMessage, if possible; otherwise null
+     */
+    private InfoMessage tryInfoMessage(String json){
+        InfoMessage result = null;
+        try {
+            result = MAPPER.readValue(json, InfoMessage.class);
+        } catch (Exception e){
+            /* do nothing */
+        }
+        return result;
+    }
+
+    /**
+     * Tries the parse the json object and return a null if can't
+     *
+     * @param json the json to parse
+     * @return an InfoMessage, if possible; otherwise null
+     */
+    private InfoData tryInfoData(String json){
+        InfoData result = null;
+        try {
+            result = MAPPER.readValue(json, InfoData.class);
+        } catch (Exception e){
+            /* do nothing */
+        }
+        return result;
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
@@ -175,59 +207,53 @@ public class CacheBolt
         String json = tuple.getString(0);
         String source = tuple.getSourceComponent();
 
+        /*
+          (carmine) Hack Alert
+          1) merged two kafka topics into one;
+          2) previous logic used topic source to determine how to parse the message
+          3) new logic tries to parse it one way, then the next. Slightly inefficient.
+         */
+        // TODO: Eliminate the inefficiency introduced through the hack
         try {
             logger.info("Request tuple={}", tuple);
+            InfoMessage info = tryInfoMessage(json);
+            if (info != null && Destination.WFM_CACHE == info.getDestination()) {
+                logger.debug("Storage content message {}", json);
+                handleNetworkDump(info.getData(), tuple);
+            } else {
+                InfoData data = tryInfoData(json);
+                if (data != null) {
+                    logger.info("Cache update info data", data);
 
-            switch (source) {
+                    if (data instanceof SwitchInfoData) {
+                        logger.info("Cache update switch info data: {}", data);
 
-                case CacheTopology.SPOUT_ID_TOPOLOGY:
-                    InfoData data = MAPPER.readValue(json, InfoData.class);
+                        emitNetworkMessage(data, tuple, Utils.SYSTEM_CORRELATION_ID);
+                        handleSwitchEvent((SwitchInfoData) data, tuple);
 
-                    if (data != null) {
-                        logger.info("Cache update info data", data);
+                    } else if (data instanceof IslInfoData) {
+                        logger.info("Cache update isl info data: {}", data);
 
-                        if (data instanceof SwitchInfoData) {
-                            logger.info("Cache update switch info data: {}", data);
+                        emitNetworkMessage(data, tuple, Utils.SYSTEM_CORRELATION_ID);
+                        handleIslEvent((IslInfoData) data, tuple);
 
-                            emitNetworkMessage(data, tuple, Utils.SYSTEM_CORRELATION_ID);
-                            handleSwitchEvent((SwitchInfoData) data, tuple);
+                    } else if (data instanceof PortInfoData) {
+                        logger.info("Cache update port info data: {}", data);
 
-                        } else if (data instanceof IslInfoData) {
-                            logger.info("Cache update isl info data: {}", data);
+                        emitNetworkMessage(data, tuple, Utils.SYSTEM_CORRELATION_ID);
+                        handlePortEvent((PortInfoData) data, tuple);
 
-                            emitNetworkMessage(data, tuple, Utils.SYSTEM_CORRELATION_ID);
-                            handleIslEvent((IslInfoData) data, tuple);
+                    } else if (data instanceof FlowInfoData) {
+                        logger.info("Cache update info data: {}", data);
 
-                        } else if (data instanceof PortInfoData) {
-                            logger.info("Cache update port info data: {}", data);
-
-                            emitNetworkMessage(data, tuple, Utils.SYSTEM_CORRELATION_ID);
-                            handlePortEvent((PortInfoData) data, tuple);
-
-                        } else if (data instanceof FlowInfoData) {
-                            logger.info("Cache update info data: {}", data);
-
-                            FlowInfoData flowData = (FlowInfoData) data;
-                            handleFlowEvent(flowData, tuple);
-                        } else {
-                            logger.debug("Skip undefined info data type {}", json);
-                        }
+                        FlowInfoData flowData = (FlowInfoData) data;
+                        handleFlowEvent(flowData, tuple);
                     } else {
-                        logger.debug("Skip undefined message type {}", json);
+                        logger.debug("Skip undefined info data type {}", json);
                     }
-                    break;
-
-                case CacheTopology.SPOUT_ID_COMMON:
-                    Message message = MAPPER.readValue(json, Message.class);
-                    if (message instanceof InfoMessage && Destination.WFM_CACHE == message.getDestination()) {
-                        logger.info("Storage content message {}", json);
-                        handleNetworkDump(((InfoMessage) message).getData(), tuple);
-                    }
-                    break;
-
-                default:
-                    logger.debug("Skip undefined cache update {}", tuple);
-                    break;
+                } else {
+                    logger.debug("Skip undefined message type {}", json);
+                }
             }
 
         } catch (CacheException exception) {

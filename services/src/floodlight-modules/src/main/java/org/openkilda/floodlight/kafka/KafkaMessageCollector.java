@@ -60,8 +60,8 @@ import java.util.concurrent.Executors;
 
 public class KafkaMessageCollector implements IFloodlightModule {
     private static final Logger logger = LoggerFactory.getLogger(KafkaMessageCollector.class);
-    private static final String INPUT_TOPIC = "kilda-test";
-    private static final String OUTPUT_TOPIC = "kilda-test";
+    private static final String INPUT_TOPIC = "kilda.speaker";
+    private static final String OUTPUT_FLOW_TOPIC = "kilda.flow";
     private final MeterPool meterPool = new MeterPool();
     private Properties kafkaProps;
     private IPathVerificationService pathVerificationService;
@@ -165,7 +165,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
 
         private void doDiscoverPathCommand(CommandData data) {
             DiscoverPathCommandData command = (DiscoverPathCommandData) data;
-            logger.debug("sending discover Path to {}", command);
+            logger.warn("NOT IMPLEMENTED: sending discover Path to {}", command);
         }
 
         /**
@@ -189,7 +189,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
                 ErrorMessage error = new ErrorMessage(
                         new ErrorData(ErrorType.CREATION_FAILURE, "Could not install meter", command.getId()),
                         System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM_TRANSACTION);
-                kafkaProducer.postMessage(OUTPUT_TOPIC, error);
+                kafkaProducer.postMessage(OUTPUT_FLOW_TOPIC, error);
             }
 
             ImmutablePair<Long, Boolean> flowInstalled = switchManager.installIngressFlow(
@@ -207,10 +207,10 @@ public class KafkaMessageCollector implements IFloodlightModule {
                 ErrorMessage error = new ErrorMessage(
                         new ErrorData(ErrorType.CREATION_FAILURE, "Could not install ingress flow", command.getId()),
                         System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM_TRANSACTION);
-                kafkaProducer.postMessage(OUTPUT_TOPIC, error);
+                kafkaProducer.postMessage(OUTPUT_FLOW_TOPIC, error);
             } else {
                 message.setDestination(Destination.WFM_TRANSACTION);
-                kafkaProducer.postMessage(OUTPUT_TOPIC, message);
+                kafkaProducer.postMessage(OUTPUT_FLOW_TOPIC, message);
             }
         }
 
@@ -237,10 +237,10 @@ public class KafkaMessageCollector implements IFloodlightModule {
                 ErrorMessage error = new ErrorMessage(
                         new ErrorData(ErrorType.CREATION_FAILURE, "Could not install egress flow", command.getId()),
                         System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM_TRANSACTION);
-                kafkaProducer.postMessage(OUTPUT_TOPIC, error);
+                kafkaProducer.postMessage(OUTPUT_FLOW_TOPIC, error);
             } else {
                 message.setDestination(Destination.WFM_TRANSACTION);
-                kafkaProducer.postMessage(OUTPUT_TOPIC, message);
+                kafkaProducer.postMessage(OUTPUT_FLOW_TOPIC, message);
             }
         }
 
@@ -265,10 +265,10 @@ public class KafkaMessageCollector implements IFloodlightModule {
                 ErrorMessage error = new ErrorMessage(
                         new ErrorData(ErrorType.CREATION_FAILURE, "Could not install transit flow", command.getId()),
                         System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM_TRANSACTION);
-                kafkaProducer.postMessage(OUTPUT_TOPIC, error);
+                kafkaProducer.postMessage(OUTPUT_FLOW_TOPIC, error);
             } else {
                 message.setDestination(Destination.WFM_TRANSACTION);
-                kafkaProducer.postMessage(OUTPUT_TOPIC, message);
+                kafkaProducer.postMessage(OUTPUT_FLOW_TOPIC, message);
             }
         }
 
@@ -293,7 +293,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
                 ErrorMessage error = new ErrorMessage(
                         new ErrorData(ErrorType.CREATION_FAILURE, "Could not install meter", command.getId()),
                         System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM_TRANSACTION);
-                kafkaProducer.postMessage(OUTPUT_TOPIC, error);
+                kafkaProducer.postMessage(OUTPUT_FLOW_TOPIC, error);
             }
 
             OutputVlanType directOutputVlanType = command.getOutputVlanType();
@@ -312,10 +312,10 @@ public class KafkaMessageCollector implements IFloodlightModule {
                 ErrorMessage error = new ErrorMessage(
                         new ErrorData(ErrorType.CREATION_FAILURE, "Could not install flow", command.getId()),
                         System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM_TRANSACTION);
-                kafkaProducer.postMessage(OUTPUT_TOPIC, error);
+                kafkaProducer.postMessage(OUTPUT_FLOW_TOPIC, error);
             } else {
                 message.setDestination(Destination.WFM_TRANSACTION);
-                kafkaProducer.postMessage(OUTPUT_TOPIC, message);
+                kafkaProducer.postMessage(OUTPUT_FLOW_TOPIC, message);
             }
         }
 
@@ -336,10 +336,10 @@ public class KafkaMessageCollector implements IFloodlightModule {
                 ErrorMessage error = new ErrorMessage(
                         new ErrorData(ErrorType.DELETION_FAILURE, "Could not delete flow", command.getId()),
                         System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM_TRANSACTION);
-                kafkaProducer.postMessage(OUTPUT_TOPIC, error);
+                kafkaProducer.postMessage(OUTPUT_FLOW_TOPIC, error);
             } else {
                 message.setDestination(Destination.WFM_TRANSACTION);
-                kafkaProducer.postMessage(OUTPUT_TOPIC, message);
+                kafkaProducer.postMessage(OUTPUT_FLOW_TOPIC, message);
             }
 
             Integer meterId = meterPool.deallocate(command.getSwitchId(), command.getId());
@@ -350,7 +350,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
                     ErrorMessage error = new ErrorMessage(
                             new ErrorData(ErrorType.DELETION_FAILURE, "Could not delete meter", command.getId()),
                             System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM_TRANSACTION);
-                    kafkaProducer.postMessage(OUTPUT_TOPIC, error);
+                    kafkaProducer.postMessage(OUTPUT_FLOW_TOPIC, error);
                 }
             }
         }

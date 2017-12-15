@@ -48,7 +48,7 @@ public class HealthCheckImpl implements HealthCheckService {
     /**
      * Health-Check topic.
      */
-    private static final String topic = Topic.HEALTH_CHECK.getId();
+    private static final String topic = Topic.HEALTH_CHECK;
 
     /**
      * Health-Check dump command requester.

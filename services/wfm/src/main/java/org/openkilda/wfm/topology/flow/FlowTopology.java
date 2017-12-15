@@ -86,7 +86,7 @@ public class FlowTopology extends AbstractTopology {
     public StormTopology createTopology() throws StreamNameCollisionException {
         logger.info("Creating Topology: {}", topologyName);
 
-        checkAndCreateTopic(config.getKafkaNetCacheTopic());
+        checkAndCreateTopic(config.getKafkaTopoCacheTopic());
 
         TopologyBuilder builder = new TopologyBuilder();
         List<CtrlBoltRef> ctrlTargets = new ArrayList<>();
@@ -97,14 +97,14 @@ public class FlowTopology extends AbstractTopology {
          * Spout receives network cache dump.
          */
         KafkaSpout networkCacheKafkaSpout = createKafkaSpout(
-                config.getKafkaNetCacheTopic(), ComponentType.NETWORK_CACHE_SPOUT.toString());
+                config.getKafkaTopoCacheTopic(), ComponentType.NETWORK_CACHE_SPOUT.toString());
         builder.setSpout(ComponentType.NETWORK_CACHE_SPOUT.toString(), networkCacheKafkaSpout, parallelism);
 
         /*
          * Spout receives all Northbound requests.
          */
         KafkaSpout northboundKafkaSpout = createKafkaSpout(
-                config.getKafkaInputTopic(), ComponentType.NORTHBOUND_KAFKA_SPOUT.toString());
+                config.getKafkaFlowTopic(), ComponentType.NORTHBOUND_KAFKA_SPOUT.toString());
         builder.setSpout(ComponentType.NORTHBOUND_KAFKA_SPOUT.toString(), northboundKafkaSpout, parallelism);
 
         /*
@@ -138,7 +138,7 @@ public class FlowTopology extends AbstractTopology {
         /*
          * Bolt sends cache updates.
          */
-        KafkaBolt cacheKafkaBolt = createKafkaBolt(config.getKafkaOutputTopic());
+        KafkaBolt cacheKafkaBolt = createKafkaBolt(config.getKafkaTopoCacheTopic());
         builder.setBolt(ComponentType.CACHE_KAFKA_BOLT.toString(), cacheKafkaBolt, parallelism)
                 .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.CREATE.toString())
                 .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.UPDATE.toString())
@@ -149,7 +149,7 @@ public class FlowTopology extends AbstractTopology {
          * Spout receives Topology Engine response
          */
         KafkaSpout topologyKafkaSpout = createKafkaSpout(
-                config.getKafkaInputTopic(), ComponentType.TOPOLOGY_ENGINE_KAFKA_SPOUT.toString());
+                config.getKafkaFlowTopic(), ComponentType.TOPOLOGY_ENGINE_KAFKA_SPOUT.toString());
         builder.setSpout(ComponentType.TOPOLOGY_ENGINE_KAFKA_SPOUT.toString(), topologyKafkaSpout, parallelism);
 
         /*
@@ -162,7 +162,7 @@ public class FlowTopology extends AbstractTopology {
         /*
          * Bolt sends Speaker requests
          */
-        KafkaBolt speakerKafkaBolt = createKafkaBolt(config.getKafkaInputTopic());
+        KafkaBolt speakerKafkaBolt = createKafkaBolt(config.getKafkaSpeakerTopic());
         builder.setBolt(ComponentType.SPEAKER_KAFKA_BOLT.toString(), speakerKafkaBolt, parallelism)
                 .shuffleGrouping(ComponentType.TRANSACTION_BOLT.toString(), StreamType.CREATE.toString())
                 .shuffleGrouping(ComponentType.TRANSACTION_BOLT.toString(), StreamType.DELETE.toString());
@@ -171,7 +171,7 @@ public class FlowTopology extends AbstractTopology {
          * Spout receives Speaker responses
          */
         KafkaSpout speakerKafkaSpout = createKafkaSpout(
-                config.getKafkaInputTopic(), ComponentType.SPEAKER_KAFKA_SPOUT.toString());
+                config.getKafkaFlowTopic(), ComponentType.SPEAKER_KAFKA_SPOUT.toString());
         builder.setSpout(ComponentType.SPEAKER_KAFKA_SPOUT.toString(), speakerKafkaSpout, parallelism);
 
         /*
@@ -211,7 +211,7 @@ public class FlowTopology extends AbstractTopology {
         /*
          * Bolt sends Northbound responses
          */
-        KafkaBolt northboundKafkaBolt = createKafkaBolt(config.getKafkaInputTopic());
+        KafkaBolt northboundKafkaBolt = createKafkaBolt(config.getKafkaNorthboundTopic());
         builder.setBolt(ComponentType.NORTHBOUND_KAFKA_BOLT.toString(), northboundKafkaBolt, parallelism)
                 .shuffleGrouping(ComponentType.NORTHBOUND_REPLY_BOLT.toString(), StreamType.RESPONSE.toString());
 
