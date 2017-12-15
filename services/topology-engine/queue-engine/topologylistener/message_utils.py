@@ -154,7 +154,7 @@ def send_message(payload, correlation_id, message_type, destination="WFM"):
     message.timestamp = get_timestamp()
     message.correlation_id = correlation_id
     kafka_message = b'{}'.format(message.to_json())
-    logger.info('Send message: topic=%s, message=%s', config.KAFKA_TOPIC,
+    logger.debug('Send message: topic=%s, message=%s', config.KAFKA_TOPIC,
                 kafka_message)
     message_result = producer.send(config.KAFKA_TOPIC, kafka_message)
     message_result.get(timeout=5)

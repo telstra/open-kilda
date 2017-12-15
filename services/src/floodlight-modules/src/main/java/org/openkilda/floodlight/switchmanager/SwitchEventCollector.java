@@ -50,7 +50,7 @@ import java.util.Map;
 
 public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListener, IFloodlightService {
     private static final Logger logger = LoggerFactory.getLogger(SwitchEventCollector.class);
-    private static final String TOPIC = "kilda-test";
+    private static final String TOPO_EVENT_TOPIC = "kilda.topo.event";
     private IOFSwitchService switchService;
     private KafkaMessageProducer kafkaProducer;
     private ISwitchManager switchManager;
@@ -80,7 +80,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
     @Override
     public void switchAdded(final DatapathId switchId) {
         Message message = buildSwitchMessage(switchService.getSwitch(switchId), SwitchState.ADDED);
-        kafkaProducer.postMessage(TOPIC, message);
+        kafkaProducer.postMessage(TOPO_EVENT_TOPIC, message);
     }
 
     /**
@@ -89,7 +89,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
     @Override
     public void switchRemoved(final DatapathId switchId) {
         Message message = buildSwitchMessage(switchId, SwitchState.REMOVED);
-        kafkaProducer.postMessage(TOPIC, message);
+        kafkaProducer.postMessage(TOPO_EVENT_TOPIC, message);
     }
 
     /**
@@ -100,7 +100,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
         final IOFSwitch sw = switchService.getSwitch(switchId);
 
         Message message = buildSwitchMessage(sw, SwitchState.ACTIVATED);
-        kafkaProducer.postMessage(TOPIC, message);
+        kafkaProducer.postMessage(TOPO_EVENT_TOPIC, message);
 
         ImmutablePair<Long, Boolean> metersDeleted;
         metersDeleted = switchManager.deleteMeter(switchId, ALL_VAL);
@@ -115,7 +115,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
 
         if (sw.getEnabledPortNumbers() != null) {
             for (OFPort p : sw.getEnabledPortNumbers()) {
-                kafkaProducer.postMessage(TOPIC, buildPortMessage(sw.getId(), p, PortChangeType.UP));
+                kafkaProducer.postMessage(TOPO_EVENT_TOPIC, buildPortMessage(sw.getId(), p, PortChangeType.UP));
             }
         }
     }
@@ -126,7 +126,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
     @Override
     public void switchPortChanged(final DatapathId switchId, final OFPortDesc port, final PortChangeType type) {
         Message message = buildPortMessage(switchId, port, type);
-        kafkaProducer.postMessage(TOPIC, message);
+        kafkaProducer.postMessage(TOPO_EVENT_TOPIC, message);
     }
 
     /**
@@ -135,7 +135,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
     @Override
     public void switchChanged(final DatapathId switchId) {
         Message message = buildSwitchMessage(switchService.getSwitch(switchId), SwitchState.CHANGED);
-        kafkaProducer.postMessage(TOPIC, message);
+        kafkaProducer.postMessage(TOPO_EVENT_TOPIC, message);
     }
 
     /*
@@ -148,7 +148,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
     @Override
     public void switchDeactivated(final DatapathId switchId) {
         Message message = buildSwitchMessage(switchId, SwitchState.DEACTIVATED);
-        kafkaProducer.postMessage(TOPIC, message);
+        kafkaProducer.postMessage(TOPO_EVENT_TOPIC, message);
     }
 
     /**

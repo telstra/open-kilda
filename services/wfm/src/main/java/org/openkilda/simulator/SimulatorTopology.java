@@ -37,7 +37,7 @@ public class SimulatorTopology extends AbstractTopology {
     @Override
     public StormTopology createTopology() {
         final Integer parallelism = config.getParallelism();
-        final String inputTopic = config.getKafkaInputTopic();
+        final String inputTopic = config.getKafkaSpeakerTopic();
         final String simulatorTopic = config.getKafkaSimulatorTopic();
 
 

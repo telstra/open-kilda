@@ -158,6 +158,7 @@ public class CrudBolt
      */
     @Override
     public void execute(Tuple tuple) {
+
         if (CtrlAction.boltHandlerEntrance(this, tuple))
             return;
 
@@ -210,6 +211,7 @@ public class CrudBolt
                             }
                             break;
                         default:
+
                             logger.debug("Unexpected stream: component={}, stream={}", componentId, streamId);
                             break;
                     }
@@ -217,6 +219,7 @@ public class CrudBolt
 
                 case SPEAKER_BOLT:
                 case TRANSACTION_BOLT:
+
                     FlowState newStatus = (FlowState) tuple.getValueByField(FlowTopology.STATUS_FIELD);
 
                     logger.info("Flow {} status {}: component={}, stream={}", flowId, newStatus, componentId, streamId);
@@ -232,6 +235,7 @@ public class CrudBolt
                     break;
 
                 case TOPOLOGY_ENGINE_BOLT:
+
                     ErrorMessage errorMessage = (ErrorMessage) tuple.getValueByField(AbstractTopology.MESSAGE_FIELD);
 
                     logger.info("Flow {} error: component={}, stream={}", flowId, componentId, streamId);

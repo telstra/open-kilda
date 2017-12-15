@@ -93,16 +93,22 @@ public class CacheTopologyTest extends AbstractStormTest {
         Config config = stormConfig();
         cluster.submitTopology(CacheTopologyTest.class.getSimpleName(), config, stormTopology);
 
-        teConsumer = new TestKafkaConsumer(Topic.TEST.getId(), Destination.TOPOLOGY_ENGINE,
-                kafkaProperties(UUID.nameUUIDFromBytes(Destination.TOPOLOGY_ENGINE.toString().getBytes()).toString()));
+        teConsumer = new TestKafkaConsumer(
+                topology.getConfig().getKafkaTopoEngTopic(), Destination.TOPOLOGY_ENGINE,
+                kafkaProperties(UUID.nameUUIDFromBytes(Destination.TOPOLOGY_ENGINE.toString().getBytes()).toString())
+        );
         teConsumer.start();
 
-        flowConsumer = new TestKafkaConsumer(topology.getConfig().getKafkaNetCacheTopic(), Destination.WFM,
-                kafkaProperties(UUID.nameUUIDFromBytes(Destination.WFM.toString().getBytes()).toString()));
+        flowConsumer = new TestKafkaConsumer(
+                topology.getConfig().getKafkaFlowTopic(), Destination.WFM,
+                kafkaProperties(UUID.nameUUIDFromBytes(Destination.WFM.toString().getBytes()).toString())
+        );
         flowConsumer.start();
 
-        ctrlConsumer = new TestKafkaConsumer(topology.getConfig().getKafkaCtrlTopic(), Destination.CTRL_CLIENT,
-                kafkaProperties(UUID.nameUUIDFromBytes(Destination.CTRL_CLIENT.toString().getBytes()).toString()));
+        ctrlConsumer = new TestKafkaConsumer(
+                topology.getConfig().getKafkaCtrlTopic(), Destination.CTRL_CLIENT,
+                kafkaProperties(UUID.nameUUIDFromBytes(Destination.CTRL_CLIENT.toString().getBytes()).toString())
+        );
         ctrlConsumer.start();
 
         Utils.sleep(10000);
@@ -252,18 +258,20 @@ public class CacheTopologyTest extends AbstractStormTest {
     private void sendNetworkDump(NetworkInfoData data) throws IOException {
         System.out.println("Topology-Engine: Send Network Dump");
         InfoMessage info = new InfoMessage(data, 0, DEFAULT_CORRELATION_ID, Destination.WFM_CACHE);
-        sendMessage(info, Topic.TEST.getId());
+        sendMessage(info, topology.getConfig().getKafkaTopoCacheTopic());
     }
 
     private void sendSwitchUpdate(SwitchInfoData sw) throws IOException {
         System.out.println("Wfm Topology: Send Switch Add Request");
-        sendMessage(sw, topology.getConfig().getKafkaOutputTopic());
+        sendMessage(sw, topology.getConfig().getKafkaTopoCacheTopic());
     }
 
     private void sendFlowUpdate(ImmutablePair<Flow, Flow> flow) throws IOException {
         System.out.println("Flow Topology: Send Flow Creation Request");
         FlowInfoData data = new FlowInfoData(flow.getLeft().getFlowId(),
                 flow, FlowOperation.CREATE, DEFAULT_CORRELATION_ID);
-        sendMessage(data, topology.getConfig().getKafkaOutputTopic());
+        // TODO: as part of getting rid of OutputTopic, used TopoDiscoTopic. This feels wrong for
+        // Flows.
+        sendMessage(data, topology.getConfig().getKafkaTopoCacheTopic());
     }
 }
