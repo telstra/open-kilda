@@ -15,17 +15,38 @@
 
 FROM kilda/base-ubuntu
 
+ENV LC_ALL C.UTF-8
+ENV LANG C.UTF-8
+
 ENV DEBIAN_FRONTEND noninteractive
 ENV MININET_REPO https://github.com/mininet/mininet.git
 ENV MININET_INSTALLER mininet/util/install.sh
 ENV INSTALLER_SWITCHES -fbinptvwyx
 
-RUN apt-get update && apt-get -qy install mininet net-tools tcpdump \
-    inetutils-ping autoconf automake ca-certificates git libtool \
-    openssh-client patch vim python-bottle python-jsonschema python-scapy \
+RUN apt-get update && apt-get -qy install \
+    mininet \
+    net-tools \
+    tcpdump \
+    inetutils-ping \
+    autoconf automake \
+    ca-certificates \
+    git \
+    libtool \
+    openssh-client \
+    patch \
+    vim \
+    python-pip \
+    python3-pip \
+    python-bottle \
+    python-jsonschema \
+    python-scapy \
     && rm -rf /var/lib/apt/lists/*
 RUN pip install python-logstash
 RUN ln -s /usr/sbin/tcpdump /usr/bin/tcpdump
+
+# added by ../llgen/Makefile
+ADD py-deps /py-deps
+RUN pip3 install /py-deps/kilda_llgen-0.1-py3-none-any.whl
 
 ADD app /app
 RUN chmod 777 /app/*

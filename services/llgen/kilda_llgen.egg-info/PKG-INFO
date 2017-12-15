@@ -1,0 +1,17 @@
+Metadata-Version: 1.0
+Name: kilda-llgen
+Version: 0.1
+Summary: link load generator
+Home-page: UNKNOWN
+Author: Dmitry Bogun
+Author-email: bogun.dmitriy@gmail.com
+License: UNKNOWN
+Description-Content-Type: UNKNOWN
+Description: llgen - link load generator
+        ===========================
+        
+        Toolset to produce and control traffic generators and traffic consumers.
+        
+        Main goal is to use from acceptance tests to emulate traffic into target environment.
+        
+Platform: UNKNOWN
