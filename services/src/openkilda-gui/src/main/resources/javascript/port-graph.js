@@ -5,9 +5,9 @@
 
 
 /**
-* Execute  getGraphData function when onchange event is fired 
-* on the filter input values of datetimepicker, downsampling and menulist.
-*/
+ * Execute getGraphData function when onchange event is fired on the filter
+ * input values of datetimepicker, downsampling and menulist.
+ */
 
 var graphInterval;
 
@@ -21,18 +21,15 @@ $(function() {
 
 
 /**
-* Execute this function when page is loaded
-* or when user is directed to this page.
-*/
+ * Execute this function when page is loaded or when user is directed to this
+ * page.
+ */
 $(document).ready(function() {
 
 	
-	var linkData = localStorage.getItem("linkData");	
-	var obj = JSON.parse(linkData)
+	var portData = localStorage.getItem("portDetails");
+	var portObj = JSON.parse(portData)
 	
-
-	var source = obj.source_switch.replace(/:/g, "")
-	var target = obj.target_switch.replace(/:/g, "")
 	
 	$.datetimepicker.setLocale('en');
 	var date = new Date()
@@ -61,13 +58,15 @@ $(document).ready(function() {
 	});
 
 	$('#datetimepicker_dark').datetimepicker({theme:'dark'})
-	var obj = JSON.parse(linkData)
 	
-	if(obj.hasOwnProperty("flowid")) {
+	var switchname = window.location.href.split("#")[1];
+	
+	var sourceswitch = switchname.replace(/:/g, "");
+	
+
 		$.ajax({
 			dataType: "jsonp",				
-			url : APP_CONTEXT + "/stats/"+convertedStartDate+"/"+convertedEndDate+"/pen.flow.packets"+"?"+"switchid="+source,	
-			
+			url : APP_CONTEXT + "/stats/"+convertedStartDate+"/"+convertedEndDate+"/pen.isl.latency"+"?"+"src_switch="+sourceswitch+"&src_port="+portObj.port_number+"&averageOf=10m",	
 			type : 'GET',
 			success : function(response) {	
 					
@@ -76,26 +75,14 @@ $(document).ready(function() {
 			},
 			dataType : "json"
 		});
-	} else {
-		$.ajax({
-			dataType: "jsonp",				
-			url : APP_CONTEXT + "/stats/"+convertedStartDate+"/"+convertedEndDate+"/pen.isl.latency"+"?"+"src_switch="+source+"&src_port="+obj.src_port+"&dst_switch="+target+"&dst_port="+obj.dst_port+"&averageOf=10m",	
-			type : 'GET',
-			success : function(response) {	
-					
-				$("#wait1").css("display", "none");	
-				showStatsData(response);
-			},
-			dataType : "json"
-		});
-	}
+	
 })
 
 
 /**
-* Execute this function to show visulization of stats graph
-* represnting time and metric on the axis.
-*/
+ * Execute this function to show visulization of stats graph represnting time
+ * and metric on the axis.
+ */
 function showStatsData(response) {	
 	var data = response
 		var graphData = [];
@@ -116,12 +103,15 @@ function showStatsData(response) {
 }
 
 
+
+
 /**
-* Execute this function to  show stats data whenever user filters data in the
-* html page.
-*/
+ * Execute this function to show stats data whenever user filters data in the
+ * html page.
+ */
 function getGraphData() {
-	
+		
+
 	
 	var regex = new RegExp("^\\d+(s|h|m){1}$");
 
@@ -193,63 +183,29 @@ function getGraphData() {
 	
 	var checkbox =  $("#check").prop("checked");
 		
-	/*if(autoreload < 0 || autoreload % 1 != 0)
-	{
-		$.toast({
-		    heading: 'Error',
-		    text: 'Autoreload input cannot be negative or decimal',
-		    showHideTransition: 'fade',
-		    position: 'top-right',
-		    icon: 'error'
-		})
-		valid=false;
-		return;
-	}
+
 	
-		if(autoreload != checkNo)
-		{
-			$.toast({
-			    heading: 'Error',
-			    text: 'Autoreload input should only be in numbers',
-			    showHideTransition: 'fade',
-			    position: 'top-right',
-			    icon: 'error'
-			})
-			valid=false;
-			return;
-		}*/
-		
 	
-	//if filter values are valid then call stats api
+	
+	
+	// if filter values are valid then call stats api
 	if(valid){
 		
 		
-		var linkData = localStorage.getItem("linkData");	
-		var obj = JSON.parse(linkData)
 		
-
-		var source = obj.source_switch.replace(/:/g, "")
-		var target = obj.target_switch.replace(/:/g, "")
+		var portData = localStorage.getItem("portDetails");
+		var portObj = JSON.parse(portData)
 		
+		
+		
+	var switchname = window.location.href.split("#")[1];
 	
-		if(obj.hasOwnProperty("flowid")) {
-		$.ajax({
-			dataType: "jsonp",				
-			url : APP_CONTEXT + "/stats/"+convertedStartDate+"/"+convertedEndDate+"/"+selMetric+"?"+"switchid="+source,	
-			
-			//http://192.168.80.187:1010/openkilda/stats/2017-12-02-03:16:02/2017-12-05-09:29:38/pen.flow.packets?switchid=deadbeef00000002&switchid=deadbeef00000001
-			type : 'GET',
-			success : function(response) {	
-					
-				$("#wait1").css("display", "none");	
-				showStatsData(response);
-			},
-			dataType : "json"
-		});
-	} else {
+	var sourceswitch = switchname.replace(/:/g, "");
+	
+
 		$.ajax({
 			dataType: "jsonp",					
-			url : APP_CONTEXT + "/stats/"+convertedStartDate+"/"+convertedEndDate+"/"+selMetric+"?"+"src_switch="+source+"&src_port="+obj.src_port+"&dst_switch="+target+"&dst_port="+obj.dst_port+"&averageOf="+downsampling,
+			url : APP_CONTEXT + "/stats/"+convertedStartDate+"/"+convertedEndDate+"/"+selMetric+"?"+"src_switch="+sourceswitch+"&src_port="+portObj.port_number+"&averageOf="+downsampling,
 			
 			type : 'GET',
 			success : function(response) {	
@@ -261,7 +217,7 @@ function getGraphData() {
 			dataType : "json"
 		});
 		
-	}
+	
 				
 			try {
 				clearInterval(graphInterval);
@@ -291,44 +247,31 @@ function callIntervalData(){
 	
 	var downsampling =$("#downsampling").val()
 	
-	var linkData = localStorage.getItem("linkData");	
-	var obj = JSON.parse(linkData)
 	
+	var portData = localStorage.getItem("portDetails");
+	var portObj = JSON.parse(portData)
+		
 	
 	var selMetric=$("select.selectbox_menulist").val();
 
-	var source = obj.source_switch.replace(/:/g, "")
-	var target = obj.target_switch.replace(/:/g, "")
+	
+	var switchname = window.location.href.split("#")[1];
+	
+	var sourceswitch = switchname.replace(/:/g, "");
 		
-		if(obj.hasOwnProperty("flowid")) {
-		$.ajax({
-			dataType: "jsonp",				
-			url : APP_CONTEXT + "/stats/"+convertedStartDate+"/"+convertedEndDate+"/"+selMetric+"?"+"switchid="+source,	
-			
-			type : 'GET',
-			success : function(response) {	
-					
-				$("#wait1").css("display", "none");	
-				showStatsData(response);
-			},
-			dataType : "json"
-		});
-	} else {
+
 		$.ajax({
 			dataType: "jsonp",
 
-			url : APP_CONTEXT + "/stats/"+convertedStartDate+"/"+convertedEndDate+"/"+selMetric+"?"+"src_switch="+source+"&src_port="+obj.src_port+"&dst_switch="+target+"&dst_port="+obj.dst_port+"&averageOf="+downsampling,
+			url : APP_CONTEXT + "/stats/"+convertedStartDate+"/"+convertedEndDate+"/"+selMetric+"?"+"src_switch="+sourceswitch+"&src_port="+portObj.port_number+"&averageOf="+downsampling,
 
 			type : 'GET',
 			success : function(response) {	
-//					console.log(response)
+					console.log(response)
 				showStatsData(response);
 			},
 			dataType : "json"
 		});
-		
-	}
-	
 }
 
 function autoreload(){

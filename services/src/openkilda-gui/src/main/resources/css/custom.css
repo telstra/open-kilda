@@ -80,7 +80,7 @@ h1 {
 	font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
 	padding: 0 15px;
 	font-weight: 500;
-	text-transform: uppercase;
+	text-transform: lowercase;
 	/*text-align:center;*/
 }
 
@@ -202,7 +202,7 @@ h1 {
 .navigation-bar {
 	border-bottom: 1px solid #adacac;
 	padding-bottom: 14px;
-	margin: 0 0 30px;
+	margin: 0 0 15px;
 }
 
 .navigation-bar li {
@@ -372,7 +372,7 @@ svg {
 	font-weight: 400;
 	position: relative;
 	float: right;
-	margin-top: -17px;
+	margin-left: 15px;
 	font-size: 13px;
 	z-index: 3;
 }
@@ -500,14 +500,33 @@ h1.modal-title {
 	padding: 8px 0;
 }
 
+
+
+#portdetails_div div.row.thead {
+	border-bottom: 1px solid #ccc;
+	background: #e3e3e3;
+	border-left: 3px solid #d2d2d2;
+}
+
 #portdetails_div div.row.thead div {
 	font-weight: 500;
 }
 
 #switch-details, #port-details1 {
     border: 1px solid #d2d2d2;
-    padding: 15px;
+    padding: 0 15px;
+    
 } 
+
+#port-details1.down-state .rep_div {
+	border-left: 3px solid #f00;
+	cursor:pointer;
+}
+
+#port-details1.up-state .rep_div {
+	border-left: 3px solid #19b365;
+	cursor:pointer;
+}
 
 .bg_load {
     position: absolute;
@@ -593,13 +612,31 @@ footer {
  padding: 0;
 }
 
-
 .kilda_select .selectbox_menulist{
     width: 100%;
     border: none;
     height: 100%;
     border-radius: 4px;
     padding: 1px 7px;
+}
+
+
+.dygraph-legend {
+  position: absolute;
+  font-size: 14px;
+  z-index: 10;
+  width: 350px;    
+  top: -20px!important;
+  background: white;
+  line-height: normal;
+  text-align: left;
+  overflow: hidden;
+}
+
+.switch-container input[type=checkbox] {
+	margin-top: 10px;
+    vertical-align: bottom;
+    margin-right: 5px;
 }
 
 @-webkit-keyframes spin {
