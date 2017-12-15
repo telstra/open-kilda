@@ -112,7 +112,8 @@ public class FlowTopologyTest extends AbstractStormTest {
                 kafkaProperties(UUID.nameUUIDFromBytes(Destination.TOPOLOGY_ENGINE.toString().getBytes()).toString()));
         cacheConsumer.start();
 
-        teResponseConsumer = new TestKafkaConsumer(topologyConfig.getKafkaTopoEngTopic(),
+//        teResponseConsumer = new TestKafkaConsumer(topologyConfig.getKafkaTopoEngTopic(),
+        teResponseConsumer = new TestKafkaConsumer(topologyConfig.getKafkaFlowTopic(),
                 Destination.WFM,
                 kafkaProperties(UUID.nameUUIDFromBytes(Destination.WFM.toString().getBytes()).toString()));
         teResponseConsumer.start();
@@ -237,6 +238,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         assertNotNull(record);
         assertNotNull(record.value());
 
+        System.out.println("record = " + record);
         InfoMessage infoMessage = objectMapper.readValue(record.value(), InfoMessage.class);
         FlowResponse response = (FlowResponse) infoMessage.getData();
         assertNotNull(infoData);
@@ -491,6 +493,18 @@ public class FlowTopologyTest extends AbstractStormTest {
 
     @Test
     public void installFlowTopologyEngineSpeakerBoltTest() throws Exception {
+        /*
+         * This test will verify the state transitions of a flow, through the status mechanism.
+         * It achieves this by doing the following:
+         *      - CreateFlow .. clear both cache and northbound consumers
+         *      - GetStatus .. confirm STATE = FlowState.ALLOCATED
+         *      - baseInstallFlowCommand .. read speaker .. validate data/responsedata
+         *      - GetStatus .. confirm STATE = FlowState.IN_PROGRESS
+         *      - baseInstallRuleCommand ..
+         *      - GetStatus .. confirm STATE = FlowState.UP
+         */
+
+
         String flowId = UUID.randomUUID().toString();
         ConsumerRecord<String, String> record;
 
@@ -553,6 +567,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         assertEquals(FlowState.IN_PROGRESS, flowNbPayload.getStatus());
 
         response.setDestination(Destination.WFM_TRANSACTION);
+
         baseInstallRuleCommand(response);
 
         statusFlow(flowId);
@@ -568,6 +583,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         assertNotNull(infoData);
 
         flowNbPayload = infoData.getPayload();
+
         assertNotNull(flowNbPayload);
         assertEquals(flowId, flowNbPayload.getId());
         assertEquals(FlowState.UP, flowNbPayload.getStatus());
@@ -638,6 +654,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         assertEquals(FlowState.IN_PROGRESS, flowNbPayload.getStatus());
 
         response.setDestination(Destination.WFM_TRANSACTION);
+
         removeRuleCommand(response);
 
         statusFlow(flowId);
@@ -991,7 +1008,11 @@ public class FlowTopologyTest extends AbstractStormTest {
         payload.setFlowId(flowId);
         FlowDeleteRequest commandData = new FlowDeleteRequest(payload);
         CommandMessage message = new CommandMessage(commandData, 0, "delete-flow", Destination.WFM);
-        sendNorthboundMessage(message);
+
+        //sendNorthboundMessage(message);
+//        sendTopologyEngineMessage(message);
+        sendFlowMessage(message);
+
         return payload;
     }
 
@@ -1000,7 +1021,8 @@ public class FlowTopologyTest extends AbstractStormTest {
         Flow flowPayload = new Flow(flowId, 10000, "", "test-switch", 1, 2, "test-switch", 1, 2);
         FlowCreateRequest commandData = new FlowCreateRequest(flowPayload);
         CommandMessage message = new CommandMessage(commandData, 0, "create-flow", Destination.WFM);
-        sendNorthboundMessage(message);
+        //sendNorthboundMessage(message);
+        sendFlowMessage(message);
         return flowPayload;
     }
 
@@ -1009,7 +1031,8 @@ public class FlowTopologyTest extends AbstractStormTest {
         Flow flowPayload = new Flow(flowId, 10000, "", "test-switch", 1, 2, "test-switch", 1, 2);
         FlowUpdateRequest commandData = new FlowUpdateRequest(flowPayload);
         CommandMessage message = new CommandMessage(commandData, 0, "update-flow", Destination.WFM);
-        sendNorthboundMessage(message);
+//        sendNorthboundMessage(message);
+        sendFlowMessage(message);
         return flowPayload;
     }
 
@@ -1018,7 +1041,8 @@ public class FlowTopologyTest extends AbstractStormTest {
         FlowIdStatusPayload payload = new FlowIdStatusPayload(flowId);
         FlowStatusRequest commandData = new FlowStatusRequest(payload);
         CommandMessage message = new CommandMessage(commandData, 0, "status-flow", Destination.WFM);
-        sendNorthboundMessage(message);
+//        sendNorthboundMessage(message);
+        sendFlowMessage(message);
         return payload;
     }
 
@@ -1027,7 +1051,8 @@ public class FlowTopologyTest extends AbstractStormTest {
         FlowIdStatusPayload payload = new FlowIdStatusPayload(flowId);
         FlowPathRequest commandData = new FlowPathRequest(payload);
         CommandMessage message = new CommandMessage(commandData, 0, "path-flow", Destination.WFM);
-        sendNorthboundMessage(message);
+//        sendNorthboundMessage(message);
+        sendFlowMessage(message);
         return new PathInfoData(0L, Collections.emptyList());
     }
 
@@ -1036,7 +1061,8 @@ public class FlowTopologyTest extends AbstractStormTest {
         FlowIdStatusPayload payload = new FlowIdStatusPayload(flowId);
         FlowGetRequest commandData = new FlowGetRequest(payload);
         CommandMessage message = new CommandMessage(commandData, 0, "get-flow", Destination.WFM);
-        sendNorthboundMessage(message);
+//        sendNorthboundMessage(message);
+        sendFlowMessage(message);
         return payload;
     }
 
@@ -1045,7 +1071,8 @@ public class FlowTopologyTest extends AbstractStormTest {
         FlowIdStatusPayload payload = new FlowIdStatusPayload(flowId);
         FlowsGetRequest commandData = new FlowsGetRequest(payload);
         CommandMessage message = new CommandMessage(commandData, 0, "get-flows", Destination.WFM);
-        sendNorthboundMessage(message);
+//        sendNorthboundMessage(message);
+        sendFlowMessage(message);
         return payload;
     }
 
@@ -1059,7 +1086,9 @@ public class FlowTopologyTest extends AbstractStormTest {
         InstallOneSwitchFlow commandData = new InstallOneSwitchFlow(0L, flowId,
                 COOKIE, "switch-id", 1, 2, 0, 0, OutputVlanType.NONE, 10000L, 0L);
         CommandMessage commandMessage = new CommandMessage(commandData, 0, "install-flow", Destination.WFM);
-        sendTopologyEngineMessage(commandMessage);
+//        sendTopologyEngineMessage(commandMessage);
+//        sendSpeakerMessage(commandMessage);
+        sendFlowMessage(commandMessage);
         return commandData;
     }
 
@@ -1067,7 +1096,8 @@ public class FlowTopologyTest extends AbstractStormTest {
         System.out.println("TOPOLOGY: Remove flow");
         RemoveFlow commandData = new RemoveFlow(0L, flowId, COOKIE, "switch-id", 0L);
         CommandMessage commandMessage = new CommandMessage(commandData, 0, "remove-flow", Destination.WFM);
-        sendTopologyEngineMessage(commandMessage);
+//        sendTopologyEngineMessage(commandMessage);
+        sendFlowMessage(commandMessage);
         return commandData;
     }
 
@@ -1103,7 +1133,8 @@ public class FlowTopologyTest extends AbstractStormTest {
         System.out.println("TOPOLOGY: Error flow");
         ErrorData errorData = new ErrorData(type, "Could not operate with flow", flowId);
         ErrorMessage errorMessage = new ErrorMessage(errorData, 0, "error-flow", Destination.WFM);
-        sendTopologyEngineMessage(errorMessage);
+//        sendTopologyEngineMessage(errorMessage);
+        sendMessage(errorMessage, topologyConfig.getKafkaFlowTopic());
         return errorMessage;
     }
 
@@ -1114,13 +1145,13 @@ public class FlowTopologyTest extends AbstractStormTest {
 
     private Message baseInstallRuleCommand(final Message message) throws IOException {
         System.out.println("TOPOLOGY: Install rule");
-        sendSpeakerMessage(message);
+        sendMessage(message, topologyConfig.getKafkaFlowTopic());
         return message;
     }
 
     private Message removeRuleCommand(final Message message) throws IOException {
         System.out.println("TOPOLOGY: Remove rule");
-        sendSpeakerMessage(message);
+        sendMessage(message, topologyConfig.getKafkaFlowTopic());
         return message;
     }
 
@@ -1128,13 +1159,17 @@ public class FlowTopologyTest extends AbstractStormTest {
         System.out.println("TOPOLOGY: Error rule");
         ErrorData errorData = new ErrorData(ErrorType.REQUEST_INVALID, "Could not operate with flow", flowId);
         ErrorMessage errorMessage = new ErrorMessage(errorData, 0, "error-flow", Destination.WFM_TRANSACTION);
-        sendSpeakerMessage(errorMessage);
+//        sendSpeakerMessage(errorMessage);
+        sendMessage(errorMessage, topologyConfig.getKafkaFlowTopic());
         return errorMessage;
     }
 
-    private void sendNorthboundMessage(final CommandMessage message) throws IOException {
+    private void sendFlowMessage(final CommandMessage message) throws IOException {
         sendMessage(message, topologyConfig.getKafkaFlowTopic());
-        //sendMessage(message, topologyConfig.getKafkaNorthboundTopic());
+    }
+
+    private void sendNorthboundMessage(final CommandMessage message) throws IOException {
+        sendMessage(message, topologyConfig.getKafkaNorthboundTopic());
     }
 
     private void sendMessage(Object object, String topic) throws IOException {
