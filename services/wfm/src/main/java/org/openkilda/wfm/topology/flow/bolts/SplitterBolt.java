@@ -64,6 +64,22 @@ public class SplitterBolt extends BaseRichBolt {
     private OutputCollector outputCollector;
 
     /**
+     * Tries the parse the json object and return a null if can't
+     *
+     * @param json the json to parse
+     * @return an InfoMessage, if possible; otherwise null
+     */
+    private Message tryMessage(String json){
+        Message result = null;
+        try {
+            result = MAPPER.readValue(json, Message.class);
+        } catch (Exception e){
+            /* do nothing */
+        }
+        return result;
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
@@ -72,10 +88,13 @@ public class SplitterBolt extends BaseRichBolt {
         Values values = new Values(request);
 
         try {
-            Message message = MAPPER.readValue(request, Message.class);
-            if (!Destination.WFM.equals(message.getDestination()) || !(message instanceof CommandMessage)) {
+            Message message =  tryMessage(request);
+            if (message == null
+                    || !Destination.WFM.equals(message.getDestination())
+                    || !(message instanceof CommandMessage)) {
                 return;
             }
+
             logger.debug("Request tuple={}", tuple);
             CommandData data = ((CommandMessage) message).getData();
 
@@ -152,16 +171,26 @@ public class SplitterBolt extends BaseRichBolt {
             } else {
                 logger.debug("Skip undefined message: {}={}", Utils.CORRELATION_ID, message.getCorrelationId());
             }
-        } catch (IOException exception) {
-            String message = String.format("Could not deserialize message: %s", request);
-            logger.error("{}", message, exception);
 
-            ErrorMessage errorMessage = new ErrorMessage(
-                    new ErrorData(ErrorType.REQUEST_INVALID, message, exception.getMessage()),
-                    System.currentTimeMillis(), Utils.SYSTEM_CORRELATION_ID, Destination.NORTHBOUND);
+/*
+ * (crimi) This was commented out since the parsing of the message is handled in tryMessage.
+ * Due to refactoring the kafka topics, it appears more messages are coming to the splitter than
+ * originally desinged for.
+ *
+ * TODO: Fix the cause of excess messages coming to the splitter.
+ */
+//
 
-            values = new Values(errorMessage, ErrorType.INTERNAL_ERROR);
-            outputCollector.emit(StreamType.ERROR.toString(), tuple, values);
+//        } catch (IOException exception) {
+//            String message = String.format("Could not deserialize message: %s", request);
+//            logger.error("{}", message, exception);
+//
+//            ErrorMessage errorMessage = new ErrorMessage(
+//                    new ErrorData(ErrorType.REQUEST_INVALID, message, exception.getMessage()),
+//                    System.currentTimeMillis(), Utils.SYSTEM_CORRELATION_ID, Destination.NORTHBOUND);
+//
+//            values = new Values(errorMessage, ErrorType.INTERNAL_ERROR);
+//            outputCollector.emit(StreamType.ERROR.toString(), tuple, values);
 
         } finally {
             logger.debug("Splitter message ack: component={}, stream={}, tuple={}, values={}",

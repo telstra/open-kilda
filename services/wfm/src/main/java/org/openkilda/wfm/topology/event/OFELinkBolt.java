@@ -78,7 +78,8 @@ public class OFELinkBolt
 
         packetsToFail = config.getDiscoveryTimeout() / config.getDiscoveryInterval();
         outputStreamId = config.getKafkaTopoDiscoTopic();
-        islDiscoveryTopic = config.getKafkaTopoDiscoTopic();
+        // TODO: Is this the right topic for islDiscoveryTopic?
+        islDiscoveryTopic = config.getKafkaSpeakerTopic();
     }
 
     @Override

@@ -108,7 +108,7 @@ public class CacheTopology extends AbstractTopology {
         /*
          * Sends requests for ISL to OFE topology.
          */
-        KafkaBolt oFEKafkaBolt = createKafkaBolt(config.getKafkaOutputTopic());
+        KafkaBolt oFEKafkaBolt = createKafkaBolt(config.getKafkaFlowTopic());
         builder.setBolt(BOLD_ID_OFE, oFEKafkaBolt, parallelism)
                 .shuffleGrouping(BOLT_ID_CACHE, StreamType.OFE.toString());
 
