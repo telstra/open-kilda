@@ -4,7 +4,6 @@ import java.util.List;
 
 import javax.servlet.http.HttpServletRequest;
 
-import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.log4j.Logger;
 import org.openkilda.model.PortInfo;
 import org.openkilda.model.SwitchRelationData;
@@ -133,8 +132,7 @@ public class SwitchController {
 		try {
 			portResponse = processSwitchDetails.getAllLinks();
 		} catch (Exception exception) {
-			log.error(" Exception in getLinksDetail "
-					+ ExceptionUtils.getFullStackTrace(exception));
+			log.error(" Exception in getLinksDetail "+ exception.getMessage());
 		}
 		model.addAttribute("getLinksDetail", portResponse);
 		return new ResponseEntity<Object>(portResponse, HttpStatus.OK);
@@ -158,8 +156,7 @@ public class SwitchController {
 		try {
 			metricsList = MetricsUtil.getMetricList();
 		} catch (Exception exception) {
-			log.error("Exception in getMetricDetail "
-					+ ExceptionUtils.getFullStackTrace(exception));
+			log.error("Exception in getMetricDetail "+ exception.getMessage());
 		}
 		return new ResponseEntity<Object>(metricsList, HttpStatus.OK);
 	}
