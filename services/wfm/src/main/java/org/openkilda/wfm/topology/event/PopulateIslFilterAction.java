@@ -1,7 +1,5 @@
 package org.openkilda.wfm.topology.event;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import org.apache.storm.tuple.Tuple;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
@@ -13,6 +11,9 @@ import org.openkilda.wfm.MessageFormatException;
 import org.openkilda.wfm.UnsupportedActionException;
 import org.openkilda.wfm.isl.DummyIIslFilter;
 import org.openkilda.wfm.protocol.KafkaMessage;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import org.apache.storm.tuple.Tuple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,5 +51,24 @@ public class PopulateIslFilterAction extends AbstractAction {
             logger.info("Add ISL filter record - switcID=\"{}\" portId=\"{}\"", entity.switchId, entity.portId);
             filter.add(entity.switchId, entity.portId);
         }
+    }
+
+    @Override
+    protected Boolean handleError(Exception e) {
+        boolean isHandled = true;
+
+        try {
+            throw e;
+        } catch (MessageFormatException exc) {
+            logger.error("Can\'t unpack input tuple: {}", exc.getCause().getMessage());
+
+            for (int i = 0; i < getTuple().size(); i++) {
+                logger.error("Field #{}: {}", i, getTuple().getValue(i));
+            }
+        } catch (Exception exc) {
+            isHandled = false;
+        }
+
+        return isHandled;
     }
 }
