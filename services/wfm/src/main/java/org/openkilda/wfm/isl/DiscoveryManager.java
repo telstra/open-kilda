@@ -103,7 +103,7 @@ public class DiscoveryManager {
             return;
         }
 
-        subject = new DiscoveryNode(node.switchId);
+        subject = new DiscoveryNode(node.switchId, node.portId);
         pollQueue.add(subject);
         logger.info("New {}", subject);
     }

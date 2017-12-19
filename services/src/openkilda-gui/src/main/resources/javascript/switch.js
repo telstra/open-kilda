@@ -24,6 +24,11 @@ $(document).ready(function(){
 	});
 	
 	callPortDetailsAPI(switchname);	// method call callPortDetailsAPI()
+	
+	$(".rep_div").on("click",function(e){
+
+		setPortData(switchname,this);
+	})
 })
 
 
@@ -46,12 +51,20 @@ $(document).ready(function(){
  * the switch response json object and display on the html page*/
 function showSwitchData(response){	
 	
+	console.log (response)
     for(var i = 0; i < response.switches.length; i++) {
         var obj = response.switches[i];
-        $(".switchdetails_div_controller").html(response.switches[i].controller);
-        $(".switchdetails_div_address").html(response.switches[i].address);
-        $(".switchdetails_div_name").html(response.switches[i].name);
-        $(".switchdetails_div_desc").html(response.switches[i].description);        
+        console.log(response.switches[i].name);
+        
+    	var switchname=window.location.href.split("#")[1]
+
+        if(response.switches[i].name == switchname) {
+            
+            $(".switchdetails_div_controller").html(response.switches[i].controller);
+            $(".switchdetails_div_address").html(response.switches[i].address);
+            $(".switchdetails_div_name").html(response.switches[i].name);
+            $(".switchdetails_div_desc").html(response.switches[i].description);   
+        }
     } 
 }
 
@@ -81,7 +94,51 @@ function showPortData(response){
 	        $(".rep_div#div_"+last_id+" .portdetails_div_port_name").html(response[i].port_name);
 	        $(".rep_div#div_"+last_id+" .portdetails_div_port_number").html(response[i].port_number);
 	        $(".rep_div#div_"+last_id+" .portdetails_div_status").html(response[i].status);
+	        
+	      
+	        if(response[i].status == "OK") {
+	        	$("#port-details1").addClass('up-state');
+	        } else {
+	        	$("#port-details1").addClass('down-state');
+	        }
 	 }
+}
+
+
+/*function showportDetails(switchname) {
+
+
+}
+
+*/
+
+function setPortData(switchname,domObj){
+	
+	$(domObj).html()
+	
+	var portData = {'interface':"",'port_name':"",'port_number':"",'status':""};
+	
+	if($(domObj).find(".portdetails_div_interface")){
+		portData.interface = $(domObj).find(".portdetails_div_interface").html();
+	}
+
+	if($(domObj).find(".portdetails_div_port_name")){
+		portData.port_name = $(domObj).find(".portdetails_div_port_name").html();
+	}
+	
+	if($(domObj).find(".portdetails_div_port_number")){
+		portData.port_number = $(domObj).find(".portdetails_div_port_number").html();
+	}
+	
+	if($(domObj).find(".portdetails_div_status")){
+		portData.status = $(domObj).find(".portdetails_div_status").html();
+	}
+
+	
+	localStorage.setItem('portDetails',JSON.stringify(portData));
+
+	url = "portdetails#" + switchname;
+	window.location = url;
 }
 
 /* ]]> */
