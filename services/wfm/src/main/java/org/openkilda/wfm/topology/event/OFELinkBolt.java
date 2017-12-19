@@ -18,8 +18,8 @@ package org.openkilda.wfm.topology.event;
 import static org.openkilda.messaging.Utils.MAPPER;
 import static org.openkilda.messaging.Utils.PAYLOAD;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.apache.storm.state.KeyValueState;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -55,7 +55,7 @@ import java.util.Map;
 public class OFELinkBolt
         extends AbstractTickStatefulBolt<KeyValueState<String, Object>>
         implements ICtrlBolt {
-    private static final Logger logger = LogManager.getLogger(OFELinkBolt.class);
+    private static final Logger logger = LoggerFactory.getLogger(OFELinkBolt.class);
 
     private final String STREAM_ID_CTRL = "ctrl";
     private final String STATE_ID_DISCOVERY = "discovery-manager";

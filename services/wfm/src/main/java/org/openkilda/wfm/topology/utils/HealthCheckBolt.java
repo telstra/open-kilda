@@ -27,8 +27,8 @@ import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.HealthCheckInfoData;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -40,7 +40,7 @@ import java.io.IOException;
 import java.util.Map;
 
 public class HealthCheckBolt extends BaseRichBolt {
-    private static final Logger logger = LogManager.getLogger(HealthCheckBolt.class);
+    private static final Logger logger = LoggerFactory.getLogger(HealthCheckBolt.class);
 
     private final HealthCheckInfoData healthCheck;
 

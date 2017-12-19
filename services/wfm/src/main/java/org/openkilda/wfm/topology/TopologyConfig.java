@@ -1,6 +1,6 @@
 package org.openkilda.wfm.topology;
 
-import org.apache.logging.log4j.Level;
+import org.slf4j.event.Level;
 import org.openkilda.wfm.ConfigurationException;
 import org.openkilda.wfm.PropertiesReader;
 

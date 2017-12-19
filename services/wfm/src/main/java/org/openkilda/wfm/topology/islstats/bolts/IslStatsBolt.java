@@ -15,8 +15,8 @@
 
 package org.openkilda.wfm.topology.islstats.bolts;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -40,7 +40,7 @@ import java.util.Map;
 public class IslStatsBolt extends BaseRichBolt {
 
     private OutputCollector collector;
-    private static final Logger logger = LogManager.getLogger(IslStatsBolt.class);
+    private static final Logger logger = LoggerFactory.getLogger(IslStatsBolt.class);
 
     private static List<Object> tsdbTuple(String metric, long timestamp, Number value, Map<String, String> tag)
             throws IOException{

@@ -17,8 +17,8 @@ package org.openkilda.wfm.topology.opentsdb.bolts;
 
 import static org.openkilda.messaging.Utils.MAPPER;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 import org.apache.storm.opentsdb.bolt.TupleOpenTsdbDatapointMapper;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -38,7 +38,7 @@ import java.util.stream.Stream;
 
 public class OpenTSDBFilterBolt extends BaseRichBolt {
 
-    private static final Logger LOGGER = LogManager.getLogger(OpenTSDBFilterBolt.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(OpenTSDBFilterBolt.class);
     private static final long TEN_MINUTES = 60000L;
 
     private static final Fields DECLARED_FIELDS =

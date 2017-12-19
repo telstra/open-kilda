@@ -55,6 +55,7 @@ services:
       - kafka:kafka.pendev
       - topology-engine-rest
       - zookeeper:zookeeper.pendev
+      - logstash:logstash.pendev
     environment:
       neo4jhost: 'neo4j'
       neo4juser: 'neo4j'
@@ -217,6 +218,7 @@ services:
       - neo4j:neo4j.pendev
       - zookeeper:zookeeper.pendev
       - opentsdb:opentsdb.pendev
+      - logstash:logstash.pendev
     ports:
       - "6627:6627"
       - "3772:3772"
@@ -243,6 +245,7 @@ services:
       - zookeeper:zookeeper.pendev
       - storm_nimbus:nimbus.pendev
       - storm_supervisor:supervisor.pendev
+      - logstash:logstash.pendev
     ports:
       - "8888:8080"
     healthcheck:
@@ -267,6 +270,7 @@ services:
       - kafka:kafka.pendev
       - opentsdb:opentsdb.pendev
       - storm_nimbus:nimbus.pendev
+      - logstash:logstash.pendev
     ports:
       - "6700:6700"
       - "6701:6701"
@@ -335,6 +339,29 @@ services:
       - hbase:hbase.pendev
     ports:
       - "4242:4242"
+
+  elasticsearch:
+    container_name: elasticsearch
+    image: elasticsearch:5.6.5
+    hostname: elasticsearch.pendev
+
+  kibana:
+    image: kibana:5.6.5
+    container_name: kibana
+    hostname: kibana.pendev
+    ports:
+      - 5601:5601
+
+  logstash:
+      container_name: logstash
+      hostname: logstash.pendev
+      image: "kilda/logstash:${full_build_number:-latest}"
+      links:
+        - elasticsearch:elasticsearch.pendev
+      ports:
+        - 9600:9600
+
+    
 
 volumes:
   zookeeper_data:

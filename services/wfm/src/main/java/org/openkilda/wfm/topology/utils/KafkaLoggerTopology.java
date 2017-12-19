@@ -19,7 +19,7 @@ import org.openkilda.wfm.ConfigurationException;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.LaunchEnvironment;
 
-import org.apache.logging.log4j.Level;
+import org.slf4j.event.Level;
 import org.apache.storm.Config;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.topology.TopologyBuilder;
@@ -76,7 +76,7 @@ public class KafkaLoggerTopology extends AbstractTopology {
         Config config = super.makeStormConfig();
         Level level = this.config.getLoggerLevel();
 
-        config.setDebug(level == Level.DEBUG || level == Level.TRACE || level == Level.ALL);
+        config.setDebug(level == Level.DEBUG || level == Level.TRACE);
 
         return config;
     }
