@@ -19,3 +19,8 @@ ADD tar /src
 ADD ansible /ansible
 RUN ansible-playbook -s /ansible/deploy.yml
 ADD conf/storm.yaml /opt/storm/conf/storm.yaml
+ADD log4j2 /opt/storm/log4j2
+ADD lib /opt/local/lib
+ADD lib/jackson-core-2.9.3.jar /opt/storm/lib/jackson-core-2.9.3.jar
+ADD lib/jackson-databind-2.9.3.jar /opt/storm/lib/jackson-databind-2.9.3.jar
+ADD lib/jackson-annotations-2.9.3.jar /opt/storm/lib/jackson-annotations-2.9.3.jar

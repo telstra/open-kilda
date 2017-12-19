@@ -21,3 +21,21 @@ path:
   - application_properties:
     dest: services/src/openkilda-gui/src/main/resources/application.properties
     tmpl: templates/openkilda-gui/application.properties.j2
+  - logstash_dockerfile:
+    dest: services/logstash/Dockerfile
+    tmpl: templates/logstash/Dockerfile.j2
+  - logstash_conf:
+    dest: services/logstash/etc/logstash/conf.d/logstash.conf
+    tmpl: templates/logstash/logstash.conf.j2
+  - storm_log4j2_cluster_xml:
+    dest: services/storm/log4j2/cluster.xml
+    tmpl: templates/storm/log4j2/cluster.xml.j2
+  - storm_log4j2_worker_xml:
+    dest: services/storm/log4j2/worker.xml
+    tmpl: templates/storm/log4j2/worker.xml.j2
+  - floodlight_modules_logback_xml:
+    dest: services/src/floodlight-modules/src/main/resources/logback.xml
+    tmpl: templates/floodlight/logback.xml.j2
+  - mininet_log_json_xml:
+    dest: services/mininet/app/log.json
+    tmpl: templates/mininet/log.json.j2

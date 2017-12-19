@@ -15,14 +15,14 @@
 
 package org.openkilda.wfm.topology.utils;
 
-import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Tuple;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.event.Level;
 
 import java.util.Map;
 
@@ -31,10 +31,31 @@ import java.util.Map;
  */
 public class LoggerBolt extends BaseRichBolt {
 
-    private static Logger logger = LogManager.getLogger(LoggerBolt.class);
+    private static Logger logger = LoggerFactory.getLogger(LoggerBolt.class);
     public Level level = Level.DEBUG;
     public String watermark = "";
     private OutputCollector _collector;
+
+    private void log(Level level, String format, Object[] argArray) {
+        switch (level) {
+            case TRACE:
+                logger.trace(format, argArray);
+                break;
+            case DEBUG:
+                logger.debug(format, argArray);
+                break;
+            case INFO:
+                logger.info(format, argArray);
+                break;
+            case WARN:
+                logger.warn(format, argArray);
+                break;
+            case ERROR:
+                logger.error(format, argArray);
+                break;
+        }
+
+    }
 
     public LoggerBolt withLevel(Level level) {
         this.level = level;
@@ -54,8 +75,14 @@ public class LoggerBolt extends BaseRichBolt {
     @Override
     public void execute(Tuple tuple) {
         System.out.println("this = " + this);
-        logger.log(level, "\n{}: fields: {} :: values: {}",
-                watermark, tuple.getFields(), tuple.getValues());
+
+        // No way to do dynamic log level with SLF4J
+        // https://stackoverflow.com/questions/2621701/setting-log-level-of-message-at-runtime-in-slf4j
+        // https://jira.qos.ch/browse/SLF4J-124
+
+        log(level, "\n{}: fields: {} :: values: {}",
+                new Object[] {watermark, tuple.getFields(), tuple.getValues()});
+
         _collector.ack(tuple);
     }
 

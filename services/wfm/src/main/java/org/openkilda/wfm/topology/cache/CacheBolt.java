@@ -20,8 +20,6 @@ import static org.openkilda.wfm.topology.flow.StreamType.REROUTE;
 import static org.openkilda.wfm.topology.flow.StreamType.RESTORE;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.apache.storm.state.InMemoryKeyValueState;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -58,12 +56,13 @@ import org.openkilda.pce.cache.Cache;
 import org.openkilda.pce.cache.FlowCache;
 import org.openkilda.pce.cache.NetworkCache;
 import org.openkilda.pce.cache.ResourceCache;
-import org.openkilda.wfm.OFEMessageUtils;
 import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.cache.service.CacheWarmingService;
 import org.openkilda.wfm.topology.utils.AbstractTickStatefulBolt;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.List;
@@ -90,7 +89,7 @@ public class CacheBolt
     /**
      * The logger.
      */
-    private static final Logger logger = LogManager.getLogger(CacheBolt.class);
+    private static final Logger logger = LoggerFactory.getLogger(CacheBolt.class);
 
     /**
      * Network cache.

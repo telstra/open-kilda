@@ -17,12 +17,6 @@ package org.openkilda.wfm.topology.event;
 
 import static org.openkilda.messaging.Utils.PAYLOAD;
 
-import org.openkilda.messaging.ctrl.AbstractDumpState;
-import org.openkilda.messaging.ctrl.state.OFEPortBoltState;
-import org.openkilda.wfm.OFEMessageUtils;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.apache.storm.state.KeyValueState;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -31,17 +25,18 @@ import org.apache.storm.topology.base.BaseStatefulBolt;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
+import org.openkilda.messaging.ctrl.AbstractDumpState;
+import org.openkilda.messaging.ctrl.state.OFEPortBoltState;
+import org.openkilda.wfm.OFEMessageUtils;
 import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
 import org.openkilda.wfm.topology.AbstractTopology;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -51,7 +46,7 @@ public class OFEPortBolt
         extends BaseStatefulBolt<KeyValueState<String, ConcurrentHashMap<String, String>>>
         implements ICtrlBolt {
 
-    private static Logger logger = LogManager.getLogger(OFEPortBolt.class);
+    private static Logger logger = LoggerFactory.getLogger(OFEPortBolt.class);
 
     public final String STREAM_ID_CTRL = "ctrl";
 

@@ -21,8 +21,8 @@ import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.topology.islstats.bolts.IslStatsBolt;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.opentsdb.bolt.OpenTsdbBolt;
 import org.apache.storm.opentsdb.bolt.TupleOpenTsdbDatapointMapper;
@@ -30,7 +30,7 @@ import org.apache.storm.opentsdb.client.OpenTsdbClient;
 import org.apache.storm.topology.TopologyBuilder;
 
 public class IslStatsTopology extends AbstractTopology {
-    private static final Logger logger = LogManager.getLogger(IslStatsTopology.class);
+    private static final Logger logger = LoggerFactory.getLogger(IslStatsTopology.class);
 
     public IslStatsTopology(LaunchEnvironment env) throws ConfigurationException {
         super(env);

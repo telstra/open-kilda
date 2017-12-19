@@ -20,8 +20,8 @@ import org.openkilda.wfm.ConfigurationException;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.LaunchEnvironment;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.topology.TopologyBuilder;
 
@@ -37,7 +37,7 @@ import org.apache.storm.topology.TopologyBuilder;
  * since we already have the stream within storm.
  */
 public class OFEventSplitterTopology extends AbstractTopology {
-    private static Logger logger = LogManager.getLogger(OFEventSplitterTopology.class);
+    private static Logger logger = LoggerFactory.getLogger(OFEventSplitterTopology.class);
 
     public OFEventSplitterTopology(LaunchEnvironment env) throws ConfigurationException {
         super(env);

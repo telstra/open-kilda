@@ -20,3 +20,13 @@ northbound_endpoint: "127.0.0.1"
 northbound_rest_port: "8088"
 kilda_username: "kilda"
 kilda_password: "kilda"
+logging:
+  logstash_host: logstash.pendev
+  elasticsearch_hosts: "elasticsearch.pendev:9200"
+  port:
+    topology_engine: 5000
+    storm: 5001
+    floodlight: 5002
+    topology_engine_rest: 5003
+    mininet: 5004
+    northbound: 5005

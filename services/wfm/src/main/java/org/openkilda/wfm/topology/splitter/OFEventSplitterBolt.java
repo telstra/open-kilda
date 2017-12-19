@@ -21,8 +21,8 @@ import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Utils;
 import org.openkilda.wfm.OFEMessageUtils;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -44,7 +44,7 @@ public class OFEventSplitterBolt extends BaseRichBolt {
     public static final String JSON_INFO = "info";
     public static final String JSON_COMMAND = "command";
     public static final String[] CHANNELS = {INFO, COMMAND, OTHER};
-    private static Logger logger = LogManager.getLogger(OFEventSplitterBolt.class);
+    private static Logger logger = LoggerFactory.getLogger(OFEventSplitterBolt.class);
     OutputCollector _collector;
 
     @Override

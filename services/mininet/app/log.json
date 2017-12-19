@@ -1,0 +1,31 @@
+{
+  "handlers": {
+    "logstash": {
+      "level": "DEBUG",
+      "class": "logstash.TCPLogstashHandler",
+      "host": "logstash",
+      "version": 1,
+      "message_type": "kilda-MN",
+      "port": 5004
+    },
+    "stdout": {
+      "formatter": "default",
+      "class": "logging.StreamHandler",
+      "stream": "ext://sys.stdout"
+    }
+  },
+  "version": 1,
+  "root": {
+    "handlers": [
+      "stdout",
+      "logstash"
+    ],
+    "propagate": true,
+    "level": "DEBUG"
+  },
+  "formatters": {
+    "default": {
+      "format": "[%(asctime)s] %(levelname)s in %(module)s: %(message)s"
+    }
+  }
+}

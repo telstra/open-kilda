@@ -15,20 +15,40 @@
 #
 
 
-from bottle import get, post, request, run, Bottle, response, request
+from bottle import get, post, request, run, Bottle, response, request, install
 from mininet.net import Mininet
 from mininet.node import RemoteController, OVSKernelSwitch
 from mininet.clean import cleanup
 from mininet.link import TCLink
 from jsonschema import validate
 import logging
+from logging.config import dictConfig
 import json
 import socket
 import Queue
 import threading
 import random
 import time
+from functools import wraps
+from datetime import datetime
 
+
+def log_to_logger(fn):
+    '''
+    Wrap a Bottle request so that a log line is emitted after it's handled.
+    (This decorator can be extended to take the desired logger as a param.)
+    '''
+    @wraps(fn)
+    def _log_to_logger(*args, **kwargs):
+        actual_response = fn(*args, **kwargs)
+        logger.info('%s %s %s %s' % (request.remote_addr,
+                                    request.method,
+                                    request.url,
+                                    response.status))
+        return actual_response
+    return _log_to_logger
+
+install(log_to_logger)
 
 topology_schema = {
   "$schema": "http://json-schema.org/draft-04/schema#",
@@ -513,8 +533,10 @@ def main():
     switches = {}
     links = {}
     controllers = []
-    logging.basicConfig(format='%(levelname)s:%(message)s',
-                        level=logging.DEBUG)
+
+    with open("/app/log.json", "r") as fd:
+        logging.config.dictConfig(json.load(fd))
+
     logger = logging.getLogger()
     mininet_cleanup()
     start_server('0.0.0.0', 38080)
