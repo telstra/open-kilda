@@ -46,12 +46,6 @@ public class Message extends BaseMessage {
     private static final long serialVersionUID = 1L;
 
     /**
-     * Message timestamp.
-     */
-    @JsonProperty(TIMESTAMP)
-    protected long timestamp;
-
-    /**
      * Message correlation id.
      * Correlation ID request value for Northbound messages or generated value without REST API calls (re-flow, etc.).
      */
@@ -75,7 +69,6 @@ public class Message extends BaseMessage {
     public Message(@JsonProperty(TIMESTAMP) final long timestamp,
                    @JsonProperty(CORRELATION_ID) final String correlationId,
                    @JsonProperty(DESTINATION) final Destination destination) {
-//        this.timestamp = timestamp;
         super(timestamp);
         this.correlationId = correlationId;
         this.destination = destination;
@@ -88,7 +81,6 @@ public class Message extends BaseMessage {
      * @param correlationId message correlation id
      */
     public Message(final long timestamp, final String correlationId) {
-//        this.timestamp = timestamp;
         super(timestamp);
         this.correlationId = correlationId;
     }
