@@ -39,7 +39,6 @@ import java.util.Objects;
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
-        "command",
         TRANSACTION_ID,
         FLOW_ID,
         "cookie",
