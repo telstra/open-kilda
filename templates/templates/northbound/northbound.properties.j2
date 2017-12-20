@@ -9,4 +9,6 @@ zookeeper.hosts={{ zookeeper_hosts }}
 kafka.hosts={{ kafka_hosts }}
 kafka.groupid=northbound-consumer
 server.contextPath=/api/v1
-kafka.topic={{ kafka_topic }}
+kafka.flow.topic={{ kafka_topic_flow }}
+kafka.health.topic={{ kafka_topic_health_check }}
+kafka.northbound.topic={{ kafka_topic_northbound }}
