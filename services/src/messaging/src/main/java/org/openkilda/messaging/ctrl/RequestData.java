@@ -15,6 +15,8 @@
 
 package org.openkilda.messaging.ctrl;
 
+import org.openkilda.messaging.BaseMessage;
+
 import com.fasterxml.jackson.annotation.*;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
@@ -26,12 +28,7 @@ import java.util.List;
  */
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
-//@JsonTypeInfo(use = JsonTypeInfo.Id.NAME,
-//        include = JsonTypeInfo.As.PROPERTY,
-//        property = "action")
-//@JsonSubTypes({
-//        @JsonSubTypes.Type(value = ListRequestData.class, name = "list")})
-public class RequestData implements Serializable {
+public class RequestData extends BaseMessage {
     /**
      * Serialization version number constant.
      */

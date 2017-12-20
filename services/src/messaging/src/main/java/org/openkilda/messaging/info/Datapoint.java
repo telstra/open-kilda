@@ -34,10 +34,10 @@ public class Datapoint extends InfoData {
     private String metric;
 
     /**
-     * Metric creation timestamp.
+     * Metric time.
      */
-    @JsonProperty("timestamp")
-    private Long timestamp;
+    @JsonProperty("time")
+    private Long time;
 
     /**
      * Metric tags.
@@ -55,10 +55,12 @@ public class Datapoint extends InfoData {
     }
 
     @JsonCreator
-    public Datapoint(@JsonProperty("metric") String metric, @JsonProperty("timestamp") Long timestamp,
-                     @JsonProperty("tags") Map<String, String> tags, @JsonProperty("value") Number value) {
+    public Datapoint(@JsonProperty("metric") String metric,
+                     @JsonProperty("time") Long time,
+                     @JsonProperty("tags") Map<String, String> tags,
+                     @JsonProperty("value") Number value) {
         this.metric = metric;
-        this.timestamp = timestamp;
+        this.time = time;
         this.tags = tags;
         this.value = value;
     }
@@ -71,12 +73,12 @@ public class Datapoint extends InfoData {
         this.metric = metric;
     }
 
-    public Long getTimestamp() {
-        return timestamp;
+    public Long getTime() {
+        return time;
     }
 
-    public void setTimestamp(Long timestamp) {
-        this.timestamp = timestamp;
+    public void setTime(Long time) {
+        this.time = time;
     }
 
     public Map<String, String> getTags() {
