@@ -15,7 +15,11 @@
 
 package org.openkilda.messaging;
 
+import static org.openkilda.messaging.Utils.TIMESTAMP;
+
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 import java.io.Serializable;
@@ -25,9 +29,19 @@ import java.io.Serializable;
  */
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public abstract class MessageData implements Serializable {
+public abstract class MessageData extends BaseMessage {
     /**
      * Serialization version number constant.
      */
     static final long serialVersionUID = 1L;
+
+    @JsonCreator
+    public MessageData(@JsonProperty(TIMESTAMP) final long timestamp) {
+        super(timestamp);
+    }
+
+    public MessageData() {
+        super(System.currentTimeMillis());
+    }
+
 }

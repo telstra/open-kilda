@@ -64,7 +64,7 @@ public class OpenTSDBFilterBolt extends BaseRichBolt {
             if (isUpdateRequired(datapoint)) {
                 addDatapoint(datapoint);
 
-                List<Object> stream = Stream.of(datapoint.getMetric(), datapoint.getTimestamp(), datapoint.getValue(),
+                List<Object> stream = Stream.of(datapoint.getMetric(), datapoint.getTime(), datapoint.getValue(),
                         datapoint.getTags())
                         .collect(Collectors.toList());
 
@@ -97,6 +97,6 @@ public class OpenTSDBFilterBolt extends BaseRichBolt {
     private boolean isDatapointOutdated(Datapoint datapoint) {
         Datapoint prevDatapoint = storage.stream().filter(item -> item.equals(datapoint)).findFirst()
                 .orElseThrow(() -> new IllegalStateException("Unexpected storage value"));
-        return datapoint.getTimestamp() - prevDatapoint.getTimestamp() >= TEN_MINUTES;
+        return datapoint.getTime() - prevDatapoint.getTime() >= TEN_MINUTES;
     }
 }
