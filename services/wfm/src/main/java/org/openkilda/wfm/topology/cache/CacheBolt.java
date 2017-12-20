@@ -28,6 +28,7 @@ import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
+import org.openkilda.messaging.BaseMessage;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
@@ -162,38 +163,6 @@ public class CacheBolt
     }
 
     /**
-     * Tries the parse the json object and return a null if can't
-     *
-     * @param json the json to parse
-     * @return an InfoMessage, if possible; otherwise null
-     */
-    private InfoMessage tryInfoMessage(String json){
-        InfoMessage result = null;
-        try {
-            result = MAPPER.readValue(json, InfoMessage.class);
-        } catch (Exception e){
-            /* do nothing */
-        }
-        return result;
-    }
-
-    /**
-     * Tries the parse the json object and return a null if can't
-     *
-     * @param json the json to parse
-     * @return an InfoMessage, if possible; otherwise null
-     */
-    private InfoData tryInfoData(String json){
-        InfoData result = null;
-        try {
-            result = MAPPER.readValue(json, InfoData.class);
-        } catch (Exception e){
-            /* do nothing */
-        }
-        return result;
-    }
-
-    /**
      * {@inheritDoc}
      */
     @Override
@@ -216,44 +185,45 @@ public class CacheBolt
         // TODO: Eliminate the inefficiency introduced through the hack
         try {
             logger.info("Request tuple={}", tuple);
-            InfoMessage info = tryInfoMessage(json);
-            if (info != null && Destination.WFM_CACHE == info.getDestination()) {
-                logger.debug("Storage content message {}", json);
-                handleNetworkDump(info.getData(), tuple);
-            } else {
-                InfoData data = tryInfoData(json);
-                if (data != null) {
-                    logger.info("Cache update info data", data);
-
-                    if (data instanceof SwitchInfoData) {
-                        logger.info("Cache update switch info data: {}", data);
-
-                        emitNetworkMessage(data, tuple, Utils.SYSTEM_CORRELATION_ID);
-                        handleSwitchEvent((SwitchInfoData) data, tuple);
-
-                    } else if (data instanceof IslInfoData) {
-                        logger.info("Cache update isl info data: {}", data);
-
-                        emitNetworkMessage(data, tuple, Utils.SYSTEM_CORRELATION_ID);
-                        handleIslEvent((IslInfoData) data, tuple);
-
-                    } else if (data instanceof PortInfoData) {
-                        logger.info("Cache update port info data: {}", data);
-
-                        emitNetworkMessage(data, tuple, Utils.SYSTEM_CORRELATION_ID);
-                        handlePortEvent((PortInfoData) data, tuple);
-
-                    } else if (data instanceof FlowInfoData) {
-                        logger.info("Cache update info data: {}", data);
-
-                        FlowInfoData flowData = (FlowInfoData) data;
-                        handleFlowEvent(flowData, tuple);
-                    } else {
-                        logger.debug("Skip undefined info data type {}", json);
-                    }
-                } else {
-                    logger.debug("Skip undefined message type {}", json);
+            BaseMessage bm = MAPPER.readValue(json, BaseMessage.class);
+            if (bm instanceof InfoMessage) {
+                InfoMessage info = (InfoMessage) bm;
+                if (Destination.WFM_CACHE == info.getDestination()){
+                    logger.debug("Storage content message {}", json);
+                    handleNetworkDump(info.getData(), tuple);
                 }
+            } else if (bm instanceof InfoData) {
+                InfoData data = (InfoData) bm;
+                logger.debug("Cache update info data", data);
+
+                if (data instanceof SwitchInfoData) {
+                    logger.info("Cache update switch info data: {}", data);
+
+                    emitNetworkMessage(data, tuple, Utils.SYSTEM_CORRELATION_ID);
+                    handleSwitchEvent((SwitchInfoData) data, tuple);
+
+                } else if (data instanceof IslInfoData) {
+                    logger.info("Cache update isl info data: {}", data);
+
+                    emitNetworkMessage(data, tuple, Utils.SYSTEM_CORRELATION_ID);
+                    handleIslEvent((IslInfoData) data, tuple);
+
+                } else if (data instanceof PortInfoData) {
+                    logger.info("Cache update port info data: {}", data);
+
+                    emitNetworkMessage(data, tuple, Utils.SYSTEM_CORRELATION_ID);
+                    handlePortEvent((PortInfoData) data, tuple);
+
+                } else if (data instanceof FlowInfoData) {
+                    logger.info("Cache update info data: {}", data);
+
+                    FlowInfoData flowData = (FlowInfoData) data;
+                    handleFlowEvent(flowData, tuple);
+                } else {
+                    logger.debug("Skip undefined info data type {}", json);
+                }
+            } else {
+                logger.debug("Skip undefined message type {}", json);
             }
 
         } catch (CacheException exception) {
