@@ -3,6 +3,7 @@ default: build-latest run-dev
 
 build-base:
 	base/hacks/kilda-bins.download.sh
+	base/hacks/shorm.requirements.download.sh
 	rsync -au kilda-bins/zookeeper* services/zookeeper/tar/
 	rsync -au kilda-bins/hbase* services/hbase/tar/
 	rsync -au kilda-bins/kafka* services/kafka/tar/
@@ -16,6 +17,7 @@ build-base:
 	docker build -t kilda/neo4j:latest services/neo4j
 	docker build -t kilda/opentsdb:latest services/opentsdb
 	docker build -t kilda/mininet:latest services/mininet
+	docker build -t kilda/logstash:latest services/logstash
 
 build-latest: build-base compile
 	docker-compose build

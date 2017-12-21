@@ -21,3 +21,8 @@ pass={{ neo4j_password }}
 # effective_policy determines what to do with a failed link.
 # Available options are delete and deactivate.
 effective_policy=deactivate
+
+[logstash]
+enabled=True
+host={{ logging.logstash_host }}
+port={{ logging.port.topology_engine }}

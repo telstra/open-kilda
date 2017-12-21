@@ -24,8 +24,8 @@ import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.topology.splitter.InfoEventSplitterBolt;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.topology.BoltDeclarer;
 import org.apache.storm.topology.IStatefulBolt;
@@ -56,7 +56,7 @@ public class OFEventWFMTopology extends AbstractTopology {
      * (8) ◊ Add simple pass through for verification (w/ speaker) & validation (w/ TPE)
      */
 
-    private static Logger logger = LogManager.getLogger(OFEventWFMTopology.class);
+    private static Logger logger = LoggerFactory.getLogger(OFEventWFMTopology.class);
 
     public static final String SPOUT_ID_INPUT = "input";
     public static final String BOLT_ID_OUTPUT = "out";

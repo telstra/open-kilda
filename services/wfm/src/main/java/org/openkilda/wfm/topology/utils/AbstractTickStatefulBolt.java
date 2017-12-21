@@ -15,8 +15,8 @@
 
 package org.openkilda.wfm.topology.utils;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 import org.apache.storm.Config;
 import org.apache.storm.Constants;
 import org.apache.storm.state.State;
@@ -32,7 +32,7 @@ import java.util.Map;
  */
 public abstract class AbstractTickStatefulBolt<T extends State> extends BaseStatefulBolt<T> {
 
-    private static final Logger logger = LogManager.getLogger(AbstractTickStatefulBolt.class);
+    private static final Logger logger = LoggerFactory.getLogger(AbstractTickStatefulBolt.class);
     protected OutputCollector _collector;
     /** emitFrequency is in seconds */
     private Integer emitFrequency;

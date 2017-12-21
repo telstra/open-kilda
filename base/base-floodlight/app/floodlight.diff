@@ -1,8 +1,8 @@
 diff --git a/pom.xml b/pom.xml
-index 2c451763..f1defd74 100644
+index 2c45176..4d98805 100644
 --- a/pom.xml
 +++ b/pom.xml
-@@ -143,7 +143,7 @@
+@@ -143,12 +143,12 @@
  		<dependency>
  			<groupId>com.google.guava</groupId>
  			<artifactId>guava</artifactId>
@@ -11,6 +11,12 @@ index 2c451763..f1defd74 100644
  		</dependency>
  		<dependency>
  			<groupId>ch.qos.logback</groupId>
+ 			<artifactId>logback-classic</artifactId>
+-			<version>1.0.0</version>
++			<version>1.2.3</version>
+ 		</dependency>
+ 		<dependency>
+ 			<groupId>org.slf4j</groupId>
 @@ -255,7 +255,7 @@
  		<dependency>
  			<groupId>org.projectfloodlight</groupId>
@@ -30,7 +36,7 @@ index 2c451763..f1defd74 100644
  	</properties>
  </project>
 diff --git a/src/main/java/net/floodlightcontroller/core/internal/OFSwitch.java b/src/main/java/net/floodlightcontroller/core/internal/OFSwitch.java
-index b31c3796..8902019b 100644
+index b31c379..8902019 100644
 --- a/src/main/java/net/floodlightcontroller/core/internal/OFSwitch.java
 +++ b/src/main/java/net/floodlightcontroller/core/internal/OFSwitch.java
 @@ -932,7 +932,8 @@ public class OFSwitch implements IOFSwitchBackend {
@@ -51,7 +57,7 @@ index b31c3796..8902019b 100644
 \ No newline at end of file
 +}
 diff --git a/src/main/java/net/floodlightcontroller/core/internal/OFSwitchHandshakeHandler.java b/src/main/java/net/floodlightcontroller/core/internal/OFSwitchHandshakeHandler.java
-index 2ad7e5e3..1c02820c 100644
+index 2ad7e5e..1c02820 100644
 --- a/src/main/java/net/floodlightcontroller/core/internal/OFSwitchHandshakeHandler.java
 +++ b/src/main/java/net/floodlightcontroller/core/internal/OFSwitchHandshakeHandler.java
 @@ -442,8 +442,10 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {

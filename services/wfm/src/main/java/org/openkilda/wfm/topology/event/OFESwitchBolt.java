@@ -21,8 +21,8 @@ import org.openkilda.messaging.ctrl.AbstractDumpState;
 import org.openkilda.messaging.ctrl.state.OFESwitchBoltState;
 import org.openkilda.wfm.OFEMessageUtils;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 import org.apache.storm.state.KeyValueState;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -51,7 +51,7 @@ public class OFESwitchBolt
         extends BaseStatefulBolt<KeyValueState<String, String>>
         implements ICtrlBolt {
 
-    private static Logger logger = LogManager.getLogger(OFESwitchBolt.class);
+    private static Logger logger = LoggerFactory.getLogger(OFESwitchBolt.class);
 
     public final String STREAM_ID_CTRL = "ctrl";
 
