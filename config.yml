@@ -2,6 +2,7 @@
 - name: Substitute correct endpints to service propertie files
   hosts: localhost
   connection: local
+  become: no
 
   vars_files:
     - templates/vars/path.yaml
