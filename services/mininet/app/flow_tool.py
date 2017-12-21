@@ -15,13 +15,36 @@
 #
 
 
-
-from bottle import run, get, response, request, post, error
+from bottle import run, get, response, request, post, error, install
 import ctypes
 import multiprocessing
 import os
 import scapy.all as s
 import socket
+import logging
+import json
+from logging.config import dictConfig
+from functools import wraps
+
+logger = logging.getLogger()
+
+
+def log_to_logger(fn):
+    '''
+    Wrap a Bottle request so that a log line is emitted after it's handled.
+    (This decorator can be extended to take the desired logger as a param.)
+    '''
+    @wraps(fn)
+    def _log_to_logger(*args, **kwargs):
+        actual_response = fn(*args, **kwargs)
+        logger.info('%s %s %s %s' % (request.remote_addr,
+                                    request.method,
+                                    request.url,
+                                    response.status))
+        return actual_response
+    return _log_to_logger
+
+install(log_to_logger)
 
 number_of_packets = 1000
 expected_delta = 500
@@ -194,4 +217,9 @@ def send_malformed_packet():
         return "can't send malformed packet {}".format(ex)
 
 
-run(host='0.0.0.0', port=17191, debug=True)
+if __name__ == '__main__':
+
+    with open("/app/log.json", "r") as fd:
+        logging.config.dictConfig(json.load(fd))
+
+    run(host='0.0.0.0', port=17191, debug=True)

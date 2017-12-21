@@ -26,8 +26,8 @@ import org.openkilda.wfm.topology.flow.ComponentType;
 import org.openkilda.wfm.topology.flow.FlowTopology;
 import org.openkilda.wfm.topology.flow.StreamType;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 import org.apache.storm.shade.org.eclipse.jetty.util.ConcurrentHashSet;
 import org.apache.storm.state.InMemoryKeyValueState;
 import org.apache.storm.task.OutputCollector;
@@ -51,7 +51,7 @@ public class TransactionBolt
     /**
      * The logger.
      */
-    private static final Logger logger = LogManager.getLogger(TransactionBolt.class);
+    private static final Logger logger = LoggerFactory.getLogger(TransactionBolt.class);
 
     public final String STREAM_ID_CTRL = "ctrl";
 

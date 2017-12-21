@@ -15,6 +15,11 @@
 
 import sys
 import logging
+import ConfigParser
+
+from logstash.handler_tcp import TCPLogstashHandler
+
+from topologylistener import config
 
 __all__ = ['get_logger']
 
@@ -35,6 +40,16 @@ ch.setFormatter(formatter)
 
 root_logger.addHandler(ch)
 kazoo_client.addHandler(ch)
+
+try:
+    if config.getboolean('logstash', 'enabled'):
+        host = config.get('logstash', 'host')
+        port = config.getint('logstash', 'port')
+        logstash_handler = TCPLogstashHandler(host, port, message_type='kilda-TE', version=1)
+        root_logger.addHandler(logstash_handler)
+        kazoo_client.addHandler(logstash_handler)
+except ConfigParser.Error:
+    root_logger.exception('config logstash section error')
 
 
 def get_logger():

@@ -6,15 +6,12 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.openkilda.messaging.Destination;
-import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.Datapoint;
 import org.openkilda.messaging.info.InfoData;
@@ -23,8 +20,9 @@ import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.PortInfoData;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
@@ -55,7 +53,7 @@ public class IslStatsBoltTest {
     private static Destination DESTINATION = null;
     private InfoMessage message = new InfoMessage(islInfoData, TIMESTAMP,CORRELATION, DESTINATION);
 
-    private static Logger logger = LogManager.getLogger(IslStatsBolt.class);
+    private static Logger logger = LoggerFactory.getLogger(IslStatsBolt.class);
 
     @Rule
     public ExpectedException thrown = ExpectedException.none();

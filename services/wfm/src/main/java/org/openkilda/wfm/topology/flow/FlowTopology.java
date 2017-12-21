@@ -33,8 +33,8 @@ import org.openkilda.wfm.topology.flow.bolts.SplitterBolt;
 import org.openkilda.wfm.topology.flow.bolts.TopologyEngineBolt;
 import org.openkilda.wfm.topology.flow.bolts.TransactionBolt;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.KafkaSpout;
 import org.apache.storm.kafka.bolt.KafkaBolt;
@@ -59,7 +59,7 @@ public class FlowTopology extends AbstractTopology {
     public static final Fields fieldsMessageSwitchIdFlowIdTransactionId =
             new Fields(MESSAGE_FIELD, SWITCH_ID_FIELD, Utils.FLOW_ID, Utils.TRANSACTION_ID);
 
-    private static final Logger logger = LogManager.getLogger(FlowTopology.class);
+    private static final Logger logger = LoggerFactory.getLogger(FlowTopology.class);
 
     private final PathComputer pathComputer;
 

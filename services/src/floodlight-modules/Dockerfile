@@ -16,7 +16,7 @@
 FROM kilda/base-floodlight
 
 ADD src/main/resources/floodlightkilda.properties /app
-ADD src/test/resources/logback.xml /app
+ADD src/main/resources/logback.xml /app
 ADD target/floodlight-modules.jar /app/floodlight-modules/target/
 
 CMD ["java", "-Dlogback.configurationFile=/app/logback.xml", "-cp", \

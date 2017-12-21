@@ -19,8 +19,8 @@ import static org.openkilda.messaging.Utils.PAYLOAD;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -60,7 +60,7 @@ public class InfoEventSplitterBolt extends BaseRichBolt {
             I_PORT, I_PORT_UPDOWN, I_PORT_OTHER,
             I_ISL, I_ISL_UPDOWN, I_ISL_OTHER
     };
-    private static Logger logger = LogManager.getLogger(InfoEventSplitterBolt.class);
+    private static Logger logger = LoggerFactory.getLogger(InfoEventSplitterBolt.class);
     OutputCollector _collector;
 
     @Override
