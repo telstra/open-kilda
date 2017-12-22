@@ -24,6 +24,9 @@ import config
 producer = KafkaProducer(bootstrap_servers=config.KAFKA_BOOTSTRAP_SERVERS)
 logger = get_logger()
 
+MT_ERROR="org.openkilda.messaging.error.ErrorMessage"
+MT_COMMAND="org.openkilda.messaging.command.CommandMessage"
+MT_INFO="org.openkilda.messaging.info.InfoMessage"
 
 def get_timestamp():
     return int(round(time.time() * 1000))
@@ -49,7 +52,7 @@ def build_ingress_flow(path_nodes, src_switch, src_port, src_vlan,
                          "path={}".format(path_nodes))
 
     flow = Flow()
-    flow.command = "install_ingress_flow"
+    flow.clazz = "org.openkilda.messaging.command.flow.InstallIngressFlow"
     flow.transaction_id = 0
     flow.flowid = flow_id
     flow.cookie = cookie
@@ -78,7 +81,7 @@ def build_egress_flow(path_nodes, dst_switch, dst_port, dst_vlan,
                          "path={}".format(path_nodes))
 
     flow = Flow()
-    flow.command = "install_egress_flow"
+    flow.clazz = "org.openkilda.messaging.command.flow.InstallEgressFlow"
     flow.transaction_id = 0
     flow.flowid = flow_id
     flow.cookie = cookie
@@ -96,7 +99,7 @@ def build_intermediate_flows(switch, match, action, vlan, flow_id, cookie):
     # output action is always NONE for transit vlan id
 
     flow = Flow()
-    flow.command = "install_transit_flow"
+    flow.clazz = "org.openkilda.messaging.command.flow.InstallTransitFlow"
     flow.transaction_id = 0
     flow.flowid = flow_id
     flow.cookie = cookie
@@ -112,7 +115,7 @@ def build_one_switch_flow(switch, src_port, src_vlan, dst_port, dst_vlan,
                           bandwidth, flow_id, output_action, cookie,
                           meter_id):
     flow = Flow()
-    flow.command = "install_one_switch_flow"
+    flow.clazz = "org.openkilda.messaging.command.flow.InstallOneSwitchFlow"
     flow.transaction_id = 0
     flow.flowid = flow_id
     flow.cookie = cookie
@@ -130,7 +133,7 @@ def build_one_switch_flow(switch, src_port, src_vlan, dst_port, dst_vlan,
 
 def build_delete_flow(switch, flow_id, cookie, meter_id=0):
     flow = Flow()
-    flow.command = "delete_flow"
+    flow.clazz = "org.openkilda.messaging.command.flow.RemoveFlow"
     flow.transaction_id = 0
     flow.flowid = flow_id
     flow.cookie = cookie
@@ -146,34 +149,46 @@ class Message(object):
             self, default=lambda o: o.__dict__, sort_keys=False, indent=4)
 
 
-def send_message(payload, correlation_id, message_type, destination="WFM"):
+def send_to_topic(payload, correlation_id,
+                  message_type,
+                  destination="WFM",
+                  topic=config.KAFKA_FLOW_TOPIC):
     message = Message()
     message.payload = payload
-    message.type = message_type
+    message.clazz = message_type
     message.destination = destination
     message.timestamp = get_timestamp()
     message.correlation_id = correlation_id
     kafka_message = b'{}'.format(message.to_json())
-    logger.debug('Send message: topic=%s, message=%s', config.KAFKA_TOPIC,
-                kafka_message)
-    message_result = producer.send(config.KAFKA_TOPIC, kafka_message)
+    logger.debug('Send message: topic=%s, message=%s', topic, kafka_message)
+    message_result = producer.send(topic, kafka_message)
     message_result.get(timeout=5)
 
 
+def send_info_message(payload, correlation_id):
+    send_to_topic(payload, correlation_id, MT_INFO)
+
+
+def send_cache_message(payload, correlation_id):
+    send_to_topic(payload, correlation_id, MT_INFO, "WFM_CACHE", config.KAFKA_CACHE_TOPIC)
+
+
 def send_error_message(correlation_id, error_type, error_message,
-                       error_description, destination="WFM"):
+                       error_description, destination="WFM",
+                       topic=config.KAFKA_FLOW_TOPIC):
+    # TODO: Who calls this .. need to pass in the right TOPIC
     data = {"error-type": error_type,
             "error-message": error_message,
             "error-description": error_description}
-    send_message(data, correlation_id, "ERROR", destination)
+    send_to_topic(data, correlation_id, MT_ERROR, destination, topic)
 
 
 def send_install_commands(flow_rules, correlation_id):
     for flow_rule in flow_rules:
-        send_message(flow_rule, correlation_id, "COMMAND")
+        send_to_topic(flow_rule, correlation_id, MT_COMMAND, config.KAFKA_SPEAKER_TOPIC)
 
 
 def send_delete_commands(nodes, flow_id, correlation_id, cookie):
     for node in nodes:
         data = build_delete_flow(str(node['switch_id']), str(flow_id), cookie)
-        send_message(data, correlation_id, "COMMAND")
+        send_to_topic(data, correlation_id, MT_COMMAND, config.KAFKA_SPEAKER_TOPIC)
