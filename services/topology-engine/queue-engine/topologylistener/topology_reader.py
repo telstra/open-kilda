@@ -60,5 +60,4 @@ def send_topology(topology):
 
 def send_message(data):
     logger.info(data)
-    message_utils.send_message(data, "topology_reader-{}".format(time.time()),
-                               "INFO", "WFM_CACHE")
+    message_utils.send_cache_message(data, "topology_reader-{}".format(time.time()))
