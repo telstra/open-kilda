@@ -20,12 +20,11 @@ ENV MININET_REPO https://github.com/mininet/mininet.git
 ENV MININET_INSTALLER mininet/util/install.sh
 ENV INSTALLER_SWITCHES -fbinptvwyx
 
-RUN add-apt-repository 'deb http://security.ubuntu.com/ubuntu xenial-security main'
-RUN apt-get update
-RUN apt-get -qy install mininet net-tools tcpdump inetutils-ping
-RUN apt-get -qy install autoconf automake ca-certificates git libtool
-RUN apt-get -qy install openssh-client patch vim
-RUN apt-get -qy install python-bottle python-jsonschema python-scapy
+RUN apt-get update && apt-get -qy install mininet net-tools tcpdump \
+    inetutils-ping autoconf automake ca-certificates git libtool \
+    openssh-client patch vim python-bottle python-jsonschema python-scapy \
+    && rm -rf /var/lib/apt/lists/*
+RUN pip install python-logstash
 RUN ln -s /usr/sbin/tcpdump /usr/bin/tcpdump
 
 ADD app /app

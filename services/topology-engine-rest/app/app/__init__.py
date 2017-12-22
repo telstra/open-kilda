@@ -17,6 +17,10 @@ from flask import Flask, flash, redirect, render_template, request, session, abo
 from flask_sqlalchemy import SQLAlchemy
 
 import os
+import ConfigParser
+
+from logging.config import dictConfig
+
 
 application = Flask(__name__)
 application.secret_key = '123456789'
@@ -29,6 +33,41 @@ settings = application.config.get('RESTFUL_JSON', {})
 settings.setdefault('indent', 2)
 settings.setdefault('sort_keys', True)
 application.config['RESTFUL_JSON'] = settings
+
+
+config = ConfigParser.RawConfigParser()
+config.read('topology_engine_rest.properties')
+
+logstash_port = config.getint('logstash', 'port')
+logstash_host = config.get('logstash', 'host')
+
+
+dictConfig({
+    'version': 1,
+    'formatters': {'default': {
+        'format': '[%(asctime)s] %(levelname)s in %(module)s: %(message)s',
+    }},
+    'handlers': {
+        'wsgi': {
+            'class': 'logging.StreamHandler',
+            'stream': 'ext://sys.stdout',
+            'formatter': 'default'
+        },
+        'logstash': {
+            'level': 'DEBUG',
+            'class': 'logstash.TCPLogstashHandler',
+            'host': logstash_host,
+            'port': logstash_port,
+            'version': 1,
+            'message_type': 'kilda-TER'
+        },
+    },
+    'root': {
+        'level': 'INFO',
+        'handlers': ['wsgi', 'logstash'],
+        'propagate': True
+    }
+})
 
 #
 # NB: If you run the topology engine like this:
