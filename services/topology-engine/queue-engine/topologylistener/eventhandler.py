@@ -27,9 +27,18 @@ import config
 import topology_reader
 
 logger = get_logger()
-known_messages = ['switch', 'isl', 'port', 'flow_operation']
-known_commands = ['flow_create', 'flow_delete', 'flow_update', 'flow_path',
-                  'flow_get', 'flows_get', 'flow_reroute', 'network']
+known_messages = ['org.openkilda.messaging.info.event.SwitchInfoData',
+                  'org.openkilda.messaging.info.event.IslInfoData',
+                  'org.openkilda.messaging.info.event.PortInfoData',
+                  'org.openkilda.messaging.info.flow.FlowInfoData']
+known_commands = ['org.openkilda.messaging.command.flow.FlowCreateRequest',
+                  'org.openkilda.messaging.command.flow.FlowDeleteRequest',
+                  'org.openkilda.messaging.command.flow.FlowUpdateRequest',
+                  'org.openkilda.messaging.command.flow.FlowPathRequest',
+                  'org.openkilda.messaging.command.flow.FlowGetRequest',
+                  'org.openkilda.messaging.command.flow.FlowsGetRequest',
+                  'org.openkilda.messaging.command.flow.FlowRerouteRequest',
+                  'org.openkilda.messaging.command.discovery.NetworkCommandData']
 
 
 def main_loop():

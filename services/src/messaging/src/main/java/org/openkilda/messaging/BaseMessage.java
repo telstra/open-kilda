@@ -40,7 +40,7 @@ import java.io.Serializable;
  */
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonTypeInfo(use=JsonTypeInfo.Id.CLASS, include=JsonTypeInfo.As.PROPERTY, property="class")
+@JsonTypeInfo(use=JsonTypeInfo.Id.CLASS, include=JsonTypeInfo.As.PROPERTY, property="clazz")
 public abstract class BaseMessage implements Serializable {
     /**
      * Serialization version number constant.
