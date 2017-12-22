@@ -20,3 +20,24 @@ northbound_endpoint: "127.0.0.1"
 northbound_rest_port: "8088"
 kilda_username: "kilda"
 kilda_password: "kilda"
+kafka_topic_ctrl: "kilda.ctrl"
+kafka_topic_flow: "kilda.flow"
+kafka_topic_health_check: "kilda.health.check"
+kafka_topic_northbound: "kilda.northbound"
+kafka_topic_opentsdb: "kilda.otsdb"
+kafka_topic_simulator: "kilda.simulator"
+kafka_topic_speaker: "kilda.speaker"
+kafka_topic_stats: "kilda.stats"
+kafka_topic_topo_cache: "kilda.topo.cache"
+kafka_topic_topo_disco: "kilda.topo.disco"
+kafka_topic_topo_eng: "kilda.topo.eng"
+logging:
+  logstash_host: logstash.pendev
+  elasticsearch_hosts: "elasticsearch.pendev:9200"
+  port:
+    topology_engine: 5000
+    storm: 5001
+    floodlight: 5002
+    topology_engine_rest: 5003
+    mininet: 5004
+    northbound: 5005
