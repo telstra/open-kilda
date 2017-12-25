@@ -175,6 +175,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         ofSwitchService = context.getServiceImpl(IOFSwitchService.class);
         restApiService = context.getServiceImpl(IRestApiService.class);
         kafkaProducer = context.getServiceImpl(KafkaMessageProducer.class);
+        // TODO: Ensure Kafka Topics are created..
     }
 
     /**

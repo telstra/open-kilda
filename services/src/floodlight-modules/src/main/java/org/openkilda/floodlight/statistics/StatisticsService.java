@@ -66,7 +66,7 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
     private static final Logger logger = LoggerFactory.getLogger(StatisticsService.class);
     private static final U64 SYSTEM_MASK = U64.of(0x8000000000000000L);
     private static final long OFPM_ALL = 0xffffffffL;
-    private static final String STATISTICS_TOPIC = "kilda.stats";
+    private static final String STATISTICS_TOPIC = Topic.STATS;
 
     private IOFSwitchService switchService;
     private KafkaMessageProducer kafkaProducer;
