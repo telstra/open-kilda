@@ -14,7 +14,6 @@
 #   limitations under the License.
 #
 
+(sleep 10; /opt/kafka/bin/create_topics.sh) &
+exec /opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/server.properties
 
-nohup /opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/server.properties &
-sleep 10
-/opt/kafka/bin/create_topics.sh
