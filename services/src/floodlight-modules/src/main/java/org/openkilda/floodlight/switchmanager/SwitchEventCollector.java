@@ -50,7 +50,7 @@ import java.util.Map;
 
 public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListener, IFloodlightService {
     private static final Logger logger = LoggerFactory.getLogger(SwitchEventCollector.class);
-    private static final String TOPO_EVENT_TOPIC = "kilda.topo.event";
+    private static final String TOPO_EVENT_TOPIC = Topic.TOPO_DISCO;
     private IOFSwitchService switchService;
     private KafkaMessageProducer kafkaProducer;
     private ISwitchManager switchManager;
