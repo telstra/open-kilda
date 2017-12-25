@@ -1,14 +1,14 @@
 #
-# NB: On the mac, brew currently installs 0.10.2.0. (as of 2017.06.10).
+# NB: On the mac, brew currently installs 0.11.0.1. (as of 2017.12.24).
 #     To get 0.10.2.1, look at https://www.apache.org/dyn/closer.cgi?path=/kafka/0.10.2.1/kafka_2.12-0.10.2.1.tgz
 #
-KAFKA_BIN ?= /usr/local/Cellar/kafka/0.10.2.1/bin
+KAFKA_BIN ?= /usr/local/Cellar/kafka/0.11.0.1/bin
 
 start-k: start-z
-	${KAFKA_BIN}/kafka-server-start.sh /usr/local/etc/kafka/server.properties &
+	${KAFKA_BIN}/kafka-server-start /usr/local/etc/kafka/server.properties &
 
 stop-k:
-	${KAFKA_BIN}/kafka-server-stop.sh /usr/local/etc/kafka/server.properties
+	${KAFKA_BIN}/kafka-server-stop /usr/local/etc/kafka/server.properties
 
 start-z:
 	zkServer start
@@ -78,5 +78,3 @@ deploy-opentsdb:
 kill-opentsdb:
 	storm kill opentsdb >/dev/null 2>&1
 
-create-topics:
-	src/main/resources/create-channels.sh
