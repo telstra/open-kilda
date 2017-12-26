@@ -1,8 +1,8 @@
 {
  "controllers": [
   {
-   "host": "kilda", 
-   "name": "floodlight", 
+   "host": "floodlight",
+   "name": "kilda",
    "port": 6653
   }
  ], 

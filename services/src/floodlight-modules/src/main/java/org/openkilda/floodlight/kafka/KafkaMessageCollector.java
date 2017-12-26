@@ -128,6 +128,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
         }
 
         private void doControllerMsg(CommandMessage message) {
+            logger.debug("\n\nreceived message: {}", message);
             CommandData data = message.getData();
             if (data instanceof DiscoverIslCommandData) {
                 doDiscoverIslCommand(data);
@@ -359,8 +360,8 @@ public class KafkaMessageCollector implements IFloodlightModule {
             try {
                 if (record.value() instanceof String) {
                     String value = (String) record.value();
-                    Message message = MAPPER.readValue(value, Message.class);
-                    if (Destination.CONTROLLER.equals(message.getDestination()) && message instanceof CommandMessage) {
+                    BaseMessage message = MAPPER.readValue(value, BaseMessage.class);
+                    if (message instanceof CommandMessage) {
                         logger.debug("Got a command message for controller: {}", value);
                         doControllerMsg((CommandMessage) message);
                     } else {
