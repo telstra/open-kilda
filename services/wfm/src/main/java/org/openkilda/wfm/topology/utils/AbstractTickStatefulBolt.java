@@ -77,7 +77,6 @@ public abstract class AbstractTickStatefulBolt<T extends State> extends BaseStat
     //execute is called to process tuples
     @Override
     public void execute(Tuple tuple) {
-        //If it's a tick tuple, emit all words and counts
         if (isTickTuple(tuple)) {
             doTick(tuple);
         } else {

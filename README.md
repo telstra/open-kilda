@@ -43,6 +43,23 @@ Just follow the _make unit_ trail.  Most projects have a maven target.
 
 __NB: Several projects have a dependency on the maven parent; look at make unit__
 
+### How to build / test key use cases
+
+Look in the `base/hacks/usecase` directory and you'll find several makefiles that will assist
+with the development and testing of that use case.
+
+As an example, you can execute the following command for more information on the __network
+discovery__ use case:
+
+```
+make -f base/hacks/usecase/network.disco.make help
+
+# or
+
+cd base/hacks/usecase
+make -f network.disco.make help
+```
+
 
 ### How to use a VM to do development
 

@@ -20,6 +20,7 @@ import static org.projectfloodlight.openflow.protocol.ver15.OFMeterSerializerVer
 
 import org.openkilda.floodlight.kafka.KafkaMessageProducer;
 import org.openkilda.messaging.Message;
+import org.openkilda.messaging.Topic;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.PortInfoData;
@@ -50,7 +51,7 @@ import java.util.Map;
 
 public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListener, IFloodlightService {
     private static final Logger logger = LoggerFactory.getLogger(SwitchEventCollector.class);
-    private static final String TOPO_EVENT_TOPIC = "kilda.topo.event";
+    private static final String TOPO_EVENT_TOPIC = Topic.TOPO_DISCO;
     private IOFSwitchService switchService;
     private KafkaMessageProducer kafkaProducer;
     private ISwitchManager switchManager;

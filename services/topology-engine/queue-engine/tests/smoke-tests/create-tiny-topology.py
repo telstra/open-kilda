@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # Copyright 2017 Telstra Open Source
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,24 +14,10 @@
 #   limitations under the License.
 #
 
-from time import time
+from clean_topology import cleanup
+from create_topology import create_topo
 
-import requests
-import json
-
-
-def create_topo(file):
-    print "\nCreating new topology."
-    with open(file) as infile:
-        j_data = json.load(infile)
-
-    headers = {'Content-Type': 'application/json'}
-    start = time()
-    result = requests.post('http://localhost:38080/topology', json=j_data, headers=headers)
-    print "==> Time: ", time()-start
-    if result.status_code == 200:
-        print "==> Successful"
-    else:
-        print "==> Failure:", result.status_code
-        print result.text
-
+print "\n -- "
+cleanup()
+create_topo('tiny-topology.json')
+print "\n -- "

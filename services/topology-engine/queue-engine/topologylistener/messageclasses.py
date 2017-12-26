@@ -45,7 +45,7 @@ class MessageItem(object):
         self.type = kwargs.get("clazz")
         self.timestamp = str(kwargs.get("timestamp"))
         self.payload = kwargs.get("payload", {})
-        self.destination = kwargs.get("destination")
+        self.destination = kwargs.get("destination","")
         self.correlation_id = kwargs.get("correlation_id", "admin-request")
 
     def to_json(self):
