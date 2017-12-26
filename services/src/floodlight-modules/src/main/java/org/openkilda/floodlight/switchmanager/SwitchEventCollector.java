@@ -20,6 +20,7 @@ import static org.projectfloodlight.openflow.protocol.ver15.OFMeterSerializerVer
 
 import org.openkilda.floodlight.kafka.KafkaMessageProducer;
 import org.openkilda.messaging.Message;
+import org.openkilda.messaging.Topic;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.PortInfoData;

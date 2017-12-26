@@ -47,7 +47,6 @@ import org.openkilda.wfm.isl.DiscoveryNode;
 import org.openkilda.wfm.isl.DummyIIslFilter;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.TopologyConfig;
-import org.openkilda.wfm.topology.splitter.InfoEventSplitterBolt;
 import org.openkilda.wfm.topology.utils.AbstractTickStatefulBolt;
 
 import java.io.IOException;
@@ -126,20 +125,28 @@ public class OFELinkBolt
     @Override
     protected void doTick(Tuple tuple) {
         DiscoveryManager.Plan discoveryPlan = discovery.makeDiscoveryPlan();
-        for (DiscoveryManager.Node node : discoveryPlan.needDiscovery) {
-            String json = OFEMessageUtils.createIslDiscovery(node.switchId, node.portId);
-            logger.debug("LINK: Send ISL discovery command: {}", json);
-            collector.emit(islDiscoveryTopic, tuple, new Values(PAYLOAD, json));
-        }
-
-        for (DiscoveryManager.Node node : discoveryPlan.discoveryFailure) {
-            try {
-                sendDiscoveryFailed(node.switchId, node.portId, tuple);
-            } catch (IOException e) {
-                logger.error("Unable to encode message: {}", e);
+        try {
+            for (DiscoveryManager.Node node : discoveryPlan.needDiscovery) {
+                sendDiscoveryMessage(tuple, node);
             }
+
+            for (DiscoveryManager.Node node : discoveryPlan.discoveryFailure) {
+                    sendDiscoveryFailed(node.switchId, node.portId, tuple);
+            }
+        } catch (IOException e) {
+            logger.error("Unable to encode message: {}", e);
         }
     }
+
+    /**
+     * Helper method for sending an ISL Discovery Message
+     */
+    private void sendDiscoveryMessage(Tuple tuple, DiscoveryManager.Node node) throws IOException {
+        String json = OFEMessageUtils.createIslDiscovery(node.switchId, node.portId);
+        logger.debug("LINK: Send ISL discovery command: {}", json);
+        collector.emit(islDiscoveryTopic, tuple, new Values(PAYLOAD, json));
+    }
+
 
     @Override
     protected void doWork(Tuple tuple) {

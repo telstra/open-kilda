@@ -16,13 +16,13 @@
 package org.openkilda.wfm.topology.event;
 
 import org.openkilda.messaging.ServiceType;
+import org.openkilda.messaging.Topic;
 import org.openkilda.wfm.ConfigurationException;
 import org.openkilda.wfm.CtrlBoltRef;
 import org.openkilda.wfm.StreamNameCollisionException;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.LaunchEnvironment;
-import org.openkilda.wfm.topology.splitter.InfoEventSplitterBolt;
 
 import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
@@ -55,6 +55,10 @@ public class OFEventWFMTopology extends AbstractTopology {
 
     private static Logger logger = LoggerFactory.getLogger(OFEventWFMTopology.class);
 
+    /** Externalize the ID so that the Test classes can leverage it */
+    public static final String SPOUT_ID_INPUT = Topic.TOPO_DISCO+"-spout";
+    public static final String BOLT_ID = Topic.TOPO_DISCO+"-bold";
+
 //    public static final String SPOUT_ID_INPUT = "input";
 //    public static final String BOLT_ID_OUTPUT = "out";
 
@@ -85,8 +89,8 @@ public class OFEventWFMTopology extends AbstractTopology {
         TopologyBuilder builder = new TopologyBuilder();
         List<CtrlBoltRef> ctrlTargets = new ArrayList<>();
 
-        String spoutName = kafkaTopoDiscoTopic+"-spout";
-        String boltName = kafkaTopoDiscoTopic+"-bolt";
+        String spoutName = SPOUT_ID_INPUT;
+        String boltName = BOLT_ID;
 
         builder.setSpout(spoutName, createKafkaSpout(kafkaTopoDiscoTopic, spoutName));
 

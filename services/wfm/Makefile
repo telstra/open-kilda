@@ -22,14 +22,6 @@ all-in-one-tested:
 all-in-one:
 	mvn assembly:assembly -DskipTests
 
-deploy-splitter:
-	storm jar target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar \
-        org.openkilda.wfm.topology.splitter.OFEventSplitterTopology \
-        --name=splitter ${config}
-
-kill-splitter:
-	storm kill splitter >/dev/null 2>&1
-
 deploy-wfm:
 	storm jar target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar \
         org.openkilda.wfm.topology.event.OFEventWFMTopology \
