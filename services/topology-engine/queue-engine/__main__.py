@@ -25,7 +25,8 @@ from topologylistener.topology_reader import read_topologies
 LOG = logger.get_logger()
 
 try:
-    read_topologies()
+    # (crimi) - commenting out until it is clear how to best leverage pre-populating topologies
+    # read_topologies()
 
     LOG.info('Topology engine starting.')
     main_loop()

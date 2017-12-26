@@ -20,6 +20,7 @@ import static org.openkilda.messaging.Utils.SYSTEM_CORRELATION_ID;
 
 import org.openkilda.floodlight.kafka.KafkaMessageProducer;
 import org.openkilda.messaging.Destination;
+import org.openkilda.messaging.Topic;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.FlowStatsData;

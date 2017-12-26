@@ -44,26 +44,22 @@ known_commands = ['org.openkilda.messaging.command.flow.FlowCreateRequest',
 def main_loop():
     pool_size = config.getint('gevent', 'worker.pool.size')
 
+    logger.info('\n\nWHAT WHAT v002\n\n')
     logger.info('Start gevent pool with size {}.'.format(pool_size))
 
     pool = gevent.pool.Pool(pool_size)
 
     consumer = kafkareader.create_consumer(config)
 
-    topology_reader.read_topologies()
-
     while True:
         try:
             raw_event = kafkareader.read_message(consumer)
+            logger.trace('READ MESSAGE %s', raw_event)
             event = MessageItem(**json.loads(raw_event))
-
-            if "TOPOLOGY_ENGINE" != event.destination:
-                logger.debug('Skip message for %s', event.destination)
-                continue
 
             if event.get_message_type() in known_messages\
                     or event.get_command() in known_commands:
-                logger.debug('Processing message for %s', event.destination)
+                logger.debug('Processing message payload', event.payload)
                 pool.spawn(topology_event_handler, event)
 
         except Exception as e:
