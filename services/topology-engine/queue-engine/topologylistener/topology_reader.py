@@ -18,9 +18,9 @@ import time
 from glob import glob
 
 import message_utils
-from logger import get_logger
+import logging
 
-logger = get_logger()
+logger = logging.getLogger(__name__)
 
 
 def read_topologies():

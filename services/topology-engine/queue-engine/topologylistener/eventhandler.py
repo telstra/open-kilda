@@ -22,11 +22,12 @@ import gevent.pool
 import gevent.queue
 
 from messageclasses import MessageItem
-from logger import get_logger
+import logging
 import config
 import topology_reader
 
-logger = get_logger()
+logger = logging.getLogger(__name__)
+
 known_messages = ['org.openkilda.messaging.info.event.SwitchInfoData',
                   'org.openkilda.messaging.info.event.IslInfoData',
                   'org.openkilda.messaging.info.event.PortInfoData',
