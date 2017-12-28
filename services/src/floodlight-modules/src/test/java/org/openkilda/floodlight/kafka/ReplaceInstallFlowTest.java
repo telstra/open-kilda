@@ -32,7 +32,7 @@ import org.openkilda.floodlight.pathverification.PathVerificationService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.floodlight.switchmanager.SwitchEventCollector;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
-import org.openkilda.messaging.Message;
+import org.openkilda.messaging.BaseMessage;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.InstallEgressFlow;
@@ -79,9 +79,8 @@ public class ReplaceInstallFlowTest {
      * @throws IOException if mapping fails
      */
     private static CommandData prepareData(String value) throws IOException {
-        Message message = MAPPER.readValue(value, Message.class);
-        CommandMessage commandMessage = (CommandMessage) message;
-        return commandMessage.getData();
+        CommandMessage message = MAPPER.readValue(value, CommandMessage.class);
+        return message.getData();
     }
 
     @Before
@@ -266,6 +265,9 @@ public class ReplaceInstallFlowTest {
 
         // verify results
         if (meterCommand != null) {
+            System.out.println("meterCommand    = " + meterCommand);
+            System.out.println("meterAddCapture = " + meterAddCapture.getValues());
+
             assertEquals(meterCommand, meterAddCapture.getValues().get(0));
             if (reverseMeterCommand != null) {
                 assertEquals(reverseMeterCommand, meterAddCapture.getValues().get(1));
