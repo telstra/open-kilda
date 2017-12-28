@@ -21,7 +21,7 @@ import org.openkilda.floodlight.pathverification.IPathVerificationService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.floodlight.switchmanager.MeterPool;
 import org.openkilda.messaging.Destination;
-import org.openkilda.messaging.Message;
+import org.openkilda.messaging.BaseMessage;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
@@ -360,13 +360,12 @@ public class KafkaMessageCollector implements IFloodlightModule {
             try {
                 if (record.value() instanceof String) {
                     String value = (String) record.value();
-                    BaseMessage message = MAPPER.readValue(value, BaseMessage.class);
-                    if (message instanceof CommandMessage) {
-                        logger.debug("Got a command message for controller: {}", value);
-                        doControllerMsg((CommandMessage) message);
-                    } else {
-                        logger.trace("Skip message: {}", message);
-                    }
+                    // TODO: Prior to Message changes, this MAPPER would read Message ..
+                    //          but, changed to BaseMessage and got an error wrt "timestamp" ..
+                    //          so, need to experiment with why CommandMessage can't be read as
+                    //          a BaseMessage
+                    CommandMessage message = MAPPER.readValue(value, CommandMessage.class);
+                    doControllerMsg((CommandMessage) message);
                 } else {
                     logger.error("{} not of type String", record.value());
                 }
