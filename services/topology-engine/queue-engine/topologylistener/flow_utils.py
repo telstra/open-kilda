@@ -19,14 +19,14 @@ import db
 import copy
 
 import message_utils
-from logger import get_logger
+import logging
 
 
 __all__ = ['graph']
 
 
 graph = db.create_p2n_driver()
-logger = get_logger()
+logger = logging.getLogger(__name__)
 
 
 def is_forward_cookie(cookie):

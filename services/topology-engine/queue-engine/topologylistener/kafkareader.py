@@ -15,12 +15,11 @@
 
 import os
 import time
+import logging
 
 from kafka import KafkaConsumer
 
-from logger import get_logger
-
-logger = get_logger()
+logger = logging.getLogger(__name__)
 
 
 def create_consumer(config):

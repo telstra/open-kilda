@@ -15,6 +15,7 @@
 #
 
 import json
+import logging
 
 import traceback
 from py2neo import Node
@@ -22,10 +23,10 @@ from py2neo import Node
 import config
 import flow_utils
 import guard
-import logger
+
 import message_utils
 
-logger = logger.get_logger()
+logger = logging.getLogger(__name__)
 graph = flow_utils.graph
 switch_states = {
     'active': 'ACTIVATED',

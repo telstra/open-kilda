@@ -17,12 +17,12 @@ import time
 import json
 from kafka import KafkaProducer
 
-from logger import get_logger
+import logging
 
 import config
 
 producer = KafkaProducer(bootstrap_servers=config.KAFKA_BOOTSTRAP_SERVERS)
-logger = get_logger()
+logger = logging.getLogger(__name__)
 
 MT_ERROR="org.openkilda.messaging.error.ErrorMessage"
 MT_COMMAND="org.openkilda.messaging.command.CommandMessage"
