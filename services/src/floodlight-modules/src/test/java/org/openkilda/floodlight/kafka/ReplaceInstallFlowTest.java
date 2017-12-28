@@ -265,9 +265,6 @@ public class ReplaceInstallFlowTest {
 
         // verify results
         if (meterCommand != null) {
-            System.out.println("meterCommand    = " + meterCommand);
-            System.out.println("meterAddCapture = " + meterAddCapture.getValues());
-
             assertEquals(meterCommand, meterAddCapture.getValues().get(0));
             if (reverseMeterCommand != null) {
                 assertEquals(reverseMeterCommand, meterAddCapture.getValues().get(1));
