@@ -55,7 +55,7 @@ def main_loop():
     while True:
         try:
             raw_event = kafkareader.read_message(consumer)
-            logger.trace('READ MESSAGE %s', raw_event)
+            logger.debug('READ MESSAGE %s', raw_event)
             event = MessageItem(**json.loads(raw_event))
 
             if event.get_message_type() in known_messages\
