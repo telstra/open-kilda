@@ -39,6 +39,9 @@ path:
   - storm_log4j2_worker_xml:
     dest: services/storm/log4j2/worker.xml
     tmpl: templates/storm/log4j2/worker.xml.j2
+  - norhbound_log4j2_xml:
+    dest: services/src/northbound/src/main/resources/log4j2.xml
+    tmpl: templates/northbound/log4j2.xml.j2
   - floodlight_modules_logback_xml:
     dest: services/src/floodlight-modules/src/main/resources/logback.xml
     tmpl: templates/floodlight/logback.xml.j2

@@ -5,14 +5,12 @@
       <pattern>%date{yyyy-MM-dd HH:mm:ss.S} %-5level [%logger{15}] %msg%n</pattern>
     </encoder>
   </appender>
-
   <appender name="LOGSTASH" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
-    <destination>logstash:5002</destination>
+    <destination>logstash.pendev:5002</destination>
 
     <!-- encoder is required -->
     <encoder class="net.logstash.logback.encoder.LogstashEncoder" />
   </appender>
-
   <root level="INFO">
     <appender-ref ref="STDOUT" />
     <appender-ref ref="LOGSTASH" />

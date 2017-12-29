@@ -1,5 +1,6 @@
 {
   "handlers": {
+{% if logging.logstash %}
     "logstash": {
       "level": "DEBUG",
       "class": "logstash.TCPLogstashHandler",
@@ -8,6 +9,20 @@
       "message_type": "kilda-MN",
       "port": {{ logging.port.mininet }}
     },
+{% endif %}
+{% if logging.json_file %}
+    "json_file":
+    {
+      "class": "logging.handlers.RotatingFileHandler",
+      "level": "DEBUG",
+      "formatter": "logstash_file",
+      "filename": "{{ logging.logfile_path }}/mininet.log.json",
+      "level": "DEBUG",
+      "maxBytes": 10485760,
+      "backupCount": 40,
+      "encoding": "utf8"
+    },
+{% endif %}
     "stdout": {
       "formatter": "default",
       "class": "logging.StreamHandler",
@@ -17,8 +32,13 @@
   "version": 1,
   "root": {
     "handlers": [
-      "stdout",
-      "logstash"
+      "stdout"
+{% if logging.logstash %}
+      ,"logstash"
+{% endif %}
+{% if logging.json_file %}
+      ,"json_file"
+{% endif %}
     ],
     "propagate": true,
     "level": "DEBUG"
@@ -26,6 +46,10 @@
   "formatters": {
     "default": {
       "format": "[%(asctime)s] %(levelname)s in %(module)s: %(message)s"
+    },
+    "logstash_file": {
+      "()": "logstash.formatter.LogstashFormatterVersion1",
+      "message_type": "kilda-MN"
     }
   }
 }
