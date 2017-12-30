@@ -3,7 +3,7 @@
     "logstash": {
       "level": "DEBUG",
       "class": "logstash.TCPLogstashHandler",
-      "host": "logstash",
+      "host": "logstash.pendev",
       "version": 1,
       "message_type": "kilda-MN",
       "port": 5004
@@ -17,8 +17,8 @@
   "version": 1,
   "root": {
     "handlers": [
-      "stdout",
-      "logstash"
+      "stdout"
+      ,"logstash"
     ],
     "propagate": true,
     "level": "DEBUG"
@@ -26,6 +26,10 @@
   "formatters": {
     "default": {
       "format": "[%(asctime)s] %(levelname)s in %(module)s: %(message)s"
+    },
+    "logstash_file": {
+      "()": "logstash.formatter.LogstashFormatterVersion1",
+      "message_type": "kilda-MN"
     }
   }
 }

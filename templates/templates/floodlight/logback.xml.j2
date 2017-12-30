@@ -5,17 +5,32 @@
       <pattern>%date{yyyy-MM-dd HH:mm:ss.S} %-5level [%logger{15}] %msg%n</pattern>
     </encoder>
   </appender>
-
+{% if logging.json_file %}
+  <appender name="JSON" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <file>{{ logging.logfile_path }}/floodlight/floodlight.log.json</file>
+    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+      <fileNamePattern>{{ logging.logfile_path }}/floodlight/floodlight.log.json.%d{yyyy-MM-dd}</fileNamePattern>
+      <maxHistory>10</maxHistory>
+    </rollingPolicy>
+    <encoder class="net.logstash.logback.encoder.LogstashEncoder" />
+  </appender>
+{% endif %}
+{% if logging.logstash %}
   <appender name="LOGSTASH" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
     <destination>{{ logging.logstash_host }}:{{ logging.port.floodlight }}</destination>
 
     <!-- encoder is required -->
     <encoder class="net.logstash.logback.encoder.LogstashEncoder" />
   </appender>
-
+{% endif %}
   <root level="INFO">
     <appender-ref ref="STDOUT" />
+{% if logging.json_file %}
+    <appender-ref ref="JSON" />
+{% endif %}
+{% if logging.logstash %}
     <appender-ref ref="LOGSTASH" />
+{% endif %}
   </root>
 
   <logger name="io" level="ERROR"/> <!-- Netty logging -->
