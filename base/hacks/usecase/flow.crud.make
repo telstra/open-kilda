@@ -1,18 +1,20 @@
 #
-# This Makefile holds useful commands for developing and testing the Network Discovery use cases.
+# This Makefile holds useful commands for developing and testing the Flow CRUD use cases.
 #
 # Key elements of this are:
 #   - Launch just enough of the Kilda platform to be able to deploy storm topologies
 #       (e.g. mininet, floodlight, storm, neo4j, TE)
-#   - Deploy the storm topologies related to Network Discovery (e.g OFEventWFMTopology)
+#   - Deploy the storm topologies related to Flow CRUD
 #
 # Typical sequence of calls to validate behavior (from root of project):
-#   1) make -f base/hacks/usecase/network.disco.make up
-#   2) make -f base/hacks/usecase/network.disco.make start
-#   3) make -f base/hacks/usecase/network.disco.make deploy-small
-#   4) make -f base/hacks/usecase/network.disco.make dump.topo.disco
-#   5) make -f base/hacks/usecase/network.disco.make dump.speaker
-#   6) make -f base/hacks/usecase/network.disco.make dump.topo.eng
+#   1) make -f base/hacks/usecase/flow.crud.make up
+#   2) make -f base/hacks/usecase/flow.crud.make start
+#   3) make -f base/hacks/usecase/flow.crud.make deploy-tiny
+#   4) make -f base/hacks/usecase/flow.crud.make dump.topo.disco
+#   5) make -f base/hacks/usecase/flow.crud.make dump.speaker
+#   6) make -f base/hacks/usecase/flow.crud.make dump.topo.eng
+#   7) make -f base/hacks/usecase/flow.crud.make create-flow
+#   8) make -f base/hacks/usecase/flow.crud.make dump.flow
 #
 # Additionally, goto http://localhost:7474/browser/ to verify results in neo4j
 #
@@ -20,18 +22,21 @@
 
 help:
 	@echo ""
-	@echo "This is the Makefile for Network Discovery development and test commands."
+	@echo "This is the Makefile for Flow CRUD development and test commands."
 	@echo "Useful targets are:"
 	@echo "  help  : prints this output"
 	@echo "  up    : brings up the containers, but not the storm topologies"
 	@echo "  down  : brings down the containers"
 	@echo "  clean : destroys the volume data; calls platform.down first"
-	@echo "  start : deploy the storm topology"
+	@echo "  start : deploy the storm topologies"
 	@echo "  deploy-small    : create a small network topology"
 	@echo "  deploy-tiny     : create a tiny network topology (3 switches, full mesh)"
 	@echo "  dump.topo.disco : dump the kafka topic between speaker and storm"
 	@echo "  dump.topo.eng   : dump the kafka topic between storm and topology engine"
 	@echo "  list.topics     : list all the topics known to kafka"
+	@echo "  create-flow     : create a flow between two switches"
+	@echo "  delete-flow     : delete a flow between two switches"
+	@echo "  update-flow     : update a flow .. ie change the constraint"
 	@echo ""
 	@echo "NB: This makefile assumes it is running from the the top level directory of the project"
 	@echo "  - e.g. make -f base/hacks/usecase/network.disco.make help"
@@ -63,10 +68,10 @@ clean:
 start:
 	@echo ""
 	@echo "NB: This requires storm 1.1.0 or great; return `storm version` to verify."
-	cd services/wfm && ${MAKE} deploy-wfm
+	cd services/wfm && ${MAKE} deploy-wfm deploy-flow
 
 stop:
-	cd services/wfm && ${MAKE} kill-wfm
+	cd services/wfm && ${MAKE} kill-flow kill-wfm
 
 login:
 	@echo ""
@@ -105,7 +110,7 @@ clean-network:
 ## - kilda.topo.eng
 ## - kilda.speaker
 ## =~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=
-.PHONY: dump.topo.disco dump.topo.eng dump.speaker dump.topics
+.PHONY: dump.topo.disco dump.topo.eng dump.speaker list.topics
 
 dump.topo.disco:
 	@echo ""
