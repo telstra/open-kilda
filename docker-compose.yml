@@ -10,8 +10,8 @@ services:
     ports:
       - "38080:38080"
       - "17191:17191"
-#    links:
-#      - floodlight:kilda
+    links:
+      - floodlight:kilda
     privileged: true
     volumes:
       - /lib/modules:/lib/modules

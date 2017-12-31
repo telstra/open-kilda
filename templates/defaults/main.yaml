@@ -10,13 +10,13 @@ neo4j_password: "temppass"
 kafka_topic: "kilda-test"
 neo4j_bolt: "http://neo4j:7474/db/data/cypher"
 openkildagui_host: "http://127.0.0.1:1010"
-floodlight_endpoint: "127.0.0.1"
+floodlight_endpoint: "http://127.0.0.1"
 floodlight_port: "8081"
-mininet_endpoint: "127.0.0.1"
+mininet_endpoint: "http://127.0.0.1"
 mininet_rest_port: "38080"
-topology_engine_endpoint: "127.0.0.1"
+topology_engine_endpoint: "http://127.0.0.1"
 topology_engine_rest_port: "80"
-northbound_endpoint: "127.0.0.1"
+northbound_endpoint: "http://127.0.0.1"
 northbound_rest_port: "8088"
 kilda_username: "kilda"
 kilda_password: "kilda"
@@ -32,7 +32,11 @@ kafka_topic_topo_cache: "kilda.topo.cache"
 kafka_topic_topo_disco: "kilda.topo.disco"
 kafka_topic_topo_eng: "kilda.topo.eng"
 logging:
-  logstash_host: logstash.pendev
+  # method can be file of logstash
+  json_file: False
+  logstash: True
+  logfile_path: "/var/log/volume"
+  logstash_host: "logstash.pendev"
   elasticsearch_hosts: "elasticsearch.pendev:9200"
   port:
     topology_engine: 5000
