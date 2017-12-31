@@ -1,5 +1,6 @@
 {
   "handlers": {
+{% if logging.logstash %}
     "logstash": {
       "level": "DEBUG",
       "class": "logstash.TCPLogstashHandler",
@@ -8,6 +9,19 @@
       "message_type": "kilda-TER",
       "port": {{ logging.port.topology_engine_rest }}
     },
+{% endif %}
+{% if logging.json_file %}
+    "json_file":
+    {
+      "class": "logging.handlers.RotatingFileHandler",
+      "level": "DEBUG",
+      "formatter": "logstash_file",
+      "filename": "{{ logging.logfile_path }}/topology-engine-rest.log.json",
+      "maxBytes": 10485760,
+      "backupCount": 40,
+      "encoding": "utf8"
+    },
+{% endif %}
     "stdout": {
       "formatter": "default",
       "class": "logging.StreamHandler",
@@ -17,8 +31,13 @@
   "version": 1,
   "root": {
     "handlers": [
-      "stdout",
-      "logstash"
+      "stdout"
+{% if logging.logstash %}
+      ,"logstash"
+{% endif %}
+{% if logging.json_file %}
+      ,"json_file"
+{% endif %}
     ],
     "propagate": true,
     "level": "DEBUG"
@@ -26,6 +45,11 @@
   "formatters": {
     "default": {
       "format": "%(asctime)23s | %(name)s [%(threadName)s] | %(levelname)-5s  | %(filename)s:%(lineno)d [%(funcName)s] | %(message)s"
+    },
+    "logstash_file": {
+      "()": "logstash.formatter.LogstashFormatterVersion1",
+      "message_type": "kilda-TPE-rest",
+      "tags": ["kilda-tpe-rest"]
     }
   }
 }

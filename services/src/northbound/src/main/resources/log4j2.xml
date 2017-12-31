@@ -4,7 +4,7 @@
         <Console name="STDOUT" target="SYSTEM_OUT">
             <PatternLayout pattern="%d{ISO8601} | %-5.5p | %-32.32t | %-32.32c{1} | @project.name@ - @project.version@ | %m%n"/>
         </Console>
-        <Socket name="LOGSTASH" host="logstash" port="5005">
+        <Socket name="LOGSTASH" host="logstash.pendev" port="5005">
             <JsonLayout compact="true" eventEol="true" />
         </Socket>
         <RollingFile name="ROLLINGFILE" fileName="/var/logs/northbound/app.log"
