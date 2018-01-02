@@ -13,6 +13,7 @@
 #   4) make -f base/hacks/usecase/network.disco.make dump.topo.disco
 #   5) make -f base/hacks/usecase/network.disco.make dump.speaker
 #   6) make -f base/hacks/usecase/network.disco.make dump.topo.eng
+#   7) make atdd tags="@TOPO --tags @SMOKE"   # This is done after, to get a sanity check
 #
 # Additionally, goto http://localhost:7474/browser/ to verify results in neo4j
 #
