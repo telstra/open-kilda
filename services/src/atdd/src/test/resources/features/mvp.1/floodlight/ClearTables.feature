@@ -1,7 +1,13 @@
 @CT
-Feature: Clearing up flow rules
+Feature: Validate Flow Rules Are Not Erased on Reboot
 
-  @MVP1
+  This is part of being highly-resilient. We should be able to restart the speaker (floodlight)
+  without worrying that the rules on all switches will be erased and need to be re-installed. If
+  the rules are erased, then the dataplane will stop, which means customers are affected.
+
+  This test is a critical part of Zero Down Time (ZDT)
+
+  @MVP1 @ZDT
   Scenario: Flow rules are still alive
 
     Given started floodlight container
