@@ -41,7 +41,8 @@ Feature: Basic Topology Discovery
   @MVP1
   Scenario Outline: Full-mesh Network Discovery Time
 
-    Verify full mesh discovery time is acceptable
+    Verify full mesh discovery time is acceptable.
+    Depth of 3 / Fanout of 4 = 21, 40
 
     Given a clean controller
     And a random tree topology with depth of <depth> and fanout of <fanout>
@@ -50,8 +51,23 @@ Feature: Basic Topology Discovery
 
     Examples:
       |  depth | fanout | discovery_time |
-      |      3 |      4 |          30000 |
-      |      4 |      5 |          30000 |
+      |      3 |      4 |          80000 |
+
+  @MVP1.2 @SCALE
+  Scenario Outline: Full-mesh Network Discovery Time
+
+    Verify full mesh discovery time is acceptable.
+    Depth of 4 / Fanout of 5 = 156 switches, 310 links.
+
+
+    Given a clean controller
+    And a random tree topology with depth of <depth> and fanout of <fanout>
+    When the controller learns the topology
+    Then the controller should converge within <discovery_time> milliseconds
+
+    Examples:
+      |  depth | fanout | discovery_time  |
+      |      4 |      5 |          360000 |
 
   @MVP1 @SEC
   Scenario: Ignore not signed LLDP packets
