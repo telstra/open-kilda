@@ -79,7 +79,7 @@ update-props-dryrun:
 # NB: Adjust the default tags as ATDD tests are created and validated.
 # 		Regarding syntax .. @A,@B is logical OR .. --tags @A --tags @B is logical AND
 #
-tags := "@TOPO --tags @MVP1"
+tags := @TOPO --tags @MVP1
 kilda := 127.0.0.1
 
 # ( @NB OR @STATS ) AND @MVP1
