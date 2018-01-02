@@ -99,6 +99,7 @@ public class OFEMessageUtils {
      */
     public static String createInfoMessage(boolean isSwitch, String switchID, String portID, String
             state) {
+        // TODO: we don't use "type" anymore .. rewrite and leverage proper message class
         StringBuffer sb = new StringBuffer("{'type': 'INFO', ");
         sb.append("'timestamp': ").append(System.currentTimeMillis()).append(", ");
         String type = (isSwitch) ? "switch" : "port";
@@ -120,6 +121,7 @@ public class OFEMessageUtils {
      */
     public static String createDataMessage(String type, String state, String switchId, String
             portId) {
+        // TODO: we don't use "message_type" anymore .. rewrite and leverage proper message class
         StringBuffer sb = new StringBuffer();
         sb.append("{'message_type': '").append(type).append("', ");
         sb.append("'switch_id': '").append(switchId).append("', ");
