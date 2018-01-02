@@ -13,5 +13,5 @@ Feature: Validate Flow Rules Are Not Erased on Reboot
     Given started floodlight container
     And created simple topology from two switches
     And added custom flow rules
-    When floodlight controller is reloaded
+    When floodlight controller is restarted
     Then flow rules should not be cleared up

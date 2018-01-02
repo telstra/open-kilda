@@ -1,62 +1,38 @@
 package org.openkilda.atdd.floodlight;
 
-
 import static com.google.common.base.Charsets.UTF_8;
-import static org.awaitility.Awaitility.await;
-import static org.hamcrest.Matchers.hasItem;
-import static org.hamcrest.Matchers.hasProperty;
-import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
 
-import com.spotify.docker.client.DefaultDockerClient;
-import com.spotify.docker.client.DockerClient;
-import com.spotify.docker.client.LogStream;
-import com.spotify.docker.client.messages.Container;
-import com.spotify.docker.client.messages.ExecCreation;
+import org.openkilda.atdd.utils.controller.ControllerUtils;
+import org.openkilda.atdd.utils.controller.CoreFlowsEntry;
+import org.openkilda.atdd.utils.controller.DpIdEntriesList;
+import org.openkilda.atdd.utils.controller.DpIdNotFoundException;
+import org.openkilda.atdd.utils.controller.FloodlightQueryException;
+import org.openkilda.atdd.utils.controller.StaticFlowEntry;
+import org.openkilda.topo.TestUtils;
+import org.openkilda.topo.TopologyHelp;
+
 import cucumber.api.java.en.Given;
 import cucumber.api.java.en.Then;
 import cucumber.api.java.en.When;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.StringUtils;
-import org.apache.log4j.Logger;
-import org.glassfish.jersey.client.ClientConfig;
-import org.openkilda.DefaultParameters;
-import org.openkilda.domain.floodlight.FlowRules;
-import org.openkilda.topo.TestUtils;
-import org.openkilda.topo.TopologyHelp;
+import org.junit.Assert;
 
-import java.util.concurrent.TimeUnit;
+import java.util.List;
 import javax.ws.rs.ProcessingException;
-import javax.ws.rs.client.Client;
-import javax.ws.rs.client.ClientBuilder;
 
 public class ClearTablesTest {
-    private static final Logger LOGGER = Logger.getLogger(ClearTablesTest.class);
+    private static final String SWITCH_DPID = "00:01:00:00:00:00:00:01";
+    private static final String ETHERNET_DEST_ADDRESS = "01:23:45:67:89:0a";
 
-    private static final String FLOODLIGHT_CONTAINER_PREFIX = "kilda/floodlight";
-    private static final String MININET_CONTAINER_PREFIX = "kilda/mininet";
-    private static final String SWITCH_NAME = "switch1";
-    private static final String SWITCH_ID = "00:01:00:00:00:00:00:01";
-    private static final String ACL_RULES_PATH = String.format("wm/core/switch/%s/flow/json", SWITCH_ID);
-    private static final String COOKIE = "0x700000000000000";
-    private static final String RULE = String.format("cookie=%s,dl_dst=ff:ff:ff:ff:ff:ff actions=output:2", COOKIE);
-    private static final Client CLIENT = ClientBuilder.newClient(new ClientConfig());
+    private final ControllerUtils controllerUtils;
 
-    private Container floodlightContainer;
-    private DockerClient dockerClient;
+    public ClearTablesTest() throws  Exception {
+        controllerUtils = new ControllerUtils();
+    }
 
     @Given("^started floodlight container")
     public void givenStartedContainer() throws Exception {
         TestUtils.clearEverything();
-        dockerClient = DefaultDockerClient.fromEnv().build();
-        floodlightContainer = dockerClient.listContainers()
-                .stream()
-                .filter(container ->
-                        container.image().startsWith(FLOODLIGHT_CONTAINER_PREFIX))
-                .findFirst().orElseThrow(() -> new IllegalStateException("Floodlight controller should be active"));
-        assertNotNull(floodlightContainer);
     }
 
     @Given("^created simple topology from two switches")
@@ -68,54 +44,55 @@ public class ClearTablesTest {
 
     @Given("^added custom flow rules")
     public void addRules() throws Exception {
-        Container mininetContainer = dockerClient.listContainers()
-                .stream()
-                .filter(container -> container.image().startsWith(MININET_CONTAINER_PREFIX))
-                .findFirst().orElseThrow(() -> new IllegalStateException("Floodlight controller should be active"));
-
-        final String[] commands = {"ovs-ofctl", "-O", "Openflow13", "add-flow", SWITCH_NAME, RULE};
-        ExecCreation execCreation = dockerClient.execCreate(mininetContainer.id(), commands,
-                DockerClient.ExecCreateParam.attachStdout(), DockerClient.ExecCreateParam.attachStderr());
-
-        final LogStream output = dockerClient.execStart(execCreation.id());
-        final String execOutput = output.readFully();
-        assertTrue(StringUtils.isEmpty(execOutput));
+        StaticFlowEntry flow = new StaticFlowEntry("reboot-survive-flow", SWITCH_DPID)
+                .withCookie(0xf0000001L)
+                .withInPort("1")
+                .withEthDest(ETHERNET_DEST_ADDRESS)
+                .withAction("drop");
+        controllerUtils.addStaticFlow(flow);
     }
 
-    @When("^floodlight controller is reloaded")
-    public void reloadFloodlight() throws Exception {
-        dockerClient.restartContainer(floodlightContainer.id());
-        await().atMost(10, TimeUnit.SECONDS)
-                .until(this::isFloodlightAlive);
+    @When("^floodlight controller is restarted")
+    public void restartFloodlight() throws Exception {
+        controllerUtils.restart();
     }
 
     @Then("^flow rules should not be cleared up")
-    public void checkFlowRules() {
-        FlowRules result = CLIENT
-                .target(DefaultParameters.FLOODLIGHT_ENDPOINT)
-                .path(ACL_RULES_PATH)
-                .request()
-                .get(FlowRules.class);
+    public void checkFlowRules() throws FloodlightQueryException {
+        DpIdEntriesList staticEntries = controllerUtils.listStaticEntries();
 
-        assertTrue("Floodlight should send flow rules", result != null && result.getFlows() != null);
-        String expectedCookie = String.valueOf(Long.parseLong(COOKIE.substring(2), 16));
-        assertThat(result.getFlows(), hasItem(hasProperty("cookie", is(expectedCookie))));
-        dockerClient.close();
-    }
+        // All rules(static) must be dropped during controller restart
+        Assert.assertEquals(staticEntries.size(), 0);
 
-    private boolean isFloodlightAlive() {
-        FlowRules result;
-        try {
-            result = CLIENT
-                    .target(DefaultParameters.FLOODLIGHT_ENDPOINT)
-                    .path(ACL_RULES_PATH)
-                    .request()
-                    .get(FlowRules.class);
-
-            return result != null && result.getFlows() != null;
-        } catch (ProcessingException e) {
-            LOGGER.trace("Floodlight is still unavailable");
-            return false;
+        // It is possible that controllerUtils.listCoreFlows call is done before switch is connected to FloodLight. In
+        // this case we will catch DpIdNotFoundException. So we had to make several attempts to get the list of flows
+        // from target switch.
+        int i = 0;
+        List<CoreFlowsEntry> flows = null;
+        while (i++ < 5) {
+            try {
+                flows = controllerUtils.listCoreFlows(SWITCH_DPID);
+                break;
+            } catch (DpIdNotFoundException e) {
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException ignored) { }
+            }
         }
+        if (flows == null) {
+            throw new ProcessingException("Can't reads flows list from FloodLight");
+        }
+
+        boolean isFlowSurvived = false;
+        for (CoreFlowsEntry entry : flows) {
+            if (!entry.match.ethDest.equals(ETHERNET_DEST_ADDRESS)) {
+                continue;
+            }
+
+            isFlowSurvived = true;
+            break;
+        }
+
+        Assert.assertTrue("Test flow didn't survive controller reboot", isFlowSurvived);
     }
 }

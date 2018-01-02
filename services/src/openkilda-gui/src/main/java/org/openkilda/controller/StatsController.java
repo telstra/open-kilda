@@ -1,4 +1,4 @@
-package org.openkilda.controller;
+package org.openkilda.atdd.utils.controller;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.core.Context;

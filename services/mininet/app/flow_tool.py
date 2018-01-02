@@ -15,19 +15,29 @@
 #
 
 
-from bottle import run, get, response, request, post, error, install
 import ctypes
+import errno
 import multiprocessing
 import os
 import scapy.all as s
 import socket
-import logging
+import subprocess
+import sys
 import json
-from logging.config import dictConfig
+import logging.config
 from functools import wraps
+import tempfile
+
+from bottle import run, get, response, request, post, error, install
 
 logger = logging.getLogger()
 
+llgen_root = os.path.join(tempfile.gettempdir(), 'kilda', 'llgen')
+try:
+    os.makedirs(llgen_root)
+except OSError as e:
+    if e.errno != errno.EEXIST:
+        raise
 
 def log_to_logger(fn):
     '''
@@ -74,6 +84,22 @@ def respond(status, ok_message, fail_message):
 @error(404)
 def not_found(error):
     return "Thank you, Mario! but our princess is in another castle!\n"
+
+
+@post('/llgen.json')
+@required_parameters('name')
+def llgen(p):
+    proc = subprocess.Popen(
+            ['llgen', '--root={}'.format(llgen_root), p['name'], 'setup'],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+            stderr=open(os.devnull, 'w'),
+            shell=False
+    )
+
+    result = proc.communicate(request.body.read())[0]
+    proc.wait()
+
+    return result
 
 
 @post('/set_link_state')
