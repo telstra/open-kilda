@@ -264,8 +264,9 @@ public class OFELinkBolt
     //          - services/src/pce .. NetworkCache .. FlowCache ..
     private void sendDiscoveryFailed(String switchId, String portId, Tuple tuple) throws IOException {
         String discoFail = OFEMessageUtils.createIslFail(switchId, portId);
-        Values dataVal = new Values(PAYLOAD, discoFail, switchId, portId, OFEMessageUtils.LINK_DOWN);
-        collector.emit(topoEngTopic, tuple, dataVal);
+//        Values dataVal = new Values(PAYLOAD, discoFail, switchId, portId, OFEMessageUtils.LINK_DOWN);
+//        collector.emit(topoEngTopic, tuple, dataVal);
+        collector.emit(topoEngTopic, tuple, new Values(PAYLOAD, discoFail));
         discovery.handleFailed(switchId, portId);
         logger.warn("LINK: Send ISL discovery failure message={}", discoFail);
     }
