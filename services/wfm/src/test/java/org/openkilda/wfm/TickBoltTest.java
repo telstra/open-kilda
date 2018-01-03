@@ -98,7 +98,10 @@ public class TickBoltTest {
         /* And sleep some more */
         Uninterruptibles.sleepUninterruptibly(6, TimeUnit.SECONDS);
 
-        Assert.assertEquals(3, tickBolt.tickFile.numLines());
+        // TODO: this test isn't great .. the number of lines in the file from ticks could vary
+        int expectedLines = 3;
+        Assert.assertTrue("We should have at least " + expectedLines + " lines in the test file.",
+                expectedLines <= tickBolt.tickFile.numLines());
         Assert.assertEquals(1, tickBolt.workFile.numLines());
 
         cluster.killTopology(topoId);
