@@ -185,7 +185,7 @@ def send_error_message(correlation_id, error_type, error_message,
 
 def send_install_commands(flow_rules, correlation_id):
     for flow_rule in flow_rules:
-        send_to_topic(flow_rule, correlation_id, MT_COMMAND, config.KAFKA_SPEAKER_TOPIC)
+        send_to_topic(flow_rule, correlation_id, MT_COMMAND, topic=config.KAFKA_SPEAKER_TOPIC)
 
 
 def send_delete_commands(nodes, flow_id, correlation_id, cookie):
