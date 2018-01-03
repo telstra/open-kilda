@@ -38,20 +38,20 @@ import java.util.Map;
  * <p>
  * Example OpenFlow Messages:
  * {
- * "type": "INFO",
+ * "clazz": "org.openkilda.messaging.info.InfoMessage",
  * "timestamp": 1489980143,
  * "payload": {
- * ""message_type"": "switch",
+ * "clazz": "org.openkilda.messaging.info.event.SwitchInfoData",
  * "switch_id": "0x0000000000000001",
  * "state": "ACTIVATED | ADDED | CHANGE | DEACTIVATED | REMOVED"
  * }
  * }
  * <p>
  * {
- * "type": "INFO",
+ * "clazz": "org.openkilda.messaging.info.InfoMessage",
  * "timestamp": 1489980143,
  * "payload": {
- * ""message_type"": "port",
+ * "clazz": "org.openkilda.messaging.info.event.PortInfoData",
  * "switch_id": "0x0000000000000001",
  * "state": "UP | DOWN | .. "
  * "port_no": LONG
@@ -59,7 +59,11 @@ import java.util.Map;
  * }
  * }
  * <p>
- * {"type": "INFO", "payload": {""message_type"": "switch", "switch_id": "0x0000000000000001", "state": "ACTIVATED"}}
+ * {"clazz": "org.openkilda.messaging.info.InfoMessage",
+ * "payload": {
+ * "clazz": "org.openkilda.messaging.info.event.SwitchInfoData",
+ * "switch_id": "0x0000000000000001",
+ * "state": "ACTIVATED"}}
  */
 public class OFEMessageUtils {
 
@@ -74,6 +78,10 @@ public class OFEMessageUtils {
     public static final String PORT_DOWN = "DOWN";
     public static final String LINK_UP = "DISCOVERED";
     public static final String LINK_DOWN = "FAILED";
+
+    // TODO: We should use the actual message class, not build from scratch and reference the class
+    public static final String MT_SWITCH = "org.openkilda.messaging.info.event.SwitchInfoData";
+    public static final String MT_PORT = "org.openkilda.messaging.info.event.PortInfoData";
 
     // ==============  ==============  ==============  ==============  ==============
     // Parsing Routines
@@ -102,18 +110,18 @@ public class OFEMessageUtils {
         // TODO: we don't use "type" anymore .. rewrite and leverage proper message class
         StringBuffer sb = new StringBuffer("{'type': 'INFO', ");
         sb.append("'timestamp': ").append(System.currentTimeMillis()).append(", ");
-        String type = (isSwitch) ? "switch" : "port";
+        String type = (isSwitch) ? MT_SWITCH : MT_PORT;
         sb.append("'payload': ").append(createDataMessage(type, state, switchID, portID));
         sb.append("}");
         return sb.toString().replace("'", "\"");
     }
 
     public static String createSwitchDataMessage(String state, String switchId) {
-        return createDataMessage("switch", state, switchId, null);
+        return createDataMessage(MT_SWITCH, state, switchId, null);
     }
 
     public static String createPortDataMessage(String state, String switchId, String portId) {
-        return createDataMessage("port", state, switchId, portId);
+        return createDataMessage(MT_PORT, state, switchId, portId);
     }
 
     /**
@@ -121,9 +129,8 @@ public class OFEMessageUtils {
      */
     public static String createDataMessage(String type, String state, String switchId, String
             portId) {
-        // TODO: we don't use "message_type" anymore .. rewrite and leverage proper message class
         StringBuffer sb = new StringBuffer();
-        sb.append("{'message_type': '").append(type).append("', ");
+        sb.append("{'clazz': '").append(type).append("', ");
         sb.append("'switch_id': '").append(switchId).append("', ");
         if (portId != null && portId.length() > 0) {
             sb.append("'port_no': ").append(portId).append(", ");

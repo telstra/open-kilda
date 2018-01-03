@@ -31,7 +31,7 @@ public class FlowInfoDataTest {
     @Test
     public void toStringTest() throws Exception {
         FlowInfoData data = new FlowInfoData("", new ImmutablePair<>(new Flow(), new Flow()),
-                FlowOperation.CREATE, Utils.DEFAULT_CORRELATION_ID);
+                FlowOperation.CREATE, "time", Utils.DEFAULT_CORRELATION_ID);
         String dataString = data.toString();
         assertNotNull(dataString);
         assertFalse(dataString.isEmpty());

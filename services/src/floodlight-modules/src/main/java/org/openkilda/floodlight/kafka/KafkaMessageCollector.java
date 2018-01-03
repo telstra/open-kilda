@@ -36,6 +36,8 @@ import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
+import org.openkilda.messaging.Topic;
+
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
@@ -60,8 +62,8 @@ import java.util.concurrent.Executors;
 
 public class KafkaMessageCollector implements IFloodlightModule {
     private static final Logger logger = LoggerFactory.getLogger(KafkaMessageCollector.class);
-    private static final String INPUT_TOPIC = "kilda.speaker";
-    private static final String OUTPUT_FLOW_TOPIC = "kilda.flow";
+    private static final String INPUT_TOPIC = Topic.SPEAKER;
+    private static final String OUTPUT_FLOW_TOPIC = Topic.FLOW;
     private final MeterPool meterPool = new MeterPool();
     private Properties kafkaProps;
     private IPathVerificationService pathVerificationService;
