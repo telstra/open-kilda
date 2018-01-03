@@ -33,7 +33,6 @@ import java.util.Objects;
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
-        "message_type",
         "switch_id",
         "state",
         "address",
