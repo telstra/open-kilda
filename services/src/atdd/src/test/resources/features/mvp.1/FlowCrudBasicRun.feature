@@ -1,7 +1,8 @@
-@FCRUD
+@FCRUD @FAT
 Feature: Basic Flow CRUD
 
   This feature tests basic flow CRUD operations.
+  These tests are Functional Acceptance Tests (FAT).
 
   @MVP1 @CRUD_CREATE
   Scenario Outline: Flow Creation on Small Linear Network Topology

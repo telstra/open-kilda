@@ -4,7 +4,7 @@ Feature: Initialisation of Basic Flow CRUD
   Cucumber framework does not support feature setup/teardown.
   This feature is run before the actual tests based on alphabetical order.
 
-  @MVP1
+  @MVP1 @SMOKE
   Scenario: Creation of Small Linear Network Topology
 
     This scenario creates small linear network topology and makes sure topology is learned.
