@@ -27,6 +27,10 @@ def getint(section, option):
     return config.getint(section, option)
 
 
+def getboolean(section, option):
+    return config.getboolean(section, option)
+
+
 def _get_bootstrap_servers():
     bootstrap_servers_property = config.get('kafka', 'bootstrap.servers')
     return [x.strip() for x in bootstrap_servers_property.split(',')]

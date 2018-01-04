@@ -15,6 +15,7 @@
 #
 
 import json
+import logging
 
 import traceback
 from py2neo import Node
@@ -22,10 +23,10 @@ from py2neo import Node
 import config
 import flow_utils
 import guard
-import logger
+
 import message_utils
 
-logger = logger.get_logger()
+logger = logging.getLogger(__name__)
 graph = flow_utils.graph
 switch_states = {
     'active': 'ACTIVATED',
@@ -33,13 +34,19 @@ switch_states = {
     'removed': 'REMOVED'
 }
 
+MT_SWITCH = "org.openkilda.messaging.info.event.SwitchInfoData"
+MT_ISL = "org.openkilda.messaging.info.event.IslInfoData"
+MT_PORT = "org.openkilda.messaging.info.event.PortInfoData"
+MT_FLOW = "org.openkilda.messaging.info.flow.FlowInfoData"
+CD_NETWORK = "org.openkilda.messaging.command.discovery.NetworkCommandData"
+
 
 class MessageItem(object):
     def __init__(self, **kwargs):
-        self.type = kwargs.get("type")
+        self.type = kwargs.get("clazz")
         self.timestamp = str(kwargs.get("timestamp"))
         self.payload = kwargs.get("payload", {})
-        self.destination = kwargs.get("destination")
+        self.destination = kwargs.get("destination","")
         self.correlation_id = kwargs.get("correlation_id", "admin-request")
 
     def to_json(self):
@@ -52,45 +59,45 @@ class MessageItem(object):
         return command if message_type == 'unknown' else message_type
 
     def get_command(self):
-        return self.payload.get('command', 'unknown')
+        return self.payload.get('clazz', 'unknown')
 
     def get_message_type(self):
-        return self.payload.get('message_type', 'unknown')
+        return self.payload.get('clazz', 'unknown')
 
     def handle(self):
         try:
             event_handled = False
 
-            if self.get_message_type() == "switch" \
+            if self.get_message_type() == MT_SWITCH \
                     and self.payload['state'] == "ADDED":
                 event_handled = self.create_switch()
-            if self.get_message_type() == "switch" \
+            if self.get_message_type() == MT_SWITCH \
                     and self.payload['state'] == "ACTIVATED":
                 event_handled = self.activate_switch()
-            if self.get_message_type() == "switch" \
+            if self.get_message_type() == MT_SWITCH \
                     and self.payload['state'] == "DEACTIVATED":
                 event_handled = self.deactivate_switch()
-            if self.get_message_type() == "switch" \
+            if self.get_message_type() == MT_SWITCH \
                     and self.payload['state'] == "REMOVED":
                 event_handled = self.remove_switch()
 
-            if self.get_message_type() == "isl" \
+            if self.get_message_type() == MT_ISL \
                     and self.payload['state'] == "DISCOVERED":
                 event_handled = self.create_isl()
-            if self.get_message_type() == "isl" \
+            if self.get_message_type() == MT_ISL \
                     and self.payload['state'] == "FAILED":
                 event_handled = self.isl_discovery_failed()
 
-            if self.get_message_type() == "port":
+            if self.get_message_type() == MT_PORT:
                 if self.payload['state'] == "DOWN":
                     event_handled = self.port_down()
                 else:
                     event_handled = True
 
-            if self.get_message_type() == "flow_operation":
+            if self.get_message_type() == MT_FLOW:
                 event_handled = self.flow_operation()
 
-            if self.get_command() == "network":
+            if self.get_command() == CD_NETWORK:
                 event_handled = self.dump_network()
 
             if not event_handled:
@@ -382,7 +389,7 @@ class MessageItem(object):
                         correlation_id, flow_id)
 
             payload = {'payload': flow, 'message_type': "flow"}
-            message_utils.send_message(payload, correlation_id, "INFO")
+            message_utils.send_info_message(payload, correlation_id)
 
         except Exception as e:
             logger.exception('Can not create flow: %s', flow_id)
@@ -410,7 +417,7 @@ class MessageItem(object):
                         correlation_id, flow_id)
 
             payload = {'payload': flow, 'message_type': "flow"}
-            message_utils.send_message(payload, correlation_id, "INFO")
+            message_utils.send_info_message(payload, correlation_id)
 
         except Exception as e:
             logger.exception('Can not delete flow: %s', e.message)
@@ -457,7 +464,7 @@ class MessageItem(object):
                         correlation_id, flow_id)
 
             payload = {'payload': flow, 'message_type': "flow"}
-            message_utils.send_message(payload, correlation_id, "INFO")
+            message_utils.send_info_message(payload, correlation_id)
 
         except Exception as e:
             logger.exception('Can not update flow: %s', e.message)
@@ -593,13 +600,13 @@ class MessageItem(object):
                 'isls': isls,
                 'flows': flows,
                 'message_type': "network"}
-            message_utils.send_message(
-                payload, correlation_id, "INFO", "WFM_CACHE")
+            message_utils.send_cache_message(payload, correlation_id)
 
         except Exception as e:
             logger.exception('Can not dump network: %s', e.message)
             message_utils.send_error_message(
-                correlation_id, "INTERNAL_ERROR", e.message, step, "WFM_CACHE")
+                correlation_id, "INTERNAL_ERROR", e.message, step,
+                "WFM_CACHE", config.KAFKA_CACHE_TOPIC)
             raise
 
         return True

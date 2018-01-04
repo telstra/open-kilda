@@ -15,9 +15,10 @@
 
 package org.openkilda.messaging.model.rule;
 
+import org.openkilda.messaging.BaseMessage;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonSubTypes;
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.google.common.base.MoreObjects;
 
@@ -28,17 +29,8 @@ import java.util.Objects;
  * Represents base rule entity.
  */
 @JsonSerialize
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME,
-        include = JsonTypeInfo.As.PROPERTY,
-        property = RuleConstants.OF_COMMAND)
-@JsonSubTypes({
-        @JsonSubTypes.Type(value = FlowInstall.class, name = "flow_install"),
-        @JsonSubTypes.Type(value = FlowUpdate.class, name = "flow_update"),
-        @JsonSubTypes.Type(value = FlowDelete.class, name = "flow_delete"),
-        @JsonSubTypes.Type(value = MeterInstall.class, name = "meter_install"),
-        @JsonSubTypes.Type(value = MeterUpdate.class, name = "meter_update"),
-        @JsonSubTypes.Type(value = MeterDelete.class, name = "meter_delete")})
-public class Rule implements Serializable {
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class Rule extends BaseMessage {
     /**
      * Serialization version number constant.
      */
@@ -66,6 +58,7 @@ public class Rule implements Serializable {
      * Default constructor.
      */
     public Rule() {
+        super();
     }
 
     /**
@@ -78,6 +71,7 @@ public class Rule implements Serializable {
     public Rule(@JsonProperty(RuleConstants.FLOW_ID) String flowId,
                 @JsonProperty(RuleConstants.COOKIE) int cookie,
                 @JsonProperty(RuleConstants.SWITCH_ID) String switchId) {
+        super();
         this.switchId = switchId;
         this.cookie = cookie;
         this.flowId = flowId;

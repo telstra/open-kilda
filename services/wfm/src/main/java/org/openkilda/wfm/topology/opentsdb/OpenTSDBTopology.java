@@ -16,8 +16,8 @@
 package org.openkilda.wfm.topology.opentsdb;
 
 import org.apache.commons.lang.StringUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 import org.apache.storm.Config;
 import org.apache.storm.LocalCluster;
 import org.apache.storm.StormSubmitter;
@@ -40,7 +40,7 @@ import java.io.File;
  */
 public class OpenTSDBTopology extends AbstractTopology {
 
-    private static final Logger LOGGER = LogManager.getLogger(OpenTSDBTopology.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(OpenTSDBTopology.class);
 
     public OpenTSDBTopology(LaunchEnvironment env) throws ConfigurationException {
         super(env);

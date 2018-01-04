@@ -20,14 +20,13 @@ import static org.openkilda.wfm.topology.flow.StreamType.REROUTE;
 import static org.openkilda.wfm.topology.flow.StreamType.RESTORE;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.apache.storm.state.InMemoryKeyValueState;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
+import org.openkilda.messaging.BaseMessage;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
@@ -57,12 +56,13 @@ import org.openkilda.pce.cache.Cache;
 import org.openkilda.pce.cache.FlowCache;
 import org.openkilda.pce.cache.NetworkCache;
 import org.openkilda.pce.cache.ResourceCache;
-import org.openkilda.wfm.OFEMessageUtils;
 import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.cache.service.CacheWarmingService;
 import org.openkilda.wfm.topology.utils.AbstractTickStatefulBolt;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.List;
@@ -89,7 +89,7 @@ public class CacheBolt
     /**
      * The logger.
      */
-    private static final Logger logger = LogManager.getLogger(CacheBolt.class);
+    private static final Logger logger = LoggerFactory.getLogger(CacheBolt.class);
 
     /**
      * Network cache.
@@ -162,38 +162,6 @@ public class CacheBolt
     }
 
     /**
-     * Tries the parse the json object and return a null if can't
-     *
-     * @param json the json to parse
-     * @return an InfoMessage, if possible; otherwise null
-     */
-    private InfoMessage tryInfoMessage(String json){
-        InfoMessage result = null;
-        try {
-            result = MAPPER.readValue(json, InfoMessage.class);
-        } catch (Exception e){
-            /* do nothing */
-        }
-        return result;
-    }
-
-    /**
-     * Tries the parse the json object and return a null if can't
-     *
-     * @param json the json to parse
-     * @return an InfoMessage, if possible; otherwise null
-     */
-    private InfoData tryInfoData(String json){
-        InfoData result = null;
-        try {
-            result = MAPPER.readValue(json, InfoData.class);
-        } catch (Exception e){
-            /* do nothing */
-        }
-        return result;
-    }
-
-    /**
      * {@inheritDoc}
      */
     @Override
@@ -216,44 +184,45 @@ public class CacheBolt
         // TODO: Eliminate the inefficiency introduced through the hack
         try {
             logger.info("Request tuple={}", tuple);
-            InfoMessage info = tryInfoMessage(json);
-            if (info != null && Destination.WFM_CACHE == info.getDestination()) {
-                logger.debug("Storage content message {}", json);
-                handleNetworkDump(info.getData(), tuple);
-            } else {
-                InfoData data = tryInfoData(json);
-                if (data != null) {
-                    logger.info("Cache update info data", data);
-
-                    if (data instanceof SwitchInfoData) {
-                        logger.info("Cache update switch info data: {}", data);
-
-                        emitNetworkMessage(data, tuple, Utils.SYSTEM_CORRELATION_ID);
-                        handleSwitchEvent((SwitchInfoData) data, tuple);
-
-                    } else if (data instanceof IslInfoData) {
-                        logger.info("Cache update isl info data: {}", data);
-
-                        emitNetworkMessage(data, tuple, Utils.SYSTEM_CORRELATION_ID);
-                        handleIslEvent((IslInfoData) data, tuple);
-
-                    } else if (data instanceof PortInfoData) {
-                        logger.info("Cache update port info data: {}", data);
-
-                        emitNetworkMessage(data, tuple, Utils.SYSTEM_CORRELATION_ID);
-                        handlePortEvent((PortInfoData) data, tuple);
-
-                    } else if (data instanceof FlowInfoData) {
-                        logger.info("Cache update info data: {}", data);
-
-                        FlowInfoData flowData = (FlowInfoData) data;
-                        handleFlowEvent(flowData, tuple);
-                    } else {
-                        logger.debug("Skip undefined info data type {}", json);
-                    }
-                } else {
-                    logger.debug("Skip undefined message type {}", json);
+            BaseMessage bm = MAPPER.readValue(json, BaseMessage.class);
+            if (bm instanceof InfoMessage) {
+                InfoMessage info = (InfoMessage) bm;
+                if (Destination.WFM_CACHE == info.getDestination()){
+                    logger.debug("Storage content message {}", json);
+                    handleNetworkDump(info.getData(), tuple);
                 }
+            } else if (bm instanceof InfoData) {
+                InfoData data = (InfoData) bm;
+                logger.debug("Cache update info data", data);
+
+                if (data instanceof SwitchInfoData) {
+                    logger.info("Cache update switch info data: {}", data);
+
+                    emitNetworkMessage(data, tuple, Utils.SYSTEM_CORRELATION_ID);
+                    handleSwitchEvent((SwitchInfoData) data, tuple);
+
+                } else if (data instanceof IslInfoData) {
+                    logger.info("Cache update isl info data: {}", data);
+
+                    emitNetworkMessage(data, tuple, Utils.SYSTEM_CORRELATION_ID);
+                    handleIslEvent((IslInfoData) data, tuple);
+
+                } else if (data instanceof PortInfoData) {
+                    logger.info("Cache update port info data: {}", data);
+
+                    emitNetworkMessage(data, tuple, Utils.SYSTEM_CORRELATION_ID);
+                    handlePortEvent((PortInfoData) data, tuple);
+
+                } else if (data instanceof FlowInfoData) {
+                    logger.info("Cache update info data: {}", data);
+
+                    FlowInfoData flowData = (FlowInfoData) data;
+                    handleFlowEvent(flowData, tuple);
+                } else {
+                    logger.debug("Skip undefined info data type {}", json);
+                }
+            } else {
+                logger.debug("Skip undefined message type {}", json);
             }
 
         } catch (CacheException exception) {

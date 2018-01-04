@@ -33,7 +33,6 @@ import org.openkilda.wfm.topology.OutputCollectorMock;
 import org.openkilda.wfm.topology.TopologyConfig;
 import org.openkilda.wfm.topology.event.OFELinkBolt;
 import org.openkilda.wfm.topology.event.OFEventWFMTopology;
-import org.openkilda.wfm.topology.splitter.InfoEventSplitterBolt;
 import org.openkilda.wfm.topology.utils.KafkaFilerTopology;
 
 import com.google.common.base.Charsets;
@@ -112,6 +111,10 @@ public class OFEventWfmTest extends AbstractStormTest {
     public void BasicSwitchPortEventsTest() throws Exception {
         System.out.println("==> Starting BasicSwitchEventTest");
 
+        // TOOD: Is this test still valide, without the deprecated Switch/Port bolts?
+        OFEventWFMTopology manager = new OFEventWFMTopology(makeLaunchEnvironment());
+        TopologyConfig config = manager.getConfig();
+
         String sw1_up = OFEMessageUtils.createSwitchDataMessage(
                 OFEMessageUtils.SWITCH_UP, "sw1");
         String sw2_up = OFEMessageUtils.createSwitchDataMessage(
@@ -122,8 +125,8 @@ public class OFEventWfmTest extends AbstractStormTest {
                 OFEMessageUtils.PORT_UP, "sw2", "2");
         String sw2p2_down = OFEMessageUtils.createPortDataMessage(
                 OFEMessageUtils.PORT_DOWN, "sw2", "2");
-        String switch_topic = InfoEventSplitterBolt.I_SWITCH_UPDOWN;
-        String port_topic = InfoEventSplitterBolt.I_PORT_UPDOWN;
+        String switch_topic = config.getKafkaTopoDiscoTopic();
+        String port_topic = config.getKafkaTopoDiscoTopic();
 
         // send sw1 and sw2 up
         kProducer.pushMessage(switch_topic, sw1_up);
@@ -190,10 +193,12 @@ public class OFEventWfmTest extends AbstractStormTest {
         System.out.println("==> Starting BasicLinkDiscoveryTest");
         OFEventWFMTopology manager = new OFEventWFMTopology(makeLaunchEnvironment());
         TopologyConfig config = manager.getConfig();
+        String topo_input_topic = config.getKafkaTopoDiscoTopic();
 
         Tuple tuple;
         KeyValueState<String, Object> state = new InMemoryKeyValueState<>();
-        initMocks();
+        initMocks(topo_input_topic);
+
 
         List<PathNode> nodes = Arrays.asList(
                 new PathNode("sw1", 1, 0, 10L),
@@ -215,26 +220,26 @@ public class OFEventWfmTest extends AbstractStormTest {
         linkBolt.execute(tuple);
 
         tuple = new TupleImpl(topologyContext, Arrays.asList("sw1", OFEMessageUtils.SWITCH_UP),
-                0, InfoEventSplitterBolt.I_SWITCH_UPDOWN);
+                0, topo_input_topic);
         linkBolt.execute(tuple);
 
         tuple = new TupleImpl(topologyContext, Arrays.asList("sw2", OFEMessageUtils.SWITCH_UP),
-                0, InfoEventSplitterBolt.I_SWITCH_UPDOWN);
+                0, topo_input_topic);
         linkBolt.execute(tuple);
 
         tuple = new TupleImpl(topologyContext, Arrays.asList("sw1", "1", OFEMessageUtils.PORT_UP),
-                1, InfoEventSplitterBolt.I_PORT_UPDOWN);
+                1, topo_input_topic);
         linkBolt.execute(tuple);
 
         tuple = new TupleImpl(topologyContext, Arrays.asList("sw1", "2", OFEMessageUtils.PORT_UP),
-                1, InfoEventSplitterBolt.I_PORT_UPDOWN);
+                1, topo_input_topic);
         linkBolt.execute(tuple);
 
         Tuple tickTuple = new TupleImpl(topologyContext, Collections.emptyList(), 2, Constants.SYSTEM_TICK_STREAM_ID);
         linkBolt.execute(tickTuple);
 
         tuple = new TupleImpl(topologyContext, Collections.singletonList(isl_discovered),
-                3, InfoEventSplitterBolt.I_ISL_UPDOWN);
+                3, topo_input_topic);
         linkBolt.execute(tuple);
 
         linkBolt.execute(tickTuple);
@@ -268,27 +273,27 @@ public class OFEventWfmTest extends AbstractStormTest {
         Assert.assertEquals(messagesExpected, messagesReceived);
     }
 
-    private void initMocks() {
+    private void initMocks(String topo_input_topic) {
         Fields switchSchema = new Fields(OFEMessageUtils.FIELD_SWITCH_ID, OFEMessageUtils.FIELD_STATE);
-        when(topologyContext.getComponentId(0)).thenReturn(InfoEventSplitterBolt.I_SWITCH_UPDOWN);
-        when(topologyContext.getComponentOutputFields(InfoEventSplitterBolt.I_SWITCH_UPDOWN,
-                InfoEventSplitterBolt.I_SWITCH_UPDOWN)).thenReturn(switchSchema);
+        when(topologyContext.getComponentId(0)).thenReturn(topo_input_topic);
+        when(topologyContext.getComponentOutputFields(topo_input_topic,
+                topo_input_topic)).thenReturn(switchSchema);
 
         Fields portSchema = new Fields(OFEMessageUtils.FIELD_SWITCH_ID,
                 OFEMessageUtils.FIELD_PORT_ID, OFEMessageUtils.FIELD_STATE);
-        when(topologyContext.getComponentId(1)).thenReturn(InfoEventSplitterBolt.I_PORT_UPDOWN);
-        when(topologyContext.getComponentOutputFields(InfoEventSplitterBolt.I_PORT_UPDOWN,
-                InfoEventSplitterBolt.I_PORT_UPDOWN)).thenReturn(portSchema);
+        when(topologyContext.getComponentId(1)).thenReturn(topo_input_topic);
+        when(topologyContext.getComponentOutputFields(topo_input_topic,
+                topo_input_topic)).thenReturn(portSchema);
 
         Fields tickSchema = new Fields();
         when(topologyContext.getComponentId(2)).thenReturn(Constants.SYSTEM_COMPONENT_ID);
         when(topologyContext.getComponentOutputFields(Constants.SYSTEM_COMPONENT_ID, Constants.SYSTEM_TICK_STREAM_ID))
                 .thenReturn(tickSchema);
 
-        Fields islSchema = new Fields(InfoEventSplitterBolt.I_ISL_UPDOWN);
-        when(topologyContext.getComponentId(3)).thenReturn(InfoEventSplitterBolt.I_ISL_UPDOWN);
-        when(topologyContext.getComponentOutputFields(InfoEventSplitterBolt.I_ISL_UPDOWN,
-                InfoEventSplitterBolt.I_ISL_UPDOWN)).thenReturn(islSchema);
+        Fields islSchema = new Fields(topo_input_topic);
+        when(topologyContext.getComponentId(3)).thenReturn(topo_input_topic);
+        when(topologyContext.getComponentOutputFields(topo_input_topic,
+                topo_input_topic)).thenReturn(islSchema);
 
         when(topologyContext.getComponentId(4)).thenReturn(OFEventWFMTopology.SPOUT_ID_INPUT);
         when(topologyContext.getComponentOutputFields(

@@ -90,7 +90,7 @@ public class StatsTopologyTest extends StableAbstractStormTest {
                     .map(this::readFromJson)
                     .forEach(datapoint -> {
                         assertThat(datapoint.getTags().get("switchId"), is(switchId.replaceAll(":", "")));
-                        assertThat(datapoint.getTimestamp(), is(timestamp));
+                        assertThat(datapoint.getTime(), is(timestamp));
                         assertThat(datapoint.getMetric(), startsWith("pen.switch"));
                     });
         });
@@ -123,7 +123,7 @@ public class StatsTopologyTest extends StableAbstractStormTest {
                     .map(this::readFromJson)
                     .forEach(datapoint -> {
                         assertThat(datapoint.getTags().get("switchid"), is(switchId.replaceAll(":", "")));
-                        assertThat(datapoint.getTimestamp(), is(timestamp));
+                        assertThat(datapoint.getTime(), is(timestamp));
                         assertThat(datapoint.getMetric(), is("pen.switch.meters"));
                     });
         });
@@ -159,7 +159,7 @@ public class StatsTopologyTest extends StableAbstractStormTest {
                     .map(this::readFromJson)
                     .forEach(datapoint -> {
                         assertThat(datapoint.getTags().get("switchid"), is(switchId.replaceAll(":", "")));
-                        assertThat(datapoint.getTimestamp(), is(timestamp));
+                        assertThat(datapoint.getTime(), is(timestamp));
                     });
         });
     }

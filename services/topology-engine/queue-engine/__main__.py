@@ -18,17 +18,23 @@ import gevent.monkey
 
 gevent.monkey.patch_all(Event=True)
 
-from topologylistener.eventhandler import main_loop
-from topologylistener import logger
+import logging
+import json
+from logging.config import dictConfig
+with open("log.json", "r") as fd:
+    dictConfig(json.load(fd))
+
+from topologylistener import eventhandler
 from topologylistener.topology_reader import read_topologies
 
-LOG = logger.get_logger()
+logger = logging.getLogger(__name__)
 
 try:
-    read_topologies()
+    # (crimi) - commenting out until it is clear how to best leverage pre-populating topologies
+    # read_topologies()
 
-    LOG.info('Topology engine starting.')
-    main_loop()
+    logger.info('Topology engine starting.')
+    eventhandler.main_loop()
 
 except Exception as e:
-    LOG.exception("Error in main loop")
+    logger.exception("Error in main loop")

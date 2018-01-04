@@ -1,15 +1,6 @@
 version: '2.1'
 services:
 
-#  hello-world:
-#    build:
-#      context: services
-#      dockerfile:  hello-world/Dockerfile
-#    image: "kilda/hello-world:${full_build_number:-latest}"
-#    command: /app/helloworld.sh
-#    env_file:
-#      - services/hello-world/variables.env
-
   mininet:
     container_name: mininet
     image: "kilda/mininet:${full_build_number:-latest}"
@@ -24,7 +15,8 @@ services:
     privileged: true
     volumes:
       - /lib/modules:/lib/modules
-
+#    networks:
+#      - kilda.net
 
   neo4j:
     container_name: neo4j
@@ -39,6 +31,8 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+#    networks:
+#      - kilda.net
 
 ##
 ## Python based topology-engine
@@ -55,6 +49,7 @@ services:
       - kafka:kafka.pendev
       - topology-engine-rest
       - zookeeper:zookeeper.pendev
+      - logstash:logstash.pendev
     environment:
       neo4jhost: 'neo4j'
       neo4juser: 'neo4j'
@@ -69,6 +64,9 @@ services:
         condition: service_healthy
       neo4j:
         condition: service_healthy
+#    networks:
+#      - kilda.net
+
 
   topology-engine-rest:
     container_name: topology-engine-rest
@@ -98,6 +96,9 @@ services:
         condition: service_healthy
       neo4j:
         condition: service_healthy
+#    networks:
+#      - kilda.net
+
 
   zookeeper:
     container_name: zookeeper
@@ -111,14 +112,17 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+#    networks:
+#      - kilda.net
+
 
   kafka:
     container_name: kafka
     hostname: kafka.pendev
     image: "kilda/kafka:${full_build_number:-latest}"
     # run_and_configure is in services/kafka/kafka-conf
-    # command: /opt/kafka/bin/run_and_configure.sh
-    command: /opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/server.properties
+    command: /opt/kafka/bin/run_and_configure.sh
+    # command: /opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/server.properties
     volumes:
       - kafka_data:/data/kafka
     depends_on:
@@ -135,6 +139,8 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+#    networks:
+#      - kilda.net
 
   wfm:
     container_name: wfm
@@ -154,6 +160,8 @@ services:
       - kafka:kafka.pendev
       - storm_nimbus:nimbus.pendev
       - zookeeper:zookeeper.pendev
+#    networks:
+#      - kilda.net
 
   hbase:
     container_name: hbase
@@ -182,6 +190,9 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+#    networks:
+#      - kilda.net
+
 
 #  tools:
 #    build:
@@ -203,6 +214,7 @@ services:
 #      - "22:8022"
 #    container_name: "hadoop-tools"
 
+
   storm_nimbus:
     container_name: storm_nimbus
     hostname: nimbus.pendev
@@ -217,6 +229,7 @@ services:
       - neo4j:neo4j.pendev
       - zookeeper:zookeeper.pendev
       - opentsdb:opentsdb.pendev
+      - logstash:logstash.pendev
     ports:
       - "6627:6627"
       - "3772:3772"
@@ -227,6 +240,9 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+#    networks:
+#      - kilda.net
+
 
   storm_ui:
     container_name: storm_ui
@@ -243,6 +259,7 @@ services:
       - zookeeper:zookeeper.pendev
       - storm_nimbus:nimbus.pendev
       - storm_supervisor:supervisor.pendev
+      - logstash:logstash.pendev
     ports:
       - "8888:8080"
     healthcheck:
@@ -250,6 +267,9 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+#    networks:
+#      - kilda.net
+
 
   storm_supervisor:
     container_name: storm_supervisor
@@ -267,6 +287,7 @@ services:
       - kafka:kafka.pendev
       - opentsdb:opentsdb.pendev
       - storm_nimbus:nimbus.pendev
+      - logstash:logstash.pendev
     ports:
       - "6700:6700"
       - "6701:6701"
@@ -289,8 +310,12 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+#    networks:
+#      - kilda.net
+
 
   floodlight:
+    container_name: floodlight
     build:
       context: services/src/floodlight-modules
     image: "kilda/floodlight:${full_build_number:-latest}"
@@ -305,6 +330,9 @@ services:
     depends_on:
       kafka:
         condition: service_healthy
+#    networks:
+#      - kilda.net
+
 
   northbound:
     build:
@@ -319,6 +347,9 @@ services:
     depends_on:
       kafka:
         condition: service_healthy
+#    networks:
+#      - kilda.net
+
 
   opentsdb:
     container_name: opentsdb
@@ -335,10 +366,48 @@ services:
       - hbase:hbase.pendev
     ports:
       - "4242:4242"
+#    networks:
+#      - kilda.net
+
+
+  elasticsearch:
+    container_name: elasticsearch
+    image: elasticsearch:5.6.5
+    hostname: elasticsearch.pendev
+#    networks:
+#      - kilda.net
+
+
+  kibana:
+    image: kibana:5.6.5
+    container_name: kibana
+    hostname: kibana.pendev
+    depends_on:
+      elasticsearch:
+        condition: service_started
+    ports:
+      - 5601:5601
+#    networks:
+#      - kilda.net
+
+
+  logstash:
+    container_name: logstash
+    hostname: logstash.pendev
+    image: "kilda/logstash:${full_build_number:-latest}"
+    links:
+      - elasticsearch:elasticsearch.pendev
+    ports:
+      - 9600:9600
+#    networks:
+#      - kilda.net
+
+
+#networks:
+#  kilda.net:
 
 volumes:
   zookeeper_data:
   kafka_data:
   app_server_data:
   hbase_data:
-# mininet_data:

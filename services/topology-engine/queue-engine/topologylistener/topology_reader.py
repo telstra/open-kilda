@@ -18,9 +18,9 @@ import time
 from glob import glob
 
 import message_utils
-from logger import get_logger
+import logging
 
-logger = get_logger()
+logger = logging.getLogger(__name__)
 
 
 def read_topologies():
@@ -60,5 +60,4 @@ def send_topology(topology):
 
 def send_message(data):
     logger.info(data)
-    message_utils.send_message(data, "topology_reader-{}".format(time.time()),
-                               "INFO", "WFM_CACHE")
+    message_utils.send_cache_message(data, "topology_reader-{}".format(time.time()))
