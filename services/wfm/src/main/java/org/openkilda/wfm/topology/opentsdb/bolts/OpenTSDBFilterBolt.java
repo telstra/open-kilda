@@ -17,8 +17,8 @@ package org.openkilda.wfm.topology.opentsdb.bolts;
 
 import static org.openkilda.messaging.Utils.MAPPER;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 import org.apache.storm.opentsdb.bolt.TupleOpenTsdbDatapointMapper;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -38,7 +38,7 @@ import java.util.stream.Stream;
 
 public class OpenTSDBFilterBolt extends BaseRichBolt {
 
-    private static final Logger LOGGER = LogManager.getLogger(OpenTSDBFilterBolt.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(OpenTSDBFilterBolt.class);
     private static final long TEN_MINUTES = 60000L;
 
     private static final Fields DECLARED_FIELDS =
@@ -64,7 +64,7 @@ public class OpenTSDBFilterBolt extends BaseRichBolt {
             if (isUpdateRequired(datapoint)) {
                 addDatapoint(datapoint);
 
-                List<Object> stream = Stream.of(datapoint.getMetric(), datapoint.getTimestamp(), datapoint.getValue(),
+                List<Object> stream = Stream.of(datapoint.getMetric(), datapoint.getTime(), datapoint.getValue(),
                         datapoint.getTags())
                         .collect(Collectors.toList());
 
@@ -97,6 +97,6 @@ public class OpenTSDBFilterBolt extends BaseRichBolt {
     private boolean isDatapointOutdated(Datapoint datapoint) {
         Datapoint prevDatapoint = storage.stream().filter(item -> item.equals(datapoint)).findFirst()
                 .orElseThrow(() -> new IllegalStateException("Unexpected storage value"));
-        return datapoint.getTimestamp() - prevDatapoint.getTimestamp() >= TEN_MINUTES;
+        return datapoint.getTime() - prevDatapoint.getTime() >= TEN_MINUTES;
     }
 }

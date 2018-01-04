@@ -16,10 +16,8 @@
 
 from time import time
 
-# from kafka import KafkaConsumer, KafkaProducer
 import requests
 import json
-import pprint
 
 
 def create_topo(file):

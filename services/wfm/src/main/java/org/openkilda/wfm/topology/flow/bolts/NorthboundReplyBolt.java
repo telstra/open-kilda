@@ -25,8 +25,8 @@ import org.openkilda.wfm.topology.flow.ComponentType;
 import org.openkilda.wfm.topology.flow.StreamType;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -43,7 +43,7 @@ public class NorthboundReplyBolt extends BaseRichBolt {
     /**
      * The logger.
      */
-    private static final Logger logger = LogManager.getLogger(NorthboundReplyBolt.class);
+    private static final Logger logger = LoggerFactory.getLogger(NorthboundReplyBolt.class);
 
     /**
      * Output collector.

@@ -23,8 +23,8 @@ import org.openkilda.wfm.topology.flow.ComponentType;
 import org.openkilda.wfm.topology.flow.FlowTopology;
 import org.openkilda.wfm.topology.flow.StreamType;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -41,7 +41,7 @@ public class ErrorBolt extends BaseRichBolt {
     /**
      * The logger.
      */
-    private static final Logger logger = LogManager.getLogger(ErrorBolt.class);
+    private static final Logger logger = LoggerFactory.getLogger(ErrorBolt.class);
 
     /**
      * Output collector.

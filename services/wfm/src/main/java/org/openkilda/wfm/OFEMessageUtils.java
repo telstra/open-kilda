@@ -22,6 +22,9 @@ import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
+import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.Destination;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -96,6 +99,7 @@ public class OFEMessageUtils {
      */
     public static String createInfoMessage(boolean isSwitch, String switchID, String portID, String
             state) {
+        // TODO: we don't use "type" anymore .. rewrite and leverage proper message class
         StringBuffer sb = new StringBuffer("{'type': 'INFO', ");
         sb.append("'timestamp': ").append(System.currentTimeMillis()).append(", ");
         String type = (isSwitch) ? "switch" : "port";
@@ -117,6 +121,7 @@ public class OFEMessageUtils {
      */
     public static String createDataMessage(String type, String state, String switchId, String
             portId) {
+        // TODO: we don't use "message_type" anymore .. rewrite and leverage proper message class
         StringBuffer sb = new StringBuffer();
         sb.append("{'message_type': '").append(type).append("', ");
         sb.append("'switch_id': '").append(switchId).append("', ");
@@ -157,15 +162,12 @@ public class OFEMessageUtils {
     /**
      * @return a JSON string that can be used to for link event
      */
-    public static String createIslDiscovery(String switchID, String portID) {
-        StringBuffer sb = new StringBuffer("{\"type\": \"COMMAND\"");
-        sb.append(", \"destination\": \"CONTROLLER\"");
-        sb.append(", \"timestamp\": ").append(System.currentTimeMillis());
-        sb.append(", \"payload\": ");
-        sb.append("{\"command\": \"discover_isl\"");
-        sb.append(", \"switch_id\": \"").append(switchID).append("\"");
-        sb.append(", \"port_no\": \"").append(portID).append("\"");
-        sb.append("}}");
-        return sb.toString();
+    public static String createIslDiscovery(String switchID, String portID) throws IOException {
+        CommandMessage message = new CommandMessage(
+                new DiscoverIslCommandData(switchID, Integer.valueOf(portID)), // Payload
+                System.currentTimeMillis(),
+                "", Destination.CONTROLLER
+        );
+        return MAPPER.writeValueAsString(message);
     }
 }

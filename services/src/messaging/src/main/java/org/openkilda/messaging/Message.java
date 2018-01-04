@@ -21,18 +21,10 @@ import static org.openkilda.messaging.Utils.DESTINATION;
 import static org.openkilda.messaging.Utils.PAYLOAD;
 import static org.openkilda.messaging.Utils.TIMESTAMP;
 
-import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.messaging.ctrl.CtrlRequest;
-import org.openkilda.messaging.ctrl.CtrlResponse;
-import org.openkilda.messaging.error.ErrorMessage;
-import org.openkilda.messaging.info.InfoMessage;
-
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import com.fasterxml.jackson.annotation.JsonSubTypes;
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 import java.io.Serializable;
@@ -43,30 +35,15 @@ import java.io.Serializable;
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
-        "type",
         DESTINATION,
         PAYLOAD,
         TIMESTAMP,
         CORRELATION_ID})
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME,
-        include = JsonTypeInfo.As.PROPERTY,
-        property = "type")
-@JsonSubTypes({@JsonSubTypes.Type(value = CommandMessage.class, name = "COMMAND"),
-        @JsonSubTypes.Type(value = InfoMessage.class, name = "INFO"),
-        @JsonSubTypes.Type(value = ErrorMessage.class, name = "ERROR"),
-        @JsonSubTypes.Type(value = CtrlRequest.class, name = "CTRL_REQUEST"),
-        @JsonSubTypes.Type(value = CtrlResponse.class, name = "CTRL_RESPONSE")})
-public class Message implements Serializable {
+public class Message extends BaseMessage {
     /**
      * Serialization version number constant.
      */
     private static final long serialVersionUID = 1L;
-
-    /**
-     * Message timestamp.
-     */
-    @JsonProperty(TIMESTAMP)
-    protected long timestamp;
 
     /**
      * Message correlation id.
@@ -92,7 +69,7 @@ public class Message implements Serializable {
     public Message(@JsonProperty(TIMESTAMP) final long timestamp,
                    @JsonProperty(CORRELATION_ID) final String correlationId,
                    @JsonProperty(DESTINATION) final Destination destination) {
-        this.timestamp = timestamp;
+        super(timestamp);
         this.correlationId = correlationId;
         this.destination = destination;
     }
@@ -104,17 +81,8 @@ public class Message implements Serializable {
      * @param correlationId message correlation id
      */
     public Message(final long timestamp, final String correlationId) {
-        this.timestamp = timestamp;
+        super(timestamp);
         this.correlationId = correlationId;
-    }
-
-    /**
-     * Returns message timestamp.
-     *
-     * @return message timestamp
-     */
-    public long getTimestamp() {
-        return timestamp;
     }
 
     /**

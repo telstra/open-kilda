@@ -29,6 +29,7 @@ RUN pip install py2neo
 RUN pip install requests
 RUN pip install gevent
 RUN pip install kazoo
+RUN pip install python-logstash
 RUN chmod +x /usr/local/bin/uwsgi
 ADD queue-engine/ /queue-engine
 ADD supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf

@@ -36,7 +36,7 @@ config = ConfigParser.RawConfigParser()
 config.read('topology_engine_rest.properties')
 
 group = config.get('kafka', 'consumer.group')
-topic = config.get('kafka', 'topology.topic')
+topic = config.get('kafka', 'kafka.topic.flow')
 bootstrap_servers_property = config.get('kafka', 'bootstrap.servers')
 bootstrap_servers = [x.strip() for x in bootstrap_servers_property.split(',')]
 

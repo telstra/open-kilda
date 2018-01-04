@@ -6,15 +6,12 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.openkilda.messaging.Destination;
-import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.Datapoint;
 import org.openkilda.messaging.info.InfoData;
@@ -23,8 +20,9 @@ import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.PortInfoData;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
@@ -55,10 +53,7 @@ public class IslStatsBoltTest {
     private static Destination DESTINATION = null;
     private InfoMessage message = new InfoMessage(islInfoData, TIMESTAMP,CORRELATION, DESTINATION);
 
-    private final String goodJson = "{\"type\":\"INFO\",\"destination\":\"TOPOLOGY_ENGINE\",\"payload\":{\"message_type\":\"isl\",\"id\":\"00:00:00:00:00:00:00:06_1\",\"latency_ns\":19,\"path\":[{\"switch_id\":\"00:00:00:00:00:00:00:06\",\"port_no\":1,\"seq_id\":0,\"segment_latency\":19},{\"switch_id\":\"00:00:00:00:00:00:00:05\",\"port_no\":2,\"seq_id\":1}],\"speed\":10000000,\"available_bandwidth\":9000000,\"state\":\"DISCOVERED\"},\"timestamp\":1507651077860,\"correlation_id\":\"system-request\"}";
-    private final String badJson = "{\"destination\":\"WFM_STATS\",\"payload\":{\"message_type\":\"flow_stats\",\"switch_id\":\"00:00:00:00:00:00:00:03\",\"stats\":[{\"xid\":1852,\"entries\":[]}]},\"timestamp\":1507651267714,\"correlation_id\":\"system-request\"}";
-
-    private static Logger logger = LogManager.getLogger(IslStatsBolt.class);
+    private static Logger logger = LoggerFactory.getLogger(IslStatsBolt.class);
 
     @Rule
     public ExpectedException thrown = ExpectedException.none();
@@ -79,7 +74,7 @@ public class IslStatsBoltTest {
 
         Datapoint datapoint = Utils.MAPPER.readValue(tsdbTuple.get(0).toString(), Datapoint.class);
         assertEquals("pen.isl.latency", datapoint.getMetric());
-        assertEquals((Long) TIMESTAMP, datapoint.getTimestamp());
+        assertEquals((Long) TIMESTAMP, datapoint.getTime());
         assertEquals(LATENCY, datapoint.getValue());
 
         Map<String, String> pathNode = datapoint.getTags();
@@ -87,15 +82,6 @@ public class IslStatsBoltTest {
         assertEquals(SWITCH2_ID, pathNode.get("dst_switch"));
         assertEquals(SWITCH1_PORT, Integer.parseInt(pathNode.get("src_port")));
         assertEquals(SWITCH2_PORT, Integer.parseInt(pathNode.get("dst_port")));
-    }
-
-    @Test
-    public void getMessage() throws Exception {
-        Object data = statsBolt.getMessage(goodJson);
-        assertThat(data, instanceOf(Message.class));
-
-        thrown.expect(IOException.class);
-        data = statsBolt.getMessage(badJson);
     }
 
     @Test

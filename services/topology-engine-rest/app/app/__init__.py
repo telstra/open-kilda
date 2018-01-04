@@ -16,7 +16,13 @@
 from flask import Flask, flash, redirect, render_template, request, session, abort
 from flask_sqlalchemy import SQLAlchemy
 
+import logging
+import json
+from logging.config import dictConfig
 import os
+
+with open("log.json", "r") as fd:
+    dictConfig(json.load(fd))
 
 application = Flask(__name__)
 application.secret_key = '123456789'
@@ -29,7 +35,6 @@ settings = application.config.get('RESTFUL_JSON', {})
 settings.setdefault('indent', 2)
 settings.setdefault('sort_keys', True)
 application.config['RESTFUL_JSON'] = settings
-
 #
 # NB: If you run the topology engine like this:
 #           ```docker-compose run --service-ports -e OK_TESTS="DISABLE_LOGIN" topology-engine```
@@ -50,6 +55,3 @@ if __name__ == "__main__":
         application.run(host='0.0.0.0')
     except Exception as e:
         print e
-
-
-

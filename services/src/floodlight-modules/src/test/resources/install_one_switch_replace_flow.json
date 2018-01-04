@@ -1,9 +1,9 @@
 {
-	"type": "COMMAND",
+	"clazz": "org.openkilda.messaging.command.CommandMessage",
 	"destination": "CONTROLLER",
 	"timestamp": 42,
 	"payload": {
-		"command": "install_one_switch_flow",
+		"clazz": "org.openkilda.messaging.command.flow.InstallOneSwitchFlow",
 		"flowid": "7B",
 		"cookie": 123,
 		"switch_id": "00:00:00:00:00:00:00:09",
