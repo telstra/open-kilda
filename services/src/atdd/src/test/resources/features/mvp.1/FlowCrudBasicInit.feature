@@ -13,3 +13,5 @@ Feature: Initialisation of Basic Flow CRUD
     And a clean controller
     And a nonrandom linear topology of 5 switches
     And topology contains 8 links
+    When a clean flow topology
+    Then a clean controller

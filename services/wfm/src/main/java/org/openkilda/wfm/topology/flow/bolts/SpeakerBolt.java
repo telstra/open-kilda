@@ -64,6 +64,7 @@ public class SpeakerBolt extends BaseRichBolt {
         Values values = null;
 
         try {
+
             Message message = MAPPER.readValue(request, Message.class);
             if (!Destination.WFM_TRANSACTION.equals(message.getDestination())) {
                 return;
@@ -71,6 +72,7 @@ public class SpeakerBolt extends BaseRichBolt {
             logger.debug("Request tuple={}", tuple);
 
             if (message instanceof CommandMessage) {
+
                 CommandData data = ((CommandMessage) message).getData();
 
                 if (data instanceof BaseInstallFlow) {
@@ -87,6 +89,7 @@ public class SpeakerBolt extends BaseRichBolt {
                     outputCollector.emit(StreamType.CREATE.toString(), tuple, values);
 
                 } else if (data instanceof RemoveFlow) {
+
                     Long transactionId = ((RemoveFlow) data).getTransactionId();
                     String switchId = ((RemoveFlow) data).getSwitchId();
                     String flowId = ((RemoveFlow) data).getId();
@@ -107,6 +110,7 @@ public class SpeakerBolt extends BaseRichBolt {
                 String flowId = ((ErrorMessage) message).getData().getErrorDescription();
                 FlowState status = FlowState.DOWN;
 
+                // TODO: Should add debug message if receiving ErrorMessage.
                 if (flowId != null) {
                     logger.error("Flow error message: {}={}, {}={}, message={}",
                             Utils.CORRELATION_ID, message.getCorrelationId(), Utils.FLOW_ID, flowId, request);
@@ -119,11 +123,13 @@ public class SpeakerBolt extends BaseRichBolt {
                 }
 
             } else {
+                // TODO: should this be a warn or error? Probably, after refactored / specific
+                // topics
                 logger.debug("Skip undefined message: {}={}, message={}",
                         Utils.CORRELATION_ID, message.getCorrelationId(), request);
             }
         } catch (IOException exception) {
-            logger.error("Could not deserialize message={}", request, exception);
+            logger.error("\n\nCould not deserialize message={}", request, exception);
         } finally {
             logger.debug("Speaker message ack: component={}, stream={}, tuple={}, values={}",
                     tuple.getSourceComponent(), tuple.getSourceStreamId(), tuple, values);

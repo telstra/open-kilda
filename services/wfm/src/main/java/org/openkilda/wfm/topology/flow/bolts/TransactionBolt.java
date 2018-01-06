@@ -44,6 +44,11 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Transaction Bolt. Tracks OpenFlow Speaker commands transactions.
+ *
+ * ALGORITHM NOTES:
+ *
+ * 1. The TOPOLOGY_ENGINE_BOLT should send the flow rules first, otherwise the
+ *      SPEAKER_BOLT logic won't have anything to clear.
  */
 public class TransactionBolt
         extends BaseStatefulBolt<InMemoryKeyValueState<String, Map<String, Set<Long>>>>
@@ -65,6 +70,7 @@ public class TransactionBolt
 
     @Override
     public void execute(Tuple tuple) {
+
         if (CtrlAction.boltHandlerEntrance(this, tuple))
             return;
 
@@ -117,6 +123,7 @@ public class TransactionBolt
                     break;
 
                 case SPEAKER_BOLT:
+
                     logger.info("Transaction from Speaker: switch-id={}, {}={}, {}={}",
                             switchId, Utils.FLOW_ID, flowId, Utils.TRANSACTION_ID, transactionId);
 
@@ -129,6 +136,10 @@ public class TransactionBolt
                             if (flowTransactionIds.remove(transactionId)) {
 
                                 if (flowTransactionIds.isEmpty()) {
+                                    //
+                                    // All transactions have been removed .. the Flow
+                                    // can now be considered "UP"
+                                    //
                                     logger.info("Set status {}: switch-id={}, {}={}, {}={}", FlowState.UP,
                                             switchId, Utils.FLOW_ID, flowId, Utils.TRANSACTION_ID, transactionId);
 
@@ -136,6 +147,10 @@ public class TransactionBolt
                                     outputCollector.emit(StreamType.STATUS.toString(), tuple, values);
 
                                     flowTransactions.remove(flowId);
+                                } else {
+                                    logger.debug("Transaction {} not empty yet, count = {}",
+                                            transactionId, flowTransactionIds.size()
+                                    );
                                 }
                             } else {
                                 logger.warn("Transaction removing: transaction id not found");
