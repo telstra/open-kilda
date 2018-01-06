@@ -27,8 +27,6 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.google.common.base.MoreObjects;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.Objects;
 
 /**
@@ -72,13 +70,6 @@ public class FlowInfoData extends InfoData {
     private FlowOperation operation;
 
     /**
-     * Last updated timestamp.
-     */
-    @JsonProperty("last_updated")
-    private String lastUpdated;
-    // TODO: How is lastUpdated used? Was added after reference in Flow.java / python / failed ATs
-
-    /**
      * Default constructor.
      */
     public FlowInfoData() {
@@ -90,37 +81,17 @@ public class FlowInfoData extends InfoData {
      * @param flowId        flow Identifier
      * @param payload       flow operation payload
      * @param operation     flow operation type
-     * @param lastUpdated   flow last updated time
      * @param correlationId flow request correlation id
      */
     @JsonCreator
     public FlowInfoData(@JsonProperty(Utils.FLOW_ID) final String flowId,
                         @JsonProperty(Utils.PAYLOAD) ImmutablePair<Flow, Flow> payload,
                         @JsonProperty("operation") FlowOperation operation,
-                        @JsonProperty("last_updated") String lastUpdated,
                         @JsonProperty(Utils.CORRELATION_ID) String correlationId) {
         this.flowId = flowId;
         this.payload = payload;
         this.operation = operation;
-        this.lastUpdated = lastUpdated;
         this.correlationId = correlationId;
-    }
-
-    /**
-     * If no lastUpdate specified, then use the current time on the current machine.
-     *
-     * @param flowId        flow Identifier
-     * @param payload       flow operation payload
-     * @param operation     flow operation type
-     * @param correlationId flow request correlation id
-     */
-    public FlowInfoData(final String flowId,
-                        ImmutablePair<Flow, Flow> payload,
-                        FlowOperation operation,
-                        String correlationId) {
-        this(flowId, payload, operation,
-                new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date()),
-                correlationId);
     }
 
     /**
@@ -176,16 +147,6 @@ public class FlowInfoData extends InfoData {
     public void setOperation(FlowOperation operation) {
         this.operation = operation;
     }
-
-    /**
-     * @return The last time this was updated.
-     */
-    public String getLastUpdated() { return lastUpdated; }
-
-    /**
-     * @param lastUpdated Update the last updated field
-     */
-    public void setLastUpdated(String lastUpdated) { this.lastUpdated = lastUpdated; }
 
     /**
      * Gets flow request correlation id.
