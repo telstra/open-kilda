@@ -18,9 +18,12 @@ from kafka import KafkaProducer
 from itertools import izip
 
 bootstrap_servers = 'kafka.pendev:9092'
-topic = 'kilda-test'
+topic = 'kilda.topo.eng'
+MT_INFO = "org.openkilda.messaging.info.InfoMessage"
+MT_SWITCH = "org.openkilda.messaging.info.event.SwitchInfoData"
 
 producer = KafkaProducer(bootstrap_servers=bootstrap_servers)
+
 
 
 def generate_swith_name(n):
@@ -33,15 +36,18 @@ x = xrange(10000)
 for n in x:
     switch = generate_swith_name(n)
 
-    producer.send(topic, b'{"type": "INFO", "timestamp": 23478952134, "destination":"TOPOLOGY_ENGINE", "payload": '
-                         b'{"message_type": "switch", '
+    producer.send(topic, b'{"clazz": "{}", "timestamp": 23478952134, '
+                         b'"destination":"TOPOLOGY_ENGINE", "payload": '
+                         b'{"clazz": "{}", '
                          b'"switch_id": "%s",'
                          b' "state": "ADDED", '
                          b'"address":"%s", '
                          b'"hostname":"hostname", '
                          b'"description":"description", '
-                         b'"controller":"controller"}}' % (switch, switch))
+                         b'"controller":"controller"}}'.format(MT_INFO, MT_SWITCH) % (switch,
+                                                                                     switch))
 
 
-producer.send(topic, b'{"type": "INFO", "timestamp": 23478952134, "destination":"STOP"}')
+producer.send(topic, b'{"clazz": "{}", "timestamp": 23478952134, "destination":"STOP"}'.format(
+    MT_INFO))
 producer.flush()

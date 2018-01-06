@@ -24,7 +24,6 @@ import gevent.queue
 from messageclasses import MessageItem
 import logging
 import config
-import topology_reader
 
 logger = logging.getLogger(__name__)
 

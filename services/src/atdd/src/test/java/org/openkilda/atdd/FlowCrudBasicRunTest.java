@@ -230,6 +230,13 @@ public class FlowCrudBasicRunTest {
         assertEquals(expectedFlowsCount * 2, actualFlowCount);
     }
 
+    /**
+     * TODO: This method doesn't validate the flow is stored. Should rename, and consider algorith.
+     *  - the algorithm gets the stored flows, if the expected flow isn't there, it'll sleep 2
+     *      seconds and then try again. T H A T  I S  I T. Probably need something better wrt
+     *      understanding where the request is at, and what an appropriate time to wait is.
+     *      One Option is to look at Kafka queues and filter for what we are looking for.
+     */
     private List<Flow> validateFlowStored(Flow expectedFlow) throws Exception {
         List<Flow> flows = FlowUtils.dumpFlows();
         flows.forEach(this::resetImmaterialFields);

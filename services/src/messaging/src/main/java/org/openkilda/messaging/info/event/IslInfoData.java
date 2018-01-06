@@ -34,7 +34,6 @@ import java.util.Objects;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonPropertyOrder({
-        "message_type",
         "id",
         "latency_ns",
         "path",
