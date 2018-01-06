@@ -25,13 +25,10 @@ with open("log.json", "r") as fd:
     dictConfig(json.load(fd))
 
 from topologylistener import eventhandler
-from topologylistener.topology_reader import read_topologies
 
 logger = logging.getLogger(__name__)
 
 try:
-    # (crimi) - commenting out until it is clear how to best leverage pre-populating topologies
-    # read_topologies()
 
     logger.info('Topology engine starting.')
     eventhandler.main_loop()

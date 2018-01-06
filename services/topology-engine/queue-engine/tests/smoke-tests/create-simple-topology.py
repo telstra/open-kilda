@@ -15,8 +15,11 @@
 #
 
 from kafka import KafkaConsumer, KafkaProducer
-import time, json, time, requests
-from random import randint
+import json, time, requests
+
+MT_INFO = "org.openkilda.messaging.info.InfoMessage"
+MT_SWITCH = "org.openkilda.messaging.info.event.SwitchInfoData"
+MT_ISL = "org.openkilda.messaging.info.event.IslInfoData"
 
 bootstrapServer = 'kafka.pendev:9092'
 topic = 'kilda-test'
@@ -56,12 +59,16 @@ for n in range(1, loopSize):
     node['outgoing_relationships'] = outgoing_relationships
     topology.append(node)
 
-    producer.send(topic, b'{{"type": "INFO", "timestamp": 23478952134, "payload": {{"message_type": "switch", "switch_id": "00:00:00:00:00:00:00:{}", "state": "ADDED"}}}}'.format(switch_id))
-    producer.send(topic, b'{{"type": "INFO", "timestamp": 23478952136, "payload": {{"message_type": "isl", "latency_ns": 1123, "path": [{{"switch_id": "00:00:00:00:00:00:00:{}", "port_no": 1, "seq_id": "0", "segment_latency": 1123}}, {{"switch_id": "00:00:00:00:00:00:00:{}", "port_no": 2, "seq_id": "1"}}]}}}}'.format(switch_id, linked_id_next))
-    producer.send(topic, b'{{"type": "INFO", "timestamp": 23478952136, "payload": {{"message_type": "isl", "latency_ns": 1123, "path": [{{"switch_id": "00:00:00:00:00:00:00:{}", "port_no": 2, "seq_id": "0", "segment_latency": 1123}}, {{"switch_id": "00:00:00:00:00:00:00:{}", "port_no": 1, "seq_id": "1"}}]}}}}'.format(switch_id, linked_id_prev))
+    producer.send(topic, b'{{"clazz": "{}", "timestamp": 23478952134, "payload": {{"clazz": "{}", "switch_id": "00:00:00:00:00:00:00:{}", "state": "ADDED"}}}}'.format(MT_INFO, MT_SWITCH, switch_id))
+    producer.send(topic, b'{{"clazz": "{}", "timestamp": 23478952136, "payload": {{'
+                         b'"clazz": "{}", "latency_ns": 1123, "path": [{{"switch_id": "00:00:00:00:00:00:00:{}", "port_no": 1, "seq_id": "0", "segment_latency": 1123}}, {{"switch_id": "00:00:00:00:00:00:00:{}", "port_no": 2, "seq_id": "1"}}]}}}}'.format(MT_INFO, MT_ISL, switch_id, linked_id_next))
+    producer.send(topic, b'{{"clazz": "{}", "timestamp": 23478952136, "payload": {{'
+                         b'"clazz": "{}", "latency_ns": 1123, "path": [{{"switch_id": "00:00:00:00:00:00:00:{}", "port_no": 2, "seq_id": "0", "segment_latency": 1123}}, {{"switch_id": "00:00:00:00:00:00:00:{}", "port_no": 1, "seq_id": "1"}}]}}}}'.format(MT_INFO, MT_ISL, switch_id, linked_id_prev))
 
-    producer.send(topic, b'{{"type": "INFO", "timestamp": 23478952136, "payload": {{"message_type": "isl", "latency_ns": 1123, "path": [{{"switch_id": "00:00:00:00:00:00:00:{}", "port_no": 3, "seq_id": "0", "segment_latency": 1123}}, {{"switch_id": "00:00:00:00:00:00:00:{}", "port_no": 4, "seq_id": "1"}}]}}}}'.format(switch_id, linked_id_next))
-    producer.send(topic, b'{{"type": "INFO", "timestamp": 23478952136, "payload": {{"message_type": "isl", "latency_ns": 1123, "path": [{{"switch_id": "00:00:00:00:00:00:00:{}", "port_no": 4, "seq_id": "0", "segment_latency": 1123}}, {{"switch_id": "00:00:00:00:00:00:00:{}", "port_no": 3, "seq_id": "1"}}]}}}}'.format(switch_id, linked_id_prev))
+    producer.send(topic, b'{{"clazz": "{}", "timestamp": 23478952136, "payload": {{'
+                         b'"clazz": "{}", "latency_ns": 1123, "path": [{{"switch_id": "00:00:00:00:00:00:00:{}", "port_no": 3, "seq_id": "0", "segment_latency": 1123}}, {{"switch_id": "00:00:00:00:00:00:00:{}", "port_no": 4, "seq_id": "1"}}]}}}}'.format(MT_INFO, MT_ISL, switch_id, linked_id_next))
+    producer.send(topic, b'{{"clazz": "{}", "timestamp": 23478952136, "payload": {{'
+                         b'"clazz": "{}", "latency_ns": 1123, "path": [{{"switch_id": "00:00:00:00:00:00:00:{}", "port_no": 4, "seq_id": "0", "segment_latency": 1123}}, {{"switch_id": "00:00:00:00:00:00:00:{}", "port_no": 3, "seq_id": "1"}}]}}}}'.format(MT_INFO, MT_ISL, switch_id, linked_id_prev))
 
 
 headers = {'Content-Type': 'application/json'}

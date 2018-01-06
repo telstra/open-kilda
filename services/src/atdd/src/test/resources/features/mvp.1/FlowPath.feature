@@ -3,7 +3,7 @@ Feature: Flow path computation tests
 
 
   @MVP1
-  Scenario: Link Bandwidth Tracking
+  Scenario: Link Bandwidth - Tracking
 
     This scenario creates small multi-path network topology
     and checks that link available bandwidth is tracked.
@@ -24,10 +24,10 @@ Feature: Flow path computation tests
 
 
   @MVP1
-  Scenario: Link Bandwidth Limit
+  Scenario: Link Bandwidth - Limit
 
     This scenario creates small multi-path network topology
-    and checks that in case of no enough available bandwidth on the shortest path,
+    and checks that in case of not enough available bandwidth on the shortest path,
     longer path is chosen.
 
     Given a clean flow topology
@@ -45,7 +45,7 @@ Feature: Flow path computation tests
 
 
   @MVP1
-  Scenario: Link Bandwidth No Enough Bandwidth
+  Scenario: Link Bandwidth - Not Enough Bandwidth
 
     This scenario creates small multi-path network topology
     and checks that in case of no enough available bandwidth on the both shortest and alternative paths,
@@ -66,6 +66,11 @@ Feature: Flow path computation tests
 
   @MVP1
   Scenario: Flow Path
+
+    Developer notes:
+    1. Most topologies have 16 links .. is it necessary? Can we save setup time, yet still attain
+    the same level of efficacy?
+
     Given a clean flow topology
     And a clean controller
     And a multi-path topology
