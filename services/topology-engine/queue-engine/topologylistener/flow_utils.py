@@ -102,6 +102,8 @@ def update_path_bandwidth(nodes, bandwidth):
 
 
 def remove_flow(flow, flow_path):
+    logger.info('Remove flow: %s', flow['flowid'])
+
     query = "MATCH (a:switch)-[r:flow {{flowid: '{}'}}]->(b:switch) " \
             "WHERE r.cookie = {} DELETE r"
     graph.run(query.format(flow['flowid'], int(flow['cookie']))).data()
@@ -135,6 +137,7 @@ def store_flow(flow):
     flow_data['flowpath'] = json.dumps(flow_data['flowpath'])
     graph.run(query.format(**flow_data))
 
+    # the path is bidirectional .. only deduct bandwidth once (in forward direction)
     if is_forward_cookie(flow_data['cookie']):
         update_path_bandwidth(path, int(flow_data['bandwidth']))
 
