@@ -12,10 +12,10 @@ Feature: Basic Flow CRUD
     #
     # TODO - This "Given" can be reduced to a single statement. And network topo can be cached. (speed up tests)
     #
-    Given a clean flow topology
-    And a clean controller
+    Given a clean controller
     And a nonrandom linear topology of 5 switches
     And topology contains 8 links
+    And a clean flow topology
     When flow <flow_id> creation request with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is successful
     Then flow <flow_id> with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> could be created
     And flow <flow_id> in UP state
@@ -40,10 +40,10 @@ Feature: Basic Flow CRUD
 
     This scenario setups flows across the entire set of switches and checks that these flows were stored in database
 
-    Given a clean flow topology
-    And a clean controller
+    Given a clean controller
     And a nonrandom linear topology of 5 switches
     And topology contains 8 links
+    And a clean flow topology
     When flow <flow_id> creation request with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is successful
     Then flow <flow_id> with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> could be created
     And flow <flow_id> in UP state
@@ -63,10 +63,10 @@ Feature: Basic Flow CRUD
 
   This scenario setups flows across the entire set of switches and checks that these flows were stored in database
 
-    Given a clean flow topology
-    And a clean controller
+    Given a clean controller
     And a nonrandom linear topology of 5 switches
     And topology contains 8 links
+    And a clean flow topology
     When flow <flow_id> creation request with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is successful
     Then flow <flow_id> with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> could be created
     And flow <flow_id> in UP state
@@ -86,10 +86,10 @@ Feature: Basic Flow CRUD
 
   This scenario setups flows across the entire set of switches and checks that these flows were stored in database
 
-    Given a clean flow topology
-    And a clean controller
+    Given a clean controller
     And a nonrandom linear topology of 5 switches
     And topology contains 8 links
+    And a clean flow topology
     When flow <flow_id> creation request with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is successful
     Then flow <flow_id> with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> could be created
     And flow <flow_id> in UP state
@@ -111,6 +111,10 @@ Feature: Basic Flow CRUD
 
     This scenario setups flows across the entire set of switches and checks that these flows could be read from database
 
+    Given a clean controller
+    And a nonrandom linear topology of 5 switches
+    And topology contains 8 links
+    And a clean flow topology
     When flow <flow_id> creation request with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is successful
     And flow <flow_id> with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> could be created
     And flow <flow_id> in UP state
@@ -139,6 +143,10 @@ Feature: Basic Flow CRUD
 
   This scenario setups flows across the entire set of switches, then updates them and checks that flows were updated in database
 
+    Given a clean controller
+    And a nonrandom linear topology of 5 switches
+    And topology contains 8 links
+    And a clean flow topology
     When flow <flow_id> creation request with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is successful
     And flow <flow_id> with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> could be created
     And flow <flow_id> in UP state
@@ -165,11 +173,18 @@ Feature: Basic Flow CRUD
       | u1pop   | de:ad:be:ef:00:00:00:03 |      1      |     100     | de:ad:be:ef:00:00:00:03 |         2        |        0         |   10000   |     20000     |
       | u1swap  | de:ad:be:ef:00:00:00:03 |      1      |     100     | de:ad:be:ef:00:00:00:03 |         2        |       200        |   10000   |     20000     |
 
-  @MVP1.1 @CRUD_DELETE
+  @MVP1 @CRUD_DELETE
   Scenario Outline: Flow Deletion on Small Linear Network Topology
 
-  This scenario setups flows across the entire set of switches, then deletes them and checks that flows were deleted from database
+    This scenario will setup flows across the entire set of switches, then deletes them and checks
+    that flows were deleted from database.
 
+    # TODO: as part of FAT, verify intermediary caches are clear (currently looks at DB only)
+
+    Given a clean controller
+    And a nonrandom linear topology of 5 switches
+    And topology contains 8 links
+    And a clean flow topology
     When flow <flow_id> creation request with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is successful
     And flow <flow_id> with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> could be created
     And flow <flow_id> in UP state
@@ -200,6 +215,10 @@ Feature: Basic Flow CRUD
 
   This scenario setups flow across the entire set of switches and checks that no new flow with conflicting vlan could be installed
 
+    Given a clean controller
+    And a nonrandom linear topology of 5 switches
+    And topology contains 8 links
+    And a clean flow topology
     When flow <flow_id> creation request with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is successful
     And flow <flow_id> with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> could be created
     Then flow <flow_id>_conflict creation request with <source_switch> <source_port> 200 and <destination_switch> <destination_port> 200 and <bandwidth> is failed

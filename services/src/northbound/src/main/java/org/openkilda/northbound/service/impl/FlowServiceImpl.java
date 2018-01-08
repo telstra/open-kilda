@@ -143,14 +143,16 @@ public class FlowServiceImpl implements FlowService {
      */
     @Override
     public List<FlowPayload> getFlows(final String correlationId) {
-        logger.debug("Get flows: {}={}", CORRELATION_ID, correlationId);
+        logger.debug("\n\n\n\nGet flows: ENTER {}={}\n", CORRELATION_ID, correlationId);
         FlowsGetRequest data = new FlowsGetRequest(new FlowIdStatusPayload());
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
         messageConsumer.clear();
         messageProducer.send(topic, request);
         Message message = (Message) messageConsumer.poll(correlationId);
         FlowsResponse response = (FlowsResponse) validateInfoMessage(request, message, correlationId);
-        return Converter.buildFlowsPayloadByFlows(response.getPayload());
+        List<FlowPayload> result = Converter.buildFlowsPayloadByFlows(response.getPayload());
+        logger.debug("\nGet flows: EXIT {}\n\n\n\n", result);
+        return result;
     }
 
     /**

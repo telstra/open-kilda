@@ -189,8 +189,10 @@ public class FlowCache extends Cache {
 
         ImmutablePair<Flow, Flow> flow = flowPool.get(flowId);
         if (flow == null) {
+            // TODO: Is this really an exception? Should we just return null or empty?
+            //      Feels like the caller should address this, and anticipate empty.
             throw new CacheException(ErrorType.NOT_FOUND, "Can not get flow",
-                    String.format("Flow %s not found", flowId));
+                    String.format("Flow %s not found in set %s", flowId, flowPool.keySet()));
         }
 
         return flow;
