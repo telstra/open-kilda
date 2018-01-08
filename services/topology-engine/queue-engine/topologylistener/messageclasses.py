@@ -407,6 +407,8 @@ class MessageItem(object):
             flow_path = flow['flowpath']['path']
             logger.info('Flow path remove: %s', flow_path)
 
+            # TODO: Remove Flow should be moved down .. opposite order of create.
+            #       (I'd do it now, but I'm troubleshooting something else)
             flow_utils.remove_flow(flow, flow_path)
 
             logger.info('Flow was removed: correlation_id=%s, flow_id=%s',

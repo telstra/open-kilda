@@ -20,6 +20,7 @@ import static org.openkilda.messaging.Utils.MAPPER;
 import static org.openkilda.messaging.Utils.SYSTEM_CORRELATION_ID;
 import static org.openkilda.messaging.error.ErrorType.INTERNAL_ERROR;
 import static org.openkilda.messaging.error.ErrorType.OPERATION_TIMED_OUT;
+import org.openkilda.messaging.Topic;
 
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
@@ -67,7 +68,7 @@ public class KafkaMessageConsumer implements MessageConsumer<Object> {
      *
      * @param record the message object instance
      */
-    @KafkaListener(id = "northbound-listener", topics = "kilda.northbound")
+    @KafkaListener(id = "northbound-listener", topics = Topic.NORTHBOUND)
     public void receive(final String record) {
         try {
             logger.trace("message received");
