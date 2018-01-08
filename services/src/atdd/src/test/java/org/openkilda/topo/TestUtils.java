@@ -99,18 +99,35 @@ public class TestUtils {
     }
 
     /**
-     * Get the topology from the Topology Engine, with some heuristics related to how long it might
-     * take to propagate. This could be fed in as part of a cucumber test (ie converge within..)
+     * Get the topology from the Topology Engine, compare against the expected (switch/link count)
+     * until it matches or times out.
      */
     public static ITopology translateTopoEngTopo(ITopology expected) throws InterruptedException,
+            IOException {
+        long expectedSwitches = expected.getSwitches().keySet().size();
+        long expectedLinks = expected.getLinks().keySet().size();
+        return checkAndGetTopo(expectedSwitches, expectedLinks);
+    }
+
+
+    /**
+     * Queries for the Topology from the TE, counting switches and links, until they match the
+     * expected counts or it times out.
+     *
+     * @param expectedSwitches
+     * @param expectedLinks
+     * @return the topology as of the last query
+     * @throws InterruptedException
+     * @throws IOException
+     */
+    public static ITopology checkAndGetTopo(long expectedSwitches, long expectedLinks) throws
+            InterruptedException,
             IOException {
         ITopology tTE = new Topology(""); // ie null topology
 
         // try a couple of times to get the topology;
         // TODO: this should be based off of a cucumber spec .. the cucumber tests as smoke!
         long priorSwitches = 0, priorLinks = 0;
-        long expectedSwitches = expected.getSwitches().keySet().size();
-        long expectedLinks = expected.getLinks().keySet().size();
         for (int i = 0; i < 4; i++) {
             Thread.yield(); // let other threads do something ..
             TimeUnit.SECONDS.sleep(10);
