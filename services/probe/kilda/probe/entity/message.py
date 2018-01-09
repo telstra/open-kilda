@@ -18,33 +18,41 @@ import json
 
 
 class Message(object):
-    def __init__(self, type_, destination, payload, correlation_id=None):
+
+    JAVA_CTRL_REQUEST = 'org.openkilda.messaging.ctrl.CtrlRequest'
+
+    def __init__(self, destination, payload, correlation_id=None,
+                 _clazz=JAVA_CTRL_REQUEST):
         self._payload = payload
-        self._type = type_
         self._destination = destination
         self._timestamp = int(round(time.time() * 1000))
         self._correlation_id = correlation_id
+        self._clazz = _clazz
 
     def serialize(self):
         value = {
             'payload': self._payload,
-            'type': self._type,
             'destination': 'WFM_CTRL',
             'timestamp': self._timestamp,
             'correlation_id': self._correlation_id,
-            'route': self._destination
+            'route': self._destination,
+            'clazz': self._clazz
         }
 
         return bytes(json.dumps(value).encode('utf-8'))
 
 
 class CtrlCommandMessage(Message):
+
+    JAVA_REQUEST_DATA = 'org.openkilda.messaging.ctrl.RequestData'
+
     def __init__(self, destination, correlation_id, action):
         payload = {
-            "action": action
+            'clazz': self.JAVA_REQUEST_DATA,
+            'action': action
         }
 
-        super(CtrlCommandMessage, self).__init__('CTRL_REQUEST', destination,
+        super(CtrlCommandMessage, self).__init__(destination,
                                                  payload, correlation_id)
 
 
