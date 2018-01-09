@@ -458,46 +458,57 @@ public class FlowUtils {
         try {
             Set<String> flows = new HashSet<>();
 
+            // TODO: This method started with getting counts and compariing, but that shouldn't be
+            //          the responsibility of this method given its name - cleanupFlows.
+            //          So, the TODO is to determine whether this code exists elsewhere in tests,
+            //          and if not, move it somewhere after, or part of, create test.
+
+            // Get the flows through the NB API
             List<FlowPayload> nbFlows = getFlowDump();
+            System.out.println(String.format("=====> Cleanup Flows, nbflow count = %d",
+                    nbFlows.size()));
+
             nbFlows.forEach(flow->flows.add(flow.getId()));
 
+            // Get the flows through the TE Rest API ... loop until the math works out.
             List<Flow> tpeFlows = new ArrayList<>();
-
             for (int i = 0; i < 10; ++i){
                 tpeFlows = dumpFlows();
                 if (tpeFlows.size() == nbFlows.size() * 2) {
                     tpeFlows.forEach(flow -> flows.add(flow.getFlowId()));
                     break;
                 }
-                TimeUnit.SECONDS.sleep(1);
+                TimeUnit.SECONDS.sleep(2);
             }
+            System.out.println(String.format("=====> Cleanup Flows, tpeFlows count = %d",
+                    tpeFlows.size()));
 
-            flows.forEach(FlowUtils::cleanUpFlow);
+            // Delete all the flows
+            flows.forEach(FlowUtils::deleteFlow);
 
+            // Wait for them to become zero
+            int nb_count=-1;
+            int ter_count=-1;
             for (int i = 0; i < 10; ++i){
-                if (dumpFlows().size() == 0 && getFlowDump().size() == 0) {
+                TimeUnit.SECONDS.sleep(2);
+                nb_count = dumpFlows().size();
+                ter_count = getFlowDump().size();
+                if (nb_count == 0 && ter_count == 0) {
                     break;
                 }
-                TimeUnit.SECONDS.sleep(1);
             }
 
-            assertEquals(nbFlows.size() * 2, tpeFlows.size());
-            assertEquals(nbFlows.size(), flows.size());
+            assertEquals(0, nb_count);
+            assertEquals(0, ter_count);
+
+// (crimi) - it is unclear why we are doing a count validation here .. it makes sense to do this
+// in the creation. But on cleanup, we just want things to be zero.
+//            assertEquals(nbFlows.size() * 2, tpeFlows.size());
+//            assertEquals(nbFlows.size(), flows.size());
 
         } catch (Exception exception) {
             System.out.println(String.format("Error during flow deletion: %s", exception.getMessage()));
             exception.printStackTrace();
-        }
-    }
-
-    private static void cleanUpFlow(String flowId) {
-        deleteFlow(flowId);
-        if (getFlow(flowId) != null) {
-            try {
-                TimeUnit.SECONDS.sleep(2);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
         }
     }
 
