@@ -88,6 +88,9 @@ public class NorthboundRunTest {
         assertEquals(flowState, payload.getStatus());
     }
 
+    /**
+     * TODO: Why do we loop for 10 and sleep for 2? (ie why what for 20 seconds for flow state?)
+     */
     private FlowIdStatusPayload getFlowState(String flowName, FlowState expectedFlowStatus) throws Exception {
         FlowIdStatusPayload payload = FlowUtils.getFlowStatus(flowName);
         for (int i = 0; i < 10; i++) {

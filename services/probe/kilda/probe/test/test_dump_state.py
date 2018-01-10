@@ -1,4 +1,3 @@
-#!/usr/bin/python
 # Copyright 2017 Telstra Open Source
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,24 +13,23 @@
 #   limitations under the License.
 #
 
-import gevent.monkey
+import glob
+from unittest.mock import MagicMock
 
-gevent.monkey.patch_all(Event=True)
+from kilda.probe.command.dump_state import print_table
 
-import logging
-import json
-from logging.config import dictConfig
-with open("log.json", "r") as fd:
-    dictConfig(json.load(fd))
 
-from topologylistener import eventhandler
+def test_basic_smoke_dump_state():
+    """
+    Load all res/*BoltState.json and try print them
+    """
 
-logger = logging.getLogger(__name__)
+    states = []
 
-try:
+    for filename in glob.glob('./kilda/probe/test/res/*BoltState.json'):
+        with open(filename) as f:
+            m = MagicMock()
+            m.value = f.read()
+            states.append(m)
 
-    logger.info('Topology engine starting.')
-    eventhandler.main_loop()
-
-except Exception as e:
-    logger.exception("Error in main loop")
+    print_table(states, True)

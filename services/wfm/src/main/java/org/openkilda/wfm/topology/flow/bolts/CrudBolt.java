@@ -120,6 +120,8 @@ public class CrudBolt
     public void initState(InMemoryKeyValueState<String, FlowCache> state) {
         this.caches = state;
 
+        // TODO - do we have to use InMemoryKeyValue, or is there some other InMemory option?
+        //  The reason for the qestion .. we are only putting in one object.
         flowCache = state.get(FLOW_CACHE);
         if (flowCache == null) {
             flowCache = new FlowCache();
@@ -457,6 +459,13 @@ public class CrudBolt
         outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
     }
 
+    /**
+     * This method changes the state of the Flow. It sets the state of both left and right to the
+     * same state.
+     *
+     * It is currently called from 2 places - a failed update (set flow to DOWN), and a STATUS
+     * update from the TransactionBolt.
+     */
     private void handleStateRequest(String flowId, FlowState state, Tuple tuple) throws IOException {
         ImmutablePair<Flow, Flow> flow = flowCache.getFlow(flowId);
         logger.info("State flow: {}={}", flowId, state);

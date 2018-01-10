@@ -1,0 +1,13 @@
+{
+  "timestamp": 1515531969986,
+  "correlation_id": "probe-nm-notebook-1515531969826",
+  "destination": "CTRL_CLIENT",
+  "payload": {
+    "timestamp": 1515531969986,
+    "topology": "flow",
+    "component": "TRANSACTION_BOLT",
+    "task_id": 15,
+    "clazz": "org.openkilda.messaging.ctrl.ResponseData"
+  },
+  "clazz": "org.openkilda.messaging.ctrl.CtrlResponse"
+}

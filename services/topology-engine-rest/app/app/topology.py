@@ -163,8 +163,12 @@ def api_v1_topology_flows():
 
 
 def format_isl(link):
+    """
+    :param link: A valid Link returned from the db
+    :return: A dictionary in the form of org.openkilda.messaging.info.event.IslInfoData
+    """
     return {
-        'message_type': 'isl',
+        'clazz': 'org.openkilda.messaging.info.event.IslInfoData',
         'latency_ns': int(link['latency']),
         'path': [{'switch_id': link['src_switch'],
                   'port_no': int(link['src_port']),
@@ -183,6 +187,9 @@ def format_isl(link):
 @application.route('/api/v1/topology/links')
 @login_required
 def api_v1_topology_links():
+    """
+    :return: all isl relationships in the database
+    """
     try:
         query = "MATCH (a:switch)-[r:isl]->(b:switch) RETURN r"
         result = graph.data(query)
