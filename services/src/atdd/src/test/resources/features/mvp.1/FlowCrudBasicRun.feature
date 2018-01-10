@@ -20,7 +20,14 @@ Feature: Basic Flow CRUD
     Then flow <flow_id> with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> could be created
     And flow <flow_id> in UP state
     And rules with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> are installed
+    # TEST the READ
+    And flow <flow_id> with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> could be read
+    # TEST the CONNECTION
     And traffic through <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is forwarded
+    # TEST the DELETE
+    Then flow <flow_id> with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> could be deleted
+    And rules with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> are deleted
+    And traffic through <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is not forwarded
 
     Examples:
       | flow_id |      source_switch      | source_port | source_vlan |   destination_switch    | destination_port | destination_vlan | bandwidth |
@@ -39,6 +46,10 @@ Feature: Basic Flow CRUD
   Scenario Outline: Flow Creation - flows with transit vlans and intermediate switches
 
     This scenario setups flows across the entire set of switches and checks that these flows were stored in database
+    It also checks READ and DELETE.
+    # TODO: as part of FAT, verify intermediary caches are correct (created/cleared) (currently looks at DB only)
+    # TODO: these tests don't check the switches/speaker and whether flows are removed
+    # TODO: Consider tests to determine if there are any duplicates
 
     Given a clean controller
     And a nonrandom linear topology of 5 switches
@@ -48,7 +59,14 @@ Feature: Basic Flow CRUD
     Then flow <flow_id> with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> could be created
     And flow <flow_id> in UP state
     And rules with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> are installed
+    # TEST the READ
+    And flow <flow_id> with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> could be read
+    # TEST the CONNECTION
     And traffic through <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is forwarded
+    # TEST the DELETE
+    Then flow <flow_id> with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> could be deleted
+    And rules with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> are deleted
+    And traffic through <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is not forwarded
 
     Examples:
       | flow_id |      source_switch      | source_port | source_vlan |   destination_switch    | destination_port | destination_vlan | bandwidth |
@@ -61,7 +79,8 @@ Feature: Basic Flow CRUD
   @MVP1.1 @CRUD_CREATE
   Scenario Outline: Flow Creation - flows with transit vlans and without intermediate switches
 
-  This scenario setups flows across the entire set of switches and checks that these flows were stored in database
+    This scenario setups flows across the entire set of switches and checks that these flows were stored in database
+    It also checks READ and DELETE.
 
     Given a clean controller
     And a nonrandom linear topology of 5 switches
@@ -71,7 +90,14 @@ Feature: Basic Flow CRUD
     Then flow <flow_id> with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> could be created
     And flow <flow_id> in UP state
     And rules with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> are installed
+    # TEST the READ
+    And flow <flow_id> with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> could be read
+    # TEST the CONNECTION
     And traffic through <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is forwarded
+    # TEST the DELETE
+    Then flow <flow_id> with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> could be deleted
+    And rules with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> are deleted
+    And traffic through <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is not forwarded
 
     Examples:
       | flow_id |      source_switch      | source_port | source_vlan |   destination_switch    | destination_port | destination_vlan | bandwidth |
@@ -84,7 +110,8 @@ Feature: Basic Flow CRUD
   @MVP1.1 @CRUD_CREATE
   Scenario Outline: Flow Creation - flows without transit vlans and intermediate switches
 
-  This scenario setups flows across the entire set of switches and checks that these flows were stored in database
+    This scenario setups flows across the entire set of switches and checks that these flows were stored in database
+    It also checks READ and DELETE.
 
     Given a clean controller
     And a nonrandom linear topology of 5 switches
@@ -94,7 +121,14 @@ Feature: Basic Flow CRUD
     Then flow <flow_id> with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> could be created
     And flow <flow_id> in UP state
     And rules with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> are installed
+    # TEST the READ
+    And flow <flow_id> with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> could be read
+    # TEST the CONNECTION
     And traffic through <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is forwarded
+    # TEST the DELETE
+    Then flow <flow_id> with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> could be deleted
+    And rules with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> are deleted
+    And traffic through <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is not forwarded
 
     Examples:
       | flow_id |      source_switch      | source_port | source_vlan |   destination_switch    | destination_port | destination_vlan | bandwidth |
@@ -104,39 +138,6 @@ Feature: Basic Flow CRUD
       | c1pop   | de:ad:be:ef:00:00:00:03 |      1      |     100     | de:ad:be:ef:00:00:00:03 |         2        |        0         |   10000   |
       | c1swap  | de:ad:be:ef:00:00:00:03 |      1      |     100     | de:ad:be:ef:00:00:00:03 |         2        |       200        |   10000   |
 
-
-
-  @MVP1.1 @CRUD_READ
-  Scenario Outline: Flow Reading on Small Linear Network Topology
-
-    This scenario setups flows across the entire set of switches and checks that these flows could be read from database
-
-    Given a clean controller
-    And a nonrandom linear topology of 5 switches
-    And topology contains 8 links
-    And a clean flow topology
-    When flow <flow_id> creation request with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is successful
-    And flow <flow_id> with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> could be created
-    And flow <flow_id> in UP state
-    Then flow <flow_id> with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> could be read
-
-    Examples:
-      | flow_id |      source_switch      | source_port | source_vlan |   destination_switch    | destination_port | destination_vlan | bandwidth |
-      # flows with transit vlans and intermediate switches
-      | r3none  | de:ad:be:ef:00:00:00:02 |      1      |      0      | de:ad:be:ef:00:00:00:04 |         2        |        0         |   10000   |
-      | r3push  | de:ad:be:ef:00:00:00:02 |      1      |      0      | de:ad:be:ef:00:00:00:04 |         2        |       100        |   10000   |
-      | r3pop   | de:ad:be:ef:00:00:00:02 |      1      |     100     | de:ad:be:ef:00:00:00:04 |         2        |        0         |   10000   |
-      | r3swap  | de:ad:be:ef:00:00:00:02 |      1      |     100     | de:ad:be:ef:00:00:00:04 |         2        |       200        |   10000   |
-      # flows with transit vlans and without intermediate switches
-      | r2none  | de:ad:be:ef:00:00:00:03 |      1      |      0      | de:ad:be:ef:00:00:00:04 |         2        |        0         |   10000   |
-      | r2push  | de:ad:be:ef:00:00:00:03 |      1      |      0      | de:ad:be:ef:00:00:00:04 |         2        |       100        |   10000   |
-      | r2pop   | de:ad:be:ef:00:00:00:03 |      1      |     100     | de:ad:be:ef:00:00:00:04 |         2        |        0         |   10000   |
-      | r2swap  | de:ad:be:ef:00:00:00:03 |      1      |     100     | de:ad:be:ef:00:00:00:04 |         2        |       200        |   10000   |
-      # flows without transit vlans and intermediate switches
-      | r1none  | de:ad:be:ef:00:00:00:03 |      1      |      0      | de:ad:be:ef:00:00:00:03 |         2        |        0         |   10000   |
-      | r1push  | de:ad:be:ef:00:00:00:03 |      1      |     100     | de:ad:be:ef:00:00:00:03 |         2        |       100        |   10000   |
-      | r1pop   | de:ad:be:ef:00:00:00:03 |      1      |     100     | de:ad:be:ef:00:00:00:03 |         2        |        0         |   10000   |
-      | r1swap  | de:ad:be:ef:00:00:00:03 |      1      |     100     | de:ad:be:ef:00:00:00:03 |         2        |       200        |   10000   |
 
   @MVP1.1 @CRUD_UPDATE
   Scenario Outline: Flow Updating on Small Linear Network Topology
@@ -179,8 +180,6 @@ Feature: Basic Flow CRUD
     This scenario will setup flows across the entire set of switches, then deletes them and checks
     that flows were deleted from database.
 
-    # TODO: as part of FAT, verify intermediary caches are clear (currently looks at DB only)
-    # TODO: these tests don't check the switches/speaker and whether flows are removed
 
     Given a clean controller
     And a nonrandom linear topology of 5 switches
