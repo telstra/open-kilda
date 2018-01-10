@@ -9,13 +9,11 @@ import org.springframework.data.repository.NoRepositoryBean;
  * The Interface GenericRepository.
  *
  * @author Gaurav Chugh
- * @param <T>
- *            the generic type
- * @param <ID>
- *            the generic type
+ * 
+ * @param <T> the generic type
+ * @param <ID> the generic type
  */
 @NoRepositoryBean
-public interface GenericRepository<T, ID extends Serializable> extends
-		JpaRepository<T, ID> {
+public interface GenericRepository<T, ID extends Serializable> extends JpaRepository<T, ID> {
 
 }

@@ -40,20 +40,18 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
      * org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter
      * #configure(org.springframework.security.config.annotation.web.builders.HttpSecurity)
      */
-     
+
     @Override
     protected void configure(HttpSecurity http) throws Exception {
 
         http.csrf().disable().authorizeRequests()
-                .antMatchers("/login", "/authenticate", "/forgotpassword").permitAll()
-                .anyRequest().authenticated().and().formLogin().loginPage("/login").permitAll()
-                .and().logout().permitAll()
-                .and()
-                .exceptionHandling().accessDeniedHandler(accessDeniedHandler);
+                .antMatchers("/login", "/authenticate", "/forgotpassword").permitAll().anyRequest()
+                .authenticated().and().formLogin().loginPage("/login").permitAll().and().logout()
+                .permitAll().and().exceptionHandling().accessDeniedHandler(accessDeniedHandler);
 
     }
 
-    
+
     /**
      * Auth provider.
      *
@@ -81,11 +79,10 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         ProviderManager providerManager = new ProviderManager(authProviderList);
         return providerManager;
     }
-    
+
     @Override
     public void configure(WebSecurity web) throws Exception {
-        web
-        .ignoring()
-        .antMatchers("/resources/**", "/fonts/**", "/css/**", "/javascript/**", "/templates/**");
+        web.ignoring().antMatchers("/resources/**", "/fonts/**", "/css/**", "/javascript/**",
+                "/templates/**");
     }
 }
