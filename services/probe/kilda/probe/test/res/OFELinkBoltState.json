@@ -1,0 +1,28 @@
+{
+  "timestamp": 1515531276563,
+  "correlation_id": "probe-nm-notebook-1515531276351",
+  "destination": "CTRL_CLIENT",
+  "payload": {
+    "task_id": 10,
+    "timestamp": 1515531276563,
+    "component": "kilda.topo.disco-bold",
+    "clazz": "org.openkilda.messaging.ctrl.DumpStateResponseData",
+    "state": {
+      "filtered": [],
+      "discovery": [
+        {
+          "switchId": "de:ad:be:ef:00:00:00:02",
+          "portId": "1"
+        },
+        {
+          "switchId": "de:ad:be:ef:00:00:00:01",
+          "portId": "1"
+        }
+      ],
+      "timestamp": 1515531276563,
+      "clazz": "org.openkilda.messaging.ctrl.state.OFELinkBoltState"
+    },
+    "topology": "wfm"
+  },
+  "clazz": "org.openkilda.messaging.ctrl.CtrlResponse"
+}
