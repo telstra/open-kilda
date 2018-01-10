@@ -25,13 +25,11 @@ $(document).ready(function(){
 	
 	callPortDetailsAPI(switchname);	// method call callPortDetailsAPI()
 	
-	$(".rep_div").on("click",function(e){
-
+	$(document).on("click",".rep_div",function(e){
 		setPortData(switchname,this);
 	})
+
 })
-
-
 
 /** function to retrieve and show port details*/
  function callPortDetailsAPI(switchname){	
@@ -40,7 +38,7 @@ $(document).ready(function(){
 		type : 'GET',
 		success : function(response) {
 			
-			$("#wait1").css("display", "none");
+			$("#wait1").css("display", "none");		
 			showPortData(response);  //method call showPortData()
 		},
 		dataType : "json"
@@ -50,12 +48,9 @@ $(document).ready(function(){
 /** function to retrieve and show switch details from 
  * the switch response json object and display on the html page*/
 function showSwitchData(response){	
-	
-	console.log (response)
-    for(var i = 0; i < response.switches.length; i++) {
+
+	for(var i = 0; i < response.switches.length; i++) {
         var obj = response.switches[i];
-        console.log(response.switches[i].name);
-        
     	var switchname=window.location.href.split("#")[1]
 
         if(response.switches[i].name == switchname) {
@@ -78,8 +73,7 @@ function showPortData(response){
 	var last_html = '';
 	var tmp_html = '';
 	 for(var i = 0; i < response.length; i++) {
-//		 	console.log(i+" Response is ");
-//		 	console.log(response[i]);
+
 		 	if(i!=0){
 		 		tmp_obj  = $("#portdetails_div .rep_div").last().attr("id");
 		 		if(tmp_obj != ""){		 			
@@ -96,21 +90,15 @@ function showPortData(response){
 	        $(".rep_div#div_"+last_id+" .portdetails_div_status").html(response[i].status);
 	        
 	      
-	        if(response[i].status == "OK") {
-	        	$("#port-details1").addClass('up-state');
+	        if(response[i].status == "LIVE") {
+	        	$("#div_"+(i+1)).addClass('up-state');
 	        } else {
-	        	$("#port-details1").addClass('down-state');
+	        	$("#div_"+(i+1)).addClass('down-state');
 	        }
+	         
 	 }
 }
 
-
-/*function showportDetails(switchname) {
-
-
-}
-
-*/
 
 function setPortData(switchname,domObj){
 	
@@ -134,9 +122,7 @@ function setPortData(switchname,domObj){
 		portData.status = $(domObj).find(".portdetails_div_status").html();
 	}
 
-	
 	localStorage.setItem('portDetails',JSON.stringify(portData));
-
 	url = "portdetails#" + switchname;
 	window.location = url;
 }

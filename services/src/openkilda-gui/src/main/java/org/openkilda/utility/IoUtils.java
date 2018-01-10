@@ -15,75 +15,66 @@ import java.util.Map;
  */
 public final class IoUtils {
 
-	/** The Constant _log. */
-	private static final Logger _log = LoggerFactory.getLogger(IoUtils.class);
+    /** The Constant _log. */
+    private static final Logger _log = LoggerFactory.getLogger(IoUtils.class);
 
-	/**
-	 * Instantiates a new io utils.
-	 */
-	private IoUtils() {
+    /**
+     * Instantiates a new io utils.
+     */
+    private IoUtils() {
 
-	}
+    }
 
-	/**
-	 * Returns data present in the stream.
-	 *
-	 * @param inputStream
-	 *            input stream having content.
-	 * @return data with all content present in the stream.
-	 * @throws IOException
-	 *             If an I/O error occurs
-	 */
-	public static String getData(final InputStream inputStream)
-			throws IOException {
-		_log.debug("[getData] - Start");
-		StringBuilder data = new StringBuilder();
-		String line = null;
-		BufferedReader rd = new BufferedReader(new InputStreamReader(
-				inputStream));
+    /**
+     * Returns data present in the stream.
+     *
+     * @param inputStream input stream having content.
+     * @return data with all content present in the stream.
+     * @throws IOException If an I/O error occurs
+     */
+    public static String getData(final InputStream inputStream) throws IOException {
+        _log.debug("[getData] - Start");
+        StringBuilder data = new StringBuilder();
+        String line = null;
+        BufferedReader rd = new BufferedReader(new InputStreamReader(inputStream));
 
-		while ((line = rd.readLine()) != null) {
-			if (line != null && !line.isEmpty()) {
-				data.append(line);
-			}
-		}
-		_log.debug("[getData] Data: " + data);
-		_log.debug("[getData] - End  ");
-		return data.toString();
-	}
+        while ((line = rd.readLine()) != null) {
+            if (line != null && !line.isEmpty()) {
+                data.append(line);
+            }
+        }
+        _log.debug("[getData] Data: " + data);
+        _log.debug("[getData] - End  ");
+        return data.toString();
+    }
 
-	/**
-	 * Close the closable object.
-	 *
-	 * @param closeable
-	 *            closable object.
-	 */
-	public static void close(final Closeable closeable) {
-		if (closeable != null) {
-			try {
-				closeable.close();
-			} catch (Exception e) {
-				// Do Nothing
-			}
-		}
-	}
+    /**
+     * Close the closable object.
+     *
+     * @param closeable closable object.
+     */
+    public static void close(final Closeable closeable) {
+        if (closeable != null) {
+            try {
+                closeable.close();
+            } catch (Exception e) {
+                // Do Nothing
+            }
+        }
+    }
 
-	/**
-	 * Gets the parameter.
-	 *
-	 * @param <T>
-	 *            the generic type
-	 * @param parameters
-	 *            the parameters
-	 * @param key
-	 *            the key
-	 * @param responseClass
-	 *            the response class
-	 * @return the parameter
-	 */
-	@SuppressWarnings("unchecked")
-	public <T> T getParameter(final Map<String, Object> parameters, String key,
-			final Class<T> responseClass) {
-		return (T) parameters.get(key);
-	}
+    /**
+     * Gets the parameter.
+     *
+     * @param <T> the generic type
+     * @param parameters the parameters
+     * @param key the key
+     * @param responseClass the response class
+     * @return the parameter
+     */
+    @SuppressWarnings("unchecked")
+    public <T> T getParameter(final Map<String, Object> parameters, String key,
+            final Class<T> responseClass) {
+        return (T) parameters.get(key);
+    }
 }
