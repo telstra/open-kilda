@@ -32,8 +32,8 @@ public class MessagePropertyService {
     public static Properties loadPropertiesFile(final String fileName) {
         Properties localProperties = new Properties();
         try {
-            localProperties.load(
-                    MessagePropertyService.class.getClassLoader().getResourceAsStream(fileName));
+            localProperties.load(MessagePropertyService.class.getClassLoader().getResourceAsStream(
+                    fileName));
         } catch (Exception e) {
             _log.error("[loadPropertiesFile] Exception : ", e);
         }

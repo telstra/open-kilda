@@ -1,0 +1,249 @@
+<!doctype html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3">
+<head>
+<meta charset="utf-8"></meta>
+<title>OPEN KILDA</title>
+<!-- CSS Style Sheets -->
+
+<link th:href="@{css/bootstrap.min.css}" rel="stylesheet"
+	type="text/css" />
+<link th:href="@{css/roboto.css}" rel="stylesheet" type="text/css" />
+<link th:href="@{css/font-awesome.min.css}" rel="stylesheet" type="text/css" />
+<!-- Custom CSS Style Sheets -->
+<link th:href="@{css/custom.css}" rel="stylesheet" type="text/css" />
+<link th:href="@{css/dygraph.css}" rel="stylesheet" type="text/css" />
+<link th:href="@{css/jquery.datetimepicker.css}" rel="stylesheet" type="text/css" />
+<link th:href="@{css/jquery.toast.min.css}" rel="stylesheet" type="text/css" />
+<link th:href="@{images/kilda.png}" rel="shortcut icon" type="image/png"></link>
+
+</head>
+<body>
+	<div th:replace="fragments/header :: header"></div>
+	<aside class="main-sidebar" id="sidebar-left">
+		<!-- sidebar: style can be found in sidebar.less -->
+		<section class="sidebar">
+			<!-- sidebar menu: : style can be found in sidebar.less -->
+			<ul class="sidebar-menu tree" data-widget="tree">
+				<li class=""><a th:href="@{/home}"> <i class="fa fa-home"
+						aria-hidden="true"></i> <span>Home</span>
+				</a></li>
+				<li class=""><a th:href="@{/topology}"> <i
+						class="icon-topology" aria-hidden="true"></i><span>Topology</span>
+				</a></li>
+
+				<li class="active"><a th:href="@{/flows}"> <i
+						class="icon-flows" aria-hidden="true"></i><span class="home-flows">Flows</span>
+				</a></li>
+
+
+			</ul>
+		</section>
+		<!-- /.sidebar -->
+	</aside>
+	<div class="content">
+		<div class="row">
+			<div class="navigation-bar container-fluid">
+				<ul class="col-lg-12">
+					<li><a th:href="@{/home}">Home</a></li>
+					<li><i class="fa fa-angle-double-right"></i><a
+						th:href="@{/flows}">Flows</a></li>
+					<li><i class="fa fa-angle-double-right" id="flow-id-name"></i></li>
+
+				</ul>
+			</div>
+		</div>
+
+		<div class="container-fluid">
+
+			<div id="wait1" class="bg_load">
+				<div class="loader"></div>
+			</div>
+
+
+			<div class='form-group  col-lg-12 text-center flow_details'>
+				<label class='col-form-label' style='display: inline-block;'>Flow
+					id:</label>
+				<p class='flow_div_flow_id' style='display: inline-block;'></p>
+			</div>
+			
+			<div class="row">
+				<div class="col-md-6 flow_details">
+					<h5 class='flow-modal-title'>SOURCE DETAILS</h5>
+					<div id="flow-source-details-div">
+						<div class='form-group row'>
+							<label class='col-sm-4 col-form-label'>Port:</label>
+							<p class='col-sm-8 flow_div_source_port'></p>
+						</div>
+						<div class='form-group row'>
+							<label class='col-sm-4 col-form-label'>Switch:</label>
+							<p class='col-sm-8 flow_div_source_switch'></p>
+						</div>
+						<div class='form-group row'>
+							<label class='col-sm-4 col-form-label'>Vlan:</label>
+							<p class='col-sm-8 flow_div_source_vlan'></p>
+						</div>
+	
+					</div>
+				</div>
+	
+				<div class="col-md-6 flow_details">
+					<h5 class='flow-modal-title'>DESTINATION DETAILS</h5>
+					<div id="flow-destination-details-div">
+						<div class='form-group row'>
+							<label class='col-sm-4 col-form-label'>Port:</label>
+							<p class='col-sm-8 flow_div_destination_port'></p>
+						</div>
+						<div class='form-group row'>
+							<label class='col-sm-4 col-form-label'> Switch:</label>
+							<p class='col-sm-8 flow_div_destination_switch'></p>
+						</div>
+						<div class='form-group row'>
+							<label class='col-sm-4 col-form-label'>Vlan:</label>
+							<p class='col-sm-8 flow_div_destination_vlan'></p>
+						</div>
+					</div>
+				</div>
+	
+				<div class="col-lg-12 flow_detail_title_div">
+					<h5 class='modal-title'>FLOW DETAILS</h5>
+					<div class="col-md-6 flow_detail_title_div"></div>
+					<div class="isl-source-details-div">
+	
+	
+						<div class='form-group row flow_details'>
+							<label class='col-sm-4 col-form-label'>Status:</label>
+							<p class='col-sm-8 flow_div_Status'></p>
+						</div>
+	
+						<div class='form-group row flow_details'>
+							<label class='col-sm-4 col-form-label'>Description:</label>
+							<p class='col-sm-8 flow_div_desc' style="padding: 0 20px;"></p>
+						</div>
+	
+						<div class='form-group row flow_details'>
+							<label class='col-sm-4 col-form-label'>Maximum Bandwidth:</label>
+							<p class='col-sm-8 flow_div_maximum_bandwidth'></p>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div id="switchdetails_div">
+				<div class="row">
+					<div id="exTab1" class="col-lg-12 tab-wrapper">
+						<ul class="nav nav-pills">
+							<li class="active"><a href="#1a" data-toggle="tab">Graph</a></li>
+							<li><a href="#2a" data-toggle="tab">Path</a></li>
+						</ul>
+
+						<div class="tab-content clearfix">
+							<div class="tab-pane active" id="1a">
+								<div class="row graph_div">
+									<div class="col-xs-12">
+										<div id="flow_path_stats_div" class="topology-graph row">
+											<div class="col-xs-8">
+												<div id="graphdiv"></div>
+											</div>
+
+
+											<div class="col-xs-4 filter">
+												<div class="stats-graph">
+
+
+													<fieldset class="form-group">
+														<label class="col-xs-4 text-label">From:</label>
+														<div class="col-xs-8">
+															<input type="text" id="datetimepicker7"
+																value="D, l, M, F, Y-m-d H:i:s" placeholder="From"
+																class="form-control"></input>
+														</div>
+													</fieldset>
+
+
+													<fieldset class="form-group">
+														<label class="col-xs-4 text-label">To:</label>
+														<div class="col-xs-8">
+															<input type="text" id="datetimepicker8"
+																value="D, l, M, F, Y-m-d H:i:s" placeholder="To"
+																class="form-control"></input>
+														</div>
+													</fieldset>
+
+
+
+													<fieldset class="form-group">
+														<label class="col-xs-4 text-label">Metric:</label>
+														<div class="col-xs-8">
+															<span class="form-control kilda_select"> <span
+																class="selectbox_arrow"></span> <select
+																class="selectbox_menulist" id="menulist">
+																	<option value="pen.isl.latency">pen.isl.latency</option>
+															</select>
+															</span>
+														</div>
+													</fieldset>
+
+													<fieldset class="form-group">
+														<label class="col-xs-4 text-label">Autoreload(Sec):</label>
+														<div class="col-xs-8">
+															<input type="checkbox" id="check" onclick="autoreload()"
+																style="margin-top: 12px;" /> <input type="text"
+																id="autoreload" name="autoloadInput"
+																class="form-control"
+																style="display: none; width: calc(100% - 20px); float: right;" />
+														</div>
+													</fieldset>
+
+
+													<div class="col-xs-12 submit-btn">
+														<div id="errorMesg" class="error"></div>
+													</div>
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+							<div class="tab-pane" id="2a">
+								<div class="row">
+
+									<div id="ForwardRow" class="col-xs-12">
+										<h3 class="text-center">FORWARD PATH</h3>
+									</div>
+
+									<div id="ReversePath" class="col-xs-12">
+										<h3 class="text-center">REVERSE PATH</h3>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+
+
+
+
+
+	<footer>
+		<p class="pull-right">&copy;2018 All rights reserved.</p>
+	</footer>
+	<div th:include="fragments/importResources:: commonImports"></div>
+	<script th:inline="javascript" src="javascript/moment.js"></script>
+	<script th:inline="javascript" src="javascript/jquery.toast.min.js"></script>
+	<script th:inline="javascript" src="javascript/jquery.toast.min.js"></script>
+
+	<script th:inline="javascript" src="javascript/jquery.datetimepicker.full.js"></script>
+	<script th:inline="javascript" src="javascript/dygraph.js"></script>
+
+	<script th:inline="javascript" src="javascript/flowdetails.js"></script>
+	<script th:inline="javascript" src="javascript/flow-graph-stats.js"></script>
+
+
+</body>
+</html>

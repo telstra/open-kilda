@@ -13,22 +13,20 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface UserRepository extends GenericRepository<User, Long> {
 
-	/**
-	 * Find by username.
-	 *
-	 * @param userName
-	 *            the user name
-	 * @return the user
-	 */
-	User findByUsername(String userName);
+    /**
+     * Find by username.
+     *
+     * @param userName the user name
+     * @return the user
+     */
+    User findByUsername(String userName);
 
-	/**
-	 * Find by active flag.
-	 *
-	 * @param activeFlag
-	 *            the active flag
-	 * @return the list
-	 */
-	List<User> findByActiveFlag(boolean activeFlag);
+    /**
+     * Find by active flag.
+     *
+     * @param activeFlag the active flag
+     * @return the list
+     */
+    List<User> findByActiveFlag(boolean activeFlag);
 
 }
