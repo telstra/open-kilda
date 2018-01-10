@@ -1,11 +1,11 @@
 @FFR
 Feature: Flow failover, failure and recovery
 
-  @MVP1
+  @MVP1.2
   Scenario: Port Failover followed by failure followed by recovery
 
-  This scenario checks that failover and recovery happens orderly and that
-  failures do not break things apart.
+    This scenario checks that failover and recovery happens orderly and that
+    failures do not break things apart.
 
     Given a clean flow topology
     And a clean controller
@@ -29,12 +29,12 @@ Feature: Flow failover, failure and recovery
     When a switch 00:00:00:00:00:00:00:05 port 1 is enabled
     Then traffic flows through ffr flow
 
-  @MVP1
+  @MVP1.2
   Scenario: Port Failover followed by failure followed by recovery 2
 
-  This scenario checks that failover and recovery happens orderly and that
-  failures do not break things apart. Also it checks whether alternate route
-  is picked after complet failure.
+    This scenario checks that failover and recovery happens orderly and that
+    failures do not break things apart. Also it checks whether alternate route
+    is picked after complete failure.
 
     Given a clean flow topology
     And a clean controller
@@ -60,8 +60,12 @@ Feature: Flow failover, failure and recovery
     And flow ffr path is shortest
     Then traffic flows through ffr flow
 
-  @MVP1
+  @MVP1.2
   Scenario: ISL failover followed by failure followed by recovery
+
+    Developer notes:
+      1. The Given scenario is too long and consists of tests in itself, nedd to shorten.
+      2. Interesting use of multiple When/Then blocs. Can we consolidate?
 
     Given a clean flow topology
     And a clean controller
@@ -87,8 +91,12 @@ Feature: Flow failover, failure and recovery
     And flow ffr path is shortest
     Then traffic flows through ffr flow
 
-  @MVP1
+  @MVP1.2
   Scenario: Switch failover followed by failure followed by recovery
+
+    Developer notes:
+    1. This is broader than the ISL failover .. let's be clear what is being tested here (ie ensure
+       we aren't duplicating tests unnecessarily)
 
     Given a clean flow topology
     And a clean controller
@@ -114,11 +122,12 @@ Feature: Flow failover, failure and recovery
     And flow ffr path is shortest
     Then traffic flows through ffr flow
 
-  @MVP1.1
-  Scenario Outline: Flow status by switch disconnection
+  @MVP1.2
+  Scenario Outline: Flow status by switch ingress or egress disconnection
 
-  This scenario checks that flows with disconnected switch as endpoint goes to down state without path re-computation
-  and then switch connection brings flow state back to UP state with same path.
+    This scenario checks that flows with disconnected switch as endpoint goes to down state without
+    path re-computation and then switch connection brings flow state back to UP state with same
+    path.
 
     Given a clean flow topology
     And a clean controller

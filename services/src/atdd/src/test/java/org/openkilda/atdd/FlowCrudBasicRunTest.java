@@ -54,6 +54,8 @@ public class FlowCrudBasicRunTest {
         File file = new File(classLoader.getResource(fileName).getFile());
         String json = new String(Files.readAllBytes(file.toPath()));
         assertTrue(TopologyHelp.CreateMininetTopology(json));
+        // Should also wait for some of this to come up
+
     }
 
     @When("^flow (.*) creation request with (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) is successful$")
@@ -139,7 +141,8 @@ public class FlowCrudBasicRunTest {
     public void checkFlowDeletion(final String flowId, final String sourceSwitch, final int sourcePort, final int sourceVlan,
                                   final String destinationSwitch, final int destinationPort, final int destinationVlan,
                                   final int bandwidth) throws Exception {
-        int expectedFlowCount = getFlowCount(0) - 2;
+        int unknownFlowCount = -1; // use -1 to communicate "I don't know what it should be")
+        int expectedFlowCount = getFlowCount(unknownFlowCount) - 2;
 
         FlowPayload response = FlowUtils.deleteFlow(FlowUtils.getFlowName(flowId));
         assertNotNull(response);
@@ -230,6 +233,13 @@ public class FlowCrudBasicRunTest {
         assertEquals(expectedFlowsCount * 2, actualFlowCount);
     }
 
+    /**
+     * TODO: This method doesn't validate the flow is stored. Should rename, and consider algorith.
+     *  - the algorithm gets the stored flows, if the expected flow isn't there, it'll sleep 2
+     *      seconds and then try again. T H A T  I S  I T. Probably need something better wrt
+     *      understanding where the request is at, and what an appropriate time to wait is.
+     *      One Option is to look at Kafka queues and filter for what we are looking for.
+     */
     private List<Flow> validateFlowStored(Flow expectedFlow) throws Exception {
         List<Flow> flows = FlowUtils.dumpFlows();
         flows.forEach(this::resetImmaterialFields);
@@ -243,11 +253,30 @@ public class FlowCrudBasicRunTest {
         return flows;
     }
 
+    /**
+     * @param expectedFlowsCount -1 if unknown
+     * @return the count, based on dumpFlows()
+     * @throws Exception
+     */
     private int getFlowCount(int expectedFlowsCount) throws Exception {
         List<Flow> flows = FlowUtils.dumpFlows();
-        if (expectedFlowsCount != 0 && expectedFlowsCount != flows.size()) {
-            TimeUnit.SECONDS.sleep(2);
-            flows = FlowUtils.dumpFlows();
+
+        // pass in -1 if the count is unknown
+        if (expectedFlowsCount >= 0) {
+            int arbitraryCount = 3;
+            for (int i = 0; i < arbitraryCount; i++) {
+                System.out.println(String.format("\n=====> Flow Count is %d, expecting %d",
+                        flows.size(), expectedFlowsCount));
+                if (expectedFlowsCount == flows.size()) {
+                    break;
+                }
+                TimeUnit.SECONDS.sleep(2);
+                flows = FlowUtils.dumpFlows();
+            }
+            if (expectedFlowsCount != flows.size()) {
+                System.out.println(String.format("\n=====> FLOW COUNT doesn't match, flows: %s",
+                        flows.toString()));
+            }
         }
         return flows.size();
     }

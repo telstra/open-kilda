@@ -185,10 +185,17 @@ def send_error_message(correlation_id, error_type, error_message,
 
 def send_install_commands(flow_rules, correlation_id):
     for flow_rule in flow_rules:
-        send_to_topic(flow_rule, correlation_id, MT_COMMAND, config.KAFKA_SPEAKER_TOPIC)
+        send_to_topic(flow_rule, correlation_id, MT_COMMAND,
+                      destination="CONTROLLER", topic=config.KAFKA_SPEAKER_TOPIC)
+        send_to_topic(flow_rule, correlation_id, MT_COMMAND,
+                      destination="WFM", topic=config.KAFKA_FLOW_TOPIC)
 
 
 def send_delete_commands(nodes, flow_id, correlation_id, cookie):
+    logger.debug('Send Delete Commands: node count=%d', len(nodes))
     for node in nodes:
         data = build_delete_flow(str(node['switch_id']), str(flow_id), cookie)
-        send_to_topic(data, correlation_id, MT_COMMAND, config.KAFKA_SPEAKER_TOPIC)
+        send_to_topic(data, correlation_id, MT_COMMAND,
+                      destination="CONTROLLER", topic=config.KAFKA_SPEAKER_TOPIC)
+        send_to_topic(data, correlation_id, MT_COMMAND,
+                      destination="WFM", topic=config.KAFKA_FLOW_TOPIC)

@@ -1,36 +1,36 @@
 [
   {
-    "type": "COMMAND",
+    "clazz": "org.openkilda.messaging.command.CommandMessage",
     "timestamp": 23478952134,
     "payload": {
-      "command": "install_default_flows",
+      "clazz": "org.openkilda.messaging.command.flow.DefaultFlowsCommandData",
       "switch_id": "0x0000000000000001"
     }
   },
   {
-    "type": "COMMAND",
+    "clazz": "org.openkilda.messaging.command.CommandMessage",
     "timestamp": 23478952134,
     "payload": {
-      "command": "isl_discover",
-      "source_switch": "0x0000000000000001",
-      "source_port": 1
+      "clazz": "org.openkilda.messaging.command.discovery.DiscoverIslCommandData",
+      "switch_id": "0x0000000000000001",
+      "port_no": 1
     }
   },
   {
-    "type": "COMMAND",
+    "clazz": "org.openkilda.messaging.command.CommandMessage",
     "timestamp": 23478952134,
     "payload": {
-      "command": "path_discover",
+      "clazz": "org.openkilda.messaging.command.discovery.DiscoverPathCommandData",
       "source_switch_id": "0x0000000000000001",
       "source_switch_port": 1,
       "destination_switch": "0x0000000000000002"
     }
   },
   {
-    "type": "INFO",
+    "clazz": "org.openkilda.messaging.info.InfoMessage",
     "timestamp": 23478952134,
     "payload": {
-      "message_type": "isl",
+      "clazz": "org.openkilda.messaging.info.event.IslInfoData",
       "latency_ns": 1123,
       "path": [
         {
@@ -48,10 +48,10 @@
     }
   },
   {
-    "type": "INFO",
+    "clazz": "org.openkilda.messaging.info.InfoMessage",
     "timestamp": 23478952134,
     "payload": {
-      "message_type": "path",
+      "clazz": "org.openkilda.messaging.info.event.PathInfoData",
       "latency_ns": 1123,
       "path": [
         {
@@ -69,19 +69,19 @@
     }
   },
   {
-    "type": "INFO",
+    "clazz": "org.openkilda.messaging.info.InfoMessage",
     "timestamp": 23478952134,
     "payload": {
-      "message_type": "switch",
+      "clazz": "org.openkilda.messaging.info.event.SwitchInfoData",
       "switch_id": "0000000000000001",
       "state": "ADD,ACTIVATED,REMOVED,DEACTIVATED,CHANGE"
     }
   },
   {
-    "type": "INFO",
+    "clazz": "org.openkilda.messaging.info.InfoMessage",
     "timestamp": 23478952134,
     "payload": {
-      "message_type": "port",
+      "clazz": "org.openkilda.messaging.info.event.PortInfoData",
       "switch_id": "0000000000000001",
       "port_no": 1,
       "max_capacity": 1000,

@@ -33,7 +33,6 @@ import java.util.Objects;
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
-        "message_type",
         "latency_ns",
         "path"})
 public class PathInfoData extends CacheTimeTag {

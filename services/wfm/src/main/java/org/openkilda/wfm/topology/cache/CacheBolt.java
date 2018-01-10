@@ -489,18 +489,21 @@ public class CacheBolt
     private void handleFlowEvent(FlowInfoData flowData, Tuple tuple) throws IOException {
         switch (flowData.getOperation()) {
             case CREATE:
+                // TODO: This should be more lenient .. in case of retries
                 flowCache.putFlow(flowData.getPayload());
                 emitFlowMessage(flowData, tuple, flowData.getCorrelationId());
                 logger.info("Flow create message sent: {}", flowData);
                 break;
 
             case DELETE:
+                // TODO: This should be more lenient .. in case of retries
                 flowCache.removeFlow(flowData.getPayload().getLeft().getFlowId());
                 emitFlowMessage(flowData, tuple, flowData.getCorrelationId());
                 logger.info("Flow remove message sent: {}", flowData);
                 break;
 
             case UPDATE:
+                // TODO: This should be more lenient .. in case of retries
                 flowCache.putFlow(flowData.getPayload());
                 emitFlowMessage(flowData, tuple, flowData.getCorrelationId());
                 logger.info("Flow update message sent: {}", flowData);

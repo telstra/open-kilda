@@ -37,7 +37,9 @@ switch_states = {
 MT_SWITCH = "org.openkilda.messaging.info.event.SwitchInfoData"
 MT_ISL = "org.openkilda.messaging.info.event.IslInfoData"
 MT_PORT = "org.openkilda.messaging.info.event.PortInfoData"
-MT_FLOW = "org.openkilda.messaging.info.flow.FlowInfoData"
+MT_FLOW_INFODATA = "org.openkilda.messaging.info.flow.FlowInfoData"
+MT_FLOW_RESPONSE  = "org.openkilda.messaging.info.flow.FlowResponse"
+MT_NETWORK = "org.openkilda.messaging.info.discovery.NetworkInfoData"
 CD_NETWORK = "org.openkilda.messaging.command.discovery.NetworkCommandData"
 
 
@@ -94,7 +96,7 @@ class MessageItem(object):
                 else:
                     event_handled = True
 
-            if self.get_message_type() == MT_FLOW:
+            if self.get_message_type() == MT_FLOW_INFODATA:
                 event_handled = self.flow_operation()
 
             if self.get_command() == CD_NETWORK:
@@ -388,7 +390,7 @@ class MessageItem(object):
             logger.info('Flow rules installed: correlation_id=%s, flow_id=%s',
                         correlation_id, flow_id)
 
-            payload = {'payload': flow, 'message_type': "flow"}
+            payload = {'payload': flow, 'clazz': MT_FLOW_RESPONSE}
             message_utils.send_info_message(payload, correlation_id)
 
         except Exception as e:
@@ -405,6 +407,8 @@ class MessageItem(object):
             flow_path = flow['flowpath']['path']
             logger.info('Flow path remove: %s', flow_path)
 
+            # TODO: Remove Flow should be moved down .. opposite order of create.
+            #       (I'd do it now, but I'm troubleshooting something else)
             flow_utils.remove_flow(flow, flow_path)
 
             logger.info('Flow was removed: correlation_id=%s, flow_id=%s',
@@ -416,7 +420,7 @@ class MessageItem(object):
             logger.info('Flow rules removed: correlation_id=%s, flow_id=%s',
                         correlation_id, flow_id)
 
-            payload = {'payload': flow, 'message_type': "flow"}
+            payload = {'payload': flow, 'clazz': MT_FLOW_RESPONSE}
             message_utils.send_info_message(payload, correlation_id)
 
         except Exception as e:
@@ -463,7 +467,7 @@ class MessageItem(object):
             logger.info('Flow rules removed: correlation_id=%s, flow_id=%s',
                         correlation_id, flow_id)
 
-            payload = {'payload': flow, 'message_type': "flow"}
+            payload = {'payload': flow, 'clazz': MT_FLOW_RESPONSE}
             message_utils.send_info_message(payload, correlation_id)
 
         except Exception as e:
@@ -526,7 +530,7 @@ class MessageItem(object):
                     'hostname': node['hostname'],
                     'description': node['description'],
                     'controller': node['controller'],
-                    'message_type': 'switch',
+                    'clazz': MT_SWITCH,
                 }
                 switches.append(switch)
 
@@ -563,7 +567,7 @@ class MessageItem(object):
                          'port_no': int(link['dst_port']),
                          'seq_id': 1,
                          'segment_latency': 0}],
-                    'message_type': 'isl'
+                    'clazz': MT_ISL
                 }
                 isls.append(isl)
 
@@ -599,7 +603,7 @@ class MessageItem(object):
                 'switches': switches,
                 'isls': isls,
                 'flows': flows,
-                'message_type': "network"}
+                'clazz': MT_NETWORK}
             message_utils.send_cache_message(payload, correlation_id)
 
         except Exception as e:
