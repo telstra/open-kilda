@@ -36,253 +36,341 @@ import org.springframework.web.servlet.ModelAndView;
 @Controller
 public class LoginController extends BaseController {
 
-	/** The Constant log. */
-	private static final Logger log = Logger.getLogger(LoginController.class);
+    /** The Constant log. */
+    private static final Logger log = Logger.getLogger(LoginController.class);
 
-	/** The Constant VIEW_HOME. */
-	static final String VIEW_HOME = "home";
+    /** The Constant VIEW_HOME. */
+    static final String VIEW_HOME = "home";
 
-	/** The Constant VIEW_TOPOLOGY. */
-	static final String VIEW_TOPOLOGY = "topology";
+    /** The Constant VIEW_TOPOLOGY. */
+    static final String VIEW_TOPOLOGY = "topology";
 
-	/** The Constant VIEW_LOGOUT. */
-	static final String VIEW_LOGOUT = "logout";
+    /** The Constant VIEW_LOGOUT. */
+    static final String VIEW_LOGOUT = "logout";
 
-	/** The Constant REDIRECT_HOME. */
-	static final String REDIRECT_HOME = "redirect:/home";
+    /** The Constant REDIRECT_HOME. */
+    static final String REDIRECT_HOME = "redirect:/home";
 
-	/** The Constant VIEW_SWITCH. */
-	static final String VIEW_SWITCH = "switchport";
+    /** The Constant VIEW_SWITCH. */
+    static final String VIEW_SWITCH = "switchport";
 
-	/** The Constant VIEW_ISL. */
-	static final String VIEW_ISL = "isldetails";
-	
-	/** The Constant PORT_DETAILS. */
-	static final String VIEW_PORT_DETAILS = "portdetails";
+    /** The Constant VIEW_ISL. */
+    static final String VIEW_ISL = "isldetails";
 
-	/** The authentication manager. */
-	@Autowired
-	private AuthenticationManager authenticationManager;
 
-	/** The user repository. */
-	@Autowired
-	private UserRepository userRepository;
+    /** The Constant VIEW_FLOW_LIST. */
+    static final String VIEW_FLOW_LIST = "flows";
 
-	/**
-	 * Login.
-	 *
-	 * @param model
-	 *            the model
-	 * @return the model and view
-	 */
-	@RequestMapping(value = { "/", "/login" })
-	public ModelAndView login(Model model) {
-		log.info("Inside LoginController method login");
-		ModelAndView modelAndView;
 
-		if (isUserLoggedIn()) {
-			modelAndView = new ModelAndView(REDIRECT_HOME);
-		} else {
-			modelAndView = new ModelAndView(VIEW_LOGIN);
-		}
-		log.info("exit LoginController method login");
-		return modelAndView;
-	}
+    /** The Constant VIEW_FLOW_LIST. */
+    static final String VIEW_SWITCH_FLOWS = "switchflows";
+    
+    
+    /** The Constant VIEW_FLOW_DETAILS. */
+    static final String VIEW_FLOW_DETAILS = "flowdetails";
 
-	/**
-	 * Home.
-	 *
-	 * @param model
-	 *            the model
-	 * @param request
-	 *            the request
-	 * @return the string
-	 */
+    /** The Constant PORT_DETAILS. */
+    static final String VIEW_PORT_DETAILS = "portdetails";
 
-	@RequestMapping(value = "/home")
-	public String home(ModelMap model, HttpServletRequest request) {
-		log.info("Inside LoginController method home");
-		return VIEW_HOME;
-	}
+    /** The authentication manager. */
+    @Autowired
+    private AuthenticationManager authenticationManager;
 
-	/**
-	 * Topology.
-	 *
-	 * @param model
-	 *            the model
-	 * @param request
-	 *            the request
-	 * @return the model and view
-	 */
-	@RequestMapping(value = "/topology")
-	public ModelAndView topology(ModelMap model, HttpServletRequest request) {
-		log.info("Inside LoginController method topology");
-		ModelAndView modelAndView;
-		if (isUserLoggedIn()) {
-			SessionObject sessionObject = getSessionObject();
+    /** The user repository. */
+    @Autowired
+    private UserRepository userRepository;
 
-			if (sessionObject.getRole().equalsIgnoreCase(IConstants.USER_ROLE)) {
-				modelAndView = new ModelAndView(REDIRECT_HOME);
-			} else {
-				modelAndView = new ModelAndView(VIEW_TOPOLOGY);
-			}
-		} else {
-			modelAndView = new ModelAndView(VIEW_LOGIN);
-		}
-		log.info("exit LoginController method topology");
-		return modelAndView;
+    /**
+     * Login.
+     *
+     * @param model the model
+     * @return the model and view
+     */
+    @RequestMapping(value = {"/", "/login"})
+    public ModelAndView login(Model model) {
+        log.info("Inside LoginController method login");
+        ModelAndView modelAndView;
 
-	}
+        if (isUserLoggedIn()) {
+            modelAndView = new ModelAndView(REDIRECT_HOME);
+        } else {
+            modelAndView = new ModelAndView(VIEW_LOGIN);
+        }
+        log.info("exit LoginController method login");
+        return modelAndView;
+    }
 
-	/**
-	 * Logout.
-	 *
-	 * @param model
-	 *            the model
-	 * @return the model and view
-	 */
-	@RequestMapping("/logout")
-	public ModelAndView logout(Model model) {
-		log.info("Inside LoginController method logout");
-		return new ModelAndView(VIEW_LOGOUT);
-	}
+    /**
+     * Home.
+     *
+     * @param model the model
+     * @param request the request
+     * @return the string
+     */
 
-	@RequestMapping(value = "/switchport")
-	public ModelAndView switchDetails(ModelMap model, HttpServletRequest request) {
+    @RequestMapping(value = "/home")
+    public String home(ModelMap model, HttpServletRequest request) {
+        log.info("Inside LoginController method home");
+        return VIEW_HOME;
+    }
 
-		ModelAndView modelAndView;
+    /**
+     * Topology.
+     *
+     * @param model the model
+     * @param request the request
+     * @return the model and view
+     */
+    @RequestMapping(value = "/topology")
+    public ModelAndView topology(ModelMap model, HttpServletRequest request) {
+        log.info("Inside LoginController method topology");
+        ModelAndView modelAndView;
+        if (isUserLoggedIn()) {
+            SessionObject sessionObject = getSessionObject();
 
-		if (isUserLoggedIn()) {
-			SessionObject sessionObject = getSessionObject();
+            if (sessionObject.getRole().equalsIgnoreCase(IConstants.USER_ROLE)) {
+                modelAndView = new ModelAndView(REDIRECT_HOME);
+            } else {
+                modelAndView = new ModelAndView(VIEW_TOPOLOGY);
+            }
+        } else {
+            modelAndView = new ModelAndView(VIEW_LOGIN);
+        }
+        log.info("exit LoginController method topology");
+        return modelAndView;
 
-			if (sessionObject.getRole().equalsIgnoreCase(IConstants.USER_ROLE)) {
-				modelAndView = new ModelAndView(REDIRECT_HOME);
-			} else {
-				modelAndView = new ModelAndView(VIEW_SWITCH);
-			}
-		} else {
-			modelAndView = new ModelAndView(VIEW_LOGIN);
-		}
+    }
 
-		return modelAndView;
+    /**
+     * Logout.
+     *
+     * @param model the model
+     * @return the model and view
+     */
+    @RequestMapping("/logout")
+    public ModelAndView logout(Model model) {
+        log.info("Inside LoginController method logout");
+        return new ModelAndView(VIEW_LOGOUT);
+    }
 
-	}
+    /**
+     * Switch details.
+     *
+     * @param model the model
+     * @param request the request
+     * @return the model and view
+     */
+    @RequestMapping(value = "/switchport")
+    public ModelAndView switchDetails(ModelMap model, HttpServletRequest request) {
 
-	/**
-	 * Isl details.
-	 *
-	 * @param model
-	 *            the model
-	 * @param request
-	 *            the request
-	 * @return the model and view
-	 */
-	@RequestMapping(value = "/isldetails")
-	public ModelAndView islDetails(ModelMap model, HttpServletRequest request) {
+        ModelAndView modelAndView;
 
-		ModelAndView modelAndView;
+        if (isUserLoggedIn()) {
+            SessionObject sessionObject = getSessionObject();
 
-		if (isUserLoggedIn()) {
-			SessionObject sessionObject = getSessionObject();
+            if (sessionObject.getRole().equalsIgnoreCase(IConstants.USER_ROLE)) {
+                modelAndView = new ModelAndView(REDIRECT_HOME);
+            } else {
+                modelAndView = new ModelAndView(VIEW_SWITCH);
+            }
+        } else {
+            modelAndView = new ModelAndView(VIEW_LOGIN);
+        }
 
-			if (sessionObject.getRole().equalsIgnoreCase(IConstants.USER_ROLE)) {
-				modelAndView = new ModelAndView(REDIRECT_HOME);
-			} else {
-				modelAndView = new ModelAndView(VIEW_ISL);
-			}
-		} else {
-			modelAndView = new ModelAndView(VIEW_LOGIN);
-		}
+        return modelAndView;
 
-		return modelAndView;
+    }
 
-	}
-	
-	
-	
-	@RequestMapping(value = "/portdetails")
-	public ModelAndView portDetails(ModelMap model, HttpServletRequest request) {
+    /**
+     * Isl details.
+     *
+     * @param model the model
+     * @param request the request
+     * @return the model and view
+     */
+    @RequestMapping(value = "/isldetails")
+    public ModelAndView islDetails(ModelMap model, HttpServletRequest request) {
 
-		ModelAndView modelAndView;
+        ModelAndView modelAndView;
 
-		if (isUserLoggedIn()) {
-			SessionObject sessionObject = getSessionObject();
+        if (isUserLoggedIn()) {
+            SessionObject sessionObject = getSessionObject();
 
-			if (sessionObject.getRole().equalsIgnoreCase(IConstants.USER_ROLE)) {
-				modelAndView = new ModelAndView(REDIRECT_HOME);
-			} else {
-				modelAndView = new ModelAndView(VIEW_PORT_DETAILS);
-			}
-		} else {
-			modelAndView = new ModelAndView(VIEW_LOGIN);
-		}
+            if (sessionObject.getRole().equalsIgnoreCase(IConstants.USER_ROLE)) {
+                modelAndView = new ModelAndView(REDIRECT_HOME);
+            } else {
+                modelAndView = new ModelAndView(VIEW_ISL);
+            }
+        } else {
+            modelAndView = new ModelAndView(VIEW_LOGIN);
+        }
 
-		return modelAndView;
+        return modelAndView;
 
-	}
+    }
 
-	/**
-	 * Authenticate.
-	 *
-	 * @param username
-	 *            the username
-	 * @param password
-	 *            the password
-	 * @param request
-	 *            the request
-	 * @return the model and view
-	 */
-	@RequestMapping(value = "/authenticate", method = RequestMethod.POST)
-	public ModelAndView authenticate(@RequestParam("username") String username,
-			@RequestParam("password") String password,
-			HttpServletRequest request) {
-		log.info("Inside LoginController method authenticate");
-		ModelAndView modelAndView = new ModelAndView(VIEW_LOGIN);
-		List<String> errors = new ArrayList<String>();
-		try {
-			UsernamePasswordAuthenticationToken token = new UsernamePasswordAuthenticationToken(
-					username, password);
-			Authentication authenticate = authenticationManager
-					.authenticate(token);
-			if (authenticate.isAuthenticated()) {
-				modelAndView.setViewName(REDIRECT_HOME);
+    /**
+     * Flow list.
+     *
+     * @param model the model
+     * @param request the request
+     * @return the model and view
+     */
+    @RequestMapping(value = "/flows")
+    public ModelAndView flowList(ModelMap model, HttpServletRequest request) {
 
-				User user = userRepository.findByUsername(username);
+        ModelAndView modelAndView;
 
-				Set<Role> set = user.getRoles();
-				Iterator<?> iterator = set.iterator();
-				Role role = null;
-				while (iterator.hasNext()) {
-					role = (Role) iterator.next();
-				}
+        if (isUserLoggedIn()) {
+            SessionObject sessionObject = getSessionObject();
 
-				SessionObject sessionObject = getSessionObject();
-				sessionObject.setUserId(user.getUserId().intValue());
-				sessionObject.setUsername(user.getUsername());
-				sessionObject.setName(user.getName());
-				if (role != null) {
-					sessionObject.setRole(role.getRole());
-				}
+            if (sessionObject.getRole().equalsIgnoreCase(IConstants.USER_ROLE)) {
+                modelAndView = new ModelAndView(REDIRECT_HOME);
+            } else {
+                modelAndView = new ModelAndView(VIEW_FLOW_LIST);
+            }
+        } else {
+            modelAndView = new ModelAndView(VIEW_LOGIN);
+        }
 
-				SecurityContextHolder.getContext().setAuthentication(
-						authenticate);
-			} else {
-				errors.add("authenticate() Authentication failure with username{} and password{}");
-				log.warn("authenticate() Authentication failure with username{} and password{}");
-				modelAndView.setViewName("redirect:/login");
-			}
+        return modelAndView;
 
-		} catch (Exception e) {
-			log.warn("authenticate() Authentication failure");
-			errors.add("authenticate() Authentication failure");
-			modelAndView.setViewName("redirect:/login");
+    }
 
-		}
-		if (errors.size() > 0) {
-			modelAndView.addObject("error", errors);
-		}
-		log.info("exit LoginController method authenticate");
-		return modelAndView;
-	}
+    @RequestMapping(value = "/switchflows")
+    public ModelAndView switchFlowsList(ModelMap model, HttpServletRequest request) {
+
+        ModelAndView modelAndView;
+
+        if (isUserLoggedIn()) {
+            SessionObject sessionObject = getSessionObject();
+
+            if (sessionObject.getRole().equalsIgnoreCase(IConstants.USER_ROLE)) {
+                modelAndView = new ModelAndView(REDIRECT_HOME);
+            } else {
+                modelAndView = new ModelAndView(VIEW_SWITCH_FLOWS);
+            }
+        } else {
+            modelAndView = new ModelAndView(VIEW_LOGIN);
+        }
+
+        return modelAndView;
+
+    }
+
+    /**
+     * Flow details.
+     *
+     * @param model the model
+     * @param request the request
+     * @return the model and view
+     */
+    @RequestMapping(value = "/flowdetails")
+    public ModelAndView flowDetails(ModelMap model, HttpServletRequest request) {
+
+        ModelAndView modelAndView;
+
+        if (isUserLoggedIn()) {
+            SessionObject sessionObject = getSessionObject();
+
+            if (sessionObject.getRole().equalsIgnoreCase(IConstants.USER_ROLE)) {
+                modelAndView = new ModelAndView(REDIRECT_HOME);
+            } else {
+                modelAndView = new ModelAndView(VIEW_FLOW_DETAILS);
+            }
+        } else {
+            modelAndView = new ModelAndView(VIEW_LOGIN);
+        }
+
+        return modelAndView;
+
+    }
+
+
+    /**
+     * Port details.
+     *
+     * @param model the model
+     * @param request the request
+     * @return the model and view
+     */
+    @RequestMapping(value = "/portdetails")
+    public ModelAndView portDetails(ModelMap model, HttpServletRequest request) {
+
+        ModelAndView modelAndView;
+
+        if (isUserLoggedIn()) {
+            SessionObject sessionObject = getSessionObject();
+
+            if (sessionObject.getRole().equalsIgnoreCase(IConstants.USER_ROLE)) {
+                modelAndView = new ModelAndView(REDIRECT_HOME);
+            } else {
+                modelAndView = new ModelAndView(VIEW_PORT_DETAILS);
+            }
+        } else {
+            modelAndView = new ModelAndView(VIEW_LOGIN);
+        }
+
+        return modelAndView;
+
+    }
+
+    /**
+     * Authenticate.
+     *
+     * @param username the username
+     * @param password the password
+     * @param request the request
+     * @return the model and view
+     */
+    @RequestMapping(value = "/authenticate", method = RequestMethod.POST)
+    public ModelAndView authenticate(@RequestParam("username") String username,
+            @RequestParam("password") String password, HttpServletRequest request) {
+        log.info("Inside LoginController method authenticate");
+        ModelAndView modelAndView = new ModelAndView(VIEW_LOGIN);
+        List<String> errors = new ArrayList<String>();
+        try {
+            UsernamePasswordAuthenticationToken token =
+                    new UsernamePasswordAuthenticationToken(username, password);
+            Authentication authenticate = authenticationManager.authenticate(token);
+            if (authenticate.isAuthenticated()) {
+                modelAndView.setViewName(REDIRECT_HOME);
+
+                User user = userRepository.findByUsername(username);
+
+                Set<Role> set = user.getRoles();
+                Iterator<?> iterator = set.iterator();
+                Role role = null;
+                while (iterator.hasNext()) {
+                    role = (Role) iterator.next();
+                }
+
+                SessionObject sessionObject = getSessionObject();
+                sessionObject.setUserId(user.getUserId().intValue());
+                sessionObject.setUsername(user.getUsername());
+                sessionObject.setName(user.getName());
+                if (role != null) {
+                    sessionObject.setRole(role.getRole());
+                }
+
+                SecurityContextHolder.getContext().setAuthentication(authenticate);
+            } else {
+                errors.add("authenticate() Authentication failure with username{} and password{}");
+                log.warn("authenticate() Authentication failure with username{} and password{}");
+                modelAndView.setViewName("redirect:/login");
+            }
+
+        } catch (Exception e) {
+            log.warn("authenticate() Authentication failure");
+            errors.add("authenticate() Authentication failure");
+            modelAndView.setViewName("redirect:/login");
+
+        }
+        if (errors.size() > 0) {
+            modelAndView.addObject("error", errors);
+        }
+        log.info("exit LoginController method authenticate");
+        return modelAndView;
+    }
 
 }
