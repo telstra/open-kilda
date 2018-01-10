@@ -180,6 +180,7 @@ Feature: Basic Flow CRUD
     that flows were deleted from database.
 
     # TODO: as part of FAT, verify intermediary caches are clear (currently looks at DB only)
+    # TODO: these tests don't check the switches/speaker and whether flows are removed
 
     Given a clean controller
     And a nonrandom linear topology of 5 switches
