@@ -99,6 +99,10 @@ h1 {
 	padding: 8px 15px 3px;
 }
 
+.linecircle {
+	cursor: pointer;
+	
+}
 .navbar-nav>li>a img {
 	margin-right: 10px;
 }
@@ -557,13 +561,16 @@ h1.modal-title {
 	position: absolute;
 	left: 0px;
 	right: 0px;
-	background: #fff;
+	background: rgba(0, 0, 0, 0.6); /* rgba(0, 0, 0, 0.6) */
 	z-index: 9;
 	margin: 0;
 	top: 0;
 	bottom: 0;
 }
 
+body{
+    pointer-events:none;
+}
 .loader {
 	position: absolute;
 	border: 16px solid #f3f3f3;
@@ -578,6 +585,7 @@ h1.modal-title {
 	-webkit-animation: spin 2s linear infinite;
 	animation: spin 2s linear infinite;
 	margin: auto;
+	
 }
 
 footer {
