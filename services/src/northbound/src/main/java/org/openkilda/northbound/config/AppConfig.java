@@ -32,7 +32,7 @@ import org.springframework.context.annotation.PropertySource;
         MessageConsumerConfig.class, MessageProducerConfig.class})
 @ComponentScan({
         "org.openkilda.northbound.controller",
-        "org.openkilda.northbound.model",
+        "org.openkilda.northbound.converter",
         "org.openkilda.northbound.service",
         "org.openkilda.northbound.utils"})
 public class AppConfig {
