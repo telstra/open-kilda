@@ -30,6 +30,7 @@ RUN wget https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css
 RUN wget http://dygraphs.com/2.0.0/dygraph.css
 RUN wget https://cdnjs.cloudflare.com/ajax/libs/jquery-datetimepicker/2.5.14/jquery.datetimepicker.css
 RUN wget https://cdnjs.cloudflare.com/ajax/libs/jquery-toast-plugin/1.3.2/jquery.toast.min.css
+RUN wget https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.16/css/jquery.dataTables.min.css
 
 #WGET JS
 RUN wget https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js
@@ -38,6 +39,7 @@ RUN wget https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.19.3/moment.js
 RUN wget https://cdnjs.cloudflare.com/ajax/libs/dygraph/2.0.0/dygraph.js
 RUN wget --output-document=jquery-3.2.1.min.js https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js 
 RUN wget https://cdnjs.cloudflare.com/ajax/libs/jquery-toast-plugin/1.3.2/jquery.toast.min.js
+RUN wget https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.16/js/jquery.dataTables.min.js
 
 #MOVING FONTS
 RUN mv fontawesome-webfont.ttf src/main/resources/fonts/
@@ -50,6 +52,7 @@ RUN mv bootstrap.min.css src/main/resources/css/
 RUN mv jquery.datetimepicker.css src/main/resources/css/
 RUN mv font-awesome.min.css src/main/resources/css/
 RUN mv jquery.toast.min.css src/main/resources/css/
+RUN mv jquery.dataTables.min.css src/main/resources/css/
 
 #MOVING JAVASCRIPT FILES
 RUN mv jquery.datetimepicker.full.js src/main/resources/javascript/
@@ -58,6 +61,7 @@ RUN mv moment.js src/main/resources/javascript/
 RUN mv dygraph.js src/main/resources/javascript/
 RUN mv jquery-3.2.1.min.js src/main/resources/javascript/
 RUN mv jquery.toast.min.js src/main/resources/javascript/
+RUN mv jquery.dataTables.min.js src/main/resources/javascript/
 RUN ls -la 
 RUN mvn clean install
 

@@ -1,9 +1,7 @@
 package org.openkilda.helper;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
@@ -18,7 +16,7 @@ import org.apache.http.impl.client.HttpClients;
 import org.openkilda.exception.ExternalSystemException;
 import org.openkilda.exception.RestCallFailedException;
 import org.openkilda.exception.UnauthorizedException;
-import org.openkilda.model.ErrorMessage;
+import org.openkilda.model.response.ErrorMessage;
 import org.openkilda.service.impl.AuthPropertyService;
 import org.openkilda.utility.HttpError;
 import org.openkilda.utility.IAuthConstants;
@@ -55,11 +53,9 @@ public class RestClientManager {
     /**
      * Invoke.
      *
-     * @param correlationId the correlation id
      * @param apiUrl the api url
      * @param httpMethod the http method
      * @param payload the payload
-     * @param token the token
      * @param contentType the content type
      * @param basicAuth the basic auth
      * @return the http response
@@ -126,38 +122,33 @@ public class RestClientManager {
     /**
      * Invoke.
      *
-     * @param correlationId the correlation id
-     * @param apiUrl the api url
-     * @param httpMethod the http method
-     * @param payload the payload
-     * @param token the token
-     * @param contentType the content type
-     * @param basicAuth the basic auth
-     * @param queryParams the query params
+     * @param <T> the generic type
+     * @param response the response
+     * @param responseClass the response class
      * @return the http response
      */
-    @SuppressWarnings("rawtypes")
-    public HttpResponse invoke(final String correlationId, String apiUrl,
-            final HttpMethod httpMethod, final String payload, final String token,
-            final String contentType, final String basicAuth, final Map<String, String> queryParams) {
-        StringBuilder queryStringBuilder = new StringBuilder();
-        if (queryParams != null) {
-            for (String key : queryParams.keySet()) {
-
-                if (!StringUtils.isNullOrEmpty(key)
-                        && !StringUtils.isNullOrEmpty(queryParams.get(key))) {
-                    if (queryStringBuilder.length() == 0 && !apiUrl.contains("?")) {
-                        queryStringBuilder.append("?");
-                    } else {
-                        queryStringBuilder.append("&");
-                    }
-                    queryStringBuilder.append(key).append("=").append(queryParams.get(key));
-                }
-            }
-        }
-        return invoke(correlationId, apiUrl + queryStringBuilder.toString(), httpMethod, payload,
-                token, contentType, basicAuth, new HashMap());
-    }
+    // @SuppressWarnings("rawtypes")
+    // public HttpResponse invoke(final String correlationId, String apiUrl,
+    // final HttpMethod httpMethod, final String payload, final String token,
+    // final String contentType, final String basicAuth, final Map<String, String> queryParams) {
+    // StringBuilder queryStringBuilder = new StringBuilder();
+    // if (queryParams != null) {
+    // for (String key : queryParams.keySet()) {
+    //
+    // if (!StringUtils.isNullOrEmpty(key)
+    // && !StringUtils.isNullOrEmpty(queryParams.get(key))) {
+    // if (queryStringBuilder.length() == 0 && !apiUrl.contains("?")) {
+    // queryStringBuilder.append("?");
+    // } else {
+    // queryStringBuilder.append("&");
+    // }
+    // queryStringBuilder.append(key).append("=").append(queryParams.get(key));
+    // }
+    // }
+    // }
+    // return invoke(correlationId, apiUrl + queryStringBuilder.toString(), httpMethod, payload,
+    // token, contentType, basicAuth, new HashMap());
+    // }
 
     /**
      * Gets the response list.

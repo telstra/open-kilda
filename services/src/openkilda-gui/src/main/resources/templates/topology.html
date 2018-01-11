@@ -5,20 +5,22 @@
 <head>
 <meta charset="utf-8"></meta>
 <title>OPEN KILDA</title>
-	<!-- CSS Style Sheets -->
+<!-- CSS Style Sheets -->
 
-		<link th:href="@{css/bootstrap.min.css}" rel="stylesheet" type="text/css" />
-		<link th:href="@{css/roboto.css}" rel="stylesheet" type="text/css" />
-        <link th:href="@{css/font-awesome.min.css}" rel="stylesheet" type="text/css" />
+<link th:href="@{css/bootstrap.min.css}" rel="stylesheet"
+	type="text/css" />
+<link th:href="@{css/roboto.css}" rel="stylesheet" type="text/css" />
+<link th:href="@{css/font-awesome.min.css}" rel="stylesheet"
+	type="text/css" />
+<link th:href="@{css/jquery.toast.min.css}" rel="stylesheet" type="text/css" />
+<!-- Custom CSS Style Sheets -->
+<link th:href="@{css/custom.css}" rel="stylesheet" type="text/css" />
+<link th:href="@{images/kilda.png}" rel="shortcut icon" type="image/png"></link>
 
-		<!-- Custom CSS Style Sheets -->
-		<link th:href="@{css/custom.css}" rel="stylesheet" type="text/css" />
-		<link th:href="@{images/kilda.png}" rel="shortcut icon" type="image/png"></link>
-		
 </head>
 <body>
 
-	<div th:replace="fragments/header :: header" ></div>
+	<div th:replace="fragments/header :: header"></div>
 	<aside class="main-sidebar" id="sidebar-left">
 		<!-- sidebar: style can be found in sidebar.less -->
 		<section class="sidebar">
@@ -27,20 +29,23 @@
 				<li class=""><a th:href="@{/home}"> <i class="fa fa-home"
 						aria-hidden="true"></i> <span>Home</span>
 				</a></li>
-				<li class="active"><a th:href="@{/topology}"> <i
-						class="icon-topology" aria-hidden="true"></i><span>Topology</span>
+				<li class="active"><a th:href="@{/topology}"> <i class="icon-topology" aria-hidden="true"></i><span>Topology</span>
 				</a></li>
+				
+				<li class=""><a th:href="@{/flows}"> <i class="icon-flows" aria-hidden="true"></i><span class="home-flows">Flows</span>
+				</a></li>
+				
 			</ul>
 		</section>
 		<!-- /.sidebar -->
 	</aside>
-	
+
 	<div class="content">
-		
+
 		<div id="wait" class="bg_load">
 			<div class="loader"></div>
 		</div>
-		
+
 		<div class="row">
 			<div class="navigation-bar container-fluid">
 				<ul class="col-lg-12">
@@ -49,27 +54,28 @@
 				</ul>
 			</div>
 		</div>
-		
+
 		<div class="container-fluid">
+
 			<div class="check">
 				<input type="checkbox" name="switch" value="switch" id="showDetail">SHOW DETAILS</input>
 			</div>
+			
 		</div>
 
 		<div class="popup" id="popupDiv">
 			<span class="popuptext" id="linkDiv"></span>
 		</div>
-		
+
 		<div th:include="fragments/importResources:: commonImports"></div>
 		<div th:include="fragments/importResources:: graphImports"></div>
 	</div>
-	
+
 	<footer>
-		<p class="pull-right">&copy;2017 All rights reserved.</p>
+		<p class="pull-right">&copy;2018 All rights reserved.</p>
 	</footer>
 	
-	
-	<div id="myModal" class="modal fade" tabindex="-1" role="dialog">
+		<div id="myModal" class="modal fade" tabindex="-1" role="dialog">
 		<div class="modal-dialog link-details" role="document">
 			<div class="modal-content">
 				<div class="modal-header">
@@ -80,14 +86,11 @@
 					</button>
 				</div>
 				<div class="modal-body"></div>
-				<!-- <div class="modal-footer">
-	        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-	      </div> -->
 			</div>
 		</div>
 	</div>
 	
-
+	<script th:inline="javascript" src="javascript/jquery.toast.min.js"></script>
 
 </body>
 </html>
