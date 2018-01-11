@@ -8,6 +8,4 @@ public interface LinkService extends BasicService {
 
     List<LinksDto> getLinks();
 
-    List<LinksDto> getLinksBySwitch(String switchId);
-
 }
