@@ -183,23 +183,40 @@ public class FlowCrudBasicRunTest {
         // TODO: implement
     }
 
-    private int checkTraffic(int sourceVlan, int destinationVlan, int expectedStatus) {
+    private int checkTraffic(String sourceSwitch, String destSwitch, int sourceVlan, int destinationVlan, int expectedStatus) {
         if (isTrafficTestsEnabled()) {
             System.out.println("=====> Send traffic");
 
             long current = System.currentTimeMillis();
             Client client = ClientBuilder.newClient(new ClientConfig());
+
+            // NOTE: current implementation requires two auxiliary switches in
+            // topology, one for generating traffic, another for receiving it.
+            // Originaly smallest meaningful topology was supposed to consist
+            // of three switches, thus switches 1 and 5 were used as auxiliary.
+            // Now some scenarios require even smaller topologies and at the same
+            // time they reuse small linear topology. This leads to shutting off of
+            // switches 1 and 5 from flows and to test failures. Since topology
+            // reuse speeds testing up the code below determines which switch:port
+            // pairs should be used as source and drains for traffic while keepig
+            // small linear topology in use.
+            String from = "0000000" + (Integer.parseInt(sourceSwitch.substring(sourceSwitch.length() -1 )) - 1);
+            String to = "0000000" + (Integer.parseInt(destSwitch.substring(destSwitch.length() -1 )) + 1);
+            int fromPort = from.equals("00000001") ? 1 : 2;
+            int toPort = 1;
+
             Response result = client
                     .target(trafficEndpoint)
                     .path("/checkflowtraffic")
-                    .queryParam("srcswitch", "00000001")
-                    .queryParam("dstswitch", "00000005")
-                    .queryParam("srcport", 1)
-                    .queryParam("dstport", 1)
+                    .queryParam("srcswitch", from)
+                    .queryParam("dstswitch", to)
+                    .queryParam("srcport", fromPort)
+                    .queryParam("dstport", toPort)
                     .queryParam("srcvlan", sourceVlan)
                     .queryParam("dstvlan", destinationVlan)
                     .request()
                     .get();
+
             System.out.println(String.format("======> Response = %s", result.toString()));
             System.out.println(String.format("======> Send traffic Time: %,.3f", getTimeDuration(current)));
 
@@ -214,7 +231,7 @@ public class FlowCrudBasicRunTest {
                                         final String destinationSwitch, final int destinationPort,
                                         final int destinationVlan, final int bandwidth) throws Throwable {
         TimeUnit.SECONDS.sleep(2);
-        int status = checkTraffic(sourceVlan, destinationVlan, 200);
+        int status = checkTraffic(sourceSwitch, destinationSwitch, sourceVlan, destinationVlan, 200);
         assertEquals(200, status);
     }
 
@@ -223,7 +240,7 @@ public class FlowCrudBasicRunTest {
                                            final String destinationSwitch, final int destinationPort,
                                            final int destinationVlan, final int bandwidth) throws Throwable {
         TimeUnit.SECONDS.sleep(2);
-        int status = checkTraffic(sourceVlan, destinationVlan, 503);
+        int status = checkTraffic(sourceSwitch, destinationSwitch, sourceVlan, destinationVlan, 503);
         assertNotEquals(200, status);
     }
 

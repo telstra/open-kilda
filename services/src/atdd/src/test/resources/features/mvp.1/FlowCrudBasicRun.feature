@@ -34,11 +34,9 @@ Feature: Basic Flow CRUD
       # flows with transit vlans and intermediate switches
       | c3none  | de:ad:be:ef:00:00:00:02 |      1      |      0      | de:ad:be:ef:00:00:00:04 |         2        |        0         |   10000   |
       # flows with transit vlans and without intermediate switches
-# This test is failing on 2018.01.06 - it is failing
-#      | c2none  | de:ad:be:ef:00:00:00:03 |      1      |      0      | de:ad:be:ef:00:00:00:04 |         2        |        0         |   10000   |
+      | c2none  | de:ad:be:ef:00:00:00:03 |      1      |      0      | de:ad:be:ef:00:00:00:04 |         2        |        0         |   10000   |
       # flows without transit vlans and intermediate switches
-# This test is failing on 2018.01.06 - it is failing
-#      | c1none  | de:ad:be:ef:00:00:00:03 |      1      |      0      | de:ad:be:ef:00:00:00:03 |         2        |        0         |   10000   |
+      | c1none  | de:ad:be:ef:00:00:00:03 |      1      |      0      | de:ad:be:ef:00:00:00:03 |         2        |        0         |   10000   |
 
 
 
@@ -76,7 +74,7 @@ Feature: Basic Flow CRUD
       | c3pop   | de:ad:be:ef:00:00:00:02 |      1      |     100     | de:ad:be:ef:00:00:00:04 |         2        |        0         |   10000   |
       | c3swap  | de:ad:be:ef:00:00:00:02 |      1      |     100     | de:ad:be:ef:00:00:00:04 |         2        |       200        |   10000   |
 
-  @MVP1.1 @CRUD_CREATE
+  @MVP1 @CRUD_CREATE
   Scenario Outline: Flow Creation - flows with transit vlans and without intermediate switches
 
     This scenario setups flows across the entire set of switches and checks that these flows were stored in database
@@ -107,7 +105,7 @@ Feature: Basic Flow CRUD
       | c2pop   | de:ad:be:ef:00:00:00:03 |      1      |     100     | de:ad:be:ef:00:00:00:04 |         2        |        0         |   10000   |
       | c2swap  | de:ad:be:ef:00:00:00:03 |      1      |     100     | de:ad:be:ef:00:00:00:04 |         2        |       200        |   10000   |
 
-  @MVP1.1 @CRUD_CREATE
+  @MVP1 @CRUD_CREATE
   Scenario Outline: Flow Creation - flows without transit vlans and intermediate switches
 
     This scenario setups flows across the entire set of switches and checks that these flows were stored in database
@@ -139,7 +137,7 @@ Feature: Basic Flow CRUD
       | c1swap  | de:ad:be:ef:00:00:00:03 |      1      |     100     | de:ad:be:ef:00:00:00:03 |         2        |       200        |   10000   |
 
 
-  @MVP1.1 @CRUD_UPDATE
+  @MVP1 @CRUD_UPDATE
   Scenario Outline: Flow Updating on Small Linear Network Topology
 
   This scenario setups flows across the entire set of switches, then updates them and checks that flows were updated in database
