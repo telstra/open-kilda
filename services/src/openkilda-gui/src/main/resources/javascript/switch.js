@@ -17,11 +17,11 @@ $(document).ready(function(){
 		url : APP_CONTEXT+"/switch",
 		type : 'GET',
 		success : function(response) {	
-			
 			showSwitchData(response); // method call showSwitchData()
 		},
 		dataType : "json"
 	});
+	
 	
 	callPortDetailsAPI(switchname);	// method call callPortDetailsAPI()
 	
@@ -38,7 +38,8 @@ $(document).ready(function(){
 		type : 'GET',
 		success : function(response) {
 			
-			$("#wait1").css("display", "none");		
+			$("#wait1").css("display", "none");
+			$('body').css('pointer-events','all'); 	
 			showPortData(response);  //method call showPortData()
 		},
 		dataType : "json"
@@ -97,6 +98,9 @@ function showPortData(response){
 	        }
 	         
 	 }
+	 
+	 $('#switchdetails_div').show();
+	 $('#portdetails_div').show();
 }
 
 
