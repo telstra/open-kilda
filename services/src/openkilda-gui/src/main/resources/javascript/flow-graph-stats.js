@@ -72,7 +72,8 @@ $(document).ready(function() {
 			type : 'GET',
 			success : function(response) {	
 					
-				$("#wait1").css("display", "none");	
+				$("#wait1").css("display", "none");
+				$('body').css('pointer-events','all');
 				showStatsData(response);				
 			},
 			dataType : "json"
@@ -85,7 +86,9 @@ $(document).ready(function() {
 * Execute this function to show visulization of stats graph
 * represnting time and metric on the axis.
 */
-function showStatsData(response) {	
+function showStatsData(response) {
+	console.log(response);
+	
 	var data = response
 		var graphData = [];
 		if(data.length){

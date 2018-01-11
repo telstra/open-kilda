@@ -16,7 +16,6 @@ $.ajax({
 	url : APP_CONTEXT + "/switch",
 	type : 'GET',
 	success : function(response) {
-		$("#wait").css("display", "none");
 		responseData.push(response);
 		console.log(response);
 		getLink();
@@ -49,7 +48,6 @@ function getLink() {
 
 			}
 			getFlowCount();
-			$("#wait").css("display", "none");
 		},
 		error : function(errResponse) {
 			responseData.push({
@@ -92,9 +90,10 @@ function getFlowCount() {
 				console.log(response);
 
 			}
-			init(responseData);
+			
 			$("#wait").css("display", "none");
-
+			$('body').css('pointer-events','all'); 
+			init(responseData);
 		},
 		error : function(errResponse) {
 
@@ -117,14 +116,15 @@ var threshold = 500;
 function init(data) {
 
 	console.log(data)
-
+   
 	if (data[0].switches.length == 0 && data[1].switchrelation.length == 0
-			&& data[2].flows.length == 0) {
+			&& data[2].length == 0) {
 		$.toast({
-			heading : 'Open Kilda',
-			text : 'No Data',
+			heading : 'Topology',
+			text : 'No Data Avaliable',
 			showHideTransition : 'fade',
 			position : 'top-right',
+			hideAfter : 6000,
 			icon : 'warning'
 		})
 		return false;
@@ -341,21 +341,31 @@ function init(data) {
 	});
 	 elem = svg.selectAll("g myCircleText")
 	 	.data(force.links())
+	 
 	 elemEnter = elem.enter().append("svg:g");
 	 
 	 linkcirc = elemEnter.append("svg:circle")
 		.data(force.links())
 		.attr("r",function(d,index){
-			
 			var element = $("#link" + index)[0];
-			//element.setAttribute("class", "overlay");
-
-			if (element.getAttribute("stroke") == "#228B22"|| element.getAttribute("stroke") == "green") {
+			if (element.getAttribute("stroke") == "#228B22" || element.getAttribute("stroke") == "green") {
 
 				return 10;
 			}
 			
-		})
+		}).on("mouseover", function(d, index) {
+			var element = $("#link" + index)[0];
+			element.setAttribute("class", "overlay");
+			
+		}).on("mouseout", function(d, index) {
+			var element = $("#link" + index)[0];
+			element.setAttribute("class", "link");
+		}).on(
+				"click",
+				function(d, index) {
+					
+						showFlowDetails(d);
+				})
 		.attr("class", "linecircle")
 		.attr("id",function(d,index){
 	  
@@ -431,7 +441,6 @@ function tick() {
 		
 		var pathEl   = d3.select('#link'+index).node();
 		var midpoint = pathEl.getPointAtLength(pathEl.getTotalLength()/2);
-		console.log(midpoint)
 		var ydata = midpoint.x/2;
 		var xvalue = midpoint.y/2;
 		var xvalue = (d.source.y + d.target.y)/2;
@@ -481,13 +490,19 @@ function showSwitchDetails(d) {
 
 /* function to show switch details on mouse hover event */
 function showdata() {
+	
 	$("text").each(function() {
 		if ($('input[name="switch"]:checked').length) {
+			
 			$(this)[0].setAttribute("class", "show");
-		} else {
-			$(this)[0].setAttribute("class", "hide");
+		
+		} else {			
+			if($(this)[0].getAttribute("id")) {
+				$(this)[0].setAttribute("class", "hide");
+			} else {
+				$(this)[0].setAttribute("class", "show");
+			}
 		}
-
 	});
 }
 
@@ -543,6 +558,8 @@ function dblclick(d) {
 	doubleClickTime = new Date();
 	d3.select(this).classed("fixed", d.fixed = false);
 }
+
+
 
 
 

@@ -12,6 +12,7 @@ $(document).ready(function() {
 	var obj = JSON.parse(linkData)
 
 	$("#wait1").css("display", "none");
+	$('body').css('pointer-events','all'); 
 	showLinkDetails(obj);
 	getMetric();
 
@@ -59,11 +60,7 @@ function showLinkDetails(linkData) {
 		$('.flow_details_div').show();
 		$('.isl_details_div').hide();
 		$('#DownsampleID').hide();
-		/*$('.isl-speed-latency-bandwidth-details-div').hide();
-		$('.isl-source-details-div').show();
-		$('.flow_detail_title_div').show();
-		$('.isl_detail_title_div').hide();
-		 */
+
 		var size = 0, key;
 
 		$(".flow_div_flow_id").html(linkData.flowid);
@@ -90,19 +87,11 @@ function showLinkDetails(linkData) {
 		$('.flow_details_div').hide();
 		$('.isl_details_div').show();
 		$('#DownsampleID').show();
-		/*$('.isl-speed-latency-bandwidth-details-div').show();
-		$('.flow_details_id').hide();
-		$('.isl_sbl_details').show();
-		$('.isl_details').show();
-		$('.flow_detail_title_div').hide();
-		$('.isl_detail_title_div').show();*/
 		var size = 0, key;
-
 		$(".link_div_source_switch").html(linkData.source_switch);
 		$(".link_div_source_port").html(linkData.src_port);
 		$(".link_div_destination_switch").html(linkData.target_switch);
 		$(".link_div_destination_port").html(linkData.dst_port);
-
 		$(".isl_div_speed").html(linkData.speed);
 		$(".isl_div_latency").html(linkData.latency);
 		$(".isl_div_avaliable_bandwidth").html(linkData.available_bandwidth);
