@@ -55,7 +55,7 @@ def print_path(flow, border):
                         padding_width=0)
 
     for p in path:
-        table.add_row([p[x] for x in keys])
+        table.add_row([p.get(x, None) for x in keys])
 
     return table
 
@@ -196,14 +196,12 @@ def print_table(records, border):
 
         print(table)
 
-        kind = payload['state']['kind']
-        if kind == 'cache-bolt':
+        clazz = payload['state']['clazz']
+        if clazz == 'org.openkilda.messaging.ctrl.state.CacheBoltState':
             cache_bolt_print_table(payload, border)
-        elif kind == 'crud-bolt':
+        elif clazz == 'org.openkilda.messaging.ctrl.state.CrudBoltState':
             crud_bolt_print_table(payload, border)
         else:
-            del payload['state']['kind']
-
             print(pprint.pformat(payload['state']))
 
         print('\n')

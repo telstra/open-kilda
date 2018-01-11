@@ -1,19 +1,18 @@
 package org.openkilda.controller;
 
+import java.util.ArrayList;
 import java.util.List;
 
-import javax.servlet.http.HttpServletRequest;
-
 import org.apache.log4j.Logger;
-import org.openkilda.model.PortInfo;
-import org.openkilda.model.SwitchRelationData;
-import org.openkilda.switchhelper.ProcessSwitchDetails;
-import org.openkilda.utility.MetricsUtil;
+import org.openkilda.model.response.FlowsCount;
+import org.openkilda.model.response.PathResponse;
+import org.openkilda.model.response.PortInfo;
+import org.openkilda.model.response.SwitchRelationData;
+import org.openkilda.service.ServiceSwitch;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
-import org.springframework.ui.ModelMap;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -34,130 +33,129 @@ public class SwitchController {
 
 	/** The process switch details. */
 	@Autowired
-	private ProcessSwitchDetails processSwitchDetails;
+	private ServiceSwitch serviceSwitch;
 
 	/**
-	 * Gets the switches detial.
+	 * Gets the switches detail.
 	 *
-	 * @param model
-	 *            the model
-	 * @param request
-	 *            the request
-	 * @return the switches detial
+	 * @return the switches detail
 	 */
 	@RequestMapping(method = RequestMethod.GET)
-	public @ResponseBody ResponseEntity<Object> getSwitchesDetial(
-			ModelMap model, HttpServletRequest request) {
-		log.info("inside controller method getSwitchesDetial");
+	public @ResponseBody ResponseEntity<Object> getSwitchesDetail() {
+		log.info("Inside controller method getSwitchesdetail");
 		SwitchRelationData switchDataList = new SwitchRelationData();
 
 		try {
-			switchDataList = processSwitchDetails.getswitchdataList();
+			switchDataList = serviceSwitch.getswitchdataList();
 		} catch (Exception exception) {
-			log.error("Exception in getSwitchesDetial "
+			log.error("Exception in getSwitchesDetail "
 					+ exception.getMessage());
 		}
-		model.addAttribute("getSwitchesDetial", switchDataList);
+		log.info("exit controller method getSwitchesdetail");
 		return new ResponseEntity<Object>(switchDataList, HttpStatus.OK);
 	}
 
 	/**
 	 * Gets the ports detail switch id.
 	 *
-	 * @param model
-	 *            the model
-	 * @param request
-	 *            the request
 	 * @param switchId
 	 *            the switch id
 	 * @return the ports detail switch id
 	 */
 	@RequestMapping(value = "/{switchId}/ports", method = RequestMethod.GET)
 	public @ResponseBody ResponseEntity<Object> getPortsDetailSwitchId(
-			ModelMap model, HttpServletRequest request,
 			@PathVariable String switchId) {
 
-		log.info("inside getPortsDetailSwitchId : SwitchId " + switchId);
+		log.info("Inside SwitchController method getPortsDetailSwitchId : SwitchId "
+				+ switchId);
 		List<PortInfo> portResponse = null;
 		try {
-			portResponse = processSwitchDetails
+			portResponse = serviceSwitch
 					.getPortResponseBasedOnSwitchId(switchId);
 		} catch (Exception exception) {
 			log.error("Exception in getPortsDetailSwitchId : "
 					+ exception.getMessage());
 		}
-		model.addAttribute("getPortsDetailSwitchId", portResponse);
+		log.info("exit SwitchController method getPortsDetailSwitchId ");
 		return new ResponseEntity<Object>(portResponse, HttpStatus.OK);
-	}
-
-	/**
-	 * Gets the flows detail.
-	 *
-	 * @param model
-	 *            the model
-	 * @param request
-	 *            the request
-	 * @return the flows detail
-	 */
-	@RequestMapping(value = "/flows", method = RequestMethod.GET)
-	public @ResponseBody ResponseEntity<Object> getFlowsDetail(ModelMap model,
-			HttpServletRequest request) {
-
-		log.info("inside getFlowsDetail ");
-		SwitchRelationData flowResponse = null;
-		try {
-			flowResponse = processSwitchDetails.getAllFlows();
-		} catch (Exception exception) {
-			log.error("Exception in getFlowsDetail " + exception.getMessage());
-		}
-		model.addAttribute("getFlowsDetail", flowResponse);
-		return new ResponseEntity<Object>(flowResponse, HttpStatus.OK);
 	}
 
 	/**
 	 * Gets the links detail.
 	 *
-	 * @param model
-	 *            the model
-	 * @param request
-	 *            the request
 	 * @return the links detail
 	 */
 	@RequestMapping(value = "/links", method = RequestMethod.GET)
-	public @ResponseBody ResponseEntity<Object> getLinksDetail(ModelMap model,
-			HttpServletRequest request) {
+	public @ResponseBody ResponseEntity<Object> getLinksDetail() {
 
-		log.info("inside getLinksDetail");
+		log.info("Inside SwitchController method getLinksDetail");
 		SwitchRelationData portResponse = null;
 		try {
-			portResponse = processSwitchDetails.getAllLinks();
+			portResponse = serviceSwitch.getAllLinks();
 		} catch (Exception exception) {
-			log.error(" Exception in getLinksDetail "+ exception.getMessage());
+			log.error(" Exception in getLinksDetail " + exception.getMessage());
 		}
-		model.addAttribute("getLinksDetail", portResponse);
+		log.info("exit SwitchController method getLinksDetail");
 		return new ResponseEntity<Object>(portResponse, HttpStatus.OK);
 	}
 
 	/**
-	 * Gets the metric detail.
+	 * Gets the path link.
 	 *
-	 * @param model
-	 *            the model
-	 * @param request
-	 *            the request
-	 * @return the metric detail
+	 * @param flowid
+	 *            the flowid
+	 * @return the path link
 	 */
-	@RequestMapping(value = "/metrics", method = RequestMethod.GET)
-	public @ResponseBody ResponseEntity<Object> getMetricDetail(ModelMap model,
-			HttpServletRequest request) {
+	@RequestMapping(value = "/links/path/{flowid}", method = RequestMethod.GET)
+	public @ResponseBody ResponseEntity<Object> getPathLink(
+			@PathVariable String flowid) {
 
-		log.info("inside getMetricDetail");
-		List<String> metricsList = null;
+		log.info("Inside SwitchController method getPathLink ");
+		PathResponse pathResponse = null;
 		try {
-			metricsList = MetricsUtil.getMetricList();
+			pathResponse = serviceSwitch.getPathLink(flowid);
 		} catch (Exception exception) {
-			log.error("Exception in getMetricDetail "+ exception.getMessage());
+			log.error("Exception in getPathLink " + exception.getMessage());
 		}
-		return new ResponseEntity<Object>(metricsList, HttpStatus.OK);
+		log.info("exit SwitchController method getPathLink ");
+		return new ResponseEntity<Object>(pathResponse, HttpStatus.OK);
+	}
+
+	/**
+	 * Gets the flow count.
+	 *
+	 * @return the flow count
+	 */
+	@RequestMapping(value = "/flowcount", method = RequestMethod.GET)
+	public @ResponseBody ResponseEntity<Object> getFlowCount() {
+
+		log.info("Inside SwitchController method getFlowCount ");
+		List<FlowsCount> flowsCount = new ArrayList<FlowsCount>();
+		SwitchRelationData flowResponse = null;
+		try {
+			flowResponse = serviceSwitch.getTopologyFlows();
+		} catch (Exception exception) {
+			log.error("Exception in getFlowCount " + exception.getMessage());
+		}
+
+		if (flowResponse != null)
+			flowsCount = serviceSwitch.getFlowCount(flowResponse);
+		log.info("exit SwitchController method getFlowCount ");
+		return new ResponseEntity<Object>(flowsCount, HttpStatus.OK);
+	}
+
+	/**
+	 * Gets the topology flows.
+	 *
+	 * @return the topology flows
+	 */
+	@RequestMapping(value = "/flows", method = RequestMethod.GET)
+	public @ResponseBody ResponseEntity<Object> getTopologyFlows() {
+
+		log.info("Inside SwitchController method getTopologyFlows");
+		SwitchRelationData switchRelationData = serviceSwitch
+				.getTopologyFlows();
+		log.info("exit SwitchController method getTopologyFlows");
+		return new ResponseEntity<Object>(switchRelationData, HttpStatus.OK);
 	}
 }

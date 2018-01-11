@@ -41,6 +41,7 @@ import net.floodlightcontroller.packet.LLDPTLV;
 import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.util.OFMessageUtils;
+import org.apache.commons.codec.binary.Hex;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.openkilda.floodlight.pathverification.type.PathType;
@@ -86,7 +87,7 @@ import java.util.Map;
 import java.util.Properties;
 
 public class PathVerificationService implements IFloodlightModule, IOFMessageListener, IPathVerificationService {
-    public static final String VERIFICATION_BCAST_PACKET_DST = "00:26:e1:ff:ff:ff";
+    public static final String VERIFICATION_BCAST_PACKET_DST = "08:ED:02:EF:FF:FF";
     public static final int VERIFICATION_PACKET_UDP_PORT = 61231;
     public static final String VERIFICATION_PACKET_IP_DST = "192.168.0.255";
     private static final String TOPIC = Topic.TOPO_DISCO;
@@ -233,7 +234,10 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
         if (srcSwitch == null) {
             return false;
         }
-        return srcSwitch.write(generateVerificationPacket(srcSwitch, port));
+        OFPacketOut ofPacketOut = (generateVerificationPacket(srcSwitch, port));
+        logger.debug("sending verification packet out {}/{}: {}", srcSwitch.getId().toString(), port.getPortNumber(),
+                Hex.encodeHexString(ofPacketOut.getData()));
+        return srcSwitch.write(ofPacketOut);
     }
 
     @Override
@@ -248,7 +252,10 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
             return srcSwitch.write(generateVerificationPacket(srcSwitch, port));
         }
         IOFSwitch dstSwitch = switchService.getSwitch(dstSwId);
-        return srcSwitch.write(generateVerificationPacket(srcSwitch, port, dstSwitch));
+        OFPacketOut ofPacketOut = generateVerificationPacket(srcSwitch, port, dstSwitch);
+        logger.debug("sending verification packet out {}/{}: {}", srcSwitch.getId().toString(), port.getPortNumber(),
+                Hex.encodeHexString(ofPacketOut.getData()));
+        return srcSwitch.write(ofPacketOut);
     }
 
     public OFPacketOut generateVerificationPacket(IOFSwitch srcSw, OFPort srcPort) {

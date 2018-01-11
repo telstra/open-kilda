@@ -1,0 +1,91 @@
+{
+  "timestamp": 1515531276530,
+  "correlation_id": "probe-nm-notebook-1515531276351",
+  "destination": "CTRL_CLIENT",
+  "payload": {
+    "task_id": 3,
+    "timestamp": 1515531276530,
+    "component": "CRUD_BOLT",
+    "clazz": "org.openkilda.messaging.ctrl.DumpStateResponseData",
+    "state": {
+      "timestamp": 1515531276530,
+      "flow": {
+        "flows": [
+          {
+            "forward": {
+              "last_updated": "2018-01-09T20:53:15.306Z",
+              "description": "flow-01",
+              "flowid": "flow-01",
+              "bandwidth": 10000,
+              "src_switch": "de:ad:be:ef:00:00:00:01",
+              "cookie": 4611686018427387905,
+              "meter_id": 1,
+              "src_vlan": 100,
+              "src_port": 1,
+              "transit_vlan": 2,
+              "state": "UP",
+              "dst_switch": "de:ad:be:ef:00:00:00:02",
+              "dst_vlan": 100,
+              "dst_port": 1,
+              "flowpath": {
+                "path": [
+                  {
+                    "seq_id": 0,
+                    "switch_id": "de:ad:be:ef:00:00:00:01",
+                    "port_no": 1,
+                    "segment_latency": 6
+                  },
+                  {
+                    "seq_id": 1,
+                    "switch_id": "de:ad:be:ef:00:00:00:02",
+                    "port_no": 1
+                  }
+                ],
+                "latency_ns": 6,
+                "timestamp": 1515531195294,
+                "clazz": "org.openkilda.messaging.info.event.PathInfoData"
+              }
+            },
+            "reverse": {
+              "last_updated": "2018-01-09T20:53:15.306Z",
+              "description": "flow-01",
+              "flowid": "flow-01",
+              "bandwidth": 10000,
+              "src_switch": "de:ad:be:ef:00:00:00:02",
+              "cookie": 2305843009213693953,
+              "meter_id": 1,
+              "src_vlan": 100,
+              "src_port": 1,
+              "transit_vlan": 3,
+              "state": "UP",
+              "dst_switch": "de:ad:be:ef:00:00:00:01",
+              "dst_vlan": 100,
+              "dst_port": 1,
+              "flowpath": {
+                "path": [
+                  {
+                    "seq_id": 0,
+                    "switch_id": "de:ad:be:ef:00:00:00:02",
+                    "port_no": 1,
+                    "segment_latency": 6
+                  },
+                  {
+                    "seq_id": 1,
+                    "switch_id": "de:ad:be:ef:00:00:00:01",
+                    "port_no": 1
+                  }
+                ],
+                "latency_ns": 6,
+                "timestamp": 1515531195294,
+                "clazz": "org.openkilda.messaging.info.event.PathInfoData"
+              }
+            }
+          }
+        ]
+      },
+      "clazz": "org.openkilda.messaging.ctrl.state.CrudBoltState"
+    },
+    "topology": "flow"
+  },
+  "clazz": "org.openkilda.messaging.ctrl.CtrlResponse"
+}

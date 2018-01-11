@@ -5,18 +5,20 @@
 <head>
 <meta charset="utf-8"></meta>
 <title>OPEN KILDA</title>
-	<!-- CSS Style Sheets -->
+<!-- CSS Style Sheets -->
 
-		<link th:href="@{css/bootstrap.min.css}" rel="stylesheet" type="text/css" />
-				<link th:href="@{css/roboto.css}" rel="stylesheet" type="text/css" />
-        <link th:href="@{css/font-awesome.min.css}" rel="stylesheet" type="text/css" />
-		<!-- Custom CSS Style Sheets -->
-		<link th:href="@{css/custom.css}" rel="stylesheet" type="text/css" />
-		<link th:href="@{images/kilda.png}" rel="shortcut icon" type="image/png"></link>
-		
+<link th:href="@{css/bootstrap.min.css}" rel="stylesheet"
+	type="text/css" />
+<link th:href="@{css/roboto.css}" rel="stylesheet" type="text/css" />
+<link th:href="@{css/font-awesome.min.css}" rel="stylesheet"
+	type="text/css" />
+<!-- Custom CSS Style Sheets -->
+<link th:href="@{css/custom.css}" rel="stylesheet" type="text/css" />
+<link th:href="@{images/kilda.png}" rel="shortcut icon" type="image/png"></link>
+
 </head>
 <body>
-	<div th:replace="fragments/header :: header" ></div>
+	<div th:replace="fragments/header :: header"></div>
 	<aside class="main-sidebar" id="sidebar-left">
 		<!-- sidebar: style can be found in sidebar.less -->
 		<section class="sidebar">
@@ -28,6 +30,12 @@
 				<li class="active"><a th:href="@{/topology}"> <i
 						class="icon-topology" aria-hidden="true"></i><span>Topology</span>
 				</a></li>
+
+				<li class=""><a th:href="@{/flows}"> <i
+						class="icon-flows" aria-hidden="true"></i><span class="home-flows">Flows</span>
+				</a></li>
+
+
 			</ul>
 		</section>
 		<!-- /.sidebar -->
@@ -38,18 +46,18 @@
 				<ul class="col-lg-12">
 					<li><a th:href="@{/home}">Home</a></li>
 					<li><i class="fa fa-angle-double-right"></i><a th:href="@{/topology}">Topology</a></li>
-					<li ><i class="fa fa-angle-double-right"  id="kilda-switch-name"></i></li>
+					<li><i class="fa fa-angle-double-right" id="kilda-switch-name"></i></li>
 				</ul>
 			</div>
 		</div>
-		
+
 		<div class="container-fluid">
-		
- 		<div id="wait1" class="bg_load">
-			<div class="loader"></div>
-		</div> 
-					
-			<div id="switchdetails_div">
+
+			<div id="wait1" class="bg_load">
+				<div class="loader"></div>
+			</div>
+
+			<div id="switchdetails_div" style="display:none;">
 				<h5 class='modal-title'>SWITCH DETAILS</h5>
 				<div class='form-wrapper'>
 					<div class='form-group row'>
@@ -70,8 +78,8 @@
 					</div>
 				</div>
 			</div>
-			
-			<div id="portdetails_div">
+
+			<div id="portdetails_div" style="display:none;">
 				<h5 class="modal-title">PORT DETAILS</h5>
 				<div id="port-details1">
 					<div class="row thead">
@@ -80,22 +88,22 @@
 						<div class="col-sm-3">Port Number</div>
 						<div class="col-sm-3">Status</div>
 					</div>
-					<div class="row rep_div" id="div_1" >
+					<div class="row rep_div" id="div_1">
 						<div class="col-sm-3 portdetails_div_interface"></div>
-						<div class="col-sm-3 portdetails_div_port_name" ></div>
+						<div class="col-sm-3 portdetails_div_port_name"></div>
 						<div class="col-sm-3 portdetails_div_port_number"></div>
 						<div class="col-sm-3 portdetails_div_status"></div>
 					</div>
 				</div>
 			</div>
-		
-		
+
+
+		</div>
 	</div>
-	</div>
-	
-	
-		<footer>
-		<p class="pull-right">&copy;2017 All rights reserved.</p>
+
+
+	<footer>
+		<p class="pull-right">&copy;2018 All rights reserved.</p>
 	</footer>
 	<div th:include="fragments/importResources:: commonImports"></div>
 	<script th:inline="javascript" src="javascript/switch.js"></script>

@@ -21,3 +21,5 @@
 /src/main/resources/javascript/jquery.min.js 
 /src/main/resources/javascript/jquery.toast.min.js
 /src/main/resources/javascript/jquery-3.2.1.min.js
+/src/main/resources/javascript/jquery.dataTables.min.js
+/src/main/resources/css/jquery.dataTables.min.css

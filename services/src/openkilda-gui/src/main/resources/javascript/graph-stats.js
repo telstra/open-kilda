@@ -97,6 +97,7 @@ $(document).ready(function() {
 * represnting time and metric on the axis.
 */
 function showStatsData(response) {	
+	
 	var data = response
 		var graphData = [];
 		if(data.length){
@@ -108,12 +109,15 @@ function showStatsData(response) {
 			 }) 
 		}
 		
+
+
 		var g = new Dygraph(document.getElementById("graphdiv"), graphData,
         {
-		    drawPoints: true,
-		    labels: ['Time', 'pen.isl.latency']
+		    drawPoints: true,		    
+		    labels: ['Time', $("select.selectbox_menulist").val()]
 		});
 }
+
 
 
 /**
@@ -237,7 +241,6 @@ function getGraphData() {
 			dataType: "jsonp",				
 			url : APP_CONTEXT + "/stats/"+convertedStartDate+"/"+convertedEndDate+"/"+selMetric+"?"+"switchid="+source,	
 			
-			//http://192.168.80.187:1010/openkilda/stats/2017-12-02-03:16:02/2017-12-05-09:29:38/pen.flow.packets?switchid=deadbeef00000002&switchid=deadbeef00000001
 			type : 'GET',
 			success : function(response) {	
 					
@@ -321,7 +324,6 @@ function callIntervalData(){
 
 			type : 'GET',
 			success : function(response) {	
-//					console.log(response)
 				showStatsData(response);
 			},
 			dataType : "json"
