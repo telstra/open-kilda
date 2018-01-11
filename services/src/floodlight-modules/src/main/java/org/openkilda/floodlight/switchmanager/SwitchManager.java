@@ -837,10 +837,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             dstMac = dpidToMac(sw);
         }
         Match.Builder mb = sw.getOFFactory().buildMatch();
-        mb.setExact(MatchField.ETH_DST, dstMac).setExact(MatchField.ETH_TYPE, EthType.IPv4)
-                .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
-                .setExact(MatchField.UDP_DST, TransportPort.of(VERIFICATION_PACKET_UDP_PORT))
-                .setExact(MatchField.UDP_SRC, TransportPort.of(VERIFICATION_PACKET_UDP_PORT));
+        mb.setExact(MatchField.ETH_DST, dstMac);
         return mb.build();
     }
 
