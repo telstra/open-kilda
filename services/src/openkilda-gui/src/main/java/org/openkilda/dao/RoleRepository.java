@@ -9,13 +9,12 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface RoleRepository extends GenericRepository<Role, Long> {
 
-	/**
-	 * Find by user role id.
-	 *
-	 * @param userRoleId
-	 *            the user role id
-	 * @return the role
-	 */
-	Role findByUserRoleId(Long userRoleId);
+    /**
+     * Find by user role id.
+     *
+     * @param userRoleId the user role id
+     * @return the role
+     */
+    Role findByUserRoleId(Long userRoleId);
 
 }

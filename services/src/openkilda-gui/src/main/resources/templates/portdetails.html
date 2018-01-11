@@ -40,6 +40,11 @@
 				<li class="active"><a th:href="@{/topology}"> <i
 						class="icon-topology" aria-hidden="true"></i> <span>Topology</span>
 				</a></li>
+
+				<li class=""><a th:href="@{/flows}"> <i
+						class="icon-flows" aria-hidden="true"></i><span class="home-flows">Flows</span>
+				</a></li>
+
 			</ul>
 		</section>
 		<!-- /.sidebar -->
@@ -50,8 +55,8 @@
 				<ul class="col-lg-12">
 					<li><a th:href="@{/home}">Home</a></li>
 					<li><i class="fa fa-angle-double-right"></i><a th:href="@{/topology}">Topology</a></li>
-					<li ><i class="fa fa-angle-double-right" id="kilda-switch-name"></i></li>
-					<li ><i class="fa fa-angle-double-right" id="kilda-port-name"></i></li>
+					<li><i class="fa fa-angle-double-right" id="kilda-switch-name"></i></li>
+					<li><i class="fa fa-angle-double-right" id="kilda-port-name"></i></li>
 				</ul>
 			</div>
 		</div>
@@ -61,7 +66,7 @@
 
 			<div id="wait1" class="bg_load">
 				<div class="loader"></div>
-			</div> 
+			</div>
 
 			<div id="switchdetails_div">
 				<h5 class='modal-title'>PORT DETAILS</h5>
@@ -87,7 +92,7 @@
 
 
 
-			<div class="row graph_div" style="display:none">
+			<div class="row graph_div" style="display: none">
 				<div class="col-xs-12">
 					<h5 class='modal-title'>GRAPH</h5>
 					<div id="stats_div" class="topology-graph">
@@ -103,7 +108,8 @@
 								<fieldset class="form-group">
 									<label class="col-xs-4 text-label">From:</label>
 									<div class="col-xs-8">
-										<input type="text" id="datetimepicker7" value="D, l, M, F, Y-m-d H:i:s" placeholder="From"
+										<input type="text" id="datetimepicker7"
+											value="D, l, M, F, Y-m-d H:i:s" placeholder="From"
 											class="form-control"></input>
 									</div>
 								</fieldset>
@@ -112,11 +118,12 @@
 								<fieldset class="form-group">
 									<label class="col-xs-4 text-label">To:</label>
 									<div class="col-xs-8">
-										<input type="text" id="datetimepicker8" value="D, l, M, F, Y-m-d H:i:s" placeholder="To"
+										<input type="text" id="datetimepicker8"
+											value="D, l, M, F, Y-m-d H:i:s" placeholder="To"
 											class="form-control"></input>
 									</div>
 								</fieldset>
-								
+
 								<fieldset id="DownsampleID" class="form-group">
 									<label class="col-xs-4 text-label">Downsample:</label>
 									<div class="col-xs-8">
@@ -147,8 +154,10 @@
 								<fieldset class="form-group">
 									<label class="col-xs-4 text-label">Autoreload(Sec):</label>
 									<div class="col-xs-8">
-										<input type="checkbox" id="check" onclick="autoreload()" style="margin-top: 12px;" />
-										<input type="text" id="autoreload" name="autoloadInput" class="form-control" style="display: none; width: calc(100% - 20px); float: right;" />
+										<input type="checkbox" id="check" onclick="autoreload()"
+											style="margin-top: 12px;" /> <input type="text"
+											id="autoreload" name="autoloadInput" class="form-control"
+											style="display: none; width: calc(100% - 20px); float: right;" />
 									</div>
 								</fieldset>
 
@@ -171,7 +180,7 @@
 
 
 	<footer>
-		<p class="pull-right">&copy;2017 All rights reserved.</p>
+		<p class="pull-right">&copy;2018 All rights reserved.</p>
 	</footer>
 
 	<div th:include="fragments/importResources:: commonImports"></div>

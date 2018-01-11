@@ -98,7 +98,7 @@ function showStatsData(response) {
 		var g = new Dygraph(document.getElementById("graphdiv"), graphData,
         {
 		    drawPoints: true,
-		    labels: ['Time', 'pen.isl.latency']
+		    labels: ['Time', $("select.selectbox_menulist").val()]
 		});
 }
 
@@ -267,7 +267,6 @@ function callIntervalData(){
 
 			type : 'GET',
 			success : function(response) {	
-					console.log(response)
 				showStatsData(response);
 			},
 			dataType : "json"
