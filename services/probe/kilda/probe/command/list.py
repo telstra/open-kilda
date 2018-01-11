@@ -27,6 +27,17 @@ from prettytable import PrettyTable
 LOG = logging.getLogger(__name__)
 
 
+def print_table(records):
+    table = PrettyTable(['Topology', 'Component', 'Task ID'])
+    for record in records:
+        data = json.loads(record.value)
+        payload = data['payload']
+        LOG.debug(pprint.pformat(data))
+        table.add_row(
+            [payload['topology'], payload['component'], payload['task_id']])
+    print(table)
+
+
 @click.command(name='list')
 @click.pass_obj
 def list_command(ctx):
@@ -36,11 +47,4 @@ def list_command(ctx):
     with receive_with_context_async(ctx) as records:
         send_with_context(ctx, message.serialize())
 
-    table = PrettyTable(['Topology', 'Component', 'Task ID'])
-    for record in records:
-        data = json.loads(record.value)
-        payload = data['payload']
-        LOG.debug(pprint.pformat(data))
-        table.add_row(
-            [payload['topology'], payload['component'], payload['task_id']])
-    print(table)
+    print_table(records)

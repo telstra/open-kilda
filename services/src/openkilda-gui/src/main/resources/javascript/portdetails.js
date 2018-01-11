@@ -28,8 +28,6 @@ $(document).ready(
  * the switch response json object and display on the html page*/
 function showSwitchData(obj) {
 	$(".graph_div").show();
-
-	console.log(obj);
 	$(".port_details_div_status").html(obj.status);
 	$(".port_details_div_name").html(obj.port_name);
 	$(".switchdetails_div_number").html(obj.port_number);
@@ -44,7 +42,7 @@ function getMetric() {
 	var obj = JSON.parse(linkData)
 	
 	$.ajax({
-		url : APP_CONTEXT + "/switch/metrics",
+		url : APP_CONTEXT + "/stats/metrics",
 		type : 'GET',
 		success : function(response) {
 			var metricList=response;

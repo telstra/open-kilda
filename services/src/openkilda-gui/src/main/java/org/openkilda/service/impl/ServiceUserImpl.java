@@ -24,70 +24,68 @@ import org.springframework.stereotype.Service;
  */
 
 @Service(value = "serviceUser")
-public class ServiceUserImpl extends ServiceBase implements UserDetailsService,
-		ServiceUser {
+public class ServiceUserImpl extends ServiceBase implements UserDetailsService, ServiceUser {
 
-	/** The Constant LOG. */
-	private static final Logger LOG = LoggerFactory
-			.getLogger(ServiceUserImpl.class);
+    /** The Constant LOG. */
+    private static final Logger LOG = LoggerFactory.getLogger(ServiceUserImpl.class);
 
-	/** The user repository. */
-	@Autowired
-	UserRepository userRepository;
+    /** The user repository. */
+    @Autowired
+    UserRepository userRepository;
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see com.telstra.service.ServiceUser#addNewUser(com.telstra.entity.User)
-	 */
-	@Override
-	public User addNewUser(User user) {
-		// TODO Auto-generated method stub
-		return null;
-	}
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.telstra.service.ServiceUser#addNewUser(com.telstra.entity.User)
+     */
+    @Override
+    public User addNewUser(User user) {
+        // TODO Auto-generated method stub
+        return null;
+    }
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see com.telstra.service.ServiceUser#getAllUsers(boolean)
-	 */
-	@Override
-	public List<User> getAllUsers(boolean activeFlag) {
-		// TODO Auto-generated method stub
-		return null;
-	}
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.telstra.service.ServiceUser#getAllUsers(boolean)
+     */
+    @Override
+    public List<User> getAllUsers(boolean activeFlag) {
+        // TODO Auto-generated method stub
+        return null;
+    }
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see com.telstra.service.ServiceUser#updateUser(com.telstra.entity.User)
-	 */
-	@Override
-	public User updateUser(User user) {
-		// TODO Auto-generated method stub
-		return null;
-	}
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.telstra.service.ServiceUser#updateUser(com.telstra.entity.User)
+     */
+    @Override
+    public User updateUser(User user) {
+        // TODO Auto-generated method stub
+        return null;
+    }
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see org.springframework.security.core.userdetails.UserDetailsService#
-	 * loadUserByUsername(java. lang.String)
-	 */
-	@Override
-	public UserDetails loadUserByUsername(String username)
-			throws UsernameNotFoundException {
-		String password = "";
-		final User user = userRepository.findByUsername(username);
-		// TODO: keeping empty authorities as of now
-		Set<GrantedAuthority> authorities = new HashSet<GrantedAuthority>(0);
-		if (user == null) {
-			throw new UsernameNotFoundException(username);
-		} else {
-			password = user.getPassword();
-		}
-		return new org.springframework.security.core.userdetails.User(username,
-				password, authorities);
-	}
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.springframework.security.core.userdetails.UserDetailsService#
+     * loadUserByUsername(java. lang.String)
+     */
+    @Override
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        LOG.info("Inside loadUserByUsername ");
+        String password = "";
+        final User user = userRepository.findByUsername(username);
+        // TODO: keeping empty authorities as of now
+        Set<GrantedAuthority> authorities = new HashSet<GrantedAuthority>(0);
+        if (user == null) {
+            throw new UsernameNotFoundException(username);
+        } else {
+            password = user.getPassword();
+        }
+        return new org.springframework.security.core.userdetails.User(username, password,
+                authorities);
+    }
 
 }

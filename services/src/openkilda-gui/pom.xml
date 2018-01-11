@@ -12,6 +12,7 @@
 	<artifactId>openkilda-gui</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>OpenKilda-GUI</name>
+	
 	<properties>
 		<mdep.analyze.skip>false</mdep.analyze.skip>
 		<maven-shade-plugin.version>2.3</maven-shade-plugin.version>
@@ -28,6 +29,13 @@
 		<checkstyle.plugin.version>2.17</checkstyle.plugin.version>
 		<org.codehaus.version>1.3.7</org.codehaus.version>
 		<javax.ws.rs.version>2.0</javax.ws.rs.version>
+
+		<!-- Unit Test -->
+		<mockito.version>2.0.2-beta</mockito.version>
+		<junit5.version>5.0.0-M4</junit5.version>
+		<maven.jacoco.plugin.version>0.7.9</maven.jacoco.plugin.version>
+
+
 	</properties>
 	<dependencies>
 		<!-- https://mvnrepository.com/artifact/org.apache.httpcomponents/httpclient -->
@@ -104,6 +112,12 @@
 			<scope>test</scope>
 		</dependency>
 		<dependency>
+			<groupId>mysql</groupId>
+			<artifactId>mysql-connector-java</artifactId>
+			<version>${mysql.version}</version>
+			<scope>runtime</scope>
+		</dependency>
+		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>
 			<artifactId>jackson-core</artifactId>
 		</dependency>
@@ -132,13 +146,34 @@
 			<version>1.3.2</version>
 		</dependency>
 
+		<!-- Unit test -->
 		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
+			<version>4.10</version>
 			<scope>test</scope>
 		</dependency>
 
+		<dependency>
+			<groupId>org.mockito</groupId>
+			<artifactId>mockito-all</artifactId>
+			<version>${mockito.version}</version>
+			<scope>test</scope>
+		</dependency>
 
+		<dependency>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter-api</artifactId>
+			<version>${junit5.version}</version>
+			<scope>test</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter-engine</artifactId>
+			<version>${junit5.version}</version>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
 	<build>
 		<resources>
@@ -202,6 +237,44 @@
 						<skipTests>false</skipTests>
 					</configuration>
 				</plugin>
+
+				<plugin>
+					<groupId>org.jacoco</groupId>
+					<artifactId>jacoco-maven-plugin</artifactId>
+					<version>${maven.jacoco.plugin.version}</version>
+					<executions>
+						<execution>
+							<id>pre-unit-test</id>
+							<goals>
+								<goal>prepare-agent</goal>
+							</goals>
+							<configuration>
+								<destFile>${project.build.directory}/htmlreports/jacoco-ut.exec</destFile>
+							</configuration>
+						</execution>
+						<execution>
+							<id>post-unit-test</id>
+							<phase>test</phase>
+							<goals>
+								<goal>report</goal>
+							</goals>
+							<configuration>
+								<title>Worker code coverage report</title>
+								<dataFile>${project.build.directory}/htmlreports/jacoco-ut.exec</dataFile>
+								<outputDirectory>${project.build.directory}/htmlreports</outputDirectory>
+							</configuration>
+						</execution>
+					</executions>
+					<configuration>
+						<includes>
+							<include>org/openkilda/**/*</include>
+						</includes>
+						<excludes>
+							<exclude>**/*Exception*</exclude>
+						</excludes>
+					</configuration>
+				</plugin>
+
 				<plugin>
 					<groupId>org.springframework.boot</groupId>
 					<artifactId>spring-boot-maven-plugin</artifactId>
@@ -277,10 +350,18 @@
 			<plugin>
 				<artifactId>maven-surefire-plugin</artifactId>
 			</plugin>
+
+
+			<plugin>
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+			</plugin>
+
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
+
 			<plugin>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<configuration>

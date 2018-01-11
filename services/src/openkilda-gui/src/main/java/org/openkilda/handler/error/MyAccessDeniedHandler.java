@@ -21,34 +21,29 @@ import org.springframework.stereotype.Component;
 @Component
 public class MyAccessDeniedHandler implements AccessDeniedHandler {
 
-	/** The logger. */
-	private static Logger logger = LoggerFactory
-			.getLogger(MyAccessDeniedHandler.class);
+    /** The logger. */
+    private static Logger logger = LoggerFactory.getLogger(MyAccessDeniedHandler.class);
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see
-	 * org.springframework.security.web.access.AccessDeniedHandler#handle(javax
-	 * .servlet.http.HttpServletRequest, javax.servlet.http.HttpServletResponse,
-	 * org.springframework.security.access.AccessDeniedException)
-	 */
-	@Override
-	public void handle(HttpServletRequest httpServletRequest,
-			HttpServletResponse httpServletResponse, AccessDeniedException e)
-			throws IOException, ServletException {
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.springframework.security.web.access.AccessDeniedHandler#handle(javax
+     * .servlet.http.HttpServletRequest, javax.servlet.http.HttpServletResponse,
+     * org.springframework.security.access.AccessDeniedException)
+     */
+    @Override
+    public void handle(HttpServletRequest httpServletRequest,
+            HttpServletResponse httpServletResponse, AccessDeniedException e) throws IOException,
+            ServletException {
 
-		Authentication auth = SecurityContextHolder.getContext()
-				.getAuthentication();
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 
-		if (auth != null) {
-			logger.info("User '" + auth.getName()
-					+ "' attempted to access the protected URL: "
-					+ httpServletRequest.getRequestURI());
-		}
+        if (auth != null) {
+            logger.info("User '" + auth.getName() + "' attempted to access the protected URL: "
+                    + httpServletRequest.getRequestURI());
+        }
 
-		httpServletResponse.sendRedirect(httpServletRequest.getContextPath()
-				+ "/403");
+        httpServletResponse.sendRedirect(httpServletRequest.getContextPath() + "/403");
 
-	}
+    }
 }

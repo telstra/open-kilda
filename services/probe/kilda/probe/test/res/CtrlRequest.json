@@ -1,0 +1,11 @@
+{
+  "payload": {
+    "clazz": "org.openkilda.messaging.ctrl.RequestData",
+    "action": "dump"
+  },
+  "destination": "WFM_CTRL",
+  "timestamp": 1515531276353,
+  "correlation_id": "probe-nm-notebook-1515531276351",
+  "route": "*",
+  "clazz": "org.openkilda.messaging.ctrl.CtrlRequest"
+}
