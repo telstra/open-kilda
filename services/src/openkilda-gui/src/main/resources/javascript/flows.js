@@ -8,7 +8,8 @@ $(document).ready(function(){
 		type : 'GET',
 		success : function(response) {
 			
-			$("#wait1").css("display", "none");						
+			$("#wait1").css("display", "none");
+			$('body').css('pointer-events','all'); 
 			showflowData(response);  
 		},
 		
@@ -30,6 +31,7 @@ function showflowData(response){
 		    text: 'No Data Avaliable',
 		    showHideTransition: 'fade',
 		    position: 'top-right',
+			hideAfter : 6000,
 		    icon: 'warning'
 		})
 	}
@@ -96,6 +98,8 @@ function showflowData(response){
 	         }
 	     } );
 	 } );
+	 
+	 $('#flowTable').show();
 }
 
 

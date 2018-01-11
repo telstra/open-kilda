@@ -15,9 +15,8 @@ $(document).ready(function(){
 		type : 'GET',
 		success : function(response) {
 			
-			$("#wait1").css("display", "none");		
-			
-					
+			$("#wait1").css("display", "none");
+			$('body').css('pointer-events','all');
 			showflowData(response);  
 		},
 		dataType : "json"
@@ -49,6 +48,7 @@ function showflowData(response) {
 		    text: 'No Data avalia',
 		    showHideTransition: 'fade',
 		    position: 'top-right',
+		    hideAfter : 6000,
 		    icon: 'warning'
 		})
 		return false;
@@ -118,6 +118,8 @@ function showflowData(response) {
 	         }
 	     } );
 	 } );
+	 
+	 $('#flowTable').show();
 
 }
 
