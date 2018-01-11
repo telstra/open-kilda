@@ -97,7 +97,7 @@ public class PathVerificationPacketOutTest extends FloodlightTestCase {
 
         // Generate the VerificationPacket
         OFPacketOut packet = pvs.generateVerificationPacket(sw1, OFPort.of(1));
-        System.out.println(Hex.encodeHexString(packet.getData()));
+        System.out.println("packet: " + Hex.encodeHexString(packet.getData()));
 
         // Source MAC will always be that of sw1 for both Unicast and Broadcast
         byte[] srcMac = Arrays.copyOfRange(packet.getData(), 6, 12);
