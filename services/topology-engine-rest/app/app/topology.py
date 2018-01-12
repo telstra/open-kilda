@@ -13,7 +13,7 @@
 #   limitations under the License.
 #
 
-from flask import Flask, flash, redirect, render_template, request, session, abort, url_for, Response
+from flask import Flask, flash, redirect, render_template, request, session, abort, url_for, Response, jsonify
 from flask_login import LoginManager, UserMixin, login_required, login_user, logout_user, current_user
 from py2neo import Graph
 
@@ -183,6 +183,20 @@ def format_isl(link):
         'available_bandwidth': link['available_bandwidth']
     }
 
+def format_switch(switch):
+    """
+    :param switch: A valid Switch returned from the db
+    :return: A dictionary in the form of org.openkilda.messaging.info.event.SwitchInfoData
+    """
+    return {
+        'clazz': 'org.openkilda.messaging.info.event.SwitchInfoData',
+        'switch_id': switch['name'],
+        'address': switch['address'],
+        'hostname': switch['hostname'],
+        'state': 'ACTIVATED',
+        'description': switch['description']
+    }
+
 
 @application.route('/api/v1/topology/links')
 @login_required
@@ -200,7 +214,28 @@ def api_v1_topology_links():
 
         application.logger.info('links found %d', len(result))
 
-        return str(json.dumps(links, default=lambda o: o.__dict__, sort_keys=True))
+        return jsonify(links)
+    except Exception as e:
+        return "error: {}".format(str(e))
+
+
+@application.route('/api/v1/topology/switches')
+@login_required
+def api_v1_topology_switches():
+    """
+    :return: all switches in the database
+    """
+    try:
+        query = "MATCH (n:switch) RETURN n"
+        result = graph.data(query)
+
+        switches = []
+        for sw in result:
+            switches.append(format_switch(sw['n']))
+
+        application.logger.info('switches found %d', len(result))
+
+        return jsonify(switches)
     except Exception as e:
         return "error: {}".format(str(e))
 
