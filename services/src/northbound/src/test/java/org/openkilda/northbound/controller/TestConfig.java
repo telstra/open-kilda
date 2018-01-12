@@ -15,18 +15,22 @@
 
 package org.openkilda.northbound.controller;
 
+import static org.mockito.Mockito.mock;
+
 import org.openkilda.northbound.config.SecurityConfig;
 import org.openkilda.northbound.config.WebConfig;
 import org.openkilda.northbound.messaging.HealthCheckMessageConsumer;
 import org.openkilda.northbound.messaging.MessageConsumer;
 import org.openkilda.northbound.messaging.MessageProducer;
 
+import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.Map;
 
@@ -38,7 +42,7 @@ import java.util.Map;
 @Import({WebConfig.class, SecurityConfig.class})
 @ComponentScan({
         "org.openkilda.northbound.controller",
-        "org.openkilda.northbound.model",
+        "org.openkilda.northbound.converter",
         "org.openkilda.northbound.service",
         "org.openkilda.northbound.utils"})
 @PropertySource({"classpath:northbound.properties"})
@@ -56,6 +60,11 @@ public class TestConfig {
     @Bean
     public HealthCheckMessageConsumer healthCheckMessageConsumer() {
         return new TestHealthCheckMessageMock();
+    }
+
+    @Bean
+    public RestTemplate restTemplate() {
+        return mock(RestTemplate.class);
     }
 
     private class TestHealthCheckMessageMock implements HealthCheckMessageConsumer {
