@@ -16,16 +16,19 @@
 package org.openkilda.flow;
 
 import static java.util.Base64.getEncoder;
+import static org.junit.Assert.assertEquals;
 import static org.openkilda.DefaultParameters.northboundEndpoint;
 import static org.openkilda.DefaultParameters.pathComputer;
 import static org.openkilda.DefaultParameters.topologyEndpoint;
 import static org.openkilda.DefaultParameters.topologyPassword;
 import static org.openkilda.DefaultParameters.topologyUsername;
-import static org.junit.Assert.assertEquals;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.glassfish.jersey.client.ClientConfig;
+import org.glassfish.jersey.jackson.JacksonFeature;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.error.MessageError;
-import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.HealthCheck;
@@ -33,11 +36,6 @@ import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
-
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.glassfish.jersey.client.ClientConfig;
-import org.glassfish.jersey.jackson.JacksonFeature;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -372,34 +370,6 @@ public class FlowUtils {
         System.out.println(String.format("====> Topology-Engine Dump Flows = %d", flows.size()));
 
         return flows;
-    }
-
-    /**
-     * Returns links through Topology-Engine-Rest service.
-     *
-     * @return The JSON document of all flows
-     */
-    public static List<IslInfoData> dumpLinks() throws Exception {
-        System.out.println("\n==> Topology-Engine Dump Links");
-
-        long current = System.currentTimeMillis();
-        Client client = ClientBuilder.newClient(new ClientConfig());
-
-        Response response = client
-                .target(topologyEndpoint)
-                .path("/api/v1/topology/links")
-                .request()
-                .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
-                .get();
-
-        System.out.println(String.format("===> Response = %s", response.toString()));
-        System.out.println(String.format("===> Topology-Engine Dump Links Time: %,.3f", getTimeDuration(current)));
-
-        List<IslInfoData> links = new ObjectMapper().readValue(
-                response.readEntity(String.class), new TypeReference<List<IslInfoData>>() {});
-        System.out.println(String.format("====> Data = %s", links));
-
-        return links;
     }
 
     /**

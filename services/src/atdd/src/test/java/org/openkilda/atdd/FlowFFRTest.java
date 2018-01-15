@@ -23,11 +23,13 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import org.openkilda.LinksUtils;
 import org.openkilda.flow.FlowUtils;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.topo.TestUtils;
 import org.openkilda.topo.TopologyHelp;
 
 import cucumber.api.java.en.Given;
@@ -150,7 +152,7 @@ public class FlowFFRTest {
     @When("^an isl switch (.*) port (\\d+) is failed$")
     public void anIslSwitchPortFails(String switchId, int portNo) throws Throwable {
         String switchName = getSwitchName(switchId);
-        assertTrue(islFail(switchName, String.valueOf(portNo)));
+        assertTrue(LinksUtils.islFail(switchName, String.valueOf(portNo)));
         TimeUnit.SECONDS.sleep(DEFAULT_DISCOVERY_INTERVAL);
     }
 
@@ -256,25 +258,6 @@ public class FlowFFRTest {
 
         System.out.println(String.format("===> Response = %s", result.toString()));
         System.out.println(String.format("===> Connect Switch Time: %,.3f", getTimeDuration(current)));
-
-        return result.getStatus() == 200;
-    }
-
-    private boolean islFail(String switchName, String portNo) throws Throwable {
-        System.out.println("\n==> Set ISL Discovery Failed");
-
-        long current = System.currentTimeMillis();
-        Client client = ClientBuilder.newClient(new ClientConfig());
-        Response result = client
-                .target(trafficEndpoint)
-                .path("/cutlink")
-                .queryParam("switch", switchName)
-                .queryParam("port", portNo)
-                .request()
-                .post(Entity.json(""));
-
-        System.out.println(String.format("===> Response = %s", result.toString()));
-        System.out.println(String.format("===> Set ISL Discovery Failed Time: %,.3f", getTimeDuration(current)));
 
         return result.getStatus() == 200;
     }

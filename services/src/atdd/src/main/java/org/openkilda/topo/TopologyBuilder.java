@@ -177,7 +177,7 @@ public class TopologyBuilder {
         return t;
     }
 
-    private static final String intToSwitchId(int i){
+    public static String intToSwitchId(int i){
         byte[] ib = Ints.toByteArray(i);
         return String.format("DE:AD:BE:EF:%02x:%02x:%02x:%02x",ib[0],ib[1],ib[2],ib[3]);
     }
