@@ -32,16 +32,16 @@ GET_SWITCH_PORTS=${switch.base.url}/switch/all/port-desc/json
 #LINK URL
 link.base.url={{ topology_engine_endpoint }}:{{ topology_engine_rest_port }}/api/v1
 GET_LINKS=${link.base.url}/topology/links
-#FLOW URL TOPOLOGY
+#FLOW TOPOLOGY URL
 GET_TOPOLOGY_FLOWS=${link.base.url}/topology/flows
 
 #FLOW URL
 flow.base.url={{ northbound_endpoint }}:{{ northbound_rest_port }}/api/v1
-GET_FLOW=${flow.base.url}/flows/
-GET_FLOW_STATUS=${GET_FLOW}status/
+GET_FLOW=${flow.base.url}/flows
+GET_FLOW_STATUS=${GET_FLOW}/status/
 
-#PATH URL
-GET_PATH_FLOW = ${flow.base.url}/flows/path
+#FLOW PATH URL
+GET_PATH_FLOW = ${GET_FLOW}/flows/path
 
 #OPEN TSDB URL
 opentsdb.base.url={{ opentsdb_hosts }}
