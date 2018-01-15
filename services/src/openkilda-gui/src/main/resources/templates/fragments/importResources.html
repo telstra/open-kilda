@@ -11,11 +11,9 @@
 		<script th:inline="javascript" src="javascript/jquery-3.2.1.min.js" th:src="@{javascript/jquery-3.2.1.min.js}"></script>
 		<!-- bootstrap js -->
 		<script th:inline="javascript" src="javascript/bootstrap.min.js" th:src="@{javascript/bootstrap.min.js}"></script>
-		<!-- <script th:inline="javascript" th:src="@{https://use.fontawesome.com/17006a46a0.js}"></script> -->
-		
-		
-		<!-- <script th:inline="javascript" th:src="@{https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css}"></script> -->
+		<script th:inline="javascript" src="javascript/jquery.toast.min.js" th:src="@{javascript/jquery.toast.min.js}"></script>		
 
+<script th:inline="javascript" src="javascript/common.js" th:src="@{javascript/common.js}"></script>	
 
 	</th:block>
 
@@ -26,6 +24,10 @@
 		<!-- 			custom graph -->
 		<script th:inline="javascript" src="javascript/graph.js" th:src="@{javascript/graph.js}"></script>
 			
+	</th:block>
+	
+	<th:block th:fragment="dataTables">
+	
 	</th:block>
 </body>
 </html>
