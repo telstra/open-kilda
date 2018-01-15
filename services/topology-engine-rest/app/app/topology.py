@@ -179,7 +179,7 @@ def format_isl(link):
                   'seq_id': 1,
                   'segment_latency': 0}],
         'speed': link['speed'],
-        'state': 'DISCOVERED',
+        'state': 'DISCOVERED' if link['status'] == 'active' else 'FAILED',
         'available_bandwidth': link['available_bandwidth']
     }
 
@@ -193,7 +193,7 @@ def format_switch(switch):
         'switch_id': switch['name'],
         'address': switch['address'],
         'hostname': switch['hostname'],
-        'state': 'ACTIVATED',
+        'state': 'ACTIVATED' if switch['state'] == 'active' else 'DEACTIVATED',
         'description': switch['description']
     }
 
