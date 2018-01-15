@@ -22,19 +22,19 @@
 		<section class="sidebar">
 			<!-- sidebar menu: : style can be found in sidebar.less -->
 			<ul id="menubar-tbn" class="sidebar-menu tree" data-widget="tree">
-				<li class="tbn active"><a th:href="@{/home}"> <i
+				<li class="" id="home-menu-id"><a th:href="@{/home}"> <i
 						class="fa fa-home" aria-hidden="true"></i> <span>Home</span>
 				</a></li>
 
-					<li class="tbn" th:if="${session.sessionObject.role=='ROLE_ADMIN'}"><a th:href="@{/topology}"> <i
-							class="icon-topology" aria-hidden="true"></i> <span>Topology</span>
+					<li class="" id="topology-menu-id" th:if="${session.sessionObject.role=='ROLE_ADMIN'}"><a th:href="@{/topology}"> <i
+							class="icon-topology" aria-hidden="true"></i><span class="home-Topology">Topology</span>
 					</a></li>
 
-					<li class="tbn" th:if="${session.sessionObject.role=='ROLE_ADMIN'}"><a th:href="@{/flows}"> <i
+					<li class="" id="flows-menu-id" th:if="${session.sessionObject.role=='ROLE_ADMIN'}"><a th:href="@{/flows}"> <i
 							class="icon-flows" aria-hidden="true"></i><span class="home-flows">Flows</span>
 					</a></li>
 					
-					<li class="tbn" th:if="${session.sessionObject.role=='ROLE_ADMIN'}"><a th:href="@{/switch}"> <i
+					<li class="" id="switch-menu-id" th:if="${session.sessionObject.role=='ROLE_ADMIN'}"><a th:href="@{/switch}"> <i
 							class="icon-switch" aria-hidden="true"></i><span class="home-flows">Switch</span>
 					</a></li>
 			</ul>
