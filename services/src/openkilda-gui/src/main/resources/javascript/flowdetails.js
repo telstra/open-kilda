@@ -58,7 +58,7 @@ function showFlowData(obj) {
 
 function callFlowForwardPath(flow_id) {
 	$.ajax({
-		url : APP_CONTEXT + "/switch/links/path/" + flow_id,
+		url : APP_CONTEXT + "/flows/path/" + flow_id,
 		type : 'GET',
 		success : function(response) {
 
@@ -71,7 +71,7 @@ function callFlowForwardPath(flow_id) {
 
 function callFlowReversePath(flow_id) {
 	$.ajax({
-		url : APP_CONTEXT + "/switch/links/path/" + flow_id,
+		url : APP_CONTEXT + "/flows/path/" + flow_id,
 		type : 'GET',
 		success : function(response) {
 

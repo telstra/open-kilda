@@ -6,8 +6,11 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.openkilda.constants.IConstants;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -43,7 +46,8 @@ public class MyAccessDeniedHandler implements AccessDeniedHandler {
                     + httpServletRequest.getRequestURI());
         }
 
-        httpServletResponse.sendRedirect(httpServletRequest.getContextPath() + "/403");
+        httpServletResponse.sendRedirect(httpServletRequest.getContextPath()
+                + IConstants.View.ERROR_403);
 
     }
 }

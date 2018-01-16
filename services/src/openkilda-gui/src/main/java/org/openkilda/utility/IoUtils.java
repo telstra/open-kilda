@@ -32,15 +32,15 @@ public final class IoUtils {
      * @return data with all content present in the stream.
      * @throws IOException If an I/O error occurs
      */
-    public static String getData(final InputStream inputStream) throws IOException {
+    public static String toString(final InputStream inputStream) throws IOException {
         _log.debug("[getData] - Start");
         StringBuilder data = new StringBuilder();
-        String line = null;
-        BufferedReader rd = new BufferedReader(new InputStreamReader(inputStream));
-
-        while ((line = rd.readLine()) != null) {
-            if (line != null && !line.isEmpty()) {
-                data.append(line);
+        try(BufferedReader rd = new BufferedReader(new InputStreamReader(inputStream))) {
+            String line = null;
+            while ((line = rd.readLine()) != null) {
+                if (line != null && !line.isEmpty()) {
+                    data.append(line);
+                }
             }
         }
         _log.debug("[getData] Data: " + data);
@@ -73,7 +73,7 @@ public final class IoUtils {
      * @return the parameter
      */
     @SuppressWarnings("unchecked")
-    public <T> T getParameter(final Map<String, Object> parameters, String key,
+    public <T> T getParameter(final Map<String, Object> parameters, final String key,
             final Class<T> responseClass) {
         return (T) parameters.get(key);
     }

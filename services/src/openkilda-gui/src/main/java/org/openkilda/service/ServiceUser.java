@@ -1,39 +1,55 @@
 package org.openkilda.service;
 
-import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import org.openkilda.entity.User;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Service;
+
+import java.util.HashSet;
+import java.util.Set;
+
+import org.openkilda.dao.UserRepository;
+import org.openkilda.entity.User;
 
 /**
- * The Interface ServiceUser.
+ * The Class ServiceUserImpl.
  *
  * @author Gaurav Chugh
  */
-public interface ServiceUser extends UserDetailsService {
+@Service
+public class ServiceUser implements UserDetailsService {
 
-    /**
-     * Adding a new user.
-     *
-     * @param user is the new new {@link User} that has to be added
-     * @return the user
-     */
-    User addNewUser(User user);
+    /** The Constant LOG. */
+    private static final Logger LOGGER = LoggerFactory.getLogger(ServiceUser.class);
 
-    /**
-     * Gets the all users.
-     *
-     * @param activeFlag the active flag
-     * @return the all users
-     */
-    List<User> getAllUsers(boolean activeFlag);
+    /** The user repository. */
+    @Autowired
+    private UserRepository userRepository;
 
-    /**
-     * Update user.
+    /*
+     * (non-Javadoc)
      *
-     * @param user the user
-     * @return the user
+     * @see org.springframework.security.core.userdetails.UserDetailsService#
+     * loadUserByUsername(java. lang.String)
      */
-    User updateUser(User user);
+    @Override
+    public UserDetails loadUserByUsername(final String username) throws UsernameNotFoundException {
+        LOGGER.info("Inside loadUserByUsername ");
+        User user = userRepository.findByUsername(username);
+
+        // TODO: keeping empty authorities as of now
+        Set<GrantedAuthority> authorities = new HashSet<GrantedAuthority>(0);
+        if (user == null) {
+            throw new UsernameNotFoundException(username);
+        }
+
+        return new org.springframework.security.core.userdetails.User(username, user.getPassword(),
+                authorities);
+    }
 
 }

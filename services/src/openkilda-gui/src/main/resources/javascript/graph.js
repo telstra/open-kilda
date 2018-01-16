@@ -13,11 +13,10 @@
 
 var responseData = [];
 $.ajax({
-	url : APP_CONTEXT + "/switch",
+	url : APP_CONTEXT + "/switch/list",
 	type : 'GET',
 	success : function(response) {
 		responseData.push(response);
-		console.log(response);
 		getLink();
 	},
 	error : function(errResponse) {
@@ -44,7 +43,6 @@ function getLink() {
 				});
 			} else {
 				responseData.push(response);
-				console.log(response);
 
 			}
 			getFlowCount();
@@ -59,24 +57,10 @@ function getLink() {
 	});
 }
 
-/*	*//** function to retrieve flow details from flow api */
-/*
- * function getFlow() { $.ajax({ url : APP_CONTEXT + "/switch/flows", type :
- * 'GET', success : function(response) { var tempFlowData =
- * JSON.stringify(response); if(tempFlowData == undefined ||tempFlowData
- * ==""||tempFlowData==null||tempFlowData=='{}'){
- * responseData.push({'flows':[]}); }else{ responseData.push(response);
- * console.log(response);
- *  } init(responseData); $("#wait").css("display", "none");
- *  }, error : function(errResponse) {
- * 
- * responseData.push({'flows':[]}); init(responseData);
- *  }, dataType : "json" }); }
- */
 
 function getFlowCount() {
 	$.ajax({
-		url : APP_CONTEXT + "/switch/flowcount",
+		url : APP_CONTEXT + "/flows/count",
 		type : 'GET',
 		success : function(response) {
 			var tempFlowData = JSON.stringify(response);
@@ -87,8 +71,6 @@ function getFlowCount() {
 				});
 			} else {
 				responseData.push(response);
-				console.log(response);
-
 			}
 			
 			$("#wait").css("display", "none");
@@ -114,11 +96,9 @@ var threshold = 500;
 
 // When this function executes, the force layout calculations have started.
 function init(data) {
-
-	console.log(data)
    
-	if (data[0].switches.length == 0 && data[1].switchrelation.length == 0
-			&& data[2].length == 0) {
+	console.log(data);
+	if (data[0].length == 0 && data[1].length == 0 && data[2].length == 0) {
 		$.toast({
 			heading : 'Topology',
 			text : 'No Data Avaliable',
@@ -138,8 +118,8 @@ function init(data) {
 	 * The second array, called links below, identifies all the links between
 	 * the nodes.
 	 */
-	nodes = data[0].switches;
-	links = data[1].switchrelation;
+	nodes = data[0];
+	links = data[1];
 	var flows = data[2];
 	if (JSON.stringify(links) == '[]') {
 
@@ -319,10 +299,18 @@ function init(data) {
 
 		var element = $("#circle" + index)[0];
 		element.setAttribute("class", "nodeover");
+		 var rec = element.getBoundingClientRect();
+		//console.log(rec);
+		$('#topology-hover-txt').css('display','block');
+		$('#topology-hover-txt').css('top',rec.y+'px');
+		$('#topology-hover-txt').css('left',rec.x+'px');
+		
 
 		var element = document.getElementById(d.name);
+		element.innerHTML = '';
 		element.setAttribute("class", "show");
 	}).on("mouseout", function(d, index) {
+		$('#topology-hover-txt').css('display','none');
 		if (flagHover == false) {
 			flagHover = true;
 
@@ -471,21 +459,21 @@ $(function() {
 function showLinkDetails(d) {
 
 	localStorage.setItem("linkData", JSON.stringify(d));
-	url = 'isldetails';
+	url = 'switch/isl';
 	window.location = url;
 }
 
 function showFlowDetails(d) {
 
-	localStorage.setItem("flowDetailsData", JSON.stringify(d));
-	url = 'switchflows';
-	window.location = url+'#'+ d.source_switch+'#'+ d.target_switch;
+	//localStorage.setItem("flowDetailsData", JSON.stringify(d));
+	url = 'flows#'+d.source_switch+'|'+d.target_switch;
+	window.location = url;
 }
 
 /* function to open switchpage page */
 function showSwitchDetails(d) {
 
-	window.location = "switchport#" + d.name;
+	window.location = "switch/details#" + d.name;
 }
 
 /* function to show switch details on mouse hover event */
@@ -558,9 +546,5 @@ function dblclick(d) {
 	doubleClickTime = new Date();
 	d3.select(this).classed("fixed", d.fixed = false);
 }
-
-
-
-
 
 /* ]]> */

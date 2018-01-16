@@ -1,10 +1,10 @@
 package org.openkilda.integration.service;
 
 import org.apache.http.HttpResponse;
+import org.openkilda.constants.HttpError;
 import org.openkilda.exception.NoDataFoundException;
 import org.openkilda.helper.RestClientManager;
 import org.openkilda.utility.ApplicationProperties;
-import org.openkilda.utility.HttpError;
 import org.openkilda.utility.IoUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,7 +45,7 @@ public class StatsIntegrationService {
                     restClientManager.invoke(applicationProperties.getOpenTsdbQuery(),
                             HttpMethod.POST, requestBody, "", "");
             if (RestClientManager.isValidResponse(httpResponse)) {
-                responseEntity = IoUtils.getData(httpResponse.getEntity().getContent());
+                responseEntity = IoUtils.toString(httpResponse.getEntity().getContent());
             }
         } catch (Exception ex) {
             log.error("Inside getStats: Exception: " + ex.getMessage());

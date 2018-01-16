@@ -1,11 +1,6 @@
 package org.openkilda.security;
 
 
-import java.util.ArrayList;
-import java.util.List;
-
-import org.openkilda.service.impl.ServiceUserImpl;
-import org.openkilda.utility.Util;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,6 +13,12 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.web.access.AccessDeniedHandler;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.openkilda.service.ServiceUser;
+import org.openkilda.utility.StringUtil;
+
 /**
  * The Class SecurityConfig : used to configure security, authenticationManager and authProvider
  *
@@ -28,21 +29,21 @@ import org.springframework.security.web.access.AccessDeniedHandler;
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     @Autowired
-    ServiceUserImpl serviceUserImpl;
+    private ServiceUser serviceUser;
 
     @Autowired
     private AccessDeniedHandler accessDeniedHandler;
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see
      * org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter
      * #configure(org.springframework.security.config.annotation.web.builders.HttpSecurity)
      */
 
     @Override
-    protected void configure(HttpSecurity http) throws Exception {
+    protected void configure(final HttpSecurity http) throws Exception {
 
         http.csrf().disable().authorizeRequests()
                 .antMatchers("/login", "/authenticate", "/forgotpassword").permitAll().anyRequest()
@@ -60,18 +61,19 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     @Bean("authProvider")
     public DaoAuthenticationProvider authProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-        authProvider.setUserDetailsService(serviceUserImpl);
-        authProvider.setPasswordEncoder(Util.bCryptPasswordEncoder);
+        authProvider.setUserDetailsService(serviceUser);
+        authProvider.setPasswordEncoder(StringUtil.getEncoder());
         return authProvider;
     }
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see
      * org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter
      * #authenticationManager()
      */
+    @Override
     @Bean("authenticationManager")
     public ProviderManager authenticationManager() {
         List<AuthenticationProvider> authProviderList = new ArrayList<AuthenticationProvider>();
@@ -81,7 +83,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     }
 
     @Override
-    public void configure(WebSecurity web) throws Exception {
+    public void configure(final WebSecurity web) throws Exception {
         web.ignoring().antMatchers("/resources/**", "/fonts/**", "/css/**", "/javascript/**",
                 "/templates/**");
     }

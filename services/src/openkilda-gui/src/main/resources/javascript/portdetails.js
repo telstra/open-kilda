@@ -9,23 +9,20 @@
 $(document).ready(
 		function() {
 
-			var switchname = window.location.href.split("#")[1]
-
-			var tmp_anchor = '<a href="switchport#' + switchname + '">'
-					+ switchname + '</a>';
-
-			$("#kilda-switch-name").parent().append(tmp_anchor)
-
+			var switchname = window.location.href.split("#")[1]			
+			var tmp_anchor = '<a href="/openkilda/topology">'+ 'Topology' + '</a>';
+			$("#topologyId").parent().append(tmp_anchor);			
+			var tmp_anchor_switch = '<a href="details#' + switchname + '">'+ switchname + '</a>';
+			$("#kilda-switch-name").parent().append(tmp_anchor_switch)			
 			var portData = localStorage.getItem("portDetails");
-
 			var obj = JSON.parse(portData)
-
+			
 			$("#kilda-port-name").parent().append(obj.port_name)
 			$("#wait1").css("display", "none");
 			$('body').css('pointer-events', 'all');
+								
 			showSwitchData(obj);
 			getMetric();
-
 		})
 
 /**

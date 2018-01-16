@@ -1,32 +1,34 @@
 package org.openkilda.integration.service;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import org.apache.http.HttpResponse;
-import org.openkilda.helper.RestClientManager;
-import org.openkilda.integration.model.response.FlowPath;
-import org.openkilda.integration.model.response.FlowStatusResponse;
-import org.openkilda.integration.model.response.PathLinkResponse;
-import org.openkilda.integration.model.response.TopologyFlowsResponse;
-import org.openkilda.utility.ApplicationProperties;
-import org.openkilda.utility.Util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
+import org.apache.http.HttpResponse;
+import org.openkilda.helper.RestClientManager;
+import org.openkilda.integration.converter.FlowConverter;
+import org.openkilda.integration.model.response.Flow;
+import org.openkilda.integration.model.response.FlowStatus;
+import org.openkilda.integration.model.response.PathLinkResponse;
+import org.openkilda.model.FlowInfo;
+import org.openkilda.utility.ApplicationProperties;
+import org.openkilda.utility.Util;
+
 /**
  * The Class FlowsIntegrationService.
- * 
+ *
  * @author Gaurav Chugh
  */
 @Service
 public class FlowsIntegrationService {
 
     /** The Constant _log. */
-    private static final Logger log = LoggerFactory.getLogger(FlowsIntegrationService.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(FlowsIntegrationService.class);
 
     /** The rest client manager. */
     @Autowired
@@ -46,21 +48,19 @@ public class FlowsIntegrationService {
      *
      * @return the flows
      */
-    public List<FlowPath> getFlows() {
-        List<FlowPath> flowPathList = new ArrayList<FlowPath>();
+    public List<FlowInfo> getFlows() {
         try {
-            HttpResponse response =
-                    restClientManager.invoke(applicationProperties.getFlows(), HttpMethod.GET, "",
-                            "", util.kildaAuthHeader());
+            HttpResponse response = restClientManager.invoke(applicationProperties.getFlows(),
+                    HttpMethod.GET, "", "", util.kildaAuthHeader());
             if (RestClientManager.isValidResponse(response)) {
 
-                flowPathList = restClientManager.getResponseList(response, FlowPath.class);
+                List<Flow> flowList = restClientManager.getResponseList(response, Flow.class);
+                return FlowConverter.toFlowsInfo(flowList);
             }
-
         } catch (Exception exception) {
-            log.error("Exception in getAllFlows " + exception.getMessage());
+            LOGGER.error("Exception in getFlows " + exception.getMessage());
         }
-        return flowPathList;
+        return null;
     }
 
 
@@ -70,46 +70,19 @@ public class FlowsIntegrationService {
      * @param flowId the flow id
      * @return the flow status
      */
-    public FlowStatusResponse getFlowStatus(String flowId) {
-        FlowStatusResponse flowStatusResponse = null;
+    public FlowStatus getFlowStatus(final String flowId) {
+        FlowStatus flowStatus = null;
         try {
             HttpResponse response =
                     restClientManager.invoke(applicationProperties.getFlowStatus() + flowId,
                             HttpMethod.GET, "", "", util.kildaAuthHeader());
             if (RestClientManager.isValidResponse(response)) {
-
-                flowStatusResponse =
-                        restClientManager.getResponse(response, FlowStatusResponse.class);
-
+                flowStatus = restClientManager.getResponse(response, FlowStatus.class);
             }
         } catch (Exception exception) {
-            log.error("Exception in getAllFlows " + exception.getMessage());
+            LOGGER.error("Exception in getAllFlows " + exception.getMessage());
         }
-        return flowStatusResponse;
-    }
-
-
-    /**
-     * Gets the topology flows.
-     *
-     * @return the topology flows
-     */
-    public List<TopologyFlowsResponse> getTopologyFlows() {
-        List<TopologyFlowsResponse> flowPathList = new ArrayList<TopologyFlowsResponse>();
-        try {
-            HttpResponse response =
-                    restClientManager.invoke(applicationProperties.getTopologyFlows(),
-                            HttpMethod.GET, "", "", util.kildaAuthHeader());
-            if (RestClientManager.isValidResponse(response)) {
-
-                flowPathList =
-                        restClientManager.getResponseList(response, TopologyFlowsResponse.class);
-            }
-
-        } catch (Exception exception) {
-            log.error("Exception in getTopologyFlows " + exception.getMessage());
-        }
-        return flowPathList;
+        return flowStatus;
     }
 
 
@@ -122,9 +95,8 @@ public class FlowsIntegrationService {
         PathLinkResponse[] pathLinkResponse = null;
 
         try {
-            HttpResponse linkResponse =
-                    restClientManager.invoke(applicationProperties.getTopologyFlows(), HttpMethod.GET,
-                            "", "", "");
+            HttpResponse linkResponse = restClientManager
+                    .invoke(applicationProperties.getTopologyFlows(), HttpMethod.GET, "", "", "");
             if (RestClientManager.isValidResponse(linkResponse)) {
 
                 pathLinkResponse =
@@ -132,7 +104,7 @@ public class FlowsIntegrationService {
             }
 
         } catch (Exception exception) {
-            log.error("Exception in getFlowPaths " + exception.getMessage());
+            LOGGER.error("Exception in getFlowPaths " + exception.getMessage());
         }
         return pathLinkResponse;
     }
