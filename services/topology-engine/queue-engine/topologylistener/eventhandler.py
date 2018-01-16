@@ -61,6 +61,8 @@ def main_loop():
                     or event.get_command() in known_commands:
                 logger.debug('Processing message payload', event.payload)
                 pool.spawn(topology_event_handler, event)
+            else:
+              logger.debug('Received unknown type or command %s', raw_event)
 
         except Exception as e:
             logger.exception(e.message)
