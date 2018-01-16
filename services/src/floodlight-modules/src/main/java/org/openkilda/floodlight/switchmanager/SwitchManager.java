@@ -364,6 +364,10 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                                                              final int outputPort, final int inputVlanId,
                                                              final int outputVlanId,
                                                              final OutputVlanType outputVlanType, final long meterId) {
+        // TODO: As per other locations, how different is this to IngressFlow? Why separate code path?
+        //          As with any set of tests, the more we test the same code path, the better.
+        //          Based on brief glance, this looks 90% the same as IngressFlow.
+
         List<OFAction> actionList = new ArrayList<>();
         IOFSwitch sw = ofSwitchService.getSwitch(dpid);
 
@@ -612,15 +616,19 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
     /**
      * Creates a Match based on an inputPort and VlanID.
-     * Note that this match only matches on the outer most tag which must be of ether-type 0x8100.
+     * NB1: that this match only matches on the outer most tag which must be of ether-type 0x8100.
+     * NB2: vlanId of 0 means match on port, not vlan
      *
      * @param sw        switch object
      * @param inputPort input port for the match
-     * @param vlanId    vlanID to match on
+     * @param vlanId    vlanID to match on; 0 means match on port
      * @return {@link Match}
      */
     private Match matchFlow(final IOFSwitch sw, final int inputPort, final int vlanId) {
         Match.Builder mb = sw.getOFFactory().buildMatch();
+        //
+        // Extra emphasis: vlan of 0 means match on port on not VLAN.
+        //
         if (vlanId > 0) {
             mb.setExact(MatchField.IN_PORT, OFPort.of(inputPort))
                     .setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(vlanId));

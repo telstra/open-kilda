@@ -20,12 +20,19 @@ ENV MININET_REPO https://github.com/mininet/mininet.git
 ENV MININET_INSTALLER mininet/util/install.sh
 ENV INSTALLER_SWITCHES -fbinptvwyx
 
-RUN apt-get update && apt-get -qy install mininet net-tools tcpdump \
+RUN apt-get update
+RUN apt-get -qy install net-tools tcpdump \
     inetutils-ping autoconf automake ca-certificates git libtool \
-    openssh-client patch vim python-bottle python-jsonschema python-scapy \
-    && rm -rf /var/lib/apt/lists/*
+    openssh-client patch vim python-bottle python-jsonschema python-scapy
+RUN apt-get -qy install mininet vlan
+# Adding openvswitch-testcontroller to facilitate running examples with embedded controller
+RUN apt-get -qy install openvswitch-testcontroller
+RUN cp /usr/bin/ovs-testcontroller /usr/bin/ovs-controller
+RUN cp /usr/bin/ovs-testcontroller /usr/bin/controller
+RUN rm -rf /var/lib/apt/lists/*
 RUN pip install python-logstash
 RUN ln -s /usr/sbin/tcpdump /usr/bin/tcpdump
+RUN git clone https://github.com/noxrepo/pox.git /pox
 
 ADD app /app
 RUN chmod 777 /app/*

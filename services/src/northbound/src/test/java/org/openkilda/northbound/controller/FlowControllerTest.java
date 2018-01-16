@@ -88,6 +88,7 @@ public class FlowControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
                 .andReturn();
+        System.out.println("RESPONSE: " + result.getResponse().getContentAsString());
         FlowPayload response = MAPPER.readValue(result.getResponse().getContentAsString(), FlowPayload.class);
         assertEquals(TestMessageMock.flow, response);
     }
