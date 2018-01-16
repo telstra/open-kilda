@@ -19,9 +19,7 @@ Feature: Basic Topology Events
     When the controller learns the topology
     And multiple links exist between all switches
     And a link is dropped in the middle
-    Then the link will have no health checks
-    And the link disappears from the topology engine.
-
+    Then the link disappears from the topology engine.
 
   @MVP1.1
   Scenario: Link is Added
@@ -33,8 +31,7 @@ Feature: Basic Topology Events
     When the controller learns the topology
     And multiple links exist between all switches
     And a link is added in the middle
-    Then the link will have health checks
-    And the link appears in the topology engine.
+    Then the link appears in the topology engine.
 
   @MVP1.1
   Scenario: Switch is Dropped
@@ -44,9 +41,8 @@ Feature: Basic Topology Events
     When the controller learns the topology
     And multiple links exist between all switches
     And a switch is dropped in the middle
-    Then all links through the dropped switch will have no health checks
-    And the links disappear from the topology engine.
-    And the switch disappears from the topology engine.
+    Then the links disappear from the topology engine.
+    And now amount of switches is 4.
 
   @MVP1.1
   Scenario: Switch is Added
@@ -59,9 +55,8 @@ Feature: Basic Topology Events
     And multiple links exist between all switches
     And a switch is added at the edge
     And links are added between the new switch and its neighbor
-    Then all links through the added switch will have health checks
-    And the links appear in the topology engine.
-    And the switch appears in the topology engine.
+    Then multiple links exist between all switches
+    And now amount of switches is 6.
 
   @MVP1.2
   Scenario: Exercise ISL policy
