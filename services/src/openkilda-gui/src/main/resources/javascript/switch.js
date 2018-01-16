@@ -73,9 +73,9 @@ function showSwitchData(response,switchname){
 
         if(response[i].name == switchname) {
             
-            $(".switchdetails_div_controller").html(response[i].controller);
+            $(".switchdetails_div_hostname").html(response[i].hostname);
             $(".switchdetails_div_address").html(response[i].address);
-            $(".switchdetails_div_name").html(response[i].name);
+            $(".switchdetails_div_switch_id").html(response[i].switch_id);
             $(".switchdetails_div_desc").html(response[i].description);   
         }
     } 
