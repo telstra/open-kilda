@@ -16,7 +16,7 @@ $(document).ready(function(){
 	
 	if(switchname.includes("id")) {
 	var switchname=window.location.href.split("#")[2];
-	console.log("switch")
+	
 		
 	var tmp_anchor = '<a href="/openkilda/switch">' + "Switch" + '</a>';
 	$("#kilda-nav-label").parent().append(tmp_anchor)
@@ -67,12 +67,10 @@ $(document).ready(function(){
 /** function to retrieve and show switch details from 
  * the switch response json object and display on the html page*/
 function showSwitchData(response,switchname){	
-
 	for(var i = 0; i < response.length; i++) {
         var obj = response[i];
 
-        if(response[i].name == switchname) {
-            
+        if(response[i].switch_id == switchname) {
             $(".switchdetails_div_hostname").html(response[i].hostname);
             $(".switchdetails_div_address").html(response[i].address);
             $(".switchdetails_div_switch_id").html(response[i].switch_id);
