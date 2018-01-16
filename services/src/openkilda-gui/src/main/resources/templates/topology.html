@@ -7,38 +7,15 @@
 <title>OPEN KILDA</title>
 <!-- CSS Style Sheets -->
 
-<link th:href="@{css/bootstrap.min.css}" rel="stylesheet"
-	type="text/css" />
-<link th:href="@{css/roboto.css}" rel="stylesheet" type="text/css" />
-<link th:href="@{css/font-awesome.min.css}" rel="stylesheet"
-	type="text/css" />
-<link th:href="@{css/jquery.toast.min.css}" rel="stylesheet" type="text/css" />
-<!-- Custom CSS Style Sheets -->
-<link th:href="@{css/custom.css}" rel="stylesheet" type="text/css" />
 <link th:href="@{images/kilda.png}" rel="shortcut icon" type="image/png"></link>
 
 </head>
 <body>
+<div th:include="fragments/importResources:: commonImports"></div>
+	<div th:replace="fragments/header :: header" ></div>
 
-	<div th:replace="fragments/header :: header"></div>
-	<aside class="main-sidebar" id="sidebar-left">
-		<!-- sidebar: style can be found in sidebar.less -->
-		<section class="sidebar">
-			<!-- sidebar menu: : style can be found in sidebar.less -->
-			<ul class="sidebar-menu tree" data-widget="tree">
-				<li class=""><a th:href="@{/home}"> <i class="fa fa-home"
-						aria-hidden="true"></i> <span>Home</span>
-				</a></li>
-				<li class="active"><a th:href="@{/topology}"> <i class="icon-topology" aria-hidden="true"></i><span>Topology</span>
-				</a></li>
-				
-				<li class=""><a th:href="@{/flows}"> <i class="icon-flows" aria-hidden="true"></i><span class="home-flows">Flows</span>
-				</a></li>
-				
-			</ul>
-		</section>
-		<!-- /.sidebar -->
-	</aside>
+	<div th:replace="fragments/menu :: menu" ></div>
+
 
 	<div class="content">
 
@@ -48,18 +25,50 @@
 
 		<div class="row">
 			<div class="navigation-bar container-fluid">
-				<ul class="col-lg-12">
+				<ul class="col-sm-9">
 					<li><a th:href="@{/home}">Home</a></li>
 					<li><i class="fa fa-angle-double-right"></i>Topology</li>
 				</ul>
+				<div class="col-sm-3 text-right">
+					<i class="fa fa-info-circle t-logy-icon" aria-hidden="true"></i>					
+					<div class="topology-txt" id="topology-txt" style="display:none;">
+						Lorem Ipsum is simply dummy text of the printing and typesetting industry.
+						Lorem Ipsum has been the industry's standard dummy text ever since the 1500s,
+						when an unknown printer took a galley of type and scrambled it to make a type specimen book.
+						It has survived not only five centuries, but also the leap into electronic typesetting,
+						remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset 
+						sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like 
+						Aldus PageMaker including versions of Lorem Ipsum.
+					</div>
+				</div>
 			</div>
 		</div>
-
+		<div  id="topology-hover-txt" style="">
+			<div class="form-wrapper">
+				<div class="form-group row">
+					<label class="col-sm-3 col-form-label">Controller:</label>
+					<p class="col-sm-9 switchdetails_div_controller">ip-192-168-244-3.ap-northeast-1.compute.internal</p>
+				</div>
+				<div class="form-group row">
+					<label class="col-sm-3 col-form-label">Address:</label>
+					<p class="col-sm-9 switchdetails_div_address">192.168.244.3:49557</p>
+				</div>
+				<div class="form-group row">
+					<label class="col-sm-3 col-form-label">DPID:</label>
+					<p class="col-sm-9 switchdetails_div_name">00:00:00:22:3d:6c:00:0c</p>
+				</div>
+				<div class="form-group row">
+					<label class="col-sm-3 col-form-label">Description:</label>
+					<p class="col-sm-9 switchdetails_div_desc">OF_13</p>
+				</div>
+			</div>
+		</div>
 		<div class="container-fluid">
 
 			<div class="check">
 				<input type="checkbox" name="switch" value="switch" id="showDetail">SHOW DETAILS</input>
 			</div>
+			
 			
 		</div>
 
@@ -69,11 +78,18 @@
 
 		<div th:include="fragments/importResources:: commonImports"></div>
 		<div th:include="fragments/importResources:: graphImports"></div>
+		<div class="check check-connections">
+				<div class="lconnection c-block">
+					<span></span>Logical Connections
+				</div>
+				<div class="pconnection c-block">
+					<span></span>Physical Connections
+				</div>
+			</div>
 	</div>
 
-	<footer>
-		<p class="pull-right">&copy;2018 All rights reserved.</p>
-	</footer>
+	<div th:replace="fragments/footer :: footer" ></div>
+
 	
 		<div id="myModal" class="modal fade" tabindex="-1" role="dialog">
 		<div class="modal-dialog link-details" role="document">
@@ -89,8 +105,7 @@
 			</div>
 		</div>
 	</div>
+	<script th:inline="javascript" src="javascript/common.js" th:src="@{javascript/common.js}"></script>
 	
-	<script th:inline="javascript" src="javascript/jquery.toast.min.js"></script>
-
 </body>
 </html>

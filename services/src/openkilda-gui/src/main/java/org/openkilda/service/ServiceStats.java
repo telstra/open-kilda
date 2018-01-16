@@ -1,25 +1,32 @@
 package org.openkilda.service;
 
-import javax.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.Map;
+
+import org.openkilda.integration.service.StatsIntegrationService;
+import org.openkilda.service.helper.StatsHelper;
 
 /**
- * The Interface StatsService.
- * 
+ * The Class StatsServiceImpl.
+ *
  * @author Gaurav Chugh
  */
-public interface ServiceStats {
+@Service
+public class ServiceStats {
+
+    @Autowired
+    private StatsHelper statsHelper;
+
+    @Autowired
+    private StatsIntegrationService statsIntegrationService;
 
 
-    /**
-     * Gets the stats.
-     *
-     * @param startDate the start date
-     * @param endDate the end date
-     * @param metric the metric
-     * @param request the request
-     * @return the stats
-     */
-    String getStats(String startDate, String endDate, String metric, HttpServletRequest request);
-
+    public String getStats(final String startDate, final String endDate, final String metric,
+            final Map<String, String[]> requestParams) {
+        String requestBody = statsHelper.getRequestBody(startDate, endDate, metric, requestParams);
+        return statsIntegrationService.getStats(requestBody);
+    }
 
 }

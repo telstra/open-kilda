@@ -11,10 +11,19 @@
 		<script th:inline="javascript" src="javascript/jquery-3.2.1.min.js" th:src="@{javascript/jquery-3.2.1.min.js}"></script>
 		<!-- bootstrap js -->
 		<script th:inline="javascript" src="javascript/bootstrap.min.js" th:src="@{javascript/bootstrap.min.js}"></script>
-		<script th:inline="javascript" src="javascript/jquery.toast.min.js" th:src="@{javascript/jquery.toast.min.js}"></script>		
+		<script th:inline="javascript" src="javascript/jquery.toast.min.js" th:src="@{javascript/jquery.toast.min.js}"></script>
 
-<script th:inline="javascript" src="javascript/common.js" th:src="@{javascript/common.js}"></script>	
-
+		
+		<!--  CSS Style Sheets -->
+		<link th:href="@{css/bootstrap.min.css}" rel="stylesheet"
+			type="text/css" />
+		<link th:href="@{css/roboto.css}" rel="stylesheet" type="text/css" />
+		<link th:href="@{css/font-awesome.min.css}" rel="stylesheet"
+			type="text/css" />
+		<!-- Custom CSS Style Sheets -->
+		<link th:href="@{css/custom.css}" rel="stylesheet" type="text/css" />
+		<link th:href="@{css/jquery.toast.min.css}" rel="stylesheet"
+			type="text/css" />
 	</th:block>
 
 	<th:block th:fragment="graphImports">
@@ -25,9 +34,51 @@
 		<script th:inline="javascript" src="javascript/graph.js" th:src="@{javascript/graph.js}"></script>
 			
 	</th:block>
+
+	<th:block th:fragment="commonPathImports">
+		<div
+			th:include="../templates/fragments/javascriptServerTags:: javascriptServerTags"></div>
+		<script th:inline="javascript" src="../javascript/jquery-3.2.1.min.js"
+			th:src="@{../javascript/jquery-3.2.1.min.js}"></script>
+		<script th:inline="javascript" src="../javascript/bootstrap.min.js"
+			th:src="@{../javascript/bootstrap.min.js}"></script>
+		<script th:inline="javascript" src="../javascript/moment.js"></script>
+		<script th:inline="javascript" src="../javascript/jquery.toast.min.js"></script>
+		<script th:inline="javascript" src="../javascript/common.js"></script>
+		
+		
+		<!-- CSS Style Sheets -->
+		<link th:href="@{../css/jquery.toast.min.css}" rel="stylesheet"
+			type="text/css" />
+		<link th:href="@{../css/bootstrap.min.css}" rel="stylesheet"
+			type="text/css" />
+
+		<link th:href="@{../css/roboto.css}" rel="stylesheet" type="text/css" />
+		<link th:href="@{../css/font-awesome.min.css}" rel="stylesheet"
+			type="text/css" />
+
+		<!-- Custom CSS Style Sheets -->
+		<link th:href="@{../css/custom.css}" rel="stylesheet" type="text/css" />
+
+	</th:block>
+
+
+	<th:block th:fragment="statsImports">
 	
-	<th:block th:fragment="dataTables">
-	
+		<script th:inline="javascript"
+			src="../javascript/jquery.datetimepicker.full.js"></script>
+		<script th:inline="javascript" src="../javascript/dygraph.js"></script>
+		
+		<!-- CSS Style Sheets -->
+		<link th:href="@{../css/jquery.toast.min.css}" rel="stylesheet"
+			type="text/css" />
+
+		<link th:href="@{../css/dygraph.css}" rel="stylesheet" type="text/css" />
+
+		<link th:href="@{../css/jquery.datetimepicker.css}" rel="stylesheet"
+			type="text/css" />
+
+
 	</th:block>
 </body>
 </html>

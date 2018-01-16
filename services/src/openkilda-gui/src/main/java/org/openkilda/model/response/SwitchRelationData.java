@@ -1,20 +1,21 @@
 package org.openkilda.model.response;
 
-import java.io.Serializable;
-import java.util.List;
-
-import org.openkilda.integration.model.response.FlowResponse;
-import org.openkilda.integration.model.response.SwitchInfo;
-import org.openkilda.integration.model.response.Switchrelation;
-
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
+import java.io.Serializable;
+import java.util.List;
+
+import org.openkilda.model.FlowInfo;
+import org.openkilda.model.IslLinkInfo;
+import org.openkilda.model.PortInfo;
+import org.openkilda.model.SwitchInfo;
+
 /**
  * The Class SwitchRelationData.
- * 
+ *
  * @author Gaurav Chugh
  */
 
@@ -29,11 +30,11 @@ public class SwitchRelationData implements Serializable {
 
     /** The switchrelation. */
     @JsonProperty("switchrelation")
-    private List<Switchrelation> switchrelation = null;
+    private List<IslLinkInfo> flows = null;
 
-    /** The topologyflows response. */
+    /** The flows response. */
     @JsonProperty("flows")
-    private List<FlowResponse> topologyFlowResponse = null;
+    private List<FlowInfo> flowResponse = null;
 
     /** The port info. */
     @JsonProperty("ports")
@@ -58,7 +59,7 @@ public class SwitchRelationData implements Serializable {
      * @param switches the new switches
      */
     @JsonProperty("switches")
-    public void setSwitches(List<SwitchInfo> switches) {
+    public void setSwitches(final List<SwitchInfo> switches) {
         this.switches = switches;
     }
 
@@ -68,8 +69,8 @@ public class SwitchRelationData implements Serializable {
      * @return the switchrelation
      */
     @JsonProperty("switchrelation")
-    public List<Switchrelation> getSwitchrelation() {
-        return switchrelation;
+    public List<IslLinkInfo> getFlows() {
+        return flows;
     }
 
     /**
@@ -78,8 +79,8 @@ public class SwitchRelationData implements Serializable {
      * @param switchrelation the new switchrelation
      */
     @JsonProperty("switchrelation")
-    public void setSwitchrelation(List<Switchrelation> switchrelation) {
-        this.switchrelation = switchrelation;
+    public void setFlows(final List<IslLinkInfo> switchrelation) {
+        flows = switchrelation;
     }
 
     /**
@@ -98,28 +99,28 @@ public class SwitchRelationData implements Serializable {
      * @param portInfo the new port info
      */
     @JsonProperty("ports")
-    public void setPortInfo(List<PortInfo> portInfo) {
+    public void setPortInfo(final List<PortInfo> portInfo) {
         this.portInfo = portInfo;
     }
 
     /**
-     * Gets the topology flow response.
+     * Gets the flow response.
      *
-     * @return the topology flow response
+     * @return the flow response
      */
     @JsonProperty("flows")
-    public List<FlowResponse> getTopologyFlowResponse() {
-        return topologyFlowResponse;
+    public List<FlowInfo> getFlowResponse() {
+        return flowResponse;
     }
 
     /**
-     * Sets the topology flow response.
+     * Sets the flow response.
      *
-     * @param topologyFlowResponse the new topology flow response
+     * @param flowResponse the new flow response
      */
     @JsonProperty("flows")
-    public void setTopologyFlowResponse(List<FlowResponse> topologyFlowResponse) {
-        this.topologyFlowResponse = topologyFlowResponse;
+    public void setFlowResponse(final List<FlowInfo> flowResponse) {
+        this.flowResponse = flowResponse;
     }
 
 }

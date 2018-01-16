@@ -28,7 +28,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class LoggingFilter extends OncePerRequestFilter {
 
     /** The Constant _log. */
-    private static final Logger _log = LoggerFactory.getLogger(LoggingFilter.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(LoggingFilter.class);
 
     /** The Constant REQUEST_PREFIX. */
     private static final String REQUEST_PREFIX = "Request: ";
@@ -38,10 +38,7 @@ public class LoggingFilter extends OncePerRequestFilter {
 
     /*
      * (non-Javadoc)
-     * 
-     * @see org.springframework.web.filter.OncePerRequestFilter#doFilterInternal(
-     * javax.servlet.http. HttpServletRequest, javax.servlet.http.HttpServletResponse,
-     * javax.servlet.FilterChain)
+     * @see org.springframework.web.filter.OncePerRequestFilter#doFilterInternal(javax.servlet.http.HttpServletRequest, javax.servlet.http.HttpServletResponse, javax.servlet.FilterChain)
      */
     @Override
     protected void doFilterInternal(final HttpServletRequest request,
@@ -74,12 +71,12 @@ public class LoggingFilter extends OncePerRequestFilter {
                 if (isMatch)
                     logResponse(responseWrapper);
             } catch (Exception e) {
-                _log.error("[doFilterInternal] Exception: " + e.getMessage(), e);
+                LOGGER.error("[doFilterInternal] Exception: " + e.getMessage(), e);
             }
         }
         long elapsedTime = System.currentTimeMillis() - startTime;
         if (60000 - elapsedTime < 0) {
-            _log.info("[DelayedRequestDetail] - Time Taken: '{}', URL: '{}'", elapsedTime,
+            LOGGER.info("[DelayedRequestDetail] - Time Taken: '{}', URL: '{}'", elapsedTime,
                     request.getRequestURL());
         }
     }
@@ -105,7 +102,7 @@ public class LoggingFilter extends OncePerRequestFilter {
             msg.append("', \n\tparams: '").append(key + " : " + parameters.get(key));
         });
 
-        _log.info("[logRequest] Request: " + msg.toString());
+        LOGGER.info("[logRequest] Request: " + msg.toString());
     }
 
     /**
@@ -133,8 +130,8 @@ public class LoggingFilter extends OncePerRequestFilter {
             msg.append("\nResponse: \n").append(
                     mapper.writerWithDefaultPrettyPrinter().writeValueAsString(json));
         } catch (UnsupportedEncodingException e) {
-            _log.error("[logResponse] Exception: " + e.getMessage(), e);
+            LOGGER.error("[logResponse] Exception: " + e.getMessage(), e);
         }
-        _log.info("[logResponse] Response: " + msg.toString());
+        LOGGER.info("[logResponse] Response: " + msg.toString());
     }
 }

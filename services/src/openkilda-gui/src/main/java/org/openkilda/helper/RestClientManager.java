@@ -13,15 +13,15 @@ import org.apache.http.client.methods.HttpPut;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.HttpClients;
+import org.openkilda.constants.HttpError;
+import org.openkilda.constants.IAuthConstants;
 import org.openkilda.exception.ExternalSystemException;
 import org.openkilda.exception.RestCallFailedException;
 import org.openkilda.exception.UnauthorizedException;
 import org.openkilda.model.response.ErrorMessage;
 import org.openkilda.service.impl.AuthPropertyService;
-import org.openkilda.utility.HttpError;
-import org.openkilda.utility.IAuthConstants;
 import org.openkilda.utility.IoUtils;
-import org.openkilda.utility.StringUtils;
+import org.openkilda.utility.StringUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,15 +39,13 @@ import com.fasterxml.jackson.databind.type.TypeFactory;
 @Component
 public class RestClientManager {
 
-    /** The Constant _log. */
     private static final Logger _log = LoggerFactory.getLogger(RestClientManager.class);
 
-    /** The auth property service. */
     @Autowired
     private AuthPropertyService authPropertyService;
 
-    /** The mapper. */
-    private ObjectMapper mapper = new ObjectMapper();
+    @Autowired
+    private ObjectMapper mapper;
 
 
     /**
@@ -84,7 +82,7 @@ public class RestClientManager {
 
             if (!HttpMethod.POST.equals(httpMethod) && !HttpMethod.PUT.equals(httpMethod)) {
                 // Setting Required Headers
-                if (!StringUtils.isNullOrEmpty(basicAuth)) {
+                if (!StringUtil.isNullOrEmpty(basicAuth)) {
                     _log.debug("[invoke] Setting authorization in header as "
                             + IAuthConstants.Header.AUTHORIZATION);
                     httpUriRequest.setHeader(IAuthConstants.Header.AUTHORIZATION, basicAuth);
@@ -192,7 +190,7 @@ public class RestClientManager {
             _log.info("[getResponse]  : StatusCode " + response.getStatusLine().getStatusCode());
 
             if (response.getStatusLine().getStatusCode() != HttpStatus.NO_CONTENT.value()) {
-                String responseEntity = IoUtils.getData(response.getEntity().getContent());
+                String responseEntity = IoUtils.toString(response.getEntity().getContent());
 
                 _log.info("[getResponse]  : response object " + responseEntity);
                 if (!(HttpStatus.valueOf(response.getStatusLine().getStatusCode())
