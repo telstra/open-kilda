@@ -38,9 +38,9 @@ function showSwitchData(response){
 
 	 for(var i = 0; i < response.length; i++) {
 		 var tableRow = "<tr id='div_"+(i+1)+"' class='flowDataRow'>"
-		 			    +"<td class='divTableCell' title ='"+response[i].controller+"'>"+response[i].controller+"</td>"
+		 			    +"<td class='divTableCell' title ='"+response[i].hostname+"'>"+response[i].hostname+"</td>"
 		 			    +"<td class='divTableCell' title ='"+response[i].address+"'>"+response[i].address+"</td>"
-		 			    +"<td class='divTableCell' title ='"+response[i].name+"'>"+response[i].name+"</td>"
+		 			    +"<td class='divTableCell' title ='"+response[i].switch_id+"'>"+response[i].switch_id+"</td>"
 		 			    +"<td class='divTableCell' title ='"+response[i].description+"'>"+response[i].description+"</td>"
 		 			    +"</tr>";
 		
@@ -75,10 +75,10 @@ function setFlowData(domObj){
 	
 	$(domObj).html()
 	
-	var flowData = {'controller':"",'address':"",'name':"",'description':""};
+	var flowData = {'hostname':"",'address':"",'switch_id':"",'description':""};
 	
 	if($(domObj).find('td:nth-child(1)').html()){
-		flowData.controller = $(domObj).find('td:nth-child(1)').html();
+		flowData.hostname = $(domObj).find('td:nth-child(1)').html();
 	}
 
 	if($(domObj).find('td:nth-child(2)')){
@@ -86,7 +86,7 @@ function setFlowData(domObj){
 	}
 	
 	if($(domObj).find('td:nth-child(3)')){
-		flowData.name= $(domObj).find('td:nth-child(3)').html();
+		flowData.switch_id= $(domObj).find('td:nth-child(3)').html();
 	}
 	
 	if($(domObj).find('td:nth-child(4)')){
@@ -94,7 +94,7 @@ function setFlowData(domObj){
 	}
 	
 	localStorage.setItem('switchDetailsJSON',JSON.stringify(flowData));
-	window.location = "switch/details#"+"id#"+ flowData.name;
+	window.location = "switch/details#"+"id#"+ flowData.switch_id;
 }
 
 function showSearch(idname,$event) {
