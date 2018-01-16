@@ -17,7 +17,7 @@
 
 from bottle import get, post, request, run, Bottle, response, request, install
 from mininet.net import Mininet
-from mininet.node import RemoteController, OVSKernelSwitch
+from mininet.node import RemoteController, OVSKernelSwitch, Host
 from mininet.clean import cleanup
 from mininet.link import TCLink
 from jsonschema import validate
@@ -47,6 +47,19 @@ def log_to_logger(fn):
                                     response.status))
         return actual_response
     return _log_to_logger
+
+
+def required_parameters(*pars):
+    def _hatch(__):
+        def _hatchet():
+            for _ in pars:
+                if request.query.get(_) is None:
+                    response.status = 500
+                    return "%s: %s must be specified\n" % (request.path, _)
+            return __(dict([(_, request.query.get(_)) for _ in pars]))
+        return _hatchet
+    return _hatch
+
 
 install(log_to_logger)
 
@@ -512,6 +525,8 @@ def mininet_cleanup():
     del controllers[:]
     switches.clear()
     links.clear()
+    hosts.clear()
+    hlinks.clear()
     cleanup()
     return {'status': 'ok'}
 
@@ -525,19 +540,96 @@ def start_server(interface, port):
     run(host='0.0.0.0', port=port, debug=True)
 
 
-def main():
+#######################################
+#######################################
+#
+# Flow Debugging Section
+#   - these endpoints give the ability to create rules directly, without kilda
+#   - this ability allows the developer to test flows directly (useful for development scenarios)
+#
+#######################################
+#######################################
+
+ofctl_start='ovs-ofctl -O OpenFlow13 add-flow'
+
+@get("/add_default_flows")
+@required_parameters("switch")
+def add_default_flows(p):
+    switch = p['switch']
+    cmd1 = "%s %s idle_timeout=0,priority=1,actions=drop" % (ofctl_start, switch)
+    cmd2 = "%s %s idle_timeout=0,priority=2,dl_type=0x88cc,action=output:controller" % (ofctl_start, switch)
+    result1 = os.system(cmd1)
+    result2 = os.system(cmd2)
+    return {'result1': result1, 'result2': result2}
+
+
+@get("/add_ingress_flow")
+@required_parameters("switch","inport","vlan","outport","priority")
+def add_ingress_flow(p):
+    switch = p['switch']
+    inport = p['inport']
+    vlan = p['vlan']
+    outport = p['outport']
+    priority = p['priority']
+
+    cmd1 = "%s %s idle_timeout=0,priority=%s,in_port=%s,actions=push_vlan:0x8100,mod_vlan_vid:%s,output:%s" % \
+           (ofctl_start, switch,priority,inport,vlan,outport)
+    result1 = os.system(cmd1)
+    return {'result1': result1}
+
+
+@get("/add_egress_flow")
+@required_parameters("switch","inport","vlan","outport","priority")
+def add_egress_flow(p):
+    switch = p['switch']
+    inport = p['inport']
+    vlan = p['vlan']
+    outport = p['outport']
+    priority = p['priority']
+
+    cmd1 = "%s %s idle_timeout=0,priority=%s,in_port=%s,dl_vlan=%s,actions=strip_vlan,output:%s" % \
+           (ofctl_start, switch,priority,inport,vlan,outport)
+    result1 = os.system(cmd1)
+    return {'result1': result1}
+
+
+@get("/add_transit_flow")
+@required_parameters("switch","inport","vlan","outport","priority")
+def add_transit_flow(p):
+    switch = p['switch']
+    inport = p['inport']
+    vlan = p['vlan']
+    outport = p['outport']
+    priority = p['priority']
+
+    cmd1 = "%s %s idle_timeout=0,priority=%s,in_port=%s,dl_vlan=%s,actions=output:%s" % \
+           (ofctl_start, switch,priority,inport,vlan,outport)
+    result1 = os.system(cmd1)
+    return {'result1': result1}
+
+
+def init():
+    """Get the global variables defined and initialized"""
     global logger
     global controllers
     global switches
     global links
+    global hosts
+    global hlinks
     switches = {}
     links = {}
+    hosts = {}
+    hlinks={}
     controllers = []
 
     with open("/app/log.json", "r") as fd:
         logging.config.dictConfig(json.load(fd))
 
     logger = logging.getLogger()
+
+
+def main():
+    init()
     mininet_cleanup()
     start_server('0.0.0.0', 38080)
 

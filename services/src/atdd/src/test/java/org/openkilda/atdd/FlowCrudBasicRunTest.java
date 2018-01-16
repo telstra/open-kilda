@@ -185,7 +185,7 @@ public class FlowCrudBasicRunTest {
 
     private int checkTraffic(String sourceSwitch, String destSwitch, int sourceVlan, int destinationVlan, int expectedStatus) {
         if (isTrafficTestsEnabled()) {
-            System.out.println("=====> Send traffic");
+            System.out.print("=====> Send traffic");
 
             long current = System.currentTimeMillis();
             Client client = ClientBuilder.newClient(new ClientConfig());
@@ -200,10 +200,16 @@ public class FlowCrudBasicRunTest {
             // reuse speeds testing up the code below determines which switch:port
             // pairs should be used as source and drains for traffic while keepig
             // small linear topology in use.
-            String from = "0000000" + (Integer.parseInt(sourceSwitch.substring(sourceSwitch.length() -1 )) - 1);
-            String to = "0000000" + (Integer.parseInt(destSwitch.substring(destSwitch.length() -1 )) + 1);
+            int fromNum = Integer.parseInt(sourceSwitch.substring(sourceSwitch.length() -1 ));
+            int toNum = Integer.parseInt(destSwitch.substring(destSwitch.length() -1 ));
+            String from = "0000000" + (fromNum - 1);
+            String to = "0000000" + (toNum + 1);
             int fromPort = from.equals("00000001") ? 1 : 2;
             int toPort = 1;
+            System.out.println(String.format("from:%s:%d::%d via %s, To:%s:%d::%d via %s",
+                    from,fromPort,sourceVlan,sourceSwitch,
+                    to,toPort,destinationVlan,destSwitch));
+
 
             Response result = client
                     .target(trafficEndpoint)

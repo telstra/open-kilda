@@ -60,11 +60,16 @@ public class FlowUtils {
     private static final String authHeaderValue = "Basic " + getEncoder().encodeToString(auth.getBytes());
     private static final String FEATURE_TIME = String.valueOf(System.currentTimeMillis());
 
+    public static final Client clientFactory(){
+        Client client = ClientBuilder.newClient(new ClientConfig()).register(JacksonFeature.class);
+        return client;
+    }
+
     public static int getHealthCheck() {
         System.out.println("\n==> Northbound Health-Check");
 
         long current = System.currentTimeMillis();
-        Client client = ClientBuilder.newClient(new ClientConfig()).register(JacksonFeature.class);
+        Client client = clientFactory();
 
         Response response = client
                 .target(northboundEndpoint)
@@ -100,7 +105,7 @@ public class FlowUtils {
         System.out.println("\n==> Northbound Get Flow");
 
         long current = System.currentTimeMillis();
-        Client client = ClientBuilder.newClient(new ClientConfig()).register(JacksonFeature.class);
+        Client client = clientFactory();
 
         Response response = client
                 .target(northboundEndpoint)
@@ -137,7 +142,7 @@ public class FlowUtils {
         System.out.println("\n==> Northbound Create Flow");
 
         long current = System.currentTimeMillis();
-        Client client = ClientBuilder.newClient(new ClientConfig()).register(JacksonFeature.class);
+        Client client = clientFactory();
 
         Response response = client
                 .target(northboundEndpoint)
@@ -147,6 +152,7 @@ public class FlowUtils {
                 .header(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()))
                 .put(Entity.json(payload));
 
+        System.out.println(String.format("===> Request Payload = %s", Entity.json(payload).getEntity()));
         System.out.println(String.format("===> Response = %s", response.toString()));
         System.out.println(String.format("===> Northbound Create Flow Time: %,.3f", getTimeDuration(current)));
 
@@ -173,7 +179,7 @@ public class FlowUtils {
         System.out.println("\n==> Northbound Update Flow");
 
         long current = System.currentTimeMillis();
-        Client client = ClientBuilder.newClient(new ClientConfig()).register(JacksonFeature.class);
+        Client client = clientFactory();
 
         Response response = client
                 .target(northboundEndpoint)
@@ -185,6 +191,7 @@ public class FlowUtils {
                 .header(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()))
                 .put(Entity.json(payload));
 
+        System.out.println(String.format("===> Request Payload = %s", Entity.json(payload).getEntity()));
         System.out.println(String.format("===> Response = %s", response.toString()));
         System.out.println(String.format("===> Northbound Update Flow Time: %,.3f", getTimeDuration(current)));
 
@@ -210,7 +217,7 @@ public class FlowUtils {
         System.out.println("\n==> Northbound Delete Flow");
 
         long current = System.currentTimeMillis();
-        Client client = ClientBuilder.newClient(new ClientConfig()).register(JacksonFeature.class);
+        Client client = clientFactory();
 
         Response response = client
                 .target(northboundEndpoint)
@@ -247,7 +254,7 @@ public class FlowUtils {
         System.out.println("\n==> Northbound Get Flow Path");
 
         long current = System.currentTimeMillis();
-        Client client = ClientBuilder.newClient(new ClientConfig()).register(JacksonFeature.class);
+        Client client = clientFactory();
 
         Response response = client
                 .target(northboundEndpoint)
@@ -285,7 +292,7 @@ public class FlowUtils {
         System.out.println("\n==> Northbound Get Flow Status");
 
         long current = System.currentTimeMillis();
-        Client client = ClientBuilder.newClient(new ClientConfig()).register(JacksonFeature.class);
+        Client client = clientFactory();
 
         Response response = client
                 .target(northboundEndpoint)
@@ -321,7 +328,7 @@ public class FlowUtils {
         System.out.println("\n==> Northbound Get Flow Dump");
 
         long current = System.currentTimeMillis();
-        Client client = ClientBuilder.newClient(new ClientConfig()).register(JacksonFeature.class);
+        Client client = clientFactory();
 
         Response response = client
                 .target(northboundEndpoint)
@@ -355,7 +362,7 @@ public class FlowUtils {
         System.out.println("\n==> Topology-Engine Dump Flows");
 
         long current = System.currentTimeMillis();
-        Client client = ClientBuilder.newClient(new ClientConfig());
+        Client client = clientFactory();
 
         Response response = client
                 .target(topologyEndpoint)
@@ -383,7 +390,7 @@ public class FlowUtils {
         System.out.println("\n==> Topology-Engine Dump Links");
 
         long current = System.currentTimeMillis();
-        Client client = ClientBuilder.newClient(new ClientConfig());
+        Client client = clientFactory();
 
         Response response = client
                 .target(topologyEndpoint)
@@ -411,7 +418,7 @@ public class FlowUtils {
         System.out.println("\n==> Topology-Engine Link Bandwidth");
 
         long current = System.currentTimeMillis();
-        Client client = ClientBuilder.newClient(new ClientConfig());
+        Client client = clientFactory();
 
         Response response = client
                 .target(topologyEndpoint)
@@ -438,7 +445,7 @@ public class FlowUtils {
         System.out.println("\n==> Topology-Engine Restore Flows");
 
         long current = System.currentTimeMillis();
-        Client client = ClientBuilder.newClient(new ClientConfig());
+        Client client = clientFactory();
 
         Response response = client
                 .target(topologyEndpoint)
