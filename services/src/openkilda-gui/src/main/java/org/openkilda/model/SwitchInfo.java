@@ -1,12 +1,10 @@
 package org.openkilda.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 import java.io.Serializable;
-import java.util.List;
 
 /**
  * The Class SwitchInfo.
@@ -14,180 +12,56 @@ import java.util.List;
  * @author Gaurav Chugh
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonIgnoreProperties(ignoreUnknown = true)
-@JsonPropertyOrder({"controller", "hostname", "address", "name", "description", "state"})
+@JsonPropertyOrder({"switch_id", "address", "hostname", "description"})
 public class SwitchInfo implements Serializable {
-
-    /** The controller. */
-    @JsonProperty("controller")
-    private String controller;
-
-    /** The hostname. */
-    @JsonProperty("hostname")
-    private String hostname;
-
-    /** The address. */
+    @JsonProperty("switch_id")
+    private String switchId;
     @JsonProperty("address")
     private String address;
-
-    /** The name. */
-    @JsonProperty("name")
-    private String name;
-
-    /** The description. */
+    @JsonProperty("hostname")
+    private String hostname;
     @JsonProperty("description")
     private String description;
-
-    /** The state. */
-    @JsonProperty("state")
-    private String state;
-
-    /** The port info. */
-    @JsonProperty("ports")
-    List<PortInfo> portInfo;
 
     /** The Constant serialVersionUID. */
     private final static long serialVersionUID = 6763064864461521069L;
 
-    /**
-     * Gets the controller.
-     *
-     * @return the controller
-     */
-    @JsonProperty("controller")
-    public String getController() {
-        return controller;
+    public String getSwitchId() {
+        return switchId;
     }
 
-    /**
-     * Sets the controller.
-     *
-     * @param controller the new controller
-     */
-    @JsonProperty("controller")
-    public void setController(final String controller) {
-        this.controller = controller;
+    public void setSwitchId(String switchId) {
+        this.switchId = switchId;
     }
 
-    /**
-     * Gets the hostname.
-     *
-     * @return the hostname
-     */
-    @JsonProperty("hostname")
-    public String getHostname() {
-        return hostname;
-    }
-
-    /**
-     * Sets the hostname.
-     *
-     * @param hostname the new hostname
-     */
-    @JsonProperty("hostname")
-    public void setHostname(final String hostname) {
-        this.hostname = hostname;
-    }
-
-    /**
-     * Gets the address.
-     *
-     * @return the address
-     */
-    @JsonProperty("address")
     public String getAddress() {
         return address;
     }
 
-    /**
-     * Sets the address.
-     *
-     * @param address the new address
-     */
-    @JsonProperty("address")
-    public void setAddress(final String address) {
+    public void setAddress(String address) {
         this.address = address;
     }
 
-    /**
-     * Gets the name.
-     *
-     * @return the name
-     */
-    @JsonProperty("name")
-    public String getName() {
-        return name;
+    public String getHostname() {
+        return hostname;
     }
 
-    /**
-     * Sets the name.
-     *
-     * @param name the new name
-     */
-    @JsonProperty("name")
-    public void setName(final String name) {
-        this.name = name;
+    public void setHostname(String hostname) {
+        this.hostname = hostname;
     }
 
-    /**
-     * Gets the description.
-     *
-     * @return the description
-     */
-    @JsonProperty("description")
     public String getDescription() {
         return description;
     }
 
-    /**
-     * Sets the description.
-     *
-     * @param description the new description
-     */
-    @JsonProperty("description")
-    public void setDescription(final String description) {
+    public void setDescription(String description) {
         this.description = description;
     }
 
-    /**
-     * Gets the state.
-     *
-     * @return the state
-     */
-    @JsonProperty("state")
-    public String getState() {
-        return state;
+    @Override
+    public String toString() {
+        return "SwitchInfo [switchId=" + switchId + ", address=" + address + ", hostname="
+                + hostname + ", description=" + description + "]";
     }
-
-    /**
-     * Sets the state.
-     *
-     * @param state the new state
-     */
-    @JsonProperty("state")
-    public void setState(final String state) {
-        this.state = state;
-    }
-
-    /**
-     * Gets the port info.
-     *
-     * @return the port info
-     */
-    @JsonProperty("ports")
-    public List<PortInfo> getPortInfo() {
-        return portInfo;
-    }
-
-    /**
-     * Sets the port info.
-     *
-     * @param portInfo the new port info
-     */
-    @JsonProperty("ports")
-    public void setPortInfo(final List<PortInfo> portInfo) {
-        this.portInfo = portInfo;
-    }
-
 
 }
