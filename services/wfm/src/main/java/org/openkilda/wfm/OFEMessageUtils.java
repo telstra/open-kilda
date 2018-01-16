@@ -19,6 +19,7 @@ import static org.openkilda.messaging.Utils.MAPPER;
 import static org.openkilda.messaging.Utils.PAYLOAD;
 
 import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
@@ -31,6 +32,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * OFEMessageUtils - A utility class that will help with the messages on kilda.speaker and
@@ -159,7 +161,8 @@ public class OFEMessageUtils {
     public static String createIslFail(String switchId, String portId) throws IOException {
         PathNode node = new PathNode(switchId, Integer.parseInt(portId), 0, 0L);
         InfoData data = new IslInfoData(0L, Collections.singletonList(node), 0L, IslChangeType.FAILED, 0L);
-        return MAPPER.writeValueAsString(data);
+        InfoMessage message = new InfoMessage(data, System.currentTimeMillis(), UUID.randomUUID().toString());
+        return MAPPER.writeValueAsString(message);
     }
 
     // ==============  ==============  ==============  ==============  ==============

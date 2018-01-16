@@ -15,15 +15,18 @@
 
 package org.openkilda.atdd;
 
-import static org.junit.Assert.assertTrue;
-import static org.openkilda.flow.FlowUtils.dumpFlows;
-import static org.openkilda.flow.FlowUtils.dumpLinks;
-import static org.openkilda.flow.FlowUtils.getLinkBandwidth;
-import static org.openkilda.flow.FlowUtils.restoreFlows;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.openkilda.flow.FlowUtils.dumpFlows;
+import static org.openkilda.flow.FlowUtils.getLinkBandwidth;
+import static org.openkilda.flow.FlowUtils.restoreFlows;
 
+import cucumber.api.java.en.Given;
+import cucumber.api.java.en.Then;
+import cucumber.api.java.en.When;
+import org.openkilda.LinksUtils;
 import org.openkilda.flow.FlowUtils;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
@@ -31,10 +34,6 @@ import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.topo.TopologyHelp;
-
-import cucumber.api.java.en.Given;
-import cucumber.api.java.en.Then;
-import cucumber.api.java.en.When;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -102,7 +101,7 @@ public class FlowPathTest {
 
     @When("^all links have available bandwidth (\\d+)$")
     public void checkAvailableBandwidth(int expectedAvailableBandwidth) throws Exception {
-        List<IslInfoData> links = dumpLinks();
+        List<IslInfoData> links = LinksUtils.dumpLinks();
         for (IslInfoData link : links) {
             int actualBandwidth = getBandwidth(expectedAvailableBandwidth,
                     link.getPath().get(0).getSwitchId(),
@@ -159,7 +158,7 @@ public class FlowPathTest {
         int actualLinks = 0;
 
         for (int i = 0; i < 5; i++) {
-            List<IslInfoData> links = dumpLinks();
+            List<IslInfoData> links = LinksUtils.dumpLinks();
             actualLinks = links.size();
 
             if (actualLinks == expectedLinks) {
