@@ -14,15 +14,14 @@ import org.json.simple.JSONObject;
 import org.openkilda.helper.RestClientManager;
 import org.openkilda.integration.converter.IslLinkConverter;
 import org.openkilda.integration.converter.PortConverter;
-import org.openkilda.integration.converter.SwitchConverter;
-import org.openkilda.integration.model.response.LinkResponse;
-import org.openkilda.integration.model.response.SwitchResponse;
+import org.openkilda.integration.model.response.IslLink;
 import org.openkilda.model.IslLinkInfo;
 import org.openkilda.model.PortInfo;
 import org.openkilda.model.SwitchInfo;
 import org.openkilda.utility.ApplicationProperties;
 import org.openkilda.utility.IoUtils;
 import org.openkilda.utility.JsonUtil;
+import org.openkilda.utility.Util;
 
 /**
  * The Class SwitchIntegrationService.
@@ -39,6 +38,9 @@ public class SwitchIntegrationService {
 
     @Autowired
     private ApplicationProperties applicationProperties;
+    
+    @Autowired
+    private Util util;
 
     /**
      * Gets the switches.
@@ -48,11 +50,11 @@ public class SwitchIntegrationService {
     public List<SwitchInfo> getSwitches() {
         try {
             HttpResponse response = restClientManager.invoke(applicationProperties.getSwitches(),
-                    HttpMethod.GET, "", "", "");
+                    HttpMethod.GET, "", "", util.kildaAuthHeader());
             if (RestClientManager.isValidResponse(response)) {
-                List<SwitchResponse> switchesResponse =
-                        restClientManager.getResponseList(response, SwitchResponse.class);
-                return SwitchConverter.toSwitchesInfo(switchesResponse);
+                List<SwitchInfo> switchesResponse =
+                        restClientManager.getResponseList(response, SwitchInfo.class);
+                return switchesResponse;
             }
         } catch (Exception exception) {
             LOGGER.error("Exception in getswitchdataList " + exception.getMessage());
@@ -69,13 +71,13 @@ public class SwitchIntegrationService {
     public List<IslLinkInfo> getIslLinks() {
         try {
             HttpResponse response = restClientManager.invoke(applicationProperties.getLinks(),
-                    HttpMethod.GET, "", "", "");
+                    HttpMethod.GET, "", "", util.kildaAuthHeader());
             if (RestClientManager.isValidResponse(response)) {
-                List<LinkResponse> links = restClientManager.getResponseList(response, LinkResponse.class);
+                List<IslLink> links = restClientManager.getResponseList(response, IslLink.class);
                 return IslLinkConverter.toIslLinksInfo(links);
             }
         } catch (Exception exception) {
-            LOGGER.error("Exception in getAllLinks " + exception.getMessage());
+            LOGGER.error("Exception in getIslLinks " + exception.getMessage());
         }
         return null;
     }

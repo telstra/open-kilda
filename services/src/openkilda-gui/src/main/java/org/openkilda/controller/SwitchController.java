@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.ModelAndView;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import javax.servlet.http.HttpServletRequest;
@@ -99,7 +100,7 @@ public class SwitchController extends BaseController {
     @RequestMapping(value = "/list")
     public @ResponseBody ResponseEntity<Object> getSwitchesDetail() {
         log.info("Inside controller method getSwitchesdetail");
-        List<SwitchInfo> switchesInfo = null;
+        List<SwitchInfo> switchesInfo = new ArrayList<SwitchInfo>();
         try {
             switchesInfo = serviceSwitch.getSwitches();
         } catch (Exception exception) {
