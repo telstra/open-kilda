@@ -9,12 +9,14 @@
 # Typical sequence of calls to validate behavior (from root of project):
 #   1) make -f base/hacks/usecase/flow.crud.make up
 #   2) make -f base/hacks/usecase/flow.crud.make start
-#   3) make -f base/hacks/usecase/flow.crud.make deploy-tiny
-#   4) make -f base/hacks/usecase/flow.crud.make dump.topo.disco
-#   5) make -f base/hacks/usecase/flow.crud.make dump.speaker
-#   6) make -f base/hacks/usecase/flow.crud.make dump.topo.eng
-#   7) make -f base/hacks/usecase/flow.crud.make create-flow
-#   8) make -f base/hacks/usecase/flow.crud.make dump.flow
+#   3) make -f base/hacks/usecase/flow.crud.make deploy-flow-topo
+#   4) make -f base/hacks/usecase/flow.crud.make deploy-flows
+#   5) make -f base/hacks/usecase/flow.crud.make get-flows
+#   6) make -f base/hacks/usecase/flow.crud.make clean-flows
+#   *) make -f base/hacks/usecase/flow.crud.make dump.flow
+#   *) make -f base/hacks/usecase/flow.crud.make dump.topo.disco
+#   *) make -f base/hacks/usecase/flow.crud.make dump.speaker
+#   *) make -f base/hacks/usecase/flow.crud.make dump.topo.eng
 #
 # Additionally, goto http://localhost:7474/browser/ to verify results in neo4j
 #
@@ -23,20 +25,6 @@
 help:
 	@echo ""
 	@echo "This is the Makefile for Flow CRUD development and test commands."
-	@echo "Useful targets are:"
-	@echo "  help  : prints this output"
-	@echo "  up    : brings up the containers, but not the storm topologies"
-	@echo "  down  : brings down the containers"
-	@echo "  clean : destroys the volume data; calls platform.down first"
-	@echo "  start : deploy the storm topologies"
-	@echo "  deploy-small    : create a small network topology"
-	@echo "  deploy-tiny     : create a tiny network topology (3 switches, full mesh)"
-	@echo "  dump.topo.disco : dump the kafka topic between speaker and storm"
-	@echo "  dump.topo.eng   : dump the kafka topic between storm and topology engine"
-	@echo "  list.topics     : list all the topics known to kafka"
-	@echo "  create-flow     : create a flow between two switches"
-	@echo "  delete-flow     : delete a flow between two switches"
-	@echo "  update-flow     : update a flow .. ie change the constraint"
 	@echo ""
 	@echo "NB: This makefile assumes it is running from the the top level directory of the project"
 	@echo "  - e.g. make -f base/hacks/usecase/network.disco.make help"
@@ -63,7 +51,7 @@ clean:
 ## =~=~=~=~=~=~=~=~=~=~=~=~=~=
 ## Lifecycle Storm Topologies
 ## =~=~=~=~=~=~=~=~=~=~=~=~=~=
-.PHONY: start stop login
+.PHONY: start stop login-storm login-mininet
 
 start:
 	@echo ""
@@ -73,10 +61,17 @@ start:
 stop:
 	cd services/wfm && ${MAKE} kill-flow kill-wfm
 
-login:
+login-storm:
 	@echo ""
 	@echo "NB: For Logs, look at /opt/storm/logs/[workers-artifacts]"
 	docker-compose exec storm_supervisor "/bin/bash"
+
+login-mininet:
+	@echo ""
+	@echo "NB: For examples, look at /app/examples or /usr/share/doc/mininet/examples"
+	docker-compose exec mininet "/bin/bash"
+
+
 
 ## =~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=
 ## Lifecycle Network Topologies
@@ -84,23 +79,30 @@ login:
 ## - You can verify the sequence of events through inspection of the right kafka queues.
 ## - It starts with creating a topology in mininet
 ## =~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=
-.PHONY: deploy-small deploy-tiny clean-network
+.PHONY: deploy-flow-topo clean-topo deploy-flows clean-flows get-flows
 
-deploy-small:
+deploy-flow-topo:
 	@echo ""
 	@echo "==> Cleans the topology, then creates a small topology."
-	@echo "==> Look at services/topology-engine/queue-engine/tests/smoke-tests/create-small-topology.py"
-	cd services/topology-engine/queue-engine/tests/smoke-tests && ./create-small-topology.py
+	@echo "==> Look at services/topology-engine/queue-engine/tests/smoke-tests/create-flow-topology.py"
+	cd services/topology-engine/queue-engine/tests/smoke-tests && ./create-flow-topology.py
 
-deploy-tiny:
-	@echo ""
-	@echo "==> Cleans the topology, then creates a tiny topology."
-	@echo "==> Look at services/topology-engine/queue-engine/tests/smoke-tests/create-tinyu-topology.py"
-	cd services/topology-engine/queue-engine/tests/smoke-tests && ./create-tiny-topology.py
-
-clean-network:
+clean-topo:
 	@echo ""
 	services/topology-engine/queue-engine/tests/smoke-tests/clean-topology.py
+
+deploy-flows:
+	@echo ""
+	cd services/topology-engine/queue-engine/tests/smoke-tests && ./deploy-flow-rules.py
+
+
+clean-flows:
+	@echo ""
+	cd services/topology-engine/queue-engine/tests/smoke-tests && ./clean-flow-rules.py
+
+get-flows:
+	@echo ""
+	cd services/topology-engine/queue-engine/tests/smoke-tests && ./get-flow-rules.py
 
 
 ## =~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=
