@@ -40,6 +40,7 @@ RUN wget https://cdnjs.cloudflare.com/ajax/libs/dygraph/2.0.0/dygraph.js
 RUN wget --output-document=jquery-3.2.1.min.js https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js 
 RUN wget https://cdnjs.cloudflare.com/ajax/libs/jquery-toast-plugin/1.3.2/jquery.toast.min.js
 RUN wget https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.16/js/jquery.dataTables.min.js
+RUN wget https://cdnjs.cloudflare.com/ajax/libs/d3/3.2.2/d3.v3.min.js
 
 #MOVING FONTS
 RUN mv fontawesome-webfont.ttf src/main/resources/fonts/
@@ -62,6 +63,7 @@ RUN mv dygraph.js src/main/resources/javascript/
 RUN mv jquery-3.2.1.min.js src/main/resources/javascript/
 RUN mv jquery.toast.min.js src/main/resources/javascript/
 RUN mv jquery.dataTables.min.js src/main/resources/javascript/
+RUN mv d3.v3.min.js src/main/resources/javascript/
 RUN ls -la 
 RUN mvn clean install
 
