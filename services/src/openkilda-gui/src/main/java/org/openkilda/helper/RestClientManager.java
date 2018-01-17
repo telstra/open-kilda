@@ -1,5 +1,17 @@
 package org.openkilda.helper;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Component;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.type.TypeFactory;
+
 import java.io.IOException;
 import java.util.List;
 
@@ -19,19 +31,9 @@ import org.openkilda.exception.ExternalSystemException;
 import org.openkilda.exception.RestCallFailedException;
 import org.openkilda.exception.UnauthorizedException;
 import org.openkilda.model.response.ErrorMessage;
-import org.openkilda.service.impl.AuthPropertyService;
-import org.openkilda.utility.IoUtils;
+import org.openkilda.service.AuthPropertyService;
+import org.openkilda.utility.IoUtil;
 import org.openkilda.utility.StringUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Component;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.type.TypeFactory;
 
 /**
  * The Class RestClientManager.
@@ -39,7 +41,7 @@ import com.fasterxml.jackson.databind.type.TypeFactory;
 @Component
 public class RestClientManager {
 
-    private static final Logger _log = LoggerFactory.getLogger(RestClientManager.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(RestClientManager.class);
 
     @Autowired
     private AuthPropertyService authPropertyService;
@@ -60,7 +62,7 @@ public class RestClientManager {
      */
     public HttpResponse invoke(final String apiUrl, final HttpMethod httpMethod,
             final String payload, final String contentType, final String basicAuth) {
-        _log.info("[invoke] - Start");
+        LOGGER.info("[invoke] - Start");
 
         HttpResponse httpResponse = null;
 
@@ -83,14 +85,14 @@ public class RestClientManager {
             if (!HttpMethod.POST.equals(httpMethod) && !HttpMethod.PUT.equals(httpMethod)) {
                 // Setting Required Headers
                 if (!StringUtil.isNullOrEmpty(basicAuth)) {
-                    _log.debug("[invoke] Setting authorization in header as "
+                    LOGGER.debug("[invoke] Setting authorization in header as "
                             + IAuthConstants.Header.AUTHORIZATION);
                     httpUriRequest.setHeader(IAuthConstants.Header.AUTHORIZATION, basicAuth);
                 }
             }
 
             if (HttpMethod.POST.equals(httpMethod) || HttpMethod.PUT.equals(httpMethod)) {
-                _log.info("[invoke] Executing POST/ PUT request : httpEntityEnclosingRequest : "
+                LOGGER.info("[invoke] Executing POST/ PUT request : httpEntityEnclosingRequest : "
                         + httpEntityEnclosingRequest + " : payload : " + payload);
                 // Setting POST/PUT related headers
                 httpEntityEnclosingRequest.setHeader(HttpHeaders.CONTENT_TYPE, contentType);
@@ -101,19 +103,19 @@ public class RestClientManager {
                 httpEntityEnclosingRequest.setEntity(new StringEntity(payload));
 
                 httpResponse = client.execute(httpEntityEnclosingRequest);
-                _log.debug("[invoke] Call executed successfully");
+                LOGGER.debug("[invoke] Call executed successfully");
             } else if (HttpMethod.DELETE.equals(httpMethod) || HttpMethod.GET.equals(httpMethod)) {
-                _log.info("[invoke] Executing DELETE/ GET request : httpUriRequest : "
+                LOGGER.info("[invoke] Executing DELETE/ GET request : httpUriRequest : "
                         + httpUriRequest);
                 httpResponse = client.execute(httpUriRequest);
-                _log.info("[invoke] Call executed successfully");
+                LOGGER.info("[invoke] Call executed successfully");
             }
 
         } catch (Exception e) {
-            _log.error("[invoke] Exception: ", e);
+            LOGGER.error("[invoke] Exception: ", e);
             throw new RestCallFailedException(e);
         }
-        _log.info("[invoke] - End");
+        LOGGER.info("[invoke] - End");
         return httpResponse;
     }
 
@@ -187,12 +189,12 @@ public class RestClientManager {
             final Class<E> dependentClass) {
         T obj = null;
         try {
-            _log.info("[getResponse]  : StatusCode " + response.getStatusLine().getStatusCode());
+            LOGGER.info("[getResponse]  : StatusCode " + response.getStatusLine().getStatusCode());
 
             if (response.getStatusLine().getStatusCode() != HttpStatus.NO_CONTENT.value()) {
-                String responseEntity = IoUtils.toString(response.getEntity().getContent());
+                String responseEntity = IoUtil.toString(response.getEntity().getContent());
 
-                _log.info("[getResponse]  : response object " + responseEntity);
+                LOGGER.info("[getResponse]  : response object " + responseEntity);
                 if (!(HttpStatus.valueOf(response.getStatusLine().getStatusCode())
                         .is2xxSuccessful() && response.getEntity() != null)) {
                     String errorMessage = null;
@@ -213,7 +215,7 @@ public class RestClientManager {
                             throw new UnauthorizedException(HttpError.UNAUTHORIZED.getMessage());
                         }
 
-                        _log.error("[getResponse] Exception :", e);
+                        LOGGER.error("[getResponse] Exception :", e);
                         errorMessage =
                                 authPropertyService.getError(
                                         IAuthConstants.Code.RESPONSE_PARSING_FAIL_ERROR)
@@ -221,7 +223,7 @@ public class RestClientManager {
                         throw new RestCallFailedException(errorMessage);
                     }
 
-                    _log.error("[getResponse] Exception : " + responseEntity);
+                    LOGGER.error("[getResponse] Exception : " + responseEntity);
                     throw new ExternalSystemException(response.getStatusLine().getStatusCode(),
                             errorMessage);
 
@@ -248,7 +250,7 @@ public class RestClientManager {
      * @return true, if is valid response
      */
     public static boolean isValidResponse(final HttpResponse response) {
-        _log.debug("[isValidResponse] Response Code " + response.getStatusLine().getStatusCode());
+        LOGGER.debug("[isValidResponse] Response Code " + response.getStatusLine().getStatusCode());
         return response.getStatusLine().getStatusCode() >= HttpStatus.OK.value()
                 && response.getStatusLine().getStatusCode() < HttpStatus.MULTIPLE_CHOICES.value()
                 && response.getEntity() != null;
