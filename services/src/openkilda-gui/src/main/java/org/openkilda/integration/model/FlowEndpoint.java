@@ -1,4 +1,4 @@
-package org.openkilda.integration.model.response;
+package org.openkilda.integration.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -9,27 +9,22 @@ import java.io.Serializable;
 
 /**
  * The Class Destination.
- * 
+ *
  * @author Gaurav Chugh
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonPropertyOrder({"switch-id", "port-id", "vlan-id"})
 public class FlowEndpoint implements Serializable {
-    /**
-     * 
-     */
+
     private static final long serialVersionUID = 1L;
 
-    /** The switch id. */
     @JsonProperty("switch-id")
     private String switchId;
 
-    /** The port id. */
     @JsonProperty("port-id")
     private int portId;
 
-    /** The vlan id. */
     @JsonProperty("vlan-id")
     private int vlanId;
 
@@ -37,7 +32,7 @@ public class FlowEndpoint implements Serializable {
         return switchId;
     }
 
-    public void setSwitchId(String switchId) {
+    public void setSwitchId(final String switchId) {
         this.switchId = switchId;
     }
 
@@ -45,7 +40,7 @@ public class FlowEndpoint implements Serializable {
         return portId;
     }
 
-    public void setPortId(int portId) {
+    public void setPortId(final int portId) {
         this.portId = portId;
     }
 
@@ -53,7 +48,7 @@ public class FlowEndpoint implements Serializable {
         return vlanId;
     }
 
-    public void setVlanId(int vlanId) {
+    public void setVlanId(final int vlanId) {
         this.vlanId = vlanId;
     }
 

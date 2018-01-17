@@ -1,15 +1,15 @@
-package org.openkilda.integration.model.response;
-
-import java.io.Serializable;
+package org.openkilda.integration.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
+import java.io.Serializable;
+
 /**
  * The Class FlowStatusResponse.
- * 
+ *
  * @author Gaurav Chugh
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -44,7 +44,7 @@ public class FlowStatus implements Serializable {
      * @param flowid the new flowid
      */
     @JsonProperty("flowid")
-    public void setFlowid(String flowid) {
+    public void setFlowid(final String flowid) {
         this.flowid = flowid;
     }
 
@@ -64,7 +64,7 @@ public class FlowStatus implements Serializable {
      * @param status the new status
      */
     @JsonProperty("status")
-    public void setStatus(String status) {
+    public void setStatus(final String status) {
         this.status = status;
     }
 

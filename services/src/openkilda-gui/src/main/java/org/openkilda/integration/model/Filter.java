@@ -1,15 +1,15 @@
-package org.openkilda.integration.model.request;
-
-import java.io.Serializable;
+package org.openkilda.integration.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
+import java.io.Serializable;
+
 /**
  * The Class Filter.
- * 
+ *
  * @author sumitpal.singh
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -17,31 +17,25 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 @JsonPropertyOrder({"tagk", "group_by", "type", "filter"})
 public class Filter implements Serializable {
 
-    /** The tagk. */
+    private final static long serialVersionUID = -300223703794502712L;
+
     @JsonProperty("tagk")
     private String tagk;
 
-    /** The group by. */
     @JsonProperty("group_by")
     private boolean groupBy;
 
-    /** The type. */
     @JsonProperty("type")
     private String type;
 
-    /** The filter. */
     @JsonProperty("filter")
     private String filter;
-
-    /** The Constant serialVersionUID. */
-    private final static long serialVersionUID = -300223703794502712L;
 
     /**
      * Gets the tagk.
      *
      * @return the tagk
      */
-    @JsonProperty("tagk")
     public String getTagk() {
         return tagk;
     }
@@ -51,8 +45,7 @@ public class Filter implements Serializable {
      *
      * @param tagk the new tagk
      */
-    @JsonProperty("tagk")
-    public void setTagk(String tagk) {
+    public void setTagk(final String tagk) {
         this.tagk = tagk;
     }
 
@@ -61,7 +54,6 @@ public class Filter implements Serializable {
      *
      * @return true, if is group by
      */
-    @JsonProperty("group_by")
     public boolean isGroupBy() {
         return groupBy;
     }
@@ -71,8 +63,7 @@ public class Filter implements Serializable {
      *
      * @param groupBy the new group by
      */
-    @JsonProperty("group_by")
-    public void setGroupBy(boolean groupBy) {
+    public void setGroupBy(final boolean groupBy) {
         this.groupBy = groupBy;
     }
 
@@ -81,7 +72,6 @@ public class Filter implements Serializable {
      *
      * @return the type
      */
-    @JsonProperty("type")
     public String getType() {
         return type;
     }
@@ -91,8 +81,7 @@ public class Filter implements Serializable {
      *
      * @param type the new type
      */
-    @JsonProperty("type")
-    public void setType(String type) {
+    public void setType(final String type) {
         this.type = type;
     }
 
@@ -101,7 +90,6 @@ public class Filter implements Serializable {
      *
      * @return the filter
      */
-    @JsonProperty("filter")
     public String getFilter() {
         return filter;
     }
@@ -111,8 +99,7 @@ public class Filter implements Serializable {
      *
      * @param filter the new filter
      */
-    @JsonProperty("filter")
-    public void setFilter(String filter) {
+    public void setFilter(final String filter) {
         this.filter = filter;
     }
 
