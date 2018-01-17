@@ -20,7 +20,7 @@ import org.openkilda.constants.IConstants;
 import org.openkilda.model.IslLinkInfo;
 import org.openkilda.model.PortInfo;
 import org.openkilda.model.SwitchInfo;
-import org.openkilda.service.ServiceSwitch;
+import org.openkilda.service.SwitchService;
 
 /**
  * The Class SwitchController.
@@ -33,11 +33,11 @@ import org.openkilda.service.ServiceSwitch;
 public class SwitchController extends BaseController {
 
     /** The Constant log. */
-    private static final Logger log = Logger.getLogger(SwitchController.class);
+    private static final Logger LOGGER = Logger.getLogger(SwitchController.class);
 
     /** The process switch details. */
     @Autowired
-    private ServiceSwitch serviceSwitch;
+    private SwitchService serviceSwitch;
 
 
     /**
@@ -99,14 +99,14 @@ public class SwitchController extends BaseController {
      */
     @RequestMapping(value = "/list")
     public @ResponseBody ResponseEntity<Object> getSwitchesDetail() {
-        log.info("Inside controller method getSwitchesdetail");
+        LOGGER.info("Inside controller method getSwitchesdetail");
         List<SwitchInfo> switchesInfo = new ArrayList<SwitchInfo>();
         try {
             switchesInfo = serviceSwitch.getSwitches();
         } catch (Exception exception) {
-            log.error("Exception in getSwitchesDetail " + exception.getMessage());
+            LOGGER.error("Exception in getSwitchesDetail " + exception.getMessage());
         }
-        log.info("exit controller method getSwitchesdetail");
+        LOGGER.info("exit controller method getSwitchesdetail");
         return new ResponseEntity<Object>(switchesInfo, HttpStatus.OK);
     }
 
@@ -120,15 +120,15 @@ public class SwitchController extends BaseController {
     public @ResponseBody ResponseEntity<Object> getPortsDetailbySwitchId(
             @PathVariable final String switchId) {
 
-        log.info("Inside SwitchController method getPortsDetailbySwitchId : SwitchId " + switchId);
-        List<PortInfo> portResponse = null;
+        LOGGER.info("Inside SwitchController method getPortsDetailbySwitchId : SwitchId " + switchId);
+        List<PortInfo> ports = null;
         try {
-            portResponse = serviceSwitch.getPortDetailBySwitchId(switchId);
+            ports = serviceSwitch.getPortsBySwitchId(switchId);
         } catch (Exception exception) {
-            log.error("Exception in getPortsDetailbySwitchId : " + exception.getMessage());
+            LOGGER.error("Exception in getPortsDetailbySwitchId : " + exception.getMessage());
         }
-        log.info("exit SwitchController method getPortsDetailbySwitchId ");
-        return new ResponseEntity<Object>(portResponse, HttpStatus.OK);
+        LOGGER.info("exit SwitchController method getPortsDetailbySwitchId ");
+        return new ResponseEntity<Object>(ports, HttpStatus.OK);
     }
 
     /**
@@ -139,14 +139,14 @@ public class SwitchController extends BaseController {
     @RequestMapping(value = "/links", method = RequestMethod.GET)
     public @ResponseBody ResponseEntity<Object> getLinksDetail() {
 
-        log.info("Inside SwitchController method getLinksDetail");
+        LOGGER.info("Inside SwitchController method getLinksDetail");
         List<IslLinkInfo> flows = null;
         try {
             flows = serviceSwitch.getIslLinks();
         } catch (Exception exception) {
-            log.error(" Exception in getLinksDetail " + exception.getMessage());
+            LOGGER.error(" Exception in getLinksDetail " + exception.getMessage());
         }
-        log.info("exit SwitchController method getLinksDetail");
+        LOGGER.info("exit SwitchController method getLinksDetail");
         return new ResponseEntity<Object>(flows, HttpStatus.OK);
     }
 
