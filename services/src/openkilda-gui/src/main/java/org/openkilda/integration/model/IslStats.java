@@ -1,44 +1,40 @@
-package org.openkilda.integration.model.request;
-
-import java.io.Serializable;
-import java.util.List;
+package org.openkilda.integration.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
+import java.io.Serializable;
+import java.util.List;
+
 /**
  * The Class ISLStatsRequestBody.
- * 
+ *
  * @author sumitpal.singh
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonPropertyOrder({"start", "queries", "end"})
-public class ISLStatsRequestBody implements Serializable {
+public class IslStats implements Serializable {
 
-    /** The start. */
+    private final static long serialVersionUID = -5664522661231030709L;
+
     @JsonProperty("start")
     private String start;
 
-    /** The queries. */
     @JsonProperty("queries")
     private List<Query> queries = null;
 
-    /** The end. */
     @JsonProperty("end")
     private String end;
 
-    /** The Constant serialVersionUID. */
-    private final static long serialVersionUID = -5664522661231030709L;
 
     /**
      * Gets the start.
      *
      * @return the start
      */
-    @JsonProperty("start")
     public String getStart() {
         return start;
     }
@@ -48,8 +44,7 @@ public class ISLStatsRequestBody implements Serializable {
      *
      * @param start the new start
      */
-    @JsonProperty("start")
-    public void setStart(String start) {
+    public void setStart(final String start) {
         this.start = start;
     }
 
@@ -58,7 +53,6 @@ public class ISLStatsRequestBody implements Serializable {
      *
      * @return the queries
      */
-    @JsonProperty("queries")
     public List<Query> getQueries() {
         return queries;
     }
@@ -68,8 +62,7 @@ public class ISLStatsRequestBody implements Serializable {
      *
      * @param queries the new queries
      */
-    @JsonProperty("queries")
-    public void setQueries(List<Query> queries) {
+    public void setQueries(final List<Query> queries) {
         this.queries = queries;
     }
 
@@ -78,7 +71,6 @@ public class ISLStatsRequestBody implements Serializable {
      *
      * @return the end
      */
-    @JsonProperty("end")
     public String getEnd() {
         return end;
     }
@@ -88,8 +80,7 @@ public class ISLStatsRequestBody implements Serializable {
      *
      * @param end the new end
      */
-    @JsonProperty("end")
-    public void setEnd(String end) {
+    public void setEnd(final String end) {
         this.end = end;
     }
 

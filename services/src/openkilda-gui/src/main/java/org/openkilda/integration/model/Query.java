@@ -1,16 +1,16 @@
-package org.openkilda.integration.model.request;
-
-import java.io.Serializable;
-import java.util.List;
+package org.openkilda.integration.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
+import java.io.Serializable;
+import java.util.List;
+
 /**
  * The Class Query.
- * 
+ *
  * @author sumitpal.singh
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -18,35 +18,29 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 @JsonPropertyOrder({"rate", "aggregator", "downsample", "metric", "filters"})
 public class Query implements Serializable {
 
-    /** The rate. */
+    private final static long serialVersionUID = 5051126705056803873L;
+
     @JsonProperty("rate")
     private boolean rate;
 
-    /** The aggregator. */
     @JsonProperty("aggregator")
     private String aggregator;
 
-    /** The downsample. */
     @JsonProperty("downsample")
     private String downsample;
 
-    /** The metric. */
     @JsonProperty("metric")
     private String metric;
 
-    /** The filters. */
     @JsonProperty("filters")
     private List<Filter> filters = null;
 
-    /** The Constant serialVersionUID. */
-    private final static long serialVersionUID = 5051126705056803873L;
 
     /**
      * Checks if is rate.
      *
      * @return true, if is rate
      */
-    @JsonProperty("rate")
     public boolean isRate() {
         return rate;
     }
@@ -56,8 +50,7 @@ public class Query implements Serializable {
      *
      * @param rate the new rate
      */
-    @JsonProperty("rate")
-    public void setRate(boolean rate) {
+    public void setRate(final boolean rate) {
         this.rate = rate;
     }
 
@@ -66,7 +59,6 @@ public class Query implements Serializable {
      *
      * @return the aggregator
      */
-    @JsonProperty("aggregator")
     public String getAggregator() {
         return aggregator;
     }
@@ -76,8 +68,7 @@ public class Query implements Serializable {
      *
      * @param aggregator the new aggregator
      */
-    @JsonProperty("aggregator")
-    public void setAggregator(String aggregator) {
+    public void setAggregator(final String aggregator) {
         this.aggregator = aggregator;
     }
 
@@ -86,7 +77,6 @@ public class Query implements Serializable {
      *
      * @return the downsample
      */
-    @JsonProperty("downsample")
     public String getDownsample() {
         return downsample;
     }
@@ -96,8 +86,7 @@ public class Query implements Serializable {
      *
      * @param downsample the new downsample
      */
-    @JsonProperty("downsample")
-    public void setDownsample(String downsample) {
+    public void setDownsample(final String downsample) {
         this.downsample = downsample;
     }
 
@@ -106,7 +95,6 @@ public class Query implements Serializable {
      *
      * @return the metric
      */
-    @JsonProperty("metric")
     public String getMetric() {
         return metric;
     }
@@ -116,8 +104,7 @@ public class Query implements Serializable {
      *
      * @param metric the new metric
      */
-    @JsonProperty("metric")
-    public void setMetric(String metric) {
+    public void setMetric(final String metric) {
         this.metric = metric;
     }
 
@@ -126,7 +113,6 @@ public class Query implements Serializable {
      *
      * @return the filters
      */
-    @JsonProperty("filters")
     public List<Filter> getFilters() {
         return filters;
     }
@@ -136,8 +122,7 @@ public class Query implements Serializable {
      *
      * @param filters the new filters
      */
-    @JsonProperty("filters")
-    public void setFilters(List<Filter> filters) {
+    public void setFilters(final List<Filter> filters) {
         this.filters = filters;
     }
 

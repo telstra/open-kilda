@@ -1,16 +1,16 @@
-package org.openkilda.integration.model.response;
-
-import java.io.Serializable;
-import java.util.List;
+package org.openkilda.integration.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
+import java.io.Serializable;
+import java.util.List;
+
 /**
  * The Class PortDesc.
- * 
+ *
  * @author Gaurav Chugh
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -18,7 +18,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 @JsonPropertyOrder({"peer_features", "current_features", "hardware_address", "curr_speed",
         "port_number", "supported_features", "name", "max_speed", "state", "config",
         "advertised_features"})
-public class PortDesc implements Serializable {
+public class PortDetail implements Serializable {
 
     /** The peer features. */
     @JsonProperty("peer_features")
@@ -83,7 +83,7 @@ public class PortDesc implements Serializable {
      * @param peerFeatures the new peer features
      */
     @JsonProperty("peer_features")
-    public void setPeerFeatures(List<Object> peerFeatures) {
+    public void setPeerFeatures(final List<Object> peerFeatures) {
         this.peerFeatures = peerFeatures;
     }
 
@@ -103,7 +103,7 @@ public class PortDesc implements Serializable {
      * @param currentFeatures the new current features
      */
     @JsonProperty("current_features")
-    public void setCurrentFeatures(List<String> currentFeatures) {
+    public void setCurrentFeatures(final List<String> currentFeatures) {
         this.currentFeatures = currentFeatures;
     }
 
@@ -123,7 +123,7 @@ public class PortDesc implements Serializable {
      * @param hardwareAddress the new hardware address
      */
     @JsonProperty("hardware_address")
-    public void setHardwareAddress(String hardwareAddress) {
+    public void setHardwareAddress(final String hardwareAddress) {
         this.hardwareAddress = hardwareAddress;
     }
 
@@ -143,7 +143,7 @@ public class PortDesc implements Serializable {
      * @param currSpeed the new curr speed
      */
     @JsonProperty("curr_speed")
-    public void setCurrSpeed(String currSpeed) {
+    public void setCurrSpeed(final String currSpeed) {
         this.currSpeed = currSpeed;
     }
 
@@ -163,7 +163,7 @@ public class PortDesc implements Serializable {
      * @param portNumber the new port number
      */
     @JsonProperty("port_number")
-    public void setPortNumber(String portNumber) {
+    public void setPortNumber(final String portNumber) {
         this.portNumber = portNumber;
     }
 
@@ -183,7 +183,7 @@ public class PortDesc implements Serializable {
      * @param supportedFeatures the new supported features
      */
     @JsonProperty("supported_features")
-    public void setSupportedFeatures(List<Object> supportedFeatures) {
+    public void setSupportedFeatures(final List<Object> supportedFeatures) {
         this.supportedFeatures = supportedFeatures;
     }
 
@@ -203,7 +203,7 @@ public class PortDesc implements Serializable {
      * @param name the new name
      */
     @JsonProperty("name")
-    public void setName(String name) {
+    public void setName(final String name) {
         this.name = name;
     }
 
@@ -223,7 +223,7 @@ public class PortDesc implements Serializable {
      * @param maxSpeed the new max speed
      */
     @JsonProperty("max_speed")
-    public void setMaxSpeed(String maxSpeed) {
+    public void setMaxSpeed(final String maxSpeed) {
         this.maxSpeed = maxSpeed;
     }
 
@@ -243,7 +243,7 @@ public class PortDesc implements Serializable {
      * @param state the new state
      */
     @JsonProperty("state")
-    public void setState(List<String> state) {
+    public void setState(final List<String> state) {
         this.state = state;
     }
 
@@ -263,7 +263,7 @@ public class PortDesc implements Serializable {
      * @param config the new config
      */
     @JsonProperty("config")
-    public void setConfig(List<String> config) {
+    public void setConfig(final List<String> config) {
         this.config = config;
     }
 
@@ -283,7 +283,7 @@ public class PortDesc implements Serializable {
      * @param advertisedFeatures the new advertised features
      */
     @JsonProperty("advertised_features")
-    public void setAdvertisedFeatures(List<Object> advertisedFeatures) {
+    public void setAdvertisedFeatures(final List<Object> advertisedFeatures) {
         this.advertisedFeatures = advertisedFeatures;
     }
 
