@@ -300,6 +300,7 @@ public class CrudBolt
         ImmutablePair<PathInfoData, PathInfoData> path = pathComputer.getPath(requestedFlow);
         logger.info("Created flow path: {}", path);
 
+        // TODO: Can we avoid special logic for "isOneSwitchFlow" .. make it the responsibility of the pathComputer?
         if (!flowCache.isOneSwitchFlow(requestedFlow) && pathComputer.isEmpty(path)) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.CREATION_FAILURE, "Could not create flow", "Path was not found");
