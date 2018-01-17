@@ -18,40 +18,31 @@ import java.io.Serializable;
         "target_switch", "speed", "state"})
 public class IslLinkInfo implements Serializable {
 
-    /** The src port. */
+    private final static long serialVersionUID = 8274573430947748236L;
+
     @JsonProperty("src_port")
     private int srcPort;
 
-    /** The latency. */
     @JsonProperty("latency")
     private int latency;
 
-    /** The src switch. */
     @JsonProperty("source_switch")
     private String srcSwitch;
 
-    /** The available bandwidth. */
     @JsonProperty("available_bandwidth")
     private int availableBandwidth;
 
-    /** The dst port. */
     @JsonProperty("dst_port")
     private int dstPort;
 
-    /** The dst switch. */
     @JsonProperty("target_switch")
     private String dstSwitch;
 
-    /** The speed. */
     @JsonProperty("speed")
     private int speed;
 
-    /** The state. */
     @JsonProperty("state")
     private String state;
-
-    /** The Constant serialVersionUID. */
-    private final static long serialVersionUID = 8274573430947748236L;
 
     /**
      * Gets the src port.
