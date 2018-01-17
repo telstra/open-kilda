@@ -16,7 +16,7 @@ import javax.ws.rs.core.Context;
 import org.apache.log4j.Logger;
 import org.json.simple.JSONObject;
 import org.openkilda.constants.IConstants.Metrics;
-import org.openkilda.service.ServiceStats;
+import org.openkilda.service.StatsService;
 import org.openkilda.utility.StringUtil;
 
 /**
@@ -29,11 +29,11 @@ import org.openkilda.utility.StringUtil;
 public class StatsController {
 
     /** The Constant logger. */
-    static final Logger log = Logger.getLogger(StatsController.class);
+    private static final Logger LOGGER = Logger.getLogger(StatsController.class);
 
     /** The stats service. */
     @Autowired
-    private ServiceStats statsService;
+    private StatsService statsService;
 
     /**
      * Gets the stats.
@@ -50,8 +50,7 @@ public class StatsController {
     public @ResponseBody ResponseEntity<Object> getStats(@Context final HttpServletRequest request,
             @PathVariable final String startDate, @PathVariable final String endDate,
             @PathVariable final String metric) throws Exception {
-
-        log.info("Inside StatsController method getStats ");
+        LOGGER.info("Inside StatsController method getStats ");
         String response = statsService.getStats(startDate, endDate, metric, request.getParameterMap());
         if (StringUtil.isNullOrEmpty(response)) {
             return new ResponseEntity<Object>(new JSONObject(), HttpStatus.NO_CONTENT);

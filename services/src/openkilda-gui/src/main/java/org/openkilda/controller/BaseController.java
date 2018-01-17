@@ -16,8 +16,6 @@ import javax.servlet.http.HttpSession;
 
 import org.openkilda.constants.IConstants;
 import org.openkilda.web.SessionObject;
-
-
 /**
  * BaseController: all the common functionality of web controllers will be lied here. All common
  * requests will be written here
@@ -27,7 +25,6 @@ import org.openkilda.web.SessionObject;
  */
 public class BaseController implements ErrorController {
 
-    /** The Constant LOG. */
     private static final Logger LOGGER = LoggerFactory.getLogger(BaseController.class);
 
 
@@ -81,7 +78,7 @@ public class BaseController implements ErrorController {
         try {
             sessionObject = (SessionObject) session.getAttribute(IConstants.SESSION_OBJECT);
         } catch (IllegalStateException ise) {
-            LOGGER.info("getSessionObject(). SessionObject had IllegalState, made new");
+            LOGGER.info("getSessionObject(). SessionObject had IllegalState, made new", ise);
         } finally {
             if (sessionObject == null) {
                 session = request.getSession(false);

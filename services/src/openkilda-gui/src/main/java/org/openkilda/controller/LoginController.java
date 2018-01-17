@@ -119,7 +119,7 @@ public class LoginController extends BaseController {
             }
 
         } catch (Exception e) {
-            LOGGER.warn("authenticate() Authentication failure");
+            LOGGER.error("authenticate() Authentication failure", e);
             errors.add("authenticate() Authentication failure");
             modelAndView.setViewName(IConstants.View.REDIRECT_LOGIN);
 
