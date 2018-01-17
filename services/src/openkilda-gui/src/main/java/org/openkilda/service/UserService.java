@@ -22,10 +22,10 @@ import org.openkilda.entity.User;
  * @author Gaurav Chugh
  */
 @Service
-public class ServiceUser implements UserDetailsService {
+public class UserService implements UserDetailsService {
 
     /** The Constant LOG. */
-    private static final Logger LOGGER = LoggerFactory.getLogger(ServiceUser.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(UserService.class);
 
     /** The user repository. */
     @Autowired

@@ -14,14 +14,16 @@ import org.json.simple.JSONObject;
 import org.openkilda.helper.RestClientManager;
 import org.openkilda.integration.converter.IslLinkConverter;
 import org.openkilda.integration.converter.PortConverter;
+import org.openkilda.integration.exception.IntegrationException;
+import org.openkilda.integration.exception.InvalidResponseException;
 import org.openkilda.integration.model.response.IslLink;
 import org.openkilda.model.IslLinkInfo;
 import org.openkilda.model.PortInfo;
 import org.openkilda.model.SwitchInfo;
+import org.openkilda.service.ApplicationService;
 import org.openkilda.utility.ApplicationProperties;
-import org.openkilda.utility.IoUtils;
+import org.openkilda.utility.IoUtil;
 import org.openkilda.utility.JsonUtil;
-import org.openkilda.utility.Util;
 
 /**
  * The Class SwitchIntegrationService.
@@ -38,28 +40,32 @@ public class SwitchIntegrationService {
 
     @Autowired
     private ApplicationProperties applicationProperties;
-    
+
     @Autowired
-    private Util util;
+    private ApplicationService applicationService;
 
     /**
      * Gets the switches.
      *
      * @return the switches
+     * @throws IntegrationException
      */
-    public List<SwitchInfo> getSwitches() {
+    public List<SwitchInfo> getSwitches() throws IntegrationException {
         try {
             HttpResponse response = restClientManager.invoke(applicationProperties.getSwitches(),
-                    HttpMethod.GET, "", "", util.kildaAuthHeader());
+                    HttpMethod.GET, "", "", applicationService.getAuthHeader());
             if (RestClientManager.isValidResponse(response)) {
                 List<SwitchInfo> switchesResponse =
                         restClientManager.getResponseList(response, SwitchInfo.class);
                 return switchesResponse;
+            } else {
+                String content = IoUtil.toString(response.getEntity().getContent());
+                throw new InvalidResponseException(response.getStatusLine().getStatusCode(), content);
             }
         } catch (Exception exception) {
             LOGGER.error("Exception in getswitchdataList " + exception.getMessage());
+            throw new IntegrationException(exception);
         }
-        return null;
     }
 
 
@@ -67,39 +73,46 @@ public class SwitchIntegrationService {
      * Gets the isl links.
      *
      * @return the isl links
+     * @throws IntegrationException
      */
-    public List<IslLinkInfo> getIslLinks() {
+    public List<IslLinkInfo> getIslLinks() throws IntegrationException {
         try {
             HttpResponse response = restClientManager.invoke(applicationProperties.getLinks(),
-                    HttpMethod.GET, "", "", util.kildaAuthHeader());
+                    HttpMethod.GET, "", "", applicationService.getAuthHeader());
             if (RestClientManager.isValidResponse(response)) {
                 List<IslLink> links = restClientManager.getResponseList(response, IslLink.class);
                 return IslLinkConverter.toIslLinksInfo(links);
+            } else {
+                String content = IoUtil.toString(response.getEntity().getContent());
+                throw new InvalidResponseException(response.getStatusLine().getStatusCode(), content);
             }
         } catch (Exception exception) {
             LOGGER.error("Exception in getIslLinks " + exception.getMessage());
+            throw new IntegrationException(exception);
         }
-        return null;
     }
 
     /**
      * Gets the switch ports.
      *
      * @return the switch ports
+     * @throws IntegrationException
      */
-    public List<PortInfo> getSwitchPorts(final String switchId) {
+    public List<PortInfo> getSwitchPorts(final String switchId) throws IntegrationException {
         try {
             HttpResponse response = restClientManager.invoke(applicationProperties.getSwitchPorts(),
                     HttpMethod.GET, "", "", "");
             if (RestClientManager.isValidResponse(response)) {
-                String responseEntity = IoUtils.toString(response.getEntity().getContent());
+                String responseEntity = IoUtil.toString(response.getEntity().getContent());
                 JSONObject jsonObject = JsonUtil.toObject(responseEntity, JSONObject.class);
                 return PortConverter.toPortsInfo(jsonObject, switchId);
+            } else {
+                String content = IoUtil.toString(response.getEntity().getContent());
+                throw new InvalidResponseException(response.getStatusLine().getStatusCode(), content);
             }
         } catch (Exception exception) {
             LOGGER.error("Exception in getSwitchPorts " + exception.getMessage());
+            throw new IntegrationException(exception);
         }
-        return null;
     }
-
 }
