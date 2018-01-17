@@ -9,13 +9,11 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.log4j.Logger;
-import org.openkilda.integration.model.response.FlowStatus;
-import org.openkilda.integration.model.response.PathLinkResponse;
+import org.openkilda.integration.exception.IntegrationException;
 import org.openkilda.integration.service.FlowsIntegrationService;
 import org.openkilda.model.FlowInfo;
+import org.openkilda.model.FlowPath;
 import org.openkilda.model.response.FlowCount;
-import org.openkilda.model.response.FlowPath;
-import org.openkilda.service.helper.FlowHelper;
 import org.openkilda.utility.CollectionUtil;
 
 /**
@@ -24,13 +22,9 @@ import org.openkilda.utility.CollectionUtil;
  * @author Gaurav Chugh
  */
 @Service
-public class ServiceFlow {
+public class FlowService {
 
-    private static final Logger LOGGER = Logger.getLogger(ServiceFlow.class);
-
-    /** The flow data util. */
-    @Autowired
-    private FlowHelper flowDataUtil;
+    private static final Logger LOGGER = Logger.getLogger(FlowService.class);
 
     /** The flows integration service. */
     @Autowired
@@ -41,21 +35,10 @@ public class ServiceFlow {
      * get All Flows.
      *
      * @return SwitchRelationData
+     * @throws Exception
      */
-    public List<FlowInfo> getAllFlows() {
+    public List<FlowInfo> getAllFlows() throws IntegrationException {
         List<FlowInfo> flowInfos = flowsIntegrationService.getFlows();
-
-        if (!CollectionUtil.isEmpty(flowInfos)) {
-            flowInfos.forEach(flowInfo -> {
-                String status = "";
-                FlowStatus flowStatusResponse =
-                        flowsIntegrationService.getFlowStatus(flowInfo.getFlowid());
-                if (flowStatusResponse != null) {
-                    status = flowStatusResponse.getStatus();
-                }
-                flowInfo.setStatus(status);
-            });
-        }
         return flowInfos;
     }
 
@@ -93,18 +76,11 @@ public class ServiceFlow {
      *
      * @param flowid the flowid
      * @return the path link
+     * @throws IntegrationException
      */
-    public FlowPath getFlowPath(final String flowid) {
-
-        LOGGER.info("Inside ServiceFlowImpl method getFlowPath ");
-        FlowPath pathResponse = new FlowPath();
-        PathLinkResponse[] pathLinkResponse = flowsIntegrationService.getFlowPaths();
-
-        if (pathLinkResponse != null) {
-            pathResponse = flowDataUtil.getFlowPath(flowid, pathLinkResponse);
-        }
-        LOGGER.info("exit ServiceFlowImpl method getFlowPath ");
-        return pathResponse;
+    public FlowPath getFlowPath(final String flowid) throws IntegrationException {
+        FlowPath flowPath = flowsIntegrationService.getFlowPath(flowid);
+        return flowPath;
     }
 
 }

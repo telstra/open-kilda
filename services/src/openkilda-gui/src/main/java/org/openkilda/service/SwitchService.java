@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+import org.openkilda.integration.exception.IntegrationException;
 import org.openkilda.integration.service.SwitchIntegrationService;
 import org.openkilda.model.IslLinkInfo;
 import org.openkilda.model.PortInfo;
@@ -16,7 +17,7 @@ import org.openkilda.model.SwitchInfo;
  * @author Gaurav Chugh
  */
 @Service
-public class ServiceSwitch {
+public class SwitchService {
 
     @Autowired
     private SwitchIntegrationService switchIntegrationService;
@@ -25,8 +26,9 @@ public class ServiceSwitch {
      * get All SwitchList.
      *
      * @return SwitchRelationData
+     * @throws IntegrationException
      */
-    public List<SwitchInfo> getSwitches() {
+    public List<SwitchInfo> getSwitches() throws IntegrationException {
         return switchIntegrationService.getSwitches();
     }
 
@@ -34,8 +36,9 @@ public class ServiceSwitch {
      * get All Links.
      *
      * @return SwitchRelationData
+     * @throws IntegrationException
      */
-    public List<IslLinkInfo> getIslLinks() {
+    public List<IslLinkInfo> getIslLinks() throws IntegrationException {
         return switchIntegrationService.getIslLinks();
     }
 
@@ -45,8 +48,9 @@ public class ServiceSwitch {
      *
      * @param switchId the switch id
      * @return List<PortInfo>
+     * @throws IntegrationException
      */
-    public List<PortInfo> getPortDetailBySwitchId(final String switchId) {
+    public List<PortInfo> getPortsBySwitchId(final String switchId) throws IntegrationException {
         return switchIntegrationService.getSwitchPorts(switchId);
     }
 }

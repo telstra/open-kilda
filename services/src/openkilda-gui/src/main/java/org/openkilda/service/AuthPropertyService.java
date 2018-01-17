@@ -1,11 +1,13 @@
-package org.openkilda.service.impl;
+package org.openkilda.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
+
 import org.openkilda.model.response.Error;
 
 /**
@@ -14,7 +16,7 @@ import org.openkilda.model.response.Error;
 @Component
 @PropertySource(name = "authMessages", value = "classpath:application.properties")
 public class AuthPropertyService {
-    private static final Logger _log = LoggerFactory.getLogger(AuthPropertyService.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(AuthPropertyService.class);
 
     public static final String CODE = ".code";
     public static final String MESSAGE = ".message";
@@ -29,7 +31,7 @@ public class AuthPropertyService {
      * @return error message and code.
      */
     public Error getError(final String errorMsg) {
-        _log.info("[getError] Error message: " + errorMsg);
+        LOGGER.info("[getError] Error message: " + errorMsg);
         String errorMessageCode = authMessages.getProperty(errorMsg + CODE);
         String errorMessage = authMessages.getProperty(errorMsg + MESSAGE);
         return new Error(Integer.valueOf(errorMessageCode), errorMessage);
@@ -42,7 +44,7 @@ public class AuthPropertyService {
      * @return the message
      */
     public String getMessage(final String msg) {
-        _log.info("[getMessage] Message: " + msg);
+        LOGGER.info("[getMessage] Message: " + msg);
         return authMessages.getProperty(msg);
     }
 }

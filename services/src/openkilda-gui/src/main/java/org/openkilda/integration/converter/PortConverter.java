@@ -6,8 +6,8 @@ import java.util.List;
 
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
-import org.openkilda.integration.model.response.PortDesc;
-import org.openkilda.integration.model.response.PortDetailResponse;
+import org.openkilda.integration.model.PortDetail;
+import org.openkilda.integration.model.PortsDetail;
 import org.openkilda.model.PortInfo;
 import org.openkilda.utility.JsonUtil;
 
@@ -21,24 +21,24 @@ public final class PortConverter {
             Object object = jsonObject.get(switchId);
             if (object != null) {
                 String val = JSONValue.toJSONString(object);
-                PortDetailResponse portDetailResponse =
-                        JsonUtil.toObject(val, PortDetailResponse.class);
+                PortsDetail portsDetail =
+                        JsonUtil.toObject(val, PortsDetail.class);
 
-                List<PortDesc> portDescList = portDetailResponse.getPortDesc();
-                if (portDescList != null && !portDescList.isEmpty()) {
-                    ports = getPortsInfo(portDescList, switchId, ports);
+                List<PortDetail> portDetailList = portsDetail.getPortDetail();
+                if (portDetailList != null && !portDetailList.isEmpty()) {
+                    ports = getPortsInfo(portDetailList, switchId, ports);
                 }
             }
         }
         return ports;
     }
 
-    private static List<PortInfo> getPortsInfo(final List<PortDesc> portDescList,
+    private static List<PortInfo> getPortsInfo(final List<PortDetail> portsDetail,
             final String key, final List<PortInfo> switchPortsInfoList) {
-        for (PortDesc portDesc : portDescList) {
+        for (PortDetail portDetail : portsDetail) {
 
-            if (!portDesc.getPortNumber().equalsIgnoreCase("local")) {
-                PortInfo info = setPortInfo(key, portDesc);
+            if (!portDetail.getPortNumber().equalsIgnoreCase("local")) {
+                PortInfo info = setPortInfo(key, portDetail);
                 switchPortsInfoList.add(info);
             }
 
@@ -47,29 +47,29 @@ public final class PortConverter {
         return switchPortsInfoList;
     }
 
-    private static PortInfo setPortInfo(final String key, final PortDesc portDesc) {
+    private static PortInfo setPortInfo(final String key, final PortDetail portDetail) {
         PortInfo portInfo = new PortInfo();
         StringBuilder currentFeatures = new StringBuilder();
 
-        if (portDesc.getCurrentFeatures() != null
-                && portDesc.getCurrentFeatures().size() > 0) {
+        if (portDetail.getCurrentFeatures() != null
+                && portDetail.getCurrentFeatures().size() > 0) {
 
-            for (int i = 0; i < portDesc.getCurrentFeatures().size(); i++) {
+            for (int i = 0; i < portDetail.getCurrentFeatures().size(); i++) {
                 if (currentFeatures.length() == 0) {
-                    currentFeatures = currentFeatures.append(portDesc
+                    currentFeatures = currentFeatures.append(portDetail
                             .getCurrentFeatures().get(i));
                 } else {
-                    currentFeatures = currentFeatures.append(","+portDesc
+                    currentFeatures = currentFeatures.append(","+portDetail
                             .getCurrentFeatures().get(i));
                 }
             }
             portInfo.setInterfacetype(currentFeatures.toString());
         }
         portInfo.setSwitchName(key);
-        portInfo.setPortNumber(portDesc.getPortNumber());
-        portInfo.setPortName(portDesc.getName());
-        if (portDesc.getState() != null && !portDesc.getState().isEmpty()) {
-            portInfo.setStatus(portDesc.getState().get(0));
+        portInfo.setPortNumber(portDetail.getPortNumber());
+        portInfo.setPortName(portDetail.getName());
+        if (portDetail.getState() != null && !portDetail.getState().isEmpty()) {
+            portInfo.setStatus(portDetail.getState().get(0));
         }
 
         return portInfo;

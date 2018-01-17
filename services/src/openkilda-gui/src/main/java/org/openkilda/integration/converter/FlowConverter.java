@@ -3,8 +3,8 @@ package org.openkilda.integration.converter;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.openkilda.integration.model.response.Flow;
-import org.openkilda.integration.model.response.FlowEndpoint;
+import org.openkilda.integration.model.Flow;
+import org.openkilda.integration.model.FlowEndpoint;
 import org.openkilda.model.FlowInfo;
 import org.openkilda.utility.CollectionUtil;
 

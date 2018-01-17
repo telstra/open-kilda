@@ -16,7 +16,7 @@ import org.springframework.security.web.access.AccessDeniedHandler;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.openkilda.service.ServiceUser;
+import org.openkilda.service.UserService;
 import org.openkilda.utility.StringUtil;
 
 /**
@@ -29,7 +29,7 @@ import org.openkilda.utility.StringUtil;
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     @Autowired
-    private ServiceUser serviceUser;
+    private UserService serviceUser;
 
     @Autowired
     private AccessDeniedHandler accessDeniedHandler;

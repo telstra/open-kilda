@@ -12,12 +12,18 @@ import java.util.List;
 import org.apache.http.HttpResponse;
 import org.openkilda.helper.RestClientManager;
 import org.openkilda.integration.converter.FlowConverter;
-import org.openkilda.integration.model.response.Flow;
-import org.openkilda.integration.model.response.FlowStatus;
+import org.openkilda.integration.converter.FlowPathConverter;
+import org.openkilda.integration.exception.IntegrationException;
+import org.openkilda.integration.exception.InvalidResponseException;
+import org.openkilda.integration.model.Flow;
+import org.openkilda.integration.model.FlowStatus;
 import org.openkilda.integration.model.response.PathLinkResponse;
 import org.openkilda.model.FlowInfo;
+import org.openkilda.model.FlowPath;
+import org.openkilda.service.ApplicationService;
 import org.openkilda.utility.ApplicationProperties;
-import org.openkilda.utility.Util;
+import org.openkilda.utility.CollectionUtil;
+import org.openkilda.utility.IoUtil;
 
 /**
  * The Class FlowsIntegrationService.
@@ -32,35 +38,50 @@ public class FlowsIntegrationService {
 
     /** The rest client manager. */
     @Autowired
-    RestClientManager restClientManager;
+    private RestClientManager restClientManager;
 
     /** The application properties. */
     @Autowired
-    ApplicationProperties applicationProperties;
+    private ApplicationProperties applicationProperties;
 
-    /** The util. */
     @Autowired
-    private Util util;
+    private ApplicationService applicationService;
 
 
     /**
      * Gets the flows.
      *
      * @return the flows
+     * @throws IntegrationException
      */
-    public List<FlowInfo> getFlows() {
+    public List<FlowInfo> getFlows() throws IntegrationException {
         try {
             HttpResponse response = restClientManager.invoke(applicationProperties.getFlows(),
-                    HttpMethod.GET, "", "", util.kildaAuthHeader());
+                    HttpMethod.GET, "", "", applicationService.getAuthHeader());
             if (RestClientManager.isValidResponse(response)) {
-
                 List<Flow> flowList = restClientManager.getResponseList(response, Flow.class);
-                return FlowConverter.toFlowsInfo(flowList);
+
+                List<FlowInfo> flows = FlowConverter.toFlowsInfo(flowList);
+                if (!CollectionUtil.isEmpty(flows)) {
+                    flows.forEach(flowInfo -> {
+                        try {
+                            String status = getFlowStatus(flowInfo.getFlowid());
+                            flowInfo.setStatus(status);
+                        } catch (Exception e) {
+                            LOGGER.error("Exception while retriving flow status. Exception: " + e, e);
+                        }
+                    });
+                }
+
+                return flows;
+            } else {
+                String content = IoUtil.toString(response.getEntity().getContent());
+                throw new InvalidResponseException(response.getStatusLine().getStatusCode(), content);
             }
         } catch (Exception exception) {
             LOGGER.error("Exception in getFlows " + exception.getMessage());
+            throw new IntegrationException(exception);
         }
-        return null;
     }
 
 
@@ -69,20 +90,25 @@ public class FlowsIntegrationService {
      *
      * @param flowId the flow id
      * @return the flow status
+     * @throws IntegrationException
      */
-    public FlowStatus getFlowStatus(final String flowId) {
+    public String getFlowStatus(final String flowId) throws IntegrationException {
         FlowStatus flowStatus = null;
         try {
             HttpResponse response =
                     restClientManager.invoke(applicationProperties.getFlowStatus() + flowId,
-                            HttpMethod.GET, "", "", util.kildaAuthHeader());
+                            HttpMethod.GET, "", "", applicationService.getAuthHeader());
             if (RestClientManager.isValidResponse(response)) {
                 flowStatus = restClientManager.getResponse(response, FlowStatus.class);
+                return flowStatus.getStatus();
+            } else {
+                String content = IoUtil.toString(response.getEntity().getContent());
+                throw new InvalidResponseException(response.getStatusLine().getStatusCode(), content);
             }
         } catch (Exception exception) {
             LOGGER.error("Exception in getAllFlows " + exception.getMessage());
+            throw new IntegrationException(exception);
         }
-        return flowStatus;
     }
 
 
@@ -90,22 +116,24 @@ public class FlowsIntegrationService {
      * Gets the flow paths.
      *
      * @return the flow paths
+     * @throws IntegrationException
      */
-    public PathLinkResponse[] getFlowPaths() {
-        PathLinkResponse[] pathLinkResponse = null;
-
+    public FlowPath getFlowPath(final String flowId) throws IntegrationException {
         try {
-            HttpResponse linkResponse = restClientManager
+            HttpResponse response = restClientManager
                     .invoke(applicationProperties.getTopologyFlows(), HttpMethod.GET, "", "", "");
-            if (RestClientManager.isValidResponse(linkResponse)) {
-
-                pathLinkResponse =
-                        restClientManager.getResponse(linkResponse, PathLinkResponse[].class);
+            if (RestClientManager.isValidResponse(response)) {
+                PathLinkResponse[]  pathLinkResponse =
+                        restClientManager.getResponse(response, PathLinkResponse[].class);
+                return FlowPathConverter.getFlowPath(flowId, pathLinkResponse);
+            } else {
+                String content = IoUtil.toString(response.getEntity().getContent());
+                throw new InvalidResponseException(response.getStatusLine().getStatusCode(), content);
             }
 
         } catch (Exception exception) {
             LOGGER.error("Exception in getFlowPaths " + exception.getMessage());
+            throw new IntegrationException(exception);
         }
-        return pathLinkResponse;
     }
 }

@@ -1,4 +1,4 @@
-package org.openkilda.service.impl;
+package org.openkilda.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,7 +12,7 @@ import java.util.Properties;
  */
 @Component
 public class MessagePropertyService {
-    private static final Logger _log = LoggerFactory.getLogger(MessagePropertyService.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(MessagePropertyService.class);
 
     public static final String CODE = ".code";
     public static final String MESSAGE = ".message";
@@ -26,7 +26,7 @@ public class MessagePropertyService {
 
     /**
      * Static Method to load property values in {@link Properties} instance.
-     * 
+     *
      * @param fileName {@link String}
      */
     public static Properties loadPropertiesFile(final String fileName) {
@@ -35,7 +35,7 @@ public class MessagePropertyService {
             localProperties.load(MessagePropertyService.class.getClassLoader().getResourceAsStream(
                     fileName));
         } catch (Exception e) {
-            _log.error("[loadPropertiesFile] Exception : ", e);
+            LOGGER.error("[loadPropertiesFile] Exception : ", e);
         }
         return localProperties;
     }
