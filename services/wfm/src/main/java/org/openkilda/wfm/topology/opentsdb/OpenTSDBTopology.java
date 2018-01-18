@@ -57,9 +57,9 @@ public class OpenTSDBTopology extends AbstractTopology {
         checkAndCreateTopic(topic);
 
         KafkaSpout kafkaSpout = createKafkaSpout(topic, spoutId);
-        tb.setSpout(spoutId, kafkaSpout);
+        tb.setSpout(spoutId, kafkaSpout, 5);
 
-        tb.setBolt(boltId, new OpenTSDBFilterBolt())
+        tb.setBolt(boltId, new OpenTSDBFilterBolt(), 3)
                 .shuffleGrouping(spoutId);
 
         OpenTsdbClient.Builder tsdbBuilder = OpenTsdbClient
@@ -70,7 +70,7 @@ public class OpenTSDBTopology extends AbstractTopology {
                 .withBatchSize(10)
                 .withFlushInterval(2)
                 .failTupleForFailedMetrics();
-        tb.setBolt("opentsdb", openTsdbBolt, config.getParallelism())
+        tb.setBolt("opentsdb", openTsdbBolt, 3)
                 .shuffleGrouping(boltId);
 
         return tb.createTopology();
