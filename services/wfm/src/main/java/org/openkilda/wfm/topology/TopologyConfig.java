@@ -36,6 +36,9 @@ public class TopologyConfig {
 
     private String openTsDBHosts;
     private Integer openTsdbTimeout;
+    private Integer openTsdbNumSpouts;
+    private Integer openTsdbNumOpentasbFilterBolt;
+    private Integer openTsdbNumOpentsdbBolt;
 
     private String neo4jHost;
     private String neo4jLogin;
@@ -72,6 +75,9 @@ public class TopologyConfig {
 
         openTsDBHosts = config.getString("opentsdb.hosts");
         openTsdbTimeout = (int)(config.getFloat("opentsdb.timeout") * 1000);
+        openTsdbNumSpouts = config.getInteger("opentsdb.num.spouts");
+        openTsdbNumOpentasbFilterBolt = config.getInteger("opentsdb.num.opentsdbfilterbolt");
+        openTsdbNumOpentsdbBolt = config.getInteger("opentsdb.num.opentsdbbolt");
 
         neo4jHost = config.getString("neo4j.hosts");
         neo4jLogin = config.getString("neo4j.user");
@@ -184,6 +190,18 @@ public class TopologyConfig {
 
     public Integer getOpenTsdbTimeout() {
         return openTsdbTimeout;
+    }
+
+    public Integer getOpenTsdbNumSpouts() {
+        return openTsdbNumSpouts;
+    }
+
+    public Integer getOpenTsdbNumOpentasbFilterBolt() {
+        return openTsdbNumOpentasbFilterBolt;
+    }
+
+    public Integer getOpenTsdbNumOpentsdbBolt() {
+        return openTsdbNumOpentsdbBolt;
     }
 
     public String getNeo4jHost() {
