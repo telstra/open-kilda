@@ -26,7 +26,13 @@ run-dev:
 	docker-compose up
 
 up-test-mode:
+	@echo ~~
+	@echo ~~ Starting KILDA, and will print the status of Storm Topology deployments
+	@echo ~~ Once the topology deployments are done, it should be safe to test
+	@echo ~~
+	@echo
 	OK_TESTS="DISABLE_LOGIN" docker-compose up -d
+	docker-compose logs -f wfm
 
 up-log-mode: up-test-mode
 	docker-compose logs -f

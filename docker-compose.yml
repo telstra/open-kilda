@@ -45,6 +45,7 @@ services:
 ##
   topology-engine:
     container_name: topology-engine
+    hostname: topoeng.pendev
     build:
       context: services/topology-engine/
       dockerfile: Dockerfile
@@ -74,6 +75,7 @@ services:
 
   topology-engine-rest:
     container_name: topology-engine-rest
+    hostname: toporest.pendev
     build:
       context: services/topology-engine-rest/
       dockerfile: Dockerfile

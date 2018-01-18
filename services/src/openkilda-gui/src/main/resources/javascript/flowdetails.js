@@ -9,6 +9,8 @@ $(document).ready(function() {
 	var obj = JSON.parse(flowData)
 	showFlowData(obj);
 	getMetric();
+	$("#wait1").css("display", "none");
+	$('body').css('pointer-events','all');
 })
 
 function getMetric() {
@@ -61,8 +63,6 @@ function callFlowForwardPath(flow_id) {
 		success : function(response) {
 
 			$("#wait1").css("display", "none");
-			
-			
 			showForwardFlowPathData(response);
 		},
 		dataType : "json"

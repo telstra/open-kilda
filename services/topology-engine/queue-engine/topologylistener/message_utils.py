@@ -110,7 +110,7 @@ def build_intermediate_flows(switch, match, action, vlan, flow_id, cookie):
 
     return flow
 
-
+# TODO: A number of todos around why we have a special code parth for one switch flows
 def build_one_switch_flow(switch, src_port, src_vlan, dst_port, dst_vlan,
                           bandwidth, flow_id, output_action, cookie,
                           meter_id):
