@@ -9,6 +9,7 @@ from mininet.node import OVSSwitch, Controller, RemoteController
 from mininet.log import setLogLevel, info
 from mininet.cli import CLI
 from mininet.clean import cleanup
+from mininet.util import errRun
 
 import subprocess
 import re
@@ -23,6 +24,31 @@ class KildaSwitch( OVSSwitch ):
     def __init__(self,name,**params):
         params['protocols'] = 'OpenFlow13'
         OVSSwitch.__init__(self, name, **params)
+
+    @classmethod
+    def batchStartup( cls, switches, run=errRun ):
+        """
+        Mininet looks for this during stop(). It exists in OVSSwitch. Kilda, at the moment,
+        doesn't like this batch operation (and it shouldn't be done in batch)
+        """
+        info ("\nIGNORE batchStartup()\n")
+        for switch in switches:
+            if switch.batch:
+                info ("\n .... BATCH = TRUE !!!!!!\n")
+        return switches
+
+    @classmethod
+    def batchShutdown( cls, switches, run=errRun ):
+        """
+        Mininet looks for this during stop(). It exists in OVSSwitch. Kilda, at the moment,
+        doesn't like this batch operation (and it shouldn't be done in batch)
+        """
+        info ("\nIGNORE batchShutdown()\n")
+        for switch in switches:
+            if switch.batch:
+                info ("\n .... BATCH = TRUE !!!!!!\n")
+        return switches
+
 
 
 def get_gateway():
@@ -88,7 +114,9 @@ def clean():
     hosts2 = None
     net.stop()
     net = None
+    setLogLevel( 'warning' )  # mininet cleanup is noisy
     cleanup()
+    setLogLevel( 'info' )
 
 
 def main():
@@ -101,9 +129,7 @@ def main():
         ping(hosts1[0], hosts1[1]) # Connection
         ping(hosts1[0], hosts2[0]) # No connection
         info ("--> Cleanup\n")
-        setLogLevel( 'warning' )  # mininet cleanup is noisy
         clean()
-        setLogLevel( 'info' )
         info ("..\n")
         info ("..\n")
 

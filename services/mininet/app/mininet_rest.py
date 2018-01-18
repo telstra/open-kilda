@@ -17,9 +17,11 @@
 
 from bottle import get, post, request, run, Bottle, response, request, install
 from mininet.net import Mininet
-from mininet.node import RemoteController, OVSKernelSwitch, Host
+from mininet.node import RemoteController, OVSKernelSwitch, Host, OVSSwitch
 from mininet.clean import cleanup
 from mininet.link import TCLink
+from mininet.util import errRun
+
 from jsonschema import validate
 import logging
 from logging.config import dictConfig
@@ -27,10 +29,44 @@ import json
 import socket
 import Queue
 import threading
-import random
 import time
 from functools import wraps
-from datetime import datetime
+
+########################
+## GLOBALS
+########################
+
+net = None  # mininet object
+
+class KildaSwitch( OVSSwitch ):
+    "Add the OpenFlow13 Protocol"
+    def __init__(self,name,**params):
+        params['protocols'] = 'OpenFlow13'
+        OVSSwitch.__init__(self, name, **params)
+
+    @classmethod
+    def batchStartup( cls, switches, run=errRun ):
+        """
+        Mininet looks for this during stop(). It exists in OVSSwitch. Kilda, at the moment,
+        doesn't like this batch operation (and it shouldn't be done in batch)
+        """
+        logger.info ("IGNORE batchStartup()")
+        for switch in switches:
+            if switch.batch:
+                logger.warn (" .... BATCH = TRUE !!!!!!")
+        return switches
+
+    @classmethod
+    def batchShutdown( cls, switches, run=errRun ):
+        """
+        Mininet looks for this during stop(). It exists in OVSSwitch. Kilda, at the moment,
+        doesn't like this batch operation (and it shouldn't be done in batch)
+        """
+        logger.info ("IGNORE batchShutdown()")
+        for switch in switches:
+            if switch.batch:
+                logger.warn (" .... BATCH = TRUE !!!!!!")
+        return switches
 
 
 def log_to_logger(fn):
@@ -222,50 +258,17 @@ controllers_schema = {
 }
 
 
-def add_controller(name, host, port):
-    logger.debug("adding controller name={}, host={}, port={}"
-                 .format(name, host, port))
-    ip = socket.gethostbyname(host)
-    controller = RemoteController(name, ip=ip, port=port)
-    controller.start()
-    controllers.append(controller)
-    return controller
-
-
-def add_controllers(controllers):
-    for controller in controllers:
-        add_controller(controller['name'],
-                       controller['host'],
-                       controller['port'])
+def controller_info(controller):
+    return {"name": controller.name,
+            "host": controller.ip,
+            "port": controller.port}
 
 
 def list_controllers():
-    data = []
-    for controller in controllers:
-        data.append({"name": controller.name,
-                     "host": controller.ip,
-                     "port": controller.port})
-    return data
+    return [controller_info(x) for x in net.controllers]
 
 
-def add_switches(switches):
-    for switch in switches:
-        add_switch(switch['name'],switch['dpid'],
-                   switch.get('protocol_version', 'OpenFlow13'))
-
-
-def add_switch(name, dpid, proto_version):
-    if type(dpid) is unicode:
-        dpid = dpid.encode('ascii','ignore')
-
-    switch = OVSKernelSwitch(name, protocols=proto_version, inNamespace=False, dpid=dpid)
-    switch.start(controllers)
-    switches[name] = switch
-    logger.debug("==> added switch name={}; dpid={}".format(name,dpid))
-
-
-def list_switch(name):
-    switch = switches[name]
+def switch_info(switch):
     intfs = []
     if len(switch.intfs) > 0:
         for i in switch.intfs:
@@ -273,17 +276,18 @@ def list_switch(name):
             intfs.append({'name': intf.name,
                           'mac': intf.mac,
                           'status': intf.status()})
-    return {'name': name,
+    return {'name': switch.name,
             'dpid': switch.dpid,
             'connected': switch.connected(),
             'interface': intfs}
 
 
+def list_switch(name):
+    return (switch_info(net.switches[name]))
+
+
 def list_switches():
-    data = []
-    for name, switch in switches.iteritems():
-        data.append(list_switch(name))
-    return data
+    return [switch_info(x) for x in net.switches]
 
 
 def link_name(link):
@@ -293,36 +297,75 @@ def link_name(link):
     return name
 
 
-def add_links(links):
-    for link in links:
-        add_link(link['node1'], link['node2'])
-
-
-def add_link(node1, node2):
-    link = TCLink(switches[node1], switches[node2])
-    link.intf1.node.attach(link.intf1)
-    link.intf2.node.attach(link.intf2)
-    links[link_name(link)] = link
-    logger.debug("==> added link from node1={}; node2={}".format(node1, node2))
+def link_info(link):
+    return {'name': link_name(link), 'status': link.status()}
 
 
 def list_links():
-    data = []
-    for name, link in links.iteritems():
-        data.append({'name': name, 'status': link.status()})
-    return {"links": data}
+    return [link_info(x) for x in net.links]
 
 
 @post('/topology')
-def create_topology():
+def new_topology():
+    global net
+
+    logger.info( "*** Creating Topology" )
     validate(request.json, topology_schema)
-    add_controllers(request.json['controllers'])
-    add_switches(request.json['switches'])
-    add_links(request.json['links'])
+    net = Mininet( controller=RemoteController, switch=KildaSwitch, build=False )
+
+    logger.info( "" )
+    logger.info( "*** Creating (Remote) controllers" )
+    for controller in request.json['controllers']:
+        name = controller['name']
+        host = controller['host']
+        port = controller['port']
+        logger.info("===> adding controller name={}, host={}, port={}".format(name, host, port))
+        ip = socket.gethostbyname(host)
+        net.addController (name, ip=ip, port=port)
+
+    logger.info( "" )
+    logger.info( "*** Creating switches" )
+    for switch in request.json['switches']:
+        name = switch['name']
+        dpid = switch['dpid']
+        if type(dpid) is unicode:
+            dpid = dpid.encode('ascii','ignore')
+        logger.info("===> adding switch name={}, dpid={}".format(name, dpid))
+        net.addSwitch( name=name, dpid=dpid )
+
+    # info( "*** Creating hosts\n" )
+    # hosts1 = [ net.addHost( 'h%ds1' % n ) for n in ( 1, 2 ) ]
+    # hosts2 = [ net.addHost( 'h%ds2' % n ) for n in ( 1, 2 ) ]
+    #
+    # logger.info( "*** Creating Host:Switch links\n" )
+    # for h in hosts1:
+    #     net.addLink( h, s1 )
+    # for h in hosts2:
+    #     net.addLink( h, s2 )
+    # net.configHosts()
+
+
+    logger.info( "" )
+    logger.info( "*** Creating Switch:Switch links" )
+    for link in request.json['links']:
+        node1 = link['node1']
+        node2 = link['node2']
+        logger.info("===> adding link {} -> {}".format(node1, node2))
+        net.addLink( node1, node2 )
+
+    logger.info( "" )
+    logger.info( "*** Starting network" )
+    net.start()
+
+
     response.content_type = 'application/json'
-    return json.dumps({'controllers': list_controllers(),
-                       'switches': list_switches(),
-                       'links': list_links()})
+    result = json.dumps({'controllers': [controller_info(x) for x in net.controllers],
+                         'switches': [switch_info(x) for x in net.switches],
+                         'links': [link_info(x) for x in net.links]})
+    logger.info( "" )
+    logger.info ("*** returning {}".format(result))
+    logger.info( "" )
+    return result
 
 
 #
@@ -332,6 +375,23 @@ def create_topology():
 #
 @post('/create_random_linear_topology')
 def create_topology():
+
+    #
+    # This code needs to be refactored to match the rest of this class.
+    # What changed? We moved off of local collections of controllers / switches / links and
+    #   onto the Mininet way of doing things.  This method used threading to add a bunch of
+    #   switches and links in parallel .. we could look at Mininet's batch mechanism (I don't
+    #   think it is any faster - it may just loop through things - so we'd need to figure out
+    #   how to accelerate, if at all.
+    #
+    # Another possibility is to just delete this method, rely on the code above.
+    # In addition, we've implemented a simulator .. so as to remove the need for mininet/floodlight
+    # completely for scale tests (scale testing of everything except floodlight)
+    #
+    needs_to_be_refactored = True
+    if needs_to_be_refactored:
+        return json.dumps({'status': 'refactor me'})
+
     _switch_threads=[]
     _link_threads=[]
 
@@ -495,7 +555,7 @@ def create_switches():
 @get('/links')
 def get_links():
     response.content_type = 'application/json'
-    return json.dumps(list_links())
+    return json.dumps({"links": list_links()})
 
 
 @post('/links')
@@ -503,7 +563,7 @@ def create_links():
     validate(request.json, links_schema)
     add_links(request.json['links'])
     response.content_type = 'application/json'
-    return json.dumps(list_links())
+    return json.dumps({"links": list_links()})
 
 
 @get('/controllers')
@@ -522,11 +582,12 @@ def create_controller():
 
 @post('/cleanup')
 def mininet_cleanup():
-    del controllers[:]
-    switches.clear()
-    links.clear()
-    hosts.clear()
-    hlinks.clear()
+    global net
+    logger.info( "*** Clean Topology" )
+    if net is not None:
+        logger.info( "--> calling mininet.stop()" )
+        net.stop()
+        net = None
     cleanup()
     return {'status': 'ok'}
 
@@ -607,20 +668,10 @@ def add_transit_flow(p):
     result1 = os.system(cmd1)
     return {'result1': result1}
 
-
+# Declare the variables before the init
 def init():
     """Get the global variables defined and initialized"""
     global logger
-    global controllers
-    global switches
-    global links
-    global hosts
-    global hlinks
-    switches = {}
-    links = {}
-    hosts = {}
-    hlinks={}
-    controllers = []
 
     with open("/app/log.json", "r") as fd:
         logging.config.dictConfig(json.load(fd))
@@ -630,7 +681,6 @@ def init():
 
 def main():
     init()
-    mininet_cleanup()
     start_server('0.0.0.0', 38080)
 
 if __name__ == '__main__':

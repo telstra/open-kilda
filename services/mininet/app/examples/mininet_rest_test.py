@@ -90,9 +90,13 @@ topo_json = {
     ]
 }
 
-#
+################################################
+################################################
 #
 # TODO: This needs to be re-written after mininet_rest is adjusted to leverage the model from pland.
+#
+################################################
+################################################
 
 def debug(msg, *args):
     logger.debug(msg, args)
