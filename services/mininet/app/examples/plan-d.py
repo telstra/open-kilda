@@ -3,10 +3,7 @@
 #
 # Plan D builds on Plan C, removing the need to load the flow rules and/or do a ping.
 #
-# Still need to:
-#   1) mininet> sh ./h1s1_h2s1_rules.sh
-#   2) mininet> h1s1 ping h2s1
-#
+
 
 from mininet.net import Mininet
 from mininet.node import OVSSwitch, Controller, RemoteController
