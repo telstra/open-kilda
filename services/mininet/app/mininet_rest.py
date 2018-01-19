@@ -30,6 +30,7 @@ import socket
 import Queue
 import threading
 import time
+import subprocess
 from functools import wraps
 
 ########################
@@ -333,18 +334,6 @@ def new_topology():
         logger.info("===> adding switch name={}, dpid={}".format(name, dpid))
         net.addSwitch( name=name, dpid=dpid )
 
-    # info( "*** Creating hosts\n" )
-    # hosts1 = [ net.addHost( 'h%ds1' % n ) for n in ( 1, 2 ) ]
-    # hosts2 = [ net.addHost( 'h%ds2' % n ) for n in ( 1, 2 ) ]
-    #
-    # logger.info( "*** Creating Host:Switch links\n" )
-    # for h in hosts1:
-    #     net.addLink( h, s1 )
-    # for h in hosts2:
-    #     net.addLink( h, s2 )
-    # net.configHosts()
-
-
     logger.info( "" )
     logger.info( "*** Creating Switch:Switch links" )
     for link in request.json['links']:
@@ -354,9 +343,16 @@ def new_topology():
         net.addLink( node1, node2 )
 
     logger.info( "" )
-    logger.info( "*** Starting network" )
-    net.start()
+    logger.info( "*** Creating hosts\n" )
+    for switch in net.switches:
+        # add single host per switch .. sufficient for our strategy of testing flows
+        h = net.addHost( 'h%s' % switch.name)
+        net.addLink(h, switch)
 
+    logger.info( "" )
+    logger.info( "*** Starting network" )
+    net.configHosts()
+    net.start()
 
     response.content_type = 'application/json'
     result = json.dumps({'controllers': [controller_info(x) for x in net.controllers],
@@ -611,6 +607,143 @@ def start_server(interface, port):
 #######################################
 #######################################
 
+def get_output_actions(in_vlan,out_vlan):
+    """
+    This is to setup rules for host to switch / switch to host.
+    It honors what we are trying to accomlish with testing Kilda:
+        1) Kilda will put rules on one or more switches
+        2) This code will put rules on the switches outside that set. For instance, if we are
+            testing Kilda in a single switch scenario (s3), then this code will be used
+            to put rules on s2 and s4 so that s3 can be tested properly.
+        3) To keep things simple, we leverage the host attached to s2 and s4 to do a ping
+        4) These rules setup the host to switch port as in, and then the switch to be tested as the
+            out port.
+    """
+    result = ""
+    if out_vlan is None:
+        if in_vlan is not None:
+            result = "strip_vlan,"
+    else:
+        if in_vlan is None:
+            result = "push_vlan:0x8100,mod_vlan_vid:{},".format(out_vlan)
+        else:
+            result = "mod_vlan_vid:{},".format(out_vlan)
+    return result
+
+
+def add_single_switch_rules(switch_id,in_port,out_port,in_vlan=None,out_vlan=None):
+    """add rules to switch 3 to emulate kilda single switch rules"""
+
+    logger.info("** Adding flows to {}".format(switch_id))
+
+    in_match  = "" if in_vlan is None else ",dl_vlan={}".format(in_vlan)
+    out_match = "" if out_vlan is None else ",dl_vlan={}".format(out_vlan)
+
+    in_action = get_output_actions(in_vlan,out_vlan)
+    out_action = get_output_actions(out_vlan,in_vlan)
+
+    noise = "idle_timeout=0,priority=1000"
+    in_rule = "{},in_port={}{},actions={}output:{}".format(noise, in_port, in_match, in_action, out_port)
+    out_rule = "{},in_port={}{},actions={}output:{}".format(noise, out_port, out_match, out_action, in_port)
+    print("ingress rule: {}".format(in_rule))
+    print("egress rule: {}".format(out_rule))
+    # Ingress
+    subprocess.Popen(["ovs-ofctl","-O","OpenFlow13","add-flow",switch_id,in_rule],
+                     stdout=subprocess.PIPE).wait()
+    # Egress
+    subprocess.Popen(["ovs-ofctl","-O","OpenFlow13","add-flow",switch_id,out_rule],
+                     stdout=subprocess.PIPE).wait()
+
+    ### If debugging, remove the comments below to see what the flow rules are
+    # result = subprocess.Popen(["ovs-ofctl","-O","OpenFlow13","dump-flows",switch_id],
+    #                           stdout=subprocess.PIPE).communicate()[0]
+    # logger.info(result)
+
+
+def clear_single_switch_rules(switch_id,in_port,out_port):
+    """remove rules from switch 3 to emulate kilda clear rules"""
+    print("** Remove flows from {}".format(switch_id))
+    in_rule = "in_port={}".format(in_port)
+    out_rule = "in_port={}".format(out_port)
+    subprocess.Popen(["ovs-ofctl","-O","OpenFlow13","del-flows",switch_id,in_rule],
+                     stdout=subprocess.PIPE).wait()
+    subprocess.Popen(["ovs-ofctl","-O","OpenFlow13","del-flows",switch_id,out_rule],
+                     stdout=subprocess.PIPE).wait()
+
+    ### If debugging, remove the comments below to see what the flow rules are
+    # result = subprocess.Popen(["ovs-ofctl","-O","OpenFlow13","dump-flows",switch_id],
+    #                           stdout=subprocess.PIPE).communicate()[0]
+    # print (result)
+
+
+def pingable(host1, host2):
+    result = host1.cmd( 'ping -c1 -w1 %s' % (host2.IP()) )
+    lines = result.split("\n")
+    if "1 packets received" in lines[3]:
+        print "CONNECTION BETWEEN ", host1.IP(), "and", host2.IP()
+        return True
+    else:
+        print "NO CONNECTION BETWEEN ", host1.IP(), "and", host2.IP()
+        return False
+
+
+@get('/checkpingtraffic')
+@required_parameters("srcswitch", "dstswitch", "srcport", "dstport", "srcvlan",
+                     "dstvlan")
+def check_ping_traffic(p):
+    """
+    Algorithm:
+        1) add host/switch ingress/egress rules on Src and Dst
+        2) do the ping
+        3) remove host/switch ingress/egress rules on Src and Dst
+    """
+    # initial example:
+    #
+    #   - test switch 3, using switches 2 and 4.  s2 and s4 are sent in.
+    # - single switch "3" inport 1, outport 2
+    # - switch 2 needs to push packet from port 3 (h)  to port 2 (s3), matching switch 3 rules
+    # - switch 2 needs to push packet from port 2 (s3) to port 3 (h) , should strip
+    # - switch 4 needs to push packet from port 3 (h)  to port 1 (s3), matching switch 3 rules
+    # - switch 4 needs to push packet from port 1 (s3) to port 3 (h) , should strip
+    src_switch = p['srcswitch']
+    src_port = p['srcport']
+    src_vlan = p['srcvlan']
+    dst_switch = p['dstswitch']
+    dst_port = p['dstport']
+    dst_vlan = p['dstvlan']
+
+    logger.info( "** PING request received: src={}:{}x{}  dst={}:{}x{}".format(
+        src_switch,src_port,src_vlan,dst_switch,dst_port,dst_vlan
+    ))
+
+    # TODO: better to find the host port, vs encoding the heuristic
+    src_host_port = 2 if src_switch == "00000001" else 3  # all hosts are on port 3, except first switch
+    dst_host_port = 3
+
+    logger.info ( "--> adding host/switch rules" )
+    # for src port (ingress): inport = 2 or 3, no vlan ... send to srcport,srcvlan
+    # for src port (egress): Opposite of ingress .. inport = srcport,srcvlan ... 2 or 3, no vlan
+    # for dst port .. same strategy
+    add_single_switch_rules( src_switch, src_host_port, src_port, None, src_vlan )
+    add_single_switch_rules( dst_switch, dst_host_port, dst_port, None, dst_vlan )
+
+    logger.info ( "--> ping" )
+    src_host = net.nameToNode["h%s" % src_switch]
+    dst_host = net.nameToNode["h%s" % dst_switch]
+    successful_ping = pingable(src_host, dst_host)
+
+    logger.info ( "--> remove host/switch rules" )
+    clear_single_switch_rules( src_switch, src_host_port, src_port )
+    clear_single_switch_rules( dst_switch, dst_host_port, dst_port )
+
+    if successful_ping:
+        response.status = 200
+        return "True"
+    else:
+        response.status = 503
+        return "False"
+
+
 ofctl_start='ovs-ofctl -O OpenFlow13 add-flow'
 
 @get("/add_default_flows")
@@ -682,6 +815,7 @@ def init():
 def main():
     init()
     start_server('0.0.0.0', 38080)
+
 
 if __name__ == '__main__':
     main()
