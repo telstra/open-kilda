@@ -66,7 +66,7 @@ public class PortMetricGenBolt extends MetricGenBolt {
     private void emit(PortStatsEntry entry, long timestamp, String switchId) {
         try {
             Map<String, String> tags = ImmutableMap.of(
-                    "switchId", switchId,
+                    "switchid", switchId,
                     "port", String.valueOf(entry.getPortNo())
             );
 
