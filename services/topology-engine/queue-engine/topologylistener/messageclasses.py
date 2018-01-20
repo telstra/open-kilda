@@ -415,7 +415,7 @@ class MessageItem(object):
                         correlation_id, flow_id)
 
             message_utils.send_delete_commands(
-                flow_path, flow_id, correlation_id, int(flow['cookie']))
+                flow_path, flow_id, flow, correlation_id, int(flow['cookie']))
 
             logger.info('Flow rules removed: correlation_id=%s, flow_id=%s',
                         correlation_id, flow_id)
@@ -461,7 +461,7 @@ class MessageItem(object):
                         correlation_id, flow_id)
 
             message_utils.send_delete_commands(
-                old_flow_path, old_flow['flowid'],
+                old_flow_path, old_flow['flowid'], old_flow,
                 correlation_id, int(old_flow['cookie']))
 
             logger.info('Flow rules removed: correlation_id=%s, flow_id=%s',

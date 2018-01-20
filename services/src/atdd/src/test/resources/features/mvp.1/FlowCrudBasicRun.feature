@@ -14,8 +14,8 @@ Feature: Basic Flow CRUD
     # TODO - This "Given" can be reduced to a single statement. And network topo can be cached. (speed up tests)
     #
     Given a clean controller
-    And a nonrandom linear topology of 5 switches
-    And topology contains 8 links
+    And a nonrandom linear topology of 7 switches
+    And topology contains 12 links
     And a clean flow topology
     When flow <flow_id> creation request with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is successful
     Then flow <flow_id> with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> could be created
@@ -24,16 +24,18 @@ Feature: Basic Flow CRUD
     # TEST the READ
     And flow <flow_id> with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> could be read
     # TEST the CONNECTION
-    And traffic through <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is forwarded
+    # And traffic through <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is forwarded
+    And traffic through <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is pingable
     # TEST the DELETE
     Then flow <flow_id> with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> could be deleted
     And rules with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> are deleted
-    And traffic through <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is not forwarded
+    # And traffic through <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is not forwarded
+    And traffic through <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is not pingable
 
     Examples:
       | flow_id |      source_switch      | source_port | source_vlan |   destination_switch    | destination_port | destination_vlan | bandwidth |
       # flows with transit vlans and intermediate switches
-      | c3none  | de:ad:be:ef:00:00:00:02 |      1      |      0      | de:ad:be:ef:00:00:00:04 |         2        |        0         |   10000   |
+      | c3none  | de:ad:be:ef:00:00:00:03 |      1      |      0      | de:ad:be:ef:00:00:00:05 |         2        |        0         |   10000   |
       # flows with transit vlans and without intermediate switches
       | c2none  | de:ad:be:ef:00:00:00:03 |      1      |      0      | de:ad:be:ef:00:00:00:04 |         2        |        0         |   10000   |
       # flows without transit vlans and intermediate switches
@@ -51,8 +53,8 @@ Feature: Basic Flow CRUD
     # TODO: Consider tests to determine if there are any duplicates
 
     Given a clean controller
-    And a nonrandom linear topology of 5 switches
-    And topology contains 8 links
+    And a nonrandom linear topology of 7 switches
+    And topology contains 12 links
     And a clean flow topology
     When flow <flow_id> creation request with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is successful
     Then flow <flow_id> with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> could be created
@@ -61,19 +63,21 @@ Feature: Basic Flow CRUD
     # TEST the READ
     And flow <flow_id> with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> could be read
     # TEST the CONNECTION
-    And traffic through <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is forwarded
+    #And traffic through <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is forwarded
+    And traffic through <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is pingable
     # TEST the DELETE
     Then flow <flow_id> with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> could be deleted
     And rules with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> are deleted
-    And traffic through <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is not forwarded
+    #And traffic through <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is not forwarded
+    And traffic through <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is not pingable
 
     Examples:
       | flow_id |      source_switch      | source_port | source_vlan |   destination_switch    | destination_port | destination_vlan | bandwidth |
       # flows with transit vlans and intermediate switches
-      | c3none  | de:ad:be:ef:00:00:00:02 |      1      |      0      | de:ad:be:ef:00:00:00:04 |         2        |        0         |   10000   |
-      | c3push  | de:ad:be:ef:00:00:00:02 |      1      |      0      | de:ad:be:ef:00:00:00:04 |         2        |       100        |   10000   |
-      | c3pop   | de:ad:be:ef:00:00:00:02 |      1      |     100     | de:ad:be:ef:00:00:00:04 |         2        |        0         |   10000   |
-      | c3swap  | de:ad:be:ef:00:00:00:02 |      1      |     100     | de:ad:be:ef:00:00:00:04 |         2        |       200        |   10000   |
+      | c3none  | de:ad:be:ef:00:00:00:03 |      1      |      0      | de:ad:be:ef:00:00:00:05 |         2        |        0         |   10000   |
+      | c3push  | de:ad:be:ef:00:00:00:03 |      1      |      0      | de:ad:be:ef:00:00:00:05 |         2        |       100        |   10000   |
+      | c3pop   | de:ad:be:ef:00:00:00:03 |      1      |     100     | de:ad:be:ef:00:00:00:05 |         2        |        0         |   10000   |
+      | c3swap  | de:ad:be:ef:00:00:00:03 |      1      |     100     | de:ad:be:ef:00:00:00:05 |         2        |       200        |   10000   |
 
   @MVP1 @CRUD_CREATE
   Scenario Outline: Flow Creation - flows with transit vlans and without intermediate switches
@@ -82,8 +86,8 @@ Feature: Basic Flow CRUD
     It also checks READ and DELETE.
 
     Given a clean controller
-    And a nonrandom linear topology of 5 switches
-    And topology contains 8 links
+    And a nonrandom linear topology of 7 switches
+    And topology contains 12 links
     And a clean flow topology
     When flow <flow_id> creation request with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is successful
     Then flow <flow_id> with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> could be created
@@ -92,11 +96,13 @@ Feature: Basic Flow CRUD
     # TEST the READ
     And flow <flow_id> with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> could be read
     # TEST the CONNECTION
-    And traffic through <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is forwarded
+    #And traffic through <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is forwarded
+    And traffic through <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is pingable
     # TEST the DELETE
     Then flow <flow_id> with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> could be deleted
     And rules with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> are deleted
-    And traffic through <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is not forwarded
+    #And traffic through <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is not forwarded
+    And traffic through <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is not pingable
 
     Examples:
       | flow_id |      source_switch      | source_port | source_vlan |   destination_switch    | destination_port | destination_vlan | bandwidth |
@@ -113,8 +119,8 @@ Feature: Basic Flow CRUD
     It also checks READ and DELETE.
 
     Given a clean controller
-    And a nonrandom linear topology of 5 switches
-    And topology contains 8 links
+    And a nonrandom linear topology of 7 switches
+    And topology contains 12 links
     And a clean flow topology
     When flow <flow_id> creation request with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is successful
     Then flow <flow_id> with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> could be created
@@ -123,11 +129,13 @@ Feature: Basic Flow CRUD
     # TEST the READ
     And flow <flow_id> with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> could be read
     # TEST the CONNECTION
-    And traffic through <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is forwarded
+    #And traffic through <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is forwarded
+    And traffic through <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is pingable
     # TEST the DELETE
     Then flow <flow_id> with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> could be deleted
     And rules with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> are deleted
-    And traffic through <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is not forwarded
+    #And traffic through <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is not forwarded
+    And traffic through <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is not pingable
 
     Examples:
       | flow_id |      source_switch      | source_port | source_vlan |   destination_switch    | destination_port | destination_vlan | bandwidth |
@@ -144,8 +152,8 @@ Feature: Basic Flow CRUD
   This scenario setups flows across the entire set of switches, then updates them and checks that flows were updated in database
 
     Given a clean controller
-    And a nonrandom linear topology of 5 switches
-    And topology contains 8 links
+    And a nonrandom linear topology of 7 switches
+    And topology contains 12 links
     And a clean flow topology
     When flow <flow_id> creation request with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is successful
     And flow <flow_id> with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> could be created
@@ -153,15 +161,16 @@ Feature: Basic Flow CRUD
     Then flow <flow_id> with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> could be updated with <new_bandwidth>
     And flow <flow_id> in UP state
     And rules with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> are updated with <new_bandwidth>
-    And traffic through <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is forwarded
+    #And traffic through <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is forwarded
+    And traffic through <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is pingable
 
     Examples:
       | flow_id |      source_switch      | source_port | source_vlan |   destination_switch    | destination_port | destination_vlan | bandwidth | new_bandwidth |
       # flows with transit vlans and intermediate switches
-      | u3none  | de:ad:be:ef:00:00:00:02 |      1      |      0      | de:ad:be:ef:00:00:00:04 |         2        |        0         |   10000   |     20000     |
-      | u3push  | de:ad:be:ef:00:00:00:02 |      1      |      0      | de:ad:be:ef:00:00:00:04 |         2        |       100        |   10000   |     20000     |
-      | u3pop   | de:ad:be:ef:00:00:00:02 |      1      |     100     | de:ad:be:ef:00:00:00:04 |         2        |        0         |   10000   |     20000     |
-      | u3swap  | de:ad:be:ef:00:00:00:02 |      1      |     100     | de:ad:be:ef:00:00:00:04 |         2        |       200        |   10000   |     20000     |
+      | u3none  | de:ad:be:ef:00:00:00:03 |      1      |      0      | de:ad:be:ef:00:00:00:05 |         2        |        0         |   10000   |     20000     |
+      | u3push  | de:ad:be:ef:00:00:00:03 |      1      |      0      | de:ad:be:ef:00:00:00:05 |         2        |       100        |   10000   |     20000     |
+      | u3pop   | de:ad:be:ef:00:00:00:03 |      1      |     100     | de:ad:be:ef:00:00:00:05 |         2        |        0         |   10000   |     20000     |
+      | u3swap  | de:ad:be:ef:00:00:00:03 |      1      |     100     | de:ad:be:ef:00:00:00:05 |         2        |       200        |   10000   |     20000     |
       # flows with transit vlans and without intermediate switches
       | u2none  | de:ad:be:ef:00:00:00:03 |      1      |      0      | de:ad:be:ef:00:00:00:04 |         2        |        0         |   10000   |     20000     |
       | u2push  | de:ad:be:ef:00:00:00:03 |      1      |      0      | de:ad:be:ef:00:00:00:04 |         2        |       100        |   10000   |     20000     |
@@ -180,8 +189,8 @@ Feature: Basic Flow CRUD
   This scenario setups flow across the entire set of switches and checks that no new flow with conflicting vlan could be installed
 
     Given a clean controller
-    And a nonrandom linear topology of 5 switches
-    And topology contains 8 links
+    And a nonrandom linear topology of 7 switches
+    And topology contains 12 links
     And a clean flow topology
     When flow <flow_id> creation request with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is successful
     And flow <flow_id> with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> could be created
