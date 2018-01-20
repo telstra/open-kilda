@@ -29,10 +29,9 @@ import org.apache.storm.tuple.Tuple;
 import org.openkilda.messaging.info.Datapoint;
 
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -47,7 +46,8 @@ public class OpenTSDBFilterBolt extends BaseRichBolt {
                     TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER.getValueField(),
                     TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER.getTagsField());
 
-    private Set<Datapoint> storage = new HashSet<>();
+//    private Set<Datapoint> storage = new HashSet<>();
+    private ConcurrentMap<Integer, Datapoint> storage = new ConcurrentHashMap<>();
     private OutputCollector collector;
 
     @Override
@@ -84,19 +84,17 @@ public class OpenTSDBFilterBolt extends BaseRichBolt {
     }
 
     private void addDatapoint(Datapoint datapoint) {
-        if (!storage.add(datapoint)) {
-            storage.remove(datapoint);
-            storage.add(datapoint);
-        }
+        LOGGER.debug("adding datapoint: " + datapoint.hashCode());
+        storage.put(datapoint.hashCode(), datapoint);
     }
 
     private boolean isUpdateRequired(Datapoint datapoint) {
-        return !storage.contains(datapoint) || isDatapointOutdated(datapoint);
-    }
-
-    private boolean isDatapointOutdated(Datapoint datapoint) {
-        Datapoint prevDatapoint = storage.stream().filter(item -> item.equals(datapoint)).findFirst()
-                .orElseThrow(() -> new IllegalStateException("Unexpected storage value"));
-        return datapoint.getTime() - prevDatapoint.getTime() >= TEN_MINUTES;
+        boolean update = true;
+        if (storage.containsKey(datapoint.hashCode())) {
+            Datapoint prevDatapoint = storage.get(datapoint.hashCode());
+            update = !prevDatapoint.getValue().equals(datapoint.getValue()) ||
+                    datapoint.getTime() - prevDatapoint.getTime() >= TEN_MINUTES;
+        }
+        return update;
     }
 }
