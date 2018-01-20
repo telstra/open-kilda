@@ -16,6 +16,7 @@
 package org.openkilda.atdd;
 
 import static org.openkilda.DefaultParameters.trafficEndpoint;
+import static org.openkilda.DefaultParameters.mininetEndpoint;
 import static org.openkilda.flow.FlowUtils.getTimeDuration;
 import static org.openkilda.flow.FlowUtils.isTrafficTestsEnabled;
 import static org.junit.Assert.assertEquals;
@@ -48,7 +49,7 @@ public class FlowCrudBasicRunTest {
     private FlowPayload flowPayload;
     private static final String fileName = "topologies/nonrandom-topology.json";
 
-    @Given("^a nonrandom linear topology of 5 switches$")
+    @Given("^a nonrandom linear topology of 7 switches$")
     public void a_multi_path_topology() throws Throwable {
         ClassLoader classLoader = getClass().getClassLoader();
         File file = new File(classLoader.getResource(fileName).getFile());
@@ -232,6 +233,68 @@ public class FlowCrudBasicRunTest {
         }
     }
 
+
+    private int checkPingTraffic(String sourceSwitch, String destSwitch,
+                                 int sourceVlan, int destinationVlan, int expectedStatus) {
+        if (isTrafficTestsEnabled()) {
+            System.out.print("=====> Send PING traffic");
+
+            long current = System.currentTimeMillis();
+            Client client = ClientBuilder.newClient(new ClientConfig());
+
+            // NOTE: current implementation requires two auxiliary switches in
+            // topology, one for generating traffic, another for receiving it.
+            // Originaly smallest meaningful topology was supposed to consist
+            // of three switches, thus switches 1 and 5 were used as auxiliary.
+            // Now some scenarios require even smaller topologies and at the same
+            // time they reuse small linear topology. This leads to shutting off of
+            // switches 1 and 5 from flows and to test failures. Since topology
+            // reuse speeds testing up the code below determines which switch:port
+            // pairs should be used as source and drains for traffic while keepig
+            // small linear topology in use.
+            int fromNum = Integer.parseInt(sourceSwitch.substring(sourceSwitch.length() -1 ));
+            int toNum = Integer.parseInt(destSwitch.substring(destSwitch.length() -1 ));
+            String from = "0000000" + (fromNum - 1);
+            String to = "0000000" + (toNum + 1);
+            int fromPort = from.equals("00000001") ? 1 : 2;
+            int toPort = 1;
+            System.out.println(String.format("from:%s:%d::%d via %s, To:%s:%d::%d via %s",
+                    from,fromPort,sourceVlan,sourceSwitch,
+                    to,toPort,destinationVlan,destSwitch));
+
+
+            Response result = client
+                    .target(mininetEndpoint)
+                    .path("/checkpingtraffic")
+                    .queryParam("srcswitch", from)
+                    .queryParam("dstswitch", to)
+                    .queryParam("srcport", fromPort)
+                    .queryParam("dstport", toPort)
+                    .queryParam("srcvlan", sourceVlan)
+                    .queryParam("dstvlan", destinationVlan)
+                    .request()
+                    .get();
+
+            int status = result.getStatus();
+            String body = result.readEntity(String.class);
+            System.out.println(String.format("======> Response = %s, BODY = %s", result.toString(), body));
+            System.out.println(String.format("======> Send traffic Time: %,.3f", getTimeDuration(current)));
+
+            if (body.equals("NOOP"))
+                return expectedStatus;
+            else
+                return status;
+        } else {
+            return expectedStatus;
+        }
+    }
+
+
+    /*
+     * NB: This test uses SCAPY on mininet_rest .. and has been deprecated in favor of pingable.
+     *      One of the reasons it was deprecated was due to unresolved issues in testing
+     *      single switch scenarios.
+     */
     @Then("^traffic through (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) is forwarded$")
     public void checkTrafficIsForwarded(final String sourceSwitch, final int sourcePort, final int sourceVlan,
                                         final String destinationSwitch, final int destinationPort,
@@ -247,6 +310,27 @@ public class FlowCrudBasicRunTest {
                                            final int destinationVlan, final int bandwidth) throws Throwable {
         TimeUnit.SECONDS.sleep(2);
         int status = checkTraffic(sourceSwitch, destinationSwitch, sourceVlan, destinationVlan, 503);
+        assertNotEquals(200, status);
+    }
+
+    /*
+     * NB: Pingable uses the native Mininet mechanisms to ping between hosts attached to switches
+     */
+    @Then("^traffic through (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) is pingable$")
+    public void checkTrafficIsPingable(final String sourceSwitch, final int sourcePort, final int sourceVlan,
+                                        final String destinationSwitch, final int destinationPort,
+                                        final int destinationVlan, final int bandwidth) throws Throwable {
+        TimeUnit.SECONDS.sleep(2);
+        int status = checkPingTraffic(sourceSwitch, destinationSwitch, sourceVlan, destinationVlan, 200);
+        assertEquals(200, status);
+    }
+
+    @Then("^traffic through (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) is not pingable$")
+    public void checkTrafficIsNotPingable(final String sourceSwitch, final int sourcePort, final int sourceVlan,
+                                           final String destinationSwitch, final int destinationPort,
+                                           final int destinationVlan, final int bandwidth) throws Throwable {
+        TimeUnit.SECONDS.sleep(2);
+        int status = checkPingTraffic(sourceSwitch, destinationSwitch, sourceVlan, destinationVlan, 503);
         assertNotEquals(200, status);
     }
 
