@@ -30,9 +30,9 @@ RUN apt-get -qy install openvswitch-testcontroller
 RUN cp /usr/bin/ovs-testcontroller /usr/bin/ovs-controller
 RUN cp /usr/bin/ovs-testcontroller /usr/bin/controller
 RUN rm -rf /var/lib/apt/lists/*
-RUN pip install python-logstash
 RUN ln -s /usr/sbin/tcpdump /usr/bin/tcpdump
 RUN git clone https://github.com/noxrepo/pox.git /pox
+RUN pip install python-logstash requests
 
 ADD app /app
 RUN chmod 777 /app/*

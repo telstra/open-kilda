@@ -17,6 +17,6 @@ Feature: Initialisation of Basic Flow CRUD
     This scenario creates small linear network topology and makes sure topology is learned.
 
     Given a clean controller
-    And a nonrandom linear topology of 5 switches
-    And topology contains 8 links
+    And a nonrandom linear topology of 7 switches
+    And topology contains 12 links
     And a clean flow topology

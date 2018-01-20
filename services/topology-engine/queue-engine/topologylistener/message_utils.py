@@ -191,7 +191,18 @@ def send_install_commands(flow_rules, correlation_id):
                       destination="WFM", topic=config.KAFKA_FLOW_TOPIC)
 
 
-def send_delete_commands(nodes, flow_id, correlation_id, cookie):
+def send_delete_commands(nodes, flow_id, flow, correlation_id, cookie):
+
+    if flow['src_switch'] == flow['dst_switch']:
+        #
+        # This means the flow is a single switch. The code north of here doesn't currently handle
+        # this scenario (for flow creation, the flow_utils.build_rules does account for it, but
+        # there isn't a symmetrical call .. ie build_delete_rules.
+        #
+        # Given the above, there should be no nodes, Create a node now.
+        #
+        nodes = [ {'switch_id':flow['src_switch']} ]
+
     logger.debug('Send Delete Commands: node count=%d', len(nodes))
     for node in nodes:
         data = build_delete_flow(str(node['switch_id']), str(flow_id), cookie)
