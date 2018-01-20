@@ -620,24 +620,24 @@ def get_output_actions(in_vlan,out_vlan):
             out port.
     """
     result = ""
-    if out_vlan is None:
-        if in_vlan is not None:
+    if out_vlan == 0:
+        if in_vlan != 0:
             result = "strip_vlan,"
     else:
-        if in_vlan is None:
+        if in_vlan == 0:
             result = "push_vlan:0x8100,mod_vlan_vid:{},".format(out_vlan)
         else:
             result = "mod_vlan_vid:{},".format(out_vlan)
     return result
 
 
-def add_single_switch_rules(switch_id,in_port,out_port,in_vlan=None,out_vlan=None):
-    """add rules to switch 3 to emulate kilda single switch rules"""
+def add_single_switch_rules(switch_id,in_port,out_port,in_vlan=0,out_vlan=0):
+    """add reciprocal rules to a switch to emulate kilda rules"""
 
     logger.info("** Adding flows to {}".format(switch_id))
 
-    in_match  = "" if in_vlan is None else ",dl_vlan={}".format(in_vlan)
-    out_match = "" if out_vlan is None else ",dl_vlan={}".format(out_vlan)
+    in_match  = "" if in_vlan == 0 else ",dl_vlan={}".format(in_vlan)
+    out_match = "" if out_vlan == 0 else ",dl_vlan={}".format(out_vlan)
 
     in_action = get_output_actions(in_vlan,out_vlan)
     out_action = get_output_actions(out_vlan,in_vlan)
@@ -654,7 +654,7 @@ def add_single_switch_rules(switch_id,in_port,out_port,in_vlan=None,out_vlan=Non
     subprocess.Popen(["ovs-ofctl","-O","OpenFlow13","add-flow",switch_id,out_rule],
                      stdout=subprocess.PIPE).wait()
 
-    ### If debugging, remove the comments below to see what the flow rules are
+    # ## If debugging, remove the comments below to see what the flow rules are
     # result = subprocess.Popen(["ovs-ofctl","-O","OpenFlow13","dump-flows",switch_id],
     #                           stdout=subprocess.PIPE).communicate()[0]
     # logger.info(result)
@@ -707,10 +707,10 @@ def check_ping_traffic(p):
     # - switch 4 needs to push packet from port 1 (s3) to port 3 (h) , should strip
     src_switch = p['srcswitch']
     src_port = p['srcport']
-    src_vlan = p['srcvlan']
+    src_vlan = int(p['srcvlan'])
     dst_switch = p['dstswitch']
     dst_port = p['dstport']
-    dst_vlan = p['dstvlan']
+    dst_vlan = int(p['dstvlan'])
 
     logger.info( "** PING request received: src={}:{}x{}  dst={}:{}x{}".format(
         src_switch,src_port,src_vlan,dst_switch,dst_port,dst_vlan
@@ -724,8 +724,8 @@ def check_ping_traffic(p):
     # for src port (ingress): inport = 2 or 3, no vlan ... send to srcport,srcvlan
     # for src port (egress): Opposite of ingress .. inport = srcport,srcvlan ... 2 or 3, no vlan
     # for dst port .. same strategy
-    add_single_switch_rules( src_switch, src_host_port, src_port, None, src_vlan )
-    add_single_switch_rules( dst_switch, dst_host_port, dst_port, None, dst_vlan )
+    add_single_switch_rules( src_switch, src_host_port, src_port, 0, src_vlan )
+    add_single_switch_rules( dst_switch, dst_host_port, dst_port, 0, dst_vlan )
 
     logger.info ( "--> ping" )
     src_host = net.nameToNode["h%s" % src_switch]
