@@ -87,6 +87,29 @@ public class OpenTSDBTopologyTest extends StableAbstractStormTest {
         mockServer.verify(HttpRequest.request(), VerificationTimes.exactly(1));
     }
 
+    @Test
+    public void shouldSendDatapointRequestsTwice() throws Exception {
+        Datapoint datapoint1 = new Datapoint("metric", timestamp, Collections.emptyMap(), 123);
+        String jsonDatapoint1 = MAPPER.writeValueAsString(datapoint1);
+
+        Datapoint datapoint2 = new Datapoint("metric", timestamp, Collections.emptyMap(), 456);
+        String jsonDatapoint2 = MAPPER.writeValueAsString(datapoint2);
+
+        MockedSources sources = new MockedSources();
+        sources.addMockData(Topic.OTSDB+"-spout",
+                new Values(jsonDatapoint1), new Values(jsonDatapoint2));
+        completeTopologyParam.setMockedSources(sources);
+
+        Testing.withTrackedCluster(clusterParam, (cluster) ->  {
+            OpenTSDBTopology topology = new TestingTargetTopology(new TestingKafkaBolt());
+            StormTopology stormTopology = topology.createTopology();
+
+            Testing.completeTopology(cluster, stormTopology, completeTopologyParam);
+        });
+        //verify that request is sent to OpenTSDB server once
+        mockServer.verify(HttpRequest.request(), VerificationTimes.exactly(2));
+    }
+
     private class TestingTargetTopology extends OpenTSDBTopology {
 
         private KafkaBolt kafkaBolt;

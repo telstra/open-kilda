@@ -15,12 +15,9 @@
 
 package org.openkilda.wfm.topology.opentsdb;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.storm.tuple.Fields;
 import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
-import org.apache.storm.Config;
-import org.apache.storm.LocalCluster;
-import org.apache.storm.StormSubmitter;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.KafkaSpout;
 import org.apache.storm.opentsdb.bolt.OpenTsdbBolt;
@@ -30,10 +27,7 @@ import org.apache.storm.topology.TopologyBuilder;
 import org.openkilda.wfm.ConfigurationException;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.topology.AbstractTopology;
-import org.openkilda.wfm.topology.Topology;
 import org.openkilda.wfm.topology.opentsdb.bolts.OpenTSDBFilterBolt;
-
-import java.io.File;
 
 /**
  * Apache Storm topology for sending metrics into Open TSDB.
@@ -59,18 +53,20 @@ public class OpenTSDBTopology extends AbstractTopology {
         KafkaSpout kafkaSpout = createKafkaSpout(topic, spoutId);
         tb.setSpout(spoutId, kafkaSpout, config.getOpenTsdbNumSpouts());
 
-        tb.setBolt(boltId, new OpenTSDBFilterBolt(), config.getOpenTsdbNumOpentasbFilterBolt())
-                .shuffleGrouping(spoutId);
+        tb.setBolt(boltId, new OpenTSDBFilterBolt(), config.getOpenTsdbFilterBoltExecutors())
+                .fieldsGrouping(spoutId, new Fields("str"));
+//                .shuffleGrouping(spoutId);
 
         OpenTsdbClient.Builder tsdbBuilder = OpenTsdbClient
                 .newBuilder(config.getOpenTsDBHosts())
                 .sync(config.getOpenTsdbTimeout())
                 .returnDetails();
         OpenTsdbBolt openTsdbBolt = new OpenTsdbBolt(tsdbBuilder, TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER)
-                .withBatchSize(10)
-                .withFlushInterval(2)
+                .withBatchSize(config.getOpenTsdbBatchSize())
+                .withFlushInterval(config.getOpenTsdbFlushInterval())
                 .failTupleForFailedMetrics();
-        tb.setBolt("opentsdb", openTsdbBolt, config.getOpenTsdbNumOpentsdbBolt())
+        tb.setBolt("opentsdb", openTsdbBolt, config.getOpenTsdbBoltExecutors())
+                .setNumTasks(config.getOpenTsdbBoltWorkers())
                 .shuffleGrouping(boltId);
 
         return tb.createTopology();
