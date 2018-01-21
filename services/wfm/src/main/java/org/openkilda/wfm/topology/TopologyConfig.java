@@ -36,6 +36,12 @@ public class TopologyConfig {
 
     private String openTsDBHosts;
     private Integer openTsdbTimeout;
+    private Integer openTsdbNumSpouts;
+    private Integer openTsdbFilterBoltExecutors;
+    private Integer openTsdbBoltExecutors;
+    private Integer openTsdbBoltWorkers;
+    private Integer openTsdbBatchSize;
+    private Integer openTsdbFlushInterval;
 
     private String neo4jHost;
     private String neo4jLogin;
@@ -72,6 +78,12 @@ public class TopologyConfig {
 
         openTsDBHosts = config.getString("opentsdb.hosts");
         openTsdbTimeout = (int)(config.getFloat("opentsdb.timeout") * 1000);
+        openTsdbNumSpouts = config.getInteger("opentsdb.num.spouts");
+        openTsdbFilterBoltExecutors = config.getInteger("opentsdb.num.opentsdbfilterbolt");
+        openTsdbBoltExecutors = config.getInteger("opentsdb.num.opentsdbbolt");
+        openTsdbBoltWorkers = config.getInteger("opentsdb.workers.opentsdbolt");
+        openTsdbBatchSize = config.getInteger("opentsdb.batch.size");
+        openTsdbFlushInterval = config.getInteger("opentsdb.flush.interval");
 
         neo4jHost = config.getString("neo4j.hosts");
         neo4jLogin = config.getString("neo4j.user");
@@ -184,6 +196,30 @@ public class TopologyConfig {
 
     public Integer getOpenTsdbTimeout() {
         return openTsdbTimeout;
+    }
+
+    public Integer getOpenTsdbNumSpouts() {
+        return openTsdbNumSpouts;
+    }
+
+    public Integer getOpenTsdbFilterBoltExecutors() {
+        return openTsdbFilterBoltExecutors;
+    }
+
+    public Integer getOpenTsdbBoltExecutors() {
+        return openTsdbBoltExecutors;
+    }
+
+    public Integer getOpenTsdbBatchSize() {
+        return openTsdbBatchSize;
+    }
+
+    public Integer getOpenTsdbFlushInterval() {
+        return openTsdbFlushInterval;
+    }
+
+    public Integer getOpenTsdbBoltWorkers() {
+        return openTsdbBoltWorkers;
     }
 
     public String getNeo4jHost() {

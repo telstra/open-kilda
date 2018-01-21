@@ -116,7 +116,7 @@ public class Datapoint extends InfoData {
     public int hashCode() {
         int result = metric != null ? metric.hashCode() : 0;
         result = 31 * result + (tags != null ? tags.hashCode() : 0);
-        result = 31 * result + (value != null ? value.hashCode() : 0);
+//        result = 31 * result + (value != null ? value.hashCode() : 0);
         return result;
     }
 }
