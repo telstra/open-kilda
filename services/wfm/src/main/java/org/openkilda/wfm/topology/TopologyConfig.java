@@ -21,6 +21,8 @@ public class TopologyConfig {
     private Integer zookeeperConnectTimeout;
 
     private String kafkaHosts;
+    private Integer kafkaPartitionsDefault;
+    private Integer kafkaReplicationDefault;
 
     private String kafkaCtrlTopic;
     private String kafkaFlowTopic;
@@ -34,6 +36,7 @@ public class TopologyConfig {
     private String kafkaTopoDiscoTopic;
     private String kafkaTopoCacheTopic;
 
+
     private String openTsDBHosts;
     private Integer openTsdbTimeout;
     private Integer openTsdbNumSpouts;
@@ -42,6 +45,8 @@ public class TopologyConfig {
     private Integer openTsdbBoltWorkers;
     private Integer openTsdbBatchSize;
     private Integer openTsdbFlushInterval;
+    private Integer getDatapointParseBoltExecutors;
+    private Integer getDatapointParseBoltWorkers;
 
     private String neo4jHost;
     private String neo4jLogin;
@@ -63,6 +68,8 @@ public class TopologyConfig {
         zookeeperSessionTimeout = (int)(config.getFloat("zookeeper.session.timeout") * 1000);
         zookeeperConnectTimeout = (int)(config.getFloat("zookeeper.connect.timeout") * 1000);
         kafkaHosts = config.getString("kafka.hosts");
+        kafkaPartitionsDefault = config.getInteger("kafka.partitions.default");
+        kafkaReplicationDefault = config.getInteger("kafka.replication.default");
 
         kafkaCtrlTopic = config.getString("kafka.topic.ctrl");
         kafkaFlowTopic = config.getString("kafka.topic.flow");
@@ -84,6 +91,8 @@ public class TopologyConfig {
         openTsdbBoltWorkers = config.getInteger("opentsdb.workers.opentsdbolt");
         openTsdbBatchSize = config.getInteger("opentsdb.batch.size");
         openTsdbFlushInterval = config.getInteger("opentsdb.flush.interval");
+        getDatapointParseBoltExecutors = config.getInteger("opentsdb.num.datapointparserbolt");
+        getDatapointParseBoltWorkers = config.getInteger("opentsdb.workers.datapointparserbolt");
 
         neo4jHost = config.getString("neo4j.hosts");
         neo4jLogin = config.getString("neo4j.user");
@@ -140,6 +149,14 @@ public class TopologyConfig {
 
     public String getKafkaHosts() {
         return kafkaHosts;
+    }
+
+    public Integer getKafkaPartitionsDefault() {
+        return kafkaPartitionsDefault;
+    }
+
+    public Integer getKafkaReplicationDefault() {
+        return kafkaReplicationDefault;
     }
 
     // --- kafka topics
@@ -204,6 +221,14 @@ public class TopologyConfig {
 
     public Integer getOpenTsdbFilterBoltExecutors() {
         return openTsdbFilterBoltExecutors;
+    }
+
+    public Integer getGetDatapointParseBoltExecutors() {
+        return getDatapointParseBoltExecutors;
+    }
+
+    public Integer getGetDatapointParseBoltWorkers() {
+        return getDatapointParseBoltWorkers;
     }
 
     public Integer getOpenTsdbBoltExecutors() {

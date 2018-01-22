@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.opentsdb;
 
 import org.apache.storm.tuple.Fields;
+import org.openkilda.wfm.topology.opentsdb.bolts.DatapointParseBolt;
 import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
 import org.apache.storm.generated.StormTopology;
@@ -40,22 +41,27 @@ public class OpenTSDBTopology extends AbstractTopology {
         super(env);
     }
 
+    private final String topic = config.getKafkaOtsdbTopic();
+    private final String spoutId = topic + "-spout";
+    private final String boltId = topic + "-bolt";
+    private final String parseBoltId = topic + "parse-bolt";
+
     @Override
     public StormTopology createTopology() {
         LOGGER.info("Creating OpenTSDB topology");
         TopologyBuilder tb = new TopologyBuilder();
 
-        final String topic = config.getKafkaOtsdbTopic();
-        final String spoutId = topic + "-spout";
-        final String boltId = topic + "-bolt";
         checkAndCreateTopic(topic);
 
         KafkaSpout kafkaSpout = createKafkaSpout(topic, spoutId);
         tb.setSpout(spoutId, kafkaSpout, config.getOpenTsdbNumSpouts());
 
+        tb.setBolt(parseBoltId, new DatapointParseBolt(), config.getGetDatapointParseBoltExecutors())
+                .setNumTasks(config.getGetDatapointParseBoltWorkers())
+                .shuffleGrouping(spoutId);
+
         tb.setBolt(boltId, new OpenTSDBFilterBolt(), config.getOpenTsdbFilterBoltExecutors())
-                .fieldsGrouping(spoutId, new Fields("str"));
-//                .shuffleGrouping(spoutId);
+                .fieldsGrouping(parseBoltId, new Fields("hash"));
 
         OpenTsdbClient.Builder tsdbBuilder = OpenTsdbClient
                 .newBuilder(config.getOpenTsDBHosts())
@@ -63,8 +69,8 @@ public class OpenTSDBTopology extends AbstractTopology {
                 .returnDetails();
         OpenTsdbBolt openTsdbBolt = new OpenTsdbBolt(tsdbBuilder, TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER)
                 .withBatchSize(config.getOpenTsdbBatchSize())
-                .withFlushInterval(config.getOpenTsdbFlushInterval())
-                .failTupleForFailedMetrics();
+                .withFlushInterval(config.getOpenTsdbFlushInterval());
+//                .failTupleForFailedMetrics();
         tb.setBolt("opentsdb", openTsdbBolt, config.getOpenTsdbBoltExecutors())
                 .setNumTasks(config.getOpenTsdbBoltWorkers())
                 .shuffleGrouping(boltId);
