@@ -1,4 +1,4 @@
-package org.openkilda.model.response;
+package org.openkilda.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -13,15 +13,13 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 @JsonPropertyOrder({"source_switch", "target_switch", "flow_count"})
 public class FlowCount {
 
-    /** The src switch. */
     @JsonProperty("source_switch")
     private String srcSwitch;
 
-    /** The dst switch. */
     @JsonProperty("target_switch")
     private String dstSwitch;
 
-    /** The flow count. */
+    
     @JsonProperty("flow_count")
     private Integer flowCount;
 
@@ -30,7 +28,6 @@ public class FlowCount {
      *
      * @return the src switch
      */
-    @JsonProperty("source_switch")
     public String getSrcSwitch() {
         return srcSwitch;
     }
@@ -40,7 +37,6 @@ public class FlowCount {
      *
      * @param srcSwitch the new src switch
      */
-    @JsonProperty("source_switch")
     public void setSrcSwitch(final String srcSwitch) {
         this.srcSwitch = srcSwitch;
     }
@@ -50,7 +46,6 @@ public class FlowCount {
      *
      * @return the dst switch
      */
-    @JsonProperty("target_switch")
     public String getDstSwitch() {
         return dstSwitch;
     }
@@ -60,7 +55,6 @@ public class FlowCount {
      *
      * @param dstSwitch the new dst switch
      */
-    @JsonProperty("target_switch")
     public void setDstSwitch(final String dstSwitch) {
         this.dstSwitch = dstSwitch;
     }
@@ -70,7 +64,6 @@ public class FlowCount {
      *
      * @return the flow count
      */
-    @JsonProperty("flow_count")
     public Integer getFlowCount() {
         return flowCount;
     }
@@ -80,7 +73,6 @@ public class FlowCount {
      *
      * @param flowCount the new flow count
      */
-    @JsonProperty("flow_count")
     public void setFlowCount(final Integer flowCount) {
         this.flowCount = flowCount;
     }

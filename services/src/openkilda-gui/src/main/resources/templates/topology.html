@@ -32,13 +32,15 @@
 				<div class="col-sm-3 text-right">
 					<i class="fa fa-info-circle t-logy-icon" aria-hidden="true"></i>					
 					<div class="topology-txt" id="topology-txt" style="display:none;">
-						Lorem Ipsum is simply dummy text of the printing and typesetting industry.
-						Lorem Ipsum has been the industry's standard dummy text ever since the 1500s,
-						when an unknown printer took a galley of type and scrambled it to make a type specimen book.
-						It has survived not only five centuries, but also the leap into electronic typesetting,
-						remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset 
-						sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like 
-						Aldus PageMaker including versions of Lorem Ipsum.
+						<p><h1 align="center">Information</h1></p>
+						<br/>
+						<p>1. Graph represents all logical and physical links between switches. </p>
+						<p>2. Hover over switch will show switch name and on click, it will show switch detail information along with port details.</p> 
+						<p>3. Click on Physical link will lead to link details page which will provide source &amp;					 Destination details along with ISL details. It will also provide graph of data being transferred through this link. </p>
+						<p>4. No. mentioned on Logical link represents no. of logical links present between these switches. </p>
+						<p>5. Click on logical link will share list of all logical links present between these switches which will further provide source &amp; destination details of flow along with flow details. It will also provide graph of data being transferred and path (Forward &amp; Reverse) followed by link.</p> 
+						<p>6. Select switch and drag for better view of connections. </p>
+						<p>7. Double click on switch to restore graph.</p>
 					</div>
 				</div>
 			</div>
@@ -47,19 +49,19 @@
 			<div class="form-wrapper">
 				<div class="form-group row">
 					<label class="col-sm-3 col-form-label">Controller:</label>
-					<p class="col-sm-9 switchdetails_div_controller">ip-192-168-244-3.ap-northeast-1.compute.internal</p>
+					<p class="col-sm-9 switchdetails_div_controller"></p>
 				</div>
 				<div class="form-group row">
 					<label class="col-sm-3 col-form-label">Address:</label>
-					<p class="col-sm-9 switchdetails_div_address">192.168.244.3:49557</p>
+					<p class="col-sm-9 switchdetails_div_address"></p>
 				</div>
 				<div class="form-group row">
 					<label class="col-sm-3 col-form-label">DPID:</label>
-					<p class="col-sm-9 switchdetails_div_name">00:00:00:22:3d:6c:00:0c</p>
+					<p class="col-sm-9 switchdetails_div_name"></p>
 				</div>
 				<div class="form-group row">
 					<label class="col-sm-3 col-form-label">Description:</label>
-					<p class="col-sm-9 switchdetails_div_desc">OF_13</p>
+					<p class="col-sm-9 switchdetails_div_desc"></p>
 				</div>
 			</div>
 		</div>
@@ -68,15 +70,13 @@
 			<div class="check">
 				<input type="checkbox" name="switch" value="switch" id="showDetail">SHOW DETAILS</input>
 			</div>
-			
-			
+				<div id="switchesgraph" class="hide"></div>
 		</div>
 
 		<div class="popup" id="popupDiv">
 			<span class="popuptext" id="linkDiv"></span>
 		</div>
 
-		<div th:include="fragments/importResources:: commonImports"></div>
 		<div th:include="fragments/importResources:: graphImports"></div>
 		<div class="check check-connections">
 				<div class="lconnection c-block">
@@ -85,7 +85,10 @@
 				<div class="pconnection c-block">
 					<span></span>Physical Connections
 				</div>
-			</div>
+				<button id="zoom_in" onclick="zoomClick('zoom_in')">+</button>
+				<button id="zoom_out" onclick="zoomClick('zoom_out')">-</button>
+				<button id="reset" onclick="reset()">Reset</button>
+		</div>
 	</div>
 
 	<div th:replace="fragments/footer :: footer" ></div>
@@ -106,6 +109,11 @@
 		</div>
 	</div>
 	<script th:inline="javascript" src="javascript/common.js" th:src="@{javascript/common.js}"></script>
-	
+	<script>
+		$(document).ready(function() {
+			$('body').css('pointer-events','all');
+		});
+		
+	</script>
 </body>
 </html>

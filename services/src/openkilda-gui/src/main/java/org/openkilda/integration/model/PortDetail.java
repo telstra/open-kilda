@@ -20,51 +20,51 @@ import java.util.List;
         "advertised_features"})
 public class PortDetail implements Serializable {
 
-    /** The peer features. */
+    
     @JsonProperty("peer_features")
     private List<Object> peerFeatures = null;
 
-    /** The current features. */
+    
     @JsonProperty("current_features")
     private List<String> currentFeatures = null;
 
-    /** The hardware address. */
+    
     @JsonProperty("hardware_address")
     private String hardwareAddress;
 
-    /** The curr speed. */
+    
     @JsonProperty("curr_speed")
     private String currSpeed;
 
-    /** The port number. */
+    
     @JsonProperty("port_number")
     private String portNumber;
 
-    /** The supported features. */
+    
     @JsonProperty("supported_features")
     private List<Object> supportedFeatures = null;
 
-    /** The name. */
+    
     @JsonProperty("name")
     private String name;
 
-    /** The max speed. */
+    
     @JsonProperty("max_speed")
     private String maxSpeed;
 
-    /** The state. */
+    
     @JsonProperty("state")
     private List<String> state = null;
 
-    /** The config. */
+    
     @JsonProperty("config")
     private List<String> config = null;
 
-    /** The advertised features. */
+    
     @JsonProperty("advertised_features")
     private List<Object> advertisedFeatures = null;
 
-    /** The Constant serialVersionUID. */
+    
     private final static long serialVersionUID = 9111195547914952199L;
 
     /**
@@ -72,7 +72,7 @@ public class PortDetail implements Serializable {
      *
      * @return the peer features
      */
-    @JsonProperty("peer_features")
+    
     public List<Object> getPeerFeatures() {
         return peerFeatures;
     }
@@ -82,7 +82,7 @@ public class PortDetail implements Serializable {
      *
      * @param peerFeatures the new peer features
      */
-    @JsonProperty("peer_features")
+    
     public void setPeerFeatures(final List<Object> peerFeatures) {
         this.peerFeatures = peerFeatures;
     }
@@ -92,7 +92,7 @@ public class PortDetail implements Serializable {
      *
      * @return the current features
      */
-    @JsonProperty("current_features")
+    
     public List<String> getCurrentFeatures() {
         return currentFeatures;
     }
@@ -102,7 +102,7 @@ public class PortDetail implements Serializable {
      *
      * @param currentFeatures the new current features
      */
-    @JsonProperty("current_features")
+    
     public void setCurrentFeatures(final List<String> currentFeatures) {
         this.currentFeatures = currentFeatures;
     }
@@ -112,7 +112,7 @@ public class PortDetail implements Serializable {
      *
      * @return the hardware address
      */
-    @JsonProperty("hardware_address")
+    
     public String getHardwareAddress() {
         return hardwareAddress;
     }
@@ -122,7 +122,7 @@ public class PortDetail implements Serializable {
      *
      * @param hardwareAddress the new hardware address
      */
-    @JsonProperty("hardware_address")
+    
     public void setHardwareAddress(final String hardwareAddress) {
         this.hardwareAddress = hardwareAddress;
     }
@@ -132,7 +132,7 @@ public class PortDetail implements Serializable {
      *
      * @return the curr speed
      */
-    @JsonProperty("curr_speed")
+    
     public String getCurrSpeed() {
         return currSpeed;
     }
@@ -142,7 +142,7 @@ public class PortDetail implements Serializable {
      *
      * @param currSpeed the new curr speed
      */
-    @JsonProperty("curr_speed")
+    
     public void setCurrSpeed(final String currSpeed) {
         this.currSpeed = currSpeed;
     }
@@ -152,7 +152,7 @@ public class PortDetail implements Serializable {
      *
      * @return the port number
      */
-    @JsonProperty("port_number")
+    
     public String getPortNumber() {
         return portNumber;
     }
@@ -162,7 +162,7 @@ public class PortDetail implements Serializable {
      *
      * @param portNumber the new port number
      */
-    @JsonProperty("port_number")
+    
     public void setPortNumber(final String portNumber) {
         this.portNumber = portNumber;
     }
@@ -172,7 +172,7 @@ public class PortDetail implements Serializable {
      *
      * @return the supported features
      */
-    @JsonProperty("supported_features")
+    
     public List<Object> getSupportedFeatures() {
         return supportedFeatures;
     }
@@ -182,7 +182,7 @@ public class PortDetail implements Serializable {
      *
      * @param supportedFeatures the new supported features
      */
-    @JsonProperty("supported_features")
+    
     public void setSupportedFeatures(final List<Object> supportedFeatures) {
         this.supportedFeatures = supportedFeatures;
     }
@@ -192,7 +192,7 @@ public class PortDetail implements Serializable {
      *
      * @return the name
      */
-    @JsonProperty("name")
+    
     public String getName() {
         return name;
     }
@@ -202,7 +202,7 @@ public class PortDetail implements Serializable {
      *
      * @param name the new name
      */
-    @JsonProperty("name")
+    
     public void setName(final String name) {
         this.name = name;
     }
@@ -212,7 +212,7 @@ public class PortDetail implements Serializable {
      *
      * @return the max speed
      */
-    @JsonProperty("max_speed")
+    
     public String getMaxSpeed() {
         return maxSpeed;
     }
@@ -222,7 +222,7 @@ public class PortDetail implements Serializable {
      *
      * @param maxSpeed the new max speed
      */
-    @JsonProperty("max_speed")
+    
     public void setMaxSpeed(final String maxSpeed) {
         this.maxSpeed = maxSpeed;
     }
@@ -232,7 +232,7 @@ public class PortDetail implements Serializable {
      *
      * @return the state
      */
-    @JsonProperty("state")
+    
     public List<String> getState() {
         return state;
     }
@@ -242,7 +242,7 @@ public class PortDetail implements Serializable {
      *
      * @param state the new state
      */
-    @JsonProperty("state")
+    
     public void setState(final List<String> state) {
         this.state = state;
     }
@@ -252,7 +252,7 @@ public class PortDetail implements Serializable {
      *
      * @return the config
      */
-    @JsonProperty("config")
+    
     public List<String> getConfig() {
         return config;
     }
@@ -262,7 +262,7 @@ public class PortDetail implements Serializable {
      *
      * @param config the new config
      */
-    @JsonProperty("config")
+    
     public void setConfig(final List<String> config) {
         this.config = config;
     }
@@ -272,7 +272,7 @@ public class PortDetail implements Serializable {
      *
      * @return the advertised features
      */
-    @JsonProperty("advertised_features")
+    
     public List<Object> getAdvertisedFeatures() {
         return advertisedFeatures;
     }
@@ -282,7 +282,7 @@ public class PortDetail implements Serializable {
      *
      * @param advertisedFeatures the new advertised features
      */
-    @JsonProperty("advertised_features")
+    
     public void setAdvertisedFeatures(final List<Object> advertisedFeatures) {
         this.advertisedFeatures = advertisedFeatures;
     }

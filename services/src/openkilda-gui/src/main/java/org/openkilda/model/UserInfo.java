@@ -1,30 +1,22 @@
-package org.openkilda.web;
+package org.openkilda.model;
 
 import java.io.Serializable;
 
 /**
- * The Class SessionObject.
- * 
+ * The Class UserInfo.
+ *
  * This entity is used to set all objects in session.
- * 
+ *
  * @author Gaurav Chugh
  *
  */
-public class SessionObject implements Serializable {
+public class UserInfo implements Serializable {
 
-    /** The Constant serialVersionUID. */
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 5779373512137456449L;
 
-    /** The user id. */
     private Integer userId;
-
-    /** The username. */
     private String username;
-
-    /** The name. */
     private String name;
-
-    /** The role. */
     private String role;
 
     /**
@@ -41,7 +33,7 @@ public class SessionObject implements Serializable {
      *
      * @param userId the new user id
      */
-    public void setUserId(Integer userId) {
+    public void setUserId(final Integer userId) {
         this.userId = userId;
     }
 
@@ -59,7 +51,7 @@ public class SessionObject implements Serializable {
      *
      * @param username the new username
      */
-    public void setUsername(String username) {
+    public void setUsername(final String username) {
         this.username = username;
     }
 
@@ -77,7 +69,7 @@ public class SessionObject implements Serializable {
      *
      * @param name the new name
      */
-    public void setName(String name) {
+    public void setName(final String name) {
         this.name = name;
     }
 
@@ -95,8 +87,7 @@ public class SessionObject implements Serializable {
      *
      * @param role the new role
      */
-    public void setRole(String role) {
+    public void setRole(final String role) {
         this.role = role;
     }
-
 }

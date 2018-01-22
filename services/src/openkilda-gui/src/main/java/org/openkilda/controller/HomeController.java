@@ -16,21 +16,17 @@ import org.openkilda.constants.IConstants;
 @Controller
 @RequestMapping(value = "/home")
 public class HomeController extends BaseController {
-    /** The Constant LOG. */
+
     private static final Logger LOGGER = LoggerFactory.getLogger(HomeController.class);
 
     /**
-     * Home.
+     * Return to home view name.
      *
-     * @param model the model
-     * @param request the request
-     * @return the string
+     * @return home view name
      */
-
     @RequestMapping
     public String home() {
-        LOGGER.info("Inside HomeController method home");
+        LOGGER.info("[home] - start");
         return IConstants.View.HOME;
     }
-
 }

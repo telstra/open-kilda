@@ -1,11 +1,15 @@
 package org.openkilda.integration.exception;
 
-public class InvalidResponseException extends Exception {
+public class InvalidResponseException extends RuntimeException {
 
     private static final long serialVersionUID = 6981852888050194806L;
 
     private int code;
     private String response;
+
+    public InvalidResponseException() {
+        super();
+    }
 
     public InvalidResponseException(final int code, final String response) {
         super();

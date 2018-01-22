@@ -1,5 +1,15 @@
 package org.openkilda.security.filter;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.exc.MismatchedInputException;
+
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.Arrays;
@@ -12,17 +22,9 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.web.filter.OncePerRequestFilter;
-
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 /**
  * The Class LoggingFilter.
- * 
+ *
  * @author Gaurav Chugh
  */
 public class LoggingFilter extends OncePerRequestFilter {
@@ -38,7 +40,9 @@ public class LoggingFilter extends OncePerRequestFilter {
 
     /*
      * (non-Javadoc)
-     * @see org.springframework.web.filter.OncePerRequestFilter#doFilterInternal(javax.servlet.http.HttpServletRequest, javax.servlet.http.HttpServletResponse, javax.servlet.FilterChain)
+     *
+     * @see org.springframework.web.filter.OncePerRequestFilter#doFilterInternal(javax.servlet.http.
+     * HttpServletRequest, javax.servlet.http.HttpServletResponse, javax.servlet.FilterChain)
      */
     @Override
     protected void doFilterInternal(final HttpServletRequest request,
@@ -61,15 +65,17 @@ public class LoggingFilter extends OncePerRequestFilter {
             }
         }
 
-        if (isMatch)
+        if (isMatch) {
             logRequest(request);
+        }
         ResponseWrapper responseWrapper = new ResponseWrapper(requestId, response);
         try {
             filterChain.doFilter(request, responseWrapper);
         } finally {
             try {
-                if (isMatch)
+                if (isMatch) {
                     logResponse(responseWrapper);
+                }
             } catch (Exception e) {
                 LOGGER.error("[doFilterInternal] Exception: " + e.getMessage(), e);
             }
@@ -119,18 +125,19 @@ public class LoggingFilter extends OncePerRequestFilter {
         StringBuilder msg = new StringBuilder();
         msg.append(RESPONSE_PREFIX);
         msg.append("\nid: '").append((response.getId())).append("' ");
+        String content = null;
         try {
 
             ObjectMapper mapper = new ObjectMapper();
-            Object json =
-                    mapper.readValue(
-                            new String(response.getData(), response.getCharacterEncoding()),
-                            Object.class);
+            content = new String(response.getData(), response.getCharacterEncoding());
+            Object json = mapper.readValue(content, Object.class);
 
             msg.append("\nResponse: \n").append(
                     mapper.writerWithDefaultPrettyPrinter().writeValueAsString(json));
         } catch (UnsupportedEncodingException e) {
             LOGGER.error("[logResponse] Exception: " + e.getMessage(), e);
+        } catch (MismatchedInputException e) {
+            msg.append("\nResponse: \n").append(content);
         }
         LOGGER.info("[logResponse] Response: " + msg.toString());
     }

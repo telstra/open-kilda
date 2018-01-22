@@ -16,42 +16,118 @@ $(function() {
 		$("#datetimepicker7,#datetimepicker8,#downsampling,#menulist,#autoreload").on("change",function() {
 			getGraphData();
 		});
-});
+	});
+	
+/**
+ * Execute this function when page is loaded or when user is directed to this
+ * page.
+ */
+$(document).ready(function() {
+
+	
+	var portData = localStorage.getItem("portDetails");
+	var portObj = JSON.parse(portData)
+	var portNum = portObj.port_number;
+	$.datetimepicker.setLocale('en');
+	var date = new Date()
+	var yesterday = new Date(date.getTime());
+	yesterday.setDate(date.getDate() - 1);
+	var YesterDayDate = moment(yesterday).format("YYYY/MM/DD HH:mm:ss");
+	var EndDate = moment(date).format("YYYY/MM/DD HH:mm:ss");	
+	var convertedStartDate = moment(YesterDayDate).format("YYYY-MM-DD-HH:mm:ss");
+	var convertedEndDate = moment(EndDate).format("YYYY-MM-DD-HH:mm:ss");
+	var downsampling = "1s";
+
+	$("#downsampling").val(downsampling)
+	$("#datetimepicker7").val(YesterDayDate);
+	$("#datetimepicker8").val(EndDate);
+	$('#datetimepicker7').datetimepicker({
+		  format:'Y/m/d h:i:s',
+	});
+	$('#datetimepicker8').datetimepicker({
+		  format:'Y/m/d h:i:s',
+	});
+
+	$('#datetimepicker_dark').datetimepicker({theme:'dark'})
+	var switchname = window.location.href.split("#")[1];
+	var sourceswitch = switchname.replace(/:/g, "");
 	
 
+		$.ajax({
+			dataType: "jsonp",
+			url : APP_CONTEXT + "/stats/switchid/"+sourceswitch+"/portnumber/"+portNum+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/pen.switch.collisions",	
+			type : 'GET',
+			success : function(response) {	
+					
+				$("#wait1").css("display", "none");	
+				showStatsData(response);
+			},
+			error : function(errResponse) {
+				$("#wait1").css("display", "none");	
+				showStatsData(errResponse)
 
-function getGraphData() {
+			},
+			dataType : "json"
+		});	
+})
+
+
+/**
+ * Execute this function to show visulization of stats graph represnting time
+ * and metric on the axis.
+ */
+function showStatsData(response) {	
+	var data = response
+		var graphData = [];
+		if(data.length){
+			var getValue = data[0].dps;
+			$.each(getValue, function (index, value) {
+				
+			  graphData.push([new Date(Number(index*1000)),value])
+
+			 }) 
+		}
 		
-	
+		var g = new Dygraph(document.getElementById("graphdiv"), graphData,
+        {
+		    drawPoints: true,
+		    labels: ['Time', $("select.selectbox_menulist").val()]
+		});
+}
+
+
+
+
+/**
+ * Execute this function to show stats data whenever user filters data in the
+ * html page.
+ */
+function getGraphData() {
+			
 	var regex = new RegExp("^\\d+(s|h|m){1}$");
 	var currentDate = new Date();
 	var startDate = new Date($("#datetimepicker7").val());
 	var endDate =  new Date($("#datetimepicker8").val());
 	var convertedStartDate = moment(startDate).format("YYYY-MM-DD-HH:mm:ss");
 	var convertedEndDate = moment(endDate).format("YYYY-MM-DD-HH:mm:ss");
-	
 	var downsampling = $("#downsampling").val();
-	
 	var downsamplingValidated = regex.test(downsampling);
-	
-	var selMetric=$("select.selectbox_menulist").val();	
+	var selMetric=$("select.selectbox_menulist").val();
+	console.log(selMetric);
 	var valid=true;
 	
 	if(downsamplingValidated == false) {	
 		
-		common.infoMessage('Please enter correct downsampling','error');
+		common.infoMessage('Please enter correct downsampling','error');		
 		valid=false;
 		return
 	}
-	
 	if(startDate.getTime() > currentDate.getTime()) {
-		common.infoMessage('startDate should not be greater than currentDate','error');		
+		common.infoMessage('startDate should not be greater than currentDate.','error');		
 		valid=false;
 		return;
-	}
-	
-	else if(endDate.getTime() < startDate.getTime()){
-		common.infoMessage('endDate should not be less than startDate','error');
+	} else if(endDate.getTime() < startDate.getTime()){
+		common.infoMessage('endDate should not be less than startDate.','error');		
 		valid=false;
 		return;
 	}
@@ -60,29 +136,25 @@ function getGraphData() {
 	var numbers = /^[-+]?[0-9]+$/;  
 	var checkNo = $("#autoreload").val().match(numbers);
 	var checkbox =  $("#check").prop("checked");
-			
-	// if filter values are valid then call stats api
+
 	if(valid) {
 		
-		
 	var portData = localStorage.getItem("portDetails");
-	var portObj = JSON.parse(portData)	
+	var portObj = JSON.parse(portData)
+	var portNum = portObj.port_number;
 		
 	var switchname = window.location.href.split("#")[1];
-	
 	var sourceswitch = switchname.replace(/:/g, "");
 	
 
 		$.ajax({
 			dataType: "jsonp",					
-			url : APP_CONTEXT + "/stats/"+convertedStartDate+"/"+convertedEndDate+"/"+selMetric+"?"+"src_switch="+sourceswitch+"&src_port="+portObj.port_number+"&averageOf="+downsampling,
-			
+			url : APP_CONTEXT + "/stats/switchid/"+sourceswitch+"/portnumber/"+portNum+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric,			
 			type : 'GET',
-			success : function(response) {	
-					
-				$("#wait1").css("display", "none");	
-				commonGraphMethods.showStatsData(response);
+			success : function(response) {			
 				
+				$("#wait1").css("display", "none");	
+				showStatsData(response);			
 			},
 			dataType : "json"
 		});
@@ -93,7 +165,7 @@ function getGraphData() {
 
 			}
 			
-			if(autoReload.autoreloadGraph){
+			if(autoreload){
 				graphInterval = setInterval(function(){
 					callIntervalData() 
 				}, 1000*autoreload);
@@ -104,40 +176,40 @@ function getGraphData() {
 
 function callIntervalData(){
 	
-	var currentDate = new Date();
-	
+	var currentDate = new Date();	
 	var startDate = new Date($("#datetimepicker7").val());
 	var convertedStartDate = moment(startDate).format("YYYY-MM-DD-HH:mm:ss");
-	
 	var endDate = new Date()
 	var convertedEndDate = moment(endDate).format("YYYY-MM-DD-HH:mm:ss");
-	
-	var downsampling =$("#downsampling").val()
-	
-	
+	var downsampling =$("#downsampling").val()	
 	var portData = localStorage.getItem("portDetails");
 	var portObj = JSON.parse(portData)
-		
+	var portNum = portObj.port_number;
 	
 	var selMetric=$("select.selectbox_menulist").val();
-
-	
 	var switchname = window.location.href.split("#")[1];
-	
 	var sourceswitch = switchname.replace(/:/g, "");
-		
-
+	
 		$.ajax({
 			dataType: "jsonp",
-
-			url : APP_CONTEXT + "/stats/"+convertedStartDate+"/"+convertedEndDate+"/"+selMetric+"?"+"src_switch="+sourceswitch+"&src_port="+portObj.port_number+"&averageOf="+downsampling,
-
+			url : APP_CONTEXT + "/stats/switchid/"+sourceswitch+"/portnumber/"+portNum+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric,
 			type : 'GET',
 			success : function(response) {	
-				commonGraphMethods.showStatsData(response);
+				showStatsData(response);
 			},
 			dataType : "json"
 		});
+}
+
+function autoreload(){
+	$("#autoreload").toggle();
+	var checkbox =  $("#check").prop("checked");
+	if(checkbox == false){
+		
+		$("#autoreload").val('');
+		clearInterval(callIntervalData);
+		clearInterval(graphInterval);
+	}
 }
 
 /* ]]> */

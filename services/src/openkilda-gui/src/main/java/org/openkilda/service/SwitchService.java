@@ -38,7 +38,7 @@ public class SwitchService {
      * @return SwitchRelationData
      * @throws IntegrationException
      */
-    public List<IslLinkInfo> getIslLinks() throws IntegrationException {
+    public List<IslLinkInfo> getIslLinks() {
         return switchIntegrationService.getIslLinks();
     }
 

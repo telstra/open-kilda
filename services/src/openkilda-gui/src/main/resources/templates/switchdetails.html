@@ -6,6 +6,7 @@
 <meta charset="utf-8"></meta>
 <title>OPEN KILDA</title>
 <!-- CSS Style Sheets -->
+<link th:href="@{../css/jquery.dataTables.min.css}" rel="stylesheet" type="text/css" />
 <link th:href="@{../images/kilda.png}" rel="shortcut icon" type="image/png"></link>
 
 </head>
@@ -55,30 +56,45 @@
 				</div>
 			</div>
 
-			<div id="portdetails_div" style="display:none;">
-				<h5 class="modal-title">PORT DETAILS</h5>
-				<div id="port-details1">
-					<div class="row thead">
-						<div class="col-sm-3">Interface Type</div>
-						<div class="col-sm-3">Port Name</div>
-						<div class="col-sm-3">Port Number</div>
-						<div class="col-sm-3">Status</div>
-					</div>
-					<div class="row rep_div" id="div_1">
-						<div class="col-sm-3 portdetails_div_interface"></div>
-						<div class="col-sm-3 portdetails_div_port_name"></div>
-						<div class="col-sm-3 portdetails_div_port_number"></div>
-						<div class="col-sm-3 portdetails_div_status"></div>
-					</div>
-				</div>
+				<div id="portdetails_div" style="display:none;">
+				<h5 class="port-title">PORT DETAILS</h5>
+				<table id="flowTable" class="display" cellspacing="0" width="100%" style="display:none;">
+				<thead>
+					<tr class="tableHeading">
+						<th><span title="Hostname">Interface Type</span> 
+						<span class="fa fa-search" onclick="showSearch('Hostname',event)" style=""></span> 
+						<input id="Hostname" class="heading_search_box" type="search" style="display: none;" placeholder="Search" />
+						</th>
+						<th><span title="Address">Port Name</span>					
+						<span class="fa fa-search" onclick="showSearch('Address',event)" style=""></span> 
+						<input id="Address" class="heading_search_box" type="search" style="display: none;" placeholder="Search" />
+						
+						</th>
+						<th><span title="Switch">Port Number</span>
+						<span class="fa fa-search" onclick="showSearch('Switch',event)" style=""></span> 
+						<input id="Switch" class="heading_search_box" type="search" style="display: none;" placeholder="Search" />
+						
+						</th>
+						<th><span title="Description">Status</span>
+						<span class="fa fa-search" onclick="showSearch('Description',event)" style=""></span> 
+						<input  id="Description" class="heading_search_box" type="search" style="display: none;" placeholder="Search" />
+						</th>
+					</tr>
+				</thead>
+
+				<tbody id="flow-details">
+				</tbody>
+			</table>
 			</div>
+
 
 
 		</div>
 	</div>
 
 	<div th:replace="fragments/footer :: footer" ></div>
-	<script th:inline="javascript" src="../javascript/switch.js"></script>
+	<script th:inline="javascript" src="../javascript/jquery.dataTables.min.js"></script>
+	<script th:inline="javascript" src="../javascript/switchdetails.js"></script>
 	<script th:inline="javascript" src="../javascript/common.js"></script>
 </body>
 </html>

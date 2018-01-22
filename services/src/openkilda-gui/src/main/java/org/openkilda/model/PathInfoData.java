@@ -35,7 +35,7 @@ public class PathInfoData {
      *
      * @return the message type
      */
-    @JsonProperty("message_type")
+    
     public String getMessageType() {
         return messageType;
     }
@@ -45,7 +45,7 @@ public class PathInfoData {
      *
      * @param messageType the new message type
      */
-    @JsonProperty("message_type")
+    
     public void setMessageType(final String messageType) {
         this.messageType = messageType;
     }
@@ -55,7 +55,7 @@ public class PathInfoData {
      *
      * @return the latency ns
      */
-    @JsonProperty("latency_ns")
+    
     public Integer getLatencyNs() {
         return latencyNs;
     }
@@ -65,7 +65,7 @@ public class PathInfoData {
      *
      * @param latencyNs the new latency ns
      */
-    @JsonProperty("latency_ns")
+    
     public void setLatencyNs(final Integer latencyNs) {
         this.latencyNs = latencyNs;
     }

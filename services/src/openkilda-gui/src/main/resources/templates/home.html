@@ -11,7 +11,7 @@
 </head>
 
 <body>
-<div th:include="fragments/importResources:: commonImports"></div>
+	<div th:include="fragments/importResources:: commonImports"></div>
 
 	<div th:replace="fragments/header :: header" ></div>
 
@@ -19,11 +19,10 @@
 
 	<div class="content">
 		<h1 class="text-center">WELCOME TO OPEN KILDA</h1>
-		<div th:include="fragments/importResources:: commonImports"></div>
 	</div>
 	
 	<div th:replace="fragments/footer :: footer" ></div>
-<script th:inline="javascript" src="javascript/common.js" th:src="@{javascript/common.js}"></script>
+	<script th:inline="javascript" src="javascript/common.js" th:src="@{javascript/common.js}"></script>
 	
 </body>
 	<script>

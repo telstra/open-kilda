@@ -1,6 +1,6 @@
 package org.openkilda.integration.exception;
 
-public class IntegrationException extends Exception {
+public class IntegrationException extends RuntimeException {
 
     private static final long serialVersionUID = 9177586156625415602L;
 

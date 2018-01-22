@@ -17,31 +17,31 @@ import java.io.Serializable;
 @JsonPropertyOrder({"port_no", "segment_latency", "seq_id", "switch_id"})
 public class PathNode implements Serializable {
 
-    /** The port no. */
+    
     @JsonProperty("port_no")
     private Integer portNo;
 
-    /** The segment latency. */
+    
     @JsonProperty("segment_latency")
     private Integer segmentLatency;
 
-    /** The seq id. */
+    
     @JsonProperty("seq_id")
     private Integer seqId;
 
-    /** The switch id. */
+    
     @JsonProperty("switch_id")
     private String switchId;
 
-    /** The in port no. */
+    
     @JsonProperty("in_port_no")
     private Integer inPortNo;
 
-    /** The out port no. */
+    
     @JsonProperty("out_port_no")
     private Integer outPortNo;
 
-    /** The Constant serialVersionUID. */
+    
     private final static long serialVersionUID = -4515006227265225751L;
 
     /**

@@ -18,35 +18,35 @@ import java.io.Serializable;
         "switch_id", "port_name"})
 public class PortInfo implements Serializable, Comparable<PortInfo> {
 
-    /** The assignmenttype. */
+    
     @JsonProperty("assignmenttype")
     private String assignmenttype;
 
-    /** The interfacetype. */
+    
     @JsonProperty("interfacetype")
     private String interfacetype;
 
-    /** The status. */
+    
     @JsonProperty("status")
     private String status;
 
-    /** The crossconnect. */
+    
     @JsonProperty("crossconnect")
     private String crossconnect;
 
-    /** The customeruuid. */
+    
     @JsonProperty("customeruuid")
     private String customeruuid;
 
-    /** The switch name. */
+    
     @JsonProperty("switch_id")
     private String switchName;
 
-    /** The port name. */
+    
     @JsonProperty("port_name")
     private String portName;
 
-    /** The port number. */
+    
     @JsonProperty("port_number")
     private String portNumber;
 
@@ -58,7 +58,7 @@ public class PortInfo implements Serializable, Comparable<PortInfo> {
      *
      * @return the assignmenttype
      */
-    @JsonProperty("assignmenttype")
+    
     public String getAssignmenttype() {
         return assignmenttype;
     }
@@ -68,7 +68,7 @@ public class PortInfo implements Serializable, Comparable<PortInfo> {
      *
      * @param assignmenttype the new assignmenttype
      */
-    @JsonProperty("assignmenttype")
+    
     public void setAssignmenttype(final String assignmenttype) {
         this.assignmenttype = assignmenttype;
     }
@@ -78,7 +78,7 @@ public class PortInfo implements Serializable, Comparable<PortInfo> {
      *
      * @return the interfacetype
      */
-    @JsonProperty("interfacetype")
+    
     public String getInterfacetype() {
         return interfacetype;
     }
@@ -88,7 +88,7 @@ public class PortInfo implements Serializable, Comparable<PortInfo> {
      *
      * @param interfacetype the new interfacetype
      */
-    @JsonProperty("interfacetype")
+    
     public void setInterfacetype(final String interfacetype) {
         this.interfacetype = interfacetype;
     }
@@ -98,7 +98,7 @@ public class PortInfo implements Serializable, Comparable<PortInfo> {
      *
      * @return the status
      */
-    @JsonProperty("status")
+    
     public String getStatus() {
         return status;
     }
@@ -108,7 +108,7 @@ public class PortInfo implements Serializable, Comparable<PortInfo> {
      *
      * @param status the new status
      */
-    @JsonProperty("status")
+    
     public void setStatus(final String status) {
         this.status = status;
     }
@@ -118,7 +118,7 @@ public class PortInfo implements Serializable, Comparable<PortInfo> {
      *
      * @return the crossconnect
      */
-    @JsonProperty("crossconnect")
+    
     public String getCrossconnect() {
         return crossconnect;
     }
@@ -128,7 +128,7 @@ public class PortInfo implements Serializable, Comparable<PortInfo> {
      *
      * @param crossconnect the new crossconnect
      */
-    @JsonProperty("crossconnect")
+    
     public void setCrossconnect(final String crossconnect) {
         this.crossconnect = crossconnect;
     }
@@ -138,7 +138,7 @@ public class PortInfo implements Serializable, Comparable<PortInfo> {
      *
      * @return the customeruuid
      */
-    @JsonProperty("customeruuid")
+    
     public String getCustomeruuid() {
         return customeruuid;
     }
@@ -148,7 +148,7 @@ public class PortInfo implements Serializable, Comparable<PortInfo> {
      *
      * @param customeruuid the new customeruuid
      */
-    @JsonProperty("customeruuid")
+    
     public void setCustomeruuid(final String customeruuid) {
         this.customeruuid = customeruuid;
     }
@@ -158,7 +158,7 @@ public class PortInfo implements Serializable, Comparable<PortInfo> {
      *
      * @return the switch name
      */
-    @JsonProperty("switch_id")
+    
     public String getSwitchName() {
         return switchName;
     }
@@ -168,7 +168,7 @@ public class PortInfo implements Serializable, Comparable<PortInfo> {
      *
      * @param switchName the new switch name
      */
-    @JsonProperty("switch_id")
+    
     public void setSwitchName(final String switchName) {
         this.switchName = switchName;
     }
@@ -178,7 +178,7 @@ public class PortInfo implements Serializable, Comparable<PortInfo> {
      *
      * @return the port name
      */
-    @JsonProperty("port_name")
+    
     public String getPortName() {
         return portName;
     }
@@ -188,7 +188,7 @@ public class PortInfo implements Serializable, Comparable<PortInfo> {
      *
      * @param portName the new port name
      */
-    @JsonProperty("port_name")
+    
     public void setPortName(final String portName) {
         this.portName = portName;
     }
@@ -198,7 +198,7 @@ public class PortInfo implements Serializable, Comparable<PortInfo> {
      *
      * @return the port number
      */
-    @JsonProperty("port_number")
+    
     public String getPortNumber() {
         return portNumber;
     }
@@ -208,7 +208,7 @@ public class PortInfo implements Serializable, Comparable<PortInfo> {
      *
      * @param portNumber the new port number
      */
-    @JsonProperty("port_number")
+    
     public void setPortNumber(final String portNumber) {
         this.portNumber = portNumber;
     }

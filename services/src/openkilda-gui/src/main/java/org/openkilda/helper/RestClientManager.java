@@ -30,6 +30,7 @@ import org.openkilda.constants.IAuthConstants;
 import org.openkilda.exception.ExternalSystemException;
 import org.openkilda.exception.RestCallFailedException;
 import org.openkilda.exception.UnauthorizedException;
+import org.openkilda.integration.exception.InvalidResponseException;
 import org.openkilda.model.response.ErrorMessage;
 import org.openkilda.service.AuthPropertyService;
 import org.openkilda.utility.IoUtil;
@@ -251,9 +252,20 @@ public class RestClientManager {
      */
     public static boolean isValidResponse(final HttpResponse response) {
         LOGGER.debug("[isValidResponse] Response Code " + response.getStatusLine().getStatusCode());
-        return response.getStatusLine().getStatusCode() >= HttpStatus.OK.value()
+        boolean isValid = response.getStatusLine().getStatusCode() >= HttpStatus.OK.value()
                 && response.getStatusLine().getStatusCode() < HttpStatus.MULTIPLE_CHOICES.value()
                 && response.getEntity() != null;
+        if(isValid) {
+            return true;
+        } else {
+            try {
+                String content = IoUtil.toString(response.getEntity().getContent());
+                throw new InvalidResponseException(response.getStatusLine().getStatusCode(),
+                        content);
+            } catch (IOException exception) {
+                LOGGER.error("[getResponse] Exception :" + exception.getMessage(), exception);
+                throw new InvalidResponseException();
+            }
+        }
     }
-
 }

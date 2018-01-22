@@ -368,7 +368,10 @@ div.tooltip {
 	stroke-width: 8px;
 	cursor: pointer;
 }
-
+.graphoverlay {
+  fill: none;
+  pointer-events: all;
+}
 .hide {
 	display: none;
 }
@@ -479,7 +482,7 @@ svg {
 }
 
 #switchdetails_div {
-	margin-bottom: 20px;
+	margin-bottom: 30px;
 	/* margin-top: 20px; */
 }
 
@@ -538,13 +541,33 @@ h1.modal-title {
 }
 
 #portdetails_div div.row {
-	padding: 8px 0;
+	padding: 8px 0;	
+}
+
+#portdetails_div .rep_div.up-state, #portdetails_div .rep_div.down-state {	
+	position: relative;
+    cursor: pointer;
+}
+
+#portdetails_div .rep_div.up-state:before, #portdetails_div .rep_div.down-state:before {
+	width: 8px;
+    height: 8px;
+    background: #19b365;
+    border-radius: 100%;
+    position: absolute;
+    left: 4px;
+    top: 0;
+    bottom: 0;
+    margin: auto;
+}
+
+#portdetails_div .rep_div.down-state:before {
+	background: #f00;
 }
 
 #portdetails_div div.row.thead {
 	border-bottom: 1px solid #ccc;
 	background: #D4D2D2;
-	border-left: 3px solid #cac7c7;
 }
 
 #portdetails_div div.row.thead div {
@@ -554,16 +577,6 @@ h1.modal-title {
 #switch-details, #port-details1 {
 	border: 1px solid #d2d2d2;
 	padding: 0 15px;
-}
-
-.rep_div.down-state {
-	border-left: 3px solid #f00;
-	cursor: pointer;
-}
-
-.rep_div.up-state {
-	border-left: 3px solid #19b365;
-	cursor: pointer;
 }
 
 .bg_load {
@@ -1079,8 +1092,13 @@ table.dataTable.no-footer {
 	margin-top: 15px;
 }
 
+#flowTable_wrapper.dataTables_wrapper {
+	margin-top: 5px;
+}
+
 .flowDataRow {
 	cursor:pointer;
+	position: relative;
 }
 
 table#flowTable.dataTable .divTableCell {
@@ -1091,14 +1109,25 @@ table#flowTable.dataTable .divTableCell:first-child {
 	border-left: none;
 }
 
-table#flowTable.dataTable .flowDataRow.down-state .divTableCell:first-child {
-	border-left: 3px solid #f00;
-	cursor: pointer;
+table#flowTable.dataTable .flowDataRow.up-state .divTableCell:first-child, table#flowTable.dataTable .flowDataRow.down-state .divTableCell:first-child {
+	padding-left: 18px;
 }
 
-table#flowTable.dataTable .flowDataRow.up-state .divTableCell:first-child {
-	border-left: 3px solid #19b365;
-	cursor: pointer;
+table#flowTable.dataTable .flowDataRow.up-state .divTableCell:first-child:before, table#flowTable.dataTable .flowDataRow.down-state .divTableCell:first-child:before {
+    width: 8px;
+    height: 8px;
+    background: #19b365;
+    border-radius: 100%;
+    position: absolute;
+    left: 4px;
+    top: 0;
+    bottom: 0;
+    margin: auto;
+    content: "";
+}
+
+table#flowTable.dataTable .flowDataRow.down-state .divTableCell:first-child:before {
+    background: #f00;	
 }
 
 table#flowTable.dataTable.order-column tbody tr>.sorting_1, table#flowTable.dataTable.order-column tbody tr>.sorting_2, table#flowTable.dataTable.order-column tbody tr>.sorting_3, table#flowTable.dataTable.display tbody tr>.sorting_1, table#flowTable.dataTable.display tbody tr>.sorting_2, table#flowTable.dataTable.display tbody tr>.sorting_3,
@@ -1201,6 +1230,14 @@ table#flowTable.dataTable .divTableCell {
 }
 #topology-hover-txt .form-wrapper {
 	border: none;
+}
+
+.port-title {
+	width: calc(100% - 25px);
+	font-weight: bold;
+	padding: 10px 0;
+	font-size: 14px;
+	margin-top: -10px
 }
 
 @-moz-keyframes spin {

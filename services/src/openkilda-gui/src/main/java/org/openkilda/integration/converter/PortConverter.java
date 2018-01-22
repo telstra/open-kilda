@@ -1,5 +1,9 @@
 package org.openkilda.integration.converter;
 
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -15,7 +19,8 @@ public final class PortConverter {
 
     private PortConverter() {}
 
-    public static List<PortInfo> toPortsInfo(final JSONObject jsonObject, final String switchId) {
+    public static List<PortInfo> toPortsInfo(final JSONObject jsonObject, final String switchId)
+            throws JsonParseException, JsonMappingException, IOException {
         List<PortInfo> ports = new ArrayList<PortInfo>();
         if (jsonObject != null) {
             Object object = jsonObject.get(switchId);

@@ -11,9 +11,9 @@ import java.util.Map;
 import org.apache.log4j.Logger;
 import org.openkilda.integration.exception.IntegrationException;
 import org.openkilda.integration.service.FlowsIntegrationService;
+import org.openkilda.model.FlowCount;
 import org.openkilda.model.FlowInfo;
 import org.openkilda.model.FlowPath;
-import org.openkilda.model.response.FlowCount;
 import org.openkilda.utility.CollectionUtil;
 
 /**
@@ -26,7 +26,6 @@ public class FlowService {
 
     private static final Logger LOGGER = Logger.getLogger(FlowService.class);
 
-    /** The flows integration service. */
     @Autowired
     private FlowsIntegrationService flowsIntegrationService;
 
@@ -38,8 +37,7 @@ public class FlowService {
      * @throws Exception
      */
     public List<FlowInfo> getAllFlows() throws IntegrationException {
-        List<FlowInfo> flowInfos = flowsIntegrationService.getFlows();
-        return flowInfos;
+        return flowsIntegrationService.getFlows();
     }
 
 
@@ -79,8 +77,6 @@ public class FlowService {
      * @throws IntegrationException
      */
     public FlowPath getFlowPath(final String flowid) throws IntegrationException {
-        FlowPath flowPath = flowsIntegrationService.getFlowPath(flowid);
-        return flowPath;
+        return flowsIntegrationService.getFlowPath(flowid);
     }
-
 }

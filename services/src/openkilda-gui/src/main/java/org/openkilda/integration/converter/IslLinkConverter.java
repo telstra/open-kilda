@@ -6,7 +6,6 @@ import java.util.List;
 import org.openkilda.integration.model.response.IslLink;
 import org.openkilda.integration.model.response.IslPath;
 import org.openkilda.model.IslLinkInfo;
-import org.openkilda.utility.CollectionUtil;
 
 public final class IslLinkConverter {
 
@@ -14,7 +13,7 @@ public final class IslLinkConverter {
     }
 
     public static List<IslLinkInfo> toIslLinksInfo(final List<IslLink> islLinks) {
-        if(!CollectionUtil.isEmpty(islLinks)) {
+        if(islLinks != null) {
             final List<IslLinkInfo> islLinkInfos = new ArrayList<>();
             islLinks.forEach(islLink -> {
                 IslLinkInfo islLinkInfo = toIslLinkInfo(islLink);
