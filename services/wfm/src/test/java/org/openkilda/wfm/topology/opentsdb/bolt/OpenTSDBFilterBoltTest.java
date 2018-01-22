@@ -105,7 +105,8 @@ public class OpenTSDBFilterBoltTest {
 
     private void mockTuple(long timestamp) throws Exception {
         InfoData infoData = new Datapoint(METRIC, timestamp, Collections.emptyMap(), VALUE);
-        when(tuple.getString(eq(0))).thenReturn(Utils.MAPPER.writeValueAsString(infoData));
+        when(tuple.contains(eq("datapoint"))).thenReturn(true);
+        when(tuple.getValueByField(eq("datapoint"))).thenReturn(infoData);
     }
 
     private void mockTuple() throws Exception {

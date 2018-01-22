@@ -195,8 +195,9 @@ public abstract class AbstractTopology implements Topology {
 
         // FIXME(dbogun): race condition
         if (!AdminUtils.topicExists(zkUtils, topic)) {
-            AdminUtils.createTopic(zkUtils, topic, 1, 1,
-                    AdminUtils.createTopic$default$5(), AdminUtils.createTopic$default$6());
+            AdminUtils.createTopic(zkUtils, topic, config.getKafkaPartitionsDefault(),
+                    config.getKafkaReplicationDefault(), AdminUtils.createTopic$default$5(),
+                    AdminUtils.createTopic$default$6());
         }
     }
 
