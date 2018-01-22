@@ -4,7 +4,7 @@ var common = {
 		return $.ajax({url : APP_CONTEXT+apiUrl,type : requestType,dataType : "json"});							
 		},
 		infoMessage:function(msz,type){
-		$.toast({heading:(type =='info'?'information':type), text: msz, showHideTransition: 'fade',position: 'top-right', icon: type, hideAfter : 6000})
+		$.toast({heading:(type =='info'?'Information':type), text: msz, showHideTransition: 'fade',position: 'top-right', icon: type, hideAfter : 6000})
 		}
 }
 

@@ -28,6 +28,12 @@ $(document).ready(function(){
 	$("#kilda-switch-name").parent().append(switchname)	
 	common.getData("/switch/list","GET").then(function(response) {
 		showSwitchData(response,switchname); 
+	},
+	function(error){
+		response=[]
+		$("#wait1").css("display", "none");
+		$('body').css('pointer-events','all'); 
+		showSwitchData(response,switchname); 
 	})
 	
 	callPortDetailsAPI(switchname);	
@@ -44,6 +50,12 @@ $(document).ready(function(){
 	common.getData("/switch/"+switchname+"/ports","GET").then(function(response) {
 		$("#wait1").css("display", "none");
 		$('body').css('pointer-events','all'); 	
+		showPortData(response);
+	},
+	function(error){
+		response=[]
+		$("#wait1").css("display", "none");
+		$('body').css('pointer-events','all'); 
 		showPortData(response);
 	})
 }

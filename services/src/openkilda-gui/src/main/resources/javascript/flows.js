@@ -8,6 +8,12 @@ $(document).ready(function(){
 		$("#wait1").css("display", "none");
 		$('body').css('pointer-events','all'); 
 		showflowData(response); 
+	},
+	function(error){
+		response=[]
+		$("#wait1").css("display", "none");
+		$('body').css('pointer-events','all'); 
+		showflowData(response);
 	})
 	
 	$(document).on("click",".flowDataRow",function(e){

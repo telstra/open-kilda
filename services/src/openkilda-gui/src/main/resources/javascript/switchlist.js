@@ -2,9 +2,12 @@
 
 
 $(document).ready(function(){
-	
-	
 		common.getData("/switch/list","GET").then(function(response) {
+		$("#wait1").css("display", "none");
+		$('body').css('pointer-events','all'); 
+		showSwitchData(response);
+	},function(error){
+		response=[]
 		$("#wait1").css("display", "none");
 		$('body').css('pointer-events','all'); 
 		showSwitchData(response);
