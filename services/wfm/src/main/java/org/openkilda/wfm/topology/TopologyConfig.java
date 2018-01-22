@@ -21,6 +21,8 @@ public class TopologyConfig {
     private Integer zookeeperConnectTimeout;
 
     private String kafkaHosts;
+    private Integer kafkaPartitionsDefault;
+    private Integer kafkaReplicationDefault;
 
     private String kafkaCtrlTopic;
     private String kafkaFlowTopic;
@@ -33,6 +35,7 @@ public class TopologyConfig {
     private String kafkaTopoEngTopic;
     private String kafkaTopoDiscoTopic;
     private String kafkaTopoCacheTopic;
+
 
     private String openTsDBHosts;
     private Integer openTsdbTimeout;
@@ -65,6 +68,8 @@ public class TopologyConfig {
         zookeeperSessionTimeout = (int)(config.getFloat("zookeeper.session.timeout") * 1000);
         zookeeperConnectTimeout = (int)(config.getFloat("zookeeper.connect.timeout") * 1000);
         kafkaHosts = config.getString("kafka.hosts");
+        kafkaPartitionsDefault = config.getInteger("kafka.partitions.default");
+        kafkaReplicationDefault = config.getInteger("kafka.replication.default");
 
         kafkaCtrlTopic = config.getString("kafka.topic.ctrl");
         kafkaFlowTopic = config.getString("kafka.topic.flow");
@@ -144,6 +149,14 @@ public class TopologyConfig {
 
     public String getKafkaHosts() {
         return kafkaHosts;
+    }
+
+    public Integer getKafkaPartitionsDefault() {
+        return kafkaPartitionsDefault;
+    }
+
+    public Integer getKafkaReplicationDefault() {
+        return kafkaReplicationDefault;
     }
 
     // --- kafka topics
