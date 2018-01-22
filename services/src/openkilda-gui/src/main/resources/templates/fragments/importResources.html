@@ -28,7 +28,7 @@
 
 	<th:block th:fragment="graphImports">
 		<!-- 	Bounded force directed graph  -->
-		<script th:inline="javascript" src="http://d3js.org/d3.v3.min.js"></script>
+		<script th:inline="javascript" src="javascript/d3.v3.min.js" th:src="@{javascript/d3.v3.min.js}"></script>
 
 		<!-- 			custom graph -->
 		<script th:inline="javascript" src="javascript/graph.js" th:src="@{javascript/graph.js}"></script>

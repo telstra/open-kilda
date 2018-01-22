@@ -49,7 +49,7 @@ public class IslLinkInfo implements Serializable {
      *
      * @return the src port
      */
-    @JsonProperty("src_port")
+    
     public int getSrcPort() {
         return srcPort;
     }
@@ -59,7 +59,7 @@ public class IslLinkInfo implements Serializable {
      *
      * @param srcPort the new src port
      */
-    @JsonProperty("src_port")
+    
     public void setSrcPort(final int srcPort) {
         this.srcPort = srcPort;
     }
@@ -69,7 +69,7 @@ public class IslLinkInfo implements Serializable {
      *
      * @return the latency
      */
-    @JsonProperty("latency")
+    
     public int getLatency() {
         return latency;
     }
@@ -79,7 +79,7 @@ public class IslLinkInfo implements Serializable {
      *
      * @param latency the new latency
      */
-    @JsonProperty("latency")
+    
     public void setLatency(final int latency) {
         this.latency = latency;
     }
@@ -89,7 +89,6 @@ public class IslLinkInfo implements Serializable {
      *
      * @return the src switch
      */
-    @JsonProperty("source_switch")
     public String getSrcSwitch() {
         return srcSwitch;
     }
@@ -99,7 +98,7 @@ public class IslLinkInfo implements Serializable {
      *
      * @param srcSwitch the new src switch
      */
-    @JsonProperty("source_switch")
+    
     public void setSrcSwitch(final String srcSwitch) {
         this.srcSwitch = srcSwitch;
     }
@@ -109,7 +108,7 @@ public class IslLinkInfo implements Serializable {
      *
      * @return the available bandwidth
      */
-    @JsonProperty("available_bandwidth")
+
     public int getAvailableBandwidth() {
         return availableBandwidth;
     }
@@ -119,7 +118,7 @@ public class IslLinkInfo implements Serializable {
      *
      * @param availableBandwidth the new available bandwidth
      */
-    @JsonProperty("available_bandwidth")
+
     public void setAvailableBandwidth(final int availableBandwidth) {
         this.availableBandwidth = availableBandwidth;
     }
@@ -129,7 +128,7 @@ public class IslLinkInfo implements Serializable {
      *
      * @return the dst port
      */
-    @JsonProperty("dst_port")
+    
     public int getDstPort() {
         return dstPort;
     }
@@ -139,7 +138,7 @@ public class IslLinkInfo implements Serializable {
      *
      * @param dstPort the new dst port
      */
-    @JsonProperty("dst_port")
+    
     public void setDstPort(final int dstPort) {
         this.dstPort = dstPort;
     }
@@ -149,7 +148,7 @@ public class IslLinkInfo implements Serializable {
      *
      * @return the dst switch
      */
-    @JsonProperty("target_switch")
+    
     public String getDstSwitch() {
         return dstSwitch;
     }
@@ -159,7 +158,7 @@ public class IslLinkInfo implements Serializable {
      *
      * @param dstSwitch the new dst switch
      */
-    @JsonProperty("target_switch")
+    
     public void setDstSwitch(final String dstSwitch) {
         this.dstSwitch = dstSwitch;
     }
@@ -169,7 +168,7 @@ public class IslLinkInfo implements Serializable {
      *
      * @return the speed
      */
-    @JsonProperty("speed")
+    
     public int getSpeed() {
         return speed;
     }
@@ -179,7 +178,7 @@ public class IslLinkInfo implements Serializable {
      *
      * @param speed the new speed
      */
-    @JsonProperty("speed")
+    
     public void setSpeed(final int speed) {
         this.speed = speed;
     }
@@ -189,7 +188,7 @@ public class IslLinkInfo implements Serializable {
      *
      * @return the state
      */
-    @JsonProperty("state")
+    
     public String getState() {
         return state;
     }
@@ -199,7 +198,7 @@ public class IslLinkInfo implements Serializable {
      *
      * @param state the new state
      */
-    @JsonProperty("state")
+    
     public void setState(final String state) {
         this.state = state;
     }

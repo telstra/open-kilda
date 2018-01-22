@@ -14,9 +14,9 @@ public class ApplicationService {
     private ApplicationProperties applicationProperties;
 
     public String getAuthHeader() {
-        String auth =
-                applicationProperties.getKildaUsername() + ":"
-                        + applicationProperties.getKildaPassword();
+        String auth = applicationProperties.getKildaUsername() + ":"
+                + applicationProperties.getKildaPassword();
 
         return "Basic " + getEncoder().encodeToString(auth.getBytes());
-    }}
+    }
+}

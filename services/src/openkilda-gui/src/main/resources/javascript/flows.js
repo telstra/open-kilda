@@ -12,7 +12,6 @@ $(document).ready(function(){
 			$('body').css('pointer-events','all'); 
 			showflowData(response);  
 		},
-		
 		dataType : "json"
 	});
 	
@@ -26,42 +25,33 @@ $(document).ready(function(){
 function showflowData(response){
 		
 	if(response.length==0) {
-		common.infoMessage('No Data Avaliable','info');
+		common.infoMessage('No Flows Avaliable','info');
 	}
 	
 	var flowDetailsData = localStorage.getItem("flowDetailsData");
 	var obj = JSON.parse(flowDetailsData)
 	
-		
-	var tmp_obj =''; 
-	var last_id = '1';
-	var last_html = '';
-	var tmp_html = '';
-	
-
 	 for(var i = 0; i < response.length; i++) {
 		 var tableRow = "<tr id='div_"+(i+1)+"' class='flowDataRow'>"
-		 			    +"<td class='divTableCell' title ='"+response[i].flowid+"'>"+response[i].flowid+"</td>"
-		 			    +"<td class='divTableCell' title ='"+response[i].source_switch+"'>"+response[i].source_switch+"</td>"
-		 			    +"<td class='divTableCell' title ='"+response[i].src_port+"'>"+response[i].src_port+"</td>"
-		 			    +"<td class='divTableCell' title ='"+response[i].src_vlan+"'>"+response[i].src_vlan+"</td>"
-		 			    +"<td class='divTableCell' title ='"+response[i].target_switch+"'>"+response[i].target_switch+"</td>"
-		 			    +"<td class='divTableCell' title ='"+response[i].dst_port+"'>"+response[i].dst_port+"</td>"
-		 			    +"<td class='divTableCell' title ='"+response[i].dst_vlan+"'>"+response[i].dst_vlan+"</td>"
-		 			    +"<td class='divTableCell' title ='"+response[i].maximum_bandwidth+"'> "+response[i].maximum_bandwidth+"</td>"
-		 			    +"<td class='divTableCell' title ='"+response[i].status+"'>"+response[i].status+"</td>"
-		 			    +"<td class='divTableCell' title ='"+response[i].description+"'>"+((response[i].description == "")?"-":response[i].description)+"</td>"
+		 			    +"<td class='divTableCell' title ='"+((response[i].flowid == "" || response[i].flowid == undefined)?"-":response[i].flowid)+"'>"+((response[i].flowid == "" || response[i].flowid == undefined)?"-":response[i].flowid)+"</td>"
+		 			    +"<td class='divTableCell' title ='"+((response[i].source_switch == "" || response[i].source_switch == undefined)?"-":response[i].source_switch)+"'>"+((response[i].source_switch == "" || response[i].source_switch == undefined)?"-":response[i].source_switch)+"</td>"
+		 			    +"<td class='divTableCell' title ='"+((response[i].src_port == "" || response[i].src_port == undefined)?"-":response[i].src_port)+"'>"+((response[i].src_port == "" || response[i].src_port == undefined)?"-":response[i].src_port)+"</td>"
+		 			    +"<td class='divTableCell' title ='"+((response[i].src_vlan == "" || response[i].src_vlan == undefined)?"-":response[i].src_vlan)+"'>"+ ((response[i].src_vlan == "" || response[i].src_vlan == undefined)?"-":response[i].src_vlan)+"</td>"
+		 			    +"<td class='divTableCell' title ='"+((response[i].target_switch == "" || response[i].target_switch == undefined)?"-":response[i].target_switch)+"'>"+((response[i].target_switch == "" || response[i].target_switch == undefined)?"-":response[i].target_switch)+"</td>"
+		 			    +"<td class='divTableCell' title ='"+((response[i].dst_port == "" || response[i].dst_port == undefined)?"-":response[i].dst_port)+"'>"+((response[i].dst_port == "" || response[i].dst_port == undefined)?"-":response[i].dst_port)+"</td>"
+		 			    +"<td class='divTableCell' title ='"+((response[i].dst_vlan == "" || response[i].dst_vlan == undefined)?"-":response[i].dst_vlan)+"'>"+((response[i].dst_vlan == "" || response[i].dst_vlan == undefined)?"-":response[i].dst_vlan)+"</td>"
+		 			    +"<td class='divTableCell' title ='"+((response[i].maximum_bandwidth == "" || response[i].maximum_bandwidth == undefined)?"-":response[i].maximum_bandwidth)+"'> "+ ((response[i].maximum_bandwidth == "" || response[i].maximum_bandwidth == undefined)?"-":response[i].maximum_bandwidth)+"</td>"
+		 			    +"<td class='divTableCell' title ='"+((response[i].status == "" || response[i].status == undefined)?"-":response[i].status)+"'>"+((response[i].status == "" || response[i].status == undefined)?"-":response[i].status)+"</td>"
+		 			    +"<td class='divTableCell' title ='"+((response[i].description == "" || response[i].description == undefined)?"-":response[i].description)+"'>"+((response[i].description == "" || response[i].description == undefined)?"-":response[i].description)+"</td>"
 		 			    +"</tr>";
-		
-	
+		 
 		 			   $("#flowTable").append(tableRow);
-		 			   
 		 			   if(response[i].status == "UP" || response[i].status == "ALLOCATED") {
-		 		        	$("#div_"+(i+1)).addClass('up-state');
+		 				   	$("#div_"+(i+1)).addClass('up-state');
 		 		        } else {
+		 		        	console.log(response[i].status)
 		 		        	$("#div_"+(i+1)).addClass('down-state');
 		 		        }
-		 
 	 }
 	 
 	 var tableVar  =  $('#flowTable').DataTable( {
@@ -107,49 +97,37 @@ function showflowData(response){
 function setFlowData(domObj){
 	
 	$(domObj).html()
-	
 	var flowData = {'flowid':"",'source_switch':"",'src_port':"",'src_vlan':"",'target_switch':"",'dst_port':"",'dst_vlan':"",'maximum_bandwidth':"",'status':"",'description':""};
-	
 	if($(domObj).find('td:nth-child(1)').html()){
 		flowData.flow_id = $(domObj).find('td:nth-child(1)').html();
 	}
-
 	if($(domObj).find('td:nth-child(2)')){
 		flowData.source_switch = $(domObj).find('td:nth-child(2)').html();
-	}
-	
+	}	
 	if($(domObj).find('td:nth-child(3)')){
 		flowData.src_port = $(domObj).find('td:nth-child(3)').html();
-	}
-	
+	}	
 	if($(domObj).find('td:nth-child(4)')){
 		flowData.src_vlan = $(domObj).find('td:nth-child(4)').html();
-	}
-	
+	}	
 	if($(domObj).find('td:nth-child(5)')){
 		flowData.target_switch = $(domObj).find('td:nth-child(5)').html();
-	}
-	
+	}	
 	if($(domObj).find('td:nth-child(6)')){
 		flowData.dst_port = $(domObj).find('td:nth-child(6)').html();
-	}
-	
+	}	
 	if($(domObj).find('td:nth-child(7)')){
 		flowData.dst_vlan = $(domObj).find('td:nth-child(7)').html();
-	}
-	
+	}	
 	if($(domObj).find('td:nth-child(8)')){
 		flowData.maximum_bandwidth = $(domObj).find('td:nth-child(8)').html();
-	}
-	
+	}	
 	if($(domObj).find('td:nth-child(9)')){
 		flowData.status = $(domObj).find('td:nth-child(9)').html();
 	}
-
 	if($(domObj).find('td:nth-child(10)')){
 		flowData.description = $(domObj).find('td:nth-child(10)').html();
 	}
-
 	localStorage.setItem('flowDetails',JSON.stringify(flowData));
 	url = "flows/details#" + flowData.flow_id;
 	window.location = url;
@@ -157,16 +135,12 @@ function setFlowData(domObj){
 
 
 function showSearch(idname,$event) {
-		
-	
-	$event.stopPropagation()
-	
+	$event.stopPropagation();
 	if($('#'+idname+'.heading_search_box').is(":visible")){
 		$('#'+idname+'.heading_search_box').css('display', 'none');
 	}else{
 		$('#'+idname+'.heading_search_box').css('display', 'inline-block');
 	}
-	//return false;
 }
 
 

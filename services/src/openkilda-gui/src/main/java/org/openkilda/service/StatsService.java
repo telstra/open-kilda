@@ -24,4 +24,9 @@ public class StatsService {
             final Map<String, String[]> requestParams) throws IntegrationException {
         return statsIntegrationService.getStats(startDate, endDate, metric, requestParams);
     }
+    
+    public String getStats(String startDate, String endDate, String downsample,
+			String SwitchId, String port, String flowId, String srcSwitch, String srcPort, String dstSwitch, String dstPort, String statsType, String metric)throws IntegrationException{
+    	return statsIntegrationService.getStats(startDate, endDate, downsample, SwitchId,port,flowId, srcSwitch, srcPort, dstSwitch, dstPort, statsType, metric);
+    }
 }

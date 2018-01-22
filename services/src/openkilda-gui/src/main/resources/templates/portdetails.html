@@ -14,9 +14,7 @@
 <div th:include="fragments/importResources:: commonPathImports"></div>
 <div th:include="fragments/importResources:: statsImports"></div>
 	<div th:replace="fragments/header :: header" ></div>
-
 	<div th:replace="fragments/menu :: menu" ></div>
-
 	<div class="content">
 		<div class="row">
 			<div class="navigation-bar container-fluid">
@@ -108,11 +106,6 @@
 											class="selectbox_arrow"></span> <select
 											class="selectbox_menulist" id="menulist">
 												<option value="pen.isl.latency">pen.isl.latency</option>
-
-												<!-- 	<option>Bytes/sec</option>
-												<option>Option 1</option>
-												<option>Option 2</option>
-												<option>Option 3</option> -->
 										</select>
 										</span>
 									</div>
@@ -153,11 +146,6 @@
 	<script th:inline="javascript" src="../javascript/port-graph.js"></script>
 	<script type="text/javascript">
 	
-	
-	$(document).ready(function() {
-		portStats.getGraphDataPage();
-	})
-
 </script>
 
 </body>

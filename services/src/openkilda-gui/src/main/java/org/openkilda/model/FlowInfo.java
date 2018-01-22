@@ -18,51 +18,50 @@ import java.io.Serializable;
         "dst_vlan", "maximum_bandwidth", "status", "description", "last-updated"})
 public class FlowInfo implements Serializable {
 
-    /** The flowid. */
     @JsonProperty("flowid")
     private String flowid;
 
-    /** The source switch. */
+    
     @JsonProperty("source_switch")
     private String sourceSwitch;
 
-    /** The src port. */
+    
     @JsonProperty("src_port")
     private int srcPort;
 
-    /** The src vlan. */
+    
     @JsonProperty("src_vlan")
     private int srcVlan;
 
-    /** The target switch. */
+    
     @JsonProperty("target_switch")
     private String targetSwitch;
 
-    /** The dst port. */
+    
     @JsonProperty("dst_port")
     private int dstPort;
 
-    /** The dst vlan. */
+    
     @JsonProperty("dst_vlan")
     private int dstVlan;
 
-    /** The maximum bandwidth. */
+    
     @JsonProperty("maximum_bandwidth")
     private int maximumBandwidth;
 
-    /** The status. */
+    
     @JsonProperty("status")
     private String status;
 
-    /** The description. */
+    
     @JsonProperty("description")
     private String description;
 
-    /** The last updated. */
+    
     @JsonProperty("last-updated")
     private String lastUpdated;
 
-    /** The Constant serialVersionUID. */
+    
     private final static long serialVersionUID = -7015976328478701934L;
 
     /**
@@ -70,7 +69,7 @@ public class FlowInfo implements Serializable {
      *
      * @return the flowid
      */
-    @JsonProperty("flowid")
+    
     public String getFlowid() {
         return flowid;
     }
@@ -80,7 +79,7 @@ public class FlowInfo implements Serializable {
      *
      * @param flowid the new flowid
      */
-    @JsonProperty("flowid")
+    
     public void setFlowid(final String flowid) {
         this.flowid = flowid;
     }
@@ -90,7 +89,7 @@ public class FlowInfo implements Serializable {
      *
      * @return the source switch
      */
-    @JsonProperty("source_switch")
+    
     public String getSourceSwitch() {
         return sourceSwitch;
     }
@@ -100,7 +99,7 @@ public class FlowInfo implements Serializable {
      *
      * @param sourceSwitch the new source switch
      */
-    @JsonProperty("source_switch")
+    
     public void setSourceSwitch(final String sourceSwitch) {
         this.sourceSwitch = sourceSwitch;
     }
@@ -110,7 +109,7 @@ public class FlowInfo implements Serializable {
      *
      * @return the src port
      */
-    @JsonProperty("src_port")
+    
     public int getSrcPort() {
         return srcPort;
     }
@@ -120,7 +119,7 @@ public class FlowInfo implements Serializable {
      *
      * @param srcPort the new src port
      */
-    @JsonProperty("src_port")
+    
     public void setSrcPort(final int srcPort) {
         this.srcPort = srcPort;
     }
@@ -130,7 +129,7 @@ public class FlowInfo implements Serializable {
      *
      * @return the src vlan
      */
-    @JsonProperty("src_vlan")
+    
     public int getSrcVlan() {
         return srcVlan;
     }
@@ -140,7 +139,7 @@ public class FlowInfo implements Serializable {
      *
      * @param srcVlan the new src vlan
      */
-    @JsonProperty("src_vlan")
+    
     public void setSrcVlan(final int srcVlan) {
         this.srcVlan = srcVlan;
     }
@@ -150,7 +149,7 @@ public class FlowInfo implements Serializable {
      *
      * @return the target switch
      */
-    @JsonProperty("target_switch")
+    
     public String getTargetSwitch() {
         return targetSwitch;
     }
@@ -160,7 +159,7 @@ public class FlowInfo implements Serializable {
      *
      * @param targetSwitch the new target switch
      */
-    @JsonProperty("target_switch")
+    
     public void setTargetSwitch(final String targetSwitch) {
         this.targetSwitch = targetSwitch;
     }
@@ -170,7 +169,7 @@ public class FlowInfo implements Serializable {
      *
      * @return the dst port
      */
-    @JsonProperty("dst_port")
+    
     public int getDstPort() {
         return dstPort;
     }
@@ -180,7 +179,7 @@ public class FlowInfo implements Serializable {
      *
      * @param dstPort the new dst port
      */
-    @JsonProperty("dst_port")
+    
     public void setDstPort(final int dstPort) {
         this.dstPort = dstPort;
     }
@@ -190,7 +189,7 @@ public class FlowInfo implements Serializable {
      *
      * @return the dst vlan
      */
-    @JsonProperty("dst_vlan")
+    
     public int getDstVlan() {
         return dstVlan;
     }
@@ -200,7 +199,7 @@ public class FlowInfo implements Serializable {
      *
      * @param dstVlan the new dst vlan
      */
-    @JsonProperty("dst_vlan")
+    
     public void setDstVlan(final int dstVlan) {
         this.dstVlan = dstVlan;
     }
@@ -210,7 +209,7 @@ public class FlowInfo implements Serializable {
      *
      * @return the maximum bandwidth
      */
-    @JsonProperty("maximum_bandwidth")
+    
     public int getMaximumBandwidth() {
         return maximumBandwidth;
     }
@@ -220,7 +219,7 @@ public class FlowInfo implements Serializable {
      *
      * @param maximumBandwidth the new maximum bandwidth
      */
-    @JsonProperty("maximum_bandwidth")
+    
     public void setMaximumBandwidth(final int maximumBandwidth) {
         this.maximumBandwidth = maximumBandwidth;
     }
@@ -230,7 +229,7 @@ public class FlowInfo implements Serializable {
      *
      * @return the status
      */
-    @JsonProperty("status")
+    
     public String getStatus() {
         return status;
     }
@@ -240,7 +239,7 @@ public class FlowInfo implements Serializable {
      *
      * @param status the new status
      */
-    @JsonProperty("status")
+    
     public void setStatus(final String status) {
         this.status = status;
     }
@@ -250,7 +249,7 @@ public class FlowInfo implements Serializable {
      *
      * @return the description
      */
-    @JsonProperty("description")
+    
     public String getDescription() {
         return description;
     }
@@ -260,7 +259,7 @@ public class FlowInfo implements Serializable {
      *
      * @param description the new description
      */
-    @JsonProperty("description")
+    
     public void setDescription(final String description) {
         this.description = description;
     }
@@ -270,7 +269,7 @@ public class FlowInfo implements Serializable {
      *
      * @return the last updated
      */
-    @JsonProperty("last-updated")
+    
     public String getLastUpdated() {
         return lastUpdated;
     }
@@ -280,7 +279,7 @@ public class FlowInfo implements Serializable {
      *
      * @param lastUpdated the new last updated
      */
-    @JsonProperty("last-updated")
+    
     public void setLastUpdated(final String lastUpdated) {
         this.lastUpdated = lastUpdated;
     }

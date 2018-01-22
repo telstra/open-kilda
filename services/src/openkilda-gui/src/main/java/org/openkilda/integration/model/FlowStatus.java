@@ -17,15 +17,15 @@ import java.io.Serializable;
 @JsonPropertyOrder({"flowid", "status"})
 public class FlowStatus implements Serializable {
 
-    /** The flowid. */
+   
     @JsonProperty("flowid")
     private String flowid;
 
-    /** The status. */
+   
     @JsonProperty("status")
     private String status;
 
-    /** The Constant serialVersionUID. */
+    
     private final static long serialVersionUID = -8688238020704231665L;
 
     /**
@@ -33,7 +33,7 @@ public class FlowStatus implements Serializable {
      *
      * @return the flowid
      */
-    @JsonProperty("flowid")
+    
     public String getFlowid() {
         return flowid;
     }
@@ -43,7 +43,7 @@ public class FlowStatus implements Serializable {
      *
      * @param flowid the new flowid
      */
-    @JsonProperty("flowid")
+    
     public void setFlowid(final String flowid) {
         this.flowid = flowid;
     }
@@ -53,7 +53,7 @@ public class FlowStatus implements Serializable {
      *
      * @return the status
      */
-    @JsonProperty("status")
+    
     public String getStatus() {
         return status;
     }
@@ -63,7 +63,7 @@ public class FlowStatus implements Serializable {
      *
      * @param status the new status
      */
-    @JsonProperty("status")
+    
     public void setStatus(final String status) {
         this.status = status;
     }

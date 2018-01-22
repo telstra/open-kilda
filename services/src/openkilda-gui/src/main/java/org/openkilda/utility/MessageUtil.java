@@ -1,4 +1,4 @@
-package org.openkilda.service;
+package org.openkilda.utility;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -8,11 +8,12 @@ import org.springframework.stereotype.Component;
 import java.util.Properties;
 
 /**
- * The Class AuthPropertyService.
+ * The Class MessageUtil.
  */
 @Component
-public class MessagePropertyService {
-    private static final Logger LOGGER = LoggerFactory.getLogger(MessagePropertyService.class);
+public class MessageUtil {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(MessageUtil.class);
 
     public static final String CODE = ".code";
     public static final String MESSAGE = ".message";
@@ -32,7 +33,7 @@ public class MessagePropertyService {
     public static Properties loadPropertiesFile(final String fileName) {
         Properties localProperties = new Properties();
         try {
-            localProperties.load(MessagePropertyService.class.getClassLoader().getResourceAsStream(
+            localProperties.load(MessageUtil.class.getClassLoader().getResourceAsStream(
                     fileName));
         } catch (Exception e) {
             LOGGER.error("[loadPropertiesFile] Exception : ", e);

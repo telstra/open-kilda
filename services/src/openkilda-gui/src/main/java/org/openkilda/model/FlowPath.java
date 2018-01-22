@@ -24,7 +24,7 @@ public class FlowPath {
      *
      * @return the flowid
      */
-    @JsonProperty("flowid")
+    
     public String getFlowid() {
         return flowid;
     }
@@ -34,7 +34,7 @@ public class FlowPath {
      *
      * @param flowid the new flowid
      */
-    @JsonProperty("flowid")
+    
     public void setFlowid(final String flowid) {
         this.flowid = flowid;
     }
@@ -44,7 +44,7 @@ public class FlowPath {
      *
      * @return the flowpath
      */
-    @JsonProperty("flowpath")
+    
     public PathInfoData getFlowpath() {
         return flowpath;
     }
@@ -54,7 +54,7 @@ public class FlowPath {
      *
      * @param flowpath the new flowpath
      */
-    @JsonProperty("flowpath")
+    
     public void setFlowpath(final PathInfoData flowpath) {
         this.flowpath = flowpath;
     }

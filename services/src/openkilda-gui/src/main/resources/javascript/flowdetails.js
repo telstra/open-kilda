@@ -19,14 +19,20 @@ function getMetric() {
 		url : APP_CONTEXT + "/stats/metrics",
 		type : 'GET',
 		success : function(response) {
-			var metricList = response;
+				
+			var metricArray = [];			
+			for (var i = 0; i < response.length; i++) {				
+				
+				if(response[i].includes("pen.flow")) {
+					var value = response[i].split(".")[2]
+					metricArray.push(value);
+				}
+			}		
+			var metricList = metricArray;
 			var optionHTML = "";
 			for (var i = 0; i <= metricList.length - 1; i++) {
-				optionHTML += "<option value=" + metricList[i] + ">"
-						+ metricList[i] + "</option>";
-
+				optionHTML += "<option value=" + 'pen.flow.' + metricList[i] + ">"+ metricList[i] + "</option>";
 			}
-
 			$("select.selectbox_menulist").html("").html(optionHTML);
 			$('#menulist').val('pen.flow.packets');
 		},
@@ -51,7 +57,6 @@ function showFlowData(obj) {
 	} else {
 		$(".flow_div_desc").html("-");
 	}
-
 	callFlowForwardPath(obj.flow_id)
 	callFlowReversePath(obj.flow_id)
 }

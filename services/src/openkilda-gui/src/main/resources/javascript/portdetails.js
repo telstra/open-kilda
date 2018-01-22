@@ -6,8 +6,7 @@
  * show switch details when page is loaded or when user is redirected to this
  * page
  */
-$(document).ready(
-		function() {
+$(document).ready(function() {
 
 			var switchname = window.location.href.split("#")[1]			
 			var tmp_anchor = '<a href="/openkilda/topology">'+ 'Topology' + '</a>';
@@ -16,48 +15,51 @@ $(document).ready(
 			$("#kilda-switch-name").parent().append(tmp_anchor_switch)			
 			var portData = localStorage.getItem("portDetails");
 			var obj = JSON.parse(portData)
-			
 			$("#kilda-port-name").parent().append(obj.port_name)
 			$("#wait1").css("display", "none");
 			$('body').css('pointer-events', 'all');
 								
 			showSwitchData(obj);
 			getMetric();
-		})
+})
 
 /**
  * function to retrieve and show switch details from the switch response json
  * object and display on the html page
  */
 function showSwitchData(obj) {
+	
 	$(".graph_div").show();
 	$(".port_details_div_status").html(obj.status);
 	$(".port_details_div_name").html(obj.port_name);
 	$(".switchdetails_div_number").html(obj.port_number);
 	$(".switchdetails_div_interface").html(obj.interface);
-
 }
 
 function getMetric() {
 
 	var linkData = localStorage.getItem("linkData");
-	var obj = JSON.parse(linkData)
-
+	var obj = JSON.parse(linkData);	
 	$.ajax({
 		url : APP_CONTEXT + "/stats/metrics",
 		type : 'GET',
 		success : function(response) {
-			var metricList = response;
+			var metricArray = [];			
+			for (var i = 0; i < response.length; i++) {
+				
+				if(response[i].includes("pen.switch")) {
+					var value = response[i].split(".")[2]
+					metricArray.push(value);
+				}
+			}	
+			var metricList = metricArray;
 			var optionHTML = "";
 			for (var i = 0; i <= metricList.length - 1; i++) {
-				optionHTML += "<option value=" + metricList[i] + ">"
-						+ metricList[i] + "</option>";
+				optionHTML += "<option value=" + 'pen.switch.' + metricList[i] + ">"+ metricList[i] + "</option>";
 
 			}
-
 			$("select.selectbox_menulist").html("").html(optionHTML);
-			$('#menulist').val('pen.isl.latency');
-
+			$('#menulist').val('pen.switch.rx-bits');
 		},
 		dataType : "json"
 	});

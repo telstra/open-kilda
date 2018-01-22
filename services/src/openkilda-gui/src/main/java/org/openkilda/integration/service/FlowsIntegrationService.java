@@ -33,14 +33,14 @@ import org.openkilda.utility.IoUtil;
 @Service
 public class FlowsIntegrationService {
 
-    /** The Constant _log. */
+
     private static final Logger LOGGER = LoggerFactory.getLogger(FlowsIntegrationService.class);
 
-    /** The rest client manager. */
+
     @Autowired
     private RestClientManager restClientManager;
 
-    /** The application properties. */
+
     @Autowired
     private ApplicationProperties applicationProperties;
 
@@ -55,33 +55,25 @@ public class FlowsIntegrationService {
      * @throws IntegrationException
      */
     public List<FlowInfo> getFlows() throws IntegrationException {
-        try {
-            HttpResponse response = restClientManager.invoke(applicationProperties.getFlows(),
-                    HttpMethod.GET, "", "", applicationService.getAuthHeader());
-            if (RestClientManager.isValidResponse(response)) {
-                List<Flow> flowList = restClientManager.getResponseList(response, Flow.class);
+        HttpResponse response = restClientManager.invoke(applicationProperties.getFlows(),
+                HttpMethod.GET, "", "", applicationService.getAuthHeader());
+        if (RestClientManager.isValidResponse(response)) {
+            List<Flow> flowList = restClientManager.getResponseList(response, Flow.class);
 
-                List<FlowInfo> flows = FlowConverter.toFlowsInfo(flowList);
-                if (!CollectionUtil.isEmpty(flows)) {
-                    flows.forEach(flowInfo -> {
-                        try {
-                            String status = getFlowStatus(flowInfo.getFlowid());
-                            flowInfo.setStatus(status);
-                        } catch (Exception e) {
-                            LOGGER.error("Exception while retriving flow status. Exception: " + e, e);
-                        }
-                    });
-                }
-
-                return flows;
-            } else {
-                String content = IoUtil.toString(response.getEntity().getContent());
-                throw new InvalidResponseException(response.getStatusLine().getStatusCode(), content);
+            List<FlowInfo> flows = FlowConverter.toFlowsInfo(flowList);
+            if (!CollectionUtil.isEmpty(flows)) {
+                flows.forEach(flowInfo -> {
+                    try {
+                        String status = getFlowStatus(flowInfo.getFlowid());
+                        flowInfo.setStatus(status);
+                    } catch (Exception e) {
+                        LOGGER.error("Exception while retriving flow status. Exception: " + e, e);
+                    }
+                });
             }
-        } catch (Exception exception) {
-            LOGGER.error("Exception in getFlows " + exception.getMessage());
-            throw new IntegrationException(exception);
+            return flows;
         }
+        return null;
     }
 
 
@@ -94,21 +86,14 @@ public class FlowsIntegrationService {
      */
     public String getFlowStatus(final String flowId) throws IntegrationException {
         FlowStatus flowStatus = null;
-        try {
-            HttpResponse response =
-                    restClientManager.invoke(applicationProperties.getFlowStatus() + flowId,
-                            HttpMethod.GET, "", "", applicationService.getAuthHeader());
-            if (RestClientManager.isValidResponse(response)) {
-                flowStatus = restClientManager.getResponse(response, FlowStatus.class);
-                return flowStatus.getStatus();
-            } else {
-                String content = IoUtil.toString(response.getEntity().getContent());
-                throw new InvalidResponseException(response.getStatusLine().getStatusCode(), content);
-            }
-        } catch (Exception exception) {
-            LOGGER.error("Exception in getAllFlows " + exception.getMessage());
-            throw new IntegrationException(exception);
+        HttpResponse response =
+                restClientManager.invoke(applicationProperties.getFlowStatus() + flowId,
+                        HttpMethod.GET, "", "", applicationService.getAuthHeader());
+        if (RestClientManager.isValidResponse(response)) {
+            flowStatus = restClientManager.getResponse(response, FlowStatus.class);
+            return flowStatus.getStatus();
         }
+        return null;
     }
 
 
@@ -123,12 +108,13 @@ public class FlowsIntegrationService {
             HttpResponse response = restClientManager
                     .invoke(applicationProperties.getTopologyFlows(), HttpMethod.GET, "", "", "");
             if (RestClientManager.isValidResponse(response)) {
-                PathLinkResponse[]  pathLinkResponse =
+                PathLinkResponse[] pathLinkResponse =
                         restClientManager.getResponse(response, PathLinkResponse[].class);
                 return FlowPathConverter.getFlowPath(flowId, pathLinkResponse);
             } else {
                 String content = IoUtil.toString(response.getEntity().getContent());
-                throw new InvalidResponseException(response.getStatusLine().getStatusCode(), content);
+                throw new InvalidResponseException(response.getStatusLine().getStatusCode(),
+                        content);
             }
 
         } catch (Exception exception) {

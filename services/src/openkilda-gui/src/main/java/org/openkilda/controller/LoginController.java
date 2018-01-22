@@ -24,7 +24,7 @@ import org.openkilda.constants.IConstants;
 import org.openkilda.dao.UserRepository;
 import org.openkilda.entity.Role;
 import org.openkilda.entity.User;
-import org.openkilda.web.SessionObject;
+import org.openkilda.model.UserInfo;
 
 /**
  *
@@ -36,15 +36,11 @@ import org.openkilda.web.SessionObject;
 @Controller
 public class LoginController extends BaseController {
 
-    /** The Constant log. */
     private static final Logger LOGGER = Logger.getLogger(LoginController.class);
 
-
-    /** The authentication manager. */
     @Autowired
     private AuthenticationManager authenticationManager;
 
-    /** The user repository. */
     @Autowired
     private UserRepository userRepository;
 
@@ -56,7 +52,7 @@ public class LoginController extends BaseController {
      */
     @RequestMapping(value = {"/", "/login"})
     public ModelAndView login(final HttpServletRequest request) {
-        LOGGER.info("Inside LoginController method login");
+        LOGGER.info("[login] - start");
         return validateAndRedirect(request, IConstants.View.REDIRECT_HOME);
     }
 
@@ -68,7 +64,7 @@ public class LoginController extends BaseController {
      */
     @RequestMapping("/logout")
     public ModelAndView logout(final Model model) {
-        LOGGER.info("Inside LoginController method logout");
+        LOGGER.info("[logout] - start");
         return new ModelAndView(IConstants.View.LOGOUT);
     }
 
@@ -84,7 +80,7 @@ public class LoginController extends BaseController {
     @RequestMapping(value = "/authenticate", method = RequestMethod.POST)
     public ModelAndView authenticate(@RequestParam("username") final String username,
             @RequestParam("password") final String password, final HttpServletRequest request) {
-        LOGGER.info("Inside LoginController method authenticate");
+        LOGGER.info("[authenticate] - start");
         ModelAndView modelAndView = new ModelAndView(IConstants.View.LOGIN);
         List<String> errors = new ArrayList<String>();
         try {
@@ -93,28 +89,12 @@ public class LoginController extends BaseController {
             Authentication authenticate = authenticationManager.authenticate(token);
             if (authenticate.isAuthenticated()) {
                 modelAndView.setViewName(IConstants.View.REDIRECT_HOME);
-
-                User user = userRepository.findByUsername(username);
-
-                Set<Role> set = user.getRoles();
-                Iterator<?> iterator = set.iterator();
-                Role role = null;
-                while (iterator.hasNext()) {
-                    role = (Role) iterator.next();
-                }
-
-                SessionObject sessionObject = getSessionObject(request);
-                sessionObject.setUserId(user.getUserId().intValue());
-                sessionObject.setUsername(user.getUsername());
-                sessionObject.setName(user.getName());
-                if (role != null) {
-                    sessionObject.setRole(role.getRole());
-                }
-
+                UserInfo userInfo = getLoggedInUser(request);
+                populateUserInfo(userInfo, username);
                 SecurityContextHolder.getContext().setAuthentication(authenticate);
             } else {
                 errors.add("authenticate() Authentication failure with username{} and password{}");
-                LOGGER.warn("authenticate() Authentication failure with username{} and password{}");
+                LOGGER.error("authenticate() Authentication failure with username{} and password{}");
                 modelAndView.setViewName(IConstants.View.REDIRECT_LOGIN);
             }
 
@@ -131,4 +111,28 @@ public class LoginController extends BaseController {
         return modelAndView;
     }
 
+    /**
+     * Add user information in session
+     *
+     * @param request HttpServletRequest to add user information in session.
+     * @param userName who's information is added in session.
+     * @return user information
+     */
+    private void populateUserInfo(final UserInfo userInfo, final String username) {
+        User user = userRepository.findByUsername(username);
+
+        Set<Role> set = user.getRoles();
+        Iterator<?> iterator = set.iterator();
+        Role role = null;
+        while (iterator.hasNext()) {
+            role = (Role) iterator.next();
+        }
+
+        userInfo.setUserId(user.getUserId().intValue());
+        userInfo.setUsername(user.getUsername());
+        userInfo.setName(user.getName());
+        if (role != null) {
+            userInfo.setRole(role.getRole());
+        }
+    }
 }
