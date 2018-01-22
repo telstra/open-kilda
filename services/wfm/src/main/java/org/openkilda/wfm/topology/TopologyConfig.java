@@ -42,6 +42,8 @@ public class TopologyConfig {
     private Integer openTsdbBoltWorkers;
     private Integer openTsdbBatchSize;
     private Integer openTsdbFlushInterval;
+    private Integer getDatapointParseBoltExecutors;
+    private Integer getDatapointParseBoltWorkers;
 
     private String neo4jHost;
     private String neo4jLogin;
@@ -84,6 +86,8 @@ public class TopologyConfig {
         openTsdbBoltWorkers = config.getInteger("opentsdb.workers.opentsdbolt");
         openTsdbBatchSize = config.getInteger("opentsdb.batch.size");
         openTsdbFlushInterval = config.getInteger("opentsdb.flush.interval");
+        getDatapointParseBoltExecutors = config.getInteger("opentsdb.num.datapointparserbolt");
+        getDatapointParseBoltWorkers = config.getInteger("opentsdb.workers.datapointparserbolt");
 
         neo4jHost = config.getString("neo4j.hosts");
         neo4jLogin = config.getString("neo4j.user");
@@ -204,6 +208,14 @@ public class TopologyConfig {
 
     public Integer getOpenTsdbFilterBoltExecutors() {
         return openTsdbFilterBoltExecutors;
+    }
+
+    public Integer getGetDatapointParseBoltExecutors() {
+        return getDatapointParseBoltExecutors;
+    }
+
+    public Integer getGetDatapointParseBoltWorkers() {
+        return getDatapointParseBoltWorkers;
     }
 
     public Integer getOpenTsdbBoltExecutors() {
