@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # Copyright 2017 Telstra Open Source
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,19 +14,19 @@
 #   limitations under the License.
 #
 
-import requests
-import json
-import pprint
-
-#For the following mn topo
-#mn --controller=remote,ip=172.18.0.1,port=6653 --switch ovsk,protocols=OpenFlow13 --topo torus,3,3
-#h1x1 ping h3x2
-
-url = "http://localhost/api/v1/flow"
-headers = {'Content-Type': 'application/json'}
-j_data = {"src_switch":"00:00:00:00:00:00:01:01", "src_port":1, "src_vlan":0, "dst_switch":"00:00:00:00:00:00:03:02", "dst_port":1, "dst_vlan":0, "bandwidth": 2000}
-result = requests.post(url, json=j_data, headers=headers)
-print result.text
+from clean_topology import cleanup
+from create_topology import create_topo
 
 
-
+#
+# NB: This models the topology used in the flow acceptance tests. The standard flow topology is:
+#       services/src/atdd/src/test/resources/topologies/nonrandom-topology.json
+#   which is duplicated here:
+#       services/topology-engine/queue-engine/tests/smoke-tests/flow-topology.json
+#
+# TODO: Create a single mechanism for deploying topologies .. whether python or jav
+#
+print "\n -- "
+cleanup()
+create_topo('flow-topology.json')
+print "\n -- "
