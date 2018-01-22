@@ -69,8 +69,8 @@ public class OpenTSDBTopology extends AbstractTopology {
                 .returnDetails();
         OpenTsdbBolt openTsdbBolt = new OpenTsdbBolt(tsdbBuilder, TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER)
                 .withBatchSize(config.getOpenTsdbBatchSize())
-                .withFlushInterval(config.getOpenTsdbFlushInterval())
-                .failTupleForFailedMetrics();
+                .withFlushInterval(config.getOpenTsdbFlushInterval());
+//                .failTupleForFailedMetrics();
         tb.setBolt("opentsdb", openTsdbBolt, config.getOpenTsdbBoltExecutors())
                 .setNumTasks(config.getOpenTsdbBoltWorkers())
                 .shuffleGrouping(boltId);
