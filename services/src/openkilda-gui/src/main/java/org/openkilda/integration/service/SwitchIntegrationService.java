@@ -52,7 +52,7 @@ public class SwitchIntegrationService {
      * @return the switches
      * @throws IntegrationException
      */
-    public List<SwitchInfo> getSwitches() throws IntegrationException {
+    public List<SwitchInfo> getSwitches() {
         HttpResponse response = restClientManager.invoke(applicationProperties.getSwitches(),
                 HttpMethod.GET, "", "", applicationService.getAuthHeader());
         if (RestClientManager.isValidResponse(response)) {

@@ -70,13 +70,14 @@
 			<div class="check">
 				<input type="checkbox" name="switch" value="switch" id="showDetail">SHOW DETAILS</input>
 			</div>
-				<div id="switchesgraph" class="hide"></div>
+				<div id="switchesgraph" class="draggable hide"></div>
 		</div>
 
 		<div class="popup" id="popupDiv">
 			<span class="popuptext" id="linkDiv"></span>
 		</div>
-
+		
+	
 		<div th:include="fragments/importResources:: graphImports"></div>
 		<div class="check check-connections">
 				<div class="lconnection c-block">
@@ -108,6 +109,7 @@
 			</div>
 		</div>
 	</div>
+	
 	<script th:inline="javascript" src="javascript/common.js" th:src="@{javascript/common.js}"></script>
 	<script>
 		$(document).ready(function() {
