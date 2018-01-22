@@ -395,14 +395,34 @@ public class KafkaMessageCollector implements IFloodlightModule {
 
         @Override
         public void run() {
-            KafkaConsumer<String, String> consumer = new KafkaConsumer<>(kafkaProps);
-            consumer.subscribe(topics);
-
             while (true) {
-                ConsumerRecords<String, String> records = consumer.poll(100);
-                for (ConsumerRecord<String, String> record : records) {
-                    logger.trace("received message: {} - {}", record.offset(), record.value());
-                    parseRecordExecutor.execute(new ParseRecord(record));
+                /*
+                 * Ensure we try to keep processing messages. It is possible that the consumer needs
+                 * to be re-created, either due to internal error, or if it fails to poll within the
+                 * max.poll.interval.ms seconds.
+                 *
+                 * From the Kafka source code, here are the default values for the following fields:
+                 *  - max.poll.interval.ms = 300000 (ie 300 seconds)
+                 *  - max.poll.records = 500 (must be able to process about 2 records per second
+                 */
+
+                try {
+                    KafkaConsumer<String, String> consumer = new KafkaConsumer<>(kafkaProps);
+                    consumer.subscribe(topics);
+
+                    while (true) {
+                        ConsumerRecords<String, String> records = consumer.poll(100);
+                        logger.debug("Received ConsumerRecords: {} messages", records.count());
+                        for (ConsumerRecord<String, String> record : records) {
+                            logger.trace("received message: {} - {}", record.offset(), record.value());
+                            parseRecordExecutor.execute(new ParseRecord(record));
+                        }
+                    }
+                } catch (Exception e) {
+                    /*
+                     * Just log the exception, and start processing again with a new consumer
+                     */
+                    logger.error("Exception received during main kafka consumer loop: {}", e);
                 }
             }
         }
