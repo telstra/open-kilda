@@ -1,3 +1,4 @@
+/*<![CDATA[*/
 var common = {	
 		getData:function(apiUrl,requestType){	
 		return $.ajax({url : APP_CONTEXT+apiUrl,type : requestType,dataType : "json"});							
@@ -44,3 +45,52 @@ $(document).click(function(){
     $('#topology-txt').slideUp();
 });
 
+
+var loadGraph = {	
+		loadGraphData:function(apiUrl,requestType){	
+		return $.ajax({url : APP_CONTEXT+apiUrl,type : requestType,
+			dataType : "json",
+			error : function(errResponse) {
+				$("#wait1").css("display", "none");	
+				showStatsGraph.showStatsData(errResponse);
+			}
+		});							
+	}
+}
+
+var graphAutoReload = {	
+		autoreload:function(){
+			$("#autoreload").toggle();
+			var checkbox =  $("#check").prop("checked");
+			if(checkbox == false){
+				
+				$("#autoreload").val('');
+				clearInterval(callIntervalData);
+				clearInterval(graphInterval);
+			}
+		}
+}
+
+
+ var showStatsGraph = {	
+
+	showStatsData:function(response) {	
+			
+		var data = response
+		var graphData = [];
+		if(data.length){
+			var getValue = data[0].dps;
+			$.each(getValue, function (index, value) {	
+			  graphData.push([new Date(Number(index*1000)),value])
+			 }) 
+		}
+		var g = new Dygraph(document.getElementById("graphdiv"), graphData,
+        {
+		    drawPoints: true,
+		    labels: ['Time', $("select.selectbox_menulist").val()]
+		});
+	}
+}
+
+
+/* ]]> */

@@ -20,7 +20,7 @@ $(document).ready(function() {
 			$('body').css('pointer-events', 'all');
 								
 			showSwitchData(obj);
-			getMetric();
+			getPortMetrics();
 })
 
 /**
@@ -36,33 +36,34 @@ function showSwitchData(obj) {
 	$(".switchdetails_div_interface").html(obj.interface);
 }
 
-function getMetric() {
-
-	var linkData = localStorage.getItem("linkData");
-	var obj = JSON.parse(linkData);	
-	$.ajax({
-		url : APP_CONTEXT + "/stats/metrics",
-		type : 'GET',
-		success : function(response) {
-			var metricArray = [];			
-			for (var i = 0; i < response.length; i++) {
-				
-				if(response[i].includes("pen.switch")) {
-					var value = response[i].split(".")[2]
-					metricArray.push(value);
-				}
-			}	
-			var metricList = metricArray;
-			var optionHTML = "";
-			for (var i = 0; i <= metricList.length - 1; i++) {
-				optionHTML += "<option value=" + 'pen.switch.' + metricList[i] + ">"+ metricList[i] + "</option>";
-
-			}
-			$("select.selectbox_menulist").html("").html(optionHTML);
-			$('#menulist').val('pen.switch.rx-bits');
-		},
-		dataType : "json"
-	});
+function getPortMetrics() {
+	
+	common.getData("/stats/metrics","GET").then(function(response) {
+		$("#wait1").css("display", "none");
+		$('body').css('pointer-events', 'all');
+		showMetricData(response);
+	})
 }
+
+function showMetricData(response) {
+	
+	var metricArray = [];			
+	for (var i = 0; i < response.length; i++) {
+		
+		if(response[i].includes("pen.switch")) {
+			var value = response[i].split(".")[2]
+			metricArray.push(value);
+		}
+	}	
+	var metricList = metricArray;
+	var optionHTML = "";
+	for (var i = 0; i <= metricList.length - 1; i++) {
+		optionHTML += "<option value=" + 'pen.switch.' + metricList[i] + ">"+ metricList[i] + "</option>";
+
+	}
+	$("select.selectbox_menulist").html("").html(optionHTML);
+	$('#menulist').val('pen.switch.rx-bits');
+}
+
 
 /* ]]> */

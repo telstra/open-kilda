@@ -44,31 +44,6 @@ public class StatsIntegrationService {
     @Autowired
     private ApplicationProperties applicationProperties;
 
-    /**
-     * Gets the stats.
-     *
-     * @param requestBody the request body
-     * @return the stats
-     * @throws IntegrationException
-     */
-    public String getStats(final String startDate, final String endDate, final String metric,
-            final Map<String, String[]> params) throws IntegrationException {
-        try {
-            String payload = getRequestBody(startDate, endDate, metric, params);
-            LOGGER.info("Inside getStats:  payload: " + payload);
-            HttpResponse response = restClientManager.invoke(
-                    applicationProperties.getOpenTsdbQuery(), HttpMethod.POST, payload, "", "");
-            if (RestClientManager.isValidResponse(response)) {
-                String responseEntity = IoUtil.toString(response.getEntity().getContent());
-                return responseEntity;
-            }
-        } catch (IOException ex) {
-            LOGGER.error("Inside getStats: Exception: " + ex.getMessage());
-            throw new IntegrationException(ex);
-        }
-        return null;
-    }
-
     public String getStats(final String startDate, final String endDate, final String downsample,
             final String switchId, final String port, final String flowId, final String srcSwitch, final String srcPort, final String dstSwitch, final String dstPort, final String statsType, final String metric)
             throws IntegrationException {
@@ -92,14 +67,6 @@ public class StatsIntegrationService {
             throw new IntegrationException(ex);
         }
         return null;
-    }
-
-    private String getRequestBody(final String startDate, final String endDate, final String metric,
-            final Map<String, String[]> params) throws JsonProcessingException {
-        List<Query> queryList = new ArrayList<Query>();
-        Query query = getQuery(null, metric, params);
-        queryList.add(query);
-        return getRequest(startDate, endDate, queryList);
     }
 
     private String populateFiltersAndReturnDownsample(final List<Filter> filters,

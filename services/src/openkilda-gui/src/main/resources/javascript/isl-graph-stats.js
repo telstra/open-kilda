@@ -9,6 +9,15 @@
 * on the filter input values of datetimepicker, downsampling and menulist.
 */
 
+var linkData = localStorage.getItem("linkData");	
+var obj = JSON.parse(linkData)
+var sourceSwitch = obj.source_switch;
+var targetSwitch = obj.target_switch;
+var sourcePort = obj.src_port;
+var targetPort = obj.dst_port;
+var source = sourceSwitch.replace(/:/g, "")
+var target = targetSwitch.replace(/:/g, "")	
+
 var graphInterval;
 
 $(function() {
@@ -42,53 +51,11 @@ $(document).ready(function() {
 		  format:'Y/m/d h:i:s',
 	});
 	$('#datetimepicker_dark').datetimepicker({theme:'dark'})
-	
-	var linkData = localStorage.getItem("linkData");	
-	var obj = JSON.parse(linkData)
-	var sourceSwitch = obj.source_switch;
-	var targetSwitch = obj.target_switch;
-	var source = sourceSwitch.replace(/:/g, "")
-	var target = targetSwitch.replace(/:/g, "")	
-	var sourcePort = obj.src_port;
-	var targetPort = obj.dst_port;
-	
-		$.ajax({
-			dataType: "jsonp",	
-			url :APP_CONTEXT + "/stats/isl/"+source+"/"+sourcePort+"/"+target+"/"+targetPort+"/"+convertedStartDate+"/"+convertedEndDate+"/1s/pen.isl.latency",
-			type : 'GET',
-			success : function(response) {
-				$("#wait1").css("display", "none");	
-				showStatsData(response);
-			},
-			dataType : "json"
-		});
-})
-
-
-/**
-* Execute this function to show visulization of stats graph
-* represnting time and metric on the axis.
-*/
-function showStatsData(response) {	
-	
-	var data = response
-		var graphData = [];
-		if(data.length){
-			var getValue = data[0].dps;
-			$.each(getValue, function (index, value) {
-				
-			  graphData.push([new Date(Number(index*1000)),value])
-
-			 }) 
-		}
 		
-		var g = new Dygraph(document.getElementById("graphdiv"), graphData,
-        {
-		    drawPoints: true,		    
-		    labels: ['Time', $("select.selectbox_menulist").val()]
-		});
-}
-
+	loadGraph.loadGraphData("/stats/isl/"+source+"/"+sourcePort+"/"+target+"/"+targetPort+"/"+convertedStartDate+"/"+convertedEndDate+"/1s/pen.isl.latency","GET").then(function(response) {
+	showStatsGraph.showStatsData(response); 
+	})
+})
 
 
 /**
@@ -131,29 +98,10 @@ function getGraphData() {
 	var checkbox =  $("#check").prop("checked");
 		
 	if(valid) {
-	
-	var linkData = localStorage.getItem("linkData");	
-	var obj = JSON.parse(linkData);	
-	var sourceSwitch = obj.source_switch;
-	var targetSwitch = obj.target_switch;
-	var source = sourceSwitch.replace(/:/g, "");
-	var target = targetSwitch.replace(/:/g, "");
-	var sourcePort = obj.src_port;
-	var targetPort = obj.dst_port;
-	
-
-		$.ajax({
-			dataType: "jsonp",					
-			url :APP_CONTEXT + "/stats/isl/"+source+"/"+sourcePort+"/"+target+"/"+targetPort+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/pen.isl.latency",
-			type : 'GET',
-			success : function(response) {	
-					
-				$("#wait1").css("display", "none");	
-				showStatsData(response);
-				
-			},
-			dataType : "json"
-		});
+		
+		loadGraph.loadGraphData("/stats/isl/"+source+"/"+sourcePort+"/"+target+"/"+targetPort+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/pen.isl.latency","GET").then(function(response) {
+		showStatsGraph.showStatsData(response); 
+	})
 			
 			try {
 				clearInterval(graphInterval);
@@ -178,35 +126,10 @@ function callIntervalData(){
 	var convertedEndDate = moment(endDate).format("YYYY-MM-DD-HH:mm:ss");	
 	var downsampling =$("#downsampling").val()	
 	var selMetric=$("select.selectbox_menulist").val();	
-	var linkData = localStorage.getItem("linkData");	
-	var obj = JSON.parse(linkData);	
-	var sourceSwitch = obj.source_switch;
-	var targetSwitch = obj.target_switch;
-	var source = sourceSwitch.replace(/:/g, "");
-	var target = targetSwitch.replace(/:/g, "");
-	var sourcePort = obj.src_port;
-	var targetPort = obj.dst_port;
-
-		$.ajax({
-			dataType: "jsonp",
-			url :APP_CONTEXT + "/stats/isl/"+source+"/"+sourcePort+"/"+target+"/"+targetPort+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/pen.isl.latency",
-			type : 'GET',
-			success : function(response) {	
-				showStatsData(response);
-			},
-			dataType : "json"
-		});
-}
-
-function autoreload(){
-	$("#autoreload").toggle();
-	var checkbox =  $("#check").prop("checked");
-	if(checkbox == false){
-		
-		$("#autoreload").val('');
-		clearInterval(callIntervalData);
-		clearInterval(graphInterval);
-	}
+	
+	loadGraph.loadGraphData("/stats/isl/"+source+"/"+sourcePort+"/"+target+"/"+targetPort+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/pen.isl.latency","GET").then(function(response) {
+		showStatsGraph.showStatsData(response); 
+	})
 }
 
 /* ]]> */
