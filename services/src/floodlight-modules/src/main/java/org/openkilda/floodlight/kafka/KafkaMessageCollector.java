@@ -100,7 +100,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
         Map<String, String> configParameters = context.getConfigParams(this);
         kafkaProps = new Properties();
         kafkaProps.put("bootstrap.servers", configParameters.get("bootstrap-servers"));
-        kafkaProps.put("group.id", "kilda-message-collector");
+        kafkaProps.put("group.id", "speaker.message.collector");
         kafkaProps.put("enable.auto.commit", "true");
         //kafkaProps.put("auto.commit.interval.ms", "1000");
         kafkaProps.put("session.timeout.ms", "30000");
