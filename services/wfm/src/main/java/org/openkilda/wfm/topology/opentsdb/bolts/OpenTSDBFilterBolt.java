@@ -28,7 +28,6 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.openkilda.messaging.info.Datapoint;
 
-import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -46,7 +45,7 @@ public class OpenTSDBFilterBolt extends BaseRichBolt {
                     TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER.getValueField(),
                     TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER.getTagsField());
 
-//    private Set<Datapoint> storage = new HashSet<>();
+    //    private Set<Datapoint> storage = new HashSet<>();
     private ConcurrentMap<Integer, Datapoint> storage = new ConcurrentHashMap<>();
     private OutputCollector collector;
 
@@ -57,25 +56,26 @@ public class OpenTSDBFilterBolt extends BaseRichBolt {
 
     @Override
     public void execute(Tuple tuple) {
-        final String data = tuple.getString(0);
-        LOGGER.debug("Processing datapoint", data);
-        try {
-            Datapoint datapoint = MAPPER.readValue(data, Datapoint.class);
-            if (isUpdateRequired(datapoint)) {
-                addDatapoint(datapoint);
-
-                List<Object> stream = Stream.of(datapoint.getMetric(), datapoint.getTime(), datapoint.getValue(),
-                        datapoint.getTags())
-                        .collect(Collectors.toList());
-
-                LOGGER.debug("emit: " + stream);
-                collector.emit(stream);
-            }
-        } catch (IOException e) {
-            LOGGER.error("Failed read datapoint", e);
-        } finally {
+        if (!tuple.contains("datapoint")) { //TODO: Should make sure tuple comes from correct bolt, ie not TickTuple
             collector.ack(tuple);
+            return;
         }
+
+        Datapoint datapoint = (Datapoint) tuple.getValueByField("datapoint");
+
+
+        if (isUpdateRequired(datapoint)) {
+            addDatapoint(datapoint);
+
+            List<Object> stream = Stream.of(datapoint.getMetric(), datapoint.getTime(), datapoint.getValue(),
+                    datapoint.getTags())
+                    .collect(Collectors.toList());
+
+            LOGGER.debug("emit: " + stream);
+            collector.emit(stream);
+        }
+        collector.ack(tuple);
+
     }
 
     @Override
