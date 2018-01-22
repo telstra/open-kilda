@@ -36,7 +36,7 @@ public class FlowService {
      * @return SwitchRelationData
      * @throws Exception
      */
-    public List<FlowInfo> getAllFlows() throws IntegrationException {
+    public List<FlowInfo> getAllFlows() {
         return flowsIntegrationService.getFlows();
     }
 

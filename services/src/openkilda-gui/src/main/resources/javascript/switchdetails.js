@@ -39,18 +39,13 @@ $(document).ready(function(){
 })
 
 /** function to retrieve and show port details*/
- function callPortDetailsAPI(switchname){	
-	$.ajax({
-		url : APP_CONTEXT+"/switch/"+switchname+"/ports",
-		type : 'GET',
-		success : function(response) {
-			
-			$("#wait1").css("display", "none");
-			$('body').css('pointer-events','all'); 	
-			showPortData(response);
-		},
-		dataType : "json"
-	});
+ function callPortDetailsAPI(switchname){
+	
+	common.getData("/switch/"+switchname+"/ports","GET").then(function(response) {
+		$("#wait1").css("display", "none");
+		$('body').css('pointer-events','all'); 	
+		showPortData(response);
+	})
 }
 
 /** function to retrieve and show switch details from 

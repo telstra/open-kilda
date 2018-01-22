@@ -3,17 +3,12 @@
 
 $(document).ready(function(){
 	
-	$.ajax({
-		url : APP_CONTEXT+"/switch/list",
-		type : 'GET',
-		success : function(response) {
-			
-			$("#wait1").css("display", "none");
-			$('body').css('pointer-events','all'); 
-			showSwitchData(response);  
-		},
-		dataType : "json"
-	});
+	
+		common.getData("/switch/list","GET").then(function(response) {
+		$("#wait1").css("display", "none");
+		$('body').css('pointer-events','all'); 
+		showSwitchData(response);
+	})
 	
 	$(document).on("click",".flowDataRow",function(e){
 		setFlowData(this);

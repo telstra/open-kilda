@@ -13,6 +13,7 @@ import org.apache.http.HttpResponse;
 import org.openkilda.helper.RestClientManager;
 import org.openkilda.integration.converter.FlowConverter;
 import org.openkilda.integration.converter.FlowPathConverter;
+import org.openkilda.integration.exception.ContentNotFoundException;
 import org.openkilda.integration.exception.IntegrationException;
 import org.openkilda.integration.exception.InvalidResponseException;
 import org.openkilda.integration.model.Flow;
@@ -54,7 +55,7 @@ public class FlowsIntegrationService {
      * @return the flows
      * @throws IntegrationException
      */
-    public List<FlowInfo> getFlows() throws IntegrationException {
+    public List<FlowInfo> getFlows()  {
         HttpResponse response = restClientManager.invoke(applicationProperties.getFlows(),
                 HttpMethod.GET, "", "", applicationService.getAuthHeader());
         if (RestClientManager.isValidResponse(response)) {
@@ -70,6 +71,8 @@ public class FlowsIntegrationService {
                         LOGGER.error("Exception while retriving flow status. Exception: " + e, e);
                     }
                 });
+            } else {
+                    throw new ContentNotFoundException();
             }
             return flows;
         }
@@ -103,7 +106,7 @@ public class FlowsIntegrationService {
      * @return the flow paths
      * @throws IntegrationException
      */
-    public FlowPath getFlowPath(final String flowId) throws IntegrationException {
+    public FlowPath getFlowPath(final String flowId) {
         try {
             HttpResponse response = restClientManager
                     .invoke(applicationProperties.getTopologyFlows(), HttpMethod.GET, "", "", "");

@@ -3,17 +3,12 @@
 
 $(document).ready(function(){
 		
-	$.ajax({
-		url : APP_CONTEXT + "/flows/list",
-		type : 'GET',
-		success : function(response) {
-			 
-			$("#wait1").css("display", "none");
-			$('body').css('pointer-events','all'); 
-			showflowData(response);  
-		},
-		dataType : "json"
-	});
+	
+	common.getData("/flows/list","GET").then(function(response) {
+		$("#wait1").css("display", "none");
+		$('body').css('pointer-events','all'); 
+		showflowData(response); 
+	})
 	
 	$(document).on("click",".flowDataRow",function(e){
 		setFlowData(this);
