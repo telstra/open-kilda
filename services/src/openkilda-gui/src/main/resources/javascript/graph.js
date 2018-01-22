@@ -31,7 +31,7 @@ var api = {
 				}
 			},
 			error : function(errResponse) {
-				common.infoMessage(errResponse.responseJSON["error-message"],'info');
+				common.infoMessage('No Switch Avaliable','info');
 				$("#wait").css("display", "none");
 			},
 			dataType : "json"

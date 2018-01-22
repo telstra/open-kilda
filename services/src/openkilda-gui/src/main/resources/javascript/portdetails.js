@@ -42,6 +42,12 @@ function getPortMetrics() {
 		$("#wait1").css("display", "none");
 		$('body').css('pointer-events', 'all');
 		showMetricData(response);
+	},
+	function(error){
+		response=[]
+		$("#wait1").css("display", "none");
+		$('body').css('pointer-events','all'); 
+		showMetricData(response);
 	})
 }
 
