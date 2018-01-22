@@ -131,23 +131,27 @@ public class KafkaMessageCollector implements IFloodlightModule {
 
         private void doControllerMsg(CommandMessage message) {
             logger.debug("\n\nreceived message: {}", message);
-            CommandData data = message.getData();
-            if (data instanceof DiscoverIslCommandData) {
-                doDiscoverIslCommand(data);
-            } else if (data instanceof DiscoverPathCommandData) {
-                doDiscoverPathCommand(data);
-            } else if (data instanceof InstallIngressFlow) {
-                doInstallIngressFlow(message);
-            } else if (data instanceof InstallEgressFlow) {
-                doInstallEgressFlow(message);
-            } else if (data instanceof InstallTransitFlow) {
-                doInstallTransitFlow(message);
-            } else if (data instanceof InstallOneSwitchFlow) {
-                doInstallOneSwitchFlow(message);
-            } else if (data instanceof RemoveFlow) {
-                doDeleteFlow(message);
-            } else {
-                logger.error("unknown data type: {}", data.toString());
+            try {
+                CommandData data = message.getData();
+                if (data instanceof DiscoverIslCommandData) {
+                    doDiscoverIslCommand(data);
+                } else if (data instanceof DiscoverPathCommandData) {
+                    doDiscoverPathCommand(data);
+                } else if (data instanceof InstallIngressFlow) {
+                    doInstallIngressFlow(message);
+                } else if (data instanceof InstallEgressFlow) {
+                    doInstallEgressFlow(message);
+                } else if (data instanceof InstallTransitFlow) {
+                    doInstallTransitFlow(message);
+                } else if (data instanceof InstallOneSwitchFlow) {
+                    doInstallOneSwitchFlow(message);
+                } else if (data instanceof RemoveFlow) {
+                    doDeleteFlow(message);
+                } else {
+                    logger.error("unknown data type: {}", data.toString());
+                }
+            } catch (Exception e) {
+                logger.error("ParseRecord.doControllerMsg Exception: {}", e);
             }
         }
 
@@ -423,6 +427,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
                      * Just log the exception, and start processing again with a new consumer
                      */
                     logger.error("Exception received during main kafka consumer loop: {}", e);
+                    consumer.close(); // we'll create a new one
                 }
             }
         }
