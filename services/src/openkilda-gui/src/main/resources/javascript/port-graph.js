@@ -9,6 +9,14 @@
  * input values of datetimepicker, downsampling and menulist.
  */
 
+
+var portData = localStorage.getItem("portDetails");
+var portObj = JSON.parse(portData)
+var portNum = portObj.port_number;
+var switchname = window.location.href.split("#")[1];
+var sourceswitch = switchname.replace(/:/g, "");
+
+
 var graphInterval;
 
 $(function() {
@@ -24,10 +32,6 @@ $(function() {
  */
 $(document).ready(function() {
 
-	
-	var portData = localStorage.getItem("portDetails");
-	var portObj = JSON.parse(portData)
-	var portNum = portObj.port_number;
 	$.datetimepicker.setLocale('en');
 	var date = new Date()
 	var yesterday = new Date(date.getTime());
@@ -49,54 +53,11 @@ $(document).ready(function() {
 	});
 
 	$('#datetimepicker_dark').datetimepicker({theme:'dark'})
-	var switchname = window.location.href.split("#")[1];
-	var sourceswitch = switchname.replace(/:/g, "");
-	
 
-		$.ajax({
-			dataType: "jsonp",
-			url : APP_CONTEXT + "/stats/switchid/"+sourceswitch+"/portnumber/"+portNum+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/pen.switch.collisions",	
-			type : 'GET',
-			success : function(response) {	
-					
-				$("#wait1").css("display", "none");	
-				showStatsData(response);
-			},
-			error : function(errResponse) {
-				$("#wait1").css("display", "none");	
-				showStatsData(errResponse)
-
-			},
-			dataType : "json"
-		});	
+		loadGraph.loadGraphData("/stats/switchid/"+sourceswitch+"/portnumber/"+portNum+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/pen.switch.collisions","GET").then(function(response) {
+			showStatsGraph.showStatsData(response); 
+		})
 })
-
-
-/**
- * Execute this function to show visulization of stats graph represnting time
- * and metric on the axis.
- */
-function showStatsData(response) {	
-	var data = response
-		var graphData = [];
-		if(data.length){
-			var getValue = data[0].dps;
-			$.each(getValue, function (index, value) {
-				
-			  graphData.push([new Date(Number(index*1000)),value])
-
-			 }) 
-		}
-		
-		var g = new Dygraph(document.getElementById("graphdiv"), graphData,
-        {
-		    drawPoints: true,
-		    labels: ['Time', $("select.selectbox_menulist").val()]
-		});
-}
-
-
-
 
 /**
  * Execute this function to show stats data whenever user filters data in the
@@ -138,27 +99,11 @@ function getGraphData() {
 	var checkbox =  $("#check").prop("checked");
 
 	if(valid) {
-		
-	var portData = localStorage.getItem("portDetails");
-	var portObj = JSON.parse(portData)
-	var portNum = portObj.port_number;
-		
-	var switchname = window.location.href.split("#")[1];
-	var sourceswitch = switchname.replace(/:/g, "");
-	
 
-		$.ajax({
-			dataType: "jsonp",					
-			url : APP_CONTEXT + "/stats/switchid/"+sourceswitch+"/portnumber/"+portNum+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric,			
-			type : 'GET',
-			success : function(response) {			
-				
-				$("#wait1").css("display", "none");	
-				showStatsData(response);			
-			},
-			dataType : "json"
-		});
-			
+	loadGraph.loadGraphData("/stats/switchid/"+sourceswitch+"/portnumber/"+portNum+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric,"GET").then(function(response) {
+		showStatsGraph.showStatsData(response); 
+	})
+	
 			try {
 				clearInterval(graphInterval);
 			} catch(err) {
@@ -182,34 +127,12 @@ function callIntervalData(){
 	var endDate = new Date()
 	var convertedEndDate = moment(endDate).format("YYYY-MM-DD-HH:mm:ss");
 	var downsampling =$("#downsampling").val()	
-	var portData = localStorage.getItem("portDetails");
-	var portObj = JSON.parse(portData)
-	var portNum = portObj.port_number;
-	
-	var selMetric=$("select.selectbox_menulist").val();
-	var switchname = window.location.href.split("#")[1];
-	var sourceswitch = switchname.replace(/:/g, "");
-	
-		$.ajax({
-			dataType: "jsonp",
-			url : APP_CONTEXT + "/stats/switchid/"+sourceswitch+"/portnumber/"+portNum+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric,
-			type : 'GET',
-			success : function(response) {	
-				showStatsData(response);
-			},
-			dataType : "json"
-		});
-}
 
-function autoreload(){
-	$("#autoreload").toggle();
-	var checkbox =  $("#check").prop("checked");
-	if(checkbox == false){
-		
-		$("#autoreload").val('');
-		clearInterval(callIntervalData);
-		clearInterval(graphInterval);
-	}
+	var selMetric=$("select.selectbox_menulist").val();
+	
+	loadGraph.loadGraphData("/stats/switchid/"+sourceswitch+"/portnumber/"+portNum+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric,"GET").then(function(response) {
+		showStatsGraph.showStatsData(response); 
+	})
 }
 
 /* ]]> */

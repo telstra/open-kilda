@@ -20,35 +20,11 @@ $(document).ready(function() {
 /**call the metrics api to show list of the metric values in the drop down*/
 function getMetric() {
 
-	var linkData = localStorage.getItem("linkData");
-	var obj = JSON.parse(linkData);
-	
-	$.ajax({
-		url : APP_CONTEXT + "/stats/metrics",
-		type : 'GET',
-		success : function(response) {	
-			var metricArray = [];			
-			for (var i = 0; i < response.length; i++) {				
-				
-				if(response[i].includes("pen.isl")) {
-					var value = response[i].split(".")[2]
-					metricArray.push(value);
-				}
-			}
-			var metricList = metricArray;
-			var optionHTML = "";
-			for (var i = 0; i <= metricList.length - 1; i++) {
-				optionHTML += "<option value=" + 'pen.isl.' + metricList[i] + ">"+ metricList[i] + "</option>";
-			} if (obj.hasOwnProperty("flowid")) {
-				$("select.selectbox_menulist").html("").html(optionHTML);
-				$('#menulist').val('pen.flow.packets');
-			} else {
-				$("select.selectbox_menulist").html("").html(optionHTML);
-				$('#menulist').val('pen.isl.latency');
-			}
-		},
-		dataType : "json"
-	});
+	common.getData("/stats/metrics","GET").then(function(response) {
+		$("#wait1").css("display", "none");
+		$('body').css('pointer-events','all'); 
+		showIslMetrics(response);
+	})
 }
 
 /**
@@ -89,6 +65,33 @@ function showLinkDetails(linkData) {
 		$(".isl_div_speed").html(linkData.speed);
 		$(".isl_div_latency").html(linkData.latency);
 		$(".isl_div_avaliable_bandwidth").html(linkData.available_bandwidth);
+	}
+}
+
+
+function showIslMetrics(response) {
+	
+	var linkData = localStorage.getItem("linkData");
+	var obj = JSON.parse(linkData);
+	
+	var metricArray = [];			
+	for (var i = 0; i < response.length; i++) {				
+		
+		if(response[i].includes("pen.isl")) {
+			var value = response[i].split(".")[2]
+			metricArray.push(value);
+		}
+	}
+	var metricList = metricArray;
+	var optionHTML = "";
+	for (var i = 0; i <= metricList.length - 1; i++) {
+		optionHTML += "<option value=" + 'pen.isl.' + metricList[i] + ">"+ metricList[i] + "</option>";
+	} if (obj.hasOwnProperty("flowid")) {
+		$("select.selectbox_menulist").html("").html(optionHTML);
+		$('#menulist').val('pen.flow.packets');
+	} else {
+		$("select.selectbox_menulist").html("").html(optionHTML);
+		$('#menulist').val('pen.isl.latency');
 	}
 }
 

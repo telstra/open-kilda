@@ -9,6 +9,8 @@
 * on the filter input values of datetimepicker, downsampling and menulist.
 */
 
+var flowid = window.location.href.split("#")[1];
+var downsampling = "10m";
 var graphInterval;
 
 $(function() {
@@ -35,7 +37,6 @@ $(document).ready(function() {
 	var EndDate = moment(date).format("YYYY/MM/DD HH:mm:ss");
 	var convertedStartDate = moment(YesterDayDate).format("YYYY-MM-DD-HH:mm:ss");
 	var convertedEndDate = moment(EndDate).format("YYYY-MM-DD-HH:mm:ss");	
-	var downsampling = "10m";	
 	$("#datetimepicker7").val(YesterDayDate);	
 	$("#datetimepicker8").val(EndDate);
 	$('#datetimepicker7').datetimepicker({
@@ -46,51 +47,10 @@ $(document).ready(function() {
 	});
 	$('#datetimepicker_dark').datetimepicker({theme:'dark'})
 	
-	var flowid = window.location.href.split("#")[1];
-	
-
-		$.ajax({
-			dataType: "jsonp",				
-			url : APP_CONTEXT + "/stats/flowid/"+flowid+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/pen.flow.packets",
-			type : 'GET',
-			success : function(response) {	
-					
-				$("#wait1").css("display", "none");
-				$('body').css('pointer-events','all');
-				showStatsData(response);				
-			},
-			error : function(errResponse) {
-				$("#wait1").css("display", "none");	
-				showStatsData(errResponse)
-
-			},
-			dataType : "json"
-		});
+	loadGraph.loadGraphData("/stats/flowid/"+flowid+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/pen.flow.packets","GET").then(function(response) {
+		showStatsGraph.showStatsData(response); 
+	})
 })
-
-
-/**
-* Execute this function to show visulization of stats graph
-* represnting time and metric on the axis.
-*/
-function showStatsData(response) {
-	var data = response
-		var graphData = [];
-		if(data.length){
-			var getValue = data[0].dps;
-			$.each(getValue, function (index, value) {
-				
-			  graphData.push([new Date(Number(index*1000)),value])
-
-			 }) 
-		}
-		
-		var g = new Dygraph(document.getElementById("graphdiv"), graphData,
-        {
-		    drawPoints: true,
-		    labels: ['Time', $("select.selectbox_menulist").val()]
-		});
-}
 
 
 /**
@@ -123,24 +83,14 @@ function getGraphData() {
 	var numbers = /^[-+]?[0-9]+$/;  
 	var checkNo = $("#autoreload").val().match(numbers);
 	var checkbox =  $("#check").prop("checked");
-	var flowid = window.location.href.split("#")[1];
-	var downsampling = "10m";
 	
 	if(valid){
 
-		$.ajax({
-			dataType: "jsonp",				
-			url : APP_CONTEXT + "/stats/flowid/"+flowid+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric,
-			type : 'GET',
-			success : function(response) {	
-					
-				$("#wait1").css("display", "none");	
-				showStatsData(response);
+		
+		loadGraph.loadGraphData("/stats/flowid/"+flowid+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric,"GET").then(function(response) {
+			showStatsGraph.showStatsData(response); 
+		})
 				
-			},
-			dataType : "json"
-		});
-	
 			try {
 				clearInterval(graphInterval);
 			} catch(err) {
@@ -155,7 +105,7 @@ function getGraphData() {
 	}
 }
 
-function callIntervalData(){
+function callIntervalData() {
 	
 	var currentDate = new Date();
 	var startDate = new Date($("#datetimepicker7").val());
@@ -163,31 +113,11 @@ function callIntervalData(){
 	var endDate = new Date()
 	var convertedEndDate = moment(endDate).format("YYYY-MM-DD-HH:mm:ss");	
 	var selMetric=$("select.selectbox_menulist").val();
-	var flowid = window.location.href.split("#")[1];
-	var downsampling = "10m";	
 		
-		$.ajax({
-			dataType: "jsonp",				
-			url : APP_CONTEXT + "/stats/flowid/"+flowid+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric,	
-			type : 'GET',
-			success : function(response) {	
-					
-				$("#wait1").css("display", "none");	
-				showStatsData(response);
-			},
-			dataType : "json"
-		});
-}
-
-function autoreload(){
-	$("#autoreload").toggle();
-	var checkbox =  $("#check").prop("checked");
-	if(checkbox == false){
-		
-		$("#autoreload").val('');
-		clearInterval(callIntervalData);
-		clearInterval(graphInterval);
-	}
+	
+	loadGraph.loadGraphData("/stats/flowid/"+flowid+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric,"GET").then(function(response) {
+		showStatsGraph.showStatsData(response); 
+	})
 }
 
 /* ]]> */
