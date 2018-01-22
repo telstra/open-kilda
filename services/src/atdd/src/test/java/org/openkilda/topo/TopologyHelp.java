@@ -22,6 +22,7 @@ import static org.openkilda.flow.FlowUtils.getTimeDuration;
 import org.glassfish.jersey.client.ClientConfig;
 
 import java.io.IOException;
+import java.lang.UnsupportedOperationException;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.Entity;
@@ -73,6 +74,16 @@ public class TopologyHelp {
 
     public static boolean TestMininetCreate(String json) {
         System.out.println("\n==> Create Mininet Random Topology");
+
+        //
+        // TODO: mininet_rest has been re-written, but not create_random_linear_topology.
+        //          It is unclear if this code path is still used ATM (could be useful for scale
+        //          testing, but possibly not in its current form.
+        //
+
+        boolean refactored = false;
+        if (!refactored)
+            throw new UnsupportedOperationException("This code needs refactoring");
 
         long current = System.currentTimeMillis();
         Client client = ClientBuilder.newClient(new ClientConfig());

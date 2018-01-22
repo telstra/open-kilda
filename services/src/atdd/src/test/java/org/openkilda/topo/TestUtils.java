@@ -209,10 +209,6 @@ public class TestUtils {
         }
     }
 
-
-
-
-
     public static void main(String[] args) {
         ITopology t = TopologyBuilder.buildLinearTopo(5);
         System.out.println("t1 = " + t);
