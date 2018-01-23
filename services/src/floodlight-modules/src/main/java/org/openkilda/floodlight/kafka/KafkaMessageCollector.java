@@ -166,7 +166,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
             if (result) {
                 logger.debug("packet_out was sent to {}", switchId);
             } else {
-                logger.warn("packet_out was not sent to {}", switchId);
+                logger.warn("packet_out was not sent to {}-{}", switchId, command.getPortNo());
             }
         }
 

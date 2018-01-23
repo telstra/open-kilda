@@ -231,7 +231,7 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
     @Override
     public boolean sendDiscoveryMessage(DatapathId srcSwId, OFPort port) {
         IOFSwitch srcSwitch = switchService.getSwitch(srcSwId);
-        if (srcSwitch == null) {
+        if (srcSwitch == null || srcSwitch.getPort(port) == null) {
             return false;
         }
         OFPacketOut ofPacketOut = (generateVerificationPacket(srcSwitch, port));
