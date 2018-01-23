@@ -14,19 +14,19 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 @JsonPropertyOrder({"error-code", "error-message", "error-auxiliary-message", "correlationid"})
 public class ErrorMessage {
 
-    /** The code. */
+    
     @JsonProperty("error-code")
     private Integer code;
 
-    /** The message. */
+    
     @JsonProperty("error-message")
     private String message;
 
-    /** The auxilary message. */
+    
     @JsonProperty("error-auxiliary-message")
     private String auxilaryMessage;
 
-    /** The correlation id. */
+    
     @JsonProperty("correlationid")
     private String correlationId;
 

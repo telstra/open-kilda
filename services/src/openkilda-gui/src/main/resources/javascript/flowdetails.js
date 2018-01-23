@@ -8,30 +8,24 @@ $(document).ready(function() {
 	var flowData = localStorage.getItem("flowDetails");
 	var obj = JSON.parse(flowData)
 	showFlowData(obj);
-	getMetric();
+	getFlowMetric();
 	$("#wait1").css("display", "none");
 	$('body').css('pointer-events','all');
 })
 
-function getMetric() {
+function getFlowMetric() {
 
-	$.ajax({
-		url : APP_CONTEXT + "/stats/metrics",
-		type : 'GET',
-		success : function(response) {
-			var metricList = response;
-			var optionHTML = "";
-			for (var i = 0; i <= metricList.length - 1; i++) {
-				optionHTML += "<option value=" + metricList[i] + ">"
-						+ metricList[i] + "</option>";
-
-			}
-
-			$("select.selectbox_menulist").html("").html(optionHTML);
-			$('#menulist').val('pen.flow.packets');
-		},
-		dataType : "json"
-	});
+	common.getData("/stats/metrics","GET").then(function(response) {
+		$("#wait1").css("display", "none");
+		$('body').css('pointer-events','all');
+		 showFlowMetrics(response);
+	},
+	function(error){
+		response=[]
+		$("#wait1").css("display", "none");
+		$('body').css('pointer-events','all'); 
+		 showFlowMetrics(response);
+	})
 }
 
 function showFlowData(obj) {
@@ -51,36 +45,26 @@ function showFlowData(obj) {
 	} else {
 		$(".flow_div_desc").html("-");
 	}
-
 	callFlowForwardPath(obj.flow_id)
 	callFlowReversePath(obj.flow_id)
 }
 
 function callFlowForwardPath(flow_id) {
-	$.ajax({
-		url : APP_CONTEXT + "/switch/links/path/" + flow_id,
-		type : 'GET',
-		success : function(response) {
+	
+	common.getData("/flows/path/" + flow_id,"GET").then(function(response) {
+		$("#wait1").css("display", "none");
+		showForwardFlowPathData(response);
+	})
 
-			$("#wait1").css("display", "none");
-			showForwardFlowPathData(response);
-		},
-		dataType : "json"
-	});
 }
 
 function callFlowReversePath(flow_id) {
-	$.ajax({
-		url : APP_CONTEXT + "/switch/links/path/" + flow_id,
-		type : 'GET',
-		success : function(response) {
+	
+	common.getData("/flows/path/" + flow_id,"GET").then(function(response) {
+		$("#wait1").css("display", "none");
+		showReverseFlowPathData(response);
+	})
 
-			$("#wait1").css("display", "none");
-					
-			showReverseFlowPathData(response);
-		},
-		dataType : "json"
-	});
 }
 
 function showForwardFlowPathData(response) {
@@ -205,5 +189,24 @@ function showReverseFlowPathData(response) {
 	
 	$(".path:last-child .line:nth-child(6)").hide();
 }
+
+function showFlowMetrics(response){
+	var metricArray = [];			
+	for (var i = 0; i < response.length; i++) {				
+		
+		if(response[i].includes("pen.flow")) {
+			var value = response[i].split(".")[2]
+			metricArray.push(value);
+		}
+	}		
+	var metricList = metricArray;
+	var optionHTML = "";
+	for (var i = 0; i <= metricList.length - 1; i++) {
+		optionHTML += "<option value=" + 'pen.flow.' + metricList[i] + ">"+ metricList[i] + "</option>";
+	}
+	$("select.selectbox_menulist").html("").html(optionHTML);
+	$('#menulist').val('pen.flow.bytes');
+}
+
 
 /* ]]> */

@@ -7,9 +7,9 @@ import org.springframework.stereotype.Component;
  * ApplicationProperties: is used to read properties from external file. Externalized Configuration
  * is being done with the reference of: https://docs.spring
  * .io/spring-boot/docs/current/reference/html/boot-features-external -config.html
- * 
+ *
  * @author Gaurav Chugh
- * 
+ *
  */
 @Component
 public class ApplicationProperties {
