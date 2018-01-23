@@ -217,8 +217,7 @@ def send_malformed_packet():
         return "can't send malformed packet {}".format(ex)
 
 
-if __name__ == '__main__':
-
+def main():
     with open("/app/log.json", "r") as fd:
         logging.config.dictConfig(json.load(fd))
 
