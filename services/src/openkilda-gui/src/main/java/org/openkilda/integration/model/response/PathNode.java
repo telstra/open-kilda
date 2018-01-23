@@ -1,15 +1,15 @@
 package org.openkilda.integration.model.response;
 
-import java.io.Serializable;
-
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
+import java.io.Serializable;
+
 /**
  * The Class Path.
- * 
+ *
  * @author Gaurav Chugh
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -58,7 +58,7 @@ public class PathNode implements Serializable {
      *
      * @param portNo the new port no
      */
-    public void setPortNo(Integer portNo) {
+    public void setPortNo(final Integer portNo) {
         this.portNo = portNo;
     }
 
@@ -76,7 +76,7 @@ public class PathNode implements Serializable {
      *
      * @param segmentLatency the new segment latency
      */
-    public void setSegmentLatency(Integer segmentLatency) {
+    public void setSegmentLatency(final Integer segmentLatency) {
         this.segmentLatency = segmentLatency;
     }
 
@@ -94,7 +94,7 @@ public class PathNode implements Serializable {
      *
      * @param seqId the new seq id
      */
-    public void setSeqId(Integer seqId) {
+    public void setSeqId(final Integer seqId) {
         this.seqId = seqId;
     }
 
@@ -112,7 +112,7 @@ public class PathNode implements Serializable {
      *
      * @param switchId the new switch id
      */
-    public void setSwitchId(String switchId) {
+    public void setSwitchId(final String switchId) {
         this.switchId = switchId;
     }
 
@@ -130,7 +130,7 @@ public class PathNode implements Serializable {
      *
      * @param inPortNo the new in port no
      */
-    public void setInPortNo(Integer inPortNo) {
+    public void setInPortNo(final Integer inPortNo) {
         this.inPortNo = inPortNo;
     }
 
@@ -148,7 +148,7 @@ public class PathNode implements Serializable {
      *
      * @param outPortNo the new out port no
      */
-    public void setOutPortNo(Integer outPortNo) {
+    public void setOutPortNo(final Integer outPortNo) {
         this.outPortNo = outPortNo;
     }
 

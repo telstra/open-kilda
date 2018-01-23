@@ -194,6 +194,14 @@ h1 {
 	height: 18px;
 }
 
+.sidebar ul li a i.icon-switch {
+	background: url(../images/icon-switch.png) no-repeat 0 0;
+	background-size: 18px auto;
+	display: inline-block;
+	width: 18px;
+	height: 18px;
+}
+
 .sidebar ul li.active a {
 	background: #1e242c;
 	border-left: 3px solid #00ccbe;
@@ -324,7 +332,7 @@ h1 {
 
 path.link {
 	fill: none;
-	stroke-width: 1.5px;
+	stroke-width: 2.5px;
 }
 
 .circle {
@@ -360,7 +368,10 @@ div.tooltip {
 	stroke-width: 8px;
 	cursor: pointer;
 }
-
+.graphoverlay {
+  fill: none;
+  pointer-events: all;
+}
 .hide {
 	display: none;
 }
@@ -399,6 +410,7 @@ svg {
 	font-weight: 400;
 	position: relative;
 	float: right;
+	width: 140px;
 	margin-left: 15px;
 	font-size: 13px;
 	z-index: 3;
@@ -470,7 +482,7 @@ svg {
 }
 
 #switchdetails_div {
-	margin-bottom: 20px;
+	margin-bottom: 30px;
 	/* margin-top: 20px; */
 }
 
@@ -529,13 +541,33 @@ h1.modal-title {
 }
 
 #portdetails_div div.row {
-	padding: 8px 0;
+	padding: 8px 0;	
+}
+
+#portdetails_div .rep_div.up-state, #portdetails_div .rep_div.down-state {	
+	position: relative;
+    cursor: pointer;
+}
+
+#portdetails_div .rep_div.up-state:before, #portdetails_div .rep_div.down-state:before {
+	width: 8px;
+    height: 8px;
+    background: #19b365;
+    border-radius: 100%;
+    position: absolute;
+    left: 4px;
+    top: 0;
+    bottom: 0;
+    margin: auto;
+}
+
+#portdetails_div .rep_div.down-state:before {
+	background: #f00;
 }
 
 #portdetails_div div.row.thead {
 	border-bottom: 1px solid #ccc;
 	background: #D4D2D2;
-	border-left: 3px solid #cac7c7;
 }
 
 #portdetails_div div.row.thead div {
@@ -545,16 +577,6 @@ h1.modal-title {
 #switch-details, #port-details1 {
 	border: 1px solid #d2d2d2;
 	padding: 0 15px;
-}
-
-.rep_div.down-state {
-	border-left: 3px solid #f00;
-	cursor: pointer;
-}
-
-.rep_div.up-state {
-	border-left: 3px solid #19b365;
-	cursor: pointer;
 }
 
 .bg_load {
@@ -573,11 +595,11 @@ body{
 }
 .loader {
 	position: absolute;
-	border: 16px solid #f3f3f3;
+	border: 14px solid #f3f3f3;
 	border-radius: 50%;
 	border-top: 16px solid #3498db;
-	width: 100px;
-	height: 100px;
+	width: 90px;
+	height: 90px;
 	top: 0;
 	left: 0;
 	right: 0;
@@ -924,6 +946,89 @@ footer {
     top: 96px;
 }
 
+.check-connections {
+	margin-right: 15px;
+}
+
+.check-connections .lconnection span {
+	background: #228B22;
+    height: 10px;
+    width: 10px;
+    display: inline-block;
+    border-radius: 100%;
+    margin: 0 5px 0 0;
+    
+}
+
+.check-connections .pconnection span {
+    background: #35c8ff;
+    height: 10px;
+    width: 10px;
+    display: inline-block;
+    border-radius: 100%;
+    margin: 0 5px 0 0;
+   
+}
+
+.c-block{
+	margin: 0 0 15px;
+}
+
+.topology-txt {
+    background: #fff;
+    border: 1px solid #ccc;
+    border-color: rgba(0,0,0,.2);
+    color: #000;
+    -webkit-box-shadow: 0 2px 10px rgba(0,0,0,.2);
+    box-shadow: 0 2px 10px rgba(0,0,0,.2);
+    display: none;
+    padding: 15px;
+    line-height: 20px;
+    font-size: 14px;
+    position: absolute;
+    right: 15px;
+    top: 30px; 
+    text-align: left;
+    z-index: 10;
+    -webkit-animation: gb__a .2s;
+    animation: gb__a .2s;
+    -webkit-border-radius: 2px;
+    border-radius: 2px;
+    -webkit-user-select: text;
+}
+.topology-txt:after, .topology-txt:before {
+	bottom: 100%;
+	left: calc(100% - 27px);
+	border: solid transparent;
+	content: " ";
+	height: 0;
+	width: 0;
+	position: absolute;
+	pointer-events: none;
+}
+
+.topology-txt:after {
+	border-color: rgba(255, 255, 255, 0);
+	border-bottom-color: #fff;
+	border-width: 9px;
+	margin-left: -9px;
+}
+.topology-txt:before {
+	border-color: rgba(204, 204, 204, 0);
+	border-bottom-color: #ccc;
+	border-width: 10px;
+	margin-left: -10px;
+}
+
+.t-logy-icon {
+	font-size: 20px;
+    margin-right: 20px;
+    margin-top: -4px;
+    cursor: pointer;
+    bottom: -2px;
+    position: relative;
+}
+
 .vertical-line, .vertical-line-2 {
     position: absolute;
     width: 2px;
@@ -987,8 +1092,13 @@ table.dataTable.no-footer {
 	margin-top: 15px;
 }
 
+#flowTable_wrapper.dataTables_wrapper {
+	margin-top: 5px;
+}
+
 .flowDataRow {
 	cursor:pointer;
+	position: relative;
 }
 
 table#flowTable.dataTable .divTableCell {
@@ -999,14 +1109,25 @@ table#flowTable.dataTable .divTableCell:first-child {
 	border-left: none;
 }
 
-table#flowTable.dataTable .flowDataRow.down-state .divTableCell:first-child {
-	border-left: 3px solid #f00;
-	cursor: pointer;
+table#flowTable.dataTable .flowDataRow.up-state .divTableCell:first-child, table#flowTable.dataTable .flowDataRow.down-state .divTableCell:first-child {
+	padding-left: 18px;
 }
 
-table#flowTable.dataTable .flowDataRow.up-state .divTableCell:first-child {
-	border-left: 3px solid #19b365;
-	cursor: pointer;
+table#flowTable.dataTable .flowDataRow.up-state .divTableCell:first-child:before, table#flowTable.dataTable .flowDataRow.down-state .divTableCell:first-child:before {
+    width: 8px;
+    height: 8px;
+    background: #19b365;
+    border-radius: 100%;
+    position: absolute;
+    left: 4px;
+    top: 0;
+    bottom: 0;
+    margin: auto;
+    content: "";
+}
+
+table#flowTable.dataTable .flowDataRow.down-state .divTableCell:first-child:before {
+    background: #f00;	
 }
 
 table#flowTable.dataTable.order-column tbody tr>.sorting_1, table#flowTable.dataTable.order-column tbody tr>.sorting_2, table#flowTable.dataTable.order-column tbody tr>.sorting_3, table#flowTable.dataTable.display tbody tr>.sorting_1, table#flowTable.dataTable.display tbody tr>.sorting_2, table#flowTable.dataTable.display tbody tr>.sorting_3,
@@ -1075,6 +1196,49 @@ table#flowTable.dataTable .divTableCell {
     text-overflow: ellipsis;
     position: relative;
 }
+#topology-hover-txt {
+	max-width: 300px;
+	position: fixed;
+	z-index: 10;
+	background: #fff;
+	border: 1px solid #ccc;
+    margin: 0 0 0 85px;
+    display: none;
+}
+#topology-hover-txt:after, #topology-hover-txt:before {
+	right: 100%;
+	top: 35px;
+	border: solid transparent;
+	content: " ";
+	height: 0;
+	width: 0;
+	position: absolute;
+	pointer-events: none;
+}
+
+#topology-hover-txt:after {
+	border-color: rgba(255, 255, 255, 0);
+	border-right-color: #fff;
+	border-width: 10px;
+	margin-top: -10px;
+}
+#topology-hover-txt:before {
+	border-color: rgba(204, 204, 204, 0);
+	border-right-color: #ccc;
+	border-width: 11px;
+	margin-top: -11px;
+}
+#topology-hover-txt .form-wrapper {
+	border: none;
+}
+
+.port-title {
+	width: calc(100% - 25px);
+	font-weight: bold;
+	padding: 10px 0;
+	font-size: 14px;
+	margin-top: -10px
+}
 
 @-moz-keyframes spin {
     from { -moz-transform: rotate(0deg); }
@@ -1088,6 +1252,3 @@ table#flowTable.dataTable .divTableCell {
     from {transform:rotate(0deg);}
     to {transform:rotate(360deg);}
 }
-
-
-
