@@ -416,7 +416,8 @@ public class KafkaMessageCollector implements IFloodlightModule {
 
                     while (true) {
                         ConsumerRecords<String, String> records = consumer.poll(100);
-                        logger.debug("Received ConsumerRecords: {} messages", records.count());
+                        if (records.count() > 0)
+                            logger.debug("Received ConsumerRecords: {} messages", records.count());
                         for (ConsumerRecord<String, String> record : records) {
                             logger.trace("received message: {} - {}", record.offset(), record.value());
                             parseRecordExecutor.execute(new ParseRecord(record));
