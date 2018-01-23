@@ -3,14 +3,12 @@
 
 $(document).ready(function(){
 		
-	
 	common.getData("/flows/list","GET").then(function(response) {
 		$("#wait1").css("display", "none");
 		$('body').css('pointer-events','all'); 
 		showflowData(response); 
 	},
 	function(error){
-		response=[]
 		$("#wait1").css("display", "none");
 		$('body').css('pointer-events','all'); 
 		showflowData(response);
@@ -25,7 +23,8 @@ $(document).ready(function(){
 
 function showflowData(response){
 		
-	if(response.length==0) {
+	if(!response) {
+		response=[]
 		common.infoMessage('No Flows Avaliable','info');
 	}
 	
