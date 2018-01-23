@@ -35,7 +35,10 @@ RUN git clone https://github.com/noxrepo/pox.git /pox
 RUN pip install python-logstash requests
 
 ADD app /app
-RUN chmod 777 /app/*
+RUN chmod a+rx /app/entry-point.sh
+
+ADD dist /py-deps
+RUN pip install "$(echo /py-deps/kilda_mininet-*-none-any.whl | tail -n1)"
 
 WORKDIR /tmp
 
@@ -44,4 +47,4 @@ VOLUME ["/data"]
 WORKDIR /data
 
 # Default command.
-CMD ["bash"]
+CMD ["/app/entry-point.sh"]
