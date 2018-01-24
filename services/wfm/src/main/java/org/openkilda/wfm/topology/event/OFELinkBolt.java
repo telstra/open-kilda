@@ -131,7 +131,11 @@ public class OFELinkBolt
             }
 
             for (DiscoveryManager.Node node : discoveryPlan.discoveryFailure) {
-                    sendDiscoveryFailed(node.switchId, node.portId, tuple);
+                // this is somewhat incongruous - we send failure to TE, but we send
+                // discovery to FL ..
+                // Reality is that the handleDiscovery/handleFailure below does the work
+                //
+                sendDiscoveryFailed(node.switchId, node.portId, tuple);
             }
         } catch (IOException e) {
             logger.error("Unable to encode message: {}", e);
@@ -238,19 +242,22 @@ public class OFELinkBolt
         String switchID = node.getSwitchId();
         String portID = "" + node.getPortNo();
         IslChangeType state = discoveredIsl.getState();
-        logger.info("DISCO: ISL Event: switch={} port={} state={}", switchID, portID, state);
+        boolean stateChanged = false;
 
         if (IslChangeType.DISCOVERED.equals(state)) {
-            discovery.handleDiscovered(switchID, portID);
+            stateChanged = discovery.handleDiscovered(switchID, portID);
         } else if (IslChangeType.FAILED.equals(state)) {
-            discovery.handleFailed(switchID, portID);
+            stateChanged = discovery.handleFailed(switchID, portID);
         } else {
             // TODO: Should this be a warning? Evaluate whether any other state needs to be handled
             logger.warn("ISL Event: ignoring state: {}", state);
         }
 
-        String json = tuple.getString(0);
-        collector.emit(topoEngTopic, tuple, new Values(PAYLOAD, json));
+        if (stateChanged) {
+            logger.info("DISCO: ISL Event: switch={} port={} state={}", switchID, portID, state);
+            String json = tuple.getString(0);
+            collector.emit(topoEngTopic, tuple, new Values(PAYLOAD, json));
+        }
     }
 
     // TODO: Who are some of the recipients of IslFail message? ie who are we emitting this to?
