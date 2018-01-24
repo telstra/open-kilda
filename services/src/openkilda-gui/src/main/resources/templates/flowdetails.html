@@ -5,43 +5,17 @@
 <head>
 <meta charset="utf-8"></meta>
 <title>OPEN KILDA</title>
-<!-- CSS Style Sheets -->
 
-<link th:href="@{css/bootstrap.min.css}" rel="stylesheet"
-	type="text/css" />
-<link th:href="@{css/roboto.css}" rel="stylesheet" type="text/css" />
-<link th:href="@{css/font-awesome.min.css}" rel="stylesheet" type="text/css" />
-<!-- Custom CSS Style Sheets -->
-<link th:href="@{css/custom.css}" rel="stylesheet" type="text/css" />
-<link th:href="@{css/dygraph.css}" rel="stylesheet" type="text/css" />
-<link th:href="@{css/jquery.datetimepicker.css}" rel="stylesheet" type="text/css" />
-<link th:href="@{css/jquery.toast.min.css}" rel="stylesheet" type="text/css" />
-<link th:href="@{images/kilda.png}" rel="shortcut icon" type="image/png"></link>
+<link th:href="@{../images/kilda.png}" rel="shortcut icon" type="image/png"></link>
 
 </head>
 <body>
-	<div th:replace="fragments/header :: header"></div>
-	<aside class="main-sidebar" id="sidebar-left">
-		<!-- sidebar: style can be found in sidebar.less -->
-		<section class="sidebar">
-			<!-- sidebar menu: : style can be found in sidebar.less -->
-			<ul class="sidebar-menu tree" data-widget="tree">
-				<li class=""><a th:href="@{/home}"> <i class="fa fa-home"
-						aria-hidden="true"></i> <span>Home</span>
-				</a></li>
-				<li class=""><a th:href="@{/topology}"> <i
-						class="icon-topology" aria-hidden="true"></i><span>Topology</span>
-				</a></li>
+<div th:include="fragments/importResources:: commonPathImports"></div>
+<div th:include="fragments/importResources:: statsImports"></div>
+	<div th:replace="fragments/header :: header" ></div>
 
-				<li class="active"><a th:href="@{/flows}"> <i
-						class="icon-flows" aria-hidden="true"></i><span class="home-flows">Flows</span>
-				</a></li>
+	<div th:replace="fragments/menu :: menu" ></div>
 
-
-			</ul>
-		</section>
-		<!-- /.sidebar -->
-	</aside>
 	<div class="content">
 		<div class="row">
 			<div class="navigation-bar container-fluid">
@@ -188,7 +162,7 @@
 													<fieldset class="form-group">
 														<label class="col-xs-4 text-label">Autoreload(Sec):</label>
 														<div class="col-xs-8">
-															<input type="checkbox" id="check" onclick="autoreload()"
+															<input type="checkbox" id="check" onclick="graphAutoReload.autoreload()"
 																style="margin-top: 12px;" /> <input type="text"
 																id="autoreload" name="autoloadInput"
 																class="form-control"
@@ -226,24 +200,17 @@
 	</div>
 
 
+	<div th:replace="fragments/footer :: footer" ></div>
+	<script th:inline="javascript" src="../javascript/flowdetails.js"></script>
+	<script th:inline="javascript" src="../javascript/flow-graph-stats.js"></script>
+	<script th:inline="javascript" src="../javascript/common.js"></script>
+	
+	<script type="text/javascript">
+/* 		
+	$(document).ready(function() {
+		flowStats.getGraphDataPage();
+	}) */
 
-
-
-
-	<footer>
-		<p class="pull-right">&copy;2018 All rights reserved.</p>
-	</footer>
-	<div th:include="fragments/importResources:: commonImports"></div>
-	<script th:inline="javascript" src="javascript/moment.js"></script>
-	<script th:inline="javascript" src="javascript/jquery.toast.min.js"></script>
-	<script th:inline="javascript" src="javascript/jquery.toast.min.js"></script>
-
-	<script th:inline="javascript" src="javascript/jquery.datetimepicker.full.js"></script>
-	<script th:inline="javascript" src="javascript/dygraph.js"></script>
-
-	<script th:inline="javascript" src="javascript/flowdetails.js"></script>
-	<script th:inline="javascript" src="javascript/flow-graph-stats.js"></script>
-
-
+</script>
 </body>
 </html>
