@@ -20,6 +20,7 @@ import static org.openkilda.wfm.topology.flow.StreamType.REROUTE;
 import static org.openkilda.wfm.topology.flow.StreamType.RESTORE;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.common.annotations.VisibleForTesting;
 import org.apache.storm.state.InMemoryKeyValueState;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -131,6 +132,11 @@ public class CacheBolt
     }
 
     /**
+     * Initialization flag
+     */
+    private boolean isReceivedCacheInfo = false;
+
+    /**
      * {@inheritDoc}
      */
     @Override
@@ -190,36 +196,54 @@ public class CacheBolt
                 if (Destination.WFM_CACHE == info.getDestination()){
                     logger.debug("Storage content message {}", json);
                     handleNetworkDump(info.getData(), tuple);
+                    isReceivedCacheInfo = true;
+                    outputCollector.ack(tuple);
                 }
             } else if (bm instanceof InfoData) {
                 InfoData data = (InfoData) bm;
                 logger.debug("Cache update info data", data);
 
-                if (data instanceof SwitchInfoData) {
-                    logger.info("Cache update switch info data: {}", data);
+                if (!isReceivedCacheInfo)
+                {
+                    logger.debug("Cache message fail due bolt not initialized: "
+                                    + "component={}, stream={}, tuple={}",
+                            tuple.getSourceComponent(), tuple.getSourceStreamId(), tuple);
+                    outputCollector.fail(tuple);
+                    return;
+                }
 
-                    emitNetworkMessage(data, tuple, Utils.SYSTEM_CORRELATION_ID);
-                    handleSwitchEvent((SwitchInfoData) data, tuple);
+                try {
+                    if (data instanceof SwitchInfoData) {
+                        logger.info("Cache update switch info data: {}", data);
 
-                } else if (data instanceof IslInfoData) {
-                    logger.info("Cache update isl info data: {}", data);
+                        emitNetworkMessage(data, tuple, Utils.SYSTEM_CORRELATION_ID);
+                        handleSwitchEvent((SwitchInfoData) data, tuple);
 
-                    emitNetworkMessage(data, tuple, Utils.SYSTEM_CORRELATION_ID);
-                    handleIslEvent((IslInfoData) data, tuple);
+                    } else if (data instanceof IslInfoData) {
+                        logger.info("Cache update isl info data: {}", data);
 
-                } else if (data instanceof PortInfoData) {
-                    logger.info("Cache update port info data: {}", data);
+                        emitNetworkMessage(data, tuple, Utils.SYSTEM_CORRELATION_ID);
+                        handleIslEvent((IslInfoData) data, tuple);
 
-                    emitNetworkMessage(data, tuple, Utils.SYSTEM_CORRELATION_ID);
-                    handlePortEvent((PortInfoData) data, tuple);
+                    } else if (data instanceof PortInfoData) {
+                        logger.info("Cache update port info data: {}", data);
 
-                } else if (data instanceof FlowInfoData) {
-                    logger.info("Cache update info data: {}", data);
+                        emitNetworkMessage(data, tuple, Utils.SYSTEM_CORRELATION_ID);
+                        handlePortEvent((PortInfoData) data, tuple);
 
-                    FlowInfoData flowData = (FlowInfoData) data;
-                    handleFlowEvent(flowData, tuple);
-                } else {
-                    logger.debug("Skip undefined info data type {}", json);
+                    } else if (data instanceof FlowInfoData) {
+                        logger.info("Cache update info data: {}", data);
+
+                        FlowInfoData flowData = (FlowInfoData) data;
+                        handleFlowEvent(flowData, tuple);
+                    } else {
+                        logger.debug("Skip undefined info data type {}", json);
+                    }
+                }
+                finally {
+                    logger.debug("Cache message ack: component={}, stream={}, tuple={}",
+                            tuple.getSourceComponent(), tuple.getSourceStreamId(), tuple);
+                    outputCollector.ack(tuple);
                 }
             } else {
                 logger.debug("Skip undefined message type {}", json);
@@ -230,12 +254,6 @@ public class CacheBolt
 
         } catch (IOException exception) {
             logger.error("Could not deserialize message {}", tuple, exception);
-
-        } finally {
-            logger.debug("Cache message ack: component={}, stream={}, tuple={}",
-                    tuple.getSourceComponent(), tuple.getSourceStreamId(), tuple);
-
-            outputCollector.ack(tuple);
         }
 
         logger.trace("State after: {}", state);
@@ -554,6 +572,15 @@ public class CacheBolt
                 networkCache.dumpSwitches(), networkCache.dumpIsls());
         FlowDump flowDump = new FlowDump(flowCache.dumpFlows());
         return new CacheBoltState(networkDump, flowDump);
+    }
+
+    @VisibleForTesting
+    @Override
+    public void clearState() {
+        logger.info("State clear request from test");
+        initState(new InMemoryKeyValueState<>());
+        isReceivedCacheInfo = false;
+        timePassed = 0;
     }
 
     @Override

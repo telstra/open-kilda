@@ -37,6 +37,9 @@ public class CtrlAction extends AbstractAction {
             case "dump":
                 action = new DumpStateAction(this, message);
                 break;
+            case "clearState":
+                action = new ClearStateAction(this, message);
+                break;
             default:
                 throw new UnsupportedActionException(payload.getAction());
         }
