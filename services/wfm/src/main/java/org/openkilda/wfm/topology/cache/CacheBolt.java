@@ -237,7 +237,7 @@ public class CacheBolt
                         FlowInfoData flowData = (FlowInfoData) data;
                         handleFlowEvent(flowData, tuple);
                     } else {
-                        logger.debug("Skip undefined info data type {}", json);
+                        logger.error("Skip undefined info data type {}", json);
                     }
                 }
                 finally {
@@ -246,7 +246,7 @@ public class CacheBolt
                     outputCollector.ack(tuple);
                 }
             } else {
-                logger.debug("Skip undefined message type {}", json);
+                logger.error("Skip undefined message type {}", json);
             }
 
         } catch (CacheException exception) {
@@ -294,21 +294,12 @@ public class CacheBolt
         if (info instanceof NetworkInfoData) {
             NetworkInfoData data = (NetworkInfoData) info;
             logger.info("Fill network state {}", data);
+            logger.info("Load flows {}", data.getFlows().size());
+            data.getFlows().forEach(flowCache::putFlow);
+            logger.info("Loaded flows {}", flowCache);
             emitRestoreCommands(data.getFlows(), tuple);
             logger.info("Flows restore commands sent");
-        } else if (info instanceof SwitchInfoData) {
-            SwitchInfoData sw = (SwitchInfoData) info;
-            logger.info("Cached switch with id {}", sw.getSwitchId());
-            networkCache.createSwitch(sw);
-        } else if (info instanceof IslInfoData) {
-            IslInfoData isl = (IslInfoData) info;
-            logger.info("Cached isl with id {}", isl.getId());
-            networkCache.createIsl(isl);
-        } else if (info instanceof FlowInfoData) {
-            FlowInfoData flow = (FlowInfoData) info;
-            logger.info("Cached flow with id {}", flow.getFlowId());
-            flowCache.putFlow(flow.getPayload());
-            cacheWarmingService.addPredefinedFlow(flow.getPayload());
+
         } else {
             logger.warn("Incorrect network state {}", info);
         }

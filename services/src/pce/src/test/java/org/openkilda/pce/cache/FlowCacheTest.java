@@ -16,24 +16,21 @@
 package org.openkilda.pce.cache;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
 
+import edu.emory.mathcs.backport.java.util.Collections;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 import org.openkilda.messaging.error.CacheException;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
-import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.pce.NetworkTopologyConstants;
 import org.openkilda.pce.provider.PathComputer;
 import org.openkilda.pce.provider.PathComputerMock;
-
-import edu.emory.mathcs.backport.java.util.Collections;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -135,7 +132,11 @@ public class FlowCacheTest {
 
         assertEquals(1, flowCache.dumpFlows().size());
 
-        assertNotEquals(newFlow.hashCode(), oldFlow.hashCode());
+        // If two objects are equal according to the equals(Object) method, then calling the
+        // hashCode method on each of the two objects must produce the same integer result.
+        // from https://docs.oracle.com/javase/7/docs/api/java/lang/Object.html#hashCode()
+        // assertNotEquals(newFlow.hashCode(), oldFlow.hashCode());
+        assertEquals(newFlow.hashCode(), oldFlow.hashCode());
         assertEquals(oldFlow, newFlow);
     }
 
