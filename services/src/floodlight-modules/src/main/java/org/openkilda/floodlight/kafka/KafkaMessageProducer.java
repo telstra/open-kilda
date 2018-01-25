@@ -104,7 +104,8 @@ public class KafkaMessageProducer implements IFloodlightModule, IFloodlightServi
     public void postMessage(final String topic, final Message message) {
         try {
             String messageString = MAPPER.writeValueAsString(message);
-            logger.debug("Posting: topic={}, message={}", topic, messageString);
+            // (crimi) - uncomment for development only .. some messages (stats) fill up the log too quickly
+            // logger.debug("Posting: topic={}, message={}", topic, messageString);
             producer.send(new ProducerRecord<>(topic, messageString));
         } catch (JsonProcessingException e) {
             logger.error("Can not serialize message: {}", message, e);
