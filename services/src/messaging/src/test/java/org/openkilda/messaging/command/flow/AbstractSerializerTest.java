@@ -584,6 +584,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     public void dumpNetworkResponseTest() throws IOException, ClassNotFoundException {
         NetworkInfoData data = new NetworkInfoData(requester,
                 new HashSet<>(Arrays.asList(sw1, sw2)),
+                new HashSet<>(),
                 Collections.singleton(isl),
                 Collections.singleton(new ImmutablePair<>(flowModel, flowModel)));
         System.out.println(data);

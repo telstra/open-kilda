@@ -17,15 +17,26 @@ package org.openkilda.floodlight.kafka;
 
 import static org.openkilda.messaging.Utils.MAPPER;
 
+import com.google.common.annotations.VisibleForTesting;
+import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.core.module.FloodlightModuleException;
+import net.floodlightcontroller.core.module.IFloodlightModule;
+import net.floodlightcontroller.core.module.IFloodlightService;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.openkilda.floodlight.pathverification.IPathVerificationService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.floodlight.switchmanager.MeterPool;
+import org.openkilda.floodlight.switchmanager.SwitchEventCollector;
 import org.openkilda.messaging.Destination;
-import org.openkilda.messaging.BaseMessage;
+import org.openkilda.messaging.Topic;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
 import org.openkilda.messaging.command.discovery.DiscoverPathCommandData;
+import org.openkilda.messaging.command.discovery.NetworkCommandData;
 import org.openkilda.messaging.command.flow.InstallEgressFlow;
 import org.openkilda.messaging.command.flow.InstallIngressFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
@@ -34,18 +45,14 @@ import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.discovery.NetworkInfoData;
+import org.openkilda.messaging.info.event.PortChangeType;
+import org.openkilda.messaging.info.event.PortInfoData;
+import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
-import org.openkilda.messaging.Topic;
-
-
-import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.core.module.FloodlightModuleException;
-import net.floodlightcontroller.core.module.IFloodlightModule;
-import net.floodlightcontroller.core.module.IFloodlightService;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.slf4j.Logger;
@@ -57,13 +64,16 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
 public class KafkaMessageCollector implements IFloodlightModule {
     private static final Logger logger = LoggerFactory.getLogger(KafkaMessageCollector.class);
     private static final String INPUT_TOPIC = Topic.SPEAKER;
     private static final String OUTPUT_FLOW_TOPIC = Topic.FLOW;
+    private static final String OUTPUT_DISCO_TOPIC = Topic.TOPO_DISCO;
     private final MeterPool meterPool = new MeterPool();
     private Properties kafkaProps;
     private IPathVerificationService pathVerificationService;
@@ -147,6 +157,8 @@ public class KafkaMessageCollector implements IFloodlightModule {
                     doInstallOneSwitchFlow(message);
                 } else if (data instanceof RemoveFlow) {
                     doDeleteFlow(message);
+                } else if (data instanceof NetworkCommandData) {
+                    doNetworkDump(message);
                 } else {
                     logger.error("unknown data type: {}", data.toString());
                 }
@@ -362,6 +374,40 @@ public class KafkaMessageCollector implements IFloodlightModule {
             }
         }
 
+        /**
+         * Create network dump for OFELinkBolt
+         *
+         * @param message NetworkCommandData
+         */
+        private void doNetworkDump(final CommandMessage message) {
+            logger.info("Create network dump");
+            NetworkCommandData command = (NetworkCommandData) message.getData();
+
+            Map<DatapathId, IOFSwitch> allSwitchMap = switchManager.getAllSwitchMap();
+
+            Set<SwitchInfoData> switchesInfoData = allSwitchMap.values().stream().map(
+                    KafkaMessageCollector.this::buildSwitchInfoData).collect(Collectors.toSet());
+
+            Set<PortInfoData> portsInfoData = allSwitchMap.values().stream().flatMap(sw ->
+                    sw.getEnabledPorts().stream().map( port ->
+                            new PortInfoData(sw.getId().toString(), port.getPortNo().getPortNumber(), null,
+                            PortChangeType.UP)
+                        ).collect(Collectors.toSet()).stream())
+                    .collect(Collectors.toSet());
+
+            NetworkInfoData dump = new NetworkInfoData(
+                    command.getRequester(),
+                    switchesInfoData,
+                    portsInfoData,
+                    Collections.emptySet(),
+                    Collections.emptySet());
+
+            InfoMessage infoMessage = new InfoMessage(dump, System.currentTimeMillis(),
+                    message.getCorrelationId());
+
+            kafkaProducer.postMessage(OUTPUT_DISCO_TOPIC, infoMessage);
+        }
+
         private void parseRecord(ConsumerRecord record) {
             try {
                 if (record.value() instanceof String) {
@@ -434,5 +480,20 @@ public class KafkaMessageCollector implements IFloodlightModule {
                 }
             }
         }
+    }
+
+    @VisibleForTesting
+    public void processTestControllerMsg(CommandMessage message)
+    {
+        ParseRecord parse = new ParseRecord(null);
+        parse.doControllerMsg(message);
+    }
+
+    // I placed that code here for simplify mocking in tests
+    SwitchInfoData buildSwitchInfoData(IOFSwitch sw)
+    {
+        // I don't know is that correct
+        SwitchState state = sw.isActive() ? SwitchState.ACTIVATED : SwitchState.ADDED;
+        return SwitchEventCollector.buildSwitchInfoData(sw, state);
     }
 }

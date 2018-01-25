@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology;
 import org.apache.storm.task.IOutputCollector;
 import org.apache.storm.tuple.Tuple;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -64,5 +65,9 @@ public class OutputCollectorMock implements IOutputCollector {
 
     public int getMessagesCount(String streamId) {
         return messages.get(streamId).get();
+    }
+
+    public List<Integer> emit(String streamId, Tuple anchor, List<Object> tuple) {
+        return emit(streamId, Arrays.asList(anchor), tuple);
     }
 }
