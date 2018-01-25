@@ -43,11 +43,8 @@ known_commands = ['org.openkilda.messaging.command.flow.FlowCreateRequest',
 
 def main_loop():
     pool_size = config.getint('gevent', 'worker.pool.size')
-
-    logger.info('\n\nWHAT WHAT v002\n\n')
-    logger.info('Start gevent pool with size {}.'.format(pool_size))
-
     pool = gevent.pool.Pool(pool_size)
+    logger.info('Started gevent pool with size %d', pool_size)
 
     consumer = kafkareader.create_consumer(config)
 
@@ -59,7 +56,6 @@ def main_loop():
 
             if event.get_message_type() in known_messages\
                     or event.get_command() in known_commands:
-                logger.debug('Processing message payload', event.payload)
                 pool.spawn(topology_event_handler, event)
             else:
               logger.debug('Received unknown type or command %s', raw_event)
