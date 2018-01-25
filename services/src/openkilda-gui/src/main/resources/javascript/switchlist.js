@@ -23,8 +23,8 @@ $(document).ready(function(){
 
 function showSwitchData(response){
 	
-	if(response.length==0) {
-		
+	if(!response) {
+		response=[]
 		common.infoMessage('No Switch Avaliable','info');
 	}
 		
