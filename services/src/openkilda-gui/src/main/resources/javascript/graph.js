@@ -19,7 +19,7 @@ var api = {
 			url : APP_CONTEXT + "/switch/list",
 			type : 'GET',
 			success : function(response) {
-				if(response.length)
+				if(response)
 				{
 					responseData.push(response);
 					api.getLink();
@@ -42,7 +42,7 @@ var api = {
 			url : APP_CONTEXT + "/switch/links",
 			type : 'GET',
 			success : function(response) {
-				if (response != undefined && response.length) {
+				if (response) {
 					responseData.push(response);
 				} 
 				api.getFlowCount();
@@ -60,7 +60,7 @@ var api = {
 			type : 'GET',
 			success : function(response) {
 				var flows = [];
-				if (response.length) {
+				if (response) {
 					for(var i=0;i<response.length;i++)
 					{
 						if(response[i]["source_switch"] != response[i]["target_switch"]){
