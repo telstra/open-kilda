@@ -34,6 +34,7 @@ kafka_topic_topo_disco: "kilda.topo.disco"
 kafka_topic_topo_eng: "kilda.topo.eng"
 discovery_interval: "3"
 discovery_timeout: "9"
+worker_pool_size: "30000"
 logging:
   # method can be file of logstash
   json_file: False
