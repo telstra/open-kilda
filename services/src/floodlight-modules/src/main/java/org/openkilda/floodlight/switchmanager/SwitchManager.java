@@ -18,7 +18,6 @@ package org.openkilda.floodlight.switchmanager;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.VERIFICATION_BCAST_PACKET_DST;
-import static org.openkilda.floodlight.pathverification.PathVerificationService.VERIFICATION_PACKET_UDP_PORT;
 import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 import static org.openkilda.messaging.Utils.ETH_TYPE;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_12;
@@ -73,14 +72,12 @@ import org.projectfloodlight.openflow.protocol.meterband.OFMeterBandDrop;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxms;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.EthType;
-import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFGroup;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.OFVlanVidMatch;
 import org.projectfloodlight.openflow.types.TableId;
-import org.projectfloodlight.openflow.types.TransportPort;
 import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -483,6 +480,13 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             return installMeter(sw, dpid, bandwidth, burstSize, meterId);
         }
     }
+
+    @Override
+    public Map<DatapathId, IOFSwitch> getAllSwitchMap()
+    {
+        return ofSwitchService.getAllSwitchMap();
+    }
+
 
     private ImmutablePair<Long, Boolean> installMeter(final IOFSwitch sw, final DatapathId dpid, final long bandwidth,
                                                      final long burstSize, final long meterId) {
