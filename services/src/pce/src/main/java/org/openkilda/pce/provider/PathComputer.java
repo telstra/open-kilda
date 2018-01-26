@@ -49,22 +49,12 @@ public interface PathComputer extends Serializable {
     }
 
     /**
-     * Checks is path empty.
-     *
-     * @param path path
-     * @return true if path is empty. otherwise false
-     */
-    default boolean isEmpty(ImmutablePair<PathInfoData, PathInfoData> path) {
-        return path.getLeft().getPath().isEmpty() || path.getRight().getPath().isEmpty();
-    }
-
-    /**
      * Gets path between source and destination switch.
      *
      * @param flow {@link Flow} instances
      * @return {@link PathInfoData} instances
      */
-    ImmutablePair<PathInfoData, PathInfoData> getPath(Flow flow, Strategy strategy);
+    ImmutablePair<PathInfoData, PathInfoData> getPath(Flow flow, Strategy strategy) throws UnroutablePathException;
 
     /**
      * Gets path between source and destination switch.
@@ -75,5 +65,5 @@ public interface PathComputer extends Serializable {
      * @return {@link PathInfoData} instances
      */
     ImmutablePair<PathInfoData, PathInfoData> getPath(SwitchInfoData source, SwitchInfoData destination,
-                                                      int bandwidth, Strategy strategy);
+                                                      int bandwidth, Strategy strategy) throws UnroutablePathException;
 }

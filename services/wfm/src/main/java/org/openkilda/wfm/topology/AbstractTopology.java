@@ -15,14 +15,13 @@
 
 package org.openkilda.wfm.topology;
 
-import org.apache.storm.topology.BoltDeclarer;
-import org.openkilda.wfm.NameCollisionException;
-import org.openkilda.wfm.StreamNameCollisionException;
 import org.openkilda.messaging.Topic;
 import org.openkilda.wfm.ConfigurationException;
-import org.openkilda.wfm.LaunchEnvironment;
-import org.openkilda.wfm.PropertiesReader;
 import org.openkilda.wfm.CtrlBoltRef;
+import org.openkilda.wfm.LaunchEnvironment;
+import org.openkilda.wfm.NameCollisionException;
+import org.openkilda.wfm.PropertiesReader;
+import org.openkilda.wfm.StreamNameCollisionException;
 import org.openkilda.wfm.ctrl.RouteBolt;
 import org.openkilda.wfm.topology.utils.HealthCheckBolt;
 
@@ -46,6 +45,7 @@ import org.apache.storm.kafka.bolt.selector.DefaultTopicSelector;
 import org.apache.storm.kafka.spout.KafkaSpout;
 import org.apache.storm.spout.SchemeAsMultiScheme;
 import org.apache.storm.thrift.TException;
+import org.apache.storm.topology.BoltDeclarer;
 import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Fields;
 import org.kohsuke.args4j.CmdLineException;
@@ -136,6 +136,7 @@ public abstract class AbstractTopology implements Topology {
             logger.error("Unable to complete topology setup: {}", e.getMessage());
             errorCode = 4;
         } catch (Exception e) {
+            logger.error("Unhandled exception", e);
             errorCode = 1;
         }
 

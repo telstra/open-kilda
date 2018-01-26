@@ -481,16 +481,6 @@ public class FlowCache extends Cache {
     }
 
     /**
-     * Checks if flow is through single switch.
-     *
-     * @param flow flow
-     * @return true if source and destination switches are same for specified flow, otherwise false
-     */
-    public boolean isOneSwitchFlow(Flow flow) {
-        return flow.getSourceSwitch().equals(flow.getDestinationSwitch());
-    }
-
-    /**
      * Gets flow linked with specified switch id.
      *
      * @param flow     flow
