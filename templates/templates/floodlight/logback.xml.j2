@@ -8,9 +8,11 @@
 {% if logging.json_file %}
   <appender name="JSON" class="ch.qos.logback.core.rolling.RollingFileAppender">
     <file>{{ logging.logfile_path }}/floodlight/floodlight.log.json</file>
-    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+    <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
       <fileNamePattern>{{ logging.logfile_path }}/floodlight/floodlight.log.json.%d{yyyy-MM-dd}</fileNamePattern>
-      <maxHistory>10</maxHistory>
+       <maxFileSize>100MB</maxFileSize>
+       <totalSizeCap>20GB</totalSizeCap>
+       <maxHistory>10</maxHistory>
     </rollingPolicy>
     <encoder class="net.logstash.logback.encoder.LogstashEncoder" />
   </appender>
@@ -39,5 +41,6 @@
   <logger name="org.sdnplatform" level="ERROR"/>
   <logger name="org.openkilda" level="DEBUG"/>
   <logger name="ch.qos.logback" level="DEBUG"/>
+  <logger name="org.apache.kafka.clients" level="DEBUG"/>
 
 </configuration>
