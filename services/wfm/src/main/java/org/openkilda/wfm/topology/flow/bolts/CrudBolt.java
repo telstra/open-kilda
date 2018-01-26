@@ -53,14 +53,24 @@ import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.pce.cache.FlowCache;
 import org.openkilda.pce.cache.ResourceCache;
+import org.openkilda.pce.provider.Auth;
 import org.openkilda.pce.provider.PathComputer;
 import org.openkilda.pce.provider.PathComputer.Strategy;
+import org.openkilda.pce.provider.UnroutablePathException;
 import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.flow.ComponentType;
 import org.openkilda.wfm.topology.flow.FlowTopology;
 import org.openkilda.wfm.topology.flow.StreamType;
+
+import org.apache.storm.state.InMemoryKeyValueState;
+import org.apache.storm.task.OutputCollector;
+import org.apache.storm.task.TopologyContext;
+import org.apache.storm.topology.OutputFieldsDeclarer;
+import org.apache.storm.topology.base.BaseStatefulBolt;
+import org.apache.storm.tuple.Tuple;
+import org.apache.storm.tuple.Values;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -90,6 +100,7 @@ public class CrudBolt
      * Path computation instance.
      */
     private PathComputer pathComputer;
+    private final Auth pathComputerAuth;
 
     /**
      * Flows state.
@@ -107,10 +118,10 @@ public class CrudBolt
     /**
      * Instance constructor.
      *
-     * @param pathComputer {@link PathComputer} instance
+     * @param pathComputerAuth {@link Auth} instance
      */
-    public CrudBolt(PathComputer pathComputer) {
-        this.pathComputer = pathComputer;
+    public CrudBolt(Auth pathComputerAuth) {
+        this.pathComputerAuth = pathComputerAuth;
     }
 
     /**
@@ -151,6 +162,8 @@ public class CrudBolt
     public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
         this.context = topologyContext;
         this.outputCollector = outputCollector;
+
+        pathComputer = pathComputerAuth.connect();
     }
 
     /**
@@ -296,28 +309,26 @@ public class CrudBolt
     private void handleCreateRequest(CommandMessage message, Tuple tuple) throws IOException {
         Flow requestedFlow = ((FlowCreateRequest) message.getData()).getPayload();
 
-        ImmutablePair<PathInfoData, PathInfoData> path =
-                pathComputer.getPath(requestedFlow, Strategy.HOPS);
-        logger.info("Created flow path: {}", path);
+        try {
+            ImmutablePair<PathInfoData, PathInfoData> path = pathComputer.getPath(requestedFlow, Strategy.HOPS);
+            logger.info("Created flow path: {}", path);
 
-        // TODO: Can we avoid special logic for "isOneSwitchFlow" .. make it the responsibility of the pathComputer?
-        if (!flowCache.isOneSwitchFlow(requestedFlow) && pathComputer.isEmpty(path)) {
+            ImmutablePair<Flow, Flow> flow = flowCache.createFlow(requestedFlow, path);
+            logger.info("Created flow: {}", flow);
+
+            FlowInfoData data = new FlowInfoData(requestedFlow.getFlowId(), flow, FlowOperation.CREATE,
+                    message.getCorrelationId());
+            InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), message.getCorrelationId());
+            Values topology = new Values(MAPPER.writeValueAsString(infoMessage));
+            outputCollector.emit(StreamType.CREATE.toString(), tuple, topology);
+
+            Values northbound = new Values(new InfoMessage(new FlowResponse(buildFlowResponse(flow)),
+                    message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
+            outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
+        } catch (UnroutablePathException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.CREATION_FAILURE, "Could not create flow", "Path was not found");
         }
-
-        ImmutablePair<Flow, Flow> flow = flowCache.createFlow(requestedFlow, path);
-        logger.info("Created flow: {}", flow);
-
-        FlowInfoData data = new FlowInfoData(requestedFlow.getFlowId(), flow, FlowOperation.CREATE,
-                message.getCorrelationId());
-        InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), message.getCorrelationId());
-        Values topology = new Values(MAPPER.writeValueAsString(infoMessage));
-        outputCollector.emit(StreamType.CREATE.toString(), tuple, topology);
-
-        Values northbound = new Values(new InfoMessage(new FlowResponse(buildFlowResponse(flow)),
-                message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
-        outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
     }
 
     private void handleRerouteRequest(CommandMessage message, Tuple tuple) throws IOException {
@@ -332,27 +343,26 @@ public class CrudBolt
                 flow.getLeft().setState(FlowState.DOWN);
                 flow.getRight().setState(FlowState.DOWN);
 
-                ImmutablePair<PathInfoData, PathInfoData> path =
-                        pathComputer.getPath(requestedFlow, Strategy.HOPS);
-                logger.info("Rerouted flow path: {}", path);
+                try {
+                    ImmutablePair<PathInfoData, PathInfoData> path = pathComputer.getPath(requestedFlow, Strategy.HOPS);
+                    logger.info("Rerouted flow path: {}", path);
 
-                if (!flowCache.isOneSwitchFlow(requestedFlow) && pathComputer.isEmpty(path)) {
+                    flow = flowCache.updateFlow(requestedFlow, path);
+                    logger.info("Rerouted flow: {}", flow);
+
+                    FlowInfoData data = new FlowInfoData(requestedFlow.getFlowId(), flow, FlowOperation.UPDATE,
+                            message.getCorrelationId());
+                    InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), message.getCorrelationId());
+                    Values topology = new Values(MAPPER.writeValueAsString(infoMessage));
+                    outputCollector.emit(StreamType.UPDATE.toString(), tuple, topology);
+
+                    Values northbound = new Values(new InfoMessage(new FlowResponse(buildFlowResponse(flow)),
+                            message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
+                    outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
+                } catch (UnroutablePathException e) {
                     throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                             ErrorType.UPDATE_FAILURE, "Could not create flow", "Path was not found");
                 }
-
-                flow = flowCache.updateFlow(requestedFlow, path);
-                logger.info("Rerouted flow: {}", flow);
-
-                FlowInfoData data = new FlowInfoData(requestedFlow.getFlowId(), flow, FlowOperation.UPDATE,
-                        message.getCorrelationId());
-                InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), message.getCorrelationId());
-                Values topology = new Values(MAPPER.writeValueAsString(infoMessage));
-                outputCollector.emit(StreamType.UPDATE.toString(), tuple, topology);
-
-                Values northbound = new Values(new InfoMessage(new FlowResponse(buildFlowResponse(flow)),
-                        message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
-                outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
                 break;
 
             case CREATE:
@@ -378,53 +388,51 @@ public class CrudBolt
     private void handleRestoreRequest(CommandMessage message, Tuple tuple) throws IOException {
         ImmutablePair<Flow, Flow> requestedFlow = ((FlowRestoreRequest) message.getData()).getPayload();
 
-        ImmutablePair<PathInfoData, PathInfoData> path =
-                pathComputer.getPath(requestedFlow.getLeft(), Strategy.HOPS);
-        logger.info("Restored flow path: {}", path);
+        try {
+            ImmutablePair<PathInfoData, PathInfoData> path = pathComputer.getPath(requestedFlow.getLeft(), Strategy.HOPS);
+            logger.info("Restored flow path: {}", path);
 
-        if (!flowCache.isOneSwitchFlow(requestedFlow) && pathComputer.isEmpty(path)) {
+            ImmutablePair<Flow, Flow> flow;
+            if (flowCache.cacheContainsFlow(requestedFlow.getLeft().getFlowId())) {
+                flow = flowCache.updateFlow(requestedFlow, path);
+            } else {
+                flow = flowCache.createFlow(requestedFlow, path);
+            }
+            logger.info("Restored flow: {}", flow);
+
+            Values topology = new Values(Utils.MAPPER.writeValueAsString(
+                    new FlowInfoData(requestedFlow.getLeft().getFlowId(), flow,
+                            FlowOperation.UPDATE, message.getCorrelationId())));
+            outputCollector.emit(StreamType.UPDATE.toString(), tuple, topology);
+        } catch (UnroutablePathException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.CREATION_FAILURE, "Could not restore flow", "Path was not found");
         }
-
-        ImmutablePair<Flow, Flow> flow;
-        if (flowCache.cacheContainsFlow(requestedFlow.getLeft().getFlowId())) {
-            flow = flowCache.updateFlow(requestedFlow, path);
-        } else {
-            flow = flowCache.createFlow(requestedFlow, path);
-        }
-        logger.info("Restored flow: {}", flow);
-
-        Values topology = new Values(Utils.MAPPER.writeValueAsString(
-                new FlowInfoData(requestedFlow.getLeft().getFlowId(), flow,
-                        FlowOperation.UPDATE, message.getCorrelationId())));
-        outputCollector.emit(StreamType.UPDATE.toString(), tuple, topology);
     }
 
     private void handleUpdateRequest(CommandMessage message, Tuple tuple) throws IOException {
         Flow requestedFlow = ((FlowUpdateRequest) message.getData()).getPayload();
 
-        ImmutablePair<PathInfoData, PathInfoData> path =
-                pathComputer.getPath(requestedFlow, Strategy.HOPS);
-        logger.info("Updated flow path: {}", path);
+        try {
+            ImmutablePair<PathInfoData, PathInfoData> path = pathComputer.getPath(requestedFlow, Strategy.HOPS);
+            logger.info("Updated flow path: {}", path);
 
-        if (!flowCache.isOneSwitchFlow(requestedFlow) && pathComputer.isEmpty(path)) {
+            ImmutablePair<Flow, Flow> flow = flowCache.updateFlow(requestedFlow, path);
+            logger.info("Updated flow: {}", flow);
+
+            FlowInfoData data = new FlowInfoData(requestedFlow.getFlowId(), flow, FlowOperation.UPDATE,
+                    message.getCorrelationId());
+            InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), message.getCorrelationId());
+            Values topology = new Values(MAPPER.writeValueAsString(infoMessage));
+            outputCollector.emit(StreamType.UPDATE.toString(), tuple, topology);
+
+            Values northbound = new Values(new InfoMessage(new FlowResponse(buildFlowResponse(flow)),
+                    message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
+            outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
+        } catch (UnroutablePathException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.UPDATE_FAILURE, "Could not create flow", "Path was not found");
         }
-
-        ImmutablePair<Flow, Flow> flow = flowCache.updateFlow(requestedFlow, path);
-        logger.info("Updated flow: {}", flow);
-
-        FlowInfoData data = new FlowInfoData(requestedFlow.getFlowId(), flow, FlowOperation.UPDATE,
-                message.getCorrelationId());
-        InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), message.getCorrelationId());
-        Values topology = new Values(MAPPER.writeValueAsString(infoMessage));
-        outputCollector.emit(StreamType.UPDATE.toString(), tuple, topology);
-
-        Values northbound = new Values(new InfoMessage(new FlowResponse(buildFlowResponse(flow)),
-                message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
-        outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
     }
 
     private void handleDumpRequest(CommandMessage message, Tuple tuple) {
