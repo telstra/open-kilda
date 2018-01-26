@@ -7,7 +7,7 @@ topo.eng.topic={{ kafka_topic_topo_eng }}
 bootstrap.servers={{ kafka_hosts }}
 
 [gevent]
-worker.pool.size=1024
+worker.pool.size={{ worker_pool_size }}
 
 [zookeeper]
 hosts={{ zookeeper_hosts }}
