@@ -1,5 +1,15 @@
 package org.openkilda.security.filter;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.exc.MismatchedInputException;
+
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.Arrays;
@@ -12,23 +22,15 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.web.filter.OncePerRequestFilter;
-
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 /**
  * The Class LoggingFilter.
- * 
+ *
  * @author Gaurav Chugh
  */
 public class LoggingFilter extends OncePerRequestFilter {
 
     /** The Constant _log. */
-    private static final Logger _log = LoggerFactory.getLogger(LoggingFilter.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(LoggingFilter.class);
 
     /** The Constant REQUEST_PREFIX. */
     private static final String REQUEST_PREFIX = "Request: ";
@@ -38,10 +40,9 @@ public class LoggingFilter extends OncePerRequestFilter {
 
     /*
      * (non-Javadoc)
-     * 
-     * @see org.springframework.web.filter.OncePerRequestFilter#doFilterInternal(
-     * javax.servlet.http. HttpServletRequest, javax.servlet.http.HttpServletResponse,
-     * javax.servlet.FilterChain)
+     *
+     * @see org.springframework.web.filter.OncePerRequestFilter#doFilterInternal(javax.servlet.http.
+     * HttpServletRequest, javax.servlet.http.HttpServletResponse, javax.servlet.FilterChain)
      */
     @Override
     protected void doFilterInternal(final HttpServletRequest request,
@@ -64,22 +65,24 @@ public class LoggingFilter extends OncePerRequestFilter {
             }
         }
 
-        if (isMatch)
+        if (isMatch) {
             logRequest(request);
+        }
         ResponseWrapper responseWrapper = new ResponseWrapper(requestId, response);
         try {
             filterChain.doFilter(request, responseWrapper);
         } finally {
             try {
-                if (isMatch)
+                if (isMatch) {
                     logResponse(responseWrapper);
+                }
             } catch (Exception e) {
-                _log.error("[doFilterInternal] Exception: " + e.getMessage(), e);
+                LOGGER.error("[doFilterInternal] Exception: " + e.getMessage(), e);
             }
         }
         long elapsedTime = System.currentTimeMillis() - startTime;
         if (60000 - elapsedTime < 0) {
-            _log.info("[DelayedRequestDetail] - Time Taken: '{}', URL: '{}'", elapsedTime,
+            LOGGER.info("[DelayedRequestDetail] - Time Taken: '{}', URL: '{}'", elapsedTime,
                     request.getRequestURL());
         }
     }
@@ -105,7 +108,7 @@ public class LoggingFilter extends OncePerRequestFilter {
             msg.append("', \n\tparams: '").append(key + " : " + parameters.get(key));
         });
 
-        _log.info("[logRequest] Request: " + msg.toString());
+        LOGGER.info("[logRequest] Request: " + msg.toString());
     }
 
     /**
@@ -122,19 +125,20 @@ public class LoggingFilter extends OncePerRequestFilter {
         StringBuilder msg = new StringBuilder();
         msg.append(RESPONSE_PREFIX);
         msg.append("\nid: '").append((response.getId())).append("' ");
+        String content = null;
         try {
 
             ObjectMapper mapper = new ObjectMapper();
-            Object json =
-                    mapper.readValue(
-                            new String(response.getData(), response.getCharacterEncoding()),
-                            Object.class);
+            content = new String(response.getData(), response.getCharacterEncoding());
+            Object json = mapper.readValue(content, Object.class);
 
             msg.append("\nResponse: \n").append(
                     mapper.writerWithDefaultPrettyPrinter().writeValueAsString(json));
         } catch (UnsupportedEncodingException e) {
-            _log.error("[logResponse] Exception: " + e.getMessage(), e);
+            LOGGER.error("[logResponse] Exception: " + e.getMessage(), e);
+        } catch (MismatchedInputException e) {
+            msg.append("\nResponse: \n").append(content);
         }
-        _log.info("[logResponse] Response: " + msg.toString());
+        LOGGER.info("[logResponse] Response: " + msg.toString());
     }
 }

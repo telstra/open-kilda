@@ -4,6 +4,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -16,13 +20,10 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.mockito.runners.MockitoJUnitRunner;
-import org.openkilda.model.response.PortInfo;
-import org.openkilda.model.response.SwitchRelationData;
-import org.openkilda.service.impl.ServiceSwitchImpl;
+import org.openkilda.model.PortInfo;
+import org.openkilda.model.SwitchInfo;
+import org.openkilda.service.SwitchService;
 import org.openkilda.test.MockitoExtension;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 @ExtendWith(MockitoExtension.class)
 @RunWith(MockitoJUnitRunner.class)
@@ -31,7 +32,7 @@ public class SwitchControllerTest {
 	private MockMvc mockMvc;
 
 	@Mock
-	private ServiceSwitchImpl processSwitchDetails;
+	private SwitchService serviceSwitch;
 
 	@InjectMocks
 	private SwitchController switchController;
@@ -46,11 +47,9 @@ public class SwitchControllerTest {
 
 	@Test
 	public void testGetAllSwitchesDetails() {
-
-		SwitchRelationData switchDataList = new SwitchRelationData();
-
-		Mockito.when(processSwitchDetails.getswitchdataList()).thenReturn(switchDataList);
+		List<SwitchInfo> switchesInfo = new ArrayList<>();
 		try {
+	        Mockito.when(serviceSwitch.getSwitches()).thenReturn(switchesInfo);
 			mockMvc.perform(get("/switch").contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk());
 			assertTrue(true);
 		} catch (Exception exception) {
@@ -60,49 +59,25 @@ public class SwitchControllerTest {
 
 	@Test
 	public void testGetSwichPortDetails() {
-
 		List<PortInfo> portResponse = new ArrayList<PortInfo>();
-
-		Mockito.when(processSwitchDetails.getPortResponseBasedOnSwitchId(switchUuid)).thenReturn(portResponse);
-
 		try {
+		    Mockito.when(serviceSwitch.getPortsBySwitchId(switchUuid)).thenReturn(portResponse);
 			mockMvc.perform(get("/switch/{switchId}/ports", switchUuid).contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk());
 			assertTrue(true);
 		} catch (Exception e) {
 			assertTrue(false);
 		}
-
 	}
 
 	@Test
 	public void testGetSwichLinkDetails() {
-
-		SwitchRelationData response = new SwitchRelationData();
-
-		Mockito.when(processSwitchDetails.getswitchdataList()).thenReturn(response);
-
+        List<SwitchInfo> switchesInfo = new ArrayList<>();
 		try {
+	        Mockito.when(serviceSwitch.getSwitches()).thenReturn(switchesInfo);
 			mockMvc.perform(get("/switch/links").contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk());
 			assertTrue(true);
 		} catch (Exception e) {
 			assertTrue(false);
 		}
-
 	}
-
-	@Test
-	public void testGetSwichFlowDetails() {
-
-		SwitchRelationData switchDataList = new SwitchRelationData();
-
-		Mockito.when(processSwitchDetails.getswitchdataList()).thenReturn(switchDataList);
-
-		try {
-			mockMvc.perform(get("/switch/flows").contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk());
-			assertTrue(true);
-		} catch (Exception e) {
-			assertTrue(false);
-		}
-	}
-
 }

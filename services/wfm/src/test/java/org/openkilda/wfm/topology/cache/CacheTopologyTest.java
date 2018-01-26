@@ -15,17 +15,26 @@
 
 package org.openkilda.wfm.topology.cache;
 
-import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import edu.emory.mathcs.backport.java.util.Collections;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.storm.Config;
+import org.apache.storm.generated.StormTopology;
+import org.apache.storm.utils.Utils;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
+import org.junit.Ignore;
+import org.junit.Test;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
-import org.openkilda.messaging.Topic;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.FlowRestoreRequest;
-import org.openkilda.messaging.ctrl.AbstractDumpState;
 import org.openkilda.messaging.ctrl.CtrlRequest;
 import org.openkilda.messaging.ctrl.CtrlResponse;
 import org.openkilda.messaging.ctrl.DumpStateResponseData;
@@ -42,23 +51,11 @@ import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.wfm.AbstractStormTest;
 import org.openkilda.wfm.topology.TestKafkaConsumer;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import edu.emory.mathcs.backport.java.util.Collections;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.storm.Config;
-import org.apache.storm.generated.StormTopology;
-import org.apache.storm.utils.Utils;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Ignore;
-import org.junit.Test;
-
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 
 public class CacheTopologyTest extends AbstractStormTest {
     private static CacheTopology topology;
@@ -89,6 +86,9 @@ public class CacheTopologyTest extends AbstractStormTest {
     public static void setupOnce() throws Exception {
         AbstractStormTest.setupOnce();
 
+        flows.add(firstFlow);
+        flows.add(secondFlow);
+
         topology = new CacheTopology(makeLaunchEnvironment());
         StormTopology stormTopology = topology.createTopology();
         Config config = stormConfig();
@@ -112,14 +112,10 @@ public class CacheTopologyTest extends AbstractStormTest {
         );
         ctrlConsumer.start();
 
-        Utils.sleep(10000);
-
-        System.out.println("Waiting For Dump Request");
-        TimeUnit.SECONDS.sleep(topology.getConfig().getDiscoveryTimeout());
-
-        System.out.println("Waited For Dump Request");
-        teConsumer.pollMessage();
+        waitDumpRequest();
+        sendNetworkDump(dump);
     }
+
 
     @AfterClass
     public static void teardownOnce() throws Exception {
@@ -127,6 +123,7 @@ public class CacheTopologyTest extends AbstractStormTest {
         Utils.sleep(4 * 1000);
         AbstractStormTest.teardownOnce();
     }
+
 
     @Test
     public void cacheReceivesFlowTopologyUpdatesAndSendsToTopologyEngine() throws Exception {
@@ -168,26 +165,64 @@ public class CacheTopologyTest extends AbstractStormTest {
     public void cacheReceivesNetworkDumpAndSendsToFlowTopology() throws Exception {
         System.out.println("Dump Test");
 
-        Set<String> flowIds = new HashSet<>(Arrays.asList(firstFlowId, secondFlowId));
-        flows.add(firstFlow);
-        flows.add(secondFlow);
-
-        sendNetworkDump(dump);
-
         ConsumerRecord<String, String> firstRecord = flowConsumer.pollMessage();
-        ConsumerRecord<String, String> secondRecord = flowConsumer.pollMessage();
-
         assertNotNull(firstRecord);
         assertNotNull(firstRecord.value());
 
+        Set<String> flowIds = new HashSet<>(Arrays.asList(firstFlowId, secondFlowId));
         CommandMessage commandMessage = objectMapper.readValue(firstRecord.value(), CommandMessage.class);
         FlowRestoreRequest commandData = (FlowRestoreRequest) commandMessage.getData();
         assertNotNull(commandData);
         assertTrue(flowIds.contains(commandData.getPayload().getLeft().getFlowId()));
 
+        ConsumerRecord<String, String> secondRecord = flowConsumer.pollMessage();
         assertNotNull(secondRecord);
         assertNotNull(secondRecord.value());
 
+        commandMessage = objectMapper.readValue(secondRecord.value(), CommandMessage.class);
+        commandData = (FlowRestoreRequest) commandMessage.getData();
+        assertNotNull(commandData);
+        assertTrue(flowIds.contains(commandData.getPayload().getLeft().getFlowId()));
+    }
+
+    @Test
+    public void cacheReceivesInfoDataBeforeNetworkDump() throws Exception {
+        System.out.println("Cache receives InfoData before NetworkDump Test");
+
+        sendClearState();
+        waitDumpRequest();
+
+        // Send switchUpdate info to not initialized bolt
+        sendSwitchUpdate(sw);
+
+        // Bolt must fail that tuple
+        ConsumerRecord<String, String> record = teConsumer.pollMessage();
+        assertNull(record);
+
+        // Init bolt with dump from TE
+        sendNetworkDump(dump);
+
+        // Check if SwitchInfoData is ok
+        record = teConsumer.pollMessage();
+        assertNotNull(record);
+        assertNotNull(record.value());
+        InfoMessage infoMessage = objectMapper.readValue(record.value(), InfoMessage.class);
+        SwitchInfoData data = (SwitchInfoData) infoMessage.getData();
+        assertNotNull(data);
+        assertEquals(sw, data);
+
+        Set<String> flowIds = new HashSet<>(Arrays.asList(firstFlowId, secondFlowId));
+        ConsumerRecord<String, String> firstRecord = flowConsumer.pollMessage();
+        assertNotNull(firstRecord);
+        assertNotNull(firstRecord.value());
+        CommandMessage commandMessage = objectMapper.readValue(firstRecord.value(), CommandMessage.class);
+        FlowRestoreRequest commandData = (FlowRestoreRequest) commandMessage.getData();
+        assertNotNull(commandData);
+        assertTrue(flowIds.contains(commandData.getPayload().getLeft().getFlowId()));
+
+        ConsumerRecord<String, String> secondRecord = flowConsumer.pollMessage();
+        assertNotNull(secondRecord);
+        assertNotNull(secondRecord.value());
         commandMessage = objectMapper.readValue(secondRecord.value(), CommandMessage.class);
         commandData = (FlowRestoreRequest) commandMessage.getData();
         assertNotNull(commandData);
@@ -254,28 +289,45 @@ public class CacheTopologyTest extends AbstractStormTest {
         assertEquals(request.getCorrelationId(), response.getCorrelationId());
     }
 
-    private void sendMessage(Object object, String topic) throws IOException {
+    private static void sendMessage(Object object, String topic) throws IOException {
         String request = objectMapper.writeValueAsString(object);
         kProducer.pushMessage(topic, request);
     }
 
-    private void sendNetworkDump(NetworkInfoData data) throws IOException {
+    private static void sendNetworkDump(NetworkInfoData data) throws IOException {
         System.out.println("Topology-Engine: Send Network Dump");
         InfoMessage info = new InfoMessage(data, 0, DEFAULT_CORRELATION_ID, Destination.WFM_CACHE);
         sendMessage(info, topology.getConfig().getKafkaTopoCacheTopic());
     }
 
-    private void sendSwitchUpdate(SwitchInfoData sw) throws IOException {
+    private static void sendSwitchUpdate(SwitchInfoData sw) throws IOException {
         System.out.println("Wfm Topology: Send Switch Add Request");
         sendMessage(sw, topology.getConfig().getKafkaTopoCacheTopic());
     }
 
-    private void sendFlowUpdate(ImmutablePair<Flow, Flow> flow) throws IOException {
+    private static void sendFlowUpdate(ImmutablePair<Flow, Flow> flow) throws IOException {
         System.out.println("Flow Topology: Send Flow Creation Request");
         FlowInfoData data = new FlowInfoData(flow.getLeft().getFlowId(),
                 flow, FlowOperation.CREATE, DEFAULT_CORRELATION_ID);
         // TODO: as part of getting rid of OutputTopic, used TopoDiscoTopic. This feels wrong for
         // Flows.
         sendMessage(data, topology.getConfig().getKafkaTopoCacheTopic());
+    }
+
+    private static void sendClearState() throws IOException, InterruptedException {
+        CtrlRequest request = new CtrlRequest(
+                "cachetopology/cache", new RequestData("clearState"), 1, "route-correlation-id",
+                Destination.WFM_CTRL);
+        sendMessage(request, topology.getConfig().getKafkaCtrlTopic());
+    }
+
+    private static void waitDumpRequest() throws InterruptedException {
+        int sec = 0;
+        while (teConsumer.pollMessage(1000) == null)
+        {
+            System.out.println("Waiting For Dump Request");
+            assertTrue("Waiting For Dump Request failed", ++sec < 20);
+        }
+        System.out.println("Waiting For Dump Request");
     }
 }

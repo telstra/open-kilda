@@ -8,21 +8,41 @@ public class DiscoveryNode implements Serializable {
     private final static int NEVER = 999999;
     private final String switchId;
     private final String portId;
-    private int age;
+    /** How many attempts have we made .. will fail after X attempts and no response */
+    private int attempts;
     private int timeCounter;
     private int checkInterval;
-    private int consecutiveFailures;
+    /** Only increases if we get a response **/
+    private int consecutiveFailure;
+    private int consecutiveSuccess;
     private int forlornThreshold;
-
+    /**
+     * We'll use this flag to identify ports that have successfully found an ISL.
+     * It can be used to track the state of a link:
+     *  - If foundIsl is false, and we find one, then send update to TE
+     *  - If foundIsl is false, and we get failures, don't send anything to TE
+     *  - If foundIsl is true, and we get success, and timeCounter > 0, then update TE
+     *  - If foundIsl is true, and we get failure, and timeCounter = 0, then update TE
+     *
+     *  TODO: we should consider adding a policy to determine how/when to notify TE upon ISL Failure.
+     *          We've discussed something like "on 3rd failure", but should look at flapping history, etc.
+     *          At Present, before "update TE on state change" added, we notifief TE of each event.
+     *
+     * To enable richer business rules (flapping), probably should include some history about counts.
+     * To be clear, this class isn't where the business logic / policy goes; it is just the
+     * holder of information.
+     */
+    private boolean foundIsl;
 
     public DiscoveryNode(String switchId, String portId, int checkInterval, int forlornThreshold) {
         this.switchId = switchId;
         this.portId = portId;
-        this.age = 0;
         this.timeCounter = 0;
         this.checkInterval = checkInterval;
         this.forlornThreshold = forlornThreshold;
-        consecutiveFailures = 0;
+        this.consecutiveFailure = 0;
+        this.consecutiveSuccess = 0;
+        this.foundIsl = false;
     }
 
     public DiscoveryNode(String switchId, String portId) {
@@ -35,8 +55,21 @@ public class DiscoveryNode implements Serializable {
         this(switchId, "", 0, NEVER);
     }
 
+    public void setFoundIsl(boolean foundIsl){
+        this.foundIsl = foundIsl;
+    }
+
+    public boolean isFoundIsl(){
+        return this.foundIsl;
+    }
+
+    /**
+     * Whereas renew is called when a successful Discovery is received, it isn't the place to
+     * put "foundIsl". This is out of fear that renew() could be called from somewhere else. The
+     * semantics of "renew" doesn't say "found ISL"
+     */
     public void renew() {
-        age = 0;
+        attempts = 0;
         timeCounter = 0;
     }
 
@@ -44,15 +77,35 @@ public class DiscoveryNode implements Serializable {
         if (forlornThreshold == NEVER) { // never gonna give a link up.
              return false;
         }
-        return consecutiveFailures >= forlornThreshold;
+        return consecutiveFailure >= forlornThreshold;
     }
 
-    public void redeem() {
-        consecutiveFailures = 0;
+    public void clearConsecutiveFailure() {
+        consecutiveFailure = 0;
     }
 
-    public void incAge() {
-        age++;
+    public void clearConsecutiveSuccess() {
+        consecutiveSuccess = 0;
+    }
+
+    public int getConsecutiveFailure(){
+        return this.consecutiveFailure;
+    }
+
+    public int getConsecutiveSuccess(){
+        return this.consecutiveSuccess;
+    }
+
+    public void incConsecutiveFailure() {
+        consecutiveFailure++;
+    }
+
+    public void incConsecutiveSuccess() {
+        consecutiveSuccess++;
+    }
+
+    public void incAttempts() {
+        attempts++;
     }
 
     public void logTick() {
@@ -63,12 +116,11 @@ public class DiscoveryNode implements Serializable {
         timeCounter = 0;
     }
 
-    public boolean isStale(Integer ageLimit) {
-        return ageLimit <= age;
-    }
-
-    public void countFailure() {
-        consecutiveFailures++;
+    /**
+     * @return true if attempts is greater than or equal to the limit.
+     */
+    public boolean maxAttempts(Integer attemptLimit) {
+        return attemptLimit <= attempts;
     }
 
     public boolean timeToCheck() {
@@ -106,7 +158,9 @@ public class DiscoveryNode implements Serializable {
         return "DiscoveryNode{" +
                 "switchId='" + switchId + '\'' +
                 ", portId='" + portId + '\'' +
-                ", age=" + age +
+                ", attempts=" + attempts +
+                ", consecutiveFailure=" + consecutiveFailure +
+                ", consecutiveSuccess=" + consecutiveSuccess +
                 '}';
     }
 }
