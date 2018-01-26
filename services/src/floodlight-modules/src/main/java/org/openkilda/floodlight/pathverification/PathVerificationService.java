@@ -231,7 +231,7 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
     @Override
     public boolean sendDiscoveryMessage(DatapathId srcSwId, OFPort port) {
         IOFSwitch srcSwitch = switchService.getSwitch(srcSwId);
-        if (srcSwitch == null) {
+        if (srcSwitch == null || srcSwitch.getPort(port) == null) {
             return false;
         }
         OFPacketOut ofPacketOut = (generateVerificationPacket(srcSwitch, port));
@@ -244,7 +244,8 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
     public boolean sendDiscoveryMessage(DatapathId srcSwId, OFPort port, DatapathId dstSwId) {
         IOFSwitch srcSwitch = switchService.getSwitch(srcSwId);
 
-        if (srcSwitch == null) { // fix dereference violations in case race conditions
+        if (srcSwitch == null || srcSwitch.getPort(port) == null) {
+            // fix dereference violations in case race conditions
             return false;
         }
 
@@ -289,11 +290,13 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
             // Set the optionalTLV to the full SwitchID
             System.arraycopy(dpidArray, 0, dpidTLVValue, 4, 8);
 
-            byte[] srcMac = ofPortDesc.getHwAddr().getBytes();
+
             byte[] zeroMac = {0, 0, 0, 0, 0, 0};
+            byte[] srcMac = ofPortDesc.getHwAddr().getBytes();
             if (Arrays.equals(srcMac, zeroMac)) {
+                int portVal = ofPortDesc.getPortNo().getPortNumber();
                 logger.warn("Port {}/{} has zero hardware address: overwrite with lower 6 bytes of dpid",
-                        dpid.toString(), ofPortDesc.getPortNo().getPortNumber());
+                dpid.toString(), portVal);
                 System.arraycopy(dpidArray, 2, srcMac, 0, 6);
             }
 

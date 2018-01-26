@@ -26,22 +26,22 @@ logging.pattern.file=%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger - %X{cor
 
 #SWITCH URL
 switch.base.url={{ floodlight_endpoint }}:{{ floodlight_port }}/wm/core
-GET_SWITCHES=${switch.base.url}/controller/switches/json
 GET_SWITCH_PORTS=${switch.base.url}/switch/all/port-desc/json
 
 #LINK URL
 link.base.url={{ topology_engine_endpoint }}:{{ topology_engine_rest_port }}/api/v1
-GET_LINKS=${link.base.url}/topology/links
-#FLOW URL TOPOLOGY
+#FLOW TOPOLOGY URL
 GET_TOPOLOGY_FLOWS=${link.base.url}/topology/flows
 
 #FLOW URL
 flow.base.url={{ northbound_endpoint }}:{{ northbound_rest_port }}/api/v1
-GET_FLOW=${flow.base.url}/flows/
-GET_FLOW_STATUS=${GET_FLOW}status/
+GET_FLOW=${flow.base.url}/flows
+GET_FLOW_STATUS=${GET_FLOW}/status/
 
-#PATH URL
-GET_PATH_FLOW = ${flow.base.url}/flows/path
+#FLOW PATH URL
+GET_PATH_FLOW = ${GET_FLOW}/path
+GET_SWITCHES=${flow.base.url}/switches
+GET_LINKS=${flow.base.url}/links
 
 #OPEN TSDB URL
 opentsdb.base.url={{ opentsdb_hosts }}
