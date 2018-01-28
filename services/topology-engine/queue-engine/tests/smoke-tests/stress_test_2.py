@@ -27,8 +27,8 @@ MT_INFO="org.openkilda.messaging.info.InfoMessage"
 producer = KafkaProducer(bootstrap_servers=bootstrap_servers)
 
 
-producer.send(topic, b'{"clazz": "{}", "timestamp": 23478952134, "destination":"TOPOLOGY_ENGINE", "payload": {"clazz": "{}", "switch_id": "00:00:00:00:00:00:00:00", "state": "ADDED", "address":"00:00:00:00:00:00:00:00", "hostname":"hostname", "description":"description", "controller":"controller"}}'.format(MT_INFO, MT_SWITCH))
-producer.send(topic, b'{"clazz": "{}", "timestamp": 23478952134, "destination":"TOPOLOGY_ENGINE", "payload": {"clazz": "{}", "switch_id": "00:00:00:00:00:00:00:01", "state": "ADDED", "address":"00:00:00:00:00:00:00:01", "hostname":"hostname", "description":"description", "controller":"controller"}}'.format(MT_INFO, MT_SWITCH))
+producer.send(topic, b'{"clazz": "%s", "timestamp": 23478952134, "destination":"TOPOLOGY_ENGINE", "payload": {"clazz": "%s", "switch_id": "00:00:00:00:00:00:00:00", "state": "ADDED", "address":"00:00:00:00:00:00:00:00", "hostname":"hostname", "description":"description", "controller":"controller"}}' % (MT_INFO, MT_SWITCH))
+producer.send(topic, b'{"clazz": "%s", "timestamp": 23478952134, "destination":"TOPOLOGY_ENGINE", "payload": {"clazz": "%s", "switch_id": "00:00:00:00:00:00:00:01", "state": "ADDED", "address":"00:00:00:00:00:00:00:01", "hostname":"hostname", "description":"description", "controller":"controller"}}' % (MT_INFO, MT_SWITCH))
 
 producer.flush()
 
@@ -36,15 +36,15 @@ i = 2
 
 while i < 10000:
     producer.send(topic,
-                  b'{"clazz": "{}", "timestamp": 23478952136, "destination":"TOPOLOGY_ENGINE", "payload": {"clazz": "{}", "state":"DISCOVERED", "latency_ns": 1123, "speed":1000000, "available_bandwidth":1000000, "path": [{"switch_id": "00:00:00:00:00:00:00:00", "port_no": 1, "seq_id": "0", "segment_latency": 1123}, {"switch_id": "00:00:00:00:00:00:00:01", "port_no": 1, "seq_id": "1"}]}}'.format(MT_INFO, MT_ISL))
+                  b'{"clazz": "%s", "timestamp": 23478952136, "destination":"TOPOLOGY_ENGINE", "payload": {"clazz": "%s", "state":"DISCOVERED", "latency_ns": 1123, "speed":1000000, "available_bandwidth":1000000, "path": [{"switch_id": "00:00:00:00:00:00:00:00", "port_no": 1, "seq_id": "0", "segment_latency": 1123}, {"switch_id": "00:00:00:00:00:00:00:01", "port_no": 1, "seq_id": "1"}]}}' % (MT_INFO, MT_ISL))
     i += 1
-    producer.send(topic, b'{"clazz": "{}", "timestamp": 23478952136, "destination":"TOPOLOGY_ENGINE", "payload": {"clazz": "{}", "state": "DISCOVERED", "latency_ns": 1123, "speed":1000000, "available_bandwidth":1000000, "path": [{"switch_id": "00:00:00:00:00:00:00:01", "port_no": 1, "seq_id": "0", "segment_latency": 1123}, {"switch_id": "00:00:00:00:00:00:00:00", "port_no": 1, "seq_id": "1"}]}}'.format(MT_INFO, MT_ISL))
+    producer.send(topic, b'{"clazz": "%s", "timestamp": 23478952136, "destination":"TOPOLOGY_ENGINE", "payload": {"clazz": "%s", "state": "DISCOVERED", "latency_ns": 1123, "speed":1000000, "available_bandwidth":1000000, "path": [{"switch_id": "00:00:00:00:00:00:00:01", "port_no": 1, "seq_id": "0", "segment_latency": 1123}, {"switch_id": "00:00:00:00:00:00:00:00", "port_no": 1, "seq_id": "1"}]}}' % (MT_INFO, MT_ISL))
     i += 1
-    producer.send(topic, b'{"clazz": "{}", "timestamp": 23478952136, '
-                         b'"destination":"TOPOLOGY_ENGINE", "payload": {"clazz": "{}", "state": "FAILED", "path": [{"switch_id": "00:00:00:00:00:00:00:00", "port_no": 1}]}}'.format(MT_INFO, MT_ISL))
+    producer.send(topic, b'{"clazz": "%s", "timestamp": 23478952136, '
+                         b'"destination":"TOPOLOGY_ENGINE", "payload": {"clazz": "%s", "state": "FAILED", "path": [{"switch_id": "00:00:00:00:00:00:00:00", "port_no": 1}]}}' % (MT_INFO, MT_ISL))
     i += 1
-    producer.send(topic, b'{"clazz": "{}", "timestamp": 23478952136, '
-                         b'"destination":"TOPOLOGY_ENGINE", "payload": {"clazz": "{}", "state": "FAILED", "path": [{"switch_id": "00:00:00:00:00:00:00:01", "port_no": 1}]}}'.format(MT_INFO, MT_ISL))
+    producer.send(topic, b'{"clazz": "%s", "timestamp": 23478952136, '
+                         b'"destination":"TOPOLOGY_ENGINE", "payload": {"clazz": "%s", "state": "FAILED", "path": [{"switch_id": "00:00:00:00:00:00:00:01", "port_no": 1}]}}' % (MT_INFO, MT_ISL))
     i += 1
     print i
 

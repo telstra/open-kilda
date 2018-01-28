@@ -75,7 +75,9 @@ public class OFELinkBolt
     private final String topoEngTopic;
     private final String islDiscoveryTopic;
 
-    private final int packetsToFail;
+    private final int islHealthCheckInterval;
+    private final int islHealthCheckTimeout;
+    private final int islHealthFailureLimit;
     private TopologyContext context;
     private OutputCollector collector;
 
@@ -89,7 +91,10 @@ public class OFELinkBolt
     public OFELinkBolt(TopologyConfig config) {
         super(config.getDiscoveryInterval());
 
-        packetsToFail = config.getDiscoveryTimeout() / config.getDiscoveryInterval();
+        this.islHealthCheckInterval = config.getDiscoveryInterval();
+        this.islHealthCheckTimeout = config.getDiscoveryTimeout();
+        this.islHealthFailureLimit = config.getDiscoveryLimit();
+
         topoEngTopic = config.getKafkaTopoEngTopic();
         islDiscoveryTopic = config.getKafkaSpeakerTopic();
     }
@@ -116,7 +121,9 @@ public class OFELinkBolt
             discoveryQueue = (LinkedList<DiscoveryNode>) payload;
         }
 
-        discovery = new DiscoveryManager(islFilter, discoveryQueue, packetsToFail);
+        discovery = new DiscoveryManager(
+                islFilter, discoveryQueue, islHealthCheckInterval, islHealthCheckTimeout, islHealthFailureLimit
+        );
     }
 
     /**
@@ -206,6 +213,9 @@ public class OFELinkBolt
             //      the TPE will drop the switch node from its graph.
             discovery.handleSwitchDown(switchID);
         } else if (SwitchState.ACTIVATED.getType().equals(state)) {
+            // It's possible that we get duplicated switch up events .. particulary if
+            // FL goes down and then comes back up; it'll rebuild its switch / port information.
+            // NB: need to account for this, and send along to TE to be conservative.
             discovery.handleSwitchUp(switchID);
         } else {
             // TODO: Should this be a warning? Evaluate whether any other state needs to be handled
@@ -244,8 +254,26 @@ public class OFELinkBolt
         IslChangeType state = discoveredIsl.getState();
         boolean stateChanged = false;
 
+        /*
+         * TODO: would be good to merge more of this behavior / business logic within DiscoveryManager
+         *  The reason is so that we consolidate behavior related to Network Topology Discovery into
+         *  one place.
+         */
         if (IslChangeType.DISCOVERED.equals(state)) {
             stateChanged = discovery.handleDiscovered(switchID, portID);
+            // If the state has changed, and since we've discovered one end of an ISL, let's make
+            // sure we can test the other side as well.
+            if (stateChanged && discoveredIsl.getPath().size() > 1) {
+                String dstSwitch = discoveredIsl.getPath().get(0).getSwitchId();
+                String dstPort = ""+discoveredIsl.getPath().get(0).getPortNo();
+                if (!discovery.checkForIsl(dstSwitch,dstPort)){
+                    // Only call PortUp if we aren't checking for ISL. Otherwise, we could end up in an
+                    // infinite cycle of always sending a Port UP when one side is discovered.
+                    discovery.handlePortUp(dstSwitch,dstPort);
+                }
+
+            }
+
         } else if (IslChangeType.FAILED.equals(state)) {
             stateChanged = discovery.handleFailed(switchID, portID);
         } else {
@@ -254,6 +282,7 @@ public class OFELinkBolt
         }
 
         if (stateChanged) {
+            // If the state changed, notify the TE.
             logger.info("DISCO: ISL Event: switch={} port={} state={}", switchID, portID, state);
             String json = tuple.getString(0);
             collector.emit(topoEngTopic, tuple, new Values(PAYLOAD, json));

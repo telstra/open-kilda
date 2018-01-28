@@ -36,18 +36,16 @@ x = xrange(10000)
 for n in x:
     switch = generate_swith_name(n)
 
-    producer.send(topic, b'{"clazz": "{}", "timestamp": 23478952134, '
+    producer.send(topic, b'{"clazz": "%s", "timestamp": 23478952134, '
                          b'"destination":"TOPOLOGY_ENGINE", "payload": '
-                         b'{"clazz": "{}", '
+                         b'{"clazz": "%s", '
                          b'"switch_id": "%s",'
                          b' "state": "ADDED", '
                          b'"address":"%s", '
                          b'"hostname":"hostname", '
                          b'"description":"description", '
-                         b'"controller":"controller"}}'.format(MT_INFO, MT_SWITCH) % (switch,
-                                                                                     switch))
+                         b'"controller":"controller"}}' % (MT_INFO, MT_SWITCH, switch, switch))
 
 
-producer.send(topic, b'{"clazz": "{}", "timestamp": 23478952134, "destination":"STOP"}'.format(
-    MT_INFO))
+producer.send(topic, b'{"clazz": "%s", "timestamp": 23478952134, "destination":"STOP"}' % (MT_INFO))
 producer.flush()

@@ -5,7 +5,7 @@
   "payload": {
     "task_id": 10,
     "timestamp": 1515531276563,
-    "component": "kilda.topo.disco-bold",
+    "component": "kilda.topo.disco-bolt",
     "clazz": "org.openkilda.messaging.ctrl.DumpStateResponseData",
     "state": {
       "filtered": [],
