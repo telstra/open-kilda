@@ -177,6 +177,8 @@ public class TestUtils {
     public static void clearEverything(String endpoint) throws Exception {
         String expected = "{\"nodes\": []}";
         TopologyHelp.DeleteMininetTopology();
+        // Give Mininet some time to clear things naturally
+        TimeUnit.MILLISECONDS.sleep(3000);
 
         // verify it is empty
         String entity = TopologyHelp.ClearTopology();
