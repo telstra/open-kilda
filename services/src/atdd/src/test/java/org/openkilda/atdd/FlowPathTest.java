@@ -150,6 +150,8 @@ public class FlowPathTest {
 
     @Given("^topology contains (\\d+) links$")
     public void topologyContainsLinks(int expectedLinks) throws Throwable {
+        // give WFM time to send discovery requests and notify TE.
+        TimeUnit.SECONDS.sleep(4);
         int actualLinks = getLinksCount(expectedLinks);
         assertEquals(expectedLinks, actualLinks);
     }
@@ -165,7 +167,7 @@ public class FlowPathTest {
                 break;
             }
 
-            TimeUnit.SECONDS.sleep(2);
+            TimeUnit.SECONDS.sleep(3);
         }
         return actualLinks;
     }
