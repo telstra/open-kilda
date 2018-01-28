@@ -4,8 +4,9 @@ import java.io.Serializable;
 import java.util.Objects;
 
 public class DiscoveryNode implements Serializable {
-    // FIXME(surabujin): ... is there any better way to define this value?
-    private final static int NEVER = 999999;
+
+    /** Never stop checking for an ISL */
+    public final static int FORLORN_NEVER = -1;
     private final String switchId;
     private final String portId;
     /** How many attempts have we made .. will fail after X attempts and no response */
@@ -34,6 +35,11 @@ public class DiscoveryNode implements Serializable {
      */
     private boolean foundIsl;
 
+    /**
+     * TODO: forlornThreshold is understandable (ie point at which to stop checking), but regarding
+     * method signatures, it is very similar to DiscoverManager, which uses consecutive failure
+     * limit, which is a different concept compared to forlorn.
+     */
     public DiscoveryNode(String switchId, String portId, int checkInterval, int forlornThreshold) {
         this.switchId = switchId;
         this.portId = portId;
@@ -43,16 +49,6 @@ public class DiscoveryNode implements Serializable {
         this.consecutiveFailure = 0;
         this.consecutiveSuccess = 0;
         this.foundIsl = false;
-    }
-
-    public DiscoveryNode(String switchId, String portId) {
-        //FIXME: extract checkInterval & forlornThreshold from a config.
-        this(switchId, portId, 0, NEVER);
-    }
-
-    public DiscoveryNode(String switchId) {
-        //FIXME: extract checkInterval & forlornThreshold from a config.
-        this(switchId, "", 0, NEVER);
     }
 
     public void setFoundIsl(boolean foundIsl){
@@ -73,11 +69,14 @@ public class DiscoveryNode implements Serializable {
         timeCounter = 0;
     }
 
+    /**
+     * @return true if consecutiveFailure is greater than limit
+     */
     public boolean forlorn() {
-        if (forlornThreshold == NEVER) { // never gonna give a link up.
+        if (forlornThreshold == FORLORN_NEVER) { // never gonna give a link up.
              return false;
         }
-        return consecutiveFailure >= forlornThreshold;
+        return consecutiveFailure > forlornThreshold;
     }
 
     public void clearConsecutiveFailure() {
@@ -104,11 +103,11 @@ public class DiscoveryNode implements Serializable {
         consecutiveSuccess++;
     }
 
-    public void incAttempts() {
-        attempts++;
+    public int getTicks() {
+        return timeCounter;
     }
 
-    public void logTick() {
+    public void incTick() {
         timeCounter++;
     }
 
@@ -117,10 +116,19 @@ public class DiscoveryNode implements Serializable {
     }
 
     /**
-     * @return true if attempts is greater than or equal to the limit.
+     * @param attemptLimit the limit to test against
+     * @return true if attempts is greater than attemptLimit.
      */
     public boolean maxAttempts(Integer attemptLimit) {
-        return attemptLimit <= attempts;
+        return (attemptLimit < attempts);
+    }
+
+    public void incAttempts() {
+        attempts++;
+    }
+
+    public int getAttempts() {
+        return attempts;
     }
 
     public boolean timeToCheck() {
