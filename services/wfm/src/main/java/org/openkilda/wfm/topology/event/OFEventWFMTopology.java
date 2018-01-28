@@ -57,7 +57,7 @@ public class OFEventWFMTopology extends AbstractTopology {
 
     /** Externalize the ID so that the Test classes can leverage it */
     public static final String SPOUT_ID_INPUT = Topic.TOPO_DISCO+"-spout";
-    public static final String BOLT_ID = Topic.TOPO_DISCO+"-bold";
+    public static final String BOLT_ID = Topic.TOPO_DISCO+"-bolt";
 
 //    public static final String SPOUT_ID_INPUT = "input";
 //    public static final String BOLT_ID_OUTPUT = "out";
