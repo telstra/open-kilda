@@ -63,7 +63,7 @@ public class ClearTablesTest {
     public void createTopology() throws Exception {
         String topology =
                 IOUtils.toString(this.getClass().getResourceAsStream("/topologies/simple-topology.json"), UTF_8);
-        TopologyHelp.CreateMininetTopology(topology);
+        assertTrue(TopologyHelp.CreateMininetTopology(topology));
     }
 
     @Given("^added custom flow rules")
