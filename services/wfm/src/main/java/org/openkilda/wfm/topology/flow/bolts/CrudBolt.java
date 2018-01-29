@@ -49,7 +49,6 @@ import org.openkilda.pce.cache.ResourceCache;
 import org.openkilda.pce.provider.PathComputer;
 import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
-import org.openkilda.wfm.protocol.KafkaMessage;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.flow.ComponentType;
 import org.openkilda.wfm.topology.flow.FlowTopology;
@@ -68,6 +67,7 @@ import org.apache.storm.tuple.Values;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 public class CrudBolt
@@ -285,8 +285,9 @@ public class CrudBolt
 
         logger.info("Deleted flow: {}", flow);
 
-        Values topology = new Values(MAPPER.writeValueAsString(
-                new FlowInfoData(flowId, flow, FlowOperation.DELETE, message.getCorrelationId())));
+        FlowInfoData data = new FlowInfoData(flowId, flow, FlowOperation.DELETE, message.getCorrelationId());
+        InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), message.getCorrelationId());
+        Values topology = new Values(MAPPER.writeValueAsString(infoMessage));
         outputCollector.emit(StreamType.DELETE.toString(), tuple, topology);
 
         Values northbound = new Values(new InfoMessage(new FlowResponse(buildFlowResponse(flow)),
@@ -309,8 +310,10 @@ public class CrudBolt
         ImmutablePair<Flow, Flow> flow = flowCache.createFlow(requestedFlow, path);
         logger.info("Created flow: {}", flow);
 
-        Values topology = new Values(Utils.MAPPER.writeValueAsString(
-                new FlowInfoData(requestedFlow.getFlowId(), flow, FlowOperation.CREATE, message.getCorrelationId())));
+        FlowInfoData data = new FlowInfoData(requestedFlow.getFlowId(), flow, FlowOperation.CREATE,
+                message.getCorrelationId());
+        InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), message.getCorrelationId());
+        Values topology = new Values(MAPPER.writeValueAsString(infoMessage));
         outputCollector.emit(StreamType.CREATE.toString(), tuple, topology);
 
         Values northbound = new Values(new InfoMessage(new FlowResponse(buildFlowResponse(flow)),
@@ -341,9 +344,10 @@ public class CrudBolt
                 flow = flowCache.updateFlow(requestedFlow, path);
                 logger.info("Rerouted flow: {}", flow);
 
-                Values topology = new Values(Utils.MAPPER.writeValueAsString(
-                        new FlowInfoData(requestedFlow.getFlowId(), flow,
-                                FlowOperation.UPDATE, message.getCorrelationId())));
+                FlowInfoData data = new FlowInfoData(requestedFlow.getFlowId(), flow, FlowOperation.UPDATE,
+                        message.getCorrelationId());
+                InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), message.getCorrelationId());
+                Values topology = new Values(MAPPER.writeValueAsString(infoMessage));
                 outputCollector.emit(StreamType.UPDATE.toString(), tuple, topology);
 
                 Values northbound = new Values(new InfoMessage(new FlowResponse(buildFlowResponse(flow)),
@@ -410,8 +414,10 @@ public class CrudBolt
         ImmutablePair<Flow, Flow> flow = flowCache.updateFlow(requestedFlow, path);
         logger.info("Updated flow: {}", flow);
 
-        Values topology = new Values(Utils.MAPPER.writeValueAsString(
-                new FlowInfoData(requestedFlow.getFlowId(), flow, FlowOperation.UPDATE, message.getCorrelationId())));
+        FlowInfoData data = new FlowInfoData(requestedFlow.getFlowId(), flow, FlowOperation.UPDATE,
+                message.getCorrelationId());
+        InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), message.getCorrelationId());
+        Values topology = new Values(MAPPER.writeValueAsString(infoMessage));
         outputCollector.emit(StreamType.UPDATE.toString(), tuple, topology);
 
         Values northbound = new Values(new InfoMessage(new FlowResponse(buildFlowResponse(flow)),
@@ -473,8 +479,11 @@ public class CrudBolt
         flow.getLeft().setState(state);
         flow.getRight().setState(state);
 
-        Values topology = new Values(Utils.MAPPER.writeValueAsString(
-                new FlowInfoData(flowId, flow, FlowOperation.STATE, Utils.SYSTEM_CORRELATION_ID)));
+        final String correlationId = UUID.randomUUID().toString();
+        FlowInfoData data = new FlowInfoData(flowId, flow, FlowOperation.STATE, correlationId);
+        InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), correlationId);
+
+        Values topology = new Values(Utils.MAPPER.writeValueAsString(infoMessage));
         outputCollector.emit(StreamType.STATUS.toString(), tuple, topology);
 
     }
