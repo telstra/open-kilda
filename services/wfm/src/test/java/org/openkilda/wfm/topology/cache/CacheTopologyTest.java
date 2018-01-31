@@ -76,7 +76,7 @@ public class CacheTopologyTest extends AbstractStormTest {
             new Flow(thirdFlowId, 10000, "", "test-switch", 1, 2, "test-switch", 1, 2));
     private static final Set<ImmutablePair<Flow, Flow>> flows = new HashSet<>();
     private static final NetworkInfoData dump = new NetworkInfoData(
-            "test", Collections.emptySet(), Collections.emptySet(), flows);
+            "test", Collections.emptySet(), Collections.emptySet(), Collections.emptySet(), flows);
 
     private static TestKafkaConsumer teConsumer;
     private static TestKafkaConsumer flowConsumer;

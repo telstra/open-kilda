@@ -18,8 +18,8 @@ package org.openkilda.wfm.topology.event;
 import static org.openkilda.messaging.Utils.MAPPER;
 import static org.openkilda.messaging.Utils.PAYLOAD;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.common.annotations.VisibleForTesting;
 import org.apache.storm.state.KeyValueState;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -28,16 +28,21 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 import org.openkilda.messaging.BaseMessage;
+import org.openkilda.messaging.Destination;
+import org.openkilda.messaging.Utils;
+import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.discovery.NetworkCommandData;
 import org.openkilda.messaging.ctrl.AbstractDumpState;
 import org.openkilda.messaging.ctrl.state.OFELinkBoltState;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.discovery.NetworkInfoData;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
-import org.openkilda.messaging.info.event.PortInfoData;
-import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.PortChangeType;
+import org.openkilda.messaging.info.event.PortInfoData;
+import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.wfm.OFEMessageUtils;
 import org.openkilda.wfm.ctrl.CtrlAction;
@@ -48,9 +53,12 @@ import org.openkilda.wfm.isl.DummyIIslFilter;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.TopologyConfig;
 import org.openkilda.wfm.topology.utils.AbstractTickStatefulBolt;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -64,6 +72,12 @@ import java.util.Map;
  *
  * Regarding Storm's KeyValueState .. it
  * doesn't have a keys() feature .. so there is at this stage only one object in it, which holds hashmaps, etc.
+ *
+ * Cache warming:
+ * For update code in Storm, we need to kill and load the new topology, and bolt loses all
+ * internal state. For restore data in bolt we send a message to FL and wait till callback message
+ * with network data arrive. We don't process common messages and mark it as fail before that.
+ * UML Diagram is here https://github.com/telstra/open-kilda/issues/213
  */
 public class OFELinkBolt
         extends AbstractTickStatefulBolt<KeyValueState<String, Object>>
@@ -84,6 +98,16 @@ public class OFELinkBolt
     private DummyIIslFilter islFilter;
     private DiscoveryManager discovery;
     private LinkedList<DiscoveryNode> discoveryQueue;
+
+    /**
+     * Initialization flag
+     */
+    private boolean isReceivedCacheInfo = false;
+
+    /**
+     * Cache request send flag
+     */
+    private boolean isCacheRequestSend = false;
 
     /**
      * Default constructor .. default health check frequency
@@ -131,21 +155,50 @@ public class OFELinkBolt
      */
     @Override
     protected void doTick(Tuple tuple) {
-        DiscoveryManager.Plan discoveryPlan = discovery.makeDiscoveryPlan();
-        try {
-            for (DiscoveryManager.Node node : discoveryPlan.needDiscovery) {
-                sendDiscoveryMessage(tuple, node);
-            }
 
-            for (DiscoveryManager.Node node : discoveryPlan.discoveryFailure) {
-                // this is somewhat incongruous - we send failure to TE, but we send
-                // discovery to FL ..
-                // Reality is that the handleDiscovery/handleFailure below does the work
-                //
-                sendDiscoveryFailed(node.switchId, node.portId, tuple);
+        // On first tick, we send network dump request to FL, and then we ignore all ticks till
+        // cache not received
+        if (isCacheRequestSend && isReceivedCacheInfo) {
+            DiscoveryManager.Plan discoveryPlan = discovery.makeDiscoveryPlan();
+            try {
+                for (DiscoveryManager.Node node : discoveryPlan.needDiscovery) {
+                    sendDiscoveryMessage(tuple, node);
+                }
+
+                for (DiscoveryManager.Node node : discoveryPlan.discoveryFailure) {
+                    // this is somewhat incongruous - we send failure to TE, but we send
+                    // discovery to FL ..
+                    // Reality is that the handleDiscovery/handleFailure below does the work
+                    //
+                    sendDiscoveryFailed(node.switchId, node.portId, tuple);
+                }
+            } catch (IOException e) {
+                logger.error("Unable to encode message: {}", e);
             }
-        } catch (IOException e) {
-            logger.error("Unable to encode message: {}", e);
+        }
+        // Only one message to FL needed
+        else if (!isCacheRequestSend)
+        {
+            isCacheRequestSend = true;
+            sendNetworkRequest(tuple);
+        }
+    }
+
+
+    /**
+     * Send network dump request to FL
+     */
+    private void sendNetworkRequest(Tuple tuple) {
+        try {
+            CommandMessage command = new CommandMessage(new NetworkCommandData(),
+                    System.currentTimeMillis(), Utils.SYSTEM_CORRELATION_ID,
+                    Destination.CONTROLLER);
+            String json = Utils.MAPPER.writeValueAsString(command);
+            collector.emit(islDiscoveryTopic, tuple, new Values(PAYLOAD, json));
+        }
+        catch (JsonProcessingException exception)
+        {
+            logger.error("Could not serialize network cache request", exception);
         }
     }
 
@@ -179,12 +232,20 @@ public class OFELinkBolt
         String json = tuple.getString(0);
         try {
             BaseMessage bm = MAPPER.readValue(json, BaseMessage.class);
+
             if (bm instanceof InfoMessage) {
                 InfoData data = ((InfoMessage)bm).getData();
-                if (data instanceof SwitchInfoData) {
+                if (data instanceof NetworkInfoData) {
+                    handleNetworkDump(tuple, (NetworkInfoData)data);
+                    isReceivedCacheInfo = true;
+                } else if (!isReceivedCacheInfo) {
+                    logger.debug("Bolt is not initialized mark tuple as fail");
+                } else if (data instanceof SwitchInfoData) {
                     handleSwitchEvent(tuple, (SwitchInfoData) data);
+                    passToTopologyEngine(tuple);
                 } else if (data instanceof PortInfoData) {
                     handlePortEvent(tuple, (PortInfoData) data);
+                    passToTopologyEngine(tuple);
                 } else if (data instanceof IslInfoData) {
                     handleIslEvent(tuple, (IslInfoData) data);
                 } else {
@@ -197,8 +258,20 @@ public class OFELinkBolt
             // change the logger level.
             logger.error("Unknown Message type={}", json);
         } finally {
-            collector.ack(tuple);
+            // We mark as fail all tuples while bolt is not initialized
+            if (isReceivedCacheInfo) {
+                collector.ack(tuple);
+            } else {
+                collector.fail(tuple);
+            }
         }
+    }
+
+    private void handleNetworkDump(Tuple tuple, NetworkInfoData data) {
+        logger.info("Start process network dump");
+        data.getSwitches().forEach( switchInfo -> handleSwitchEvent(tuple, switchInfo) );
+        data.getPorts().forEach( portInfo -> handlePortEvent(tuple, portInfo) );
+        logger.info("Finish process network dump");
     }
 
     private void handleSwitchEvent(Tuple tuple, SwitchInfoData switchData) {
@@ -221,8 +294,12 @@ public class OFELinkBolt
             // TODO: Should this be a warning? Evaluate whether any other state needs to be handled
             logger.warn("SWITCH Event: ignoring state: {}", state);
         }
+    }
 
-        // Pass the original message along, to the Topology Engine topic.
+    /**
+     * Pass the original message along, to the Topology Engine topic.
+     */
+    private void passToTopologyEngine(Tuple tuple) {
         String json = tuple.getString(0);
         collector.emit(topoEngTopic, tuple, new Values(PAYLOAD, json));
     }
@@ -241,10 +318,6 @@ public class OFELinkBolt
             // TODO: Should this be a warning? Evaluate whether any other state needs to be handled
             logger.warn("PORT Event: ignoring state: {}", updown);
         }
-
-        // Pass the original message along, to the Topology Engine topic.
-        String json = tuple.getString(0);
-        collector.emit(topoEngTopic, tuple, new Values(PAYLOAD, json));
     }
 
     private void handleIslEvent(Tuple tuple, IslInfoData discoveredIsl) {
@@ -284,8 +357,7 @@ public class OFELinkBolt
         if (stateChanged) {
             // If the state changed, notify the TE.
             logger.info("DISCO: ISL Event: switch={} port={} state={}", switchID, portID, state);
-            String json = tuple.getString(0);
-            collector.emit(topoEngTopic, tuple, new Values(PAYLOAD, json));
+            passToTopologyEngine(tuple);
         }
     }
 
@@ -338,5 +410,11 @@ public class OFELinkBolt
     @Override
     public OutputCollector getOutput() {
         return collector;
+    }
+
+    @VisibleForTesting
+    List<DiscoveryNode> getDiscoveryQueue()
+    {
+        return this.discoveryQueue;
     }
 }
