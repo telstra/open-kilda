@@ -84,7 +84,8 @@ public class OpenTSDBFilterBolt extends BaseRichBolt {
     }
 
     private void addDatapoint(Datapoint datapoint) {
-        LOGGER.debug("adding datapoint: " + datapoint.hashCode());
+        LOGGER.info("adding datapoint: " + datapoint.hashCode());
+        LOGGER.info("storage.size: " + storage.size());
         storage.put(datapoint.hashCode(), datapoint);
     }
 
