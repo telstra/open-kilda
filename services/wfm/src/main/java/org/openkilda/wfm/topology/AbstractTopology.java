@@ -157,7 +157,7 @@ public abstract class AbstractTopology implements Topology {
     protected Config makeStormConfig() {
         Config stormConfig = new Config();
 
-        stormConfig.setNumWorkers(config.getWorkers());
+        stormConfig.setNumWorkers(config.getWorkers(topologyName));
         if (config.getLocal()) {
             stormConfig.setMaxTaskParallelism(config.getParallelism());
         }
