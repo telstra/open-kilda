@@ -230,41 +230,36 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
 
     @Override
     public boolean sendDiscoveryMessage(DatapathId srcSwId, OFPort port) {
-        IOFSwitch srcSwitch = switchService.getSwitch(srcSwId);
-        if (srcSwitch == null || srcSwitch.getPort(port) == null) {
-            return false;
-        }
-        OFPacketOut ofPacketOut = (generateVerificationPacket(srcSwitch, port));
-        logger.debug("sending verification packet out {}/{}: {}", srcSwitch.getId().toString(), port.getPortNumber(),
-                Hex.encodeHexString(ofPacketOut.getData()));
-        return srcSwitch.write(ofPacketOut);
+        return sendDiscoveryMessage(srcSwId, port, null);
     }
 
     @Override
     public boolean sendDiscoveryMessage(DatapathId srcSwId, OFPort port, DatapathId dstSwId) {
-        IOFSwitch srcSwitch = switchService.getSwitch(srcSwId);
+        boolean result = false;
 
-        if (srcSwitch == null || srcSwitch.getPort(port) == null) {
-            // fix dereference violations in case race conditions
-            return false;
+        try {
+            IOFSwitch srcSwitch = switchService.getSwitch(srcSwId);
+            if (srcSwitch != null && srcSwitch.getPort(port) != null) {
+                IOFSwitch dstSwitch = (dstSwId == null) ? null : switchService.getSwitch(dstSwId);
+                OFPacketOut ofPacketOut = generateVerificationPacket(srcSwitch, port, dstSwitch, true);
+                if (ofPacketOut != null) {
+                    logger.debug("==> Sending verification packet out {}/{}: {}", srcSwitch.getId().toString(), port.getPortNumber(),
+                            Hex.encodeHexString(ofPacketOut.getData()));
+                    result = srcSwitch.write(ofPacketOut);
+                } else {
+                    logger.error("<== Received null from generateVerificationPacket, inputs where: " +
+                            "srcSwitch: {}, port: {}, dstSwitch: {}", srcSwitch, port, dstSwitch);
+                }
+            }
+        } catch (Exception exception) {
+            logger.error("Error trying to sendDiscoveryMessage: {}", exception);
         }
 
-        if (dstSwId == null) {
-            return srcSwitch.write(generateVerificationPacket(srcSwitch, port));
-        }
-        IOFSwitch dstSwitch = switchService.getSwitch(dstSwId);
-        OFPacketOut ofPacketOut = generateVerificationPacket(srcSwitch, port, dstSwitch);
-        logger.debug("sending verification packet out {}/{}: {}", srcSwitch.getId().toString(), port.getPortNumber(),
-                Hex.encodeHexString(ofPacketOut.getData()));
-        return srcSwitch.write(ofPacketOut);
+        return result;
     }
 
-    public OFPacketOut generateVerificationPacket(IOFSwitch srcSw, OFPort srcPort) {
-        return generateVerificationPacket(srcSw, srcPort, null);
-    }
-
-    public OFPacketOut generateVerificationPacket(IOFSwitch srcSw, OFPort srcPort, IOFSwitch dstSw) {
-        return generateVerificationPacket(srcSw, srcPort, dstSw, true);
+    public OFPacketOut generateVerificationPacket(IOFSwitch srcSw, OFPort port) {
+        return generateVerificationPacket(srcSw,port,null,true);
     }
 
     public OFPacketOut generateVerificationPacket(IOFSwitch srcSw, OFPort port, IOFSwitch dstSw,
@@ -295,7 +290,8 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
             byte[] srcMac = ofPortDesc.getHwAddr().getBytes();
             if (Arrays.equals(srcMac, zeroMac)) {
                 int portVal = ofPortDesc.getPortNo().getPortNumber();
-                logger.warn("Port {}/{} has zero hardware address: overwrite with lower 6 bytes of dpid",
+                // this is a common scenario
+                logger.debug("Port {}/{} has zero hardware address: overwrite with lower 6 bytes of dpid",
                 dpid.toString(), portVal);
                 System.arraycopy(dpidArray, 2, srcMac, 0, 6);
             }
@@ -390,7 +386,7 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
 
             return pob.build();
         } catch (Exception exception) {
-            logger.error("error generating verification packet: ", exception);
+            logger.error("error generating verification packet: {}", exception);
         }
         return null;
     }
@@ -410,7 +406,7 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
                 }
             }
         }
-        throw new Exception("Ethernet packet was not a verification packet");
+        throw new Exception("Ethernet packet was not a verification packet: " + eth);
     }
 
     private IListener.Command handlePacketIn(IOFSwitch sw, OFPacketIn pkt, FloodlightContext context) {
@@ -424,7 +420,7 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
         try {
             verificationPacket = deserialize(eth);
         } catch (Exception exception) {
-            logger.error("Deserialization failure: {}", exception.getMessage(), exception);
+            logger.error("Deserialization failure: {}, exception: {}", exception.getMessage(), exception);
             return Command.CONTINUE;
         }
 
