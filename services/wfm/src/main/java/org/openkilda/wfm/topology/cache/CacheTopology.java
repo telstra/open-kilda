@@ -36,7 +36,7 @@ public class CacheTopology extends AbstractTopology {
     private static final Logger logger = LoggerFactory.getLogger(CacheTopology.class);
 
     private static final String BOLT_ID_COMMON_OUTPUT = "common.out";
-    private static final String BOLD_ID_OFE = "event.out";
+    private static final String BOLT_ID_OFE = "event.out";
     private static final String BOLT_ID_TOPOLOGY_OUTPUT = "topology.out";
     static final String BOLT_ID_CACHE = "cache";
     static final String SPOUT_ID_COMMON = "generic";
@@ -109,7 +109,7 @@ public class CacheTopology extends AbstractTopology {
          * Sends requests for ISL to OFE topology.
          */
         KafkaBolt oFEKafkaBolt = createKafkaBolt(config.getKafkaFlowTopic());
-        builder.setBolt(BOLD_ID_OFE, oFEKafkaBolt, parallelism)
+        builder.setBolt(BOLT_ID_OFE, oFEKafkaBolt, parallelism)
                 .shuffleGrouping(BOLT_ID_CACHE, StreamType.OFE.toString());
 
         createCtrlBranch(builder, ctrlTargets);

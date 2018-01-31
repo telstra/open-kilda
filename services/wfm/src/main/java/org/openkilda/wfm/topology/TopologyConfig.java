@@ -15,6 +15,7 @@ public class TopologyConfig {
     private Integer workers;
     private Integer discoveryInterval;
     private Integer discoveryTimeout;
+    private Integer discoveryLimit;
     private String filterDirectory;
     private Level loggerLevel;
     private String loggerWatermark;
@@ -66,6 +67,7 @@ public class TopologyConfig {
         workers = config.getInteger("workers");
         discoveryInterval = config.getInteger("discovery.interval");
         discoveryTimeout = config.getInteger("discovery.timeout");
+        discoveryLimit = config.getInteger("discovery.limit");
         filterDirectory = config.getString("filter.directory");
         loggerLevel = Level.valueOf(config.getString("logger.level"));
         loggerWatermark = config.getString("logger.watermark");
@@ -136,6 +138,10 @@ public class TopologyConfig {
 
     public Integer getDiscoveryTimeout() {
         return discoveryTimeout;
+    }
+
+    public Integer getDiscoveryLimit() {
+        return discoveryLimit;
     }
 
     public String getFilterDirectory() {

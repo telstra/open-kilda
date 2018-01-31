@@ -119,7 +119,7 @@ public class PathVerificationPacketOutTest extends FloodlightTestCase {
     @Test
     public void testUncastPacket() {
         // Generate the VerificationPacket
-        OFPacketOut packet = pvs.generateVerificationPacket(sw1, OFPort.of(1), sw2);
+        OFPacketOut packet = pvs.generateVerificationPacket(sw1, OFPort.of(1), sw2, true);
 
         // Source MAC will always be that of sw1 for both Unicast and Broadcast
         byte[] srcMacActual = Arrays.copyOfRange(packet.getData(), 6, 12);
