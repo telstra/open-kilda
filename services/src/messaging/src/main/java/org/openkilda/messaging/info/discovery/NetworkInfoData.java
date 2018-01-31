@@ -19,6 +19,7 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
@@ -33,7 +34,7 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * Represents flow northbound response.
+ * Represents network dump response.
  */
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -60,6 +61,12 @@ public class NetworkInfoData extends InfoData {
      */
     @JsonProperty("switches")
     private Set<SwitchInfoData> switches;
+
+    /**
+     * Ports.
+     */
+    @JsonProperty("ports")
+    private Set<PortInfoData> ports;
 
     /**
      * ISLs.
@@ -90,10 +97,12 @@ public class NetworkInfoData extends InfoData {
     @JsonCreator
     public NetworkInfoData(@JsonProperty("requester") String requester,
                            @JsonProperty("switches") Set<SwitchInfoData> switches,
+                           @JsonProperty("ports") Set<PortInfoData> ports,
                            @JsonProperty("isls") Set<IslInfoData> isls,
                            @JsonProperty("flows") Set<ImmutablePair<Flow, Flow>> flows) {
         this.requester = requester;
         this.switches = switches;
+        this.ports = ports;
         this.isls = isls;
         this.flows = flows;
     }
@@ -133,6 +142,25 @@ public class NetworkInfoData extends InfoData {
     public void setSwitches(Set<SwitchInfoData> switches) {
         this.switches = switches;
     }
+
+    /**
+     * Returns ports.
+     *
+     * @return ports
+     */
+    public Set<PortInfoData> getPorts() {
+        return ports;
+    }
+
+    /**
+     * Sets ports.
+     *
+     * @param ports ports
+     */
+    public void setPorts(Set<PortInfoData> ports) {
+        this.ports = ports;
+    }
+
 
     /**
      * Returns isls.
@@ -178,6 +206,7 @@ public class NetworkInfoData extends InfoData {
         return toStringHelper(this)
                 .add("requester", requester)
                 .add("switches", switches)
+                .add("ports", ports)
                 .add("isls", isls)
                 .add("flows", flows)
                 .toString();
@@ -188,7 +217,7 @@ public class NetworkInfoData extends InfoData {
      */
     @Override
     public int hashCode() {
-        return Objects.hash(requester, switches, isls, flows);
+        return Objects.hash(requester, switches, ports, isls, flows);
     }
 
     /**
@@ -206,6 +235,7 @@ public class NetworkInfoData extends InfoData {
         NetworkInfoData that = (NetworkInfoData) object;
         return Objects.equals(getRequester(), that.getRequester())
                 && Objects.equals(getSwitches(), that.getSwitches())
+                && Objects.equals(getPorts(), that.getPorts())
                 && Objects.equals(getIsls(), that.getIsls())
                 && Objects.equals(getFlows(), that.getFlows());
     }

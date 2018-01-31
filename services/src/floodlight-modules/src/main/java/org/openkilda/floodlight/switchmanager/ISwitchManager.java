@@ -15,6 +15,7 @@
 
 package org.openkilda.floodlight.switchmanager;
 
+import net.floodlightcontroller.core.IOFSwitch;
 import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
 
@@ -22,6 +23,8 @@ import net.floodlightcontroller.core.module.IFloodlightService;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
 import org.projectfloodlight.openflow.protocol.OFMeterConfigStatsReply;
 import org.projectfloodlight.openflow.types.DatapathId;
+
+import java.util.Map;
 
 /**
  * Created by jonv on 29/3/17.
@@ -154,4 +157,7 @@ public interface ISwitchManager extends IFloodlightService {
      * accepted to be sent to switch, false otherwise - switch is disconnected or in SLAVE mode
      */
     ImmutablePair<Long, Boolean> deleteMeter(final DatapathId dpid, final long meterId);
+
+
+    Map<DatapathId, IOFSwitch> getAllSwitchMap();
 }
