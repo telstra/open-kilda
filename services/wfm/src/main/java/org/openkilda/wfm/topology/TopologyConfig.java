@@ -1,10 +1,13 @@
 package org.openkilda.wfm.topology;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.slf4j.event.Level;
 import org.openkilda.wfm.ConfigurationException;
 import org.openkilda.wfm.PropertiesReader;
 
 public class TopologyConfig {
+    private static final Logger logger = LoggerFactory.getLogger(TopologyConfig.class);
     private Boolean isLocal;
     private Integer localExecutionTime;
 
@@ -53,7 +56,10 @@ public class TopologyConfig {
     private String neo4jLogin;
     private String neo4jPassword;
 
+    private PropertiesReader config;
+
     public TopologyConfig(PropertiesReader config) throws ConfigurationException {
+        this.config = config;
         isLocal = config.getBoolean("cli.local");
         localExecutionTime = (int)(config.getFloat("local.execution.time") * 1000);
 
@@ -114,6 +120,15 @@ public class TopologyConfig {
     }
 
     public Integer getWorkers() {
+        return workers;
+    }
+
+    public Integer getWorkers(String name) {
+        try {
+            workers = config.getInteger(name + ".workers");
+        } catch (ConfigurationException e) {
+            logger.warn("could not find {}.workers so using global default", name);
+        }
         return workers;
     }
 
