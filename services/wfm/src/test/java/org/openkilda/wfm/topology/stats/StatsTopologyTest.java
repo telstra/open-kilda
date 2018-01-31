@@ -151,7 +151,7 @@ public class StatsTopologyTest extends StableAbstractStormTest {
 
             Map result = Testing.completeTopology(cluster, stormTopology, completeTopologyParam);
 
-            //verify results which were sent to Kafka bold
+            //verify results which were sent to Kafka bolt
             ArrayList<FixedTuple> tuples =
                     (ArrayList<FixedTuple>) result.get(StatsComponentType.FLOW_STATS_METRIC_GEN.name());
             assertThat(tuples.size(), is(4));
