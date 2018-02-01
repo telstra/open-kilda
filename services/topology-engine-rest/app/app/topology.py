@@ -27,7 +27,7 @@ import json
 import ConfigParser
 
 config = ConfigParser.RawConfigParser()
-config.read('topology_engine_rest.properties')
+config.read('topology_engine_rest.ini')
 
 NEO4J_HOST = os.environ['neo4jhost'] or config.get('neo4j', 'host')
 NEO4J_USER = os.environ['neo4juser'] or config.get('neo4j', 'user')
