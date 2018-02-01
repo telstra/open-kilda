@@ -67,10 +67,9 @@ public class NeoDriver implements PathComputer {
     private static Driver driver;
 
     private final String hostname;
-
     private final String username;
-
     private final String password;
+    private final String address;
 
     /**
      * Gets instance.
@@ -90,17 +89,18 @@ public class NeoDriver implements PathComputer {
         this.hostname = hostname;
         this.username = username;
         this.password = password;
+        this.address = String.format("bolt://%s", hostname);
     }
 
     /**
      * {@inheritDoc}
      */
-    public void init() {
+    public Driver getDriver() {
         if (driver == null) {
-            String address = String.format("bolt://%s", hostname);
             driver = GraphDatabase.driver(address, AuthTokens.basic(password, username));
             logger.info("NeoDriver created: {}", driver.toString());
         }
+        return driver;
     }
 
     /**
@@ -111,7 +111,7 @@ public class NeoDriver implements PathComputer {
 
         logger.info("Clean query: {}", query);
 
-        Session session = driver.session();
+        Session session = getDriver().session();
         StatementResult result = session.run(query);
         session.close();
 
@@ -123,8 +123,8 @@ public class NeoDriver implements PathComputer {
      * {@inheritDoc}
      */
     @Override
-    public ImmutablePair<PathInfoData, PathInfoData> getPath(Flow flow) {
-        return getPath(flow.getSourceSwitch(), flow.getDestinationSwitch(), flow.getBandwidth());
+    public ImmutablePair<PathInfoData, PathInfoData> getPath(Flow flow, Strategy strategy) {
+        return getPath(flow.getSourceSwitch(), flow.getDestinationSwitch(), flow.getBandwidth(), strategy);
     }
 
     /**
@@ -132,11 +132,16 @@ public class NeoDriver implements PathComputer {
      */
     @Override
     public ImmutablePair<PathInfoData, PathInfoData> getPath(SwitchInfoData source, SwitchInfoData destination,
-                                                             int bandwidth) {
-        return getPath(source.getSwitchId(), destination.getSwitchId(), bandwidth);
+                                                             int bandwidth, Strategy strategy) {
+        return getPath(source.getSwitchId(), destination.getSwitchId(), bandwidth, strategy);
     }
 
-    private ImmutablePair<PathInfoData, PathInfoData> getPath(String srcSwitch, String dstSwitch, int bandwidth) {
+    private ImmutablePair<PathInfoData, PathInfoData> getPath(String srcSwitch, String dstSwitch, int bandwidth, Strategy strategy) {
+        /*
+         * TODO: implement strategy
+         */
+
+
         long latency = 0L;
         List<PathNode> forwardNodes = new LinkedList<>();
         List<PathNode> reverseNodes = new LinkedList<>();
@@ -145,8 +150,8 @@ public class NeoDriver implements PathComputer {
             Statement pathStatement = new Statement(PATH_QUERY_FORMATTER_PATTERN);
             Value value = Values.parameters("src_switch", srcSwitch, "dst_switch", dstSwitch, "bandwidth", bandwidth);
 
-            if (driver != null) {
-                Session session = driver.session();
+            if (getDriver() != null) {
+                Session session = getDriver().session();
                 StatementResult result = session.run(pathStatement.withParameters(value));
 
                 if (result.hasNext()) {
@@ -197,11 +202,4 @@ public class NeoDriver implements PathComputer {
         return new ImmutablePair<>(new PathInfoData(latency, forwardNodes), new PathInfoData(latency, reverseNodes));
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public PathComputer withNetwork(MutableNetwork<SwitchInfoData, IslInfoData> network) {
-        return this;
-    }
 }

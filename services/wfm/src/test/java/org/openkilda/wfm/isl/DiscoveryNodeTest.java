@@ -71,16 +71,22 @@ public class DiscoveryNodeTest {
         assertEquals(0, dn.getConsecutiveSuccess());
     }
 
+    /**
+     * maxAttempts tests if the passed-in limit is less than the number of attempts.
+     */
     @Test
     public void incAttempts() {
-        int attempLimit = 2;
+        int attemptLimit = 2;
         assertEquals(0, dn.getAttempts());
         dn.incAttempts();
         assertEquals(1, dn.getAttempts());
-        assertEquals(false, dn.maxAttempts(attempLimit));
+        assertEquals(false, dn.maxAttempts(attemptLimit));
         dn.incAttempts();
-        assertEquals(true, dn.maxAttempts(attempLimit));
         assertEquals(2, dn.getAttempts());
+        assertEquals(false, dn.maxAttempts(attemptLimit));
+        dn.incAttempts();
+        assertEquals(3, dn.getAttempts());
+        assertEquals(true, dn.maxAttempts(attemptLimit));
     }
 
     @Test

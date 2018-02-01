@@ -37,6 +37,7 @@ import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.pce.provider.PathComputer;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -517,9 +518,8 @@ public class FlowUtils {
      * @return flow path
      */
     public static ImmutablePair<PathInfoData, PathInfoData> getFlowPath(Flow flow) throws Exception {
-        pathComputer.init();
         Thread.sleep(1000);
-        return pathComputer.getPath(flow);
+        return pathComputer.getPath(flow, PathComputer.Strategy.HOPS);
     }
 
     public static boolean isTrafficTestsEnabled() {

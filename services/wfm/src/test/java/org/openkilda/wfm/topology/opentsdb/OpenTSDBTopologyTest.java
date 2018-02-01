@@ -45,6 +45,7 @@ public class OpenTSDBTopologyTest extends StableAbstractStormTest {
         mockServer.reset();
     }
 
+    @Ignore
     @Test
     public void shouldSuccessfulSendDatapoint() throws Exception {
         Datapoint datapoint = new Datapoint("metric", timestamp, Collections.emptyMap(), 123);
@@ -67,6 +68,7 @@ public class OpenTSDBTopologyTest extends StableAbstractStormTest {
         mockServer.verify(HttpRequest.request(), VerificationTimes.exactly(1));
     }
 
+    @Ignore
     @Test
     public void shouldSendDatapointRequestsOnlyOnce() throws Exception {
         Datapoint datapoint = new Datapoint("metric", timestamp, Collections.emptyMap(), 123);
@@ -87,6 +89,7 @@ public class OpenTSDBTopologyTest extends StableAbstractStormTest {
         mockServer.verify(HttpRequest.request(), VerificationTimes.exactly(1));
     }
 
+    @Ignore
     @Test
     public void shouldSendDatapointRequestsTwice() throws Exception {
         Datapoint datapoint1 = new Datapoint("metric", timestamp, Collections.emptyMap(), 123);
