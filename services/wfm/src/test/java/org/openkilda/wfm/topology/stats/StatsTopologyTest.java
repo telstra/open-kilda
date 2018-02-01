@@ -30,6 +30,7 @@ import org.apache.storm.testing.MockedSources;
 import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Values;
 import org.junit.Test;
+import org.junit.Ignore;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.Datapoint;
@@ -57,6 +58,7 @@ public class StatsTopologyTest extends StableAbstractStormTest {
 
     private static final long timestamp = System.currentTimeMillis();
 
+    @Ignore
     @Test
     public void portStatsTest() throws Exception {
         final String switchId = "00:00:00:00:00:00:00:01";
