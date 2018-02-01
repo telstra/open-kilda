@@ -6,7 +6,7 @@ Feature: Path Computation Engine
 
   For details on how the tests are implemented, look at PathComputationTest.java
 
-  @MVP1 @SMOKE
+  @MVP1 @POLICY
   Scenario Outline: The Path Matches the Policy
 
     This scenario exercises each of the policies, with the default policy getting tested twice.
@@ -17,9 +17,33 @@ Feature: Path Computation Engine
     And the path between A and B is pingable
 
     Examples:
-      | policy  |
-      | default |
-      | hops    |
-      | cost1   |
-      | cost2   |
+      | policy    |
+      | HOPS      |
+      | LATENCY   |
+      | COST      |
+      | EXTERNAL1 |
+
+  @MVP1 @COST_UPLOAD
+  Scenario: Cost Upload and Download
+
+    Verify that we can upload costs to kilda and download costs as well.
+    Costs can be anything - ie any field with a numeric (double) value.
+    As part of cost upload, verify that links that should be updated are updated.
+
+    Given a spider web topology with endpoints A and B
+    When link costs are uploaded through the NB API
+    Then link costs can be downloaded
+    And link properties are updated.
+
+
+  @MVP1 @LINK_CREATE
+  Scenario: Link creation will add costing if it exists
+
+    Verify that when we do have a cost table, if a link is added that matches a cost id,
+    then the cost is added as a property to those links.
+
+    Given a spider web topology with endpoints A and B
+    When link costs are uploaded through the NB API
+    And one or more links are added to the spider web topology
+    Then the new links will have the cost properties added if the cost id matches
 
