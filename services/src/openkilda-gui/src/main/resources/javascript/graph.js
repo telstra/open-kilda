@@ -513,6 +513,7 @@ function dblclick(d) {
     element.setAttribute("class", "circle")
     doubleClickTime = new Date();
     d3.select(this).classed("fixed", d.fixed = false);
+    force.resume();
 }
 function dragstart(d) {
 	force.stop()
