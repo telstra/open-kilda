@@ -47,6 +47,7 @@ import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.pce.cache.FlowCache;
 import org.openkilda.pce.cache.ResourceCache;
 import org.openkilda.pce.provider.PathComputer;
+import org.openkilda.pce.provider.PathComputer.Strategy;
 import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
 import org.openkilda.wfm.protocol.KafkaMessage;
@@ -127,8 +128,6 @@ public class CrudBolt
             flowCache = new FlowCache();
             this.caches.put(FLOW_CACHE, flowCache);
         }
-
-        pathComputer.init();
     }
 
     /**
@@ -297,7 +296,8 @@ public class CrudBolt
     private void handleCreateRequest(CommandMessage message, Tuple tuple) throws IOException {
         Flow requestedFlow = ((FlowCreateRequest) message.getData()).getPayload();
 
-        ImmutablePair<PathInfoData, PathInfoData> path = pathComputer.getPath(requestedFlow);
+        ImmutablePair<PathInfoData, PathInfoData> path =
+                pathComputer.getPath(requestedFlow, Strategy.HOPS);
         logger.info("Created flow path: {}", path);
 
         // TODO: Can we avoid special logic for "isOneSwitchFlow" .. make it the responsibility of the pathComputer?
@@ -330,7 +330,8 @@ public class CrudBolt
                 flow.getLeft().setState(FlowState.DOWN);
                 flow.getRight().setState(FlowState.DOWN);
 
-                ImmutablePair<PathInfoData, PathInfoData> path = pathComputer.getPath(requestedFlow);
+                ImmutablePair<PathInfoData, PathInfoData> path =
+                        pathComputer.getPath(requestedFlow, Strategy.HOPS);
                 logger.info("Rerouted flow path: {}", path);
 
                 if (!flowCache.isOneSwitchFlow(requestedFlow) && pathComputer.isEmpty(path)) {
@@ -374,7 +375,8 @@ public class CrudBolt
     private void handleRestoreRequest(CommandMessage message, Tuple tuple) throws IOException {
         ImmutablePair<Flow, Flow> requestedFlow = ((FlowRestoreRequest) message.getData()).getPayload();
 
-        ImmutablePair<PathInfoData, PathInfoData> path = pathComputer.getPath(requestedFlow.getLeft());
+        ImmutablePair<PathInfoData, PathInfoData> path =
+                pathComputer.getPath(requestedFlow.getLeft(), Strategy.HOPS);
         logger.info("Restored flow path: {}", path);
 
         if (!flowCache.isOneSwitchFlow(requestedFlow) && pathComputer.isEmpty(path)) {
@@ -399,7 +401,8 @@ public class CrudBolt
     private void handleUpdateRequest(CommandMessage message, Tuple tuple) throws IOException {
         Flow requestedFlow = ((FlowUpdateRequest) message.getData()).getPayload();
 
-        ImmutablePair<PathInfoData, PathInfoData> path = pathComputer.getPath(requestedFlow);
+        ImmutablePair<PathInfoData, PathInfoData> path =
+                pathComputer.getPath(requestedFlow, Strategy.HOPS);
         logger.info("Updated flow path: {}", path);
 
         if (!flowCache.isOneSwitchFlow(requestedFlow) && pathComputer.isEmpty(path)) {

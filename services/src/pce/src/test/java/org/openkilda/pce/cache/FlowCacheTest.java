@@ -46,6 +46,7 @@ public class FlowCacheTest {
     private final NetworkCache networkCache = new NetworkCache();
     private final PathComputer computer = new PathComputerMock().withNetwork(networkCache.getNetwork());
     private final FlowCache flowCache = new FlowCache();
+    private final PathComputer.Strategy defaultStrategy = PathComputer.Strategy.HOPS;
 
     private final Flow firstFlow = new Flow("first-flow", 0, "first-flow", "sw1", 11, 100, "sw3", 11, 200);
     private final Flow secondFlow = new Flow("second-flow", 0, "second-flow", "sw5", 12, 100, "sw3", 12, 200);
@@ -69,14 +70,14 @@ public class FlowCacheTest {
 
     @Test
     public void getFlow() throws Exception {
-        ImmutablePair<Flow, Flow> newFlow = flowCache.createFlow(firstFlow, computer.getPath(firstFlow));
+        ImmutablePair<Flow, Flow> newFlow = flowCache.createFlow(firstFlow, computer.getPath(firstFlow, defaultStrategy));
         ImmutablePair<Flow, Flow> storedFlow = flowCache.getFlow(firstFlow.getFlowId());
         assertEquals(newFlow, storedFlow);
     }
 
     @Test
     public void createFlow() throws Exception {
-        ImmutablePair<PathInfoData, PathInfoData> path = computer.getPath(firstFlow);
+        ImmutablePair<PathInfoData, PathInfoData> path = computer.getPath(firstFlow, defaultStrategy);
         ImmutablePair<Flow, Flow> newFlow = flowCache.createFlow(firstFlow, path);
 
         Flow forward = newFlow.left;
@@ -96,14 +97,14 @@ public class FlowCacheTest {
 
     @Test(expected = CacheException.class)
     public void createAlreadyExistentFlow() throws Exception {
-        ImmutablePair<PathInfoData, PathInfoData> path = computer.getPath(firstFlow);
+        ImmutablePair<PathInfoData, PathInfoData> path = computer.getPath(firstFlow, defaultStrategy);
         flowCache.createFlow(firstFlow, path);
         flowCache.createFlow(firstFlow, path);
     }
 
     @Test
     public void deleteFlow() throws Exception {
-        ImmutablePair<PathInfoData, PathInfoData> path = computer.getPath(firstFlow);
+        ImmutablePair<PathInfoData, PathInfoData> path = computer.getPath(firstFlow, defaultStrategy);
         ImmutablePair<Flow, Flow> newFlow = flowCache.createFlow(firstFlow, path);
         ImmutablePair<Flow, Flow> oldFlow = flowCache.deleteFlow(firstFlow.getFlowId());
         assertEquals(newFlow, oldFlow);
@@ -112,7 +113,7 @@ public class FlowCacheTest {
 
     @Test
     public void updateFlow() throws Exception {
-        ImmutablePair<PathInfoData, PathInfoData> path = computer.getPath(firstFlow);
+        ImmutablePair<PathInfoData, PathInfoData> path = computer.getPath(firstFlow, defaultStrategy);
 
         ImmutablePair<Flow, Flow> oldFlow = flowCache.createFlow(firstFlow, path);
         assertEquals(1, flowCache.resourceCache.getAllMeterIds("sw1").size());
@@ -140,25 +141,25 @@ public class FlowCacheTest {
 
     @Test
     public void dumpFlows() throws Exception {
-        ImmutablePair<Flow, Flow> first = flowCache.createFlow(firstFlow, computer.getPath(firstFlow));
-        ImmutablePair<Flow, Flow> second = flowCache.createFlow(secondFlow, computer.getPath(secondFlow));
-        ImmutablePair<Flow, Flow> third = flowCache.createFlow(thirdFlow, computer.getPath(thirdFlow));
+        ImmutablePair<Flow, Flow> first = flowCache.createFlow(firstFlow, computer.getPath(firstFlow, defaultStrategy));
+        ImmutablePair<Flow, Flow> second = flowCache.createFlow(secondFlow, computer.getPath(secondFlow, defaultStrategy));
+        ImmutablePair<Flow, Flow> third = flowCache.createFlow(thirdFlow, computer.getPath(thirdFlow, defaultStrategy));
         assertEquals(new HashSet<>(Arrays.asList(first, second, third)), flowCache.dumpFlows());
     }
 
     @Test
     public void getFlowPath() throws Exception {
-        flowCache.createFlow(firstFlow, computer.getPath(firstFlow));
-        ImmutablePair<PathInfoData, PathInfoData> path = computer.getPath(firstFlow);
+        flowCache.createFlow(firstFlow, computer.getPath(firstFlow, defaultStrategy));
+        ImmutablePair<PathInfoData, PathInfoData> path = computer.getPath(firstFlow, defaultStrategy);
         assertEquals(path, flowCache.getFlowPath(firstFlow.getFlowId()));
     }
 
     @Test
     public void getFlowsWithAffectedPathBySwitch() throws Exception {
         Set<ImmutablePair<Flow, Flow>> affected;
-        ImmutablePair<Flow, Flow> first = flowCache.createFlow(firstFlow, computer.getPath(firstFlow));
-        ImmutablePair<Flow, Flow> second = flowCache.createFlow(secondFlow, computer.getPath(secondFlow));
-        ImmutablePair<Flow, Flow> third = flowCache.createFlow(thirdFlow, computer.getPath(thirdFlow));
+        ImmutablePair<Flow, Flow> first = flowCache.createFlow(firstFlow, computer.getPath(firstFlow, defaultStrategy));
+        ImmutablePair<Flow, Flow> second = flowCache.createFlow(secondFlow, computer.getPath(secondFlow, defaultStrategy));
+        ImmutablePair<Flow, Flow> third = flowCache.createFlow(thirdFlow, computer.getPath(thirdFlow, defaultStrategy));
 
         affected = flowCache.getFlowsWithAffectedPath(NetworkTopologyConstants.sw5.getSwitchId());
         assertEquals(new HashSet<>(Arrays.asList(first, second)), affected);
@@ -173,9 +174,9 @@ public class FlowCacheTest {
     @Test
     public void getFlowsWithAffectedPathByIsl() throws Exception {
         Set<ImmutablePair<Flow, Flow>> affected;
-        ImmutablePair<Flow, Flow> first = flowCache.createFlow(firstFlow, computer.getPath(firstFlow));
-        ImmutablePair<Flow, Flow> second = flowCache.createFlow(secondFlow, computer.getPath(secondFlow));
-        flowCache.createFlow(thirdFlow, computer.getPath(thirdFlow));
+        ImmutablePair<Flow, Flow> first = flowCache.createFlow(firstFlow, computer.getPath(firstFlow, defaultStrategy));
+        ImmutablePair<Flow, Flow> second = flowCache.createFlow(secondFlow, computer.getPath(secondFlow, defaultStrategy));
+        flowCache.createFlow(thirdFlow, computer.getPath(thirdFlow, defaultStrategy));
 
         affected = flowCache.getFlowsWithAffectedPath(NetworkTopologyConstants.isl12);
         assertEquals(Collections.singleton(first), affected);
@@ -193,9 +194,9 @@ public class FlowCacheTest {
     @Test
     public void getFlowsWithAffectedPathByPort() throws Exception {
         Set<ImmutablePair<Flow, Flow>> affected;
-        ImmutablePair<Flow, Flow> first = flowCache.createFlow(firstFlow, computer.getPath(firstFlow));
-        ImmutablePair<Flow, Flow> second = flowCache.createFlow(secondFlow, computer.getPath(secondFlow));
-        flowCache.createFlow(thirdFlow, computer.getPath(thirdFlow));
+        ImmutablePair<Flow, Flow> first = flowCache.createFlow(firstFlow, computer.getPath(firstFlow, defaultStrategy));
+        ImmutablePair<Flow, Flow> second = flowCache.createFlow(secondFlow, computer.getPath(secondFlow, defaultStrategy));
+        flowCache.createFlow(thirdFlow, computer.getPath(thirdFlow, defaultStrategy));
 
         affected = flowCache.getFlowsWithAffectedPath(new PortInfoData(
                 NetworkTopologyConstants.isl12.getPath().get(0)));
@@ -217,9 +218,9 @@ public class FlowCacheTest {
     @Test
     public void getFlowsForUpState() throws Exception {
         Map<String, String> affected;
-        ImmutablePair<Flow, Flow> first = flowCache.createFlow(firstFlow, computer.getPath(firstFlow));
-        ImmutablePair<Flow, Flow> second = flowCache.createFlow(secondFlow, computer.getPath(secondFlow));
-        ImmutablePair<Flow, Flow> third = flowCache.createFlow(thirdFlow, computer.getPath(thirdFlow));
+        ImmutablePair<Flow, Flow> first = flowCache.createFlow(firstFlow, computer.getPath(firstFlow, defaultStrategy));
+        ImmutablePair<Flow, Flow> second = flowCache.createFlow(secondFlow, computer.getPath(secondFlow, defaultStrategy));
+        ImmutablePair<Flow, Flow> third = flowCache.createFlow(thirdFlow, computer.getPath(thirdFlow, defaultStrategy));
 
         affected = flowCache.getFlowsWithAffectedEndpoint(NetworkTopologyConstants.sw5.getSwitchId());
         assertEquals(Collections.singleton(second.getLeft().getFlowId()), affected.keySet());
@@ -235,7 +236,7 @@ public class FlowCacheTest {
     @Test
     public void getPath() throws Exception {
         ImmutablePair<PathInfoData, PathInfoData> path = computer.getPath(
-                NetworkTopologyConstants.sw1, NetworkTopologyConstants.sw3, 0);
+                NetworkTopologyConstants.sw1, NetworkTopologyConstants.sw3, 0, defaultStrategy);
         System.out.println(path.toString());
 
         PathNode node;
@@ -317,7 +318,7 @@ public class FlowCacheTest {
         PathNode node;
 
         ImmutablePair<PathInfoData, PathInfoData> path43 = computer.getPath(
-                NetworkTopologyConstants.sw4, NetworkTopologyConstants.sw3, 5);
+                NetworkTopologyConstants.sw4, NetworkTopologyConstants.sw3, 5, defaultStrategy);
         System.out.println(path43);
 
         List<PathNode> nodesForward43 = new ArrayList<>();
@@ -368,7 +369,7 @@ public class FlowCacheTest {
         assertEquals(islReversePath43, path43.right);
 
         ImmutablePair<PathInfoData, PathInfoData> path23 = computer.getPath(
-                NetworkTopologyConstants.sw2, NetworkTopologyConstants.sw3, 5);
+                NetworkTopologyConstants.sw2, NetworkTopologyConstants.sw3, 5, defaultStrategy);
         System.out.println(path23);
 
         List<PathNode> nodesForward23 = new ArrayList<>();
@@ -430,7 +431,7 @@ public class FlowCacheTest {
     public void getPathWithNoEnoughAvailableBandwidth() throws Exception {
         getPathIntersection();
         System.out.println(networkCache.dumpIsls());
-        computer.getPath(NetworkTopologyConstants.sw5, NetworkTopologyConstants.sw3, 1);
+        computer.getPath(NetworkTopologyConstants.sw5, NetworkTopologyConstants.sw3, 1, defaultStrategy);
     }
 
     private void buildNetworkTopology(NetworkCache networkCache) {
