@@ -33,7 +33,7 @@ from py2neo import Graph, Node, Relationship
 
 
 config = ConfigParser.RawConfigParser()
-config.read('topology_engine_rest.properties')
+config.read('topology_engine_rest.ini')
 
 group = config.get('kafka', 'consumer.group')
 topic = config.get('kafka', 'kafka.topic.flow')
