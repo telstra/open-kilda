@@ -32,7 +32,7 @@ function showSwitchData(response){
 	
 	if(!response) {
 		response=[]
-
+		console.log("hi");
 		common.infoMessage('No Switch Avaliable','info');
 	}
 	
