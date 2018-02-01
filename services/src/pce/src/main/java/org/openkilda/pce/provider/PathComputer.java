@@ -29,6 +29,15 @@ import java.io.Serializable;
  * PathComputation interface represent operations on flow path.
  */
 public interface PathComputer extends Serializable {
+
+    /**
+     * The Strategy is used for getting a Path - ie what filters to apply.
+     * In reality, to provide flexibility, this should most likely be one or more strings.
+     */
+    enum Strategy {
+        HOPS, COST, LATENCY, EXTERNAL
+    }
+
     /**
      * Gets isl weight.
      *
@@ -55,7 +64,7 @@ public interface PathComputer extends Serializable {
      * @param flow {@link Flow} instances
      * @return {@link PathInfoData} instances
      */
-    ImmutablePair<PathInfoData, PathInfoData> getPath(Flow flow);
+    ImmutablePair<PathInfoData, PathInfoData> getPath(Flow flow, Strategy strategy);
 
     /**
      * Gets path between source and destination switch.
@@ -66,18 +75,5 @@ public interface PathComputer extends Serializable {
      * @return {@link PathInfoData} instances
      */
     ImmutablePair<PathInfoData, PathInfoData> getPath(SwitchInfoData source, SwitchInfoData destination,
-                                                      int bandwidth);
-
-    /**
-     * Sets network topology.
-     *
-     * @param network network topology represented by {@link MutableNetwork} instance
-     * @return {@link PathComputer} instance
-     */
-    PathComputer withNetwork(MutableNetwork<SwitchInfoData, IslInfoData> network);
-
-    /**
-     * Initialises path computer.
-     */
-    void init();
+                                                      int bandwidth, Strategy strategy);
 }
