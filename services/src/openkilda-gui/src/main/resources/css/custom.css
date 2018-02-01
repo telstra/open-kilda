@@ -59,6 +59,10 @@ h1 {
 	font-weight: 700;
 }
 
+.clearfix {
+	clear: both;
+}
+
 .main-header {
 	background: #1b1f26;
 	height: 55px;
@@ -590,6 +594,17 @@ h1.modal-title {
 	bottom: 0;
 }
 
+.bg_load_graph {
+	position: absolute;
+	left: 0px;
+	right: 0px;
+	background: rgb(255,255,255); /* rgba(0, 0, 0, 0.6) */
+	z-index: 9;
+	margin: 0;
+	top: 0;
+	bottom: 0;
+}
+
 body{
     pointer-events:none;
 }
@@ -598,12 +613,10 @@ body{
 	border: 14px solid #f3f3f3;
 	border-radius: 50%;
 	border-top: 16px solid #3498db;
-	width: 90px;
-	height: 90px;
-	top: 0;
-	left: 0;
-	right: 0;
-	bottom: 0;
+	width: 85px;
+	height: 85px;
+	top: calc(50% - 90px);
+    left: calc(50% - 90px);
 	-webkit-animation: spin 2s linear infinite;
 	animation: spin 2s linear infinite;
 	margin: auto;
@@ -643,10 +656,16 @@ footer {
 }
 
 #graphdiv {
-	margin-top: 20px;
-	margin-bottom: 20px;
+	margin-bottom: 15px;
+    margin-top: 15px;
 	height: 420px;
 	width: 100%;
+	margin-left: -20px;
+}
+
+.tab-content #graphdiv {
+	margin-bottom: 0;
+    margin-top: 0;
 }
 
 .topology-graph {
@@ -1238,6 +1257,48 @@ table#flowTable.dataTable .divTableCell {
 	padding: 10px 0;
 	font-size: 14px;
 	margin-top: -10px
+}
+
+.topology-graph ul.line-legend {
+	margin-bottom: 20px;
+	margin-top: 15px;
+	padding: 0 15px;
+}
+
+.topology-graph ul.line-legend {
+	margin-top: 0;
+}
+
+.topology-graph ul.line-legend li {
+	position: relative;
+	display: inline-block;
+    padding-left: 20px;
+    padding-right: 15px;
+    height: auto;
+}
+
+.line-legend li:before {
+    height: 14px;
+    left: 0;
+    position: absolute;
+    top: 0;
+    width: 14px;
+    content: "";
+    background: #aad200;
+}
+
+.line-legend li:first-child:before {
+    height: 14px;
+    left: 0;
+    position: absolute;
+    top: 0;
+    width: 14px;
+    content: "";
+    background: #495cff;
+}
+
+#sidebar-left {
+  pointer-events: all;
 }
 
 @-moz-keyframes spin {

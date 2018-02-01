@@ -14,13 +14,16 @@ $(document).ready(function() {
 			var tmp_anchor_switch = '<a href="details#' + switchname + '">'+ switchname + '</a>';
 			$("#kilda-switch-name").parent().append(tmp_anchor_switch)			
 			var portData = localStorage.getItem("portDetails");
+			
+			if(!portData) {
+				window.location = "/openkilda/switch";
+			}	
 			var obj = JSON.parse(portData)
 			$("#kilda-port-name").parent().append(obj.port_name)
-			$("#wait1").css("display", "none");
-			$('body').css('pointer-events', 'all');
-								
+			$('body').css('pointer-events', 'all');							
 			showSwitchData(obj);
-			getPortMetrics();
+			getMetricDetails.getPortMetricData();
+			
 })
 
 /**
@@ -29,47 +32,11 @@ $(document).ready(function() {
  */
 function showSwitchData(obj) {
 	
+
 	$(".graph_div").show();
 	$(".port_details_div_status").html(obj.status);
 	$(".port_details_div_name").html(obj.port_name);
 	$(".switchdetails_div_number").html(obj.port_number);
 	$(".switchdetails_div_interface").html(obj.interface);
 }
-
-function getPortMetrics() {
-	
-	common.getData("/stats/metrics","GET").then(function(response) {
-		$("#wait1").css("display", "none");
-		$('body').css('pointer-events', 'all');
-		showMetricData(response);
-	},
-	function(error){
-		response=[]
-		$("#wait1").css("display", "none");
-		$('body').css('pointer-events','all'); 
-		showMetricData(response);
-	})
-}
-
-function showMetricData(response) {
-	
-	var metricArray = [];			
-	for (var i = 0; i < response.length; i++) {
-		
-		if(response[i].includes("pen.switch")) {
-			var value = response[i].split(".")[2]
-			metricArray.push(value);
-		}
-	}	
-	var metricList = metricArray;
-	var optionHTML = "";
-	for (var i = 0; i <= metricList.length - 1; i++) {
-		optionHTML += "<option value=" + 'pen.switch.' + metricList[i] + ">"+ metricList[i] + "</option>";
-
-	}
-	$("select.selectbox_menulist").html("").html(optionHTML);
-	$('#menulist').val('pen.switch.rx-bits');
-}
-
-
 /* ]]> */

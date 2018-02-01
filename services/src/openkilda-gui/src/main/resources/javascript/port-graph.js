@@ -24,7 +24,7 @@ $(function() {
 		$("#datetimepicker7,#datetimepicker8,#downsampling,#menulist,#autoreload").on("change",function() {
 			getGraphData();
 		});
-	});
+});
 	
 /**
  * Execute this function when page is loaded or when user is directed to this
@@ -32,6 +32,12 @@ $(function() {
  */
 $(document).ready(function() {
 
+	var g = new Dygraph(document.getElementById("graphdiv"), [],
+	        {
+			    drawPoints: true,
+			    labels: ['Time']
+			});
+	
 	$.datetimepicker.setLocale('en');
 	var date = new Date()
 	var yesterday = new Date(date.getTime());
@@ -40,7 +46,8 @@ $(document).ready(function() {
 	var EndDate = moment(date).format("YYYY/MM/DD HH:mm:ss");	
 	var convertedStartDate = moment(YesterDayDate).format("YYYY-MM-DD-HH:mm:ss");
 	var convertedEndDate = moment(EndDate).format("YYYY-MM-DD-HH:mm:ss");
-	var downsampling = "1s";
+	var selMetric="bits";
+	var downsampling = "10m";
 
 	$("#downsampling").val(downsampling)
 	$("#datetimepicker7").val(YesterDayDate);
@@ -53,9 +60,11 @@ $(document).ready(function() {
 	});
 
 	$('#datetimepicker_dark').datetimepicker({theme:'dark'})
-
-		loadGraph.loadGraphData("/stats/switchid/"+sourceswitch+"/portnumber/"+portNum+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/pen.switch.collisions","GET").then(function(response) {
-			showStatsGraph.showStatsData(response); 
+	
+		loadGraph.loadGraphData("/stats/switchid/"+sourceswitch+"/port/"+portNum+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric,"GET",selMetric).then(function(response) {
+			$("#wait1").css("display", "none");
+			$('body').css('pointer-events', 'all');
+			showStatsGraph.showStatsData(response,selMetric); 
 		})
 })
 
@@ -74,7 +83,6 @@ function getGraphData() {
 	var downsampling = $("#downsampling").val();
 	var downsamplingValidated = regex.test(downsampling);
 	var selMetric=$("select.selectbox_menulist").val();
-	console.log(selMetric);
 	var valid=true;
 	
 	if(downsamplingValidated == false) {	
@@ -84,11 +92,11 @@ function getGraphData() {
 		return
 	}
 	if(startDate.getTime() > currentDate.getTime()) {
-		common.infoMessage('startDate should not be greater than currentDate.','error');		
+		common.infoMessage('From Date should not be greater than currentDate.','error');		
 		valid=false;
 		return;
 	} else if(endDate.getTime() < startDate.getTime()){
-		common.infoMessage('endDate should not be less than startDate.','error');		
+		common.infoMessage('To Date should not be less than From Date.','error');		
 		valid=false;
 		return;
 	}
@@ -97,11 +105,15 @@ function getGraphData() {
 	var numbers = /^[-+]?[0-9]+$/;  
 	var checkNo = $("#autoreload").val().match(numbers);
 	var checkbox =  $("#check").prop("checked");
+	var isChecked = $('#check').attr('checked')?true:false;
+
 
 	if(valid) {
 
-	loadGraph.loadGraphData("/stats/switchid/"+sourceswitch+"/portnumber/"+portNum+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric,"GET").then(function(response) {
-		showStatsGraph.showStatsData(response); 
+	loadGraph.loadGraphData("/stats/switchid/"+sourceswitch+"/port/"+portNum+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric,"GET",selMetric).then(function(response) {
+		$("#wait1").css("display", "none");
+		$('body').css('pointer-events', 'all');
+		showStatsGraph.showStatsData(response,selMetric); 
 	})
 	
 			try {
@@ -130,8 +142,10 @@ function callIntervalData(){
 
 	var selMetric=$("select.selectbox_menulist").val();
 	
-	loadGraph.loadGraphData("/stats/switchid/"+sourceswitch+"/portnumber/"+portNum+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric,"GET").then(function(response) {
-		showStatsGraph.showStatsData(response); 
+	loadGraph.loadGraphData("/stats/switchid/"+sourceswitch+"/port/"+portNum+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric,"GET",selMetric).then(function(response) {
+		$("#wait1").css("display", "none");
+		$('body').css('pointer-events', 'all');
+		showStatsGraph.showStatsData(response,selMetric); 
 	})
 }
 

@@ -9,6 +9,7 @@ $(document).ready(function(){
 		showflowData(response); 
 	},
 	function(error){
+		response=[];
 		$("#wait1").css("display", "none");
 		$('body').css('pointer-events','all'); 
 		showflowData(response);
@@ -17,12 +18,19 @@ $(document).ready(function(){
 	$(document).on("click",".flowDataRow",function(e){
 		setFlowData(this);
 	})
+	
+	localStorage.clear();
 })
 
-
+var event;
+$( 'input').on( 'click', function () {
+	if(event != "undefined"){
+		event.stopPropagation();
+	}
+});
 
 function showflowData(response){
-		
+			
 	if(!response) {
 		response=[]
 		common.infoMessage('No Flows Avaliable','info');
@@ -33,23 +41,22 @@ function showflowData(response){
 	
 	 for(var i = 0; i < response.length; i++) {
 		 var tableRow = "<tr id='div_"+(i+1)+"' class='flowDataRow'>"
-		 			    +"<td class='divTableCell' title ='"+((response[i].flowid == "" || response[i].flowid == undefined)?"-":response[i].flowid)+"'>"+((response[i].flowid == "" || response[i].flowid == undefined)?"-":response[i].flowid)+"</td>"
-		 			    +"<td class='divTableCell' title ='"+((response[i].source_switch == "" || response[i].source_switch == undefined)?"-":response[i].source_switch)+"'>"+((response[i].source_switch == "" || response[i].source_switch == undefined)?"-":response[i].source_switch)+"</td>"
-		 			    +"<td class='divTableCell' title ='"+((response[i].src_port == "" || response[i].src_port == undefined)?"-":response[i].src_port)+"'>"+((response[i].src_port == "" || response[i].src_port == undefined)?"-":response[i].src_port)+"</td>"
-		 			    +"<td class='divTableCell' title ='"+((response[i].src_vlan == "" || response[i].src_vlan == undefined)?"-":response[i].src_vlan)+"'>"+ ((response[i].src_vlan == "" || response[i].src_vlan == undefined)?"-":response[i].src_vlan)+"</td>"
-		 			    +"<td class='divTableCell' title ='"+((response[i].target_switch == "" || response[i].target_switch == undefined)?"-":response[i].target_switch)+"'>"+((response[i].target_switch == "" || response[i].target_switch == undefined)?"-":response[i].target_switch)+"</td>"
-		 			    +"<td class='divTableCell' title ='"+((response[i].dst_port == "" || response[i].dst_port == undefined)?"-":response[i].dst_port)+"'>"+((response[i].dst_port == "" || response[i].dst_port == undefined)?"-":response[i].dst_port)+"</td>"
-		 			    +"<td class='divTableCell' title ='"+((response[i].dst_vlan == "" || response[i].dst_vlan == undefined)?"-":response[i].dst_vlan)+"'>"+((response[i].dst_vlan == "" || response[i].dst_vlan == undefined)?"-":response[i].dst_vlan)+"</td>"
-		 			    +"<td class='divTableCell' title ='"+((response[i].maximum_bandwidth == "" || response[i].maximum_bandwidth == undefined)?"-":response[i].maximum_bandwidth)+"'> "+ ((response[i].maximum_bandwidth == "" || response[i].maximum_bandwidth == undefined)?"-":response[i].maximum_bandwidth)+"</td>"
-		 			    +"<td class='divTableCell' title ='"+((response[i].status == "" || response[i].status == undefined)?"-":response[i].status)+"'>"+((response[i].status == "" || response[i].status == undefined)?"-":response[i].status)+"</td>"
-		 			    +"<td class='divTableCell' title ='"+((response[i].description == "" || response[i].description == undefined)?"-":response[i].description)+"'>"+((response[i].description == "" || response[i].description == undefined)?"-":response[i].description)+"</td>"
+		 			    +"<td class='divTableCell' title ='"+((response[i].flowid === "" || response[i].flowid == undefined)?"-":response[i].flowid)+"'>"+((response[i].flowid === "" || response[i].flowid == undefined)?"-":response[i].flowid)+"</td>"
+		 			    +"<td class='divTableCell' title ='"+((response[i].source_switch === "" || response[i].source_switch == undefined)?"-":response[i].source_switch)+"'>"+((response[i].source_switch === "" || response[i].source_switch == undefined)?"-":response[i].source_switch)+"</td>"
+		 			    +"<td class='divTableCell' title ='"+((response[i].src_port === "" || response[i].src_port == undefined)?"-":response[i].src_port)+"'>"+((response[i].src_port === "" || response[i].src_port == undefined)?"-":response[i].src_port)+"</td>"
+		 			    +"<td class='divTableCell' title ='"+((response[i].src_vlan === "" || response[i].src_vlan === undefined)?"-":response[i].src_vlan)+"'>"+ ((response[i].src_vlan === "" || response[i].src_vlan == undefined)?"-":response[i].src_vlan)+"</td>"
+		 			    +"<td class='divTableCell' title ='"+((response[i].target_switch === "" || response[i].target_switch == undefined)?"-":response[i].target_switch)+"'>"+((response[i].target_switch === "" || response[i].target_switch == undefined)?"-":response[i].target_switch)+"</td>"
+		 			    +"<td class='divTableCell' title ='"+((response[i].dst_port === "" || response[i].dst_port == undefined)?"-":response[i].dst_port)+"'>"+((response[i].dst_port === "" || response[i].dst_port == undefined)?"-":response[i].dst_port)+"</td>"
+		 			    +"<td class='divTableCell' title ='"+((response[i].dst_vlan === "" || response[i].dst_vlan == undefined)?"-":response[i].dst_vlan)+"'>"+((response[i].dst_vlan === "" || response[i].dst_vlan == undefined)?"-":response[i].dst_vlan)+"</td>"
+		 			    +"<td class='divTableCell' title ='"+((response[i].maximum_bandwidth === "" || response[i].maximum_bandwidth == undefined)?"-":response[i].maximum_bandwidth)+"'> "+ ((response[i].maximum_bandwidth === "" || response[i].maximum_bandwidth == undefined)?"-":response[i].maximum_bandwidth)+"</td>"
+		 			    +"<td class='divTableCell' title ='"+((response[i].status === "" || response[i].status == undefined)?"-":response[i].status)+"'>"+((response[i].status === "" || response[i].status == undefined)?"-":response[i].status)+"</td>"
+		 			    +"<td class='divTableCell' title ='"+((response[i].description === "" || response[i].description == undefined)?"-":response[i].description)+"'>"+((response[i].description === "" || response[i].description == undefined)?"-":response[i].description)+"</td>"
 		 			    +"</tr>";
 		 
 		 			   $("#flowTable").append(tableRow);
 		 			   if(response[i].status == "UP" || response[i].status == "ALLOCATED") {
 		 				   	$("#div_"+(i+1)).addClass('up-state');
 		 		        } else {
-		 		        	console.log(response[i].status)
 		 		        	$("#div_"+(i+1)).addClass('down-state');
 		 		        }
 	 }

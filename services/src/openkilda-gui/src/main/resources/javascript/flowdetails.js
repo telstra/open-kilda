@@ -6,27 +6,18 @@ $(document).ready(function() {
 	var tmp_anchor = '<a href="flowdetails#' + flowid + '">' + flowid + '</a>';
 	$("#flow-id-name").parent().append(flowid)
 	var flowData = localStorage.getItem("flowDetails");
+	
+	if(!flowData) {
+		window.location = "/openkilda/flows";
+	}
+	
 	var obj = JSON.parse(flowData)
 	showFlowData(obj);
-	getFlowMetric();
-	$("#wait1").css("display", "none");
+	getMetricDetails.getFlowMetricData();
+	//$("#wait1").css("display", "none");
 	$('body').css('pointer-events','all');
 })
 
-function getFlowMetric() {
-
-	common.getData("/stats/metrics","GET").then(function(response) {
-		$("#wait1").css("display", "none");
-		$('body').css('pointer-events','all');
-		 showFlowMetrics(response);
-	},
-	function(error){
-		response=[]
-		$("#wait1").css("display", "none");
-		$('body').css('pointer-events','all'); 
-		 showFlowMetrics(response);
-	})
-}
 
 function showFlowData(obj) {
 
@@ -52,7 +43,7 @@ function showFlowData(obj) {
 function callFlowForwardPath(flow_id) {
 	
 	common.getData("/flows/path/" + flow_id,"GET").then(function(response) {
-		$("#wait1").css("display", "none");
+		//$("#wait1").css("display", "none");
 		showForwardFlowPathData(response);
 	})
 
@@ -61,7 +52,7 @@ function callFlowForwardPath(flow_id) {
 function callFlowReversePath(flow_id) {
 	
 	common.getData("/flows/path/" + flow_id,"GET").then(function(response) {
-		$("#wait1").css("display", "none");
+		//$("#wait1").css("display", "none");
 		showReverseFlowPathData(response);
 	})
 
@@ -189,24 +180,5 @@ function showReverseFlowPathData(response) {
 	
 	$(".path:last-child .line:nth-child(6)").hide();
 }
-
-function showFlowMetrics(response){
-	var metricArray = [];			
-	for (var i = 0; i < response.length; i++) {				
-		
-		if(response[i].includes("pen.flow")) {
-			var value = response[i].split(".")[2]
-			metricArray.push(value);
-		}
-	}		
-	var metricList = metricArray;
-	var optionHTML = "";
-	for (var i = 0; i <= metricList.length - 1; i++) {
-		optionHTML += "<option value=" + 'pen.flow.' + metricList[i] + ">"+ metricList[i] + "</option>";
-	}
-	$("select.selectbox_menulist").html("").html(optionHTML);
-	$('#menulist').val('pen.flow.bytes');
-}
-
 
 /* ]]> */
