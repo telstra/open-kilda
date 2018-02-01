@@ -17,9 +17,8 @@ Feature: Path Computation Engine
     And the path between A and B is pingable
 
     Examples:
-      | policy  |
-      | default |
-      | hops    |
-      | cost1   |
-      | cost2   |
-
+      | policy    |
+      | HOPS      |
+      | LATENCY   |
+      | COST      |
+      | EXTERNAL1 |

@@ -60,6 +60,12 @@ import static org.junit.Assert.*;
 public class PathComputationTest {
     private static final String fileName = "topologies/pce-spider-topology.json";
 
+    //
+    // TODO: ensure bandwidth tests are part of this .. so we confirm policy & bandwidth
+    // TODO: Create the Expected Flows for each scenario / policy
+    // TODO: Can we confirm Neo4J, FlowCache, and FL/Switches?
+    //
+
     @Given("^a spider web topology with endpoints A and B$")
     public void a_multi_path_topology() throws Throwable {
         ClassLoader classLoader = getClass().getClassLoader();
@@ -76,12 +82,6 @@ public class PathComputationTest {
         throw new PendingException();
     }
 
-    @Then("^the path matches the default$")
-    public void the_path_matches_the_default() throws Throwable {
-        // Write code here that turns the phrase above into concrete actions
-        throw new PendingException();
-    }
-
     @Then("^the path between A and B is pingable$")
     public void the_path_between_A_and_B_is_pingable() throws Throwable {
         // Write code here that turns the phrase above into concrete actions
@@ -94,21 +94,38 @@ public class PathComputationTest {
         throw new PendingException();
     }
 
-    @Then("^the path matches the hops$")
-    public void the_path_matches_the_hops() throws Throwable {
-        // Write code here that turns the phrase above into concrete actions
-        throw new PendingException();
-    }
-
     @When("^a flow request is made between A and B with cost(\\d+)$")
     public void a_flow_request_is_made_between_A_and_B_with_cost(int arg1) throws Throwable {
         // Write code here that turns the phrase above into concrete actions
         throw new PendingException();
     }
 
-    @Then("^the path matches the cost(\\d+)$")
+    @Then("^the path matches the HOPS$")
+    public void the_path_matches_the_hops() throws Throwable {
+        throw new PendingException();
+    }
+
+    @Then("^the path matches the COST$")
     public void the_path_matches_the_cost(int arg1) throws Throwable {
-        // Write code here that turns the phrase above into concrete actions
+        /*
+         * Confirm that the route matches cost, not the default
+         */
+        throw new PendingException();
+    }
+
+    @Then("^the path matches the LATENCY$")
+    public void the_path_matches_the_latency(int arg1) throws Throwable {
+        /*
+         * Confirm that the route matches latency, not the default
+         */
+        throw new PendingException();
+    }
+
+    @Then("^the path matches the EXTERNAL$")
+    public void the_path_matches_the_extra(int arg1) throws Throwable {
+        /*
+         * Confirm that the route matches extra , not the default
+         */
         throw new PendingException();
     }
 
