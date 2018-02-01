@@ -83,7 +83,6 @@ var api = {
 api.getSwitches();
 
 //declare variables
-
 var zoomFitCall = true;
 var doubleClickTime = 0;
 var threshold = 500; 
@@ -126,7 +125,8 @@ force = d3.layout.force()
 
 
 drag = force.drag()
-	.on("dragstart", dragstart);
+	.on("dragstart", dragstart)
+	.on("dragend", dragend);
 svg = d3.select("#switchesgraph").append("svg")
 	.attr("width", width)
 	.attr("height", height)
@@ -259,7 +259,6 @@ graph = {
 		    var element = $("#circle" + index)[0];
 		    element.setAttribute("class", "nodeover");
 		    var rec = element.getBoundingClientRect();
-		    //console.log(rec);
 		    $('#topology-hover-txt').css('display', 'block');
 		    $('#topology-hover-txt').css('top', rec.y + 'px');
 		    $('#topology-hover-txt').css('left', rec.x + 'px');
@@ -520,7 +519,13 @@ function dragstart(d) {
 	d3.event.sourceEvent.stopPropagation();
 	d3.select(this).classed("fixed", d.fixed = true);
 }
-
+function dragend(d, i) {
+    flagHover = false;
+    d.fixed = true;
+    tick();
+    force.resume();
+    // d3.event.sourceEvent.stopPropagation();
+}
 $("#showDetail").on("click", function(){
 	checked = $('input[name="switch"]:checked').length; 
 	var element = $(".switchname");
@@ -535,8 +540,8 @@ $("#showDetail").on("click", function(){
 function zoomFit(paddingPercent, transitionDuration) {
 	var bounds = svg.node().getBBox();
 	var parent = svg.node().parentElement;
-	var fullWidth = parent.clientWidth,
-		fullHeight = parent.clientHeight-150;
+	var fullWidth = $(parent).width(),
+		fullHeight = $(parent).height()-150;
 	var width = bounds.width,
 		height = bounds.height;
 	var midX = bounds.x + width / 2,
@@ -573,6 +578,7 @@ function showFlowDetails(d) {
 /* function to open switchpage page */
 function showSwitchDetails(d) {
 
+	localStorage.setItem("switchDetailsJSON", JSON.stringify(d));
 	window.location = "switch/details#" + d.switch_id;
 }
 
@@ -584,4 +590,5 @@ function showLinkDetails(d) {
 }
 
 var panzoom = $("svg").svgPanZoom();
+localStorage.clear();
 /* ]]> */
