@@ -1,5 +1,10 @@
 package org.openkilda.constants;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
+
 /**
  * The Interface IConstants.
  *
@@ -32,34 +37,120 @@ public abstract class IConstants {
         public static final String SWITCH_LIST = "switch";
     }
 
-    public static class Metrics {
-        public static final String PEN_FLOW_BITS = "pen.flow.bits";
-        public static final String PEN_FLOW_BYTES = "pen.flow.bytes";
-        public static final String PEN_FLOW_PACKETS = "pen.flow.packets";
-        public static final String PEN_FLOW_TABLEID = "pen.flow.tableid";
-        public static final String PEN_ISL_LATENCY = "pen.isl.latency";
-        public static final String PEN_SWITCH_COLLISIONS = "pen.switch.collisions";
-        public static final String PEN_SWITCH_RX_BITS = "pen.switch.rx-bits";
-        public static final String PEN_SWITCH_RX_BYTES = "pen.switch.rx-bytes";
-        public static final String PEN_SWITCH_RX_CRC_ERROR = "pen.switch.rx-crc-error";
-        public static final String PEN_SWITCH_RX_DROPPED = "pen.switch.rx-dropped";
-        public static final String PEN_SWITCH_RX_ERRORS = "pen.switch.rx-errors";
-        public static final String PEN_SWITCH_RX_FRAME_ERROR = "pen.switch.rx-frame-error";
-        public static final String PEN_SWITCH_RX_OVER_ERROR = "pen.switch.rx-over-error";
-        public static final String PEN_SWITCH_RX_PACKETS = "pen.switch.rx-packets";
-        public static final String PEN_SWITCH_TX_BITS = "pen.switch.tx-bits";
-        public static final String PEN_SWITCH_TX_BYTES = "pen.switch.tx-bytes";
-        public static final String PEN_SWITCH_TX_DROPPED = "pen.switch.tx-dropped";
-        public static final String PEN_SWITCH_TX_ERRORS = "pen.switch.tx-errors";
-        public static final String PEN_SWITCH_TX_PACKETS = "pen.switch.tx-packets";
+    public enum Metrics {
 
-        public static final String[] LIST =
-                {PEN_FLOW_BITS, PEN_FLOW_BYTES, PEN_FLOW_PACKETS, PEN_FLOW_TABLEID, PEN_ISL_LATENCY,
-                        PEN_SWITCH_COLLISIONS, PEN_SWITCH_RX_BITS, PEN_SWITCH_RX_BYTES,
-                        PEN_SWITCH_RX_CRC_ERROR, PEN_SWITCH_RX_DROPPED, PEN_SWITCH_RX_ERRORS,
-                        PEN_SWITCH_RX_FRAME_ERROR, PEN_SWITCH_RX_OVER_ERROR, PEN_SWITCH_RX_PACKETS,
-                        PEN_SWITCH_TX_BITS,
-                        PEN_SWITCH_TX_BYTES, PEN_SWITCH_TX_DROPPED, PEN_SWITCH_TX_ERRORS,
-                        PEN_SWITCH_TX_PACKETS};
+        PEN_FLOW_BITS("Flow_bits", "pen.flow.bits"),
+
+        PEN_FLOW_BYTES("Flow_bytes", "pen.flow.bytes"),
+
+        PEN_FLOW_PACKETS("Flow_packets", "pen.flow.packets"),
+
+        PEN_FLOW_TABLEID("Flow_tableid", "pen.flow.tableid"),
+
+        PEN_ISL_LATENCY("Isl_latency", "pen.isl.latency"),
+
+        PEN_SWITCH_COLLISIONS("Switch_collisions", "pen.switch.collisions"),
+
+        PEN_SWITCH_RX_CRC_ERROR("Switch_crcerror", "pen.switch.rx-crc-error"),
+
+        PEN_SWITCH_RX_FRAME_ERROR("Switch_frameerror", "pen.switch.rx-frame-error"),
+
+        PEN_SWITCH_RX_OVER_ERROR("Switch_overerror", "pen.switch.rx-over-error"),
+
+        PEN_SWITCH_RX_BITS("Switch_bits", "pen.switch.rx-bits"),
+
+        PEN_SWITCH_TX_BITS("Switch_bits", "pen.switch.tx-bits"),
+
+        PEN_SWITCH_RX_BYTES("Switch_bytes", "pen.switch.rx-bytes"),
+
+        PEN_SWITCH_TX_BYTES("Switch_bytes", "pen.switch.tx-bytes"),
+
+        PEN_SWITCH_RX_DROPPED("Switch_drops", "pen.switch.rx-dropped"),
+
+        PEN_SWITCH_TX_DROPPED("Switch_drops", "pen.switch.tx-dropped"),
+
+        PEN_SWITCH_RX_ERRORS("Switch_errors", "pen.switch.rx-errors"),
+
+        PEN_SWITCH_TX_ERRORS("Switch_errors", "pen.switch.tx-errors"),
+
+        PEN_SWITCH_TX_PACKETS("Switch_packets", "pen.switch.tx-packets"),
+
+        PEN_SWITCH_RX_PACKETS("Switch_packets", "pen.switch.rx-packets");
+
+        private String tag;
+        private String displayTag;
+
+        private Metrics(String tag, String displayTag) {
+            this.setTag(tag);
+            this.setDisplayTag(displayTag);
+        }
+
+        private void setTag(String tag) {
+            this.tag = tag;
+        }
+        
+        public String getTag() {
+            return tag;
+        }
+
+        private void setDisplayTag(String displayTag) {
+            this.displayTag = displayTag;
+        }
+
+        public String getDisplayTag() {
+            return displayTag;
+        }
+
+        public static List<String> flowValue(String tag) {
+            List<String> list = new ArrayList<String>();
+            tag = "Flow_" + tag;
+            for (Metrics metric : values()) {
+                if (metric.getTag().equalsIgnoreCase(tag)) {
+                    list.add(metric.getDisplayTag());
+                    list.add(metric.getDisplayTag());
+                }
+            }
+            return list;
+        }
+
+        public static List<String> switchValue(String tag) {
+            List<String> list = new ArrayList<String>();
+            tag = "Switch_" + tag;
+            for (Metrics metric : values()) {
+                if (metric.getTag().equalsIgnoreCase(tag)) {
+                    list.add(metric.getDisplayTag());
+                }
+            }
+            return list;
+        }
+        
+        public static List<String> islValue(String tag) {
+            List<String> list = new ArrayList<String>();
+            tag = "Isl_" + tag;
+            for (Metrics metric : values()) {
+                if (metric.getTag().equalsIgnoreCase(tag)) {
+                    list.add(metric.getDisplayTag());
+                }
+            }
+            return list;
+        }
+
+        public static List<String> list() {
+            List<String> list = new ArrayList<String>();
+            for (Metrics metric : values()) {
+                list.add(metric.getDisplayTag());
+            }
+            return list;
+        }
+
+        public static Set<String> tags() {
+            Set<String> tags = new TreeSet<String>();
+            for (Metrics metric : values()) {
+                String[] v = metric.getTag().split("_");
+                tags.add(v[1]);
+            }
+            return tags;
+        }
     }
+    
 }
