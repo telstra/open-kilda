@@ -67,15 +67,13 @@ public class OpenTSDBFilterBolt extends BaseRichBolt {
         if (isUpdateRequired(datapoint)) {
             addDatapoint(datapoint);
 
-            List<Object> stream = Stream.of(datapoint.getMetric(), datapoint.getTime(), datapoint.getValue(),
-                    datapoint.getTags())
-                    .collect(Collectors.toList());
+//            List<Object> stream = Stream.of(datapoint.getMetric(), datapoint.getTime(), datapoint.getValue(),
+//                    datapoint.getTags()).collect(Collectors.toList());
 
-            LOGGER.debug("emit: " + stream);
-            collector.emit(stream);
+//            LOGGER.debug("emit: " + stream);
+//            collector.emit(stream);
         }
         collector.ack(tuple);
-
     }
 
     @Override
