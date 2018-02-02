@@ -68,7 +68,12 @@ public class KafkaMessageCollector implements IFloodlightModule {
         try {
             ExecutorService parseRecordExecutor = Executors.newFixedThreadPool(EXEC_POOL_SIZE);
 
-            Consumer consumer = new Consumer(context, parseRecordExecutor, handlerFactory, INPUT_TOPIC);
+            Consumer consumer;
+            if (!context.configLookup("testing-mode").equals("YES")) {
+                consumer = new Consumer(context, parseRecordExecutor, handlerFactory, INPUT_TOPIC);
+            } else {
+                consumer = new TestAwareConsumer(context, parseRecordExecutor, handlerFactory, INPUT_TOPIC);
+            }
             Executors.newSingleThreadExecutor().execute(consumer);
         } catch (Exception exception) {
             logger.error("error", exception);

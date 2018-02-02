@@ -65,7 +65,7 @@ public class KafkaMessageProducer implements IFloodlightModule, IFloodlightServi
     public void init(FloodlightModuleContext modueleContext) throws FloodlightModuleException {
         Context context = new Context(modueleContext, this);
 
-        producer = new Producer(context);
+        initProducer(context);
         initHeartBeat(context);
     }
 
@@ -85,6 +85,14 @@ public class KafkaMessageProducer implements IFloodlightModule, IFloodlightServi
     public void postMessage(final String topic, final Message message) {
         producer.handle(topic, message);
         heartBeat.reschedule();
+    }
+
+    private void initProducer(Context context) {
+        if (! context.configLookup("testing-mode").equals("YES")) {
+            producer = new Producer(context);
+        } else {
+            producer = new TestAwareProducer(context);
+        }
     }
 
     private void initHeartBeat(Context context) throws FloodlightModuleException {
