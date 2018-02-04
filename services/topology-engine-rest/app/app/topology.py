@@ -22,10 +22,14 @@ from app import db
 from app import utils
 
 import sys, os
+import logging
 import requests
 import json
 import ConfigParser
 
+logger = logging.getLogger(__name__)
+logging.getLogger('neo4j.bolt').setLevel(logging.INFO)
+logger.info ("My Name Is: %s", __name__)
 config = ConfigParser.RawConfigParser()
 config.read('topology_engine_rest.properties')
 
@@ -162,6 +166,253 @@ def api_v1_topology_flows():
         return "error: {}".format(str(e))
 
 
+@application.route('/api/v1/topology/link/props', methods=['GET','PUT','DELETE'])
+@login_required
+def api_v1_link_props():
+    """
+    This function handles the CRUD for link properties. Link properties are used in associating
+    external costs a link. It can be used to associate other properties with a link as well.
+
+    Because some of the links may not exist yet, the properties are stored in link_props nodes,
+    where the name of the node is identical to the name of the link (eg leverage switch/port for
+    both src and dst
+
+    NB: We use PUT for both create and for update.
+
+    The format for PUT:
+
+        [{src_switch:val, src_port:val, dst_switch:val, dst_port:val, props:{key:value,..}},..]
+
+    The format for DELETE:
+
+        Delete all props for link: [{src_switch:val, src_port:val, dst_switch:val, dst_port:val},..]
+        Delete some props: [{src_switch:val, src_port:val, dst_switch:val, dst_port:val},props:{key:value,..}},..]
+        Delete all nodes: {all=true}
+
+    The format for GET:
+
+        Get All link props:   no args
+        Get some link props: ?[src_switch=X][&src_port=XX][&dst_switch=Z][&dst_port=ZZ]
+        -- ie all args are optional .. if supplied, they'll be used.
+
+
+    :return: the result of the operation for PUT and DELETE, otherwise the link properties.
+    """
+    try:
+        if request.method == 'PUT':
+            return handle_put_props(request.get_json(force=True))
+
+        if request.method == 'DELETE':
+            return handle_delete_props(request.get_json(force=True))
+
+        if request.method == 'GET':
+            return handle_get_props(request.args)
+    except Exception as e:
+        logger.error("Uncaught Exception in link_props: %s", e)
+        return jsonify({"Error": "Uncaught Exception"})
+
+
+def handle_get_props(args):
+    """
+    Return the link_props that match the arguments provided. If not args are provided, then all
+    link props will be returned.
+
+    :param args: The http request args .. ie URL/ROUTE?arg1=val1&arg2=val2
+    :return: The nodes that match the query
+    """
+    primary_keys = ['src_sw', 'src_pt', 'dst_sw', 'dst_pt']
+    query_set = ' '
+    result = {}
+    for key in primary_keys:
+        val = args.get(key)
+        if val:
+            # make sure val doesn't have quotes
+            val=val.replace('"','').replace("'",'')
+            query_set += ' %s:"%s",' % (key, val)
+    try:
+        # NB: query_set could be just whitespace .. Neo4j is okay with empty props in the query - ie { }
+        query = 'MATCH (lp:link_props { %s }) RETURN lp' % query_set[:-1] # remove trailing ',' if there
+        result = graph.data(query)
+    except Exception as e:
+        logger.error ("Exception trying to get link_props: %s", e)
+
+    rj = jsonify(result)
+    logger.debug("results: %s", rj)
+    return rj
+
+
+def handle_delete_props(j):
+    """
+    Deletes the appropriate nodes. Whereas the "put_props" needs all primary keys, this delete
+    will work on specific links as well as a family of links - ie specify only src switch, or
+    only dst switch. As another example, you could specify just the src_port.
+
+    :param j: The json body of the request
+    :return:  {successes=X, failures=Y, messages=[M]} ; Successes = rows affected, could be greater
+                than the number of requests if not all primary keys were provided (ie wildcard)
+    """
+    #
+    # TODO: handle_put_props should have unit test .. but currently relying on acceptance tests.
+    #
+    return handle_props(j, del_link_props)
+
+
+def handle_put_props(j):
+    """
+    This will create or update all properties that have been passed in.
+
+    :param j: the json body. For details, look at put_link_props.
+    :return: {successes=X, failures=Y, messages=[M]}
+    """
+    return handle_props(j, put_link_props)
+
+
+def handle_props(j, action):
+    """
+    This will process each row, calling 'action'
+
+    :param j: the json body. For details, look at put_link_props / del_link_props
+    :param action: the function to call per row
+    :return: {successes=X, failures=Y, messages=[M]}
+    """
+
+    #
+    # TODO: handle_put_props should have unit test .. but currently relying on acceptance tests.
+    #
+    success = 0
+    failure = 0
+    if isinstance(j, dict):
+        j = [j]
+
+    msgs = []
+    for props in j:
+        try:
+            # a bit dodgy .. result is a number if worked, otherwise a message
+            worked, result = action(props)
+            if worked:
+                success += result
+            else:
+                failure += 1
+                msgs.append(result)
+        except Exception as e:
+            msgs.append('Exception occurred: %s' % e)
+
+    return jsonify(successes=success, failures=failure, messages=msgs)
+
+
+def del_link_props(props):
+    """
+    This will delete one or more nodes if they match the pattern. Here's a couple of examples:
+
+        [{
+            # Delete a specific node
+            # ======================
+            "src_sw":"de:ad:be:ef:01:11:22:01",
+            "src_pt":"1" ,
+            "dst_sw":"de:ad:be:ef:02:11:22:02",
+            "dst_pt":"2"
+        } , {
+            # Delete all links with this switch as src
+            # ========================================
+            "src_sw":"de:ad:be:ef:03:33:33:03"
+        }]
+
+
+    NB: At least one primary key needs to be passed in. Otherwise, all link_props would be deleted,
+        which is probably some other kinds of operation. This could be a feature .. and should only
+        be enabled if the user sends in a specific k/v, like "drop_all:True"
+
+    :param props: one or more primary keys.
+    :return: success / row count of affected  *or* failure AND failure message
+    """
+    query_set = ''
+    for k,v in props.iteritems():
+        if k != 'props':
+            # in case the user inadvertently added props, eg copy/paste issue, ignore it.
+            query_set += ' %s:"%s",' % (k,v)
+
+    if len(query_set) > 0:
+        query = 'MATCH (lp:link_props { %s }) DETACH DELETE lp RETURN COUNT(lp) as affected' % query_set[:-1] # remove trailing ','
+        result = graph.data(query)
+        affected = result[0].get('affected', 0)
+        logger.debug('\n DELETE QUERY = %s \n AFFECTED = %s', query, affected)
+        return True, affected
+    else:
+        return False, "NO PRIMARY KEYS"
+
+
+def put_link_props(props):
+    """
+    This will put properties into the link_props table, if the set of primary keys is passed in.
+    It will create or update the node, and only the properties passed in be created/updated.
+    It is okay to pass in no additional properties (ie just primary keys is okay).
+    It will not delete any properties - if the put omits some extra props, they'll still be there.
+
+    Here's an example of a call that works:
+
+        [{
+            "src_sw":"de:ad:be:ef:01:11:22:01",
+            "src_pt":"1" ,
+            "dst_sw":"de:ad:be:ef:02:11:22:02",
+            "dst_pt":"2" ,
+            "props": {
+                "cost":"1",
+                "popularity":"5",
+                "jon":"grumpy"
+            }
+        }]
+
+    NB: This method will also ensure no properties are added that are reserved. At the time of this
+    writing the reservered words are:
+        - latency, speed, available_bandwidth, status
+
+    :param props: a single node
+    :return: success / row count of 1  *or* failure AND failure message
+    """
+    #
+    # TODO: Add warning if we are adding a link to a "preoccupied" src sw/pt or dst sw/pt
+    #       - ie can't, or shouldn't, have the same src sw/pt leading to different dst .. so, will
+    #           be better to at least warn the user that there is another link .. this is to help
+    #           the use uncover a possible bug in their data set.
+    #
+    reserved_words = ['latency', 'speed', 'available_bandwidth', 'status']
+
+    success, src_sw, src_pt, dst_sw, dst_pt = get_link_prop_keys(props)
+    if not success:
+        return False, 'PRIMARY KEY VIOLATION: one+ primary keys are empty: src_sw:"%s", src_pt:"%s", dst_sw:"%s", dst_pt:"%s"' % (src_sw, src_pt, dst_sw, dst_pt)
+    else:
+        query_merge = 'MERGE (lp:link_props { src_sw:"%s", src_pt:"%s", dst_sw:"%s", dst_pt:"%s" })' % (src_sw, src_pt, dst_sw, dst_pt)
+        query_set = ''
+
+        new_props = props.get('props',{})
+        if len(new_props) > 0:
+            for (k,v) in new_props.iteritems():
+                if k in reserved_words:
+                    return False, 'RESERVED WORD VIOLATION: do not use %s' % k
+                query_set += 'lp.%s = "%s", ' % (k, v)
+            query_set = ' SET ' + query_set[:-2]
+
+        query = query_merge + query_set
+        graph.data(query)
+        logger.debug('\n QUERY = %s ', query)
+        return True, 1
+
+
+def get_link_prop_keys(props):
+    """
+    This function can be used to pull out the primary keys from a dictionary, and return success
+    iff all primary keys are present.
+    :param props: the dict
+    :return: all primary keys, and success if they were all present.
+    """
+    src_sw = props.get('src_sw','')
+    src_pt = props.get('src_pt','')
+    dst_sw = props.get('dst_sw','')
+    dst_pt = props.get('dst_pt','')
+    success = (len(src_sw) > 0) and (len(src_pt) > 0) and (len(dst_sw) > 0) and (len(dst_pt) > 0)
+    return success,src_sw,src_pt,dst_sw,dst_pt
+
+
 def format_isl(link):
     """
     :param link: A valid Link returned from the db
@@ -257,3 +508,4 @@ def api_v1_topology_link_bandwidth(src_switch, src_port):
 
     except Exception as e:
         return "error: {}".format(str(e))
+
