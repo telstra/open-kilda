@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.opentsdb;
 
+import edu.emory.mathcs.backport.java.util.Collections;
 import org.apache.storm.tuple.Fields;
 import org.openkilda.wfm.topology.opentsdb.bolts.DatapointParseBolt;
 import org.slf4j.LoggerFactory;
@@ -67,9 +68,9 @@ public class OpenTSDBTopology extends AbstractTopology {
                 .newBuilder(config.getOpenTsDBHosts())
                 .sync(config.getOpenTsdbTimeout())
                 .returnDetails();
-        OpenTsdbBolt openTsdbBolt = new OpenTsdbBolt(tsdbBuilder, TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER)
-                .withBatchSize(config.getOpenTsdbBatchSize())
-                .withFlushInterval(config.getOpenTsdbFlushInterval());
+        OpenTsdbBolt openTsdbBolt = new OpenTsdbBolt(tsdbBuilder,
+                Collections.singletonList(TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER));
+        openTsdbBolt.withBatchSize(config.getOpenTsdbBatchSize()).withFlushInterval(config.getOpenTsdbFlushInterval());
 //                .failTupleForFailedMetrics();
         tb.setBolt("opentsdb", openTsdbBolt, config.getOpenTsdbBoltExecutors())
                 .setNumTasks(config.getOpenTsdbBoltWorkers())
