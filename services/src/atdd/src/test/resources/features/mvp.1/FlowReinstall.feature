@@ -4,12 +4,11 @@ Feature: Flow re-reinstalling after switch comes back up.
   @MVP1.1
   Scenario: Re-installing Ingress and Egress flows.
 
-  This scenario creates simple network and ingress/egress flows. Next this scenario turns off and on back, then checks whether
-  flows were re-installed again.
+  This scenario creates the simple network(switch1 linked with switch2) and ingress/egress flows. Next this scenario
+  turns off switch1 and turns it on back, then checks whether flows were re-installed again .
 
     Given a clean flow topology
     And a clean controller
-    And a clean flow topology
     And created simple topology from two switches
     And topology contains 2 links
     And flow pcet creation request with 00:01:00:00:00:00:00:01 1 0 and 00:01:00:00:00:00:00:02 2 0 and 1000000 is successful
@@ -24,12 +23,12 @@ Feature: Flow re-reinstalling after switch comes back up.
   @MVP1.1
   Scenario: Re-installing transit flow when no other path is available.
 
-  This scenario created topology and builds flow through target switch. This switch will be turned off and on,
-  then we check whether is re-installed on the target switch after come back to UP state.
+  This scenario creates linear topology of three switches(00000001, 00000002, 00000003), links between them
+  and builds flow through target switch. The medium (00000002) switch will be turned off and on,
+  then we check whether flows were re-installed on the this switch after come back to UP state.
 
     Given a clean flow topology
     And a clean controller
-    And a clean flow topology
     And a random linear topology of 3 switches
     And topology contains 8 links
     When flow pcet creation request with de:ad:be:ef:00:00:00:01 2 0 and de:ad:be:ef:00:00:00:03 2 0 and 100 is successful
@@ -49,7 +48,6 @@ Feature: Flow re-reinstalling after switch comes back up.
 
     Given a clean flow topology
     And a clean controller
-    And a clean flow topology
     And a multi-path topology
     And topology contains 16 links
     And flow fr_multipath creation request with 00:00:00:00:00:00:00:01 1 0 and 00:00:00:00:00:00:00:08 1 0 and 100 is successful
