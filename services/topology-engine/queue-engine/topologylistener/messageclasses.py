@@ -110,8 +110,8 @@ class MessageItem(object):
 
             return event_handled
         except Exception as e:
-            print e
-            traceback.print_exc()
+            logger.exception("Exception during handling message")
+            return False
 
 #        finally:
 #            return True
@@ -139,11 +139,12 @@ class MessageItem(object):
                     switch_id, self.timestamp)
         query = (
             "MERGE (a:switch{{name:'{}'}}) "
-            "SET a.name={}, "
-            "SET a.address={}, "
-            "SET a.hostname={}, "
-            "SET a.description={}, "
-            "SET a.controller={}, "
+            "SET "
+            "a.name='{}', "
+            "a.address='{}', "
+            "a.hostname='{}', "
+            "a.description='{}', "
+            "a.controller='{}', "
             "a.state = 'active' "
         ).format(
             switch_id, switch_id,
@@ -152,8 +153,8 @@ class MessageItem(object):
             self.payload['description'],
             self.payload['controller']
         )
-
         graph.run(query)
+        logger.info("Successfully created switch %s", switch_id)
         return True
 
     def deactivate_switch(self):
