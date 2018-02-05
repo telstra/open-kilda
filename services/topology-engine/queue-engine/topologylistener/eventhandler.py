@@ -67,9 +67,10 @@ def main_loop():
 def topology_event_handler(event):
     event_handled = False
 
-    while not event_handled:
+    attempts = 0
+    while not event_handled and attempts < 5:
         event_handled = event.handle()
-
+        attempts += 1
         if not event_handled:
             logger.error('Unable to process event: %s', event.get_type())
             logger.error('Message body: %s', event.to_json())
