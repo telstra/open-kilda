@@ -15,7 +15,6 @@
 
 package org.openkilda.wfm.topology.opentsdb;
 
-import edu.emory.mathcs.backport.java.util.Collections;
 import org.apache.storm.tuple.Fields;
 import org.openkilda.wfm.topology.opentsdb.bolts.DatapointParseBolt;
 import org.slf4j.LoggerFactory;
@@ -30,6 +29,8 @@ import org.openkilda.wfm.ConfigurationException;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.opentsdb.bolts.OpenTSDBFilterBolt;
+
+import java.util.Collections;
 
 /**
  * Apache Storm topology for sending metrics into Open TSDB.
