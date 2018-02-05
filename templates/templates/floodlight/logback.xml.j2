@@ -9,7 +9,7 @@
   <appender name="JSON" class="ch.qos.logback.core.rolling.RollingFileAppender">
     <file>{{ logging.logfile_path }}/floodlight/floodlight.log.json</file>
     <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-      <fileNamePattern>{{ logging.logfile_path }}/floodlight/floodlight.log.json.%d{yyyy-MM-dd}</fileNamePattern>
+      <fileNamePattern>{{ logging.logfile_path }}/floodlight/floodlight.log.json.%d{yyyy-MM-dd}.%i</fileNamePattern>
        <maxFileSize>100MB</maxFileSize>
        <totalSizeCap>20GB</totalSizeCap>
        <maxHistory>10</maxHistory>

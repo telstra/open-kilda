@@ -46,7 +46,11 @@ public class PathComputerMock implements PathComputer {
     }
 
     @Override
-    public ImmutablePair<PathInfoData, PathInfoData> getPath(Flow flow) {
+    public ImmutablePair<PathInfoData, PathInfoData> getPath(Flow flow, Strategy strategy) {
+        /*
+         * TODO: Implement other strategies? Default is HOPS ...
+         * TODO: Is PathComputerMock necessary, since we can embed Neo4J?
+         */
         SwitchInfoData source = network.nodes().stream()
                 .filter(sw -> sw.getSwitchId().equals(flow.getSourceSwitch())).findFirst().orElse(null);
         if (source == null) {
@@ -68,7 +72,7 @@ public class PathComputerMock implements PathComputer {
 
     @Override
     public ImmutablePair<PathInfoData, PathInfoData> getPath(SwitchInfoData source, SwitchInfoData destination,
-                                                             int bandwidth) {
+                                                             int bandwidth, Strategy strategy) {
         PathInfoData forwardPath = path(source, destination, bandwidth);
         PathInfoData reversePath = path(destination, source, bandwidth);
         return new ImmutablePair<>(forwardPath, reversePath);
@@ -144,15 +148,9 @@ public class PathComputerMock implements PathComputer {
         return path;
     }
 
-    @Override
     public PathComputer withNetwork(MutableNetwork<SwitchInfoData, IslInfoData> network) {
         this.network = network;
         return this;
-    }
-
-    @Override
-    public void init() {
-
     }
 
     private void updatePathBandwidth(PathInfoData path, int bandwidth, LinkedList<IslInfoData> islInfoDataLinkedList) {

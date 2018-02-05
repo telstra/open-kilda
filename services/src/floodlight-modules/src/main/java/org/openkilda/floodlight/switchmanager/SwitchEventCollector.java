@@ -15,18 +15,7 @@
 
 package org.openkilda.floodlight.switchmanager;
 
-import static org.projectfloodlight.openflow.protocol.OFVersion.OF_12;
 import static org.projectfloodlight.openflow.protocol.ver15.OFMeterSerializerVer15.ALL_VAL;
-
-import org.openkilda.floodlight.kafka.KafkaMessageProducer;
-import org.openkilda.messaging.Message;
-import org.openkilda.messaging.Topic;
-import org.openkilda.messaging.info.InfoData;
-import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.event.PortInfoData;
-import org.openkilda.messaging.info.event.SwitchState;
-import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.messaging.model.ImmutablePair;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchListener;
@@ -37,6 +26,15 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import org.openkilda.floodlight.kafka.KafkaMessageProducer;
+import org.openkilda.messaging.Message;
+import org.openkilda.messaging.Topic;
+import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.event.PortInfoData;
+import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.info.event.SwitchState;
+import org.openkilda.messaging.model.ImmutablePair;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
@@ -208,19 +206,19 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
     }
 
     /**
-     * Builds a switch message type.
+     * Builds a SwitchInfoData from IOFSwitch.
      *
      * @param sw        switch instance
      * @param eventType type of event
      * @return Message
      */
-    private Message buildSwitchMessage(final IOFSwitch sw, final SwitchState eventType) {
+    public static SwitchInfoData buildSwitchInfoData(IOFSwitch sw, SwitchState eventType) {
         String switchId = sw.getId().toString();
         InetSocketAddress address = (InetSocketAddress) sw.getInetAddress();
         InetSocketAddress controller =(InetSocketAddress) sw.getConnectionByCategory(
                 LogicalOFMessageCategory.MAIN).getRemoteInetAddress();
 
-        InfoData data = new SwitchInfoData(
+        return new SwitchInfoData(
                 switchId,
                 eventType,
                 String.format("%s:%d",
@@ -232,8 +230,17 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
                         sw.getOFFactory().getVersion().toString(),
                         sw.getSwitchDescription().getSoftwareDescription()),
                 controller.getHostString());
+    }
 
-        return buildMessage(data);
+    /**
+     * Builds a switch message type.
+     *
+     * @param sw        switch instance
+     * @param eventType type of event
+     * @return Message
+     */
+    private Message buildSwitchMessage(final IOFSwitch sw, final SwitchState eventType) {
+        return buildMessage(buildSwitchInfoData(sw, eventType));
     }
 
     /**
