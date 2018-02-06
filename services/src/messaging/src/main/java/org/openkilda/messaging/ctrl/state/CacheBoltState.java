@@ -26,6 +26,14 @@ public class CacheBoltState extends AbstractDumpState {
         this.flow = flow;
     }
 
+    // TODO: During merge, found duplicate methods .. refactor into one set .. getNetwork / getNetworkDump .. getFlow / getFlowDump
+    public NetworkDump getNetwork() {
+        return network;
+    }
+
+    public FlowDump getFlow() {
+        return flow;
+    }
 
     public void accept(DumpStateVisitor visitor) {
         visitor.visit(this);
