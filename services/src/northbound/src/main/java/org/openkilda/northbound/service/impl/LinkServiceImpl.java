@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -36,7 +37,8 @@ public class LinkServiceImpl implements LinkService {
 
     private String linksUrl;
     /** The URL to hit the Links Properties table .. ie :link_props in Neo4J */
-    private String linkPropsUrl;
+    private String linkPropsUrlBase;
+    private UriComponentsBuilder linkPropsBuilder;
     private HttpHeaders headers;
 
     /**
@@ -55,7 +57,9 @@ public class LinkServiceImpl implements LinkService {
     void init() {
         linksUrl = UriComponentsBuilder.fromHttpUrl(topologyEngineRest)
                 .pathSegment("api", "v1", "topology", "links").build().toUriString();
-        linkPropsUrl = UriComponentsBuilder.fromHttpUrl(topologyEngineRest)
+        linkPropsBuilder = UriComponentsBuilder.fromHttpUrl(topologyEngineRest)
+                .pathSegment("api", "v1", "topology", "link", "props");
+        linkPropsUrlBase = UriComponentsBuilder.fromHttpUrl(topologyEngineRest)
                 .pathSegment("api", "v1", "topology", "link", "props").build().toUriString();
         headers = new HttpHeaders();
         headers.add(HttpHeaders.AUTHORIZATION, authHeaderValue);
@@ -75,19 +79,43 @@ public class LinkServiceImpl implements LinkService {
     @Override
     public List<LinkPropsDto> getLinkProps(LinkPropsDto keys) {
         LOGGER.debug("Get link properties request received");
-        LinkPropsDto[] linkProps = restTemplate.exchange(linksUrl, HttpMethod.GET, new HttpEntity<>(headers),
-                LinkPropsDto[].class).getBody();
-        LOGGER.debug("Returned {} properties", linkProps.length);
+        UriComponentsBuilder builder = linkPropsBuilder.cloneBuilder();
+        // TODO: pull out the URI builder .. to facilitate unit testing
+        if (keys != null){
+            if (!keys.getSrc_sw().isEmpty())
+                builder.queryParam("src_sw", keys.getSrc_sw());
+            if (!keys.getSrc_pt().isEmpty())
+                builder.queryParam("src_pt", keys.getSrc_pt());
+            if (!keys.getDst_sw().isEmpty())
+                builder.queryParam("dst_sw", keys.getDst_sw());
+            if (!keys.getDst_pt().isEmpty())
+                builder.queryParam("dst_pt", keys.getDst_pt());
+        }
+        String fullUri = builder.build().toUriString();
+
+        ResponseEntity<LinkPropsDto[]> response = restTemplate.exchange(fullUri,
+                HttpMethod.GET, new HttpEntity<>(headers), LinkPropsDto[].class);
+        LinkPropsDto[] linkProps = response.getBody();
+        LOGGER.debug("Returned {} links (with properties)", linkProps.length);
         return Arrays.asList(linkProps);
     }
 
     @Override
     public LinkPropsResult setLinkProps(List<LinkPropsDto> linkPropsList) {
-        return null;
+        return doLinkProps(HttpMethod.PUT, linkPropsList);
     }
 
     @Override
     public LinkPropsResult delLinkProps(List<LinkPropsDto> linkPropsList) {
-        return null;
+        return doLinkProps(HttpMethod.DELETE, linkPropsList);
+    }
+
+    protected LinkPropsResult doLinkProps(HttpMethod verb, List<LinkPropsDto> linkPropsList) {
+        LOGGER.debug("{} link properties request received", verb);
+        ResponseEntity<LinkPropsResult> response = restTemplate.exchange(linkPropsUrlBase,
+                verb, new HttpEntity<>(headers), LinkPropsResult.class);
+        LinkPropsResult result = response.getBody();
+        LOGGER.debug("Returned: ", result);
+        return result;
     }
 }

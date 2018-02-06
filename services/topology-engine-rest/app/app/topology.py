@@ -15,7 +15,7 @@
 
 from flask import Flask, flash, redirect, render_template, request, session, abort, url_for, Response, jsonify
 from flask_login import LoginManager, UserMixin, login_required, login_user, logout_user, current_user
-from py2neo import Graph
+from py2neo import Graph, Node
 
 from app import application
 from app import db
@@ -166,6 +166,12 @@ def api_v1_topology_flows():
         return "error: {}".format(str(e))
 
 
+# =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+# Link Properties section
+# =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+PRIMARY_KEYS = ['src_sw','src_pt','dst_sw','dst_pt']
+
+
 @application.route('/api/v1/topology/link/props', methods=['GET','PUT','DELETE'])
 @login_required
 def api_v1_link_props():
@@ -209,6 +215,7 @@ def api_v1_link_props():
             return handle_get_props(request.args)
     except Exception as e:
         logger.error("Uncaught Exception in link_props: %s", e)
+        # TODO: this should augment the response status..
         return jsonify({"Error": "Uncaught Exception"})
 
 
@@ -220,13 +227,12 @@ def handle_get_props(args):
     :param args: The http request args .. ie URL/ROUTE?arg1=val1&arg2=val2
     :return: The nodes that match the query
     """
-    primary_keys = ['src_sw', 'src_pt', 'dst_sw', 'dst_pt']
     query_set = ' '
     result = {}
-    for key in primary_keys:
+    for key in PRIMARY_KEYS:
         val = args.get(key)
         if val:
-            # make sure val doesn't have quotes
+            # make sure val doesn't have quotes - " or '
             val=val.replace('"','').replace("'",'')
             query_set += ' %s:"%s",' % (key, val)
     try:
@@ -234,9 +240,26 @@ def handle_get_props(args):
         query = 'MATCH (lp:link_props { %s }) RETURN lp' % query_set[:-1] # remove trailing ',' if there
         result = graph.data(query)
     except Exception as e:
-        logger.error ("Exception trying to get link_props: %s", e)
+        # TODO: ensure this error augments the reponse http status code
+        logger.error("Exception trying to get link_props: %s", e)
+        raise e
 
-    rj = jsonify(result)
+    #
+    # The results are returned "flat" .. id primary keys and extra properties at the same level.
+    # But, current expectation is that extra props are all part of the 'props' key.
+    # So, pull out both sets (primary / extra props) and then combine into the expected order.
+    #
+    # TODO: Should we change the respone to be flat so that we don't need to do this processing?
+    #           A corollary - the inbound put could be flat as well.
+    #
+    hier_results = []
+    for row in [dict(x['lp']) for x in result]:
+        not_primary_props = {k:v for k,v in row.items() if k not in PRIMARY_KEYS}
+        primary_props = {k:v for k,v in row.items() if k in PRIMARY_KEYS}
+        primary_props['props'] = not_primary_props
+        hier_results.append(primary_props)
+
+    rj = jsonify(hier_results)
     logger.debug("results: %s", rj)
     return rj
 

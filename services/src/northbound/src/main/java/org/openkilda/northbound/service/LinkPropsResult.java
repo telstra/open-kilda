@@ -15,6 +15,10 @@ public class LinkPropsResult {
     private int successes;
     private String[] messages;
 
+    public LinkPropsResult() {
+        this(0,0,null);
+    }
+
     public LinkPropsResult(int failures, int successes, String[] messages) {
         this.failures = failures;
         this.successes = successes;
