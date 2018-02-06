@@ -31,10 +31,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 
 public class PortMetricGenBolt extends MetricGenBolt {
     private static final Logger LOGGER = LoggerFactory.getLogger(PortMetricGenBolt.class);
+
+    private Map<String, String> switchNameCache = new HashMap<>();
 
     @Override
     public void execute(Tuple input) {
@@ -52,7 +55,12 @@ public class PortMetricGenBolt extends MetricGenBolt {
         long timestamp = message.getTimestamp();
 
         try {
-            String switchId = data.getSwitchId().replaceAll(":", "");
+            String switchId = switchNameCache.get(data.getSwitchId());
+            if (switchId == null) {
+                switchId = "SW" + data.getSwitchId().replaceAll(":", "").toUpperCase();
+                switchNameCache.put(data.getSwitchId(), switchId);
+            }
+
             for (PortStatsReply reply : data.getStats()) {
                 for (PortStatsEntry entry : reply.getEntries()) {
                     emit(entry, timestamp, switchId);
