@@ -45,7 +45,6 @@ public class OpenTSDBFilterBolt extends BaseRichBolt {
                     TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER.getValueField(),
                     TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER.getTagsField());
 
-    //    private Set<Datapoint> storage = new HashSet<>();
     private ConcurrentMap<Integer, Datapoint> storage = new ConcurrentHashMap<>();
     private OutputCollector collector;
 
@@ -68,14 +67,12 @@ public class OpenTSDBFilterBolt extends BaseRichBolt {
             addDatapoint(datapoint);
 
             List<Object> stream = Stream.of(datapoint.getMetric(), datapoint.getTime(), datapoint.getValue(),
-                    datapoint.getTags())
-                    .collect(Collectors.toList());
+                    datapoint.getTags()).collect(Collectors.toList());
 
             LOGGER.debug("emit: " + stream);
             collector.emit(stream);
         }
         collector.ack(tuple);
-
     }
 
     @Override

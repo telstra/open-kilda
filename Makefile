@@ -1,7 +1,7 @@
 # 'make' will build the latest and try to run it.
 default: build-latest run-dev
 
-build-base:
+build-base: compile
 	base/hacks/kilda-bins.download.sh
 	base/hacks/shorm.requirements.download.sh
 	rsync -au kilda-bins/zookeeper* services/zookeeper/tar/
@@ -19,7 +19,7 @@ build-base:
 	docker build -t kilda/mininet:latest services/mininet
 	docker build -t kilda/logstash:latest services/logstash
 
-build-latest: build-base compile
+build-latest: build-base
 	docker-compose build
 
 run-dev:
@@ -42,6 +42,7 @@ run-test: up-log-mode
 
 clean-sources:
 	$(MAKE) -C services/src clean
+	$(MAKE) -C services/mininet clean
 	mvn -f services/wfm/pom.xml clean
 
 update-parent:
@@ -59,6 +60,7 @@ update: update-parent update-msg update-pce
 compile:
 	$(MAKE) -C services/src
 	$(MAKE) -C services/wfm all-in-one
+	$(MAKE) -C services/mininet
 
 unit:
 	$(MAKE) -C services/src

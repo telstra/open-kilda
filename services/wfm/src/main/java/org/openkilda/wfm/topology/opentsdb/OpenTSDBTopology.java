@@ -30,6 +30,8 @@ import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.opentsdb.bolts.OpenTSDBFilterBolt;
 
+import java.util.Collections;
+
 /**
  * Apache Storm topology for sending metrics into Open TSDB.
  */
@@ -67,9 +69,9 @@ public class OpenTSDBTopology extends AbstractTopology {
                 .newBuilder(config.getOpenTsDBHosts())
                 .sync(config.getOpenTsdbTimeout())
                 .returnDetails();
-        OpenTsdbBolt openTsdbBolt = new OpenTsdbBolt(tsdbBuilder, TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER)
-                .withBatchSize(config.getOpenTsdbBatchSize())
-                .withFlushInterval(config.getOpenTsdbFlushInterval());
+        OpenTsdbBolt openTsdbBolt = new OpenTsdbBolt(tsdbBuilder,
+                Collections.singletonList(TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER));
+        openTsdbBolt.withBatchSize(config.getOpenTsdbBatchSize()).withFlushInterval(config.getOpenTsdbFlushInterval());
 //                .failTupleForFailedMetrics();
         tb.setBolt("opentsdb", openTsdbBolt, config.getOpenTsdbBoltExecutors())
                 .setNumTasks(config.getOpenTsdbBoltWorkers())
