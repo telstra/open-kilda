@@ -30,7 +30,7 @@ import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.wfm.AbstractStormTest;
 import org.openkilda.wfm.ConfigurationException;
-import org.openkilda.wfm.isl.DiscoveryNode;
+import org.openkilda.messaging.model.DiscoveryNode;
 import org.openkilda.wfm.protocol.KafkaMessage;
 import org.openkilda.wfm.topology.OutputCollectorMock;
 import org.openkilda.wfm.topology.TopologyConfig;

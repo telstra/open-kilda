@@ -1,6 +1,7 @@
 package org.openkilda.messaging.ctrl.state;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
@@ -12,6 +13,7 @@ import java.util.Set;
 
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class NetworkDump implements Serializable {
     @JsonProperty("switches")
     private Set<SwitchInfoData> switches;

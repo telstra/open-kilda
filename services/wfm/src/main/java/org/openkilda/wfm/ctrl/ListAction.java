@@ -1,11 +1,13 @@
 package org.openkilda.wfm.ctrl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import org.apache.storm.task.TopologyContext;
 import org.openkilda.messaging.ctrl.ResponseData;
 import org.openkilda.wfm.MessageFormatException;
 import org.openkilda.wfm.UnsupportedActionException;
 
 public class ListAction extends CtrlEmbeddedAction {
+
     public ListAction(CtrlAction master, RouteMessage message) {
         super(master, message);
     }
@@ -13,6 +15,10 @@ public class ListAction extends CtrlEmbeddedAction {
     @Override
     protected void handle()
             throws MessageFormatException, UnsupportedActionException, JsonProcessingException {
-        emitResponse(new ResponseData(getBolt().getContext(), getMessage().getTopology()));
+        TopologyContext context = getBolt().getContext();
+
+        emitResponse(new ResponseData(context.getThisComponentId(),
+                context.getThisTaskId(),
+                getMessage().getTopology()));
     }
 }

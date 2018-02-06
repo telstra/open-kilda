@@ -224,10 +224,41 @@ public class CacheBolt
                     return;
                 }
 
-                handleEventUpdate(data, tuple);
+                try {
+                    if (data instanceof SwitchInfoData) {
+                        logger.info("Cache update switch info data: {}", data);
+
+                        emitNetworkMessage(data, tuple, Utils.SYSTEM_CORRELATION_ID);
+                        handleSwitchEvent((SwitchInfoData) data, tuple);
+
+                    } else if (data instanceof IslInfoData) {
+                        logger.info("Cache update isl info data: {}", data);
+
+                        emitNetworkMessage(data, tuple, Utils.SYSTEM_CORRELATION_ID);
+                        handleIslEvent((IslInfoData) data, tuple);
+
+                    } else if (data instanceof PortInfoData) {
+                        logger.info("Cache update port info data: {}", data);
+
+                        emitNetworkMessage(data, tuple, Utils.SYSTEM_CORRELATION_ID);
+                        handlePortEvent((PortInfoData) data, tuple);
+
+                    } else if (data instanceof FlowInfoData) {
+                        logger.info("Cache update info data: {}", data);
+
+                        FlowInfoData flowData = (FlowInfoData) data;
+                        handleFlowEvent(flowData, tuple);
+                    } else {
+                        logger.error("Skip undefined info data type {}", json);
+                    }
+                }
+                finally {
+                    logger.debug("Cache message ack: component={}, stream={}, tuple={}",
+                            tuple.getSourceComponent(), tuple.getSourceStreamId(), tuple);
+                    outputCollector.ack(tuple);
+                }
             } else {
-                logger.debug("Skip undefined message type {}", json);
-                outputCollector.ack(tuple);
+                logger.error("Skip undefined message type {}", json);
             }
 
         } catch (CacheException exception) {
@@ -272,38 +303,17 @@ public class CacheBolt
     }
 
     private void handleNetworkDump(InfoData info, Tuple tuple) {
-        NetworkInfoData data = (NetworkInfoData) info;
-        logger.info("Fill network state {}", data);
-        emitRestoreCommands(data.getFlows(), tuple);
-        logger.info("Flows restore commands sent");
-    }
+        if (info instanceof NetworkInfoData) {
+            NetworkInfoData data = (NetworkInfoData) info;
+            logger.info("Fill network state {}", data);
+            logger.info("Load flows {}", data.getFlows().size());
+            data.getFlows().forEach(flowCache::putFlow);
+            logger.info("Loaded flows {}", flowCache);
+            emitRestoreCommands(data.getFlows(), tuple);
+            logger.info("Flows restore commands sent");
 
-    private void handleEventUpdate(InfoData data, Tuple tuple) throws IOException {
-        try {
-            if (data instanceof SwitchInfoData) {
-                logger.info("Cache update switch info data: {}", data);
-                handleSwitchEvent((SwitchInfoData) data, tuple);
-
-            } else if (data instanceof IslInfoData) {
-                logger.info("Cache update isl info data: {}", data);
-                handleIslEvent((IslInfoData) data, tuple);
-
-            } else if (data instanceof PortInfoData) {
-                logger.info("Cache update port info data: {}", data);
-                handlePortEvent((PortInfoData) data, tuple);
-
-            } else if (data instanceof FlowInfoData) {
-                logger.info("Cache update flow info data: {}", data);
-
-                FlowInfoData flowData = (FlowInfoData) data;
-                handleFlowEvent(flowData, tuple);
-            } else {
-                logger.debug("Skip undefined info data type {}", data);
-            }
-        } finally {
-            logger.debug("Cache message ack: component={}, stream={}, tuple={}",
-                    tuple.getSourceComponent(), tuple.getSourceStreamId(), tuple);
-            outputCollector.ack(tuple);
+        } else {
+            logger.warn("Incorrect network state {}", info);
         }
     }
 
