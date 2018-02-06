@@ -76,85 +76,8 @@ public class PathComputationTest {
 
     }
 
-    @When("^a flow request is made between A and B with default$")
-    public void a_flow_request_is_made_between_A_and_B_with_default() throws Throwable {
-        // Write code here that turns the phrase above into concrete actions
-        throw new PendingException();
-    }
-
-    @Then("^the path between A and B is pingable$")
-    public void the_path_between_A_and_B_is_pingable() throws Throwable {
-        // Write code here that turns the phrase above into concrete actions
-        throw new PendingException();
-    }
-
-    @When("^a flow request is made between A and B with hops$")
-    public void a_flow_request_is_made_between_A_and_B_with_hops() throws Throwable {
-        // Write code here that turns the phrase above into concrete actions
-        throw new PendingException();
-    }
-
-    @When("^a flow request is made between A and B with cost(\\d+)$")
-    public void a_flow_request_is_made_between_A_and_B_with_cost(int arg1) throws Throwable {
-        // Write code here that turns the phrase above into concrete actions
-        throw new PendingException();
-    }
-
-    @Then("^the path matches the HOPS$")
-    public void the_path_matches_the_hops() throws Throwable {
-        throw new PendingException();
-    }
-
-    @Then("^the path matches the COST$")
-    public void the_path_matches_the_cost(int arg1) throws Throwable {
-        /*
-         * Confirm that the route matches cost, not the default
-         */
-        throw new PendingException();
-    }
-
-    @Then("^the path matches the LATENCY$")
-    public void the_path_matches_the_latency(int arg1) throws Throwable {
-        /*
-         * Confirm that the route matches latency, not the default
-         */
-        throw new PendingException();
-    }
-
-    @Then("^the path matches the EXTERNAL$")
-    public void the_path_matches_the_extra(int arg1) throws Throwable {
-        /*
-         * Confirm that the route matches extra , not the default
-         */
-        throw new PendingException();
-    }
-
-    @When("^a flow request is made between A and B with HOPS$")
-    public void a_flow_request_is_made_between_A_and_B_with_HOPS() throws Throwable {
-        // Write code here that turns the phrase above into concrete actions
-        throw new PendingException();
-    }
-
-    @When("^a flow request is made between A and B with LATENCY$")
-    public void a_flow_request_is_made_between_A_and_B_with_LATENCY() throws Throwable {
-        // Write code here that turns the phrase above into concrete actions
-        throw new PendingException();
-    }
-
-    @When("^a flow request is made between A and B with COST$")
-    public void a_flow_request_is_made_between_A_and_B_with_COST() throws Throwable {
-        // Write code here that turns the phrase above into concrete actions
-        throw new PendingException();
-    }
-
-    @When("^a flow request is made between A and B with EXTERNAL(\\d+)$")
-    public void a_flow_request_is_made_between_A_and_B_with_EXTERNAL(int arg1) throws Throwable {
-        // Write code here that turns the phrase above into concrete actions
-        throw new PendingException();
-    }
-
-    @Then("^the path matches the EXTERNAL(\\d+)$")
-    public void the_path_matches_the_EXTERNAL(int arg1) throws Throwable {
+    @Given("^no link properties$")
+    public void no_link_properties() throws Throwable {
         // Write code here that turns the phrase above into concrete actions
         throw new PendingException();
     }
@@ -171,8 +94,74 @@ public class PathComputationTest {
         throw new PendingException();
     }
 
-    @Then("^link properties are updated\\.$")
-    public void link_properties_are_updated() throws Throwable {
+    @Then("^link properties reflect what is in the link properties table$")
+    public void link_properties_reflect_what_is_in_the_link_properties_table() throws Throwable {
+        // Write code here that turns the phrase above into concrete actions
+        throw new PendingException();
+    }
+
+    @Then("^link costs can be deleted$")
+    public void link_costs_can_be_deleted() throws Throwable {
+        // Write code here that turns the phrase above into concrete actions
+        throw new PendingException();
+    }
+
+    @When("^link costs are updated through the NB API$")
+    public void link_costs_are_updated_through_the_NB_API() throws Throwable {
+        // Write code here that turns the phrase above into concrete actions
+        throw new PendingException();
+    }
+
+    @When("^a flow request is made between A and B with HOPS$")
+    public void a_flow_request_is_made_between_A_and_B_with_HOPS() throws Throwable {
+        // Write code here that turns the phrase above into concrete actions
+        throw new PendingException();
+    }
+
+    @Then("^the path matches the HOPS$")
+    public void the_path_matches_the_HOPS() throws Throwable {
+        // Write code here that turns the phrase above into concrete actions
+        throw new PendingException();
+    }
+
+    @Then("^the path between A and B is pingable$")
+    public void the_path_between_A_and_B_is_pingable() throws Throwable {
+        // Write code here that turns the phrase above into concrete actions
+        throw new PendingException();
+    }
+
+    @When("^a flow request is made between A and B with LATENCY$")
+    public void a_flow_request_is_made_between_A_and_B_with_LATENCY() throws Throwable {
+        // Write code here that turns the phrase above into concrete actions
+        throw new PendingException();
+    }
+
+    @Then("^the path matches the LATENCY$")
+    public void the_path_matches_the_LATENCY() throws Throwable {
+        // Write code here that turns the phrase above into concrete actions
+        throw new PendingException();
+    }
+
+    @When("^a flow request is made between A and B with COST$")
+    public void a_flow_request_is_made_between_A_and_B_with_COST() throws Throwable {
+        // Write code here that turns the phrase above into concrete actions
+        throw new PendingException();
+    }
+
+    @Then("^the path matches the COST$")
+    public void the_path_matches_the_COST() throws Throwable {
+        // Write code here that turns the phrase above into concrete actions
+        throw new PendingException();
+    }
+
+    @When("^a flow request is made between A and B with EXTERNAL(\\d+)$")
+    public void a_flow_request_is_made_between_A_and_B_with_EXTERNAL(int arg1) throws Throwable {
+        // Write code here that turns the phrase above into concrete actions
+        throw new PendingException();
+    }
+
+    @Then("^the path matches the EXTERNAL(\\d+)$")
+    public void the_path_matches_the_EXTERNAL(int arg1) throws Throwable {
         // Write code here that turns the phrase above into concrete actions
         throw new PendingException();
     }
