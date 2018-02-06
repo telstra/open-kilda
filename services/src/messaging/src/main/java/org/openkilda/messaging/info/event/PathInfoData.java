@@ -124,7 +124,7 @@ public class PathInfoData extends CacheTimeTag {
      */
     @Override
     public int hashCode() {
-        return Objects.hash(latency, path);
+        return Objects.hash(path);
     }
 
     /**

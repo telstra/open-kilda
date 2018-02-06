@@ -548,8 +548,7 @@ public class Flow implements Serializable {
     @Override
     public int hashCode() {
         return Objects.hash(flowId, bandwidth, description, state,
-                sourceSwitch, sourcePort, sourceVlan, destinationSwitch, destinationPort, destinationVlan,
-                cookie, transitVlan, meterId, lastUpdated, flowPath);
+                sourceSwitch, sourcePort, sourceVlan, destinationSwitch, destinationPort, destinationVlan);
     }
 
     /**

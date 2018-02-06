@@ -2,6 +2,7 @@ package org.openkilda.wfm.isl;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.openkilda.messaging.model.DiscoveryNode;
 
 import static org.junit.Assert.*;
 
