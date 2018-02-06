@@ -26,4 +26,8 @@ public class DumpStateResponseData extends ResponseData {
         super(context, topology);
         this.state = state;
     }
+
+    public AbstractDumpState getState() {
+        return state;
+    }
 }
