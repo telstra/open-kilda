@@ -68,36 +68,40 @@ class MessageItem(object):
         try:
             event_handled = False
 
-            if self.get_message_type() == MT_SWITCH \
-                    and self.payload['state'] == "ADDED":
-                event_handled = self.create_switch()
-            if self.get_message_type() == MT_SWITCH \
-                    and self.payload['state'] == "ACTIVATED":
-                event_handled = self.activate_switch()
-            if self.get_message_type() == MT_SWITCH \
-                    and self.payload['state'] == "DEACTIVATED":
-                event_handled = self.deactivate_switch()
-            if self.get_message_type() == MT_SWITCH \
-                    and self.payload['state'] == "REMOVED":
-                event_handled = self.remove_switch()
+            if self.get_message_type() == MT_SWITCH:
+                if self.payload['state'] == "ADDED":
+                    event_handled = self.create_switch()
+                elif self.payload['state'] == "ACTIVATED":
+                    event_handled = self.activate_switch()
+                elif self.payload['state'] == "DEACTIVATED":
+                    event_handled = self.deactivate_switch()
+                elif self.payload['state'] == "REMOVED":
+                    event_handled = self.remove_switch()
 
-            if self.get_message_type() == MT_ISL \
-                    and self.payload['state'] == "DISCOVERED":
-                event_handled = self.create_isl()
-            if self.get_message_type() == MT_ISL \
-                    and self.payload['state'] == "FAILED":
-                event_handled = self.isl_discovery_failed()
+                if event_handled:
+                    message_utils.send_cache_message(self.payload,
+                                                     self.correlation_id)
 
-            if self.get_message_type() == MT_PORT:
+            elif self.get_message_type() == MT_ISL:
+                if self.payload['state'] == "DISCOVERED":
+                    event_handled = self.create_isl()
+                elif self.payload['state'] == "FAILED":
+                    event_handled = self.isl_discovery_failed()
+
+                if event_handled:
+                    message_utils.send_cache_message(self.payload,
+                                                     self.correlation_id)
+
+            elif self.get_message_type() == MT_PORT:
                 if self.payload['state'] == "DOWN":
                     event_handled = self.port_down()
                 else:
                     event_handled = True
 
-            if self.get_message_type() == MT_FLOW_INFODATA:
+            elif self.get_message_type() == MT_FLOW_INFODATA:
                 event_handled = self.flow_operation()
 
-            if self.get_command() == CD_NETWORK:
+            elif self.get_command() == CD_NETWORK:
                 event_handled = self.dump_network()
 
             if not event_handled:
@@ -299,14 +303,14 @@ class MessageItem(object):
                                        property_key='name',
                                        property_value='{}'.format(a_switch))
         if not a_switch_node:
-            logger.error('Isl source was not found: %s', a_switch_node)
+            logger.error('Isl source was not found: %s', a_switch)
             return False
 
         b_switch_node = graph.find_one('switch',
                                        property_key='name',
                                        property_value='{}'.format(b_switch))
         if not b_switch_node:
-            logger.error('Isl destination was not found: %s', b_switch_node)
+            logger.error('Isl destination was not found: %s', b_switch)
             return False
 
         try:

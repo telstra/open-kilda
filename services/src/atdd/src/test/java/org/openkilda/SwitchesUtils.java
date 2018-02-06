@@ -48,6 +48,27 @@ public final class SwitchesUtils {
         return result.getStatus() == 200;
     }
 
+    /**
+     * Turns on switch.
+     * @param switchName switch name.
+     * @return true if result is success.
+     */
+    public static boolean reviveSwitch(String switchName) {
+        System.out.println("\n==> Revive switch");
+
+        Client client = ClientBuilder.newClient(new ClientConfig());
+        Response result = client
+                .target(trafficEndpoint)
+                .path("/reviveswitch")
+                .queryParam("switch", switchName)
+                .queryParam("controller", "tcp:kilda:6653")
+                .request()
+                .post(Entity.json(""));
+
+        System.out.println(String.format("===> Response = %s", result.toString()));
+        return result.getStatus() == 200;
+    }
+
 
     /**
      * Returns Switches through Topology-Engine-Rest service.
