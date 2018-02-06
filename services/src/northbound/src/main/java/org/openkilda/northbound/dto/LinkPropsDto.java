@@ -13,18 +13,18 @@ import java.util.Map;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class LinkPropsDto {
 
-    private String src_sw;
-    private String src_pt;
-    private String dst_sw;
-    private String dst_pt;
-    private Map<String,String> props;
     private static final String DEFAULT = "";
+    private String src_sw = DEFAULT;
+    private String src_pt = DEFAULT;
+    private String dst_sw = DEFAULT;
+    private String dst_pt = DEFAULT;
+    @JsonProperty("props")
+    private Map<String,String> props = new HashMap<>();
 
     /**
      * Creates an empty link properties.
      */
     public LinkPropsDto(){
-        this.props = new HashMap<>();
     }
 
     /**
