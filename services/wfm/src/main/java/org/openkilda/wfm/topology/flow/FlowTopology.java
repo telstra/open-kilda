@@ -86,19 +86,10 @@ public class FlowTopology extends AbstractTopology {
     public StormTopology createTopology() throws StreamNameCollisionException {
         logger.info("Creating Topology: {}", topologyName);
 
-        checkAndCreateTopic(config.getKafkaTopoCacheTopic());
-
         TopologyBuilder builder = new TopologyBuilder();
         List<CtrlBoltRef> ctrlTargets = new ArrayList<>();
         BoltDeclarer boltSetup;
         Integer parallelism = config.getParallelism();
-
-        /*
-         * Spout receives network cache dump.
-         */
-        KafkaSpout networkCacheKafkaSpout = createKafkaSpout(
-                config.getKafkaTopoCacheTopic(), ComponentType.NETWORK_CACHE_SPOUT.toString());
-        builder.setSpout(ComponentType.NETWORK_CACHE_SPOUT.toString(), networkCacheKafkaSpout, parallelism);
 
         /*
          * Spout receives all Northbound requests.
@@ -113,7 +104,6 @@ public class FlowTopology extends AbstractTopology {
          */
         SplitterBolt splitterBolt = new SplitterBolt();
         builder.setBolt(ComponentType.SPLITTER_BOLT.toString(), splitterBolt, parallelism)
-                .shuffleGrouping(ComponentType.NETWORK_CACHE_SPOUT.toString())
                 .shuffleGrouping(ComponentType.NORTHBOUND_KAFKA_SPOUT.toString());
 
         /*

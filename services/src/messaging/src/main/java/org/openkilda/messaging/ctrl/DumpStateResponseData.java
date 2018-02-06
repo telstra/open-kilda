@@ -25,4 +25,8 @@ public class DumpStateResponseData extends ResponseData {
     public AbstractDumpState getState() {
         return state;
     }
+
+    public AbstractDumpState getState() {
+        return state;
+    }
 }
