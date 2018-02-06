@@ -4,9 +4,7 @@ services:
   mininet:
     container_name: mininet
     image: "kilda/mininet:${full_build_number:-latest}"
-    command: /app/startup
-    env_file:
-      - services/mininet/variables.env
+    command: /app/entry-point.sh
     ports:
       - "38080:38080"
       - "17191:17191"
