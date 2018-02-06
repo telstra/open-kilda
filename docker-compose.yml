@@ -78,7 +78,6 @@ services:
       context: services/topology-engine-rest/
       dockerfile: Dockerfile
     image: "kilda/topology-engine-rest:${full_build_number:-latest}"
-    command: ./entrypoint.sh
     volumes:
       - app_server_data:/var/data
     ports:
