@@ -48,7 +48,7 @@ import org.openkilda.wfm.OFEMessageUtils;
 import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
 import org.openkilda.wfm.isl.DiscoveryManager;
-import org.openkilda.wfm.isl.DiscoveryNode;
+import org.openkilda.messaging.model.DiscoveryNode;
 import org.openkilda.wfm.isl.DummyIIslFilter;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.TopologyConfig;
