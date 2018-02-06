@@ -14,9 +14,15 @@ public class LinksDto {
     private long speed;
 
     @JsonProperty("available_bandwidth")
-    private long availableBandidth;
+    private long availableBandwidth;
 
     private List<PathDto> path;
+
+    /*
+     * TODO: Will need to add all other properties, or just all properties with duplicates of the others.
+     *       With the advent of link_props, the operator can upload additional properties, which will
+     *       need to be returned with this class.
+     */
 
     public long getSpeed() {
         return speed;
@@ -26,12 +32,12 @@ public class LinksDto {
         this.speed = speed;
     }
 
-    public long getAvailableBandidth() {
-        return availableBandidth;
+    public long getAvailableBandwidth() {
+        return availableBandwidth;
     }
 
-    public void setAvailableBandidth(long availableBandidth) {
-        this.availableBandidth = availableBandidth;
+    public void setAvailableBandwidth(long availableBandwidth) {
+        this.availableBandwidth = availableBandwidth;
     }
 
     public List<PathDto> getPath() {

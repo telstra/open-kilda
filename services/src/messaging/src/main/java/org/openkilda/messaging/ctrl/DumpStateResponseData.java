@@ -20,12 +20,7 @@ public class DumpStateResponseData extends ResponseData {
         super(component, taskId, topology);
         this.state = state;
     }
-
-
-    public AbstractDumpState getState() {
-        return state;
-    }
-
+    
     public AbstractDumpState getState() {
         return state;
     }
