@@ -108,12 +108,13 @@ class MessageItem(object):
                 logger.error('Message was not handled correctly: message=%s',
                              self.payload)
 
+            return event_handled
         except Exception as e:
-            print e
-            traceback.print_exc()
+            logger.exception("Exception during handling message")
+            return False
 
-        finally:
-            return True
+#        finally:
+#            return True
 
     def activate_switch(self):
         switch_id = self.payload['switch_id']
@@ -136,31 +137,25 @@ class MessageItem(object):
 
         logger.info('Switch %s creation request: timestamp=%s',
                     switch_id, self.timestamp)
-
-        switch = graph.find_one('switch',
-                                property_key='name',
-                                property_value='{}'.format(switch_id))
-        if not switch:
-            new_switch = Node("switch",
-                              name="{}".format(switch_id),
-                              state="active",
-                              address=self.payload['address'],
-                              hostname=self.payload['hostname'],
-                              description=self.payload['description'],
-                              controller=self.payload['controller'])
-            graph.create(new_switch)
-            logger.info('Adding switch: %s', switch_id)
-            return True
-        else:
-            graph.merge(switch)
-            switch['state'] = "active"
-            switch['address'] = self.payload['address']
-            switch['hostname'] = self.payload['hostname']
-            switch['description'] = self.payload['description']
-            switch['controller'] = self.payload['controller']
-            switch.push()
-            logger.info('Activating switch: %s', switch_id)
-            return True
+        query = (
+            "MERGE (a:switch{{name:'{}'}}) "
+            "SET "
+            "a.name='{}', "
+            "a.address='{}', "
+            "a.hostname='{}', "
+            "a.description='{}', "
+            "a.controller='{}', "
+            "a.state = 'active' "
+        ).format(
+            switch_id, switch_id,
+            self.payload['address'],
+            self.payload['hostname'],
+            self.payload['description'],
+            self.payload['controller']
+        )
+        graph.run(query)
+        logger.info("Successfully created switch %s", switch_id)
+        return True
 
     def deactivate_switch(self):
         switch_id = self.payload['switch_id']
@@ -299,20 +294,6 @@ class MessageItem(object):
         speed = int(self.payload['speed'])
         available_bandwidth = int(self.payload['available_bandwidth'])
 
-        a_switch_node = graph.find_one('switch',
-                                       property_key='name',
-                                       property_value='{}'.format(a_switch))
-        if not a_switch_node:
-            logger.error('Isl source was not found: %s', a_switch)
-            return False
-
-        b_switch_node = graph.find_one('switch',
-                                       property_key='name',
-                                       property_value='{}'.format(b_switch))
-        if not b_switch_node:
-            logger.error('Isl destination was not found: %s', b_switch)
-            return False
-
         try:
             logger.info('ISL %s_%d create or update request: timestamp=%s',
                         a_switch, a_port, self.timestamp)
@@ -322,9 +303,12 @@ class MessageItem(object):
             # create the relationship if it doesn't exist, or update it if it does
             #
             isl_create_or_update = (
-                "MATCH "
-                "(src:switch {{name:'{}'}}), "
+                "MERGE "
+                "(src:switch {{name:'{}'}}) "
+                "ON CREATE SET src.state = 'inactive' "
+                "MERGE "
                 "(dst:switch {{name:'{}'}}) "
+                "ON CREATE SET dst.state = 'inactive' "
                 "MERGE "
                 "(src)-[i:isl {{"
                 "src_switch: '{}', src_port: {}, "
@@ -336,8 +320,8 @@ class MessageItem(object):
                 "i.available_bandwidth = {}, "
                 "i.status = 'active' "
             ).format(
-                a_switch_node['name'],
-                b_switch_node['name'],
+                a_switch,
+                b_switch,
                 a_switch, a_port,
                 b_switch, b_port,
                 latency,
@@ -347,12 +331,12 @@ class MessageItem(object):
 
             graph.run(isl_create_or_update)
 
-            logger.info('ISL between %s and %s updated', a_switch_node['name'], b_switch_node['name'])
+            logger.info('ISL between %s and %s updated', a_switch, b_switch)
 
         except Exception as e:
             logger.exception('ISL between %s and %s creation error: %s',
-                             a_switch_node['name'], b_switch_node['name'],
-                             e.message)
+                             a_switch, b_switch, e.message)
+            return False
 
         return True
 
