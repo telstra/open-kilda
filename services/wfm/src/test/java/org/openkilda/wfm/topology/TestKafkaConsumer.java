@@ -25,6 +25,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.errors.WakeupException;
+import org.openkilda.messaging.info.InfoMessage;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -98,8 +99,8 @@ public class TestKafkaConsumer extends Thread {
                     result = true;
                 }
             } else {
-                InfoData infoData = MAPPER.readValue(recordValue, InfoData.class);
-                if (infoData != null) {
+                Message message = MAPPER.readValue(recordValue, Message.class);
+                if (message != null) {
                     result = true;
                 }
             }

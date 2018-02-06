@@ -26,4 +26,12 @@ public class NetworkDump implements Serializable {
         this.switches = switches;
         this.isls = isls;
     }
+
+    public Set<SwitchInfoData> getSwitches() {
+        return switches;
+    }
+
+    public Set<IslInfoData> getIsls() {
+        return isls;
+    }
 }

@@ -22,4 +22,12 @@ public class CacheBoltState extends AbstractDumpState {
         this.network = network;
         this.flow = flow;
     }
+
+    public NetworkDump getNetwork() {
+        return network;
+    }
+
+    public FlowDump getFlow() {
+        return flow;
+    }
 }
