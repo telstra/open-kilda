@@ -1,5 +1,6 @@
 package org.openkilda.messaging.ctrl.state;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
 
@@ -13,6 +14,7 @@ import java.util.Set;
 
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class FlowDump implements Serializable {
     @JsonProperty("flows")
     private Set<ImmutablePair<Flow, Flow>> flows;
@@ -21,5 +23,9 @@ public class FlowDump implements Serializable {
     public FlowDump(
             @JsonProperty("flows") Set<ImmutablePair<Flow, Flow>> flows) {
         this.flows = flows;
+    }
+
+    public Set<ImmutablePair<Flow, Flow>> getFlows() {
+        return flows;
     }
 }

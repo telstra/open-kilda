@@ -215,7 +215,7 @@ public class PathNode implements Serializable {
      */
     @Override
     public int hashCode() {
-        return Objects.hash(switchId, portNo, seqId, segmentLatency);
+        return Objects.hash(switchId, portNo);
     }
 
     /**
