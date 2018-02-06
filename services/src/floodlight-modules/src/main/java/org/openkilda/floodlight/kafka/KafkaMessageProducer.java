@@ -32,6 +32,7 @@ import java.util.Map;
  */
 public class KafkaMessageProducer implements IFloodlightModule, IFloodlightService {
     private Producer producer;
+    private HeartBeat heartBeat;
 
     /**
      * {@inheritDoc}
@@ -63,7 +64,9 @@ public class KafkaMessageProducer implements IFloodlightModule, IFloodlightServi
     @Override
     public void init(FloodlightModuleContext modueleContext) throws FloodlightModuleException {
         Context context = new Context(modueleContext, this);
+
         producer = new Producer(context);
+        initHeartBeat(context);
     }
 
     /**
@@ -81,6 +84,24 @@ public class KafkaMessageProducer implements IFloodlightModule, IFloodlightServi
      */
     public void postMessage(final String topic, final Message message) {
         producer.handle(topic, message);
+        heartBeat.reschedule();
+    }
+
+    private void initHeartBeat(Context context) throws FloodlightModuleException {
+        final String option = "heart-beat-interval";
+        String value = context.configLookup(option);
+
+        try {
+            Float interval = Float.valueOf(context.configLookup(option));
+            if (interval < 1) {
+                throw new FloodlightModuleException(String.format(
+                        "Invalid value for option %s: %s < 1", option, value));
+            }
+            heartBeat = new HeartBeat(producer, (long)(interval * 1000));
+        } catch (NumberFormatException e) {
+            throw new FloodlightModuleException(String.format(
+                    "Invalid value for option %s=\"%s\", expect number", option, value));
+        }
     }
 
     public Producer getProducer() {
