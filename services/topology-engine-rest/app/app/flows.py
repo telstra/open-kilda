@@ -29,20 +29,19 @@ import uuid
 import ConfigParser
 
 from kafka import KafkaConsumer, KafkaProducer
-from py2neo import Graph, Node, Relationship
+
+from . import neo4j_tools
 
 
 config = ConfigParser.RawConfigParser()
-config.read('topology_engine_rest.properties')
+config.read('topology_engine_rest.ini')
 
 group = config.get('kafka', 'consumer.group')
 topic = config.get('kafka', 'kafka.topic.flow')
 bootstrap_servers_property = config.get('kafka', 'bootstrap.servers')
 bootstrap_servers = [x.strip() for x in bootstrap_servers_property.split(',')]
 
-NEO4J_HOST = os.environ['neo4jhost'] or config.get('neo4j', 'host')
-NEO4J_USER = os.environ['neo4juser'] or config.get('neo4j', 'user')
-NEO4J_PASS = os.environ['neo4jpass'] or config.get('neo4j', 'pass')
+neo4j_connect = neo4j_tools.connect(config)
 
 
 class Flow(object):
@@ -52,10 +51,6 @@ class Flow(object):
 class Message(object):
     def toJSON(self):
         return json.dumps(self, default=lambda o: o.__dict__, sort_keys=False, indent=4)
-
-def create_p2n_driver():
-    graph = Graph("http://{}:{}@{}:7474/db/data/".format(NEO4J_USER, NEO4J_PASS, NEO4J_HOST))
-    return graph
 
 
 def build_ingress_flow(expandedRelationships, src_switch, src_port, src_vlan, bandwidth, transit_vlan, flow_id, outputAction):
@@ -143,14 +138,15 @@ def expand_relationships(relationships):
     return fullRelationships
 
 def get_relationships(src_switch, src_port, dst_switch, dst_port):
-    query = "MATCH (a:switch{{name:'{}'}}),(b:switch{{name:'{}'}}), p = shortestPath((a)-[:isl*..100]->(b)) where ALL(x in nodes(p) WHERE x.state = 'active') RETURN p".format(src_switch,dst_switch)
-    data = {'query' : query}
-    resultPath = requests.post('http://{}:7474/db/data/cypher'.format(NEO4J_HOST), data=data, auth=(NEO4J_USER, NEO4J_PASS))
-    jPath = json.loads(resultPath.text)
-    if jPath['data']:
-        return jPath['data'][0][0]['relationships']
-    else:
-        return False
+    query = (
+        "MATCH (a:switch{{name:'{}'}}),(b:switch{{name:'{}'}}), p = shortestPath((a)-[:isl*..100]->(b)) where ALL(x in nodes(p) "
+        "WHERE x.state = 'active') "
+        "RETURN p").format(src_switch, dst_switch)
+    match = neo4j_connect.run(query)
+    if match:
+        return match[0]['relationships']
+    return []
+
 
 def assign_transit_vlan():
     return random.randrange(99, 4000,1)
@@ -210,12 +206,12 @@ def api_v1_health_check():
 #@login_required
 def api_v1_flow(flowid):
     query = "MATCH (a:switch)-[r:flow {{flowid: '{}'}}]->(b:switch) {} r"
-    graph = create_p2n_driver()
+
     if request.method == 'GET':
-        result = graph.run(query.format(flowid, "return")).data()
+        result = neo4j_connect.run(query.format(flowid, "return")).data()
     if request.method == 'DELETE':
         producer = KafkaProducer(bootstrap_servers=bootstrap_servers)
-        switches =  graph.run("MATCH (a:switch)-[r:flow {{flowid: '{}'}}]->(b:switch) return r.flowpath limit 1".format(flowid)).evaluate()
+        switches =  neo4j_connect.run("MATCH (a:switch)-[r:flow {{flowid: '{}'}}]->(b:switch) return r.flowpath limit 1".format(flowid)).evaluate()
         for switch in switches:
             message = Message()
             message.data = build_delete_flow(switch, str(flowid))
@@ -225,7 +221,7 @@ def api_v1_flow(flowid):
             print 'topic: {}, message: {}'.format(topic, kafkamessage)
             messageresult = producer.send(topic, kafkamessage)
             messageresult.get(timeout=5)
-        result = graph.run(query.format(flowid, "delete")).data()
+        result = neo4j_connect.run(query.format(flowid, "delete")).data()
     return json.dumps(result)
 
 
@@ -276,10 +272,8 @@ def api_v1_create_flow():
                 messageresult = producer.send(topic, kafkamessage)
                 result = messageresult.get(timeout=5)
 
-        graph = create_p2n_driver()
-
-        a_switchNode = graph.find_one('switch', property_key='name', property_value='{}'.format(content['src_switch']))
-        b_switchNode = graph.find_one('switch', property_key='name', property_value='{}'.format(content['dst_switch']))
+        a_switchNode = neo4j_connect.find_one('switch', property_key='name', property_value='{}'.format(content['src_switch']))
+        b_switchNode = neo4j_connect.find_one('switch', property_key='name', property_value='{}'.format(content['dst_switch']))
 
         if not a_switchNode or not b_switchNode:
             return '{"result": "failed"}'
@@ -289,9 +283,8 @@ def api_v1_create_flow():
         pathForwardQuery = pathQuery.format(a_switchNode['name'], b_switchNode['name'], flowID, content['src_port'], content['dst_port'], content['src_switch'], content['dst_switch'], str(forwardFlowSwitches))
         pathReverseQuery = pathQuery.format(b_switchNode['name'], a_switchNode['name'], flowID, content['dst_port'], content['src_port'], content['dst_switch'], content['src_switch'], str(reverseFlowSwitches))
 
-        graph.run(pathForwardQuery)
-        graph.run(pathReverseQuery)
+        neo4j_connect.run(pathForwardQuery)
+        neo4j_connect.run(pathReverseQuery)
 
         response = {"result": "sucessful", "flowID": flowID}
         return json.dumps(response)
-
