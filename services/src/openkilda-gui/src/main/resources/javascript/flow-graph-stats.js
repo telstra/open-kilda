@@ -64,7 +64,7 @@ $(document).ready(function() {
 */
 function getGraphData() {
 	
-
+	$('#wait1').show();
 	var regex = new RegExp("^\\d+(s|h|m){1}$");
 	var currentDate = new Date();
 	var startDate = new Date($("#datetimepicker7").val());
@@ -89,29 +89,44 @@ function getGraphData() {
 	var checkNo = $("#autoreload").val().match(numbers);
 	var checkbox =  $("#check").prop("checked");
 	
-	if(valid){
+	var test = true;	
+    autoVal.reloadValidation(function(valid){
+	  
+	  if(!valid) {
+		  test = false;		  
+		  return false;
+	  }
+  });
+	    
+    if(test) {
+    	
+    	$("#autoreloadId").removeClass("has-error")	
+        $(".error-message").html("");
+    	
 		var megaBytes = selMetric;
 		if(megaBytes == "megabytes"){
 			selMetric = "bytes";		
 		}
+    	
 		loadGraph.loadGraphData("/stats/flowid/"+flowid+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric,"GET",selMetric).then(function(response) {
-			$("#wait1").css("display", "none");
-			$('body').css('pointer-events', 'all');
-			showStatsGraph.showStatsData(response,megaBytes); 
-		})
-				
-			try {
-				clearInterval(graphInterval);
-			} catch(err) {
+    			
+    			$("#wait1").css("display", "none");
+    			$('body').css('pointer-events', 'all');
+    			showStatsGraph.showStatsData(response,selMetric); 
+    	})
+    		
+    				try {
+    					clearInterval(graphInterval);
+    				} catch(err) {
 
-			}
-			
-			if(autoreload){
-				graphInterval = setInterval(function(){
-					callIntervalData() 
-				}, 1000*autoreload);
-			}
-	}
+    				}
+    				
+    				if(autoreload){
+    					graphInterval = setInterval(function(){
+    						callIntervalData() 
+    					}, 1000*autoreload);
+    				}
+    		}
 }
 
 function callIntervalData() {

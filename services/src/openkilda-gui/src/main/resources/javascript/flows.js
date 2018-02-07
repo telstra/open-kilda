@@ -30,10 +30,10 @@ $( 'input').on( 'click', function () {
 });
 
 function showflowData(response){
-			
-	if(!response) {
+
+	if(!response || response.length==0) {
 		response=[]
-		common.infoMessage('No Flows Avaliable','info');
+		common.infoMessage('No Flow Avaliable','info');
 	}
 	
 	var flowDetailsData = localStorage.getItem("flowDetailsData");

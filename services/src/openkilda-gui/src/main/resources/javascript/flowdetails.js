@@ -8,13 +8,12 @@ $(document).ready(function() {
 	var flowData = localStorage.getItem("flowDetails");
 	
 	if(!flowData) {
-		window.location = "/openkilda/flows";
+		window.location = APP_CONTEXT+ "/flows";
 	}
 	
 	var obj = JSON.parse(flowData)
 	showFlowData(obj);
 	getMetricDetails.getFlowMetricData();
-	//$("#wait1").css("display", "none");
 	$('body').css('pointer-events','all');
 })
 
@@ -43,7 +42,6 @@ function showFlowData(obj) {
 function callFlowForwardPath(flow_id) {
 	
 	common.getData("/flows/path/" + flow_id,"GET").then(function(response) {
-		//$("#wait1").css("display", "none");
 		showForwardFlowPathData(response);
 	})
 
@@ -52,7 +50,6 @@ function callFlowForwardPath(flow_id) {
 function callFlowReversePath(flow_id) {
 	
 	common.getData("/flows/path/" + flow_id,"GET").then(function(response) {
-		//$("#wait1").css("display", "none");
 		showReverseFlowPathData(response);
 	})
 
