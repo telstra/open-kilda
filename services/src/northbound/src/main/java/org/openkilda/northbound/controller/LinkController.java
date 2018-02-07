@@ -91,7 +91,8 @@ public class LinkController {
             method = RequestMethod.PUT,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     @ResponseStatus(HttpStatus.OK)
-    public LinkPropsResult putLinkProps(List<LinkPropsDto> keysAndProps) {
+    public LinkPropsResult putLinkProps(
+            @RequestBody List<LinkPropsDto> keysAndProps) {
         return linkService.setLinkProps(keysAndProps);
     }
 
@@ -114,7 +115,8 @@ public class LinkController {
             method = RequestMethod.DELETE,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     @ResponseStatus(HttpStatus.OK)
-    public LinkPropsResult delLinkProps(List<LinkPropsDto> keysAndProps) {
+    public LinkPropsResult delLinkProps(
+            @RequestBody List<LinkPropsDto> keysAndProps) {
         return linkService.delLinkProps(keysAndProps);
     }
 
