@@ -31,7 +31,6 @@ import org.apache.storm.utils.Utils;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
@@ -66,6 +65,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
@@ -110,19 +110,19 @@ public class CacheTopologyTest extends AbstractStormTest {
                 topology.getConfig().getKafkaTopoEngTopic(), Destination.TOPOLOGY_ENGINE,
                 kafkaProperties(UUID.nameUUIDFromBytes(Destination.TOPOLOGY_ENGINE.toString().getBytes()).toString())
         );
-        teConsumer.start();
+        //teConsumer.start();
 
         flowConsumer = new TestKafkaConsumer(
                 topology.getConfig().getKafkaFlowTopic(), Destination.WFM,
                 kafkaProperties(UUID.nameUUIDFromBytes(Destination.WFM.toString().getBytes()).toString())
         );
-        flowConsumer.start();
+        //flowConsumer.start();
 
         ctrlConsumer = new TestKafkaConsumer(
                 topology.getConfig().getKafkaCtrlTopic(), Destination.CTRL_CLIENT,
                 kafkaProperties(UUID.nameUUIDFromBytes(Destination.CTRL_CLIENT.toString().getBytes()).toString())
         );
-        ctrlConsumer.start();
+        //ctrlConsumer.start();
     }
 
     @Before
@@ -139,6 +139,9 @@ public class CacheTopologyTest extends AbstractStormTest {
 
     @AfterClass
     public static void teardownOnce() throws Exception {
+        flowConsumer.closeConsumer();
+        teConsumer.closeConsumer();
+        ctrlConsumer.closeConsumer();
         cluster.killTopology(CacheTopologyTest.class.getSimpleName());
         Utils.sleep(4 * 1000);
         AbstractStormTest.teardownOnce();
@@ -229,7 +232,6 @@ public class CacheTopologyTest extends AbstractStormTest {
     }
 
     @Test
-    @Ignore // TODO: ignoring on 2018.01.04 - failing in GCP but not Mac - needs troubleshooting
     public void ctrlListHandler() throws Exception {
         CtrlRequest request = new CtrlRequest(
                 "cachetopology/*", new RequestData("list"), 1, "list-correlation-id", Destination.WFM_CTRL);
@@ -250,13 +252,12 @@ public class CacheTopologyTest extends AbstractStormTest {
     }
 
     @Test
-    @Ignore // TODO: ignoring on 2018.01.04 - failing in GCP but not Mac - needs troubleshooting
     public void ctrlDumpHandler() throws Exception {
         CtrlRequest request = new CtrlRequest(
                 "cachetopology/*", new RequestData("dump"), 1, "dump-correlation-id", Destination.WFM_CTRL);
 
+        ctrlConsumer.goToOffset(ctrlConsumer.getLastOffset() - 1);
         sendMessage(request, topology.getConfig().getKafkaCtrlTopic());
-
         ConsumerRecord<String, String> raw = ctrlConsumer.pollMessage();
 
         assertNotNull(raw);   // TODO: FAILED
@@ -272,7 +273,6 @@ public class CacheTopologyTest extends AbstractStormTest {
     }
 
     @Test
-    @Ignore // TODO: ignoring on 2018.01.04 - failing in GCP but not Mac - needs troubleshooting
     public void ctrlSpecificRoute() throws Exception {
         CtrlRequest request = new CtrlRequest(
                 "cachetopology/cache", new RequestData("dump"), 1, "route-correlation-id", Destination.WFM_CTRL);
@@ -298,6 +298,9 @@ public class CacheTopologyTest extends AbstractStormTest {
         firstFlow.getLeft().setFlowPath(new PathInfoData(0L, Collections.emptyList()));
         firstFlow.getRight().setFlowPath(new PathInfoData(0L, Collections.emptyList()));
         sendFlowUpdate(firstFlow);
+        secondFlow.getLeft().setFlowPath(new PathInfoData(0L, Collections.emptyList()));
+        secondFlow.getRight().setFlowPath(new PathInfoData(0L, Collections.emptyList()));
+        sendFlowUpdate(secondFlow);
 
         flowConsumer.clear();
         sw.setState(SwitchState.REMOVED);
@@ -409,12 +412,8 @@ public class CacheTopologyTest extends AbstractStormTest {
     }
 
     private static void waitDumpRequest() throws InterruptedException {
-        int sec = 0;
-        while (teConsumer.pollMessage(1000) == null)
-        {
-            System.out.println("Waiting For Dump Request");
-            assertTrue("Waiting For Dump Request failed", ++sec < 20);
-        }
         System.out.println("Waiting For Dump Request");
+        ConsumerRecord<String, String> record = teConsumer.pollMessage(60000);
+        assertTrue("Waiting For Dump Request failed", Objects.nonNull(record));
     }
 }

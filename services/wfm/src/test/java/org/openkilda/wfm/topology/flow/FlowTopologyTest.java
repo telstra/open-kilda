@@ -22,7 +22,6 @@ import static org.junit.Assert.assertTrue;
 
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
-import org.openkilda.messaging.Topic;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.FlowCreateRequest;
 import org.openkilda.messaging.command.flow.FlowDeleteRequest;
@@ -101,26 +100,21 @@ public class FlowTopologyTest extends AbstractStormTest {
         nbConsumer = new TestKafkaConsumer(
                 topologyConfig.getKafkaNorthboundTopic(), Destination.NORTHBOUND,
                 kafkaProperties(UUID.nameUUIDFromBytes(Destination.NORTHBOUND.toString().getBytes()).toString()));
-        nbConsumer.start();
 
         ofsConsumer = new TestKafkaConsumer(topologyConfig.getKafkaSpeakerTopic(),
                 Destination.CONTROLLER,
                 kafkaProperties(UUID.nameUUIDFromBytes(Destination.CONTROLLER.toString().getBytes()).toString()));
-        ofsConsumer.start();
 
         cacheConsumer = new TestKafkaConsumer(topologyConfig.getKafkaTopoCacheTopic(), null,
                 kafkaProperties(UUID.nameUUIDFromBytes(Destination.TOPOLOGY_ENGINE.toString().getBytes()).toString()));
-        cacheConsumer.start();
 
 //        teResponseConsumer = new TestKafkaConsumer(topologyConfig.getKafkaTopoEngTopic(),
         teResponseConsumer = new TestKafkaConsumer(topologyConfig.getKafkaFlowTopic(),
                 Destination.WFM,
                 kafkaProperties(UUID.nameUUIDFromBytes(Destination.WFM.toString().getBytes()).toString()));
-        teResponseConsumer.start();
 
         ctrlConsumer = new TestKafkaConsumer(flowTopology.getConfig().getKafkaCtrlTopic(), Destination.CTRL_CLIENT,
                 kafkaProperties(UUID.nameUUIDFromBytes(Destination.CTRL_CLIENT.toString().getBytes()).toString()));
-        ctrlConsumer.start();
 
         Utils.sleep(10000);
     }
@@ -128,13 +122,13 @@ public class FlowTopologyTest extends AbstractStormTest {
     @AfterClass
     public static void teardownOnce() throws Exception {
         nbConsumer.wakeup();
-        nbConsumer.join();
+        nbConsumer.closeConsumer();
         ofsConsumer.wakeup();
-        ofsConsumer.join();
+        ofsConsumer.closeConsumer();
         cacheConsumer.wakeup();
-        cacheConsumer.join();
+        cacheConsumer.closeConsumer();
         teResponseConsumer.wakeup();
-        teResponseConsumer.join();
+        teResponseConsumer.closeConsumer();
         cluster.killTopology(FlowTopologyTest.class.getSimpleName());
         Utils.sleep(4 * 1000);
         AbstractStormTest.teardownOnce();
