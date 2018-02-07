@@ -31,10 +31,6 @@
 
 		<div class="container-fluid">
 
-			<div id="wait1" class="bg_load">
-				<div class="loader"></div>
-			</div>
-
 
 			<div class='form-group  col-lg-12 text-center flow_details'>
 				<label class='col-form-label' style='display: inline-block;'>Flow
@@ -118,15 +114,20 @@
 									<div class="col-xs-12">
 										<div id="flow_path_stats_div" class="topology-graph row">
 											<div class="col-xs-8">
+												<div id="wait1" class="bg-data-loader" style="bottom:1px;">
+													<div class="loader"></div>
+												</div>
+											
 												<div id="graphdiv"></div>
 											</div>
-
-
 											<div class="col-xs-4 filter">
-												<div class="stats-graph">
-
-
-													<fieldset class="form-group">
+												<div class="stats-graph row">
+												<ul class="line-legend col-lg-12">
+												 	<li>Forward</li>
+												  	<li>Reverse</li>
+												</ul>
+													<fieldset class="form-group clearfix">
+													
 														<label class="col-xs-4 text-label">From:</label>
 														<div class="col-xs-8">
 															<input type="text" id="datetimepicker7"
@@ -159,7 +160,7 @@
 														</div>
 													</fieldset>
 
-													<fieldset class="form-group">
+													<fieldset  id="autoreloadId" class="form-group">
 														<label class="col-xs-4 text-label">Autoreload(Sec):</label>
 														<div class="col-xs-8">
 															<input type="checkbox" id="check" onclick="graphAutoReload.autoreload()"
@@ -167,6 +168,9 @@
 																id="autoreload" name="autoloadInput"
 																class="form-control"
 																style="display: none; width: calc(100% - 20px); float: right;" />
+														        
+														        <span class="error-message"></span>
+														        
 														</div>
 													</fieldset>
 
@@ -202,15 +206,8 @@
 
 	<div th:replace="fragments/footer :: footer" ></div>
 	<script th:inline="javascript" src="../javascript/flowdetails.js"></script>
-	<script th:inline="javascript" src="../javascript/flow-graph-stats.js"></script>
 	<script th:inline="javascript" src="../javascript/common.js"></script>
+	<script th:inline="javascript" src="../javascript/flow-graph-stats.js"></script>
 	
-	<script type="text/javascript">
-/* 		
-	$(document).ready(function() {
-		flowStats.getGraphDataPage();
-	}) */
-
-</script>
 </body>
 </html>
