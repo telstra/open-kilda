@@ -159,7 +159,7 @@ public class FlowPathTest {
     private int getLinksCount(int expectedLinks) throws Exception {
         int actualLinks = 0;
 
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < 10; i++) {
             List<IslInfoData> links = LinksUtils.dumpLinks();
             actualLinks = links.size();
 
