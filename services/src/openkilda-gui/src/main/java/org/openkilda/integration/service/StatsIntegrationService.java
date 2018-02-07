@@ -139,7 +139,7 @@ public class StatsIntegrationService {
         else if(statsType.equals(StatsType.FLOW))
         	metricList = Metrics.flowValue(metric);
         else if(statsType.equals(StatsType.ISL))
-        	metricList = Metrics.islValue(metric);
+        	metricList = Metrics.switchValue(metric);
         if(metricList != null && !metricList.isEmpty()){
         	for(int index = 0; index < metricList.size(); index++){
         		String metricName = metricList.get(index);

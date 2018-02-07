@@ -115,18 +115,11 @@ public abstract class IConstants {
 
         public static List<String> switchValue(String tag) {
             List<String> list = new ArrayList<String>();
-            tag = "Switch_" + tag;
-            for (Metrics metric : values()) {
-                if (metric.getTag().equalsIgnoreCase(tag)) {
-                    list.add(metric.getDisplayTag());
-                }
-            }
-            return list;
-        }
-        
-        public static List<String> islValue(String tag) {
-            List<String> list = new ArrayList<String>();
-            tag = "Isl_" + tag;
+           
+            if(tag.equalsIgnoreCase("latency"))
+            	 tag = "Isl_" + tag;
+            else
+            	 tag = "Switch_" + tag;
             for (Metrics metric : values()) {
                 if (metric.getTag().equalsIgnoreCase(tag)) {
                     list.add(metric.getDisplayTag());
