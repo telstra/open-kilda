@@ -112,8 +112,10 @@ public class LinkServiceImpl implements LinkService {
 
     protected LinkPropsResult doLinkProps(HttpMethod verb, List<LinkPropsDto> linkPropsList) {
         LOGGER.debug("{} link properties request received", verb);
+        LOGGER.debug("Size of list: {}", linkPropsList);
+        HttpEntity<List<LinkPropsDto>> entity = new HttpEntity<>(linkPropsList,headers);
         ResponseEntity<LinkPropsResult> response = restTemplate.exchange(linkPropsUrlBase,
-                verb, new HttpEntity<>(headers), LinkPropsResult.class);
+                verb, entity, LinkPropsResult.class);
         LinkPropsResult result = response.getBody();
         LOGGER.debug("Returned: ", result);
         return result;
