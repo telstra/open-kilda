@@ -23,6 +23,8 @@ import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.KafkaSpout;
 import org.apache.storm.topology.TopologyBuilder;
 import org.openkilda.messaging.ServiceType;
+import org.openkilda.pce.provider.NeoDriver;
+import org.openkilda.pce.provider.PathComputer;
 import org.openkilda.wfm.ConfigurationException;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.topology.AbstractTopology;
@@ -65,7 +67,10 @@ public class StatsTopology extends AbstractTopology {
                 .fieldsGrouping(statsOfsBolt, StatsStreamType.PORT_STATS.toString(), fieldMessage);
         builder.setBolt(METER_CFG_STATS_METRIC_GEN.name(), new MeterConfigMetricGenBolt(), parallelism)
                 .fieldsGrouping(statsOfsBolt, StatsStreamType.METER_CONFIG_STATS.toString(), fieldMessage);
-        builder.setBolt(FLOW_STATS_METRIC_GEN.name(), new FlowMetricGenBolt(), parallelism)
+        logger.debug("starting flow_stats_metric_gen");
+        builder.setBolt(FLOW_STATS_METRIC_GEN.name(),
+                new FlowMetricGenBolt(config.getNeo4jHost(), config.getNeo4jLogin(), config.getNeo4jPassword()),
+                parallelism)
                 .fieldsGrouping(statsOfsBolt, StatsStreamType.FLOW_STATS.toString(), fieldMessage);
 
         final String openTsdbTopic = config.getKafkaOtsdbTopic();
