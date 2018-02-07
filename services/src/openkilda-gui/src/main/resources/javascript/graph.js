@@ -588,11 +588,7 @@ function showLinkDetails(d) {
 	url = 'switch/isl';
 	window.location = url;
 }
-var options = {
-	      events: {
-	        doubleClick: false
-	      }
-}
-var panzoom = $("svg").svgPanZoom(options);
+
+var panzoom = $("svg").svgPanZoom();
 localStorage.clear();
 /* ]]> */
