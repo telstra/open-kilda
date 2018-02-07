@@ -4,7 +4,6 @@ import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
 import org.openkilda.messaging.error.MessageError;
-import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.northbound.dto.LinkPropsDto;
 import org.openkilda.northbound.dto.LinksDto;
 import org.openkilda.northbound.service.LinkPropsResult;
