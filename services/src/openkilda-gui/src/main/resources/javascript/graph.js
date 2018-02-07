@@ -495,6 +495,16 @@ function interpolateZoom (translate, scale) {
     });
 }
 function reset() {
+	
+	d3.selectAll('g.node')
+    .each(function(d) {
+    	var element = $("#circle" + d.index)[0];
+        element.setAttribute("class", "circle")
+    	d3.select(this).classed("fixed", d.fixed = false);
+    });
+	
+	
+    force.resume();
 	panzoom.reset();
 }
 
@@ -541,7 +551,7 @@ function zoomFit(paddingPercent, transitionDuration) {
 	var bounds = svg.node().getBBox();
 	var parent = svg.node().parentElement;
 	var fullWidth = $(parent).width(),
-		fullHeight = $(parent).height()-150;
+		fullHeight = $(parent).height();
 	var width = bounds.width,
 		height = bounds.height;
 	var midX = bounds.x + width / 2,
@@ -588,7 +598,11 @@ function showLinkDetails(d) {
 	url = 'switch/isl';
 	window.location = url;
 }
-
-var panzoom = $("svg").svgPanZoom();
+var options = {
+	      events: {
+	        doubleClick: false
+	      }
+}
+var panzoom = $("svg").svgPanZoom(options);
 localStorage.clear();
 /* ]]> */

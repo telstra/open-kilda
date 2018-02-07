@@ -2,7 +2,7 @@
 
 
 /*Global Variable Constant*/
-var metricVarList = ["bits:Bits/sec","bytes:Bytes/sec","megabytes:MegaBytes/sec","packets:Packets/sec","drops:Drops/sec","errors:Errors/sec", "collisions:Collisions","frameerror:Frame Errors","overerror:Overruns","crcerror:CRC Errors"];
+var metricVarList = ["latency:latency","bits:Bits/sec","megabytes:MegaBytes/sec","packets:Packets/sec","drops:Drops/sec","errors:Errors/sec", "collisions:Collisions","frameerror:Frame Errors","overerror:Overruns","crcerror:CRC Errors"];
 
 
 var common = {	
@@ -51,16 +51,18 @@ $(document).click(function(){
     $('#topology-txt').slideUp();
 });
 
-
+var requests = null;
 var loadGraph = {	
 		loadGraphData:function(apiUrl,requestType,selMetric){	
-		return $.ajax({url : APP_CONTEXT+apiUrl,type : requestType,
-			dataType : "json",
-			error : function(errResponse) {
-				$("#wait1").css("display", "none");	
-				showStatsGraph.showStatsData(errResponse,selMetric);
-			}
-		});							
+			requests =  $.ajax({url : APP_CONTEXT+apiUrl,type : requestType,
+					dataType : "json",
+					error : function(errResponse) {
+						$("#wait1").css("display", "none");	
+						showStatsGraph.showStatsData(errResponse,selMetric);
+					}
+				});			
+			
+		return requests;				
 	}
 }
 
@@ -73,6 +75,9 @@ var graphAutoReload = {
 				$("#autoreload").val('');
 				clearInterval(callIntervalData);
 				clearInterval(graphInterval);
+				$("#autoreloadId").removeClass("has-error")	
+			    $(".error-message").html("");
+				$('#wait1').hide();	
 			}
 		}
 }
@@ -88,6 +93,19 @@ var graphAutoReload = {
 		var jsonResponse = response.responseJSON;
 				
 		 var graphData = [];		
+		 if(data){
+			 if(data.length == 0){
+			 var g = new Dygraph(document.getElementById("graphdiv"), [],
+				 	 {
+				 		      drawPoints: false,
+				 		      labels: "test",	 		      
+				 		      colors: ["#495cff","#aad200"],
+				 	  });	
+			 return;
+			 } 
+		
+		 }
+		 
 		 
 		if(!jsonResponse) {
 			
@@ -172,7 +190,7 @@ var getMetricDetails = {
 				$('#menulist').val('pen.flow.packets');
 			} else {
 				$("select.selectbox_menulist").html("").html(optionHTML);			
-				$('#menulist').val('bits');
+				$('#menulist').val('latency');
 			}						
 		},
 		getFlowMetricData:function(response){
@@ -182,7 +200,7 @@ var getMetricDetails = {
 			var optionHTML = "";
 			for (var i = 0; i < metricArray.length ; i++) {
 				
-				if(metricArray[i].includes("bits") || metricArray[i].includes("packets") || metricArray[i].includes("bytes") || metricArray[i].includes("megabytes")) {
+				if(metricArray[i].includes("bits") || metricArray[i].includes("packets") || metricArray[i].includes("megabytes")) {
 					optionHTML += "<option value=" + metricArray[i].split(":")[0] + ">"+ metricArray[i].split(":")[1] + "</option>";
 				}
 			}
@@ -195,7 +213,7 @@ var getMetricDetails = {
 			var optionHTML = "";
 			for (var i = 0; i < metricArray.length ; i++) {
 				
-				if( metricArray[i].includes("megabytes")) {
+				if(metricArray[i].includes("megabytes") || metricArray[i].includes("latency")) {
 				} else{
 					optionHTML += "<option value=" + metricArray[i].split(":")[0] + ">"+ metricArray[i].split(":")[1] + "</option>";
 				}			
@@ -204,6 +222,47 @@ var getMetricDetails = {
 			$('#menulist').val('bits');
 		}
 }
+
+
+var autoVal = {	
+			
+			reloadValidation:function(callback) {
+				
+				var autoreload = $("#autoreload").val();
+				var numbers = /^[-+]?[0-9]+$/;  
+				var checkNo = $("#autoreload").val().match(numbers);
+				var checkbox =  $("#check").prop("checked");
+			
+				if(checkbox) {
+					
+					if($("#autoreload").val().length > 0) {	
+						if(autoreload < 0) {
+							common.infoMessage('Autoreload cannot be negative','error');
+							valid=false;
+							clearInterval(graphInterval);
+							callback(valid)
+						} else if(autoreload == 0) {
+							common.infoMessage('Autoreload cannot be zero','error');
+							valid=false;							
+							clearInterval(graphInterval);
+							callback(valid)
+						}else if(!checkNo) {
+							
+							$("#autoreloadId").addClass("has-error")	
+							$(".error-message").html("Please enter positive number only");			
+							valid=false;
+							clearInterval(graphInterval);
+							callback(valid)
+						}
+						else{
+							valid = true;
+							callback(valid)
+						}
+					}
+				}
+		   }
+	}
+ 
 
 
 /* ]]> */
