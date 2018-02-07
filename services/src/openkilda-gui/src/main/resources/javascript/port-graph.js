@@ -32,13 +32,10 @@ $(function() {
  */
 $(document).ready(function() {
 
-	var g = new Dygraph(document.getElementById("graphdiv"), [],
-	        {
-			    drawPoints: true,
-			    labels: ['Time']
-			});
-	
 	$.datetimepicker.setLocale('en');
+	$('#datetimepicker7').datetimepicker({
+		  format:'Y/m/d h:i:s',
+	});
 	var date = new Date()
 	var yesterday = new Date(date.getTime());
 	yesterday.setDate(date.getDate() - 1);
@@ -52,9 +49,7 @@ $(document).ready(function() {
 	$("#downsampling").val(downsampling)
 	$("#datetimepicker7").val(YesterDayDate);
 	$("#datetimepicker8").val(EndDate);
-	$('#datetimepicker7').datetimepicker({
-		  format:'Y/m/d h:i:s',
-	});
+
 	$('#datetimepicker8').datetimepicker({
 		  format:'Y/m/d h:i:s',
 	});
@@ -73,7 +68,8 @@ $(document).ready(function() {
  * html page.
  */
 function getGraphData() {
-			
+	
+	$('#wait1').show();	
 	var regex = new RegExp("^\\d+(s|h|m){1}$");
 	var currentDate = new Date();
 	var startDate = new Date($("#datetimepicker7").val());
@@ -87,7 +83,7 @@ function getGraphData() {
 	
 	if(downsamplingValidated == false) {	
 		
-		common.infoMessage('Please enter correct downsampling','error');		
+		common.infoMessage('Please enter correct downsampling','error');
 		valid=false;
 		return
 	}
@@ -105,16 +101,27 @@ function getGraphData() {
 	var numbers = /^[-+]?[0-9]+$/;  
 	var checkNo = $("#autoreload").val().match(numbers);
 	var checkbox =  $("#check").prop("checked");
-	var isChecked = $('#check').attr('checked')?true:false;
 
-
-	if(valid) {
-
-	loadGraph.loadGraphData("/stats/switchid/"+sourceswitch+"/port/"+portNum+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric,"GET",selMetric).then(function(response) {
+	var test = true;	
+    autoVal.reloadValidation(function(valid){
+	  
+	  if(!valid) {
+		  test = false;		  
+		  return false;
+	  }
+  });
+  
+if(test) {
+	
+	$("#autoreloadId").removeClass("has-error")	
+    $(".error-message").html("");
+	
+  loadGraph.loadGraphData("/stats/switchid/"+sourceswitch+"/port/"+portNum+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric,"GET",selMetric).then(function(response) {
+		
 		$("#wait1").css("display", "none");
 		$('body').css('pointer-events', 'all');
 		showStatsGraph.showStatsData(response,selMetric); 
-	})
+})
 	
 			try {
 				clearInterval(graphInterval);
@@ -128,7 +135,6 @@ function getGraphData() {
 				}, 1000*autoreload);
 			}
 	}
-	
 }
 
 function callIntervalData(){
@@ -138,8 +144,7 @@ function callIntervalData(){
 	var convertedStartDate = moment(startDate).format("YYYY-MM-DD-HH:mm:ss");
 	var endDate = new Date()
 	var convertedEndDate = moment(endDate).format("YYYY-MM-DD-HH:mm:ss");
-	var downsampling =$("#downsampling").val()	
-
+	var downsampling =$("#downsampling").val();
 	var selMetric=$("select.selectbox_menulist").val();
 	
 	loadGraph.loadGraphData("/stats/switchid/"+sourceswitch+"/port/"+portNum+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric,"GET",selMetric).then(function(response) {

@@ -10,7 +10,7 @@ $(document).ready(function() {
 
 	var linkData = localStorage.getItem("linkData");
 	if(!linkData){
-		window.location = "/openkilda/topology";
+		window.location = APP_CONTEXT+ "/topology";
 	}
 	var obj = JSON.parse(linkData);
 	$('body').css('pointer-events','all'); 
@@ -25,7 +25,6 @@ $(document).ready(function() {
  */
 function showLinkDetails(linkData) {
 	
-		console.log(linkData);
 		$(".graph_div").show();
 		$('.isl_details_div').show();
 		$('#DownsampleID').show();

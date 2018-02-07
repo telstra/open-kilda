@@ -16,7 +16,7 @@ $(document).ready(function() {
 			var portData = localStorage.getItem("portDetails");
 			
 			if(!portData) {
-				window.location = "/openkilda/switch";
+				window.location =  APP_CONTEXT+ "/switch";
 			}	
 			var obj = JSON.parse(portData)
 			$("#kilda-port-name").parent().append(obj.port_name)

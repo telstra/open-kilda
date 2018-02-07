@@ -12,7 +12,7 @@ $(document).ready(function(){
 	if(switchname.includes("id")) {
 		
 		if(!switchData || switchData ==""){
-			window.location = "/openkilda/switch";
+			window.location = APP_CONTEXT+ "/switch";
 		}
 		var switchname=window.location.href.split("#")[2];
 		var tmp_anchor = '<a href="/openkilda/switch">' + "Switch" + '</a>';
@@ -22,7 +22,7 @@ $(document).ready(function(){
 
 	} else {	
 		if(!switchData || switchData ==""){
-			window.location = "/openkilda/topology";
+			window.location =  APP_CONTEXT+ "/topology";
 		}
 		var tmp_anchor = '<a href="/openkilda/topology">' + "Topology" + '</a>';
 		$("#kilda-nav-label").parent().append(tmp_anchor)	
@@ -32,6 +32,7 @@ $(document).ready(function(){
 	
 	$("#kilda-switch-name").parent().append(switchname)	
 	var obj = JSON.parse(switchData);
+	
 	showSwitchData(obj); 
 	callPortDetailsAPI(switchname);
 	$(document).on("click",".flowDataRow",function(e){
@@ -44,13 +45,13 @@ $(document).ready(function(){
 /** function to retrieve and show port details*/
  function callPortDetailsAPI(switchname){
 	
-	common.getData("/switch/"+switchname+"/ports","GET").then(function(response) { $("#wait1").css("display", "none");
+	common.getData("/switch/"+switchname+"/ports","GET").then(function(response) { 
+		
 		$('body').css('pointer-events','all'); 	
 		showPortData(response);
 	},
 	function(error){
 		response=[]
-		$("#wait1").css("display", "none");
 		$('body').css('pointer-events','all'); 
 		showPortData(response);
 	})
@@ -75,23 +76,25 @@ $( 'input').on( 'click', function () {
 
 /** function to retrieve and show port details from 
  * the port response json object and display on the html page*/
-function showPortData(response) {	
-	
-	
-	if(!response) {
+function showPortData(response) {
+
+	if(!response || response.length==0) {
 		response=[]
 		common.infoMessage('No Ports Avaliable','info');
 	}
 	
-		 for(var i = 0; i < response.length; i++) {
+	$("#flowTable #div_loader").remove();
+	
+		for(var i = 0; i < response.length; i++) {
 			 var tableRow = "<tr id='div_"+(i+1)+"' class='flowDataRow'>"
 			 			    +"<td class='divTableCell' title ='"+((response[i].interfacetype == undefined)?"-":response[i].interfacetype)+"'>"+((response[i].interfacetype === "" || response[i].interfacetype == undefined)?"-":response[i].interfacetype)+"</td>"
 			 			    +"<td class='divTableCell' title ='"+((response[i].port_name == undefined)?"-":response[i].port_name)+"'>"+((response[i].port_name === "" || response[i].port_name == undefined)?"-":response[i].port_name)+"</td>"
 			 			    +"<td class='divTableCell' title ='"+((response[i].port_number == undefined)?"-":response[i].port_number)+"'>"+((response[i].port_number === "" || response[i].port_number == undefined)?"-":response[i].port_number)+"</td>"
 			 			    +"<td class='divTableCell' title ='"+((response[i].status == undefined)?"-":response[i].status)+"'>"+((response[i].status == undefined)?"-":response[i].status)+"</td>"
 			 			    +"</tr>";
-	
-			 	$("#flowTable").append(tableRow);
+			 		 
+			 
+				$("#flowTable").append(tableRow);
 			 			   
 			 	if(response[i].status == "LIVE") {
 			 		$("#div_"+(i+1)).addClass('up-state');
@@ -99,7 +102,7 @@ function showPortData(response) {
 			 		$("#div_"+(i+1)).addClass('down-state');
 			 	}
 		 }
-		 
+		
 		 var tableVar  =  $('#flowTable').DataTable( {
 			 "iDisplayLength": 10,
 			 "aLengthMenu": [[10, 20, 35, 50, -1], [10, 20, 35, 50, "All"]],
@@ -117,9 +120,7 @@ function showPortData(response) {
 		     } );
 		 } );
 		 
-		 $('#switchdetails_div').show();
 		 $('#portdetails_div').show();
-		 $('#flowTable').show();
 }
 
 

@@ -587,7 +587,7 @@ h1.modal-title {
 	position: absolute;
 	left: 0px;
 	right: 0px;
-	background: rgba(0, 0, 0, 0.6); /* rgba(0, 0, 0, 0.6) */
+	background: rgba(0, 0, 0, 0.6);
 	z-index: 9;
 	margin: 0;
 	top: 0;
@@ -613,8 +613,8 @@ body{
 	border: 14px solid #f3f3f3;
 	border-radius: 50%;
 	border-top: 16px solid #3498db;
-	width: 85px;
-	height: 85px;
+	width: 75px;
+	height: 75px;
 	top: calc(50% - 90px);
     left: calc(50% - 90px);
 	-webkit-animation: spin 2s linear infinite;
@@ -1277,6 +1277,15 @@ table#flowTable.dataTable .divTableCell {
     height: auto;
 }
 
+.error-message {
+    float: right;
+    margin-top: 5px;
+}
+
+.has-error .text-label, .has-error .error-message, .has-error .form-control {
+	color: #a94442;
+}
+
 .line-legend li:before {
     height: 14px;
     left: 0;
@@ -1301,6 +1310,56 @@ table#flowTable.dataTable .divTableCell {
   pointer-events: all;
 }
 
+.bg-data-loader {
+	position: absolute;
+	left: 0px;
+	right: 0px;
+	background: rgb(255,255,255);
+	z-index: 9;
+	margin: 0;
+	top: 0;
+	bottom: 0;
+}
+
+
+.bg-data-loader .loader {
+	width: 30px;
+    height: 30px;
+    border: 6px solid #aaa;
+    border-top: 6px solid #3498db;
+    top: calc(50% - 15px);
+    left: calc(50% - 15px);
+}
+
+table#flowTable.dataTable {	
+    margin: 15px 0;
+}
+
+
+table#flowTable.dataTable .port_data_load td.divTableCell {
+    padding: 25px;
+    position: relative;
+    border: 1px solid #ddd;
+}
+
+/*  #port-details-div {
+	font-size: 13px;
+	border: 1px solid #ccc;
+	padding: 15px;
+	margin: 0 0 20px;
+	position: relative;
+} */
+.load-text {
+	position: absolute;
+    left: calc(50% - 152px);
+    width: 215px;
+    height: 20px;
+    top: 50%;
+    text-align: center;
+    color: #fff;
+    font-size: 13px;
+}
+
 @-moz-keyframes spin {
     from { -moz-transform: rotate(0deg); }
     to { -moz-transform: rotate(360deg); }
@@ -1313,3 +1372,8 @@ table#flowTable.dataTable .divTableCell {
     from {transform:rotate(0deg);}
     to {transform:rotate(360deg);}
 }
+
+@keyframes blink {50% { color: transparent }}
+.loader__dot { animation: 1s blink infinite }
+.loader__dot:nth-child(2) { animation-delay: 250ms }
+.loader__dot:nth-child(3) { animation-delay: 500ms }

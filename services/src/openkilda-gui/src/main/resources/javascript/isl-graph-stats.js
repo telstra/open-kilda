@@ -32,6 +32,7 @@ $(function() {
 */
 $(document).ready(function() {
 	
+	
 	$.datetimepicker.setLocale('en');
 	var date = new Date()
 	var yesterday = new Date(date.getTime());
@@ -52,7 +53,7 @@ $(document).ready(function() {
 	});
 	$('#datetimepicker_dark').datetimepicker({theme:'dark'})
 		
-	var selMetric="bits";
+	var selMetric="latency";
 
 	
 	loadGraph.loadGraphData("/stats/isl/"+source+"/"+sourcePort+"/"+target+"/"+targetPort+"/"+convertedStartDate+"/"+convertedEndDate+"/1s/"+selMetric,"GET",selMetric).then(function(response) {
@@ -69,7 +70,7 @@ $(document).ready(function() {
 */
 function getGraphData() {
 	
-	
+	$('#wait1').show();
 	var regex = new RegExp("^\\d+(s|h|m){1}$");
 	var currentDate = new Date();
 	var startDate = new Date($("#datetimepicker7").val());
@@ -101,16 +102,29 @@ function getGraphData() {
 	var numbers = /^[-+]?[0-9]+$/;  
 	var checkNo = $("#autoreload").val().match(numbers);
 	var checkbox =  $("#check").prop("checked");
+	
+	
+	var test = true;	
+    autoVal.reloadValidation(function(valid){
+	  
+	  if(!valid) {
+		  test = false;		  
+		  return false;
+	  }
+  });
+  
+if(test) {
+	
+	$("#autoreloadId").removeClass("has-error")	
+    $(".error-message").html(""); 
+	
+	loadGraph.loadGraphData("/stats/isl/"+source+"/"+sourcePort+"/"+target+"/"+targetPort+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric,"GET",selMetric).then(function(response) {
 		
-	if(valid) {
-		
-		loadGraph.loadGraphData("/stats/isl/"+source+"/"+sourcePort+"/"+target+"/"+targetPort+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric,"GET",selMetric).then(function(response) {
-		
-			$("#wait1").css("display", "none");
-			$('body').css('pointer-events', 'all');
-			showStatsGraph.showStatsData(response,selMetric); 
-	})
-			
+		$("#wait1").css("display", "none");
+		$('body').css('pointer-events', 'all');
+		showStatsGraph.showStatsData(response,selMetric); 
+})
+	
 			try {
 				clearInterval(graphInterval);
 			} catch(err) {
@@ -122,9 +136,9 @@ function getGraphData() {
 					callIntervalData() 
 				}, 1000*autoreload);
 			}
-	}
+	}	
 }
-
+		
 function callIntervalData(){
 	
 	var currentDate = new Date();

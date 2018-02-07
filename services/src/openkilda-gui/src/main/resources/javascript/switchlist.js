@@ -29,10 +29,9 @@ $( 'input').on( 'click', function () {
 });
 
 function showSwitchData(response){
-	
-	if(!response) {
+
+	if(!response || response.length==0) {
 		response=[]
-		console.log("hi");
 		common.infoMessage('No Switch Avaliable','info');
 	}
 	
