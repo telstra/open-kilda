@@ -1,8 +1,9 @@
 package org.openkilda.controller;
 
+import java.util.List;
+
 import org.apache.log4j.Logger;
 import org.openkilda.constants.IConstants.Metrics;
-import org.openkilda.constants.OpenTsDB;
 import org.openkilda.service.StatsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -30,79 +31,82 @@ public class StatsController {
      */
     @RequestMapping(value = "/metrics")
     @ResponseStatus(HttpStatus.OK)
-    public @ResponseBody String[] getMetricDetail() {
-        return Metrics.LIST;
+    public @ResponseBody List<String> getMetricDetail() {
+        return Metrics.list();
     }
 
-    
+
     /**
-	 * Gets the isl stats.
-	 *
-	 * @param flowid the flowid
-	 * @param startDate the start date
-	 * @param endDate the end date
-	 * @param downsample the downsample
-	 * @return the flow stats
-	 * @throws Exception the exception
-	 */
-	@RequestMapping(value = "isl/{srcSwitch}/{srcPort}/{dstSwitch}/{dstPort}/{startDate}/{endDate}/{downsample}/{metric:.+}", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
-	@ResponseStatus(HttpStatus.OK)
-	public @ResponseBody String getIslStats(
-			@PathVariable String srcSwitch, @PathVariable String srcPort,
-			@PathVariable String dstSwitch, @PathVariable String dstPort,
-			@PathVariable String startDate, @PathVariable String endDate,
-			@PathVariable String downsample,@PathVariable String metric) throws Exception {
+     * Gets the isl stats.
+     *
+     * @param flowid the flowid
+     * @param startDate the start date
+     * @param endDate the end date
+     * @param downsample the downsample
+     * @return the flow stats
+     * @throws Exception the exception
+     */
+    @RequestMapping(
+            value = "isl/{srcSwitch}/{srcPort}/{dstSwitch}/{dstPort}/{startDate}/{endDate}/{downsample}/{metric}",
+            method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseStatus(HttpStatus.OK)
+    public @ResponseBody String getIslStats(@PathVariable String srcSwitch,
+            @PathVariable String srcPort, @PathVariable String dstSwitch,
+            @PathVariable String dstPort, @PathVariable String startDate,
+            @PathVariable String endDate, @PathVariable String downsample,
+            @PathVariable String metric) throws Exception {
 
-		LOGGER.info("Inside StatsController method getIslStats ");
-		return statsService.getStats(startDate, endDate, downsample,
-				null, null, null,srcSwitch,srcPort, dstSwitch, dstPort, OpenTsDB.ISL_STATS, metric);
-		 
-	}
+        LOGGER.info("Inside StatsController method getIslStats ");
+        return statsService.getSwitchIslStats(startDate, endDate, downsample, srcSwitch,
+                srcPort, dstSwitch, dstPort, metric);
 
-	/**
-	 * Gets the port stats.
-	 *
-	 * @param switchid the switchid
-	 * @param portnumber the portnumber
-	 * @param startDate the start date
-	 * @param endDate the end date
-	 * @param downsample the downsample
-	 * @return the port stats
-	 * @throws Exception the exception
-	 */
-	@RequestMapping(value = "switchid/{switchid}/portnumber/{portnumber}/{startDate}/{endDate}/{downsample}/{metric:.+}", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
-	@ResponseStatus(HttpStatus.OK)
-	public @ResponseBody String getPortStats(
-			@PathVariable String switchid, @PathVariable String portnumber,
-			@PathVariable String startDate, @PathVariable String endDate,
-			@PathVariable String downsample,@PathVariable String metric) throws Exception {
+    }
 
-		LOGGER.info("Inside StatsController method getPortStats ");
-		return statsService.getStats(startDate, endDate, downsample,
-				switchid, portnumber, null, null, null, null, null, OpenTsDB.PORT_STATS, metric);
-		 
-	}
-	
-	/**
-	 * Gets the flow stats.
-	 *
-	 * @param flowid the flowid
-	 * @param startDate the start date
-	 * @param endDate the end date
-	 * @param downsample the downsample
-	 * @return the flow stats
-	 * @throws Exception the exception
-	 */
-	@RequestMapping(value = "flowid/{flowid}/{startDate}/{endDate}/{downsample}/{metric:.+}", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
-	@ResponseStatus(HttpStatus.OK)
-	public @ResponseBody String getFlowStats(
-			@PathVariable String flowid, @PathVariable String startDate,
-			@PathVariable String endDate,@PathVariable String downsample,
-			@PathVariable String metric) throws Exception {
+    /**
+     * Gets the port stats.
+     *
+     * @param switchid the switchid
+     * @param port the port
+     * @param startDate the start date
+     * @param endDate the end date
+     * @param downsample the downsample
+     * @return the port stats
+     * @throws Exception the exception
+     */
+    @RequestMapping(
+            value = "switchid/{switchid}/port/{port}/{startDate}/{endDate}/{downsample}/{metric}",
+            method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseStatus(HttpStatus.OK)
+    public @ResponseBody String getPortStats(@PathVariable String switchid,
+            @PathVariable String port, @PathVariable String startDate,
+            @PathVariable String endDate, @PathVariable String downsample,
+            @PathVariable String metric) throws Exception {
 
-		LOGGER.info("Inside StatsController method getFlowStats ");
-		return statsService.getStats(startDate, endDate, downsample,
-				null, null, flowid, null, null, null, null, OpenTsDB.FLOW_STATS, metric);
-	}
-	
+        LOGGER.info("Inside StatsController method getPortStats ");
+        return statsService.getSwitchPortStats(startDate, endDate, downsample, switchid, port,
+                metric);
+
+    }
+
+    /**
+     * Gets the flow stats.
+     *
+     * @param flowid the flowid
+     * @param startDate the start date
+     * @param endDate the end date
+     * @param downsample the downsample
+     * @return the flow stats
+     * @throws Exception the exception
+     */
+    @RequestMapping(value = "flowid/{flowid}/{startDate}/{endDate}/{downsample}/{metric}",
+            method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseStatus(HttpStatus.OK)
+    public @ResponseBody String getFlowStats(@PathVariable String flowid,
+            @PathVariable String startDate, @PathVariable String endDate,
+            @PathVariable String downsample, @PathVariable String metric) throws Exception {
+
+        LOGGER.info("Inside StatsController method getFlowStats ");
+        return statsService.getFlowStats(startDate, endDate, downsample, flowid, metric);
+    }
+
 }
