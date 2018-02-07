@@ -167,8 +167,8 @@ public class FlowTopologyTest extends AbstractStormTest {
         assertNotNull(record);
         assertNotNull(record.value());
 
-        InfoData infoData = objectMapper.readValue(record.value(), InfoData.class);
-        ImmutablePair<Flow, Flow> flow = ((FlowInfoData) infoData).getPayload();
+        InfoMessage message = objectMapper.readValue(record.value(), InfoMessage.class);
+        ImmutablePair<Flow, Flow> flow = getFlowPayload(message);
         assertNotNull(flow);
 
         record = nbConsumer.pollMessage();
@@ -227,8 +227,9 @@ public class FlowTopologyTest extends AbstractStormTest {
         assertNotNull(record);
         assertNotNull(record.value());
 
-        InfoData infoData = objectMapper.readValue(record.value(), InfoData.class);
-        ImmutablePair<Flow, Flow> flow = ((FlowInfoData) infoData).getPayload();
+        InfoMessage message = objectMapper.readValue(record.value(), InfoMessage.class);
+        assertNotNull(message);
+        ImmutablePair<Flow, Flow> flow = getFlowPayload(message);
         assertNotNull(flow);
 
         Flow flowTePayload = flow.getLeft();
@@ -241,7 +242,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         System.out.println("record = " + record);
         InfoMessage infoMessage = objectMapper.readValue(record.value(), InfoMessage.class);
         FlowResponse response = (FlowResponse) infoMessage.getData();
-        assertNotNull(infoData);
+        assertNotNull(response);
     }
 
     @Test
@@ -281,8 +282,9 @@ public class FlowTopologyTest extends AbstractStormTest {
         record = cacheConsumer.pollMessage();
         assertNotNull(record);
 
-        InfoData infoData = objectMapper.readValue(record.value(), InfoData.class);
-        ImmutablePair<Flow, Flow> flow = ((FlowInfoData) infoData).getPayload();
+        InfoMessage message = objectMapper.readValue(record.value(), InfoMessage.class);
+        assertNotNull(message);
+        ImmutablePair<Flow, Flow> flow = getFlowPayload(message);
         assertNotNull(flow);
 
         Flow flowTePayload = flow.getLeft();
@@ -293,7 +295,7 @@ public class FlowTopologyTest extends AbstractStormTest {
 
         InfoMessage infoMessage = objectMapper.readValue(record.value(), InfoMessage.class);
         FlowResponse payload = (FlowResponse) infoMessage.getData();
-        assertNotNull(infoData);
+        assertNotNull(payload);
 
         Flow flowNbPayload = payload.getPayload();
         assertEquals(flowNbPayload, flowTePayload);
@@ -810,8 +812,9 @@ public class FlowTopologyTest extends AbstractStormTest {
         record = cacheConsumer.pollMessage();
         assertNotNull(record);
 
-        InfoData infoData = objectMapper.readValue(record.value(), InfoData.class);
-        ImmutablePair<Flow, Flow> flow = ((FlowInfoData) infoData).getPayload();
+        InfoMessage message = objectMapper.readValue(record.value(), InfoMessage.class);
+        assertNotNull(message);
+        ImmutablePair<Flow, Flow> flow = getFlowPayload(message);
         assertNotNull(flow);
 
         record = nbConsumer.pollMessage();
@@ -857,7 +860,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         assertNotNull(infoMessage);
 
         FlowStatusResponse response = (FlowStatusResponse) infoMessage.getData();
-        assertNotNull(infoData);
+        assertNotNull(response);
 
         FlowIdStatusPayload flowNbPayload = response.getPayload();
         assertNotNull(flowNbPayload);
@@ -884,8 +887,9 @@ public class FlowTopologyTest extends AbstractStormTest {
         record = cacheConsumer.pollMessage();
         assertNotNull(record);
 
-        InfoData infoData = objectMapper.readValue(record.value(), InfoData.class);
-        ImmutablePair<Flow, Flow> flow = ((FlowInfoData) infoData).getPayload();
+        InfoMessage message = objectMapper.readValue(record.value(), InfoMessage.class);
+        assertNotNull(message);
+        ImmutablePair<Flow, Flow> flow = getFlowPayload(message);
         assertNotNull(flow);
 
         record = nbConsumer.pollMessage();
@@ -1175,5 +1179,11 @@ public class FlowTopologyTest extends AbstractStormTest {
     private void sendMessage(Object object, String topic) throws IOException {
         String request = objectMapper.writeValueAsString(object);
         kProducer.pushMessage(topic, request);
+    }
+
+    private ImmutablePair<Flow, Flow> getFlowPayload(InfoMessage message) {
+        InfoData data = message.getData();
+        FlowInfoData flow = (FlowInfoData) data;
+        return flow.getPayload();
     }
 }

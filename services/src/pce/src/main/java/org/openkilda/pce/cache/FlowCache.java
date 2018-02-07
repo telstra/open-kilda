@@ -34,7 +34,9 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -506,6 +508,12 @@ public class FlowCache extends Cache {
             linkedSwitch = forward.getSourceSwitch();
         }
         return linkedSwitch;
+    }
+
+    public List<ImmutablePair<Flow, Flow>> getIngressAndEgressFlows(String switchId) {
+        return flowPool.values().stream()
+                .filter(flowPair -> Objects.nonNull(getFlowLinkedEndpoint(flowPair, switchId)))
+                .collect(Collectors.toList());
     }
 
     /**

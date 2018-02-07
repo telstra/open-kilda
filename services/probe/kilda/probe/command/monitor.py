@@ -12,15 +12,15 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 #
-
+import glob
 import json
 import logging
 import pprint
+import os
 
 import click
 import time
 
-from kilda.probe.entity.message import Message
 from kilda.probe.messaging import receive_with_context, send_with_context
 
 LOG = logging.getLogger(__name__)
@@ -45,19 +45,24 @@ def monitor_command(ctx):
 @click.option('--count', default=3)
 @click.option('--sleep', default=1)
 def bolt_command(ctx, count, sleep):
+
+    # get filepath to json with bolt states
+    import kilda.probe.test.res
+    res_dir = os.path.dirname(kilda.probe.test.res.__file__)
+
     def print_message(record):
         try:
             data = json.loads(record.value)
-            if data['type'] == 'CTRL_REQUEST':
+            if data['clazz'] == 'org.openkilda.messaging.ctrl.CtrlRequest':
                 LOG.info('New message in topic:\n%s', pprint.pformat(data))
-                for i in range(1, count + 1):
-                    m = Message('CTRL_RESPONSE', 'probe',
-                                {'topology': 'topology-X',
-                                 'component': 'component-X',
-                                 'task_id': 'bolt-{}'.format(i)},
-                                data['correlation_id'])
-                    send_with_context(ctx, m.serialize())
-                    time.sleep(sleep)
+                for filename in glob.glob(os.path.join(res_dir,
+                                                       '*BoltState.json')):
+                    with open(filename) as f:
+                        message = json.load(f)
+                        message['correlation_id'] = data['correlation_id']
+                        send_with_context(ctx, bytes(json.dumps(message).
+                                                     encode('utf-8')))
+                        time.sleep(sleep)
         except Exception:
             LOG.exception('error')
             print(record)

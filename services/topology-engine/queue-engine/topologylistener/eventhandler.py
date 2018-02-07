@@ -58,7 +58,7 @@ def main_loop():
                     or event.get_command() in known_commands:
                 pool.spawn(topology_event_handler, event)
             else:
-              logger.debug('Received unknown type or command %s', raw_event)
+                logger.debug('Received unknown type or command %s', raw_event)
 
         except Exception as e:
             logger.exception(e.message)
@@ -67,9 +67,10 @@ def main_loop():
 def topology_event_handler(event):
     event_handled = False
 
-    while not event_handled:
+    attempts = 0
+    while not event_handled and attempts < 5:
         event_handled = event.handle()
-
+        attempts += 1
         if not event_handled:
             logger.error('Unable to process event: %s', event.get_type())
             logger.error('Message body: %s', event.to_json())

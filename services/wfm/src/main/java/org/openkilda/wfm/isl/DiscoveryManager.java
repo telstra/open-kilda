@@ -1,5 +1,6 @@
 package org.openkilda.wfm.isl;
 
+import org.openkilda.messaging.model.DiscoveryNode;
 import org.openkilda.wfm.topology.stats.StatsTopology;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
