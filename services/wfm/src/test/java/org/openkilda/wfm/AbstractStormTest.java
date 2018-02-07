@@ -60,7 +60,6 @@ public class AbstractStormTest {
         properties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
         properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer");
         properties.put("request.required.acks", "1");
-        properties.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 1);
         return properties;
     }
 
