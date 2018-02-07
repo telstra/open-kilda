@@ -36,6 +36,11 @@
 
 			<div id="wait1" class="bg_load">
 				<div class="loader"></div>
+				<span class="load-text">Loading Flows
+						<span class="loader__dot">.</span>
+  			  			<span class="loader__dot">.</span>
+  			 			<span class="loader__dot">.</span>
+  			 	</span>  
 			</div>
 
 			<table id="flowTable" class="display" cellspacing="0" width="100%" style="display:none;">
@@ -102,6 +107,10 @@
 	<script th:inline="javascript" src="javascript/jquery.dataTables.min.js"></script>
 	<script th:inline="javascript" src="javascript/flows.js"></script>
 	<script th:inline="javascript" src="javascript/common.js" th:src="@{javascript/common.js}"></script>
-	
+		<script>
+		$(document).ready(function() {
+			$('body').css('pointer-events','all');
+		});
+	</script>
 </body>
 </html>
