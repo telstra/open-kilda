@@ -4,7 +4,6 @@ import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
 import org.openkilda.messaging.error.MessageError;
-import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.northbound.dto.LinkPropsDto;
 import org.openkilda.northbound.dto.LinksDto;
 import org.openkilda.northbound.service.LinkPropsResult;
@@ -91,7 +90,8 @@ public class LinkController {
             method = RequestMethod.PUT,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     @ResponseStatus(HttpStatus.OK)
-    public LinkPropsResult putLinkProps(List<LinkPropsDto> keysAndProps) {
+    public LinkPropsResult putLinkProps(
+            @RequestBody List<LinkPropsDto> keysAndProps) {
         return linkService.setLinkProps(keysAndProps);
     }
 
@@ -114,7 +114,8 @@ public class LinkController {
             method = RequestMethod.DELETE,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     @ResponseStatus(HttpStatus.OK)
-    public LinkPropsResult delLinkProps(List<LinkPropsDto> keysAndProps) {
+    public LinkPropsResult delLinkProps(
+            @RequestBody List<LinkPropsDto> keysAndProps) {
         return linkService.delLinkProps(keysAndProps);
     }
 
