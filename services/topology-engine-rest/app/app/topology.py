@@ -185,6 +185,7 @@ def api_v1_link_props():
 
     :return: the result of the operation for PUT and DELETE, otherwise the link properties.
     """
+    logger.debug("CALLED LINK/PROPS with method {}, body {} ", request.method, request.data)
     try:
         if request.method == 'PUT':
             return handle_put_props(request.get_json(force=True))
@@ -196,6 +197,7 @@ def api_v1_link_props():
             return handle_get_props(request.args)
     except Exception as e:
         logger.error("Uncaught Exception in link_props: %s", e)
+        logger.error("The data that caused the exception: %s", request.data)
         # TODO: this should augment the response status..
         return jsonify({"Error": "Uncaught Exception"})
 
