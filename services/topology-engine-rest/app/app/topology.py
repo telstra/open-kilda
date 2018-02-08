@@ -185,6 +185,7 @@ def api_v1_link_props():
 
     :return: the result of the operation for PUT and DELETE, otherwise the link properties.
     """
+    logger.debug("CALLED LINK/PROPS with method {}, body {} ", request.method, request.data)
     try:
         if request.method == 'PUT':
             return handle_put_props(request.get_json(force=True))
@@ -196,6 +197,7 @@ def api_v1_link_props():
             return handle_get_props(request.args)
     except Exception as e:
         logger.error("Uncaught Exception in link_props: %s", e)
+        logger.error("The data that caused the exception: %s", request.data)
         # TODO: this should augment the response status..
         return jsonify({"Error": "Uncaught Exception"})
 
@@ -219,7 +221,7 @@ def handle_get_props(args):
     try:
         # NB: query_set could be just whitespace .. Neo4j is okay with empty props in the query - ie { }
         query = 'MATCH (lp:link_props { %s }) RETURN lp' % query_set[:-1] # remove trailing ',' if there
-        result = graph.data(query)
+        result = neo4j_connect.data(query)
     except Exception as e:
         # TODO: ensure this error augments the reponse http status code
         logger.error("Exception trying to get link_props: %s", e)
@@ -337,7 +339,7 @@ def del_link_props(props):
 
     if len(query_set) > 0:
         query = 'MATCH (lp:link_props { %s }) DETACH DELETE lp RETURN COUNT(lp) as affected' % query_set[:-1] # remove trailing ','
-        result = graph.data(query)
+        result = neo4j_connect.data(query)
         affected = result[0].get('affected', 0)
         logger.debug('\n DELETE QUERY = %s \n AFFECTED = %s', query, affected)
         return True, affected
@@ -397,7 +399,7 @@ def put_link_props(props):
             query_set = ' SET ' + query_set[:-2]
 
         query = query_merge + query_set
-        graph.data(query)
+        neo4j_connect.data(query)
         logger.debug('\n QUERY = %s ', query)
         return True, 1
 

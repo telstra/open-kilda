@@ -229,7 +229,6 @@ public class CacheTopologyTest extends AbstractStormTest {
     }
 
     @Test
-    @Ignore // TODO: ignoring on 2018.01.04 - failing in GCP but not Mac - needs troubleshooting
     public void ctrlListHandler() throws Exception {
         CtrlRequest request = new CtrlRequest(
                 "cachetopology/*", new RequestData("list"), 1, "list-correlation-id", Destination.WFM_CTRL);
@@ -250,7 +249,6 @@ public class CacheTopologyTest extends AbstractStormTest {
     }
 
     @Test
-    @Ignore // TODO: ignoring on 2018.01.04 - failing in GCP but not Mac - needs troubleshooting
     public void ctrlDumpHandler() throws Exception {
         CtrlRequest request = new CtrlRequest(
                 "cachetopology/*", new RequestData("dump"), 1, "dump-correlation-id", Destination.WFM_CTRL);
@@ -272,7 +270,6 @@ public class CacheTopologyTest extends AbstractStormTest {
     }
 
     @Test
-    @Ignore // TODO: ignoring on 2018.01.04 - failing in GCP but not Mac - needs troubleshooting
     public void ctrlSpecificRoute() throws Exception {
         CtrlRequest request = new CtrlRequest(
                 "cachetopology/cache", new RequestData("dump"), 1, "route-correlation-id", Destination.WFM_CTRL);
@@ -290,14 +287,13 @@ public class CacheTopologyTest extends AbstractStormTest {
 
     @Test
     public void flowShouldBeReroutedWhenSwitchGoesDown() throws Exception {
-        sendClearState();
-        waitDumpRequest();
-        sendNetworkDump(dump);
-
         sendData(sw);
         firstFlow.getLeft().setFlowPath(new PathInfoData(0L, Collections.emptyList()));
         firstFlow.getRight().setFlowPath(new PathInfoData(0L, Collections.emptyList()));
         sendFlowUpdate(firstFlow);
+        secondFlow.getLeft().setFlowPath(new PathInfoData(0L, Collections.emptyList()));
+        secondFlow.getRight().setFlowPath(new PathInfoData(0L, Collections.emptyList()));
+        sendFlowUpdate(secondFlow);
 
         flowConsumer.clear();
         sw.setState(SwitchState.REMOVED);
@@ -315,9 +311,6 @@ public class CacheTopologyTest extends AbstractStormTest {
     public void flowShouldBeReroutedWhenIslDies() throws Exception {
         final String destSwitchId = "destSwitch";
         final String flowId = "flowId";
-        sendClearState();
-        waitDumpRequest();
-        sendNetworkDump(dump);
         sendData(sw);
 
         SwitchInfoData destSwitch = new SwitchInfoData(destSwitchId, SwitchState.ACTIVATED, StringUtils.EMPTY,
