@@ -15,48 +15,63 @@
 
 package org.openkilda.wfm.topology;
 
-import static org.junit.Assert.assertNotNull;
 import static org.openkilda.messaging.Utils.MAPPER;
+
+import org.openkilda.messaging.Destination;
+import org.openkilda.messaging.Message;
+import org.openkilda.messaging.info.InfoData;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.common.PartitionInfo;
-import org.apache.kafka.common.TopicPartition;
-import org.openkilda.messaging.Destination;
-import org.openkilda.messaging.Message;
+import org.apache.kafka.common.errors.WakeupException;
+import org.openkilda.messaging.info.InfoMessage;
 
 import java.io.IOException;
 import java.util.Collections;
-import java.util.HashSet;
-import java.util.Objects;
 import java.util.Properties;
-import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
-import java.util.stream.StreamSupport;
+import java.util.concurrent.TimeUnit;
 
-public class TestKafkaConsumer {
+public class TestKafkaConsumer extends Thread {
+    private static final long CONSUMER_QUEUE_OFFER_TIMEOUT = 1000;
     private static final long KAFKA_MESSAGE_POLL_TIMEOUT = 10000;
     private static final long KAFKA_CONSUMER_POLL_TIMEOUT = 100;
     private final KafkaConsumer<String, String> consumer;
     private final String topic;
     private final Destination destination;
-    private volatile boolean isAlive = false;
     private volatile BlockingQueue<ConsumerRecord<String, String>> records = new ArrayBlockingQueue<>(100);
 
     public TestKafkaConsumer(final String topic, final Destination destination, final Properties properties) {
         this.consumer = new KafkaConsumer<>(properties);
         this.topic = topic;
         this.destination = destination;
-
-        consumer.subscribe(Collections.singletonList(topic));
     }
 
-    public void jumpToTheEnd() {
-        consumer.poll(10L);
-        consumer.seekToEnd(Collections.emptyList());
-        consumer.poll(10L);
+    public void run() {
+        System.out.println("Starting Kafka Consumer for " + topic);
+        consumer.subscribe(Collections.singletonList(topic));
+        try {
+            while (true) {
+                ConsumerRecords<String, String> records = consumer.poll(KAFKA_CONSUMER_POLL_TIMEOUT);
+                for (ConsumerRecord<String, String> record : records) {
+                    if (checkDestination(record.value())) {
+                        this.records.offer(record, CONSUMER_QUEUE_OFFER_TIMEOUT, TimeUnit.MILLISECONDS);
+                        consumer.commitSync();
+                        System.out.println(String.format("Received message with destination %s: %s",
+                                destination, record.value()));
+                    }
+                }
+            }
+        } catch (WakeupException e) {
+            System.out.println("Stopping Kafka Consumer for " + topic);
+        } catch (InterruptedException e) {
+            System.out.println("Interrupting Kafka Consumer for " + topic);
+        } finally {
+            consumer.unsubscribe();
+            consumer.close();
+        }
     }
 
     public ConsumerRecord<String, String> pollMessage() throws InterruptedException {
@@ -64,52 +79,15 @@ public class TestKafkaConsumer {
     }
 
     public ConsumerRecord<String, String> pollMessage(final long timeout) throws InterruptedException {
-        long started = System.currentTimeMillis();
-        ConsumerRecord<String, String> record = null;
-        do {
-            ConsumerRecords<String, String> polledRecords = consumer.poll(KAFKA_CONSUMER_POLL_TIMEOUT);
-            if (Objects.nonNull(polledRecords)) {
-                record = StreamSupport.stream(polledRecords.spliterator(), false)
-                        .findFirst()
-                        .orElse(null);
-            }
-        } while (started + timeout > System.currentTimeMillis()
-                && (record == null || !checkDestination(record.value())));
-
-        assertNotNull("Message was not received", record);
-        consumer.commitSync();
-        return record;
+        return records.poll(timeout, TimeUnit.MILLISECONDS);
     }
 
     public void clear() {
-        jumpToTheEnd();
+        records.clear();
     }
 
     public void wakeup() {
         consumer.wakeup();
-    }
-
-    public void closeConsumer() {
-        consumer.unsubscribe();
-        consumer.close();
-    }
-
-    public int getLastOffset() {
-        PartitionInfo partitionInfo = consumer.partitionsFor(topic).get(0);
-        TopicPartition topicPartition = new TopicPartition(topic, partitionInfo.partition());
-        Set<TopicPartition> partitions = new HashSet<>();
-        partitions.add(topicPartition);
-
-        long endOffset = this.consumer.endOffsets(partitions).get(topicPartition);
-        return Math.toIntExact(endOffset);
-    }
-
-    public void goToOffset(int offset) {
-        PartitionInfo partitionInfo = consumer.partitionsFor(topic).get(0);
-        TopicPartition topicPartition = new TopicPartition(topic, partitionInfo.partition());
-        consumer.poll(0);
-        consumer.seek(topicPartition, offset);
-        consumer.poll(0);
     }
 
     private boolean checkDestination(final String recordValue) {
