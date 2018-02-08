@@ -148,10 +148,11 @@ def api_v1_topology_flows():
 
 
 # =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-# Link Properties section
+#
+# BEGIN: Link Properties section
+#
 # =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-PRIMARY_KEYS = ['src_sw','src_pt','dst_sw','dst_pt']
-
+PRIMARY_KEYS = ['src_switch', 'src_port', 'dst_switch', 'dst_port']
 
 @application.route('/api/v1/topology/link/props', methods=['GET','PUT','DELETE'])
 @login_required
@@ -232,7 +233,7 @@ def handle_get_props(args):
     # But, current expectation is that extra props are all part of the 'props' key.
     # So, pull out both sets (primary / extra props) and then combine into the expected order.
     #
-    # TODO: Should we change the respone to be flat so that we don't need to do this processing?
+    # TODO: Should we change the response to be flat so that we don't need to do this processing?
     #           A corollary - the inbound put could be flat as well.
     #
     hier_results = []
@@ -313,14 +314,14 @@ def del_link_props(props):
         [{
             # Delete a specific node
             # ======================
-            "src_sw":"de:ad:be:ef:01:11:22:01",
-            "src_pt":"1" ,
-            "dst_sw":"de:ad:be:ef:02:11:22:02",
-            "dst_pt":"2"
+            "src_switch":"de:ad:be:ef:01:11:22:01",
+            "src_port":"1" ,
+            "dst_switch":"de:ad:be:ef:02:11:22:02",
+            "dst_port":"2"
         } , {
             # Delete all links with this switch as src
             # ========================================
-            "src_sw":"de:ad:be:ef:03:33:33:03"
+            "src_switch":"de:ad:be:ef:03:33:33:03"
         }]
 
 
@@ -357,10 +358,10 @@ def put_link_props(props):
     Here's an example of a call that works:
 
         [{
-            "src_sw":"de:ad:be:ef:01:11:22:01",
-            "src_pt":"1" ,
-            "dst_sw":"de:ad:be:ef:02:11:22:02",
-            "dst_pt":"2" ,
+            "src_switch":"de:ad:be:ef:01:11:22:01",
+            "src_port":"1" ,
+            "dst_switch":"de:ad:be:ef:02:11:22:02",
+            "dst_port":"2"
             "props": {
                 "cost":"1",
                 "popularity":"5",
@@ -385,9 +386,10 @@ def put_link_props(props):
 
     success, src_sw, src_pt, dst_sw, dst_pt = get_link_prop_keys(props)
     if not success:
-        return False, 'PRIMARY KEY VIOLATION: one+ primary keys are empty: src_sw:"%s", src_pt:"%s", dst_sw:"%s", dst_pt:"%s"' % (src_sw, src_pt, dst_sw, dst_pt)
+        return False, 'PRIMARY KEY VIOLATION: one+ primary keys are empty: src_switch:"%s", src_port:"%s", dst_switch:"%s", dst_port:"%s"' % (src_sw, src_pt, dst_sw, dst_pt)
     else:
-        query_merge = 'MERGE (lp:link_props { src_sw:"%s", src_pt:"%s", dst_sw:"%s", dst_pt:"%s" })' % (src_sw, src_pt, dst_sw, dst_pt)
+        # (1) Create the link_props and then (2) propagate to the isl if it exists
+        query_merge = 'MERGE (lp:link_props { src_switch:"%s", src_port:"%s", dst_switch:"%s", dst_port:"%s" })' % (src_sw, src_pt, dst_sw, dst_pt)
         query_set = ''
 
         new_props = props.get('props',{})
@@ -401,6 +403,11 @@ def put_link_props(props):
         query = query_merge + query_set
         neo4j_connect.data(query)
         logger.debug('\n QUERY = %s ', query)
+
+
+        # (2) now propagate ..
+        # TODO .. save the extra keys from above .. new props .. and push to link if it exists
+
         return True, 1
 
 
@@ -411,12 +418,18 @@ def get_link_prop_keys(props):
     :param props: the dict
     :return: all primary keys, and success if they were all present.
     """
-    src_sw = props.get('src_sw','')
-    src_pt = props.get('src_pt','')
-    dst_sw = props.get('dst_sw','')
-    dst_pt = props.get('dst_pt','')
+    src_sw = props.get('src_switch','')
+    src_pt = props.get('src_port','')
+    dst_sw = props.get('dst_switch','')
+    dst_pt = props.get('dst_portt','')
     success = (len(src_sw) > 0) and (len(src_pt) > 0) and (len(dst_sw) > 0) and (len(dst_pt) > 0)
     return success,src_sw,src_pt,dst_sw,dst_pt
+
+
+# =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+# END: Link Properties section
+# =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
 
 
 def format_isl(link):
