@@ -88,14 +88,14 @@ public class LinkPropsTest {
             "}";
 
     private static final String getResponse1 = "[{" +
-            "        \"dst_pt\": \"2\"," +
-            "        \"dst_sw\": \"de:ad:be:ef:02:11:22:02\"," +
+            "        \"dst_port\": \"2\"," +
+            "        \"dst_switch\": \"de:ad:be:ef:02:11:22:02\"," +
             "        \"props\": {" +
             "            \"cost\": \"1\"," +
             "            \"popularity\": \"5\"" +
             "        }," +
-            "        \"src_pt\": \"1\"," +
-            "        \"src_sw\": \"de:ad:be:ef:01:11:22:01\"" +
+            "        \"src_port\": \"1\"," +
+            "        \"src_switch\": \"de:ad:be:ef:01:11:22:01\"" +
             "    }]";
 
     /**
@@ -116,7 +116,7 @@ public class LinkPropsTest {
         mockServer.verify();
         assertThat(result.size(), is(1));
         lpdto = result.get(0);
-        assertThat(lpdto.getDst_sw(), is("de:ad:be:ef:02:11:22:02"));
+        assertThat(lpdto.getDst_switch(), is("de:ad:be:ef:02:11:22:02"));
         assertThat(lpdto.getProperty("cost"), is("1"));
     }
 

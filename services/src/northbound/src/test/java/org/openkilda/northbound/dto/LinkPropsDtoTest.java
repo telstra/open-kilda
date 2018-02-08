@@ -15,14 +15,14 @@ import static org.junit.Assert.*;
 public class LinkPropsDtoTest {
 
     private static final String lpd_1 = "{" +
-            "        \"dst_pt\": \"2\"," +
-            "        \"dst_sw\": \"de:ad:be:ef:02:11:22:02\"," +
+            "        \"dst_port\": \"2\"," +
+            "        \"dst_switch\": \"de:ad:be:ef:02:11:22:02\"," +
             "        \"props\": {" +
             "            \"cost\": \"1\"," +
             "            \"popularity\": \"5\"" +
             "        }," +
-            "        \"src_pt\": \"1\"," +
-            "        \"src_sw\": \"de:ad:be:ef:01:11:22:01\"" +
+            "        \"src_port\": \"1\"," +
+            "        \"src_switch\": \"de:ad:be:ef:01:11:22:01\"" +
             "    }";
 
     private static final ObjectMapper mapper = new ObjectMapper();
