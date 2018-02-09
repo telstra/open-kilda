@@ -39,9 +39,18 @@ filter.directory =
 logger.level = INFO
 logger.watermark =
 
+#######
+# Discovery
+# - discovery.interval = how many bolt ticks between ISL discovery / health checks
+# - discovery.timeout = at which point do we send an ISL Failure (if it is an ISL)
+#       - NB: the number is in "ticks", not "attempts" .. attempts = timeout/interval
+# - discovery.limit = at what point do we stop sending? -1 means never ..
+# - discovery.speaker-failure-timeout - after this amount of seconds without a
+#   message from speaker it will be marked as unavailable
 discovery.interval = {{ discovery_interval }}
 discovery.timeout = {{ discovery_timeout }}
 discovery.limit = {{ discovery_limit }}
+discovery.speaker-failure-timeout = 5
 
 local = no
 local.execution.time = 10

@@ -1,10 +1,11 @@
 package org.openkilda.wfm.topology;
 
+import org.openkilda.wfm.ConfigurationException;
+import org.openkilda.wfm.PropertiesReader;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.event.Level;
-import org.openkilda.wfm.ConfigurationException;
-import org.openkilda.wfm.PropertiesReader;
 
 public class TopologyConfig {
     private static final Logger logger = LoggerFactory.getLogger(TopologyConfig.class);
@@ -16,6 +17,7 @@ public class TopologyConfig {
     private Integer discoveryInterval;
     private Integer discoveryTimeout;
     private Integer discoveryLimit;
+    private float discoverySpeakerFailureTimeout;
     private String filterDirectory;
     private Level loggerLevel;
     private String loggerWatermark;
@@ -68,6 +70,7 @@ public class TopologyConfig {
         discoveryInterval = config.getInteger("discovery.interval");
         discoveryTimeout = config.getInteger("discovery.timeout");
         discoveryLimit = config.getInteger("discovery.limit");
+        discoverySpeakerFailureTimeout = config.getFloat("discovery.speaker-failure-timeout");
         filterDirectory = config.getString("filter.directory");
         loggerLevel = Level.valueOf(config.getString("logger.level"));
         loggerWatermark = config.getString("logger.watermark");
@@ -134,6 +137,10 @@ public class TopologyConfig {
 
     public Integer getDiscoveryInterval() {
         return discoveryInterval;
+    }
+
+    public float getDiscoverySpeakerFailureTimeout() {
+        return discoverySpeakerFailureTimeout;
     }
 
     public Integer getDiscoveryTimeout() {

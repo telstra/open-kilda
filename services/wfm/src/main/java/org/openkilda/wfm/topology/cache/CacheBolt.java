@@ -228,21 +228,15 @@ public class CacheBolt
                     if (data instanceof SwitchInfoData) {
                         logger.info("Cache update switch info data: {}", data);
 
-                        emitNetworkMessage(data, tuple, Utils.SYSTEM_CORRELATION_ID);
                         handleSwitchEvent((SwitchInfoData) data, tuple);
-
                     } else if (data instanceof IslInfoData) {
                         logger.info("Cache update isl info data: {}", data);
 
-                        emitNetworkMessage(data, tuple, Utils.SYSTEM_CORRELATION_ID);
                         handleIslEvent((IslInfoData) data, tuple);
-
                     } else if (data instanceof PortInfoData) {
                         logger.info("Cache update port info data: {}", data);
 
-                        emitNetworkMessage(data, tuple, Utils.SYSTEM_CORRELATION_ID);
                         handlePortEvent((PortInfoData) data, tuple);
-
                     } else if (data instanceof FlowInfoData) {
                         logger.info("Cache update info data: {}", data);
 
@@ -408,13 +402,6 @@ public class CacheBolt
                 logger.warn("Unknown state update isl info message");
                 break;
         }
-    }
-
-    private void emitNetworkMessage(InfoData data, Tuple tuple, String correlationId) throws IOException {
-        Message message = new InfoMessage(data, System.currentTimeMillis(),
-                correlationId, Destination.TOPOLOGY_ENGINE);
-        outputCollector.emit(StreamType.TPE.toString(), tuple, new Values(MAPPER.writeValueAsString(message)));
-        logger.info("Network info message sent");
     }
 
     private void emitFlowMessage(InfoData data, Tuple tuple, String correlationId) throws IOException {

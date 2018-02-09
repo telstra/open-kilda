@@ -37,12 +37,10 @@ RUN pip install \
     py2neo \
     requests \
     python-logstash
-#RUN chown www-data:www-data /var/data
-RUN chmod +x /usr/local/bin/uwsgi
+ADD nginx/sites/ /etc/nginx/sites-available/
+ADD supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+ADD db/database.db /var/data/
 ADD app/ /app
 RUN mkdir -p /app/logs/uwsgi
-ADD supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-ADD nginx/sites/ /etc/nginx/sites-available/
-ADD db/database.db /var/data/
 
 CMD /usr/bin/supervisord
