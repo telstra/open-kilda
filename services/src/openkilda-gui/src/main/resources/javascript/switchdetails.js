@@ -60,7 +60,8 @@ $(document).ready(function(){
 /** function to retrieve and show switch details from 
  * the switch response json object and display on the html page*/
 function showSwitchData(response){
-		
+	
+	$(".switchdetails_div_name").html(response.name);
 	$(".switchdetails_div_hostname").html(response.hostname);
     $(".switchdetails_div_address").html(response.address);
     $(".switchdetails_div_switch_id").html(response.switch_id);

@@ -15,7 +15,6 @@ $(document).ready(function() {
 	var obj = JSON.parse(linkData);
 	$('body').css('pointer-events','all'); 
 	showLinkDetails(obj);
-	getMetricDetails.getIslMetricData();
 })
 
 /**call the metrics api to show list of the metric values in the drop down*/
