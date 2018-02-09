@@ -20,6 +20,12 @@ import static org.openkilda.messaging.Destination.CTRL_CLIENT;
 import static org.openkilda.messaging.Destination.WFM_CTRL;
 import static org.openkilda.messaging.Utils.MAPPER;
 
+import org.openkilda.messaging.Message;
+import org.openkilda.messaging.ctrl.CtrlRequest;
+import org.openkilda.messaging.ctrl.CtrlResponse;
+import org.openkilda.messaging.ctrl.RequestData;
+import org.openkilda.messaging.ctrl.state.visitor.DumpStateManager;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -30,11 +36,6 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.TopicPartition;
-import org.openkilda.messaging.Message;
-import org.openkilda.messaging.ctrl.CtrlRequest;
-import org.openkilda.messaging.ctrl.CtrlResponse;
-import org.openkilda.messaging.ctrl.RequestData;
-import org.openkilda.messaging.ctrl.state.visitor.DumpStateManager;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -48,20 +49,20 @@ import java.util.concurrent.ExecutionException;
 public class KafkaUtils {
 
     private KafkaParameters settings = new KafkaParameters();
+    private final Properties connectDefaults;
 
     public KafkaUtils() throws IOException {
-
+        connectDefaults = new Properties();
+        connectDefaults.put("bootstrap.servers", settings.getBootstrapServers());
+        connectDefaults.put("client.id", "ATDD");
+        connectDefaults.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+        connectDefaults.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
     }
 
     public RecordMetadata postMessage(String topic, Message message)
             throws IOException, ExecutionException, InterruptedException {
 
-        Properties props = new Properties();
-        props.put("bootstrap.servers", settings.getBootstrapServers());
-        props.put("client.id", "ATDD");
-        props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-        props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-        KafkaProducer<Object, Object> producer = new KafkaProducer<>(props);
+        KafkaProducer<Object, Object> producer = new KafkaProducer<>(connectDefaults);
         try {
             String messageString = MAPPER.writeValueAsString(message);
             return producer.send(new ProducerRecord<>(topic, messageString)).get();
@@ -97,7 +98,6 @@ public class KafkaUtils {
                 "org.apache.kafka.common.serialization.StringDeserializer");
         return new KafkaConsumer<>(props);
     }
-
 
     public DumpStateManager getStateDumpsFromBolts() {
         long timestamp = System.currentTimeMillis();
@@ -146,5 +146,9 @@ public class KafkaUtils {
             e.printStackTrace();
             return null;
         }
+    }
+
+    public Properties getConnectDefaults() {
+        return connectDefaults;
     }
 }
