@@ -14,15 +14,7 @@ spring.jpa.hibernate.enable_lazy_load_no_trans=true
 # Keep the connection alive if idle for a long time (needed in production)
 spring.datasource.testOnBorrow: true
 spring.datasource.validationQuery: SELECT 1
-
-
 spring.mvc.throw-exception-if-no-handler-found=true
-
-#Logging Configurations
-logging.file=openkilda.log
-logging.level.*=INFO
-logging.level.org.hibernate.SQL=INFO
-logging.pattern.file=%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger - %X{correlationid} : %msg%n
 
 #SWITCH URL
 switch.base.url={{ floodlight_endpoint }}:{{ floodlight_port }}/wm/core
