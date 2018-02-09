@@ -17,7 +17,6 @@ package org.openkilda.pce.provider;
 
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
-import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
 
@@ -34,8 +33,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.StringJoiner;
 
 public class NeoDriver implements PathComputer {
     /**
@@ -47,16 +48,6 @@ public class NeoDriver implements PathComputer {
      * Clean database query.
      */
     private static final String CLEAN_FORMATTER_PATTERN = "MATCH (n) DETACH DELETE n";
-
-    /**
-     * Path query formatter pattern.
-     */
-    private static final String PATH_QUERY_FORMATTER_PATTERN =
-            "MATCH (a:switch{name:{src_switch}}),(b:switch{name:{dst_switch}}), " +
-                    "p = shortestPath((a)-[r:isl*..100]->(b)) " +
-                    "where ALL(x in nodes(p) WHERE x.state = 'active') " +
-                    "AND ALL(y in r WHERE y.available_bandwidth >= {bandwidth} AND y.status = 'active') " +
-                    "RETURN p";
 
     /**
      * {@link Driver} instance.
@@ -90,35 +81,18 @@ public class NeoDriver implements PathComputer {
      * {@inheritDoc}
      */
     @Override
-    public ImmutablePair<PathInfoData, PathInfoData> getPath(Flow flow, Strategy strategy) throws UnroutablePathException {
-        return getPath(flow.getSourceSwitch(), flow.getDestinationSwitch(), flow.getBandwidth(), strategy);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public ImmutablePair<PathInfoData, PathInfoData> getPath(SwitchInfoData source, SwitchInfoData destination,
-                                                             int bandwidth, Strategy strategy) throws UnroutablePathException {
-        return getPath(source.getSwitchId(), destination.getSwitchId(), bandwidth, strategy);
-    }
-
-    private ImmutablePair<PathInfoData, PathInfoData> getPath(String srcSwitch, String dstSwitch, int bandwidth, Strategy strategy)
+    public ImmutablePair<PathInfoData, PathInfoData> getPath(Flow flow, Strategy strategy)
             throws UnroutablePathException {
         /*
          * TODO: implement strategy
          */
 
-
         long latency = 0L;
         List<PathNode> forwardNodes = new LinkedList<>();
         List<PathNode> reverseNodes = new LinkedList<>();
 
-        if (!srcSwitch.equals(dstSwitch)) {
-            Statement pathStatement = new Statement(PATH_QUERY_FORMATTER_PATTERN);
-            Value value = Values.parameters("src_switch", srcSwitch, "dst_switch", dstSwitch, "bandwidth", bandwidth);
-
-            Statement statement = pathStatement.withParameters(value);
+        if (! flow.isOneSwitchFlow()) {
+            Statement statement = makePathQuery(flow);
             logger.debug("QUERY: {}", statement.toString());
 
             try (Session session = driver.session()) {
@@ -156,7 +130,7 @@ public class NeoDriver implements PathComputer {
                         seqId++;
                     }
                 } catch (NoSuchRecordException e) {
-                    throw new UnroutablePathException(srcSwitch, dstSwitch, bandwidth);
+                    throw new UnroutablePathException(flow);
                 }
             }
         } else {
@@ -166,4 +140,27 @@ public class NeoDriver implements PathComputer {
         return new ImmutablePair<>(new PathInfoData(latency, forwardNodes), new PathInfoData(latency, reverseNodes));
     }
 
+    private Statement makePathQuery(Flow flow) {
+        HashMap<String,Value> parameters = new HashMap<>();
+
+        String subject =
+                "MATCH (a:switch{name:{src_switch}}),(b:switch{name:{dst_switch}}), " +
+                "p = shortestPath((a)-[r:isl*..100]->(b))";
+        parameters.put("src_switch", Values.value(flow.getSourceSwitch()));
+        parameters.put("dst_switch", Values.value(flow.getDestinationSwitch()));
+
+        StringJoiner where = new StringJoiner("\n    AND ", "where ", "");
+        where.add("ALL(x in nodes(p) WHERE x.state = 'active')");
+        if (flow.isIgnoreBandwidth()) {
+            where.add("ALL(y in r WHERE y.status = 'active')");
+        } else {
+            where.add("ALL(y in r WHERE y.available_bandwidth >= {bandwidth} AND y.status = 'active')");
+            parameters.put("bandwidth", Values.value(flow.getBandwidth()));
+        }
+
+        String result = "RETURN p";
+
+        String query = String.join("\n", subject, where.toString(), result);
+        return new Statement(query, Values.value(parameters));
+    }
 }

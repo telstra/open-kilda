@@ -70,14 +70,6 @@ public class PathComputerMock implements PathComputer {
                 path(destination, source, flow.getBandwidth()));
     }
 
-    @Override
-    public ImmutablePair<PathInfoData, PathInfoData> getPath(SwitchInfoData source, SwitchInfoData destination,
-                                                             int bandwidth, Strategy strategy) {
-        PathInfoData forwardPath = path(source, destination, bandwidth);
-        PathInfoData reversePath = path(destination, source, bandwidth);
-        return new ImmutablePair<>(forwardPath, reversePath);
-    }
-
     private PathInfoData path(SwitchInfoData srcSwitch, SwitchInfoData dstSwitch, int bandwidth) {
         System.out.println("Get Path By Switch Instances " + bandwidth + ": " + srcSwitch + " - " + dstSwitch);
 
