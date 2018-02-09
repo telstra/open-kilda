@@ -1,8 +1,3 @@
-all: build
-
-docker: build
-	docker build .
-
 build:
 	tox -e py27
 	.tox/py27/bin/python setup.py sdist

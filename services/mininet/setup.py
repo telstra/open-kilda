@@ -7,7 +7,7 @@ import sys
 
 from setuptools import setup
 
-import kilda.mininet
+# import kilda.mininet
 
 project_root = os.path.dirname(__file__)
 project_root = os.path.abspath(project_root)
@@ -22,7 +22,7 @@ pytest_runner = ['pytest-runner'] if needs_pytest else []
 
 setup(
     name='kilda-mininet',
-    version=kilda.mininet.__version__,
+    version='0.0.1', # kilda.mininet.__version__,
     description='link load generator',
     long_description=open(project_path('README.rst')).read(),
     author='Dmitry Bogun',
