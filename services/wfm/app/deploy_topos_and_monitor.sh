@@ -31,6 +31,8 @@ storm list | grep opentsdb >/dev/null && storm kill opentsdb && sleep 5
 
 config_file=$1
 
+set -e
+
 make deploy-wfm config=$config_file
 make deploy-flow config=$config_file
 make deploy-stats config=$config_file

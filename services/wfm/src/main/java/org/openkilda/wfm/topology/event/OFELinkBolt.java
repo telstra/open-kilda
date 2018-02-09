@@ -18,17 +18,9 @@ package org.openkilda.wfm.topology.event;
 import static org.openkilda.messaging.Utils.MAPPER;
 import static org.openkilda.messaging.Utils.PAYLOAD;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.google.common.annotations.VisibleForTesting;
-import org.apache.storm.state.KeyValueState;
-import org.apache.storm.task.OutputCollector;
-import org.apache.storm.task.TopologyContext;
-import org.apache.storm.topology.OutputFieldsDeclarer;
-import org.apache.storm.tuple.Fields;
-import org.apache.storm.tuple.Tuple;
-import org.apache.storm.tuple.Values;
 import org.openkilda.messaging.BaseMessage;
 import org.openkilda.messaging.Destination;
+import org.openkilda.messaging.HeartBeat;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.discovery.NetworkCommandData;
@@ -45,6 +37,7 @@ import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.wfm.OFEMessageUtils;
+import org.openkilda.wfm.WatchDog;
 import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
 import org.openkilda.wfm.isl.DiscoveryManager;
@@ -53,6 +46,16 @@ import org.openkilda.wfm.isl.DummyIIslFilter;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.TopologyConfig;
 import org.openkilda.wfm.topology.utils.AbstractTickStatefulBolt;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.common.annotations.VisibleForTesting;
+import org.apache.storm.state.KeyValueState;
+import org.apache.storm.task.OutputCollector;
+import org.apache.storm.task.TopologyContext;
+import org.apache.storm.topology.OutputFieldsDeclarer;
+import org.apache.storm.tuple.Fields;
+import org.apache.storm.tuple.Tuple;
+import org.apache.storm.tuple.Values;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -92,6 +95,9 @@ public class OFELinkBolt
     private final int islHealthCheckInterval;
     private final int islHealthCheckTimeout;
     private final int islHealthFailureLimit;
+    private final float watchDogInterval;
+    private WatchDog watchDog;
+    private boolean isOnline = true;
     private TopologyContext context;
     private OutputCollector collector;
 
@@ -119,6 +125,8 @@ public class OFELinkBolt
         this.islHealthCheckTimeout = config.getDiscoveryTimeout();
         this.islHealthFailureLimit = config.getDiscoveryLimit();
 
+        watchDogInterval = config.getDiscoverySpeakerFailureTimeout();
+
         topoEngTopic = config.getKafkaTopoEngTopic();
         islDiscoveryTopic = config.getKafkaSpeakerTopic();
     }
@@ -134,9 +142,10 @@ public class OFELinkBolt
     @Override
     @SuppressWarnings("unchecked")
     public void initState(KeyValueState<String, Object> state) {
+        watchDog = new WatchDog(watchDogInterval);
+
         // NB: First time the worker is created this will be null
         // TODO: what happens to state as workers go up or down
-
         Object payload = state.get(STATE_ID_DISCOVERY);
         if (payload == null) {
             payload = discoveryQueue = new LinkedList<>();
@@ -155,10 +164,33 @@ public class OFELinkBolt
      */
     @Override
     protected void doTick(Tuple tuple) {
+        boolean isSpeakerAvailable = watchDog.isAvailable();
 
-        // On first tick, we send network dump request to FL, and then we ignore all ticks till
-        // cache not received
-        if (isCacheRequestSend && isReceivedCacheInfo) {
+        if (isOnline != isSpeakerAvailable) {
+            if (isSpeakerAvailable) {
+                logger.warn("Switch into ONLINE mode");
+                isCacheRequestSend = false;
+            } else {
+                logger.warn("Switch into OFFLINE mode");
+                isReceivedCacheInfo = false;
+            }
+        }
+        isOnline = isSpeakerAvailable;
+
+        if (! isOnline) {
+            return;
+        }
+
+        if (!isCacheRequestSend)
+        {
+            // Only one message to FL needed
+            isCacheRequestSend = true;
+            sendNetworkRequest(tuple);
+        }
+        else if (isReceivedCacheInfo)
+        {
+            // On first tick(or after network outage), we send network dump request to FL,
+            // and then we ignore all ticks till cache not received
             DiscoveryManager.Plan discoveryPlan = discovery.makeDiscoveryPlan();
             try {
                 for (DiscoveryManager.Node node : discoveryPlan.needDiscovery) {
@@ -176,20 +208,15 @@ public class OFELinkBolt
                 logger.error("Unable to encode message: {}", e);
             }
         }
-        // Only one message to FL needed
-        else if (!isCacheRequestSend)
-        {
-            isCacheRequestSend = true;
-            sendNetworkRequest(tuple);
-        }
     }
-
 
     /**
      * Send network dump request to FL
      */
     private void sendNetworkRequest(Tuple tuple) {
         try {
+            logger.debug("Send network dump request");
+
             CommandMessage command = new CommandMessage(new NetworkCommandData(),
                     System.currentTimeMillis(), Utils.SYSTEM_CORRELATION_ID,
                     Destination.CONTROLLER);
@@ -232,6 +259,7 @@ public class OFELinkBolt
         String json = tuple.getString(0);
         try {
             BaseMessage bm = MAPPER.readValue(json, BaseMessage.class);
+            watchDog.reset();
 
             if (bm instanceof InfoMessage) {
                 InfoData data = ((InfoMessage)bm).getData();
@@ -251,6 +279,8 @@ public class OFELinkBolt
                 } else {
                     logger.warn("Unknown InfoData type={}", data);
                 }
+            } else if (bm instanceof HeartBeat) {
+                logger.debug("Got speaker's heart beat");
             }
         } catch (IOException e) {
             // All messages should be derived from BaseMessage .. so an exception here
