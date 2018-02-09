@@ -88,7 +88,7 @@ public class KafkaMessageProducer implements IFloodlightModule, IFloodlightServi
     }
 
     private void initProducer(Context context) {
-        if (! context.configLookup("testing-mode").equals("YES")) {
+        if (! "YES".equals(context.configLookup("testing-mode"))) {
             producer = new Producer(context);
         } else {
             producer = new TestAwareProducer(context);
