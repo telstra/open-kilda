@@ -2,7 +2,6 @@ package org.openkilda.controller;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
@@ -20,6 +19,7 @@ import java.util.List;
 import javax.servlet.http.HttpServletRequest;
 
 import org.openkilda.constants.IConstants;
+import org.openkilda.integration.model.Flow;
 import org.openkilda.model.FlowCount;
 import org.openkilda.model.FlowInfo;
 import org.openkilda.model.FlowPath;
@@ -74,9 +74,9 @@ public class FlowController extends BaseController {
     public @ResponseBody Collection<FlowCount> getFlowCount() {
         LOGGER.info("[getFlowCount] - start");
         Collection<FlowCount> flowsInfo = new ArrayList<FlowCount>();
-        List<FlowInfo> flows = flowService.getAllFlows();
+        List<Flow> flows = flowService.getAllFlowList();
         if (flows != null) {
-            flowsInfo = flowService.getFlowsInfo(flows);
+            flowsInfo = flowService.getFlowsCount(flows);
         }
         return flowsInfo;
     }

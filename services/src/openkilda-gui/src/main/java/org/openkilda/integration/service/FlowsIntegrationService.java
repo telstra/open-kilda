@@ -56,27 +56,25 @@ public class FlowsIntegrationService {
      * @throws IntegrationException
      */
     public List<FlowInfo> getFlows()  {
-        HttpResponse response = restClientManager.invoke(applicationProperties.getFlows(),
-                HttpMethod.GET, "", "", applicationService.getAuthHeader());
-        if (RestClientManager.isValidResponse(response)) {
-            List<Flow> flowList = restClientManager.getResponseList(response, Flow.class);
-
-            List<FlowInfo> flows = FlowConverter.toFlowsInfo(flowList);
-            if (!CollectionUtil.isEmpty(flows)) {
-                flows.forEach(flowInfo -> {
-                    try {
-                        String status = getFlowStatus(flowInfo.getFlowid());
-                        flowInfo.setStatus(status);
-                    } catch (Exception e) {
-                        LOGGER.error("Exception while retriving flow status. Exception: " + e, e);
-                    }
-                });
-            } else {
-                    throw new ContentNotFoundException();
-            }
-            return flows;
-        }
-        return null;
+        
+            List<Flow> flowList = getAllFlowList();
+	            if(flowList != null) {
+		            List<FlowInfo> flows = FlowConverter.toFlowsInfo(flowList);
+		            if (!CollectionUtil.isEmpty(flows)) {
+		                flows.forEach(flowInfo -> {
+		                    try {
+		                        String status = getFlowStatus(flowInfo.getFlowid());
+		                        flowInfo.setStatus(status);
+		                    } catch (Exception e) {
+		                        LOGGER.error("Exception while retriving flow status. Exception: " + e, e);
+		                    }
+		                });
+		            } else {
+		                    throw new ContentNotFoundException();
+		            }
+		            return flows;
+	           }
+	      return null;
     }
 
 
@@ -125,4 +123,24 @@ public class FlowsIntegrationService {
             throw new IntegrationException(exception);
         }
     }
+
+    /**
+     * Gets the all flow list.
+     *
+     * @return the all flow list
+     * @throws IntegrationException
+     */
+	public List<Flow> getAllFlowList() {
+		try {
+			HttpResponse response = restClientManager.invoke(applicationProperties.getFlows(),
+	                HttpMethod.GET, "", "", applicationService.getAuthHeader());
+	        if (RestClientManager.isValidResponse(response)) {
+	            return restClientManager.getResponseList(response, Flow.class);
+	        }
+		}catch (Exception exception) {
+            LOGGER.error("Exception in getAllFlowList " + exception.getMessage());
+            throw new IntegrationException(exception);
+        }
+        return null;
+	}
 }

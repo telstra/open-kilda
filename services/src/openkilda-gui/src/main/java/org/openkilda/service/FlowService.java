@@ -10,6 +10,7 @@ import java.util.Map;
 
 import org.apache.log4j.Logger;
 import org.openkilda.integration.exception.IntegrationException;
+import org.openkilda.integration.model.Flow;
 import org.openkilda.integration.service.FlowsIntegrationService;
 import org.openkilda.model.FlowCount;
 import org.openkilda.model.FlowInfo;
@@ -47,15 +48,17 @@ public class FlowService {
      * @param switchRelationData the switch relation data
      * @return the flow count
      */
-    public Collection<FlowCount> getFlowsInfo(final List<FlowInfo> flows) {
-        LOGGER.info("Inside ServiceFlowImpl method getFlowCount");
+    public Collection<FlowCount> getFlowsCount(final List<Flow> flows) {
+        LOGGER.info("Inside ServiceFlowImpl method getFlowsCount");
         Map<FlowCount, FlowCount> infoByFlowInfo = new HashMap<>();
 
         if (!CollectionUtil.isEmpty(flows)) {
             flows.forEach((flow) -> {
                 FlowCount flowInfo = new FlowCount();
-                flowInfo.setSrcSwitch(flow.getSourceSwitch());
-                flowInfo.setDstSwitch(flow.getTargetSwitch());
+                if(flow.getSource() != null)
+                	flowInfo.setSrcSwitch(flow.getSource().getSwitchId());
+                if(flow.getDestination() != null)
+                	flowInfo.setDstSwitch(flow.getDestination().getSwitchId());
                 flowInfo.setFlowCount(1);
 
                 if(infoByFlowInfo.containsKey(flowInfo)) {
@@ -65,7 +68,7 @@ public class FlowService {
                 }
             });
         }
-        LOGGER.info("exit ServiceSwitchImpl method getFlowCount");
+        LOGGER.info("exit ServiceSwitchImpl method getFlowsCount");
         return infoByFlowInfo.values();
     }
 
@@ -79,4 +82,14 @@ public class FlowService {
     public FlowPath getFlowPath(final String flowid) throws IntegrationException {
         return flowsIntegrationService.getFlowPath(flowid);
     }
+
+    /**
+     * Gets the all flows list
+     *
+     * @return the all flow list
+     * @throws IntegrationException
+     */
+	public List<Flow> getAllFlowList() {
+		 return flowsIntegrationService.getAllFlowList();
+	}
 }
