@@ -52,7 +52,7 @@ public final class LinksUtils {
 
         List<IslInfoData> links = new ObjectMapper().readValue(
                 response.readEntity(String.class), new TypeReference<List<IslInfoData>>() {});
-        System.out.println(String.format("====> Data = %s", links));
+        //System.out.println(String.format("====> Data = %s", links));
 
         return links;
     }
