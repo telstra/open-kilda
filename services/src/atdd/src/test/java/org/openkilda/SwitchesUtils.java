@@ -91,7 +91,7 @@ public final class SwitchesUtils {
 
         List<SwitchInfoData> switches = new ObjectMapper().readValue(
                 response.readEntity(String.class), new TypeReference<List<SwitchInfoData>>() {});
-        System.out.println(String.format("====> Data = %s", switches));
+        //System.out.println(String.format("====> Data = %s", switches));
 
         return switches;
     }
