@@ -5,6 +5,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.function.Predicate;
 
 /**
  * The Class IoUtils.
@@ -60,16 +61,11 @@ public final class IoUtil {
      * @param value the value
      * @return true, if successful
      */
-    public static boolean chkStringIsNotEmpty(Object value) {
-		boolean flag = false;
-		if(value != null){
-			String string = String.valueOf(value);
-			if (string != null && !"".equalsIgnoreCase(string.trim())
-					&& string.length() > 0 && !"null".equalsIgnoreCase(string)) {
-				flag = true;
-			}
-		}
-		
-		return flag;
+    public static boolean chkStringIsNotEmpty(String value) {
+	    if(value != null){
+	    	Predicate<String> predicates = s->{return value.trim().length()>0;};
+	    	return predicates.test(value);
+	    }
+    	return false;
 	}
 }

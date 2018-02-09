@@ -63,9 +63,7 @@ var api = {
 				if (response) {
 					for(var i=0;i<response.length;i++)
 					{
-						if(response[i]["source_switch"] != response[i]["target_switch"]){
-							flows.push(response[i]);
-						}
+						flows.push(response[i]);
 					}
 					
 					responseData.push(flows);
@@ -173,13 +171,16 @@ graph = {
 		var linklength = links.length;
 		for (var i = 0; i < nodelength; i++) {
 			for (var j = 0; j < linklength; j++) {
-				
-				if (nodes[i].switch_id == links[j]["source_switch"]) {
+				if(nodes[i].switch_id == links[j]["source_switch"] && nodes[i].switch_id == links[j]["target_switch"]){
 					links[j].source = i;
-				} else if (nodes[i].switch_id == links[j]["target_switch"]) {
 					links[j].target = i;
-				}
-				
+				}else{
+					if (nodes[i].switch_id == links[j]["source_switch"]) {
+						links[j].source = i;
+					} else if (nodes[i].switch_id == links[j]["target_switch"]) {
+						links[j].target = i;
+					}
+				}	
 			}
 		}
 		sortLinks();
@@ -197,7 +198,42 @@ graph = {
 		resize();
 		//window.focus();
 		d3.select(window).on("resize", resize);
-		
+		link = link.data(links)
+		.enter().append("path")
+		.attr("class", "link")
+		.attr("id", function(d, index) {
+	        return "link" + index;
+	    })
+	    .attr("class", "link")
+	    .on("mouseover", function(d, index) {
+	        var element = $("#link" + index)[0];
+	        element.setAttribute("class", "overlay");
+
+	    }).on("mouseout", function(d, index) {
+	        var element = $("#link" + index)[0];
+	        element.setAttribute("class", "link");
+
+	    }).on(
+	        "click",
+	        function(d, index) {
+	            var element = $("#link" + index)[0];
+	            element.setAttribute("class", "overlay");
+
+	            if (element.getAttribute("stroke") == "#228B22" ||
+	                element.getAttribute("stroke") == "green") {
+	                showFlowDetails(d);
+	            } else {
+	                showLinkDetails(d);
+	            }
+
+	        }).attr("stroke", function(d, index) {
+	        if (d.hasOwnProperty("flow_count")) {
+	            return "#228B22";
+	        } else {
+	            return "#00baff";
+	        }
+
+	    });
 		node = node.data(nodes)
 			.enter().append("g")
 			.attr("class", "node")
@@ -287,42 +323,7 @@ graph = {
 		});
 		
 		
-		link = link.data(links)
-			.enter().append("path")
-			.attr("class", "link")
-			.attr("id", function(d, index) {
-		        return "link" + index;
-		    })
-		    .attr("class", "link")
-		    .on("mouseover", function(d, index) {
-		        var element = $("#link" + index)[0];
-		        element.setAttribute("class", "overlay");
-	
-		    }).on("mouseout", function(d, index) {
-		        var element = $("#link" + index)[0];
-		        element.setAttribute("class", "link");
-	
-		    }).on(
-		        "click",
-		        function(d, index) {
-		            var element = $("#link" + index)[0];
-		            element.setAttribute("class", "overlay");
-	
-		            if (element.getAttribute("stroke") == "#228B22" ||
-		                element.getAttribute("stroke") == "green") {
-		                showFlowDetails(d);
-		            } else {
-		                showLinkDetails(d);
-		            }
-	
-		        }).attr("stroke", function(d, index) {
-		        if (d.hasOwnProperty("flow_count")) {
-		            return "#228B22";
-		        } else {
-		            return "#00baff";
-		        }
-	
-		    });
+		
 		
 		flow_count = svg.selectAll(".flow_count")
 	    	.data(links)
@@ -335,9 +336,16 @@ graph = {
 	
 	    .attr("r", function(d, index) {
 	        var element = $("#link" + index)[0];
+	        var f = d.flow_count;
 	        if (element.getAttribute("stroke") == "#228B22" || element.getAttribute("stroke") == "green") {
-	
-	            return 10;
+	        	if(f<10){
+	        		r = 10;
+        		}else if(f>=10 && f<100){
+	        		r = 12;
+        		}else{
+        			r = 16;
+        		}
+	            return r;
 	        };
 	    }).on("mouseover", function(d, index) {
 	        var element = $("#link" + index)[0];
@@ -364,7 +372,15 @@ graph = {
 	
 	flow_count.append("text")
 	    .attr("dx", function(d) {
-	        return -3
+	    	var f = d.flow_count;
+	    	if(f<10){
+        		r = -3;
+    		}else if(f>=10 && f<100){
+        		r = -6;
+    		}else{
+    			r = -9;
+    		}
+	        return r
 	    })
 	    .attr("dy", function(d) {
 	        return 5
@@ -383,8 +399,7 @@ graph = {
 				zoomFit(0.95, 500);
 			}
 		});
-	}
-
+	}	
 }
 function sortLinks() {
 	links.sort(function(a, b) {
@@ -427,10 +442,20 @@ function tick() {
 
 	var lookup = {};
 	link.attr("d", function(d) {
-		dx = d.target.x - d.source.x;
-		dy = d.target.y - d.source.y;
-		var dr = Math.sqrt(dx * dx + dy * dy);
-		dr = dr + 180;
+		var x1 = d.source.x,
+        y1 = d.source.y,
+        x2 = d.target.x,
+        y2 = d.target.y,
+        dx = x2 - x1,
+        dy = y2 - y1,
+        dr = Math.sqrt(dx * dx + dy * dy),
+
+        // Defaults for normal edge.
+        drx = dr,
+        dry = dr,
+        xRotation = 0, // degrees
+        largeArc = 0, // 1 or 0
+        sweep = 1; // 1 or 0
 		var lTotalLinkNum = mLinkNum[d.source.index + "," +
 									d.target.index] ||
 								mLinkNum[d.target.index + "," +
@@ -452,7 +477,33 @@ function tick() {
 				d.target.y + "A" + dr + "," + dr + " 0 0 0," +
 				d.source.x + "," + d.source.y;
 		} else {
-			return "M" + d.source.x + "," + d.source.y + "L" + d.target.x + "," + d.target.y;
+			if(d.source_switch == d.target_switch){
+				  // Self edge.
+		          if ( x1 === x2 && y1 === y2 ) {
+		        	// Fiddle with this angle to get loop oriented.
+		            xRotation = -45;
+
+		            // Needs to be 1.
+		            largeArc = 1;
+
+		            // Change sweep to change orientation of loop. 
+		            //sweep = 0;
+
+		            // Make drx and dry different to get an ellipse
+		            // instead of a circle.
+		            drx = 50;
+		            dry = 20;
+		            
+		            // For whatever reason the arc collapses to a point if the beginning
+		            // and ending points of the arc are the same, so kludge it.
+		            x2 = x2 + 1;
+		            y2 = y2 + 1;
+		          } 
+
+				 return "M" + x1 + "," + y1 + "A" + drx + "," + dry + " " + xRotation + "," + largeArc + "," + sweep + " " + x2 + "," + y2;		
+			}else{
+				return "M" + d.source.x + "," + d.source.y + "L" + d.target.x + "," + d.target.y;
+			}
 		}
 
 	});
@@ -465,7 +516,11 @@ function tick() {
 	    var xvalue = midpoint.y / 2;
 	    var xvalue = (d.source.y + d.target.y) / 2;
 	    var yvalue = (d.source.x + d.target.x) / 2;
-	    return "translate(" + yvalue + "," + xvalue + ")";
+	    if(d.source_switch == d.target_switch){
+	    	return "translate(" + (yvalue+70) + "," + (xvalue-70) + ")";
+	    }else{
+	    	return "translate(" + yvalue + "," + xvalue + ")";
+	    }
 	});
 }
 function redraw() {
