@@ -385,9 +385,8 @@ div.tooltip {
 }
 
 .nodeover {
-	fill: #68BDF6;
-	opacity: 0.3;
-	stroke: #00baff;
+	fill: #c8e3f5;
+	stroke: #addff1;
 	stroke-width: 8px;
 }
 

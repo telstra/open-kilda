@@ -38,6 +38,7 @@ function showSwitchData(response){
 	
 	 for(var i = 0; i < response.length; i++) {
 		 var tableRow = "<tr id='div_"+(i+1)+"' class='flowDataRow'>"
+		 				+"<td class='divTableCell' title ='"+((response[i].name === "" || response[i].name == undefined)?"-":response[i].name)+"'>"+((response[i].name === "" || response[i].name == undefined)?"-":response[i].name)+"</td>"
 		 			    +"<td class='divTableCell' title ='"+((response[i].switch_id === "" || response[i].switch_id == undefined)?"-":response[i].switch_id)+"'>"+((response[i].switch_id === "" || response[i].switch_id == undefined)?"-":response[i].switch_id)+"</td>"
 		 			    +"<td class='divTableCell' title ='"+((response[i].address === "" || response[i].address == undefined)?"-":response[i].address)+"'>"+((response[i].address === "" || response[i].address == undefined)?"-":response[i].address)+"</td>"
 		 			    +"<td class='divTableCell' title ='"+((response[i].hostname === "" || response[i].hostname == undefined)?"-":response[i].hostname)+"'>"+((response[i].hostname === "" || response[i].hostname == undefined)?"-":response[i].hostname)+"</td>"
@@ -56,8 +57,9 @@ function showSwitchData(response){
 		  "aoColumns": [
 		                { sWidth: '15%' },
 		                { sWidth: '15%' },
-		                { sWidth: '30%' },
-		                { sWidth: '40%' } ]
+		                { sWidth: '15%' },
+		                { sWidth: '25%' },
+		                { sWidth: '30%' } ]
 	 });
 	 
 	 tableVar.columns().every( function () {
@@ -78,19 +80,22 @@ function setFlowData(domObj) {
 	
 	$(domObj).html()
 	
-	var flowData = {'switch_id':"",'address':"",'hostname':"",'description':""};
+	var flowData = {'name':"",'switch_id':"",'address':"",'hostname':"",'description':""};
 	
 	if($(domObj).find('td:nth-child(1)').html()){
-		flowData.switch_id = $(domObj).find('td:nth-child(1)').html();
+		flowData.name = $(domObj).find('td:nth-child(1)').html();
 	}
-	if($(domObj).find('td:nth-child(2)')){
-		flowData.address = $(domObj).find('td:nth-child(2)').html();
-	}	
+	if($(domObj).find('td:nth-child(2)').html()){
+		flowData.switch_id = $(domObj).find('td:nth-child(2)').html();
+	}
 	if($(domObj).find('td:nth-child(3)')){
-		flowData.hostname= $(domObj).find('td:nth-child(3)').html();
+		flowData.address = $(domObj).find('td:nth-child(3)').html();
 	}	
 	if($(domObj).find('td:nth-child(4)')){
-		flowData.description = $(domObj).find('td:nth-child(4)').html();
+		flowData.hostname= $(domObj).find('td:nth-child(4)').html();
+	}	
+	if($(domObj).find('td:nth-child(5)')){
+		flowData.description = $(domObj).find('td:nth-child(5)').html();
 	}
 	localStorage.setItem('switchDetailsJSON',JSON.stringify(flowData));
 	window.location = "switch/details#"+"id#"+ flowData.switch_id;

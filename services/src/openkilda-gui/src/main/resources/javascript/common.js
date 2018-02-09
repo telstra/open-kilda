@@ -171,28 +171,6 @@ var graphAutoReload = {
 
 
 var getMetricDetails = {	
-		getIslMetricData:function(response) {
-			var linkData = localStorage.getItem("linkData");
-			var obj = JSON.parse(linkData);
-			
-			var metricArray = [];			
-			metricArray = metricVarList;
-			var optionHTML = "";
-			for (var i = 0; i < metricArray.length ; i++) {
-				
-				if( metricArray[i].includes("megabytes")) {
-				} else {
-					optionHTML += "<option value=" + metricArray[i].split(":")[0] + ">"+ metricArray[i].split(":")[1] + "</option>";
-				}
-				
-			} if (obj.hasOwnProperty("flowid")) {
-				$("select.selectbox_menulist").html("").html(optionHTML);
-				$('#menulist').val('pen.flow.packets');
-			} else {
-				$("select.selectbox_menulist").html("").html(optionHTML);			
-				$('#menulist').val('latency');
-			}						
-		},
 		getFlowMetricData:function(response){
 						
 			var metricArray = [];			
