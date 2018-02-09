@@ -47,4 +47,8 @@ public class KafkaParameters {
     public String getControlTopic() {
         return properties.getProperty("kafka.topic.ctrl");
     }
+
+    public String getDiscoTopic() {
+        return properties.getProperty("kafka.topic.topo.disco");
+    }
 }
