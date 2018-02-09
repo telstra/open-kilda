@@ -220,7 +220,7 @@ def handle_get_props(args):
             val=val.replace('"','').replace("'",'')
             if key in ['src_switch', 'dst_switch']:
                 query_set += ' %s:"%s",' % (key, val)
-            else
+            else:
                 query_set += ' %s:%s,' % (key, val)
     try:
         # NB: query_set could be just whitespace .. Neo4j is okay with empty props in the query - ie { }
@@ -341,7 +341,7 @@ def del_link_props(props):
         if val:
             if key in ['src_switch', 'dst_switch']:
                 query_set += ' %s:"%s",' % (key, val)
-            else
+            else:
                 query_set += ' %s:%s,' % (key, val)
 
     if len(query_set) > 0:
