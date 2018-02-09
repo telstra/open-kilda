@@ -133,7 +133,7 @@ public class FlowPathTest {
     public void flowPathCorrect(String flowId, String sourceSwitch, int sourcePort, int sourceVlan,
                                 String destinationSwitch, int destinationPort, int destinationVlan, int bandwidth)
             throws Exception {
-        Flow flow = new Flow(FlowUtils.getFlowName(flowId), bandwidth, flowId, sourceSwitch,
+        Flow flow = new Flow(FlowUtils.getFlowName(flowId), bandwidth, false, flowId, sourceSwitch,
                 sourcePort, sourceVlan, destinationSwitch, destinationPort, destinationVlan);
         ImmutablePair<PathInfoData, PathInfoData> path = FlowUtils.getFlowPath(flow);
         System.out.println(path);

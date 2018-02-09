@@ -384,7 +384,7 @@ public class FlowCache extends Cache {
         Flow forward = new Flow(
                 flow.getLeft().getFlowId(),
                 flow.getLeft().getBandwidth(),
-                cookie | ResourceCache.FORWARD_FLOW_COOKIE_MASK,
+                false, cookie | ResourceCache.FORWARD_FLOW_COOKIE_MASK,
                 flow.getLeft().getDescription(),
                 timestamp,
                 flow.getLeft().getSourceSwitch(),
@@ -401,7 +401,7 @@ public class FlowCache extends Cache {
         Flow reverse = new Flow(
                 flow.getRight().getFlowId(),
                 flow.getRight().getBandwidth(),
-                cookie | ResourceCache.REVERSE_FLOW_COOKIE_MASK,
+                false, cookie | ResourceCache.REVERSE_FLOW_COOKIE_MASK,
                 flow.getRight().getDescription(),
                 timestamp,
                 flow.getRight().getSourceSwitch(),
@@ -435,6 +435,7 @@ public class FlowCache extends Cache {
         Flow forward = new Flow(
                 flow.getFlowId(),
                 flow.getBandwidth(),
+                flow.isIgnoreBandwidth(),
                 cookie | ResourceCache.FORWARD_FLOW_COOKIE_MASK,
                 flow.getDescription(),
                 timestamp,
@@ -452,6 +453,7 @@ public class FlowCache extends Cache {
         Flow reverse = new Flow(
                 flow.getFlowId(),
                 flow.getBandwidth(),
+                flow.isIgnoreBandwidth(),
                 cookie | ResourceCache.REVERSE_FLOW_COOKIE_MASK,
                 flow.getDescription(),
                 timestamp,
@@ -474,6 +476,8 @@ public class FlowCache extends Cache {
      *
      * @param flow flow
      * @return true if source and destination switches are same for specified flow, otherwise false
+     *
+     * FIXME(surabujin): looks extremely over engineered. Can be replaces with org.openkilda.messaging.model.Flow#isOneSwitchFlow()
      */
     public boolean isOneSwitchFlow(ImmutablePair<Flow, Flow> flow) {
         return flow.getLeft().getSourceSwitch().equals(flow.getLeft().getDestinationSwitch())

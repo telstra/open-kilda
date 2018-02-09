@@ -15,29 +15,16 @@
 
 package org.openkilda.wfm.topology.flow;
 
-import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
-import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.pce.provider.PathComputer;
-import org.openkilda.pce.provider.PathComputer.Strategy;
-
-import com.google.common.graph.MutableNetwork;
 
 import java.util.Collections;
 
 public class PathComputerMock implements PathComputer {
     @Override
     public ImmutablePair<PathInfoData, PathInfoData> getPath(Flow flow, Strategy strategy) {
-        return emptyPath();
-    }
-
-    @Override
-    public ImmutablePair<PathInfoData, PathInfoData> getPath(SwitchInfoData source,
-                                                             SwitchInfoData destination,
-                                                             int bandwidth,
-                                                             Strategy strategy) {
         return emptyPath();
     }
 

@@ -16,9 +16,9 @@
 package org.openkilda.atdd;
 
 
-import static org.openkilda.flow.FlowUtils.getHealthCheck;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.openkilda.flow.FlowUtils.getHealthCheck;
 
 import org.openkilda.flow.FlowUtils;
 import org.openkilda.messaging.info.event.PathInfoData;
@@ -33,7 +33,6 @@ import cucumber.api.java.en.Then;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 public class NorthboundRunTest {
     private static final FlowState expectedFlowStatus = FlowState.UP;
@@ -57,7 +56,7 @@ public class NorthboundRunTest {
     @Then("^status of flow (.*) could be read$")
     public void checkFlowStatus(final String flowId) throws Exception {
         String flowName = FlowUtils.getFlowName(flowId);
-        FlowIdStatusPayload payload = getFlowState(flowName, expectedFlowStatus);
+        FlowIdStatusPayload payload = FlowUtils.waitFlowStatus(flowName, expectedFlowStatus);
 
         assertNotNull(payload);
 
@@ -82,24 +81,9 @@ public class NorthboundRunTest {
     public void flowState(String flowId, String state) throws Throwable {
         String flowName = FlowUtils.getFlowName(flowId);
         FlowState flowState = FlowState.valueOf(state);
-        FlowIdStatusPayload payload = getFlowState(flowName, flowState);
+        FlowIdStatusPayload payload = FlowUtils.waitFlowStatus(flowName, flowState);
         assertNotNull(payload);
         assertEquals(flowName, payload.getId());
         assertEquals(flowState, payload.getStatus());
-    }
-
-    /**
-     * TODO: Why do we loop for 10 and sleep for 2? (ie why what for 20 seconds for flow state?)
-     */
-    private FlowIdStatusPayload getFlowState(String flowName, FlowState expectedFlowStatus) throws Exception {
-        FlowIdStatusPayload payload = FlowUtils.getFlowStatus(flowName);
-        for (int i = 0; i < 10; i++) {
-            payload = FlowUtils.getFlowStatus(flowName);
-            if (payload != null && expectedFlowStatus.equals(payload.getStatus())) {
-                break;
-            }
-            TimeUnit.SECONDS.sleep(2);
-        }
-        return payload;
     }
 }
