@@ -38,19 +38,12 @@ RUN cp /usr/bin/ovs-testcontroller /usr/bin/ovs-controller
 RUN cp /usr/bin/ovs-testcontroller /usr/bin/controller
 RUN rm -rf /var/lib/apt/lists/*
 RUN ln -s /usr/sbin/tcpdump /usr/bin/tcpdump
-RUN pip install python-logstash requests tox
+RUN pip install python-logstash requests
 
 ADD app /app
 RUN chmod a+rx /app/entry-point.sh
 
-ADD Makefile /
-ADD setup.py /
-ADD tox.ini /
-ADD requirements.txt /
-ADD kilda /
-ADD README.rst /
-RUN make build
-RUN mv /dist /py-deps
+ADD dist /py-deps
 RUN pip install "$(echo /py-deps/kilda_mininet-*-none-any.whl | tail -n1)"
 
 WORKDIR /tmp

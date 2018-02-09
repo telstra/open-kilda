@@ -60,8 +60,6 @@ update: update-parent update-msg update-pce
 compile:
 	$(MAKE) -C services/src
 	$(MAKE) -C services/wfm all-in-one
-
-compile-mininet:
 	$(MAKE) -C services/mininet
 
 unit:
