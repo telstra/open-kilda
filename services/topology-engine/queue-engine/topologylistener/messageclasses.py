@@ -285,6 +285,16 @@ class MessageItem(object):
         return self.delete_isl(switch_id, port_id)
 
     def create_isl(self):
+        """
+        Two parts to creating an ISL:
+        (1) create the relationship itself
+        (2) add any link properties, if they exist.
+
+        NB: The query used for (2) is the same as in the TER
+        TODO: either share the same query as library in python, or handle in java
+
+        :return: success or failure (boolean)
+        """
         path = self.payload['path']
         latency = int(self.payload['latency_ns'])
         a_switch = path[0]['switch_id']
@@ -330,6 +340,25 @@ class MessageItem(object):
             )
 
             graph.run(isl_create_or_update)
+
+            #
+            # Now handle the second part .. pull properties from link_props if they exist
+            #
+
+            src_sw, src_pt, dst_sw, dst_pt = a_switch, a_port, b_switch, b_port # use same names as TER code
+            query = 'MATCH (src:switch)-[i:isl]->(dst:switch) '
+            query += ' WHERE i.src_switch = "%s" ' \
+                     ' AND i.src_port = %s ' \
+                     ' AND i.dst_switch = "%s" ' \
+                     ' AND i.dst_port = %s ' % (src_sw, src_pt, dst_sw, dst_pt)
+            query += ' MATCH (lp:link_props) '
+            query += ' WHERE lp.src_switch = "%s" ' \
+                     ' AND lp.src_port = %s ' \
+                     ' AND lp.dst_switch = "%s" ' \
+                     ' AND lp.dst_port = %s ' % (src_sw, src_pt, dst_sw, dst_pt)
+            query += ' SET i += lp '
+
+            graph.run(query)
 
             logger.info('ISL between %s and %s updated', a_switch, b_switch)
 
