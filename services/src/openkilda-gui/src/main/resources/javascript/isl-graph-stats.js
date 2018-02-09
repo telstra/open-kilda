@@ -16,7 +16,8 @@ var targetSwitch = obj.target_switch;
 var sourcePort = obj.src_port;
 var targetPort = obj.dst_port;
 var source = sourceSwitch.replace(/:/g, "")
-var target = targetSwitch.replace(/:/g, "")	
+var target = targetSwitch.replace(/:/g, "")
+var selMetric="latency";
 
 var graphInterval;
 
@@ -53,9 +54,6 @@ $(document).ready(function() {
 	});
 	$('#datetimepicker_dark').datetimepicker({theme:'dark'})
 		
-	var selMetric="latency";
-
-	
 	loadGraph.loadGraphData("/stats/isl/"+source+"/"+sourcePort+"/"+target+"/"+targetPort+"/"+convertedStartDate+"/"+convertedEndDate+"/1s/"+selMetric,"GET",selMetric).then(function(response) {
 		$("#wait1").css("display", "none");
 		$('body').css('pointer-events', 'all');
@@ -79,7 +77,6 @@ function getGraphData() {
 	var convertedEndDate = moment(endDate).format("YYYY-MM-DD-HH:mm:ss");
 	var downsampling = $("#downsampling").val();
 	var downsamplingValidated = regex.test(downsampling);
-	var selMetric=$("select.selectbox_menulist").val();
 	var valid=true;
 	
 	if(downsamplingValidated == false) {	
@@ -147,7 +144,6 @@ function callIntervalData(){
 	var endDate = new Date()
 	var convertedEndDate = moment(endDate).format("YYYY-MM-DD-HH:mm:ss");	
 	var downsampling =$("#downsampling").val()	
-	var selMetric=$("select.selectbox_menulist").val();	
 	
 	loadGraph.loadGraphData("/stats/isl/"+source+"/"+sourcePort+"/"+target+"/"+targetPort+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric,"GET",selMetric).then(function(response) {
 		$("#wait1").css("display", "none");
