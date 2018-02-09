@@ -14,10 +14,10 @@ import java.util.Map;
 public class LinkPropsDto {
 
     private static final String DEFAULT = "";
-    private String src_sw = DEFAULT;
-    private String src_pt = DEFAULT;
-    private String dst_sw = DEFAULT;
-    private String dst_pt = DEFAULT;
+    private String src_switch = DEFAULT;
+    private String src_port = DEFAULT;
+    private String dst_switch = DEFAULT;
+    private String dst_port = DEFAULT;
     @JsonProperty("props")
     private Map<String,String> props = new HashMap<>();
 
@@ -43,35 +43,35 @@ public class LinkPropsDto {
         return this;
     }
 
-    public String getSrc_sw() {
-        return src_sw;
+    public String getSrc_switch() {
+        return src_switch;
     }
 
-    public void setSrc_sw(String src_sw) {
-        this.src_sw = src_sw;
+    public void setSrc_switch(String src_switch) {
+        this.src_switch = src_switch;
     }
 
-    public String getSrc_pt() {
-        return src_pt;
+    public String getSrc_port() {
+        return src_port;
     }
 
-    public void setSrc_pt(String src_pt) {
-        this.src_pt = src_pt;
+    public void setSrc_port(String src_port) {
+        this.src_port = src_port;
     }
 
-    public String getDst_sw() {
-        return dst_sw;
+    public String getDst_switch() {
+        return dst_switch;
     }
 
-    public void setDst_sw(String dst_sw) {
-        this.dst_sw = dst_sw;
+    public void setDst_switch(String dst_switch) {
+        this.dst_switch = dst_switch;
     }
 
-    public String getDst_pt() {
-        return dst_pt;
+    public String getDst_port() {
+        return dst_port;
     }
 
-    public void setDst_pt(String dst_pt) {
-        this.dst_pt = dst_pt;
+    public void setDst_port(String dst_port) {
+        this.dst_port = dst_port;
     }
 }

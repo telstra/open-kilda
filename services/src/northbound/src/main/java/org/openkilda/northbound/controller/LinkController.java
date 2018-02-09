@@ -72,7 +72,7 @@ public class LinkController {
     }
 
     /**
-     * Get link properties from the static link properties table.
+     * Create/Update link properties in the static link properties table.
      *
      * @param keysAndProps if null, get all link props. Otherwise, the link props that much the primary keys.
      * @return list of link properties.
@@ -96,7 +96,7 @@ public class LinkController {
     }
 
     /**
-     * Get link properties from the static link properties table.
+     * Delete link properties from the static link properties table.
      *
      * @param keysAndProps if null, get all link props. Otherwise, the link props that much the primary keys.
      * @return list of link properties.

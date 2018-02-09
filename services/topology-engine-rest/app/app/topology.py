@@ -148,10 +148,11 @@ def api_v1_topology_flows():
 
 
 # =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-# Link Properties section
+#
+# BEGIN: Link Properties section
+#
 # =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-PRIMARY_KEYS = ['src_sw','src_pt','dst_sw','dst_pt']
-
+PRIMARY_KEYS = ['src_switch', 'src_port', 'dst_switch', 'dst_port']
 
 @application.route('/api/v1/topology/link/props', methods=['GET','PUT','DELETE'])
 @login_required
@@ -217,7 +218,10 @@ def handle_get_props(args):
         if val:
             # make sure val doesn't have quotes - " or '
             val=val.replace('"','').replace("'",'')
-            query_set += ' %s:"%s",' % (key, val)
+            if key in ['src_switch', 'dst_switch']:
+                query_set += ' %s:"%s",' % (key, val)
+            else:
+                query_set += ' %s:%s,' % (key, val)
     try:
         # NB: query_set could be just whitespace .. Neo4j is okay with empty props in the query - ie { }
         query = 'MATCH (lp:link_props { %s }) RETURN lp' % query_set[:-1] # remove trailing ',' if there
@@ -232,7 +236,7 @@ def handle_get_props(args):
     # But, current expectation is that extra props are all part of the 'props' key.
     # So, pull out both sets (primary / extra props) and then combine into the expected order.
     #
-    # TODO: Should we change the respone to be flat so that we don't need to do this processing?
+    # TODO: Should we change the response to be flat so that we don't need to do this processing?
     #           A corollary - the inbound put could be flat as well.
     #
     hier_results = []
@@ -313,14 +317,14 @@ def del_link_props(props):
         [{
             # Delete a specific node
             # ======================
-            "src_sw":"de:ad:be:ef:01:11:22:01",
-            "src_pt":"1" ,
-            "dst_sw":"de:ad:be:ef:02:11:22:02",
-            "dst_pt":"2"
+            "src_switch":"de:ad:be:ef:01:11:22:01",
+            "src_port":"1" ,
+            "dst_switch":"de:ad:be:ef:02:11:22:02",
+            "dst_port":"2"
         } , {
             # Delete all links with this switch as src
             # ========================================
-            "src_sw":"de:ad:be:ef:03:33:33:03"
+            "src_switch":"de:ad:be:ef:03:33:33:03"
         }]
 
 
@@ -332,19 +336,55 @@ def del_link_props(props):
     :return: success / row count of affected  *or* failure AND failure message
     """
     query_set = ''
-    for k,v in props.iteritems():
-        if k != 'props':
-            # in case the user inadvertently added props, eg copy/paste issue, ignore it.
-            query_set += ' %s:"%s",' % (k,v)
+    for key in PRIMARY_KEYS:
+        val = props.get(key)
+        if val:
+            if key in ['src_switch', 'dst_switch']:
+                query_set += ' %s:"%s",' % (key, val)
+            else:
+                query_set += ' %s:%s,' % (key, val)
 
     if len(query_set) > 0:
-        query = 'MATCH (lp:link_props { %s }) DETACH DELETE lp RETURN COUNT(lp) as affected' % query_set[:-1] # remove trailing ','
+        # need to do 2 things:  (1) delete props from ISLs; (2) delete the link_props row(s)
+        # TODO: Wrap the whole thing in a transaction so that we know we've cleaned up properly
+        # TODO: The transaction could be on a row-by-row basis (ie one link_props / one link)
+        query_set = query_set[:-1] # remove trailing ','
+        query = 'MATCH (lp:link_props { %s }) DETACH DELETE lp RETURN lp' % query_set
         result = neo4j_connect.data(query)
-        affected = result[0].get('affected', 0)
+
+        affected = 0
+        for row in [dict(x['lp']) for x in result]:
+            # (1) - delete props from ISLs
+            affected += 1
+            remove_props_from_isl(row)
+
         logger.debug('\n DELETE QUERY = %s \n AFFECTED = %s', query, affected)
         return True, affected
     else:
         return False, "NO PRIMARY KEYS"
+
+
+def remove_props_from_isl(row):
+    """
+    To remove props, we need to find out what extra props are in the link_props and remove only those
+    :param row: a row from the delete link_props query
+    """
+    # TODO: extra for loops here .. but leveraging existing code patterns .. try to generalize
+    # NB: this happens during delete link_props .. doesn't need to be super efficient.
+    not_primary_props = {k:v for k,v in row.items() if k not in PRIMARY_KEYS}
+    primary_props = {k:v for k,v in row.items() if k in PRIMARY_KEYS}
+    success, src_sw, src_pt, dst_sw, dst_pt = get_link_prop_keys(primary_props)
+    query_remove = ''
+    for k,_ in not_primary_props.iteritems():
+        query_remove += ' i.%s,' % k
+
+    if len(query_remove) > 0:
+        query_remove = query_remove[:-1] # remove trailing ','
+
+        query = 'MATCH (src:switch)-[i:isl]->(dst:switch) '
+        query += ' WHERE i.src_switch = "%s" AND i.src_port = %s AND i.dst_switch = "%s" AND i.dst_port = %s ' % (src_sw, src_pt, dst_sw, dst_pt)
+        query += ' REMOVE %s' % query_remove
+        neo4j_connect.data(query)
 
 
 def put_link_props(props):
@@ -357,10 +397,10 @@ def put_link_props(props):
     Here's an example of a call that works:
 
         [{
-            "src_sw":"de:ad:be:ef:01:11:22:01",
-            "src_pt":"1" ,
-            "dst_sw":"de:ad:be:ef:02:11:22:02",
-            "dst_pt":"2" ,
+            "src_switch":"de:ad:be:ef:01:11:22:01",
+            "src_port":"1" ,
+            "dst_switch":"de:ad:be:ef:02:11:22:02",
+            "dst_port":"2"
             "props": {
                 "cost":"1",
                 "popularity":"5",
@@ -381,27 +421,49 @@ def put_link_props(props):
     #           be better to at least warn the user that there is another link .. this is to help
     #           the use uncover a possible bug in their data set.
     #
-    reserved_words = ['latency', 'speed', 'available_bandwidth', 'status']
-
     success, src_sw, src_pt, dst_sw, dst_pt = get_link_prop_keys(props)
     if not success:
-        return False, 'PRIMARY KEY VIOLATION: one+ primary keys are empty: src_sw:"%s", src_pt:"%s", dst_sw:"%s", dst_pt:"%s"' % (src_sw, src_pt, dst_sw, dst_pt)
+        return False, 'PRIMARY KEY VIOLATION: one+ primary keys are empty: src_switch:"%s", src_port:"%s", dst_switch:"%s", dst_port:"%s"' % (src_sw, src_pt, dst_sw, dst_pt)
     else:
-        query_merge = 'MERGE (lp:link_props { src_sw:"%s", src_pt:"%s", dst_sw:"%s", dst_pt:"%s" })' % (src_sw, src_pt, dst_sw, dst_pt)
-        query_set = ''
-
-        new_props = props.get('props',{})
-        if len(new_props) > 0:
-            for (k,v) in new_props.iteritems():
-                if k in reserved_words:
-                    return False, 'RESERVED WORD VIOLATION: do not use %s' % k
-                query_set += 'lp.%s = "%s", ' % (k, v)
-            query_set = ' SET ' + query_set[:-2]
-
+        # (1) Create the link_props and then (2) propagate to the isl if it exists
+        query_merge = 'MERGE (lp:link_props { src_switch:"%s", src_port:%s, dst_switch:"%s", dst_port:%s })' % (src_sw, src_pt, dst_sw, dst_pt)
+        query_set, success, message = build_props_query(props.get('props', {}))
+        if not success:
+            return False, message
         query = query_merge + query_set
+        logger.debug('\n LINK_PROP QUERY = %s ', query)
         neo4j_connect.data(query)
-        logger.debug('\n QUERY = %s ', query)
+
+        # (2) Now propagate the props if an ISL exists .. this exact same query will be used in TE
+        #     when a new ISL is created - it only works if both entities exist.
+        query = 'MATCH (src:switch)-[i:isl]->(dst:switch) '
+        query += ' WHERE i.src_switch = "%s" AND i.src_port = %s AND i.dst_switch = "%s" AND i.dst_port = %s ' % (src_sw, src_pt, dst_sw, dst_pt)
+        query += ' MATCH (lp:link_props) '
+        query += ' WHERE lp.src_switch = "%s" AND lp.src_port = %s AND lp.dst_switch = "%s" AND lp.dst_port = %s ' % (src_sw, src_pt, dst_sw, dst_pt)
+        query += ' SET i += lp '
+        logger.debug('\n LINK_PROP -> ISL QUERY = %s ', query)
+        neo4j_connect.data(query)
+
         return True, 1
+
+
+def build_props_query(props):
+    """
+    For use in a "SET" .. build the query, and error if a reserved word is used
+
+    :param props: The props
+    :return:
+    """
+    reserved_words = ['latency', 'speed', 'available_bandwidth', 'status']
+    query_set = ''
+    if len(props) > 0:
+        for (k,v) in props.iteritems():
+            if k in reserved_words:
+                return query_set, False, 'RESERVED WORD VIOLATION: do not use %s' % k
+            query_set += 'lp.%s = "%s", ' % (k, v)
+        query_set = ' SET ' + query_set[:-2]
+    return query_set, True, ''
+
 
 
 def get_link_prop_keys(props):
@@ -411,12 +473,17 @@ def get_link_prop_keys(props):
     :param props: the dict
     :return: all primary keys, and success if they were all present.
     """
-    src_sw = props.get('src_sw','')
-    src_pt = props.get('src_pt','')
-    dst_sw = props.get('dst_sw','')
-    dst_pt = props.get('dst_pt','')
+    src_sw = props.get('src_switch','')
+    src_pt = props.get('src_port','')
+    dst_sw = props.get('dst_switch','')
+    dst_pt = props.get('dst_portt','')
     success = (len(src_sw) > 0) and (len(src_pt) > 0) and (len(dst_sw) > 0) and (len(dst_pt) > 0)
     return success,src_sw,src_pt,dst_sw,dst_pt
+
+
+# =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+# END: Link Properties section
+# =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
 
 def format_isl(link):
@@ -424,7 +491,7 @@ def format_isl(link):
     :param link: A valid Link returned from the db
     :return: A dictionary in the form of org.openkilda.messaging.info.event.IslInfoData
     """
-    return {
+    isl =  {
         'clazz': 'org.openkilda.messaging.info.event.IslInfoData',
         'latency_ns': int(link['latency']),
         'path': [{'switch_id': link['src_switch'],
@@ -439,6 +506,15 @@ def format_isl(link):
         'state': 'DISCOVERED' if link['status'] == 'active' else 'FAILED',
         'available_bandwidth': link['available_bandwidth']
     }
+
+    # fields that have already been used .. should find easier way to do this..
+    already_used = list(isl.keys())
+    for k,v in link.iteritems():
+        if k not in already_used:
+            isl[k] = v
+
+    return isl
+
 
 def format_switch(switch):
     """

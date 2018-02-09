@@ -14,10 +14,10 @@ headers = {
     'Authorization': 'Basic %s' % b64encode(b"kilda:kilda").decode("ascii")
 }
 
-j_data = [{"src_sw": "de:ad:be:ef:01:11:22:01",
-           "src_pt": "1",
-           "dst_sw": "de:ad:be:ef:02:11:22:02",
-           "dst_pt": "2",
+j_data = [{"src_switch": "de:ad:be:ef:01:11:22:01",
+           "src_port": "1",
+           "dst_switch": "de:ad:be:ef:02:11:22:02",
+           "dst_port": "2",
            "props": {
                "cost": "1"
                , "popularity": "5"
