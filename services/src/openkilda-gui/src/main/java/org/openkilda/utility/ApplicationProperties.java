@@ -75,6 +75,11 @@ public class ApplicationProperties {
     /** The kilda password. */
     @Value("${kilda.password}")
     private String kildaPassword;
+    
+    /** The switch data file path. */
+    @Value("${switch.data.file.path}")
+    private String switchDataFilePath;
+    
 
     public String getTopologyFlows() {
         return topologyFlows;
@@ -196,5 +201,15 @@ public class ApplicationProperties {
     public String getKildaPassword() {
         return kildaPassword;
     }
+
+    /**
+     * Gets the switch data file path.
+     *
+     * @return the switch data file path
+     */    
+	public String getSwitchDataFilePath() {
+		return switchDataFilePath;
+	}
+    
 
 }

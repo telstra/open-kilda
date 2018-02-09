@@ -219,7 +219,7 @@ graph = {
 			.attr("class", "switchname hide"); 
 		if (text_center) {
 		    text.text(function(d) {
-		            return d.switch_id;
+		            return d.name;
 		        })
 		        .style("text-anchor", "middle");
 		} else {
@@ -227,7 +227,7 @@ graph = {
 		            return (size(d.size) || nominal_base_node_size);
 		        })
 		        .text(function(d) {
-		            return d.switch_id;
+		            return d.name;
 		        });
 		}
 		
@@ -263,7 +263,7 @@ graph = {
 		    $('#topology-hover-txt').css('top', rec.y + 'px');
 		    $('#topology-hover-txt').css('left', rec.x + 'px');
 		
-		
+		    d3.select(".switchdetails_div_switch_name").html("<span>" + d.name + "</span>");
 		    d3.select(".switchdetails_div_controller").html("<span>" + d.switch_id + "</span>");
 		    d3.select(".switchdetails_div_address").html("<span>" + d.address + "</span>");
 		    d3.select(".switchdetails_div_name").html("<span>" + d.switch_id + "</span>");

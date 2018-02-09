@@ -1,13 +1,9 @@
 package org.openkilda.integration.service;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpMethod;
-import org.springframework.stereotype.Service;
-
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
+import java.util.HashMap;
 import java.util.List;
 
 import org.apache.http.HttpResponse;
@@ -26,6 +22,12 @@ import org.openkilda.utility.ApplicationProperties;
 import org.openkilda.utility.CollectionUtil;
 import org.openkilda.utility.IoUtil;
 import org.openkilda.utility.JsonUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpMethod;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 /**
  * The Class SwitchIntegrationService.
@@ -58,13 +60,66 @@ public class SwitchIntegrationService {
         if (RestClientManager.isValidResponse(response)) {
             List<SwitchInfo> switchesResponse =
                     restClientManager.getResponseList(response, SwitchInfo.class);
-            return switchesResponse;
+            return getSwitchInfoSetName(switchesResponse);
         }
         return null;
     }
 
-
     /**
+     * Gets the SwitchInfoSetName.
+     *
+     * @return the switches
+     * @throws IntegrationException
+     */
+    @SuppressWarnings("unchecked")
+	private List<SwitchInfo> getSwitchInfoSetName(List<SwitchInfo> switchesResponse) {
+
+    	LOGGER.info("Inside getSwitchInfoSetName : Start");
+    	try {
+    		InputStream inputStream = null;
+    		String data = null;
+    		HashMap<String, String> allSwitchesInfo = new HashMap<String, String>();
+    		try{
+    			//inputStream = new FileInputStream(applicationProperties.getSwitchDataFilePath());
+    			//inputStream = getClass().getClassLoader().getResourceAsStream(applicationProperties.getSwitchDataFilePath());
+    			inputStream = new URL(applicationProperties.getSwitchDataFilePath()).openStream();
+    		}catch(Exception ex){
+    			LOGGER.error("Inside getSwitchInfoSetName Exception :"+ ex.getMessage());
+    		}
+    		if(inputStream != null)
+    			 data = IoUtil.toString(inputStream);
+	    	if(switchesResponse!= null && !switchesResponse.isEmpty()){
+	    			 for(SwitchInfo switchInfo : switchesResponse){
+	    				 if(data != null && !StringUtils.isEmpty(data)){
+	    					 try{
+	    						 allSwitchesInfo = JsonUtil.toObject(data, HashMap.class);
+	    					 } catch (Exception ex) {
+	    							LOGGER.error("Inside getSwitchInfoSetName Exception :"+ ex.getMessage());
+	    					   }
+		    				if(allSwitchesInfo!= null && !allSwitchesInfo.isEmpty()){
+		    					 if(allSwitchesInfo.containsKey(switchInfo.getSwitchId())) {
+		    						 if(!IoUtil.chkStringIsNotEmpty(allSwitchesInfo.get(switchInfo.getSwitchId())))
+		    							 switchInfo.setName(switchInfo.getSwitchId());
+		    						 else
+		    							 switchInfo.setName( allSwitchesInfo.get(switchInfo.getSwitchId()));
+		    					 }else{
+		    						 switchInfo.setName(switchInfo.getSwitchId()); 
+		    					 }
+		    				 }else 
+		  	    			   switchInfo.setName(switchInfo.getSwitchId());
+	    		   }else 
+	    			   switchInfo.setName(switchInfo.getSwitchId());
+	    		}
+    	   }
+		} catch (Exception ex) {
+			LOGGER.error("Inside getSwitchInfoSetName Exception :"+ ex.getMessage());
+		}
+    	
+		return switchesResponse;
+	}
+    
+
+	/**
      * Gets the isl links.
      *
      * @return the isl links

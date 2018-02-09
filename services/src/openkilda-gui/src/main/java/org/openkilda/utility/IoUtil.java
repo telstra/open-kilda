@@ -52,4 +52,24 @@ public final class IoUtil {
             }
         }
     }
+    
+    
+    /**
+     * Chk string is not empty.
+     *
+     * @param value the value
+     * @return true, if successful
+     */
+    public static boolean chkStringIsNotEmpty(Object value) {
+		boolean flag = false;
+		if(value != null){
+			String string = String.valueOf(value);
+			if (string != null && !"".equalsIgnoreCase(string.trim())
+					&& string.length() > 0 && !"null".equalsIgnoreCase(string)) {
+				flag = true;
+			}
+		}
+		
+		return flag;
+	}
 }
