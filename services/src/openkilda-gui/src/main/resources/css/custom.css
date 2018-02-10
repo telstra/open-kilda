@@ -59,6 +59,10 @@ h1 {
 	font-weight: 700;
 }
 
+.clearfix {
+	clear: both;
+}
+
 .main-header {
 	background: #1b1f26;
 	height: 55px;
@@ -381,9 +385,8 @@ div.tooltip {
 }
 
 .nodeover {
-	fill: #68BDF6;
-	opacity: 0.3;
-	stroke: #00baff;
+	fill: #c8e3f5;
+	stroke: #addff1;
 	stroke-width: 8px;
 }
 
@@ -583,7 +586,18 @@ h1.modal-title {
 	position: absolute;
 	left: 0px;
 	right: 0px;
-	background: rgba(0, 0, 0, 0.6); /* rgba(0, 0, 0, 0.6) */
+	background: rgba(0, 0, 0, 0.6);
+	z-index: 9;
+	margin: 0;
+	top: 0;
+	bottom: 0;
+}
+
+.bg_load_graph {
+	position: absolute;
+	left: 0px;
+	right: 0px;
+	background: rgb(255,255,255); /* rgba(0, 0, 0, 0.6) */
 	z-index: 9;
 	margin: 0;
 	top: 0;
@@ -598,12 +612,10 @@ body{
 	border: 14px solid #f3f3f3;
 	border-radius: 50%;
 	border-top: 16px solid #3498db;
-	width: 90px;
-	height: 90px;
-	top: 0;
-	left: 0;
-	right: 0;
-	bottom: 0;
+	width: 75px;
+	height: 75px;
+	top: calc(50% - 90px);
+    left: calc(50% - 90px);
 	-webkit-animation: spin 2s linear infinite;
 	animation: spin 2s linear infinite;
 	margin: auto;
@@ -643,10 +655,16 @@ footer {
 }
 
 #graphdiv {
-	margin-top: 20px;
-	margin-bottom: 20px;
+	margin-bottom: 15px;
+    margin-top: 15px;
 	height: 420px;
 	width: 100%;
+	margin-left: -20px;
+}
+
+.tab-content #graphdiv {
+	margin-bottom: 0;
+    margin-top: 0;
 }
 
 .topology-graph {
@@ -1240,6 +1258,107 @@ table#flowTable.dataTable .divTableCell {
 	margin-top: -10px
 }
 
+.topology-graph ul.line-legend {
+	margin-bottom: 20px;
+	margin-top: 15px;
+	padding: 0 15px;
+}
+
+.topology-graph ul.line-legend {
+	margin-top: 0;
+}
+
+.topology-graph ul.line-legend li {
+	position: relative;
+	display: inline-block;
+    padding-left: 20px;
+    padding-right: 15px;
+    height: auto;
+}
+
+.error-message {
+    float: right;
+    margin-top: 5px;
+}
+
+.has-error .text-label, .has-error .error-message, .has-error .form-control {
+	color: #a94442;
+}
+
+.line-legend li:before {
+    height: 14px;
+    left: 0;
+    position: absolute;
+    top: 0;
+    width: 14px;
+    content: "";
+    background: #aad200;
+}
+
+.line-legend li:first-child:before {
+    height: 14px;
+    left: 0;
+    position: absolute;
+    top: 0;
+    width: 14px;
+    content: "";
+    background: #495cff;
+}
+
+#sidebar-left {
+  pointer-events: all;
+}
+
+.bg-data-loader {
+	position: absolute;
+	left: 0px;
+	right: 0px;
+	background: rgb(255,255,255);
+	z-index: 9;
+	margin: 0;
+	top: 0;
+	bottom: 0;
+}
+
+
+.bg-data-loader .loader {
+	width: 30px;
+    height: 30px;
+    border: 6px solid #aaa;
+    border-top: 6px solid #3498db;
+    top: calc(50% - 15px);
+    left: calc(50% - 15px);
+}
+
+table#flowTable.dataTable {	
+    margin: 15px 0;
+}
+
+
+table#flowTable.dataTable .port_data_load td.divTableCell {
+    padding: 25px;
+    position: relative;
+    border: 1px solid #ddd;
+}
+
+/*  #port-details-div {
+	font-size: 13px;
+	border: 1px solid #ccc;
+	padding: 15px;
+	margin: 0 0 20px;
+	position: relative;
+} */
+.load-text {
+	position: absolute;
+    left: calc(50% - 152px);
+    width: 215px;
+    height: 20px;
+    top: 50%;
+    text-align: center;
+    color: #fff;
+    font-size: 13px;
+}
+
 @-moz-keyframes spin {
     from { -moz-transform: rotate(0deg); }
     to { -moz-transform: rotate(360deg); }
@@ -1252,3 +1371,8 @@ table#flowTable.dataTable .divTableCell {
     from {transform:rotate(0deg);}
     to {transform:rotate(360deg);}
 }
+
+@keyframes blink {50% { color: transparent }}
+.loader__dot { animation: 1s blink infinite }
+.loader__dot:nth-child(2) { animation-delay: 250ms }
+.loader__dot:nth-child(3) { animation-delay: 500ms }

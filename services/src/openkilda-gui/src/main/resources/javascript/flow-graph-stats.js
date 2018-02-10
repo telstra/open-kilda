@@ -47,8 +47,13 @@ $(document).ready(function() {
 	});
 	$('#datetimepicker_dark').datetimepicker({theme:'dark'})
 	
-	loadGraph.loadGraphData("/stats/flowid/"+flowid+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/pen.flow.packets","GET").then(function(response) {
-		showStatsGraph.showStatsData(response); 
+	var selMetric="packets";
+
+	loadGraph.loadGraphData("/stats/flowid/"+flowid+"/"+convertedStartDate+"/"+convertedEndDate+"/10m/"+selMetric,"GET",selMetric).then(function(response) {
+		
+		$("#wait1").css("display", "none");
+		$('body').css('pointer-events', 'all');
+		showStatsGraph.showStatsData(response,selMetric); 
 	})
 })
 
@@ -59,7 +64,7 @@ $(document).ready(function() {
 */
 function getGraphData() {
 	
-
+	$('#wait1').show();
 	var regex = new RegExp("^\\d+(s|h|m){1}$");
 	var currentDate = new Date();
 	var startDate = new Date($("#datetimepicker7").val());
@@ -70,11 +75,11 @@ function getGraphData() {
 	var valid=true;
 		
 	if(startDate.getTime() > currentDate.getTime()) {
-		common.infoMessage('startDate should not be greater than currentDate.','error');		
+		common.infoMessage('From Date should not be greater than currentDate.','error');		
 		valid=false;
 		return;
 	} else if(endDate.getTime() < startDate.getTime()){
-		common.infoMessage('endDate should not be less than startDate','error');
+		common.infoMessage('To Date should not be less than From Date','error');
 		valid=false;
 		return;
 	}
@@ -84,25 +89,44 @@ function getGraphData() {
 	var checkNo = $("#autoreload").val().match(numbers);
 	var checkbox =  $("#check").prop("checked");
 	
-	if(valid){
+	var test = true;	
+    autoVal.reloadValidation(function(valid){
+	  
+	  if(!valid) {
+		  test = false;		  
+		  return false;
+	  }
+  });
+	    
+    if(test) {
+    	
+    	$("#autoreloadId").removeClass("has-error")	
+        $(".error-message").html("");
+    	
+		var megaBytes = selMetric;
+		if(megaBytes == "megabytes"){
+			selMetric = "bytes";		
+		}
+    	
+		loadGraph.loadGraphData("/stats/flowid/"+flowid+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric,"GET",selMetric).then(function(response) {
+    			
+    			$("#wait1").css("display", "none");
+    			$('body').css('pointer-events', 'all');
+    			showStatsGraph.showStatsData(response,selMetric); 
+    	})
+    		
+    				try {
+    					clearInterval(graphInterval);
+    				} catch(err) {
 
-		
-		loadGraph.loadGraphData("/stats/flowid/"+flowid+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric,"GET").then(function(response) {
-			showStatsGraph.showStatsData(response); 
-		})
-				
-			try {
-				clearInterval(graphInterval);
-			} catch(err) {
-
-			}
-			
-			if(autoreload){
-				graphInterval = setInterval(function(){
-					callIntervalData() 
-				}, 1000*autoreload);
-			}
-	}
+    				}
+    				
+    				if(autoreload){
+    					graphInterval = setInterval(function(){
+    						callIntervalData() 
+    					}, 1000*autoreload);
+    				}
+    		}
 }
 
 function callIntervalData() {
@@ -115,8 +139,10 @@ function callIntervalData() {
 	var selMetric=$("select.selectbox_menulist").val();
 		
 	
-	loadGraph.loadGraphData("/stats/flowid/"+flowid+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric,"GET").then(function(response) {
-		showStatsGraph.showStatsData(response); 
+	loadGraph.loadGraphData("/stats/flowid/"+flowid+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric,"GET",selMetric).then(function(response) {
+		$("#wait1").css("display", "none");
+		$('body').css('pointer-events', 'all');
+		showStatsGraph.showStatsData(response,selMetric); 
 	})
 }
 

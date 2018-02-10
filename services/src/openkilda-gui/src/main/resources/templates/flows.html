@@ -36,46 +36,51 @@
 
 			<div id="wait1" class="bg_load">
 				<div class="loader"></div>
+				<span class="load-text">Loading Flows
+						<span class="loader__dot">.</span>
+  			  			<span class="loader__dot">.</span>
+  			 			<span class="loader__dot">.</span>
+  			 	</span>  
 			</div>
 
 			<table id="flowTable" class="display" cellspacing="0" width="100%" style="display:none;">
 				<thead>
 					<tr class="tableHeading">
-						<th><span title="Flow id">Flow id</span> 
+						<th><span title="Flow Id">Flow Id</span> 
 						<span class="fa fa-search" onclick="showSearch('flow_search',event)" style=""></span> 
 						<input id="flow_search" class="heading_search_box" type="search" style="display: none;" placeholder="Search"  onclick="event.stopPropagation()"/>
 						</th>
-						<th><span title="Source switch">Source switch	</span>					
+						<th><span title="Source Switch">Source Switch	</span>					
 						<span class="fa fa-search" onclick="showSearch('source-switch',event)" style=""></span> 
 						<input id="source-switch" class="heading_search_box" type="search" style="display: none;" placeholder="Search" />
 						
 						</th>
-						<th><span title="Source port">Src port </span>
+						<th><span title="Source Port">Src Port </span>
 						<span class="fa fa-search" onclick="showSearch('source-port',event)" style=""></span> 
 						<input id="source-port" class="heading_search_box" type="search" style="display: none;" placeholder="Search" />
 						
 						</th>
-						<th><span title="Source vlan">Src vlan </span>
+						<th><span title="Source Vlan">Src Vlan </span>
 						<span class="fa fa-search" onclick="showSearch('source-vlan',event)" style=""></span> 
 						<input  id="source-vlan" class="heading_search_box" type="search" style="display: none;" placeholder="Search" />
 						
 						</th>
-						<th><span title="Target switch">Target switch</span>
+						<th><span title="Target Switch">Target Switch</span>
 						<span class="fa fa-search" onclick="showSearch('target-switch',event)" style=""></span> 
 						<input id="target-switch" class="heading_search_box" type="search" style="display: none;" placeholder="Search" />
 						
 						</th>
-						<th><span title="Destination port">Destination port </span>
+						<th><span title="Destination Port">Destination Port </span>
 						<span class="fa fa-search" onclick="showSearch('destination-port',event)" style=""></span> 
 						<input id="destination-port" class="heading_search_box" type="search" style="display: none;" placeholder="Search" />
 						
 						</th>
-						<th><span title="Destination vlan">Destination vlan </span>
+						<th><span title="Destination Vlan">Destination Vlan </span>
 						<span class="fa fa-search" onclick="showSearch('destination-vlan',event)" style=""></span> 
 						<input id="destination-vlan" class="heading_search_box" type="search" style="display: none;" placeholder="Search" />
 						
 						</th>
-						<th><span title="Maximum bandwidth">Maximum bandwidth </span>
+						<th><span title="Maximum Bandwidth">Maximum Bandwidth </span>
 						<span class="fa fa-search" onclick="showSearch('max-band',event)" style=""></span> 
 						<input id="max-band" class="heading_search_box" type="search" style="display: none;" placeholder="Search" />
 						
@@ -102,6 +107,10 @@
 	<script th:inline="javascript" src="javascript/jquery.dataTables.min.js"></script>
 	<script th:inline="javascript" src="javascript/flows.js"></script>
 	<script th:inline="javascript" src="javascript/common.js" th:src="@{javascript/common.js}"></script>
-	
+		<script>
+		$(document).ready(function() {
+			$('body').css('pointer-events','all');
+		});
+	</script>
 </body>
 </html>

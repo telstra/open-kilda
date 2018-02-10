@@ -24,6 +24,8 @@ public class SwitchInfo implements Serializable {
     private String hostname;
     @JsonProperty("description")
     private String description;
+    @JsonProperty("name")
+    private String name;
 
     /** The Constant serialVersionUID. */
     private final static long serialVersionUID = 6763064864461521069L;
@@ -60,10 +62,19 @@ public class SwitchInfo implements Serializable {
         this.description = description;
     }
 
-    @Override
+    
+    public String getName() {
+		return name;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+
+	@Override
     public String toString() {
         return "SwitchInfo [switchId=" + switchId + ", address=" + address + ", hostname="
-                + hostname + ", description=" + description + "]";
+                + hostname + ", description=" + description + ", name=" + name + "]";
     }
 
 }

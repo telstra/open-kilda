@@ -4,9 +4,7 @@ services:
   mininet:
     container_name: mininet
     image: "kilda/mininet:${full_build_number:-latest}"
-    command: /app/startup
-    env_file:
-      - services/mininet/variables.env
+    command: /app/entry-point.sh
     ports:
       - "38080:38080"
       - "17191:17191"
@@ -45,7 +43,7 @@ services:
 ##
   topology-engine:
     container_name: topology-engine
-    hostname: topoeng.pendev
+    hostname: topology-engine.pendev
     build:
       context: services/topology-engine/
       dockerfile: Dockerfile
@@ -75,12 +73,11 @@ services:
 
   topology-engine-rest:
     container_name: topology-engine-rest
-    hostname: toporest.pendev
+    hostname: topology-engine-rest.pendev
     build:
       context: services/topology-engine-rest/
       dockerfile: Dockerfile
     image: "kilda/topology-engine-rest:${full_build_number:-latest}"
-    command: ./entrypoint.sh
     volumes:
       - app_server_data:/var/data
     ports:

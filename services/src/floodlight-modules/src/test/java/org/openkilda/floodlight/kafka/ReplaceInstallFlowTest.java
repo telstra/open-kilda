@@ -15,8 +15,6 @@
 
 package org.openkilda.floodlight.kafka;
 
-import static org.openkilda.floodlight.message.command.encapsulation.PushSchemeOutputCommands.ofFactory;
-import static org.openkilda.messaging.Utils.MAPPER;
 import static org.easymock.EasyMock.anyObject;
 import static org.easymock.EasyMock.capture;
 import static org.easymock.EasyMock.createMock;
@@ -24,6 +22,8 @@ import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.newCapture;
 import static org.easymock.EasyMock.replay;
 import static org.junit.Assert.assertEquals;
+import static org.openkilda.floodlight.message.command.encapsulation.PushSchemeOutputCommands.ofFactory;
+import static org.openkilda.messaging.Utils.MAPPER;
 
 import org.openkilda.floodlight.message.command.encapsulation.OutputCommands;
 import org.openkilda.floodlight.message.command.encapsulation.ReplaceSchemeOutputCommands;
@@ -32,7 +32,6 @@ import org.openkilda.floodlight.pathverification.PathVerificationService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.floodlight.switchmanager.SwitchEventCollector;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
-import org.openkilda.messaging.BaseMessage;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.InstallEgressFlow;
@@ -252,7 +251,8 @@ public class ReplaceInstallFlowTest {
         ConsumerRecord<String, String> record = new ConsumerRecord<>("", 0, 0, "", value);
 
         // create parser instance
-        KafkaMessageCollector.ParseRecord parseRecord = collector.new ParseRecord(record);
+        ConsumerContext kafkaContext = new ConsumerContext(context, collector);
+        RecordHandler parseRecord = new RecordHandler(kafkaContext, record);
         // init test mocks
         Capture<OFFlowAdd> flowAddCapture = flowCommand == null ? null : newCapture(CaptureType.ALL);
         Capture<OFMeterMod> meterAddCapture = meterCommand == null ? null : newCapture(CaptureType.ALL);

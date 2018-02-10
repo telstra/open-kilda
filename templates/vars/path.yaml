@@ -16,8 +16,8 @@ path:
     dest: services/topology-engine/queue-engine/log.json
     tmpl: templates/topology-engine/log.json.j2
   - topology_engine_rest_properties:
-    dest: services/topology-engine-rest/app/topology_engine_rest.properties
-    tmpl: templates/topology-engine-rest/topology_engine_rest.properties.j2
+    dest: services/topology-engine-rest/app/topology_engine_rest.ini
+    tmpl: templates/topology-engine-rest/topology_engine_rest.ini.j2
   - topology_engine_rest_log_json:
     dest: services/topology-engine-rest/app/log.json
     tmpl: templates/topology-engine-rest/log.json.j2

@@ -68,48 +68,53 @@ class MessageItem(object):
         try:
             event_handled = False
 
-            if self.get_message_type() == MT_SWITCH \
-                    and self.payload['state'] == "ADDED":
-                event_handled = self.create_switch()
-            if self.get_message_type() == MT_SWITCH \
-                    and self.payload['state'] == "ACTIVATED":
-                event_handled = self.activate_switch()
-            if self.get_message_type() == MT_SWITCH \
-                    and self.payload['state'] == "DEACTIVATED":
-                event_handled = self.deactivate_switch()
-            if self.get_message_type() == MT_SWITCH \
-                    and self.payload['state'] == "REMOVED":
-                event_handled = self.remove_switch()
+            if self.get_message_type() == MT_SWITCH:
+                if self.payload['state'] == "ADDED":
+                    event_handled = self.create_switch()
+                elif self.payload['state'] == "ACTIVATED":
+                    event_handled = self.activate_switch()
+                elif self.payload['state'] == "DEACTIVATED":
+                    event_handled = self.deactivate_switch()
+                elif self.payload['state'] == "REMOVED":
+                    event_handled = self.remove_switch()
 
-            if self.get_message_type() == MT_ISL \
-                    and self.payload['state'] == "DISCOVERED":
-                event_handled = self.create_isl()
-            if self.get_message_type() == MT_ISL \
-                    and self.payload['state'] == "FAILED":
-                event_handled = self.isl_discovery_failed()
+                if event_handled:
+                    message_utils.send_cache_message(self.payload,
+                                                     self.correlation_id)
 
-            if self.get_message_type() == MT_PORT:
+            elif self.get_message_type() == MT_ISL:
+                if self.payload['state'] == "DISCOVERED":
+                    event_handled = self.create_isl()
+                elif self.payload['state'] == "FAILED":
+                    event_handled = self.isl_discovery_failed()
+
+                if event_handled:
+                    message_utils.send_cache_message(self.payload,
+                                                     self.correlation_id)
+
+            elif self.get_message_type() == MT_PORT:
                 if self.payload['state'] == "DOWN":
                     event_handled = self.port_down()
                 else:
                     event_handled = True
 
-            if self.get_message_type() == MT_FLOW_INFODATA:
+            elif self.get_message_type() == MT_FLOW_INFODATA:
                 event_handled = self.flow_operation()
 
-            if self.get_command() == CD_NETWORK:
+            elif self.get_command() == CD_NETWORK:
                 event_handled = self.dump_network()
 
             if not event_handled:
                 logger.error('Message was not handled correctly: message=%s',
                              self.payload)
 
+            return event_handled
         except Exception as e:
-            print e
-            traceback.print_exc()
+            logger.exception("Exception during handling message")
+            return False
 
-        finally:
-            return True
+#        finally:
+#            return True
 
     def activate_switch(self):
         switch_id = self.payload['switch_id']
@@ -132,31 +137,25 @@ class MessageItem(object):
 
         logger.info('Switch %s creation request: timestamp=%s',
                     switch_id, self.timestamp)
-
-        switch = graph.find_one('switch',
-                                property_key='name',
-                                property_value='{}'.format(switch_id))
-        if not switch:
-            new_switch = Node("switch",
-                              name="{}".format(switch_id),
-                              state="active",
-                              address=self.payload['address'],
-                              hostname=self.payload['hostname'],
-                              description=self.payload['description'],
-                              controller=self.payload['controller'])
-            graph.create(new_switch)
-            logger.info('Adding switch: %s', switch_id)
-            return True
-        else:
-            graph.merge(switch)
-            switch['state'] = "active"
-            switch['address'] = self.payload['address']
-            switch['hostname'] = self.payload['hostname']
-            switch['description'] = self.payload['description']
-            switch['controller'] = self.payload['controller']
-            switch.push()
-            logger.info('Activating switch: %s', switch_id)
-            return True
+        query = (
+            "MERGE (a:switch{{name:'{}'}}) "
+            "SET "
+            "a.name='{}', "
+            "a.address='{}', "
+            "a.hostname='{}', "
+            "a.description='{}', "
+            "a.controller='{}', "
+            "a.state = 'active' "
+        ).format(
+            switch_id, switch_id,
+            self.payload['address'],
+            self.payload['hostname'],
+            self.payload['description'],
+            self.payload['controller']
+        )
+        graph.run(query)
+        logger.info("Successfully created switch %s", switch_id)
+        return True
 
     def deactivate_switch(self):
         switch_id = self.payload['switch_id']
@@ -286,6 +285,16 @@ class MessageItem(object):
         return self.delete_isl(switch_id, port_id)
 
     def create_isl(self):
+        """
+        Two parts to creating an ISL:
+        (1) create the relationship itself
+        (2) add any link properties, if they exist.
+
+        NB: The query used for (2) is the same as in the TER
+        TODO: either share the same query as library in python, or handle in java
+
+        :return: success or failure (boolean)
+        """
         path = self.payload['path']
         latency = int(self.payload['latency_ns'])
         a_switch = path[0]['switch_id']
@@ -294,20 +303,6 @@ class MessageItem(object):
         b_port = int(path[1]['port_no'])
         speed = int(self.payload['speed'])
         available_bandwidth = int(self.payload['available_bandwidth'])
-
-        a_switch_node = graph.find_one('switch',
-                                       property_key='name',
-                                       property_value='{}'.format(a_switch))
-        if not a_switch_node:
-            logger.error('Isl source was not found: %s', a_switch_node)
-            return False
-
-        b_switch_node = graph.find_one('switch',
-                                       property_key='name',
-                                       property_value='{}'.format(b_switch))
-        if not b_switch_node:
-            logger.error('Isl destination was not found: %s', b_switch_node)
-            return False
 
         try:
             logger.info('ISL %s_%d create or update request: timestamp=%s',
@@ -318,9 +313,12 @@ class MessageItem(object):
             # create the relationship if it doesn't exist, or update it if it does
             #
             isl_create_or_update = (
-                "MATCH "
-                "(src:switch {{name:'{}'}}), "
+                "MERGE "
+                "(src:switch {{name:'{}'}}) "
+                "ON CREATE SET src.state = 'inactive' "
+                "MERGE "
                 "(dst:switch {{name:'{}'}}) "
+                "ON CREATE SET dst.state = 'inactive' "
                 "MERGE "
                 "(src)-[i:isl {{"
                 "src_switch: '{}', src_port: {}, "
@@ -332,8 +330,8 @@ class MessageItem(object):
                 "i.available_bandwidth = {}, "
                 "i.status = 'active' "
             ).format(
-                a_switch_node['name'],
-                b_switch_node['name'],
+                a_switch,
+                b_switch,
                 a_switch, a_port,
                 b_switch, b_port,
                 latency,
@@ -343,12 +341,31 @@ class MessageItem(object):
 
             graph.run(isl_create_or_update)
 
-            logger.info('ISL between %s and %s updated', a_switch_node['name'], b_switch_node['name'])
+            #
+            # Now handle the second part .. pull properties from link_props if they exist
+            #
+
+            src_sw, src_pt, dst_sw, dst_pt = a_switch, a_port, b_switch, b_port # use same names as TER code
+            query = 'MATCH (src:switch)-[i:isl]->(dst:switch) '
+            query += ' WHERE i.src_switch = "%s" ' \
+                     ' AND i.src_port = %s ' \
+                     ' AND i.dst_switch = "%s" ' \
+                     ' AND i.dst_port = %s ' % (src_sw, src_pt, dst_sw, dst_pt)
+            query += ' MATCH (lp:link_props) '
+            query += ' WHERE lp.src_switch = "%s" ' \
+                     ' AND lp.src_port = %s ' \
+                     ' AND lp.dst_switch = "%s" ' \
+                     ' AND lp.dst_port = %s ' % (src_sw, src_pt, dst_sw, dst_pt)
+            query += ' SET i += lp '
+
+            graph.run(query)
+
+            logger.info('ISL between %s and %s updated', a_switch, b_switch)
 
         except Exception as e:
             logger.exception('ISL between %s and %s creation error: %s',
-                             a_switch_node['name'], b_switch_node['name'],
-                             e.message)
+                             a_switch, b_switch, e.message)
+            return False
 
         return True
 
