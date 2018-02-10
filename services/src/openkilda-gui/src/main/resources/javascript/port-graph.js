@@ -24,7 +24,7 @@ $(function() {
 		$("#datetimepicker7,#datetimepicker8,#downsampling,#menulist,#autoreload").on("change",function() {
 			getGraphData();
 		});
-	});
+});
 	
 /**
  * Execute this function when page is loaded or when user is directed to this
@@ -33,6 +33,9 @@ $(function() {
 $(document).ready(function() {
 
 	$.datetimepicker.setLocale('en');
+	$('#datetimepicker7').datetimepicker({
+		  format:'Y/m/d h:i:s',
+	});
 	var date = new Date()
 	var yesterday = new Date(date.getTime());
 	yesterday.setDate(date.getDate() - 1);
@@ -40,22 +43,23 @@ $(document).ready(function() {
 	var EndDate = moment(date).format("YYYY/MM/DD HH:mm:ss");	
 	var convertedStartDate = moment(YesterDayDate).format("YYYY-MM-DD-HH:mm:ss");
 	var convertedEndDate = moment(EndDate).format("YYYY-MM-DD-HH:mm:ss");
-	var downsampling = "1s";
+	var selMetric="bits";
+	var downsampling = "10m";
 
 	$("#downsampling").val(downsampling)
 	$("#datetimepicker7").val(YesterDayDate);
 	$("#datetimepicker8").val(EndDate);
-	$('#datetimepicker7').datetimepicker({
-		  format:'Y/m/d h:i:s',
-	});
+
 	$('#datetimepicker8').datetimepicker({
 		  format:'Y/m/d h:i:s',
 	});
 
 	$('#datetimepicker_dark').datetimepicker({theme:'dark'})
-
-		loadGraph.loadGraphData("/stats/switchid/"+sourceswitch+"/portnumber/"+portNum+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/pen.switch.collisions","GET").then(function(response) {
-			showStatsGraph.showStatsData(response); 
+	
+		loadGraph.loadGraphData("/stats/switchid/"+sourceswitch+"/port/"+portNum+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric,"GET",selMetric).then(function(response) {
+			$("#wait1").css("display", "none");
+			$('body').css('pointer-events', 'all');
+			showStatsGraph.showStatsData(response,selMetric); 
 		})
 })
 
@@ -64,7 +68,8 @@ $(document).ready(function() {
  * html page.
  */
 function getGraphData() {
-			
+	
+	$('#wait1').show();	
 	var regex = new RegExp("^\\d+(s|h|m){1}$");
 	var currentDate = new Date();
 	var startDate = new Date($("#datetimepicker7").val());
@@ -74,21 +79,20 @@ function getGraphData() {
 	var downsampling = $("#downsampling").val();
 	var downsamplingValidated = regex.test(downsampling);
 	var selMetric=$("select.selectbox_menulist").val();
-	console.log(selMetric);
 	var valid=true;
 	
 	if(downsamplingValidated == false) {	
 		
-		common.infoMessage('Please enter correct downsampling','error');		
+		common.infoMessage('Please enter correct downsampling','error');
 		valid=false;
 		return
 	}
 	if(startDate.getTime() > currentDate.getTime()) {
-		common.infoMessage('startDate should not be greater than currentDate.','error');		
+		common.infoMessage('From Date should not be greater than currentDate.','error');		
 		valid=false;
 		return;
 	} else if(endDate.getTime() < startDate.getTime()){
-		common.infoMessage('endDate should not be less than startDate.','error');		
+		common.infoMessage('To Date should not be less than From Date.','error');		
 		valid=false;
 		return;
 	}
@@ -98,11 +102,26 @@ function getGraphData() {
 	var checkNo = $("#autoreload").val().match(numbers);
 	var checkbox =  $("#check").prop("checked");
 
-	if(valid) {
-
-	loadGraph.loadGraphData("/stats/switchid/"+sourceswitch+"/portnumber/"+portNum+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric,"GET").then(function(response) {
-		showStatsGraph.showStatsData(response); 
-	})
+	var test = true;	
+    autoVal.reloadValidation(function(valid){
+	  
+	  if(!valid) {
+		  test = false;		  
+		  return false;
+	  }
+  });
+  
+if(test) {
+	
+	$("#autoreloadId").removeClass("has-error")	
+    $(".error-message").html("");
+	
+  loadGraph.loadGraphData("/stats/switchid/"+sourceswitch+"/port/"+portNum+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric,"GET",selMetric).then(function(response) {
+		
+		$("#wait1").css("display", "none");
+		$('body').css('pointer-events', 'all');
+		showStatsGraph.showStatsData(response,selMetric); 
+})
 	
 			try {
 				clearInterval(graphInterval);
@@ -116,7 +135,6 @@ function getGraphData() {
 				}, 1000*autoreload);
 			}
 	}
-	
 }
 
 function callIntervalData(){
@@ -126,12 +144,13 @@ function callIntervalData(){
 	var convertedStartDate = moment(startDate).format("YYYY-MM-DD-HH:mm:ss");
 	var endDate = new Date()
 	var convertedEndDate = moment(endDate).format("YYYY-MM-DD-HH:mm:ss");
-	var downsampling =$("#downsampling").val()	
-
+	var downsampling =$("#downsampling").val();
 	var selMetric=$("select.selectbox_menulist").val();
 	
-	loadGraph.loadGraphData("/stats/switchid/"+sourceswitch+"/portnumber/"+portNum+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric,"GET").then(function(response) {
-		showStatsGraph.showStatsData(response); 
+	loadGraph.loadGraphData("/stats/switchid/"+sourceswitch+"/port/"+portNum+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric,"GET",selMetric).then(function(response) {
+		$("#wait1").css("display", "none");
+		$('body').css('pointer-events', 'all');
+		showStatsGraph.showStatsData(response,selMetric); 
 	})
 }
 

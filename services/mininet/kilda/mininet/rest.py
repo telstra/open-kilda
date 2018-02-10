@@ -14,6 +14,7 @@
 #   limitations under the License.
 #
 
+from __future__ import absolute_import
 
 from bottle import get, post, request, run, Bottle, response, request, install
 from mininet.net import Mininet

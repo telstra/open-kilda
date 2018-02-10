@@ -15,71 +15,26 @@
 
 package org.openkilda.floodlight.kafka;
 
-import static org.openkilda.messaging.Utils.MAPPER;
+import org.openkilda.messaging.Topic;
 
-import com.google.common.annotations.VisibleForTesting;
-import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.openkilda.floodlight.pathverification.IPathVerificationService;
-import org.openkilda.floodlight.switchmanager.ISwitchManager;
-import org.openkilda.floodlight.switchmanager.MeterPool;
-import org.openkilda.floodlight.switchmanager.SwitchEventCollector;
-import org.openkilda.messaging.Destination;
-import org.openkilda.messaging.Topic;
-import org.openkilda.messaging.command.CommandData;
-import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
-import org.openkilda.messaging.command.discovery.DiscoverPathCommandData;
-import org.openkilda.messaging.command.discovery.NetworkCommandData;
-import org.openkilda.messaging.command.flow.InstallEgressFlow;
-import org.openkilda.messaging.command.flow.InstallIngressFlow;
-import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
-import org.openkilda.messaging.command.flow.InstallTransitFlow;
-import org.openkilda.messaging.command.flow.RemoveFlow;
-import org.openkilda.messaging.error.ErrorData;
-import org.openkilda.messaging.error.ErrorMessage;
-import org.openkilda.messaging.error.ErrorType;
-import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.discovery.NetworkInfoData;
-import org.openkilda.messaging.info.event.PortChangeType;
-import org.openkilda.messaging.info.event.PortInfoData;
-import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.messaging.info.event.SwitchState;
-import org.openkilda.messaging.model.ImmutablePair;
-import org.openkilda.messaging.payload.flow.OutputVlanType;
-import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.OFPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
 import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.stream.Collectors;
 
 public class KafkaMessageCollector implements IFloodlightModule {
+    private static int EXEC_POOL_SIZE = 10;
+
     private static final Logger logger = LoggerFactory.getLogger(KafkaMessageCollector.class);
     private static final String INPUT_TOPIC = Topic.SPEAKER;
-    private static final String OUTPUT_FLOW_TOPIC = Topic.FLOW;
-    private static final String OUTPUT_DISCO_TOPIC = Topic.TOPO_DISCO;
-    private final MeterPool meterPool = new MeterPool();
-    private Properties kafkaProps;
-    private IPathVerificationService pathVerificationService;
-    private KafkaMessageProducer kafkaProducer;
-    private ISwitchManager switchManager;
-    private String zookeeperHosts;
 
     /**
      * IFloodLightModule Methods
@@ -96,404 +51,32 @@ public class KafkaMessageCollector implements IFloodlightModule {
 
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
-        Collection<Class<? extends IFloodlightService>> services = new ArrayList<>(2);
-        services.add(IPathVerificationService.class);
-        services.add(ISwitchManager.class);
+        Collection<Class<? extends IFloodlightService>> services = new ArrayList<>();
+        ConsumerContext.fillDependencies(services);
         return services;
     }
 
     @Override
-    public void init(FloodlightModuleContext context) throws FloodlightModuleException {
-        pathVerificationService = context.getServiceImpl(IPathVerificationService.class);
-        switchManager = context.getServiceImpl(ISwitchManager.class);
-        kafkaProducer = context.getServiceImpl(KafkaMessageProducer.class);
-        Map<String, String> configParameters = context.getConfigParams(this);
-        kafkaProps = new Properties();
-        kafkaProps.put("bootstrap.servers", configParameters.get("bootstrap-servers"));
-        kafkaProps.put("group.id", "kilda-message-collector");
-        kafkaProps.put("enable.auto.commit", "true");
-        //kafkaProps.put("auto.commit.interval.ms", "1000");
-        kafkaProps.put("session.timeout.ms", "30000");
-        kafkaProps.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-        kafkaProps.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-        zookeeperHosts = configParameters.get("zookeeper-hosts");
-    }
+    public void init(FloodlightModuleContext context) throws FloodlightModuleException {}
 
     @Override
-    public void startUp(FloodlightModuleContext floodlightModuleContext) throws FloodlightModuleException {
+    public void startUp(FloodlightModuleContext moduleContext) throws FloodlightModuleException {
+        ConsumerContext context = new ConsumerContext(moduleContext, this);
+        RecordHandler.Factory handlerFactory = new RecordHandler.Factory(context);
+
         logger.info("Starting {}", this.getClass().getCanonicalName());
         try {
-            ExecutorService parseRecordExecutor = Executors.newFixedThreadPool(10);
-            ExecutorService consumerExecutor = Executors.newSingleThreadExecutor();
-            consumerExecutor.execute(new Consumer(
-                    Collections.singletonList(INPUT_TOPIC), kafkaProps, parseRecordExecutor));
+            ExecutorService parseRecordExecutor = Executors.newFixedThreadPool(EXEC_POOL_SIZE);
+
+            Consumer consumer;
+            if (! "YES".equals(context.configLookup("testing-mode"))) {
+                consumer = new Consumer(context, parseRecordExecutor, handlerFactory, INPUT_TOPIC);
+            } else {
+                consumer = new TestAwareConsumer(context, parseRecordExecutor, handlerFactory, INPUT_TOPIC);
+            }
+            Executors.newSingleThreadExecutor().execute(consumer);
         } catch (Exception exception) {
             logger.error("error", exception);
         }
-    }
-
-    class ParseRecord implements Runnable {
-        final ConsumerRecord record;
-
-        public ParseRecord(ConsumerRecord record) {
-            this.record = record;
-        }
-
-        private void doControllerMsg(CommandMessage message) {
-            logger.debug("\n\nreceived message: {}", message);
-            try {
-                CommandData data = message.getData();
-                if (data instanceof DiscoverIslCommandData) {
-                    doDiscoverIslCommand(data);
-                } else if (data instanceof DiscoverPathCommandData) {
-                    doDiscoverPathCommand(data);
-                } else if (data instanceof InstallIngressFlow) {
-                    doInstallIngressFlow(message);
-                } else if (data instanceof InstallEgressFlow) {
-                    doInstallEgressFlow(message);
-                } else if (data instanceof InstallTransitFlow) {
-                    doInstallTransitFlow(message);
-                } else if (data instanceof InstallOneSwitchFlow) {
-                    doInstallOneSwitchFlow(message);
-                } else if (data instanceof RemoveFlow) {
-                    doDeleteFlow(message);
-                } else if (data instanceof NetworkCommandData) {
-                    doNetworkDump(message);
-                } else {
-                    logger.error("unknown data type: {}", data.toString());
-                }
-            } catch (Exception e) {
-                logger.error("ParseRecord.doControllerMsg Exception: {}", e);
-            }
-        }
-
-        private void doDiscoverIslCommand(CommandData data) {
-            DiscoverIslCommandData command = (DiscoverIslCommandData) data;
-            logger.debug("sending discover ISL to {}", command);
-
-            String switchId = command.getSwitchId();
-            boolean result = pathVerificationService.sendDiscoveryMessage(
-                    DatapathId.of(switchId), OFPort.of(command.getPortNo()));
-
-            if (result) {
-                logger.debug("packet_out was sent to {}", switchId);
-            } else {
-                logger.warn("packet_out was not sent to {}-{}", switchId, command.getPortNo());
-            }
-        }
-
-        private void doDiscoverPathCommand(CommandData data) {
-            DiscoverPathCommandData command = (DiscoverPathCommandData) data;
-            logger.warn("NOT IMPLEMENTED: sending discover Path to {}", command);
-        }
-
-        /**
-         * Installs ingress flow on the switch.
-         *
-         * @param message command message for flow installation
-         */
-        private void doInstallIngressFlow(final CommandMessage message) {
-            InstallIngressFlow command = (InstallIngressFlow) message.getData();
-            logger.debug("Creating an ingress flow: {}", command);
-
-            int meterId = meterPool.allocate(command.getSwitchId(), command.getId());
-
-            ImmutablePair<Long, Boolean> meterInstalled = switchManager.installMeter(
-                    DatapathId.of(command.getSwitchId()),
-                    command.getBandwidth(),
-                    1024,
-                    meterId);
-
-            if (!meterInstalled.getRight()) {
-                ErrorMessage error = new ErrorMessage(
-                        new ErrorData(ErrorType.CREATION_FAILURE, "Could not install meter", command.getId()),
-                        System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM_TRANSACTION);
-                kafkaProducer.postMessage(OUTPUT_FLOW_TOPIC, error);
-            }
-
-            ImmutablePair<Long, Boolean> flowInstalled = switchManager.installIngressFlow(
-                    DatapathId.of(command.getSwitchId()),
-                    command.getId(),
-                    command.getCookie(),
-                    command.getInputPort(),
-                    command.getOutputPort(),
-                    command.getInputVlanId(),
-                    command.getTransitVlanId(),
-                    command.getOutputVlanType(),
-                    meterId);
-
-            if (!flowInstalled.getRight()) {
-                ErrorMessage error = new ErrorMessage(
-                        new ErrorData(ErrorType.CREATION_FAILURE, "Could not install ingress flow", command.getId()),
-                        System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM_TRANSACTION);
-                kafkaProducer.postMessage(OUTPUT_FLOW_TOPIC, error);
-            } else {
-                message.setDestination(Destination.WFM_TRANSACTION);
-                kafkaProducer.postMessage(OUTPUT_FLOW_TOPIC, message);
-            }
-        }
-
-        /**
-         * Installs egress flow on the switch.
-         *
-         * @param message command message for flow installation
-         */
-        private void doInstallEgressFlow(final CommandMessage message) {
-            InstallEgressFlow command = (InstallEgressFlow) message.getData();
-            logger.debug("Creating an egress flow: {}", command);
-
-            ImmutablePair<Long, Boolean> flowInstalled = switchManager.installEgressFlow(
-                    DatapathId.of(command.getSwitchId()),
-                    command.getId(),
-                    command.getCookie(),
-                    command.getInputPort(),
-                    command.getOutputPort(),
-                    command.getTransitVlanId(),
-                    command.getOutputVlanId(),
-                    command.getOutputVlanType());
-
-            if (!flowInstalled.getRight()) {
-                ErrorMessage error = new ErrorMessage(
-                        new ErrorData(ErrorType.CREATION_FAILURE, "Could not install egress flow", command.getId()),
-                        System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM_TRANSACTION);
-                kafkaProducer.postMessage(OUTPUT_FLOW_TOPIC, error);
-            } else {
-                message.setDestination(Destination.WFM_TRANSACTION);
-                kafkaProducer.postMessage(OUTPUT_FLOW_TOPIC, message);
-            }
-        }
-
-        /**
-         * Installs transit flow on the switch.
-         *
-         * @param message command message for flow installation
-         */
-        private void doInstallTransitFlow(final CommandMessage message) {
-            InstallTransitFlow command = (InstallTransitFlow) message.getData();
-            logger.debug("Creating a transit flow: {}", command);
-
-            ImmutablePair<Long, Boolean> flowInstalled = switchManager.installTransitFlow(
-                    DatapathId.of(command.getSwitchId()),
-                    command.getId(),
-                    command.getCookie(),
-                    command.getInputPort(),
-                    command.getOutputPort(),
-                    command.getTransitVlanId());
-
-            if (!flowInstalled.getRight()) {
-                ErrorMessage error = new ErrorMessage(
-                        new ErrorData(ErrorType.CREATION_FAILURE, "Could not install transit flow", command.getId()),
-                        System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM_TRANSACTION);
-                kafkaProducer.postMessage(OUTPUT_FLOW_TOPIC, error);
-            } else {
-                message.setDestination(Destination.WFM_TRANSACTION);
-                kafkaProducer.postMessage(OUTPUT_FLOW_TOPIC, message);
-            }
-        }
-
-        /**
-         * Installs flow through one switch.
-         *
-         * @param message command message for flow installation
-         */
-        private void doInstallOneSwitchFlow(final CommandMessage message) {
-            InstallOneSwitchFlow command = (InstallOneSwitchFlow) message.getData();
-            logger.debug("creating a flow through one switch: {}", command);
-
-            int meterId = meterPool.allocate(command.getSwitchId(), command.getId());
-
-            ImmutablePair<Long, Boolean> meterInstalled = switchManager.installMeter(
-                    DatapathId.of(command.getSwitchId()),
-                    command.getBandwidth(),
-                    1024,
-                    meterId);
-
-            if (!meterInstalled.getRight()) {
-                ErrorMessage error = new ErrorMessage(
-                        new ErrorData(ErrorType.CREATION_FAILURE, "Could not install meter", command.getId()),
-                        System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM_TRANSACTION);
-                kafkaProducer.postMessage(OUTPUT_FLOW_TOPIC, error);
-            }
-
-            OutputVlanType directOutputVlanType = command.getOutputVlanType();
-            ImmutablePair<Long, Boolean> forwardFlowInstalled = switchManager.installOneSwitchFlow(
-                    DatapathId.of(command.getSwitchId()),
-                    command.getId(),
-                    command.getCookie(),
-                    command.getInputPort(),
-                    command.getOutputPort(),
-                    command.getInputVlanId(),
-                    command.getOutputVlanId(),
-                    directOutputVlanType,
-                    meterId);
-
-            if (!forwardFlowInstalled.getRight()) {
-                ErrorMessage error = new ErrorMessage(
-                        new ErrorData(ErrorType.CREATION_FAILURE, "Could not install flow", command.getId()),
-                        System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM_TRANSACTION);
-                kafkaProducer.postMessage(OUTPUT_FLOW_TOPIC, error);
-            } else {
-                message.setDestination(Destination.WFM_TRANSACTION);
-                kafkaProducer.postMessage(OUTPUT_FLOW_TOPIC, message);
-            }
-        }
-
-        /**
-         * Removes flow.
-         *
-         * @param message command message for flow installation
-         */
-        private void doDeleteFlow(final CommandMessage message) {
-            RemoveFlow command = (RemoveFlow) message.getData();
-            logger.debug("deleting a flow: {}", command);
-
-            DatapathId dpid = DatapathId.of(command.getSwitchId());
-            ImmutablePair<Long, Boolean> flowDeleted = switchManager.deleteFlow(
-                    dpid, command.getId(), command.getCookie());
-
-            if (!flowDeleted.getRight()) {
-                ErrorMessage error = new ErrorMessage(
-                        new ErrorData(ErrorType.DELETION_FAILURE, "Could not delete flow", command.getId()),
-                        System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM_TRANSACTION);
-                kafkaProducer.postMessage(OUTPUT_FLOW_TOPIC, error);
-            } else {
-                message.setDestination(Destination.WFM_TRANSACTION);
-                kafkaProducer.postMessage(OUTPUT_FLOW_TOPIC, message);
-            }
-
-            Integer meterId = meterPool.deallocate(command.getSwitchId(), command.getId());
-
-            if (flowDeleted.getRight() && meterId != null) {
-                ImmutablePair<Long, Boolean> meterDeleted = switchManager.deleteMeter(dpid, meterId);
-                if (!meterDeleted.getRight()) {
-                    ErrorMessage error = new ErrorMessage(
-                            new ErrorData(ErrorType.DELETION_FAILURE, "Could not delete meter", command.getId()),
-                            System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM_TRANSACTION);
-                    kafkaProducer.postMessage(OUTPUT_FLOW_TOPIC, error);
-                }
-            }
-        }
-
-        /**
-         * Create network dump for OFELinkBolt
-         *
-         * @param message NetworkCommandData
-         */
-        private void doNetworkDump(final CommandMessage message) {
-            logger.info("Create network dump");
-            NetworkCommandData command = (NetworkCommandData) message.getData();
-
-            Map<DatapathId, IOFSwitch> allSwitchMap = switchManager.getAllSwitchMap();
-
-            Set<SwitchInfoData> switchesInfoData = allSwitchMap.values().stream().map(
-                    KafkaMessageCollector.this::buildSwitchInfoData).collect(Collectors.toSet());
-
-            Set<PortInfoData> portsInfoData = allSwitchMap.values().stream().flatMap(sw ->
-                    sw.getEnabledPorts().stream().map( port ->
-                            new PortInfoData(sw.getId().toString(), port.getPortNo().getPortNumber(), null,
-                            PortChangeType.UP)
-                        ).collect(Collectors.toSet()).stream())
-                    .collect(Collectors.toSet());
-
-            NetworkInfoData dump = new NetworkInfoData(
-                    command.getRequester(),
-                    switchesInfoData,
-                    portsInfoData,
-                    Collections.emptySet(),
-                    Collections.emptySet());
-
-            InfoMessage infoMessage = new InfoMessage(dump, System.currentTimeMillis(),
-                    message.getCorrelationId());
-
-            kafkaProducer.postMessage(OUTPUT_DISCO_TOPIC, infoMessage);
-        }
-
-        private void parseRecord(ConsumerRecord record) {
-            try {
-                if (record.value() instanceof String) {
-                    String value = (String) record.value();
-                    // TODO: Prior to Message changes, this MAPPER would read Message ..
-                    //          but, changed to BaseMessage and got an error wrt "timestamp" ..
-                    //          so, need to experiment with why CommandMessage can't be read as
-                    //          a BaseMessage
-                    CommandMessage message = MAPPER.readValue(value, CommandMessage.class);
-                    doControllerMsg((CommandMessage) message);
-                } else {
-                    logger.error("{} not of type String", record.value());
-                }
-            } catch (Exception exception) {
-                logger.error("error parsing record={}", record.value(), exception);
-            }
-        }
-
-        @Override
-        public void run() {
-            parseRecord(record);
-        }
-    }
-
-    class Consumer implements Runnable {
-        final List<String> topics;
-        final Properties kafkaProps;
-        final ExecutorService parseRecordExecutor;
-
-        public Consumer(List<String> topics, Properties kafkaProps, ExecutorService parseRecordExecutor) {
-            this.topics = topics;
-            this.kafkaProps = kafkaProps;
-            this.parseRecordExecutor = parseRecordExecutor;
-        }
-
-        @Override
-        public void run() {
-            while (true) {
-                /*
-                 * Ensure we try to keep processing messages. It is possible that the consumer needs
-                 * to be re-created, either due to internal error, or if it fails to poll within the
-                 * max.poll.interval.ms seconds.
-                 *
-                 * From the Kafka source code, here are the default values for the following fields:
-                 *  - max.poll.interval.ms = 300000 (ie 300 seconds)
-                 *  - max.poll.records = 500 (must be able to process about 2 records per second
-                 */
-                KafkaConsumer<String, String> consumer = null;
-                try {
-                    consumer = new KafkaConsumer<>(kafkaProps);
-                    consumer.subscribe(topics);
-
-                    while (true) {
-                        ConsumerRecords<String, String> records = consumer.poll(100);
-                        if (records.count() > 0)
-                            logger.debug("Received ConsumerRecords: {} messages", records.count());
-                        for (ConsumerRecord<String, String> record : records) {
-                            logger.trace("received message: {} - {}", record.offset(), record.value());
-                            parseRecordExecutor.execute(new ParseRecord(record));
-                        }
-                    }
-                } catch (Exception e) {
-                    /*
-                     * Just log the exception, and start processing again with a new consumer
-                     */
-                    logger.error("Exception received during main kafka consumer loop: {}", e);
-                    if (consumer != null) {
-                        consumer.close(); // we'll create a new one
-                    }
-                }
-            }
-        }
-    }
-
-    @VisibleForTesting
-    public void processTestControllerMsg(CommandMessage message)
-    {
-        ParseRecord parse = new ParseRecord(null);
-        parse.doControllerMsg(message);
-    }
-
-    // I placed that code here for simplify mocking in tests
-    SwitchInfoData buildSwitchInfoData(IOFSwitch sw)
-    {
-        // I don't know is that correct
-        SwitchState state = sw.isActive() ? SwitchState.ACTIVATED : SwitchState.ADDED;
-        return SwitchEventCollector.buildSwitchInfoData(sw, state);
     }
 }

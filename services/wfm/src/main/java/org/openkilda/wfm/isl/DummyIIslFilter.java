@@ -1,5 +1,7 @@
 package org.openkilda.wfm.isl;
 
+import org.openkilda.messaging.model.DiscoveryNode;
+
 import java.util.HashSet;
 import java.util.Set;
 

@@ -1,21 +1,46 @@
-package org.openkilda.wfm.isl;
+package org.openkilda.messaging.model;
+
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 import java.io.Serializable;
 import java.util.Objects;
 
+@JsonSerialize
+@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class DiscoveryNode implements Serializable {
 
     /** Never stop checking for an ISL */
     public final static int FORLORN_NEVER = -1;
+
+    @JsonProperty("switch_id")
     private final String switchId;
+
+    @JsonProperty("port_id")
     private final String portId;
+
     /** How many attempts have we made .. will fail after X attempts and no response */
+    @JsonProperty("attempts")
     private int attempts;
+
+    @JsonProperty("time_counter")
     private int timeCounter;
+
+    @JsonProperty("check_interval")
     private int checkInterval;
+
     /** Only increases if we get a response **/
+    @JsonProperty("consecutive_failure")
     private int consecutiveFailure;
+
+    @JsonProperty("consecutive_success")
     private int consecutiveSuccess;
+
+    @JsonProperty("forlorn_threshold")
     private int forlornThreshold;
     /**
      * We'll use this flag to identify ports that have successfully found an ISL.
@@ -33,6 +58,8 @@ public class DiscoveryNode implements Serializable {
      * To be clear, this class isn't where the business logic / policy goes; it is just the
      * holder of information.
      */
+
+    @JsonProperty("found_isl")
     private boolean foundIsl;
 
     /**
@@ -50,6 +77,29 @@ public class DiscoveryNode implements Serializable {
         this.consecutiveSuccess = 0;
         this.foundIsl = false;
     }
+
+    @JsonCreator
+    public DiscoveryNode(@JsonProperty("switch_id") final String switchId,
+            @JsonProperty("port_id") final String portId,
+            @JsonProperty("attempts") final int attempts,
+            @JsonProperty("time_counter") final int timeCounter,
+            @JsonProperty("check_interval") final int checkInterval,
+            @JsonProperty("consecutive_failure") final int consecutiveFailure,
+            @JsonProperty("consecutive_success") final int consecutiveSuccess,
+            @JsonProperty("forlorn_threshold") final int forlornThreshold,
+            @JsonProperty("found_isl") final boolean foundIsl) {
+
+        this.switchId = switchId;
+        this.portId = portId;
+        this.attempts = attempts;
+        this.timeCounter = timeCounter;
+        this.checkInterval = checkInterval;
+        this.forlornThreshold = forlornThreshold;
+        this.consecutiveFailure = consecutiveFailure;
+        this.consecutiveSuccess = consecutiveSuccess;
+        this.foundIsl = foundIsl;
+    }
+
 
     public void setFoundIsl(boolean foundIsl){
         this.foundIsl = foundIsl;

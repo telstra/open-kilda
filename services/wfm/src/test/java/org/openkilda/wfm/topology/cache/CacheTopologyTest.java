@@ -16,32 +16,42 @@
 package org.openkilda.wfm.topology.cache;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import edu.emory.mathcs.backport.java.util.Collections;
+import com.google.common.collect.ImmutableList;
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang.StringUtils;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.storm.Config;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.utils.Utils;
 import org.junit.AfterClass;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowRestoreRequest;
 import org.openkilda.messaging.ctrl.CtrlRequest;
 import org.openkilda.messaging.ctrl.CtrlResponse;
 import org.openkilda.messaging.ctrl.DumpStateResponseData;
 import org.openkilda.messaging.ctrl.RequestData;
 import org.openkilda.messaging.ctrl.ResponseData;
+import org.openkilda.messaging.ctrl.state.CacheBoltState;
+import org.openkilda.messaging.ctrl.state.NetworkDump;
+import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.NetworkInfoData;
+import org.openkilda.messaging.info.event.IslChangeType;
+import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.messaging.info.event.PathInfoData;
+import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.messaging.info.flow.FlowInfoData;
@@ -53,7 +63,9 @@ import org.openkilda.wfm.topology.TestKafkaConsumer;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -66,8 +78,8 @@ public class CacheTopologyTest extends AbstractStormTest {
     private static final SwitchInfoData sw = new SwitchInfoData("sw",
             SwitchState.ADDED, "127.0.0.1", "localhost", "test switch", "kilda");
     private static final ImmutablePair<Flow, Flow> firstFlow = new ImmutablePair<>(
-            new Flow(firstFlowId, 10000, "", "test-switch", 1, 2, "test-switch", 1, 2),
-            new Flow(firstFlowId, 10000, "", "test-switch", 1, 2, "test-switch", 1, 2));
+            new Flow(firstFlowId, 10000, "", sw.getSwitchId(), 1, 2, sw.getSwitchId(), 1, 2),
+            new Flow(firstFlowId, 10000, "", sw.getSwitchId(), 1, 2, sw.getSwitchId(), 1, 2));
     private static final ImmutablePair<Flow, Flow> secondFlow = new ImmutablePair<>(
             new Flow(secondFlowId, 10000, "", "test-switch", 1, 2, "test-switch", 1, 2),
             new Flow(secondFlowId, 10000, "", "test-switch", 1, 2, "test-switch", 1, 2));
@@ -111,11 +123,19 @@ public class CacheTopologyTest extends AbstractStormTest {
                 kafkaProperties(UUID.nameUUIDFromBytes(Destination.CTRL_CLIENT.toString().getBytes()).toString())
         );
         ctrlConsumer.start();
+    }
 
+    @Before
+    public void init() throws Exception {
+        sw.setState(SwitchState.ADDED);
+        flowConsumer.clear();
+        teConsumer.clear();
+        ctrlConsumer.clear();
+
+        sendClearState();
         waitDumpRequest();
         sendNetworkDump(dump);
     }
-
 
     @AfterClass
     public static void teardownOnce() throws Exception {
@@ -128,7 +148,7 @@ public class CacheTopologyTest extends AbstractStormTest {
     @Test
     public void cacheReceivesFlowTopologyUpdatesAndSendsToTopologyEngine() throws Exception {
         System.out.println("Flow Update Test");
-
+        teConsumer.clear();
         sendFlowUpdate(thirdFlow);
 
         ConsumerRecord<String, String> flow = teConsumer.pollMessage();
@@ -141,24 +161,6 @@ public class CacheTopologyTest extends AbstractStormTest {
         assertNotNull(infoData);
 
         assertEquals(thirdFlow, infoData.getPayload());
-    }
-
-    @Test
-    public void cacheReceivesWfmTopologyUpdatesAndSendsToTopologyEngine() throws Exception {
-        System.out.println("Network Update Test");
-
-        sendSwitchUpdate(sw);
-
-        ConsumerRecord<String, String> record = teConsumer.pollMessage();
-
-        assertNotNull(record);
-        assertNotNull(record.value());
-
-        InfoMessage infoMessage = objectMapper.readValue(record.value(), InfoMessage.class);
-        SwitchInfoData data = (SwitchInfoData) infoMessage.getData();
-        assertNotNull(data);
-
-        assertEquals(sw, data);
     }
 
     @Test
@@ -193,23 +195,20 @@ public class CacheTopologyTest extends AbstractStormTest {
         waitDumpRequest();
 
         // Send switchUpdate info to not initialized bolt
-        sendSwitchUpdate(sw);
+        sendData(sw);
 
         // Bolt must fail that tuple
-        ConsumerRecord<String, String> record = teConsumer.pollMessage();
-        assertNull(record);
+        sendNetworkDumpRequest();
+        NetworkDump networkDump = getNetworkDump(ctrlConsumer.pollMessage());
+        assertTrue(CollectionUtils.isEmpty(networkDump.getSwitches()));
 
         // Init bolt with dump from TE
         sendNetworkDump(dump);
 
         // Check if SwitchInfoData is ok
-        record = teConsumer.pollMessage();
-        assertNotNull(record);
-        assertNotNull(record.value());
-        InfoMessage infoMessage = objectMapper.readValue(record.value(), InfoMessage.class);
-        SwitchInfoData data = (SwitchInfoData) infoMessage.getData();
-        assertNotNull(data);
-        assertEquals(sw, data);
+        sendNetworkDumpRequest();
+        networkDump = getNetworkDump(ctrlConsumer.pollMessage());
+        assertFalse(CollectionUtils.isEmpty(networkDump.getSwitches()));
 
         Set<String> flowIds = new HashSet<>(Arrays.asList(firstFlowId, secondFlowId));
         ConsumerRecord<String, String> firstRecord = flowConsumer.pollMessage();
@@ -230,7 +229,6 @@ public class CacheTopologyTest extends AbstractStormTest {
     }
 
     @Test
-    @Ignore // TODO: ignoring on 2018.01.04 - failing in GCP but not Mac - needs troubleshooting
     public void ctrlListHandler() throws Exception {
         CtrlRequest request = new CtrlRequest(
                 "cachetopology/*", new RequestData("list"), 1, "list-correlation-id", Destination.WFM_CTRL);
@@ -251,7 +249,6 @@ public class CacheTopologyTest extends AbstractStormTest {
     }
 
     @Test
-    @Ignore // TODO: ignoring on 2018.01.04 - failing in GCP but not Mac - needs troubleshooting
     public void ctrlDumpHandler() throws Exception {
         CtrlRequest request = new CtrlRequest(
                 "cachetopology/*", new RequestData("dump"), 1, "dump-correlation-id", Destination.WFM_CTRL);
@@ -273,7 +270,6 @@ public class CacheTopologyTest extends AbstractStormTest {
     }
 
     @Test
-    @Ignore // TODO: ignoring on 2018.01.04 - failing in GCP but not Mac - needs troubleshooting
     public void ctrlSpecificRoute() throws Exception {
         CtrlRequest request = new CtrlRequest(
                 "cachetopology/cache", new RequestData("dump"), 1, "route-correlation-id", Destination.WFM_CTRL);
@@ -289,29 +285,87 @@ public class CacheTopologyTest extends AbstractStormTest {
         assertEquals(request.getCorrelationId(), response.getCorrelationId());
     }
 
-    private static void sendMessage(Object object, String topic) throws IOException {
-        String request = objectMapper.writeValueAsString(object);
+    @Test
+    public void flowShouldBeReroutedWhenSwitchGoesDown() throws Exception {
+        sendData(sw);
+        firstFlow.getLeft().setFlowPath(new PathInfoData(0L, Collections.emptyList()));
+        firstFlow.getRight().setFlowPath(new PathInfoData(0L, Collections.emptyList()));
+        sendFlowUpdate(firstFlow);
+        secondFlow.getLeft().setFlowPath(new PathInfoData(0L, Collections.emptyList()));
+        secondFlow.getRight().setFlowPath(new PathInfoData(0L, Collections.emptyList()));
+        sendFlowUpdate(secondFlow);
+
+        flowConsumer.clear();
+        sw.setState(SwitchState.REMOVED);
+        sendData(sw);
+
+        ConsumerRecord<String, String> record = flowConsumer.pollMessage();
+        assertNotNull(record);
+        CommandMessage message = objectMapper.readValue(record.value(), CommandMessage.class);
+        assertNotNull(message);
+        FlowRerouteRequest command = (FlowRerouteRequest) message.getData();
+        assertTrue(command.getPayload().getFlowId().equals(firstFlowId));
+    }
+
+    @Test
+    public void flowShouldBeReroutedWhenIslDies() throws Exception {
+        final String destSwitchId = "destSwitch";
+        final String flowId = "flowId";
+        sendData(sw);
+
+        SwitchInfoData destSwitch = new SwitchInfoData(destSwitchId, SwitchState.ACTIVATED, StringUtils.EMPTY,
+                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY);
+        sendData(destSwitch);
+
+        List<PathNode> path = ImmutableList.of(
+                new PathNode(sw.getSwitchId(), 0, 0),
+                new PathNode(destSwitch.getSwitchId(), 0, 1)
+        );
+        IslInfoData isl = new IslInfoData(0L, path, 0L, IslChangeType.DISCOVERED, 0L);
+        sendData(isl);
+
+        FlowInfoData flowData = buildFlowInfoData(flowId, sw.getSwitchId(), destSwitchId, path);
+        sendData(flowData);
+
+        //mark isl as failed
+        flowConsumer.clear();
+        isl.setState(IslChangeType.FAILED);
+        sendData(isl);
+
+        //we are expecting that flow should be rerouted
+        ConsumerRecord<String, String> record = flowConsumer.pollMessage();
+        assertNotNull(record);
+        CommandMessage message = objectMapper.readValue(record.value(), CommandMessage.class);
+        assertNotNull(message);
+        FlowRerouteRequest command = (FlowRerouteRequest) message.getData();
+        assertTrue(command.getPayload().getFlowId().equals(flowId));
+    }
+
+    private static <T extends Message> void sendMessage(T message, String topic) throws IOException {
+        String request = objectMapper.writeValueAsString(message);
         kProducer.pushMessage(topic, request);
     }
 
     private static void sendNetworkDump(NetworkInfoData data) throws IOException {
         System.out.println("Topology-Engine: Send Network Dump");
-        InfoMessage info = new InfoMessage(data, 0, DEFAULT_CORRELATION_ID, Destination.WFM_CACHE);
+        InfoMessage info = new InfoMessage(data, 0, UUID.randomUUID().toString(), Destination.WFM_CACHE);
         sendMessage(info, topology.getConfig().getKafkaTopoCacheTopic());
     }
 
-    private static void sendSwitchUpdate(SwitchInfoData sw) throws IOException {
-        System.out.println("Wfm Topology: Send Switch Add Request");
-        sendMessage(sw, topology.getConfig().getKafkaTopoCacheTopic());
+    private static <T extends InfoData> void sendData(T infoData) throws IOException {
+        InfoMessage info = new InfoMessage(infoData, 0, UUID.randomUUID().toString(), Destination.WFM_CACHE);
+        sendMessage(info, topology.getConfig().getKafkaTopoCacheTopic());
     }
 
     private static void sendFlowUpdate(ImmutablePair<Flow, Flow> flow) throws IOException {
         System.out.println("Flow Topology: Send Flow Creation Request");
+        String correlationId = UUID.randomUUID().toString();
         FlowInfoData data = new FlowInfoData(flow.getLeft().getFlowId(),
-                flow, FlowOperation.CREATE, DEFAULT_CORRELATION_ID);
+                flow, FlowOperation.CREATE, correlationId);
         // TODO: as part of getting rid of OutputTopic, used TopoDiscoTopic. This feels wrong for
         // Flows.
-        sendMessage(data, topology.getConfig().getKafkaTopoCacheTopic());
+        InfoMessage message = new InfoMessage(data, System.currentTimeMillis(), correlationId);
+        sendMessage(message, topology.getConfig().getKafkaTopoCacheTopic());
     }
 
     private static void sendClearState() throws IOException, InterruptedException {
@@ -319,6 +373,32 @@ public class CacheTopologyTest extends AbstractStormTest {
                 "cachetopology/cache", new RequestData("clearState"), 1, "route-correlation-id",
                 Destination.WFM_CTRL);
         sendMessage(request, topology.getConfig().getKafkaCtrlTopic());
+    }
+
+    private static void sendNetworkDumpRequest() throws IOException, InterruptedException {
+        CtrlRequest request = new CtrlRequest("cachetopology/cache", new RequestData("dump"),
+                System.currentTimeMillis(), UUID.randomUUID().toString(), Destination.WFM_CTRL);
+        sendMessage(request, topology.getConfig().getKafkaCtrlTopic());
+    }
+
+    private NetworkDump getNetworkDump(ConsumerRecord<String, String> raw) throws IOException {
+        Message responseGeneric = objectMapper.readValue(raw.value(), Message.class);
+        CtrlResponse response = (CtrlResponse) responseGeneric;
+        DumpStateResponseData data = (DumpStateResponseData) response.getData();
+        CacheBoltState cacheState = (CacheBoltState) data.getState();
+        return cacheState.getNetwork();
+    }
+
+    private FlowInfoData buildFlowInfoData(String flowId, String srcSwitch, String dstSwitch, List<PathNode> path) {
+        Flow flow = new Flow();
+        flow.setFlowId(flowId);
+        flow.setSourceSwitch(srcSwitch);
+        flow.setDestinationSwitch(dstSwitch);
+
+        PathInfoData pathInfoData = new PathInfoData(0L, path);
+        flow.setFlowPath(pathInfoData);
+        ImmutablePair<Flow, Flow> immutablePair = new ImmutablePair<>(flow, flow);
+        return new FlowInfoData(flowId, immutablePair, FlowOperation.CREATE, UUID.randomUUID().toString());
     }
 
     private static void waitDumpRequest() throws InterruptedException {

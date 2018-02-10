@@ -1,6 +1,8 @@
 #!/bin/bash
 
 service openvswitch-switch start
-/app/mininet_rest.py &
-/app/flow_tool.py &
+
+kilda-mininet-rest &
+kilda-mininet-flow-tool &
+
 sleep infinity
