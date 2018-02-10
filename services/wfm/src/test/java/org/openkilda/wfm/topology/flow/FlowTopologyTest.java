@@ -22,7 +22,6 @@ import static org.junit.Assert.assertTrue;
 
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
-import org.openkilda.messaging.Topic;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.FlowCreateRequest;
 import org.openkilda.messaging.command.flow.FlowDeleteRequest;
@@ -57,6 +56,7 @@ import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
 import org.openkilda.wfm.AbstractStormTest;
 import org.openkilda.wfm.topology.TestKafkaConsumer;
+import org.openkilda.wfm.topology.TopologyConfig;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -69,7 +69,6 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
-import org.openkilda.wfm.topology.TopologyConfig;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -91,7 +90,7 @@ public class FlowTopologyTest extends AbstractStormTest {
     public static void setupOnce() throws Exception {
         AbstractStormTest.setupOnce();
 
-        flowTopology = new FlowTopology(makeLaunchEnvironment(), new PathComputerMock());
+        flowTopology = new FlowTopology(makeLaunchEnvironment(), new PathComputerAuth());
         topologyConfig = flowTopology.getConfig();
 
         StormTopology stormTopology = flowTopology.createTopology();
