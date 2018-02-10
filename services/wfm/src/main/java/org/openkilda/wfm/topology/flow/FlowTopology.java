@@ -15,16 +15,15 @@
 
 package org.openkilda.wfm.topology.flow;
 
-import org.apache.storm.topology.BoltDeclarer;
 import org.openkilda.messaging.ServiceType;
 import org.openkilda.messaging.Utils;
-import org.openkilda.pce.provider.NeoDriver;
-import org.openkilda.pce.provider.PathComputer;
+import org.openkilda.pce.provider.Auth;
+import org.openkilda.pce.provider.AuthNeo4j;
 import org.openkilda.wfm.ConfigurationException;
 import org.openkilda.wfm.CtrlBoltRef;
+import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.StreamNameCollisionException;
 import org.openkilda.wfm.topology.AbstractTopology;
-import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.topology.flow.bolts.CrudBolt;
 import org.openkilda.wfm.topology.flow.bolts.ErrorBolt;
 import org.openkilda.wfm.topology.flow.bolts.NorthboundReplyBolt;
@@ -33,13 +32,15 @@ import org.openkilda.wfm.topology.flow.bolts.SplitterBolt;
 import org.openkilda.wfm.topology.flow.bolts.TopologyEngineBolt;
 import org.openkilda.wfm.topology.flow.bolts.TransactionBolt;
 
-import org.slf4j.LoggerFactory;
-import org.slf4j.Logger;
+import org.apache.storm.generated.ComponentObject;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.KafkaSpout;
 import org.apache.storm.kafka.bolt.KafkaBolt;
+import org.apache.storm.topology.BoltDeclarer;
 import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Fields;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -61,11 +62,11 @@ public class FlowTopology extends AbstractTopology {
 
     private static final Logger logger = LoggerFactory.getLogger(FlowTopology.class);
 
-    private final PathComputer pathComputer;
+    private final Auth pathComputerAuth;
 
     public FlowTopology(LaunchEnvironment env) throws ConfigurationException {
         super(env);
-        pathComputer = new NeoDriver(config.getNeo4jHost(), config.getNeo4jLogin(), config.getNeo4jPassword());
+        pathComputerAuth = new AuthNeo4j(config.getNeo4jHost(), config.getNeo4jLogin(), config.getNeo4jPassword());
 
         logger.debug("Topology built {}: zookeeper={}, kafka={}, parallelism={}, workers={}" +
                 ", neo4j_url{}, neo4j_user{}, neo4j_pswd{}",
@@ -73,9 +74,9 @@ public class FlowTopology extends AbstractTopology {
                 config.getWorkers(), config.getNeo4jHost(), config.getNeo4jLogin(), config.getNeo4jPassword());
     }
 
-    public FlowTopology(LaunchEnvironment env, PathComputer pathComputer) throws ConfigurationException {
+    public FlowTopology(LaunchEnvironment env, Auth pathComputerAuth) throws ConfigurationException {
         super(env);
-        this.pathComputer = pathComputer;
+        this.pathComputerAuth = pathComputerAuth;
 
         logger.debug("Topology built {}: zookeeper={}, kafka={}, parallelism={}, workers={}",
                 getTopologyName(), config.getZookeeperHosts(), config.getKafkaHosts(), config.getParallelism(),
@@ -110,7 +111,9 @@ public class FlowTopology extends AbstractTopology {
          * Bolt handles flow CRUD operations.
          * It groups requests by flow-id.
          */
-        CrudBolt crudBolt = new CrudBolt(pathComputer);
+        CrudBolt crudBolt = new CrudBolt(pathComputerAuth);
+        ComponentObject.serialized_java(org.apache.storm.utils.Utils.javaSerialize(pathComputerAuth));
+
         boltSetup = builder.setBolt(ComponentType.CRUD_BOLT.toString(), crudBolt, parallelism)
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.CREATE.toString(), fieldFlowId)
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.READ.toString(), fieldFlowId)

@@ -17,7 +17,7 @@ package org.openkilda;
 
 import static com.google.common.base.MoreObjects.firstNonNull;
 
-import org.openkilda.pce.provider.NeoDriver;
+import org.openkilda.pce.provider.AuthNeo4j;
 import org.openkilda.pce.provider.PathComputer;
 
 public final class DefaultParameters {
@@ -34,7 +34,7 @@ public final class DefaultParameters {
     public static final String topologyEndpoint = String.format("http://%s:%s", host, topologyPort);
     public static final String northboundEndpoint = String.format("http://%s:%s", host, northboundPort);
     public static final String opentsdbEndpoint = String.format("http://%s:%s", host, opentsdbPort);
-    public static final PathComputer pathComputer = new NeoDriver(host, "neo4j", "temppass");
+    public static final PathComputer pathComputer = new AuthNeo4j(host, "neo4j", "temppass").connect();
     public static final String FLOODLIGHT_ENDPOINT = String.format("http://%s:%s", host, FLOODLIGHT_PORT);
 
     static {
