@@ -2,12 +2,7 @@ package org.openkilda.wfm.topology.stats;
 
 import org.junit.*;
 import org.junit.rules.ExpectedException;
-import org.neo4j.graphdb.*;
-import org.neo4j.graphdb.factory.GraphDatabaseFactory;
-import org.neo4j.graphdb.factory.GraphDatabaseSettings;
-import org.openkilda.wfm.topology.stats.FlowResult;
 
-import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
