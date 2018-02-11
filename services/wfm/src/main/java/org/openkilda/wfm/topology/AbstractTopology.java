@@ -15,6 +15,22 @@
 
 package org.openkilda.wfm.topology;
 
+import edu.emory.mathcs.backport.java.util.Collections;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.storm.Config;
+import org.apache.storm.LocalCluster;
+import org.apache.storm.StormSubmitter;
+import org.apache.storm.kafka.bolt.KafkaBolt;
+import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
+import org.apache.storm.kafka.bolt.selector.DefaultTopicSelector;
+import org.apache.storm.kafka.spout.KafkaSpout;
+import org.apache.storm.kafka.spout.KafkaSpoutConfig;
+import org.apache.storm.thrift.TException;
+import org.apache.storm.topology.BoltDeclarer;
+import org.apache.storm.topology.TopologyBuilder;
+import org.apache.storm.tuple.Fields;
+import org.kohsuke.args4j.CmdLineException;
 import org.openkilda.messaging.Topic;
 import org.openkilda.wfm.ConfigurationException;
 import org.openkilda.wfm.CtrlBoltRef;
@@ -24,31 +40,7 @@ import org.openkilda.wfm.PropertiesReader;
 import org.openkilda.wfm.StreamNameCollisionException;
 import org.openkilda.wfm.ctrl.RouteBolt;
 import org.openkilda.wfm.topology.utils.HealthCheckBolt;
-
-import kafka.admin.AdminUtils;
-import kafka.api.OffsetRequest;
-import kafka.utils.ZKStringSerializer$;
-import kafka.utils.ZkUtils;
-import org.I0Itec.zkclient.ZkClient;
-import org.I0Itec.zkclient.ZkConnection;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.storm.Config;
-import org.apache.storm.LocalCluster;
-import org.apache.storm.StormSubmitter;
-import org.apache.storm.kafka.SpoutConfig;
-import org.apache.storm.kafka.StringScheme;
-import org.apache.storm.kafka.ZkHosts;
-import org.apache.storm.kafka.bolt.KafkaBolt;
-import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
-import org.apache.storm.kafka.bolt.selector.DefaultTopicSelector;
-import org.apache.storm.kafka.spout.KafkaSpout;
-import org.apache.storm.spout.SchemeAsMultiScheme;
-import org.apache.storm.thrift.TException;
-import org.apache.storm.topology.BoltDeclarer;
-import org.apache.storm.topology.TopologyBuilder;
-import org.apache.storm.tuple.Fields;
-import org.kohsuke.args4j.CmdLineException;
+import org.openkilda.wfm.topology.utils.KafkaRecordTranslator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -189,17 +181,7 @@ public abstract class AbstractTopology implements Topology {
      * @param topic Kafka topic
      */
     protected void checkAndCreateTopic(final String topic) {
-        String hosts = config.getZookeeperHosts();
-        ZkClient zkClient = new ZkClient(hosts, config.getZookeeperSessionTimeout(),
-                config.getZookeeperConnectTimeout(), ZKStringSerializer$.MODULE$);
-        ZkUtils zkUtils = new ZkUtils(zkClient, new ZkConnection(hosts), false);
-
-        // FIXME(dbogun): race condition
-        if (!AdminUtils.topicExists(zkUtils, topic)) {
-            AdminUtils.createTopic(zkUtils, topic, config.getKafkaPartitionsDefault(),
-                    config.getKafkaReplicationDefault(), AdminUtils.createTopic$default$5(),
-                    AdminUtils.createTopic$default$6());
-        }
+        // FIXME(nmarchenko): do we need this? need check
     }
 
     /**
@@ -208,17 +190,15 @@ public abstract class AbstractTopology implements Topology {
      * @param topic Kafka topic
      * @return {@link KafkaSpout}
      */
-    protected org.apache.storm.kafka.KafkaSpout createKafkaSpout(String topic, String spoutId) {
-        String zkRoot = String.format("/%s/%s", getTopologyName(), topic);
-        ZkHosts hosts = new ZkHosts(config.getZookeeperHosts());
+    protected KafkaSpout createKafkaSpout(String topic, String spoutId) {
 
-        SpoutConfig cfg = new SpoutConfig(hosts, topic, zkRoot, spoutId);
-        cfg.startOffsetTime = OffsetRequest.EarliestTime();
-        cfg.scheme = new SchemeAsMultiScheme(new StringScheme());
-        cfg.bufferSizeBytes = 1024 * 1024 * 4;
-        cfg.fetchSizeBytes = 1024 * 1024 * 4;
+        KafkaSpoutConfig spoutConfig = KafkaSpoutConfig.builder(config.getKafkaHosts(),
+                Collections.singletonList(topic))
+                .setGroupId(String.format("%s__%s", getTopologyName(), spoutId))
+                .setRecordTranslator(new KafkaRecordTranslator())
+                .build();
 
-        return new org.apache.storm.kafka.KafkaSpout(cfg);
+        return new KafkaSpout<>(spoutConfig);
     }
 
     /**
@@ -238,7 +218,7 @@ public abstract class AbstractTopology implements Topology {
             throws StreamNameCollisionException {
         checkAndCreateTopic(config.getKafkaCtrlTopic());
 
-        org.apache.storm.kafka.KafkaSpout kafkaSpout;
+        KafkaSpout kafkaSpout;
         kafkaSpout = createKafkaSpout(config.getKafkaCtrlTopic(), SPOUT_ID_CTRL);
         builder.setSpout(SPOUT_ID_CTRL, kafkaSpout);
 
@@ -265,7 +245,7 @@ public abstract class AbstractTopology implements Topology {
      */
     protected void createHealthCheckHandler(TopologyBuilder builder, String prefix) {
         checkAndCreateTopic(Topic.HEALTH_CHECK);
-        org.apache.storm.kafka.KafkaSpout healthCheckKafkaSpout = createKafkaSpout(Topic.HEALTH_CHECK, prefix);
+        KafkaSpout healthCheckKafkaSpout = createKafkaSpout(Topic.HEALTH_CHECK, prefix);
         builder.setSpout(prefix + "HealthCheckKafkaSpout", healthCheckKafkaSpout, 1);
         HealthCheckBolt healthCheckBolt = new HealthCheckBolt(prefix);
         builder.setBolt(prefix + "HealthCheckBolt", healthCheckBolt, 1)
