@@ -54,6 +54,10 @@ public class FlowMetricGenBolt extends MetricGenBolt {
     private CypherExecutor cypher;
     private final String neoUri;
 
+
+    public FlowMetricGenBolt() {
+        neoUri = "bolt://localhost:7687";
+    }
     /**
      * Instantiates a new Flow metric gen bolt.
      *
@@ -181,7 +185,7 @@ public class FlowMetricGenBolt extends MetricGenBolt {
     }
 
     @SuppressWarnings("unchecked")
-    private FlowResult getFlowFromCache(Long cookie) throws Exception {
+    protected FlowResult getFlowFromCache(Long cookie) throws Exception {
         FlowResult flow = cookieMap.get(cookie);
         if (flow == null) {
             LOGGER.info("{} not found, fetching.", cookie);
@@ -196,7 +200,7 @@ public class FlowMetricGenBolt extends MetricGenBolt {
         return flow;
     }
 
-    private Map getFlowWithCookie(Long cookie) {
+    protected Map getFlowWithCookie(Long cookie) {
         if (cookie == null) return Collections.emptyMap();
         return Iterators.singleOrNull(cypher.query(
                 "MATCH (a:switch)-[r:flow {cookie:{cookie}}]->(b:switch) RETURN r",
