@@ -16,8 +16,8 @@
 package org.openkilda.wfm.topology.cache;
 
 import org.apache.storm.generated.StormTopology;
-import org.apache.storm.kafka.KafkaSpout;
 import org.apache.storm.kafka.bolt.KafkaBolt;
+import org.apache.storm.kafka.spout.KafkaSpout;
 import org.apache.storm.topology.BoltDeclarer;
 import org.apache.storm.topology.TopologyBuilder;
 import org.openkilda.messaging.ServiceType;
