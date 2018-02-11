@@ -14,18 +14,15 @@ import java.util.Map;
 import static org.junit.Assert.*;
 
 public class FlowResultTest {
-    public static final long LEGACY_FORWARD_COOKIE = 0x10400000005d803L;
-    public static final long LEGACY_REVERSE_COOKIE = 0x18400000005d803L;
-    public static final long FORWARD_COOKIE = 0x4000000000000001L;
-    public static final long REVERSE_COOKIE = 0x2000000000000001L;
-    public static final long BAD_COOKIE =     0x235789abcd432425L;
-    public static final String FLOW_ID = "f3459085345454";
-    public static final String SRC_SWITCH = "de:ad:be:ef:00:00:00:02";
-    public static final String DST_SWITCH = "de:ad:be:ef:00:00:00:04";
+    private static final long LEGACY_FORWARD_COOKIE = 0x10400000005d803L;
+    private static final long LEGACY_REVERSE_COOKIE = 0x18400000005d803L;
+    private static final long FORWARD_COOKIE = 0x4000000000000001L;
+    private static final long REVERSE_COOKIE = 0x2000000000000001L;
+    private static final long BAD_COOKIE =     0x235789abcd432425L;
+    private static final String FLOW_ID = "f3459085345454";
+    private static final String SRC_SWITCH = "de:ad:be:ef:00:00:00:02";
+    private static final String DST_SWITCH = "de:ad:be:ef:00:00:00:04";
 
-    private static String neo4jHost = "";
-    private static String neo4jUser = "";
-    private static String neo4jPasswd = "";
     private FlowResult flowResult;
     private static Map<String, Object> queryMap;
 
