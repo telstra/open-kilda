@@ -29,8 +29,14 @@ import org.apache.storm.testing.FixedTuple;
 import org.apache.storm.testing.MockedSources;
 import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Values;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.Ignore;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.factory.GraphDatabaseFactory;
+import org.neo4j.graphdb.factory.GraphDatabaseSettings;
+import org.neo4j.kernel.configuration.BoltConnector;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.Datapoint;
@@ -45,18 +51,52 @@ import org.openkilda.messaging.info.stats.PortStatsEntry;
 import org.openkilda.messaging.info.stats.PortStatsReply;
 import org.openkilda.wfm.StableAbstractStormTest;
 import org.openkilda.wfm.topology.TestingKafkaBolt;
+import org.openkilda.wfm.topology.stats.metrics.FlowMetricGenBolt;
 
+import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.IntStream;
 
 public class StatsTopologyTest extends StableAbstractStormTest {
 
     private static final long timestamp = System.currentTimeMillis();
+    private static GraphDatabaseService graphDb;
+    private static File dbFile;
+
+    @BeforeClass
+    public static void oneTimeSetUp() {
+        dbFile = new File("/tmp/dbFile");
+        BoltConnector bolt = new BoltConnector("0");
+        BoltConnector httpBolt = new BoltConnector("1");
+
+        graphDb = new GraphDatabaseFactory()
+                .newEmbeddedDatabaseBuilder(dbFile)
+                .setConfig(GraphDatabaseSettings.store_internal_log_level, "DEBUG")
+//                .setConfig(bolt.enabled, "true")
+//                .setConfig(bolt.type, GraphDatabaseSettings.Connector.ConnectorType.BOLT.toString())
+//                .setConfig(bolt.encryption_level, BoltConnector.EncryptionLevel.DISABLED.toString())
+//                .setConfig(bolt.listen_address, "127.0.0.1:7687")
+                .setConfig(httpBolt.enabled, "true")
+                .setConfig(httpBolt.type, "HTTP")
+                .setConfig(httpBolt.listen_address, "localhost:7474")
+                .newGraphDatabase();
+
+
+        try {
+            System.out.println("sleeping...");
+            Thread.sleep(100000000);
+        } catch (Exception e) {
+
+        }
+    }
+
+    @AfterClass
+    public static void oneTimeTearDown() {
+        graphDb.shutdown();
+        dbFile.delete();
+    }
+
 
     @Ignore
     @Test
@@ -204,6 +244,11 @@ public class StatsTopologyTest extends StableAbstractStormTest {
         @Override
         protected KafkaBolt createKafkaBolt(String topic) {
             return kafkaBolt;
+        }
+
+        @Override
+        protected FlowMetricGenBolt createFlowMetricsGenBolt(String host, String username, String password) {
+            return new FlowMetricGenBolt("localhost:7687", "admin", "admin");
         }
     }
 }

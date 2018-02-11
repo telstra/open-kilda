@@ -69,7 +69,7 @@ public class StatsTopology extends AbstractTopology {
                 .fieldsGrouping(statsOfsBolt, StatsStreamType.METER_CONFIG_STATS.toString(), fieldMessage);
         logger.debug("starting flow_stats_metric_gen");
         builder.setBolt(FLOW_STATS_METRIC_GEN.name(),
-                new FlowMetricGenBolt(config.getNeo4jHost(), config.getNeo4jLogin(), config.getNeo4jPassword()),
+                createFlowMetricsGenBolt(config.getNeo4jHost(), config.getNeo4jLogin(), config.getNeo4jPassword()),
                 parallelism)
                 .fieldsGrouping(statsOfsBolt, StatsStreamType.FLOW_STATS.toString(), fieldMessage);
 
@@ -83,6 +83,10 @@ public class StatsTopology extends AbstractTopology {
         createHealthCheckHandler(builder, ServiceType.STATS_TOPOLOGY.getId());
 
         return builder.createTopology();
+    }
+
+    protected FlowMetricGenBolt createFlowMetricsGenBolt(String host, String username, String password) {
+        return new FlowMetricGenBolt(host, username, password);
     }
 
     public static void main(String[] args) throws Exception {

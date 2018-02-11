@@ -26,9 +26,10 @@ public class FlowResult {
      * @param flow
      * @throws Exception
      */
-    public FlowResult(Map<String, Object> flow) throws Exception {
+    public FlowResult(Map<String, Object> flow) throws FlowCookieException {
         if (!flow.keySet().containsAll(requiredKeys)) {
-            throw new Exception("Map returned by GraphDB does not have all required fields for a flow.");
+            throw new FlowCookieException(
+                    "Map returned by GraphDB does not have all required fields for a flow.");
         }
 
         cookie = (long) flow.get("cookie");

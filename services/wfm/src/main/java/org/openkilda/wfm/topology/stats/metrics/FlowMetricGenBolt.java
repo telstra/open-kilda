@@ -21,12 +21,15 @@ import static org.openkilda.wfm.topology.AbstractTopology.MESSAGE_FIELD;
 
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
+import org.neo4j.driver.v1.exceptions.ClientException;
+import org.neo4j.driver.v1.exceptions.ServiceUnavailableException;
 import org.neo4j.helpers.collection.Iterators;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.FlowStatsData;
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
 import org.openkilda.messaging.info.stats.FlowStatsReply;
+import org.openkilda.wfm.topology.FlowCookieException;
 import org.openkilda.wfm.topology.stats.CypherExecutor;
 import org.openkilda.wfm.topology.stats.FlowResult;
 import org.openkilda.wfm.topology.stats.StatsComponentType;
@@ -67,8 +70,12 @@ public class FlowMetricGenBolt extends MetricGenBolt {
         this.collector = collector;
 
         // Create a hashmap of cookies to flows such that we can add the flowid to the tsdb stat
-        cypher = createCypherExecutor(neoUri);
-        warmCookieMap();
+        try {
+            cypher = createCypherExecutor(neoUri);
+            warmCookieMap();
+        } catch (ServiceUnavailableException | IllegalArgumentException e) {
+            LOGGER.error("Error connecting to nego4j", e);
+        }
     }
 
     @Override
@@ -93,43 +100,40 @@ public class FlowMetricGenBolt extends MetricGenBolt {
                     emit(entry, timestamp, switchId);
                 }
             }
-        } finally {
             collector.ack(input);
-        }
-    }
-
-    private void emit(FlowStatsEntry entry, long timestamp, String switchId) {
-        try {
-            FlowResult flow = getFlowFromCache(entry.getCookie());
-            Map<String, String> tags = new HashMap<>();
-            tags.put("switchid", switchId);
-            tags.put("cookie", String.valueOf(entry.getCookie()));
-            tags.put("tableid", String.valueOf(entry.getTableId()));
-            tags.put("flowid", flow.getFlowId());
-            collector.emit(tuple("pen.flow.raw.packets", timestamp, entry.getPacketCount(), tags));
-            collector.emit(tuple("pen.flow.raw.bytes", timestamp, entry.getByteCount(), tags));
-            collector.emit(tuple("pen.flow.raw.bits", timestamp, entry.getByteCount()*8, tags));
-
-            /**
-             * If this is the destination switch for the flow, then add to TSDB for pen.flow.* stats.  This is needed
-             * as there is needed to provide simple lookup of flow stats
-             **/
-            if (switchId.equals(flow.getDstSw().replaceAll(":", ""))) {
-                tags.remove("cookie");  //Doing this to prevent creation of yet another object
-                tags.remove("tableid");
-                tags.remove("switchid");
-                tags.put("direction", flow.getDirection());
-                collector.emit(tuple("pen.flow.packets", timestamp, entry.getPacketCount(), tags));
-                collector.emit(tuple("pen.flow.bytes", timestamp, entry.getByteCount(), tags));
-                collector.emit(tuple("pen.flow.bits", timestamp, entry.getByteCount()*8, tags));
-            }
-//        } catch (FlowCookieException e) {
-//            LOGGER.error("Error during cookie processing", e);
+        } catch (ServiceUnavailableException e) {
+            LOGGER.error("Error process: {}", input.toString(), e);
+            collector.fail(input); // If we can't connect to Neo then don't know if valid input
         } catch (Exception e) {
-            LOGGER.error("Error during serialization of datapoint", e);
+            collector.ack(input); // We tried, no need to try again
         }
     }
 
+    private void emit(FlowStatsEntry entry, long timestamp, String switchId) throws Exception {
+        FlowResult flow = getFlowFromCache(entry.getCookie());
+        Map<String, String> tags = new HashMap<>();
+        tags.put("switchid", switchId);
+        tags.put("cookie", String.valueOf(entry.getCookie()));
+        tags.put("tableid", String.valueOf(entry.getTableId()));
+        tags.put("flowid", flow.getFlowId());
+        collector.emit(tuple("pen.flow.raw.packets", timestamp, entry.getPacketCount(), tags));
+        collector.emit(tuple("pen.flow.raw.bytes", timestamp, entry.getByteCount(), tags));
+        collector.emit(tuple("pen.flow.raw.bits", timestamp, entry.getByteCount() * 8, tags));
+
+        /**
+         * If this is the destination switch for the flow, then add to TSDB for pen.flow.* stats.  This is needed
+         * as there is needed to provide simple lookup of flow stats
+         **/
+        if (switchId.equals(flow.getDstSw().replaceAll(":", ""))) {
+            tags.remove("cookie");  //Doing this to prevent creation of yet another object
+            tags.remove("tableid");
+            tags.remove("switchid");
+            tags.put("direction", flow.getDirection());
+            collector.emit(tuple("pen.flow.packets", timestamp, entry.getPacketCount(), tags));
+            collector.emit(tuple("pen.flow.bytes", timestamp, entry.getByteCount(), tags));
+            collector.emit(tuple("pen.flow.bits", timestamp, entry.getByteCount() * 8, tags));
+        }
+    }
 
 
     /**
@@ -140,7 +144,7 @@ public class FlowMetricGenBolt extends MetricGenBolt {
      */
     private CypherExecutor createCypherExecutor(String uri) {
         try {
-            String auth = new URL(uri.replace("bolt","http")).getUserInfo();
+            String auth = new URL(uri.replace("bolt", "http")).getUserInfo();
             if (auth != null) {
                 String[] parts = auth.split(":");
                 return new CypherExecutor(uri, parts[0], parts[1]);
@@ -156,16 +160,24 @@ public class FlowMetricGenBolt extends MetricGenBolt {
      */
     @SuppressWarnings("unchecked")
     private void warmCookieMap() {
-        getAllFlows().forEach(flow -> {
-            Map<String, Object> f = (Map<String, Object>) flow.get("r");
+        Iterator<Map<String, Object>> result;
+        try {
+            result = cypher.query(GET_ALL_FLOWS, null);
+        } catch (ClientException e) {
+            LOGGER.error("Error warming cookieMap", e);
+            return;
+        }
+        while (result.hasNext()) {
+            Map<String, Object> row = result.next();
+            FlowResult flow;
             try {
-                FlowResult flowResult = new FlowResult(f);
-                cookieMap.put(flowResult.getCookie(), flowResult);
-                LOGGER.debug("added entry to cookieMap: {}", flowResult.toString());
-            } catch (Exception e) {
-                LOGGER.error("error warming cache", e);
+                flow = new FlowResult(row);
+                cookieMap.put(flow.getCookie(), flow);
+                LOGGER.debug("added entry to cookieMap: {}", flow.toString());
+            } catch (FlowCookieException e) {
+                LOGGER.error("error processing cookie", e);
             }
-        });
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -173,16 +185,15 @@ public class FlowMetricGenBolt extends MetricGenBolt {
         FlowResult flow = cookieMap.get(cookie);
         if (flow == null) {
             LOGGER.info("{} not found, fetching.", cookie);
-            flow =new FlowResult((Map) getFlowWithCookie(cookie).get("r"));
+            try {
+                flow = new FlowResult((Map) getFlowWithCookie(cookie).get("r"));
+            } catch (ClientException e) {
+                LOGGER.error("error getting flow for {}", cookie);
+            }
             cookieMap.put(flow.getCookie(), flow);
             LOGGER.debug("added entry to cookieMap: {}", flow.toString());
         }
         return flow;
-    }
-
-    private Iterable<Map<String,Object>> getAllFlows() {
-        //TODO:  does this scale when have "lots" of flows?
-        return Iterators.asCollection(cypher.query(GET_ALL_FLOWS, null));
     }
 
     private Map getFlowWithCookie(Long cookie) {
