@@ -34,7 +34,7 @@ import org.openkilda.wfm.topology.flow.bolts.TransactionBolt;
 
 import org.apache.storm.generated.ComponentObject;
 import org.apache.storm.generated.StormTopology;
-import org.apache.storm.kafka.KafkaSpout;
+import org.apache.storm.kafka.spout.KafkaSpout;
 import org.apache.storm.kafka.bolt.KafkaBolt;
 import org.apache.storm.topology.BoltDeclarer;
 import org.apache.storm.topology.TopologyBuilder;
