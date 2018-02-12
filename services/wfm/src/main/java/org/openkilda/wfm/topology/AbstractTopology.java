@@ -15,7 +15,6 @@
 
 package org.openkilda.wfm.topology;
 
-import edu.emory.mathcs.backport.java.util.Collections;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.storm.Config;
@@ -44,6 +43,7 @@ import org.openkilda.wfm.topology.utils.KafkaRecordTranslator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 
@@ -195,7 +195,7 @@ public abstract class AbstractTopology implements Topology {
         KafkaSpoutConfig spoutConfig = KafkaSpoutConfig.builder(config.getKafkaHosts(),
                 Collections.singletonList(topic))
                 .setGroupId(String.format("%s__%s", getTopologyName(), spoutId))
-                .setRecordTranslator(new KafkaRecordTranslator())
+                .setRecordTranslator(new KafkaRecordTranslator<>())
                 .build();
 
         return new KafkaSpout<>(spoutConfig);
