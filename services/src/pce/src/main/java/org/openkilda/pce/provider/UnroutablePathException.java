@@ -1,27 +1,20 @@
 package org.openkilda.pce.provider;
 
+import org.openkilda.messaging.model.Flow;
+
 public class UnroutablePathException extends Exception {
-    private final String srcSwitch;
-    private final String dstSwitch;
-    private final int bandwidth;
+    private final Flow flow;
 
-    public UnroutablePathException(String srcSwitch, String dstSwitch, int bandwidth) {
-        super(String.format("Can't make flow from %s to %s (bandwidth=%d", srcSwitch, dstSwitch, bandwidth));
+    public UnroutablePathException(Flow flow) {
+        super(String.format(
+                "Can't make flow from %s to %s (bandwidth=%d%s)",
+                flow.getSourceSwitch(), flow.getDestinationSwitch(), flow.getBandwidth(),
+                flow.isIgnoreBandwidth() ? " ignored" : ""));
 
-        this.srcSwitch = srcSwitch;
-        this.dstSwitch = dstSwitch;
-        this.bandwidth = bandwidth;
+        this.flow = flow;
     }
 
-    public String getSrcSwitch() {
-        return srcSwitch;
-    }
-
-    public String getDstSwitch() {
-        return dstSwitch;
-    }
-
-    public int getBandwidth() {
-        return bandwidth;
+    public Flow getFlow() {
+        return flow;
     }
 }

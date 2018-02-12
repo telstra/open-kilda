@@ -32,6 +32,7 @@ import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.pce.provider.PathComputer;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -59,6 +60,8 @@ public class FlowUtils {
     private static final String auth = topologyUsername + ":" + topologyPassword;
     private static final String authHeaderValue = "Basic " + getEncoder().encodeToString(auth.getBytes());
     private static final String FEATURE_TIME = String.valueOf(System.currentTimeMillis());
+    private static final int WAIT_ATTEMPTS = 10;
+    private static final int WAIT_DELAY = 2;
 
     public static final Client clientFactory(){
         Client client = ClientBuilder.newClient(new ClientConfig()).register(JacksonFeature.class);
@@ -283,12 +286,69 @@ public class FlowUtils {
     }
 
     /**
+     * Poll flow status via getFlowStatus calls until it become equal to expected. Or until timeout.
+     *
+     * TODO: Why do we loop for 10 and sleep for 2? (ie why what for 20 seconds for flow state?)
+     *
+     * @return last result received from getFlowStatus (can be null)
+     */
+    public static FlowIdStatusPayload waitFlowStatus(String flowName, FlowState expected) throws InterruptedException {
+        FlowIdStatusPayload current = null;
+        for (int i = 0; i < WAIT_ATTEMPTS; i++) {
+            current = getFlowStatus(flowName);
+            if (current != null && expected.equals(current.getStatus())) {
+                break;
+            }
+            TimeUnit.SECONDS.sleep(WAIT_DELAY);
+        }
+        return current;
+    }
+
+    /**
+     * call doGetFlowStatusRequest until it got success codes 2xx. If it got not 2xx code and not 404 code it
+     * raise error. If it get 404 code it ends successfully.
+     *
+     * @param flowId
+     */
+    public static void waitFlowDeletion(String flowId) throws InterruptedException, FlowOperationException {
+        for (int attempt = 0; attempt < WAIT_ATTEMPTS; attempt += 1) {
+            Response response = doGetFlowStatusRequest(flowId);
+            int status = response.getStatus();
+
+            if (200 <= status && status < 300) {
+                TimeUnit.SECONDS.sleep(WAIT_DELAY);
+                continue;
+            }
+
+            if (status != 404) {
+                throw new FlowOperationException(
+                        response,
+                        String.format("Flow status request for flow %s ens with %d", flowId, status));
+            }
+
+            break;
+        }
+    }
+
+    /**
      * Gets flow status through Northbound service.
      *
      * @param flowId flow id
      * @return The JSON document of the specified flow status
      */
     public static FlowIdStatusPayload getFlowStatus(final String flowId) {
+        Response response = doGetFlowStatusRequest(flowId);
+
+        int responseCode = response.getStatus();
+        if (responseCode != 200) {
+            System.out.println(String.format("====> Error: Northbound Get Flow Status = %s",
+                    response.readEntity(MessageError.class)));
+            return null;
+        }
+        return response.readEntity(FlowIdStatusPayload.class);
+    }
+
+    private static Response doGetFlowStatusRequest(final String flowId) {
         System.out.println("\n==> Northbound Get Flow Status");
 
         long current = System.currentTimeMillis();
@@ -307,16 +367,10 @@ public class FlowUtils {
         System.out.println(String.format("===> Response = %s", response.toString()));
         System.out.println(String.format("===> Northbound Get Flow Status Time: %,.3f", getTimeDuration(current)));
 
-        int responseCode = response.getStatus();
-        if (responseCode == 200) {
-            FlowIdStatusPayload flowStatus = response.readEntity(FlowIdStatusPayload.class);
-            System.out.println(String.format("====> Northbound Get Flow Status = %s", flowStatus));
-            return flowStatus;
-        } else {
-            System.out.println(String.format("====> Error: Northbound Get Flow Status = %s",
-                    response.readEntity(MessageError.class)));
-            return null;
-        }
+        int status = response.getStatus();
+        System.out.println(String.format("====> Northbound Get Flow Status = %s", status));
+
+        return response;
     }
 
     /**

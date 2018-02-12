@@ -17,11 +17,8 @@ package org.openkilda.pce.provider;
 
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
-import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
-
-import com.google.common.graph.MutableNetwork;
 
 import java.io.Serializable;
 
@@ -56,14 +53,4 @@ public interface PathComputer extends Serializable {
      */
     ImmutablePair<PathInfoData, PathInfoData> getPath(Flow flow, Strategy strategy) throws UnroutablePathException;
 
-    /**
-     * Gets path between source and destination switch.
-     *
-     * @param source      source {@link SwitchInfoData} instance
-     * @param destination source {@link SwitchInfoData} instance
-     * @param bandwidth   available bandwidth
-     * @return {@link PathInfoData} instances
-     */
-    ImmutablePair<PathInfoData, PathInfoData> getPath(SwitchInfoData source, SwitchInfoData destination,
-                                                      int bandwidth, Strategy strategy) throws UnroutablePathException;
 }

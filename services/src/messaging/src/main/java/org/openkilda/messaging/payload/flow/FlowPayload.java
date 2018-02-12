@@ -71,6 +71,12 @@ public class FlowPayload implements Serializable {
     private int maximumBandwidth;
 
     /**
+     * If SET ignore bandwidth in path computation
+     */
+    @JsonProperty("ignore-bandwidth")
+    private boolean ignoreBandwidth = false;
+
+    /**
      * FlowPayload description.
      */
     @JsonProperty("description")
@@ -89,6 +95,7 @@ public class FlowPayload implements Serializable {
      * @param source           flow source
      * @param destination      flow destination
      * @param maximumBandwidth flow maximum bandwidth
+     * @param ignoreBandwidth  should ignore bandwidth in path computation
      * @param description      flow description
      * @param lastUpdated      flow last updated timestamp
      */
@@ -97,12 +104,14 @@ public class FlowPayload implements Serializable {
                        @JsonProperty("source") FlowEndpointPayload source,
                        @JsonProperty("destination") FlowEndpointPayload destination,
                        @JsonProperty("maximum-bandwidth") int maximumBandwidth,
+                       @JsonProperty("ignore-bandwidth") Boolean ignoreBandwidth,
                        @JsonProperty("description") String description,
                        @JsonProperty("last-updated") String lastUpdated) {
         setId(id);
         setSource(source);
         setDestination(destination);
         setMaximumBandwidth(maximumBandwidth);
+        setIgnoreBandwidth(ignoreBandwidth);
         setDescription(description);
         setLastUpdated(lastUpdated);
     }
@@ -191,6 +200,26 @@ public class FlowPayload implements Serializable {
             throw new IllegalArgumentException("need to set non negative bandwidth");
         }
         this.maximumBandwidth = maximumBandwidth;
+    }
+
+    /**
+     *
+     * @return ignore bandwidth flag
+     */
+    public boolean isIgnoreBandwidth() {
+        return ignoreBandwidth;
+    }
+
+    /**
+     * Sets ignore bandwidth flag
+     *
+     * @param ignoreBandwidth flag value
+     */
+    public void setIgnoreBandwidth(Boolean ignoreBandwidth) {
+        if (ignoreBandwidth == null) {
+            ignoreBandwidth = false;
+        }
+        this.ignoreBandwidth = ignoreBandwidth;
     }
 
     /**

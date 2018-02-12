@@ -1021,7 +1021,7 @@ public class FlowTopologyTest extends AbstractStormTest {
 
     private Flow createFlow(final String flowId) throws IOException {
         System.out.println("NORTHBOUND: Create flow");
-        Flow flowPayload = new Flow(flowId, 10000, "", "test-switch", 1, 2, "test-switch", 1, 2);
+        Flow flowPayload = new Flow(flowId, 10000, false, "", "test-switch", 1, 2, "test-switch", 1, 2);
         FlowCreateRequest commandData = new FlowCreateRequest(flowPayload);
         CommandMessage message = new CommandMessage(commandData, 0, "create-flow", Destination.WFM);
         //sendNorthboundMessage(message);
@@ -1031,7 +1031,7 @@ public class FlowTopologyTest extends AbstractStormTest {
 
     private Flow updateFlow(final String flowId) throws IOException {
         System.out.println("NORTHBOUND: Update flow");
-        Flow flowPayload = new Flow(flowId, 10000, "", "test-switch", 1, 2, "test-switch", 1, 2);
+        Flow flowPayload = new Flow(flowId, 10000, false, "", "test-switch", 1, 2, "test-switch", 1, 2);
         FlowUpdateRequest commandData = new FlowUpdateRequest(flowPayload);
         CommandMessage message = new CommandMessage(commandData, 0, "update-flow", Destination.WFM);
 //        sendNorthboundMessage(message);
@@ -1106,7 +1106,7 @@ public class FlowTopologyTest extends AbstractStormTest {
 
     private Flow getFlowCommand(final String flowId) throws IOException {
         System.out.println("TOPOLOGY: Get flow");
-        Flow flowPayload = new Flow(flowId, 10000, "", "test-switch", 1, 2, "test-switch", 1, 2);
+        Flow flowPayload = new Flow(flowId, 10000, false, "", "test-switch", 1, 2, "test-switch", 1, 2);
         FlowResponse infoData = new FlowResponse(flowPayload);
         InfoMessage infoMessage = new InfoMessage(infoData, 0, "get-flow", Destination.WFM);
         sendTopologyEngineMessage(infoMessage);
@@ -1115,7 +1115,7 @@ public class FlowTopologyTest extends AbstractStormTest {
 
     private List<Flow> dumpFlowCommand(final String flowId) throws IOException {
         System.out.println("TOPOLOGY: Get flows");
-        Flow flow = new Flow(flowId, 10000, "", "test-switch", 1, 2, "test-switch", 1, 2);
+        Flow flow = new Flow(flowId, 10000, false, "", "test-switch", 1, 2, "test-switch", 1, 2);
         List<Flow> payload = Collections.singletonList(flow);
         FlowsResponse infoData = new FlowsResponse(payload);
         InfoMessage infoMessage = new InfoMessage(infoData, 0, "dump-flows", Destination.WFM);
