@@ -476,7 +476,7 @@ def get_link_prop_keys(props):
     src_sw = props.get('src_switch','')
     src_pt = props.get('src_port','')
     dst_sw = props.get('dst_switch','')
-    dst_pt = props.get('dst_portt','')
+    dst_pt = props.get('dst_port','')
     success = (len(src_sw) > 0) and (len(src_pt) > 0) and (len(dst_sw) > 0) and (len(dst_pt) > 0)
     return success,src_sw,src_pt,dst_sw,dst_pt
 
