@@ -134,8 +134,6 @@ public class FlowTopologyTest extends AbstractStormTest {
         cacheConsumer.join();
         teResponseConsumer.wakeup();
         teResponseConsumer.join();
-        cluster.killTopology(FlowTopologyTest.class.getSimpleName());
-        Utils.sleep(4 * 1000);
         AbstractStormTest.teardownOnce();
     }
 

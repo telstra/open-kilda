@@ -41,12 +41,19 @@ public class TestKafkaConsumer extends Thread {
     private final KafkaConsumer<String, String> consumer;
     private final String topic;
     private final Destination destination;
+    private boolean checkDestination = true;
     private volatile BlockingQueue<ConsumerRecord<String, String>> records = new ArrayBlockingQueue<>(100);
+
 
     public TestKafkaConsumer(final String topic, final Destination destination, final Properties properties) {
         this.consumer = new KafkaConsumer<>(properties);
         this.topic = topic;
         this.destination = destination;
+    }
+
+    public TestKafkaConsumer(final String topic, final Properties properties) {
+        this(topic, null, properties);
+        checkDestination = false;
     }
 
     public void run() {
@@ -91,6 +98,10 @@ public class TestKafkaConsumer extends Thread {
     }
 
     private boolean checkDestination(final String recordValue) {
+
+        if (!checkDestination)
+            return true;
+
         boolean result = false;
         try {
             if (destination != null) {
