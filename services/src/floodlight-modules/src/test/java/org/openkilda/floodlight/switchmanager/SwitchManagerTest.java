@@ -274,7 +274,7 @@ public class SwitchManagerTest {
     }
 
     @Test
-    public void deleteMeter() {
+    public void deleteMeter() throws SwitchOperationException {
         final Capture<OFMeterMod> capture = prepareForMeterTest();
         switchManager.deleteMeter(dpid, meterId);
         final OFMeterMod meterMod = capture.getValue();
