@@ -3,25 +3,21 @@ package org.openkilda.northbound.service;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 /**
- * LinkPropsResult encapsulates the response from a call to set, or delete, link properties.
- * These calls work against the static link_props table, but are also propagated to any underlying
- * links. Only if the links exist (ie an ISL discovery has happened) will the properties be
- * propgated during the call to set / delete. Otherwise, the properties will propagate after an
- * ISL is dicovered.
+ * BatchResults encapsulates the response from a batch process - ie multiple operations.
+ *
+ * NB: This was copied from LinkPropsResult with no real changes .. drop LinkPropResults.
  */
 @JsonSerialize
-public class LinkPropsResult {
+public class BatchResults {
     private int failures;
     private int successes;
     private String[] messages;
 
-    // TODO: Drop this class in favor of BatchResults. It is identical.
-
-    public LinkPropsResult() {
+    public BatchResults() {
         this(0,0,null);
     }
 
-    public LinkPropsResult(int failures, int successes, String[] messages) {
+    public BatchResults(int failures, int successes, String[] messages) {
         this.failures = failures;
         this.successes = successes;
         if (messages != null)
@@ -41,5 +37,4 @@ public class LinkPropsResult {
     public String[] getMessages() {
         return messages;
     }
-
 }
