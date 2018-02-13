@@ -38,6 +38,7 @@ public final class Converter {
         return new Flow(
                 flowPayload.getId(),
                 flowPayload.getMaximumBandwidth(),
+                flowPayload.isIgnoreBandwidth(),
                 flowPayload.getDescription(),
                 flowPayload.getSource().getSwitchId(),
                 flowPayload.getSource().getPortId(),
@@ -65,6 +66,7 @@ public final class Converter {
                         flow.getDestinationPort(),
                         flow.getDestinationVlan()),
                 flow.getBandwidth(),
+                flow.isIgnoreBandwidth(),
                 flow.getDescription(),
                 flow.getLastUpdated());
     }

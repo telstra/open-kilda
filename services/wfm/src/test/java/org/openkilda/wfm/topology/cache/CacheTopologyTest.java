@@ -27,11 +27,9 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.storm.Config;
 import org.apache.storm.generated.StormTopology;
-import org.apache.storm.utils.Utils;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
@@ -78,17 +76,17 @@ public class CacheTopologyTest extends AbstractStormTest {
     private static final SwitchInfoData sw = new SwitchInfoData("sw",
             SwitchState.ADDED, "127.0.0.1", "localhost", "test switch", "kilda");
     private static final ImmutablePair<Flow, Flow> firstFlow = new ImmutablePair<>(
-            new Flow(firstFlowId, 10000, "", sw.getSwitchId(), 1, 2, sw.getSwitchId(), 1, 2),
-            new Flow(firstFlowId, 10000, "", sw.getSwitchId(), 1, 2, sw.getSwitchId(), 1, 2));
+            new Flow(firstFlowId, 10000, false, "", sw.getSwitchId(), 1, 2, sw.getSwitchId(), 1, 2),
+            new Flow(firstFlowId, 10000, false, "", sw.getSwitchId(), 1, 2, sw.getSwitchId(), 1, 2));
     private static final ImmutablePair<Flow, Flow> secondFlow = new ImmutablePair<>(
-            new Flow(secondFlowId, 10000, "", "test-switch", 1, 2, "test-switch", 1, 2),
-            new Flow(secondFlowId, 10000, "", "test-switch", 1, 2, "test-switch", 1, 2));
+            new Flow(secondFlowId, 10000, false, "", "test-switch", 1, 2, "test-switch", 1, 2),
+            new Flow(secondFlowId, 10000, false, "", "test-switch", 1, 2, "test-switch", 1, 2));
     private static final ImmutablePair<Flow, Flow> thirdFlow = new ImmutablePair<>(
-            new Flow(thirdFlowId, 10000, "", "test-switch", 1, 2, "test-switch", 1, 2),
-            new Flow(thirdFlowId, 10000, "", "test-switch", 1, 2, "test-switch", 1, 2));
+            new Flow(thirdFlowId, 10000, false, "", "test-switch", 1, 2, "test-switch", 1, 2),
+            new Flow(thirdFlowId, 10000, false, "", "test-switch", 1, 2, "test-switch", 1, 2));
     private static final Set<ImmutablePair<Flow, Flow>> flows = new HashSet<>();
     private static final NetworkInfoData dump = new NetworkInfoData(
-            "test", Collections.emptySet(), Collections.emptySet(), Collections.emptySet(), flows);
+            "test", Collections.singleton(sw), Collections.emptySet(), Collections.emptySet(), flows);
 
     private static TestKafkaConsumer teConsumer;
     private static TestKafkaConsumer flowConsumer;
@@ -139,8 +137,13 @@ public class CacheTopologyTest extends AbstractStormTest {
 
     @AfterClass
     public static void teardownOnce() throws Exception {
-        cluster.killTopology(CacheTopologyTest.class.getSimpleName());
-        Utils.sleep(4 * 1000);
+
+        flowConsumer.wakeup();
+        flowConsumer.join();
+        teConsumer.wakeup();
+        teConsumer.join();
+        ctrlConsumer.wakeup();
+        ctrlConsumer.join();
         AbstractStormTest.teardownOnce();
     }
 
