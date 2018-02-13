@@ -15,17 +15,18 @@
 
 package org.openkilda.wfm.topology.cache;
 
-import org.apache.storm.generated.StormTopology;
-import org.apache.storm.kafka.bolt.KafkaBolt;
-import org.apache.storm.kafka.spout.KafkaSpout;
-import org.apache.storm.topology.BoltDeclarer;
-import org.apache.storm.topology.TopologyBuilder;
 import org.openkilda.messaging.ServiceType;
 import org.openkilda.wfm.ConfigurationException;
 import org.openkilda.wfm.CtrlBoltRef;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.NameCollisionException;
 import org.openkilda.wfm.topology.AbstractTopology;
+
+import org.apache.storm.generated.StormTopology;
+import org.apache.storm.kafka.bolt.KafkaBolt;
+import org.apache.storm.kafka.spout.KafkaSpout;
+import org.apache.storm.topology.BoltDeclarer;
+import org.apache.storm.topology.TopologyBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -108,6 +109,7 @@ public class CacheTopology extends AbstractTopology {
         /*
          * Sends requests for ISL to OFE topology.
          */
+        // FIXME(surabjin): 2 kafka bold with same topic (see previous bolt)
         KafkaBolt oFEKafkaBolt = createKafkaBolt(config.getKafkaFlowTopic());
         builder.setBolt(BOLT_ID_OFE, oFEKafkaBolt, parallelism)
                 .shuffleGrouping(BOLT_ID_CACHE, StreamType.OFE.toString());

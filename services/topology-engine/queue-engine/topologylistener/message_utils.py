@@ -190,6 +190,7 @@ def send_install_commands(flow_rules, correlation_id):
     for flow_rule in flow_rules:
         send_to_topic(flow_rule, correlation_id, MT_COMMAND,
                       destination="CONTROLLER", topic=config.KAFKA_SPEAKER_TOPIC)
+        # FIXME(surabujin): WFM reroute this message into CONTROLLER
         send_to_topic(flow_rule, correlation_id, MT_COMMAND,
                       destination="WFM", topic=config.KAFKA_FLOW_TOPIC)
 

@@ -66,7 +66,7 @@ public class FlowCrudBasicRunTest {
         flowPayload = new FlowPayload(FlowUtils.getFlowName(flowId),
                 new FlowEndpointPayload(sourceSwitch, sourcePort, sourceVlan),
                 new FlowEndpointPayload(destinationSwitch, destinationPort, destinationVlan),
-                bandwidth, flowId, null);
+                bandwidth, false, flowId, null);
 
         FlowPayload response = FlowUtils.putFlow(flowPayload);
         assertNotNull(response);
@@ -82,7 +82,7 @@ public class FlowCrudBasicRunTest {
         flowPayload = new FlowPayload(FlowUtils.getFlowName(flowId),
                 new FlowEndpointPayload(sourceSwitch, sourcePort, sourceVlan),
                 new FlowEndpointPayload(destinationSwitch, destinationPort, destinationVlan),
-                bandwidth, flowId, null);
+                bandwidth, false, flowId, null);
 
         FlowPayload response = FlowUtils.putFlow(flowPayload);
 
@@ -93,7 +93,7 @@ public class FlowCrudBasicRunTest {
     public void checkFlowCreation(final String flowId, final String sourceSwitch, final int sourcePort,
                                   final int sourceVlan, final String destinationSwitch, final int destinationPort,
                                   final int destinationVlan, final int bandwidth) throws Exception {
-        Flow expectedFlow = new Flow(FlowUtils.getFlowName(flowId), bandwidth, 0, flowId, null, sourceSwitch,
+        Flow expectedFlow = new Flow(FlowUtils.getFlowName(flowId), bandwidth, false, 0, flowId, null, sourceSwitch,
                 destinationSwitch, sourcePort, destinationPort, sourceVlan, destinationVlan, 0, 0, null, null);
 
         List<Flow> flows = validateFlowStored(expectedFlow);
