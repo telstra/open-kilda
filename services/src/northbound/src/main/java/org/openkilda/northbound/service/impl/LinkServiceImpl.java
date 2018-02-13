@@ -41,9 +41,6 @@ public class LinkServiceImpl implements LinkService {
     private UriComponentsBuilder linkPropsBuilder;
     private HttpHeaders headers;
 
-    /**
-     * The kafka topic.
-     */
     @Value("${topology.engine.rest.endpoint}")
     private String topologyEngineRest;
 
@@ -112,7 +109,7 @@ public class LinkServiceImpl implements LinkService {
 
     protected LinkPropsResult doLinkProps(HttpMethod verb, List<LinkPropsDto> linkPropsList) {
         LOGGER.debug("{} link properties request received", verb);
-        LOGGER.debug("Size of list: {}", linkPropsList);
+        LOGGER.debug("Size of list: {}", linkPropsList.size());
         HttpEntity<List<LinkPropsDto>> entity = new HttpEntity<>(linkPropsList,headers);
         ResponseEntity<LinkPropsResult> response = restTemplate.exchange(linkPropsUrlBase,
                 verb, entity, LinkPropsResult.class);
