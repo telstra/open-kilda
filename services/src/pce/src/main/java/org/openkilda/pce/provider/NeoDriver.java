@@ -58,6 +58,26 @@ public class NeoDriver implements PathComputer {
                     "AND ALL(y in r WHERE y.available_bandwidth >= {bandwidth} AND y.status = 'active') " +
                     "RETURN p";
 
+//    MATCH (from:Kid), (to:Kid)
+//    CALL apoc.algo.dijkstra(from, to, 'CONNECTED_TO', 'distance') YIELD path AS path, weight AS weight
+//    RETURN path, weight
+
+    private static final String PATH_QUERY_FORMATTER_PATTERN_Dijkstra =
+                "MATCH (a:switch{name:{src_switch}}),(b:switch{name:{dst_switch}}), " +
+                                "CALL apoc.algo.dijkstra(from, to, 'CONNECTED_TO', 'distance') YIELD path AS path, weight AS weight " +
+                                "where ALL(x in nodes(p) WHERE x.state = 'active') " +
+                                "AND ALL(y in r WHERE y.available_bandwidth >= {bandwidth} AND y.status = 'active') " +
+                                "RETURN p";
+
+    private static final String PATH_QUERY_FORMATTER_PATTERN_Dijkstra_NO_BW =
+                "MATCH (a:switch{name:{src_switch}}),(b:switch{name:{dst_switch}}), " +
+                                "p = shortestPath((a)-[r:isl*..100]->(b)) " +
+                                "where ALL(x in nodes(p) WHERE x.state = 'active') " +
+                                "AND ALL(y in r WHERE y.available_bandwidth >= {bandwidth} AND y.status = 'active') " +
+                                "RETURN p";
+
+
+
     /**
      * {@link Driver} instance.
      */
