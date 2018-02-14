@@ -73,7 +73,7 @@ public class FlowPayload implements Serializable {
     /**
      * If SET ignore bandwidth in path computation
      */
-    @JsonProperty("ignore-bandwidth")
+    @JsonProperty("ignore_bandwidth")
     private boolean ignoreBandwidth = false;
 
     /**
@@ -104,7 +104,7 @@ public class FlowPayload implements Serializable {
                        @JsonProperty("source") FlowEndpointPayload source,
                        @JsonProperty("destination") FlowEndpointPayload destination,
                        @JsonProperty("maximum-bandwidth") int maximumBandwidth,
-                       @JsonProperty("ignore-bandwidth") Boolean ignoreBandwidth,
+                       @JsonProperty("ignore_bandwidth") Boolean ignoreBandwidth,
                        @JsonProperty("description") String description,
                        @JsonProperty("last-updated") String lastUpdated) {
         setId(id);

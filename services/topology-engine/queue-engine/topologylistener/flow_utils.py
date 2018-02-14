@@ -108,7 +108,7 @@ def remove_flow(flow, flow_path):
             "WHERE r.cookie = {} DELETE r"
     graph.run(query.format(flow['flowid'], int(flow['cookie']))).data()
 
-    if not flow['ignore-bandwidth'] and is_forward_cookie(flow['cookie']):
+    if not flow['ignore_bandwidth'] and is_forward_cookie(flow['cookie']):
             update_path_bandwidth(flow_path, -int(flow['bandwidth']))
 
 
@@ -123,6 +123,7 @@ def store_flow(flow):
              "cookie: {cookie}, "
              "meter_id: {meter_id}, "
              "bandwidth: {bandwidth}, "
+             "ignore_bandwidth: {ignore_bandwidth},"
              "src_port: {src_port}, "
              "dst_port: {dst_port}, "
              "src_switch: '{src_switch}', "
@@ -138,7 +139,7 @@ def store_flow(flow):
     graph.run(query.format(**flow_data))
 
     # the path is bidirectional .. only deduct bandwidth once (in forward direction)
-    if not flow['ignore-bandwidth'] and is_forward_cookie(flow_data['cookie']):
+    if not flow['ignore_bandwidth'] and is_forward_cookie(flow_data['cookie']):
         update_path_bandwidth(path, int(flow_data['bandwidth']))
 
 
