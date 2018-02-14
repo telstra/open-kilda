@@ -14,6 +14,27 @@
 #
 
 FROM kilda/base-ubuntu
-ADD ansible /ansible
-ADD app /app
-RUN ansible-playbook -s /ansible/deploy.yml
+
+# Add Tools
+ENV DEBIAN_FRONTEND noninteractive
+RUN apt-get update
+RUN apt-get install -y --no-install-recommends git ant maven rsync
+
+# Build Loxigen
+RUN git clone --recursive https://github.com/kilda/loxigen.git /app/loxigen
+WORKDIR /app/loxigen
+RUN git fetch
+RUN git checkout STABLE
+RUN make java
+WORKDIR /app/loxigen/loxi_output/openflowj
+ENV MAVEN_OPTS="-Xmx4G"
+RUN mvn install -DskipTests -Dmaven.javadoc.skip=true
+
+# Build Floodlight
+RUN git clone --recursive https://github.com/kilda/floodlight.git /app/floodlight
+WORKDIR /app/floodlight
+RUN git fetch
+RUN git checkout STABLE
+RUN mvn install -DskipTests
+RUN mkdir /var/lib/floodlight
+RUN chmod 777 /var/lib/floodlight
