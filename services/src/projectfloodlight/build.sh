@@ -50,6 +50,7 @@ build_openflow() {
 	(cd ${LOXIGEN_DIR} \
 	    && git fetch \
 	    && git checkout STABLE \
+	    && git checkout `git ls-files -m` \
 	    )
     find . -name "*.rej" | xargs rm
     find . -name "*.orig" | xargs rm
@@ -60,7 +61,7 @@ build_openflow() {
 	    && ./loxigen.py --install-dir=${LOXI_OUTPUT_DIR} --lang=java \
 	    && rsync -rt java_gen/pre-written/ ${LOXI_OUTPUT_DIR}/openflowj/ \
 	    )
-	    
+
 	mvn -f ${GENERATE_OPENFLOWJ}/pom.xml clean install
 }
 
