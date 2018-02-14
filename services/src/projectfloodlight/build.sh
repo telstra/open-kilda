@@ -45,12 +45,11 @@ clean() {
 }
 
 build_openflow() {
-	[ -d ${LOXIGEN_DIR} ] || git clone https://github.com/floodlight/loxigen.git ${LOXIGEN_DIR}
+	[ -d ${LOXIGEN_DIR} ] || git clone https://github.com/kilda/loxigen.git ${LOXIGEN_DIR}
 	# [ -d ${LOXIGEN_DIR} ] && (cd ${LOXIGEN_DIR} && git pull && git checkout `git ls-files -m`)
 	(cd ${LOXIGEN_DIR} \
-	    && git checkout bec5ec03459ae60c8da0ef6a4791e9ceeb7c1939 \
-	    && git checkout `git ls-files -m` \
-	    && patch -p1 -fs < ../../../../base/base-floodlight/app/loxigen.diff \
+	    && git fetch \
+	    && git checkout STABLE \
 	    )
     find . -name "*.rej" | xargs rm
     find . -name "*.orig" | xargs rm
@@ -73,7 +72,8 @@ build_floodlight() {
 	[ -d ${FLOODLIGHT_DIR} ] && (cd ${FLOODLIGHT_DIR} && git pull && git checkout `git ls-files -m`)
 
 	(cd ${FLOODLIGHT_DIR} \
-	    && patch -p1 -fs < ../../../../base/base-floodlight/app/floodlight.diff \
+	    && git fetch \
+	    && git checkout STABLE
 	    )
 	mvn -f ${FLOODLIGHT_DIR}/pom.xml clean install -DskipTests
 }
