@@ -60,10 +60,7 @@ build_openflow() {
 	    && ./loxigen.py --install-dir=${LOXI_OUTPUT_DIR} --lang=java \
 	    && rsync -rt java_gen/pre-written/ ${LOXI_OUTPUT_DIR}/openflowj/ \
 	    )
-
-	(cd ${GENERATE_OPENFLOWJ} \
-	    && patch -p1 < ../../../../../../base/base-floodlight/app/openflowj.diff \
-	    )
+	    
 	mvn -f ${GENERATE_OPENFLOWJ}/pom.xml clean install
 }
 
