@@ -64,11 +64,11 @@ public class TestMessageMock implements MessageProducer, MessageConsumer<Object>
     static final String FLOW_ID = "test-flow";
     static final String ERROR_FLOW_ID = "error-flow";
     static final FlowEndpointPayload flowEndpoint = new FlowEndpointPayload(FLOW_ID, 1, 1);
-    static final FlowPayload flow = new FlowPayload(FLOW_ID, flowEndpoint, flowEndpoint, 10000, FLOW_ID, null);
+    static final FlowPayload flow = new FlowPayload(FLOW_ID, flowEndpoint, flowEndpoint, 10000, false, FLOW_ID, null);
     static final FlowIdStatusPayload flowStatus = new FlowIdStatusPayload(FLOW_ID, FlowState.IN_PROGRESS);
     static final PathInfoData path = new PathInfoData(0L, Collections.emptyList());
     static final FlowPathPayload flowPath = new FlowPathPayload(FLOW_ID, path);
-    static final Flow flowModel = new Flow(FLOW_ID, 10000, FLOW_ID, FLOW_ID, 1, 1, FLOW_ID, 1, 1);
+    static final Flow flowModel = new Flow(FLOW_ID, 10000, false, FLOW_ID, FLOW_ID, 1, 1, FLOW_ID, 1, 1);
     private static final FlowResponse flowResponse = new FlowResponse(flowModel);
     private static final FlowsResponse flowsResponse = new FlowsResponse(Collections.singletonList(flowModel));
     private static final FlowPathResponse flowPathResponse = new FlowPathResponse(path);

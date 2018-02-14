@@ -62,6 +62,8 @@ public class TransactionBolt
 
     /**
      * Transaction ids state.
+     *
+     * FIXME(surabujin) in memory status lead to disaster when system restarts during any transition
      */
     private InMemoryKeyValueState<String, Map<String, Set<Long>>> transactions;
 

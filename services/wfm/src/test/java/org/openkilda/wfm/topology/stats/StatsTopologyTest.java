@@ -31,6 +31,7 @@ import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Values;
 import org.junit.Test;
 import org.junit.Ignore;
+import org.neo4j.graphdb.GraphDatabaseService;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.Datapoint;
@@ -44,19 +45,24 @@ import org.openkilda.messaging.info.stats.PortStatsData;
 import org.openkilda.messaging.info.stats.PortStatsEntry;
 import org.openkilda.messaging.info.stats.PortStatsReply;
 import org.openkilda.wfm.StableAbstractStormTest;
+import org.openkilda.wfm.topology.TestFlowGenMetricsBolt;
 import org.openkilda.wfm.topology.TestingKafkaBolt;
+import org.openkilda.wfm.topology.stats.metrics.FlowMetricGenBolt;
 
+import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.IntStream;
 
 public class StatsTopologyTest extends StableAbstractStormTest {
 
     private static final long timestamp = System.currentTimeMillis();
+    private static GraphDatabaseService graphDb;
+    private static File dbFile;
+
+    private final String switchId = "00:00:00:00:00:00:00:01";
+    private final long cookie = 0x4000000000000001L;
+    private final String flowId = "f253423454343";
 
     @Ignore
     @Test
@@ -133,9 +139,7 @@ public class StatsTopologyTest extends StableAbstractStormTest {
 
     @Test
     public void flowStatsTest() throws Exception {
-        final String switchId = "00:00:00:00:00:00:00:01";
-
-        List<FlowStatsEntry> entries = Collections.singletonList(new FlowStatsEntry((short) 1, 0x1FFFFFFFFL, 1500L, 3000L));
+        List<FlowStatsEntry> entries = Collections.singletonList(new FlowStatsEntry((short) 1, cookie, 1500L, 3000L));
         final List<FlowStatsReply> stats = Collections.singletonList(new FlowStatsReply(3, entries));
         InfoMessage message = new InfoMessage(new FlowStatsData(switchId, stats),
                 timestamp, CORRELATION_ID, Destination.WFM_STATS);
@@ -156,11 +160,14 @@ public class StatsTopologyTest extends StableAbstractStormTest {
             //verify results which were sent to Kafka bolt
             ArrayList<FixedTuple> tuples =
                     (ArrayList<FixedTuple>) result.get(StatsComponentType.FLOW_STATS_METRIC_GEN.name());
-            assertThat(tuples.size(), is(4));
+            assertThat(tuples.size(), is(6));
             tuples.stream()
                     .map(this::readFromJson)
                     .forEach(datapoint -> {
-                        assertThat(datapoint.getTags().get("switchid"), is(switchId.replaceAll(":", "")));
+                        if (datapoint.getMetric().equals("pen.flow.packets")) {
+                            assertThat(datapoint.getTags().get("direction"), is("forward"));
+                        }
+                        assertThat(datapoint.getTags().get("flowid"), is(flowId));
                         assertThat(datapoint.getTime(), is(timestamp));
                     });
         });
@@ -204,6 +211,11 @@ public class StatsTopologyTest extends StableAbstractStormTest {
         @Override
         protected KafkaBolt createKafkaBolt(String topic) {
             return kafkaBolt;
+        }
+
+        @Override
+        protected FlowMetricGenBolt createFlowMetricsGenBolt(String host, String username, String password) {
+            return new TestFlowGenMetricsBolt(cookie, flowId, switchId, switchId);
         }
     }
 }

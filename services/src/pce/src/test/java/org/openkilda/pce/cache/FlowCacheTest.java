@@ -17,20 +17,22 @@ package org.openkilda.pce.cache;
 
 import static org.junit.Assert.assertEquals;
 
-import edu.emory.mathcs.backport.java.util.Collections;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
 import org.openkilda.messaging.error.CacheException;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.PortInfoData;
+import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.pce.NetworkTopologyConstants;
 import org.openkilda.pce.provider.PathComputer;
 import org.openkilda.pce.provider.PathComputerMock;
+
+import edu.emory.mathcs.backport.java.util.Collections;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -45,9 +47,9 @@ public class FlowCacheTest {
     private final FlowCache flowCache = new FlowCache();
     private final PathComputer.Strategy defaultStrategy = PathComputer.Strategy.HOPS;
 
-    private final Flow firstFlow = new Flow("first-flow", 0, "first-flow", "sw1", 11, 100, "sw3", 11, 200);
-    private final Flow secondFlow = new Flow("second-flow", 0, "second-flow", "sw5", 12, 100, "sw3", 12, 200);
-    private final Flow thirdFlow = new Flow("third-flow", 0, "third-flow", "sw3", 21, 100, "sw3", 22, 200);
+    private final Flow firstFlow = new Flow("first-flow", 0, false, "first-flow", "sw1", 11, 100, "sw3", 11, 200);
+    private final Flow secondFlow = new Flow("second-flow", 0, false, "second-flow", "sw5", 12, 100, "sw3", 12, 200);
+    private final Flow thirdFlow = new Flow("third-flow", 0, false, "third-flow", "sw3", 21, 100, "sw3", 22, 200);
 
     @Before
     public void setUp() {
@@ -237,7 +239,7 @@ public class FlowCacheTest {
     @Test
     public void getPath() throws Exception {
         ImmutablePair<PathInfoData, PathInfoData> path = computer.getPath(
-                NetworkTopologyConstants.sw1, NetworkTopologyConstants.sw3, 0, defaultStrategy);
+                makeFlow("generic", NetworkTopologyConstants.sw1, NetworkTopologyConstants.sw3, 0), defaultStrategy);
         System.out.println(path.toString());
 
         PathNode node;
@@ -319,7 +321,8 @@ public class FlowCacheTest {
         PathNode node;
 
         ImmutablePair<PathInfoData, PathInfoData> path43 = computer.getPath(
-                NetworkTopologyConstants.sw4, NetworkTopologyConstants.sw3, 5, defaultStrategy);
+                makeFlow("collide-flow-one", NetworkTopologyConstants.sw4, NetworkTopologyConstants.sw3, 5),
+                defaultStrategy);
         System.out.println(path43);
 
         List<PathNode> nodesForward43 = new ArrayList<>();
@@ -370,7 +373,8 @@ public class FlowCacheTest {
         assertEquals(islReversePath43, path43.right);
 
         ImmutablePair<PathInfoData, PathInfoData> path23 = computer.getPath(
-                NetworkTopologyConstants.sw2, NetworkTopologyConstants.sw3, 5, defaultStrategy);
+                makeFlow("collide-flow-two", NetworkTopologyConstants.sw2, NetworkTopologyConstants.sw3, 5),
+                defaultStrategy);
         System.out.println(path23);
 
         List<PathNode> nodesForward23 = new ArrayList<>();
@@ -432,7 +436,9 @@ public class FlowCacheTest {
     public void getPathWithNoEnoughAvailableBandwidth() throws Exception {
         getPathIntersection();
         System.out.println(networkCache.dumpIsls());
-        computer.getPath(NetworkTopologyConstants.sw5, NetworkTopologyConstants.sw3, 1, defaultStrategy);
+        computer.getPath(
+                makeFlow("bandwidth-overflow", NetworkTopologyConstants.sw5, NetworkTopologyConstants.sw3, 1),
+                defaultStrategy);
     }
 
     private void buildNetworkTopology(NetworkCache networkCache) {
@@ -451,5 +457,16 @@ public class FlowCacheTest {
         networkCache.createOrUpdateIsl(new IslInfoData(NetworkTopologyConstants.isl35));
         networkCache.createOrUpdateIsl(new IslInfoData(NetworkTopologyConstants.isl54));
         networkCache.createOrUpdateIsl(new IslInfoData(NetworkTopologyConstants.isl45));
+    }
+
+    private Flow makeFlow(String id, SwitchInfoData source, SwitchInfoData dest, int bandwidth) {
+        Flow flow = new Flow();
+
+        flow.setFlowId(id);
+        flow.setSourceSwitch(source.getSwitchId());
+        flow.setDestinationSwitch(dest.getSwitchId());
+        flow.setBandwidth(bandwidth);
+
+        return flow;
     }
 }

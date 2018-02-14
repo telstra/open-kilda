@@ -22,7 +22,6 @@ import static org.junit.Assert.assertTrue;
 
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
-import org.openkilda.messaging.Topic;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.FlowCreateRequest;
 import org.openkilda.messaging.command.flow.FlowDeleteRequest;
@@ -57,6 +56,7 @@ import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
 import org.openkilda.wfm.AbstractStormTest;
 import org.openkilda.wfm.topology.TestKafkaConsumer;
+import org.openkilda.wfm.topology.TopologyConfig;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -69,7 +69,6 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
-import org.openkilda.wfm.topology.TopologyConfig;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -91,7 +90,7 @@ public class FlowTopologyTest extends AbstractStormTest {
     public static void setupOnce() throws Exception {
         AbstractStormTest.setupOnce();
 
-        flowTopology = new FlowTopology(makeLaunchEnvironment(), new PathComputerMock());
+        flowTopology = new FlowTopology(makeLaunchEnvironment(), new PathComputerAuth());
         topologyConfig = flowTopology.getConfig();
 
         StormTopology stormTopology = flowTopology.createTopology();
@@ -135,8 +134,6 @@ public class FlowTopologyTest extends AbstractStormTest {
         cacheConsumer.join();
         teResponseConsumer.wakeup();
         teResponseConsumer.join();
-        cluster.killTopology(FlowTopologyTest.class.getSimpleName());
-        Utils.sleep(4 * 1000);
         AbstractStormTest.teardownOnce();
     }
 
@@ -1022,7 +1019,7 @@ public class FlowTopologyTest extends AbstractStormTest {
 
     private Flow createFlow(final String flowId) throws IOException {
         System.out.println("NORTHBOUND: Create flow");
-        Flow flowPayload = new Flow(flowId, 10000, "", "test-switch", 1, 2, "test-switch", 1, 2);
+        Flow flowPayload = new Flow(flowId, 10000, false, "", "test-switch", 1, 2, "test-switch", 1, 2);
         FlowCreateRequest commandData = new FlowCreateRequest(flowPayload);
         CommandMessage message = new CommandMessage(commandData, 0, "create-flow", Destination.WFM);
         //sendNorthboundMessage(message);
@@ -1032,7 +1029,7 @@ public class FlowTopologyTest extends AbstractStormTest {
 
     private Flow updateFlow(final String flowId) throws IOException {
         System.out.println("NORTHBOUND: Update flow");
-        Flow flowPayload = new Flow(flowId, 10000, "", "test-switch", 1, 2, "test-switch", 1, 2);
+        Flow flowPayload = new Flow(flowId, 10000, false, "", "test-switch", 1, 2, "test-switch", 1, 2);
         FlowUpdateRequest commandData = new FlowUpdateRequest(flowPayload);
         CommandMessage message = new CommandMessage(commandData, 0, "update-flow", Destination.WFM);
 //        sendNorthboundMessage(message);
@@ -1107,7 +1104,7 @@ public class FlowTopologyTest extends AbstractStormTest {
 
     private Flow getFlowCommand(final String flowId) throws IOException {
         System.out.println("TOPOLOGY: Get flow");
-        Flow flowPayload = new Flow(flowId, 10000, "", "test-switch", 1, 2, "test-switch", 1, 2);
+        Flow flowPayload = new Flow(flowId, 10000, false, "", "test-switch", 1, 2, "test-switch", 1, 2);
         FlowResponse infoData = new FlowResponse(flowPayload);
         InfoMessage infoMessage = new InfoMessage(infoData, 0, "get-flow", Destination.WFM);
         sendTopologyEngineMessage(infoMessage);
@@ -1116,7 +1113,7 @@ public class FlowTopologyTest extends AbstractStormTest {
 
     private List<Flow> dumpFlowCommand(final String flowId) throws IOException {
         System.out.println("TOPOLOGY: Get flows");
-        Flow flow = new Flow(flowId, 10000, "", "test-switch", 1, 2, "test-switch", 1, 2);
+        Flow flow = new Flow(flowId, 10000, false, "", "test-switch", 1, 2, "test-switch", 1, 2);
         List<Flow> payload = Collections.singletonList(flow);
         FlowsResponse infoData = new FlowsResponse(payload);
         InfoMessage infoMessage = new InfoMessage(infoData, 0, "dump-flows", Destination.WFM);

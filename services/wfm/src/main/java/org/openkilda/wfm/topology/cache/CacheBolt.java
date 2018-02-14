@@ -212,44 +212,29 @@ public class CacheBolt
                     logger.debug("Storage content message {}", json);
                     handleNetworkDump(data, tuple);
                     isReceivedCacheInfo = true;
-                    outputCollector.ack(tuple);
-                    return;
-                }
-
-                if (!isReceivedCacheInfo) {
+                } else if (!isReceivedCacheInfo) {
                     logger.debug("Cache message fail due bolt not initialized: "
                                     + "component={}, stream={}, tuple={}",
                             tuple.getSourceComponent(), tuple.getSourceStreamId(), tuple);
-                    outputCollector.fail(tuple);
-                    return;
-                }
+                } else if (data instanceof SwitchInfoData) {
+                    logger.info("Cache update switch info data: {}", data);
+                    handleSwitchEvent((SwitchInfoData) data, tuple);
 
-                try {
-                    if (data instanceof SwitchInfoData) {
-                        logger.info("Cache update switch info data: {}", data);
+                } else if (data instanceof IslInfoData) {
+                    logger.info("Cache update isl info data: {}", data);
+                    handleIslEvent((IslInfoData) data, tuple);
 
-                        handleSwitchEvent((SwitchInfoData) data, tuple);
-                    } else if (data instanceof IslInfoData) {
-                        logger.info("Cache update isl info data: {}", data);
+                } else if (data instanceof PortInfoData) {
+                    logger.info("Cache update port info data: {}", data);
+                    handlePortEvent((PortInfoData) data, tuple);
 
-                        handleIslEvent((IslInfoData) data, tuple);
-                    } else if (data instanceof PortInfoData) {
-                        logger.info("Cache update port info data: {}", data);
+                } else if (data instanceof FlowInfoData) {
+                    logger.info("Cache update info data: {}", data);
 
-                        handlePortEvent((PortInfoData) data, tuple);
-                    } else if (data instanceof FlowInfoData) {
-                        logger.info("Cache update info data: {}", data);
-
-                        FlowInfoData flowData = (FlowInfoData) data;
-                        handleFlowEvent(flowData, tuple);
-                    } else {
-                        logger.error("Skip undefined info data type {}", json);
-                    }
-                }
-                finally {
-                    logger.debug("Cache message ack: component={}, stream={}, tuple={}",
-                            tuple.getSourceComponent(), tuple.getSourceStreamId(), tuple);
-                    outputCollector.ack(tuple);
+                    FlowInfoData flowData = (FlowInfoData) data;
+                    handleFlowEvent(flowData, tuple);
+                } else {
+                    logger.error("Skip undefined info data type {}", json);
                 }
             } else {
                 logger.error("Skip undefined message type {}", json);
@@ -260,6 +245,12 @@ public class CacheBolt
 
         } catch (IOException exception) {
             logger.error("Could not deserialize message {}", tuple, exception);
+        } finally {
+            if (isReceivedCacheInfo) {
+                outputCollector.ack(tuple);
+            } else {
+                outputCollector.fail(tuple);
+            }
         }
 
         logger.trace("State after: {}", state);
@@ -300,6 +291,8 @@ public class CacheBolt
         if (info instanceof NetworkInfoData) {
             NetworkInfoData data = (NetworkInfoData) info;
             logger.info("Fill network state {}", data);
+            data.getSwitches().forEach(networkCache::createOrUpdateSwitch);
+            data.getIsls().forEach(networkCache::createOrUpdateIsl);
             logger.info("Load flows {}", data.getFlows().size());
             data.getFlows().forEach(flowCache::putFlow);
             logger.info("Loaded flows {}", flowCache);

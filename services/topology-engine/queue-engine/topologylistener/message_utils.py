@@ -24,9 +24,11 @@ import config
 producer = KafkaProducer(bootstrap_servers=config.KAFKA_BOOTSTRAP_SERVERS)
 logger = logging.getLogger(__name__)
 
-MT_ERROR="org.openkilda.messaging.error.ErrorMessage"
-MT_COMMAND="org.openkilda.messaging.command.CommandMessage"
-MT_INFO="org.openkilda.messaging.info.InfoMessage"
+MT_ERROR = "org.openkilda.messaging.error.ErrorMessage"
+MT_COMMAND = "org.openkilda.messaging.command.CommandMessage"
+MT_INFO = "org.openkilda.messaging.info.InfoMessage"
+MT_ERROR_DATA = "org.openkilda.messaging.error.ErrorData"
+
 
 def get_timestamp():
     return int(round(time.time() * 1000))
@@ -179,7 +181,8 @@ def send_error_message(correlation_id, error_type, error_message,
     # TODO: Who calls this .. need to pass in the right TOPIC
     data = {"error-type": error_type,
             "error-message": error_message,
-            "error-description": error_description}
+            "error-description": error_description,
+            "clazz": MT_ERROR_DATA}
     send_to_topic(data, correlation_id, MT_ERROR, destination, topic)
 
 
@@ -187,6 +190,7 @@ def send_install_commands(flow_rules, correlation_id):
     for flow_rule in flow_rules:
         send_to_topic(flow_rule, correlation_id, MT_COMMAND,
                       destination="CONTROLLER", topic=config.KAFKA_SPEAKER_TOPIC)
+        # FIXME(surabujin): WFM reroute this message into CONTROLLER
         send_to_topic(flow_rule, correlation_id, MT_COMMAND,
                       destination="WFM", topic=config.KAFKA_FLOW_TOPIC)
 

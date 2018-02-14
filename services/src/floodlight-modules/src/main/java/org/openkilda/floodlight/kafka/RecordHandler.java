@@ -2,8 +2,10 @@ package org.openkilda.floodlight.kafka;
 
 import static org.openkilda.messaging.Utils.MAPPER;
 
+import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.floodlight.switchmanager.MeterPool;
 import org.openkilda.floodlight.switchmanager.SwitchEventCollector;
+import org.openkilda.floodlight.switchmanager.SwitchOperationException;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Topic;
 import org.openkilda.messaging.command.CommandData;
@@ -16,7 +18,6 @@ import org.openkilda.messaging.command.flow.InstallIngressFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.openkilda.messaging.command.flow.InstallTransitFlow;
 import org.openkilda.messaging.command.flow.RemoveFlow;
-import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoMessage;
@@ -25,7 +26,6 @@ import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
-import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
 
 import net.floodlightcontroller.core.IOFSwitch;
@@ -55,7 +55,6 @@ class RecordHandler implements Runnable {
     }
 
     protected void doControllerMsg(CommandMessage message) {
-        logger.debug("\n\nreceived message: {}", message);
         try {
             CommandData data = message.getData();
             if (data instanceof DiscoverIslCommandData) {
@@ -77,8 +76,13 @@ class RecordHandler implements Runnable {
             } else {
                 logger.error("unknown data type: {}", data.toString());
             }
+        } catch (FlowCommandException e) {
+            ErrorMessage error = new ErrorMessage(
+                    e.makeErrorResponse(),
+                    System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM_TRANSACTION);
+            context.getKafkaProducer().postMessage(OUTPUT_FLOW_TOPIC, error);
         } catch (Exception e) {
-            logger.error("RecordHandler.doControllerMsg Exception: {}", e);
+            logger.error("Unhandled exception: {}", e);
         }
     }
 
@@ -107,44 +111,32 @@ class RecordHandler implements Runnable {
      *
      * @param message command message for flow installation
      */
-    private void doInstallIngressFlow(final CommandMessage message) {
+    private void doInstallIngressFlow(final CommandMessage message) throws FlowCommandException {
         InstallIngressFlow command = (InstallIngressFlow) message.getData();
         logger.debug("Creating an ingress flow: {}", command);
 
         int meterId = meterPool.allocate(command.getSwitchId(), command.getId());
 
-        ImmutablePair<Long, Boolean> meterInstalled = context.getSwitchManager().installMeter(
-                DatapathId.of(command.getSwitchId()),
-                command.getBandwidth(),
-                1024,
-                meterId);
+        try {
+            context.getSwitchManager().installMeter(
+                    DatapathId.of(command.getSwitchId()),
+                    command.getBandwidth(), 1024, meterId);
 
-        if (!meterInstalled.getRight()) {
-            ErrorMessage error = new ErrorMessage(
-                    new ErrorData(ErrorType.CREATION_FAILURE, "Could not install meter", command.getId()),
-                    System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM_TRANSACTION);
-            context.getKafkaProducer().postMessage(OUTPUT_FLOW_TOPIC, error);
-        }
+            context.getSwitchManager().installIngressFlow(
+                    DatapathId.of(command.getSwitchId()),
+                    command.getId(),
+                    command.getCookie(),
+                    command.getInputPort(),
+                    command.getOutputPort(),
+                    command.getInputVlanId(),
+                    command.getTransitVlanId(),
+                    command.getOutputVlanType(),
+                    meterId);
 
-        ImmutablePair<Long, Boolean> flowInstalled = context.getSwitchManager().installIngressFlow(
-                DatapathId.of(command.getSwitchId()),
-                command.getId(),
-                command.getCookie(),
-                command.getInputPort(),
-                command.getOutputPort(),
-                command.getInputVlanId(),
-                command.getTransitVlanId(),
-                command.getOutputVlanType(),
-                meterId);
-
-        if (!flowInstalled.getRight()) {
-            ErrorMessage error = new ErrorMessage(
-                    new ErrorData(ErrorType.CREATION_FAILURE, "Could not install ingress flow", command.getId()),
-                    System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM_TRANSACTION);
-            context.getKafkaProducer().postMessage(OUTPUT_FLOW_TOPIC, error);
-        } else {
             message.setDestination(Destination.WFM_TRANSACTION);
             context.getKafkaProducer().postMessage(OUTPUT_FLOW_TOPIC, message);
+        } catch (SwitchOperationException e) {
+            throw new FlowCommandException(command.getId(), ErrorType.CREATION_FAILURE, e);
         }
     }
 
@@ -153,28 +145,25 @@ class RecordHandler implements Runnable {
      *
      * @param message command message for flow installation
      */
-    private void doInstallEgressFlow(final CommandMessage message) {
+    private void doInstallEgressFlow(final CommandMessage message) throws FlowCommandException {
         InstallEgressFlow command = (InstallEgressFlow) message.getData();
         logger.debug("Creating an egress flow: {}", command);
 
-        ImmutablePair<Long, Boolean> flowInstalled = context.getSwitchManager().installEgressFlow(
-                DatapathId.of(command.getSwitchId()),
-                command.getId(),
-                command.getCookie(),
-                command.getInputPort(),
-                command.getOutputPort(),
-                command.getTransitVlanId(),
-                command.getOutputVlanId(),
-                command.getOutputVlanType());
+        try {
+            context.getSwitchManager().installEgressFlow(
+                    DatapathId.of(command.getSwitchId()),
+                    command.getId(),
+                    command.getCookie(),
+                    command.getInputPort(),
+                    command.getOutputPort(),
+                    command.getTransitVlanId(),
+                    command.getOutputVlanId(),
+                    command.getOutputVlanType());
 
-        if (!flowInstalled.getRight()) {
-            ErrorMessage error = new ErrorMessage(
-                    new ErrorData(ErrorType.CREATION_FAILURE, "Could not install egress flow", command.getId()),
-                    System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM_TRANSACTION);
-            context.getKafkaProducer().postMessage(OUTPUT_FLOW_TOPIC, error);
-        } else {
             message.setDestination(Destination.WFM_TRANSACTION);
             context.getKafkaProducer().postMessage(OUTPUT_FLOW_TOPIC, message);
+        } catch (SwitchOperationException e) {
+            throw new FlowCommandException(command.getId(), ErrorType.CREATION_FAILURE, e);
         }
     }
 
@@ -183,26 +172,23 @@ class RecordHandler implements Runnable {
      *
      * @param message command message for flow installation
      */
-    private void doInstallTransitFlow(final CommandMessage message) {
+    private void doInstallTransitFlow(final CommandMessage message) throws FlowCommandException {
         InstallTransitFlow command = (InstallTransitFlow) message.getData();
         logger.debug("Creating a transit flow: {}", command);
 
-        ImmutablePair<Long, Boolean> flowInstalled = context.getSwitchManager().installTransitFlow(
-                DatapathId.of(command.getSwitchId()),
-                command.getId(),
-                command.getCookie(),
-                command.getInputPort(),
-                command.getOutputPort(),
-                command.getTransitVlanId());
+        try {
+            context.getSwitchManager().installTransitFlow(
+                    DatapathId.of(command.getSwitchId()),
+                    command.getId(),
+                    command.getCookie(),
+                    command.getInputPort(),
+                    command.getOutputPort(),
+                    command.getTransitVlanId());
 
-        if (!flowInstalled.getRight()) {
-            ErrorMessage error = new ErrorMessage(
-                    new ErrorData(ErrorType.CREATION_FAILURE, "Could not install transit flow", command.getId()),
-                    System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM_TRANSACTION);
-            context.getKafkaProducer().postMessage(OUTPUT_FLOW_TOPIC, error);
-        } else {
             message.setDestination(Destination.WFM_TRANSACTION);
             context.getKafkaProducer().postMessage(OUTPUT_FLOW_TOPIC, message);
+        } catch (SwitchOperationException e) {
+            throw new FlowCommandException(command.getId(), ErrorType.CREATION_FAILURE, e);
         }
     }
 
@@ -211,45 +197,33 @@ class RecordHandler implements Runnable {
      *
      * @param message command message for flow installation
      */
-    private void doInstallOneSwitchFlow(final CommandMessage message) {
+    private void doInstallOneSwitchFlow(final CommandMessage message) throws FlowCommandException {
         InstallOneSwitchFlow command = (InstallOneSwitchFlow) message.getData();
         logger.debug("creating a flow through one switch: {}", command);
 
         int meterId = meterPool.allocate(command.getSwitchId(), command.getId());
 
-        ImmutablePair<Long, Boolean> meterInstalled = context.getSwitchManager().installMeter(
-                DatapathId.of(command.getSwitchId()),
-                command.getBandwidth(),
-                1024,
-                meterId);
+        try {
+            context.getSwitchManager().installMeter(
+                    DatapathId.of(command.getSwitchId()),
+                    command.getBandwidth(), 1024, meterId);
 
-        if (!meterInstalled.getRight()) {
-            ErrorMessage error = new ErrorMessage(
-                    new ErrorData(ErrorType.CREATION_FAILURE, "Could not install meter", command.getId()),
-                    System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM_TRANSACTION);
-            context.getKafkaProducer().postMessage(OUTPUT_FLOW_TOPIC, error);
-        }
+            OutputVlanType directOutputVlanType = command.getOutputVlanType();
+            context.getSwitchManager().installOneSwitchFlow(
+                    DatapathId.of(command.getSwitchId()),
+                    command.getId(),
+                    command.getCookie(),
+                    command.getInputPort(),
+                    command.getOutputPort(),
+                    command.getInputVlanId(),
+                    command.getOutputVlanId(),
+                    directOutputVlanType,
+                    meterId);
 
-        OutputVlanType directOutputVlanType = command.getOutputVlanType();
-        ImmutablePair<Long, Boolean> forwardFlowInstalled = context.getSwitchManager().installOneSwitchFlow(
-                DatapathId.of(command.getSwitchId()),
-                command.getId(),
-                command.getCookie(),
-                command.getInputPort(),
-                command.getOutputPort(),
-                command.getInputVlanId(),
-                command.getOutputVlanId(),
-                directOutputVlanType,
-                meterId);
-
-        if (!forwardFlowInstalled.getRight()) {
-            ErrorMessage error = new ErrorMessage(
-                    new ErrorData(ErrorType.CREATION_FAILURE, "Could not install flow", command.getId()),
-                    System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM_TRANSACTION);
-            context.getKafkaProducer().postMessage(OUTPUT_FLOW_TOPIC, error);
-        } else {
             message.setDestination(Destination.WFM_TRANSACTION);
             context.getKafkaProducer().postMessage(OUTPUT_FLOW_TOPIC, message);
+        } catch (SwitchOperationException e) {
+            throw new FlowCommandException(command.getId(), ErrorType.CREATION_FAILURE, e);
         }
     }
 
@@ -258,34 +232,24 @@ class RecordHandler implements Runnable {
      *
      * @param message command message for flow installation
      */
-    private void doDeleteFlow(final CommandMessage message) {
+    private void doDeleteFlow(final CommandMessage message) throws FlowCommandException {
         RemoveFlow command = (RemoveFlow) message.getData();
         logger.debug("deleting a flow: {}", command);
 
         DatapathId dpid = DatapathId.of(command.getSwitchId());
-        ImmutablePair<Long, Boolean> flowDeleted = context.getSwitchManager().deleteFlow(
-                dpid, command.getId(), command.getCookie());
+        ISwitchManager switchManager = context.getSwitchManager();
+        try {
+            switchManager.deleteFlow(dpid, command.getId(), command.getCookie());
 
-        if (!flowDeleted.getRight()) {
-            ErrorMessage error = new ErrorMessage(
-                    new ErrorData(ErrorType.DELETION_FAILURE, "Could not delete flow", command.getId()),
-                    System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM_TRANSACTION);
-            context.getKafkaProducer().postMessage(OUTPUT_FLOW_TOPIC, error);
-        } else {
+            Integer meterId = meterPool.deallocate(command.getSwitchId(), command.getId());
+            if (meterId != null) {
+                switchManager.deleteMeter(dpid, meterId);
+            }
+
             message.setDestination(Destination.WFM_TRANSACTION);
             context.getKafkaProducer().postMessage(OUTPUT_FLOW_TOPIC, message);
-        }
-
-        Integer meterId = meterPool.deallocate(command.getSwitchId(), command.getId());
-
-        if (flowDeleted.getRight() && meterId != null) {
-            ImmutablePair<Long, Boolean> meterDeleted = context.getSwitchManager().deleteMeter(dpid, meterId);
-            if (!meterDeleted.getRight()) {
-                ErrorMessage error = new ErrorMessage(
-                        new ErrorData(ErrorType.DELETION_FAILURE, "Could not delete meter", command.getId()),
-                        System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM_TRANSACTION);
-                context.getKafkaProducer().postMessage(OUTPUT_FLOW_TOPIC, error);
-            }
+        } catch (SwitchOperationException e) {
+            throw new FlowCommandException(command.getId(), ErrorType.DELETION_FAILURE, e);
         }
     }
 
@@ -342,6 +306,13 @@ class RecordHandler implements Runnable {
         parseRecord(record);
     }
 
+    protected SwitchInfoData buildSwitchInfoData(IOFSwitch sw)
+    {
+        // I don't know is that correct
+        SwitchState state = sw.isActive() ? SwitchState.ACTIVATED : SwitchState.ADDED;
+        return SwitchEventCollector.buildSwitchInfoData(sw, state);
+    }
+
     public static class Factory {
         private final ConsumerContext context;
 
@@ -352,12 +323,5 @@ class RecordHandler implements Runnable {
         public RecordHandler produce(ConsumerRecord<String, String> record) {
             return new RecordHandler(context, record);
         }
-    }
-
-    protected SwitchInfoData buildSwitchInfoData(IOFSwitch sw)
-    {
-        // I don't know is that correct
-        SwitchState state = sw.isActive() ? SwitchState.ACTIVATED : SwitchState.ADDED;
-        return SwitchEventCollector.buildSwitchInfoData(sw, state);
     }
 }
