@@ -888,6 +888,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * SLAVE mode
      */
     private boolean installVerificationRule(final DatapathId dpid, final boolean isBroadcast) {
+        logger.debug("installing verification rule for {} of type {}",
+                dpid.toString(), isBroadcast ? "Broadcast" : "Unicast");
+
         IOFSwitch sw = ofSwitchService.getSwitch(dpid);
 
         Match match = matchVerification(sw, isBroadcast);

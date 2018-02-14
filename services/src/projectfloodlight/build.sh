@@ -71,7 +71,7 @@ build_floodlight() {
 
 	(cd ${FLOODLIGHT_DIR} \
 	    && git fetch \
-	    && git checkout STABLE
+	    && git checkout STABLE \
 	    )
 	mvn -f ${FLOODLIGHT_DIR}/pom.xml clean install -DskipTests
 }
