@@ -13,9 +13,7 @@ GENERATE_WIRESHARK = $(LOXIGEN_DIR)/loxi_output/wireshark
 default: $(OPENFLOWJ_JAR) $(FLOODLIGHT_JAR)
 
 $(LOXIGEN_DIR):
-	git clone https://github.com/kilda/loxigen.git $(LOXIGEN_DIR)
-	git fetch
-	git checkout stable
+	git clone -b STABLE --single-branch https://github.com/kilda/loxigen.git $(LOXIGEN_DIR)
 
 $(GENERATE_OPENFLOWJ): $(LOXIGEN_DIR)
 	$(MAKE) -C $(LOXIGEN_DIR) java
@@ -33,9 +31,7 @@ clean-loxigen:
 	$(MAKE) -C $(LOXIGEN_DIR) clean
 
 $(FLOODLIGHT_DIR):
-	git clone https://github.com/kilda/floodlight.git $(FLOODLIGHT_DIR)
-	git fetch
-	git checkout STABLE
+	git clone -b STABLE --single-branch https://github.com/kilda/floodlight.git $(FLOODLIGHT_DIR)
 
 $(FLOODLIGHT_JAR): $(FLOODLIGHT_DIR)
 	mvn -f $(FLOODLIGHT_DIR)/pom.xml clean install -DskipTests

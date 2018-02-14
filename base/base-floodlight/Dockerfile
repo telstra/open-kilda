@@ -17,24 +17,21 @@ FROM kilda/base-ubuntu
 
 # Add Tools
 ENV DEBIAN_FRONTEND noninteractive
-RUN apt-get update
-RUN apt-get install -y --no-install-recommends git ant maven rsync
+RUN apt-get update && \
+  apt-get install -y --no-install-recommends git ant maven rsync && \
+  rm -rf /var/lib/apt/lists/*
 
 # Build Loxigen
-RUN git clone --recursive https://github.com/kilda/loxigen.git /app/loxigen
+RUN git clone --recursive -b STABLE --single-branch https://github.com/kilda/loxigen.git /app/loxigen
 WORKDIR /app/loxigen
-RUN git fetch
-RUN git checkout STABLE
 RUN make java
 WORKDIR /app/loxigen/loxi_output/openflowj
 ENV MAVEN_OPTS="-Xmx4G"
 RUN mvn install -DskipTests -Dmaven.javadoc.skip=true
 
 # Build Floodlight
-RUN git clone --recursive https://github.com/kilda/floodlight.git /app/floodlight
+RUN git clone --recursive -b STABLE --single-branch  https://github.com/kilda/floodlight.git /app/floodlight
 WORKDIR /app/floodlight
-RUN git fetch
-RUN git checkout STABLE
 RUN mvn install -DskipTests
 RUN mkdir /var/lib/floodlight
 RUN chmod 777 /var/lib/floodlight
