@@ -7,10 +7,13 @@ import org.openkilda.LinksUtils;
 import org.openkilda.flow.FlowUtils;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.messaging.model.Flow;
+import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.topo.TopologyHelp;
 
 import cucumber.api.java.en.Then;
 import cucumber.api.java.en.When;
@@ -28,7 +31,7 @@ public class FlowIgnoreBandwidthTest {
     }
 
     @Then("^available ISL's bandwidths between ([0-9a-f]{2}(?::[0-9a-f]{2}){7}) and ([0-9a-f]{2}(?::[0-9a-f]{2}){7}) is (\\d+)$")
-    public void available_ISL_bandwidths_between_switches(String source, String dest, long expected) throws Throwable {
+    public void availableISLBandwidthsBetweenSwitches(String source, String dest, long expected) throws Throwable {
         List<IslInfoData> islLinks = LinksUtils.dumpLinks();
 
         Long actual = null;
@@ -58,7 +61,7 @@ public class FlowIgnoreBandwidthTest {
     }
 
     @When("^flow ignore bandwidth between ([0-9a-f]{2}(?::[0-9a-f]{2}){7}) and ([0-9a-f]{2}(?::[0-9a-f]{2}){7}) with (\\d+) bandwidth is created$")
-    public void flow_ignore_bandwidth_between_switches_with_bandwidth_is_created(String source, String dest, int bandwidth) throws Throwable {
+    public void flowIgnoreBandwidthBetweenSwitchesWithBandwidthIsCreated(String source, String dest, int bandwidth) throws Throwable {
         String flowId = FlowUtils.getFlowName("flowId");
         FlowEndpointPayload sourcePoint = new FlowEndpointPayload(source, 1, 0);
         FlowEndpointPayload destPoint = new FlowEndpointPayload(dest, 2, 0);
@@ -78,8 +81,29 @@ public class FlowIgnoreBandwidthTest {
         saveCreatedFlowId(source, dest, flowId);
     }
 
+    @Then("^flow between ([0-9a-f]{2}(?::[0-9a-f]{2}){7}) and ([0-9a-f]{2}(?::[0-9a-f]{2}){7}) have ignore_bandwidth flag$")
+    public void flowHaveIgnoreBandwidthFlag(String source, String dest) throws IllegalArgumentException {
+        String flowId = lookupCreatedFlowId(source, dest);
+        FlowPayload flow = FlowUtils.getFlow(flowId);
+
+        Assert.assertNotNull("Can\'t locate flow", flow);
+        Assert.assertTrue("Flow's ignore_bandwidth flag is NOT set", flow.isIgnoreBandwidth());
+    }
+
+    @Then("^flow between ([0-9a-f]{2}(?::[0-9a-f]{2}){7}) and ([0-9a-f]{2}(?::[0-9a-f]{2}){7}) have ignore_bandwidth flag in TE$")
+    public void flowHaveIgnoreBandwidthFlagInTE(String source, String dest) {
+        String flowId = lookupCreatedFlowId(source, dest);
+        ImmutablePair<Flow, Flow> flowPair = TopologyHelp.GetFlow(flowId);
+
+        Assert.assertNotNull(flowPair);
+        Assert.assertTrue(
+                "Permanent flows storage ignore ignore_bandwidth flag", flowPair.getLeft().isIgnoreBandwidth());
+        Assert.assertTrue(
+                "Permanent flows storage ignore ignore_bandwidth flag", flowPair.getRight().isIgnoreBandwidth());
+    }
+
     @When("^drop created flow between ([0-9a-f]{2}(?::[0-9a-f]{2}){7}) and ([0-9a-f]{2}(?::[0-9a-f]{2}){7})$")
-    public void drop_created_early_flow(String source, String dest) throws Exception {
+    public void dropCreatedEarlyFlow(String source, String dest) throws Exception {
         String flowId = lookupCreatedFlowId(source, dest);
 
         System.out.println(String.format("==> Send flow DELETE request (%s <--> %s)", source, dest));
@@ -94,10 +118,10 @@ public class FlowIgnoreBandwidthTest {
         createdFlows.put(makeCreatedFlowIdKey(source, dest), flowId);
     }
 
-    private String lookupCreatedFlowId(String source, String dest) throws IllegalAccessException {
+    private String lookupCreatedFlowId(String source, String dest) throws IllegalArgumentException {
         String key = makeCreatedFlowIdKey(source, dest);
         if (! createdFlows.containsKey(key)) {
-            throw new IllegalAccessException(String.format("There is no known flows between %s and %s", source, dest));
+            throw new IllegalArgumentException(String.format("There is no known flows between %s and %s", source, dest));
         }
         return createdFlows.get(key);
     }

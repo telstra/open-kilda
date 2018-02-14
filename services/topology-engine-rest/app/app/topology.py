@@ -16,13 +16,14 @@
 from flask import Flask, flash, redirect, render_template, request, session, abort, url_for, Response, jsonify
 from flask_login import LoginManager, UserMixin, login_required, login_user, logout_user, current_user
 import py2neo
-from . import neo4j_tools
-
-from app import application
+from werkzeug import exceptions as http_errors
 
 import logging
 import json
 import ConfigParser
+
+from app import application
+from . import neo4j_tools
 
 logger = logging.getLogger(__name__)
 logger.info ("My Name Is: %s", __name__)
@@ -146,6 +147,34 @@ def api_v1_topology_flows():
     except Exception as e:
         return "error: {}".format(str(e))
 
+
+@application.route('/api/v1/topology/flows/<flow_id>')
+@login_required
+def api_v1_topology_get_flow(flow_id):
+    query = (
+        "MATCH (a:switch)-[r:flow]->(b:switch)\n"
+        "WHERE r.flowid = {flow_id}\n"
+        "RETURN r")
+    result = neo4j_connect.data(query, flow_id=flow_id)
+    if not result:
+        return http_errors.NotFound(
+                'There is no flow with flow_id={}'.format(flow_id))
+    if len(result) < 2:
+        return http_errors.NotFound('Flow data corrupted (too few results)')
+    elif 2 < len(result):
+        return http_errors.NotFound('Flow data corrupted (too many results)')
+
+    flow_pair = [unpack_neo4j_flow(record['r']) for record in result]
+    flow_pair.sort(key=lambda x: is_forward_cookie(x['cookie']))
+    flow_data = dict(zip(['reverse', 'forward'], flow_pair))
+
+    return jsonify(flow_data)
+
+
+def unpack_neo4j_flow(raw):
+    flow = raw.copy()
+    flow['flowpath'] = json.loads(raw['flowpath'])
+    return flow
 
 # =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 #
@@ -582,3 +611,9 @@ def api_v1_topology_link_bandwidth(src_switch, src_port):
         "RETURN r.available_bandwidth").format(src_switch, int(src_port))
 
     return neo4j_connect.data(query)[0]['r.available_bandwidth']
+
+
+# FIXME(surabujin): stolen from topology-engine code, must use some shared
+# codebase
+def is_forward_cookie(cookie):
+    return int(cookie) & 0x4000000000000000
