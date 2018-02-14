@@ -19,6 +19,7 @@ import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 import static org.openkilda.messaging.Utils.MAPPER;
 
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
+import org.openkilda.floodlight.switchmanager.SwitchOperationException;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageError;
 
@@ -36,6 +37,7 @@ import java.util.Map;
 public class MetersResource extends ServerResource {
     private static final Logger logger = LoggerFactory.getLogger(MetersResource.class);
 
+    // FIXME(surabujin): is it used anywhere?
     @Get("json")
     @SuppressWarnings("unchecked")
     public Map<Long, Object> getMeters() {
@@ -54,7 +56,7 @@ public class MetersResource extends ServerResource {
                     response.put(entry.getMeterId(), entry);
                 }
             }
-        } catch (IllegalArgumentException exception) {
+        } catch (IllegalArgumentException|SwitchOperationException exception) {
             String messageString = "No such switch";
             logger.error("{}: {}", messageString, switchId, exception);
             MessageError responseMessage = new MessageError(DEFAULT_CORRELATION_ID, System.currentTimeMillis(),
