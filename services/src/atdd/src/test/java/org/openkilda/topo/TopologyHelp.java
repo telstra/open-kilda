@@ -19,13 +19,17 @@ import static org.openkilda.DefaultParameters.mininetEndpoint;
 import static org.openkilda.DefaultParameters.topologyEndpoint;
 import static org.openkilda.flow.FlowUtils.getTimeDuration;
 
+import org.openkilda.messaging.error.MessageError;
+import org.openkilda.messaging.model.Flow;
+import org.openkilda.messaging.model.ImmutablePair;
+
 import org.glassfish.jersey.client.ClientConfig;
 
 import java.io.IOException;
-import java.lang.UnsupportedOperationException;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.Entity;
+import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
@@ -146,6 +150,30 @@ public class TopologyHelp {
         return result;
     }
 
+    public static ImmutablePair<Flow, Flow> GetFlow(String flowId) {
+        System.out.println("\n==> Topology-Engine Get Flow");
+
+        Client client = ClientBuilder.newClient(new ClientConfig());
+        Response response = client
+            .target(topologyEndpoint)
+            .path("/api/v1/topology/flows/")
+            .path(flowId)
+            .request(MediaType.APPLICATION_JSON)
+            .get();
+
+        int status = response.getStatus();
+        if (status != 200) {
+            System.out.println(String.format("====> Error: Topology-Engine Get Flow = %s",
+                    response.readEntity(MessageError.class)));
+            return null;
+        }
+
+        ImmutablePair<Flow, Flow> result = response.readEntity(new GenericType<ImmutablePair<Flow, Flow>>() {});
+        System.out.println(String.format("====> Topology-Engine Get Flow = %s", result));
+        return result;
+    }
+
+    // FIXME(surabujin): garbage
     public static void main(String[] args) throws IOException {
         //TopologyHelp.DeleteTopology();
         //URL url = Resources.getResource("topologies/partial-topology.json");

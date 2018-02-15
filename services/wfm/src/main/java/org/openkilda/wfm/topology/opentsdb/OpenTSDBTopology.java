@@ -15,12 +15,12 @@
 
 package org.openkilda.wfm.topology.opentsdb;
 
+import org.apache.storm.kafka.spout.KafkaSpout;
 import org.apache.storm.tuple.Fields;
 import org.openkilda.wfm.topology.opentsdb.bolts.DatapointParseBolt;
 import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
 import org.apache.storm.generated.StormTopology;
-import org.apache.storm.kafka.KafkaSpout;
 import org.apache.storm.opentsdb.bolt.OpenTsdbBolt;
 import org.apache.storm.opentsdb.bolt.TupleOpenTsdbDatapointMapper;
 import org.apache.storm.opentsdb.client.OpenTsdbClient;

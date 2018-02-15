@@ -20,7 +20,7 @@ import static org.openkilda.wfm.topology.stats.StatsComponentType.METER_CFG_STAT
 import static org.openkilda.wfm.topology.stats.StatsComponentType.PORT_STATS_METRIC_GEN;
 
 import org.apache.storm.generated.StormTopology;
-import org.apache.storm.kafka.KafkaSpout;
+import org.apache.storm.kafka.spout.KafkaSpout;
 import org.apache.storm.topology.TopologyBuilder;
 import org.openkilda.messaging.ServiceType;
 import org.openkilda.pce.provider.NeoDriver;

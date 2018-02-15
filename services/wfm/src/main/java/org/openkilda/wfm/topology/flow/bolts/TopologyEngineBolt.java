@@ -85,6 +85,7 @@ public class TopologyEngineBolt extends BaseRichBolt {
                             Utils.CORRELATION_ID, message.getCorrelationId(), switchId,
                             Utils.FLOW_ID, flowId, Utils.TRANSACTION_ID, transactionId, request);
 
+                    // FIXME(surabujin): send here and in TE
                     message.setDestination(Destination.CONTROLLER);
                     values = new Values(MAPPER.writeValueAsString(message), switchId, flowId, transactionId);
                     outputCollector.emit(StreamType.CREATE.toString(), tuple, values);

@@ -24,6 +24,14 @@ import static org.projectfloodlight.openflow.protocol.OFVersion.OF_12;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_13;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_15;
 
+import org.openkilda.floodlight.kafka.KafkaMessageProducer;
+import org.openkilda.floodlight.switchmanager.web.SwitchManagerWebRoutable;
+import org.openkilda.messaging.Destination;
+import org.openkilda.messaging.error.ErrorData;
+import org.openkilda.messaging.error.ErrorMessage;
+import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.payload.flow.OutputVlanType;
+
 import com.google.common.util.concurrent.ListenableFuture;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -36,14 +44,6 @@ import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.util.FlowModUtils;
-import org.openkilda.floodlight.kafka.KafkaMessageProducer;
-import org.openkilda.floodlight.switchmanager.web.SwitchManagerWebRoutable;
-import org.openkilda.messaging.Destination;
-import org.openkilda.messaging.error.ErrorData;
-import org.openkilda.messaging.error.ErrorMessage;
-import org.openkilda.messaging.error.ErrorType;
-import org.openkilda.messaging.model.ImmutablePair;
-import org.openkilda.messaging.payload.flow.OutputVlanType;
 import org.projectfloodlight.openflow.protocol.OFErrorMsg;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowDelete;
@@ -235,16 +235,15 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * {@inheritDoc}
      */
     @Override
-    public boolean installDefaultRules(final DatapathId dpid) {
-        final boolean dropFlow = installDropFlow(dpid);
-        final boolean broadcastVerification = installVerificationRule(dpid, true);
-        if (ofSwitchService.getSwitch(dpid).getOFFactory().getVersion().compareTo(OF_12) > 0) {
+    public void installDefaultRules(final DatapathId dpid) throws SwitchOperationException {
+        installDropFlow(dpid);
+
+        IOFSwitch sw = lookupSwitch(dpid);
+        if (sw.getOFFactory().getVersion().compareTo(OF_12) > 0) {
             logger.debug("installing unicast verification match for {}", dpid.toString());
-            final boolean unicastVerification = installVerificationRule(dpid, false);
-            return dropFlow & broadcastVerification & unicastVerification;
+            installVerificationRule(dpid, true);
         } else {
             logger.debug("not installing unicast verification match for {}", dpid.toString());
-            return dropFlow & broadcastVerification;
         }
     }
 
@@ -252,12 +251,13 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * {@inheritDoc}
      */
     @Override
-    public ImmutablePair<Long, Boolean> installIngressFlow(final DatapathId dpid, final String flowId,
-                                                           final Long cookie, final int inputPort, final int outputPort,
-                                                           final int inputVlanId, final int transitVlanId,
-                                                           final OutputVlanType outputVlanType, final long meterId) {
+    public long installIngressFlow(
+            final DatapathId dpid, final String flowId,
+            final Long cookie, final int inputPort, final int outputPort,
+            final int inputVlanId, final int transitVlanId,
+            final OutputVlanType outputVlanType, final long meterId) throws SwitchOperationException {
         List<OFAction> actionList = new ArrayList<>();
-        IOFSwitch sw = ofSwitchService.getSwitch(dpid);
+        IOFSwitch sw = lookupSwitch(dpid);
 
         // build match by input port and input vlan id
         Match match = matchFlow(sw, inputPort, inputVlanId);
@@ -287,21 +287,20 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         OFFlowMod flowMod = buildFlowMod(sw, match, meter, actions,
                 cookie & FLOW_COOKIE_MASK, FlowModUtils.PRIORITY_VERY_HIGH);
 
-        // send FLOW_MOD to the switch
-        boolean response = pushFlow(flowId, dpid, flowMod);
-        return new ImmutablePair<>(flowMod.getXid(), response);
+        return pushFlow(sw, "--InstallIngressFlow--", flowMod);
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public ImmutablePair<Long, Boolean> installEgressFlow(final DatapathId dpid, String flowId, final Long cookie,
-                                                          final int inputPort, final int outputPort,
-                                                          final int transitVlanId, final int outputVlanId,
-                                                          final OutputVlanType outputVlanType) {
+    public long installEgressFlow(
+            final DatapathId dpid, String flowId, final Long cookie,
+            final int inputPort, final int outputPort,
+            final int transitVlanId, final int outputVlanId,
+            final OutputVlanType outputVlanType) throws SwitchOperationException {
         List<OFAction> actionList = new ArrayList<>();
-        IOFSwitch sw = ofSwitchService.getSwitch(dpid);
+        IOFSwitch sw = lookupSwitch(dpid);
 
         // build match by input port and transit vlan id
         Match match = matchFlow(sw, inputPort, transitVlanId);
@@ -319,20 +318,19 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         OFFlowMod flowMod = buildFlowMod(sw, match, null, actions,
                 cookie & FLOW_COOKIE_MASK, FlowModUtils.PRIORITY_VERY_HIGH);
 
-        // send FLOW_MOD to the switch
-        boolean response = pushFlow(flowId, dpid, flowMod);
-        return new ImmutablePair<>(flowMod.getXid(), response);
+        return pushFlow(sw, "--InstallEgressFlow--", flowMod);
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public ImmutablePair<Long, Boolean> installTransitFlow(final DatapathId dpid, final String flowId,
-                                                           final Long cookie, final int inputPort, final int outputPort,
-                                                           final int transitVlanId) {
+    public long installTransitFlow(
+            final DatapathId dpid, final String flowId,
+            final Long cookie, final int inputPort, final int outputPort,
+            final int transitVlanId) throws SwitchOperationException {
         List<OFAction> actionList = new ArrayList<>();
-        IOFSwitch sw = ofSwitchService.getSwitch(dpid);
+        IOFSwitch sw = lookupSwitch(dpid);
 
         // build match by input port and transit vlan id
         Match match = matchFlow(sw, inputPort, transitVlanId);
@@ -347,26 +345,25 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         OFFlowMod flowMod = buildFlowMod(sw, match, null, actions,
                 cookie & FLOW_COOKIE_MASK, FlowModUtils.PRIORITY_VERY_HIGH);
 
-        // send FLOW_MOD to the switch
-        boolean response = pushFlow(flowId, dpid, flowMod);
-        return new ImmutablePair<>(flowMod.getXid(), response);
+        return pushFlow(sw, flowId, flowMod);
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public ImmutablePair<Long, Boolean> installOneSwitchFlow(final DatapathId dpid, final String flowId,
-                                                             final Long cookie, final int inputPort,
-                                                             final int outputPort, final int inputVlanId,
-                                                             final int outputVlanId,
-                                                             final OutputVlanType outputVlanType, final long meterId) {
+    public long installOneSwitchFlow(
+            final DatapathId dpid, final String flowId,
+            final Long cookie, final int inputPort,
+            final int outputPort, final int inputVlanId,
+            final int outputVlanId,
+            final OutputVlanType outputVlanType, final long meterId) throws SwitchOperationException {
         // TODO: As per other locations, how different is this to IngressFlow? Why separate code path?
         //          As with any set of tests, the more we test the same code path, the better.
         //          Based on brief glance, this looks 90% the same as IngressFlow.
 
         List<OFAction> actionList = new ArrayList<>();
-        IOFSwitch sw = ofSwitchService.getSwitch(dpid);
+        IOFSwitch sw = lookupSwitch(dpid);
 
         // build match by input port and transit vlan id
         Match match = matchFlow(sw, inputPort, inputVlanId);
@@ -395,9 +392,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         OFFlowMod flowMod = buildFlowMod(sw, match, meter, actions,
                 cookie & FLOW_COOKIE_MASK, FlowModUtils.PRIORITY_VERY_HIGH);
 
-        // send FLOW_MOD to the switch
-        boolean response = pushFlow(flowId, dpid, flowMod);
-        return new ImmutablePair<>(flowMod.getXid(), response);
+        pushFlow(sw, flowId, flowMod);
+
+        return flowMod.getXid();
     }
 
     /**
@@ -434,9 +431,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * {@inheritDoc}
      */
     @Override
-    public OFMeterConfigStatsReply dumpMeters(final DatapathId dpid) {
+    public OFMeterConfigStatsReply dumpMeters(final DatapathId dpid) throws SwitchOperationException {
         OFMeterConfigStatsReply values = null;
-        IOFSwitch sw = ofSwitchService.getSwitch(dpid);
+        IOFSwitch sw = lookupSwitch(dpid);
         if (sw == null) {
             throw new IllegalArgumentException(String.format("Switch %s was not found", dpid.toString()));
         }
@@ -460,18 +457,18 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * {@inheritDoc}
      */
     @Override
-    public ImmutablePair<Long, Boolean> installMeter(final DatapathId dpid, final long bandwidth,
-                                                      final long burstSize, final long meterId) {
+    public long installMeter(final DatapathId dpid, final long bandwidth, final long burstSize, final long meterId)
+            throws SwitchOperationException {
         if (meterId == 0) {
             logger.info("skip installing meter {} on switch {} width bandwidth {}", meterId, dpid, bandwidth);
-            return new ImmutablePair<>(0L, true);
+            return 0L;
         }
 
-        IOFSwitch sw = ofSwitchService.getSwitch(dpid);
+        IOFSwitch sw = lookupSwitch(dpid);
 
         if (OVS_MANUFACTURER.equals(sw.getSwitchDescription().getManufacturerDescription())) {
             logger.info("skip installing meter {} on OVS switch {} width bandwidth {}", meterId, dpid, bandwidth);
-            return new ImmutablePair<>(0L, true);
+            return 0L;
         }
 
         if (sw.getOFFactory().getVersion().compareTo(OF_12) <= 0) {
@@ -488,8 +485,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
 
-    private ImmutablePair<Long, Boolean> installMeter(final IOFSwitch sw, final DatapathId dpid, final long bandwidth,
-                                                     final long burstSize, final long meterId) {
+    private long installMeter(final IOFSwitch sw, final DatapathId dpid, final long bandwidth,
+                                                     final long burstSize, final long meterId)
+            throws OFInstallException {
         logger.debug("installing meter {} on switch {} width bandwidth {}", meterId, dpid, bandwidth);
 
         Set<OFMeterFlags> flags = new HashSet<>(Arrays.asList(OFMeterFlags.KBPS, OFMeterFlags.BURST));
@@ -513,13 +511,13 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         OFMeterMod meterMod = meterModBuilder.build();
 
-        boolean response = sw.write(meterMod);
-        return new ImmutablePair<>(meterMod.getXid(), response);
+        return pushFlow(sw, "--InstallMeter--", meterMod);
     }
 
-    private ImmutablePair<Long, Boolean> installLegacyMeter(final IOFSwitch sw, final DatapathId dpid,
-                                                            final long bandwidth, final long burstSize,
-                                                            final long meterId) {
+    private long installLegacyMeter(
+            final IOFSwitch sw, final DatapathId dpid,
+            final long bandwidth, final long burstSize, final long meterId)
+            throws OFInstallException {
         logger.debug("installing legacy meter {} on OVS switch {} width bandwidth {}", meterId, dpid, bandwidth);
 
         Set<OFLegacyMeterFlags> flags = new HashSet<>(Arrays.asList(OFLegacyMeterFlags.KBPS, OFLegacyMeterFlags.BURST));
@@ -534,8 +532,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .setFlags(flags)
                 .build();
 
-        boolean response = sw.write(meterMod);
-        return new ImmutablePair<>(meterMod.getXid(), response);
+        return pushFlow(sw, "--InstallMeter", meterMod);
     }
 
     // Utility Methods
@@ -544,35 +541,35 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * {@inheritDoc}
      */
     @Override
-    public ImmutablePair<Long, Boolean> deleteFlow(final DatapathId dpid, final String flowId, final Long cookie) {
+    public long deleteFlow(final DatapathId dpid, final String flowId, final Long cookie)
+            throws SwitchOperationException {
         logger.info("deleting flows {} from switch {}", flowId, dpid.toString());
 
-        IOFSwitch sw = ofSwitchService.getSwitch(dpid);
+        IOFSwitch sw = lookupSwitch(dpid);
         OFFactory ofFactory = sw.getOFFactory();
         OFFlowDelete flowDelete = ofFactory.buildFlowDelete()
                 .setCookie(U64.of(cookie))
                 .setCookieMask(NON_SYSTEM_MASK)
                 .build();
 
-        boolean response = sw.write(flowDelete);
-        return new ImmutablePair<>(flowDelete.getXid(), response);
+        return pushFlow(sw, "--DeleteFlow--", flowDelete);
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public ImmutablePair<Long, Boolean> deleteMeter(final DatapathId dpid, final long meterId) {
+    public long deleteMeter(final DatapathId dpid, final long meterId)
+            throws SwitchOperationException {
         if (meterId == 0) {
             logger.info("skip deleting meter {} from switch {}", meterId, dpid);
-            return new ImmutablePair<>(0L, true);
+            return 0L;
         }
 
-        IOFSwitch sw = ofSwitchService.getSwitch(dpid);
-
+        IOFSwitch sw = lookupSwitch(dpid);
         if (OVS_MANUFACTURER.equals(sw.getSwitchDescription().getManufacturerDescription())) {
             logger.info("skip deleting meter {} from OVS switch {}", meterId, dpid);
-            return new ImmutablePair<>(0L, true);
+            return 0L;
         }
 
         if (sw.getOFFactory().getVersion().compareTo(OF_12) <= 0) {
@@ -582,7 +579,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         }
     }
 
-    public ImmutablePair<Long, Boolean> deleteMeter(IOFSwitch sw, final DatapathId dpid, final long meterId) {
+    public long deleteMeter(IOFSwitch sw, final DatapathId dpid, final long meterId)
+            throws OFInstallException {
         logger.debug("deleting meter {} from switch {}", meterId, dpid);
 
         OFFactory ofFactory = sw.getOFFactory();
@@ -599,11 +597,11 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         OFMeterMod meterDelete = meterDeleteBuilder.build();
 
-        boolean response = sw.write(meterDelete);
-        return new ImmutablePair<>(meterDelete.getXid(), response);
+        return pushFlow(sw, "--DeleteMeter--", meterDelete);
     }
 
-    public ImmutablePair<Long, Boolean> deleteLegacyMeter(final IOFSwitch sw, final DatapathId dpid, final long meterId) {
+    public long deleteLegacyMeter(final IOFSwitch sw, final DatapathId dpid, final long meterId)
+            throws OFInstallException {
         logger.debug("deleting legacy meter {} from switch {}", meterId, dpid);
 
         OFFactory ofFactory = sw.getOFFactory();
@@ -614,8 +612,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .setCommand(OFLegacyMeterModCommand.DELETE)
                 .build();
 
-        boolean response = sw.write(meterDelete);
-        return new ImmutablePair<>(meterDelete.getXid(), response);
+        return pushFlow(sw, "--DeleteMeter--", meterDelete);
     }
 
     /**
@@ -884,14 +881,13 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      *
      * @param dpid        datapathId of switch
      * @param isBroadcast if broadcast then set a generic match; else specific to switch Id
-     * @return true if the command is accepted to be sent to switch, false otherwise - switch is disconnected or in
-     * SLAVE mode
+     * @throws SwitchOperationException
      */
-    private boolean installVerificationRule(final DatapathId dpid, final boolean isBroadcast) {
+    private void installVerificationRule(final DatapathId dpid, final boolean isBroadcast)
+            throws SwitchOperationException {
+        IOFSwitch sw = lookupSwitch(dpid);
         logger.debug("installing verification rule for {}",
                 dpid.toString());
-
-        IOFSwitch sw = ofSwitchService.getSwitch(dpid);
 
         Match match = matchVerification(sw, isBroadcast);
         ArrayList<OFAction> actionList = new ArrayList<>(2);
@@ -904,35 +900,54 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 cookie, FlowModUtils.PRIORITY_VERY_HIGH);
         String flowname = (isBroadcast) ? "Broadcast" : "Unicast";
         flowname += "--VerificationFlow--" + dpid.toString();
-        return pushFlow(flowname, dpid, flowMod);
+        pushFlow(sw, flowname, flowMod);
     }
 
     /**
      * Installs a last-resort rule to drop all packets that don't match any match.
      *
      * @param dpid datapathId of switch
-     * @return true if the command is accepted to be sent to switch, false otherwise - switch is disconnected or in
-     * SLAVE mode
+     * @throws SwitchOperationException
      */
-    private boolean installDropFlow(final DatapathId dpid) {
-        IOFSwitch sw = ofSwitchService.getSwitch(dpid);
+    private void installDropFlow(final DatapathId dpid) throws SwitchOperationException {
+        IOFSwitch sw = lookupSwitch(dpid);
         OFFlowMod flowMod = buildFlowMod(sw, null, null, null, DROP_COOKIE, 1);
-        String flowname = "--DropRule--" + dpid.toString();
-        return pushFlow(flowname, dpid, flowMod);
+        String flowName = "--DropRule--" + dpid.toString();
+        pushFlow(sw, flowName, flowMod);
     }
 
     /**
      * Pushes a single flow modification command to the switch with the given datapath ID.
      *
+     * @param sw      open flow switch descriptor
      * @param flowId  flow name, for logging
-     * @param dpid    switch datapath ID
      * @param flowMod command to send
-     * @return true if the command is accepted to be sent to switch, false otherwise - switch is disconnected or in
-     * SLAVE mode
+     * @return OF transaction Id (???)
+     * @throws OFInstallException
      */
-    private boolean pushFlow(final String flowId, final DatapathId dpid, final OFFlowMod flowMod) {
+    private long pushFlow(final IOFSwitch sw, final String flowId, final OFMessage flowMod) throws OFInstallException {
         logger.info("installing {} flow: {}", flowId, flowMod);
 
-        return ofSwitchService.getSwitch(dpid).write(flowMod);
+        if (! sw.write(flowMod)) {
+            throw new OFInstallException(sw.getId(), flowMod);
+        }
+
+        return flowMod.getXid();
+    }
+
+    /**
+     * Wrap IOFSwitchService.getSwitch call to check protect from null return value.
+     *
+     * @param  dpId switch identifier
+     * @return open flow switch descriptor
+     * @throws SwitchOperationException
+     */
+    private IOFSwitch lookupSwitch(DatapathId dpId) throws SwitchOperationException {
+        IOFSwitch swInfo = ofSwitchService.getSwitch(dpId);
+        if (swInfo == null) {
+            throw new SwitchOperationException(dpId);
+        }
+
+        return swInfo;
     }
 }

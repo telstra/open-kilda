@@ -15,6 +15,8 @@ public class LinkPropsResult {
     private int successes;
     private String[] messages;
 
+    // TODO: Drop this class in favor of BatchResults. It is identical.
+
     public LinkPropsResult() {
         this(0,0,null);
     }
