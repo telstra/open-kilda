@@ -886,6 +886,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     private void installVerificationRule(final DatapathId dpid, final boolean isBroadcast)
             throws SwitchOperationException {
         IOFSwitch sw = lookupSwitch(dpid);
+        logger.debug("installing verification rule for {}",
+                dpid.toString());
 
         Match match = matchVerification(sw, isBroadcast);
         ArrayList<OFAction> actionList = new ArrayList<>(2);
@@ -925,6 +927,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      */
     private long pushFlow(final IOFSwitch sw, final String flowId, final OFMessage flowMod) throws OFInstallException {
         logger.info("installing {} flow: {}", flowId, flowMod);
+
         if (! sw.write(flowMod)) {
             throw new OFInstallException(sw.getId(), flowMod);
         }
