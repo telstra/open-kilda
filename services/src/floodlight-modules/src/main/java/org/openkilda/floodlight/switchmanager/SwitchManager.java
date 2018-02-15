@@ -888,8 +888,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * SLAVE mode
      */
     private boolean installVerificationRule(final DatapathId dpid, final boolean isBroadcast) {
-        logger.debug("installing verification rule for {} of type {}",
-                dpid.toString(), isBroadcast ? "Broadcast" : "Unicast");
+        logger.debug("installing verification rule for {}",
+                dpid.toString());
 
         IOFSwitch sw = ofSwitchService.getSwitch(dpid);
 
@@ -932,6 +932,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      */
     private boolean pushFlow(final String flowId, final DatapathId dpid, final OFFlowMod flowMod) {
         logger.info("installing {} flow: {}", flowId, flowMod);
+
         return ofSwitchService.getSwitch(dpid).write(flowMod);
     }
 }

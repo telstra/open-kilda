@@ -482,6 +482,16 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
                 }
             }
 
+            // Corner case where we receive a valid VerificationPacket but the remote switch is not known.  This is
+            // going to be a bigger issue when we have multiple speakers with different switches on them.  For now
+            // if we don't know the switch, then return.
+            //
+            // TODO:  fix the above
+
+            if (remoteSwitch == null) {
+                return Command.STOP;
+            }
+
             if (!signed)
             {
                 logger.warn("verification packet without sign");
