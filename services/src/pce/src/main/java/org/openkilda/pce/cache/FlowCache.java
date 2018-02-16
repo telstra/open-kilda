@@ -34,7 +34,6 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -125,6 +124,23 @@ public class FlowCache extends Cache {
     }
 
     /**
+     * Gets active flows with specified switch in the path.
+     *
+     * @param switchId switch id
+     * @return set of flows
+     */
+    public Set<ImmutablePair<Flow, Flow>> getActiveFlowsWithAffectedPath(String switchId) {
+        return flowPool.values().stream().filter(flow ->
+                flow.getLeft().getFlowPath().getPath().stream()
+                        .anyMatch(node -> node.getSwitchId().equals(switchId))
+                        || flow.getRight().getFlowPath().getPath().stream()
+                        .anyMatch(node -> node.getSwitchId().equals(switchId))
+                        || isOneSwitchFlow(flow) && flow.getLeft().getSourceSwitch().equals(switchId))
+                .filter(flow -> FlowState.UP == flow.getLeft().getState())
+                .collect(Collectors.toSet());
+    }
+
+    /**
      * Gets flows with specified isl in the path.
      *
      * @param islData isl
@@ -134,6 +150,20 @@ public class FlowCache extends Cache {
         return flowPool.values().stream()
                 .filter(flow -> flow.getLeft().getFlowPath().getPath().contains(islData.getPath().get(0))
                         || flow.getRight().getFlowPath().getPath().contains(islData.getPath().get(0)))
+                .collect(Collectors.toSet());
+    }
+
+    /**
+     * Gets active flows with specified isl in the path.
+     *
+     * @param islData isl
+     * @return set of flows
+     */
+    public Set<ImmutablePair<Flow, Flow>> getActiveFlowsWithAffectedPath(IslInfoData islData) {
+        return flowPool.values().stream()
+                .filter(flow -> flow.getLeft().getFlowPath().getPath().contains(islData.getPath().get(0))
+                        || flow.getRight().getFlowPath().getPath().contains(islData.getPath().get(0)))
+                .filter(flow -> FlowState.UP == flow.getLeft().getState())
                 .collect(Collectors.toSet());
     }
 
@@ -504,10 +534,10 @@ public class FlowCache extends Cache {
         return linkedSwitch;
     }
 
-    public List<ImmutablePair<Flow, Flow>> getIngressAndEgressFlows(String switchId) {
+    public Set<ImmutablePair<Flow, Flow>> getIngressAndEgressFlows(String switchId) {
         return flowPool.values().stream()
                 .filter(flowPair -> Objects.nonNull(getFlowLinkedEndpoint(flowPair, switchId)))
-                .collect(Collectors.toList());
+                .collect(Collectors.toSet());
     }
 
     /**

@@ -287,4 +287,29 @@ public class FlowController {
         return flowService.pushFlows(externalFlows, correlationId);
     }
 
+    /**
+     * Initiates flow rerouting if any shorter paths are available.
+     *
+     * @param flowId id of flow to be rerouted.
+     * @param correlationId correlation ID header value.
+     * @return flow payload with updated path.
+     */
+    @ApiOperation(value = "Reroute flow", response = FlowPathPayload.class)
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, response = FlowPathPayload.class, message = "Operation is successful"),
+            @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
+            @ApiResponse(code = 401, response = MessageError.class, message = "Unauthorized"),
+            @ApiResponse(code = 403, response = MessageError.class, message = "Forbidden"),
+            @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
+            @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
+            @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
+    @RequestMapping(path = "/flows/{flow_id}/reroute",
+            method = RequestMethod.PATCH)
+    @ResponseStatus(HttpStatus.OK)
+    public FlowPathPayload rerouteFlow(@PathVariable("flow_id") String flowId,
+            @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
+        logger.debug("Received reroute request with correlation_id {} for flow {}", correlationId, flowId);
+        return flowService.rerouteFlow(flowId, correlationId);
+    }
+
 }

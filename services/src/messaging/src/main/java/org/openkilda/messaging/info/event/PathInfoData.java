@@ -24,8 +24,10 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.openkilda.messaging.info.CacheTimeTag;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * Defines the payload payload of a Message representing a path info.
@@ -140,6 +142,21 @@ public class PathInfoData extends CacheTimeTag {
         }
 
         PathInfoData that = (PathInfoData) object;
-        return Objects.equals(getPath(), that.getPath());
+        if (this.getPath() == null || that.getPath() == null) {
+            return this.getPath() == that.getPath();
+        }
+
+        if (this.getPath().size() != that.getPath().size()) {
+            return false;
+        }
+
+        List<PathNode> thisPath = this.getPath().stream()
+                .sorted(Comparator.comparing(PathNode::getSeqId))
+                .collect(Collectors.toList());
+
+        List<PathNode> thatPath = that.getPath().stream()
+                .sorted(Comparator.comparing(PathNode::getSeqId))
+                .collect(Collectors.toList());
+        return Objects.equals(thisPath, thatPath);
     }
 }

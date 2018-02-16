@@ -79,5 +79,9 @@ public enum FlowState {
     public String toString() {
         return state;
     }
+
+    public boolean isActive() {
+        return this == UP;
+    }
 }
 

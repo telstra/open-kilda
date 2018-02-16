@@ -76,4 +76,5 @@ def topology_event_handler(event):
             logger.error('Message body: %s', event.to_json())
             time.sleep(.1)
 
-    logger.debug('Event processed for: %s', event.get_type())
+    logger.debug('Event processed for: %s, correlation_id: %s',
+                 event.get_type(), event.correlation_id)
