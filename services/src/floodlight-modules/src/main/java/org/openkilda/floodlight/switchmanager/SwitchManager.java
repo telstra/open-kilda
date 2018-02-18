@@ -237,11 +237,11 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     @Override
     public void installDefaultRules(final DatapathId dpid) throws SwitchOperationException {
         installDropFlow(dpid);
-
+        installVerificationRule(dpid, true);
         IOFSwitch sw = lookupSwitch(dpid);
         if (sw.getOFFactory().getVersion().compareTo(OF_12) > 0) {
             logger.debug("installing unicast verification match for {}", dpid.toString());
-            installVerificationRule(dpid, true);
+            installVerificationRule(dpid, false);
         } else {
             logger.debug("not installing unicast verification match for {}", dpid.toString());
         }
