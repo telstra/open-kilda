@@ -1,11 +1,12 @@
 package org.openkilda.atdd;
 
-import static org.junit.Assert.assertFalse;
+import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertTrue;
 
 import cucumber.api.java.en.Then;
 import cucumber.api.java.en.When;
 import org.apache.commons.lang.StringUtils;
+import org.awaitility.Duration;
 import org.openkilda.SwitchesUtils;
 import org.openkilda.flow.FlowUtils;
 import org.openkilda.messaging.info.event.PathNode;
@@ -29,19 +30,22 @@ public class FlowReinstallTest {
     }
 
     @Then("^flow (.*) is(.*) built through (.*) switch")
-    public void flowPathContainsSwitch(String flow, String shouldNotContain, String switchId)
+    public void flowPathContainsSwitch(final String flow, final String shouldNotContain, final String switchId)
             throws InterruptedException {
-        TimeUnit.SECONDS.sleep(1);
-        FlowPathPayload payload = FlowUtils.getFlowPath(FlowUtils.getFlowName(flow));
-        assertTrue("Flow path should exist", payload != null && payload.getPath() != null);
-        List<PathNode> path = payload.getPath().getPath();
+        await().atMost(20, TimeUnit.SECONDS)
+                .pollInterval(Duration.ONE_SECOND)
+                .until(() -> {
+            FlowPathPayload payload = FlowUtils.getFlowPath(FlowUtils.getFlowName(flow));
+            assertTrue("Flow path should exist", payload != null && payload.getPath() != null);
+            List<PathNode> path = payload.getPath().getPath();
+            boolean contains = path.stream()
+                    .anyMatch(node -> switchId.equalsIgnoreCase(node.getSwitchId()));
 
-        boolean contains = path.stream()
-                .anyMatch(node -> switchId.equalsIgnoreCase(node.getSwitchId()));
-        if (StringUtils.isBlank(shouldNotContain)) {
-            assertTrue(contains);
-        } else {
-            assertFalse(contains);
-        }
+            if (StringUtils.isBlank(shouldNotContain)) {
+                return contains;
+            } else {
+                return !contains;
+            }
+        });
     }
 }
