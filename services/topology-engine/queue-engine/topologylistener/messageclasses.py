@@ -576,7 +576,7 @@ class MessageItem(object):
 
 
     @staticmethod
-    def fetch_isls(pull=True):
+    def fetch_isls(pull=True,sort_key='src_switch'):
         """
         :return: an unsorted list of ISL relationships with all properties pulled from the db if pull=True
         """
@@ -588,6 +588,10 @@ class MessageItem(object):
                 if pull:
                     graph.pull(rel)
                 isls.append(rel)
+
+            if sort_key:
+                isls = sorted(isls, key=lambda x: x[sort_key])
+
             return isls
         except Exception as e:
             logger.exception('FAILED to get ISLs from the DB ', e.message)

@@ -83,7 +83,7 @@ flow_utils.remove_flow(flow1)
 result = flow_utils.fetch_flow_segments(flow1)
 print("Validate #4.1 - should have no flow segments: %s " % result)
 
-for i,isl in enumerate(sorted(messageclasses.MessageItem.fetch_isls(),key=lambda x: x['src_switch'])):
+for i,isl in enumerate(messageclasses.MessageItem.fetch_isls()):
     print("Validate #4.* - available_bandwidth should be %d: is: %d" % ((isls1[i]['available_bandwidth']), isl['available_bandwidth']))
 
 # CREATE INDEX ON :switch(name);
