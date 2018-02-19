@@ -17,9 +17,6 @@
 import json
 import logging
 
-import traceback
-from py2neo import Node
-
 import config
 import flow_utils
 import message_utils
@@ -327,7 +324,7 @@ class MessageItem(object):
                 "SET "
                 "i.latency = {}, "
                 "i.speed = {}, "
-                "i.available_bandwidth = {}, "
+                "i.max_bandwidth = {}, "
                 "i.status = 'active' "
             ).format(
                 a_switch,
@@ -338,7 +335,6 @@ class MessageItem(object):
                 speed,
                 available_bandwidth
             )
-
             graph.run(isl_create_or_update)
 
             #
@@ -357,8 +353,12 @@ class MessageItem(object):
                      ' AND lp.dst_switch = "%s" ' \
                      ' AND lp.dst_port = %s ' % (src_sw, src_pt, dst_sw, dst_pt)
             query += ' SET i += lp '
-
             graph.run(query)
+
+            #
+            # Finally, update the available_bandwidth..
+            #
+            flow_utils.update_isl_bandwidth(src_sw, src_pt, dst_sw, dst_pt)
 
             logger.info('ISL between %s and %s updated', a_switch, b_switch)
 
@@ -401,12 +401,11 @@ class MessageItem(object):
     @staticmethod
     def delete_flow(flow_id, flow, correlation_id):
         try:
-            flow_path = flow['flowpath']['path']
             logger.info('Flow path remove: %s', flow_path)
 
             # TODO: Remove Flow should be moved down .. opposite order of create.
             #       (I'd do it now, but I'm troubleshooting something else)
-            flow_utils.remove_flow(flow, flow_path)
+            flow_utils.remove_flow(flow)
 
             logger.info('Flow was removed: correlation_id=%s, flow_id=%s',
                         correlation_id, flow_id)
@@ -437,7 +436,7 @@ class MessageItem(object):
 
             logger.info('Flow path remove: %s', old_flow_path)
 
-            flow_utils.remove_flow(old_flow, old_flow_path)
+            flow_utils.remove_flow(old_flow)
 
             logger.info('Flow was removed: correlation_id=%s, flow_id=%s',
                         correlation_id, flow_id)
@@ -543,12 +542,11 @@ class MessageItem(object):
     @staticmethod
     def get_isls():
         try:
-            query = "MATCH (a:switch)-[r:isl]->(b:switch) RETURN r"
-            result = graph.run(query).data()
+            result = MessageItem.fetch_isls()
 
             isls = []
-            for data in result:
-                link = data['r']
+            for link in result:
+                # link = data['r']
                 isl = {
                     'id': str(
                         link['src_switch'] + '_' + str(link['src_port'])),
@@ -568,7 +566,6 @@ class MessageItem(object):
                     'clazz': MT_ISL
                 }
                 isls.append(isl)
-
             logger.info('Got isls: %s', isls)
 
         except Exception as e:
@@ -576,6 +573,26 @@ class MessageItem(object):
             raise
 
         return isls
+
+
+    @staticmethod
+    def fetch_isls(pull=True):
+        """
+        :return: an unsorted list of ISL relationships with all properties pulled from the db if pull=True
+        """
+        try:
+            # query = "MATCH (a:switch)-[r:isl]->(b:switch) RETURN r ORDER BY r.src_switch, r.src_port"
+            isls=[]
+            rels = graph.match(rel_type="isl")
+            for rel in rels:
+                if pull:
+                    graph.pull(rel)
+                isls.append(rel)
+            return isls
+        except Exception as e:
+            logger.exception('FAILED to get ISLs from the DB ', e.message)
+            raise
+
 
 
     def dump_network(self):

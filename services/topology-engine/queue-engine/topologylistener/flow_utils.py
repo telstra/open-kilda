@@ -88,58 +88,197 @@ def build_rules(flow):
     return get_rules(output_action=output_action, **flow)
 
 
-def update_path_bandwidth(nodes, bandwidth):
-    query = "MATCH (a:switch)-[r:isl {{" \
-            "src_switch: '{}', " \
-            "src_port: {}}}]->(b:switch) " \
-            "set r.available_bandwidth = r.available_bandwidth - {} return r"
-
-    for node in nodes:
-        update = query.format(node['switch_id'], node['port_no'], bandwidth)
-        response = graph.run(update).data()
-        logger.info('ISL bandwidth update: node=%s, bandwidth=%s, response=%s',
-                    node, bandwidth, response)
-
-
-def remove_flow(flow, flow_path):
+def remove_flow(flow):
+    """
+    Deletes the flow and its flow segments. Start with flow segments (symmetrical mirror of store_flow)
+    - flowid is *the* primary key for a flow .. that is all that is required to delete a flow
+    """
     logger.info('Remove flow: %s', flow['flowid'])
+    tx = graph.begin()
+    delete_flow_segments(flow, tx)
+    query = "MATCH (:switch)-[f:flow {{flowid: '{}'}}]->(:switch) DELETE f"
+    result = tx.run(query.format(flow['flowid'])).data()
+    tx.commit()
+    return result
 
-    query = "MATCH (a:switch)-[r:flow {{flowid: '{}'}}]->(b:switch) " \
-            "WHERE r.cookie = {} DELETE r"
-    graph.run(query.format(flow['flowid'], int(flow['cookie']))).data()
 
-    if not flow['ignore-bandwidth'] and is_forward_cookie(flow['cookie']):
-            update_path_bandwidth(flow_path, -int(flow['bandwidth']))
-
-
-def store_flow(flow):
-
-    flow_data = copy.deepcopy(flow)
-
-    query = ("MATCH (u:switch {{name:'{src_switch}'}}), "
-             "(r:switch {{name:'{dst_switch}'}}) "
-             "MERGE (u)-[:flow {{"
-             "flowid:'{flowid}', "
-             "cookie: {cookie}, "
-             "meter_id: {meter_id}, "
-             "bandwidth: {bandwidth}, "
-             "src_port: {src_port}, "
-             "dst_port: {dst_port}, "
-             "src_switch: '{src_switch}', "
-             "dst_switch: '{dst_switch}', "
-             "src_vlan: {src_vlan}, "
-             "dst_vlan: {dst_vlan},"
-             "transit_vlan: {transit_vlan}, "
-             "description: '{description}', "
-             "last_updated: '{last_updated}', "
-             "flowpath: '{flowpath}'}}]->(r)")
-    path = flow_data['flowpath']['path']
+def merge_flow_relationship(flow_data):
+    """
+    This function focuses on just creating the starting/ending switch relationship.
+    """
+    query = (
+        "MERGE "                                # MERGE .. create if doesn't exist .. being cautious
+        "(src:switch {{name:'{src_switch}'}}) "
+        "ON CREATE SET src.state = 'inactive' "
+        "MERGE "
+        "(dst:switch {{name:'{dst_switch}'}}) "
+        "ON CREATE SET dst.state = 'inactive' "
+        "MERGE (src)-[:flow {{"
+        "flowid:'{flowid}', "
+        "cookie: {cookie}, "
+        "meter_id: {meter_id}, "
+        "bandwidth: {bandwidth}, "
+        "ignore_bandwidth: {ignore_bandwidth}, "
+        "src_port: {src_port}, "
+        "dst_port: {dst_port}, "
+        "src_switch: '{src_switch}', "
+        "dst_switch: '{dst_switch}', "
+        "src_vlan: {src_vlan}, "
+        "dst_vlan: {dst_vlan},"
+        "transit_vlan: {transit_vlan}, "
+        "description: '{description}', "
+        "last_updated: '{last_updated}', "
+        "flowpath: '{flowpath}'}}]->(dst)")
     flow_data['flowpath'] = json.dumps(flow_data['flowpath'])
     graph.run(query.format(**flow_data))
 
-    # the path is bidirectional .. only deduct bandwidth once (in forward direction)
-    if not flow['ignore-bandwidth'] and is_forward_cookie(flow_data['cookie']):
-        update_path_bandwidth(path, int(flow_data['bandwidth']))
+
+def merge_flow_segments(_flow):
+    """
+    This function creates each segment relationship in a flow, and then it calls the function to
+    update bandwidth. This should always be down when creating/merging flow segments.
+
+    To create segments, we leverages the flow path .. and the flow path is a series of nodes, where
+    each 2 nodes are the endpoints of an ISL.
+    """
+    flow = copy.deepcopy(_flow)
+    create_segment_query = (
+        "MERGE "                                # MERGE .. create if doesn't exist .. being cautious
+        "(src:switch {{name:'{src_switch}'}}) "
+        "ON CREATE SET src.state = 'inactive' "
+        "MERGE "
+        "(dst:switch {{name:'{dst_switch}'}}) "
+        "ON CREATE SET dst.state = 'inactive' "
+        "MERGE "
+        "(src)-[fs:flow_segment {{flowid: '{flowid}' }}]->(dst) "
+        "SET "
+        "fs.cookie = {cookie}, "
+        "fs.src_switch = '{src_switch}', "
+        "fs.src_port = {src_port}, "
+        "fs.dst_switch = '{dst_switch}', "
+        "fs.dst_port = {dst_port}, "
+        "fs.seq_id = {seq_id}, "
+        "fs.segment_latency = {segment_latency}, "
+        "fs.bandwidth = {bandwidth}, "
+        "fs.ignore_bandwidth = {ignore_bandwidth} "
+    )
+
+    flow_path = get_flow_path(flow)
+    flow_cookie = flow['cookie']
+    logger.debug('MERGE Flow Segments : %s [path: %s]', flow['flowid'], flow_path)
+
+    for i in range(0, len(flow_path), 2):
+        src = flow_path[i]
+        dst = flow_path[i+1]
+        # <== SRC
+        flow['src_switch'] = src['switch_id']
+        flow['src_port'] = src['port_no']
+        flow['seq_id'] = src['seq_id']
+        flow['segment_latency'] = src['segment_latency']
+        # ==> DEST
+        flow['dst_switch'] = dst['switch_id']
+        flow['dst_port'] = dst['port_no']
+        # Allow for per segment cookies .. see if it has one set .. otherwise use the cookie of the flow
+        flow['cookie'] = src.get('cookie', flow_cookie)
+
+        # TODO: Preference for transaction around the entire delete
+        # TODO: Preference for batch command
+        graph.run(create_segment_query.format(**flow))
+
+    update_flow_segment_available_bw(flow)
+
+
+def get_flow_path(flow):
+    flow_path = flow['flowpath']['path']
+    if len(flow_path) % 2 != 0:
+        # The current implementation puts 2 nodes per segment .. throw an error if this changes
+        msg = 'Found un-even number of nodes in the flowpath: {}'.format(flow_path)
+        logger.error(msg)
+        raise ValueError(msg)
+    return flow_path
+
+
+def delete_flow_segments(flow, tx=None):
+    """
+    Whenever adjusting flow segments, always update available bandwidth. Even when creating a flow
+    where we might remove anything old and then create the new .. it isn't guaranteed that the
+    old segments are the same as the new segements.. so update bandwidth to be save.
+    """
+    flow_path = get_flow_path(flow)
+    logger.debug('DELETE Flow Segments : %s [path: %s]', flow['flowid'], flow_path)
+    delete_segment_query = (
+        "MATCH (:switch)-[fs:flow_segment {{flowid: '{flowid}' }}]->(:switch) DELETE fs"
+    )
+    if tx:
+        tx.run(delete_segment_query.format(**flow))
+    else:
+        graph.run(delete_segment_query.format(**flow))
+    update_flow_segment_available_bw(flow, tx)
+
+
+def fetch_flow_segments(flow):
+    """
+    :param flow: holds the key 'flowid'
+    :return:
+    """
+    fetch_query = (
+        "MATCH (:switch)-[fs:flow_segment {{flowid: '{flowid}' }}]->(:switch) RETURN fs ORDER BY fs.seq_id"
+    )
+    # This query returns type py2neo.types.Relationship .. it has a dict method to return the properties
+    result = graph.run(fetch_query.format(**flow)).data()
+    return [dict(x['fs']) for x in result]
+
+
+def update_flow_segment_available_bw(flow, tx=None):
+    flow_path = get_flow_path(flow)
+    logger.debug('Update ISL Bandwidth from Flow Segments : %s [path: %s]', flow['flowid'], flow_path)
+    # TODO: Preference for transaction around the entire delete
+    # TODO: Preference for batch command
+    for i in range(0, len(flow_path), 2):
+        src = flow_path[i]
+        dst = flow_path[i+1]
+        update_isl_bandwidth(src['switch_id'], src['port_no'], dst['switch_id'], dst['port_no'], tx)
+
+
+def update_isl_bandwidth(src_switch, src_port, dst_switch, dst_port, tx=None):
+    # print('Update ISL Bandwidth from %s:%d --> %s:%d' % (src_switch, src_port, dst_switch, dst_port))
+
+    available_bw_query = (
+        "MATCH (src:switch {{name:'{src_switch}'}}), (dst:switch {{name:'{dst_switch}'}}) WITH src,dst "
+        " MATCH (src)-[i:isl {{ src_port:{src_port}, dst_port: {dst_port}}}]->(dst) WITH src,dst,i "
+        " OPTIONAL MATCH (src)-[fs:flow_segment {{ src_port:{src_port}, dst_port: {dst_port}, ignore_bandwidth: false }}]->(dst) "
+        " WITH sum(fs.bandwidth) AS used_bandwidth, i as i "
+        " SET i.available_bandwidth = i.max_bandwidth - used_bandwidth "
+    )
+
+    logger.debug('Update ISL Bandwidth from %s:%d --> %s:%d' % (src_switch, src_port, dst_switch, dst_port))
+    params = {
+        'src_switch': src_switch,
+        'src_port': src_port,
+        'dst_switch': dst_switch,
+        'dst_port': dst_port,
+    }
+    query = available_bw_query.format(**params)
+    if tx:
+        tx.run(query)
+    else:
+        graph.run(query)
+
+
+def store_flow(flow):
+    """
+    Create a :flow relationship between the starting and ending switch, as well as
+    create :flow_segment relationships between every switch in the path.
+    :param flow:
+    :return:
+    """
+    # TODO: Preference for transaction around the entire set of store operations
+
+    # In case the flow-id has been recycled, let's delete the old one if it exists
+    logger.debug('STORE Flow : %s', flow['flowid'])
+    remove_flow(copy.deepcopy(flow))  # deletes old segments too
+    merge_flow_relationship(copy.deepcopy(flow))
+    merge_flow_segments(flow)
 
 
 def get_old_flow(new_flow):

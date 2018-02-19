@@ -172,7 +172,7 @@ public class NeoDriver implements PathComputer {
         if (flow.isIgnoreBandwidth()) {
             where.add("ALL(y in r WHERE y.status = 'active')");
         } else {
-            where.add("ALL(y in r WHERE y.available_bandwidth >= {bandwidth} AND y.status = 'active')");
+            where.add("ALL(y in r WHERE y.status = 'active' AND y.available_bandwidth >= {bandwidth})");
             parameters.put("bandwidth", Values.value(flow.getBandwidth()));
         }
 
