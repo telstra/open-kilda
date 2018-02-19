@@ -15,7 +15,12 @@
 
 package org.openkilda.northbound.config;
 
+import static org.openkilda.messaging.Utils.CORRELATION_ID;
+import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
+
 import org.openkilda.northbound.utils.ExecutionTimeInterceptor;
+import org.slf4j.MDC;
+import org.slf4j.MDC.MDCCloseable;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,12 +28,19 @@ import org.springframework.context.annotation.PropertySource;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
 
+import java.io.IOException;
 import java.util.Collections;
+import java.util.Optional;
+import javax.servlet.FilterChain;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 /**
  * The Web Application configuration.
@@ -79,5 +91,22 @@ public class WebConfig extends WebMvcConfigurerAdapter {
                 .addResourceLocations("classpath:/META-INF/resources/");
         registry.addResourceHandler("/webjars/**")
                 .addResourceLocations("classpath:/META-INF/resources/webjars/");
+    }
+
+    @Bean
+    public OncePerRequestFilter requestCorrelationIdFilter() {
+        return new OncePerRequestFilter() {
+            @Override
+            protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
+                    FilterChain filterChain)
+                    throws ServletException, IOException {
+
+                // Put the request's correlationId into the logger context.
+                String correlationId = Optional.of(request.getHeader(CORRELATION_ID)).orElse(DEFAULT_CORRELATION_ID);
+                try(MDCCloseable closable = MDC.putCloseable(CORRELATION_ID, correlationId)) {
+                    filterChain.doFilter(request, response);
+                }
+            }
+        };
     }
 }
