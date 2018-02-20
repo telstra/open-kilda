@@ -401,6 +401,7 @@ class MessageItem(object):
     @staticmethod
     def delete_flow(flow_id, flow, correlation_id):
         try:
+            flow_path = flow['flowpath']['path']
             logger.info('Flow path remove: %s', flow_path)
 
             # TODO: Remove Flow should be moved down .. opposite order of create.
@@ -576,7 +577,7 @@ class MessageItem(object):
 
 
     @staticmethod
-    def fetch_isls(pull=True):
+    def fetch_isls(pull=True,sort_key='src_switch'):
         """
         :return: an unsorted list of ISL relationships with all properties pulled from the db if pull=True
         """
@@ -588,12 +589,14 @@ class MessageItem(object):
                 if pull:
                     graph.pull(rel)
                 isls.append(rel)
+
+            if sort_key:
+                isls = sorted(isls, key=lambda x: x[sort_key])
+
             return isls
         except Exception as e:
             logger.exception('FAILED to get ISLs from the DB ', e.message)
             raise
-
-
 
     def dump_network(self):
         correlation_id = self.correlation_id
