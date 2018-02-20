@@ -401,6 +401,7 @@ class MessageItem(object):
     @staticmethod
     def delete_flow(flow_id, flow, correlation_id):
         try:
+            flow_path = flow['flowpath']['path']
             logger.info('Flow path remove: %s', flow_path)
 
             # TODO: Remove Flow should be moved down .. opposite order of create.
@@ -596,8 +597,6 @@ class MessageItem(object):
         except Exception as e:
             logger.exception('FAILED to get ISLs from the DB ', e.message)
             raise
-
-
 
     def dump_network(self):
         correlation_id = self.correlation_id

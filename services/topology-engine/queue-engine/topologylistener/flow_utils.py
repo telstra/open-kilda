@@ -99,8 +99,8 @@ def remove_flow(flow):
     logger.info('Remove flow: %s', flow['flowid'])
     tx = graph.begin()
     delete_flow_segments(flow, tx)
-    query = "MATCH (:switch)-[f:flow {{ flowid: '{}', cookie: '{}' }}]->(:switch) DELETE f"
-    result = tx.run(query.format(flow['flowid'], flow['cookie'])).data()
+    query = "MATCH (:switch)-[f:flow {{ flowid: '{}', cookie: {} }}]->(:switch) DELETE f".format(flow['flowid'], flow['cookie'])
+    result = tx.run(query).data()
     tx.commit()
     return result
 
