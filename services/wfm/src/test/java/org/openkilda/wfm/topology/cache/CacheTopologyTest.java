@@ -59,6 +59,7 @@ import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.wfm.AbstractStormTest;
 import org.openkilda.wfm.topology.TestKafkaConsumer;
+import org.openkilda.wfm.topology.flow.ComponentType;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -392,6 +393,12 @@ public class CacheTopologyTest extends AbstractStormTest {
                 "cachetopology/cache", new RequestData("clearState"), 1, "route-correlation-id",
                 Destination.WFM_CTRL);
         sendMessage(request, topology.getConfig().getKafkaCtrlTopic());
+
+        ConsumerRecord<String, String> raw = ctrlConsumer.pollMessage();
+        assertNotNull(raw);
+
+        CtrlResponse response = (CtrlResponse) objectMapper.readValue(raw.value(), Message.class);
+        assertEquals(request.getCorrelationId(), response.getCorrelationId());
     }
 
     private static void sendNetworkDumpRequest() throws IOException, InterruptedException {

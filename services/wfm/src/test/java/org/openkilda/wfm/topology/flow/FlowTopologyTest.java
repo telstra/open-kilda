@@ -20,6 +20,17 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.storm.Config;
+import org.apache.storm.generated.StormTopology;
+import org.apache.storm.utils.Utils;
+import org.junit.After;
+import org.junit.AfterClass;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Ignore;
+import org.junit.Test;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
@@ -57,18 +68,6 @@ import org.openkilda.messaging.payload.flow.OutputVlanType;
 import org.openkilda.wfm.AbstractStormTest;
 import org.openkilda.wfm.topology.TestKafkaConsumer;
 import org.openkilda.wfm.topology.TopologyConfig;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.storm.Config;
-import org.apache.storm.generated.StormTopology;
-import org.apache.storm.utils.Utils;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Ignore;
-import org.junit.Test;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -151,6 +150,9 @@ public class FlowTopologyTest extends AbstractStormTest {
         ofsConsumer.clear();
         cacheConsumer.clear();
         teResponseConsumer.clear();
+
+        // Clean the CrudBolt's state.
+        sendClearState();
     }
 
     @Test
@@ -202,6 +204,33 @@ public class FlowTopologyTest extends AbstractStormTest {
 
         ErrorData errorData = errorMessage.getData();
         assertEquals(ErrorType.ALREADY_EXISTS, errorData.getErrorType());
+    }
+
+    @Test
+    public void shouldFailOnCreatingConflictingFlow() throws Exception {
+        String flowId = UUID.randomUUID().toString();
+        ConsumerRecord<String, String> record;
+
+        createFlow(flowId);
+
+        record = cacheConsumer.pollMessage();
+        assertNotNull(record);
+        assertNotNull(record.value());
+        record = nbConsumer.pollMessage();
+        assertNotNull(record);
+        assertNotNull(record.value());
+
+        createFlow(flowId+"_alt");
+
+        record = nbConsumer.pollMessage();
+        assertNotNull(record);
+        assertNotNull(record.value());
+
+        ErrorMessage errorMessage = objectMapper.readValue(record.value(), ErrorMessage.class);
+        assertNotNull(errorMessage);
+
+        ErrorData errorData = errorMessage.getData();
+        assertEquals(ErrorType.CREATION_FAILURE, errorData.getErrorType());
     }
 
     @Test
@@ -1182,5 +1211,17 @@ public class FlowTopologyTest extends AbstractStormTest {
         InfoData data = message.getData();
         FlowInfoData flow = (FlowInfoData) data;
         return flow.getPayload();
+    }
+
+    private void sendClearState() throws IOException, InterruptedException {
+        CtrlRequest request = new CtrlRequest("flowtopology/" + ComponentType.CRUD_BOLT.toString(),
+                new RequestData("clearState"), 1, "clear-state-correlation-id", Destination.WFM_CTRL);
+        sendMessage(request, topologyConfig.getKafkaCtrlTopic());
+
+        ConsumerRecord<String, String> raw = ctrlConsumer.pollMessage();
+        assertNotNull(raw);
+
+        CtrlResponse response = (CtrlResponse) objectMapper.readValue(raw.value(), Message.class);
+        assertEquals(request.getCorrelationId(), response.getCorrelationId());
     }
 }
