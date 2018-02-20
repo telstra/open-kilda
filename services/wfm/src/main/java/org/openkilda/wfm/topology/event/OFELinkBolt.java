@@ -86,6 +86,7 @@ public class OFELinkBolt
         extends AbstractTickStatefulBolt<KeyValueState<String, Object>>
         implements ICtrlBolt {
     private static final Logger logger = LoggerFactory.getLogger(OFELinkBolt.class);
+    private static final int BOLT_TICK_INTERVAL = 1;
 
     private final String STREAM_ID_CTRL = "ctrl";
     private final String STATE_ID_DISCOVERY = "discovery-manager";
@@ -119,7 +120,7 @@ public class OFELinkBolt
      * Default constructor .. default health check frequency
      */
     public OFELinkBolt(TopologyConfig config) {
-        super(config.getDiscoveryInterval());
+        super(BOLT_TICK_INTERVAL);
 
         this.islHealthCheckInterval = config.getDiscoveryInterval();
         this.islHealthCheckTimeout = config.getDiscoveryTimeout();
