@@ -30,6 +30,7 @@ NB API->FT-Splitter: kafka.flow
 FT-Splitter->FT-CRUD: stateID
 opt create or update
     FT-CRUD->FT-CRUD: handleCreate( FlowCreateRequest )
+    FT-CRUD->FT-CRUD: validate the flow
     FT-CRUD->PCE: getPath
     FT-CRUD->PCE: flowCache.createFlow()
     PCE->PCE: resourceCache.allocateFlow()
@@ -65,4 +66,4 @@ opt delete
     end
 end
 NB API->User: result
-### 
+```
