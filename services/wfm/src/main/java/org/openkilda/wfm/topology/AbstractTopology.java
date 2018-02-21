@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.storm.Config;
 import org.apache.storm.LocalCluster;
 import org.apache.storm.StormSubmitter;
@@ -40,6 +41,7 @@ import org.openkilda.wfm.NameCollisionException;
 import org.openkilda.wfm.PropertiesReader;
 import org.openkilda.wfm.StreamNameCollisionException;
 import org.openkilda.wfm.ctrl.RouteBolt;
+import org.openkilda.wfm.kafka.CustomNamedSubscription;
 import org.openkilda.wfm.topology.utils.HealthCheckBolt;
 import org.openkilda.wfm.topology.utils.KafkaRecordTranslator;
 import org.slf4j.Logger;
@@ -194,8 +196,8 @@ public abstract class AbstractTopology implements Topology {
      */
     protected KafkaSpout createKafkaSpout(String topic, String spoutId) {
 
-        KafkaSpoutConfig spoutConfig = KafkaSpoutConfig.builder(config.getKafkaHosts(),
-                Collections.singletonList(topic))
+        KafkaSpoutConfig<String, String> spoutConfig = new KafkaSpoutConfig.Builder<>(config.getKafkaHosts(),
+                StringDeserializer.class, StringDeserializer.class, new CustomNamedSubscription(topic))
                 .setGroupId(String.format("%s__%s", getTopologyName(), spoutId))
                 .setRecordTranslator(new KafkaRecordTranslator<>())
                 .setMaxUncommittedOffsets(Integer.MAX_VALUE)

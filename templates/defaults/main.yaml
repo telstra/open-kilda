@@ -31,7 +31,7 @@ kafka_topic_stats: "kilda.stats"
 kafka_topic_topo_cache: "kilda.topo.cache"
 kafka_topic_topo_disco: "kilda.topo.disco"
 kafka_topic_topo_eng: "kilda.topo.eng"
-discovery_interval: "3"
+discovery_interval: 2
 discovery_timeout: "9"
 # discovery_limit of -1 is forever
 # 28000 is about a day (test every 3 seconds, 20 failures per minute, 1200 per hour ..
