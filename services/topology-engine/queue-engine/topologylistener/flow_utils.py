@@ -302,9 +302,24 @@ def store_flow(flow):
     merge_flow_segments(flow)
 
 
+def hydrate_flow(one_row):
+    """
+    :param one_row: The typical result from query - ie  MATCH (a:switch)-[r:flow]->(b:switch) RETURN r
+    :return: a fully dict'd object
+    """
+    path = json.loads(one_row['r']['flowpath'])
+    flow = json.loads(json.dumps(one_row['r'],
+                                 default=lambda o: o.__dict__,
+                                 sort_keys=True))
+    flow['flowpath'] = path
+    return flow
+
+
 def get_old_flow(new_flow):
-    query = "MATCH (a:switch)-[r:flow {{flowid: '{}'}}]->(b:switch)" \
-            "WHERE r.cookie <> {} RETURN r"
+    query = (
+        "MATCH (a:switch)-[r:flow {{flowid: '{}'}}]->(b:switch) " 
+        " WHERE r.cookie <> {} RETURN r "
+    )
     old_flows = graph.run(query.format(
         new_flow['flowid'], int(new_flow['cookie']))).data()
 
@@ -317,12 +332,12 @@ def get_old_flow(new_flow):
         logger.info('Flows were found: %s', old_flows)
 
     for data in old_flows:
-        old_flow = data['r']
+        old_flow = hydrate_flow(data)
         logger.info('check cookies: %s ? %s',
                     new_flow['cookie'], old_flow['cookie'])
         if is_same_direction(new_flow['cookie'], old_flow['cookie']):
             logger.info('Flow was found: flow=%s', old_flow)
-            return old_flow
+            return dict(old_flow)
 
 
 def get_flows():
@@ -332,17 +347,14 @@ def get_flows():
         result = graph.run(query).data()
 
         for data in result:
-            path = json.loads(data['r']['flowpath'])
-            flow = json.loads(json.dumps(data['r'],
-                                         default=lambda o: o.__dict__,
-                                         sort_keys=True))
-            flow['flowpath'] = path
+            flow = hydrate_flow(data)
             flow_pair = flows.get(flow['flowid'], {})
             if is_forward_cookie(flow['cookie']):
                 flow_pair['forward'] = flow
             else:
                 flow_pair['reverse'] = flow
             flows[flow['flowid']] = flow_pair
+
         logger.info('Got flows: %s', flows.values())
     except Exception as e:
         logger.exception('"Can not get flows: %s', e.message)
