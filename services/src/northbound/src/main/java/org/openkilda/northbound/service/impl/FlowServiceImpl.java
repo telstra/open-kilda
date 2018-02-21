@@ -25,9 +25,11 @@ import org.openkilda.messaging.command.flow.FlowCreateRequest;
 import org.openkilda.messaging.command.flow.FlowDeleteRequest;
 import org.openkilda.messaging.command.flow.FlowGetRequest;
 import org.openkilda.messaging.command.flow.FlowPathRequest;
+import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowStatusRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.openkilda.messaging.command.flow.FlowsGetRequest;
+import org.openkilda.messaging.info.flow.FlowOperation;
 import org.openkilda.messaging.info.flow.FlowPathResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowStatusResponse;
@@ -243,5 +245,18 @@ public class FlowServiceImpl implements FlowService {
         return result;
     }
 
+    @Override
+    public FlowPathPayload rerouteFlow(String flowId, String correlationId) {
+        Flow flow = new Flow();
+        flow.setFlowId(flowId);
+        FlowRerouteRequest data = new FlowRerouteRequest(flow, FlowOperation.UPDATE);
+        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
+        messageConsumer.clear();
+        messageProducer.send(topic, command);
 
+        Message message = (Message) messageConsumer.poll(correlationId);
+        logger.debug("Got response {}", message);
+        FlowPathResponse response = (FlowPathResponse) validateInfoMessage(command, message, correlationId);
+        return Converter.buildFlowPathPayloadByFlowPath(flowId, response.getPayload());
+    }
 }

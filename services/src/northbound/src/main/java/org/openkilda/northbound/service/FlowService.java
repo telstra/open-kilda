@@ -96,4 +96,13 @@ public interface FlowService extends BasicService {
      * @return
      */
     BatchResults pushFlows(final List<ExternalFlowsDto> externalFlows, final String correlationId);
+
+    /**
+     * Performs rerouting of specific flow.
+     *
+     * @param flowId id of flow to be rerouted.
+     * @param correlationId request correlation Id
+     * @return updated flow path information.
+     */
+    FlowPathPayload rerouteFlow(final String flowId, final String correlationId);
 }

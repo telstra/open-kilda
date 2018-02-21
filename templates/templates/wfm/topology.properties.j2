@@ -41,7 +41,7 @@ logger.watermark =
 
 #######
 # Discovery
-# - discovery.interval = how many bolt ticks between ISL discovery / health checks
+# - discovery.interval = how many bolt ticks(1 tick per second) between ISL discovery / health checks, starts from 0
 # - discovery.timeout = at which point do we send an ISL Failure (if it is an ISL)
 #       - NB: the number is in "ticks", not "attempts" .. attempts = timeout/interval
 # - discovery.limit = at what point do we stop sending? -1 means never ..

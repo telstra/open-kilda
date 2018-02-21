@@ -54,7 +54,7 @@ public class Flow implements Serializable {
     /**
      * Should flow ignore bandwidth in path computation?
      */
-    @JsonProperty("ignore-bandwidth")
+    @JsonProperty("ignore_bandwidth")
     private boolean ignoreBandwidth;
 
     /**
@@ -149,6 +149,7 @@ public class Flow implements Serializable {
     public Flow(Flow flow) {
         this.flowId = flow.getFlowId();
         this.bandwidth = flow.getBandwidth();
+        this.ignoreBandwidth = flow.isIgnoreBandwidth();
         this.cookie = flow.getCookie();
         this.description = flow.getDescription();
         this.lastUpdated = flow.getLastUpdated();
@@ -187,7 +188,7 @@ public class Flow implements Serializable {
     @JsonCreator
     public Flow(@JsonProperty(Utils.FLOW_ID) final String flowId,
                 @JsonProperty("bandwidth") final int bandwidth,
-                @JsonProperty("ignore-bandwidth") Boolean ignoreBandwidth,
+                @JsonProperty("ignore_bandwidth") Boolean ignoreBandwidth,
                 @JsonProperty("cookie") final long cookie,
                 @JsonProperty("description") final String description,
                 @JsonProperty("last_updated") final String lastUpdated,
@@ -603,6 +604,7 @@ public class Flow implements Serializable {
         return toStringHelper(this)
                 .add(Utils.FLOW_ID, flowId)
                 .add("bandwidth", bandwidth)
+                .add("ignore_bandwidth", ignoreBandwidth)
                 .add("description", description)
                 .add("state", state)
                 .add("src_switch", sourceSwitch)

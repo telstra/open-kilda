@@ -25,8 +25,8 @@ RUN echo "PATH=$PATH:/opt/storm/bin" >> ~/.bashrc
 ADD app/deploy_topos_and_monitor.sh /app/
 RUN chmod 777 /app/deploy_topos_and_monitor.sh
 ADD Makefile /app/
-ADD target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar /app/target/
 ADD src/main/resources/topology.properties /app/
+ADD target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar /app/target/
 RUN TZ=Australia/Melbourne date >> /container_baked_on.txt
 
 WORKDIR /app
