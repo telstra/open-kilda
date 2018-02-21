@@ -2,8 +2,8 @@ package org.openkilda.wfm.ctrl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.annotations.VisibleForTesting;
-import org.openkilda.wfm.MessageFormatException;
-import org.openkilda.wfm.UnsupportedActionException;
+import org.apache.storm.task.TopologyContext;
+import org.openkilda.messaging.ctrl.ResponseData;
 
 @VisibleForTesting
 class ClearStateAction extends CtrlEmbeddedAction {
@@ -12,8 +12,12 @@ class ClearStateAction extends CtrlEmbeddedAction {
     }
 
     @Override
-    protected void handle()
-            throws MessageFormatException, UnsupportedActionException, JsonProcessingException {
+    protected void handle() throws JsonProcessingException {
         getMaster().getBolt().clearState();
+
+        TopologyContext context = getBolt().getContext();
+        emitResponse(new ResponseData(context.getThisComponentId(),
+                context.getThisTaskId(), getMessage().getTopology()));
+
     }
 }

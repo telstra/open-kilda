@@ -15,8 +15,10 @@
 
 package org.openkilda.wfm.topology.flow.bolts;
 
+import static java.lang.String.format;
 import static org.openkilda.messaging.Utils.MAPPER;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.apache.storm.state.InMemoryKeyValueState;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -63,14 +65,8 @@ import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.flow.ComponentType;
 import org.openkilda.wfm.topology.flow.FlowTopology;
 import org.openkilda.wfm.topology.flow.StreamType;
-
-import org.apache.storm.state.InMemoryKeyValueState;
-import org.apache.storm.task.OutputCollector;
-import org.apache.storm.task.TopologyContext;
-import org.apache.storm.topology.OutputFieldsDeclarer;
-import org.apache.storm.topology.base.BaseStatefulBolt;
-import org.apache.storm.tuple.Tuple;
-import org.apache.storm.tuple.Values;
+import org.openkilda.wfm.topology.flow.validation.FlowValidationException;
+import org.openkilda.wfm.topology.flow.validation.FlowValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -268,7 +264,7 @@ public class CrudBolt
                     break;
             }
         } catch (CacheException exception) {
-            String logMessage = String.format("%s: %s", exception.getErrorMessage(), exception.getErrorDescription());
+            String logMessage = format("%s: %s", exception.getErrorMessage(), exception.getErrorDescription());
             logger.error("{}, {}={}, {}={}, component={}, stream={}", logMessage, Utils.CORRELATION_ID,
                     correlationId, Utils.FLOW_ID, flowId, componentId, streamId, exception);
 
@@ -309,26 +305,33 @@ public class CrudBolt
     private void handleCreateRequest(CommandMessage message, Tuple tuple) throws IOException {
         Flow requestedFlow = ((FlowCreateRequest) message.getData()).getPayload();
 
+        ImmutablePair<PathInfoData, PathInfoData> path;
         try {
-            ImmutablePair<PathInfoData, PathInfoData> path = pathComputer.getPath(requestedFlow, Strategy.HOPS);
+            new FlowValidator(flowCache).checkFlowForEndpointConflicts(requestedFlow);
+
+            path = pathComputer.getPath(requestedFlow, Strategy.HOPS);
             logger.info("Created flow path: {}", path);
 
-            ImmutablePair<Flow, Flow> flow = flowCache.createFlow(requestedFlow, path);
-            logger.info("Created flow: {}", flow);
-
-            FlowInfoData data = new FlowInfoData(requestedFlow.getFlowId(), flow, FlowOperation.CREATE,
-                    message.getCorrelationId());
-            InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), message.getCorrelationId());
-            Values topology = new Values(MAPPER.writeValueAsString(infoMessage));
-            outputCollector.emit(StreamType.CREATE.toString(), tuple, topology);
-
-            Values northbound = new Values(new InfoMessage(new FlowResponse(buildFlowResponse(flow)),
-                    message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
-            outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
+        } catch (FlowValidationException e) {
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    ErrorType.CREATION_FAILURE, "Could not create flow", e.getMessage());
         } catch (UnroutablePathException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.CREATION_FAILURE, "Could not create flow", "Path was not found");
         }
+
+        ImmutablePair<Flow, Flow> flow = flowCache.createFlow(requestedFlow, path);
+        logger.info("Created flow: {}", flow);
+
+        FlowInfoData data = new FlowInfoData(requestedFlow.getFlowId(), flow, FlowOperation.CREATE,
+                message.getCorrelationId());
+        InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), message.getCorrelationId());
+        Values topology = new Values(MAPPER.writeValueAsString(infoMessage));
+        outputCollector.emit(StreamType.CREATE.toString(), tuple, topology);
+
+        Values northbound = new Values(new InfoMessage(new FlowResponse(buildFlowResponse(flow)),
+                message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
+        outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
     }
 
     private void handleRerouteRequest(CommandMessage message, Tuple tuple) throws IOException {
@@ -425,26 +428,33 @@ public class CrudBolt
     private void handleUpdateRequest(CommandMessage message, Tuple tuple) throws IOException {
         Flow requestedFlow = ((FlowUpdateRequest) message.getData()).getPayload();
 
+        ImmutablePair<PathInfoData, PathInfoData> path;
         try {
-            ImmutablePair<PathInfoData, PathInfoData> path = pathComputer.getPath(requestedFlow, Strategy.HOPS);
+            new FlowValidator(flowCache).checkFlowForEndpointConflicts(requestedFlow);
+
+            path = pathComputer.getPath(requestedFlow, Strategy.HOPS);
             logger.info("Updated flow path: {}", path);
 
-            ImmutablePair<Flow, Flow> flow = flowCache.updateFlow(requestedFlow, path);
-            logger.info("Updated flow: {}", flow);
-
-            FlowInfoData data = new FlowInfoData(requestedFlow.getFlowId(), flow, FlowOperation.UPDATE,
-                    message.getCorrelationId());
-            InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), message.getCorrelationId());
-            Values topology = new Values(MAPPER.writeValueAsString(infoMessage));
-            outputCollector.emit(StreamType.UPDATE.toString(), tuple, topology);
-
-            Values northbound = new Values(new InfoMessage(new FlowResponse(buildFlowResponse(flow)),
-                    message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
-            outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
+        } catch (FlowValidationException e) {
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    ErrorType.UPDATE_FAILURE, "Could not create flow", e.getMessage());
         } catch (UnroutablePathException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.UPDATE_FAILURE, "Could not create flow", "Path was not found");
         }
+
+        ImmutablePair<Flow, Flow> flow = flowCache.updateFlow(requestedFlow, path);
+        logger.info("Updated flow: {}", flow);
+
+        FlowInfoData data = new FlowInfoData(requestedFlow.getFlowId(), flow, FlowOperation.UPDATE,
+                message.getCorrelationId());
+        InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), message.getCorrelationId());
+        Values topology = new Values(MAPPER.writeValueAsString(infoMessage));
+        outputCollector.emit(StreamType.UPDATE.toString(), tuple, topology);
+
+        Values northbound = new Values(new InfoMessage(new FlowResponse(buildFlowResponse(flow)),
+                message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
+        outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
     }
 
     private void handleDumpRequest(CommandMessage message, Tuple tuple) {
@@ -566,6 +576,14 @@ public class CrudBolt
         FlowDump flowDump = new FlowDump(flowCache.dumpFlows());
         return new CrudBoltState(flowDump);
     }
+
+    @VisibleForTesting
+    @Override
+    public void clearState() {
+        logger.info("State clear request from test");
+        initState(new InMemoryKeyValueState<>());
+    }
+
 
     @Override
     public String getCtrlStreamId() {

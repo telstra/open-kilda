@@ -24,6 +24,7 @@ note right of NB: new FlowCreateRequest
 NB -> kilda.flow: CommandMessage\nFlowCreateRequest
 kilda.flow -> SplitterBolt: CommandMessage\nFlowCreateRequest
 SplitterBolt -> CrudBolt: CommandMessage\nFlowCreateRequest
+note right of CrudBolt: validate the flow (using FlowValidator)
 note right of CrudBolt: new path (using PathComputer.getPath)
 note right of CrudBolt: build flow pair (state=ALLOCATED)
 note right of CrudBolt: save flow (FlowCache.crateFlow)
