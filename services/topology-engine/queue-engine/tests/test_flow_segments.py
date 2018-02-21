@@ -90,6 +90,10 @@ for i,isl in enumerate(messageclasses.MessageItem.fetch_isls()):
 # CREATE INDEX ON :isl(src_switch,src_port,dst_switch,dst_port);
 # CREATE INDEX ON :flow_segment(src_switch,src_port,dst_switch,dst_port);
 
+r1a=0x2000000000000001
+r1b=0x2000000000000002
+f1a=0x4000000000000001
+f1b=0x4000000000000002
 
 print("\n\n")
 create_flow = {
@@ -97,43 +101,23 @@ create_flow = {
     u'correlation_id': 1519103068744,
     u'payload': {u'timestamp': 1519103068797, u'clazz': u'org.openkilda.messaging.info.flow.FlowInfoData',
                  u'flowid': u'c3none-1519103023077', u'correlation_id': u'1519103068744', u'operation': u'CREATE',
-                 u'payload': {u'forward': {u'last_updated': u'2018-02-20T05:04:28.796Z',
-                                           u'description': u'c3none',
-                                           u'state': u'ALLOCATED',
-                                           u'transit_vlan': 2,
-                                           u'ignore_bandwidth': False,
-                                           u'dst_switch': u'de:ad:be:ef:00:00:00:05',
-                                           u'flowid': u'c3none-1519103023077',
-                                           u'bandwidth': 10000,
-                                           u'src_switch': u'de:ad:be:ef:00:00:00:03',
-                                           u'cookie': 4611686018427387905,
+                 u'payload': {u'forward': {u'last_updated': u'2018-02-20T05:04:28.796Z', u'description': u'c3none',
+                                           u'state': u'ALLOCATED', u'transit_vlan': 2, u'ignore_bandwidth': False,
+                                           u'dst_switch': u'de:ad:be:ef:00:00:00:05', u'flowid': u'c3none-1519103023077',
+                                           u'bandwidth': 10000, u'src_switch': u'de:ad:be:ef:00:00:00:03', u'cookie': f1a,
                                            u'dst_port': 2, u'src_vlan': 0, u'dst_vlan': 0, u'src_port': 1,
-                                           u'flowpath': {u'path': [{u'seq_id': 0,
-                                                                    u'switch_id': u'de:ad:be:ef:00:00:00:03',
-                                                                    u'port_no': 2, u'segment_latency': 62},
-                                                                   {u'seq_id': 1,
-                                                                    u'switch_id': u'de:ad:be:ef:00:00:00:04',
-                                                                    u'port_no': 1},
-                                                                   {u'seq_id': 2,
-                                                                    u'switch_id': u'de:ad:be:ef:00:00:00:04',
-                                                                    u'port_no': 2, u'segment_latency': 13},
-                                                                   {u'seq_id': 3,
-                                                                    u'switch_id': u'de:ad:be:ef:00:00:00:05',
-                                                                    u'port_no': 1}],
-                                                         u'latency_ns': 75,
-                                                         u'timestamp': 1519103068795,
-                                                         u'clazz': u'org.openkilda.messaging.info.event.PathInfoData'},
+                                           u'flowpath': {u'path': [
+                                               {u'seq_id': 0, u'switch_id': u'de:ad:be:ef:00:00:00:03', u'port_no': 2, u'segment_latency': 62},
+                                               {u'seq_id': 1, u'switch_id': u'de:ad:be:ef:00:00:00:04', u'port_no': 1},
+                                               {u'seq_id': 2, u'switch_id': u'de:ad:be:ef:00:00:00:04', u'port_no': 2, u'segment_latency': 13},
+                                               {u'seq_id': 3, u'switch_id': u'de:ad:be:ef:00:00:00:05', u'port_no': 1}],
+                                               u'latency_ns': 75, u'timestamp': 1519103068795,
+                                               u'clazz': u'org.openkilda.messaging.info.event.PathInfoData'},
                                            u'meter_id': 1},
-                              u'reverse': {u'last_updated': u'2018-02-20T05:04:28.796Z',
-                                           u'description': u'c3none',
-                                           u'state': u'ALLOCATED',
-                                           u'transit_vlan': 3,
-                                           u'ignore_bandwidth': False,
-                                           u'dst_switch': u'de:ad:be:ef:00:00:00:03',
-                                           u'flowid': u'c3none-1519103023077',
-                                           u'bandwidth': 10000,
-                                           u'src_switch': u'de:ad:be:ef:00:00:00:05',
-                                           u'cookie': 2305843009213693953,
+                              u'reverse': {u'last_updated': u'2018-02-20T05:04:28.796Z', u'description': u'c3none',
+                                           u'state': u'ALLOCATED', u'transit_vlan': 3, u'ignore_bandwidth': False,
+                                           u'dst_switch': u'de:ad:be:ef:00:00:00:03', u'flowid': u'c3none-1519103023077',
+                                           u'bandwidth': 10000,u'src_switch': u'de:ad:be:ef:00:00:00:05',u'cookie': r1a,
                                            u'dst_port': 1, u'src_vlan': 0, u'dst_vlan': 0, u'src_port': 2,
                                            u'flowpath': {u'path': [
                                                {u'seq_id': 0, u'switch_id': u'de:ad:be:ef:00:00:00:05', u'port_no': 1, u'segment_latency': 13},
@@ -155,9 +139,8 @@ delete_flow = {
                  u'payload': {u'forward': {u'last_updated': u'2018-02-20T05:04:28.796Z', u'description': u'c3none',
                                            u'state': u'UP', u'transit_vlan': 2, u'ignore_bandwidth': False,
                                            u'dst_switch': u'de:ad:be:ef:00:00:00:05', u'flowid': u'c3none-1519103023077',
-                                           u'bandwidth': 10000, u'src_switch': u'de:ad:be:ef:00:00:00:03',
-                                           u'cookie': 4611686018427387905, u'dst_port': 2, u'src_vlan': 0, u'dst_vlan': 0,
-                                           u'src_port': 1,
+                                           u'bandwidth': 10000, u'src_switch': u'de:ad:be:ef:00:00:00:03', u'cookie': f1a,
+                                           u'dst_port': 2, u'src_vlan': 0, u'dst_vlan': 0,u'src_port': 1,
                                            u'flowpath': {u'path': [
                                                {u'seq_id': 0, u'switch_id': u'de:ad:be:ef:00:00:00:03', u'port_no': 2, u'segment_latency': 62},
                                                {u'seq_id': 1, u'switch_id': u'de:ad:be:ef:00:00:00:04', u'port_no': 1},
@@ -169,7 +152,7 @@ delete_flow = {
                               u'reverse': {u'last_updated': u'2018-02-20T05:04:28.796Z', u'description': u'c3none',
                                            u'state': u'UP', u'transit_vlan': 3, u'ignore_bandwidth': False,
                                            u'dst_switch': u'de:ad:be:ef:00:00:00:03', u'flowid': u'c3none-1519103023077',
-                                           u'bandwidth': 10000, u'src_switch': u'de:ad:be:ef:00:00:00:05', u'cookie': 2305843009213693953,
+                                           u'bandwidth': 10000, u'src_switch': u'de:ad:be:ef:00:00:00:05', u'cookie': r1a,
                                            u'dst_port': 1, u'src_vlan': 0, u'dst_vlan': 0, u'src_port': 2,
                                            u'flowpath': {u'path': [
                                                {u'seq_id': 0, u'switch_id': u'de:ad:be:ef:00:00:00:05', u'port_no': 1, u'segment_latency': 13},
@@ -184,12 +167,55 @@ delete_flow = {
                  }
 }
 
+update_flow = {
+    u'timestamp': 1519167032591,
+    u'correlation_id': 1519167032523,
+    u'payload': {u'timestamp': 1519167032580, u'clazz': u'org.openkilda.messaging.info.flow.FlowInfoData',
+                 u'flowid': u'c3none-1519103023077', u'correlation_id': u'1519167032523', u'operation': u'UPDATE',
+                 u'payload': {u'forward': {u'last_updated': u'2018-02-20T22:50:32.579Z', u'description': u'u3none',
+                                           u'state': u'ALLOCATED', u'transit_vlan': 4, u'ignore_bandwidth': False,
+                                           u'dst_switch': u'de:ad:be:ef:00:00:00:05', u'flowid': u'c3none-1519103023077',
+                                           u'bandwidth': 20000, u'src_switch': u'de:ad:be:ef:00:00:00:03', u'cookie': f1b,
+                                           u'dst_port': 2, u'src_vlan': 0, u'dst_vlan': 0, u'src_port': 1,
+                                           u'flowpath': {u'path': [
+                                               {u'seq_id': 0, u'switch_id': u'de:ad:be:ef:00:00:00:03', u'port_no': 2, u'segment_latency': 469},
+                                               {u'seq_id': 1, u'switch_id': u'de:ad:be:ef:00:00:00:04', u'port_no': 1},
+                                               {u'seq_id': 2, u'switch_id': u'de:ad:be:ef:00:00:00:04', u'port_no': 2, u'segment_latency': 357},
+                                               {u'seq_id': 3, u'switch_id': u'de:ad:be:ef:00:00:00:05', u'port_no': 1}],
+                                               u'latency_ns': 826, u'timestamp': 1519167032578,
+                                               u'clazz': u'org.openkilda.messaging.info.event.PathInfoData'},
+                                           u'meter_id': 2},
+                              u'reverse': {u'last_updated': u'2018-02-20T22:50:32.579Z', u'description': u'u3none',
+                                           u'state': u'ALLOCATED', u'transit_vlan': 5, u'ignore_bandwidth': False,
+                                           u'dst_switch': u'de:ad:be:ef:00:00:00:03', u'flowid': u'c3none-1519103023077',
+                                           u'bandwidth': 20000, u'src_switch': u'de:ad:be:ef:00:00:00:05', u'cookie': r1b,
+                                           u'dst_port': 1, u'src_vlan': 0, u'dst_vlan': 0, u'src_port': 2,
+                                           u'flowpath': {u'path': [
+                                               {u'seq_id': 0, u'switch_id': u'de:ad:be:ef:00:00:00:05', u'port_no': 1, u'segment_latency': 357},
+                                               {u'seq_id': 1, u'switch_id': u'de:ad:be:ef:00:00:00:04', u'port_no': 2},
+                                               {u'seq_id': 2, u'switch_id': u'de:ad:be:ef:00:00:00:04', u'port_no': 1, u'segment_latency': 469},
+                                               {u'seq_id': 3, u'switch_id': u'de:ad:be:ef:00:00:00:03', u'port_no': 2}],
+                                               u'latency_ns': 826, u'timestamp': 1519167032578,
+                                               u'clazz': u'org.openkilda.messaging.info.event.PathInfoData'},
+                                           u'meter_id': 2}}}
+
+}
+
 print('TEST #5 - create flow through front door (almost .. starting with dict)')
 event_create = messageclasses.MessageItem(**create_flow)
 event_create.handle()
 # TODO: test something here related to create
 
-print('TEST #6 - delete flow through front door (almost .. starting with dict)')
+import logging
+logging.basicConfig()
+logger = logging.getLogger('topologylistener.messageclasses')
+
+print('TEST #6 - update flow through front door (almost .. starting with dict)')
+event_delete = messageclasses.MessageItem(**update_flow)
+event_delete.handle()
+# TODO: test something here related to delete
+
+print('TEST #7 - delete flow through front door (almost .. starting with dict)')
 event_delete = messageclasses.MessageItem(**delete_flow)
 event_delete.handle()
 # TODO: test something here related to delete

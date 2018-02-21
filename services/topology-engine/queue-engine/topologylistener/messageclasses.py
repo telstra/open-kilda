@@ -433,7 +433,7 @@ class MessageItem(object):
         try:
             old_flow = flow_utils.get_old_flow(flow)
 
-            old_flow_path = json.loads(old_flow['flowpath'])['path']
+            old_flow_path = old_flow['flowpath']['path']
 
             logger.info('Flow path remove: %s', old_flow_path)
 
