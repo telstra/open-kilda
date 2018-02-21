@@ -307,19 +307,17 @@ public class CrudBolt
 
         ImmutablePair<PathInfoData, PathInfoData> path;
         try {
-            path = pathComputer.getPath(requestedFlow, Strategy.HOPS);
-        } catch (UnroutablePathException e) {
-            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
-                    ErrorType.CREATION_FAILURE, "Could not create flow", "Path was not found");
-        }
-
-        logger.info("Created flow path: {}", path);
-
-        try {
             new FlowValidator(flowCache).checkFlowForEndpointConflicts(requestedFlow);
+
+            path = pathComputer.getPath(requestedFlow, Strategy.HOPS);
+            logger.info("Created flow path: {}", path);
+
         } catch (FlowValidationException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.CREATION_FAILURE, "Could not create flow", e.getMessage());
+        } catch (UnroutablePathException e) {
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    ErrorType.CREATION_FAILURE, "Could not create flow", "Path was not found");
         }
 
         ImmutablePair<Flow, Flow> flow = flowCache.createFlow(requestedFlow, path);
@@ -432,19 +430,17 @@ public class CrudBolt
 
         ImmutablePair<PathInfoData, PathInfoData> path;
         try {
-            path = pathComputer.getPath(requestedFlow, Strategy.HOPS);
-        } catch (UnroutablePathException e) {
-            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
-                    ErrorType.UPDATE_FAILURE, "Could not create flow", "Path was not found");
-        }
-
-        logger.info("Updated flow path: {}", path);
-
-        try {
             new FlowValidator(flowCache).checkFlowForEndpointConflicts(requestedFlow);
+
+            path = pathComputer.getPath(requestedFlow, Strategy.HOPS);
+            logger.info("Updated flow path: {}", path);
+
         } catch (FlowValidationException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.UPDATE_FAILURE, "Could not create flow", e.getMessage());
+        } catch (UnroutablePathException e) {
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    ErrorType.UPDATE_FAILURE, "Could not create flow", "Path was not found");
         }
 
         ImmutablePair<Flow, Flow> flow = flowCache.updateFlow(requestedFlow, path);
