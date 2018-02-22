@@ -15,6 +15,7 @@
 
 package org.openkilda.flow;
 
+import static java.lang.String.format;
 import static java.util.Base64.getEncoder;
 import static org.junit.Assert.assertEquals;
 import static org.openkilda.DefaultParameters.northboundEndpoint;
@@ -34,6 +35,8 @@ import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.pce.provider.PathComputer;
+import org.openkilda.pce.provider.UnroutablePathException;
+import org.openkilda.topo.exceptions.TopologyProcessingException;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -83,15 +86,15 @@ public class FlowUtils {
                 .get();
 
 
-        System.out.println(String.format("===> Response = %s", response.toString()));
-        System.out.println(String.format("===> Northbound Health-Check Time: %,.3f", getTimeDuration(current)));
+        System.out.println(format("===> Response = %s", response.toString()));
+        System.out.println(format("===> Northbound Health-Check Time: %,.3f", getTimeDuration(current)));
 
         int responseCode = response.getStatus();
         if (responseCode == 200) {
-            System.out.println(String.format("====> Health-Check = %s",
+            System.out.println(format("====> Health-Check = %s",
                     response.readEntity(HealthCheck.class)));
         } else {
-            System.out.println(String.format("====> Error: Health-Check = %s",
+            System.out.println(format("====> Error: Health-Check = %s",
                     response.readEntity(MessageError.class)));
         }
 
@@ -120,16 +123,16 @@ public class FlowUtils {
                 .header(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()))
                 .get();
 
-        System.out.println(String.format("===> Response = %s", response.toString()));
-        System.out.println(String.format("===> Northbound Get Flow Time: %,.3f", getTimeDuration(current)));
+        System.out.println(format("===> Response = %s", response.toString()));
+        System.out.println(format("===> Northbound Get Flow Time: %,.3f", getTimeDuration(current)));
 
         int responseCode = response.getStatus();
         if (responseCode == 200) {
             FlowPayload flow = response.readEntity(FlowPayload.class);
-            System.out.println(String.format("====> Northbound Get Flow = %s", flow));
+            System.out.println(format("====> Northbound Get Flow = %s", flow));
             return flow;
         } else {
-            System.out.println(String.format("====> Error: Northbound Get Flow = %s",
+            System.out.println(format("====> Error: Northbound Get Flow = %s",
                     response.readEntity(MessageError.class)));
             return null;
         }
@@ -155,17 +158,17 @@ public class FlowUtils {
                 .header(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()))
                 .put(Entity.json(payload));
 
-        System.out.println(String.format("===> Request Payload = %s", Entity.json(payload).getEntity()));
-        System.out.println(String.format("===> Response = %s", response.toString()));
-        System.out.println(String.format("===> Northbound Create Flow Time: %,.3f", getTimeDuration(current)));
+        System.out.println(format("===> Request Payload = %s", Entity.json(payload).getEntity()));
+        System.out.println(format("===> Response = %s", response.toString()));
+        System.out.println(format("===> Northbound Create Flow Time: %,.3f", getTimeDuration(current)));
 
         int responseCode = response.getStatus();
         if (responseCode == 200) {
             FlowPayload flow = response.readEntity(FlowPayload.class);
-            System.out.println(String.format("====> Northbound Create Flow = %s", flow));
+            System.out.println(format("====> Northbound Create Flow = %s", flow));
             return flow;
         } else {
-            System.out.println(String.format("====> Error: Northbound Create Flow = %s",
+            System.out.println(format("====> Error: Northbound Create Flow = %s",
                     response.readEntity(MessageError.class)));
             return null;
         }
@@ -194,17 +197,17 @@ public class FlowUtils {
                 .header(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()))
                 .put(Entity.json(payload));
 
-        System.out.println(String.format("===> Request Payload = %s", Entity.json(payload).getEntity()));
-        System.out.println(String.format("===> Response = %s", response.toString()));
-        System.out.println(String.format("===> Northbound Update Flow Time: %,.3f", getTimeDuration(current)));
+        System.out.println(format("===> Request Payload = %s", Entity.json(payload).getEntity()));
+        System.out.println(format("===> Response = %s", response.toString()));
+        System.out.println(format("===> Northbound Update Flow Time: %,.3f", getTimeDuration(current)));
 
         int responseCode = response.getStatus();
         if (responseCode == 200) {
             FlowPayload flow = response.readEntity(FlowPayload.class);
-            System.out.println(String.format("====> Northbound Update Flow = %s", flow));
+            System.out.println(format("====> Northbound Update Flow = %s", flow));
             return flow;
         } else {
-            System.out.println(String.format("====> Error: Northbound Update Flow = %s",
+            System.out.println(format("====> Error: Northbound Update Flow = %s",
                     response.readEntity(MessageError.class)));
             return null;
         }
@@ -232,16 +235,16 @@ public class FlowUtils {
                 .header(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()))
                 .delete();
 
-        System.out.println(String.format("===> Response = %s", response.toString()));
-        System.out.println(String.format("===> Northbound Delete Flow Time: %,.3f", getTimeDuration(current)));
+        System.out.println(format("===> Response = %s", response.toString()));
+        System.out.println(format("===> Northbound Delete Flow Time: %,.3f", getTimeDuration(current)));
 
         int responseCode = response.getStatus();
         if (responseCode == 200) {
             FlowPayload flow = response.readEntity(FlowPayload.class);
-            System.out.println(String.format("====> Northbound Delete Flow = %s", flow));
+            System.out.println(format("====> Northbound Delete Flow = %s", flow));
             return flow;
         } else {
-            System.out.println(String.format("====> Error: Northbound Delete Flow = %s",
+            System.out.println(format("====> Error: Northbound Delete Flow = %s",
                     response.readEntity(MessageError.class)));
             return null;
         }
@@ -270,16 +273,16 @@ public class FlowUtils {
                 .get();
 
 
-        System.out.println(String.format("===> Response = %s", response.toString()));
-        System.out.println(String.format("===> Northbound Get Flow Path Time: %,.3f", getTimeDuration(current)));
+        System.out.println(format("===> Response = %s", response.toString()));
+        System.out.println(format("===> Northbound Get Flow Path Time: %,.3f", getTimeDuration(current)));
 
         int responseCode = response.getStatus();
         if (responseCode == 200) {
             FlowPathPayload flowPath = response.readEntity(FlowPathPayload.class);
-            System.out.println(String.format("====> Northbound Get Flow Path = %s", flowPath));
+            System.out.println(format("====> Northbound Get Flow Path = %s", flowPath));
             return flowPath;
         } else {
-            System.out.println(String.format("====> Error: Northbound Get Flow Path = %s",
+            System.out.println(format("====> Error: Northbound Get Flow Path = %s",
                     response.readEntity(MessageError.class)));
             return null;
         }
@@ -323,7 +326,7 @@ public class FlowUtils {
             if (status != 404) {
                 throw new FlowOperationException(
                         response,
-                        String.format("Flow status request for flow %s ens with %d", flowId, status));
+                        format("Flow status request for flow %s ens with %d", flowId, status));
             }
 
             break;
@@ -341,7 +344,7 @@ public class FlowUtils {
 
         int responseCode = response.getStatus();
         if (responseCode != 200) {
-            System.out.println(String.format("====> Error: Northbound Get Flow Status = %s",
+            System.out.println(format("====> Error: Northbound Get Flow Status = %s",
                     response.readEntity(MessageError.class)));
             return null;
         }
@@ -364,11 +367,11 @@ public class FlowUtils {
                 .header(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()))
                 .get();
 
-        System.out.println(String.format("===> Response = %s", response.toString()));
-        System.out.println(String.format("===> Northbound Get Flow Status Time: %,.3f", getTimeDuration(current)));
+        System.out.println(format("===> Response = %s", response.toString()));
+        System.out.println(format("===> Northbound Get Flow Status Time: %,.3f", getTimeDuration(current)));
 
         int status = response.getStatus();
-        System.out.println(String.format("====> Northbound Get Flow Status = %s", status));
+        System.out.println(format("====> Northbound Get Flow Status = %s", status));
 
         return response;
     }
@@ -392,16 +395,16 @@ public class FlowUtils {
                 .header(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()))
                 .get();
 
-        System.out.println(String.format("===> Response = %s", response.toString()));
-        System.out.println(String.format("===> Northbound Get Flow Dump Time: %,.3f", getTimeDuration(current)));
+        System.out.println(format("===> Response = %s", response.toString()));
+        System.out.println(format("===> Northbound Get Flow Dump Time: %,.3f", getTimeDuration(current)));
 
         int responseCode = response.getStatus();
         if (responseCode == 200) {
             List<FlowPayload> flows = response.readEntity(new GenericType<List<FlowPayload>>() {});
-            System.out.println(String.format("====> Northbound Get Flow Dump = %d", flows.size()));
+            System.out.println(format("====> Northbound Get Flow Dump = %d", flows.size()));
             return flows;
         } else {
-            System.out.println(String.format("====> Error: Northbound Get Flow Dump = %s",
+            System.out.println(format("====> Error: Northbound Get Flow Dump = %s",
                     response.readEntity(MessageError.class)));
             return Collections.emptyList();
         }
@@ -412,7 +415,7 @@ public class FlowUtils {
      *
      * @return The JSON document of all flows
      */
-    public static List<Flow> dumpFlows() throws IOException {
+    public static List<Flow> dumpFlows() {
         System.out.println("\n==> Topology-Engine Dump Flows");
 
         long current = System.currentTimeMillis();
@@ -425,14 +428,19 @@ public class FlowUtils {
                 .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
                 .get();
 
-        System.out.println(String.format("===> Response = %s", response.toString()));
-        System.out.println(String.format("===> Topology-Engine Dump Flows Time: %,.3f", getTimeDuration(current)));
+        System.out.println(format("===> Response = %s", response.toString()));
+        System.out.println(format("===> Topology-Engine Dump Flows Time: %,.3f", getTimeDuration(current)));
 
-        List<Flow> flows = new ObjectMapper().readValue(response.readEntity(String.class),
-                new TypeReference<List<Flow>>() {});
-        System.out.println(String.format("====> Topology-Engine Dump Flows = %d", flows.size()));
+        try {
+            List<Flow> flows = new ObjectMapper().readValue(response.readEntity(String.class),
+                    new TypeReference<List<Flow>>() {});
+            System.out.println(format("====> Topology-Engine Dump Flows = %d", flows.size()));
 
-        return flows;
+            return flows;
+
+        } catch (IOException ex) {
+            throw new TopologyProcessingException(format("Unable to parse the flows '%s'.", response.toString()), ex);
+        }
     }
 
     /**
@@ -440,7 +448,7 @@ public class FlowUtils {
      *
      * @return The JSON document of all flows
      */
-    public static Integer getLinkBandwidth(final String src_switch, final String src_port) throws Exception {
+    public static Integer getLinkBandwidth(final String src_switch, final String src_port)  {
         System.out.println("\n==> Topology-Engine Link Bandwidth");
 
         long current = System.currentTimeMillis();
@@ -458,16 +466,20 @@ public class FlowUtils {
                 .get();
 
 
-        System.out.println(String.format("===> Response = %s", response.toString()));
-        System.out.println(String.format("===> Topology-Engine Link Bandwidth Time: %,.3f", getTimeDuration(current)));
+        System.out.println(format("===> Response = %s", response.toString()));
+        System.out.println(format("===> Topology-Engine Link Bandwidth Time: %,.3f", getTimeDuration(current)));
 
-        Integer bandwidth = new ObjectMapper().readValue(response.readEntity(String.class), Integer.class);
-        System.out.println(String.format("====> Link switch=%s port=%s bandwidth=%d", src_switch, src_port, bandwidth));
+        try {
+            Integer bandwidth = new ObjectMapper().readValue(response.readEntity(String.class), Integer.class);
+            System.out.println(format("====> Link switch=%s port=%s bandwidth=%d", src_switch, src_port, bandwidth));
 
-        return bandwidth;
+            return bandwidth;
+        } catch (IOException ex) {
+            throw new TopologyProcessingException(format("Unable to parse the links '%s'.", response.toString()), ex);
+        }
     }
 
-    public static void restoreFlows() throws Exception {
+    public static void restoreFlows() {
         System.out.println("\n==> Topology-Engine Restore Flows");
 
         long current = System.currentTimeMillis();
@@ -480,14 +492,14 @@ public class FlowUtils {
                 .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
                 .get();
 
-        System.out.println(String.format("===> Response = %s", response.toString()));
-        System.out.println(String.format("===> Topology-Engine Restore Flows Time: %,.3f", getTimeDuration(current)));
+        System.out.println(format("===> Response = %s", response.toString()));
+        System.out.println(format("===> Topology-Engine Restore Flows Time: %,.3f", getTimeDuration(current)));
     }
 
     /**
      * Cleanups all flows.
      */
-    public static void cleanupFlows() throws Exception {
+    public static void cleanupFlows() {
         try {
             Set<String> flows = new HashSet<>();
 
@@ -498,7 +510,7 @@ public class FlowUtils {
 
             // Get the flows through the NB API
             List<FlowPayload> nbFlows = getFlowDump();
-            System.out.println(String.format("=====> Cleanup Flows, nbflow count = %d",
+            System.out.println(format("=====> Cleanup Flows, nbflow count = %d",
                     nbFlows.size()));
 
             nbFlows.forEach(flow->flows.add(flow.getId()));
@@ -513,7 +525,7 @@ public class FlowUtils {
                 }
                 TimeUnit.SECONDS.sleep(2);
             }
-            System.out.println(String.format("=====> Cleanup Flows, tpeFlows count = %d",
+            System.out.println(format("=====> Cleanup Flows, tpeFlows count = %d",
                     tpeFlows.size()));
 
             // Delete all the flows
@@ -540,7 +552,7 @@ public class FlowUtils {
 //            assertEquals(nbFlows.size(), flows.size());
 
         } catch (Exception exception) {
-            System.out.println(String.format("Error during flow deletion: %s", exception.getMessage()));
+            System.out.println(format("Error during flow deletion: %s", exception.getMessage()));
             exception.printStackTrace();
         }
     }
@@ -552,7 +564,7 @@ public class FlowUtils {
      * @return flow name
      */
     public static String getFlowName(final String flowId) {
-        return String.format("%s-%s", flowId, FEATURE_TIME);
+        return format("%s-%s", flowId, FEATURE_TIME);
     }
 
     /**
@@ -571,14 +583,15 @@ public class FlowUtils {
      * @param flow flow
      * @return flow path
      */
-    public static ImmutablePair<PathInfoData, PathInfoData> getFlowPath(Flow flow) throws Exception {
+    public static ImmutablePair<PathInfoData, PathInfoData> getFlowPath(Flow flow)
+            throws InterruptedException, UnroutablePathException {
         Thread.sleep(1000);
         return pathComputer.getPath(flow, PathComputer.Strategy.HOPS);
     }
 
     public static boolean isTrafficTestsEnabled() {
         boolean isEnabled = Boolean.valueOf(System.getProperty("traffic", "true"));
-        System.out.println(String.format("\n=====> Traffic check is %s", isEnabled ? "enabled" : "disabled"));
+        System.out.println(format("\n=====> Traffic check is %s", isEnabled ? "enabled" : "disabled"));
         return isEnabled;
     }
 }
