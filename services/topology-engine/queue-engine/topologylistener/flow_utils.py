@@ -180,7 +180,8 @@ def merge_flow_segments(_flow):
         flow['src_switch'] = src['switch_id']
         flow['src_port'] = src['port_no']
         flow['seq_id'] = src['seq_id']
-        flow['segment_latency'] = src['segment_latency']
+        # Ignore latency if not provided
+        flow['segment_latency'] = src.get('segment_latency', 'NULL')
         # ==> DEST
         flow['dst_switch'] = dst['switch_id']
         flow['dst_port'] = dst['port_no']
