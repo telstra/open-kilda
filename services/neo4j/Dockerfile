@@ -18,6 +18,10 @@ ADD ansible /ansible
 RUN ansible-playbook -s /ansible/deploy.yml
 ADD neo4j-config/neo4j.conf /etc/neo4j/neo4j.conf
 ADD neo4j-config/auth /var/lib/neo4j/data/dbms/auth
+ADD init/neo4j-queries.cql /app/neo4j-queries.cql
+ADD init/init.sh /app/init.sh
+RUN chmod 777 /app/*
+
 
 #
 # https://github.com/neo4j-contrib/neo4j-apoc-procedures#version-compatibility-matrix
@@ -31,3 +35,5 @@ ADD neo4j-config/auth /var/lib/neo4j/data/dbms/auth
 RUN wget \
   https://github.com/neo4j-contrib/neo4j-apoc-procedures/releases/download/3.3.0.1/apoc-3.3.0.1-all.jar \
    -O /var/lib/neo4j/plugins/apoc-3.3.0.1-all.jar
+
+CMD /app/init.sh
