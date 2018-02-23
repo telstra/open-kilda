@@ -63,4 +63,9 @@ public class ServiceConfig {
         restTemplate.getInterceptors().add(new BasicAuthorizationInterceptor(username, password));
         return restTemplate;
     }
+
+    @Bean(name = "traffExamRestTemplate")
+    public RestTemplate traffExamRestTemplate() {
+        return new RestTemplate();
+    }
 }
