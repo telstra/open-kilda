@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 import org.openkilda.LinksUtils;
+import org.openkilda.flow.FlowOperationException;
 import org.openkilda.flow.FlowUtils;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
@@ -31,7 +32,7 @@ public class FlowIgnoreBandwidthTest {
     }
 
     @Then("^available ISL's bandwidths between ([0-9a-f]{2}(?::[0-9a-f]{2}){7}) and ([0-9a-f]{2}(?::[0-9a-f]{2}){7}) is (\\d+)$")
-    public void availableISLBandwidthsBetweenSwitches(String source, String dest, long expected) throws Throwable {
+    public void availableISLBandwidthsBetweenSwitches(String source, String dest, long expected) {
         List<IslInfoData> islLinks = LinksUtils.dumpLinks();
 
         Long actual = null;
@@ -61,7 +62,8 @@ public class FlowIgnoreBandwidthTest {
     }
 
     @When("^flow ignore bandwidth between ([0-9a-f]{2}(?::[0-9a-f]{2}){7}) and ([0-9a-f]{2}(?::[0-9a-f]{2}){7}) with (\\d+) bandwidth is created$")
-    public void flowIgnoreBandwidthBetweenSwitchesWithBandwidthIsCreated(String source, String dest, int bandwidth) throws Throwable {
+    public void flowIgnoreBandwidthBetweenSwitchesWithBandwidthIsCreated(String source, String dest, int bandwidth)
+            throws InterruptedException {
         String flowId = FlowUtils.getFlowName("flowId");
         FlowEndpointPayload sourcePoint = new FlowEndpointPayload(source, 1, 0);
         FlowEndpointPayload destPoint = new FlowEndpointPayload(dest, 2, 0);
@@ -82,7 +84,7 @@ public class FlowIgnoreBandwidthTest {
     }
 
     @Then("^flow between ([0-9a-f]{2}(?::[0-9a-f]{2}){7}) and ([0-9a-f]{2}(?::[0-9a-f]{2}){7}) have ignore_bandwidth flag$")
-    public void flowHaveIgnoreBandwidthFlag(String source, String dest) throws IllegalArgumentException {
+    public void flowHaveIgnoreBandwidthFlag(String source, String dest) {
         String flowId = lookupCreatedFlowId(source, dest);
         FlowPayload flow = FlowUtils.getFlow(flowId);
 
@@ -103,7 +105,7 @@ public class FlowIgnoreBandwidthTest {
     }
 
     @When("^drop created flow between ([0-9a-f]{2}(?::[0-9a-f]{2}){7}) and ([0-9a-f]{2}(?::[0-9a-f]{2}){7})$")
-    public void dropCreatedEarlyFlow(String source, String dest) throws Exception {
+    public void dropCreatedEarlyFlow(String source, String dest) throws FlowOperationException, InterruptedException {
         String flowId = lookupCreatedFlowId(source, dest);
 
         System.out.println(String.format("==> Send flow DELETE request (%s <--> %s)", source, dest));
@@ -118,7 +120,7 @@ public class FlowIgnoreBandwidthTest {
         createdFlows.put(makeCreatedFlowIdKey(source, dest), flowId);
     }
 
-    private String lookupCreatedFlowId(String source, String dest) throws IllegalArgumentException {
+    private String lookupCreatedFlowId(String source, String dest) {
         String key = makeCreatedFlowIdKey(source, dest);
         if (! createdFlows.containsKey(key)) {
             throw new IllegalArgumentException(String.format("There is no known flows between %s and %s", source, dest));

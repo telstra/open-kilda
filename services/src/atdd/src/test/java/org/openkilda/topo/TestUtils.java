@@ -15,12 +15,14 @@
 
 package org.openkilda.topo;
 
+import static java.lang.String.format;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
 import com.google.common.util.concurrent.Uninterruptibles;
+import org.openkilda.topo.exceptions.TopologyProcessingException;
 
 import java.io.IOException;
 import java.net.URL;
@@ -78,12 +80,17 @@ public class TestUtils {
         String[] s1 = toUpperSubstring(expected, 0, 23).toArray(new String[expected.size()]);   // upper case and sorted
         String[] s2 = toUpperSubstring(actual, 0, 23).toArray(new String[actual.size()]);       // upper case and sorted
         for (int i = 0; i < s1.length; i++) {
-            assertEquals(String.format("Link IDs - test failed[%d]: %s,%s", i, s1[i], s2[i]), s1[i], s2[i]);
+            assertEquals(format("Link IDs - test failed[%d]: %s,%s", i, s1[i], s2[i]), s1[i], s2[i]);
         }
     }
 
-    public static String createMininetTopoFromFile(URL url) throws IOException {
-        String doc = Resources.toString(url, Charsets.UTF_8);
+    public static String createMininetTopoFromFile(URL url) {
+        String doc;
+        try {
+            doc = Resources.toString(url, Charsets.UTF_8);
+        } catch (IOException ex) {
+            throw new TopologyProcessingException(format("Unable to read the topology file '%s'.", url), ex);
+        }
         doc = doc.replaceAll("\"dpid\": \"SW", "\"dpid\": \""); // remove any SW characters
         doc = doc.replaceAll("([0-9A-Fa-f]{2}):", "$1");         // remove ':' in id
         TopologyHelp.CreateMininetTopology(doc);
@@ -93,7 +100,7 @@ public class TestUtils {
     /**
      * @param doc Generally, the String returned from createMininetTopoFromFile
      */
-    private static ITopology translateTestTopo(String doc) throws IOException {
+    private static ITopology translateTestTopo(String doc) {
         ITopology tDoc = TopologyBuilder.buildTopoFromTestJson(doc);
         return tDoc;
     }
@@ -102,8 +109,7 @@ public class TestUtils {
      * Get the topology from the Topology Engine, compare against the expected (switch/link count)
      * until it matches or times out.
      */
-    public static ITopology translateTopoEngTopo(ITopology expected) throws InterruptedException,
-            IOException {
+    public static ITopology translateTopoEngTopo(ITopology expected) throws InterruptedException {
         long expectedSwitches = expected.getSwitches().keySet().size();
         long expectedLinks = expected.getLinks().keySet().size();
         return checkAndGetTopo(expectedSwitches, expectedLinks);
@@ -118,11 +124,9 @@ public class TestUtils {
      * @param expectedLinks
      * @return the topology as of the last query
      * @throws InterruptedException
-     * @throws IOException
      */
     public static ITopology checkAndGetTopo(long expectedSwitches, long expectedLinks) throws
-            InterruptedException,
-            IOException {
+            InterruptedException {
         ITopology tTE = new Topology(""); // ie null topology
 
         // try a couple of times to get the topology;
@@ -167,14 +171,14 @@ public class TestUtils {
     /**
      * Default behavior - hit localhost
      */
-    public static void clearEverything() throws Exception {
+    public static void clearEverything() throws InterruptedException {
         clearEverything("localhost");
     }
 
     /**
      * @param endpoint the kilda endpoint to clear
      */
-    public static void clearEverything(String endpoint) throws Exception {
+    public static void clearEverything(String endpoint) throws InterruptedException {
         String expected = "{\"nodes\": []}";
         TopologyHelp.DeleteMininetTopology();
         // Give Mininet some time to clear things naturally
