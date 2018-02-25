@@ -22,6 +22,7 @@ import static org.junit.Assert.assertTrue;
 import static org.openkilda.flow.FlowUtils.dumpFlows;
 import static org.openkilda.flow.FlowUtils.getLinkBandwidth;
 import static org.openkilda.flow.FlowUtils.restoreFlows;
+import static org.openkilda.messaging.info.event.IslChangeType.FAILED;
 
 import org.openkilda.LinksUtils;
 import org.openkilda.flow.FlowUtils;
@@ -153,24 +154,31 @@ public class FlowPathTest {
     public void topologyContainsLinks(int expectedLinks) throws Throwable {
         // give WFM time to send discovery requests and notify TE.
         TimeUnit.SECONDS.sleep(4);
-        int actualLinks = getLinksCount(expectedLinks);
-        assertEquals(expectedLinks, actualLinks);
+        waitForVerifiedLinks(expectedLinks);
     }
 
-    private int getLinksCount(int expectedLinks) throws Exception {
-        int actualLinks = 0;
+    private void waitForVerifiedLinks(int expectedLinks) throws Exception {
+        long actualLinks = 0;
 
         for (int i = 0; i < 10; i++) {
             List<IslInfoData> links = LinksUtils.dumpLinks();
-            actualLinks = links.size();
+
+            // Count verified and healthy links
+            actualLinks = links.stream()
+                    .filter(link -> link.getState() != FAILED)
+                    .filter(link -> link.getPath().stream()
+                            .noneMatch(pathNode -> pathNode.getSeqId() == 0
+                                    && pathNode.getSegLatency() == null))
+                    .count();
 
             if (actualLinks == expectedLinks) {
-                break;
+                return;
             }
 
             TimeUnit.SECONDS.sleep(3);
         }
-        return actualLinks;
+
+        assertEquals(expectedLinks, actualLinks);
     }
 
     @When("^delete mininet topology$")
