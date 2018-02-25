@@ -23,7 +23,6 @@ services:
     container_name: neo4j
     hostname: neo4j.pendev
     image: "kilda/neo4j:${full_build_number:-latest}"
-    command: neo4j console
     ports:
       - "7474:7474"
       - "7687:7687"
