@@ -102,6 +102,7 @@ public class WebConfig extends WebMvcConfigurerAdapter {
                     throws ServletException, IOException {
 
                 // Put the request's correlationId into the logger context.
+                // MDC is picked up by the %X in log4j2 formatter .. resources/log4j2.xml
                 String correlationId = Optional.ofNullable(request.getHeader(CORRELATION_ID)).orElse(DEFAULT_CORRELATION_ID);
                 try(MDCCloseable closable = MDC.putCloseable(CORRELATION_ID, correlationId)) {
                     filterChain.doFilter(request, response);
