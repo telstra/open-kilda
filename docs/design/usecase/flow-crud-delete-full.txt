@@ -1,0 +1,124 @@
+@startuml
+title FLOW delete
+
+participant Client
+participant NB
+control kilda.northbound
+participant "FLOW SplitterBolt" as SplitterBolt
+participant "FLOW CrudBolt" as CrudBolt
+control kilda.flow
+control kilda.topo.cache
+participant "FLOW NorthboundReplyBolt" as NorthboundReplyBolt
+participant "FLOW ErrorBolt" as ErrorBolt
+participant "FLOW TopologyEngineBolt" as TopologyEngineBolt
+participant "FLOW TransactionBolt" as TransactionBolt
+participant "CACHE CacheBolt" as CacheBolt
+control kilda.topo.eng
+participant TE
+control kilda.speaker
+participant SPEAKER
+participant "FLOW SpeakerBolt" as SpeakerBolt
+
+Client -> NB: DELETE /flows/{flow-id}
+NB -> kilda.flow: CommandMessage(FlowDeleteRequest)
+kilda.flow -> SplitterBolt: CommandMessage(FlowDeleteRequest)
+SplitterBolt -> CrudBolt: CommandMessage(FlowDeleteRequest)
+alt successful case
+    note right of CrudBolt: flowCache.deleteFlow(flowId)
+    note right of CrudBolt: deallocate flow's cookie
+    note right of CrudBolt: deallocate transit VLAN
+    note right of CrudBolt: deallocate meter
+    opt if reverse flow is not null
+        note right of CrudBolt: deallocate transit VLAN (reverse)
+        note right of CrudBolt: deallocate meter (reverse)
+    end
+    note right of CrudBolt: new FlowInfoData(flow) operation=DELETE
+    CrudBolt -> kilda.topo.cache: InfoMessage(FlowInfoData)
+
+    note right of CrudBolt: new FlowResponse
+    CrudBolt -> NorthboundReplyBolt: InfoMessage(FlowResponse)
+else CacheException from flowCache.deleteFlow type=NOT_FOUND
+    note right of CrudBolt: new ErrorMessage
+    CrudBolt -> ErrorBolt: ErrorMessage
+end
+
+kilda.topo.cache -> CacheBolt: InfoMessage(FlowInfoData)
+note right of CacheBolt: flowCache.removeFlow(flowId)
+note right of CacheBolt: reroutedFlows.remove(flowId)
+CacheBolt -> kilda.topo.eng: InfoMessage(FlowInfoData) dest=TPE // forwarded
+kilda.topo.eng -> TE: InfoMessage(FlowInfoData)
+
+loop in (forward, reverse)
+    alt succesful case
+        note right of TE: flow_utils.remove_flow(flow)
+        loop in flow_path
+            note right of TE: new RemoveFlow()
+            TE -> kilda.speaker: CommandMessage(RemoveFlow) dest=controller
+            TE -> kilda.flow: CommandMessage(RemoveFlow) dest=WFM
+
+            kilda.speaker -> SPEAKER: CommandMessage(RemoveFlow)
+            note right of SPEAKER: switchManager.deleteFlow(...)
+            opt meter exist
+                note right of SPEAKER: switchManager.deleteMeter(...)
+            end
+            note right of SPEAKER: CommandMessage(RemoveFlow) set dest=WFM_TRANSACTION
+            SPEAKER -> kilda.flow: CommandMessage(RemoveFlow) dest=WFM_TRANSACTION
+
+            kilda.flow -> TopologyEngineBolt: CommandMessage(RemoveFlow) dest=WFM
+            note right of TopologyEngineBolt: new transactionId by random UUID
+            note right of TopologyEngineBolt: RemoveFlow.setTransaction(transactionId)
+            note right of TopologyEngineBolt: CommandMessage(RemoveFlow) set dest=CONTROLLER
+            TopologyEngineBolt -> TransactionBolt: CommandMessage(RemoveFlow) dest=CONTROLLER
+            note right of TransactionBolt: bind transactionId with flowId
+            TransactionBolt -> CrudBolt: STATUS(flowId, IN_PROGRESS)
+
+            kilda.flow -> SpeakerBolt: CommandMessage(RemoveFlow) dest=WFM_TRANSACTION
+            note right of SpeakerBolt: CommandMessage(RemoveFlow) set dest=TOPOLOGY_ENGINE
+            SpeakerBolt -> TransactionBolt: CommandMessage(RemoveFlow) dest=TOPOLOGY_ENGINE
+            note right of TransactionBolt: unbind transactionId from flowId
+            opt no more transactions bind to flowId
+                TransactionBolt -> CrudBolt: STATUS(flowId, UP) BUG!!!
+            end
+        end
+
+        note right of TE: new FlowResponse()
+        TE -> kilda.flow: InfoMessage(FlowResponse) dest=WFM
+        kilda.flow -> TopologyEngineBolt: InfoMessage(FlowResponse) dest=WFM
+        note right of TopologyEngineBolt: DEAD END (commented out route into TransactionBolt)
+
+    else Exception
+        note right of TE: new ErrorData() type=DELETION_FAILURE
+        TE -> kilda.flow: ErrorMessage(ErrorData) dest=WFM
+        kilda.flow -> TopologyEngineBolt: ErrorMessage(ErrorData) dest=WFM
+        TopologyEngineBolt -> CrudBolt: ErrorMessage(ErrorData) dest=WFM (STATUS)
+        CrudBolt -> ErrorBolt: ErrorMessage(ErrorData) dest=WFM (ERROR)
+    end
+end
+
+opt STATUS(flowId, STATE) for CrudBolt
+    note right of CrudBolt: flow = FlowCache.getFlow(flowId)
+    note right of CrudBolt: flow.getLeft().setState(status)  # update cache
+    note right of CrudBolt: flow.getRight().setState(status) # update cache
+    note right of CrudBolt: new FlowInfoData(flow) operation=STATE
+    CrudBolt -> kilda.topo.cache: InfoMessage(FlowInfoData) operation=STATE
+
+    kilda.topo.cache -> CacheBolt: InfoMessage(FlowInfoData) operation=STATE
+    note right of CacheBolt: FlowCache.putFlow()  # update cache
+    note right of CacheBolt: DEAD END
+end
+
+note right of ErrorBolt: setDestination(NORTHBOUND)
+ErrorBolt -> NorthboundReplyBolt: ErrorMessage
+
+note right of NorthboundReplyBolt: setDestination(NORTHBOUND)
+NorthboundReplyBolt -> kilda.northbound: ErrorMessage\nor InfoMessage(FlowResponse)
+kilda.northbound -> NB: ErrorMessage\nor InfoMessage(FlowResponse)
+alt InfoMessage(FlowResponse)
+    note right of NB: call Converter.buildFlowPayloadByFlow(FlowResponse)
+    NB -> Client: HTTP200(FlowPayload)
+else ErrorMessage type=NOT_FOUND
+    NB -> Client: HTTP404
+end
+note right of Client: DEAD END
+
+@enduml
