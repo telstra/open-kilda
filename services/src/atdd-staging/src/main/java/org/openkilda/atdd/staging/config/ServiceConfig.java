@@ -25,6 +25,7 @@ import org.springframework.context.annotation.Profile;
 @Profile("default")
 @ComponentScan(basePackages = {"org.openkilda.atdd.staging.service.impl"})
 public class ServiceConfig {
+
     @Bean
     public ModelMapper modelMapper() {
         return new ModelMapper();

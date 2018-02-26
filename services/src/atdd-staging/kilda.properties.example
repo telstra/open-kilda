@@ -1,0 +1,5 @@
+northbound.endpoint=http://localhost:8088
+
+topology-engine-rest.endpoint=http://localhost:80
+
+floodlight.endpoint=http://localhost:8081

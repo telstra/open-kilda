@@ -15,9 +15,24 @@
 
 package org.openkilda.atdd.staging.config;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
+import org.springframework.core.io.Resource;
 
 @Configuration
+@Profile("default")
 public class TopologyConfig {
-    //TODO: read the provided topology configuration
+
+    @Value("file:///${topology.definition.file}")
+    private Resource topologyDefinitionFile;
+
+    @Bean
+    public Object topology() {
+        //TODO: parse the provided topology configuration
+        assert topologyDefinitionFile != null;
+
+        return new Object();
+    }
 }
