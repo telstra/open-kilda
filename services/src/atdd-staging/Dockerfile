@@ -20,6 +20,15 @@ RUN apt-get update
 ADD target/atdd-staging-*.jar /app/atdd-staging.jar
 ADD target/lib/*.jar /app/lib/
 
+# TODO: replace this with fetching of actual environment configuration
+ADD topology.json.example /app/topology.json
+ADD kilda.properties.example /app/kilda.properties
+ADD log4j2.xml.example /app/log4j2.xml
+
 WORKDIR /app
 
-CMD ["java", "-cp", "/app/atdd-staging.jar:/app/lib/*", "cucumber.api.cli.Main"]
+CMD ["java", "-cp", "/app/atdd-staging.jar:/app/lib/*", \
+             "-Dlog4j.configurationFile=/app/log4j2.xml", \
+             "-Dkilda.config.file=/app/kilda.properties", \
+             "-Dtopology.definition.file=/app/topology.json", \
+             "cucumber.api.cli.Main"]
