@@ -15,7 +15,20 @@
 
 package org.openkilda.atdd.staging.service;
 
+import org.openkilda.atdd.utils.controller.CoreFlowEntry;
+import org.openkilda.atdd.utils.controller.DpIdEntriesList;
+import org.openkilda.atdd.utils.controller.StaticFlowEntry;
+
+import java.util.List;
+
 public interface FloodlightService {
 
+    String addStaticFlow(StaticFlowEntry flow);
+
     String getAliveStatus();
+
+    List<CoreFlowEntry> getCoreFlows(String dpId);
+
+    DpIdEntriesList getStaticEntries(String dpId);
+
 }

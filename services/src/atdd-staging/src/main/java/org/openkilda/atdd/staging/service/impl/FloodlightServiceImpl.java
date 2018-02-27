@@ -16,12 +16,20 @@
 package org.openkilda.atdd.staging.service.impl;
 
 import org.openkilda.atdd.staging.service.FloodlightService;
+import org.openkilda.atdd.utils.controller.CoreFlowEntry;
+import org.openkilda.atdd.utils.controller.DpIdEntriesList;
+import org.openkilda.atdd.utils.controller.StaticFlowEntry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Service
 public class FloodlightServiceImpl implements FloodlightService {
@@ -32,29 +40,32 @@ public class FloodlightServiceImpl implements FloodlightService {
     @Qualifier("floodlightRestTemplate")
     private RestTemplate restTemplate;
 
-//    public String addStaticFlow(StaticFlowEntry flow) {
-//        return restTemplate.postForObject("/wm/staticentrypusher/jso", flow, String.class);
-//    }
+    @Override
+    public String addStaticFlow(StaticFlowEntry flow) {
+        return restTemplate.postForObject("/wm/staticentrypusher/jso", flow, String.class);
+    }
 
     @Override
     public String getAliveStatus() {
         return restTemplate.getForObject("/wm/core/controller/summary/json", String.class);
     }
 
-//    public List<CoreFlowEntry> getCoreFlows(String dpId) {
-//        Map<String, Object> params = new HashMap<>();
-//        params.put("dp_id", dpId);
-//
-//        CoreFlowEntry[] coreFlows = restTemplate.getForObject("/wm/core/switch/{dp_id}/flow/json",
-//                CoreFlowEntry[].class, params);
-//        return Arrays.asList(coreFlows);
-//    }
+    @Override
+    public List<CoreFlowEntry> getCoreFlows(String dpId) {
+        Map<String, Object> params = new HashMap<>();
+        params.put("dp_id", dpId);
 
-//    public DpIdEntriesList getStaticEntries(String dpId) {
-//        Map<String, Object> params = new HashMap<>();
-//        params.put("dp_id", dpId);
-//
-//        return restTemplate.getForObject("/wm/staticentrypusher/list/{dp_id}/json",
-//                DpIdEntriesList.class, params);
-//    }
+        CoreFlowEntry[] coreFlows = restTemplate.getForObject("/wm/core/switch/{dp_id}/flow/json",
+                CoreFlowEntry[].class, params);
+        return Arrays.asList(coreFlows);
+    }
+
+    @Override
+    public DpIdEntriesList getStaticEntries(String dpId) {
+        Map<String, Object> params = new HashMap<>();
+        params.put("dp_id", dpId);
+
+        return restTemplate.getForObject("/wm/staticentrypusher/list/{dp_id}/json",
+                DpIdEntriesList.class, params);
+    }
 }
