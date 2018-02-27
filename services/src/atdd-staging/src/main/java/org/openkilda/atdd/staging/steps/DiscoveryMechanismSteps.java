@@ -57,9 +57,9 @@ public class DiscoveryMechanismSteps implements En {
 
         expectedSwitches.keySet().forEach(switchId -> {
             SwitchInfoData switchInfoData = discoveredSwitches.stream()
-                    .filter(sw -> StringUtils.equals(sw.getSwitchId(), switchId))
+                    .filter(sw -> StringUtils.equalsIgnoreCase(sw.getSwitchId(), switchId))
                     .findFirst()
-                    .get();
+                    .orElse(null);
             assertNotNull(String.format("Switch %s is not discovered", switchId), switchInfoData);
             assertTrue(String.format("Switch %s should be active", switchId), switchInfoData.getState().isActive());
         });
@@ -110,8 +110,8 @@ public class DiscoveryMechanismSteps implements En {
         return discoveredLinks.stream()
                 .anyMatch(isl -> {
                     //todo: need to check port as well
-                    return srcSwitch.getTopoSwitch().getId().equals(isl.getPath().get(0).getSwitchId()) &&
-                            dstSwitch.getTopoSwitch().getId().equals(isl.getPath().get(1).getSwitchId());
+                    return srcSwitch.getTopoSwitch().getId().equalsIgnoreCase(isl.getPath().get(0).getSwitchId()) &&
+                            dstSwitch.getTopoSwitch().getId().equalsIgnoreCase(isl.getPath().get(1).getSwitchId());
                 });
    }
 }
