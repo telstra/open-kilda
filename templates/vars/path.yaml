@@ -48,3 +48,7 @@ path:
   - mininet_log_json:
     dest: services/mininet/app/log.json
     tmpl: templates/mininet/log.json.j2
+  - atdd_staging:
+    dest: services/src/atdd-staging/kilda.properties.example
+    tmpl: templates/atdd-staging/kilda.properties.j2
+
