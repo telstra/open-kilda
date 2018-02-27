@@ -53,13 +53,13 @@ public class SampleNorthboundTest {
             when(topology.equivalent(any()))
                     .thenReturn(true);
 
-            when(northboundService.getFlowDump())
+            when(northboundService.getAllFlows())
                     .thenReturn(Collections.singletonList(mock(FlowPayload.class)));
         }
 
         @After
         public void verifyMocks() {
-            verify(northboundService, times(1)).getFlowDump();
+            verify(northboundService, times(1)).getAllFlows();
         }
     }
 }

@@ -45,7 +45,7 @@ public class SampleNorthboundSteps implements En {
         });
 
         When("^get flows from Northbound$", () -> {
-            result = northboundService.getFlowDump();
+            result = northboundService.getAllFlows();
         });
 
         Then("^received the flows$", () -> {

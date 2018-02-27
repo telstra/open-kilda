@@ -31,9 +31,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Service
 public class NorthboundServiceImpl implements NorthboundService {
@@ -46,90 +44,60 @@ public class NorthboundServiceImpl implements NorthboundService {
 
     @Override
     public HealthCheck getHealthCheck() {
-        HttpHeaders headers = new HttpHeaders();
-        headers.set(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()));
         return restTemplate.exchange("/api/v1/health-check", HttpMethod.GET,
-                new HttpEntity(headers), HealthCheck.class).getBody();
+                new HttpEntity(buildHeadersWithCorrelationId()), HealthCheck.class).getBody();
     }
 
     @Override
     public FlowPayload getFlow(String flowId) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.set(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()));
-
-        Map<String, Object> params = new HashMap<>();
-        params.put("flow_id", flowId);
-
         return restTemplate.exchange("/api/v1/flows/{flow_id}", HttpMethod.GET,
-                new HttpEntity(headers), FlowPayload.class, params).getBody();
+                new HttpEntity(buildHeadersWithCorrelationId()), FlowPayload.class, flowId).getBody();
     }
 
     @Override
     public FlowPayload addFlow(FlowPayload payload) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.set(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()));
-        HttpEntity<FlowPayload> httpEntity = new HttpEntity<>(payload, headers);
+        HttpEntity<FlowPayload> httpEntity = new HttpEntity<>(payload, buildHeadersWithCorrelationId());
 
-        return restTemplate.exchange("/api/v1/flows", HttpMethod.PUT,
-                httpEntity, FlowPayload.class).getBody();
+        return restTemplate.exchange("/api/v1/flows", HttpMethod.PUT, httpEntity, FlowPayload.class).getBody();
     }
 
     @Override
     public FlowPayload updateFlow(String flowId, FlowPayload payload) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.set(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()));
-        HttpEntity<FlowPayload> httpEntity = new HttpEntity<>(payload, headers);
+        HttpEntity<FlowPayload> httpEntity = new HttpEntity<>(payload, buildHeadersWithCorrelationId());
 
-        Map<String, Object> params = new HashMap<>();
-        params.put("flow_id", flowId);
-
-        return restTemplate.exchange("/api/v1/flows/{flow_id}", HttpMethod.PUT,
-                httpEntity, FlowPayload.class, params).getBody();
+        return restTemplate.exchange("/api/v1/flows/{flow_id}", HttpMethod.PUT, httpEntity,
+                FlowPayload.class, flowId).getBody();
     }
 
     @Override
     public FlowPayload deleteFlow(String flowId) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.set(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()));
-
-        Map<String, Object> params = new HashMap<>();
-        params.put("flow_id", flowId);
 
         return restTemplate.exchange("/api/v1/flows/{flow_id}", HttpMethod.DELETE,
-                new HttpEntity(headers), FlowPayload.class, params).getBody();
+                new HttpEntity(buildHeadersWithCorrelationId()), FlowPayload.class, flowId).getBody();
     }
 
     @Override
     public FlowPathPayload getFlowPath(String flowId) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.set(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()));
-
-        Map<String, Object> params = new HashMap<>();
-        params.put("flow_id", flowId);
-
         return restTemplate.exchange("/api/v1/flows/path/{flow_id}", HttpMethod.GET,
-                new HttpEntity(headers), FlowPathPayload.class, params).getBody();
+                new HttpEntity(buildHeadersWithCorrelationId()), FlowPathPayload.class, flowId).getBody();
     }
 
     @Override
     public String getFlowStatus(String flowId) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.set(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()));
-
-        Map<String, Object> params = new HashMap<>();
-        params.put("flow_id", flowId);
-
         return restTemplate.exchange("/api/v1/flows/status/{flow_id}", HttpMethod.GET,
-                new HttpEntity(headers), String.class, params).getBody();
+                new HttpEntity(buildHeadersWithCorrelationId()), String.class, flowId).getBody();
     }
 
     @Override
-    public List<FlowPayload> getFlowDump() {
+    public List<FlowPayload> getAllFlows() {
+        FlowPayload[] flows = restTemplate.exchange("/api/v1/flows", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), FlowPayload[].class).getBody();
+        return Arrays.asList(flows);
+    }
+
+    private HttpHeaders buildHeadersWithCorrelationId() {
         HttpHeaders headers = new HttpHeaders();
         headers.set(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()));
-
-        FlowPayload[] flows = restTemplate.exchange("/api/v1/flows", HttpMethod.GET,
-                new HttpEntity(headers), FlowPayload[].class).getBody();
-        return Arrays.asList(flows);
+        return headers;
     }
 }
