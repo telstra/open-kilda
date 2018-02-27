@@ -19,6 +19,7 @@ import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.topo.ITopology;
 
 import java.util.List;
 
@@ -36,7 +37,7 @@ public interface TopologyEngineService {
 
     void restoreFlows();
 
-    String getTopology();
+    ITopology getTopology();
 
     String clearTopology();
 }
