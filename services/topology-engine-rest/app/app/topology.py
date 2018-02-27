@@ -618,21 +618,18 @@ def api_v1_topology_link_bandwidth(src_switch, src_port):
 def api_v1_routes_between_nodes(src_switch, dst_switch):
     depth = request.args.get('depth') or ''
     query = (
-        "MATCH p="
-        "(src:switch{{name:'{}'}})-[:isl*..{}]->(dst:switch{{name:'{}'}}) "
+        "MATCH p=(src:switch{{name:'{src_switch}'}})-[:isl*..{depth}]->"
+        "(dst:switch{{name:'{dst_switch}'}}) "
         "WITH NODES(p) AS switches "
         "WHERE ALL(sw1 IN switches "
         "   WHERE SIZE(FILTER(sw2 IN switches WHERE sw1.name=sw2.name)) = 1) "
         "RETURN switches"
-    ).format(src_switch, depth, dst_switch)
+    ).format(src_switch=src_switch, depth=depth, dst_switch=dst_switch)
 
-    try:
-        result = neo4j_connect.data(query)
+    result = neo4j_connect.data(query)
 
-        paths = [map(format_switch, x['switches']) for x in result]
-        return jsonify(paths)
-    except Exception as e:
-        return "error: {}".format(str(e))
+    paths = [map(format_switch, x['switches']) for x in result]
+    return jsonify(paths)
 
 
 # FIXME(surabujin): stolen from topology-engine code, must use some shared
