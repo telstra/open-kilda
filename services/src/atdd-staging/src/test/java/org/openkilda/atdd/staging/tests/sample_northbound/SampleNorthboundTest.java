@@ -15,6 +15,7 @@
 
 package org.openkilda.atdd.staging.tests.sample_northbound;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -27,6 +28,7 @@ import org.junit.runner.RunWith;
 import org.openkilda.atdd.staging.cucumber.CucumberWithSpringProfile;
 import org.openkilda.atdd.staging.service.NorthboundService;
 import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.topo.ITopology;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.ActiveProfiles;
 
@@ -43,8 +45,14 @@ public class SampleNorthboundTest {
         @Autowired
         private NorthboundService northboundService;
 
+        @Autowired
+        private ITopology topology;
+
         @Before
         public void prepareMocks() {
+            when(topology.equivalent(any()))
+                    .thenReturn(true);
+
             when(northboundService.getFlowDump())
                     .thenReturn(Collections.singletonList(mock(FlowPayload.class)));
         }
