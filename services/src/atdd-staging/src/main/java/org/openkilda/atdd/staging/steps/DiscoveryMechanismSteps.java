@@ -11,7 +11,7 @@ import cucumber.api.java.en.Then;
 import cucumber.api.java8.En;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.openkilda.atdd.staging.service.FloodlightService;
 import org.openkilda.atdd.staging.service.TopologyEngineService;
 import org.openkilda.messaging.info.event.IslInfoData;
