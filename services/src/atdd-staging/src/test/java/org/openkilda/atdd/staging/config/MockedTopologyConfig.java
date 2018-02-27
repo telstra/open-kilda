@@ -15,30 +15,18 @@
 
 package org.openkilda.atdd.staging.config;
 
-import org.springframework.beans.factory.annotation.Value;
+import static org.mockito.Mockito.mock;
+
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
-import org.springframework.web.client.RestTemplate;
 
 @Configuration
-@Profile("default")
-@ComponentScan(basePackages = {"org.openkilda.atdd.staging.clients.northbound"})
-public class ClientConfig {
+@Profile("mock")
+public class MockedTopologyConfig {
 
-    @Value("${northbound.endpoint}")
-    private String northboundEndpoint;
-
-    @Value("${topology-engine-rest.endpoint}")
-    private String topologyEngineRestEndpoint;
-
-    @Value("${floodlight.endpoint}")
-    private String floodlightEndpoint;
-
-    //TODO: use connection properties for the clients, initialize the clients, etc.
     @Bean
-    public RestTemplate restTemplate() {
-        return new RestTemplate();
+    public Object topology() {
+        return mock(Object.class);
     }
 }

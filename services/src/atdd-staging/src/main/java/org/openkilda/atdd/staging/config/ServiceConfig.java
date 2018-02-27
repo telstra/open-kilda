@@ -15,19 +15,52 @@
 
 package org.openkilda.atdd.staging.config;
 
-import org.modelmapper.ModelMapper;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
+import org.springframework.context.annotation.PropertySource;
+import org.springframework.http.client.support.BasicAuthorizationInterceptor;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.DefaultUriBuilderFactory;
 
 @Configuration
 @Profile("default")
+@PropertySource("file:///${kilda.config.file}")
 @ComponentScan(basePackages = {"org.openkilda.atdd.staging.service.impl"})
 public class ServiceConfig {
 
-    @Bean
-    public ModelMapper modelMapper() {
-        return new ModelMapper();
+    @Bean(name = "northboundRestTemplate")
+    public RestTemplate northboundRestTemplate(
+            @Value("${northbound.endpoint}") String endpoint,
+            @Value("${northbound.username}") String username,
+            @Value("${northbound.password}") String password) {
+        final RestTemplate restTemplate = new RestTemplate();
+        restTemplate.setUriTemplateHandler(new DefaultUriBuilderFactory(endpoint));
+        restTemplate.getInterceptors().add(new BasicAuthorizationInterceptor(username, password));
+        return restTemplate;
+    }
+
+    @Bean(name = "floodlightRestTemplate")
+    public RestTemplate floodlightRestTemplate(
+            @Value("${floodlight.endpoint}") String endpoint,
+            @Value("${floodlight.username}") String username,
+            @Value("${floodlight.password}") String password) {
+        final RestTemplate restTemplate = new RestTemplate();
+        restTemplate.setUriTemplateHandler(new DefaultUriBuilderFactory(endpoint));
+        restTemplate.getInterceptors().add(new BasicAuthorizationInterceptor(username, password));
+        return restTemplate;
+    }
+
+    @Bean(name = "topologyEngineRestTemplate")
+    public RestTemplate topologyEngineRestTemplate(
+            @Value("${topology-engine-rest.endpoint}") String endpoint,
+            @Value("${topology-engine-rest.username}") String username,
+            @Value("${topology-engine-rest.password}") String password) {
+        final RestTemplate restTemplate = new RestTemplate();
+        restTemplate.setUriTemplateHandler(new DefaultUriBuilderFactory(endpoint));
+        restTemplate.getInterceptors().add(new BasicAuthorizationInterceptor(username, password));
+        return restTemplate;
     }
 }
