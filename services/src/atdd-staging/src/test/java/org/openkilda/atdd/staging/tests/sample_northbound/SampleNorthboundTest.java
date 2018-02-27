@@ -15,6 +15,11 @@
 
 package org.openkilda.atdd.staging.tests.sample_northbound;
 
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import cucumber.api.CucumberOptions;
 import cucumber.api.java.After;
 import cucumber.api.java.Before;
@@ -27,8 +32,6 @@ import org.springframework.test.context.ActiveProfiles;
 
 import java.util.Collections;
 
-import static org.mockito.Mockito.*;
-
 @RunWith(CucumberWithSpringProfile.class)
 @CucumberOptions(features = {"classpath:features/sample_northbound.feature"},
         glue = {"org.openkilda.atdd.staging.tests.sample_northbound", "org.openkilda.atdd.staging.steps"})
@@ -36,18 +39,19 @@ import static org.mockito.Mockito.*;
 public class SampleNorthboundTest {
 
     public static class SampleNorthboundHook {
+
         @Autowired
         private NorthboundService northboundService;
 
         @Before
         public void prepareMocks() {
-            when(northboundService.getFlows())
+            when(northboundService.getFlowDump())
                     .thenReturn(Collections.singletonList(mock(FlowPayload.class)));
         }
 
         @After
         public void verifyMocks() {
-            verify(northboundService, times(1)).getFlows();
+            verify(northboundService, times(1)).getFlowDump();
         }
     }
 }

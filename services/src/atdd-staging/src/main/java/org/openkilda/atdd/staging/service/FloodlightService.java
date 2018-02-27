@@ -13,15 +13,9 @@
  *   limitations under the License.
  */
 
-package org.openkilda.atdd.staging.config;
+package org.openkilda.atdd.staging.service;
 
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
-import org.springframework.context.annotation.PropertySource;
+public interface FloodlightService {
 
-@Configuration
-@Profile("default")
-@PropertySource("file:///${kilda.config.file}")
-public class KildaConfig {
-
+    String getAliveStatus();
 }

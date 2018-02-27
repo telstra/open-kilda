@@ -15,27 +15,28 @@
 
 package org.openkilda.atdd.staging.service;
 
-import org.openkilda.messaging.model.HealthCheck;
-import org.openkilda.messaging.payload.flow.FlowPathPayload;
-import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.model.Flow;
+import org.openkilda.messaging.model.ImmutablePair;
 
 import java.util.List;
 
-public interface NorthboundService {
+public interface TopologyEngineService {
 
-    HealthCheck getHealthCheck();
+    List<IslInfoData> dumpLinks();
 
-    FlowPayload getFlow(String flowId);
+    Integer getLinkBandwidth(String srcSwitch, String srcPort);
 
-    FlowPayload addFlow(FlowPayload payload);
+    List<SwitchInfoData> dumpSwitches();
 
-    FlowPayload updateFlow(String flowId, FlowPayload payload);
+    List<Flow> dumpFlows();
 
-    FlowPayload deleteFlow(String flowId);
+    ImmutablePair<Flow, Flow> getFlow(String flowId);
 
-    FlowPathPayload getFlowPath(String flowId);
+    void restoreFlows();
 
-    String getFlowStatus(String flowId);
+    String getTopology();
 
-    List<FlowPayload> getFlowDump();
+    String clearTopology();
 }

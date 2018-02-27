@@ -15,14 +15,14 @@
 
 package org.openkilda.atdd.staging.steps;
 
+import static org.junit.Assert.assertFalse;
+
 import cucumber.api.java8.En;
 import org.openkilda.atdd.staging.service.NorthboundService;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
-
-import static org.junit.Assert.assertFalse;
 
 public class SampleNorthboundSteps implements En {
 
@@ -33,7 +33,7 @@ public class SampleNorthboundSteps implements En {
 
     public SampleNorthboundSteps() {
         When("^get flows from Northbound$", () -> {
-            result = northboundService.getFlows();
+            result = northboundService.getFlowDump();
         });
 
         Then("^received flows$", () -> {
