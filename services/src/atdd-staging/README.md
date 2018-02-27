@@ -49,7 +49,10 @@ The command __mvn clean package__ builds the executable artifact.
 
 The following command runs the tests:
 
-    java -cp "target/atdd-staging-1.0-SNAPSHOT.jar:target/lib/*" cucumber.api.cli.Main
+    java -cp "target/atdd-staging-1.0-SNAPSHOT.jar:target/lib/*" \
+        -Dkilda.config.file=kilda.properties \
+        -Dtopology.definition.file=topology.json \
+        cucumber.api.cli.Main
 
 Generated reports are stored in:
 * ```cucumber-reports``` - Cucumber reports

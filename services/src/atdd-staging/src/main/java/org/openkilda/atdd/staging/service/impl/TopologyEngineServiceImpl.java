@@ -20,6 +20,8 @@ import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.topo.ITopology;
+import org.openkilda.topo.TopologyBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -86,8 +88,9 @@ public class TopologyEngineServiceImpl implements TopologyEngineService {
     }
 
     @Override
-    public String getTopology() {
-        return restTemplate.getForObject("/api/v1/topology/network", String.class);
+    public ITopology getTopology() {
+        String topologyJson = restTemplate.getForObject("/api/v1/topology/network", String.class);
+        return TopologyBuilder.buildTopoFromTopoEngineJson(topologyJson);
     }
 
     @Override
