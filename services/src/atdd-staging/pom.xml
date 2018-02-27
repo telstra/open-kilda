@@ -19,15 +19,11 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
-        <swagger.clients.package>org.openkilda.atdd.staging.clients</swagger.clients.package>
-        <swagger.clients.dir>org/openkilda/atdd/staging/clients</swagger.clients.dir>
-
         <!-- Jacoco properties -->
         <jacoco.reporting.outputDirectory>${project.reporting.outputDirectory}/jacoco</jacoco.reporting.outputDirectory>
 
         <!-- Dependency versions -->
-        <spring-boot.version>2.0.0.RC1</spring-boot.version>
-        <!--<spring-retry.version>1.2.2.RELEASE</spring-retry.version>-->
+        <spring.version>5.0.4.RELEASE</spring.version>
 
         <cucumber.version>2.3.1</cucumber.version>
         <junit.version>4.12</junit.version>
@@ -35,34 +31,17 @@
 
         <log4j-slf4j.version>2.10.0</log4j-slf4j.version>
 
-        <modelmapper.version>1.1.2</modelmapper.version>
-        <swagger-annotations.version>1.5.15</swagger-annotations.version>
-        <jackson-threetenbp.version>2.6.4</jackson-threetenbp.version>
+        <commons-collections.version>4.1</commons-collections.version>
+        <commons-lang3.version>3.7</commons-lang3.version>
     </properties>
-
-    <pluginRepositories>
-        <pluginRepository>
-            <id>repository.spring.milestone</id>
-            <name>Spring Milestone Repository</name>
-            <url>https://repo.spring.io/milestone</url>
-        </pluginRepository>
-    </pluginRepositories>
-
-    <repositories>
-        <repository>
-            <id>repository.spring.milestone</id>
-            <name>Spring Milestone Repository</name>
-            <url>https://repo.spring.io/milestone</url>
-        </repository>
-    </repositories>
 
     <!-- Dependencies -->
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-dependencies</artifactId>
-                <version>${spring-boot.version}</version>
+                <groupId>org.springframework</groupId>
+                <artifactId>spring-framework-bom</artifactId>
+                <version>${spring.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -81,19 +60,10 @@
             <version>${project.version}</version>
         </dependency>
 
+        <!-- Spring -->
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter</artifactId>
-            <exclusions>
-                <exclusion>
-                    <artifactId>log4j-to-slf4j</artifactId>
-                    <groupId>org.apache.logging.log4j</groupId>
-                </exclusion>
-                <exclusion>
-                    <artifactId>logback-classic</artifactId>
-                    <groupId>ch.qos.logback</groupId>
-                </exclusion>
-            </exclusions>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework</groupId>
@@ -104,11 +74,11 @@
             <artifactId>spring-tx</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-test</artifactId>
         </dependency>
 
-        <!-- Cucumber-->
+        <!-- Cucumber -->
         <dependency>
             <groupId>io.cucumber</groupId>
             <artifactId>cucumber-core</artifactId>
@@ -129,12 +99,13 @@
             <artifactId>cucumber-junit</artifactId>
             <version>${cucumber.version}</version>
         </dependency>
+
+        <!-- Unit testing -->
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <version>${junit.version}</version>
         </dependency>
-        <!-- Unit testing -->
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
@@ -148,6 +119,17 @@
             <artifactId>log4j-slf4j-impl</artifactId>
             <version>${log4j-slf4j.version}</version>
         </dependency>
+
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-collections4</artifactId>
+            <version>${commons-collections.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>${commons-lang3.version}</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -156,11 +138,6 @@
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <version>0.8.0</version>
-                <configuration>
-                    <excludes>
-                        <exclude>${swagger.clients.dir}/**/*</exclude>
-                    </excludes>
-                </configuration>
                 <executions>
                     <execution>
                         <id>default-prepare-agent</id>
