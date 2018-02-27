@@ -30,5 +30,4 @@ public interface FloodlightService {
     List<CoreFlowEntry> getCoreFlows(String dpId);
 
     DpIdEntriesList getStaticEntries(String dpId);
-
 }

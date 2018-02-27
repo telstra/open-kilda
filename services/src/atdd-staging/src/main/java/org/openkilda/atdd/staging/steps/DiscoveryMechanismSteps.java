@@ -44,7 +44,7 @@ public class DiscoveryMechanismSteps implements En {
 
     @Then("^all provided switches should be discovered")
     public void checkDiscoveredSwitches() {
-        List<SwitchInfoData> dumpedSwitches = topologyEngineService.dumpSwitches();
+        List<SwitchInfoData> dumpedSwitches = topologyEngineService.getAllSwitches();
         List<SwitchInfoData> discoveredSwitches = dumpedSwitches.stream()
                 .filter(sw -> sw.getState().isActive())
                 .collect(Collectors.toList());
@@ -67,7 +67,7 @@ public class DiscoveryMechanismSteps implements En {
 
     @Then("^all provided links should be detected")
     public void checkDiscoveredLinks() {
-        List<IslInfoData> discoveredLinks = topologyEngineService.dumpLinks();
+        List<IslInfoData> discoveredLinks = topologyEngineService.getAllLinks();
         Map<String, Link> expectedLinks = new HashMap<>(topology.getLinks());
 
         if (CollectionUtils.isEmpty(discoveredLinks) && MapUtils.isEmpty(expectedLinks)) {

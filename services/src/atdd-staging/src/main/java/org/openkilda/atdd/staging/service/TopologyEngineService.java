@@ -25,13 +25,13 @@ import java.util.List;
 
 public interface TopologyEngineService {
 
-    List<IslInfoData> dumpLinks();
+    List<IslInfoData> getAllLinks();
 
     Integer getLinkBandwidth(String srcSwitch, String srcPort);
 
-    List<SwitchInfoData> dumpSwitches();
+    List<SwitchInfoData> getAllSwitches();
 
-    List<Flow> dumpFlows();
+    List<Flow> getAllFlows();
 
     ImmutablePair<Flow, Flow> getFlow(String flowId);
 

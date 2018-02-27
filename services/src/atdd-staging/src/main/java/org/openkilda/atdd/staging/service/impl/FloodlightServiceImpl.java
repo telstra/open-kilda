@@ -27,9 +27,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Service
 public class FloodlightServiceImpl implements FloodlightService {
@@ -52,20 +50,14 @@ public class FloodlightServiceImpl implements FloodlightService {
 
     @Override
     public List<CoreFlowEntry> getCoreFlows(String dpId) {
-        Map<String, Object> params = new HashMap<>();
-        params.put("dp_id", dpId);
-
         CoreFlowEntry[] coreFlows = restTemplate.getForObject("/wm/core/switch/{dp_id}/flow/json",
-                CoreFlowEntry[].class, params);
+                CoreFlowEntry[].class, dpId);
         return Arrays.asList(coreFlows);
     }
 
     @Override
     public DpIdEntriesList getStaticEntries(String dpId) {
-        Map<String, Object> params = new HashMap<>();
-        params.put("dp_id", dpId);
-
         return restTemplate.getForObject("/wm/staticentrypusher/list/{dp_id}/json",
-                DpIdEntriesList.class, params);
+                DpIdEntriesList.class, dpId);
     }
 }

@@ -32,9 +32,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Service
 public class TopologyEngineServiceImpl implements TopologyEngineService {
@@ -46,40 +44,33 @@ public class TopologyEngineServiceImpl implements TopologyEngineService {
     private RestTemplate restTemplate;
 
     @Override
-    public List<IslInfoData> dumpLinks() {
+    public List<IslInfoData> getAllLinks() {
         IslInfoData[] links = restTemplate.getForObject("/api/v1/topology/links", IslInfoData[].class);
         return Arrays.asList(links);
     }
 
     @Override
     public Integer getLinkBandwidth(String srcSwitch, String srcPort) {
-        Map<String, Object> params = new HashMap<>();
-        params.put("src_switch", srcSwitch);
-        params.put("src_port", srcPort);
         return restTemplate.getForObject("/api/v1/topology/links/bandwidth/{src_switch}/{src_port}", Integer.class,
-                params);
+                srcSwitch, srcPort);
     }
 
     @Override
-    public List<SwitchInfoData> dumpSwitches() {
+    public List<SwitchInfoData> getAllSwitches() {
         SwitchInfoData[] links = restTemplate.getForObject("/api/v1/topology/switches", SwitchInfoData[].class);
         return Arrays.asList(links);
     }
 
     @Override
-    public List<Flow> dumpFlows() {
+    public List<Flow> getAllFlows() {
         Flow[] links = restTemplate.getForObject("/api/v1/topology/flows", Flow[].class);
         return Arrays.asList(links);
     }
 
     @Override
     public ImmutablePair<Flow, Flow> getFlow(String flowId) {
-        Map<String, Object> params = new HashMap<>();
-        params.put("flow_id", flowId);
-        return restTemplate.exchange("/api/v1/topology/flows/{flow_id}", HttpMethod.GET,
-                null, new ParameterizedTypeReference<ImmutablePair<Flow, Flow>>() {
-                }, params)
-                .getBody();
+        return restTemplate.exchange("/api/v1/topology/flows/{flow_id}", HttpMethod.GET, null,
+                new ParameterizedTypeReference<ImmutablePair<Flow, Flow>>() {}, flowId).getBody();
     }
 
     @Override

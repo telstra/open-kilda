@@ -37,5 +37,5 @@ public interface NorthboundService {
 
     String getFlowStatus(String flowId);
 
-    List<FlowPayload> getFlowDump();
+    List<FlowPayload> getAllFlows();
 }
