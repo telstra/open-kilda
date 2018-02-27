@@ -16,10 +16,12 @@
 package org.openkilda.atdd.staging.steps;
 
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 
 import cucumber.api.java8.En;
 import org.openkilda.atdd.staging.service.NorthboundService;
 import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.topo.ITopology;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
@@ -28,6 +30,8 @@ public class SampleNorthboundSteps implements En {
 
     @Autowired
     private NorthboundService northboundService;
+    @Autowired
+    private ITopology topology;
 
     private List<FlowPayload> result;
 
@@ -37,6 +41,8 @@ public class SampleNorthboundSteps implements En {
         });
 
         Then("^received flows$", () -> {
+            assertNotNull(topology);
+
             assertFalse("flows are empty", result.isEmpty());
         });
     }

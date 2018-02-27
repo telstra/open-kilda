@@ -17,6 +17,7 @@ package org.openkilda.atdd.staging.config;
 
 import static org.mockito.Mockito.mock;
 
+import org.openkilda.topo.ITopology;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -26,7 +27,7 @@ import org.springframework.context.annotation.Profile;
 public class MockedTopologyConfig {
 
     @Bean
-    public Object topology() {
-        return mock(Object.class);
+    public ITopology topology() {
+        return mock(ITopology.class);
     }
 }

@@ -23,8 +23,8 @@ import java.util.concurrent.ConcurrentMap;
 public interface ITopology {
 
 	/** Are the two topologies equivalent? */
-	public boolean equivalent(ITopology other);
-	public ConcurrentMap<String,Switch> getSwitches();
-	public ConcurrentMap<String,Link> getLinks();
-	public String printSwitchConnections();
+	boolean equivalent(ITopology other);
+	ConcurrentMap<String,Switch> getSwitches();
+	ConcurrentMap<String,Link> getLinks();
+	String printSwitchConnections();
 }

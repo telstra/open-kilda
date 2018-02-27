@@ -49,6 +49,7 @@
         <module>floodlight-modules</module>
         <module>northbound</module>
         <module>atdd</module>
+        <module>atdd-staging</module>
   </modules>
 
     <dependencyManagement>
