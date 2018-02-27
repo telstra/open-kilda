@@ -15,18 +15,13 @@
 
 package org.openkilda.topo;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 /**
  * Concrete representation of a Topology.
- * 
+ *
  * It is a combination of it's raw elements as well as its graph representation
  */
 public class Topology implements ITopology {
@@ -34,18 +29,11 @@ public class Topology implements ITopology {
 	// TODO: consider using TopoID or TopoSlug as the key, not String
     private final ConcurrentMap<String, Switch> switches;
     private final ConcurrentMap<String, Link> links;
-    private final String src;
 
     /** Use this constructor to build up or unserialize a topology */
     public Topology() {
-        this(null);
-    }
-
-
-    public Topology(String doc) {
         switches = new ConcurrentHashMap<>();
         links = new ConcurrentHashMap<>();
-        src = doc;
 	}
 
     @Override

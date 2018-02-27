@@ -15,11 +15,17 @@
 
 package org.openkilda.atdd.staging.config;
 
+import com.google.common.base.Charsets;
+import org.openkilda.topo.ITopology;
+import org.openkilda.topo.TopologyBuilder;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.io.Resource;
+import org.springframework.util.StreamUtils;
+
+import java.io.IOException;
 
 @Configuration
 @Profile("default")
@@ -29,10 +35,8 @@ public class TopologyConfig {
     private Resource topologyDefinitionFile;
 
     @Bean
-    public Object topology() {
-        //TODO: parse the provided topology configuration
-        assert topologyDefinitionFile != null;
-
-        return new Object();
+    public ITopology topology() throws IOException {
+        String topologyJson = StreamUtils.copyToString(topologyDefinitionFile.getInputStream(), Charsets.UTF_8);
+        return TopologyBuilder.buildTopoFromTopoEngineJson(topologyJson);
     }
 }

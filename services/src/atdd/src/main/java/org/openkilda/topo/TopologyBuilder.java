@@ -47,7 +47,7 @@ public class TopologyBuilder {
      */
     @SuppressWarnings("unchecked")
     public static final Topology buildTopoFromTestJson(String jsonDoc) {
-        Topology t = new Topology(jsonDoc);
+        Topology t = new Topology();
         ConcurrentMap<String, Switch> switches = t.getSwitches();
         ConcurrentMap<String, Switch> altSwitchId = new ConcurrentHashMap<>();
         ConcurrentMap<String, Link> links = t.getLinks();
@@ -112,7 +112,7 @@ public class TopologyBuilder {
 
     @SuppressWarnings("unchecked")
     public static final Topology buildTopoFromTopoEngineJson(String jsonDoc)  {
-        Topology t = new Topology(jsonDoc);
+        Topology t = new Topology();
         ConcurrentMap<String, Switch> switches = t.getSwitches();
         ConcurrentMap<String, Link> links = t.getLinks();
 

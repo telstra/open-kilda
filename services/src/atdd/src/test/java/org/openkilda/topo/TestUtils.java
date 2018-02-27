@@ -127,7 +127,7 @@ public class TestUtils {
      */
     public static ITopology checkAndGetTopo(long expectedSwitches, long expectedLinks) throws
             InterruptedException {
-        ITopology tTE = new Topology(""); // ie null topology
+        ITopology tTE = new Topology(); // ie null topology
 
         // try a couple of times to get the topology;
         // TODO: this should be based off of a cucumber spec .. the cucumber tests as smoke!
