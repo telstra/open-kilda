@@ -8,22 +8,53 @@ The tests require a network topology definition provided.
 
 The topology definition format:
 ```
-{
-    "nodes": [
-        {
-            "name": "00:00:00:00:00:01",
-            "outgoing_relationships": [
-                "00:00:00:00:00:02"
-            ]
-        },
-        {
-            "name": "00:00:00:00:00:02",
-            "outgoing_relationships": [
-                "00:00:00:00:00:01"
-            ]
-        }
-    ]
-}
+switches:
+    - name: sw1
+      dp_id: 00:00:00:00:00:01
+      of_version: OF_13
+      status: active
+
+    - name: sw2
+      dp_id: 00:00:00:00:00:02
+      of_version: OF_13
+      status: skip
+
+    - name: sw3
+      dp_id: 00:00:00:00:00:03
+      of_version: OF_13
+      status: active
+
+isls:
+    - src_switch: sw1
+      src_port: 1
+      dst_switch: sw3
+      dst_port: 1
+      max_bandwidth: 10000
+
+    - src_switch: sw1
+      src_port: 2
+      dst_switch: sw2
+      dst_port: 2
+      max_bandwidth: 10000
+
+    - src_switch: sw2
+      src_port: 3
+      dst_switch: sw3
+      dst_port: 3
+      max_bandwidth: 10000
+
+trafgens:
+    - name: tg1
+      control_endpoint: http://192.168.0.1:80/
+      switch: sw1
+      switch_port: 11
+      status: active
+
+    - name: tg2
+      control_endpoint: http://192.168.0.2:80/
+      switch: sw3
+      switch_port: 11
+      status: active
 ```
 
 ### Kilda configuration
@@ -51,7 +82,7 @@ The following command runs the tests:
 
     java -cp "target/atdd-staging-1.0-SNAPSHOT.jar:target/lib/*" \
         -Dkilda.config.file=kilda.properties \
-        -Dtopology.definition.file=topology.json \
+        -Dtopology.definition.file=topology.yaml \
         cucumber.api.cli.Main
 
 Generated reports are stored in:
