@@ -71,7 +71,6 @@ public class NorthboundServiceImpl implements NorthboundService {
 
     @Override
     public FlowPayload deleteFlow(String flowId) {
-
         return restTemplate.exchange("/api/v1/flows/{flow_id}", HttpMethod.DELETE,
                 new HttpEntity(buildHeadersWithCorrelationId()), FlowPayload.class, flowId).getBody();
     }
