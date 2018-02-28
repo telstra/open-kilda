@@ -15,7 +15,6 @@
 
 package org.openkilda.atdd.staging.tests.sample_northbound;
 
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -27,12 +26,15 @@ import cucumber.api.java.Before;
 import org.junit.runner.RunWith;
 import org.openkilda.atdd.staging.cucumber.CucumberWithSpringProfile;
 import org.openkilda.atdd.staging.service.NorthboundService;
+import org.openkilda.atdd.staging.service.TopologyEngineService;
+import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.topo.ITopology;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.util.Collections;
+import java.util.concurrent.ConcurrentHashMap;
 
 @RunWith(CucumberWithSpringProfile.class)
 @CucumberOptions(features = {"classpath:features/sample_northbound.feature"},
@@ -46,12 +48,20 @@ public class SampleNorthboundTest {
         private NorthboundService northboundService;
 
         @Autowired
-        private ITopology topology;
+        private TopologyEngineService topologyEngineService;
+
+        @Autowired
+        private TopologyDefinition topologyDefinition;
 
         @Before
         public void prepareMocks() {
-            when(topology.equivalent(any()))
-                    .thenReturn(true);
+            ITopology actualTopology = mock(ITopology.class);
+            when(actualTopology.getLinks()).thenReturn(new ConcurrentHashMap<>());
+            when(actualTopology.getSwitches()).thenReturn(new ConcurrentHashMap<>());
+            when(topologyEngineService.getTopology()).thenReturn(actualTopology);
+
+            when(topologyDefinition.getSwitches()).thenReturn(Collections.emptyList());
+            when(topologyDefinition.getIsls()).thenReturn(Collections.emptyList());
 
             when(northboundService.getAllFlows())
                     .thenReturn(Collections.singletonList(mock(FlowPayload.class)));

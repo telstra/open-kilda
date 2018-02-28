@@ -15,15 +15,16 @@
 
 package org.openkilda.atdd.staging.config;
 
-import com.google.common.base.Charsets;
-import org.openkilda.topo.ITopology;
-import org.openkilda.topo.TopologyBuilder;
+import com.fasterxml.jackson.databind.MapperFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.io.Resource;
-import org.springframework.util.StreamUtils;
 
 import java.io.IOException;
 
@@ -35,8 +36,11 @@ public class TopologyConfig {
     private Resource topologyDefinitionFile;
 
     @Bean
-    public ITopology topology() throws IOException {
-        String topologyJson = StreamUtils.copyToString(topologyDefinitionFile.getInputStream(), Charsets.UTF_8);
-        return TopologyBuilder.buildTopoFromTopoEngineJson(topologyJson);
+    public TopologyDefinition topologyDefinition() throws IOException {
+        ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+        mapper.enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS);
+        mapper.setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE);
+
+        return mapper.readValue(topologyDefinitionFile.getInputStream(), TopologyDefinition.class);
     }
 }
