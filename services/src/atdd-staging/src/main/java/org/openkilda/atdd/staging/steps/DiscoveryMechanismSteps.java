@@ -44,7 +44,7 @@ public class DiscoveryMechanismSteps implements En {
                 .collect(Collectors.toList());
         assertFalse("No switches were discovered", CollectionUtils.isEmpty(discoveredSwitches));
 
-        List<TopologyDefinition.Switch> expectedSwitches = topologyDefinition.getSwitches();
+        List<TopologyDefinition.Switch> expectedSwitches = topologyDefinition.getActiveSwitches();
         assertFalse("Expected switches should be provided", expectedSwitches.isEmpty());
         assertEquals("Expected and discovered switches amount are not the same", expectedSwitches.size(),
                 discoveredSwitches.size());
@@ -63,7 +63,7 @@ public class DiscoveryMechanismSteps implements En {
     @Then("^all provided links should be detected")
     public void checkDiscoveredLinks() {
         List<IslInfoData> discoveredLinks = topologyEngineService.getAllLinks();
-        List<TopologyDefinition.Isl> expectedLinks = topologyDefinition.getIsls();
+        List<TopologyDefinition.Isl> expectedLinks = topologyDefinition.getIslsForActiveSwitches();
 
         if (CollectionUtils.isEmpty(discoveredLinks) && expectedLinks.isEmpty()) {
             LOGGER.info("There are no links discovered as expected");

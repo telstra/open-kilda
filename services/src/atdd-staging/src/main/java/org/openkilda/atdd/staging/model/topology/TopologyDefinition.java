@@ -21,6 +21,7 @@ import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 import lombok.Data;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Data
 public class TopologyDefinition {
@@ -29,6 +30,18 @@ public class TopologyDefinition {
     private List<Isl> isls;
     private List<Trafgen> trafgens;
 
+    public List<Switch> getActiveSwitches() {
+        return switches.stream()
+                .filter(Switch::isActive)
+                .collect(Collectors.toList());
+    }
+
+    public List<Isl> getIslsForActiveSwitches() {
+        return isls.stream()
+                .filter(isl -> isl.getSrcSwitch().isActive() && isl.getDstSwitch().isActive())
+                .collect(Collectors.toList());
+    }
+
     @Data
     public static class Switch {
 
@@ -36,6 +49,10 @@ public class TopologyDefinition {
         private String dpId;
         private String ofVersion;
         private Status status;
+
+        public boolean isActive() {
+            return status == Status.Active;
+        }
     }
 
     @Data
