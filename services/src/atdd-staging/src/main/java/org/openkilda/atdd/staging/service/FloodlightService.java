@@ -15,6 +15,7 @@
 
 package org.openkilda.atdd.staging.service;
 
+import org.openkilda.atdd.staging.model.floodlight.SwitchEntry;
 import org.openkilda.atdd.utils.controller.CoreFlowEntry;
 import org.openkilda.atdd.utils.controller.DpIdEntriesList;
 import org.openkilda.atdd.utils.controller.StaticFlowEntry;
@@ -30,4 +31,6 @@ public interface FloodlightService {
     List<CoreFlowEntry> getCoreFlows(String dpId);
 
     DpIdEntriesList getStaticEntries(String dpId);
+
+    List<SwitchEntry> getSwitches();
 }

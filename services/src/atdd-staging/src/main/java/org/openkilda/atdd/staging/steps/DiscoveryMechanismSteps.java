@@ -1,20 +1,21 @@
 package org.openkilda.atdd.staging.steps;
 
-import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
 import cucumber.api.java.en.Then;
 import cucumber.api.java8.En;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.openkilda.atdd.staging.model.floodlight.SwitchEntry;
+import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
+import org.openkilda.atdd.staging.model.topology.TopologyDefinition.Switch;
 import org.openkilda.atdd.staging.service.FloodlightService;
 import org.openkilda.atdd.staging.service.TopologyEngineService;
-import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
 import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -84,29 +85,51 @@ public class DiscoveryMechanismSteps implements En {
         }
         assertTrue(String.format("%s link were not discovered", result.size()), result.isEmpty());
 
-        assertThat(String.format("There were %s more links discovered than expected",
-                discoveredLinks.size() - expectedLinks.size()), expectedLinks.size(), is(discoveredLinks.size()));
+        //in kilda we have forward and reverse isl, that's why we have to divide into 2
+        int singleLinks = discoveredLinks.size() / 2;
+        assertEquals(String.format("There were %s more links discovered than expected",
+                singleLinks - expectedLinks.size()), expectedLinks.size(), singleLinks);
     }
 
     @Then("^floodlight should not find redundant switches")
     public void checkFloodlightSwitches() {
-        //todo: implement checking switches
+        List<SwitchEntry> switches = floodlightService.getSwitches();
+        //find switches that weren't defined, but was found by floodlight
+        List<SwitchEntry> ignoredSwitches = switches.stream()
+                .filter(sw -> !topologyContainsSwitch(sw))
+                .collect(Collectors.toList());
+
+        if (!ignoredSwitches.isEmpty()) {
+            ignoredSwitches.forEach(sw -> {
+                LOGGER.error("Switch {} was found by floodlight, but is not provided in json file", sw.getSwitchId());
+            });
+        }
+
+        assertTrue("Floodlight has detected unexpected switches", ignoredSwitches.isEmpty());
     }
 
-    @Then("floodlight should not find unexpected links")
-    public void checkFloodlightLinks() {
-        //todo: implement checking isls
-
+    @Then("^default rules for switches are installed")
+    public void checkDefaultRules() {
+        List<Switch> switches = topologyDefinition.getActiveSwitches();
+        //todo: implement checking default rules
     }
 
     private boolean linkIsPresent(TopologyDefinition.Isl expectedLink, List<IslInfoData> discoveredLinks) {
-        String srcSwitchId = expectedLink.getSrcSwitch().getDpId();
-        String dstSwitchId = expectedLink.getDstSwitch().getDpId();
         return discoveredLinks.stream()
-                .anyMatch(isl -> {
-                    //todo: need to check port as well
-                    return srcSwitchId.equalsIgnoreCase(isl.getPath().get(0).getSwitchId()) &&
-                            dstSwitchId.equalsIgnoreCase(isl.getPath().get(1).getSwitchId());
-                });
+                .anyMatch(isl -> isIslEqual(expectedLink, isl));
+    }
+
+    private boolean isIslEqual(TopologyDefinition.Isl expectedLink, IslInfoData discoveredLink) {
+        PathNode discoveredSrcNode = discoveredLink.getPath().get(0);
+        PathNode discoveredDstNode = discoveredLink.getPath().get(1);
+        return discoveredSrcNode.getSwitchId().equalsIgnoreCase(expectedLink.getSrcSwitch().getDpId()) &&
+                discoveredSrcNode.getPortNo() == expectedLink.getSrcPort() &&
+                discoveredDstNode.getSwitchId().equalsIgnoreCase(expectedLink.getDstSwitch().getDpId()) &&
+                discoveredDstNode.getPortNo() == expectedLink.getDstPort();
+    }
+
+    private boolean topologyContainsSwitch(SwitchEntry switchEntry) {
+        return topologyDefinition.getSwitches().stream()
+                .anyMatch(sw -> sw.getDpId().equalsIgnoreCase(switchEntry.getSwitchId()));
     }
 }
