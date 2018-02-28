@@ -15,6 +15,7 @@
 
 package org.openkilda.atdd.staging.service.impl;
 
+import org.openkilda.atdd.staging.model.floodlight.SwitchEntry;
 import org.openkilda.atdd.staging.service.FloodlightService;
 import org.openkilda.atdd.utils.controller.CoreFlowEntry;
 import org.openkilda.atdd.utils.controller.DpIdEntriesList;
@@ -59,5 +60,11 @@ public class FloodlightServiceImpl implements FloodlightService {
     public DpIdEntriesList getStaticEntries(String dpId) {
         return restTemplate.getForObject("/wm/staticentrypusher/list/{dp_id}/json",
                 DpIdEntriesList.class, dpId);
+    }
+
+    @Override
+    public List<SwitchEntry> getSwitches() {
+        SwitchEntry[] result = restTemplate.getForObject("wm/core/controller/switches/json", SwitchEntry[].class);
+        return Arrays.asList(result);
     }
 }

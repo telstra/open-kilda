@@ -9,4 +9,4 @@ Feature: Discovery Tests
     Then all provided switches should be discovered
     And all provided links should be detected
     And floodlight should not find redundant switches
-    And floodlight should not find unexpected links
+    And default rules for switches are installed
