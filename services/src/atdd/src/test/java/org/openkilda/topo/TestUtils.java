@@ -22,7 +22,9 @@ import static org.junit.Assert.fail;
 import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
 import com.google.common.util.concurrent.Uninterruptibles;
+import org.openkilda.topo.builders.TeTopologyParser;
 import org.openkilda.topo.exceptions.TopologyProcessingException;
+import org.openkilda.topo.builders.TestTopologyBuilder;
 
 import java.io.IOException;
 import java.net.URL;
@@ -101,7 +103,7 @@ public class TestUtils {
      * @param doc Generally, the String returned from createMininetTopoFromFile
      */
     private static ITopology translateTestTopo(String doc) {
-        ITopology tDoc = TopologyBuilder.buildTopoFromTestJson(doc);
+        ITopology tDoc = TestTopologyBuilder.buildTopoFromTestJson(doc);
         return tDoc;
     }
 
@@ -138,7 +140,7 @@ public class TestUtils {
             String jsonFromTE = TopologyHelp.GetTopology();
             Thread.yield(); // let other threads do something ..
 
-            tTE = TopologyBuilder.buildTopoFromTopoEngineJson(jsonFromTE);
+            tTE = TeTopologyParser.parseTopologyEngineJson(jsonFromTE);
             long numSwitches = tTE.getSwitches().keySet().size();
             long numLinks = tTE.getLinks().keySet().size();
 
@@ -216,10 +218,10 @@ public class TestUtils {
     }
 
     public static void main(String[] args) {
-        Topology t = TopologyBuilder.buildLinearTopo(5);
+        Topology t = TestTopologyBuilder.buildLinearTopo(5);
         System.out.println("t1 = " + t);
 
-        t = TopologyBuilder.buildTreeTopo(3, 3);
+        t = TestTopologyBuilder.buildTreeTopo(3, 3);
         System.out.println("t2 = " + t.printSwitchConnections());
 
         System.out.println("t2.size = " + t.getSwitches().keySet().size());

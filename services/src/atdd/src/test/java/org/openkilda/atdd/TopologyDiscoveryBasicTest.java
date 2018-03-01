@@ -26,7 +26,7 @@ import cucumber.api.java.en.When;
 import org.glassfish.jersey.client.ClientConfig;
 import org.openkilda.topo.ITopology;
 import org.openkilda.topo.TestUtils;
-import org.openkilda.topo.TopologyBuilder;
+import org.openkilda.topo.builders.TestTopologyBuilder;
 import org.openkilda.topo.TopologyHelp;
 import org.openkilda.topo.TopologyPrinter;
 
@@ -52,12 +52,12 @@ public class TopologyDiscoveryBasicTest {
 
 	@Given("^a random linear topology of (\\d+) switches$")
 	public void a_random_linear_topology_of(int numSwitches) throws Throwable {
-        deploy_toplogy(TopologyBuilder.buildLinearTopo(numSwitches));
+        deploy_toplogy(TestTopologyBuilder.buildLinearTopo(numSwitches));
 	}
 
 	@Given("^a random tree topology with depth of (\\d+) and fanout of (\\d+)$")
 	public void a_random_full_mesh_topology_of(int depth, int fanout) throws Throwable {
-        deploy_toplogy(TopologyBuilder.buildTreeTopo(depth,fanout));
+        deploy_toplogy(TestTopologyBuilder.buildTreeTopo(depth,fanout));
 	}
 
 	@When("^the controller learns the topology$")

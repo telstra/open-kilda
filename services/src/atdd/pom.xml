@@ -16,6 +16,10 @@
     <description>Acceptance tests</description>
     <url>https://bitbucket.org/openkilda/controller/wiki/Home</url>
 
+    <properties>
+        <lombok.version>1.16.20</lombok.version>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.openkilda</groupId>
@@ -96,6 +100,13 @@
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-collections4</artifactId>
             <version>4.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>${lombok.version}</version>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
 
