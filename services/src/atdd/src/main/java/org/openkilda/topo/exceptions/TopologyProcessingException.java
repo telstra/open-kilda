@@ -20,6 +20,10 @@ package org.openkilda.topo.exceptions;
  */
 public class TopologyProcessingException extends RuntimeException {
 
+    public TopologyProcessingException(String message) {
+        super(message);
+    }
+
     public TopologyProcessingException(String message, Exception cause) {
         super(message, cause);
     }

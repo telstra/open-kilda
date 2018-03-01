@@ -13,32 +13,29 @@
  *   limitations under the License.
  */
 
-package org.openkilda.topo;
+package org.openkilda.topo.builders;
 
 import static java.lang.String.format;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.primitives.Ints;
+import org.openkilda.topo.Link;
+import org.openkilda.topo.LinkEndpoint;
+import org.openkilda.topo.Port;
+import org.openkilda.topo.PortQueue;
+import org.openkilda.topo.Switch;
+import org.openkilda.topo.Topology;
 import org.openkilda.topo.exceptions.TopologyProcessingException;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 /**
- * TopologyBuilder is a utility / factory class that can be used to build topologies.
+ * TestTopologyBuilder is a utility / factory class that can be used to build topologies for tests.
  */
-public class TopologyBuilder {
-
-
-    public static final Topology buildTopoFromJson(String jsonDoc){
-        ObjectMapper mapper = new ObjectMapper();
-
-        throw new UnsupportedOperationException();
-    }
-
+public class TestTopologyBuilder {
     /**
      * This implements the ability to translate a test topology into a Topology object
      *
@@ -47,10 +44,9 @@ public class TopologyBuilder {
      */
     @SuppressWarnings("unchecked")
     public static final Topology buildTopoFromTestJson(String jsonDoc) {
-        Topology t = new Topology();
-        ConcurrentMap<String, Switch> switches = t.getSwitches();
-        ConcurrentMap<String, Switch> altSwitchId = new ConcurrentHashMap<>();
-        ConcurrentMap<String, Link> links = t.getLinks();
+        Map<String, Switch> switches = new HashMap<>();
+        Map<String, Switch> altSwitchId = new HashMap<>();
+        Map<String, Link> links = new HashMap<>();
 
         ObjectMapper mapper = new ObjectMapper();
         Map<String,ArrayList<Map<String,String>>> root;
@@ -88,7 +84,7 @@ public class TopologyBuilder {
             links.put(link.getShortSlug(),link);
         }
 
-        return t;
+        return new Topology(switches, links);
     }
 
     /**
@@ -110,70 +106,15 @@ public class TopologyBuilder {
         return id;
     }
 
-    @SuppressWarnings("unchecked")
-    public static final Topology buildTopoFromTopoEngineJson(String jsonDoc)  {
-        Topology t = new Topology();
-        ConcurrentMap<String, Switch> switches = t.getSwitches();
-        ConcurrentMap<String, Link> links = t.getLinks();
-
-        // {"nodes":[{"name":"string", "outgoing_relationships": ["string",..]},..]}
-        ObjectMapper mapper = new ObjectMapper();
-        Map<String,ArrayList<?>> root;
-
-        try {
-            root = mapper.readValue(jsonDoc, Map.class);
-        } catch (IOException ex) {
-            throw new TopologyProcessingException(format("Unable to parse the topology '%s'.", jsonDoc), ex);
-        }
-
-        // populate switches first
-        ArrayList<Map<String,?>> jsonSwitches = (ArrayList<Map<String, ?>>) root.get("nodes");
-        for (Map<String,?> s : jsonSwitches) {
-            String id = (String) s.get("name");
-            id = id.toUpperCase();
-            Switch newSwitch = new Switch(id);
-            switches.put(id, newSwitch);
-        }
-
-        // now populate links
-        for (Map<String,?> s : jsonSwitches) {
-            // TODO: srcId could be NULL in a malformed json ... do the right thing here.
-            String srcId = (String) s.get("name");
-            srcId = srcId.toUpperCase();
-            Switch src = switches.get(srcId);
-
-            ArrayList<String> outbound = (ArrayList<String>) s.get("outgoing_relationships");
-            if (outbound != null) {
-                for (String other : outbound) {
-                    other = other.toUpperCase();
-                    Switch dst = switches.get(other);
-                    Link link = new Link(
-                            // TODO: LinkEndpoint is immutable .. so, with no port/queue .. we should
-                            // TODO: probably reuse the same endpoint. Why not?
-                            new LinkEndpoint(src, null, null),
-                            new LinkEndpoint(dst, null, null)
-                    );
-                    links.put(link.getShortSlug(), link);
-                }
-            }
-        }
-
-        return t;
-    }
-
-
-
     /**
      * buildLinearTopo models the Linear topology from Mininet
      *
      * Also, use names / ids similar to how mininet uses them
      */
     public static final Topology buildLinearTopo(int numSwitches){
-        Topology t = new Topology();
-
         // Add Switches
-        ConcurrentMap<String, Switch> switches = t.getSwitches();
-        ConcurrentMap<String, Link> links = t.getLinks();
+        Map<String, Switch> switches = new HashMap<>();
+        Map<String, Link> links = new HashMap<>();
 
         for (int i = 0; i < numSwitches; i++) {
             String switchID = intToSwitchId(i+1);
@@ -185,9 +126,9 @@ public class TopologyBuilder {
         for (int i = 0; i < numLinks; i++) {
             Switch s1 = switches.get(intToSwitchId(i+1));
             Switch s2 = switches.get(intToSwitchId(i+2));
-            linkSwitches(t,s1,s2);
+            linkSwitches(links,s1,s2);
         }
-        return t;
+        return new Topology(switches, links);
     }
 
     public static String intToSwitchId(int i){
@@ -195,7 +136,7 @@ public class TopologyBuilder {
         return String.format("DE:AD:BE:EF:%02x:%02x:%02x:%02x",ib[0],ib[1],ib[2],ib[3]);
     }
 
-    private static final void linkSwitches(Topology t, Switch s1, Switch s2){
+    private static final void linkSwitches(Map<String, Link> links, Switch s1, Switch s2){
         Port p1 = new Port(s1,String.format("PORTAA%03d",1));
         Port p2 = new Port(s2,String.format("PORTBB%03d",1));;
         PortQueue q1 = new PortQueue(p1, String.format("QUEUE%03d",1));
@@ -206,15 +147,14 @@ public class TopologyBuilder {
 
         Link link1 = new Link(e1,e2);
         Link link2 = new Link(e2,e1);
-        t.getLinks().put(link1.getShortSlug(),link1);
-        t.getLinks().put(link2.getShortSlug(),link2);
+        links.put(link1.getShortSlug(),link1);
+        links.put(link2.getShortSlug(),link2);
     }
 
     /** buildTreeTopo models the Tree topology from Mininet */
     public static final Topology buildTreeTopo(int depth, int fanout){
         TreeBuilder tb = new TreeBuilder(fanout);
-        tb.build(depth);
-        return tb.t;
+        return tb.build(depth);
     }
 
 
@@ -227,40 +167,36 @@ public class TopologyBuilder {
      * TreeBuilder is useful for testing; it matches Mininet's TopoTree, without
      * the host connections.
      */
-    private static class TreeBuilder {
+    static class TreeBuilder {
         private int switchId = 1;
         private int fanout;
-        private Topology t;
+
+        private Map<String, Switch> switches = new HashMap<>();
+        private Map<String, Link> links = new HashMap<>();
 
         TreeBuilder(int fanout){
             this.fanout = fanout;
-            this.t = new Topology();
+        }
+
+        Topology build(int depth) {
+            buildSwitch(depth);
+
+            return new Topology(switches, links);
         }
 
         /** @return the root switch */
-        private Switch build(int depth){
+        private Switch buildSwitch(int depth){
             String switchID = intToSwitchId(switchId++);
             Switch s1 = new Switch(switchID);
-            t.getSwitches().put(switchID, s1);
+            switches.put(switchID, s1);
             // the last level (depth == 1) is just a switch, so end the recursion.
             if (depth > 1) {
                 for (int i = 0; i < fanout; i++) {
-                    Switch s2 = build(depth - 1);
-                    linkSwitches(t,s1,s2);
+                    Switch s2 = buildSwitch(depth - 1);
+                    linkSwitches(links,s1,s2);
                 }
             }
             return s1;
         }
-
     }
-
-    public static void main(String[] args) throws IOException {
-        ITopology t = TopologyBuilder.buildLinearTopo(5);
-        System.out.println("t = " + t);
-
-        boolean pretty = true;
-        System.out.println("json = \n" + TopologyPrinter.toJson(t,pretty));
-    }
-
-
 }

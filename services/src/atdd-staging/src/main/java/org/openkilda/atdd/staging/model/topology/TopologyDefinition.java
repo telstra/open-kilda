@@ -15,10 +15,13 @@
 
 package org.openkilda.atdd.staging.model.topology;
 
+import static java.util.Collections.unmodifiableList;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
+import lombok.NonNull;
 import lombok.Value;
 import lombok.experimental.NonFinal;
 
@@ -34,8 +37,11 @@ import java.util.stream.Collectors;
 @NonFinal
 public class TopologyDefinition {
 
+    @NonNull
     private List<Switch> switches;
+    @NonNull
     private List<Isl> isls;
+    @NonNull
     private List<Trafgen> trafgens;
 
     @JsonCreator
@@ -43,7 +49,10 @@ public class TopologyDefinition {
             @JsonProperty("switches") List<Switch> switches,
             @JsonProperty("isls") List<Isl> isls,
             @JsonProperty("trafgens") List<Trafgen> trafgens) {
-        return new TopologyDefinition(switches, isls, trafgens);
+        return new TopologyDefinition(
+                unmodifiableList(switches),
+                unmodifiableList(isls),
+                unmodifiableList(trafgens));
     }
 
     public List<Switch> getActiveSwitches() {
@@ -64,8 +73,11 @@ public class TopologyDefinition {
     public static class Switch {
 
         private String name;
+        @NonNull
         private String dpId;
+        @NonNull
         private String ofVersion;
+        @NonNull
         private Status status;
 
         @JsonCreator
@@ -86,8 +98,10 @@ public class TopologyDefinition {
     @NonFinal
     public static class Isl {
 
+        @NonNull
         private Switch srcSwitch;
         private int srcPort;
+        @NonNull
         private Switch dstSwitch;
         private int dstPort;
         private long maxBandwidth;
@@ -107,10 +121,14 @@ public class TopologyDefinition {
     @NonFinal
     public static class Trafgen {
 
+        @NonNull
         private String name;
+        @NonNull
         private String controlEndpoint;
+        @NonNull
         private Switch switchConnected;
         private int switchPort;
+        @NonNull
         private Status status;
 
         @JsonCreator
