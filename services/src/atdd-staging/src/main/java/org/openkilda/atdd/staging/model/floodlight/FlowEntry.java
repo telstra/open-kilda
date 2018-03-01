@@ -25,18 +25,42 @@ import java.io.Serializable;
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Data
-public class SwitchEntry implements Serializable {
+public class FlowEntry implements Serializable {
 
-    @JsonProperty("inetAddress")
-    private String address;
+    @JsonProperty("cookie")
+    private String cookie;
 
-    @JsonProperty("connectedSince")
-    private String connectedSince;
+    @JsonProperty("duration-sec")
+    private String durationSeconds;
 
-    @JsonProperty("openFlowVersion")
-    private String oFVersion;
+    @JsonProperty("duration-nsec")
+    private String durationNanoSeconds;
 
-    @JsonProperty("switchDPID")
-    private String switchId;
+    @JsonProperty("table-id")
+    private long tableId;
+
+    @JsonProperty("packet-count")
+    private long packetCount;
+
+    @JsonProperty("version")
+    private String version;
+
+    @JsonProperty("priority")
+    private int priority;
+
+    @JsonProperty("idle-timeout")
+    private long idleTimeout;
+
+    @JsonProperty("hard-timeout")
+    private long hardTimeout;
+
+    @JsonProperty("byte-count")
+    private long byteCount;
+
+    @JsonProperty("match")
+    private FlowMatchField match;
+
+    @JsonProperty("instructions")
+    private FlowInstructions instructions;
 
 }

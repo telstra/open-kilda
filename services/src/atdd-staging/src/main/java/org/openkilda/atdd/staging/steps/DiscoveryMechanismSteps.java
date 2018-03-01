@@ -9,11 +9,12 @@ import cucumber.api.java.en.Then;
 import cucumber.api.java8.En;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.openkilda.atdd.staging.model.floodlight.FlowEntriesMap;
 import org.openkilda.atdd.staging.model.floodlight.SwitchEntry;
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
-import org.openkilda.atdd.staging.model.topology.TopologyDefinition.Switch;
 import org.openkilda.atdd.staging.service.FloodlightService;
 import org.openkilda.atdd.staging.service.TopologyEngineService;
+import org.openkilda.atdd.staging.utils.DefaultFlowsChecker;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.SwitchInfoData;
@@ -110,8 +111,12 @@ public class DiscoveryMechanismSteps implements En {
 
     @Then("^default rules for switches are installed")
     public void checkDefaultRules() {
-        List<Switch> switches = topologyDefinition.getActiveSwitches();
-        //todo: implement checking default rules
+        List<SwitchEntry> switches = floodlightService.getSwitches();
+
+        switches.forEach(sw -> {
+            FlowEntriesMap flows = floodlightService.getFlows(sw.getSwitchId());
+            DefaultFlowsChecker.validateDefaultRules(sw, flows);
+        });
     }
 
     private boolean linkIsPresent(TopologyDefinition.Isl expectedLink, List<IslInfoData> discoveredLinks) {
@@ -129,7 +134,7 @@ public class DiscoveryMechanismSteps implements En {
     }
 
     private boolean topologyContainsSwitch(SwitchEntry switchEntry) {
-        return topologyDefinition.getSwitches().stream()
+        return topologyDefinition.getActiveSwitches().stream()
                 .anyMatch(sw -> sw.getDpId().equalsIgnoreCase(switchEntry.getSwitchId()));
     }
 }

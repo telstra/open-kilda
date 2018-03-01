@@ -18,25 +18,26 @@ package org.openkilda.atdd.staging.model.floodlight;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import lombok.Data;
 
 import java.io.Serializable;
 
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@Data
-public class SwitchEntry implements Serializable {
+public class FlowMatchField implements Serializable {
 
-    @JsonProperty("inetAddress")
-    private String address;
+    //@JsonProperty("eth_dst")
+    private String ethDst;
 
-    @JsonProperty("connectedSince")
-    private String connectedSince;
+    //@JsonProperty("eth_type")
+    private String ethType;
 
-    @JsonProperty("openFlowVersion")
-    private String oFVersion;
+    //@JsonProperty("ip_proto")
+    private String ipProto;
 
-    @JsonProperty("switchDPID")
-    private String switchId;
+    //@JsonProperty("udp_src")
+    private String udpSrc;
+
+    //@JsonProperty("udp_dst")
+    private String udpDst;
 
 }
