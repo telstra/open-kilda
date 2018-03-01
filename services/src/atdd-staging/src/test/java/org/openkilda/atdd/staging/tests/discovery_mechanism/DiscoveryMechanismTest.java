@@ -87,19 +87,15 @@ public class DiscoveryMechanismTest {
         }
 
         private TopologyDefinition.Switch buildSwitchDefinition(SwitchInfoData sw) {
-            TopologyDefinition.Switch result = new TopologyDefinition.Switch();
-            result.setDpId(sw.getSwitchId());
-            result.setStatus(Status.Active);
-            return result;
+            return new TopologyDefinition.Switch(sw.getSwitchId(), sw.getSwitchId(), "OF_13", Status.Active);
         }
 
         private List<TopologyDefinition.Isl> buildIslDefinitions(List<TopologyDefinition.Switch> switches) {
-            TopologyDefinition.Isl result = new TopologyDefinition.Isl();
-            result.setSrcSwitch(getSwitchById(path.get(0).getSwitchId(), switches));
-            result.setSrcPort(path.get(0).getPortNo());
-            result.setDstSwitch(getSwitchById(path.get(1).getSwitchId(), switches));
-            result.setDstPort(path.get(1).getPortNo());
-            return Collections.singletonList(result);
+            TopologyDefinition.Isl isl = new TopologyDefinition.Isl(
+                    getSwitchById(path.get(0).getSwitchId(), switches), path.get(0).getPortNo(),
+                    getSwitchById(path.get(1).getSwitchId(), switches), path.get(1).getPortNo(),
+                    10000);
+            return Collections.singletonList(isl);
         }
 
         private TopologyDefinition.Switch getSwitchById(String switchId, List<TopologyDefinition.Switch> switches) {

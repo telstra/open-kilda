@@ -17,7 +17,6 @@ package org.openkilda.atdd.staging.config;
 
 import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
 import org.springframework.beans.factory.annotation.Value;
@@ -39,7 +38,6 @@ public class TopologyConfig {
     public TopologyDefinition topologyDefinition() throws IOException {
         ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
         mapper.enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS);
-        mapper.setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE);
 
         return mapper.readValue(topologyDefinitionFile.getInputStream(), TopologyDefinition.class);
     }
