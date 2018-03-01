@@ -15,16 +15,19 @@
 
 package org.openkilda.topo;
 
-import java.util.concurrent.ConcurrentMap;
+import java.util.Map;
 
 /**
  * The primary interface that captures the ITopology behavior.
  */
 public interface ITopology {
 
-	/** Are the two topologies equivalent? */
-	boolean equivalent(ITopology other);
-	ConcurrentMap<String,Switch> getSwitches();
-	ConcurrentMap<String,Link> getLinks();
-	String printSwitchConnections();
+    /**
+     * Are the two topologies equivalent?
+     */
+    boolean equivalent(ITopology other);
+
+    Map<String, Switch> getSwitches();
+
+    Map<String, Link> getLinks();
 }
