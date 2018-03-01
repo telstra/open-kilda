@@ -15,20 +15,36 @@
 
 package org.openkilda.atdd.staging.model.topology;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
-import lombok.Data;
+import lombok.Value;
+import lombok.experimental.NonFinal;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
-@Data
+/**
+ * Defines a topology with switches, links and trafgens.
+ *
+ * Topology definition objects are immutable and can't be changed after creation.
+ */
+@Value
+@NonFinal
 public class TopologyDefinition {
 
     private List<Switch> switches;
     private List<Isl> isls;
     private List<Trafgen> trafgens;
+
+    @JsonCreator
+    public static TopologyDefinition factory(
+            @JsonProperty("switches") List<Switch> switches,
+            @JsonProperty("isls") List<Isl> isls,
+            @JsonProperty("trafgens") List<Trafgen> trafgens) {
+        return new TopologyDefinition(switches, isls, trafgens);
+    }
 
     public List<Switch> getActiveSwitches() {
         return switches.stream()
@@ -42,7 +58,9 @@ public class TopologyDefinition {
                 .collect(Collectors.toList());
     }
 
-    @Data
+    @Value
+    @NonFinal
+    @JsonIdentityInfo(property = "name", generator = ObjectIdGenerators.PropertyGenerator.class)
     public static class Switch {
 
         private String name;
@@ -50,33 +68,60 @@ public class TopologyDefinition {
         private String ofVersion;
         private Status status;
 
+        @JsonCreator
+        public static Switch factory(
+                @JsonProperty("name") String name,
+                @JsonProperty("dp_id") String dpId,
+                @JsonProperty("of_version") String ofVersion,
+                @JsonProperty("status") Status status) {
+            return new Switch(name, dpId, ofVersion, status);
+        }
+
         public boolean isActive() {
             return status == Status.Active;
         }
     }
 
-    @Data
+    @Value
+    @NonFinal
     public static class Isl {
 
-        @JsonIdentityInfo(property = "name", generator = ObjectIdGenerators.PropertyGenerator.class)
         private Switch srcSwitch;
         private int srcPort;
-        @JsonIdentityInfo(property = "name", generator = ObjectIdGenerators.PropertyGenerator.class)
         private Switch dstSwitch;
         private int dstPort;
         private long maxBandwidth;
+
+        @JsonCreator
+        public static Isl factory(
+                @JsonProperty("src_switch") Switch srcSwitch,
+                @JsonProperty("src_port") int srcPort,
+                @JsonProperty("dst_switch") Switch dstSwitch,
+                @JsonProperty("dst_port") int dstPort,
+                @JsonProperty("max_bandwidth") long maxBandwidth) {
+            return new Isl(srcSwitch, srcPort, dstSwitch, dstPort, maxBandwidth);
+        }
     }
 
-    @Data
+    @Value
+    @NonFinal
     public static class Trafgen {
 
         private String name;
         private String controlEndpoint;
-        @JsonProperty("switch")
-        @JsonIdentityInfo(property = "name", generator = ObjectIdGenerators.PropertyGenerator.class)
         private Switch switchConnected;
         private int switchPort;
         private Status status;
+
+        @JsonCreator
+        public static Trafgen factory(
+                @JsonProperty("name") String name,
+                @JsonProperty("control_endpoint") String controlEndpoint,
+                @JsonProperty("switch") Switch switchConnected,
+                @JsonProperty("switch_port") int switchPort,
+                @JsonProperty("status") Status status) {
+            return new Trafgen(name, controlEndpoint, switchConnected, switchPort, status);
+        }
     }
 
     public enum Status {
