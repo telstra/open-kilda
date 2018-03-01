@@ -114,7 +114,7 @@ public class FlowsResource extends ServerResource {
         data.put("idle-timeout", entry.getIdleTimeout());
         data.put("priority", entry.getPriority());
         data.put("byte-count", entry.getByteCount().getValue());
-        data.put("packer-count", entry.getPacketCount().getValue());
+        data.put("packet-count", entry.getPacketCount().getValue());
         data.put("flags", entry.getFlags());
         data.put("cookie", Long.toHexString(entry.getCookie().getValue()));
         data.put("table-id", entry.getTableId().getValue());

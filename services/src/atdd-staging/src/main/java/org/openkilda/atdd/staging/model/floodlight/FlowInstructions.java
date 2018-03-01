@@ -25,18 +25,12 @@ import java.io.Serializable;
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Data
-public class SwitchEntry implements Serializable {
+public class FlowInstructions implements Serializable {
 
-    @JsonProperty("inetAddress")
-    private String address;
+    @JsonProperty("APPLY_ACTIONS")
+    private FlowApplyActions applyActions;
 
-    @JsonProperty("connectedSince")
-    private String connectedSince;
-
-    @JsonProperty("openFlowVersion")
-    private String oFVersion;
-
-    @JsonProperty("switchDPID")
-    private String switchId;
+    @JsonProperty("none")
+    private String none;
 
 }
