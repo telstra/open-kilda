@@ -27,11 +27,9 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.storm.Config;
 import org.apache.storm.generated.StormTopology;
-import org.apache.storm.utils.Utils;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
@@ -58,8 +56,10 @@ import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.info.flow.FlowOperation;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.wfm.AbstractStormTest;
 import org.openkilda.wfm.topology.TestKafkaConsumer;
+import org.openkilda.wfm.topology.flow.ComponentType;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -78,17 +78,17 @@ public class CacheTopologyTest extends AbstractStormTest {
     private static final SwitchInfoData sw = new SwitchInfoData("sw",
             SwitchState.ADDED, "127.0.0.1", "localhost", "test switch", "kilda");
     private static final ImmutablePair<Flow, Flow> firstFlow = new ImmutablePair<>(
-            new Flow(firstFlowId, 10000, "", sw.getSwitchId(), 1, 2, sw.getSwitchId(), 1, 2),
-            new Flow(firstFlowId, 10000, "", sw.getSwitchId(), 1, 2, sw.getSwitchId(), 1, 2));
+            new Flow(firstFlowId, 10000, false, "", sw.getSwitchId(), 1, 2, sw.getSwitchId(), 1, 2),
+            new Flow(firstFlowId, 10000, false, "", sw.getSwitchId(), 1, 2, sw.getSwitchId(), 1, 2));
     private static final ImmutablePair<Flow, Flow> secondFlow = new ImmutablePair<>(
-            new Flow(secondFlowId, 10000, "", "test-switch", 1, 2, "test-switch", 1, 2),
-            new Flow(secondFlowId, 10000, "", "test-switch", 1, 2, "test-switch", 1, 2));
+            new Flow(secondFlowId, 10000, false, "", "test-switch", 1, 2, "test-switch", 1, 2),
+            new Flow(secondFlowId, 10000, false, "", "test-switch", 1, 2, "test-switch", 1, 2));
     private static final ImmutablePair<Flow, Flow> thirdFlow = new ImmutablePair<>(
-            new Flow(thirdFlowId, 10000, "", "test-switch", 1, 2, "test-switch", 1, 2),
-            new Flow(thirdFlowId, 10000, "", "test-switch", 1, 2, "test-switch", 1, 2));
+            new Flow(thirdFlowId, 10000, false, "", "test-switch", 1, 2, "test-switch", 1, 2),
+            new Flow(thirdFlowId, 10000, false, "", "test-switch", 1, 2, "test-switch", 1, 2));
     private static final Set<ImmutablePair<Flow, Flow>> flows = new HashSet<>();
     private static final NetworkInfoData dump = new NetworkInfoData(
-            "test", Collections.emptySet(), Collections.emptySet(), Collections.emptySet(), flows);
+            "test", Collections.singleton(sw), Collections.emptySet(), Collections.emptySet(), flows);
 
     private static TestKafkaConsumer teConsumer;
     private static TestKafkaConsumer flowConsumer;
@@ -139,8 +139,13 @@ public class CacheTopologyTest extends AbstractStormTest {
 
     @AfterClass
     public static void teardownOnce() throws Exception {
-        cluster.killTopology(CacheTopologyTest.class.getSimpleName());
-        Utils.sleep(4 * 1000);
+
+        flowConsumer.wakeup();
+        flowConsumer.join();
+        teConsumer.wakeup();
+        teConsumer.join();
+        ctrlConsumer.wakeup();
+        ctrlConsumer.join();
         AbstractStormTest.teardownOnce();
     }
 
@@ -288,23 +293,38 @@ public class CacheTopologyTest extends AbstractStormTest {
     @Test
     public void flowShouldBeReroutedWhenSwitchGoesDown() throws Exception {
         sendData(sw);
-        firstFlow.getLeft().setFlowPath(new PathInfoData(0L, Collections.emptyList()));
+
+        SwitchInfoData dstSwitch = new SwitchInfoData();
+        dstSwitch.setState(SwitchState.ACTIVATED);
+        dstSwitch.setSwitchId("dstSwitch");
+        List<PathNode> path = ImmutableList.of(
+                new PathNode(sw.getSwitchId(), 0, 0),
+                new PathNode(dstSwitch.getSwitchId(), 0, 1)
+        );
+
+        //create inactive flow
+        firstFlow.getLeft().setFlowPath(new PathInfoData(0L, path));
         firstFlow.getRight().setFlowPath(new PathInfoData(0L, Collections.emptyList()));
+        firstFlow.getLeft().setState(FlowState.DOWN);
         sendFlowUpdate(firstFlow);
-        secondFlow.getLeft().setFlowPath(new PathInfoData(0L, Collections.emptyList()));
+
+        //create active flow
+        secondFlow.getLeft().setFlowPath(new PathInfoData(0L, path));
         secondFlow.getRight().setFlowPath(new PathInfoData(0L, Collections.emptyList()));
+        secondFlow.getLeft().setState(FlowState.UP);
         sendFlowUpdate(secondFlow);
 
         flowConsumer.clear();
         sw.setState(SwitchState.REMOVED);
         sendData(sw);
 
+        //active flow should be rerouted
         ConsumerRecord<String, String> record = flowConsumer.pollMessage();
         assertNotNull(record);
         CommandMessage message = objectMapper.readValue(record.value(), CommandMessage.class);
         assertNotNull(message);
         FlowRerouteRequest command = (FlowRerouteRequest) message.getData();
-        assertTrue(command.getPayload().getFlowId().equals(firstFlowId));
+        assertTrue(command.getPayload().getFlowId().equals(secondFlowId));
     }
 
     @Test
@@ -373,6 +393,12 @@ public class CacheTopologyTest extends AbstractStormTest {
                 "cachetopology/cache", new RequestData("clearState"), 1, "route-correlation-id",
                 Destination.WFM_CTRL);
         sendMessage(request, topology.getConfig().getKafkaCtrlTopic());
+
+        ConsumerRecord<String, String> raw = ctrlConsumer.pollMessage();
+        assertNotNull(raw);
+
+        CtrlResponse response = (CtrlResponse) objectMapper.readValue(raw.value(), Message.class);
+        assertEquals(request.getCorrelationId(), response.getCorrelationId());
     }
 
     private static void sendNetworkDumpRequest() throws IOException, InterruptedException {
@@ -394,6 +420,7 @@ public class CacheTopologyTest extends AbstractStormTest {
         flow.setFlowId(flowId);
         flow.setSourceSwitch(srcSwitch);
         flow.setDestinationSwitch(dstSwitch);
+        flow.setState(FlowState.UP);
 
         PathInfoData pathInfoData = new PathInfoData(0L, path);
         flow.setFlowPath(pathInfoData);

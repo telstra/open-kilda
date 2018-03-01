@@ -8,8 +8,7 @@ The path is NB -> TER -> NEO4J.
 import requests
 from base64 import b64encode
 
-# url = "http://localhost:8088/api/v1/link/props"
-url = "http://northbound.polaris.pn.telstra.com:8080/api/v1/link/props"
+url = "http://localhost:8088/api/v1/link/props"
 
 headers = {
     'Content-Type': 'application/json',

@@ -15,8 +15,6 @@
 
 package org.openkilda.floodlight.switchmanager;
 
-import static org.projectfloodlight.openflow.protocol.ver15.OFMeterSerializerVer15.ALL_VAL;
-
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.LogicalOFMessageCategory;
@@ -34,7 +32,6 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
-import org.openkilda.messaging.model.ImmutablePair;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
@@ -101,15 +98,10 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
         Message message = buildSwitchMessage(sw, SwitchState.ACTIVATED);
         kafkaProducer.postMessage(TOPO_EVENT_TOPIC, message);
 
-        ImmutablePair<Long, Boolean> metersDeleted;
-        metersDeleted = switchManager.deleteMeter(switchId, ALL_VAL);
-        if (!metersDeleted.getRight()) {
-            logger.error("Could not delete meters from switch={} xid={}", switchId, metersDeleted.getLeft());
-        }
-
-        boolean defaultRulesInstalled = switchManager.installDefaultRules(switchId);
-        if (!defaultRulesInstalled) {
-            logger.error("Could not install default rules on switch={}", switchId);
+        try {
+            switchManager.installDefaultRules(switchId);
+        } catch (SwitchOperationException e) {
+            logger.error("Could not activate switch={}", switchId);
         }
 
         if (sw.getEnabledPortNumbers() != null) {

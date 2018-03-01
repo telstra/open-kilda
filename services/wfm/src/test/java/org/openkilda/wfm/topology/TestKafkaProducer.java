@@ -46,6 +46,16 @@ public class TestKafkaProducer {
         }
     }
 
+    public void pushMessageAsync(final String topic, final String data) {
+        ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topic, PAYLOAD, data);
+        producer.send(producerRecord);
+    }
+
+    public void flush()
+    {
+        producer.flush();
+    }
+
     public void close() {
         producer.flush();
         producer.close();

@@ -86,6 +86,7 @@ public class SpeakerBolt extends BaseRichBolt {
 
                     message.setDestination(Destination.TOPOLOGY_ENGINE);
                     values = new Values(MAPPER.writeValueAsString(message), switchId, flowId, transactionId);
+                    // FIXME(surabujin): looks like TE ignore this messages
                     outputCollector.emit(StreamType.CREATE.toString(), tuple, values);
 
                 } else if (data instanceof RemoveFlow) {

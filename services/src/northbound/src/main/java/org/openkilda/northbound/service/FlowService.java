@@ -18,6 +18,7 @@ package org.openkilda.northbound.service;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.northbound.dto.ExternalFlowsDto;
 
 import java.util.List;
 
@@ -86,4 +87,22 @@ public interface FlowService extends BasicService {
      * @return Flow path
      */
     FlowPathPayload pathFlow(final String id, final String correlationId);
+
+    /**
+     * Use this to push flows that may not be in the database(s) but they should be
+     *
+     * @param externalFlows   the list of flows to push.
+     * @param correlationId request correlation Id
+     * @return
+     */
+    BatchResults pushFlows(final List<ExternalFlowsDto> externalFlows, final String correlationId);
+
+    /**
+     * Performs rerouting of specific flow.
+     *
+     * @param flowId id of flow to be rerouted.
+     * @param correlationId request correlation Id
+     * @return updated flow path information.
+     */
+    FlowPathPayload rerouteFlow(final String flowId, final String correlationId);
 }

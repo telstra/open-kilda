@@ -13,7 +13,7 @@
 #   limitations under the License.
 #
 
-from flask import Flask, flash, redirect, render_template, request, session, abort, url_for, Response
+from flask import Flask, flash, redirect, render_template, request, session, abort, url_for, Response, jsonify
 from flask_login import LoginManager, UserMixin, login_required, login_user, logout_user, current_user
 
 from app import application
@@ -288,3 +288,11 @@ def api_v1_create_flow():
 
         response = {"result": "sucessful", "flowID": flowID}
         return json.dumps(response)
+
+
+@application.route('/api/v1/push/flows', methods=["PUT"])
+#@login_required
+def api_v1_push_flows():
+    return jsonify(successes=0, failures=0, messages=["come back later"])
+
+

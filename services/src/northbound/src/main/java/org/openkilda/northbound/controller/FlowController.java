@@ -23,6 +23,8 @@ import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.northbound.dto.ExternalFlowsDto;
+import org.openkilda.northbound.service.BatchResults;
 import org.openkilda.northbound.service.FlowService;
 
 import io.swagger.annotations.ApiOperation;
@@ -36,12 +38,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -258,4 +255,61 @@ public class FlowController {
         FlowPathPayload response = flowService.pathFlow(flowId, correlationId);
         return new ResponseEntity<>(response, new HttpHeaders(), HttpStatus.OK);
     }
+
+
+    /**
+     * Push flows to kilda ... this can be used to get flows into kilda without kilda creating them
+     * itself. Kilda won't expect to create them .. it may (and should) validate them at some stage.
+     *
+     * @param externalFlows a list of flows to push to kilda for it to absorb without expectation of creating the flow rules
+     * @param correlationId correlation ID header value
+     * @return list of flow
+     */
+    @ApiOperation(value = "Push flows without expectation of modifying switches", response = BatchResults.class)
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, response = BatchResults.class, message = "Operation is successful"),
+            @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
+            @ApiResponse(code = 401, response = MessageError.class, message = "Unauthorized"),
+            @ApiResponse(code = 403, response = MessageError.class, message = "Forbidden"),
+            @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
+            @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
+            @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
+    @RequestMapping(path = "/push/flows",
+            method = RequestMethod.PUT,
+            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @ResponseStatus(HttpStatus.OK)
+    public BatchResults pushFlows(
+            @RequestBody List<ExternalFlowsDto> externalFlows,
+            @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
+
+//        BatchResults br = flowService.pushFlows(externalFlows, correlationId);
+//        return new BatchResults(1,2, new String[]{"msg1",""+br});
+        return flowService.pushFlows(externalFlows, correlationId);
+    }
+
+    /**
+     * Initiates flow rerouting if any shorter paths are available.
+     *
+     * @param flowId id of flow to be rerouted.
+     * @param correlationId correlation ID header value.
+     * @return flow payload with updated path.
+     */
+    @ApiOperation(value = "Reroute flow", response = FlowPathPayload.class)
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, response = FlowPathPayload.class, message = "Operation is successful"),
+            @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
+            @ApiResponse(code = 401, response = MessageError.class, message = "Unauthorized"),
+            @ApiResponse(code = 403, response = MessageError.class, message = "Forbidden"),
+            @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
+            @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
+            @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
+    @RequestMapping(path = "/flows/{flow_id}/reroute",
+            method = RequestMethod.PATCH)
+    @ResponseStatus(HttpStatus.OK)
+    public FlowPathPayload rerouteFlow(@PathVariable("flow_id") String flowId,
+            @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
+        logger.debug("Received reroute request with correlation_id {} for flow {}", correlationId, flowId);
+        return flowService.rerouteFlow(flowId, correlationId);
+    }
+
 }

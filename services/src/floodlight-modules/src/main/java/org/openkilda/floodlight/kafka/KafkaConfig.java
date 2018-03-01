@@ -25,7 +25,7 @@ public class KafkaConfig extends Properties {
         put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
 
         // consumer
-        put("group.id", "experiment-consumer");
+        put("group.id", "floodlight");
         put("session.timeout.ms", "30000");
         put("enable.auto.commit", "true");
         put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");

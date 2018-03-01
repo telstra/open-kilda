@@ -1,5 +1,6 @@
 package org.openkilda;
 
+import static java.lang.String.format;
 import static java.util.Base64.getEncoder;
 import static org.openkilda.DefaultParameters.mininetEndpoint;
 import static org.openkilda.DefaultParameters.topologyEndpoint;
@@ -11,7 +12,9 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.glassfish.jersey.client.ClientConfig;
 import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.topo.exceptions.TopologyProcessingException;
 
+import java.io.IOException;
 import java.util.List;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
@@ -44,7 +47,7 @@ public final class SwitchesUtils {
                 .request()
                 .post(Entity.json(""));
 
-        System.out.println(String.format("===> Response = %s", result.toString()));
+        System.out.println(format("===> Response = %s", result.toString()));
         return result.getStatus() == 200;
     }
 
@@ -65,7 +68,7 @@ public final class SwitchesUtils {
                 .request()
                 .post(Entity.json(""));
 
-        System.out.println(String.format("===> Response = %s", result.toString()));
+        System.out.println(format("===> Response = %s", result.toString()));
         return result.getStatus() == 200;
     }
 
@@ -75,7 +78,7 @@ public final class SwitchesUtils {
      *
      * @return The JSON document of all flows
      */
-    public static List<SwitchInfoData> dumpSwitches() throws Exception {
+    public static List<SwitchInfoData> dumpSwitches()  {
         System.out.println("\n==> Topology-Engine Dump Switches");
 
         Client client = ClientBuilder.newClient(new ClientConfig());
@@ -87,13 +90,20 @@ public final class SwitchesUtils {
                 .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
                 .get();
 
-        System.out.println(String.format("===> Response = %s", response.toString()));
+        System.out.println(format("===> Response = %s", response.toString()));
 
-        List<SwitchInfoData> switches = new ObjectMapper().readValue(
-                response.readEntity(String.class), new TypeReference<List<SwitchInfoData>>() {});
-        //System.out.println(String.format("====> Data = %s", switches));
+        try {
+            List<SwitchInfoData> switches = new ObjectMapper().readValue(
+                    response.readEntity(String.class), new TypeReference<List<SwitchInfoData>>() {
+                    });
+            //System.out.println(String.format("====> Data = %s", switches));
 
-        return switches;
+            return switches;
+
+        } catch (IOException ex) {
+            throw new TopologyProcessingException(
+                    format("Unable to parse the switches '%s'.", response.toString()), ex);
+        }
     }
 
     /**
@@ -111,7 +121,7 @@ public final class SwitchesUtils {
                 .path("/switch")
                 .request(MediaType.APPLICATION_JSON)
                 .post(Entity.json(
-                        String.format("{\"switches\":[{\"name\": \"%s\", \"dpid\": \"%s\"}]}",
+                        format("{\"switches\":[{\"name\": \"%s\", \"dpid\": \"%s\"}]}",
                                 switchName, dpid)));
 
         return result.getStatus() == 200;
