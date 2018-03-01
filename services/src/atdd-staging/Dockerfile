@@ -20,11 +20,6 @@ RUN apt-get update
 ADD target/atdd-staging-*.jar /app/atdd-staging.jar
 ADD target/lib/*.jar /app/lib/
 
-# TODO: replace this with fetching of actual environment configuration
-ADD topology.yaml.example /app/topology.yaml
-ADD kilda.properties.example /app/kilda.properties
-ADD log4j2.xml.example /app/log4j2.xml
-
 WORKDIR /app
 
 CMD ["java", "-cp", "/app/atdd-staging.jar:/app/lib/*", \
