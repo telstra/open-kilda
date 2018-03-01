@@ -1,5 +1,6 @@
 package org.openkilda;
 
+import static java.lang.String.format;
 import static java.util.Base64.getEncoder;
 import static org.openkilda.DefaultParameters.mininetEndpoint;
 import static org.openkilda.DefaultParameters.topologyEndpoint;
@@ -12,7 +13,9 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.glassfish.jersey.client.ClientConfig;
 import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.topo.exceptions.TopologyProcessingException;
 
+import java.io.IOException;
 import java.util.List;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
@@ -34,7 +37,7 @@ public final class LinksUtils {
      *
      * @return The JSON document of all flows
      */
-    public static List<IslInfoData> dumpLinks() throws Exception {
+    public static List<IslInfoData> dumpLinks() {
         System.out.println("\n==> Topology-Engine Dump Links");
 
         long current = System.currentTimeMillis();
@@ -50,11 +53,16 @@ public final class LinksUtils {
         System.out.println(String.format("===> Response = %s", response.toString()));
         System.out.println(String.format("===> Topology-Engine Dump Links Time: %,.3f", getTimeDuration(current)));
 
-        List<IslInfoData> links = new ObjectMapper().readValue(
-                response.readEntity(String.class), new TypeReference<List<IslInfoData>>() {});
-        //System.out.println(String.format("====> Data = %s", links));
+        try {
+            List<IslInfoData> links = new ObjectMapper().readValue(
+                    response.readEntity(String.class), new TypeReference<List<IslInfoData>>() {
+                    });
+            //LOGGER.debug(String.format("====> Data = %s", links));
+            return links;
 
-        return links;
+        } catch (IOException ex) {
+            throw new TopologyProcessingException(format("Unable to parse the links '%s'.", response.toString()), ex);
+        }
     }
 
     public static boolean islFail(String switchName, String portNo) {

@@ -15,15 +15,17 @@
 
 package org.openkilda.topo;
 
+import static java.lang.String.format;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.primitives.Ints;
+import org.openkilda.topo.exceptions.TopologyProcessingException;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.lang.UnsupportedOperationException;
-
-import com.google.common.primitives.Ints;
 
 /**
  * TopologyBuilder is a utility / factory class that can be used to build topologies.
@@ -44,15 +46,20 @@ public class TopologyBuilder {
      * @return The topology represented in the text file.
      */
     @SuppressWarnings("unchecked")
-    public static final Topology buildTopoFromTestJson(String jsonDoc) throws IOException {
+    public static final Topology buildTopoFromTestJson(String jsonDoc) {
         Topology t = new Topology(jsonDoc);
         ConcurrentMap<String, Switch> switches = t.getSwitches();
         ConcurrentMap<String, Switch> altSwitchId = new ConcurrentHashMap<>();
         ConcurrentMap<String, Link> links = t.getLinks();
 
         ObjectMapper mapper = new ObjectMapper();
-        Map<String,ArrayList<Map<String,String>>> root =
-                mapper.readValue(jsonDoc, Map.class);
+        Map<String,ArrayList<Map<String,String>>> root;
+
+        try {
+            root = mapper.readValue(jsonDoc, Map.class);
+        } catch (IOException ex) {
+            throw new TopologyProcessingException(format("Unable to parse the topology '%s'.", jsonDoc), ex);
+        }
 
         // populate switches first
         ArrayList<Map<String,String>> jsonSwitches = root.get("switches");
@@ -104,14 +111,20 @@ public class TopologyBuilder {
     }
 
     @SuppressWarnings("unchecked")
-    public static final Topology buildTopoFromTopoEngineJson(String jsonDoc) throws IOException {
+    public static final Topology buildTopoFromTopoEngineJson(String jsonDoc)  {
         Topology t = new Topology(jsonDoc);
         ConcurrentMap<String, Switch> switches = t.getSwitches();
         ConcurrentMap<String, Link> links = t.getLinks();
 
         // {"nodes":[{"name":"string", "outgoing_relationships": ["string",..]},..]}
         ObjectMapper mapper = new ObjectMapper();
-        Map<String,ArrayList<?>> root = mapper.readValue(jsonDoc, Map.class);
+        Map<String,ArrayList<?>> root;
+
+        try {
+            root = mapper.readValue(jsonDoc, Map.class);
+        } catch (IOException ex) {
+            throw new TopologyProcessingException(format("Unable to parse the topology '%s'.", jsonDoc), ex);
+        }
 
         // populate switches first
         ArrayList<Map<String,?>> jsonSwitches = (ArrayList<Map<String, ?>>) root.get("nodes");
