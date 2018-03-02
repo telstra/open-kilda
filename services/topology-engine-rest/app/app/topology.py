@@ -613,6 +613,25 @@ def api_v1_topology_link_bandwidth(src_switch, src_port):
     return neo4j_connect.data(query)[0]['r.available_bandwidth']
 
 
+@application.route('/api/v1/topology/routes/src/<src_switch>/dst/<dst_switch>')
+@login_required
+def api_v1_routes_between_nodes(src_switch, dst_switch):
+    depth = request.args.get('depth') or ''
+    query = (
+        "MATCH p=(src:switch{{name:'{src_switch}'}})-[:isl*..{depth}]->"
+        "(dst:switch{{name:'{dst_switch}'}}) "
+        "WITH NODES(p) AS switches "
+        "WHERE ALL(sw1 IN switches "
+        "   WHERE SIZE(FILTER(sw2 IN switches WHERE sw1.name=sw2.name)) = 1) "
+        "RETURN switches"
+    ).format(src_switch=src_switch, depth=depth, dst_switch=dst_switch)
+
+    result = neo4j_connect.data(query)
+
+    paths = [map(format_switch, x['switches']) for x in result]
+    return jsonify(paths)
+
+
 # FIXME(surabujin): stolen from topology-engine code, must use some shared
 # codebase
 def is_forward_cookie(cookie):
