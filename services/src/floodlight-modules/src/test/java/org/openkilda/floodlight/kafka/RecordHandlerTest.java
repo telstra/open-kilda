@@ -1,10 +1,9 @@
 package org.openkilda.floodlight.kafka;
 
-import static org.easymock.EasyMock.anyObject;
-import static org.easymock.EasyMock.eq;
-import static org.easymock.EasyMock.expect;
-import static org.easymock.EasyMock.verify;
+import static org.hamcrest.Matchers.instanceOf;
 
+import org.easymock.Capture;
+import org.junit.Assert;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
 import org.openkilda.messaging.Destination;
@@ -38,6 +37,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static org.easymock.EasyMock.*;
+import static org.hamcrest.Matchers.is;
 
 public class RecordHandlerTest extends EasyMockSupport {
     private static final String OUTPUT_DISCO_TOPIC = Topic.TOPO_DISCO;
@@ -167,24 +169,32 @@ public class RecordHandlerTest extends EasyMockSupport {
 
         long timestamp = System.currentTimeMillis();
 
-        InfoMessage expectedMessage = new InfoMessage(
-                new SwitchPortsData(
-                        Stream.of(1, 2)
-                            .map(port -> new PortInfoData(dpid.toString(), port, null, PortChangeType.UP))
-                            .collect(Collectors.toSet()),
-                        "test-requester"),
-                timestamp,
-                Utils.SYSTEM_CORRELATION_ID,
-                Destination.CONTROLLER
-        );
-
-        producer.postMessage(eq(OUTPUT_DISCO_TOPIC), eq(expectedMessage));
+        Capture<String> capturedTopic = new Capture<>();
+        Capture<InfoMessage> capturedMessage = new Capture<>();
+        producer.postMessage(capture(capturedTopic), capture(capturedMessage));
 
         replayAll();
 
-        CommandMessage command = new CommandMessage(new PortsCommandData(), timestamp,
+        CommandMessage command = new CommandMessage(new PortsCommandData("test-requester"), System.currentTimeMillis(),
                 Utils.SYSTEM_CORRELATION_ID, Destination.WFM);
         handler.handleMessage(command);
         verify(producer);
+
+        // Ugly hack below to ensure timestamps are equal
+        SwitchPortsData switchPortsData = new SwitchPortsData(
+                Stream.of(1, 2)
+                        .map(port -> new PortInfoData(dpid.toString(), port, null, PortChangeType.UP))
+                        .collect(Collectors.toSet()),
+                "test-requester");
+        switchPortsData.setTimestamp(capturedMessage.getValue().getTimestamp());
+
+        InfoMessage expectedMessage = new InfoMessage(
+                switchPortsData,
+                capturedMessage.getValue().getTimestamp(),
+                Utils.SYSTEM_CORRELATION_ID,
+                Destination.WFM
+        );
+
+        Assert.assertEquals(expectedMessage, capturedMessage.getValue());
     }
 }

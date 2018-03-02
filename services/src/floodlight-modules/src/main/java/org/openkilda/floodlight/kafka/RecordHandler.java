@@ -307,6 +307,9 @@ class RecordHandler implements Runnable {
                 .flatMap(sw -> getPortInfo(sw, true).stream())
                 .collect(Collectors.toSet());
 
+        InfoMessage infoMessage = buildInfoMessage(new SwitchPortsData(portsInfoData, command.getRequester()),
+                message.getCorrelationId());
+
         context.getKafkaProducer().postMessage(OUTPUT_DISCO_TOPIC,
                 buildInfoMessage(new SwitchPortsData(portsInfoData, command.getRequester()),
                         message.getCorrelationId()));
