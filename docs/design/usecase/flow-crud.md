@@ -31,6 +31,8 @@ of flow commands to the openflow speaker (floodlight) to install the flow rules 
 #### Sequence Diagram
 
 ![Flow Creation](./flow-crud-create.png "Flow Creation")
+![Flow Creation](./flow-crud-create-full.png "Flow Creation (full)")
+![Flow Delete](./flow-crud-delete-full.png "Flow Delete (full)")
 
 #### Diagram Text
 

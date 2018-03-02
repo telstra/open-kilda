@@ -7,11 +7,8 @@ import org.openkilda.messaging.Utils;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.spotify.docker.client.DefaultDockerClient;
-import com.spotify.docker.client.DockerClient;
 import com.spotify.docker.client.exceptions.DockerCertificateException;
 import com.spotify.docker.client.exceptions.DockerException;
-import com.spotify.docker.client.messages.Container;
 import org.glassfish.jersey.client.ClientConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,26 +26,13 @@ import javax.ws.rs.core.Response;
 
 public class ControllerUtils {
     private static final Logger LOGGER = LoggerFactory.getLogger(ControllerUtils.class);
-
-    private static final String FLOODLIGHT_CONTAINER_PREFIX = "kilda/floodlight";
-
-    private final DockerClient dockerClient;
-    private final Container floodlightContainer;
     private final Client restClient;
 
     public ControllerUtils() throws DockerCertificateException, DockerException, InterruptedException {
-        dockerClient = DefaultDockerClient.fromEnv().build();
-        floodlightContainer = dockerClient.listContainers()
-                .stream()
-                .filter(container ->
-                        container.image().startsWith(FLOODLIGHT_CONTAINER_PREFIX))
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException("Floodlight controller should be active"));
         restClient = ClientBuilder.newClient(new ClientConfig());
     }
 
     public void restart() throws DockerException, InterruptedException {
-        dockerClient.restartContainer(floodlightContainer.id());
         await().atMost(10, TimeUnit.SECONDS)
                 .until(this::isAlive);
     }

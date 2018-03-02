@@ -1,0 +1,1 @@
+CREATE CONSTRAINT ON (sw:switch) ASSERT sw.name IS UNIQUE;

@@ -15,17 +15,6 @@
 
 package org.openkilda.floodlight.switchmanager;
 
-import static org.projectfloodlight.openflow.protocol.ver15.OFMeterSerializerVer15.ALL_VAL;
-
-import org.openkilda.floodlight.kafka.KafkaMessageProducer;
-import org.openkilda.messaging.Message;
-import org.openkilda.messaging.Topic;
-import org.openkilda.messaging.info.InfoData;
-import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.event.PortInfoData;
-import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.messaging.info.event.SwitchState;
-
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.LogicalOFMessageCategory;
@@ -35,6 +24,14 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import org.openkilda.floodlight.kafka.KafkaMessageProducer;
+import org.openkilda.messaging.Message;
+import org.openkilda.messaging.Topic;
+import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.event.PortInfoData;
+import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.info.event.SwitchState;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
@@ -102,7 +99,6 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
         kafkaProducer.postMessage(TOPO_EVENT_TOPIC, message);
 
         try {
-            switchManager.deleteMeter(switchId, ALL_VAL);
             switchManager.installDefaultRules(switchId);
         } catch (SwitchOperationException e) {
             logger.error("Could not activate switch={}", switchId);

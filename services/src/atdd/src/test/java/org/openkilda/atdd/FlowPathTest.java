@@ -15,6 +15,7 @@
 
 package org.openkilda.atdd;
 
+import static java.lang.String.format;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
@@ -22,6 +23,7 @@ import static org.junit.Assert.assertTrue;
 import static org.openkilda.flow.FlowUtils.dumpFlows;
 import static org.openkilda.flow.FlowUtils.getLinkBandwidth;
 import static org.openkilda.flow.FlowUtils.restoreFlows;
+import static org.openkilda.messaging.info.event.IslChangeType.FAILED;
 
 import org.openkilda.LinksUtils;
 import org.openkilda.flow.FlowUtils;
@@ -30,13 +32,16 @@ import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.pce.provider.UnroutablePathException;
 import org.openkilda.topo.TopologyHelp;
+import org.openkilda.topo.exceptions.TopologyProcessingException;
 
 import cucumber.api.java.en.Given;
 import cucumber.api.java.en.Then;
 import cucumber.api.java.en.When;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.List;
@@ -90,10 +95,16 @@ public class FlowPathTest {
     private long start;
 
     @Given("^a multi-path topology$")
-    public void a_multi_path_topology() throws Throwable {
+    public void a_multi_path_topology()  {
         ClassLoader classLoader = getClass().getClassLoader();
         File file = new File(classLoader.getResource(fileName).getFile());
-        String json = new String(Files.readAllBytes(file.toPath()));
+        String json;
+
+        try {
+            json = new String(Files.readAllBytes(file.toPath()));
+        } catch (IOException ex) {
+            throw new TopologyProcessingException(format("Unable to read the topology file '%s'.", fileName), ex);
+        }
 
         pre_start = System.currentTimeMillis();
         assertTrue(TopologyHelp.CreateMininetTopology(json));
@@ -101,7 +112,7 @@ public class FlowPathTest {
     }
 
     @When("^all links have available bandwidth (\\d+)$")
-    public void checkAvailableBandwidth(int expectedAvailableBandwidth) throws Exception {
+    public void checkAvailableBandwidth(int expectedAvailableBandwidth) throws InterruptedException {
         List<IslInfoData> links = LinksUtils.dumpLinks();
         for (IslInfoData link : links) {
             int actualBandwidth = getBandwidth(expectedAvailableBandwidth,
@@ -112,7 +123,8 @@ public class FlowPathTest {
     }
 
     @Then("^shortest path links available bandwidth have available bandwidth (\\d+)$")
-    public void checkShortestPathAvailableBandwidthDecreased(int expectedAvailableBandwidth) throws Exception {
+    public void checkShortestPathAvailableBandwidthDecreased(int expectedAvailableBandwidth)
+            throws InterruptedException {
         for (ImmutablePair<String, String> expectedLink : shortestPathLinks) {
             Integer actualBandwidth = getBandwidth(expectedAvailableBandwidth,
                     expectedLink.getLeft(), expectedLink.getRight());
@@ -121,7 +133,8 @@ public class FlowPathTest {
     }
 
     @Then("^alternative path links available bandwidth have available bandwidth (\\d+)$")
-    public void checkAlternativePathAvailableBandwidthDecreased(int expectedAvailableBandwidth) throws Exception {
+    public void checkAlternativePathAvailableBandwidthDecreased(int expectedAvailableBandwidth)
+            throws InterruptedException {
         for (ImmutablePair<String, String> expectedLink : alternativePathLinks) {
             Integer actualBandwidth = getBandwidth(expectedAvailableBandwidth,
                     expectedLink.getLeft(), expectedLink.getRight());
@@ -131,8 +144,8 @@ public class FlowPathTest {
 
     @Then("^flow (.*) with (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) path correct$")
     public void flowPathCorrect(String flowId, String sourceSwitch, int sourcePort, int sourceVlan,
-                                String destinationSwitch, int destinationPort, int destinationVlan, int bandwidth)
-            throws Exception {
+            String destinationSwitch, int destinationPort, int destinationVlan, int bandwidth)
+            throws UnroutablePathException, InterruptedException {
         Flow flow = new Flow(FlowUtils.getFlowName(flowId), bandwidth, false, flowId, sourceSwitch,
                 sourcePort, sourceVlan, destinationSwitch, destinationPort, destinationVlan);
         ImmutablePair<PathInfoData, PathInfoData> path = FlowUtils.getFlowPath(flow);
@@ -140,7 +153,7 @@ public class FlowPathTest {
         assertEquals(expectedShortestPath, path);
     }
 
-    private int getBandwidth(int expectedBandwidth, String src_switch, String src_port) throws Exception {
+    private int getBandwidth(int expectedBandwidth, String src_switch, String src_port) throws InterruptedException {
         int actualBandwidth = getLinkBandwidth(src_switch, src_port);
         if (actualBandwidth != expectedBandwidth) {
             TimeUnit.SECONDS.sleep(2);
@@ -150,40 +163,47 @@ public class FlowPathTest {
     }
 
     @Given("^topology contains (\\d+) links$")
-    public void topologyContainsLinks(int expectedLinks) throws Throwable {
+    public void topologyContainsLinks(int expectedLinks) throws InterruptedException {
         // give WFM time to send discovery requests and notify TE.
         TimeUnit.SECONDS.sleep(4);
-        int actualLinks = getLinksCount(expectedLinks);
-        assertEquals(expectedLinks, actualLinks);
+        waitForVerifiedLinks(expectedLinks);
     }
 
-    private int getLinksCount(int expectedLinks) throws Exception {
-        int actualLinks = 0;
+    private void waitForVerifiedLinks(int expectedLinks) throws InterruptedException {
+        long actualLinks = 0;
 
         for (int i = 0; i < 10; i++) {
             List<IslInfoData> links = LinksUtils.dumpLinks();
-            actualLinks = links.size();
+
+            // Count verified and healthy links
+            actualLinks = links.stream()
+                    .filter(link -> link.getState() != FAILED)
+                    .filter(link -> link.getPath().stream()
+                            .noneMatch(pathNode -> pathNode.getSeqId() == 0
+                                    && pathNode.getSegLatency() == null))
+                    .count();
 
             if (actualLinks == expectedLinks) {
-                break;
+                return;
             }
 
             TimeUnit.SECONDS.sleep(3);
         }
-        return actualLinks;
+
+        assertEquals(expectedLinks, actualLinks);
     }
 
     @When("^delete mininet topology$")
-    public void deleteMininetTopology() throws Throwable {
+    public void deleteMininetTopology() {
         TopologyHelp.DeleteMininetTopology();
     }
 
     @When("^(\\d+) seconds passed$")
-    public void secondsPassed(int timeout) throws Throwable {
-        System.out.println(String.format("\n==> Sleep for %d seconds", timeout));
-        System.out.println(String.format("===> Sleep start at = %d", System.currentTimeMillis()));
+    public void secondsPassed(int timeout) throws InterruptedException {
+        System.out.println(format("\n==> Sleep for %d seconds", timeout));
+        System.out.println(format("===> Sleep start at = %d", System.currentTimeMillis()));
         TimeUnit.SECONDS.sleep(timeout);
-        System.out.println(String.format("===> Sleep end at = %d", System.currentTimeMillis()));
+        System.out.println(format("===> Sleep end at = %d", System.currentTimeMillis()));
     }
 
     @Then("^flow (.*) has updated timestamp$")
@@ -200,15 +220,15 @@ public class FlowPathTest {
 
         Flow flow = flows.get(0);
         String currentLastUpdated = flow.getLastUpdated();
-        System.out.println(String.format("=====> Flow %s previous timestamp = %s", flowId, previousLastUpdated));
-        System.out.println(String.format("=====> Flow %s current timestamp = %s", flowId, currentLastUpdated));
+        System.out.println(format("=====> Flow %s previous timestamp = %s", flowId, previousLastUpdated));
+        System.out.println(format("=====> Flow %s current timestamp = %s", flowId, currentLastUpdated));
 
         assertNotEquals(previousLastUpdated, currentLastUpdated);
         previousLastUpdated = currentLastUpdated;
     }
 
     @When("^restore flows$")
-    public void flowRestore() throws Throwable {
+    public void flowRestore() {
         restoreFlows();
     }
 }

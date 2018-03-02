@@ -1,0 +1,130 @@
+@startuml
+title FLOW create
+
+participant Client
+participant NB
+control kilda.northbound
+participant "FLOW SplitterBolt" as SplitterBolt
+participant "FLOW CrudBolt" as CrudBolt
+control kilda.flow
+control kilda.topo.cache
+participant "FLOW NorthboundReplyBolt" as NorthboundReplyBolt
+participant "FLOW ErrorBolt" as ErrorBolt
+participant "FLOW TopologyEngineBolt" as TopologyEngineBolt
+participant "FLOW TransactionBolt" as TransactionBolt
+participant "CACHE CacheBolt" as CacheBolt
+control kilda.topo.eng
+participant TE
+control kilda.speaker
+participant SPEAKER
+participant "FLOW SpeakerBolt" as SpeakerBolt
+
+Client -> NB: PUT /flows\nJSON\nFlowPayload
+note right of NB: new FlowCreateRequest
+NB -> kilda.flow: CommandMessage\nFlowCreateRequest
+kilda.flow -> SplitterBolt: CommandMessage\nFlowCreateRequest
+SplitterBolt -> CrudBolt: CommandMessage\nFlowCreateRequest
+note right of CrudBolt: validate the flow (using FlowValidator)
+note right of CrudBolt: new path (using PathComputer.getPath)
+note right of CrudBolt: build flow pair (state=ALLOCATED)
+note right of CrudBolt: save flow (FlowCache.crateFlow)
+note right of CrudBolt: allocate cookie for flow
+note right of CrudBolt: allocate transit vlan (forward)
+note right of CrudBolt: allocate transit vlan (reverse)
+note right of CrudBolt: new FlowInfoData
+CrudBolt -> kilda.topo.cache: InfoMessage\nFlowInfoData
+note right of CrudBolt: new FlowResponse
+CrudBolt -> NorthboundReplyBolt: InfoMessage(FlowResponse)
+
+opt error flow
+    note right of CrudBolt: new ErrorMessage
+    CrudBolt -> ErrorBolt: ErrorMessage
+
+    note right of ErrorBolt: setDestination(NORTHBOUND)
+    ErrorBolt -> NorthboundReplyBolt: ErrorMessage
+end
+
+kilda.topo.cache -> CacheBolt: InfoMessage\nFlowInfoData
+note right of CacheBolt: save flow (FlowCache.putFlow)
+CacheBolt -> kilda.topo.eng: InfoMessage\nFlowInfoData
+kilda.topo.eng -> TE: InfoMessage\nFlowInfoData
+
+loop in (forward, reverse)
+    note right of TE: build flow rules
+    note right of TE: store flow in neo4j
+
+    opt forward stream only and ignore_bandwith is false
+        note right of TE: update ISL bandwidth
+    end
+
+    loop each path sements
+        TE -> kilda.speaker: CommandMessage\ninstance of BaseInstallFlow
+        TE -> kilda.flow: CommandMessage\ninstance of BaseInstallFlow
+
+        kilda.flow -> TopologyEngineBolt: CommandMessage\ninstance of BaseInstallFlow
+        note right of TopologyEngineBolt: make and set transaction id
+        TopologyEngineBolt -> TransactionBolt: CommandMessage\ninstance of BaseInstallFlow
+	note right of TransactionBolt: Bind transaction id with flow id
+	TransactionBolt -> CrudBolt: Values(flowId, FlowState.IN_PROGRESS)
+
+	kilda.speaker -> SPEAKER: CommandMessage\ninstance of BaseInstallFlow
+	alt InstallIngressFlow
+	    note right of SPEAKER: allocate meter id
+	    note right of SPEAKER: SwitchManager.installMeter() 
+	    note right of SPEAKER: SwitchManager.installIngressFlow()
+	    note right of SPEAKER: set destination "WFM_TRANSACTION"
+	    SPEAKER -> kilda.flow: CommandMessage\nInstallIngressFlow
+	else InstallEgressFlow
+	    note right of SPEAKER: SwitchManager.installEgressFlow()
+	    note right of SPEAKER: set destination "WFM_TRANSACTION"
+	    SPEAKER -> kilda.flow: CommandMessage\nInstallEgressFlow
+	else InstallTransitFlow
+	    note right of SPEAKER: SwitchManager.installTransitFlow()
+	    note right of SPEAKER: set destination "WFM_TRANSACTION"
+	    SPEAKER -> kilda.flow: CommandMessage\nInstallTransitFlow
+	else InstallOneSwitchFlow
+	    note right of SPEAKER: allocate meter id
+	    note right of SPEAKER: SwitchManager.installMeter() 
+	    note right of SPEAKER: SwitchManager.installOneSwitchFlow()
+	    note right of SPEAKER: set destination "WFM_TRANSACTION"
+	    SPEAKER -> kilda.flow: CommandMessage\nInstallOneSwitchFlow
+	end
+	opt error
+	    note right of SPEAKER: new ErrorMessage()
+	    SPEAKER -> kilda.flow: ErrorMessage
+	end
+	
+	kilda.flow -> SpeakerBolt: CommandMessage\ninsntace BaseInstallFlow
+	note right of SpeakerBolt: set destination "TOPOLOGY_ENGINE"
+	SpeakerBolt -> TransactionBolt: CommandMessage\ninsntace BaseInstallFlow
+	note right of TransactionBolt: Unbind transaction id from flow id
+	opt number of binded transactions to flow id is 0
+	    TransactionBolt -> CrudBolt: Values(flowId, FlowState.UP)
+	end
+    end
+end
+
+opt STATUS(flowId, STATE) for CrudBolt
+    note right of CrudBolt: flow = FlowCache.getFlow(flowId)
+    note right of CrudBolt: flow.getLeft().setState(status)  # update cache
+    note right of CrudBolt: flow.getRight().setState(status) # update cache
+    note right of CrudBolt: new FlowInfoData(flow) operation=STATE
+    CrudBolt -> kilda.topo.cache: InfoMessage(FlowInfoData) operation=STATE
+
+    kilda.topo.cache -> CacheBolt: InfoMessage(FlowInfoData) operation=STATE
+    note right of CacheBolt: FlowCache.putFlow()  # update cache
+    note right of CacheBolt: DEAD END
+end
+
+note right of NorthboundReplyBolt: setDestination(NORTHBOUND)
+NorthboundReplyBolt -> kilda.northbound: ErrorMessage\nor InfoMessage(FlowResponse)
+kilda.northbound -> NB: ErrorMessage\nor InfoMessage(FlowResponse)
+alt InfoMessage(FlowResponse)
+    note right of NB: call Converter.buildFlowPayloadByFlow(FlowResponse)
+    NB -> Client: HTTP200-JSON(FlowPayload)
+else ErrorMessage type=???
+    NB -> Client: HTTP500
+end
+note right of Client: DEAD END
+
+@enduml

@@ -30,6 +30,7 @@ opentsdb.num.datapointparserbolt = 1
 opentsdb.workers.datapointparserbolt = 2
 opentsdb.batch.size = 50
 opentsdb.flush.interval = 1
+opentsdb.workers = 10
 
 neo4j.hosts = {{ neo4j_hosts }}
 neo4j.user = {{ neo4j_user }}
@@ -41,7 +42,7 @@ logger.watermark =
 
 #######
 # Discovery
-# - discovery.interval = how many bolt ticks between ISL discovery / health checks
+# - discovery.interval = how many bolt ticks(1 tick per second) between ISL discovery / health checks, starts from 0
 # - discovery.timeout = at which point do we send an ISL Failure (if it is an ISL)
 #       - NB: the number is in "ticks", not "attempts" .. attempts = timeout/interval
 # - discovery.limit = at what point do we stop sending? -1 means never ..

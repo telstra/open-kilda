@@ -56,8 +56,10 @@ import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.info.flow.FlowOperation;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.wfm.AbstractStormTest;
 import org.openkilda.wfm.topology.TestKafkaConsumer;
+import org.openkilda.wfm.topology.flow.ComponentType;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -291,23 +293,38 @@ public class CacheTopologyTest extends AbstractStormTest {
     @Test
     public void flowShouldBeReroutedWhenSwitchGoesDown() throws Exception {
         sendData(sw);
-        firstFlow.getLeft().setFlowPath(new PathInfoData(0L, Collections.emptyList()));
+
+        SwitchInfoData dstSwitch = new SwitchInfoData();
+        dstSwitch.setState(SwitchState.ACTIVATED);
+        dstSwitch.setSwitchId("dstSwitch");
+        List<PathNode> path = ImmutableList.of(
+                new PathNode(sw.getSwitchId(), 0, 0),
+                new PathNode(dstSwitch.getSwitchId(), 0, 1)
+        );
+
+        //create inactive flow
+        firstFlow.getLeft().setFlowPath(new PathInfoData(0L, path));
         firstFlow.getRight().setFlowPath(new PathInfoData(0L, Collections.emptyList()));
+        firstFlow.getLeft().setState(FlowState.DOWN);
         sendFlowUpdate(firstFlow);
-        secondFlow.getLeft().setFlowPath(new PathInfoData(0L, Collections.emptyList()));
+
+        //create active flow
+        secondFlow.getLeft().setFlowPath(new PathInfoData(0L, path));
         secondFlow.getRight().setFlowPath(new PathInfoData(0L, Collections.emptyList()));
+        secondFlow.getLeft().setState(FlowState.UP);
         sendFlowUpdate(secondFlow);
 
         flowConsumer.clear();
         sw.setState(SwitchState.REMOVED);
         sendData(sw);
 
+        //active flow should be rerouted
         ConsumerRecord<String, String> record = flowConsumer.pollMessage();
         assertNotNull(record);
         CommandMessage message = objectMapper.readValue(record.value(), CommandMessage.class);
         assertNotNull(message);
         FlowRerouteRequest command = (FlowRerouteRequest) message.getData();
-        assertTrue(command.getPayload().getFlowId().equals(firstFlowId));
+        assertTrue(command.getPayload().getFlowId().equals(secondFlowId));
     }
 
     @Test
@@ -376,6 +393,12 @@ public class CacheTopologyTest extends AbstractStormTest {
                 "cachetopology/cache", new RequestData("clearState"), 1, "route-correlation-id",
                 Destination.WFM_CTRL);
         sendMessage(request, topology.getConfig().getKafkaCtrlTopic());
+
+        ConsumerRecord<String, String> raw = ctrlConsumer.pollMessage();
+        assertNotNull(raw);
+
+        CtrlResponse response = (CtrlResponse) objectMapper.readValue(raw.value(), Message.class);
+        assertEquals(request.getCorrelationId(), response.getCorrelationId());
     }
 
     private static void sendNetworkDumpRequest() throws IOException, InterruptedException {
@@ -397,6 +420,7 @@ public class CacheTopologyTest extends AbstractStormTest {
         flow.setFlowId(flowId);
         flow.setSourceSwitch(srcSwitch);
         flow.setDestinationSwitch(dstSwitch);
+        flow.setState(FlowState.UP);
 
         PathInfoData pathInfoData = new PathInfoData(0L, path);
         flow.setFlowPath(pathInfoData);

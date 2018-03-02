@@ -15,6 +15,7 @@
 
 package org.openkilda.northbound.utils;
 
+import static java.lang.String.format;
 import static org.openkilda.messaging.Utils.CORRELATION_ID;
 
 import org.openkilda.messaging.error.ErrorType;
@@ -68,6 +69,9 @@ public class NorthboundExceptionHandler extends ResponseEntityExceptionHandler {
 
         MessageError error = new MessageError(request.getHeader(CORRELATION_ID), exception.getTimestamp(),
                 exception.getErrorType().toString(), exception.getMessage(), exception.getErrorDescription());
+
+        logger.warn(format("Error %s caught.", error), exception);
+
         return super.handleExceptionInternal(exception, error, new HttpHeaders(), status, request);
     }
 
@@ -79,6 +83,9 @@ public class NorthboundExceptionHandler extends ResponseEntityExceptionHandler {
                                                              HttpStatus status, WebRequest request) {
         MessageError error = new MessageError(request.getHeader(CORRELATION_ID), System.currentTimeMillis(),
                 ErrorType.REQUEST_INVALID.toString(), exception.getMessage(), exception.getClass().getSimpleName());
+
+        logger.error(format("Unknown error %s caught.", error), exception);
+
         return super.handleExceptionInternal(exception, error, headers, status, request);
     }
 }

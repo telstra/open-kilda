@@ -21,7 +21,7 @@ import config
 
 def create_p2n_driver():
     graph = Graph("http://{}:{}@{}:7474/db/data/".format(
-        os.environ['neo4juser'] or config.get('neo4j', 'user'),
-        os.environ['neo4jpass'] or config.get('neo4j', 'pass'),
-        os.environ['neo4jhost'] or config.get('neo4j', 'host')))
+        os.environ.get('neo4juser') or config.get('neo4j', 'user'),
+        os.environ.get('neo4jpass') or config.get('neo4j', 'pass'),
+        os.environ.get('neo4jhost') or config.get('neo4j', 'host')))
     return graph
