@@ -1,7 +1,5 @@
 package org.openkilda.floodlight.kafka;
 
-import static org.hamcrest.Matchers.instanceOf;
-
 import org.easymock.Capture;
 import org.junit.Assert;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
