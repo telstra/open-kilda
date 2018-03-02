@@ -13,6 +13,7 @@ import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
 import org.openkilda.messaging.command.discovery.DiscoverPathCommandData;
 import org.openkilda.messaging.command.discovery.NetworkCommandData;
+import org.openkilda.messaging.command.discovery.PortsCommandData;
 import org.openkilda.messaging.command.flow.InstallEgressFlow;
 import org.openkilda.messaging.command.flow.InstallIngressFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
@@ -20,8 +21,10 @@ import org.openkilda.messaging.command.flow.InstallTransitFlow;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.NetworkInfoData;
+import org.openkilda.messaging.info.discovery.SwitchPortsData;
 import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
@@ -30,11 +33,14 @@ import org.openkilda.messaging.payload.flow.OutputVlanType;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.projectfloodlight.openflow.protocol.OFPortDesc;
+import org.projectfloodlight.openflow.protocol.OFPortState;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
@@ -73,6 +79,8 @@ class RecordHandler implements Runnable {
                 doDeleteFlow(message);
             } else if (data instanceof NetworkCommandData) {
                 doNetworkDump(message);
+            } else if (data instanceof PortsCommandData) {
+                doPortsDump(message);
             } else {
                 logger.error("unknown data type: {}", data.toString());
             }
@@ -285,6 +293,45 @@ class RecordHandler implements Runnable {
                 message.getCorrelationId());
 
         context.getKafkaProducer().postMessage(OUTPUT_DISCO_TOPIC, infoMessage);
+    }
+
+    private void doPortsDump(final CommandMessage message) {
+        logger.info("Creating ports dump");
+        PortsCommandData command = (PortsCommandData) message.getData();
+
+        Map<DatapathId, IOFSwitch> allSwitchMap = context.getSwitchManager().getAllSwitchMap();
+
+        Set<PortInfoData> portsInfoData = allSwitchMap
+                .values()
+                .stream()
+                .flatMap(sw -> getPortInfo(sw, true).stream())
+                .collect(Collectors.toSet());
+
+        context.getKafkaProducer().postMessage(OUTPUT_DISCO_TOPIC,
+                buildInfoMessage(new SwitchPortsData(portsInfoData, command.getRequester()),
+                        message.getCorrelationId()));
+    }
+
+    private Set<PortInfoData> getPortInfo(IOFSwitch sw, boolean allPorts) {
+        Collection<OFPortDesc> ports;
+        if (allPorts) {
+            ports = sw.getPorts();
+        } else {
+            ports = sw.getEnabledPorts();
+        }
+
+        return ports.stream().map(port -> buildPortInfoData(sw, port)).collect(Collectors.toSet());
+    }
+
+    private PortInfoData buildPortInfoData(IOFSwitch sw, OFPortDesc port) {
+        return new PortInfoData(sw.getId().toString(),
+                port.getPortNo().getPortNumber(),
+                null,
+                port.getState().equals(OFPortState.LINK_DOWN) ? PortChangeType.DOWN : PortChangeType.UP);
+    }
+
+    private InfoMessage buildInfoMessage(InfoData data, String correlationId) {
+        return new InfoMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
     }
 
     private void parseRecord(ConsumerRecord<String, String> record) {
