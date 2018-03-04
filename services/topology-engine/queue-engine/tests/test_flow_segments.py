@@ -64,7 +64,7 @@ print('Hello World')
 print("TEST #1 & #2 - create flow, get segments, spot check some of the values.")
 flow_utils.store_flow(flow1)
 
-result = flow_utils.fetch_flow_segments(flow1)
+result = flow_utils.fetch_flow_segments(flow1['flowid'], flow1['cookie'])
 print("Validate #1 - Length of segments should be 2: %d" % len(result))
 for i,val in enumerate(result):
     print("Validate #3.* - seq_id should be %d: is: %d" % (flow1['flowpath']['path'][i*2]['seq_id'], val['seq_id']))
@@ -80,7 +80,7 @@ for i,isl in enumerate(messageclasses.MessageItem.fetch_isls()):
 print("TEST #4 - remove flow, validate bandwidth.")
 flow_utils.remove_flow(flow1)
 
-result = flow_utils.fetch_flow_segments(flow1)
+result = flow_utils.fetch_flow_segments(flow1['flowid'], flow1['cookie'])
 print("Validate #4.1 - should have no flow segments: %s " % result)
 
 for i,isl in enumerate(messageclasses.MessageItem.fetch_isls()):
