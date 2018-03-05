@@ -18,11 +18,10 @@ package org.openkilda.floodlight.switchmanager.web;
 import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 import static org.openkilda.messaging.Utils.MAPPER;
 
+import com.google.common.collect.ImmutableList;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageError;
-
-import org.apache.commons.httpclient.HttpStatus;
 import org.projectfloodlight.openflow.protocol.OFActionType;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
@@ -39,6 +38,7 @@ import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxm;
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.OFValueType;
 import org.restlet.resource.Get;
 import org.restlet.resource.ServerResource;
 import org.slf4j.Logger;
@@ -47,14 +47,25 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 
 public class FlowsResource extends ServerResource {
-    private static final Logger logger = LoggerFactory.getLogger(FlowsResource.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(FlowsResource.class);
+    //should be extended once we find match field that should be shown in the response
+    private static final List<MatchField<? extends OFValueType>> KNOWN_MATCHES = ImmutableList.of(
+            MatchField.ETH_SRC, MatchField.ETH_DST, MatchField.IN_PORT, MatchField.VLAN_VID,
+            MatchField.IP_PROTO
+    );
 
     private Map<String, Object> buildFlowMatch(final Match match) {
-        Map<String, Object> data = new HashMap<>();
-        for (MatchField field : match.getMatchFields()) {
-            data.put(field.getName(), field.getPrerequisites());
+        final Map<String, Object> data = new HashMap<>();
+        //There is only one way to receive match by type
+        for (MatchField<? extends OFValueType> field : KNOWN_MATCHES) {
+            OFValueType value = match.get(field);
+            if (Objects.nonNull(value)) {
+                data.put(field.getName(), value.toString());
+            }
         }
         return data;
     }
@@ -73,13 +84,15 @@ public class FlowsResource extends ServerResource {
                                 iData.put(actionType.toString(), ((OFActionMeter) action).getMeterId());
                                 break;
                             case OUTPUT:
-                                iData.put(actionType.toString(), ((OFActionOutput) action).getPort());
+                                Optional.ofNullable(((OFActionOutput) action).getPort())
+                                        .ifPresent(port -> iData.put(actionType.toString(), port.toString()));
                                 break;
                             case POP_VLAN:
                                 iData.put(actionType.toString(), null);
                                 break;
                             case PUSH_VLAN:
-                                iData.put(actionType.toString(), ((OFActionPushVlan) action).getEthertype());
+                                Optional.ofNullable(((OFActionPushVlan) action).getEthertype())
+                                        .ifPresent(ethType -> iData.put(actionType.toString(), ethType.toString()));
                                 break;
                             case SET_FIELD:
                                 OFOxm<?> setFieldAction = ((OFActionSetField) action).getField();
@@ -128,13 +141,13 @@ public class FlowsResource extends ServerResource {
     public Map<String, Object> getFlows() {
         Map<String, Object> response = new HashMap<>();
         String switchId = (String) this.getRequestAttributes().get("switch_id");
-        logger.debug("Get flows for switch: {}", switchId);
+        LOGGER.debug("Get flows for switch: {}", switchId);
         ISwitchManager switchManager = (ISwitchManager) getContext().getAttributes()
                 .get(ISwitchManager.class.getCanonicalName());
 
         try {
             OFFlowStatsReply replay = switchManager.dumpFlowTable(DatapathId.of(switchId));
-            logger.debug("OF_STATS: {}", replay);
+            LOGGER.debug("OF_STATS: {}", replay);
 
             if (replay != null) {
                 for (OFFlowStatsEntry entry : replay.getEntries()) {
@@ -145,7 +158,7 @@ public class FlowsResource extends ServerResource {
             }
         } catch (IllegalArgumentException exception) {
             String messageString = "No such switch";
-            logger.error("{}: {}", messageString, switchId, exception);
+            LOGGER.error("{}: {}", messageString, switchId, exception);
             MessageError responseMessage = new MessageError(DEFAULT_CORRELATION_ID, System.currentTimeMillis(),
                     ErrorType.PARAMETERS_INVALID.toString(), messageString, exception.getMessage());
             response.putAll(MAPPER.convertValue(responseMessage, Map.class));
