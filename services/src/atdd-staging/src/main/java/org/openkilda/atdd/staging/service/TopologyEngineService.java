@@ -22,6 +22,7 @@ import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.topo.ITopology;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 public interface TopologyEngineService {
 
@@ -30,6 +31,12 @@ public interface TopologyEngineService {
     Integer getLinkBandwidth(String srcSwitch, String srcPort);
 
     List<SwitchInfoData> getAllSwitches();
+
+    default List<SwitchInfoData> getActiveSwitches() {
+        return getAllSwitches().stream()
+                .filter(sw -> sw.getState().isActive())
+                .collect(Collectors.toList());
+    }
 
     List<Flow> getAllFlows();
 
