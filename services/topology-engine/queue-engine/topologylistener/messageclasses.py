@@ -496,6 +496,7 @@ class MessageItem(object):
                     operation, timestamp, correlation_id, payload)
 
         if operation == "CREATE":
+            # TODO: leverage transaction for creating both flows
             self.create_flow(flow_id, forward, correlation_id)
             self.create_flow(flow_id, reverse, correlation_id)
 

@@ -60,6 +60,12 @@ def get_one_switch_rules(src_switch, src_port, src_vlan, dst_port, dst_vlan,
 def get_rules(src_switch, src_port, src_vlan, dst_switch, dst_port, dst_vlan,
               bandwidth, transit_vlan, flowid, cookie, flowpath, meter_id,
               output_action, **k):
+
+    # TODO: Rule creation should migrate closer to path creation .. to do as part of TE / Storm refactor
+    # e.g. assuming a refactor of TE into Storm, and possibly more directly attached to the right storm topology
+    #       vs a separate topology, then this logic should be closer to path creation
+    # TODO: We should leverage the sequence number to ensure we install / remove flows in the right order
+    #       e.g. for install, go from the end to beginning; for remove, go in opposite direction.
     nodes = flowpath.get("path")
     if not nodes:
         return []
