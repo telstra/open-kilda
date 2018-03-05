@@ -17,26 +17,31 @@ package org.openkilda.atdd.staging.model.floodlight;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import lombok.Builder;
 import lombok.Data;
+import lombok.Value;
 
 import java.io.Serializable;
 
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@Data
+@Value
+@Builder
 public class SwitchEntry implements Serializable {
 
-    @JsonProperty("inetAddress")
     private String address;
-
-    @JsonProperty("connectedSince")
     private String connectedSince;
-
-    @JsonProperty("openFlowVersion")
     private String oFVersion;
-
-    @JsonProperty("switchDPID")
     private String switchId;
 
+    public SwitchEntry(
+            @JsonProperty("inetAddress") String address, @JsonProperty("connectedSince") String connectedSince,
+            @JsonProperty("openFlowVersion") String oFVersion, @JsonProperty("switchDPID") String switchId) {
+        this.address = address;
+        this.connectedSince = connectedSince;
+        this.oFVersion = oFVersion;
+        this.switchId = switchId;
+    }
 }

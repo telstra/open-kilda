@@ -18,19 +18,24 @@ package org.openkilda.atdd.staging.model.floodlight;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import lombok.Data;
+import lombok.Builder;
+import lombok.Value;
 
 import java.io.Serializable;
 
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@Data
+@Value
+@Builder
 public class FlowInstructions implements Serializable {
 
-    @JsonProperty("APPLY_ACTIONS")
     private FlowApplyActions applyActions;
-
-    @JsonProperty("none")
     private String none;
 
+    public FlowInstructions(
+            @JsonProperty("APPLY_ACTIONS") FlowApplyActions applyActions,
+            @JsonProperty("none") String none) {
+        this.applyActions = applyActions;
+        this.none = none;
+    }
 }

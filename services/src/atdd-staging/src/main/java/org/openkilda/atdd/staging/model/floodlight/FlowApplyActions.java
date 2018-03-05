@@ -15,22 +15,37 @@
 
 package org.openkilda.atdd.staging.model.floodlight;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import lombok.Data;
+import lombok.Builder;
+import lombok.Value;
 
 import java.io.Serializable;
 
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@Data
+@Value
+@Builder
 public class FlowApplyActions implements Serializable {
 
-    @JsonProperty("OUTPUT")
-    private FlowInstructionOutput flowOutput;
-
-    @JsonProperty("SET_FIELD")
+    private String flowOutput;
     private String field;
+    private String pushVlan;
+    private String popVlan;
+    private String meter;
+
+    @JsonCreator
+    public FlowApplyActions(
+            @JsonProperty("OUTPUT") String flowOutput, @JsonProperty("SET_FIELD") String field,
+            @JsonProperty("PUSH_VLAN") String pushVlan, @JsonProperty("POP_VLAN") String popVlan,
+            @JsonProperty("METER") String meter) {
+        this.flowOutput = flowOutput;
+        this.field = field;
+        this.pushVlan = pushVlan;
+        this.popVlan = popVlan;
+        this.meter = meter;
+    }
 
 }

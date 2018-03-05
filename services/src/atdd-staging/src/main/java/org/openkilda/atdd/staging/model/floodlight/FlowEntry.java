@@ -18,49 +18,48 @@ package org.openkilda.atdd.staging.model.floodlight;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import lombok.Data;
+import lombok.Builder;
+import lombok.Value;
 
 import java.io.Serializable;
 
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@Data
+@Value
+@Builder
 public class FlowEntry implements Serializable {
 
-    @JsonProperty("cookie")
     private String cookie;
-
-    @JsonProperty("duration-sec")
     private String durationSeconds;
-
-    @JsonProperty("duration-nsec")
     private String durationNanoSeconds;
-
-    @JsonProperty("table-id")
     private long tableId;
-
-    @JsonProperty("packet-count")
     private long packetCount;
-
-    @JsonProperty("version")
     private String version;
-
-    @JsonProperty("priority")
     private int priority;
-
-    @JsonProperty("idle-timeout")
     private long idleTimeout;
-
-    @JsonProperty("hard-timeout")
     private long hardTimeout;
-
-    @JsonProperty("byte-count")
     private long byteCount;
-
-    @JsonProperty("match")
     private FlowMatchField match;
-
-    @JsonProperty("instructions")
     private FlowInstructions instructions;
 
+    public FlowEntry(
+            @JsonProperty("cookie") String cookie, @JsonProperty("duration-sec") String durationSeconds,
+            @JsonProperty("duration-nsec") String durationNanoSeconds, @JsonProperty("table-id") long tableId,
+            @JsonProperty("packet-count") long packetCount, @JsonProperty("version") String version,
+            @JsonProperty("priority") int priority, @JsonProperty("idle-timeout") long idleTimeout,
+            @JsonProperty("hard-timeout") long hardTimeout, @JsonProperty("byte-count") long byteCount,
+            @JsonProperty("match") FlowMatchField match, @JsonProperty("instructions") FlowInstructions instructions) {
+        this.cookie = cookie;
+        this.durationSeconds = durationSeconds;
+        this.durationNanoSeconds = durationNanoSeconds;
+        this.tableId = tableId;
+        this.packetCount = packetCount;
+        this.version = version;
+        this.priority = priority;
+        this.idleTimeout = idleTimeout;
+        this.hardTimeout = hardTimeout;
+        this.byteCount = byteCount;
+        this.match = match;
+        this.instructions = instructions;
+    }
 }

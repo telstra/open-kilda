@@ -17,27 +17,52 @@ package org.openkilda.atdd.staging.model.floodlight;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import lombok.Builder;
+import lombok.Value;
 
 import java.io.Serializable;
 
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@Value
+@Builder
+@JsonPOJOBuilder
 public class FlowMatchField implements Serializable {
 
-    //@JsonProperty("eth_dst")
+    @JsonProperty("eth_dst")
     private String ethDst;
 
-    //@JsonProperty("eth_type")
+    @JsonProperty("eth_type")
     private String ethType;
 
-    //@JsonProperty("ip_proto")
+    @JsonProperty("ip_proto")
     private String ipProto;
 
-    //@JsonProperty("udp_src")
+    @JsonProperty("udp_src")
     private String udpSrc;
 
-    //@JsonProperty("udp_dst")
+    @JsonProperty("udp_dst")
     private String udpDst;
 
+    @JsonProperty("in_port")
+    private String inPort;
+
+    @JsonProperty("vlan_vid")
+    private String vlanVid;
+
+    public FlowMatchField(
+            @JsonProperty("eth_dst") String ethDst, @JsonProperty("eth_type") String ethType,
+            @JsonProperty("ip_proto") String ipProto, @JsonProperty("udp_src") String udpSrc,
+            @JsonProperty("udp_dst") String udpDst, @JsonProperty("in_port") String inPort,
+            @JsonProperty("vlan_vid") String vlanVid) {
+        this.ethDst = ethDst;
+        this.ethType = ethType;
+        this.ipProto = ipProto;
+        this.udpSrc = udpSrc;
+        this.udpDst = udpDst;
+        this.inPort = inPort;
+        this.vlanVid = vlanVid;
+    }
 }
