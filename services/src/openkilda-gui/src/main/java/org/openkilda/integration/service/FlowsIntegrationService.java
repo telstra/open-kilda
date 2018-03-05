@@ -1,12 +1,5 @@
 package org.openkilda.integration.service;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpMethod;
-import org.springframework.stereotype.Service;
-
 import java.util.List;
 
 import org.apache.http.HttpResponse;
@@ -18,13 +11,18 @@ import org.openkilda.integration.exception.IntegrationException;
 import org.openkilda.integration.exception.InvalidResponseException;
 import org.openkilda.integration.model.Flow;
 import org.openkilda.integration.model.FlowStatus;
-import org.openkilda.integration.model.response.PathLinkResponse;
+import org.openkilda.integration.model.response.FlowPayload;
 import org.openkilda.model.FlowInfo;
 import org.openkilda.model.FlowPath;
 import org.openkilda.service.ApplicationService;
 import org.openkilda.utility.ApplicationProperties;
 import org.openkilda.utility.CollectionUtil;
 import org.openkilda.utility.IoUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpMethod;
+import org.springframework.stereotype.Service;
 
 /**
  * The Class FlowsIntegrationService.
@@ -107,11 +105,10 @@ public class FlowsIntegrationService {
     public FlowPath getFlowPath(final String flowId) {
         try {
             HttpResponse response = restClientManager
-                    .invoke(applicationProperties.getTopologyFlows(), HttpMethod.GET, "", "", "");
+                    .invoke(applicationProperties.getTopologyFlows()+"/"+flowId, HttpMethod.GET, "", "", "");
             if (RestClientManager.isValidResponse(response)) {
-                PathLinkResponse[] pathLinkResponse =
-                        restClientManager.getResponse(response, PathLinkResponse[].class);
-                return FlowPathConverter.getFlowPath(flowId, pathLinkResponse);
+            	FlowPayload flowPayload = restClientManager.getResponse(response, FlowPayload.class);
+                return FlowPathConverter.getFlowPath(flowId, flowPayload);
             } else {
                 String content = IoUtil.toString(response.getEntity().getContent());
                 throw new InvalidResponseException(response.getStatusLine().getStatusCode(),

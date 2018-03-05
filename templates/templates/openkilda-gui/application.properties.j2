@@ -16,26 +16,25 @@ spring.datasource.testOnBorrow: true
 spring.datasource.validationQuery: SELECT 1
 spring.mvc.throw-exception-if-no-handler-found=true
 
-#SWITCH URL
-switch.base.url={{ floodlight_endpoint }}:{{ floodlight_port }}/wm/core
-GET_SWITCH_PORTS=${switch.base.url}/switch/all/port-desc/json
-
-#LINK URL
-link.base.url={{ topology_engine_endpoint }}:{{ topology_engine_rest_port }}/api/v1
+#Floodlight Base URL
+floodlight.base.url={{ floodlight_endpoint }}:{{ floodlight_port }}/wm/core
+GET_SWITCH_PORTS=${floodlight.base.url}/switch/all/port-desc/json
+ 
+#Topology-Engine Base URL
+tpe.base.url={{ topology_engine_endpoint }}:{{ topology_engine_rest_port }}/api/v1
 #FLOW TOPOLOGY URL
-GET_TOPOLOGY_FLOWS=${link.base.url}/topology/flows
+GET_TOPOLOGY_FLOWS=${tpe.base.url}/topology/flows
 
-#FLOW URL
-flow.base.url={{ northbound_endpoint }}:{{ northbound_rest_port }}/api/v1
-GET_FLOW=${flow.base.url}/flows
+#Northbound Base URL
+nb.base.url={{ northbound_endpoint }}:{{ northbound_rest_port }}/api/v1
+GET_FLOW=${nb.base.url}/flows
 GET_FLOW_STATUS=${GET_FLOW}/status/
-
-#FLOW PATH URL
 GET_PATH_FLOW = ${GET_FLOW}/path
-GET_SWITCHES=${flow.base.url}/switches
-GET_LINKS=${flow.base.url}/links
+GET_SWITCHES=${nb.base.url}/switches
+GET_LINKS=${nb.base.url}/links
 
-#OPEN TSDB URL
+
+#OPEN TSDB Base URL
 opentsdb.base.url={{ opentsdb_hosts }}
 OPEN_TSDB_QUERY=${opentsdb.base.url}/api/query/
 

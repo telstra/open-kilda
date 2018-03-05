@@ -96,6 +96,7 @@ var min_zoom = 0.5;
 var max_zoom = 3;
 
 var scale = 1.0;
+var optArray = [];
 
 var mLinkNum ={};
 var linkedByIndex = {};
@@ -165,11 +166,14 @@ graph = {
 		if (links.length>0 && flows.length>0) {
 			links = links.concat(flows);
 		}
-
+		
+		optArray = optArray.sort();
+		
 		// calculating nodes
 		var nodelength = nodes.length;
 		var linklength = links.length;
 		for (var i = 0; i < nodelength; i++) {
+			optArray.push(nodes[i].name);
 			for (var j = 0; j < linklength; j++) {
 				if(nodes[i].switch_id == links[j]["source_switch"] && nodes[i].switch_id == links[j]["target_switch"]){
 					links[j].source = i;
@@ -183,10 +187,23 @@ graph = {
 				}	
 			}
 		}
+		$(function () {
+		    $("#search").autocomplete({
+		        source: optArray,
+		        appendTo: "#ui-container",
+		        select: function (event, ui) {        
+		        	searchNode(ui.item.value);
+			    }
+		    });
+		});
+		
 		sortLinks();
 		setLinkIndexAndNum();
 		
-		links.forEach(function (d) {
+		links.forEach(function (d, index, object) {
+			if (typeof nodes[d.source] === 'undefined' || typeof nodes[d.target] === 'undefined') {
+	        	object.splice(index, 1);
+	        }
 			linkedByIndex[d.source + "," + d.target] = true;
 		});
 		
@@ -206,9 +223,12 @@ graph = {
 	    })
 	    .attr("class", "link")
 	    .on("mouseover", function(d, index) {
-	        var element = $("#link" + index)[0];
-	        element.setAttribute("class", "overlay");
-
+	        var element = $("#link" + index)[0];	        
+	      if (element.getAttribute("stroke") == "#00baff") {
+	    	  element.setAttribute("class", "isloverlay");
+	       } else {
+	    	   element.setAttribute("class", "overlay");
+	      }	      
 	    }).on("mouseout", function(d, index) {
 	        var element = $("#link" + index)[0];
 	        element.setAttribute("class", "link");
@@ -217,8 +237,13 @@ graph = {
 	        "click",
 	        function(d, index) {
 	            var element = $("#link" + index)[0];
-	            element.setAttribute("class", "overlay");
-
+	            
+	  	      if (element.getAttribute("stroke") == "#00baff") {
+		    	  element.setAttribute("class", "isloverlay");
+		       } else {
+		    	   element.setAttribute("class", "overlay");
+		       }
+	 
 	            if (element.getAttribute("stroke") == "#228B22" ||
 	                element.getAttribute("stroke") == "green") {
 	                showFlowDetails(d);
@@ -304,8 +329,14 @@ graph = {
 		    d3.select(".switchdetails_div_address").html("<span>" + d.address + "</span>");
 		    d3.select(".switchdetails_div_name").html("<span>" + d.switch_id + "</span>");
 		    d3.select(".switchdetails_div_desc").html("<span>" + d.description + "</span>");
-		
-		
+		    var bound = HorizontallyBound(document.getElementById("switchesgraph"), document.getElementById("topology-hover-txt"));
+		    if(bound){
+		    	$("#topology-hover-txt").removeClass("left");
+		    }else{
+		    	var left = rec.x - (300 + 100); // subtract width of tooltip box + circle radius
+		    	$('#topology-hover-txt').css('left', left + 'px');
+		    	$("#topology-hover-txt").addClass("left");
+		    }
 		}).on("mouseout", function(d, index) {
 		    $('#topology-hover-txt').css('display', 'none');
 		    if (flagHover == false) {
@@ -327,7 +358,7 @@ graph = {
 		
 		flow_count = svg.selectAll(".flow_count")
 	    	.data(links)
-	    	.enter().append("g");
+	    	.enter().append("g").attr("class","flow-circle");
 	
 		flow_count.append("circle")
 	    .attr("dy", ".35em")
@@ -660,4 +691,84 @@ var options = {
 }
 var panzoom = $("svg").svgPanZoom(options);
 localStorage.clear();
+var parentRect;
+var childRect;
+function HorizontallyBound(parentDiv, childDiv) {
+    parentRect = parentDiv.getBoundingClientRect();
+    childRect = childDiv.getBoundingClientRect();
+    return parentRect.left <= childRect.left && parentRect.right >= childRect.right;
+}
+
+function searchNode(value) {
+	//find the node
+	var selectedVal = typeof value !== 'undefined' ? value : document.getElementById('search').value;
+	
+    selectedVal = $.trim(selectedVal)
+    
+    if($.inArray(selectedVal, optArray) > -1){
+   
+	    var node = svg.selectAll(".node");
+	    if (selectedVal == "none") {
+	        //node.style("stroke", "#666").style("stroke-width", "1");
+	    } else {
+	        var selected = node.filter(function (d, i) {
+	            return d.name != selectedVal;
+	        });
+	        selected.style("opacity", "0");
+	        
+	        var link = svg.selectAll(".link")
+	        link.style("opacity", "0");
+	        
+	        var circle = svg.selectAll(".flow-circle")
+	        circle.style("opacity", "0");
+	        
+	        d3.selectAll(".node, .link, .flow-circle").transition()
+	            .duration(5000)
+	            .style("opacity", 1);
+	    }
+    }
+}
+
+
+$(document).ready(function() {
+	$('body').css('pointer-events', 'all');
+});
+
+$("#searchbox").click(function (e) {
+    $('#ui-container').toggleClass('active');
+    e.stopPropagation()
+    $('#search').val('');
+});
+	
+$(function() {
+	
+	$('[data-toggle="tooltip"]').tooltip();
+		
+	$("#search").enterKey(function () {
+		searchNode();
+	})
+	$('body').click(function(evt){    
+	    if(evt.target.id == "ui-container")
+	       return;
+	    //For descendants of menu_content being clicked, remove this check if you do not want to put constraint on descendants.
+	    if($(evt.target).closest('#ui-container').length)
+	       return; 
+	    if($('#search').is(":visible")){
+	    	$('#ui-container').toggleClass('active');
+	    }
+	   
+	});
+});
+$.fn.enterKey = function (fnc) {
+    return this.each(function () {
+        $(this).keypress(function (ev) {
+            var keycode = (ev.keyCode ? ev.keyCode : ev.which);
+            if (keycode == '13') {
+                fnc.call(this, ev);
+            }
+        })
+    })
+}
+
+
 /* ]]> */

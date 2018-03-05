@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.http.HttpResponse;
 import org.openkilda.constants.IConstants.Metrics;
@@ -106,16 +108,32 @@ public class StatsIntegrationService {
             paramDownSample = downsample + "-avg";
         } else if (!StringUtil.isNullOrEmpty(paramDownSample)) {
             paramDownSample = paramDownSample + "-avg";
-        }
-
+        } 
         Query query = new Query();
         query.setAggregator(OpenTsDB.AGGREGATOR);
         query.setRate(Boolean.valueOf(OpenTsDB.RATE));
-        query.setDownsample(paramDownSample);
+        if(validateDownSample(paramDownSample, query))
+        	query.setDownsample(paramDownSample);
         query.setMetric(metric);
         query.setFilters(filters);
         return query;
     }
+
+	private boolean validateDownSample(String paramDownSample, Query query) {
+		boolean isValidDownsample = false;
+		paramDownSample = paramDownSample.replaceFirst("^0+(?!$)", "");
+        if(Character.isDigit(paramDownSample.charAt(0))) {
+        	String[] downSampleArr = paramDownSample.split("-");
+        	if(downSampleArr != null && downSampleArr.length > 0){
+        		String dwnSample = downSampleArr[0];
+        		 Pattern pattern = Pattern.compile("[msh]");
+        	     Matcher matcher = pattern.matcher(dwnSample);
+        	     if (matcher.find())
+        	    	 isValidDownsample = true;
+        	}
+        }
+        return isValidDownsample;
+	}
 
     /**
      * Sets the date format.

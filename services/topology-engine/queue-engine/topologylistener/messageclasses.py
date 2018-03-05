@@ -399,26 +399,50 @@ class MessageItem(object):
         return True
 
     @staticmethod
-    def delete_flow(flow_id, flow, correlation_id):
-        try:
-            flow_path = flow['flowpath']['path']
-            logger.info('Flow path remove: %s', flow_path)
+    def delete_flow(flow_id, flow, correlation_id, parent_tx=None):
+        """
+        Simple algorithm - delete the stuff in the DB, send delete commands, send a response.
+        Complexity - each segment in the path may have a separate cookie, so that information needs to be gathered.
 
-            # TODO: Remove Flow should be moved down .. opposite order of create.
-            #       (I'd do it now, but I'm troubleshooting something else)
-            flow_utils.remove_flow(flow)
+        :param parent_tx: If there is a larger transaction to use, then use it.
+        :return: True, unless an exception is raised.
+        """
+        try:
+            # NB: previously (before 2018.03.03) flow_path was used. Now, flow segments are used.
+            # TODO: eliminate flowpath as part of delete_flow; rely on flow_id
+            # flow_path = flow['flowpath']['path']
+            flow_cookie = int(flow['cookie'])
+
+            #
+            # TODO: Add state to flow .. ie "DELETING", as part of refactoring project to add state
+            # eg:  flow_utils.update_state(flow, DELETING, parent_tx)
+
+            # need to buildup the switch/flow/cookie IDs of each segment
+            nodes = []
+            if flow['src_switch'] == flow['dst_switch']:
+                # This means the flow is a single switch. The code north of here doesn't currently handle
+                # this scenario (for flow creation, the flow_utils.build_rules does account for it, but
+                # there isn't a symmetrical call .. ie build_delete_rules.
+                #
+                # Given the above, there should be no nodes, Create a node now.
+                nodes.append({'switch_id': flow['src_switch'], 'flow_id': flow_id, 'cookie': flow_cookie})
+            else:
+                segments = flow_utils.fetch_flow_segments(flow_id, flow_cookie)
+                for segment in segments:
+                    # every segment should have a cookie field, based on merge_segment; but just in case..
+                    segment_cookie = segment.get('cookie', flow_cookie)
+                    nodes.append({'switch_id': segment['src_switch'], 'flow_id': flow_id, 'cookie': segment_cookie})
+
+            logger.info('Flow rules remove start: correlation_id=%s, flow_id=%s, path=%s', correlation_id, flow_id, nodes)
+
+            message_utils.send_delete_commands(nodes, correlation_id)
+
+            logger.info('Flow rules removed end : correlation_id=%s, flow_id=%s', correlation_id, flow_id)
+
+            flow_utils.remove_flow(flow, parent_tx)
 
             logger.info('Flow was removed: correlation_id=%s, flow_id=%s',
                         correlation_id, flow_id)
-
-            message_utils.send_delete_commands(
-                flow_path, flow_id, flow, correlation_id, int(flow['cookie']))
-
-            logger.info('Flow rules removed: correlation_id=%s, flow_id=%s',
-                        correlation_id, flow_id)
-
-            payload = {'payload': flow, 'clazz': MT_FLOW_RESPONSE}
-            message_utils.send_info_message(payload, correlation_id)
 
         except Exception as e:
             logger.exception('Can not delete flow: %s', e.message)
@@ -429,40 +453,21 @@ class MessageItem(object):
         return True
 
     @staticmethod
-    def update_flow(flow_id, flow, correlation_id):
+    def update_flow(flow_id, flow, correlation_id, tx):
         try:
             old_flow = flow_utils.get_old_flow(flow)
 
-            old_flow_path = old_flow['flowpath']['path']
-
-            logger.info('Flow path remove: %s', old_flow_path)
-
-            flow_utils.remove_flow(old_flow)
-
-            logger.info('Flow was removed: correlation_id=%s, flow_id=%s',
-                        correlation_id, flow_id)
-
+            #
+            # Start the transaction to govern the create/delete
+            #
+            logger.info('Flow rules were built: correlation_id=%s, flow_id=%s', correlation_id, flow_id)
             rules = flow_utils.build_rules(flow)
-
-            logger.info('Flow rules were built: correlation_id=%s, flow_id=%s',
-                        correlation_id, flow_id)
-
-            flow_utils.store_flow(flow)
-
-            logger.info('Flow was stored: correlation_id=%s, flow_id=%s',
-                        correlation_id, flow_id)
-
+            # TODO: add tx to store_flow
+            flow_utils.store_flow(flow, tx)
+            logger.info('Flow was stored: correlation_id=%s, flow_id=%s', correlation_id, flow_id)
             message_utils.send_install_commands(rules, correlation_id)
 
-            logger.info('Flow rules installed: correlation_id=%s, flow_id=%s',
-                        correlation_id, flow_id)
-
-            message_utils.send_delete_commands(
-                old_flow_path, old_flow['flowid'], old_flow,
-                correlation_id, int(old_flow['cookie']))
-
-            logger.info('Flow rules removed: correlation_id=%s, flow_id=%s',
-                        correlation_id, flow_id)
+            MessageItem.delete_flow(old_flow['flowid'], old_flow, correlation_id, tx)
 
             payload = {'payload': flow, 'clazz': MT_FLOW_RESPONSE}
             message_utils.send_info_message(payload, correlation_id)
@@ -493,12 +498,20 @@ class MessageItem(object):
         if operation == "CREATE":
             self.create_flow(flow_id, forward, correlation_id)
             self.create_flow(flow_id, reverse, correlation_id)
+
         elif operation == "DELETE":
-            self.delete_flow(flow_id, forward, correlation_id)
-            self.delete_flow(flow_id, reverse, correlation_id)
+            tx = graph.begin()
+            MessageItem.delete_flow(flow_id, forward, correlation_id, tx)
+            message_utils.send_info_message({'payload': forward, 'clazz': MT_FLOW_RESPONSE}, correlation_id)
+            MessageItem.delete_flow(flow_id, reverse, correlation_id, tx)
+            message_utils.send_info_message({'payload': reverse, 'clazz': MT_FLOW_RESPONSE}, correlation_id)
+            tx.commit()
+
         elif operation == "UPDATE":
-            self.update_flow(flow_id, forward, correlation_id)
-            self.update_flow(flow_id, reverse, correlation_id)
+            tx = graph.begin()
+            MessageItem.update_flow(flow_id, forward, correlation_id, tx)
+            MessageItem.update_flow(flow_id, reverse, correlation_id, tx)
+            tx.commit()
         else:
             logger.warn('Flow operation is not supported: '
                         'operation=%s, timestamp=%s, correlation_id=%s,',

@@ -19,7 +19,7 @@ public interface IConstantsTest {
 	static final String JAVASCRIPT_PATH = "/javascript/";
 	
 	/** The Constant FONTS_PATH. */
-	static final String FONTS_PATH = "/fonts/";
+	static final String FONTS_PATH = "/font/";
 	
 	/** The Constant FILE_PATH. */
 	static final String FILE_PATH = "src/test/resources/config";
