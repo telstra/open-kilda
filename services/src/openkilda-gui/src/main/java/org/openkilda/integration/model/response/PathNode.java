@@ -1,5 +1,6 @@
 package org.openkilda.integration.model.response;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -41,6 +42,19 @@ public class PathNode implements Serializable {
     @JsonProperty("out_port_no")
     private Integer outPortNo;
 
+    
+    @JsonCreator
+    public PathNode(){
+  	
+    }
+  
+	@JsonCreator
+	public PathNode(@JsonProperty("seq_id") Integer seqId, @JsonProperty("in_port_no") Integer inPortNo, @JsonProperty("out_port_no") Integer outPortNo,  @JsonProperty("switch_id") String switchId){
+	  setSeqId(seqId);
+	  setInPortNo(inPortNo);
+	  setOutPortNo(outPortNo);
+	  setSwitchId(switchId);
+	}
     /** The Constant serialVersionUID. */
     private final static long serialVersionUID = -4515006227265225751L;
 
@@ -151,5 +165,15 @@ public class PathNode implements Serializable {
     public void setOutPortNo(final Integer outPortNo) {
         this.outPortNo = outPortNo;
     }
+
+	@Override
+	public String toString() {
+		return "PathNode [portNo=" + portNo + ", segmentLatency="
+				+ segmentLatency + ", seqId=" + seqId + ", switchId="
+				+ switchId + ", inPortNo=" + inPortNo + ", outPortNo="
+				+ outPortNo + "]";
+	}
+    
+    
 
 }

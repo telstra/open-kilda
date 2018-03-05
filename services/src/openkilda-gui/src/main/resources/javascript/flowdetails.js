@@ -35,27 +35,18 @@ function showFlowData(obj) {
 	} else {
 		$(".flow_div_desc").html("-");
 	}
-	callFlowForwardPath(obj.flow_id)
-	callFlowReversePath(obj.flow_id)
+	callFlowPath(obj.flow_id);
 }
 
-function callFlowForwardPath(flow_id) {
+function callFlowPath(flow_id) {
 	
 	common.getData("/flows/path/" + flow_id,"GET").then(function(response) {
-		showForwardFlowPathData(response);
+		showFlowPathData(response);
 	})
-
 }
 
-function callFlowReversePath(flow_id) {
-	
-	common.getData("/flows/path/" + flow_id,"GET").then(function(response) {
-		showReverseFlowPathData(response);
-	})
+function showFlowPathData(response) {
 
-}
-
-function showForwardFlowPathData(response) {
 	var tmp_length = 0;
 	for(var t in response) {
 	    ++tmp_length;
@@ -64,6 +55,7 @@ function showForwardFlowPathData(response) {
 		
 		var path_html = '<div class="alert alert-danger text-center"><strong></strong> No Path Data Found. </div>'
 		$('#ForwardRow').append(path_html);
+		$('#ReversePath').append(path_html);
 		return false;
 	}
 	
@@ -74,6 +66,7 @@ function showForwardFlowPathData(response) {
 	    } else {
 	    	var path_html = '<div class="alert alert-danger text-center"><strong></strong> No Path Data Found. </div>'
 				$('#ForwardRow').append(path_html);
+     			$('#ReversePath').append(path_html);
 		    	return false;
     	}  
 	}
@@ -110,38 +103,11 @@ function showForwardFlowPathData(response) {
 				$('#ForwardRow').append(path_html);
 			}
 		}
-	}
-	
+	}	
 	$(".path:last-child .line:nth-child(6)").hide();
-}
-
-
-
-function showReverseFlowPathData(response) {
-
-	var tmp_length = 0;
-	for(var t in response) {
-	    ++tmp_length;
-	}
-	if(!tmp_length > 0){
+	
 		
-		var path_html = '<div class="alert alert-danger text-center"><strong></strong> No Path Data Found. </div>'
-		$('#ReversePath').append(path_html);
-		return false;
-	}
-	
-	var check_flowpath_exists = 0;
-	for(var t in response) {
-	    if (Object.keys(response.flowpath).length > 0) {
-	    	++check_flowpath_exists;
-	    } else {
-	    	var path_html = '<div class="alert alert-danger text-center"><strong></strong> No Path Data Found. </div>'
-				$('#ReversePath').append(path_html);
-		    	return false;
-    	}  
-	}
-	
-	if(response.flowpath.reversePath.length==0){
+	if(response.flowpath.reversePath.length==0) {
 		var path_html = '<div class="alert alert-danger text-center"><strong></strong> No Path Data Found. </div>'
 			$('#ReversePath').append(path_html);	
 	}else{
@@ -175,7 +141,6 @@ function showReverseFlowPathData(response) {
 		}
 	}
 	
-	$(".path:last-child .line:nth-child(6)").hide();
+	$(".path:last-child .line:nth-child(6)").hide();	
 }
-
 /* ]]> */

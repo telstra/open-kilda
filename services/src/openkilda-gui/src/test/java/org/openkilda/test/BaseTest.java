@@ -63,7 +63,7 @@ public class BaseTest {
                             IConstantsTest.CLASSPATH + IConstantsTest.JAVASCRIPT_PATH + FileName);
                     Assert.assertTrue(true);
                 }
-                if (url.contains("ttf") || url.contains("woff2")) {
+                if (url.contains("ttf") || url.contains("woff2") || url.contains("woff")) {
                     downloadFiles(url,
                             IConstantsTest.CLASSPATH + IConstantsTest.FONTS_PATH + FileName);
                     Assert.assertTrue(true);
