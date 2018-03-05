@@ -40,10 +40,7 @@ public class DiscoveryMechanismSteps implements En {
 
     @Then("^all provided switches should be discovered")
     public void checkDiscoveredSwitches() {
-        List<SwitchInfoData> dumpedSwitches = topologyEngineService.getAllSwitches();
-        List<SwitchInfoData> discoveredSwitches = dumpedSwitches.stream()
-                .filter(sw -> sw.getState().isActive())
-                .collect(Collectors.toList());
+        List<SwitchInfoData> discoveredSwitches = topologyEngineService.getActiveSwitches();
         assertFalse("No switches were discovered", CollectionUtils.isEmpty(discoveredSwitches));
 
         List<TopologyDefinition.Switch> expectedSwitches = topologyDefinition.getActiveSwitches();

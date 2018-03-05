@@ -81,7 +81,7 @@ public class DiscoveryMechanismTest {
                     new IslInfoData(0L, path, 0L, IslChangeType.DISCOVERED, 0L),
                     new IslInfoData(0L, reversedPath, 0L, IslChangeType.DISCOVERED, 0L)
             );
-            when(topologyEngineService.getAllSwitches()).thenReturn(discoveredSwitches);
+            when(topologyEngineService.getActiveSwitches()).thenReturn(discoveredSwitches);
             when(topologyEngineService.getAllLinks()).thenReturn(discoveredLinks);
 
             when(floodlightService.getSwitches()).thenReturn(buildFloodlightSwitches());
@@ -93,7 +93,7 @@ public class DiscoveryMechanismTest {
 
         @After
         public void verifyMocks() {
-            verify(topologyEngineService).getAllSwitches();
+            verify(topologyEngineService).getActiveSwitches();
             verify(topologyEngineService).getAllLinks();
             verify(topologyDefinition, times(3)).getActiveSwitches();
             verify(topologyDefinition).getIslsForActiveSwitches();
