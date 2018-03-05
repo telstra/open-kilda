@@ -5,6 +5,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import cucumber.api.Scenario;
+import cucumber.api.java.Before;
 import cucumber.api.java.en.Then;
 import cucumber.api.java8.En;
 import org.apache.commons.collections4.CollectionUtils;
@@ -18,16 +20,12 @@ import org.openkilda.atdd.staging.utils.DefaultFlowsChecker;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class DiscoveryMechanismSteps implements En {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(DiscoveryMechanismSteps.class);
 
     @Autowired
     private FloodlightService floodlightService;
@@ -37,6 +35,13 @@ public class DiscoveryMechanismSteps implements En {
 
     @Autowired
     private TopologyDefinition topologyDefinition;
+
+    private Scenario scenario;
+
+    @Before
+    public void before(Scenario scenario) {
+        this.scenario = scenario;
+    }
 
     @Then("^all provided switches should be discovered")
     public void checkDiscoveredSwitches() {
@@ -65,7 +70,7 @@ public class DiscoveryMechanismSteps implements En {
         List<TopologyDefinition.Isl> expectedLinks = topologyDefinition.getIslsForActiveSwitches();
 
         if (CollectionUtils.isEmpty(discoveredLinks) && expectedLinks.isEmpty()) {
-            LOGGER.info("There are no links discovered as expected");
+            scenario.write("There are no links discovered as expected");
             return;
         }
 
@@ -78,8 +83,8 @@ public class DiscoveryMechanismSteps implements En {
         //print out links that were not discovered
         if (!result.isEmpty()) {
             result.forEach(link ->
-                    LOGGER.error("Not found ISL between {} - {}",
-                            link.getSrcSwitch(), link.getDstSwitch()));
+                    scenario.write(String.format("Not found ISL between %s - %s",
+                            link.getSrcSwitch(), link.getDstSwitch())));
         }
         assertTrue(String.format("%s link were not discovered", result.size()), result.isEmpty());
 
@@ -98,9 +103,9 @@ public class DiscoveryMechanismSteps implements En {
                 .collect(Collectors.toList());
 
         if (!ignoredSwitches.isEmpty()) {
-            ignoredSwitches.forEach(sw -> {
-                LOGGER.error("Switch {} was found by floodlight, but is not provided in json file", sw.getSwitchId());
-            });
+            ignoredSwitches.forEach(sw ->
+                    scenario.write(String.format("Switch %s was found by floodlight, but is not provided in json file",
+                        sw.getSwitchId())));
         }
 
         assertTrue("Floodlight has detected unexpected switches", ignoredSwitches.isEmpty());
@@ -110,10 +115,14 @@ public class DiscoveryMechanismSteps implements En {
     public void checkDefaultRules() {
         List<SwitchEntry> switches = floodlightService.getSwitches();
 
-        switches.forEach(sw -> {
-            FlowEntriesMap flows = floodlightService.getFlows(sw.getSwitchId());
-            DefaultFlowsChecker.validateDefaultRules(sw, flows);
-        });
+        List<SwitchEntry> switchesWithInvalidFlows = switches.stream()
+                .filter(sw -> {
+                    FlowEntriesMap flows = floodlightService.getFlows(sw.getSwitchId());
+                    return !DefaultFlowsChecker.validateDefaultRules(sw, flows, scenario);
+                })
+                .collect(Collectors.toList());
+        assertTrue("There were found switches with incorrect default flows",
+                switchesWithInvalidFlows.isEmpty());
     }
 
     private boolean linkIsPresent(TopologyDefinition.Isl expectedLink, List<IslInfoData> discoveredLinks) {

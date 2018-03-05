@@ -15,8 +15,8 @@ import org.openkilda.atdd.staging.cucumber.CucumberWithSpringProfile;
 import org.openkilda.atdd.staging.model.floodlight.FlowApplyActions;
 import org.openkilda.atdd.staging.model.floodlight.FlowEntriesMap;
 import org.openkilda.atdd.staging.model.floodlight.FlowEntry;
-import org.openkilda.atdd.staging.model.floodlight.FlowInstructionOutput;
 import org.openkilda.atdd.staging.model.floodlight.FlowInstructions;
+import org.openkilda.atdd.staging.model.floodlight.FlowMatchField;
 import org.openkilda.atdd.staging.model.floodlight.SwitchEntry;
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition.Status;
@@ -53,8 +53,8 @@ public class DiscoveryMechanismTest {
         private TopologyDefinition topologyDefinition;
 
         private final List<SwitchInfoData> discoveredSwitches = ImmutableList.of(
-                new SwitchInfoData("00:00:00:00:00:00:00:01", SwitchState.ACTIVATED, EMPTY, EMPTY, EMPTY, EMPTY),
-                new SwitchInfoData("00:00:00:00:00:00:00:02", SwitchState.ACTIVATED, EMPTY, EMPTY, EMPTY, EMPTY)
+                new SwitchInfoData("00:00:00:00:00:01", SwitchState.ACTIVATED, EMPTY, EMPTY, EMPTY, EMPTY),
+                new SwitchInfoData("00:00:00:00:00:02", SwitchState.ACTIVATED, EMPTY, EMPTY, EMPTY, EMPTY)
         );
 
         private final List<PathNode> path = ImmutableList.of(
@@ -100,7 +100,7 @@ public class DiscoveryMechanismTest {
         }
 
         private TopologyDefinition.Switch buildSwitchDefinition(SwitchInfoData sw) {
-            String version = "00:00:00:00:00:00:00:01".equals(sw.getSwitchId()) ? "OF_12" : "OF_13";
+            String version = getOFVersionForSwitch(sw.getSwitchId());
             return new TopologyDefinition.Switch(sw.getSwitchId(), sw.getSwitchId(), version, Status.Active);
         }
 
@@ -121,14 +121,16 @@ public class DiscoveryMechanismTest {
 
         private List<SwitchEntry> buildFloodlightSwitches() {
             List<SwitchEntry> switches = new ArrayList<>(2);
-            SwitchEntry entry = new SwitchEntry();
-            entry.setSwitchId(discoveredSwitches.get(0).getSwitchId());
-            entry.setOFVersion("OF_12");
+            SwitchEntry entry = SwitchEntry.builder()
+                    .switchId(discoveredSwitches.get(0).getSwitchId())
+                    .oFVersion("OF_12")
+                    .build();
             switches.add(entry);
 
-            entry = new SwitchEntry();
-            entry.setSwitchId(discoveredSwitches.get(1).getSwitchId());
-            entry.setOFVersion("OF_13");
+            entry = SwitchEntry.builder()
+                    .switchId(discoveredSwitches.get(1).getSwitchId())
+                    .oFVersion("OF_13")
+                    .build();
             switches.add(entry);
 
             return switches;
@@ -136,53 +138,66 @@ public class DiscoveryMechanismTest {
 
         private FlowEntriesMap buildFlows(String switchId) {
             FlowEntriesMap flowMap = new FlowEntriesMap();
-            //define drop flow
-            FlowEntry dropFlow = new FlowEntry();
-            dropFlow.setCookie("flow-0x8000000000000001");
-            dropFlow.setPriority(1);
 
-            FlowInstructions dropFlowInstructions = new FlowInstructions();
-            dropFlowInstructions.setNone("drop");
-            dropFlow.setInstructions(dropFlowInstructions);
-            flowMap.put(dropFlow.getCookie(), dropFlow);
+            //broadcast verification flow (for all OF versions)
+            String flowOutput = "controller";
+            FlowApplyActions flowActions = FlowApplyActions.builder()
+                    .flowOutput(flowOutput)
+                    .field(switchId + "->eth_dst")
+                    .build();
 
-            //common flow definition (for all OF versions)
-            FlowEntry flowEntry = new FlowEntry();
-            flowEntry.setCookie("flow-0x8000000000000002");
-
-            FlowInstructions flowInstructions = new FlowInstructions();
-            FlowApplyActions flowActions = new FlowApplyActions();
-            FlowInstructionOutput flowInstructionOutput = new FlowInstructionOutput();
-            flowInstructionOutput.setName("controller");
-            flowInstructionOutput.setPortNumber(-3);
-            flowInstructionOutput.setShortPortNumber(-3);
-            flowInstructionOutput.setLength(4);
-            flowActions.setFlowOutput(flowInstructionOutput);
-            flowActions.setField(switchId + "->eth_dst");
-
-            flowInstructions.setApplyActions(flowActions);
-            flowEntry.setInstructions(flowInstructions);
+            FlowMatchField matchField = FlowMatchField.builder()
+                    .ethDst("08:ed:02:ef:ff:ff")
+                    .build();
+            FlowInstructions flowInstructions = FlowInstructions.builder()
+                    .applyActions(flowActions)
+                    .build();
+            FlowEntry flowEntry = FlowEntry.builder()
+                    .instructions(flowInstructions)
+                    .match(matchField)
+                    .cookie("flow-0x8000000000000002")
+                    .build();
             flowMap.put(flowEntry.getCookie(), flowEntry);
 
-            //flow for OF versions 13 and later
-            FlowEntry flowFor13Version = new FlowEntry();
-            flowFor13Version.setCookie("flow-0x8000000000000003");
+            if ("OF_13".equals(getOFVersionForSwitch(switchId))) {
+                //define drop flow
+                FlowInstructions dropFlowInstructions = FlowInstructions.builder()
+                        .none("drop").build();
+                FlowEntry dropFlow = FlowEntry.builder()
+                        .cookie("flow-0x8000000000000001")
+                        .priority(1)
+                        .instructions(dropFlowInstructions)
+                        .build();
+                flowMap.put(dropFlow.getCookie(), dropFlow);
 
-            FlowInstructions flowFor13Instructions = new FlowInstructions();
-            FlowApplyActions flowFor13Actions = new FlowApplyActions();
-            FlowInstructionOutput flowFor13InstructionOutput = new FlowInstructionOutput();
-            flowFor13InstructionOutput.setName("controller");
-            flowFor13InstructionOutput.setPortNumber(-3);
-            flowFor13InstructionOutput.setShortPortNumber(-3);
-            flowFor13InstructionOutput.setLength(4);
-            flowFor13Actions.setFlowOutput(flowFor13InstructionOutput);
-            flowFor13Actions.setField(switchId + "->eth_dst");
+                //non-broadcast flow for versions 13 and later
+                String flowFor13InstructionOutput = "controller";
+                FlowApplyActions flowFor13Actions = FlowApplyActions.builder()
+                        .flowOutput(flowFor13InstructionOutput)
+                        .field(switchId + "->eth_dst")
+                        .build();
+                FlowInstructions flowFor13Instructions = FlowInstructions.builder()
+                        .applyActions(flowFor13Actions)
+                        .build();
 
-            flowFor13Instructions.setApplyActions(flowFor13Actions);
-            flowFor13Version.setInstructions(flowFor13Instructions);
-            flowMap.put(flowFor13Version.getCookie(), flowFor13Version);
+                FlowMatchField matchField13Version = FlowMatchField.builder()
+                        .ethDst(switchId)
+                        .build();
+                FlowEntry flowFor13Version = FlowEntry.builder()
+                        .cookie("flow-0x8000000000000003")
+                        .instructions(flowFor13Instructions)
+                        .match(matchField13Version)
+                        .build();
+
+                flowMap.put(flowFor13Version.getCookie(), flowFor13Version);
+
+            }
 
             return flowMap;
+        }
+
+        private String getOFVersionForSwitch(String switchId) {
+            return "00:00:00:00:00:01".equals(switchId) ? "OF_12" : "OF_13";
         }
     }
 
