@@ -1227,7 +1227,7 @@ table#flowTable.dataTable .flowDataRow.even {
 
 table#flowTable.dataTable thead th {
 	background-position: right 10px;
-    padding: 10px 32px 10px 18px;
+    padding: 10px 20px 10px 18px;
 	position: relative;
 	text-overflow: ellipsis;
     overflow: hidden;
@@ -1266,10 +1266,11 @@ table#flowTable.dataTable thead th span {
 	display: inline-block;
     width: calc(100% - 20px);
 	line-height: normal;
+	vertical-align: middle;
 }
 
 table#flowTable.dataTable thead th i {
-	float: right;
+	display: inline-block;
 }
 
 table#flowTable.dataTable .divTableCell {
@@ -1433,8 +1434,8 @@ table#flowTable.dataTable .port_data_load td.divTableCell {
 td.highlight {
         font-weight: bold;
         color: blue;
-    }
-    
+}
+
 /*  #port-details-div {
 	font-size: 13px;
 	border: 1px solid #ccc;
@@ -1442,6 +1443,9 @@ td.highlight {
 	margin: 0 0 20px;
 	position: relative;
 } */
+
+
+    
 .load-text {
 	position: absolute;
     left: calc(50% - 152px);
@@ -1569,6 +1573,7 @@ td.highlight {
 	float: left;
 }
     
+
 @-moz-keyframes spin {
     from { -moz-transform: rotate(0deg); }
     to { -moz-transform: rotate(360deg); }
@@ -1583,4 +1588,3 @@ td.highlight {
 }
 
 @keyframes blink {50% { color: transparent }}
-}

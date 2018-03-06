@@ -13,6 +13,8 @@ if(key.includes("isl")) {
 	var targetSwitch = obj.target_switch;
 	var targetPort = obj.dst_port;
 }
+var graphIntervalISL;
+var graphIntervalISLName;
 
 var common = {	
 		getData:function(apiUrl,requestType){	
@@ -109,15 +111,19 @@ var graphAutoReload = {
 				$("#autoreloadISL").toggle();
 				var checkbox =  $("#check").prop("checked");
 				if(checkbox == false){
+										
 					$("#autoreloadISL").val('');
 					if($("#check1").prop("checked") || $("#check2").prop("checked")) {
-						clearInterval(callIslSwitchIntervalData);
 						clearInterval(graphInterval);
+						clearInterval(graphIntervalISLName);		
+						
+						clearInterval(graphIntervalISL);
+						
+						
 					} else {
 						clearInterval(callIntervalData);
 						clearInterval(graphInterval);
 					}
-					clearInterval(graphInterval);
 					$("#autoreloadISL").removeClass("has-error")	
 				    $(".error-message").html("");
 					$('#wait1').hide();	
@@ -768,12 +774,11 @@ function getISLGraphData(switchId,portId,domId) {
 		return;
 	}
 	
-	var autoreloadISL = $("#autoreloadISL").val(); //yaha
+	var autoreloadISL = $("#autoreloadISL").val();
 	var numbers = /^[-+]?[0-9]+$/;  
 	var checkNo = $("#autoreloadISL").val().match(numbers);
 	var checkbox =  $("#check").prop("checked");
-	var test = true;	
-	
+	var test = true;
     autoVal.reloadValidation(function(valid){
 	  
 	  if(!valid) {
@@ -817,41 +822,34 @@ if(test) {
 		
 })
 	
-			try {
-				clearInterval(graphIntervalISL);
-			} catch(err) {
-
-			}
 			
-			if(autoreloadISL){  //yaha
-					
+			if(autoreloadISL){  
 				
-/*				graphIntervalISL = setInterval(function(){
-					callIslSwitchIntervalData(switchId,portId) 
-				}, 1000*autoreloadISL);   //yaha
-*/				
-				if($("#check1").prop("checked") && !$("#check2").prop("checked")) {
-					
+				if($("#check1").prop("checked") && !$("#check2").prop("checked")) {	
+					clearInterval(graphIntervalISL);
 					graphIntervalISL = setInterval(function(){
 						callIslSwitchIntervalData(srcSwitch,srcPort) 
 					}, 1000*autoreloadISL);
 				}
 				
 				if(!$("#check1").prop("checked") && $("#check2").prop("checked")) {
-					
+					clearInterval(graphIntervalISL);
 					graphIntervalISL = setInterval(function(){
 						callIslSwitchIntervalData(targetSwitch,targetPort) 
 					}, 1000*autoreloadISL);
 				}
 				
 				if($("#check1").prop("checked") && $("#check2").prop("checked")) {
-					
+
+					clearInterval(graphIntervalISL);
 					graphIntervalISL = setInterval(function(){
 						callIslSwitchIntervalData(srcSwitch,srcPort) 
 					}, 1000*autoreloadISL);
-/*					graphIntervalISL = setInterval(function(){
+					
+					clearInterval(graphIntervalISLName);
+					graphIntervalISLName = setInterval(function(){
 						callIslSwitchIntervalData(targetSwitch,targetPort) 
-					}, 1000*autoreloadISL);*/
+					}, 1000*autoreloadISL);
 				}
 		   }
 	}	
@@ -878,7 +876,7 @@ $(function() {
 });
 
 
-function callIslSwitchIntervalData(switchId,portId){   //callIntervalData
+function callIslSwitchIntervalData(switchId,portId){ 
 	
 	var currentDate = new Date();
 	var startDate = new Date($("#datetimepicker7ISL").val());
@@ -889,7 +887,6 @@ function callIslSwitchIntervalData(switchId,portId){   //callIntervalData
 	
 	
 	var url = "/stats/switchid/"+switchId+"/port/"+portId+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric;
-	
 	loadGraph.loadGraphData(url,"GET",selMetric).then(function(response) {
 		
 	if($("#check1").prop("checked") && !$("#check2").prop("checked")){
