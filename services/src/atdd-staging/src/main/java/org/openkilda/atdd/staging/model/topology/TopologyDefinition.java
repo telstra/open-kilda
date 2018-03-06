@@ -16,17 +16,20 @@
 package org.openkilda.atdd.staging.model.topology;
 
 import static java.util.Collections.unmodifiableList;
+import static java.util.stream.Collectors.toList;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
+import com.google.common.collect.ImmutableRangeSet;
+import com.google.common.collect.Range;
+import com.google.common.collect.RangeSet;
 import lombok.NonNull;
 import lombok.Value;
 import lombok.experimental.NonFinal;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Defines a topology with switches, links and trafgens.
@@ -58,13 +61,13 @@ public class TopologyDefinition {
     public List<Switch> getActiveSwitches() {
         return switches.stream()
                 .filter(Switch::isActive)
-                .collect(Collectors.toList());
+                .collect(toList());
     }
 
     public List<Isl> getIslsForActiveSwitches() {
         return isls.stream()
                 .filter(isl -> isl.getSrcSwitch().isActive() && isl.getDstSwitch().isActive())
-                .collect(Collectors.toList());
+                .collect(toList());
     }
 
     @Value
@@ -79,18 +82,63 @@ public class TopologyDefinition {
         private String ofVersion;
         @NonNull
         private Status status;
+        @NonNull
+        private List<OutPort> outPorts;
 
         @JsonCreator
         public static Switch factory(
                 @JsonProperty("name") String name,
                 @JsonProperty("dp_id") String dpId,
                 @JsonProperty("of_version") String ofVersion,
-                @JsonProperty("status") Status status) {
-            return new Switch(name, dpId, ofVersion, status);
+                @JsonProperty("status") Status status,
+                @JsonProperty("out_ports") List<OutPort> outPorts) {
+            return new Switch(name, dpId, ofVersion, status, outPorts);
         }
 
         public boolean isActive() {
             return status == Status.Active;
+        }
+    }
+
+    @Value
+    @NonFinal
+    public static class OutPort {
+
+        private int port;
+        @NonNull
+        private RangeSet<Integer> vlanRange;
+
+        @JsonCreator
+        public static OutPort factory(
+                @JsonProperty("port") int port,
+                @JsonProperty("vlan_range") String vlanRange) {
+
+            return new OutPort(port, parseVlanRange(vlanRange));
+        }
+
+        private static RangeSet<Integer> parseVlanRange(String vlanRangeAsStr) {
+            String[] splitRanges = vlanRangeAsStr.split(",");
+            if (splitRanges.length == 0) {
+                throw new IllegalArgumentException("Vlan range must be non-empty.");
+            }
+
+            ImmutableRangeSet.Builder<Integer> resultVlanRange = ImmutableRangeSet.builder();
+            for (String range : splitRanges) {
+                String[] boundaries = range.split("\\.\\.");
+                if (boundaries.length == 0 || boundaries.length > 2) {
+                    throw new IllegalArgumentException("Range " + range + " is not valid.");
+                }
+
+                int lowerBound = Integer.parseInt(boundaries[0].trim());
+                if (boundaries.length == 2) {
+                    int upperBound = Integer.parseInt(boundaries[1].trim());
+                    resultVlanRange.add(Range.closed(lowerBound, upperBound));
+                } else {
+                    resultVlanRange.add(Range.closed(lowerBound, lowerBound));
+                }
+            }
+
+            return resultVlanRange.build();
         }
     }
 

@@ -1,5 +1,6 @@
 package org.openkilda.atdd.staging.tests.discovery_mechanism;
 
+import static java.util.Collections.emptyList;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.times;
@@ -101,7 +102,8 @@ public class DiscoveryMechanismTest {
 
         private TopologyDefinition.Switch buildSwitchDefinition(SwitchInfoData sw) {
             String version = getOFVersionForSwitch(sw.getSwitchId());
-            return new TopologyDefinition.Switch(sw.getSwitchId(), sw.getSwitchId(), version, Status.Active);
+            return new TopologyDefinition.Switch(sw.getSwitchId(), sw.getSwitchId(), version,
+                    Status.Active, emptyList());
         }
 
         private List<TopologyDefinition.Isl> buildIslDefinitions(List<TopologyDefinition.Switch> switches) {

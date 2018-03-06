@@ -1,8 +1,9 @@
-package org.openkilda.atdd.staging.tests.flow_crud;
+package org.openkilda.atdd.staging.tests.flow_crud.all_switches;
 
+import static java.util.Collections.emptyList;
+import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.MapperFeature;
@@ -22,15 +23,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 
 @RunWith(CucumberWithSpringProfile.class)
 @CucumberOptions(features = {"classpath:features/flow_crud.feature"},
-        glue = {"org.openkilda.atdd.staging.tests.flow_crud", "org.openkilda.atdd.staging.steps"})
+        glue = {"org.openkilda.atdd.staging.tests.flow_crud.all_switches", "org.openkilda.atdd.staging.steps"},
+        name = {"Create, read, update and delete flows across the entire set of switches"})
 @ActiveProfiles("mock")
-public class FlowCrudTest {
+public class FlowCrudOverAllSwitchesTest {
 
     public static class DiscoveryMechanismHook {
 
@@ -56,6 +58,8 @@ public class FlowCrudTest {
                     .map(sw -> new SwitchInfoData(sw.getDpId(), SwitchState.ACTIVATED, "", "", "", ""))
                     .collect(toList());
             when(topologyEngineService.getActiveSwitches()).thenReturn(discoveredSwitches);
+
+            when(topologyEngineService.getPaths(any(), any())).thenReturn(singletonList(emptyList()));
 
         }
 

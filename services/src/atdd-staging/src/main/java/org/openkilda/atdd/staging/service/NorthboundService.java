@@ -16,6 +16,7 @@
 package org.openkilda.atdd.staging.service;
 
 import org.openkilda.messaging.model.HealthCheck;
+import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 
@@ -35,7 +36,7 @@ public interface NorthboundService {
 
     FlowPathPayload getFlowPath(String flowId);
 
-    String getFlowStatus(String flowId);
+    FlowIdStatusPayload getFlowStatus(String flowId);
 
     List<FlowPayload> getAllFlows();
 }

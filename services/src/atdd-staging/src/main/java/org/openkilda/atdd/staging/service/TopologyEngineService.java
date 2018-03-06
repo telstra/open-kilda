@@ -47,4 +47,7 @@ public interface TopologyEngineService {
     ITopology getTopology();
 
     String clearTopology();
+
+    List<List<SwitchInfoData>> getPaths(String srcSwitch, String srcPort);
+
 }

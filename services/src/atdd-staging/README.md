@@ -13,16 +13,29 @@ switches:
       dp_id: 00:00:00:00:00:01
       of_version: OF_13
       status: active
+      out_ports:
+        - port: 20
+          vlan_range: 1..10, 22, 35..40
+        - port: 21
+          vlan_range: 1..10
 
     - name: sw2
       dp_id: 00:00:00:00:00:02
       of_version: OF_13
       status: skip
+      out_ports:
+        - port: 20
+          vlan_range: 1..5, 30..40
 
     - name: sw3
       dp_id: 00:00:00:00:00:03
       of_version: OF_13
       status: active
+      out_ports:
+        - port: 20
+          vlan_range: 1..10, 22, 35..40
+        - port: 22
+          vlan_range: 1..10
 
 isls:
     - src_switch: sw1
@@ -97,3 +110,12 @@ Generated reports are stored in:
 * ```target/surefire-reports``` - JUnit reports
 * ```target/site/jacoco``` - JaCoCo / coverage reports, which can be opened in any browser (```target/site/jacoco/index.html```).
 
+## Importing the project into IDE
+
+Lombok
+
+We use this tool to remove redundant boilerplate code you often find in data classes such as getters, setters, all args constructors, etc.
+
+
+To use, go to Android Studio -> Preferences -> Plugins -> Browse repositories... -> Search Lombok Plugin -> Install Plugin
+More on Lombok 

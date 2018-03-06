@@ -15,6 +15,8 @@
 
 package org.openkilda.atdd.staging.service.impl;
 
+import static java.util.stream.Collectors.toList;
+
 import org.openkilda.atdd.staging.service.TopologyEngineService;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
@@ -87,5 +89,13 @@ public class TopologyEngineServiceImpl implements TopologyEngineService {
     @Override
     public String clearTopology() {
         return restTemplate.getForObject("/api/v1/topology/clear", String.class);
+    }
+
+    @Override
+    public List<List<SwitchInfoData>> getPaths(String srcSwitch, String dstSwitch) {
+        SwitchInfoData[][] paths = restTemplate
+                .getForObject("/api/v1/topology/routes/src/{src_switch}/dst/{dst_switch}",
+                        SwitchInfoData[][].class, srcSwitch, dstSwitch);
+        return Arrays.stream(paths).map(Arrays::asList).collect(toList());
     }
 }

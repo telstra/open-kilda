@@ -18,6 +18,7 @@ package org.openkilda.atdd.staging.service.impl;
 import org.openkilda.atdd.staging.service.NorthboundService;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.model.HealthCheck;
+import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.slf4j.Logger;
@@ -82,9 +83,9 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
-    public String getFlowStatus(String flowId) {
+    public FlowIdStatusPayload getFlowStatus(String flowId) {
         return restTemplate.exchange("/api/v1/flows/status/{flow_id}", HttpMethod.GET,
-                new HttpEntity(buildHeadersWithCorrelationId()), String.class, flowId).getBody();
+                new HttpEntity(buildHeadersWithCorrelationId()), FlowIdStatusPayload.class, flowId).getBody();
     }
 
     @Override

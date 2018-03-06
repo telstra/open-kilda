@@ -3,16 +3,29 @@ switches:
       dp_id: 00:00:00:00:00:01
       of_version: OF_13
       status: active
+      out_ports:
+        - port: 20
+          vlan_range: 1..10, 22, 35..40
+        - port: 21
+          vlan_range: 1..10
 
     - name: sw2
       dp_id: 00:00:00:00:00:02
       of_version: OF_13
       status: active
+      out_ports:
+        - port: 20
+          vlan_range: 1..5, 30..40
 
     - name: sw3
       dp_id: 00:00:00:00:00:03
       of_version: OF_13
       status: active
+      out_ports:
+        - port: 20
+          vlan_range: 1..10, 22, 35..40
+        - port: 22
+          vlan_range: 1..10
 
 isls:
     - src_switch: sw1
