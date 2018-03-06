@@ -46,7 +46,7 @@ RUN wget https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js
 
 #MOVING FONTS
 RUN mv fontawesome-webfont.ttf src/main/resources/font/
-RUN mv fontawesome-webfont.woff2 src/main/resources/font/
+RUN mv fontawesome-webfont.woff src/main/resources/font/
 
 #MOVING CSS FILES
 RUN mv roboto.css src/main/resources/css/
