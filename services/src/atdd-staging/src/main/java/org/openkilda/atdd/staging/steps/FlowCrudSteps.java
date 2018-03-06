@@ -1,21 +1,32 @@
 package org.openkilda.atdd.staging.steps;
 
 import static java.lang.String.format;
+import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
-import cucumber.api.PendingException;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ContiguousSet;
+import com.google.common.collect.DiscreteDomain;
+import com.google.common.collect.Range;
+import com.google.common.collect.RangeSet;
+import com.google.common.collect.TreeRangeSet;
 import cucumber.api.java.en.And;
 import cucumber.api.java.en.Given;
 import cucumber.api.java.en.Then;
 import cucumber.api.java.en.When;
 import cucumber.api.java8.En;
+import net.jodah.failsafe.Failsafe;
+import net.jodah.failsafe.RetryPolicy;
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
+import org.openkilda.atdd.staging.model.topology.TopologyDefinition.OutPort;
+import org.openkilda.atdd.staging.model.topology.TopologyDefinition.Switch;
+import org.openkilda.atdd.staging.service.FloodlightService;
 import org.openkilda.atdd.staging.service.NorthboundService;
 import org.openkilda.atdd.staging.service.TopologyEngineService;
+import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
@@ -28,6 +39,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -35,11 +48,15 @@ public class FlowCrudSteps implements En {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(FlowCrudSteps.class);
 
-    private static final int FLOW_WAIT_ATTEMPTS = 10;
-    private static final int FLOW_WAIT_DELAY = 2;
+    private final RetryPolicy retryPolicy = new RetryPolicy()
+            .withDelay(2, TimeUnit.SECONDS)
+            .withMaxRetries(10);
 
     @Autowired
     private NorthboundService northboundService;
+
+    @Autowired
+    private FloodlightService floodlightService;
 
     @Autowired
     private TopologyEngineService topologyEngineService;
@@ -47,12 +64,16 @@ public class FlowCrudSteps implements En {
     @Autowired
     private TopologyDefinition topologyDefinition;
 
-    private List<FlowPayload> flows;
+    @VisibleForTesting
+    List<FlowPayload> flows = emptyList();
+    @VisibleForTesting
+    RangeSet<Integer> allocatedVlans = TreeRangeSet.create();
 
     @Given("^a reference topology$")
     public void checkTheTopology() {
         List<TopologyDefinition.Switch> referenceSwitches = topologyDefinition.getActiveSwitches();
         List<SwitchInfoData> actualSwitches = topologyEngineService.getActiveSwitches();
+
         assertEquals("Expected and discovered switches are different", referenceSwitches.size(),
                 actualSwitches.size());
     }
@@ -64,40 +85,90 @@ public class FlowCrudSteps implements En {
         flows = switches.stream()
                 .flatMap(source -> switches.stream()
                         .filter(dest -> {
-                            List<List<SwitchInfoData>> paths =
+                            List<PathInfoData> paths =
                                     topologyEngineService.getPaths(source.getDpId(), dest.getDpId());
                             return !paths.isEmpty();
                         })
                         .map(dest -> {
-                                    String flowId = format("%s-%s", source.getName(), dest.getName());
-                                    return new FlowPayload(flowId,
-                                            new FlowEndpointPayload(source.getDpId(), 1, 1),
-                                            new FlowEndpointPayload(dest.getDpId(), 1, 1),
-                                            1, false,
-                                            flowId, null);
-                                }
-                        ))
+                            String flowId = format("%s-%s", source.getName(), dest.getName());
+                            return buildFlow(flowId, source, dest);
+                        })
+                        .filter(Objects::nonNull))
                 .collect(toList());
+    }
 
-        assertFalse(flows.isEmpty());
+    private FlowPayload buildFlow(String flowId, Switch srcSwitch, Switch destSwitch) {
+        // Take the switch vlan ranges as the base
+        RangeSet<Integer> srcRangeSet = TreeRangeSet.create();
+        srcSwitch.getOutPorts().forEach(port -> srcRangeSet.addAll(port.getVlanRange()));
+        RangeSet<Integer> destRangeSet = TreeRangeSet.create();
+        destSwitch.getOutPorts().forEach(port -> destRangeSet.addAll(port.getVlanRange()));
+        // Exclude already allocated vlans
+        srcRangeSet.removeAll(allocatedVlans);
+        destRangeSet.removeAll(allocatedVlans);
+
+        if (srcRangeSet.isEmpty() || destRangeSet.isEmpty()) {
+            LOGGER.warn("Unable to define a flow between {} and {} as no vlan available.", srcSwitch, destSwitch);
+            return null;
+        }
+
+        // Calculate intersection of the ranges
+        RangeSet<Integer> interRangeSet = TreeRangeSet.create(srcRangeSet);
+        interRangeSet.removeAll(destRangeSet.complement());
+
+        int srcVlan;
+        int destVlan;
+        if (!interRangeSet.isEmpty()) {
+            // Same vlan flow
+            Range<Integer> interRange = interRangeSet.asRanges().iterator().next();
+            srcVlan = ContiguousSet.create(interRange, DiscreteDomain.integers()).first();
+            destVlan = srcVlan;
+        } else {
+            // Cross vlan flow
+            Range<Integer> srcRange = srcRangeSet.asRanges().iterator().next();
+            srcVlan = ContiguousSet.create(srcRange, DiscreteDomain.integers()).first();
+            Range<Integer> destRange = destRangeSet.asRanges().iterator().next();
+            destVlan = ContiguousSet.create(destRange, DiscreteDomain.integers()).first();
+        }
+
+        boolean sameSwitchFlow = srcSwitch.getDpId().equals(destSwitch.getDpId());
+
+        Optional<OutPort> srcPort = srcSwitch.getOutPorts().stream()
+                .filter(p -> p.getVlanRange().contains(srcVlan))
+                .findFirst();
+        int srcPortId = srcPort
+                .orElseThrow(() -> new IllegalStateException("Unable to locate a port in found vlan."))
+                .getPort();
+
+        Optional<OutPort> destPort = destSwitch.getOutPorts().stream()
+                .filter(p -> p.getVlanRange().contains(destVlan))
+                .filter(p -> !sameSwitchFlow || p.getPort() != srcPortId)
+                .findFirst();
+        if (!destPort.isPresent()) {
+            LOGGER.warn("Unable to define a same switch flow for {} as no ports available.", srcSwitch);
+            return null;
+
+        }
+
+        // Record used vlan to archive uniqueness
+        allocatedVlans.add(Range.singleton(srcVlan));
+        allocatedVlans.add(Range.singleton(destVlan));
+
+        FlowEndpointPayload srcEndpoint = new FlowEndpointPayload(srcSwitch.getDpId(), srcPortId, srcVlan);
+        FlowEndpointPayload destEndpoint = new FlowEndpointPayload(destSwitch.getDpId(), destPort.get().getPort(),
+                destVlan);
+        return new FlowPayload(flowId, srcEndpoint, destEndpoint,
+                1, false, flowId, null);
     }
 
     @And("^each flow has unique flow_id$")
     public void setUniqueFlowIdToEachFlow() {
-        flows.forEach(flow ->
-                flow.setId(format("%s-%s", flow.getId(), UUID.randomUUID().toString())));
-    }
-
-    @And("^each flow has allocated ports and unique vlan$")
-    public void setPortsAndUniqueVlanToEachFlow() {
-        //TODO: implement
-        throw new PendingException();
+        flows.forEach(flow -> flow.setId(format("%s-%s", flow.getId(), UUID.randomUUID().toString())));
     }
 
     @And("^each flow has max bandwidth set to (\\d+)$")
     public void setBandwidthToEachFlow(int bandwidth) {
-        flows.forEach(flow ->
-                flow.setMaximumBandwidth(bandwidth));
+        flows.forEach(flow -> flow.setMaximumBandwidth(bandwidth));
     }
 
     @When("^creation request for each flow is successful$")
@@ -109,7 +180,7 @@ public class FlowCrudSteps implements En {
     }
 
     @Then("^each flow is created and stored in TopologyEngine$")
-    public void eachFlowIsCreatedAndStoredInTopologyEngine() throws InterruptedException {
+    public void eachFlowIsCreatedAndStoredInTopologyEngine() {
         List<Flow> expextedFlows = flows.stream()
                 .map(flow -> new Flow(flow.getId(),
                         flow.getMaximumBandwidth(),
@@ -125,14 +196,9 @@ public class FlowCrudSteps implements En {
                 .collect(toList());
 
         for (Flow expextedFlow : expextedFlows) {
-            ImmutablePair<Flow, Flow> flowPair = null;
-            for (int i = 0; i < FLOW_WAIT_ATTEMPTS; i++) {
-                flowPair = topologyEngineService.getFlow(expextedFlow.getFlowId());
-                if (flowPair != null) {
-                    break;
-                }
-                TimeUnit.SECONDS.sleep(FLOW_WAIT_DELAY);
-            }
+            ImmutablePair<Flow, Flow> flowPair = Failsafe.with(retryPolicy
+                    .abortIf(Objects::nonNull))
+                    .get(() -> topologyEngineService.getFlow(expextedFlow.getFlowId()));
 
             assertNotNull(format("The flow '%s' is missing.", expextedFlow.getFlowId()), flowPair);
             assertEquals(format("The flow '%s' is different.", expextedFlow.getFlowId()), expextedFlow,
@@ -141,16 +207,11 @@ public class FlowCrudSteps implements En {
     }
 
     @And("^each flow is in UP state$")
-    public void eachFlowIsInUPState() throws InterruptedException {
+    public void eachFlowIsInUPState() {
         for (FlowPayload flow : flows) {
-            FlowIdStatusPayload status = null;
-            for (int i = 0; i < FLOW_WAIT_ATTEMPTS; i++) {
-                status = northboundService.getFlowStatus(flow.getId());
-                if (status != null && FlowState.UP == status.getStatus()) {
-                    break;
-                }
-                TimeUnit.SECONDS.sleep(FLOW_WAIT_DELAY);
-            }
+            FlowIdStatusPayload status = Failsafe.with(retryPolicy
+                    .abortIf(p -> p != null && FlowState.UP == ((FlowIdStatusPayload) p).getStatus()))
+                    .get(() -> northboundService.getFlowStatus(flow.getId()));
 
             assertNotNull(status);
             assertEquals(flow.getId(), status.getId());
@@ -168,20 +229,19 @@ public class FlowCrudSteps implements En {
 
     @And("^each flow has rules installed$")
     public void eachFlowHasRulesInstalled() {
-        //TODO: implement
-        throw new PendingException();
+        //TODO: implement the check
     }
 
     @And("^each flow has traffic going with bandwidth not less than (\\d+)$")
     public void eachFlowHasTrafficGoingWithBandwidthNotLessThan(int bandwidth) {
-        //TODO: implement
-        throw new PendingException();
+        //TODO: implement the check
     }
 
     @Then("^each flow can be updated with (\\d+) max bandwidth$")
     public void eachFlowCanBeUpdatedWithBandwidth(int bandwidth) {
         for (FlowPayload flow : flows) {
             flow.setMaximumBandwidth(bandwidth);
+
             FlowPayload result = northboundService.updateFlow(flow.getId(), flow);
             assertNotNull(result);
         }
@@ -189,8 +249,7 @@ public class FlowCrudSteps implements En {
 
     @And("^each flow has rules installed with (\\d+) max bandwidth$")
     public void eachFlowHasRulesInstalledWithBandwidth(int bandwidth) {
-        //TODO: implement
-        throw new PendingException();
+        //TODO: implement the check
     }
 
     @Then("^each flow can be deleted$")
@@ -202,46 +261,34 @@ public class FlowCrudSteps implements En {
     }
 
     @And("^each flow can not be read from Northbound$")
-    public void eachFlowCanNotBeReadFromNorthbound() throws InterruptedException {
+    public void eachFlowCanNotBeReadFromNorthbound() {
         for (FlowPayload flow : flows) {
-            FlowPayload result = null;
-            for (int i = 0; i < FLOW_WAIT_ATTEMPTS; i++) {
-                result = northboundService.getFlow(flow.getId());
-                if (result == null) {
-                    break;
-                }
-                TimeUnit.SECONDS.sleep(FLOW_WAIT_DELAY);
-            }
+            FlowPayload result = Failsafe.with(retryPolicy
+                    .abortIf(Objects::isNull))
+                    .get(() -> northboundService.getFlow(flow.getId()));
 
             assertNull(format("The flow '%s' exists.", flow.getId()), result);
         }
     }
 
     @And("^each flow can not be read from TopologyEngine$")
-    public void eachFlowCanNotBeReadFromTopologyEngine() throws InterruptedException {
+    public void eachFlowCanNotBeReadFromTopologyEngine() {
         for (FlowPayload flow : flows) {
-            ImmutablePair<Flow, Flow> flowPair = null;
-            for (int i = 0; i < FLOW_WAIT_ATTEMPTS; i++) {
-                flowPair = topologyEngineService.getFlow(flow.getId());
-                if (flowPair == null) {
-                    break;
-                }
-                TimeUnit.SECONDS.sleep(FLOW_WAIT_DELAY);
-            }
+            ImmutablePair<Flow, Flow> result = Failsafe.with(retryPolicy
+                    .abortIf(Objects::isNull))
+                    .get(() -> topologyEngineService.getFlow(flow.getId()));
 
-            assertNull(format("The flow '%s' exists.", flow.getId()), flowPair);
+            assertNull(format("The flow '%s' exists.", flow.getId()), result);
         }
     }
 
     @And("^each flow has no rules installed$")
     public void eachFlowHasNoRulesInstalled() {
-        //TODO: implement
-        throw new PendingException();
+        //TODO: implement the check
     }
 
     @And("^each flow has no traffic$")
     public void eachFlowHasNoTraffic() {
-        //TODO: implement
-        throw new PendingException();
+        //TODO: implement the check
     }
 }

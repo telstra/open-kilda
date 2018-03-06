@@ -8,7 +8,6 @@ Feature: Flow CRUD
 
     Given flows over all switches
     And each flow has unique flow_id
-    And each flow has allocated ports and unique vlan
     And each flow has max bandwidth set to 10000
 
     When creation request for each flow is successful

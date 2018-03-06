@@ -16,6 +16,7 @@
 package org.openkilda.atdd.staging.service;
 
 import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
@@ -48,6 +49,6 @@ public interface TopologyEngineService {
 
     String clearTopology();
 
-    List<List<SwitchInfoData>> getPaths(String srcSwitch, String srcPort);
+    List<PathInfoData> getPaths(String srcSwitch, String srcPort);
 
 }
