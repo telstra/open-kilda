@@ -128,20 +128,37 @@ public class FlowCrudSteps implements En {
         // Calculate intersection of the ranges
         RangeSet<Integer> interRangeSet = TreeRangeSet.create(srcRangeSet);
         interRangeSet.removeAll(destRangeSet.complement());
+        // Same vlan for source and destination
+        final Optional<Integer> sameVlan = interRangeSet.asRanges().stream()
+                .flatMap(range -> ContiguousSet.create(range, DiscreteDomain.integers()).stream())
+                .findFirst();
 
         int srcVlan;
         int destVlan;
-        if (!interRangeSet.isEmpty()) {
-            // Same vlan flow
-            Range<Integer> interRange = interRangeSet.asRanges().iterator().next();
-            srcVlan = ContiguousSet.create(interRange, DiscreteDomain.integers()).first();
-            destVlan = srcVlan;
+        if (sameVlan.isPresent()) {
+            srcVlan = sameVlan.get();
+            destVlan = sameVlan.get();
         } else {
             // Cross vlan flow
-            Range<Integer> srcRange = srcRangeSet.asRanges().iterator().next();
-            srcVlan = ContiguousSet.create(srcRange, DiscreteDomain.integers()).first();
-            Range<Integer> destRange = destRangeSet.asRanges().iterator().next();
-            destVlan = ContiguousSet.create(destRange, DiscreteDomain.integers()).first();
+            Optional<Integer> srcVlanOpt = srcRangeSet.asRanges().stream()
+                    .flatMap(range -> ContiguousSet.create(range, DiscreteDomain.integers()).stream())
+                    .findFirst();
+            if (!srcVlanOpt.isPresent()) {
+                LOGGER.warn("Unable to allocate a vlan for the switch {}.", srcSwitch);
+                return null;
+
+            }
+            srcVlan = srcVlanOpt.get();
+
+            Optional<Integer> destVlanOpt = destRangeSet.asRanges().stream()
+                    .flatMap(range -> ContiguousSet.create(range, DiscreteDomain.integers()).stream())
+                    .findFirst();
+            if (!destVlanOpt.isPresent()) {
+                LOGGER.warn("Unable to allocate a vlan for the switch {}.", destSwitch);
+                return null;
+
+            }
+            destVlan = destVlanOpt.get();
         }
 
         boolean sameSwitchFlow = srcSwitch.getDpId().equals(destSwitch.getDpId());
@@ -150,7 +167,7 @@ public class FlowCrudSteps implements En {
                 .filter(p -> p.getVlanRange().contains(srcVlan))
                 .findFirst();
         int srcPortId = srcPort
-                .orElseThrow(() -> new IllegalStateException("Unable to locate a port in found vlan."))
+                .orElseThrow(() -> new IllegalStateException("Unable to allocate a port in found vlan."))
                 .getPort();
 
         Optional<OutPort> destPort = destSwitch.getOutPorts().stream()
