@@ -1,22 +1,24 @@
 package org.openkilda.integration.model.response;
 
+import java.io.Serializable;
+import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-
-import java.util.List;
 
 /**
  * The Class Paths.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JsonPropertyOrder({"message_type", "latency_ns", "path"})
-public class PathInfoData {
+@JsonPropertyOrder({"latency_ns", "forwardPath", "reversePath", "path", "timestamp"})
+public class PathInfoData implements Serializable {
 
-    @JsonProperty("message_type")
-    private String messageType;
+    private static final long serialVersionUID = -7372114867817832809L;
+
 
     @JsonProperty("latency_ns")
     private Integer latencyNs;
@@ -30,19 +32,22 @@ public class PathInfoData {
     @JsonProperty("path")
     private List<PathNode> path = null;
 
-    public String getMessageType() {
-        return messageType;
+    public PathInfoData() {
+
     }
 
-    public void setMessageType(final String messageType) {
-        this.messageType = messageType;
+    @JsonCreator
+    public PathInfoData(@JsonProperty("forwardPath") List<PathNode> forwardpath,
+            @JsonProperty("reversePath") List<PathNode> reversepath) {
+        setForwardPath(forwardpath);
+        setReversePath(reversepath);
     }
 
     public Integer getLatencyNs() {
         return latencyNs;
     }
 
-    public void setLatencyNs(final Integer latencyNs) {
+    public void setLatencyNs(Integer latencyNs) {
         this.latencyNs = latencyNs;
     }
 
@@ -50,7 +55,7 @@ public class PathInfoData {
         return forwardPath;
     }
 
-    public void setForwardPath(final List<PathNode> forwardPath) {
+    public void setForwardPath(List<PathNode> forwardPath) {
         this.forwardPath = forwardPath;
     }
 
@@ -58,7 +63,7 @@ public class PathInfoData {
         return reversePath;
     }
 
-    public void setReversePath(final List<PathNode> reversePath) {
+    public void setReversePath(List<PathNode> reversePath) {
         this.reversePath = reversePath;
     }
 
@@ -66,7 +71,13 @@ public class PathInfoData {
         return path;
     }
 
-    public void setPath(final List<PathNode> path) {
+    public void setPath(List<PathNode> path) {
         this.path = path;
+    }
+
+    @Override
+    public String toString() {
+        return "PathInfoData [ latencyNs=" + latencyNs + ", forwardPath=" + forwardPath
+                + ", reversePath=" + reversePath + ", path=" + path + "]";
     }
 }

@@ -21,9 +21,9 @@
 			<div class="navigation-bar container-fluid">
 				<ul class="col-lg-12">
 					<li><a th:href="@{/home}">Home</a></li>
-					<li><i class="fa fa-angle-double-right"></i><a
+					<li><i class="fa icon-double-angle-right"></i><a
 						th:href="@{/flows}">Flows</a></li>
-					<li><i class="fa fa-angle-double-right" id="flow-id-name"></i></li>
+					<li><i class="fa icon-double-angle-right" id="flow-id-name"></i></li>
 
 				</ul>
 			</div>
@@ -126,27 +126,39 @@
 												 	<li>Forward</li>
 												  	<li>Reverse</li>
 												</ul>
-													<fieldset class="form-group clearfix">
+													<fieldset id= "fromId" class="form-group clearfix">
 													
 														<label class="col-xs-4 text-label">From:</label>
 														<div class="col-xs-8">
 															<input type="text" id="datetimepicker7"
 																value="D, l, M, F, Y-m-d H:i:s" placeholder="From"
 																class="form-control"></input>
+								
+																<span class="from-error-message"></span>
 														</div>
 													</fieldset>
 
 
-													<fieldset class="form-group">
+													<fieldset id="toId" class="form-group">
 														<label class="col-xs-4 text-label">To:</label>
 														<div class="col-xs-8">
 															<input type="text" id="datetimepicker8"
 																value="D, l, M, F, Y-m-d H:i:s" placeholder="To"
 																class="form-control"></input>
+																
+																<span class="to-error-message"></span>
 														</div>
 													</fieldset>
 
 
+													<fieldset id="DownsampleID" class="form-group">
+														<label class="col-xs-4 text-label">Downsample:</label>
+														<div class="col-xs-8">
+															<input type="text" id="downsampling" placeholder="Downsample"
+																class="form-control"></input>
+															<span class="downsample-error-message pull-left"></span>
+														</div>
+													</fieldset>
 
 													<fieldset class="form-group">
 														<label class="col-xs-4 text-label">Metric:</label>
@@ -156,7 +168,7 @@
 																class="selectbox_menulist" id="menulist">
 																	<option value="pen.isl.latency">pen.isl.latency</option>
 															</select>
-															</span>
+															</span>													
 														</div>
 													</fieldset>
 

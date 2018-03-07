@@ -9,6 +9,7 @@
 $(document).ready(function() {
 
 	var linkData = localStorage.getItem("linkData");
+	$("#topology-menu-id").addClass("active");
 	if(!linkData){
 		window.location = APP_CONTEXT+ "/topology";
 	}

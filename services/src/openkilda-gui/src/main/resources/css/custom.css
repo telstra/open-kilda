@@ -227,7 +227,7 @@ h1 {
 .navigation-bar {
 	border-bottom: 1px solid #adacac;
 	padding-bottom: 14px;
-	margin: 0 0 15px;
+	margin: 0 0 20px;
 }
 
 .navigation-bar li {
@@ -350,7 +350,56 @@ text {
 	pointer-events: none;
 	font-weight: bold;
 }
+#ui-container {
+	position: absolute;
+    width: auto;
+    right: 2px;
+    top: 2px;
+}
 
+#ui-container.active {
+	width: 241px;
+}
+
+#ui-container input {
+	display: none;
+}
+
+#ui-container.active input {
+	display: block;
+}
+
+#ui-container .ui-autocomplete{
+	margin-top:25px;
+	position:absolute;
+}
+#ui-container .float-right{
+	float:right;
+}
+#ui-container #search{
+	height: 45px;
+    padding: 0 10px;
+    position: relative;
+    z-index: 1;
+    color: #333;
+    right: 0;
+    border: 1px solid #ccc;
+    border-right: none;
+    width: calc(100% - 45px);
+    float: left;
+    border-radius: 3px 0 0 3px;
+}
+
+#ui-container .ui-menu .ui-menu-item {
+    width: 100%;
+    text-align: left;
+}
+ /* IE 6 doesn't support max-height
+  * we use height instead, but this forces the menu to always be this tall
+  */
+ * html .ui-autocomplete {
+   height: 100px;
+ }
 div.tooltip { 
     position: absolute;     
     text-align: center;     
@@ -367,11 +416,18 @@ div.tooltip {
 
 .overlay {
 	fill: none;
-	opacity: 0.3;
-	stroke: #228B22;
+	stroke: #aedcae;
 	stroke-width: 8px;
 	cursor: pointer;
 }
+
+.isloverlay {
+	fill: none;
+	stroke: #c8e3f5;
+	stroke-width: 8px;
+	cursor: pointer;
+}
+
 .graphoverlay {
   fill: none;
   pointer-events: all;
@@ -406,22 +462,20 @@ svg {
 	z-index: 2;
 	left: 0;
 	right: 0;
-	top: 45px;
+	top: 50px;
 }
 
 .check {
-	font-weight: 400;
-	position: relative;
+	width: 135px;
 	float: right;
-	width: 140px;
-	margin-left: 15px;
-	font-size: 13px;
-	z-index: 3;
+	clear: both;
 }
 
 .check input[type=checkbox] {
 	vertical-align: bottom;
 	margin-right: 5px;
+	position: relative;
+	z-index: 3;
 }
 
 /* POP-UP CLASSES */
@@ -609,13 +663,13 @@ body{
 }
 .loader {
 	position: absolute;
-	border: 14px solid #f3f3f3;
+	border: 10px solid #f3f3f3;
 	border-radius: 50%;
-	border-top: 16px solid #3498db;
-	width: 75px;
-	height: 75px;
-	top: calc(50% - 90px);
-    left: calc(50% - 90px);
+	border-top: 10px solid #3498db;
+	width: 60px;
+    height: 60px;
+    top: calc(50% - 75px);
+    left: calc(50% - 80px);
 	-webkit-animation: spin 2s linear infinite;
 	animation: spin 2s linear infinite;
 	margin: auto;
@@ -656,7 +710,7 @@ footer {
 
 #graphdiv {
 	margin-bottom: 15px;
-    margin-top: 15px;
+    margin-top: 35px;
 	height: 420px;
 	width: 100%;
 	margin-left: -20px;
@@ -683,7 +737,7 @@ footer {
 
 .topology-graph .filter .form-group label {
 	padding-top: 12px;
-	font-size: 14px;
+	font-size: 13px;
 }
 
 .topology-graph .filter .submit-btn input[type=button] {
@@ -965,7 +1019,10 @@ footer {
 }
 
 .check-connections {
-	margin-right: 15px;
+	margin-top:10px;
+	float: right;
+	width: 135px;
+	clear: both;
 }
 
 .check-connections .lconnection span {
@@ -1044,6 +1101,7 @@ footer {
     margin-top: -4px;
     cursor: pointer;
     bottom: -2px;
+    color: #1b1f26;
     position: relative;
 }
 
@@ -1104,6 +1162,7 @@ table.dataTable.no-footer {
 	border: 1px solid #aaa;
 	height: 30px;
     width: 240px;
+    padding: 5px;
 }
 
 .dataTables_wrapper {
@@ -1168,7 +1227,7 @@ table#flowTable.dataTable .flowDataRow.even {
 
 table#flowTable.dataTable thead th {
 	background-position: right 10px;
-    padding: 10px 32px 10px 18px;
+    padding: 10px 20px 10px 18px;
 	position: relative;
 	text-overflow: ellipsis;
     overflow: hidden;
@@ -1184,7 +1243,7 @@ table#flowTable.dataTable thead th .fa-search {
 
 table#flowTable.dataTable thead th .heading_search_box {
 	float: left;
-    width: calc(100% - -32px);
+    width: 100%;
     margin-left: -2px;
     margin-top: 5px;
     padding: 5px;
@@ -1204,9 +1263,14 @@ table#flowTable.dataTable thead th span {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;	
-	display: block;
-	width: 100%;
+	display: inline-block;
+    width: calc(100% - 20px);
 	line-height: normal;
+	vertical-align: middle;
+}
+
+table#flowTable.dataTable thead th i {
+	display: inline-block;
 }
 
 table#flowTable.dataTable .divTableCell {
@@ -1215,7 +1279,7 @@ table#flowTable.dataTable .divTableCell {
     position: relative;
 }
 #topology-hover-txt {
-	max-width: 300px;
+	width: 300px;
 	position: fixed;
 	z-index: 10;
 	background: #fff;
@@ -1249,6 +1313,32 @@ table#flowTable.dataTable .divTableCell {
 #topology-hover-txt .form-wrapper {
 	border: none;
 }
+#topology-hover-txt.left:after, #topology-hover-txt.left:before {
+	left: 100%;
+	top: 35px;
+	border: solid transparent;
+	content: " ";
+	height: 0;
+	width: 0;
+	position: absolute;
+	pointer-events: none;
+}
+
+#topology-hover-txt.left:after {
+	border-color: rgba(255, 255, 255, 0);
+	border-left-color: #fff;
+	border-width: 10px;
+	margin-top: -10px;
+}
+#topology-hover-txt.left:before {
+	border-color: rgba(204, 204, 204, 0);
+	border-left-color: #ccc;
+	border-width: 11px;
+	margin-top: -11px;
+}
+#topology-hover-txt .form-wrapper {
+	border: none;
+}
 
 .port-title {
 	width: calc(100% - 25px);
@@ -1276,12 +1366,12 @@ table#flowTable.dataTable .divTableCell {
     height: auto;
 }
 
-.error-message {
+.error-message, .downsample-error-message, .from-error-message, .to-error-message {
     float: right;
     margin-top: 5px;
 }
 
-.has-error .text-label, .has-error .error-message, .has-error .form-control {
+.has-error .text-label, .has-error .error-message, .downsample-error-message, .from-error-message, .to-error-message, .has-error .form-control {
 	color: #a94442;
 }
 
@@ -1313,7 +1403,7 @@ table#flowTable.dataTable .divTableCell {
 	position: absolute;
 	left: 0px;
 	right: 0px;
-	background: rgb(255,255,255);
+	/* background: rgb(255,255,255); */
 	z-index: 9;
 	margin: 0;
 	top: 0;
@@ -1341,6 +1431,11 @@ table#flowTable.dataTable .port_data_load td.divTableCell {
     border: 1px solid #ddd;
 }
 
+td.highlight {
+        font-weight: bold;
+        color: blue;
+}
+
 /*  #port-details-div {
 	font-size: 13px;
 	border: 1px solid #ccc;
@@ -1348,6 +1443,9 @@ table#flowTable.dataTable .port_data_load td.divTableCell {
 	margin: 0 0 20px;
 	position: relative;
 } */
+
+
+    
 .load-text {
 	position: absolute;
     left: calc(50% - 152px);
@@ -1358,6 +1456,123 @@ table#flowTable.dataTable .port_data_load td.divTableCell {
     color: #fff;
     font-size: 13px;
 }
+
+.topology-graph .filter .form-group .form-control {
+	font-size: 13px;
+}
+
+.isl-header, .target-header, .source-header {
+	font-size: 14px;
+    font-weight: 600;
+}
+
+.target-header, .source-header {
+	margin: 30px 0;
+}
+
+#source-graph_div,#dest-graph_div {
+	width:100%;
+	height: 300px;
+}
+
+.btn.btn-search {
+		background: #262d37;
+		border: none;
+		color: #fff;
+		border-radius: 0;
+		font-size: 14px;
+	    float: right;
+	    position: relative;
+	    top: -28px;
+	    height: 28px;
+	    padding: 0 10px;
+}
+	
+.btn.btn-search:after {
+		right: 100%;
+		top: 50%;
+		border: solid transparent;
+		content: " ";
+		height: 0;
+		width: 0;
+		position: absolute;
+		pointer-events: none;
+		border-color: rgba(38, 45, 55, 0);
+		border-right-color: #262d37;
+		border-width: 5px;
+		margin-top: -5px;
+}
+	
+.checkbox-btns {
+	position: absolute;
+    bottom: 0;
+    right: 3px;
+    z-index: 3;
+    top: 0;
+    height: 184px;
+    background: rgba(0,0,0,0.75);
+    margin: auto;
+    color: #fff;
+    padding: 2px;
+    padding-top: 47px;
+    border-radius: 3px;
+}
+	
+.checkbox-wrapper {
+	position: inherit;	
+	font-size: 12px;
+    -webkit-user-select: none; 
+    -moz-user-select: none;  
+    -ms-user-select: none;  
+    user-select: none; 
+}
+
+#zoom_in, #zoom_out, #reset#zoom_in, #zoom_out, #reset, #searchbox {
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    width: 45px;
+    justify-content: center;
+    height: 45px;
+    align-items: center;
+    -webkit-user-select: none; 
+    -moz-user-select: none;  
+    -ms-user-select: none;  
+    user-select: none; 
+}
+
+#zoom_in {
+	font-size: 30px;
+}
+
+#zoom_out {
+	font-size: 50px;
+}
+	
+.checkbox-btns i:hover, #ui-container.active i {
+	background: rgba(255,255,255,0.25);
+}
+	
+.loader__dot { 
+	animation: 1s blink infinite;
+}
+
+.loader__dot:nth-child(2) { 
+	animation-delay: 250ms;
+}
+
+.loader__dot:nth-child(3) { 
+	animation-delay: 500ms;
+}
+
+.btn.active.focus, .btn.active:focus, .btn.focus, .btn:active.focus, .btn:active:focus, .btn:focus {
+	outline: none;
+}
+
+#searchbox {
+	float: left;
+}
+    
 
 @-moz-keyframes spin {
     from { -moz-transform: rotate(0deg); }
@@ -1373,6 +1588,3 @@ table#flowTable.dataTable .port_data_load td.divTableCell {
 }
 
 @keyframes blink {50% { color: transparent }}
-.loader__dot { animation: 1s blink infinite }
-.loader__dot:nth-child(2) { animation-delay: 250ms }
-.loader__dot:nth-child(3) { animation-delay: 500ms }

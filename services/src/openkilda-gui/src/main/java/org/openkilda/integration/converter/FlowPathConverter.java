@@ -3,133 +3,60 @@ package org.openkilda.integration.converter;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.openkilda.integration.model.response.PathLinkResponse;
+import org.openkilda.integration.model.response.FlowPayload;
+import org.openkilda.integration.model.response.PathInfoData;
+import org.openkilda.integration.model.response.FlowPathInfoData;
+import org.openkilda.integration.model.response.PathNode;
 import org.openkilda.model.FlowPath;
-import org.openkilda.model.PathInfoData;
-import org.openkilda.model.PathNode;
-import org.openkilda.utility.CollectionUtil;
 
 public final class FlowPathConverter {
-
-    private FlowPathConverter() {
-    }
 
     /**
      * Gets the flow path.
      *
      * @param flowId the flowid
-     * @param pathLinkResponse the path link response
-     * @return the link path
+     * @param FlowPayload the Flow Payload
+     * @return the flow path
      */
-    public static FlowPath getFlowPath(final String flowId,
-            final PathLinkResponse[] pathLinkResponse) {
-        FlowPath flowPath = new FlowPath();
-
-        PathInfoData pathInfo = new PathInfoData();
-        if(pathLinkResponse != null) {
-            for(PathLinkResponse pathResponse : pathLinkResponse) {
-                if (pathResponse != null) {
-                    if (flowId.equalsIgnoreCase(pathResponse.getFlowid())) {
-                        List<PathNode> forwardPath = setForwardPath(pathInfo, pathResponse);
-                        setReversePath(pathInfo, forwardPath);
-                        break;
-                    }
-                }
-            }
-        }
-        flowPath.setFlowpath(pathInfo);
-        return flowPath;
+    public static FlowPath getFlowPath(final String flowId, final FlowPayload flowPayload) {
+        PathInfoData pathInfo =
+                new PathInfoData(setPath(flowPayload.getForward()),
+                        setPath(flowPayload.getReverse()));
+        return new FlowPath(flowId, pathInfo);
     }
 
     /**
-     * Sets the reverse path.
+     * Sets the path.
      *
-     * @param flowPath the flow path
-     * @param forwardPath the forward path
+     * @param FlowPathInfoData the flow path info data
+     * @return the {@link PathNode} list
      */
-    private static void setReversePath(final PathInfoData flowPath, final List<PathNode> forwardPath) {
-        List<PathNode> reversePath = new ArrayList<PathNode>();
-        if (!CollectionUtil.isEmpty(forwardPath)) {
-            int forwardPathSize = forwardPath.size();
-            int sequence_id = 0;
-            for (int k = forwardPathSize - 1; k >= 0; k--) {
-                PathNode pathNodeRes = forwardPath.get(k);
-                PathNode pathNode = new PathNode();
-                if (pathNodeRes != null) {
-                    pathNode.setSwitchId(pathNodeRes.getSwitchId());
-                    pathNode.setInPortNo(pathNodeRes.getOutPortNo());
-                    pathNode.setOutPortNo(pathNodeRes.getInPortNo());
-                }
-                pathNode.setSeqId(sequence_id);
-                reversePath.add(pathNode);
-                sequence_id++;
-            }
-        }
-        flowPath.setReversePath(reversePath);
-    }
-
-    /**
-     * Sets the forward path.
-     *
-     * @param flowPath the flow path
-     * @param pathResponse the path response
-     * @return the list
-     */
-    private static List<PathNode> setForwardPath(final PathInfoData flowPath, final PathLinkResponse pathResponse) {
-        boolean addSwitchInfo;
-        List<PathNode> forwardPath = new ArrayList<PathNode>();
-
-        int seq_id = 0;
-        PathNode pathNode = new PathNode();
-        pathNode.setInPortNo(pathResponse.getSrcPort());
-        pathNode.setSwitchId(pathResponse.getSrcSwitch());
-
-        org.openkilda.integration.model.response.PathInfoData pathInfoData = pathResponse.getFlowpath();
-        if (pathInfoData != null) {
-            List<org.openkilda.integration.model.response.PathNode> pathList = pathInfoData.getPath();
-            int pathNodeSize = pathList.size();
-            for (int j = 0; j < pathNodeSize; j++) {
-                org.openkilda.integration.model.response.PathNode path = pathList.get(j);
-                if (path != null) {
+    private static List<PathNode> setPath(final FlowPathInfoData flowPathInfoData) {
+        List<PathNode> pathNodes = new ArrayList<PathNode>();
+        org.openkilda.integration.model.response.PathInfoData flowpath =
+                flowPathInfoData.getFlowpath();
+        List<org.openkilda.integration.model.response.PathNode> paths = flowpath.getPath();
+        Integer inport = null;
+        Integer seq_id = 0;
+        if (paths != null && !paths.isEmpty()) {
+            for (org.openkilda.integration.model.response.PathNode path : paths) {
+                if (path.getSeqId() == 0) {
+                    pathNodes.add(new PathNode(seq_id, flowPathInfoData.getSrcPort(), path
+                            .getPortNo(), flowPathInfoData.getSrcSwitch()));
+                    seq_id++;
+                } else {
                     if (path.getSeqId() % 2 == 0) {
-                        pathNode.setOutPortNo(path.getPortNo());
-                    } else {
-                        pathNode.setInPortNo(path.getPortNo());
-                        pathNode.setSwitchId(path.getSwitchId());
-                    }
-                    addSwitchInfo = checkAddSwitch(seq_id, forwardPath, pathNode);
-                    if (addSwitchInfo) {
-                        pathNode = new PathNode();
+                        pathNodes.add(new PathNode(seq_id, inport, path.getPortNo(),
+                                path.getSwitchId()));
                         seq_id++;
-                    }
+                    } else
+                        inport = path.getPortNo();
                 }
             }
         }
-        pathNode.setOutPortNo(pathResponse.getDstPort());
-        addSwitchInfo = checkAddSwitch(seq_id, forwardPath, pathNode);
-        if (addSwitchInfo) {
-            pathNode = new PathNode();
-            seq_id++;
-        }
-        flowPath.setForwardPath(forwardPath);
-        return forwardPath;
+        pathNodes.add(new PathNode(seq_id, inport, flowPathInfoData.getDstPort(), flowPathInfoData
+                .getDstSwitch()));
+        return pathNodes;
     }
 
-    /**
-     * Check add switch.
-     *
-     * @param seq_id the seq_id
-     * @param forwardPath the forward path
-     * @param node1 the node1
-     * @return true, if successful
-     */
-    private static boolean checkAddSwitch(final int seq_id, final List<PathNode> forwardPath, final PathNode node) {
-        boolean isAdd = false;
-        if (node.getInPortNo() != null && node.getOutPortNo() != null) {
-            node.setSeqId(seq_id);
-            forwardPath.add(node);
-            isAdd = true;
-        }
-        return isAdd;
-    }
 }
