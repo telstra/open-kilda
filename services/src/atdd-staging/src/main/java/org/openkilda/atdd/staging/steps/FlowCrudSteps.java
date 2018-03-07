@@ -4,8 +4,10 @@ import static java.lang.String.format;
 import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ContiguousSet;
@@ -26,6 +28,8 @@ import org.openkilda.atdd.staging.model.topology.TopologyDefinition.Switch;
 import org.openkilda.atdd.staging.service.FloodlightService;
 import org.openkilda.atdd.staging.service.NorthboundService;
 import org.openkilda.atdd.staging.service.TopologyEngineService;
+import org.openkilda.atdd.staging.utils.TopologyChecker;
+import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.model.Flow;
@@ -48,6 +52,7 @@ public class FlowCrudSteps implements En {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(FlowCrudSteps.class);
 
+    // The retrier is used for repeating operations which depend on the system state and may change the result after delays.
     private final RetryPolicy retryPolicy = new RetryPolicy()
             .withDelay(2, TimeUnit.SECONDS)
             .withMaxRetries(10);
@@ -74,8 +79,16 @@ public class FlowCrudSteps implements En {
         List<TopologyDefinition.Switch> referenceSwitches = topologyDefinition.getActiveSwitches();
         List<SwitchInfoData> actualSwitches = topologyEngineService.getActiveSwitches();
 
-        assertEquals("Expected and discovered switches are different", referenceSwitches.size(),
-                actualSwitches.size());
+        assertFalse("No switches were discovered", actualSwitches.isEmpty());
+        assertTrue("Expected and discovered switches are different",
+                TopologyChecker.matchSwitches(actualSwitches, referenceSwitches));
+
+        List<TopologyDefinition.Isl> referenceLinks = topologyDefinition.getIslsForActiveSwitches();
+        List<IslInfoData> actualLinks = topologyEngineService.getAllLinks();
+
+        assertFalse("No links were discovered", actualLinks.isEmpty());
+        assertTrue("Reference links were not discovered / not provided",
+                TopologyChecker.matchLinks(actualLinks, referenceLinks));
     }
 
     @Given("^flows over all switches$")
@@ -83,15 +96,15 @@ public class FlowCrudSteps implements En {
         final List<TopologyDefinition.Switch> switches = topologyDefinition.getActiveSwitches();
         // check each combination of active switches for a path between them and create a flow definition if the path exists
         flows = switches.stream()
-                .flatMap(source -> switches.stream()
-                        .filter(dest -> {
+                .flatMap(srcSwitch -> switches.stream()
+                        .filter(dstSwitch -> {
                             List<PathInfoData> paths =
-                                    topologyEngineService.getPaths(source.getDpId(), dest.getDpId());
+                                    topologyEngineService.getPaths(srcSwitch.getDpId(), dstSwitch.getDpId());
                             return !paths.isEmpty();
                         })
-                        .map(dest -> {
-                            String flowId = format("%s-%s", source.getName(), dest.getName());
-                            return buildFlow(flowId, source, dest);
+                        .map(dstSwitch -> {
+                            String flowId = format("%s-%s", srcSwitch.getName(), dstSwitch.getName());
+                            return buildFlow(flowId, srcSwitch, dstSwitch);
                         })
                         .filter(Objects::nonNull))
                 .collect(toList());

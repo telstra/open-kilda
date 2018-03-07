@@ -25,7 +25,10 @@ import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
 import org.openkilda.atdd.staging.service.FloodlightService;
 import org.openkilda.atdd.staging.service.NorthboundService;
 import org.openkilda.atdd.staging.service.TopologyEngineService;
+import org.openkilda.messaging.info.event.IslChangeType;
+import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
+import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.messaging.model.Flow;
@@ -79,6 +82,15 @@ public class FlowCrudOverAllSwitchesTest {
                     .collect(toList());
             when(topologyEngineService.getActiveSwitches()).thenReturn(discoveredSwitches);
 
+            List<IslInfoData> discoveredLinks = topology.getIslsForActiveSwitches().stream()
+                    .map(link -> new IslInfoData(0,
+                            singletonList(new PathNode(link.getSrcSwitch().getDpId(), link.getSrcPort(), 0)),
+                            link.getMaxBandwidth(),
+                            IslChangeType.DISCOVERED,
+                            0))
+                    .collect(toList());
+            when(topologyEngineService.getAllLinks()).thenReturn(discoveredLinks);
+
             when(topologyEngineService.getPaths(eq("00:00:00:00:00:01"), eq("00:00:00:00:00:01")))
                     .thenReturn(singletonList(new PathInfoData()));
             when(topologyEngineService.getPaths(eq("00:00:00:00:00:01"), eq("00:00:00:00:00:02")))
@@ -88,7 +100,7 @@ public class FlowCrudOverAllSwitchesTest {
                     .then((Answer<ImmutablePair<Flow, Flow>>) invocation -> {
                         String flowId = (String) invocation.getArguments()[0];
                         if (!removedFlows.contains(flowId)) {
-                            return new ImmutablePair<Flow, Flow>(new Flow(flowId,
+                            return new ImmutablePair<>(new Flow(flowId,
                                     10000, false, 0, flowId, null,
                                     "00:00:00:00:00:01", "00:00:00:00:00:01", 20, 21,
                                     1, 1, 0, 0, null, null), null);
@@ -99,7 +111,7 @@ public class FlowCrudOverAllSwitchesTest {
                     .then((Answer<ImmutablePair<Flow, Flow>>) invocation -> {
                         String flowId = (String) invocation.getArguments()[0];
                         if (!removedFlows.contains(flowId)) {
-                            return new ImmutablePair<Flow, Flow>(new Flow(flowId,
+                            return new ImmutablePair<>(new Flow(flowId,
                                     10000, false, 0, flowId, null,
                                     "00:00:00:00:00:01", "00:00:00:00:00:02", 20, 20,
                                     2, 2, 0, 0, null, null), null);
@@ -114,7 +126,7 @@ public class FlowCrudOverAllSwitchesTest {
 
             when(northboundService.getFlow(any()))
                     .then((Answer<FlowPayload>) invocation -> {
-                        if (!removedFlows.contains(invocation.getArguments()[0])) {
+                        if (!removedFlows.contains((String) invocation.getArguments()[0])) {
                             return mock(FlowPayload.class);
                         }
                         return null;

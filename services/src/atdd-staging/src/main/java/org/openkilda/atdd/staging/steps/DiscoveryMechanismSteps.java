@@ -17,8 +17,8 @@ import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
 import org.openkilda.atdd.staging.service.FloodlightService;
 import org.openkilda.atdd.staging.service.TopologyEngineService;
 import org.openkilda.atdd.staging.utils.DefaultFlowsChecker;
+import org.openkilda.atdd.staging.utils.TopologyChecker;
 import org.openkilda.messaging.info.event.IslInfoData;
-import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -127,16 +127,7 @@ public class DiscoveryMechanismSteps implements En {
 
     private boolean linkIsPresent(TopologyDefinition.Isl expectedLink, List<IslInfoData> discoveredLinks) {
         return discoveredLinks.stream()
-                .anyMatch(isl -> isIslEqual(expectedLink, isl));
-    }
-
-    private boolean isIslEqual(TopologyDefinition.Isl expectedLink, IslInfoData discoveredLink) {
-        PathNode discoveredSrcNode = discoveredLink.getPath().get(0);
-        PathNode discoveredDstNode = discoveredLink.getPath().get(1);
-        return discoveredSrcNode.getSwitchId().equalsIgnoreCase(expectedLink.getSrcSwitch().getDpId()) &&
-                discoveredSrcNode.getPortNo() == expectedLink.getSrcPort() &&
-                discoveredDstNode.getSwitchId().equalsIgnoreCase(expectedLink.getDstSwitch().getDpId()) &&
-                discoveredDstNode.getPortNo() == expectedLink.getDstPort();
+                .anyMatch(isl -> TopologyChecker.isIslEqual(expectedLink, isl));
     }
 
     private boolean topologyContainsSwitch(SwitchEntry switchEntry) {
