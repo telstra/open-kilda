@@ -31,6 +31,7 @@ import lombok.Value;
 import lombok.experimental.NonFinal;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Defines a topology with switches, links and trafgens.
