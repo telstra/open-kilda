@@ -15,6 +15,7 @@
 
 package org.openkilda.atdd.staging.service;
 
+import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
@@ -28,6 +29,12 @@ import java.util.stream.Collectors;
 public interface TopologyEngineService {
 
     List<IslInfoData> getAllLinks();
+
+    default List<IslInfoData> getActiveLinks() {
+        return getAllLinks().stream()
+                .filter(sw -> sw.getState() == IslChangeType.DISCOVERED)
+                .collect(Collectors.toList());
+    }
 
     Integer getLinkBandwidth(String srcSwitch, String srcPort);
 

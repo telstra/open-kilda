@@ -66,7 +66,7 @@ public class DiscoveryMechanismSteps implements En {
 
     @Then("^all provided links should be detected")
     public void checkDiscoveredLinks() {
-        List<IslInfoData> discoveredLinks = topologyEngineService.getAllLinks();
+        List<IslInfoData> discoveredLinks = topologyEngineService.getActiveLinks();
         List<TopologyDefinition.Isl> expectedLinks = topologyDefinition.getIslsForActiveSwitches();
 
         if (CollectionUtils.isEmpty(discoveredLinks) && expectedLinks.isEmpty()) {
