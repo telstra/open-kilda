@@ -3,7 +3,6 @@ package org.openkilda.atdd.staging.tests.flow_crud.all_switches;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertEquals;
-import static org.mockito.AdditionalAnswers.returnsFirstArg;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.startsWith;
@@ -18,6 +17,7 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import cucumber.api.CucumberOptions;
 import cucumber.api.java.After;
 import cucumber.api.java.Before;
+import org.apache.commons.lang3.SerializationUtils;
 import org.junit.runner.RunWith;
 import org.mockito.stubbing.Answer;
 import org.openkilda.atdd.staging.cucumber.CucumberWithSpringProfile;
@@ -40,6 +40,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.io.IOException;
+import java.time.LocalTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -119,7 +120,12 @@ public class FlowCrudOverAllSwitchesTest {
                         return null;
                     });
 
-            when(northboundService.addFlow(any())).then(returnsFirstArg());
+            when(northboundService.addFlow(any()))
+                    .then((Answer<FlowPayload>) invocation -> {
+                        FlowPayload result = SerializationUtils.clone(((FlowPayload) invocation.getArguments()[0]));
+                        result.setLastUpdated(LocalTime.now().toString());
+                        return result;
+                    });
             when(northboundService.getFlowStatus(any()))
                     .then((Answer<FlowIdStatusPayload>) invocation ->
                             new FlowIdStatusPayload((String) invocation.getArguments()[0], FlowState.UP));
