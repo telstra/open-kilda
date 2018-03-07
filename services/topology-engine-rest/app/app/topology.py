@@ -625,7 +625,7 @@ def api_v1_routes_between_nodes(src_switch, dst_switch):
         "   WHERE SIZE(FILTER("
         "       isl2 IN links WHERE isl1.src_switch = isl2.src_switch OR "
         "           isl1.dst_switch = isl2.dst_switch"
-        "   )) = 1) "
+        "   )) = 1 AND isl1.status = 'active') "
         "RETURN links"
     ).format(src_switch=src_switch, depth=depth, dst_switch=dst_switch)
 
