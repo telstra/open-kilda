@@ -74,7 +74,7 @@ public class FlowCrudOverAllSwitchesTest {
             ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
             mapper.enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS);
             TopologyDefinition topology = mapper.readValue(
-                    getClass().getResourceAsStream("/3-switch-test-topology.yaml"), TopologyDefinition.class);
+                    getClass().getResourceAsStream("/5-switch-test-topology.yaml"), TopologyDefinition.class);
 
             when(topologyDefinition.getActiveSwitches()).thenReturn(topology.getActiveSwitches());
 
