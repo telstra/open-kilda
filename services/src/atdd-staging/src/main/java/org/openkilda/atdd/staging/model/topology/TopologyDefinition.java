@@ -47,16 +47,20 @@ public class TopologyDefinition {
     private List<Isl> isls;
     @NonNull
     private List<Trafgen> trafgens;
+    @NonNull
+    private TrafgenConfig trafgenConfig;
 
     @JsonCreator
     public static TopologyDefinition factory(
             @JsonProperty("switches") List<Switch> switches,
             @JsonProperty("isls") List<Isl> isls,
-            @JsonProperty("trafgens") List<Trafgen> trafgens) {
+            @JsonProperty("trafgens") List<Trafgen> trafgens,
+            @JsonProperty("trafgen_config") TrafgenConfig trafgenConfig) {
         return new TopologyDefinition(
                 unmodifiableList(switches),
                 unmodifiableList(isls),
-                unmodifiableList(trafgens));
+                unmodifiableList(trafgens),
+                trafgenConfig);
     }
 
     public List<Switch> getActiveSwitches() {
@@ -179,6 +183,8 @@ public class TopologyDefinition {
         @NonNull
         private String controlEndpoint;
         @NonNull
+        private String ifaceName;
+        @NonNull
         private Switch switchConnected;
         private int switchPort;
         @NonNull
@@ -187,11 +193,37 @@ public class TopologyDefinition {
         @JsonCreator
         public static Trafgen factory(
                 @JsonProperty("name") String name,
+                @JsonProperty("iface") String ifaceName,
                 @JsonProperty("control_endpoint") String controlEndpoint,
                 @JsonProperty("switch") Switch switchConnected,
                 @JsonProperty("switch_port") int switchPort,
                 @JsonProperty("status") Status status) {
-            return new Trafgen(name, controlEndpoint, switchConnected, switchPort, status);
+            return new Trafgen(name, controlEndpoint, ifaceName, switchConnected, switchPort, status);
+        }
+
+        public boolean isActive() {
+            return status == Status.Active;
+        }
+    }
+
+    public List<Trafgen> getActiveTrafgens() {
+        return trafgens.stream()
+                .filter(Trafgen::isActive)
+                .collect(Collectors.toList());
+    }
+
+    @Value
+    @NonFinal
+    public static class TrafgenConfig {
+        @NonNull
+        private String addressPoolBase;
+        private int addressPoolPrefixLen;
+
+        @JsonCreator
+        public static TrafgenConfig factory(
+                @JsonProperty("address_pool_base") String address_pool_base,
+                @JsonProperty("address_pool_prefix_len") int address_pool_prefix_len) {
+            return new TrafgenConfig(address_pool_base, address_pool_prefix_len);
         }
     }
 
