@@ -15,6 +15,7 @@
 
 package org.openkilda.atdd.staging.model.topology;
 
+import static java.util.Collections.emptyList;
 import static java.util.Collections.unmodifiableList;
 import static java.util.stream.Collectors.toList;
 
@@ -92,6 +93,10 @@ public class TopologyDefinition {
                 @JsonProperty("of_version") String ofVersion,
                 @JsonProperty("status") Status status,
                 @JsonProperty("out_ports") List<OutPort> outPorts) {
+            if(outPorts == null) {
+                outPorts = emptyList();
+            }
+
             return new Switch(name, dpId, ofVersion, status, outPorts);
         }
 

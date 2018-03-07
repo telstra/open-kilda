@@ -27,6 +27,11 @@ switches:
         - port: 22
           vlan_range: 1..10
 
+    - name: sw4
+      dp_id: 00:00:00:00:00:04
+      of_version: OF_13
+      status: inactive
+
 isls:
     - src_switch: sw1
       src_port: 1
