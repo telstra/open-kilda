@@ -15,9 +15,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
-import org.openkilda.atdd.staging.service.FloodlightService;
-import org.openkilda.atdd.staging.service.NorthboundService;
-import org.openkilda.atdd.staging.service.TopologyEngineService;
+import org.openkilda.atdd.staging.service.floodlight.FloodlightService;
+import org.openkilda.atdd.staging.service.northbound.NorthboundService;
+import org.openkilda.atdd.staging.service.topology.TopologyEngineService;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 

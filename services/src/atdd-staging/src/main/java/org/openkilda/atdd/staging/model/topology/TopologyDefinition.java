@@ -15,10 +15,6 @@
 
 package org.openkilda.atdd.staging.model.topology;
 
-import static java.util.Collections.emptyList;
-import static java.util.Collections.unmodifiableList;
-import static java.util.stream.Collectors.toList;
-
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -33,9 +29,13 @@ import lombok.experimental.NonFinal;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static java.util.Collections.emptyList;
+import static java.util.Collections.unmodifiableList;
+import static java.util.stream.Collectors.toList;
+
 /**
  * Defines a topology with switches, links and trafgens.
- *
+ * <p>
  * Topology definition objects are immutable and can't be changed after creation.
  */
 @Value
@@ -98,7 +98,7 @@ public class TopologyDefinition {
                 @JsonProperty("of_version") String ofVersion,
                 @JsonProperty("status") Status status,
                 @JsonProperty("out_ports") List<OutPort> outPorts) {
-            if(outPorts == null) {
+            if (outPorts == null) {
                 outPorts = emptyList();
             }
 
@@ -222,9 +222,9 @@ public class TopologyDefinition {
 
         @JsonCreator
         public static TrafgenConfig factory(
-                @JsonProperty("address_pool_base") String address_pool_base,
-                @JsonProperty("address_pool_prefix_len") int address_pool_prefix_len) {
-            return new TrafgenConfig(address_pool_base, address_pool_prefix_len);
+                @JsonProperty("address_pool_base") String addressPoolBase,
+                @JsonProperty("address_pool_prefix_len") int addressPoolPrefixLen) {
+            return new TrafgenConfig(addressPoolBase, addressPoolPrefixLen);
         }
     }
 

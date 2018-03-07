@@ -23,9 +23,6 @@ switches:
       dp_id: 00:00:00:00:00:02
       of_version: OF_13
       status: skip
-      out_ports:
-        - port: 20
-          vlan_range: 1..5, 30..40
 
     - name: sw3
       dp_id: 00:00:00:00:00:03

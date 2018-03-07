@@ -37,7 +37,7 @@ import java.io.InputStreamReader;
 @Configuration
 @Profile("default")
 @PropertySource("file:///${kilda.config.file}")
-@ComponentScan(basePackages = {"org.openkilda.atdd.staging.service.impl"})
+@ComponentScan(basePackages = {"org.openkilda.atdd.staging.service"})
 public class ServiceConfig {
 
     @Bean(name = "northboundRestTemplate")
@@ -45,11 +45,7 @@ public class ServiceConfig {
             @Value("${northbound.endpoint}") String endpoint,
             @Value("${northbound.username}") String username,
             @Value("${northbound.password}") String password) {
-        final RestTemplate restTemplate = new RestTemplate();
-        restTemplate.setUriTemplateHandler(new DefaultUriBuilderFactory(endpoint));
-        restTemplate.getInterceptors().add(new BasicAuthorizationInterceptor(username, password));
-        restTemplate.setErrorHandler(buildErrorHandler());
-        return restTemplate;
+        return buildRestTemplateWithAuth(endpoint, username, password);
     }
 
     @Bean(name = "floodlightRestTemplate")
@@ -57,11 +53,7 @@ public class ServiceConfig {
             @Value("${floodlight.endpoint}") String endpoint,
             @Value("${floodlight.username}") String username,
             @Value("${floodlight.password}") String password) {
-        final RestTemplate restTemplate = new RestTemplate();
-        restTemplate.setUriTemplateHandler(new DefaultUriBuilderFactory(endpoint));
-        restTemplate.getInterceptors().add(new BasicAuthorizationInterceptor(username, password));
-        restTemplate.setErrorHandler(buildErrorHandler());
-        return restTemplate;
+        return buildRestTemplateWithAuth(endpoint, username, password);
     }
 
     @Bean(name = "topologyEngineRestTemplate")
@@ -69,16 +61,20 @@ public class ServiceConfig {
             @Value("${topology-engine-rest.endpoint}") String endpoint,
             @Value("${topology-engine-rest.username}") String username,
             @Value("${topology-engine-rest.password}") String password) {
-        final RestTemplate restTemplate = new RestTemplate();
-        restTemplate.setUriTemplateHandler(new DefaultUriBuilderFactory(endpoint));
-        restTemplate.getInterceptors().add(new BasicAuthorizationInterceptor(username, password));
-        restTemplate.setErrorHandler(buildErrorHandler());
-        return restTemplate;
+        return buildRestTemplateWithAuth(endpoint, username, password);
     }
 
     @Bean(name = "traffExamRestTemplate")
     public RestTemplate traffExamRestTemplate() {
         return new RestTemplate();
+    }
+
+    private RestTemplate buildRestTemplateWithAuth(String endpoint, String username, String password) {
+        final RestTemplate restTemplate = new RestTemplate();
+        restTemplate.setUriTemplateHandler(new DefaultUriBuilderFactory(endpoint));
+        restTemplate.getInterceptors().add(new BasicAuthorizationInterceptor(username, password));
+        restTemplate.setErrorHandler(buildErrorHandler());
+        return restTemplate;
     }
 
     private ResponseErrorHandler buildErrorHandler() {
