@@ -19,6 +19,7 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import org.openkilda.topo.builders.TestTopologyBuilder;
 
 import java.io.IOException;
 import java.io.StringWriter;
@@ -40,14 +41,13 @@ public class TopologyPrinter {
         StringWriter sw = new StringWriter();
         JsonFactory f = mapper.getFactory();
 
-        JsonGenerator g = f.createGenerator(sw);
-
-        g.writeStartObject();
-        // use TreeSet to sort the list
-        g.writeObjectField("switches", new TreeSet<String>(topo.getSwitches().keySet()));
-        g.writeObjectField("links", new TreeSet<String>(topo.getLinks().keySet()));
-        g.writeEndObject();
-        g.close();
+        try(JsonGenerator g = f.createGenerator(sw)) {
+            g.writeStartObject();
+            // use TreeSet to sort the list
+            g.writeObjectField("switches", new TreeSet<String>(topo.getSwitches().keySet()));
+            g.writeObjectField("links", new TreeSet<String>(topo.getLinks().keySet()));
+            g.writeEndObject();
+        }
 
         return sw.toString();
     }
@@ -118,7 +118,7 @@ public class TopologyPrinter {
     }
 
     public static void main(String[] args) throws IOException {
-        ITopology t = TopologyBuilder.buildLinearTopo(5);
+        ITopology t = TestTopologyBuilder.buildLinearTopo(5);
         System.out.println("t = " + t);
 
         System.out.println("mininet json = \n" + TopologyPrinter.toMininetJson(t));
