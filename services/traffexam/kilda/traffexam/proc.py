@@ -43,7 +43,7 @@ class PidFile(common.Resource):
             self._ensure_owning(pid_file)
             try:
                 os.unlink(self.path)
-            except OSError:
+            except OSError as e:
                 raise exc.PidFileError(self.path) from e
 
     def ping_proc(self, pid):
