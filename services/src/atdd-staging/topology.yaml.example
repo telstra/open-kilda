@@ -60,3 +60,7 @@ trafgens:
       switch: sw3
       switch_port: 11
       status: active
+
+trafgen_config:
+    address_pool_base: 172.16.80.0
+    address_pool_prefix_len: 20

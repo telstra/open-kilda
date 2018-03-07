@@ -53,13 +53,19 @@ isls:
 
 trafgens:
     - name: tg1
+      iface: eth0
       control_endpoint: http://192.168.0.1:80/
       switch: sw1
       switch_port: 11
       status: active
 
     - name: tg2
+      iface: eth0
       control_endpoint: http://192.168.0.2:80/
       switch: sw3
       switch_port: 11
       status: active
+
+trafgen_config:
+    address_pool_base: 172.16.80.0
+    address_pool_prefix_len: 20
