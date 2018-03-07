@@ -199,7 +199,8 @@ def merge_flow_segments(_flow, tx=None):
         flow['dst_switch'] = dst['switch_id']
         flow['dst_port'] = dst['port_no']
         # Allow for per segment cookies .. see if it has one set .. otherwise use the cookie of the flow
-        flow['cookie'] = src.get('cookie', flow_cookie)
+        # NB: use the "dst cookie" .. since for flow segments, the delete rule will use the dst switch
+        flow['cookie'] = dst.get('cookie', flow_cookie)
 
         # TODO: Preference for transaction around the entire delete
         # TODO: Preference for batch command

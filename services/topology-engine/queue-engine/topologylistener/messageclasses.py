@@ -403,35 +403,26 @@ class MessageItem(object):
         """
         Simple algorithm - delete the stuff in the DB, send delete commands, send a response.
         Complexity - each segment in the path may have a separate cookie, so that information needs to be gathered.
+        NB: Each switch in the flow should get a delete command.
+
+        # TODO: eliminate flowpath as part of delete_flow request; rely on flow_id only
+        # TODO: Add state to flow .. ie "DELETING", as part of refactoring project to add state
+        - eg: flow_utils.update_state(flow, DELETING, parent_tx)
 
         :param parent_tx: If there is a larger transaction to use, then use it.
         :return: True, unless an exception is raised.
         """
         try:
-            # NB: previously (before 2018.03.03) flow_path was used. Now, flow segments are used.
-            # TODO: eliminate flowpath as part of delete_flow; rely on flow_id
-            # flow_path = flow['flowpath']['path']
+            # All flows .. single switch or multi .. will start with deleting based on the src and flow cookie; then
+            # we'll have a delete per segment based on the destination. Consequently, the "single switch flow" is
+            # automatically addressed using this algorithm.
             flow_cookie = int(flow['cookie'])
-
-            #
-            # TODO: Add state to flow .. ie "DELETING", as part of refactoring project to add state
-            # eg:  flow_utils.update_state(flow, DELETING, parent_tx)
-
-            # need to buildup the switch/flow/cookie IDs of each segment
-            nodes = []
-            if flow['src_switch'] == flow['dst_switch']:
-                # This means the flow is a single switch. The code north of here doesn't currently handle
-                # this scenario (for flow creation, the flow_utils.build_rules does account for it, but
-                # there isn't a symmetrical call .. ie build_delete_rules.
-                #
-                # Given the above, there should be no nodes, Create a node now.
-                nodes.append({'switch_id': flow['src_switch'], 'flow_id': flow_id, 'cookie': flow_cookie})
-            else:
-                segments = flow_utils.fetch_flow_segments(flow_id, flow_cookie)
-                for segment in segments:
-                    # every segment should have a cookie field, based on merge_segment; but just in case..
-                    segment_cookie = segment.get('cookie', flow_cookie)
-                    nodes.append({'switch_id': segment['src_switch'], 'flow_id': flow_id, 'cookie': segment_cookie})
+            nodes = [{'switch_id': flow['src_switch'], 'flow_id': flow_id, 'cookie': flow_cookie}]
+            segments = flow_utils.fetch_flow_segments(flow_id, flow_cookie)
+            for segment in segments:
+                # every segment should have a cookie field, based on merge_segment; but just in case..
+                segment_cookie = segment.get('cookie', flow_cookie)
+                nodes.append({'switch_id': segment['dst_switch'], 'flow_id': flow_id, 'cookie': segment_cookie})
 
             logger.info('Flow rules remove start: correlation_id=%s, flow_id=%s, path=%s', correlation_id, flow_id, nodes)
 
