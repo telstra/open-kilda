@@ -298,10 +298,11 @@ public class CrudBolt
     }
 
     private void handlePushRequest(String flowId, InfoMessage message, Tuple tuple) throws IOException {
-        logger.info("PUSH flow: {} :: {}", flowId, message);  // TODO: use FlowInfoData
+        logger.info("PUSH flow: {} :: {}", flowId, message);
+        FlowInfoData fid = (FlowInfoData) message.getData();
+        ImmutablePair<Flow,Flow> flow = fid.getPayload();
 
-        // TODO: Ensure FlowState is UP
-        // TODO: Allocate the resources used in this flow
+        flowCache.pushFlow(flow);
 
         Values northbound = new Values(new InfoMessage(new FlowStatusResponse(new FlowIdStatusPayload(flowId, FlowState.UP)),
                 message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
@@ -309,10 +310,10 @@ public class CrudBolt
     }
 
     private void handleUnpushRequest(String flowId, InfoMessage message, Tuple tuple) throws IOException {
-        logger.info("UNPUSH flow: {} :: {}", flowId, message);  // TODO: use FlowInfoData
+        logger.info("UNPUSH flow: {} :: {}", flowId, message);
+        FlowInfoData fid = (FlowInfoData) message.getData();
 
-        // TODO: Ensure FlowState is UP
-        // TODO: Free the resources used in this flow
+        flowCache.deleteFlow(flowId);
 
         Values northbound = new Values(new InfoMessage(new FlowStatusResponse(new FlowIdStatusPayload(flowId, FlowState.DOWN)),
                 message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
