@@ -285,6 +285,35 @@ public class FlowController {
         return flowService.pushFlows(externalFlows, correlationId);
     }
 
+
+    /**
+     * Unpush flows to kilda ... essentially the opposite of push.
+     *
+     * @param externalFlows a list of flows to unpush without propagation to Floodlight
+     * @param correlationId correlation ID header value
+     * @return list of flow
+     */
+    @ApiOperation(value = "Unpush flows without expectation of modifying switches", response = BatchResults.class)
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, response = BatchResults.class, message = "Operation is successful"),
+            @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
+            @ApiResponse(code = 401, response = MessageError.class, message = "Unauthorized"),
+            @ApiResponse(code = 403, response = MessageError.class, message = "Forbidden"),
+            @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
+            @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
+            @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
+    @RequestMapping(path = "/unpush/flows",
+            method = RequestMethod.PUT,
+            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @ResponseStatus(HttpStatus.OK)
+    public BatchResults unpushFlows(
+            @RequestBody List<FlowInfoData> externalFlows,
+            @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
+
+        return flowService.unpushFlows(externalFlows, correlationId);
+    }
+
+
     /**
      * Initiates flow rerouting if any shorter paths are available.
      *

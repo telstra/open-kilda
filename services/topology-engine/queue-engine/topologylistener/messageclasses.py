@@ -527,9 +527,10 @@ class MessageItem(object):
             tx = graph.begin()
             propagate = operation == "DELETE"
             MessageItem.delete_flow(flow_id, forward, correlation_id, tx, propagate)
-            message_utils.send_info_message({'payload': forward, 'clazz': MT_FLOW_RESPONSE}, correlation_id)
             MessageItem.delete_flow(flow_id, reverse, correlation_id, tx, propagate)
-            message_utils.send_info_message({'payload': reverse, 'clazz': MT_FLOW_RESPONSE}, correlation_id)
+            if propagate:
+                message_utils.send_info_message({'payload': forward, 'clazz': MT_FLOW_RESPONSE}, correlation_id)
+                message_utils.send_info_message({'payload': reverse, 'clazz': MT_FLOW_RESPONSE}, correlation_id)
             tx.commit()
 
         elif operation == "UPDATE":

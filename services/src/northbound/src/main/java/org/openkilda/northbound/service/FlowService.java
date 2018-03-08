@@ -89,13 +89,23 @@ public interface FlowService extends BasicService {
     FlowPathPayload pathFlow(final String id, final String correlationId);
 
     /**
-     * Use this to push flows that may not be in the database(s) but they should be
+     * Use this to push flows that may not be in the database / caches but they should be
      *
      * @param externalFlows   the list of flows to push.
      * @param correlationId request correlation Id
      * @return
      */
     BatchResults pushFlows(final List<FlowInfoData> externalFlows, final String correlationId);
+
+    /**
+     * Use this to unpush flows .. ie undo a push
+     *
+     * @param externalFlows   the list of flows to unpush.
+     * @param correlationId request correlation Id
+     * @return
+     */
+    BatchResults unpushFlows(final List<FlowInfoData> externalFlows, final String correlationId);
+
 
     /**
      * Performs rerouting of specific flow.

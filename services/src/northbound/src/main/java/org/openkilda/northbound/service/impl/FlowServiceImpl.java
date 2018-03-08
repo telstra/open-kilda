@@ -243,17 +243,34 @@ public class FlowServiceImpl implements FlowService {
      * {@inheritDoc}
      */
     @Override
-    public BatchResults pushFlows(List<FlowInfoData> externalFlows, String correlationId) {
-        LOGGER.debug("Flow push: {}={}", CORRELATION_ID, correlationId);
-        LOGGER.debug("Size of list: {}", externalFlows.size());
+    public BatchResults unpushFlows(List<FlowInfoData> externalFlows, String correlationId) {
+        return flowPushUnpush(externalFlows, correlationId, FlowOperation.UNPUSH);
+    }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public BatchResults pushFlows(List<FlowInfoData> externalFlows, String correlationId) {
+        return flowPushUnpush(externalFlows, correlationId, FlowOperation.PUSH);
+    }
+
+    /**
+     * There are only minor differences between push and unpush .. this utility function helps
+     */
+    private BatchResults flowPushUnpush(List<FlowInfoData> externalFlows, String correlationId,
+                                        FlowOperation op) {
+        LOGGER.debug("Flow {}: {}={}", op, CORRELATION_ID, correlationId);
+        LOGGER.debug("Size of list: {}", externalFlows.size());
         // First, send them all, then wait for all the responses.
         // Send the command to both Flow Topology and to TE
         messageConsumer.clear();
         ArrayList<InfoMessage> flowRequests = new ArrayList<>();    // used for error reporting, if needed
         ArrayList<InfoMessage> teRequests = new ArrayList<>();      // used for error reporting, if needed
-        for (int i = 0; i < externalFlows.size(); i++){
+//        for (int i = 0; i < externalFlows.size(); i++){
+        for (int i = 0; i < 1; i++){
             FlowInfoData data = externalFlows.get(i);
+            data.setOperation(op);  // <-- this is what determines PUSH / UNPUSH
             String flowCorrelation = correlationId + "-FLOW-" + i;
             InfoMessage flowRequest = new InfoMessage(data, System.currentTimeMillis(), flowCorrelation, Destination.WFM);
             flowRequests.add(flowRequest);
@@ -275,14 +292,17 @@ public class FlowServiceImpl implements FlowService {
         for (int i = 0; i < 1; i++) {
             String flowCorrelation = correlationId + "-FLOW-" + i;
             String teCorrelation = correlationId + "-TE-" + i;
+            FlowState expectedState = (op == FlowOperation.PUSH) ? FlowState.UP : FlowState.DOWN;
             try {
                 Message flowMessage = (Message) messageConsumer.poll(flowCorrelation);
                 FlowStatusResponse response = (FlowStatusResponse) validateInfoMessage(flowRequests.get(i), flowMessage, correlationId);
                 FlowIdStatusPayload status =  response.getPayload();
-                if (status.getStatus() == FlowState.UP) {
+                if (status.getStatus() == expectedState) {
                     flow_success++;
                 } else {
-                    msgs.add("FAILURE (FlowTopo): Flow " + status.getId() + " NOT in UP state: state = " + status.getStatus());
+                    msgs.add("FAILURE (FlowTopo): Flow " + status.getId() +
+                            " NOT in " + expectedState +
+                            " state: state = " + status.getStatus());
                     flow_failure++;
                 }
             } catch (Exception e) {
@@ -294,10 +314,12 @@ public class FlowServiceImpl implements FlowService {
                 Message teMessage = (Message) messageConsumer.poll(teCorrelation);
                 FlowStatusResponse response = (FlowStatusResponse) validateInfoMessage(flowRequests.get(i), teMessage, correlationId);
                 FlowIdStatusPayload status =  response.getPayload();
-                if (status.getStatus() == FlowState.UP) {
+                if (status.getStatus() == expectedState) {
                     te_success++;
                 } else {
-                    msgs.add("FAILURE (TE): Flow " + status.getId() + " NOT in UP state: state = " + status.getStatus());
+                    msgs.add("FAILURE (TE): Flow " + status.getId() +
+                            " NOT in " + expectedState +
+                            " state: state = " + status.getStatus());
                     te_failure++;
                 }
             } catch (Exception e) {
