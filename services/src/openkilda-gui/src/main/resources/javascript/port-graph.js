@@ -21,8 +21,18 @@ var graphInterval;
 
 $(function() {
 		
-		$("#datetimepicker7,#datetimepicker8,#downsampling,#menulist,#autoreload").on("change",function() {
-			getGraphData();
+		var count = 0;
+		$("#datetimepicker7,#datetimepicker8").on("change",function(event) {
+			count++;
+			if(count == 1){
+				count = -1;
+				getGraphData();
+				return;
+			}			
+		});
+		
+		$("#downsampling,#menulist,#autoreload").on("change",function(event) {
+				getGraphData();
 		});
 });
 	
@@ -68,8 +78,7 @@ $(document).ready(function() {
  * html page.
  */
 function getGraphData() {
-	
-	$('#wait1').show();	
+		
 	var regex = new RegExp("^\\d+(s|h|m){1}$");
 	var currentDate = new Date();
 	var startDate = new Date($("#datetimepicker7").val());
@@ -82,17 +91,19 @@ function getGraphData() {
 	var valid=true;
 	
 	if(downsamplingValidated == false) {	
-		
-		common.infoMessage('Please enter correct downsampling','error');
+		$("#DownsampleID").addClass("has-error")	
+		$(".downsample-error-message").html("Please enter valid input.");			
 		valid=false;
 		return
 	}
 	if(startDate.getTime() > currentDate.getTime()) {
-		common.infoMessage('From Date should not be greater than currentDate.','error');		
+		$("#fromId").addClass("has-error")	
+		$(".from-error-message").html("From date should not be greater than currentDate.");			
 		valid=false;
 		return;
 	} else if(endDate.getTime() < startDate.getTime()){
-		common.infoMessage('To Date should not be less than From Date.','error');		
+		$("#toId").addClass("has-error")	
+		$(".to-error-message").html("To date should not be less than from fate.");		
 		valid=false;
 		return;
 	}
@@ -112,9 +123,18 @@ function getGraphData() {
   });
   
 if(test) {
+	$('#wait1').show();
+	$("#fromId").removeClass("has-error")
+    $(".from-error-message").html("");
 	
-	$("#autoreloadId").removeClass("has-error")	
+	$("#toId").removeClass("has-error")
+    $(".to-error-message").html("");
+	
+	$("#autoreloadId").removeClass("has-error")
     $(".error-message").html("");
+	
+  	$("#DownsampleID").removeClass("has-error")
+	$(".downsample-error-message").html("");
 	
   loadGraph.loadGraphData("/stats/switchid/"+sourceswitch+"/port/"+portNum+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric,"GET",selMetric).then(function(response) {
 		

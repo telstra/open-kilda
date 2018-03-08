@@ -19,9 +19,9 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonPropertyOrder({"bandwidth", "cookie", "description", "dst_port", "dst_switch", "dst_vlan",
-        "flowid", "flowpath", "last_updated", "meter_id", "src_port", "src_switch", "src_vlan",
+        "flowid", "flowpath", "ignore_bandwidth", "last_updated", "meter_id", "src_port", "src_switch", "src_vlan",
         "transit_vlan"})
-public class PathLinkResponse {
+public class FlowPathInfoData {
 
     /** The bandwidth. */
     @JsonProperty("bandwidth")
@@ -55,6 +55,10 @@ public class PathLinkResponse {
     @JsonProperty("flowpath")
     private PathInfoData flowpath;
 
+    /** The ignore Bandwidth. */
+    @JsonProperty("ignore_bandwidth")
+    private Boolean ignoreBandwidth;
+    
     /** The last updated. */
     @JsonProperty("last_updated")
     private String lastUpdated;
@@ -244,6 +248,24 @@ public class PathLinkResponse {
     }
 
     /**
+     * Gets the Ignore Bandwidth.
+     *
+     * @return the ignoreBandwidth
+     */
+    public Boolean getIgnoreBandwidth() {
+		return ignoreBandwidth;
+	}
+
+    /**
+     * Sets the Ignore Bandwidth.
+     *
+     * @param ignoreBandwidth 
+     */
+	public void setIgnoreBandwidth(Boolean ignoreBandwidth) {
+		this.ignoreBandwidth = ignoreBandwidth;
+	}
+
+	/**
      * Gets the last updated.
      *
      * @return the last updated
@@ -383,5 +405,18 @@ public class PathLinkResponse {
     public void setAdditionalProperty(String name, Object value) {
         this.additionalProperties.put(name, value);
     }
+
+	@Override
+	public String toString() {
+		return "PathLinkResponse [bandwidth=" + bandwidth + ", cookie="
+				+ cookie + ", description=" + description + ", dstPort="
+				+ dstPort + ", dstSwitch=" + dstSwitch + ", dstVlan=" + dstVlan
+				+ ", flowid=" + flowid + ", flowpath=" + flowpath
+				+ ", ignoreBandwidth=" + ignoreBandwidth + ", lastUpdated="
+				+ lastUpdated + ", meterId=" + meterId + ", srcPort=" + srcPort
+				+ ", srcSwitch=" + srcSwitch + ", srcVlan=" + srcVlan
+				+ ", transitVlan=" + transitVlan + ", additionalProperties="
+				+ additionalProperties + "]";
+	}
 
 }

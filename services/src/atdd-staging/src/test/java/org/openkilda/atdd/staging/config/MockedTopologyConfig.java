@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,16 +13,21 @@
  *   limitations under the License.
  */
 
-package org.openkilda.atdd;
+package org.openkilda.atdd.staging.config;
 
-/**
- * Hello world!
- *
- */
-public class App
-{
-    public static void main( String[] args )
-    {
-        System.out.println( "Hello World!" );
+import static org.mockito.Mockito.mock;
+
+import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
+
+@Configuration
+@Profile("mock")
+public class MockedTopologyConfig {
+
+    @Bean
+    public TopologyDefinition topologyDefinition() {
+        return mock(TopologyDefinition.class);
     }
 }
