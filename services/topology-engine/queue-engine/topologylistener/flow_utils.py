@@ -17,6 +17,8 @@ import os
 import json
 import db
 import copy
+import calendar
+import time
 
 import message_utils
 import logging
@@ -144,6 +146,8 @@ def merge_flow_relationship(flow_data, tx=None):
         " f.last_updated = '{last_updated}', "
         " f.flowpath = '{flowpath}' "
     )
+    flow_data['flowpath'].pop('clazz', None) # don't store the clazz info, if it is there.
+    flow_data['last_updated'] = calendar.timegm(time.gmtime())
     flow_data['flowpath'] = json.dumps(flow_data['flowpath'])
     if tx:
         tx.run(query.format(**flow_data))

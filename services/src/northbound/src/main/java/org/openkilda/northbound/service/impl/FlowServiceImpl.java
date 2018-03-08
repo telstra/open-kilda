@@ -267,8 +267,7 @@ public class FlowServiceImpl implements FlowService {
         messageConsumer.clear();
         ArrayList<InfoMessage> flowRequests = new ArrayList<>();    // used for error reporting, if needed
         ArrayList<InfoMessage> teRequests = new ArrayList<>();      // used for error reporting, if needed
-//        for (int i = 0; i < externalFlows.size(); i++){
-        for (int i = 0; i < 1; i++){
+        for (int i = 0; i < externalFlows.size(); i++){
             FlowInfoData data = externalFlows.get(i);
             data.setOperation(op);  // <-- this is what determines PUSH / UNPUSH
             String flowCorrelation = correlationId + "-FLOW-" + i;
@@ -288,8 +287,7 @@ public class FlowServiceImpl implements FlowService {
         List<String> msgs = new ArrayList<>();
         msgs.add("Total Flows Received: " + externalFlows.size());
 
-//        for (int i = 0; i < externalFlows.size(); i++) {
-        for (int i = 0; i < 1; i++) {
+        for (int i = 0; i < externalFlows.size(); i++) {
             String flowCorrelation = correlationId + "-FLOW-" + i;
             String teCorrelation = correlationId + "-TE-" + i;
             FlowState expectedState = (op == FlowOperation.PUSH) ? FlowState.UP : FlowState.DOWN;
