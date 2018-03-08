@@ -23,7 +23,7 @@ import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
-import org.openkilda.northbound.dto.ExternalFlowsDto;
+import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.northbound.service.BatchResults;
 import org.openkilda.northbound.service.FlowService;
 
@@ -279,11 +279,9 @@ public class FlowController {
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     @ResponseStatus(HttpStatus.OK)
     public BatchResults pushFlows(
-            @RequestBody List<ExternalFlowsDto> externalFlows,
+            @RequestBody List<FlowInfoData> externalFlows,
             @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
 
-//        BatchResults br = flowService.pushFlows(externalFlows, correlationId);
-//        return new BatchResults(1,2, new String[]{"msg1",""+br});
         return flowService.pushFlows(externalFlows, correlationId);
     }
 

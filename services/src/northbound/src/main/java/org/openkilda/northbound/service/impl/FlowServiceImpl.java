@@ -34,11 +34,13 @@ import org.openkilda.messaging.info.flow.FlowPathResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowStatusResponse;
 import org.openkilda.messaging.info.flow.FlowsResponse;
+import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
-import org.openkilda.northbound.dto.ExternalFlowsDto;
+import org.openkilda.messaging.info.flow.FlowInfoData;
+import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.northbound.messaging.MessageConsumer;
 import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.service.BatchResults;
@@ -58,6 +60,7 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import javax.annotation.PostConstruct;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -75,10 +78,16 @@ public class FlowServiceImpl implements FlowService {
 
 
     /**
-     * The kafka topic.
+     * The kafka topic for the flow topology
      */
     @Value("${kafka.flow.topic}")
     private String topic;
+
+    /**
+     * The kafka topic for the topology engine
+     */
+    @Value("${kafka.topo.eng.topic}")
+    private String topoEngTopic;
 
     /**
      * Kafka message consumer.
@@ -234,13 +243,74 @@ public class FlowServiceImpl implements FlowService {
      * {@inheritDoc}
      */
     @Override
-    public BatchResults pushFlows(List<ExternalFlowsDto> externalFlows, String correlationId) {
+    public BatchResults pushFlows(List<FlowInfoData> externalFlows, String correlationId) {
         LOGGER.debug("Flow push: {}={}", CORRELATION_ID, correlationId);
         LOGGER.debug("Size of list: {}", externalFlows.size());
-        HttpEntity<List<ExternalFlowsDto>> entity = new HttpEntity<>(externalFlows,headers);
-        ResponseEntity<BatchResults> response = restTemplate.exchange(pushFlowsUrlBase,
-                HttpMethod.PUT, entity, BatchResults.class);
-        BatchResults result = response.getBody();
+
+        // First, send them all, then wait for all the responses.
+        // Send the command to both Flow Topology and to TE
+        messageConsumer.clear();
+        ArrayList<InfoMessage> flowRequests = new ArrayList<>();    // used for error reporting, if needed
+        ArrayList<InfoMessage> teRequests = new ArrayList<>();      // used for error reporting, if needed
+        for (int i = 0; i < externalFlows.size(); i++){
+            FlowInfoData data = externalFlows.get(i);
+            String flowCorrelation = correlationId + "-FLOW-" + i;
+            InfoMessage flowRequest = new InfoMessage(data, System.currentTimeMillis(), flowCorrelation, Destination.WFM);
+            flowRequests.add(flowRequest);
+            messageProducer.send(topic, flowRequest);
+            String teCorrelation = correlationId + "-TE-" + i;
+            InfoMessage teRequest = new InfoMessage(data, System.currentTimeMillis(), teCorrelation, Destination.TOPOLOGY_ENGINE);
+            teRequests.add(teRequest);
+            messageProducer.send(topoEngTopic, teRequest);
+        }
+
+        int flow_success = 0;
+        int flow_failure = 0;
+        int te_success = 0;
+        int te_failure = 0;
+        List<String> msgs = new ArrayList<>();
+        msgs.add("Total Flows Received: " + externalFlows.size());
+
+//        for (int i = 0; i < externalFlows.size(); i++) {
+        for (int i = 0; i < 1; i++) {
+            String flowCorrelation = correlationId + "-FLOW-" + i;
+            String teCorrelation = correlationId + "-TE-" + i;
+            try {
+                Message flowMessage = (Message) messageConsumer.poll(flowCorrelation);
+                FlowStatusResponse response = (FlowStatusResponse) validateInfoMessage(flowRequests.get(i), flowMessage, correlationId);
+                FlowIdStatusPayload status =  response.getPayload();
+                if (status.getStatus() == FlowState.UP) {
+                    flow_success++;
+                } else {
+                    msgs.add("FAILURE (FlowTopo): Flow " + status.getId() + " NOT in UP state: state = " + status.getStatus());
+                    flow_failure++;
+                }
+            } catch (Exception e) {
+                msgs.add("EXCEPTION in Flow Topology Response: " + e.getMessage());
+                flow_failure++;
+            }
+            try {
+                // TODO: this code block is mostly the same as the previous: consolidate.
+                Message teMessage = (Message) messageConsumer.poll(teCorrelation);
+                FlowStatusResponse response = (FlowStatusResponse) validateInfoMessage(flowRequests.get(i), teMessage, correlationId);
+                FlowIdStatusPayload status =  response.getPayload();
+                if (status.getStatus() == FlowState.UP) {
+                    te_success++;
+                } else {
+                    msgs.add("FAILURE (TE): Flow " + status.getId() + " NOT in UP state: state = " + status.getStatus());
+                    te_failure++;
+                }
+            } catch (Exception e) {
+                msgs.add("EXCEPTION in Topology Engine Response: " + e.getMessage());
+                te_failure++;
+            }
+        }
+
+        BatchResults result = new BatchResults(
+                flow_failure + te_failure,
+                flow_success + te_success,
+                msgs.stream().toArray(String[]::new));
+
         LOGGER.debug("Returned: ", result);
         return result;
     }

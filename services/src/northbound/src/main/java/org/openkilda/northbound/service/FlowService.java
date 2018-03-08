@@ -18,7 +18,7 @@ package org.openkilda.northbound.service;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
-import org.openkilda.northbound.dto.ExternalFlowsDto;
+import org.openkilda.messaging.info.flow.FlowInfoData;
 
 import java.util.List;
 
@@ -95,7 +95,7 @@ public interface FlowService extends BasicService {
      * @param correlationId request correlation Id
      * @return
      */
-    BatchResults pushFlows(final List<ExternalFlowsDto> externalFlows, final String correlationId);
+    BatchResults pushFlows(final List<FlowInfoData> externalFlows, final String correlationId);
 
     /**
      * Performs rerouting of specific flow.

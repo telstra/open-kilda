@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 MT_ERROR = "org.openkilda.messaging.error.ErrorMessage"
 MT_COMMAND = "org.openkilda.messaging.command.CommandMessage"
 MT_INFO = "org.openkilda.messaging.info.InfoMessage"
+MT_INFO_FLOW_STATUS = "org.openkilda.messaging.info.flow.FlowStatusResponse"
 MT_ERROR_DATA = "org.openkilda.messaging.error.ErrorData"
 
 
