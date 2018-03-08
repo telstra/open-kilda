@@ -27,6 +27,7 @@ import org.apache.storm.topology.base.BaseStatefulBolt;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 import org.openkilda.messaging.Destination;
+import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.FlowCreateRequest;
@@ -184,39 +185,48 @@ public class CrudBolt
             switch (componentId) {
 
                 case SPLITTER_BOLT:
-                    CommandMessage message = (CommandMessage) tuple.getValueByField(AbstractTopology.MESSAGE_FIELD);
-                    correlationId = message.getCorrelationId();
+                    Message msg = (Message) tuple.getValueByField(AbstractTopology.MESSAGE_FIELD);
+                    correlationId = msg.getCorrelationId();
+
+                    CommandMessage cmsg = (msg instanceof CommandMessage) ? (CommandMessage) msg : null;
+                    InfoMessage imsg = (msg instanceof InfoMessage) ? (InfoMessage) msg : null;
 
                     logger.info("Flow request: {}={}, {}={}, component={}, stream={}",
                             Utils.CORRELATION_ID, correlationId, Utils.FLOW_ID, flowId, componentId, streamId);
 
                     switch (streamId) {
                         case CREATE:
-                            handleCreateRequest(message, tuple);
+                            handleCreateRequest(cmsg, tuple);
                             break;
                         case UPDATE:
-                            handleUpdateRequest(message, tuple);
+                            handleUpdateRequest(cmsg, tuple);
                             break;
                         case DELETE:
-                            handleDeleteRequest(flowId, message, tuple);
+                            handleDeleteRequest(flowId, cmsg, tuple);
+                            break;
+                        case PUSH:
+                            handlePushRequest(flowId, imsg, tuple);
+                            break;
+                        case UNPUSH:
+                            handleUnpushRequest(flowId, imsg, tuple);
                             break;
                         case PATH:
-                            handlePathRequest(flowId, message, tuple);
+                            handlePathRequest(flowId, cmsg, tuple);
                             break;
                         case RESTORE:
-                            handleRestoreRequest(message, tuple);
+                            handleRestoreRequest(cmsg, tuple);
                             break;
                         case REROUTE:
-                            handleRerouteRequest(message, tuple);
+                            handleRerouteRequest(cmsg, tuple);
                             break;
                         case STATUS:
-                            handleStatusRequest(flowId, message, tuple);
+                            handleStatusRequest(flowId, cmsg, tuple);
                             break;
                         case READ:
                             if (flowId != null) {
-                                handleReadRequest(flowId, message, tuple);
+                                handleReadRequest(flowId, cmsg, tuple);
                             } else {
-                                handleDumpRequest(message, tuple);
+                                handleDumpRequest(cmsg, tuple);
                             }
                             break;
                         default:
@@ -286,6 +296,30 @@ public class CrudBolt
 
         logger.trace("Flow Cache after: {}", flowCache);
     }
+
+    private void handlePushRequest(String flowId, InfoMessage message, Tuple tuple) throws IOException {
+        logger.info("PUSH flow: {} :: {}", flowId, message);
+        FlowInfoData fid = (FlowInfoData) message.getData();
+        ImmutablePair<Flow,Flow> flow = fid.getPayload();
+
+        flowCache.pushFlow(flow);
+
+        Values northbound = new Values(new InfoMessage(new FlowStatusResponse(new FlowIdStatusPayload(flowId, FlowState.UP)),
+                message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
+        outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
+    }
+
+    private void handleUnpushRequest(String flowId, InfoMessage message, Tuple tuple) throws IOException {
+        logger.info("UNPUSH flow: {} :: {}", flowId, message);
+        FlowInfoData fid = (FlowInfoData) message.getData();
+
+        flowCache.deleteFlow(flowId);
+
+        Values northbound = new Values(new InfoMessage(new FlowStatusResponse(new FlowIdStatusPayload(flowId, FlowState.DOWN)),
+                message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
+        outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
+    }
+
 
     private void handleDeleteRequest(String flowId, CommandMessage message, Tuple tuple) throws IOException {
         ImmutablePair<Flow, Flow> flow = flowCache.deleteFlow(flowId);

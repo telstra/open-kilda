@@ -40,6 +40,16 @@ public enum StreamType {
     DELETE,
 
     /**
+     * Push pre-existing flows.
+     */
+    PUSH,
+
+    /**
+     * Unpush (delete) pre-existing flows.
+     */
+    UNPUSH,
+
+    /**
      * Restore flow topology stream.
      */
     RESTORE,

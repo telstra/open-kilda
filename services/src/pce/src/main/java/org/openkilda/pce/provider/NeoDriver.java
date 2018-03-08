@@ -44,15 +44,6 @@ public class NeoDriver implements PathComputer {
      */
     private static final Logger logger = LoggerFactory.getLogger(NeoDriver.class);
 
-    /**
-     * Clean database query.
-     */
-    private static final String CLEAN_FORMATTER_PATTERN = "MATCH (n) DETACH DELETE n";
-
-//    MATCH (from:Kid), (to:Kid)
-//    CALL apoc.algo.dijkstra(from, to, 'CONNECTED_TO', 'distance') YIELD path AS path, weight AS weight
-//    RETURN path, weight
-
     private static final String PATH_QUERY_FORMATTER_PATTERN_Dijkstra =
             "MATCH (a:switch{name:{src_switch}}),(b:switch{name:{dst_switch}}), " +
                     "CALL apoc.algo.dijkstra(from, to, 'CONNECTED_TO', 'distance') YIELD path AS path, weight AS weight " +
@@ -77,22 +68,6 @@ public class NeoDriver implements PathComputer {
      */
     public NeoDriver(Driver driver) {
         this.driver = driver;
-    }
-
-    /**
-     * Cleans database.
-     */
-    public void clean() {
-        String query = CLEAN_FORMATTER_PATTERN;
-
-        logger.info("Clean query: {}", query);
-
-        Session session = driver.session();
-        StatementResult result = session.run(query);
-        session.close();
-
-        logger.info("Switches deleted: {}", String.valueOf(result.summary().counters().nodesDeleted()));
-        logger.info("Isl deleted: {}", String.valueOf(result.summary().counters().relationshipsDeleted()));
     }
 
     /**
