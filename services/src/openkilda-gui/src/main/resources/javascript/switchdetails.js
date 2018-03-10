@@ -109,6 +109,7 @@ function showPortData(response) {
 			 "aLengthMenu": [[10, 20, 35, 50, -1], [10, 20, 35, 50, "All"]],
 			 "responsive": true,
 			 "bSortCellsTop": true,
+			  language: {searchPlaceholder: "Search"},
 			 "autoWidth": false
 		 });
 		 

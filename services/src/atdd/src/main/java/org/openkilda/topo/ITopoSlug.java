@@ -23,5 +23,5 @@ public interface ITopoSlug {
     /**
      * @return the topology slug that uniquely identifies this entity
      */
-    public String getSlug();
+    String getSlug();
 }

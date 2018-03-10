@@ -30,7 +30,7 @@ $( 'input').on( 'click', function () {
 });
 
 function showflowData(response){
-
+	
 	if(!response || response.length==0) {
 		response=[]
 		common.infoMessage('No Flow Avaliable','info');
@@ -67,6 +67,7 @@ function showflowData(response){
 		  "responsive": true,
 		  "bSortCellsTop": true,
 		  "autoWidth": false,
+		  language: {searchPlaceholder: "Search"},
 		  "aoColumns": [
 		                { sWidth: '10%' },
 		                { sWidth:  '15%' },
@@ -94,10 +95,16 @@ function showflowData(response){
 	 $('#flowTable').show();
 	
 	 if(window.location.hash.substr(1)){
-		 var switchInfo = (window.location.hash.substr(1)).split("|");
-		 	$("#flowTable_filter").find('input').val(switchInfo[0]+' '+switchInfo[1]).trigger($.Event("keyup", { keyCode: 13 }));;
+		 
+		 var switchInfo = (window.location.hash.substr(1)).split("|");		 
+		 $('#sourceIcon').trigger('click');
+		 var input = $("#source-switch");
+		 input.val(switchInfo[0]).trigger($.Event("keyup", { keyCode: 13 }));
+		 
+		 $('#targetIcon').trigger('click');
+		 var input = $("#target-switch");
+		 input.val(switchInfo[1]).trigger($.Event("keyup", { keyCode: 13 }));
 	 }
-	
 }
 
 

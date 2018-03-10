@@ -620,16 +620,54 @@ def api_v1_routes_between_nodes(src_switch, dst_switch):
     query = (
         "MATCH p=(src:switch{{name:'{src_switch}'}})-[:isl*..{depth}]->"
         "(dst:switch{{name:'{dst_switch}'}}) "
-        "WITH NODES(p) AS switches "
-        "WHERE ALL(sw1 IN switches "
-        "   WHERE SIZE(FILTER(sw2 IN switches WHERE sw1.name=sw2.name)) = 1) "
-        "RETURN switches"
+        "WITH RELATIONSHIPS(p) as links "
+        "WHERE ALL(isl1 IN links "
+        "   WHERE SIZE(FILTER("
+        "       isl2 IN links WHERE isl1.src_switch = isl2.src_switch OR "
+        "           isl1.dst_switch = isl2.dst_switch"
+        "   )) = 1 AND isl1.status = 'active') "
+        "RETURN links"
     ).format(src_switch=src_switch, depth=depth, dst_switch=dst_switch)
 
     result = neo4j_connect.data(query)
 
-    paths = [map(format_switch, x['switches']) for x in result]
+    paths = []
+    for links in result:
+        current_path = []
+        for isl in links['links']:
+            path_node = build_path_nodes(isl, len(current_path))
+            current_path.extend(path_node)
+
+        paths.append(build_path_info(current_path))
+
     return jsonify(paths)
+
+
+def build_path_info(path):
+    return {
+        'clazz': 'org.openkilda.messaging.info.event.PathInfoData',
+        'path': path
+    }
+
+
+def build_path_nodes(link, seq_id):
+    nodes = []
+    src_node = {
+        'clazz': 'org.openkilda.messaging.info.event.PathNode',
+        'switch_id': link['src_switch'],
+        'port_no': int(link['src_port']),
+        'seq_id': seq_id
+    }
+    nodes.append(src_node)
+
+    dst_node = {
+        'clazz': 'org.openkilda.messaging.info.event.PathNode',
+        'switch_id': link['dst_switch'],
+        'port_no': int(link['dst_port']),
+        'seq_id': seq_id + 1
+    }
+    nodes.append(dst_node)
+    return nodes
 
 
 # FIXME(surabujin): stolen from topology-engine code, must use some shared

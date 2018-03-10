@@ -10,17 +10,24 @@
 */
 
 var flowid = window.location.href.split("#")[1];
-var downsampling = "10m";
 var graphInterval;
 
 $(function() {
-		
-		$("#datetimepicker7,#datetimepicker8,#menulist,#autoreload").on("change",function() {
-			getGraphData();
+				
+		var count = 0;
+		$("#datetimepicker7,#datetimepicker8").on("change",function(event) {
+			count++;
+			if(count == 1){
+				count = -1;
+				getGraphData();
+				return;
+			}			
 		});
-	});
-	
-
+		
+		$("#downsampling,#menulist,#autoreload").on("change",function(event) {
+				getGraphData();	
+		});
+});	
 
 /**
 * Execute this function when page is loaded
@@ -37,6 +44,9 @@ $(document).ready(function() {
 	var EndDate = moment(date).format("YYYY/MM/DD HH:mm:ss");
 	var convertedStartDate = moment(YesterDayDate).format("YYYY-MM-DD-HH:mm:ss");
 	var convertedEndDate = moment(EndDate).format("YYYY-MM-DD-HH:mm:ss");	
+	var downsampling = "10m";
+
+	$("#downsampling").val(downsampling)
 	$("#datetimepicker7").val(YesterDayDate);	
 	$("#datetimepicker8").val(EndDate);
 	$('#datetimepicker7').datetimepicker({
@@ -46,10 +56,10 @@ $(document).ready(function() {
 		  format:'Y/m/d h:i:s',
 	});
 	$('#datetimepicker_dark').datetimepicker({theme:'dark'})
-	
 	var selMetric="packets";
-
-	loadGraph.loadGraphData("/stats/flowid/"+flowid+"/"+convertedStartDate+"/"+convertedEndDate+"/10m/"+selMetric,"GET",selMetric).then(function(response) {
+	var url ="/stats/flowid/"+flowid+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric;
+	
+	loadGraph.loadGraphData(url,"GET",selMetric).then(function(response) {
 		
 		$("#wait1").css("display", "none");
 		$('body').css('pointer-events', 'all');
@@ -64,22 +74,35 @@ $(document).ready(function() {
 */
 function getGraphData() {
 	
-	$('#wait1').show();
 	var regex = new RegExp("^\\d+(s|h|m){1}$");
 	var currentDate = new Date();
 	var startDate = new Date($("#datetimepicker7").val());
 	var endDate =  new Date($("#datetimepicker8").val());
+	var downsampling = $("#downsampling").val();
+	var downsamplingValidated = regex.test(downsampling);
 	var convertedStartDate = moment(startDate).format("YYYY-MM-DD-HH:mm:ss");
 	var convertedEndDate = moment(endDate).format("YYYY-MM-DD-HH:mm:ss");		
 	var selMetric=$("select.selectbox_menulist").val();
 	var valid=true;
-		
+	
+	
+	if(downsamplingValidated == false) {	
+		$("#DownsampleID").addClass("has-error")	
+		$(".downsample-error-message").html("Please enter valid input.");			
+		valid=false;
+		return
+	}
+	
 	if(startDate.getTime() > currentDate.getTime()) {
-		common.infoMessage('From Date should not be greater than currentDate.','error');		
+		
+		$("#fromId").addClass("has-error")	
+		$(".from-error-message").html("From date should not be greater than currentDate.");		
 		valid=false;
 		return;
 	} else if(endDate.getTime() < startDate.getTime()){
-		common.infoMessage('To Date should not be less than From Date','error');
+		
+		$("#toId").addClass("has-error")	
+		$(".to-error-message").html("To date should not be less than from fate.");
 		valid=false;
 		return;
 	}
@@ -99,9 +122,18 @@ function getGraphData() {
   });
 	    
     if(test) {
+    	$('#wait1').show();
+    	$("#fromId").removeClass("has-error")
+        $(".from-error-message").html("");
     	
-    	$("#autoreloadId").removeClass("has-error")	
+    	$("#toId").removeClass("has-error")
+        $(".to-error-message").html("");
+    	
+    	$("#autoreloadId").removeClass("has-error")
         $(".error-message").html("");
+    	
+      	$("#DownsampleID").removeClass("has-error")
+    	$(".downsample-error-message").html("");
     	
 		var megaBytes = selMetric;
 		if(megaBytes == "megabytes"){
@@ -137,7 +169,7 @@ function callIntervalData() {
 	var endDate = new Date()
 	var convertedEndDate = moment(endDate).format("YYYY-MM-DD-HH:mm:ss");	
 	var selMetric=$("select.selectbox_menulist").val();
-		
+	var downsampling = $("#downsampling").val();
 	
 	loadGraph.loadGraphData("/stats/flowid/"+flowid+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric,"GET",selMetric).then(function(response) {
 		$("#wait1").css("display", "none");

@@ -22,17 +22,15 @@ var selMetric="latency";
 var graphInterval;
 
 $(function() {
-		
-		$("#datetimepicker7,#datetimepicker8,#downsampling,#menulist,#autoreload").on("change",function() {
-			getGraphData();
-		});
+	$("#datetimepicker7ISL,#datetimepicker8ISL,#downsamplingISL,#autoreloadISL").on("change",function() {
+		getGraphData();
 	});
+});
 /**
 * Execute this function when page is loaded
 * or when user is directed to this page.
 */
 $(document).ready(function() {
-	
 	
 	$.datetimepicker.setLocale('en');
 	var date = new Date()
@@ -43,13 +41,13 @@ $(document).ready(function() {
 	var convertedStartDate = moment(YesterDayDate).format("YYYY-MM-DD-HH:mm:ss");
 	var convertedEndDate = moment(EndDate).format("YYYY-MM-DD-HH:mm:ss");
 	var downsampling = "1s";
-	$("#downsampling").val(downsampling)
-	$("#datetimepicker7").val(YesterDayDate);
-	$("#datetimepicker8").val(EndDate);
-	$('#datetimepicker7').datetimepicker({
+	$("#downsamplingISL").val(downsampling)
+	$("#datetimepicker7ISL").val(YesterDayDate);
+	$("#datetimepicker8ISL").val(EndDate);
+	$('#datetimepicker7ISL').datetimepicker({
 		  format:'Y/m/d h:i:s',
 	});
-	$('#datetimepicker8').datetimepicker({
+	$('#datetimepicker8ISL').datetimepicker({
 		  format:'Y/m/d h:i:s',
 	});
 	$('#datetimepicker_dark').datetimepicker({theme:'dark'})
@@ -67,39 +65,41 @@ $(document).ready(function() {
 * html page.
 */
 function getGraphData() {
-	
-	$('#wait1').show();
+
 	var regex = new RegExp("^\\d+(s|h|m){1}$");
 	var currentDate = new Date();
-	var startDate = new Date($("#datetimepicker7").val());
-	var endDate =  new Date($("#datetimepicker8").val());
+	var startDate = new Date($("#datetimepicker7ISL").val());
+	var endDate =  new Date($("#datetimepicker8ISL").val());
 	var convertedStartDate = moment(startDate).format("YYYY-MM-DD-HH:mm:ss");	
 	var convertedEndDate = moment(endDate).format("YYYY-MM-DD-HH:mm:ss");
-	var downsampling = $("#downsampling").val();
+	var downsampling = $("#downsamplingISL").val();
 	var downsamplingValidated = regex.test(downsampling);
 	var valid=true;
 	
 	if(downsamplingValidated == false) {	
-		common.infoMessage('Please enter correct downsampling','error');		
+	
+		$("#DownsampleID").addClass("has-error")	
+		$(".downsample-error-message").html("Please enter valid input.");		
 		valid=false;
 		return
 	}
 	if(startDate.getTime() > currentDate.getTime()) {
 
-		common.infoMessage('From Date should not be greater than currentDate.','error');		
+		$("#fromId").addClass("has-error")	
+		$(".from-error-message").html("From date should not be greater than currentDate.");		
 		valid=false;
 		return;
 	} else if(endDate.getTime() < startDate.getTime()){
-		common.infoMessage('To Date should not be less than From Date.','error');		
+		$("#toId").addClass("has-error")	
+		$(".to-error-message").html("To date should not be less than from fate.");	
 		valid=false;
 		return;
 	}
 	
-	var autoreload = $("#autoreload").val();
+	var autoreload = $("#autoreloadISL").val();
 	var numbers = /^[-+]?[0-9]+$/;  
-	var checkNo = $("#autoreload").val().match(numbers);
+	var checkNo = $("#autoreloadISL").val().match(numbers);
 	var checkbox =  $("#check").prop("checked");
-	
 	
 	var test = true;	
     autoVal.reloadValidation(function(valid){
@@ -111,10 +111,19 @@ function getGraphData() {
   });
   
 if(test) {
+	$('#wait1').show();
+	$("#fromId").removeClass("has-error")
+    $(".from-error-message").html("");
 	
-	$("#autoreloadId").removeClass("has-error")	
-    $(".error-message").html(""); 
+	$("#toId").removeClass("has-error")
+    $(".to-error-message").html("");
 	
+	$("#autoreloadId").removeClass("has-error")
+    $(".error-message").html("");
+	
+  	$("#DownsampleID").removeClass("has-error")
+	$(".downsample-error-message").html("");
+  	
 	loadGraph.loadGraphData("/stats/isl/"+source+"/"+sourcePort+"/"+target+"/"+targetPort+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric,"GET",selMetric).then(function(response) {
 		
 		$("#wait1").css("display", "none");
@@ -139,11 +148,11 @@ if(test) {
 function callIntervalData(){
 	
 	var currentDate = new Date();
-	var startDate = new Date($("#datetimepicker7").val());
+	var startDate = new Date($("#datetimepicker7ISL").val());
 	var convertedStartDate = moment(startDate).format("YYYY-MM-DD-HH:mm:ss");	
 	var endDate = new Date()
 	var convertedEndDate = moment(endDate).format("YYYY-MM-DD-HH:mm:ss");	
-	var downsampling =$("#downsampling").val()	
+	var downsampling =$("#downsamplingISL").val()	
 	
 	loadGraph.loadGraphData("/stats/isl/"+source+"/"+sourcePort+"/"+target+"/"+targetPort+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric,"GET",selMetric).then(function(response) {
 		$("#wait1").css("display", "none");

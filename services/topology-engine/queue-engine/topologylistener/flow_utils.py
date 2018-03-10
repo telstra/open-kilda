@@ -17,6 +17,8 @@ import os
 import json
 import db
 import copy
+import calendar
+import time
 
 import message_utils
 import logging
@@ -60,6 +62,12 @@ def get_one_switch_rules(src_switch, src_port, src_vlan, dst_port, dst_vlan,
 def get_rules(src_switch, src_port, src_vlan, dst_switch, dst_port, dst_vlan,
               bandwidth, transit_vlan, flowid, cookie, flowpath, meter_id,
               output_action, **k):
+
+    # TODO: Rule creation should migrate closer to path creation .. to do as part of TE / Storm refactor
+    # e.g. assuming a refactor of TE into Storm, and possibly more directly attached to the right storm topology
+    #       vs a separate topology, then this logic should be closer to path creation
+    # TODO: We should leverage the sequence number to ensure we install / remove flows in the right order
+    #       e.g. for install, go from the end to beginning; for remove, go in opposite direction.
     nodes = flowpath.get("path")
     if not nodes:
         return []
@@ -88,24 +96,28 @@ def build_rules(flow):
     return get_rules(output_action=output_action, **flow)
 
 
-def remove_flow(flow):
+def remove_flow(flow, parent_tx=None):
     """
-    Deletes the flow and its flow segments. Start with flow segments (symmetrical mirror of store_flow)
+    Deletes the flow and its flow segments. Start with flow segments (symmetrical mirror of store_flow).
+    Leverage a parent transaction if it exists, otherwise create / close the transaction within this function.
+
     - flowid **AND** cookie are *the* primary keys for a flow:
         - both the forward and the reverse flow use the same flowid
 
     NB: store_flow is used for uni-direction .. whereas flow_id is used both directions .. need cookie to differentiate
     """
+
     logger.info('Remove flow: %s', flow['flowid'])
-    tx = graph.begin()
+    tx = parent_tx if parent_tx else graph.begin()
     delete_flow_segments(flow, tx)
     query = "MATCH (:switch)-[f:flow {{ flowid: '{}', cookie: {} }}]->(:switch) DELETE f".format(flow['flowid'], flow['cookie'])
     result = tx.run(query).data()
-    tx.commit()
+    if not parent_tx:
+        tx.commit()
     return result
 
 
-def merge_flow_relationship(flow_data):
+def merge_flow_relationship(flow_data, tx=None):
     """
     This function focuses on just creating the starting/ending switch relationship for a flow.
     """
@@ -134,11 +146,16 @@ def merge_flow_relationship(flow_data):
         " f.last_updated = '{last_updated}', "
         " f.flowpath = '{flowpath}' "
     )
+    flow_data['flowpath'].pop('clazz', None) # don't store the clazz info, if it is there.
+    flow_data['last_updated'] = calendar.timegm(time.gmtime())
     flow_data['flowpath'] = json.dumps(flow_data['flowpath'])
-    graph.run(query.format(**flow_data))
+    if tx:
+        tx.run(query.format(**flow_data))
+    else:
+        graph.run(query.format(**flow_data))
 
 
-def merge_flow_segments(_flow):
+def merge_flow_segments(_flow, tx=None):
     """
     This function creates each segment relationship in a flow, and then it calls the function to
     update bandwidth. This should always be down when creating/merging flow segments.
@@ -186,13 +203,17 @@ def merge_flow_segments(_flow):
         flow['dst_switch'] = dst['switch_id']
         flow['dst_port'] = dst['port_no']
         # Allow for per segment cookies .. see if it has one set .. otherwise use the cookie of the flow
-        flow['cookie'] = src.get('cookie', flow_cookie)
+        # NB: use the "dst cookie" .. since for flow segments, the delete rule will use the dst switch
+        flow['cookie'] = dst.get('cookie', flow_cookie)
 
         # TODO: Preference for transaction around the entire delete
         # TODO: Preference for batch command
-        graph.run(create_segment_query.format(**flow))
+        if tx:
+            tx.run(create_segment_query.format(**flow))
+        else:
+            graph.run(create_segment_query.format(**flow))
 
-    update_flow_segment_available_bw(flow)
+    update_flow_segment_available_bw(flow, tx)
 
 
 def get_flow_path(flow):
@@ -229,17 +250,16 @@ def delete_flow_segments(flow, tx=None):
     update_flow_segment_available_bw(flow, tx)
 
 
-def fetch_flow_segments(flow):
+def fetch_flow_segments(flowid, parent_cookie):
     """
-    :param flow: holds the key 'flowid' and 'cookie', which is the parent_cookie
-    :return:
+    :param flowid: the ID for the entire flow, typically consistent across updates, whereas the cookie may change
+    :param parent_cookie: the cookie for the flow as a whole; individual segments may vary
+    :return: array of segments
     """
     fetch_query = (
         "MATCH (:switch)-[fs:flow_segment {{ flowid: '{}',parent_cookie: {} }}]->(:switch) RETURN fs ORDER BY fs.seq_id"
     )
     # This query returns type py2neo.types.Relationship .. it has a dict method to return the properties
-    flowid = flow['flowid']
-    parent_cookie = flow['cookie']
     result = graph.run(fetch_query.format(flowid, parent_cookie)).data()
     return [dict(x['fs']) for x in result]
 
@@ -285,7 +305,7 @@ def update_isl_bandwidth(src_switch, src_port, dst_switch, dst_port, tx=None):
         graph.run(query)
 
 
-def store_flow(flow):
+def store_flow(flow, tx=None):
     """
     Create a :flow relationship between the starting and ending switch, as well as
     create :flow_segment relationships between every switch in the path.
@@ -293,14 +313,15 @@ def store_flow(flow):
     NB: store_flow is used for uni-direction .. whereas flow_id is used both directions .. need cookie to differentiate
 
     :param flow:
+    :param tx: The transaction to use, or no transaction.
     :return:
     """
     # TODO: Preference for transaction around the entire set of store operations
 
     logger.debug('STORE Flow : %s', flow['flowid'])
-    delete_flow_segments(flow)
-    merge_flow_relationship(copy.deepcopy(flow))
-    merge_flow_segments(flow)
+    delete_flow_segments(flow, tx)
+    merge_flow_relationship(copy.deepcopy(flow), tx)
+    merge_flow_segments(flow, tx)
 
 
 def hydrate_flow(one_row):

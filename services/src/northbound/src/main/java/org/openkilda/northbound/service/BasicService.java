@@ -42,44 +42,44 @@ public interface BasicService {
     /**
      * Validates info message.
      *
-     * @param correlationId  request correlation id
-     * @param commandMessage request command message
-     * @param message        response info message
+     * @param correlationId     request correlation id
+     * @param requestMessage    request command message
+     * @param responseMessage   response info message
      * @return parsed response InfoData
      */
-    default InfoData validateInfoMessage(final CommandMessage commandMessage,
-                                         final Message message,
+    default InfoData validateInfoMessage(final Message requestMessage,
+                                         final Message responseMessage,
                                          final String correlationId) {
         InfoData data;
-        if (message != null) {
-            if (message instanceof ErrorMessage) {
-                ErrorData error = ((ErrorMessage) message).getData();
+        if (responseMessage != null) {
+            if (responseMessage instanceof ErrorMessage) {
+                ErrorData error = ((ErrorMessage) responseMessage).getData();
                 logger.error("Response message is error: {}={}, command={}, error={}",
-                        CORRELATION_ID, correlationId, commandMessage, error);
-                throw new MessageException((ErrorMessage) message);
-            } else if (message instanceof InfoMessage) {
-                InfoMessage info = (InfoMessage) message;
+                        CORRELATION_ID, correlationId, requestMessage, error);
+                throw new MessageException((ErrorMessage) responseMessage);
+            } else if (responseMessage instanceof InfoMessage) {
+                InfoMessage info = (InfoMessage) responseMessage;
                 data = info.getData();
                 if (data == null) {
                     String errorMessage = "Response message data is empty";
                     logger.error("{}: {}={}, command={}, info={}", errorMessage,
-                            CORRELATION_ID, correlationId, commandMessage, info);
-                    throw new MessageException(message.getCorrelationId(), message.getTimestamp(),
-                            INTERNAL_ERROR, errorMessage, commandMessage.toString());
+                            CORRELATION_ID, correlationId, requestMessage, info);
+                    throw new MessageException(responseMessage.getCorrelationId(), responseMessage.getTimestamp(),
+                            INTERNAL_ERROR, errorMessage, requestMessage.toString());
                 }
             } else {
                 String errorMessage = "Response message type is unexpected";
                 logger.error("{}: {}:{}, command={}, message={}", errorMessage,
-                        CORRELATION_ID, correlationId, commandMessage, message);
-                throw new MessageException(message.getCorrelationId(), message.getTimestamp(),
-                        INTERNAL_ERROR, errorMessage, commandMessage.toString());
+                        CORRELATION_ID, correlationId, requestMessage, responseMessage);
+                throw new MessageException(responseMessage.getCorrelationId(), responseMessage.getTimestamp(),
+                        INTERNAL_ERROR, errorMessage, requestMessage.toString());
             }
         } else {
             String errorMessage = "Response message is empty";
             logger.error("{}: {}={}, command={}", errorMessage,
-                    CORRELATION_ID, correlationId, commandMessage);
+                    CORRELATION_ID, correlationId, requestMessage);
             throw new MessageException(DEFAULT_CORRELATION_ID, System.currentTimeMillis(),
-                    INTERNAL_ERROR, errorMessage, commandMessage.toString());
+                    INTERNAL_ERROR, errorMessage, requestMessage.toString());
         }
         return data;
     }
