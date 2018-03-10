@@ -204,6 +204,7 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
 
     @Override
     public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext context) {
+        logger.debug("PathVerificationService received new message of type {}: {}", msg.getType(), msg.toString());
         switch (msg.getType()) {
             case PACKET_IN:
                 return handlePacketIn(sw, (OFPacketIn) msg, context);

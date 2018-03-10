@@ -28,6 +28,7 @@ storm list | grep stats >/dev/null && storm kill stats && sleep 5
 storm list | grep cache >/dev/null && storm kill cache && sleep 5
 storm list | grep islstats >/dev/null && storm kill islstats && sleep 5
 storm list | grep opentsdb >/dev/null && storm kill opentsdb && sleep 5
+storm list | grep portstate >/dev/null && storm kill portstate && sleep 5
 
 config_file=$1
 
@@ -39,3 +40,4 @@ make deploy-stats config=$config_file
 make deploy-cache config=$config_file
 make deploy-islstats config=$config_file
 make deploy-opentsdb config=$config_file
+make deploy-portstate config=$config_file
