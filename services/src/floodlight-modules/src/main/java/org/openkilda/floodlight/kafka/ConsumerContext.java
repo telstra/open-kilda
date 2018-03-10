@@ -14,10 +14,9 @@ public class ConsumerContext extends Context {
     private final KafkaMessageProducer kafkaProducer;
     private final ISwitchManager switchManager;
 
-    public static void fillDedendencies(Collection<Class<? extends IFloodlightService>> dependencies) {
+    public static void fillDependencies(Collection<Class<? extends IFloodlightService>> dependencies) {
         Context.fillDependencies(dependencies);
 
-        dependencies.add(IPathVerificationService.class);
         dependencies.add(IPathVerificationService.class);
         dependencies.add(ISwitchManager.class);
     }
