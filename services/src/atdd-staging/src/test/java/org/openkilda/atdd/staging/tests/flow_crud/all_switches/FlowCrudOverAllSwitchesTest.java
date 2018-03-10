@@ -3,7 +3,6 @@ package org.openkilda.atdd.staging.tests.flow_crud.all_switches;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertEquals;
-import static org.mockito.AdditionalAnswers.returnsFirstArg;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.startsWith;
@@ -18,13 +17,14 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import cucumber.api.CucumberOptions;
 import cucumber.api.java.After;
 import cucumber.api.java.Before;
+import org.apache.commons.lang3.SerializationUtils;
 import org.junit.runner.RunWith;
 import org.mockito.stubbing.Answer;
 import org.openkilda.atdd.staging.cucumber.CucumberWithSpringProfile;
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
-import org.openkilda.atdd.staging.service.FloodlightService;
-import org.openkilda.atdd.staging.service.NorthboundService;
-import org.openkilda.atdd.staging.service.TopologyEngineService;
+import org.openkilda.atdd.staging.service.floodlight.FloodlightService;
+import org.openkilda.atdd.staging.service.northbound.NorthboundService;
+import org.openkilda.atdd.staging.service.topology.TopologyEngineService;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
@@ -40,6 +40,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.io.IOException;
+import java.time.LocalTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -73,7 +74,7 @@ public class FlowCrudOverAllSwitchesTest {
             ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
             mapper.enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS);
             TopologyDefinition topology = mapper.readValue(
-                    getClass().getResourceAsStream("/3-switch-test-topology.yaml"), TopologyDefinition.class);
+                    getClass().getResourceAsStream("/5-switch-test-topology.yaml"), TopologyDefinition.class);
 
             when(topologyDefinition.getActiveSwitches()).thenReturn(topology.getActiveSwitches());
 
@@ -119,7 +120,12 @@ public class FlowCrudOverAllSwitchesTest {
                         return null;
                     });
 
-            when(northboundService.addFlow(any())).then(returnsFirstArg());
+            when(northboundService.addFlow(any()))
+                    .then((Answer<FlowPayload>) invocation -> {
+                        FlowPayload result = SerializationUtils.clone(((FlowPayload) invocation.getArguments()[0]));
+                        result.setLastUpdated(LocalTime.now().toString());
+                        return result;
+                    });
             when(northboundService.getFlowStatus(any()))
                     .then((Answer<FlowIdStatusPayload>) invocation ->
                             new FlowIdStatusPayload((String) invocation.getArguments()[0], FlowState.UP));

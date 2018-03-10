@@ -1,7 +1,10 @@
 package org.openkilda.atdd.staging.steps;
 
 import static java.util.Collections.singletonList;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasProperty;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
@@ -15,9 +18,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
-import org.openkilda.atdd.staging.service.FloodlightService;
-import org.openkilda.atdd.staging.service.NorthboundService;
-import org.openkilda.atdd.staging.service.TopologyEngineService;
+import org.openkilda.atdd.staging.service.floodlight.FloodlightService;
+import org.openkilda.atdd.staging.service.northbound.NorthboundService;
+import org.openkilda.atdd.staging.service.topology.TopologyEngineService;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 
@@ -49,7 +52,7 @@ public class FlowCrudStepsTest {
         ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
         mapper.enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS);
         TopologyDefinition topology = mapper.readValue(
-                getClass().getResourceAsStream("/3-switch-test-topology.yaml"), TopologyDefinition.class);
+                getClass().getResourceAsStream("/5-switch-test-topology.yaml"), TopologyDefinition.class);
 
         when(topologyDefinition.getActiveSwitches()).thenReturn(topology.getActiveSwitches());
     }
@@ -64,12 +67,12 @@ public class FlowCrudStepsTest {
         flowCrudSteps.defineFlowsOverAllSwitches();
 
         // then
-        assertEquals(flowCrudSteps.flows.size(), 1);
+        assertEquals(1, flowCrudSteps.flows.size());
         final FlowPayload flowPayload = flowCrudSteps.flows.get(0);
-        assertEquals((int) flowPayload.getSource().getPortId(), 20);
-        assertEquals((int) flowPayload.getSource().getVlanId(), 1);
-        assertEquals((int) flowPayload.getDestination().getPortId(), 20);
-        assertEquals((int) flowPayload.getDestination().getVlanId(), 1);
+        assertEquals(20, (int) flowPayload.getSource().getPortId());
+        assertEquals(1, (int) flowPayload.getSource().getVlanId());
+        assertEquals(20, (int) flowPayload.getDestination().getPortId());
+        assertEquals(1, (int) flowPayload.getDestination().getVlanId());
     }
 
     @Test
@@ -84,7 +87,8 @@ public class FlowCrudStepsTest {
         flowCrudSteps.defineFlowsOverAllSwitches();
 
         // then
-        assertEquals(flowCrudSteps.flows.size(), 2);
+        assertEquals(2, flowCrudSteps.flows.size());
+
         final FlowPayload sw1sw2Flow = flowCrudSteps.flows.get(0);
         assertEquals(20, (int) sw1sw2Flow.getSource().getPortId());
         assertEquals(1, (int) sw1sw2Flow.getSource().getVlanId());
@@ -108,12 +112,30 @@ public class FlowCrudStepsTest {
         flowCrudSteps.defineFlowsOverAllSwitches();
 
         // then
-        assertEquals(flowCrudSteps.flows.size(), 1);
+        assertEquals(1, flowCrudSteps.flows.size());
         final FlowPayload flowPayload = flowCrudSteps.flows.get(0);
-        assertEquals((int) flowPayload.getSource().getPortId(), 20);
-        assertEquals((int) flowPayload.getSource().getVlanId(), 1);
-        assertEquals((int) flowPayload.getDestination().getPortId(), 21);
-        assertEquals((int) flowPayload.getDestination().getVlanId(), 1);
+        assertEquals(20, (int) flowPayload.getSource().getPortId());
+        assertEquals(1, (int) flowPayload.getSource().getVlanId());
+        assertEquals(21, (int) flowPayload.getDestination().getPortId());
+        assertEquals(1, (int) flowPayload.getDestination().getVlanId());
+    }
+
+    @Test
+    public void shouldDefineFlowCrossVlan() {
+        // given
+        when(topologyEngineService.getPaths(eq("00:00:00:00:00:01"), eq("00:00:00:00:00:04")))
+                .thenReturn(singletonList(new PathInfoData()));
+
+        // when
+        flowCrudSteps.defineFlowsOverAllSwitches();
+
+        // then
+        assertEquals(1, flowCrudSteps.flows.size());
+        final FlowPayload flowPayload = flowCrudSteps.flows.get(0);
+        assertEquals(20, (int) flowPayload.getSource().getPortId());
+        assertEquals(1, (int) flowPayload.getSource().getVlanId());
+        assertEquals(20, (int) flowPayload.getDestination().getPortId());
+        assertEquals(50, (int) flowPayload.getDestination().getVlanId());
     }
 
     @Test
@@ -127,5 +149,23 @@ public class FlowCrudStepsTest {
 
         // then
         assertTrue(flowCrudSteps.flows.isEmpty());
+    }
+
+    @Test
+    public void shouldSkipSwitchesIfNoVlanAvailable() {
+        // given
+        when(topologyEngineService.getPaths(eq("00:00:00:00:00:04"), eq("00:00:00:00:00:02")))
+                .thenReturn(singletonList(new PathInfoData()));
+        when(topologyEngineService.getPaths(eq("00:00:00:00:00:04"), eq("00:00:00:00:00:01")))
+                .thenReturn(singletonList(new PathInfoData()));
+
+        // when
+        flowCrudSteps.defineFlowsOverAllSwitches();
+
+        // then
+        assertEquals(1, flowCrudSteps.flows.size());
+        final FlowPayload flowPayload = flowCrudSteps.flows.get(0);
+        assertThat(flowPayload.getSource(), hasProperty("switchId", equalTo("00:00:00:00:00:04")));
+        assertThat(flowPayload.getDestination(), hasProperty("switchId", equalTo("00:00:00:00:00:01")));
     }
 }

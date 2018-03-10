@@ -15,10 +15,6 @@
 
 package org.openkilda.atdd.staging.model.topology;
 
-import static java.util.Collections.emptyList;
-import static java.util.Collections.unmodifiableList;
-import static java.util.stream.Collectors.toList;
-
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -31,10 +27,15 @@ import lombok.Value;
 import lombok.experimental.NonFinal;
 
 import java.util.List;
+import java.util.stream.Collectors;
+
+import static java.util.Collections.emptyList;
+import static java.util.Collections.unmodifiableList;
+import static java.util.stream.Collectors.toList;
 
 /**
  * Defines a topology with switches, links and trafgens.
- *
+ * <p>
  * Topology definition objects are immutable and can't be changed after creation.
  */
 @Value
@@ -47,16 +48,20 @@ public class TopologyDefinition {
     private List<Isl> isls;
     @NonNull
     private List<Trafgen> trafgens;
+    @NonNull
+    private TrafgenConfig trafgenConfig;
 
     @JsonCreator
     public static TopologyDefinition factory(
             @JsonProperty("switches") List<Switch> switches,
             @JsonProperty("isls") List<Isl> isls,
-            @JsonProperty("trafgens") List<Trafgen> trafgens) {
+            @JsonProperty("trafgens") List<Trafgen> trafgens,
+            @JsonProperty("trafgen_config") TrafgenConfig trafgenConfig) {
         return new TopologyDefinition(
                 unmodifiableList(switches),
                 unmodifiableList(isls),
-                unmodifiableList(trafgens));
+                unmodifiableList(trafgens),
+                trafgenConfig);
     }
 
     public List<Switch> getActiveSwitches() {
@@ -93,7 +98,7 @@ public class TopologyDefinition {
                 @JsonProperty("of_version") String ofVersion,
                 @JsonProperty("status") Status status,
                 @JsonProperty("out_ports") List<OutPort> outPorts) {
-            if(outPorts == null) {
+            if (outPorts == null) {
                 outPorts = emptyList();
             }
 
@@ -179,6 +184,8 @@ public class TopologyDefinition {
         @NonNull
         private String controlEndpoint;
         @NonNull
+        private String ifaceName;
+        @NonNull
         private Switch switchConnected;
         private int switchPort;
         @NonNull
@@ -187,11 +194,37 @@ public class TopologyDefinition {
         @JsonCreator
         public static Trafgen factory(
                 @JsonProperty("name") String name,
+                @JsonProperty("iface") String ifaceName,
                 @JsonProperty("control_endpoint") String controlEndpoint,
                 @JsonProperty("switch") Switch switchConnected,
                 @JsonProperty("switch_port") int switchPort,
                 @JsonProperty("status") Status status) {
-            return new Trafgen(name, controlEndpoint, switchConnected, switchPort, status);
+            return new Trafgen(name, controlEndpoint, ifaceName, switchConnected, switchPort, status);
+        }
+
+        public boolean isActive() {
+            return status == Status.Active;
+        }
+    }
+
+    public List<Trafgen> getActiveTrafgens() {
+        return trafgens.stream()
+                .filter(Trafgen::isActive)
+                .collect(Collectors.toList());
+    }
+
+    @Value
+    @NonFinal
+    public static class TrafgenConfig {
+        @NonNull
+        private String addressPoolBase;
+        private int addressPoolPrefixLen;
+
+        @JsonCreator
+        public static TrafgenConfig factory(
+                @JsonProperty("address_pool_base") String addressPoolBase,
+                @JsonProperty("address_pool_prefix_len") int addressPoolPrefixLen) {
+            return new TrafgenConfig(addressPoolBase, addressPoolPrefixLen);
         }
     }
 

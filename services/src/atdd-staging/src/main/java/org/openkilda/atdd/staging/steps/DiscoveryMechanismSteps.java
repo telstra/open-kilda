@@ -11,13 +11,13 @@ import cucumber.api.java.en.Then;
 import cucumber.api.java8.En;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.openkilda.atdd.staging.model.floodlight.FlowEntriesMap;
-import org.openkilda.atdd.staging.model.floodlight.SwitchEntry;
+import org.openkilda.atdd.staging.service.floodlight.model.FlowEntriesMap;
+import org.openkilda.atdd.staging.service.floodlight.model.SwitchEntry;
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
-import org.openkilda.atdd.staging.service.FloodlightService;
-import org.openkilda.atdd.staging.service.TopologyEngineService;
-import org.openkilda.atdd.staging.utils.DefaultFlowsChecker;
-import org.openkilda.atdd.staging.utils.TopologyChecker;
+import org.openkilda.atdd.staging.service.floodlight.FloodlightService;
+import org.openkilda.atdd.staging.service.topology.TopologyEngineService;
+import org.openkilda.atdd.staging.steps.helpers.DefaultFlowsChecker;
+import org.openkilda.atdd.staging.steps.helpers.TopologyChecker;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -66,7 +66,7 @@ public class DiscoveryMechanismSteps implements En {
 
     @Then("^all provided links should be detected")
     public void checkDiscoveredLinks() {
-        List<IslInfoData> discoveredLinks = topologyEngineService.getAllLinks();
+        List<IslInfoData> discoveredLinks = topologyEngineService.getActiveLinks();
         List<TopologyDefinition.Isl> expectedLinks = topologyDefinition.getIslsForActiveSwitches();
 
         if (CollectionUtils.isEmpty(discoveredLinks) && expectedLinks.isEmpty()) {

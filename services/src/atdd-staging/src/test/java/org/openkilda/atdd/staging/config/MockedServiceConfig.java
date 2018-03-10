@@ -17,9 +17,9 @@ package org.openkilda.atdd.staging.config;
 
 import static org.mockito.Mockito.mock;
 
-import org.openkilda.atdd.staging.service.FloodlightService;
-import org.openkilda.atdd.staging.service.NorthboundService;
-import org.openkilda.atdd.staging.service.TopologyEngineService;
+import org.openkilda.atdd.staging.service.floodlight.FloodlightService;
+import org.openkilda.atdd.staging.service.northbound.NorthboundService;
+import org.openkilda.atdd.staging.service.topology.TopologyEngineService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;

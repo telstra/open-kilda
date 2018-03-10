@@ -1,12 +1,17 @@
 package org.openkilda.atdd.staging.steps;
 
+import static com.nitorcreations.Matchers.reflectEquals;
 import static java.lang.String.format;
 import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toList;
-import static org.junit.Assert.assertEquals;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasProperty;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -25,10 +30,10 @@ import net.jodah.failsafe.RetryPolicy;
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition.OutPort;
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition.Switch;
-import org.openkilda.atdd.staging.service.FloodlightService;
-import org.openkilda.atdd.staging.service.NorthboundService;
-import org.openkilda.atdd.staging.service.TopologyEngineService;
-import org.openkilda.atdd.staging.utils.TopologyChecker;
+import org.openkilda.atdd.staging.service.floodlight.FloodlightService;
+import org.openkilda.atdd.staging.service.northbound.NorthboundService;
+import org.openkilda.atdd.staging.service.topology.TopologyEngineService;
+import org.openkilda.atdd.staging.steps.helpers.TopologyChecker;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
@@ -175,9 +180,12 @@ public class FlowCrudSteps implements En {
                 .filter(p -> !sameSwitchFlow || p.getPort() != srcPortId)
                 .findFirst();
         if (!destPort.isPresent()) {
-            LOGGER.warn("Unable to define a same switch flow for {} as no ports available.", srcSwitch);
-            return null;
-
+            if (sameSwitchFlow) {
+                LOGGER.warn("Unable to define a same switch flow for {} as no ports available.", srcSwitch);
+                return null;
+            } else {
+                throw new IllegalStateException("Unable to allocate a port in found vlan.");
+            }
         }
 
         // Record used vlan to archive uniqueness
@@ -205,7 +213,8 @@ public class FlowCrudSteps implements En {
     public void creationRequestForEachFlowIsSuccessful() {
         for (FlowPayload flow : flows) {
             FlowPayload result = northboundService.addFlow(flow);
-            assertEquals(flow, result);
+            assertThat(result, reflectEquals(flow, "lastUpdated"));
+            assertThat(result, hasProperty("lastUpdated", notNullValue()));
         }
     }
 
@@ -225,14 +234,14 @@ public class FlowCrudSteps implements En {
                         0, 0, null, null))
                 .collect(toList());
 
-        for (Flow expextedFlow : expextedFlows) {
+        for (Flow expectedFlow : expextedFlows) {
             ImmutablePair<Flow, Flow> flowPair = Failsafe.with(retryPolicy
                     .abortIf(Objects::nonNull))
-                    .get(() -> topologyEngineService.getFlow(expextedFlow.getFlowId()));
+                    .get(() -> topologyEngineService.getFlow(expectedFlow.getFlowId()));
 
-            assertNotNull(format("The flow '%s' is missing.", expextedFlow.getFlowId()), flowPair);
-            assertEquals(format("The flow '%s' is different.", expextedFlow.getFlowId()), expextedFlow,
-                    flowPair.getLeft());
+            assertNotNull(format("The flow '%s' is missing.", expectedFlow.getFlowId()), flowPair);
+            assertThat(format("The flow '%s' is different.", expectedFlow.getFlowId()),
+                    flowPair.getLeft(), is(equalTo(expectedFlow)));
         }
     }
 
@@ -244,8 +253,10 @@ public class FlowCrudSteps implements En {
                     .get(() -> northboundService.getFlowStatus(flow.getId()));
 
             assertNotNull(status);
-            assertEquals(flow.getId(), status.getId());
-            assertEquals(FlowState.UP, status.getStatus());
+            assertThat(format("The flow status for '%s' can't be retrived.", flow.getId()),
+                    status, hasProperty("id", equalTo(flow.getId())));
+            assertThat(format("The flow '%s' has wrong status.", flow.getId()),
+                    status, hasProperty("status", equalTo(FlowState.UP)));
         }
     }
 

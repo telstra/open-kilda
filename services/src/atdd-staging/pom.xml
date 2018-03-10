@@ -33,6 +33,7 @@
         <cucumber.version>2.3.1</cucumber.version>
         <junit.version>4.12</junit.version>
         <mockito-core.version>2.8.47</mockito-core.version>
+        <nitorcreations-matchers.version>1.3</nitorcreations-matchers.version>
 
         <log4j-slf4j.version>2.10.0</log4j-slf4j.version>
 
@@ -119,6 +120,11 @@
             <artifactId>cucumber-junit</artifactId>
             <version>${cucumber.version}</version>
             <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.nitorcreations</groupId>
+            <artifactId>matchers</artifactId>
+            <version>${nitorcreations-matchers.version}</version>
         </dependency>
 
         <!-- Unit testing -->

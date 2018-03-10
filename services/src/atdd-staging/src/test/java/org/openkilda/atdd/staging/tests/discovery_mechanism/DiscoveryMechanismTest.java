@@ -13,16 +13,16 @@ import cucumber.api.java.After;
 import cucumber.api.java.Before;
 import org.junit.runner.RunWith;
 import org.openkilda.atdd.staging.cucumber.CucumberWithSpringProfile;
-import org.openkilda.atdd.staging.model.floodlight.FlowApplyActions;
-import org.openkilda.atdd.staging.model.floodlight.FlowEntriesMap;
-import org.openkilda.atdd.staging.model.floodlight.FlowEntry;
-import org.openkilda.atdd.staging.model.floodlight.FlowInstructions;
-import org.openkilda.atdd.staging.model.floodlight.FlowMatchField;
-import org.openkilda.atdd.staging.model.floodlight.SwitchEntry;
+import org.openkilda.atdd.staging.service.floodlight.model.FlowApplyActions;
+import org.openkilda.atdd.staging.service.floodlight.model.FlowEntriesMap;
+import org.openkilda.atdd.staging.service.floodlight.model.FlowEntry;
+import org.openkilda.atdd.staging.service.floodlight.model.FlowInstructions;
+import org.openkilda.atdd.staging.service.floodlight.model.FlowMatchField;
+import org.openkilda.atdd.staging.service.floodlight.model.SwitchEntry;
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition.Status;
-import org.openkilda.atdd.staging.service.FloodlightService;
-import org.openkilda.atdd.staging.service.TopologyEngineService;
+import org.openkilda.atdd.staging.service.floodlight.FloodlightService;
+import org.openkilda.atdd.staging.service.topology.TopologyEngineService;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
@@ -83,7 +83,7 @@ public class DiscoveryMechanismTest {
                     new IslInfoData(0L, reversedPath, 0L, IslChangeType.DISCOVERED, 0L)
             );
             when(topologyEngineService.getActiveSwitches()).thenReturn(discoveredSwitches);
-            when(topologyEngineService.getAllLinks()).thenReturn(discoveredLinks);
+            when(topologyEngineService.getActiveLinks()).thenReturn(discoveredLinks);
 
             when(floodlightService.getSwitches()).thenReturn(buildFloodlightSwitches());
             when(floodlightService.getFlows(anyString())).thenAnswer(invocation -> {
@@ -95,7 +95,7 @@ public class DiscoveryMechanismTest {
         @After
         public void verifyMocks() {
             verify(topologyEngineService).getActiveSwitches();
-            verify(topologyEngineService).getAllLinks();
+            verify(topologyEngineService).getActiveLinks();
             verify(topologyDefinition, times(3)).getActiveSwitches();
             verify(topologyDefinition).getIslsForActiveSwitches();
         }
