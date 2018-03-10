@@ -101,11 +101,11 @@ public class KafkaMessageConsumer implements MessageConsumer<Object> {
         } catch (InterruptedException exception) {
             logger.error("{}: {}={}", INTERRUPTED_ERROR_MESSAGE, CORRELATION_ID, correlationId);
             throw new MessageException(correlationId, System.currentTimeMillis(),
-                    INTERNAL_ERROR, INTERRUPTED_ERROR_MESSAGE, "kilda-test");
+                    INTERNAL_ERROR, INTERRUPTED_ERROR_MESSAGE, Topic.NORTHBOUND);
         }
         logger.error("{}: {}={}", TIMEOUT_ERROR_MESSAGE, CORRELATION_ID, correlationId);
         throw new MessageException(correlationId, System.currentTimeMillis(),
-                OPERATION_TIMED_OUT, TIMEOUT_ERROR_MESSAGE, "kilda-test");
+                OPERATION_TIMED_OUT, TIMEOUT_ERROR_MESSAGE, Topic.NORTHBOUND);
     }
 
     /**

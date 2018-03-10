@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 MT_ERROR = "org.openkilda.messaging.error.ErrorMessage"
 MT_COMMAND = "org.openkilda.messaging.command.CommandMessage"
 MT_INFO = "org.openkilda.messaging.info.InfoMessage"
+MT_INFO_FLOW_STATUS = "org.openkilda.messaging.info.flow.FlowStatusResponse"
 MT_ERROR_DATA = "org.openkilda.messaging.error.ErrorData"
 
 
@@ -187,7 +188,12 @@ def send_error_message(correlation_id, error_type, error_message,
 
 
 def send_install_commands(flow_rules, correlation_id):
-    for flow_rule in flow_rules:
+    """
+    flow_utils.get_rules() creates the flow rules starting with ingress, then transit, then egress. For the install,
+    we would like to send the commands in opposite direction - egress, then transit, then ingress.  Consequently,
+    the for logic should go in reverse
+    """
+    for flow_rule in reversed(flow_rules):
         send_to_topic(flow_rule, correlation_id, MT_COMMAND,
                       destination="CONTROLLER", topic=config.KAFKA_SPEAKER_TOPIC)
         # FIXME(surabujin): WFM reroute this message into CONTROLLER
@@ -195,21 +201,17 @@ def send_install_commands(flow_rules, correlation_id):
                       destination="WFM", topic=config.KAFKA_FLOW_TOPIC)
 
 
-def send_delete_commands(nodes, flow_id, flow, correlation_id, cookie):
+def send_delete_commands(nodes, correlation_id):
+    """
+    Build the message for each switch node in the path and send the message to both the speaker and the flow topic
 
-    if flow['src_switch'] == flow['dst_switch']:
-        #
-        # This means the flow is a single switch. The code north of here doesn't currently handle
-        # this scenario (for flow creation, the flow_utils.build_rules does account for it, but
-        # there isn't a symmetrical call .. ie build_delete_rules.
-        #
-        # Given the above, there should be no nodes, Create a node now.
-        #
-        nodes = [ {'switch_id':flow['src_switch']} ]
+    :param nodes: array of dicts: switch_id; flow_id; cookie
+    :return:
+    """
 
     logger.debug('Send Delete Commands: node count=%d', len(nodes))
     for node in nodes:
-        data = build_delete_flow(str(node['switch_id']), str(flow_id), cookie)
+        data = build_delete_flow(str(node['switch_id']), str(node['flow_id']), node['cookie'])
         send_to_topic(data, correlation_id, MT_COMMAND,
                       destination="CONTROLLER", topic=config.KAFKA_SPEAKER_TOPIC)
         send_to_topic(data, correlation_id, MT_COMMAND,

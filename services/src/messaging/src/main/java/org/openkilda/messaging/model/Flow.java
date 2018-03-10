@@ -128,6 +128,7 @@ public class Flow implements Serializable {
      */
     @JsonProperty(Utils.FLOW_PATH)
     private PathInfoData flowPath;
+    // TODO: why is PathInfoData an event, vs a model (ie package name)?
 
     /**
      * Flow state.

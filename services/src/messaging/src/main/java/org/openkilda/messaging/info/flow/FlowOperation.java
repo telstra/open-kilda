@@ -23,6 +23,8 @@ public enum FlowOperation {
     DELETE("Delete"),
     UPDATE("Update"),
     STATE("State"),
+    PUSH("Push"),       // used to pre-populate flows
+    UNPUSH("Unpush"),   // used to un-pre-populate flows
     CACHE("Cache");
 
     @JsonProperty("operation")

@@ -20,9 +20,9 @@
 			<div class="navigation-bar container-fluid">
 				<ul class="col-lg-12">
 					<li><a th:href="@{/home}">Home</a></li>
-					<li><i class="fa fa-angle-double-right"></i><a
+					<li><i class="icon-double-angle-right"></i><a
 						th:href="@{/topology}">Topology</a></li>
-					<li><i class="fa fa-angle-double-right"></i>ISL Details</li>
+					<li><i class="icon-double-angle-right"></i>ISL Details</li>
 				</ul>
 			</div>
 		</div>
@@ -98,7 +98,10 @@
 								<div id="wait1" class="bg-data-loader" style="bottom:1px;">
 									<div class="loader"></div>
 								</div>
+								
+							<h2 class="isl-header text-center">ISL Graph</h2>	
 							<div id="graphdiv"></div>
+							
 						</div>
 
 
@@ -109,30 +112,34 @@
 								  	<li>Reverse</li>
 								</ul>
 
-								<fieldset class="form-group clearfix">
+								<fieldset  id= "fromId" class="form-group clearfix">
 									<label class="col-xs-4 text-label">From:</label>
 									<div class="col-xs-8">
-										<input type="text" id="datetimepicker7"
+										<input type="text" id="datetimepicker7ISL"
 											value="D, l, M, F, Y-m-d H:i:s" placeholder="From"
 											class="form-control"></input>
+											<span class="from-error-message"></span>
 									</div>
 								</fieldset>
 
 
-								<fieldset class="form-group">
+								<fieldset  id="toId" class="form-group">
 									<label class="col-xs-4 text-label">To:</label>
 									<div class="col-xs-8">
-										<input type="text" id="datetimepicker8"
+										<input type="text" id="datetimepicker8ISL"
 											value="D, l, M, F, Y-m-d H:i:s" placeholder="To"
 											class="form-control"></input>
+											<span class="to-error-message"></span>
 									</div>
 								</fieldset>
 
 								<fieldset id="DownsampleID" class="form-group">
 									<label class="col-xs-4 text-label">Downsample:</label>
 									<div class="col-xs-8">
-										<input type="text" id="downsampling" placeholder="Downsample"
+										<input type="text" id="downsamplingISL" placeholder="Downsample"
 											class="form-control"></input>
+											
+											<span class="downsample-error-message pull-left"></span>
 									</div>
 								</fieldset>
 
@@ -141,11 +148,37 @@
 									<div class="col-xs-8">
 										<input type="checkbox" id="check" onclick="graphAutoReload.autoreload()"
 											style="margin-top: 12px;" /> <input type="text"
-											id="autoreload" name="autoloadInput" class="form-control"
+											id="autoreloadISL" name="autoloadInput" class="form-control"
 											style="display: none; width: calc(100% - 20px); float: right;" />
 									
 									   <span class="error-message"></span>
 									
+									</div>
+								</fieldset>
+								
+								<fieldset  id="SourceDestinationSwitchId" class="form-group">
+									<label class="col-xs-4 text-label">Source Switch:</label>
+									<div class="col-xs-1">
+										<input type="checkbox" id="check1" onclick="islDetails.getIslMetricData(this)" style="margin-top: 12px;" /> 
+									   <span class="error-message"></span>
+									</div>									
+									<label class="col-xs-5 text-label text-right">Destination Switch:</label>
+									<div class="col-xs-1">
+										<input type="checkbox" id="check2" onclick="islDetails.getIslMetricData(this)" style="margin-top: 12px;" />
+									   <span class="error-message"></span>
+									
+									</div>
+								</fieldset>
+								
+								<fieldset class="form-group" id="islMetric" style="display: none;">
+									<label class="col-xs-4 text-label">Metric:</label>
+									<div class="col-xs-8">
+										<span class="form-control kilda_select"> 
+											<span class="selectbox_arrow"></span> 
+												<select class="selectbox_menulist" id="menulistISL">
+										  			 <option value="pen.isl.latency">pen.isl.latency</option>
+												</select>
+										</span>
 									</div>
 								</fieldset>
 
@@ -156,7 +189,29 @@
 								</div>
 							</div>
 						</div>
+						
+						<div class="col-lg-12">
+							<div class="row" id="graphrowDiv" style="display: none;">
+								<div class="col-sm-6">
+								 <div id="waitisl1" class="bg-data-loader" style="display:none;">
+									<div class="loader"></div>
+								</div>
+								<h2 class="source-header text-center" style="display:none;">Source Graph</h2>
+								 
+									<div id="source-graph_div"></div>
+								</div>
+								<div class="col-sm-6">
+									<div id="waitisl2" class="bg-data-loader" style="display:none;">
+										<div class="loader"></div>
+									</div>
+									
+									<h2 class="target-header text-center" style="display:none;">Target Graph</h2> 
+									<div id="dest-graph_div"></div>
+								</div>
+							</div>
+						</div>
 					</div>
+					
 				</div>
 			</div>
 
@@ -168,7 +223,6 @@
 
 	<div th:replace="fragments/footer :: footer" ></div>
 	<script th:inline="javascript" src="../javascript/isl.js"></script>
-	<script th:inline="javascript" src="../javascript/common.js"></script>
 	<script th:inline="javascript" src="../javascript/isl-graph-stats.js"></script>
 </body>
 </html>
