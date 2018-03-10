@@ -23,6 +23,7 @@ public class PortStateTopology extends AbstractTopology {
     public final String PARSE_PORT_INFO_BOLT_NAME = ParsePortInfoBolt.class.getSimpleName();
     public final String TOPO_DISCO_PARSE_BOLT_NAME = TopoDiscoParseBolt.class.getSimpleName();
     public final String SWITCH_PORTS_SPOUT_NAME = SwitchPortsSpout.class.getSimpleName();
+    public final String WFM_STATS_PARSE_BOLT_NAME = WfmStatsParseBolt.class.getSimpleName();
     public final String SpeakerBoltName = "speaker.kafka.bolt";
     public final String OtsdbKafkaBoltName = "otsdb.kafka.bolt";
 
@@ -50,19 +51,20 @@ public class PortStateTopology extends AbstractTopology {
          *
          */
 
+        // Setup spout and bolt for TOPO_DISCO_SPOUT line
         String topoDiscoTopic = config.getKafkaTopoDiscoTopic();
         checkAndCreateTopic(topoDiscoTopic);
         logger.debug("connecting to topic {}", topoDiscoTopic);
         builder.setSpout(TOPO_DISCO_SPOUT, createKafkaSpout(topoDiscoTopic, clazzName+topoDiscoTopic));
 
-        String wfmStatsTopic = config.getKafkaStatsTopic();
-        checkAndCreateTopic(wfmStatsTopic);
-        logger.debug("conencting to topic {}", wfmStatsTopic);
-        builder.setSpout(WFM_STATS_SPOUT, createKafkaSpout(wfmStatsTopic, clazzName+wfmStatsTopic));
+        TopoDiscoParseBolt topoDiscoParseBolt = new TopoDiscoParseBolt();
+        builder.setBolt(TOPO_DISCO_PARSE_BOLT_NAME, topoDiscoParseBolt, config.getParallelism())
+                .shuffleGrouping(TopoDiscoParseBolt.TOPO_TO_PORT_INFO_STREAM, PARSE_PORT_INFO_BOLT_NAME);
 
         ParsePortInfoBolt parsePortInfoBolt = new ParsePortInfoBolt();
         builder.setBolt(PARSE_PORT_INFO_BOLT_NAME, parsePortInfoBolt, config.getParallelism())
-                .shuffleGrouping(OtsdbKafkaBoltName)
+                .shuffleGrouping(TopoDiscoParseBolt.TOPO_TO_PORT_INFO_STREAM, TOPO_DISCO_PARSE_BOLT_NAME)
+                .shuffleGrouping(WfmStatsParseBolt.WFM_TO_PARSE_PORT_INFO_STREAM, WFM_STATS_PARSE_BOLT_NAME);
 
         final String openTsdbTopic = config.getKafkaOtsdbTopic();
         checkAndCreateTopic(openTsdbTopic);
@@ -70,12 +72,15 @@ public class PortStateTopology extends AbstractTopology {
         builder.setBolt(OtsdbKafkaBoltName, openTsdbBolt, config.getParallelism())
                 .shuffleGrouping(PARSE_PORT_INFO_BOLT_NAME);
 
-        TopoDiscoParseBolt topoDiscoParseBolt = new TopoDiscoParseBolt();
-        builder.setBolt(TOPO_DISCO_PARSE_BOLT_NAME, topoDiscoParseBolt, config.getParallelism())
-                .shuffleGrouping(PARSE_PORT_INFO_BOLT_NAME);
-
-        final String WfmStatsParseBoltName = WfmStatsParseBolt.class.getSimpleName();
+        // Setup spout and bolt for WFM_STATS_SPOUT line
+        String wfmStatsTopic = config.getKafkaStatsTopic();
+        checkAndCreateTopic(wfmStatsTopic);
+        logger.debug("conencting to topic {}", wfmStatsTopic);
+        builder.setSpout(WFM_STATS_SPOUT, createKafkaSpout(wfmStatsTopic, clazzName+wfmStatsTopic));
+        
         WfmStatsParseBolt wfmStatsParseBolt = new WfmStatsParseBolt();
+        builder.setBolt(WFM_STATS_PARSE_BOLT_NAME, wfmStatsParseBolt, config.getParallelism())
+                .shuffleGrouping(WFM_STATS_SPOUT);
 
         // Setup spout and bolt for sending SwitchPortsCommand every frequency seconds
         SwitchPortsSpout switchPortsSpout = new SwitchPortsSpout(JANITOR_REFRESH);

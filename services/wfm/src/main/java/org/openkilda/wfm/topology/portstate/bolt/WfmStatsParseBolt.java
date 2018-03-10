@@ -16,7 +16,7 @@ import java.io.IOException;
 public class WfmStatsParseBolt extends AbstractKafkaParserBolt {
     private static final Logger logger = LoggerFactory.getLogger(WfmStatsParseBolt.class);
     private static final String WFM_STATS_PARSE_STREAM = "wfm.stats.parse.stream";
-    protected static final String WFM_TO_PARSE_PORT_INFO_STREAM = "wfm.to.parse.port.info.stream";
+    public static final String WFM_TO_PARSE_PORT_INFO_STREAM = "wfm.to.parse.port.info.stream";
 
     @Override
     public void execute(Tuple tuple) {

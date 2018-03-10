@@ -16,7 +16,7 @@ import java.io.IOException;
 
 public class TopoDiscoParseBolt extends AbstractKafkaParserBolt {
     private static final Logger logger = LoggerFactory.getLogger(TopoDiscoParseBolt.class);
-    public static final String PARSE_PORT_INFO_STREAM = "parse.port.info.stream";
+    public static final String TOPO_TO_PORT_INFO_STREAM = "parse.port.info.stream";
     public static final String FIELD_NAME = PortInfoData.class.getSimpleName();
 
     @Override
@@ -34,7 +34,7 @@ public class TopoDiscoParseBolt extends AbstractKafkaParserBolt {
         try {
             InfoData infoData = getInfoData(tuple);
             if (infoData instanceof PortInfoData) {
-                collector.emit(PARSE_PORT_INFO_STREAM, new Values((PortInfoData) infoData));
+                collector.emit(TOPO_TO_PORT_INFO_STREAM, new Values((PortInfoData) infoData));
             }
         } catch (IOException e) {
             logger.error("Error processing: {}", tuple.toString(), e);
@@ -47,6 +47,6 @@ public class TopoDiscoParseBolt extends AbstractKafkaParserBolt {
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
-        outputFieldsDeclarer.declareStream(PARSE_PORT_INFO_STREAM, new Fields(FIELD_NAME));
+        outputFieldsDeclarer.declareStream(TOPO_TO_PORT_INFO_STREAM, new Fields(FIELD_NAME));
     }
 }
