@@ -59,12 +59,12 @@ public class PortStateTopology extends AbstractTopology {
 
         TopoDiscoParseBolt topoDiscoParseBolt = new TopoDiscoParseBolt();
         builder.setBolt(TOPO_DISCO_PARSE_BOLT_NAME, topoDiscoParseBolt, config.getParallelism())
-                .shuffleGrouping(TopoDiscoParseBolt.TOPO_TO_PORT_INFO_STREAM, PARSE_PORT_INFO_BOLT_NAME);
+                .shuffleGrouping(PARSE_PORT_INFO_BOLT_NAME, TopoDiscoParseBolt.TOPO_TO_PORT_INFO_STREAM);
 
         ParsePortInfoBolt parsePortInfoBolt = new ParsePortInfoBolt();
         builder.setBolt(PARSE_PORT_INFO_BOLT_NAME, parsePortInfoBolt, config.getParallelism())
-                .shuffleGrouping(TopoDiscoParseBolt.TOPO_TO_PORT_INFO_STREAM, TOPO_DISCO_PARSE_BOLT_NAME)
-                .shuffleGrouping(WfmStatsParseBolt.WFM_TO_PARSE_PORT_INFO_STREAM, WFM_STATS_PARSE_BOLT_NAME);
+                .shuffleGrouping(TOPO_DISCO_PARSE_BOLT_NAME, TopoDiscoParseBolt.TOPO_TO_PORT_INFO_STREAM)
+                .shuffleGrouping(WFM_STATS_PARSE_BOLT_NAME, WfmStatsParseBolt.WFM_TO_PARSE_PORT_INFO_STREAM);
 
         final String openTsdbTopic = config.getKafkaOtsdbTopic();
         checkAndCreateTopic(openTsdbTopic);
