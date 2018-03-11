@@ -308,9 +308,11 @@ public class CrudBolt
         List<String> unchangedFlows = new ArrayList<>();
 
         List<FlowInfo> flowInfos = pathComputer.getFlowInfo();
+
+        // Instead of determining left/right .. store based on flowid_& cookie
         HashMap<String,FlowInfo> flowToInfo = new HashMap<>();
         for (FlowInfo fi : flowInfos){
-            flowToInfo.put(fi.getFlowId(),fi);
+            flowToInfo.put(fi.getFlowId()+fi.getCookie(),fi);
         }
 
         // We first look at comparing what is in the DB to what is in the Cache
@@ -318,16 +320,30 @@ public class CrudBolt
             String flowid = fi.getFlowId();
             if (flowCache.cacheContainsFlow(flowid)){
                 // TODO: better, more holistic comparison
+                // Need to compare both sides
                 ImmutablePair<Flow,Flow> fc = flowCache.getFlow(flowid);
-                if ( fi.getCookie() != fc.left.getCookie() ||
-                        fi.getMeterId() != fc.left.getMeterId() ||
-                        fi.getTransitVlanId() != fc.left.getTransitVlan() ||
-                        fi.getSrcSwitchId() != fc.left.getSourceSwitch()
-                        ){
-                    modifiedFlows.add(MAPPER.writeValueAsString(fc));
-                } else {
+
+                // if 'fi' isn't identical to at least one side, then it is "modified"
+//                if ( (fi.getCookie() != fc.left.getCookie() ||
+//                        fi.getMeterId() != fc.left.getMeterId() ||
+//                        fi.getTransitVlanId() != fc.left.getTransitVlan() ||
+//                        fi.getSrcSwitchId() != fc.left.getSourceSwitch()) &&
+//                    (fi.getCookie() != fc.right.getCookie() ||
+//                            fi.getMeterId() != fc.right.getMeterId() ||
+//                            fi.getTransitVlanId() != fc.right.getTransitVlan() ||
+//                            fi.getSrcSwitchId() != fc.right.getSourceSwitch())
+//                        ){
+                int count = modifiedFlows.size();
+                if (fi.getCookie() != fc.left.getCookie() && fi.getCookie() != fc.right.getCookie())
+                    modifiedFlows.add("cookie: " + flowid + ":" + fi.getCookie() + ":" + fc.left.getCookie() + ":" + fc.right.getCookie());
+                if (fi.getMeterId() != fc.left.getMeterId() && fi.getMeterId() != fc.right.getMeterId())
+                    modifiedFlows.add("meter: " + flowid + ":" + fi.getMeterId() + ":" + fc.left.getMeterId() + ":" + fc.right.getMeterId());
+                if (fi.getTransitVlanId() != fc.left.getTransitVlan() && fi.getTransitVlanId() != fc.right.getTransitVlan())
+                    modifiedFlows.add("transit: " + flowid + ":" + fi.getTransitVlanId() + ":" + fc.left.getTransitVlan() + ":" + fc.right.getTransitVlan());
+                if (!fi.getSrcSwitchId().equals(fc.left.getSourceSwitch()) && !fi.getSrcSwitchId().equals(fc.right.getSourceSwitch()))
+                    modifiedFlows.add("switch: " + flowid + "|" + fi.getSrcSwitchId() + "|" + fc.left.getSourceSwitch() + "|" + fc.right.getSourceSwitch());
+                if (count == modifiedFlows.size())
                     unchangedFlows.add(flowid);
-                }
             } else {
                 // TODO: need to get the flow from the DB and add it properly
                 addedFlows.add(flowid);
@@ -336,11 +352,21 @@ public class CrudBolt
 
         // Now we see if the cache holds things not in the DB
         for (ImmutablePair<Flow, Flow> flow : flowCache.dumpFlows()){
-            String flowid = flow.left.getFlowId();
-            if (!flowToInfo.containsKey(flowid)){
-                String removedFlow = flowCache.removeFlow(flowid).toString();
-                String asJson = MAPPER.writeValueAsString(removedFlow);
-                droppedFlows.add(asJson);
+            String key = flow.left.getFlowId() + flow.left.getCookie();
+            // compare the left .. if it is in, then check the right .. o/w remove it (no need to check right
+            if (!flowToInfo.containsKey(key)){
+//                String removedFlow = flowCache.removeFlow(flow.left.getFlowId()).toString();
+//                String asJson = MAPPER.writeValueAsString(removedFlow);
+//                droppedFlows.add(asJson);
+                droppedFlows.add(flow.left.getFlowId());
+            } else {
+                key = flow.right.getFlowId() + flow.right.getCookie();
+                if (!flowToInfo.containsKey(key)) {
+//                    String removedFlow = flowCache.removeFlow(flow.left.getFlowId()).toString();
+//                    String asJson = MAPPER.writeValueAsString(removedFlow);
+//                    droppedFlows.add(asJson);
+                    droppedFlows.add(flow.right.getFlowId());
+                }
             }
         }
 
