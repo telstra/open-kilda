@@ -32,11 +32,7 @@ import org.neo4j.driver.v1.types.Relationship;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.StringJoiner;
+import java.util.*;
 
 public class NeoDriver implements PathComputer {
     /**
@@ -131,6 +127,34 @@ public class NeoDriver implements PathComputer {
         }
 
         return new ImmutablePair<>(new PathInfoData(latency, forwardNodes), new PathInfoData(latency, reverseNodes));
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<FlowInfo> getFlowInfo(){
+        List<FlowInfo> flows = new ArrayList<>();
+        String subject = "MATCH (:switch)-[f:flow]->(:switch) " +
+                "RETURN f.flowid as flow_id, " +
+                " f.cookie as cookie, " +
+                " f.meter_id as meter_id, " +
+                " f.transit_vlan as transit_vlan, " +
+                " f.src_switch as src_switch";
+
+        Session session = driver.session();
+        StatementResult result = session.run(subject);
+        for (Record record : result.list()) {
+            flows.add(new FlowInfo()
+                    .setFlowId(record.get("flow_id").asString())
+                    .setSrcSwitchId(record.get("src_switch").asString())
+                    .setCookie(record.get("cookie").asLong())
+                    .setMeterId(record.get("meter_id").asInt())
+                    .setTransitVlanId(record.get("transit_vlan").asInt())
+            );
+        }
+        return flows;
     }
 
     private Statement makePathQuery(Flow flow) {

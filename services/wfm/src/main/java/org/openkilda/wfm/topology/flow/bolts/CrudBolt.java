@@ -53,6 +53,7 @@ import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.pce.cache.FlowCache;
 import org.openkilda.pce.cache.ResourceCache;
 import org.openkilda.pce.provider.Auth;
+import org.openkilda.pce.provider.FlowInfo;
 import org.openkilda.pce.provider.PathComputer;
 import org.openkilda.pce.provider.PathComputer.Strategy;
 import org.openkilda.pce.provider.UnroutablePathException;
@@ -68,9 +69,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class CrudBolt
@@ -299,11 +298,55 @@ public class CrudBolt
     private void handleCacheSyncRequest(CommandMessage message, Tuple tuple) throws IOException {
         logger.info("CACHE SYNCE: {}", message);
 
-        // TODO: Sync the Caches
         // NB: This is going to be a "bulky" operation - get all flows from DB, and synchronize
         //      with the cache.
 
-        FlowCacheSyncResults results = new FlowCacheSyncResults();
+
+        List<String> droppedFlows = new ArrayList<>();
+        List<String> addedFlows = new ArrayList<>();
+        List<String> modifiedFlows = new ArrayList<>();
+        List<String> unchangedFlows = new ArrayList<>();
+
+        List<FlowInfo> flowInfos = pathComputer.getFlowInfo();
+        HashMap<String,FlowInfo> flowToInfo = new HashMap<>();
+        for (FlowInfo fi : flowInfos){
+            flowToInfo.put(fi.getFlowId(),fi);
+        }
+
+        // We first look at comparing what is in the DB to what is in the Cache
+        for (FlowInfo fi : flowInfos){
+            String flowid = fi.getFlowId();
+            if (flowCache.cacheContainsFlow(flowid)){
+                // TODO: better, more holistic comparison
+                ImmutablePair<Flow,Flow> fc = flowCache.getFlow(flowid);
+                if ( fi.getCookie() != fc.left.getCookie() ||
+                        fi.getMeterId() != fc.left.getMeterId() ||
+                        fi.getTransitVlanId() != fc.left.getTransitVlan() ||
+                        fi.getSrcSwitchId() != fc.left.getSourceSwitch()
+                        ){
+                    modifiedFlows.add(MAPPER.writeValueAsString(fc));
+                } else {
+                    unchangedFlows.add(flowid);
+                }
+            } else {
+                // TODO: need to get the flow from the DB and add it properly
+                addedFlows.add(flowid);
+            }
+        }
+
+        // Now we see if the cache holds things not in the DB
+        for (ImmutablePair<Flow, Flow> flow : flowCache.dumpFlows()){
+            String flowid = flow.left.getFlowId();
+            if (!flowToInfo.containsKey(flowid)){
+                String removedFlow = flowCache.removeFlow(flowid).toString();
+                String asJson = MAPPER.writeValueAsString(removedFlow);
+                droppedFlows.add(asJson);
+            }
+        }
+
+        FlowCacheSyncResults results = new FlowCacheSyncResults(
+                droppedFlows.toArray(new String[0]), addedFlows.toArray(new String[0]),
+                modifiedFlows.toArray(new String[0]), unchangedFlows.toArray(new String[0]));
         Values northbound = new Values(new InfoMessage(new FlowCacheSyncResponse(results),
                 message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
         outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
