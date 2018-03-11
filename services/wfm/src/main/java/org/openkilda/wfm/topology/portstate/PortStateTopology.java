@@ -59,7 +59,7 @@ public class PortStateTopology extends AbstractTopology {
 
         TopoDiscoParseBolt topoDiscoParseBolt = new TopoDiscoParseBolt();
         builder.setBolt(TOPO_DISCO_PARSE_BOLT_NAME, topoDiscoParseBolt, config.getParallelism())
-                .shuffleGrouping(PARSE_PORT_INFO_BOLT_NAME, TopoDiscoParseBolt.TOPO_TO_PORT_INFO_STREAM);
+                .shuffleGrouping(TOPO_DISCO_SPOUT);
 
         ParsePortInfoBolt parsePortInfoBolt = new ParsePortInfoBolt();
         builder.setBolt(PARSE_PORT_INFO_BOLT_NAME, parsePortInfoBolt, config.getParallelism())
