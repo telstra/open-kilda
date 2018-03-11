@@ -197,7 +197,7 @@ public class FlowServiceImpl implements FlowService {
      */
     @Override
     public List<FlowPayload> getFlows(final String correlationId) {
-        LOGGER.debug("\n\n\n\nGet flows: ENTER {}={}\n", CORRELATION_ID, correlationId);
+        LOGGER.debug("\n\n\nGet flows: ENTER {}={}\n", CORRELATION_ID, correlationId);
         // TODO: why does FlowsGetRequest use empty FlowIdStatusPayload? Delete if not needed.
         FlowsGetRequest data = new FlowsGetRequest(new FlowIdStatusPayload());
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
@@ -206,7 +206,7 @@ public class FlowServiceImpl implements FlowService {
         Message message = (Message) messageConsumer.poll(correlationId);
         FlowsResponse response = (FlowsResponse) validateInfoMessage(request, message, correlationId);
         List<FlowPayload> result = Converter.buildFlowsPayloadByFlows(response.getPayload());
-        logger.debug("\nGet flows: EXIT {}\n\n\n\n", result);
+        logger.debug("\nGet flows: EXIT {}={}, num_flows {}\n\n\n", CORRELATION_ID, correlationId, result.size());
         return result;
     }
 
@@ -215,8 +215,16 @@ public class FlowServiceImpl implements FlowService {
      */
     @Override
     public List<FlowPayload> deleteFlows(final String correlationId) {
-        // TODO: Implement
-        return new ArrayList<FlowPayload>();
+        LOGGER.debug("\n\nDELETE ALL FLOWS: ENTER {}={}\n", CORRELATION_ID, correlationId);
+        ArrayList<FlowPayload> result = new ArrayList<FlowPayload>();
+        // TODO: Need a getFlowIDs .. since that is all we need
+        List<FlowPayload> flows = this.getFlows(correlationId+"-GET");
+        for (int i = 0; i < flows.size(); i++) {
+            FlowPayload flow = flows.get(i);
+            result.add(this.deleteFlow(flow.getId(),correlationId + "-" + i));
+        }
+        LOGGER.debug("\n\nDELETE ALL FLOWS: EXIT {}={}\n", CORRELATION_ID, correlationId);
+        return result;
     }
 
     /**

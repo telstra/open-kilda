@@ -320,19 +320,11 @@ public class CrudBolt
             String flowid = fi.getFlowId();
             if (flowCache.cacheContainsFlow(flowid)){
                 // TODO: better, more holistic comparison
+                // TODO: if the flow is modified, then just leverage drop / add primitives.
+                // TODO: Ensure that the DB is always the source of truth - cache and db ops part of transaction.
                 // Need to compare both sides
                 ImmutablePair<Flow,Flow> fc = flowCache.getFlow(flowid);
 
-                // if 'fi' isn't identical to at least one side, then it is "modified"
-//                if ( (fi.getCookie() != fc.left.getCookie() ||
-//                        fi.getMeterId() != fc.left.getMeterId() ||
-//                        fi.getTransitVlanId() != fc.left.getTransitVlan() ||
-//                        fi.getSrcSwitchId() != fc.left.getSourceSwitch()) &&
-//                    (fi.getCookie() != fc.right.getCookie() ||
-//                            fi.getMeterId() != fc.right.getMeterId() ||
-//                            fi.getTransitVlanId() != fc.right.getTransitVlan() ||
-//                            fi.getSrcSwitchId() != fc.right.getSourceSwitch())
-//                        ){
                 int count = modifiedFlows.size();
                 if (fi.getCookie() != fc.left.getCookie() && fi.getCookie() != fc.right.getCookie())
                     modifiedFlows.add("cookie: " + flowid + ":" + fi.getCookie() + ":" + fc.left.getCookie() + ":" + fc.right.getCookie());
@@ -355,6 +347,10 @@ public class CrudBolt
             String key = flow.left.getFlowId() + flow.left.getCookie();
             // compare the left .. if it is in, then check the right .. o/w remove it (no need to check right
             if (!flowToInfo.containsKey(key)){
+/* (carmine) - This code is to drop the flow from the cache since it isn't in the DB
+ *  But - the user can just as easily call delete in the NB API .. which should do the right thing.
+ *  So, for now, just add the flow id.
+ */
 //                String removedFlow = flowCache.removeFlow(flow.left.getFlowId()).toString();
 //                String asJson = MAPPER.writeValueAsString(removedFlow);
 //                droppedFlows.add(asJson);
@@ -362,6 +358,7 @@ public class CrudBolt
             } else {
                 key = flow.right.getFlowId() + flow.right.getCookie();
                 if (!flowToInfo.containsKey(key)) {
+// (carmine) - same comment..
 //                    String removedFlow = flowCache.removeFlow(flow.left.getFlowId()).toString();
 //                    String asJson = MAPPER.writeValueAsString(removedFlow);
 //                    droppedFlows.add(asJson);
