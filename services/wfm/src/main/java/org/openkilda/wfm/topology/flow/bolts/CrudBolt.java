@@ -44,14 +44,10 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.PathInfoData;
-import org.openkilda.messaging.info.flow.FlowInfoData;
-import org.openkilda.messaging.info.flow.FlowOperation;
-import org.openkilda.messaging.info.flow.FlowPathResponse;
-import org.openkilda.messaging.info.flow.FlowResponse;
-import org.openkilda.messaging.info.flow.FlowStatusResponse;
-import org.openkilda.messaging.info.flow.FlowsResponse;
+import org.openkilda.messaging.info.flow.*;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.pce.cache.FlowCache;
@@ -222,6 +218,9 @@ public class CrudBolt
                         case STATUS:
                             handleStatusRequest(flowId, cmsg, tuple);
                             break;
+                        case CACHE_SYNC:
+                            handleCacheSyncRequest(cmsg, tuple);
+                            break;
                         case READ:
                             if (flowId != null) {
                                 handleReadRequest(flowId, cmsg, tuple);
@@ -296,6 +295,20 @@ public class CrudBolt
 
         logger.trace("Flow Cache after: {}", flowCache);
     }
+
+    private void handleCacheSyncRequest(CommandMessage message, Tuple tuple) throws IOException {
+        logger.info("CACHE SYNCE: {}", message);
+
+        // TODO: Sync the Caches
+        // NB: This is going to be a "bulky" operation - get all flows from DB, and synchronize
+        //      with the cache.
+
+        FlowCacheSyncResults results = new FlowCacheSyncResults();
+        Values northbound = new Values(new InfoMessage(new FlowCacheSyncResponse(results),
+                message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
+        outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
+    }
+
 
     private void handlePushRequest(String flowId, InfoMessage message, Tuple tuple) throws IOException {
         logger.info("PUSH flow: {} :: {}", flowId, message);

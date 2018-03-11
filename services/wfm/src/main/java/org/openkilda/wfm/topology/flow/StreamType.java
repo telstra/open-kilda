@@ -70,6 +70,11 @@ public enum StreamType {
     STATUS,
 
     /**
+     * Sync Caches with DB.
+     */
+    CACHE_SYNC,
+
+    /**
      * Flow command response.
      */
     RESPONSE,
