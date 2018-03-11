@@ -106,8 +106,6 @@ public class FlowCache extends Cache {
         resourceCache.allocateFlow(flow);
     }
 
-
-
     /**
      * Checks if flow pool contains {@link Flow} instance.
      *
@@ -242,6 +240,12 @@ public class FlowCache extends Cache {
 
         return flow;
     }
+
+
+    /**
+     *
+     */
+
 
     /**
      * Creates flow.

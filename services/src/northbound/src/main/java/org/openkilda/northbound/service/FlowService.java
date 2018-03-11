@@ -15,6 +15,7 @@
 
 package org.openkilda.northbound.service;
 
+import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
@@ -23,7 +24,7 @@ import org.openkilda.messaging.info.flow.FlowInfoData;
 import java.util.List;
 
 /**
- * FlowService is for operations on flows.
+ * FlowService is for operations on flows, primarily against the Flow Topology.
  */
 public interface FlowService extends BasicService {
     /**
@@ -71,6 +72,15 @@ public interface FlowService extends BasicService {
     List<FlowPayload> getFlows(final String correlationId);
 
     /**
+     * Deletes all flows. Primarily this is a combination of getFlows and deleteFlow.
+     * This should be called with care ..
+     *
+     * @param correlationId request correlation Id
+     * @return the list of all deleted flows
+     */
+    List<FlowPayload> deleteFlows(final String correlationId);
+
+    /**
      * Gets flow status by id.
      *
      * @param id            flow id
@@ -115,4 +125,13 @@ public interface FlowService extends BasicService {
      * @return updated flow path information.
      */
     FlowPathPayload rerouteFlow(final String flowId, final String correlationId);
+
+
+    /**
+     * Sync the FlowCache in the flow topology (in case it is out of sync.
+     *
+     * @param correlationId request correlation Id
+     * @return updated flow path information.
+     */
+    FlowCacheSyncResults syncFlowCache(final String correlationId);
 }

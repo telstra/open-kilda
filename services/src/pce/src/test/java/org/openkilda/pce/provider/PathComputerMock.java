@@ -46,6 +46,11 @@ public class PathComputerMock implements PathComputer {
     }
 
     @Override
+    public List<FlowInfo> getFlowInfo() {
+        return new ArrayList<>();
+    }
+
+    @Override
     public ImmutablePair<PathInfoData, PathInfoData> getPath(Flow flow, Strategy strategy) {
         /*
          * TODO: Implement other strategies? Default is HOPS ...
