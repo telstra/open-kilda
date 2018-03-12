@@ -422,7 +422,7 @@ public class CrudBolt
         try {
             new FlowValidator(flowCache).checkFlowForEndpointConflicts(requestedFlow);
 
-            path = pathComputer.getPath(requestedFlow, Strategy.HOPS);
+            path = pathComputer.getPath(requestedFlow, Strategy.COST);
             logger.info("Created flow path: {}", path);
 
         } catch (FlowValidationException e) {
@@ -461,7 +461,7 @@ public class CrudBolt
 
                 try {
                     ImmutablePair<PathInfoData, PathInfoData> path =
-                            pathComputer.getPath(flow.getLeft(), Strategy.HOPS);
+                            pathComputer.getPath(flow.getLeft(), Strategy.COST);
                     logger.info("Rerouted flow path: {}", path);
                     //no need to emit changes if path wasn't changed and flow is active.
                     if (!path.getLeft().equals(flow.getLeft().getFlowPath()) || !isFlowActive(flow)) {
@@ -517,7 +517,7 @@ public class CrudBolt
         ImmutablePair<Flow, Flow> requestedFlow = ((FlowRestoreRequest) message.getData()).getPayload();
 
         try {
-            ImmutablePair<PathInfoData, PathInfoData> path = pathComputer.getPath(requestedFlow.getLeft(), Strategy.HOPS);
+            ImmutablePair<PathInfoData, PathInfoData> path = pathComputer.getPath(requestedFlow.getLeft(), Strategy.COST);
             logger.info("Restored flow path: {}", path);
 
             ImmutablePair<Flow, Flow> flow;
@@ -545,7 +545,7 @@ public class CrudBolt
         try {
             new FlowValidator(flowCache).checkFlowForEndpointConflicts(requestedFlow);
 
-            path = pathComputer.getPath(requestedFlow, Strategy.HOPS);
+            path = pathComputer.getPath(requestedFlow, Strategy.COST);
             logger.info("Updated flow path: {}", path);
 
         } catch (FlowValidationException e) {

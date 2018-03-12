@@ -18,6 +18,9 @@ import org.neo4j.io.fs.FileUtils;
 import org.neo4j.kernel.configuration.BoltConnector;
 
 
+import org.openkilda.messaging.info.event.PathInfoData;
+import org.openkilda.messaging.model.Flow;
+import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.neo.NeoUtils;
 import org.openkilda.neo.OkNode;
 import org.openkilda.neo.NeoUtils.OkRels;
@@ -45,7 +48,7 @@ public class PathComputerTest {
                 .newEmbeddedDatabaseBuilder( databaseDirectory )
                 .setConfig( bolt.type, "BOLT" )
                 .setConfig( bolt.enabled, "true" )
-                .setConfig( bolt.listen_address, "localhost:7687" )
+                .setConfig( bolt.listen_address, "localhost:7878" )
                 .newGraphDatabase();
 
         // Shuts down nicely when the VM exits
@@ -96,7 +99,7 @@ public class PathComputerTest {
             tx.success();
         }
 
-        Driver driver = GraphDatabase.driver( "bolt://localhost", AuthTokens.basic( "neo4j", "password" ) );
+        Driver driver = GraphDatabase.driver( "bolt://localhost:7878", AuthTokens.basic( "neo4j", "password" ) );
         NeoDriver nd = new NeoDriver(driver);
         List<FlowInfo> fi = nd.getFlowInfo();
         Assert.assertEquals(fi.get(0).getFlowId(), "f1");
@@ -108,7 +111,210 @@ public class PathComputerTest {
 
     }
 
+    private Node createNode(String name) {
+        Node n = graphDb.createNode(Label.label("switch"));
+        n.setProperty("name", name);
+        n.setProperty("state", "active");
+        return n;
+    }
+    private Relationship addRel (Node n1, Node n2, String status, int cost, int bw){
+        Relationship rel;
+        rel = n1.createRelationshipTo(n2, RelationshipType.withName("isl"));
+        rel.setProperty("status",status);
+        if (cost >= 0) {rel.setProperty("cost", cost);}
+        rel.setProperty("available_bandwidth", bw);
+        rel.setProperty("latency", 5);
+        rel.setProperty("src_port", 5);
+        rel.setProperty("dst_port", 5);
+        rel.setProperty("src_switch", n1.getProperty("name"));
+        rel.setProperty("dst_switch", n2.getProperty("name"));
+        return rel;
+    }
 
+    private void createDiamond(String pathBstatus, int pathBcost, int pathCcost) {
+        try ( Transaction tx = graphDb.beginTx() ) {
+            // A - B - D
+            //   + C +
+            Node nodeA, nodeB, nodeC, nodeD;
+            nodeA = createNode("00:01");
+            nodeB = createNode("00:02");
+            nodeC = createNode("00:03");
+            nodeD = createNode("00:04");
+            addRel(nodeA, nodeB, pathBstatus, pathBcost, 1000);
+            addRel(nodeA, nodeC, "active", pathCcost, 1000);
+            addRel(nodeB, nodeD, pathBstatus, pathBcost, 1000);
+            addRel(nodeC, nodeD, "active", pathCcost, 1000);
+            addRel(nodeB, nodeA, pathBstatus, pathBcost, 1000);
+            addRel(nodeC, nodeA, "active", pathCcost, 1000);
+            addRel(nodeD, nodeB, pathBstatus, pathBcost, 1000);
+            addRel(nodeD, nodeC, "active", pathCcost, 1000);
+            tx.success();
+        }
+    }
+
+    @Test
+    public void testGetPathByCostActive() throws UnroutablePathException {
+        /*
+         * simple happy path test .. everything has cost
+         */
+        createDiamond("active", 10, 20);
+        Driver driver = GraphDatabase.driver( "bolt://localhost:7878", AuthTokens.basic( "neo4j", "password" ) );
+        NeoDriver nd = new NeoDriver(driver);
+        Flow f = new Flow();
+        f.setSourceSwitch("00:01");
+        f.setDestinationSwitch("00:04");
+        f.setBandwidth(100);
+        ImmutablePair<PathInfoData, PathInfoData> path = nd.getPath(f, PathComputer.Strategy.COST);
+        //System.out.println("path = " + path);
+        Assert.assertNotNull(path);
+        Assert.assertEquals(4, path.left.getPath().size());
+        Assert.assertEquals("00:02", path.left.getPath().get(1).getSwitchId()); // chooses path B
+    }
+
+
+    @Test
+    public void testGetPathByCostInactive() throws UnroutablePathException {
+        /*
+         * simple happy path test .. but lowest path is inactive
+         */
+        createDiamond("inactive", 10, 20);
+        Driver driver = GraphDatabase.driver( "bolt://localhost:7878", AuthTokens.basic( "neo4j", "password" ) );
+        NeoDriver nd = new NeoDriver(driver);
+        Flow f = new Flow();
+        f.setSourceSwitch("00:01");
+        f.setDestinationSwitch("00:04");
+        f.setBandwidth(100);
+        ImmutablePair<PathInfoData, PathInfoData> path = nd.getPath(f, PathComputer.Strategy.COST);
+        // System.out.println("path = " + path);
+        Assert.assertNotNull(path);
+        Assert.assertEquals(4, path.left.getPath().size());
+        // ====> only difference is it should now have C as first hop .. since B is inactive
+        Assert.assertEquals("00:03", path.left.getPath().get(1).getSwitchId()); // chooses path B
+    }
+
+    @Test
+    public void testGetPathByCostNoCost() throws UnroutablePathException {
+        /*
+         * simple happy path test .. but pathB has no cost .. but still cheaper than pathC (test the default)
+         */
+        createDiamond("active", -1, 2000);
+        Driver driver = GraphDatabase.driver( "bolt://localhost:7878", AuthTokens.basic( "neo4j", "password" ) );
+        NeoDriver nd = new NeoDriver(driver);
+        Flow f = new Flow();
+        f.setSourceSwitch("00:01");
+        f.setDestinationSwitch("00:04");
+        f.setBandwidth(100);
+        ImmutablePair<PathInfoData, PathInfoData> path = nd.getPath(f, PathComputer.Strategy.COST);
+        // System.out.println("path = " + path);
+        Assert.assertNotNull(path);
+        Assert.assertEquals(4, path.left.getPath().size());
+        // ====> Should choose B .. because default cost (700) cheaper than 2000
+        Assert.assertEquals("00:02", path.left.getPath().get(1).getSwitchId()); // chooses path B
+    }
+
+
+    /* ==========> TESTING DIJKSTRA
+     * THE FOLLOWING CAN BE USED DIRECTLY IN THE NEO4J BROWSER.
+
+     MERGE (A:switch {name:'00:01', state:'active'})
+     MERGE (B:switch {name:'00:02', state:'active'})
+     MERGE (C:switch {name:'00:03', state:'active'})
+     MERGE (D:switch {name:'00:04', state:'active'})
+     MERGE (A)-[ab:isl {available_bandwidth:1000, cost:10, status:'inactive'}]->(B)
+     MERGE (A)-[ac:isl {available_bandwidth:1000, cost:20, status:'active'}]->(C)
+     MERGE (B)-[bd:isl {available_bandwidth:1000, cost:10, status:'inactive'}]->(D)
+     MERGE (C)-[cd:isl {available_bandwidth:1000, cost:20, status:'active'}]->(D)
+     MERGE (B)-[ba:isl {available_bandwidth:1000, cost:10, status:'inactive'}]->(A)
+     MERGE (C)-[ca:isl {available_bandwidth:1000, cost:20, status:'active'}]->(A)
+     MERGE (D)-[db:isl {available_bandwidth:1000, cost:10, status:'inactive'}]->(B)
+     MERGE (D)-[dc:isl {available_bandwidth:1000, cost:20, status:'active'}]->(C)
+     return A,B,C,D
+
+    TESTING with no_cost:
+
+     MERGE (A:switch {name:'00:01', state:'active'})
+     MERGE (B:switch {name:'00:02', state:'active'})
+     MERGE (C:switch {name:'00:03', state:'active'})
+     MERGE (D:switch {name:'00:04', state:'active'})
+     MERGE (A)-[ab:isl {available_bandwidth:1000, status:'inactive'}]->(B)
+     MERGE (A)-[ac:isl {available_bandwidth:1000, status:'active'}]->(C)
+     MERGE (B)-[bd:isl {available_bandwidth:1000, status:'inactive'}]->(D)
+     MERGE (C)-[cd:isl {available_bandwidth:1000, status:'active'}]->(D)
+     MERGE (B)-[ba:isl {available_bandwidth:1000, status:'inactive'}]->(A)
+     MERGE (C)-[ca:isl {available_bandwidth:1000, status:'active'}]->(A)
+     MERGE (D)-[db:isl {available_bandwidth:1000, status:'inactive'}]->(B)
+     MERGE (D)-[dc:isl {available_bandwidth:1000, status:'active'}]->(C)
+     return A,B,C,D
+
+==> WORKS
+     MATCH (from:switch{name:"00:01"}), (to:switch{name:"00:04"})
+     CALL apoc.algo.dijkstraWithDefaultWeight(from, to, 'isl', 'cost', 700) YIELD path AS p, weight AS weight
+     RETURN p, weight
+
+
+     MATCH (from:switch{name:"00:01"}), (to:switch{name:"00:04"})
+     CALL apoc.algo.dijkstraWithDefaultWeight(from, to, 'isl', 'cost', 700) YIELD path AS p, weight AS weight
+     WHERE ALL(y in rels(p) WHERE y.status = 'active')
+     RETURN p, weight
+
+
+     MATCH (from:switch), (to:switch)
+     CALL apoc.algo.dijkstraWithDefaultWeight(from, to, 'isl', 'cost', 700) YIELD path AS p, weight AS weight
+     WHERE from.name = "00:01" AND to.name = "00:04" AND ALL(r IN rels(path) WHERE r.state = 'active')
+     RETURN p, weight
+
+
+MATCH (from:switch{name:"00:01"}), (to:switch{name:"00:04"}), paths = allShortestPaths((from)-[r:isl*]->(to))
+WITH REDUCE(cost = 0, rel in rels(paths) | cost + rel.cost) AS cost, paths
+WHERE ALL (x in r WHERE x.status = 'active')
+RETURN paths, cost
+ORDER BY cost
+LIMIT 1
+
+==> WORKS
+MATCH (from:switch{name:"00:01"}), (to:switch{name:"00:04"}), paths = allShortestPaths((from)-[r:isl*..100]->(to))
+WITH REDUCE(cost = 0, rel in rels(paths) | cost + rel.cost) AS cost, paths
+WHERE ALL (x in r WHERE x.status = 'active')
+RETURN paths ORDER BY cost LIMIT 1
+
+==> WORKING WITH NO COST
+MATCH (from:switch{name:"00:01"}), (to:switch{name:"00:04"}), paths = allShortestPaths((from)-[r:isl*..100]->(to))
+WITH REDUCE(cost = 0, rel in rels(paths) | cost + rel.cost) AS cost, paths
+WHERE ALL (x in r WHERE x.status = 'active')
+RETURN paths ORDER BY cost LIMIT 1
+
+
+MATCH (a:switch{name:"00:01"}),(b:switch{name:"00:04"}), p = shortestPath((a)-[r:isl*..100]->(b))
+where ALL(x in nodes(p) WHERE x.state = 'active')
+    AND ALL(y in r WHERE y.status = 'active' AND y.available_bandwidth >= 100)
+RETURN p
+
+==> WORKS
+MATCH (a:switch{name:"00:01"}),(b:switch{name:"00:04"}), p = shortestPath((a)-[r:isl*..100]->(b))
+WHERE ALL(y in r WHERE y.status = 'active' AND y.available_bandwidth >= 100)
+return p
+
+        StringJoiner where = new StringJoiner("\n    AND ", "where ", "");
+        where.add("ALL(x in nodes(p) WHERE x.state = 'active')");
+        if (flow.isIgnoreBandwidth()) {
+            where.add("ALL(y in r WHERE y.status = 'active')");
+
+
+
+
+        StringJoiner where = new StringJoiner("\n    AND ", "where ", "");
+        where.add("ALL(x in nodes(p) WHERE x.state = 'active')");
+        if (flow.isIgnoreBandwidth()) {
+            where.add("ALL(y in r WHERE y.status = 'active')");
+        } else {
+            where.add("ALL(y in r WHERE y.status = 'active' AND y.available_bandwidth >= {bandwidth})");
+            parameters.put("bandwidth", Values.value(flow.getBandwidth()));
+        }
+
+        String result = "RETURN p";
+
+
+     */
 
         /**
          * Current status of this test is .. in alpha:
