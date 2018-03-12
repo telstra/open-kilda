@@ -240,7 +240,7 @@ public class FlowServiceImpl implements FlowService {
         List<FlowPayload> flows = this.getFlows(correlationId+"-GET");
 
         messageConsumer.clear();
-        
+
         // Send all the requests first
         ArrayList<CommandMessage> requests = new ArrayList<>();
         for (int i = 0; i < flows.size(); i++) {

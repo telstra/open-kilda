@@ -586,7 +586,7 @@ public class FlowUtils {
     public static ImmutablePair<PathInfoData, PathInfoData> getFlowPath(Flow flow)
             throws InterruptedException, UnroutablePathException {
         Thread.sleep(1000);
-        return pathComputer.getPath(flow, PathComputer.Strategy.HOPS);
+        return pathComputer.getPath(flow, PathComputer.Strategy.COST);
     }
 
     public static boolean isTrafficTestsEnabled() {
