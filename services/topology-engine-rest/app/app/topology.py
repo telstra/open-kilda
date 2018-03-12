@@ -141,6 +141,9 @@ def api_v1_topology_flows():
                                          default=lambda o: o.__dict__,
                                          sort_keys=True))
             flow['flowpath'] = path
+            # clazz is removed in TE so that it isn't stored in NEO4J .. add it back in, otherwise
+            # any java classes that call this will die.
+            flow['flowpath']['clazz'] = 'org.openkilda.messaging.info.event.PathInfoData'
             flows.append(flow)
 
         return str(json.dumps(flows, default=lambda o: o.__dict__, sort_keys=True))
