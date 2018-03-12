@@ -2,7 +2,7 @@
 
 
 /*Global Variable Constant*/
-var metricVarList = ["latency:latency","bits:Bits/sec","megabytes:MegaBytes/sec","packets:Packets/sec","drops:Drops/sec","errors:Errors/sec", "collisions:Collisions","frameerror:Frame Errors","overerror:Overruns","crcerror:CRC Errors"];
+var metricVarList = ["bits:Bits/sec","megabytes:MegaBytes/sec","packets:Packets/sec","drops:Drops/sec","errors:Errors/sec", "collisions:Collisions","frameerror:Frame Errors","overerror:Overruns","crcerror:CRC Errors"];
 
 var key = window.location.href;
 if(key.includes("isl")) {
@@ -13,6 +13,7 @@ if(key.includes("isl")) {
 	var targetSwitch = obj.target_switch;
 	var targetPort = obj.dst_port;
 }
+
 var graphIntervalISL;
 var graphIntervalISLName;
 
@@ -118,13 +119,11 @@ var graphAutoReload = {
 						clearInterval(graphIntervalISLName);		
 						
 						clearInterval(graphIntervalISL);
-						
-						
 					} else {
 						clearInterval(callIntervalData);
 						clearInterval(graphInterval);
 					}
-					$("#autoreloadISL").removeClass("has-error")	
+					$("#autoreloadId").removeClass("has-error")	
 				    $(".error-message").html("");
 					$('#wait1').hide();	
 				}
@@ -585,19 +584,25 @@ var autoVal = {
 								$("#autoreloadId").addClass("has-error")	
 								$(".error-message").html("Autoreload cannot be negative");
 								valid=false;
+								clearInterval(graphInterval);
 								clearInterval(graphIntervalISL);
+								clearInterval(graphIntervalISLName);
 								callback(valid)
 							} else if(autoreload == 0) {						
 								$("#autoreloadId").addClass("has-error")	
 								$(".error-message").html("Autoreload cannot be zero");
-								valid=false;							
+								valid=false;			
+								clearInterval(graphInterval);
 								clearInterval(graphIntervalISL);
+								clearInterval(graphIntervalISLName);
 								callback(valid)
 							}else if(!checkNo) {		
 								$("#autoreloadId").addClass("has-error")	
 								$(".error-message").html("Please enter positive number only");			
 								valid=false;
+								clearInterval(graphInterval);
 								clearInterval(graphIntervalISL);
+								clearInterval(graphIntervalISLName);
 								callback(valid)
 							}
 							else{
@@ -648,25 +653,33 @@ var autoVal = {
 
 var islDetails = {
 		
+		checkDropdown:function(domObj){
+			return $("select.selectbox_menulist option").length;
+			
+		},
 		getIslMetricData:function(domObj) {
-									
+			
 			var metricArray = [];			
 			metricArray = metricVarList;
 			var optionHTML = "";
-			for (var i = 0; i < metricArray.length ; i++) {
-				
-				if( metricArray[i].includes("megabytes")) {
-				} else {
-					optionHTML += "<option value=" + metricArray[i].split(":")[0] + ">"+ metricArray[i].split(":")[1] + "</option>";
-				}
-				
-			} if (obj.hasOwnProperty("flowid")) {
+			
+			if(parseInt(this.checkDropdown()) < 1){
+
+				for (var i = 0; i < metricArray.length ; i++) {
+					
+					if( metricArray[i].includes("megabytes")) {
+					} else {
+						optionHTML += "<option value=" + metricArray[i].split(":")[0] + ">"+ metricArray[i].split(":")[1] + "</option>";
+					}
+					
+				}	
 				$("select.selectbox_menulist").html("").html(optionHTML);
-				$('#menulist').val('pen.flow.packets');
-			} else {
-				$("select.selectbox_menulist").html("").html(optionHTML);			
-				$('#menulistISL').val('latency');
-			}			
+				 if (obj.hasOwnProperty("flowid")) {				
+						$('#menulist').val('pen.flow.packets');
+					} else {
+						$('#menulistISL').val('bits');				
+					}	
+			}
 						
 			if($("#check1").prop("checked") || $("#check2").prop("checked")){
 				$("#islMetric").show();
