@@ -151,16 +151,34 @@ public class FlowServiceImpl implements FlowService {
     @Override
     public FlowPayload deleteFlow(final String id, final String correlationId) {
         LOGGER.debug("Delete flow: {}={}", CORRELATION_ID, correlationId);
+        messageConsumer.clear();
+        CommandMessage request = _sendDeleteFlow(id, correlationId);
+        return _deleteFlowRespone(correlationId, request);
+    }
+
+    /**
+     * Non-blocking primitive .. just create and send delete request
+     * @return the request
+     */
+    private CommandMessage _sendDeleteFlow(final String id, final String correlationId) {
         Flow flow = new Flow();
         flow.setFlowId(id);
         FlowDeleteRequest data = new FlowDeleteRequest(flow);
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
-        messageConsumer.clear();
         messageProducer.send(topic, request);
+        return request;
+    }
+
+    /**
+     * Blocking primitive .. waits for the response .. and then converts to FlowPayload.
+     * @return the deleted flow.
+     */
+    private FlowPayload _deleteFlowRespone(final String correlationId, CommandMessage request) {
         Message message = (Message) messageConsumer.poll(correlationId);
         FlowResponse response = (FlowResponse) validateInfoMessage(request, message, correlationId);
         return Converter.buildFlowPayloadByFlow(response.getPayload());
     }
+
 
     /**
      * {@inheritDoc}
@@ -176,6 +194,7 @@ public class FlowServiceImpl implements FlowService {
         FlowResponse response = (FlowResponse) validateInfoMessage(request, message, correlationId);
         return Converter.buildFlowPayloadByFlow(response.getPayload());
     }
+
 
     /**
      * {@inheritDoc}
@@ -197,7 +216,7 @@ public class FlowServiceImpl implements FlowService {
      */
     @Override
     public List<FlowPayload> getFlows(final String correlationId) {
-        LOGGER.debug("\n\n\n\nGet flows: ENTER {}={}\n", CORRELATION_ID, correlationId);
+        LOGGER.debug("\n\n\nGet flows: ENTER {}={}\n", CORRELATION_ID, correlationId);
         // TODO: why does FlowsGetRequest use empty FlowIdStatusPayload? Delete if not needed.
         FlowsGetRequest data = new FlowsGetRequest(new FlowIdStatusPayload());
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
@@ -206,7 +225,7 @@ public class FlowServiceImpl implements FlowService {
         Message message = (Message) messageConsumer.poll(correlationId);
         FlowsResponse response = (FlowsResponse) validateInfoMessage(request, message, correlationId);
         List<FlowPayload> result = Converter.buildFlowsPayloadByFlows(response.getPayload());
-        logger.debug("\nGet flows: EXIT {}\n\n\n\n", result);
+        logger.debug("\nGet flows: EXIT {}={}, num_flows {}\n\n\n", CORRELATION_ID, correlationId, result.size());
         return result;
     }
 
@@ -215,8 +234,28 @@ public class FlowServiceImpl implements FlowService {
      */
     @Override
     public List<FlowPayload> deleteFlows(final String correlationId) {
-        // TODO: Implement
-        return new ArrayList<FlowPayload>();
+        LOGGER.debug("\n\nDELETE ALL FLOWS: ENTER {}={}\n", CORRELATION_ID, correlationId);
+        ArrayList<FlowPayload> result = new ArrayList<>();
+        // TODO: Need a getFlowIDs .. since that is all we need
+        List<FlowPayload> flows = this.getFlows(correlationId+"-GET");
+
+        messageConsumer.clear();
+        
+        // Send all the requests first
+        ArrayList<CommandMessage> requests = new ArrayList<>();
+        for (int i = 0; i < flows.size(); i++) {
+            String cid = correlationId + "-" + i;
+            FlowPayload flow = flows.get(i);
+            requests.add(_sendDeleteFlow(flow.getId(), cid));
+        }
+        // Now wait for the responses.
+        for (int i = 0; i < flows.size(); i++) {
+            String cid = correlationId + "-" + i;
+            result.add(_deleteFlowRespone(cid, requests.get(i)));
+        }
+
+        LOGGER.debug("\n\nDELETE ALL FLOWS: EXIT {}={}\n", CORRELATION_ID, correlationId);
+        return result;
     }
 
     /**
