@@ -45,10 +45,6 @@ public class PathComputerMock implements PathComputer {
         return 1L;
     }
 
-    @Override
-    public List<FlowInfo> getFlowInfo() {
-        return new ArrayList<>();
-    }
 
     @Override
     public ImmutablePair<PathInfoData, PathInfoData> getPath(Flow flow, Strategy strategy) {
@@ -73,6 +69,11 @@ public class PathComputerMock implements PathComputer {
         return new ImmutablePair<>(
                 path(source, destination, flow.getBandwidth()),
                 path(destination, source, flow.getBandwidth()));
+    }
+
+    @Override
+    public List<FlowInfo> getFlowInfo() {
+        return new ArrayList<>();
     }
 
     private PathInfoData path(SwitchInfoData srcSwitch, SwitchInfoData dstSwitch, int bandwidth) {
