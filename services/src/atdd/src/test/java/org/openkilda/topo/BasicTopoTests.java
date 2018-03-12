@@ -73,7 +73,7 @@ public class BasicTopoTests {
 		String doc = "";
 		try {
 			doc = Resources.toString(url, Charsets.UTF_8);
-			ITopology t1 = new Topology(doc);
+			ITopology t1 = new Topology();
 			IController ctrl = new MockController(t1);
 			ITopology t2 = ctrl.getTopology();
 			assertTrue(t1.equivalent(t2));

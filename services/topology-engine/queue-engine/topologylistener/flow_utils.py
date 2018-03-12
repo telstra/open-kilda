@@ -17,6 +17,8 @@ import os
 import json
 import db
 import copy
+import calendar
+import time
 
 import message_utils
 import logging
@@ -60,6 +62,12 @@ def get_one_switch_rules(src_switch, src_port, src_vlan, dst_port, dst_vlan,
 def get_rules(src_switch, src_port, src_vlan, dst_switch, dst_port, dst_vlan,
               bandwidth, transit_vlan, flowid, cookie, flowpath, meter_id,
               output_action, **k):
+
+    # TODO: Rule creation should migrate closer to path creation .. to do as part of TE / Storm refactor
+    # e.g. assuming a refactor of TE into Storm, and possibly more directly attached to the right storm topology
+    #       vs a separate topology, then this logic should be closer to path creation
+    # TODO: We should leverage the sequence number to ensure we install / remove flows in the right order
+    #       e.g. for install, go from the end to beginning; for remove, go in opposite direction.
     nodes = flowpath.get("path")
     if not nodes:
         return []
@@ -138,6 +146,8 @@ def merge_flow_relationship(flow_data, tx=None):
         " f.last_updated = '{last_updated}', "
         " f.flowpath = '{flowpath}' "
     )
+    flow_data['flowpath'].pop('clazz', None) # don't store the clazz info, if it is there.
+    flow_data['last_updated'] = calendar.timegm(time.gmtime())
     flow_data['flowpath'] = json.dumps(flow_data['flowpath'])
     if tx:
         tx.run(query.format(**flow_data))
@@ -193,7 +203,8 @@ def merge_flow_segments(_flow, tx=None):
         flow['dst_switch'] = dst['switch_id']
         flow['dst_port'] = dst['port_no']
         # Allow for per segment cookies .. see if it has one set .. otherwise use the cookie of the flow
-        flow['cookie'] = src.get('cookie', flow_cookie)
+        # NB: use the "dst cookie" .. since for flow segments, the delete rule will use the dst switch
+        flow['cookie'] = dst.get('cookie', flow_cookie)
 
         # TODO: Preference for transaction around the entire delete
         # TODO: Preference for batch command

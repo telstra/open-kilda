@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 MT_ERROR = "org.openkilda.messaging.error.ErrorMessage"
 MT_COMMAND = "org.openkilda.messaging.command.CommandMessage"
 MT_INFO = "org.openkilda.messaging.info.InfoMessage"
+MT_INFO_FLOW_STATUS = "org.openkilda.messaging.info.flow.FlowStatusResponse"
 MT_ERROR_DATA = "org.openkilda.messaging.error.ErrorData"
 
 
@@ -187,7 +188,12 @@ def send_error_message(correlation_id, error_type, error_message,
 
 
 def send_install_commands(flow_rules, correlation_id):
-    for flow_rule in flow_rules:
+    """
+    flow_utils.get_rules() creates the flow rules starting with ingress, then transit, then egress. For the install,
+    we would like to send the commands in opposite direction - egress, then transit, then ingress.  Consequently,
+    the for logic should go in reverse
+    """
+    for flow_rule in reversed(flow_rules):
         send_to_topic(flow_rule, correlation_id, MT_COMMAND,
                       destination="CONTROLLER", topic=config.KAFKA_SPEAKER_TOPIC)
         # FIXME(surabujin): WFM reroute this message into CONTROLLER

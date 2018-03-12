@@ -15,15 +15,16 @@
 
 package org.openkilda.northbound.service;
 
+import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
-import org.openkilda.northbound.dto.ExternalFlowsDto;
+import org.openkilda.messaging.info.flow.FlowInfoData;
 
 import java.util.List;
 
 /**
- * FlowService is for operations on flows.
+ * FlowService is for operations on flows, primarily against the Flow Topology.
  */
 public interface FlowService extends BasicService {
     /**
@@ -71,6 +72,15 @@ public interface FlowService extends BasicService {
     List<FlowPayload> getFlows(final String correlationId);
 
     /**
+     * Deletes all flows. Primarily this is a combination of getFlows and deleteFlow.
+     * This should be called with care ..
+     *
+     * @param correlationId request correlation Id
+     * @return the list of all deleted flows
+     */
+    List<FlowPayload> deleteFlows(final String correlationId);
+
+    /**
      * Gets flow status by id.
      *
      * @param id            flow id
@@ -89,13 +99,23 @@ public interface FlowService extends BasicService {
     FlowPathPayload pathFlow(final String id, final String correlationId);
 
     /**
-     * Use this to push flows that may not be in the database(s) but they should be
+     * Use this to push flows that may not be in the database / caches but they should be
      *
      * @param externalFlows   the list of flows to push.
      * @param correlationId request correlation Id
      * @return
      */
-    BatchResults pushFlows(final List<ExternalFlowsDto> externalFlows, final String correlationId);
+    BatchResults pushFlows(final List<FlowInfoData> externalFlows, final String correlationId);
+
+    /**
+     * Use this to unpush flows .. ie undo a push
+     *
+     * @param externalFlows   the list of flows to unpush.
+     * @param correlationId request correlation Id
+     * @return
+     */
+    BatchResults unpushFlows(final List<FlowInfoData> externalFlows, final String correlationId);
+
 
     /**
      * Performs rerouting of specific flow.
@@ -105,4 +125,13 @@ public interface FlowService extends BasicService {
      * @return updated flow path information.
      */
     FlowPathPayload rerouteFlow(final String flowId, final String correlationId);
+
+
+    /**
+     * Sync the FlowCache in the flow topology (in case it is out of sync.
+     *
+     * @param correlationId request correlation Id
+     * @return updated flow path information.
+     */
+    FlowCacheSyncResults syncFlowCache(final String correlationId);
 }

@@ -370,7 +370,8 @@ class MessageItem(object):
         return True
 
     @staticmethod
-    def create_flow(flow_id, flow, correlation_id):
+    def create_flow(flow_id, flow, correlation_id, propagate=True):
+
         try:
             rules = flow_utils.build_rules(flow)
 
@@ -382,72 +383,93 @@ class MessageItem(object):
             logger.info('Flow was stored: correlation_id=%s, flow_id=%s',
                         correlation_id, flow_id)
 
-            message_utils.send_install_commands(rules, correlation_id)
-
-            logger.info('Flow rules installed: correlation_id=%s, flow_id=%s',
-                        correlation_id, flow_id)
-
-            payload = {'payload': flow, 'clazz': MT_FLOW_RESPONSE}
-            message_utils.send_info_message(payload, correlation_id)
+            if propagate:
+                message_utils.send_install_commands(rules, correlation_id)
+                logger.info('Flow rules INSTALLED: correlation_id=%s, flow_id=%s', correlation_id, flow_id)
+                message_utils.send_info_message({'payload': flow, 'clazz': MT_FLOW_RESPONSE}, correlation_id)
+            else:
+                # The request is sent from Northbound .. send response back
+                logger.info('Flow rules NOT PROPAGATED: correlation_id=%s, flow_id=%s', correlation_id, flow_id)
+                data = {"payload":{"flowid": flow_id,"status": "UP"},
+                        "clazz": message_utils.MT_INFO_FLOW_STATUS}
+                message_utils.send_to_topic(
+                    payload=data,
+                    correlation_id=correlation_id,
+                    message_type=message_utils.MT_INFO,
+                    destination="NORTHBOUND",
+                    topic=config.KAFKA_NORTHBOUND_TOPIC
+                )
 
         except Exception as e:
             logger.exception('Can not create flow: %s', flow_id)
-            message_utils.send_error_message(
-                correlation_id, "CREATION_FAILURE", e.message, flow_id)
+            if propagate:
+                # Propagate is the normal scenario, so send response back to FLOW
+                message_utils.send_error_message(correlation_id, "CREATION_FAILURE", e.message, flow_id)
+            else:
+                # This means we tried a PUSH, send response back to NORTHBOUND
+                message_utils.send_error_message(correlation_id, "PUSH_FAILURE", e.message, flow_id,
+                    destination="NORTHBOUND", topic=config.KAFKA_NORTHBOUND_TOPIC)
             raise
 
         return True
 
     @staticmethod
-    def delete_flow(flow_id, flow, correlation_id, parent_tx=None):
+    def delete_flow(flow_id, flow, correlation_id, parent_tx=None, propagate=True):
         """
         Simple algorithm - delete the stuff in the DB, send delete commands, send a response.
         Complexity - each segment in the path may have a separate cookie, so that information needs to be gathered.
+        NB: Each switch in the flow should get a delete command.
+
+        # TODO: eliminate flowpath as part of delete_flow request; rely on flow_id only
+        # TODO: Add state to flow .. ie "DELETING", as part of refactoring project to add state
+        - eg: flow_utils.update_state(flow, DELETING, parent_tx)
 
         :param parent_tx: If there is a larger transaction to use, then use it.
         :return: True, unless an exception is raised.
         """
         try:
-            # NB: previously (before 2018.03.03) flow_path was used. Now, flow segments are used.
-            # TODO: eliminate flowpath as part of delete_flow; rely on flow_id
-            # flow_path = flow['flowpath']['path']
+            # All flows .. single switch or multi .. will start with deleting based on the src and flow cookie; then
+            # we'll have a delete per segment based on the destination. Consequently, the "single switch flow" is
+            # automatically addressed using this algorithm.
             flow_cookie = int(flow['cookie'])
+            nodes = [{'switch_id': flow['src_switch'], 'flow_id': flow_id, 'cookie': flow_cookie}]
+            segments = flow_utils.fetch_flow_segments(flow_id, flow_cookie)
+            for segment in segments:
+                # every segment should have a cookie field, based on merge_segment; but just in case..
+                segment_cookie = segment.get('cookie', flow_cookie)
+                nodes.append({'switch_id': segment['dst_switch'], 'flow_id': flow_id, 'cookie': segment_cookie})
 
-            #
-            # TODO: Add state to flow .. ie "DELETING", as part of refactoring project to add state
-            # eg:  flow_utils.update_state(flow, DELETING, parent_tx)
-
-            # need to buildup the switch/flow/cookie IDs of each segment
-            nodes = []
-            if flow['src_switch'] == flow['dst_switch']:
-                # This means the flow is a single switch. The code north of here doesn't currently handle
-                # this scenario (for flow creation, the flow_utils.build_rules does account for it, but
-                # there isn't a symmetrical call .. ie build_delete_rules.
-                #
-                # Given the above, there should be no nodes, Create a node now.
-                nodes.append({'switch_id': flow['src_switch'], 'flow_id': flow_id, 'cookie': flow_cookie})
+            if propagate:
+                logger.info('Flow rules remove start: correlation_id=%s, flow_id=%s, path=%s', correlation_id, flow_id,
+                            nodes)
+                message_utils.send_delete_commands(nodes, correlation_id)
+                logger.info('Flow rules removed end : correlation_id=%s, flow_id=%s', correlation_id, flow_id)
             else:
-                segments = flow_utils.fetch_flow_segments(flow_id, flow_cookie)
-                for segment in segments:
-                    # every segment should have a cookie field, based on merge_segment; but just in case..
-                    segment_cookie = segment.get('cookie', flow_cookie)
-                    nodes.append({'switch_id': segment['src_switch'], 'flow_id': flow_id, 'cookie': segment_cookie})
-
-            logger.info('Flow rules remove start: correlation_id=%s, flow_id=%s, path=%s', correlation_id, flow_id, nodes)
-
-            message_utils.send_delete_commands(nodes, correlation_id)
-
-            logger.info('Flow rules removed end : correlation_id=%s, flow_id=%s', correlation_id, flow_id)
+                # The request is sent from Northbound .. send response back
+                logger.info('Flow rules NOT PROPAGATED: correlation_id=%s, flow_id=%s', correlation_id, flow_id)
+                data = {"payload":{"flowid": flow_id,"status": "DOWN"},
+                        "clazz": message_utils.MT_INFO_FLOW_STATUS}
+                message_utils.send_to_topic(
+                    payload=data,
+                    correlation_id=correlation_id,
+                    message_type=message_utils.MT_INFO,
+                    destination="NORTHBOUND",
+                    topic=config.KAFKA_NORTHBOUND_TOPIC
+                )
 
             flow_utils.remove_flow(flow, parent_tx)
 
-            logger.info('Flow was removed: correlation_id=%s, flow_id=%s',
-                        correlation_id, flow_id)
+            logger.info('Flow was removed: correlation_id=%s, flow_id=%s', correlation_id, flow_id)
 
         except Exception as e:
             logger.exception('Can not delete flow: %s', e.message)
-            message_utils.send_error_message(
-                correlation_id, "DELETION_FAILURE", e.message, flow_id)
+            if propagate:
+                # Propagate is the normal scenario, so send response back to FLOW
+                message_utils.send_error_message(correlation_id, "DELETION_FAILURE", e.message, flow_id)
+            else:
+                # This means we tried a UNPUSH, send response back to NORTHBOUND
+                message_utils.send_error_message( correlation_id, "UNPUSH_FAILURE", e.message, flow_id,
+                    destination="NORTHBOUND", topic=config.KAFKA_NORTHBOUND_TOPIC)
             raise
 
         return True
@@ -495,16 +517,20 @@ class MessageItem(object):
                     'timestamp=%s, correlation_id=%s, payload=%s',
                     operation, timestamp, correlation_id, payload)
 
-        if operation == "CREATE":
-            self.create_flow(flow_id, forward, correlation_id)
-            self.create_flow(flow_id, reverse, correlation_id)
+        if operation == "CREATE" or operation == "PUSH":
+            propagate = operation == "CREATE"
+            # TODO: leverage transaction for creating both flows
+            self.create_flow(flow_id, forward, correlation_id, propagate)
+            self.create_flow(flow_id, reverse, correlation_id, propagate)
 
-        elif operation == "DELETE":
+        elif operation == "DELETE" or operation == "UNPUSH":
             tx = graph.begin()
-            MessageItem.delete_flow(flow_id, forward, correlation_id, tx)
-            message_utils.send_info_message({'payload': forward, 'clazz': MT_FLOW_RESPONSE}, correlation_id)
-            MessageItem.delete_flow(flow_id, reverse, correlation_id, tx)
-            message_utils.send_info_message({'payload': reverse, 'clazz': MT_FLOW_RESPONSE}, correlation_id)
+            propagate = operation == "DELETE"
+            MessageItem.delete_flow(flow_id, forward, correlation_id, tx, propagate)
+            MessageItem.delete_flow(flow_id, reverse, correlation_id, tx, propagate)
+            if propagate:
+                message_utils.send_info_message({'payload': forward, 'clazz': MT_FLOW_RESPONSE}, correlation_id)
+                message_utils.send_info_message({'payload': reverse, 'clazz': MT_FLOW_RESPONSE}, correlation_id)
             tx.commit()
 
         elif operation == "UPDATE":

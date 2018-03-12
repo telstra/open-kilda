@@ -32,40 +32,13 @@ import org.neo4j.driver.v1.types.Relationship;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.StringJoiner;
+import java.util.*;
 
 public class NeoDriver implements PathComputer {
     /**
      * Logger.
      */
     private static final Logger logger = LoggerFactory.getLogger(NeoDriver.class);
-
-    /**
-     * Clean database query.
-     */
-    private static final String CLEAN_FORMATTER_PATTERN = "MATCH (n) DETACH DELETE n";
-
-//    MATCH (from:Kid), (to:Kid)
-//    CALL apoc.algo.dijkstra(from, to, 'CONNECTED_TO', 'distance') YIELD path AS path, weight AS weight
-//    RETURN path, weight
-
-    private static final String PATH_QUERY_FORMATTER_PATTERN_Dijkstra =
-            "MATCH (a:switch{name:{src_switch}}),(b:switch{name:{dst_switch}}), " +
-                    "CALL apoc.algo.dijkstra(from, to, 'CONNECTED_TO', 'distance') YIELD path AS path, weight AS weight " +
-                    "where ALL(x in nodes(p) WHERE x.state = 'active') " +
-                    "AND ALL(y in r WHERE y.available_bandwidth >= {bandwidth} AND y.status = 'active') " +
-                    "RETURN p";
-
-    private static final String PATH_QUERY_FORMATTER_PATTERN_Dijkstra_NO_BW =
-            "MATCH (a:switch{name:{src_switch}}),(b:switch{name:{dst_switch}}), " +
-                    "p = shortestPath((a)-[r:isl*..100]->(b)) " +
-                    "where ALL(x in nodes(p) WHERE x.state = 'active') " +
-                    "AND ALL(y in r WHERE y.available_bandwidth >= {bandwidth} AND y.status = 'active') " +
-                    "RETURN p";
 
     /**
      * {@link Driver} instance.
@@ -80,37 +53,18 @@ public class NeoDriver implements PathComputer {
     }
 
     /**
-     * Cleans database.
-     */
-    public void clean() {
-        String query = CLEAN_FORMATTER_PATTERN;
-
-        logger.info("Clean query: {}", query);
-
-        Session session = driver.session();
-        StatementResult result = session.run(query);
-        session.close();
-
-        logger.info("Switches deleted: {}", String.valueOf(result.summary().counters().nodesDeleted()));
-        logger.info("Isl deleted: {}", String.valueOf(result.summary().counters().relationshipsDeleted()));
-    }
-
-    /**
      * {@inheritDoc}
      */
     @Override
     public ImmutablePair<PathInfoData, PathInfoData> getPath(Flow flow, Strategy strategy)
             throws UnroutablePathException {
-        /*
-         * TODO: implement strategy
-         */
 
         long latency = 0L;
         List<PathNode> forwardNodes = new LinkedList<>();
         List<PathNode> reverseNodes = new LinkedList<>();
 
         if (! flow.isOneSwitchFlow()) {
-            Statement statement = makePathQuery(flow);
+            Statement statement = getPathQuery(flow, strategy);
             logger.debug("QUERY: {}", statement.toString());
 
             try (Session session = driver.session()) {
@@ -158,7 +112,54 @@ public class NeoDriver implements PathComputer {
         return new ImmutablePair<>(new PathInfoData(latency, forwardNodes), new PathInfoData(latency, reverseNodes));
     }
 
-    private Statement makePathQuery(Flow flow) {
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<FlowInfo> getFlowInfo(){
+        List<FlowInfo> flows = new ArrayList<>();
+        String subject = "MATCH (:switch)-[f:flow]->(:switch) " +
+                "RETURN f.flowid as flow_id, " +
+                " f.cookie as cookie, " +
+                " f.meter_id as meter_id, " +
+                " f.transit_vlan as transit_vlan, " +
+                " f.src_switch as src_switch";
+
+        Session session = driver.session();
+        StatementResult result = session.run(subject);
+        for (Record record : result.list()) {
+            flows.add(new FlowInfo()
+                    .setFlowId(record.get("flow_id").asString())
+                    .setSrcSwitchId(record.get("src_switch").asString())
+                    .setCookie(record.get("cookie").asLong())
+                    .setMeterId(record.get("meter_id").asInt())
+                    .setTransitVlanId(record.get("transit_vlan").asInt())
+            );
+        }
+        return flows;
+    }
+
+    /**
+     * Create the query based on what the strategy is.
+     */
+    private Statement getPathQuery(Flow flow, Strategy strategy){
+        /*
+         * TODO: implement strategy
+         */
+
+
+        switch (strategy) {
+            case COST:
+                return makeCostPathQuery(flow);
+
+            default:
+                return makeHopsPathQuery(flow);
+        }
+
+    }
+
+    private Statement makeHopsPathQuery(Flow flow) {
         HashMap<String,Value> parameters = new HashMap<>();
 
         String subject =
@@ -181,4 +182,38 @@ public class NeoDriver implements PathComputer {
         String query = String.join("\n", subject, where.toString(), result);
         return new Statement(query, Values.value(parameters));
     }
+
+
+    private Statement makeCostPathQuery(Flow flow) {
+        HashMap<String,Value> parameters = new HashMap<>();
+
+        String subject =
+                "MATCH (from:switch{name:{src_switch}}),(to:switch{name:{dst_switch}}), " +
+// (crimi) - unclear how to filter the relationships dijkstra looks out based on properties.
+// Probably need to re-write the function and add it to our neo4j container.
+//
+//                        " CALL apoc.algo.dijkstraWithDefaultWeight(from, to, 'isl', 'cost', 700)" +
+//                        " YIELD path AS p, weight AS weight "
+                        " p = allShortestPaths((from)-[r:isl*..100]->(to)) " +
+                        " WITH REDUCE(cost = 0, rel in rels(p) | " +
+                        "   cost + CASE rel.cost WHEN rel.cost = 0 THEN 700 ELSE rel.cost END) AS cost, p "
+                ;
+        parameters.put("src_switch", Values.value(flow.getSourceSwitch()));
+        parameters.put("dst_switch", Values.value(flow.getDestinationSwitch()));
+
+        StringJoiner where = new StringJoiner("\n    AND ", "where ", "");
+        where.add("ALL(x in nodes(p) WHERE x.state = 'active')");
+        if (flow.isIgnoreBandwidth()) {
+            where.add("ALL(y in r WHERE y.status = 'active')");
+        } else {
+            where.add("ALL(y in r WHERE y.status = 'active' AND y.available_bandwidth >= {bandwidth})");
+            parameters.put("bandwidth", Values.value(flow.getBandwidth()));
+        }
+
+        String result = "RETURN p ORDER BY cost LIMIT 1";
+
+        String query = String.join("\n", subject, where.toString(), result);
+        return new Statement(query, Values.value(parameters));
+    }
+
 }

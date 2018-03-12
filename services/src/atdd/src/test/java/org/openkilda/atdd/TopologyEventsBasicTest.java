@@ -32,7 +32,7 @@ import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
-import org.openkilda.topo.TopologyBuilder;
+import org.openkilda.topo.builders.TestTopologyBuilder;
 
 import java.util.Comparator;
 import java.util.List;
@@ -49,7 +49,7 @@ public class TopologyEventsBasicTest {
     @When("^multiple links exist between all switches$")
     public void multiple_links_exist_between_all_switches() throws Exception {
         List<String> switchIds = IntStream.range(1, 6)
-                .mapToObj(TopologyBuilder::intToSwitchId)
+                .mapToObj(TestTopologyBuilder::intToSwitchId)
                 .collect(Collectors.toList());
         assertTrue("Switches should have multiple links",
                 getSwitchesWithoutMultipleLinks(switchIds).isEmpty());

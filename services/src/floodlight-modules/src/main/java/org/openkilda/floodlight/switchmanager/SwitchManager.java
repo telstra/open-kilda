@@ -18,19 +18,12 @@ package org.openkilda.floodlight.switchmanager;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.VERIFICATION_BCAST_PACKET_DST;
+import static org.openkilda.floodlight.pathverification.PathVerificationService.VERIFICATION_BCAST_PACKET_DST_MASK;
 import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 import static org.openkilda.messaging.Utils.ETH_TYPE;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_12;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_13;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_15;
-
-import org.openkilda.floodlight.kafka.KafkaMessageProducer;
-import org.openkilda.floodlight.switchmanager.web.SwitchManagerWebRoutable;
-import org.openkilda.messaging.Destination;
-import org.openkilda.messaging.error.ErrorData;
-import org.openkilda.messaging.error.ErrorMessage;
-import org.openkilda.messaging.error.ErrorType;
-import org.openkilda.messaging.payload.flow.OutputVlanType;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import net.floodlightcontroller.core.FloodlightContext;
@@ -44,6 +37,13 @@ import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.util.FlowModUtils;
+import org.openkilda.floodlight.kafka.KafkaMessageProducer;
+import org.openkilda.floodlight.switchmanager.web.SwitchManagerWebRoutable;
+import org.openkilda.messaging.Destination;
+import org.openkilda.messaging.error.ErrorData;
+import org.openkilda.messaging.error.ErrorMessage;
+import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.payload.flow.OutputVlanType;
 import org.projectfloodlight.openflow.protocol.OFErrorMsg;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowDelete;
@@ -67,6 +67,7 @@ import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionApplyActions;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionMeter;
 import org.projectfloodlight.openflow.protocol.match.Match;
+import org.projectfloodlight.openflow.protocol.match.Match.Builder;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.protocol.meterband.OFMeterBandDrop;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxms;
@@ -841,13 +842,18 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * @return {@link Match}
      */
     private Match matchVerification(final IOFSwitch sw, final boolean isBroadcast) {
-        MacAddress dstMac = MacAddress.of(VERIFICATION_BCAST_PACKET_DST);
-        if (!isBroadcast) {
-            dstMac = dpidToMac(sw);
+        MacAddress dstMac = isBroadcast ? MacAddress.of(VERIFICATION_BCAST_PACKET_DST) : dpidToMac(sw);
+        Builder builder = sw.getOFFactory().buildMatch();
+        if (OF_12.compareTo(sw.getOFFactory().getVersion()) == 0) {
+            // some old swithes use mask 0x0 by default, so need to setup mask
+            // and I can't use mask MacAddress.NO_MASK(0xFFFFFFFFFFFFFFFFl) because of
+            // org.projectfloodlight.openflow.protocol.ver12.OFOxmEthDstMaskedVer12.getCanonical
+            // see commit 661a2222194454e2c763547cc1b963e3fe4a818c in loxigen
+            builder.setMasked(MatchField.ETH_DST, dstMac, MacAddress.of(VERIFICATION_BCAST_PACKET_DST_MASK));
+        } else {
+            builder.setExact(MatchField.ETH_DST, dstMac);
         }
-        Match.Builder mb = sw.getOFFactory().buildMatch();
-        mb.setExact(MatchField.ETH_DST, dstMac);
-        return mb.build();
+        return builder.build();
     }
 
     /**

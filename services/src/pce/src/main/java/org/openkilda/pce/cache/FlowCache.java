@@ -97,6 +97,16 @@ public class FlowCache extends Cache {
     }
 
     /**
+     * Track and allocate the flow.
+     *
+     * @param flow The flow to track / allocate.
+     */
+    public void pushFlow(ImmutablePair<Flow, Flow> flow) {
+        putFlow(flow);
+        resourceCache.allocateFlow(flow);
+    }
+
+    /**
      * Checks if flow pool contains {@link Flow} instance.
      *
      * @param flowId {@link Flow} instance id
@@ -230,6 +240,12 @@ public class FlowCache extends Cache {
 
         return flow;
     }
+
+
+    /**
+     *
+     */
+
 
     /**
      * Creates flow.

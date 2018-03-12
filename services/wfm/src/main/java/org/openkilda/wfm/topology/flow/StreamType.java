@@ -40,6 +40,16 @@ public enum StreamType {
     DELETE,
 
     /**
+     * Push pre-existing flows.
+     */
+    PUSH,
+
+    /**
+     * Unpush (delete) pre-existing flows.
+     */
+    UNPUSH,
+
+    /**
      * Restore flow topology stream.
      */
     RESTORE,
@@ -58,6 +68,11 @@ public enum StreamType {
      * Get flow status topology stream.
      */
     STATUS,
+
+    /**
+     * Sync Caches with DB.
+     */
+    CACHE_SYNC,
 
     /**
      * Flow command response.

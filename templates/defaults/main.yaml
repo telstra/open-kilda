@@ -37,6 +37,7 @@ discovery_timeout: "9"
 # 28000 is about a day (test every 3 seconds, 20 failures per minute, 1200 per hour ..
 discovery_limit: "-1"
 worker_pool_size: "30000"
+production_fileserver: "http://127.0.0.1"
 logging:
   # method can be file of logstash
   json_file: False

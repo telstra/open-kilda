@@ -45,7 +45,7 @@ public class FlowCacheTest {
     private final NetworkCache networkCache = new NetworkCache();
     private final PathComputer computer = new PathComputerMock().withNetwork(networkCache.getNetwork());
     private final FlowCache flowCache = new FlowCache();
-    private final PathComputer.Strategy defaultStrategy = PathComputer.Strategy.HOPS;
+    private final PathComputer.Strategy defaultStrategy = PathComputer.Strategy.COST;
 
     private final Flow firstFlow = new Flow("first-flow", 0, false, "first-flow", "sw1", 11, 100, "sw3", 11, 200);
     private final Flow secondFlow = new Flow("second-flow", 0, false, "second-flow", "sw5", 12, 100, "sw3", 12, 200);

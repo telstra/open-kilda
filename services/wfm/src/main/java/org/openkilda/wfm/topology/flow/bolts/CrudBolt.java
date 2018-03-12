@@ -27,6 +27,7 @@ import org.apache.storm.topology.base.BaseStatefulBolt;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 import org.openkilda.messaging.Destination;
+import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.FlowCreateRequest;
@@ -43,19 +44,16 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.PathInfoData;
-import org.openkilda.messaging.info.flow.FlowInfoData;
-import org.openkilda.messaging.info.flow.FlowOperation;
-import org.openkilda.messaging.info.flow.FlowPathResponse;
-import org.openkilda.messaging.info.flow.FlowResponse;
-import org.openkilda.messaging.info.flow.FlowStatusResponse;
-import org.openkilda.messaging.info.flow.FlowsResponse;
+import org.openkilda.messaging.info.flow.*;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.pce.cache.FlowCache;
 import org.openkilda.pce.cache.ResourceCache;
 import org.openkilda.pce.provider.Auth;
+import org.openkilda.pce.provider.FlowInfo;
 import org.openkilda.pce.provider.PathComputer;
 import org.openkilda.pce.provider.PathComputer.Strategy;
 import org.openkilda.pce.provider.UnroutablePathException;
@@ -71,9 +69,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class CrudBolt
@@ -184,39 +180,51 @@ public class CrudBolt
             switch (componentId) {
 
                 case SPLITTER_BOLT:
-                    CommandMessage message = (CommandMessage) tuple.getValueByField(AbstractTopology.MESSAGE_FIELD);
-                    correlationId = message.getCorrelationId();
+                    Message msg = (Message) tuple.getValueByField(AbstractTopology.MESSAGE_FIELD);
+                    correlationId = msg.getCorrelationId();
+
+                    CommandMessage cmsg = (msg instanceof CommandMessage) ? (CommandMessage) msg : null;
+                    InfoMessage imsg = (msg instanceof InfoMessage) ? (InfoMessage) msg : null;
 
                     logger.info("Flow request: {}={}, {}={}, component={}, stream={}",
                             Utils.CORRELATION_ID, correlationId, Utils.FLOW_ID, flowId, componentId, streamId);
 
                     switch (streamId) {
                         case CREATE:
-                            handleCreateRequest(message, tuple);
+                            handleCreateRequest(cmsg, tuple);
                             break;
                         case UPDATE:
-                            handleUpdateRequest(message, tuple);
+                            handleUpdateRequest(cmsg, tuple);
                             break;
                         case DELETE:
-                            handleDeleteRequest(flowId, message, tuple);
+                            handleDeleteRequest(flowId, cmsg, tuple);
+                            break;
+                        case PUSH:
+                            handlePushRequest(flowId, imsg, tuple);
+                            break;
+                        case UNPUSH:
+                            handleUnpushRequest(flowId, imsg, tuple);
                             break;
                         case PATH:
-                            handlePathRequest(flowId, message, tuple);
+                            handlePathRequest(flowId, cmsg, tuple);
                             break;
                         case RESTORE:
-                            handleRestoreRequest(message, tuple);
+                            handleRestoreRequest(cmsg, tuple);
                             break;
                         case REROUTE:
-                            handleRerouteRequest(message, tuple);
+                            handleRerouteRequest(cmsg, tuple);
                             break;
                         case STATUS:
-                            handleStatusRequest(flowId, message, tuple);
+                            handleStatusRequest(flowId, cmsg, tuple);
+                            break;
+                        case CACHE_SYNC:
+                            handleCacheSyncRequest(cmsg, tuple);
                             break;
                         case READ:
                             if (flowId != null) {
-                                handleReadRequest(flowId, message, tuple);
+                                handleReadRequest(flowId, cmsg, tuple);
                             } else {
-                                handleDumpRequest(message, tuple);
+                                handleDumpRequest(cmsg, tuple);
                             }
                             break;
                         default:
@@ -287,6 +295,111 @@ public class CrudBolt
         logger.trace("Flow Cache after: {}", flowCache);
     }
 
+    private void handleCacheSyncRequest(CommandMessage message, Tuple tuple) throws IOException {
+        logger.info("CACHE SYNCE: {}", message);
+
+        // NB: This is going to be a "bulky" operation - get all flows from DB, and synchronize
+        //      with the cache.
+
+
+        List<String> droppedFlows = new ArrayList<>();
+        List<String> addedFlows = new ArrayList<>();
+        List<String> modifiedFlows = new ArrayList<>();
+        List<String> unchangedFlows = new ArrayList<>();
+
+        List<FlowInfo> flowInfos = pathComputer.getFlowInfo();
+
+        // Instead of determining left/right .. store based on flowid_& cookie
+        HashMap<String,FlowInfo> flowToInfo = new HashMap<>();
+        for (FlowInfo fi : flowInfos){
+            flowToInfo.put(fi.getFlowId()+fi.getCookie(),fi);
+        }
+
+        // We first look at comparing what is in the DB to what is in the Cache
+        for (FlowInfo fi : flowInfos){
+            String flowid = fi.getFlowId();
+            if (flowCache.cacheContainsFlow(flowid)){
+                // TODO: better, more holistic comparison
+                // TODO: if the flow is modified, then just leverage drop / add primitives.
+                // TODO: Ensure that the DB is always the source of truth - cache and db ops part of transaction.
+                // Need to compare both sides
+                ImmutablePair<Flow,Flow> fc = flowCache.getFlow(flowid);
+
+                int count = modifiedFlows.size();
+                if (fi.getCookie() != fc.left.getCookie() && fi.getCookie() != fc.right.getCookie())
+                    modifiedFlows.add("cookie: " + flowid + ":" + fi.getCookie() + ":" + fc.left.getCookie() + ":" + fc.right.getCookie());
+                if (fi.getMeterId() != fc.left.getMeterId() && fi.getMeterId() != fc.right.getMeterId())
+                    modifiedFlows.add("meter: " + flowid + ":" + fi.getMeterId() + ":" + fc.left.getMeterId() + ":" + fc.right.getMeterId());
+                if (fi.getTransitVlanId() != fc.left.getTransitVlan() && fi.getTransitVlanId() != fc.right.getTransitVlan())
+                    modifiedFlows.add("transit: " + flowid + ":" + fi.getTransitVlanId() + ":" + fc.left.getTransitVlan() + ":" + fc.right.getTransitVlan());
+                if (!fi.getSrcSwitchId().equals(fc.left.getSourceSwitch()) && !fi.getSrcSwitchId().equals(fc.right.getSourceSwitch()))
+                    modifiedFlows.add("switch: " + flowid + "|" + fi.getSrcSwitchId() + "|" + fc.left.getSourceSwitch() + "|" + fc.right.getSourceSwitch());
+                if (count == modifiedFlows.size())
+                    unchangedFlows.add(flowid);
+            } else {
+                // TODO: need to get the flow from the DB and add it properly
+                addedFlows.add(flowid);
+            }
+        }
+
+        // Now we see if the cache holds things not in the DB
+        for (ImmutablePair<Flow, Flow> flow : flowCache.dumpFlows()){
+            String key = flow.left.getFlowId() + flow.left.getCookie();
+            // compare the left .. if it is in, then check the right .. o/w remove it (no need to check right
+            if (!flowToInfo.containsKey(key)){
+/* (carmine) - This code is to drop the flow from the cache since it isn't in the DB
+ *  But - the user can just as easily call delete in the NB API .. which should do the right thing.
+ *  So, for now, just add the flow id.
+ */
+//                String removedFlow = flowCache.removeFlow(flow.left.getFlowId()).toString();
+//                String asJson = MAPPER.writeValueAsString(removedFlow);
+//                droppedFlows.add(asJson);
+                droppedFlows.add(flow.left.getFlowId());
+            } else {
+                key = flow.right.getFlowId() + flow.right.getCookie();
+                if (!flowToInfo.containsKey(key)) {
+// (carmine) - same comment..
+//                    String removedFlow = flowCache.removeFlow(flow.left.getFlowId()).toString();
+//                    String asJson = MAPPER.writeValueAsString(removedFlow);
+//                    droppedFlows.add(asJson);
+                    droppedFlows.add(flow.right.getFlowId());
+                }
+            }
+        }
+
+        FlowCacheSyncResults results = new FlowCacheSyncResults(
+                droppedFlows.toArray(new String[0]), addedFlows.toArray(new String[0]),
+                modifiedFlows.toArray(new String[0]), unchangedFlows.toArray(new String[0]));
+        Values northbound = new Values(new InfoMessage(new FlowCacheSyncResponse(results),
+                message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
+        outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
+    }
+
+
+    private void handlePushRequest(String flowId, InfoMessage message, Tuple tuple) throws IOException {
+        logger.info("PUSH flow: {} :: {}", flowId, message);
+        FlowInfoData fid = (FlowInfoData) message.getData();
+        ImmutablePair<Flow,Flow> flow = fid.getPayload();
+
+        flowCache.pushFlow(flow);
+
+        Values northbound = new Values(new InfoMessage(new FlowStatusResponse(new FlowIdStatusPayload(flowId, FlowState.UP)),
+                message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
+        outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
+    }
+
+    private void handleUnpushRequest(String flowId, InfoMessage message, Tuple tuple) throws IOException {
+        logger.info("UNPUSH flow: {} :: {}", flowId, message);
+        FlowInfoData fid = (FlowInfoData) message.getData();
+
+        flowCache.deleteFlow(flowId);
+
+        Values northbound = new Values(new InfoMessage(new FlowStatusResponse(new FlowIdStatusPayload(flowId, FlowState.DOWN)),
+                message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
+        outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
+    }
+
+
     private void handleDeleteRequest(String flowId, CommandMessage message, Tuple tuple) throws IOException {
         ImmutablePair<Flow, Flow> flow = flowCache.deleteFlow(flowId);
 
@@ -309,7 +422,7 @@ public class CrudBolt
         try {
             new FlowValidator(flowCache).checkFlowForEndpointConflicts(requestedFlow);
 
-            path = pathComputer.getPath(requestedFlow, Strategy.HOPS);
+            path = pathComputer.getPath(requestedFlow, Strategy.COST);
             logger.info("Created flow path: {}", path);
 
         } catch (FlowValidationException e) {
@@ -348,7 +461,7 @@ public class CrudBolt
 
                 try {
                     ImmutablePair<PathInfoData, PathInfoData> path =
-                            pathComputer.getPath(flow.getLeft(), Strategy.HOPS);
+                            pathComputer.getPath(flow.getLeft(), Strategy.COST);
                     logger.info("Rerouted flow path: {}", path);
                     //no need to emit changes if path wasn't changed and flow is active.
                     if (!path.getLeft().equals(flow.getLeft().getFlowPath()) || !isFlowActive(flow)) {
@@ -404,7 +517,7 @@ public class CrudBolt
         ImmutablePair<Flow, Flow> requestedFlow = ((FlowRestoreRequest) message.getData()).getPayload();
 
         try {
-            ImmutablePair<PathInfoData, PathInfoData> path = pathComputer.getPath(requestedFlow.getLeft(), Strategy.HOPS);
+            ImmutablePair<PathInfoData, PathInfoData> path = pathComputer.getPath(requestedFlow.getLeft(), Strategy.COST);
             logger.info("Restored flow path: {}", path);
 
             ImmutablePair<Flow, Flow> flow;
@@ -432,15 +545,15 @@ public class CrudBolt
         try {
             new FlowValidator(flowCache).checkFlowForEndpointConflicts(requestedFlow);
 
-            path = pathComputer.getPath(requestedFlow, Strategy.HOPS);
+            path = pathComputer.getPath(requestedFlow, Strategy.COST);
             logger.info("Updated flow path: {}", path);
 
         } catch (FlowValidationException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
-                    ErrorType.UPDATE_FAILURE, "Could not create flow", e.getMessage());
+                    ErrorType.UPDATE_FAILURE, "Could not update flow", e.getMessage());
         } catch (UnroutablePathException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
-                    ErrorType.UPDATE_FAILURE, "Could not create flow", "Path was not found");
+                    ErrorType.UPDATE_FAILURE, "Could not update flow", "Path was not found");
         }
 
         ImmutablePair<Flow, Flow> flow = flowCache.updateFlow(requestedFlow, path);

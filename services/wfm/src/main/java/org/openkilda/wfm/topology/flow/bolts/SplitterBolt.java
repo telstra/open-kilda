@@ -22,6 +22,7 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.flow.FlowCacheSyncRequest;
 import org.openkilda.messaging.command.flow.FlowCreateRequest;
 import org.openkilda.messaging.command.flow.FlowDeleteRequest;
 import org.openkilda.messaging.command.flow.FlowGetRequest;
@@ -31,9 +32,10 @@ import org.openkilda.messaging.command.flow.FlowRestoreRequest;
 import org.openkilda.messaging.command.flow.FlowStatusRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.openkilda.messaging.command.flow.FlowsGetRequest;
-import org.openkilda.messaging.error.ErrorData;
-import org.openkilda.messaging.error.ErrorMessage;
-import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.flow.FlowInfoData;
+import org.openkilda.messaging.info.flow.FlowOperation;
 import org.openkilda.wfm.topology.flow.FlowTopology;
 import org.openkilda.wfm.topology.flow.StreamType;
 
@@ -91,11 +93,43 @@ public class SplitterBolt extends BaseRichBolt {
             Message message =  tryMessage(request);
             if (message == null
                     || !Destination.WFM.equals(message.getDestination())
-                    || !(message instanceof CommandMessage)) {
+                    || !(message instanceof CommandMessage || message instanceof InfoMessage)
+                    ) {
                 return;
             }
 
             logger.debug("Request tuple={}", tuple);
+
+            /*
+             * First, try to see if this is a PUSH / UNPUSH (smaller code base vs other).
+             * NB: InfoMessage was used since it has the relevant attributes/properties for
+             * pushing the flow.
+             */
+            if (message instanceof InfoMessage) {
+                InfoData data = ((InfoMessage) message).getData();
+                if (data instanceof FlowInfoData) {
+                    FlowInfoData fid = (FlowInfoData) data;
+                    String flowId = fid.getFlowId();
+
+                    values = new Values(message, flowId);
+                    logger.info("Flow {} message: operation={} values={}", flowId, fid.getOperation(), values);
+                    if (fid.getOperation() == FlowOperation.PUSH) {
+                        outputCollector.emit(StreamType.PUSH.toString(), tuple, values);
+                    } else if (fid.getOperation() == FlowOperation.UNPUSH) {
+                        outputCollector.emit(StreamType.UNPUSH.toString(), tuple, values);
+                    } else {
+                        logger.warn("Skip undefined FlowInfoData Operation {}: {}={}",
+                                fid.getOperation(), Utils.CORRELATION_ID, message.getCorrelationId());
+                    }
+                } else {
+                    logger.warn("Skip undefined InfoMessage: {}={}", Utils.CORRELATION_ID, message.getCorrelationId());
+                }
+                return;
+            }
+
+            /*
+             * Second, it isn't an InfoMessage, so it must be a CommandMessage.
+             */
             CommandData data = ((CommandMessage) message).getData();
 
             if (data instanceof FlowCreateRequest) {
@@ -168,8 +202,14 @@ public class SplitterBolt extends BaseRichBolt {
                 values = new Values(message, flowId);
                 outputCollector.emit(StreamType.PATH.toString(), tuple, values);
 
+            } else if (data instanceof FlowCacheSyncRequest) {
+                logger.info("FlowCacheSyncRequest: values={}", values);
+
+                values = new Values(message, null);
+                outputCollector.emit(StreamType.CACHE_SYNC.toString(), tuple, values);
+
             } else {
-                logger.debug("Skip undefined message: {}={}", Utils.CORRELATION_ID, message.getCorrelationId());
+                logger.debug("Skip undefined CommandMessage: {}={}", Utils.CORRELATION_ID, message.getCorrelationId());
             }
 
 /*
@@ -210,8 +250,11 @@ public class SplitterBolt extends BaseRichBolt {
         outputFieldsDeclarer.declareStream(StreamType.READ.toString(), FlowTopology.fieldsMessageFlowId);
         outputFieldsDeclarer.declareStream(StreamType.UPDATE.toString(), FlowTopology.fieldsMessageFlowId);
         outputFieldsDeclarer.declareStream(StreamType.DELETE.toString(), FlowTopology.fieldsMessageFlowId);
+        outputFieldsDeclarer.declareStream(StreamType.PUSH.toString(), FlowTopology.fieldsMessageFlowId);
+        outputFieldsDeclarer.declareStream(StreamType.UNPUSH.toString(), FlowTopology.fieldsMessageFlowId);
         outputFieldsDeclarer.declareStream(StreamType.PATH.toString(), FlowTopology.fieldsMessageFlowId);
         outputFieldsDeclarer.declareStream(StreamType.STATUS.toString(), FlowTopology.fieldsMessageFlowId);
+        outputFieldsDeclarer.declareStream(StreamType.CACHE_SYNC.toString(), FlowTopology.fieldsMessageFlowId);
         outputFieldsDeclarer.declareStream(StreamType.RESTORE.toString(), FlowTopology.fieldsMessageFlowId);
         outputFieldsDeclarer.declareStream(StreamType.REROUTE.toString(), FlowTopology.fieldsMessageFlowId);
         outputFieldsDeclarer.declareStream(StreamType.ERROR.toString(), FlowTopology.fieldsMessageErrorType);
