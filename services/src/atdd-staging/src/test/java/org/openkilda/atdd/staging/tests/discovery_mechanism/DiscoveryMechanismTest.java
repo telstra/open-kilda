@@ -161,17 +161,17 @@ public class DiscoveryMechanismTest {
                     .build();
             flowMap.put(flowEntry.getCookie(), flowEntry);
 
-            if ("OF_13".equals(getOFVersionForSwitch(switchId))) {
-                //define drop flow
-                FlowInstructions dropFlowInstructions = FlowInstructions.builder()
-                        .none("drop").build();
-                FlowEntry dropFlow = FlowEntry.builder()
-                        .cookie("flow-0x8000000000000001")
-                        .priority(1)
-                        .instructions(dropFlowInstructions)
-                        .build();
-                flowMap.put(dropFlow.getCookie(), dropFlow);
+            //define drop flow
+            FlowInstructions dropFlowInstructions = FlowInstructions.builder()
+                    .none("drop").build();
+            FlowEntry dropFlow = FlowEntry.builder()
+                    .cookie("flow-0x8000000000000001")
+                    .priority(1)
+                    .instructions(dropFlowInstructions)
+                    .build();
+            flowMap.put(dropFlow.getCookie(), dropFlow);
 
+            if ("OF_13".equals(getOFVersionForSwitch(switchId))) {
                 //non-broadcast flow for versions 13 and later
                 String flowFor13InstructionOutput = "controller";
                 FlowApplyActions flowFor13Actions = FlowApplyActions.builder()
