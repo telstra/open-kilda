@@ -14,6 +14,30 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
+import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
+import org.openkilda.atdd.staging.model.topology.TopologyDefinition.OutPort;
+import org.openkilda.atdd.staging.model.topology.TopologyDefinition.Switch;
+import org.openkilda.atdd.staging.service.floodlight.FloodlightService;
+import org.openkilda.atdd.staging.service.northbound.NorthboundService;
+import org.openkilda.atdd.staging.service.topology.TopologyEngineService;
+import org.openkilda.atdd.staging.service.traffexam.FlowNotApplicableException;
+import org.openkilda.atdd.staging.service.traffexam.OperationalException;
+import org.openkilda.atdd.staging.service.traffexam.TraffExamService;
+import org.openkilda.atdd.staging.service.traffexam.model.Exam;
+import org.openkilda.atdd.staging.service.traffexam.model.ExamReport;
+import org.openkilda.atdd.staging.service.traffexam.model.FlowBidirectionalExam;
+import org.openkilda.atdd.staging.steps.helpers.FlowTrafficExamBuilder;
+import org.openkilda.atdd.staging.steps.helpers.TopologyChecker;
+import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.messaging.info.event.PathInfoData;
+import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.model.Flow;
+import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
+import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
+import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.messaging.payload.flow.FlowState;
+
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ContiguousSet;
 import com.google.common.collect.DiscreteDomain;
@@ -27,26 +51,13 @@ import cucumber.api.java.en.When;
 import cucumber.api.java8.En;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
-import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
-import org.openkilda.atdd.staging.model.topology.TopologyDefinition.OutPort;
-import org.openkilda.atdd.staging.model.topology.TopologyDefinition.Switch;
-import org.openkilda.atdd.staging.service.floodlight.FloodlightService;
-import org.openkilda.atdd.staging.service.northbound.NorthboundService;
-import org.openkilda.atdd.staging.service.topology.TopologyEngineService;
-import org.openkilda.atdd.staging.steps.helpers.TopologyChecker;
-import org.openkilda.messaging.info.event.IslInfoData;
-import org.openkilda.messaging.info.event.PathInfoData;
-import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.ImmutablePair;
-import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
-import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
-import org.openkilda.messaging.payload.flow.FlowPayload;
-import org.openkilda.messaging.payload.flow.FlowState;
+import org.apache.logging.log4j.util.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -73,6 +84,9 @@ public class FlowCrudSteps implements En {
 
     @Autowired
     private TopologyDefinition topologyDefinition;
+
+    @Autowired
+    private TraffExamService traffExam;
 
     @VisibleForTesting
     List<FlowPayload> flows = emptyList();
@@ -224,9 +238,9 @@ public class FlowCrudSteps implements En {
                 .map(flow -> new Flow(flow.getId(),
                         flow.getMaximumBandwidth(),
                         flow.isIgnoreBandwidth(), 0,
-                        flow.getId(), null,
-                        flow.getSource().getSwitchId(),
-                        flow.getDestination().getSwitchId(),
+                        flow.getDescription(), null,
+                        flow.getSource().getSwitchDpId(),
+                        flow.getDestination().getSwitchDpId(),
                         flow.getSource().getPortId(),
                         flow.getDestination().getPortId(),
                         flow.getSource().getVlanId(),
@@ -275,7 +289,104 @@ public class FlowCrudSteps implements En {
 
     @And("^each flow has traffic going with bandwidth not less than (\\d+)$")
     public void eachFlowHasTrafficGoingWithBandwidthNotLessThan(int bandwidth) {
-        //TODO: implement the check
+        FlowTrafficExamBuilder examBuilder = new FlowTrafficExamBuilder(topologyDefinition, traffExam);
+        List<Exam> singleExams = new LinkedList<>();
+        List<FlowBidirectionalExam> examsInProgress = new LinkedList<>();
+
+        for (FlowPayload flow : flows) {
+            try {
+                FlowBidirectionalExam flowExam = examBuilder.makeBidirectionalExam(flow);
+
+                List<Exam> createdExams = new ArrayList<>(2);
+                try {
+                    for (Exam current : flowExam.getExamPair()) {
+                        createdExams.add(traffExam.startExam(current));
+                    }
+                    examsInProgress.add(flowExam);
+                } catch (OperationalException e) {
+                    LOGGER.warn("Unable to setup traffic exam (at least one) for flow {} - {}", flow.getId(), e);
+                    singleExams.addAll(createdExams);
+                    break;
+                }
+            } catch (FlowNotApplicableException e) {
+                LOGGER.info(String.format("%s. Skip traffic exam.", e));
+            }
+        }
+
+        LOGGER.info(String.format(
+                "%d of %d flow's traffic examination have been started", examsInProgress.size(), flows.size()));
+
+        if (0 < singleExams.size()) {
+            LOGGER.warn(String.format("Kill %d incomplete(one direction) flow traffic exams.", singleExams.size()));
+            for (Exam current : singleExams) {
+                traffExam.stopExam(current);
+            }
+        }
+
+        boolean issues = false;
+        for (FlowBidirectionalExam current : examsInProgress) {
+            List<Boolean> isError = new ArrayList<>(2);
+            List<Boolean> isTraffic = new ArrayList<>(2);
+            List<Boolean> isTrafficLose = new ArrayList<>(2);
+            List<Boolean> isBandwidthMatch = new ArrayList<>(2);
+
+            FlowPayload flow = current.getFlow();
+
+            ExamReport forward = null;
+            ExamReport reverse = null;
+            for (ExamReport report : traffExam.waitExam(current.getExamPair())) {
+                if (forward == null) {
+                    forward = report;
+                } else {
+                    reverse = report;
+                }
+
+                isError.add(report.isError());
+                isTraffic.add(report.isTraffic());
+                isTrafficLose.add(report.isTrafficLose());
+
+                Double bandwidthLimit = bandwidth * .95;
+                isBandwidthMatch.add(report.getBandwidth().getKbps() < bandwidthLimit);
+            }
+
+            if (isError.stream().anyMatch(value -> value)) {
+                List<String> errors = new ArrayList<>(2);
+                if (forward != null) {
+                    errors.addAll(
+                            forward.getErrors().stream().map(
+                                    message -> String.format("forward:%s", message)
+                            ).collect(toList()));
+                }
+                if (reverse != null) {
+                    errors.addAll(
+                            reverse.getErrors().stream().map(
+                                    message -> String.format("reverse:%s", message)
+                            ).collect(toList()));
+                }
+
+                LOGGER.error(String.format(
+                        "Flow's %s traffic exam ends with error\n%s",
+                        flow.getId(),
+                        Strings.join(errors, '\n')));
+                issues = true;
+            }
+
+            if (! isTraffic.stream().allMatch(value -> value)) {
+                LOGGER.error(String.format("Flow's %s traffic is missing", flow.getId()));
+                issues = true;
+            }
+
+            if (isTrafficLose.stream().anyMatch(value -> value)) {
+                LOGGER.warn(String.format("Flow %s is loosing packages", flow.getId()));
+            }
+
+            if (! isBandwidthMatch.stream().allMatch(value -> value)) {
+                LOGGER.error("Flow %s does not provide requested bandwidth", flow.getId());
+                issues = true;
+            }
+        }
+
+        assertFalse("There is an issues with traffic on installed flows.", issues);
     }
 
     @Then("^each flow can be updated with (\\d+) max bandwidth$")

@@ -1,5 +1,7 @@
 package org.openkilda.atdd.staging.service.traffexam.model;
 
+import org.apache.logging.log4j.util.Strings;
+
 public class EndpointReport {
     private Long packets = 0L;
     private Long bytes = 0L;
@@ -10,10 +12,18 @@ public class EndpointReport {
     private Double seconds = 0d;
     private Double bitsPerSecond = 0d;
 
-    private String error = null;
+    private final String error;
+
+    public EndpointReport(String error) {
+        this.error = error;
+    }
 
     public EndpointReport(ReportResponse report) {
-        error = report.getError();
+        if (Strings.isEmpty(report.getError())) {
+            this.error = report.getReport().error;
+        } else {
+            this.error = report.getError();
+        }
 
         try {
             IPerfReportSumBranch summary = report.getReport().end.sum;

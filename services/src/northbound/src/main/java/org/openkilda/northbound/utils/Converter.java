@@ -40,10 +40,10 @@ public final class Converter {
                 flowPayload.getMaximumBandwidth(),
                 flowPayload.isIgnoreBandwidth(),
                 flowPayload.getDescription(),
-                flowPayload.getSource().getSwitchId(),
+                flowPayload.getSource().getSwitchDpId(),
                 flowPayload.getSource().getPortId(),
                 flowPayload.getSource().getVlanId(),
-                flowPayload.getDestination().getSwitchId(),
+                flowPayload.getDestination().getSwitchDpId(),
                 flowPayload.getDestination().getPortId(),
                 flowPayload.getDestination().getVlanId());
     }

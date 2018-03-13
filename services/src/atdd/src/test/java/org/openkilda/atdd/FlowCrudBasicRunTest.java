@@ -112,10 +112,10 @@ public class FlowCrudBasicRunTest {
         System.out.println(String.format("===> Flow was created at %s\n", flow.getLastUpdated()));
 
         assertEquals(FlowUtils.getFlowName(flowId), flow.getId());
-        assertEquals(sourceSwitch, flow.getSource().getSwitchId());
+        assertEquals(sourceSwitch, flow.getSource().getSwitchDpId());
         assertEquals(sourcePort, flow.getSource().getPortId().longValue());
         assertEquals(sourceVlan, flow.getSource().getVlanId().longValue());
-        assertEquals(destinationSwitch, flow.getDestination().getSwitchId());
+        assertEquals(destinationSwitch, flow.getDestination().getSwitchDpId());
         assertEquals(destinationPort, flow.getDestination().getPortId().longValue());
         assertEquals(destinationVlan, flow.getDestination().getVlanId().longValue());
         assertEquals(bandwidth, flow.getMaximumBandwidth());
