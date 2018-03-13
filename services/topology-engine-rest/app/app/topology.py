@@ -133,20 +133,8 @@ def api_v1_topology_flows():
     try:
         query = "MATCH (a:switch)-[r:flow]->(b:switch) RETURN r"
         result = neo4j_connect.data(query)
-
-        flows = []
-        for data in result:
-            path = json.loads(data['r']['flowpath'])
-            flow = json.loads(json.dumps(data['r'],
-                                         default=lambda o: o.__dict__,
-                                         sort_keys=True))
-            flow['flowpath'] = path
-            # clazz is removed in TE so that it isn't stored in NEO4J .. add it back in, otherwise
-            # any java classes that call this will die.
-            flow['flowpath']['clazz'] = 'org.openkilda.messaging.info.event.PathInfoData'
-            flows.append(flow)
-
-        return str(json.dumps(flows, default=lambda o: o.__dict__, sort_keys=True))
+        flows = [format_flow(raw['r']) for raw in result]
+        return json.dumps(flows)
     except Exception as e:
         return "error: {}".format(str(e))
 
@@ -167,17 +155,12 @@ def api_v1_topology_get_flow(flow_id):
     elif 2 < len(result):
         return http_errors.NotFound('Flow data corrupted (too many results)')
 
-    flow_pair = [unpack_neo4j_flow(record['r']) for record in result]
+    flow_pair = [format_flow(record['r']) for record in result]
     flow_pair.sort(key=lambda x: is_forward_cookie(x['cookie']))
     flow_data = dict(zip(['reverse', 'forward'], flow_pair))
 
     return jsonify(flow_data)
 
-
-def unpack_neo4j_flow(raw):
-    flow = raw.copy()
-    flow['flowpath'] = json.loads(raw['flowpath'])
-    return flow
 
 # =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 #
@@ -561,6 +544,17 @@ def format_switch(switch):
         'state': 'ACTIVATED' if switch['state'] == 'active' else 'DEACTIVATED',
         'description': switch['description']
     }
+
+
+def format_flow(raw_flow):
+    flow = raw_flow.copy()
+
+    path = json.loads(raw_flow['flowpath'])
+    path['clazz'] = 'org.openkilda.messaging.info.event.PathInfoData'
+
+    flow['flowpath'] = path
+
+    return flow
 
 
 @application.route('/api/v1/topology/links')
