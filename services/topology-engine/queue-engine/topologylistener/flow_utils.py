@@ -116,20 +116,16 @@ def remove_flow(context, flow, parent_tx=None):
     return result
 
 
-def merge_flow_relationship(flow_data, tx=None):
+def merge_flow_relationship(flow_data, tx):
     """
     This function focuses on just creating the starting/ending switch relationship for a flow.
     """
+
     query = (
-        "MERGE "                                # MERGE .. create if doesn't exist .. being cautious
-        " (src:switch {{name:'{src_switch}'}}) "
-        " ON CREATE SET src.state = 'inactive' "
-        "MERGE "
-        " (dst:switch {{name:'{dst_switch}'}}) "
-        " ON CREATE SET dst.state = 'inactive' "
-        "MERGE (src)-[f:flow {{"                # Should only use the relationship primary keys in a match
+        "MATCH (src:switch {{name:'{src_switch}'}}), (dst:switch {{name:'{dst_switch}'}})\n"
+        "MERGE (src)-[f:flow {{"
         " flowid:'{flowid}', "
-        " cookie: {cookie} }} ]->(dst)  "
+        " cookie: {cookie} }}]->(dst) "
         "SET "
         " f.meter_id = {meter_id}, "
         " f.bandwidth = {bandwidth}, "
@@ -145,16 +141,16 @@ def merge_flow_relationship(flow_data, tx=None):
         " f.last_updated = '{last_updated}', "
         " f.flowpath = '{flowpath}' "
     )
-    flow_data['flowpath'].pop('clazz', None) # don't store the clazz info, if it is there.
+
+    # don't store the clazz info, if it is there.
+    flow_data['flowpath'].pop('clazz', None)
     flow_data['last_updated'] = calendar.timegm(time.gmtime())
     flow_data['flowpath'] = json.dumps(flow_data['flowpath'])
-    if tx:
-        tx.run(query.format(**flow_data))
-    else:
-        graph.run(query.format(**flow_data))
+
+    tx.run(query.format(**flow_data))
 
 
-def merge_flow_segments(context, _flow, tx=None):
+def merge_flow_segments(context, _flow, tx):
     """
     This function creates each segment relationship in a flow, and then it calls the function to
     update bandwidth. This should always be down when creating/merging flow segments.
@@ -162,16 +158,12 @@ def merge_flow_segments(context, _flow, tx=None):
     To create segments, we leverages the flow path .. and the flow path is a series of nodes, where
     each 2 nodes are the endpoints of an ISL.
     """
+
     flow = copy.deepcopy(_flow)
+
     create_segment_query = (
-        "MERGE "                                # MERGE .. create if doesn't exist .. being cautious
-        "(src:switch {{name:'{src_switch}'}}) "
-        "ON CREATE SET src.state = 'inactive' "
-        "MERGE "
-        "(dst:switch {{name:'{dst_switch}'}}) "
-        "ON CREATE SET dst.state = 'inactive' "
-        "MERGE "
-        "(src)-[fs:flow_segment {{flowid: '{flowid}', parent_cookie: {parent_cookie} }}]->(dst) "
+        "MATCH (src:switch {{name:'{src_switch}'}}), (dst:switch {{name:'{dst_switch}'}})\n"
+        "MERGE (src)-[fs:flow_segment {{flowid: '{flowid}', parent_cookie: {parent_cookie} }}]->(dst) "
         "SET "
         "fs.cookie = {cookie}, "
         "fs.src_switch = '{src_switch}', "
@@ -193,6 +185,10 @@ def merge_flow_segments(context, _flow, tx=None):
     for i in range(0, len(flow_path), 2):
         src = flow_path[i]
         dst = flow_path[i+1]
+
+        switches = [x.lower() for x in (src['switch_id'], dst['switch_id'])]
+        switches.sort()
+
         # <== SRC
         flow['src_switch'] = src['switch_id']
         flow['src_port'] = src['port_no']
@@ -206,12 +202,7 @@ def merge_flow_segments(context, _flow, tx=None):
         # NB: use the "dst cookie" .. since for flow segments, the delete rule will use the dst switch
         flow['cookie'] = dst.get('cookie', flow_cookie)
 
-        # TODO: Preference for transaction around the entire delete
-        # TODO: Preference for batch command
-        if tx:
-            tx.run(create_segment_query.format(**flow))
-        else:
-            graph.run(create_segment_query.format(**flow))
+        tx.run(create_segment_query.format(**flow))
 
     update_flow_segment_available_bw(context, flow, tx)
 
@@ -266,7 +257,7 @@ def fetch_flow_segments(flowid, parent_cookie):
     return [dict(x['fs']) for x in result]
 
 
-def update_flow_segment_available_bw(context, flow, tx=None):
+def update_flow_segment_available_bw(context, flow, tx):
     flow_path = get_flow_path(flow)
     context.log(raw_logger).debug(
             'Update ISL Bandwidth from Flow Segments : %s [path: %s]',
@@ -283,7 +274,7 @@ def update_flow_segment_available_bw(context, flow, tx=None):
 
 
 def update_isl_bandwidth(
-        context, src_switch, src_port, dst_switch, dst_port, tx=None):
+        context, src_switch, src_port, dst_switch, dst_port, tx):
     """
     This will update the available_bandwidth for the isl that matches the src/dst information.
     It does this by looking for all flow segments over the ISL, where ignore_bandwidth = false.
@@ -309,26 +300,28 @@ def update_isl_bandwidth(
         'dst_port': dst_port,
     }
     query = available_bw_query.format(**params)
-    if tx:
-        tx.run(query)
-    else:
-        graph.run(query)
+    tx.run(query)
 
 
-def store_flow(context, flow, tx=None):
+def store_flow(context, tx, flow):
     """
-    Create a :flow relationship between the starting and ending switch, as well as
-    create :flow_segment relationships between every switch in the path.
+    Create a :flow relationship between the starting and ending switch, as well
+    as create :flow_segment relationships between every switch in the path.
 
-    NB: store_flow is used for uni-direction .. whereas flow_id is used both directions .. need cookie to differentiate
+    NB: store_flow is used for uni-direction .. whereas flow_id is used both
+    directions .. need cookie to differentiate
 
-    :param flow:
+    :param context: operation context required to make context rich logging and
+                    communicate with external services
     :param tx: The transaction to use, or no transaction.
+    :param flow:
     :return:
     """
-    # TODO: Preference for transaction around the entire set of store operations
 
     context.log(raw_logger).debug('STORE Flow : %s', flow['flowid'])
+
+    precreate_flow_switches(context, tx, flow)
+    
     delete_flow_segments(context, flow, tx)
     merge_flow_relationship(copy.deepcopy(flow), tx)
     merge_flow_segments(context, flow, tx)
@@ -391,3 +384,29 @@ def get_flows(context):
 
     context.log(raw_logger).info('Got flows: %s', flows.values())
     return flows.values()
+
+
+def precreate_flow_switches(context, tx, flow):
+    switches = set()
+    switches.add(flow['src_switch'])
+    switches.add(flow['dst_switch'])
+
+    flow_path = get_flow_path(flow)
+    for i in range(0, len(flow_path), 2):
+        switches.add(flow_path[i]['switch_id'])
+        switches.add(flow_path[i + 1]['switch_id'])
+
+    precreate_switches(context, tx, *switches)
+
+
+def precreate_switches(context, tx, *nodes):
+    switches = [x.lower() for x in nodes]
+    switches.sort()
+
+    for dpid in switches:
+        q = (
+            "MERGE (sw:switch {{name:'{}'}}) "
+            "ON CREATE SET sw.state = 'inactive' "
+            "ON MATCH SET sw.tx_override_workaround = 'dummy'").format(dpid)
+        context.log(raw_logger).info('neo4j-query: %s', q)
+        tx.run(q)

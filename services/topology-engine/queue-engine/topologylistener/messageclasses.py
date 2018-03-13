@@ -288,82 +288,77 @@ class MessageItem(object):
         speed = int(self.payload['speed'])
         available_bandwidth = int(self.payload['available_bandwidth'])
 
-        try:
-            self.log.debug(
-                    'ISL %s_%d create or update request', a_switch, a_port)
+        self.log.info('Start neo4j transaction')
+        with graph.begin() as tx:
+            try:
+                self.log.debug(
+                        'ISL %s_%d create or update request', a_switch, a_port)
 
-            #
-            # Given that we know the the src and dst exist, the following query will either
-            # create the relationship if it doesn't exist, or update it if it does
-            #
-            isl_create_or_update = (
-                "MERGE "
-                "(src:switch {{name:'{}'}}) "
-                "ON CREATE SET src.state = 'inactive' "
-                "MERGE "
-                "(dst:switch {{name:'{}'}}) "
-                "ON CREATE SET dst.state = 'inactive' "
-                "MERGE "
-                "(src)-[i:isl {{"
-                "src_switch: '{}', src_port: {}, "
-                "dst_switch: '{}', dst_port: {} "
-                "}}]->(dst) "
-                "SET "
-                "i.latency = {}, "
-                "i.speed = {}, "
-                "i.max_bandwidth = {}, "
-                "i.status = 'active' "
-            ).format(
-                a_switch,
-                b_switch,
-                a_switch, a_port,
-                b_switch, b_port,
-                latency,
-                speed,
-                available_bandwidth
-            )
-            graph.run(isl_create_or_update)
+                flow_utils.precreate_switches(self.context, tx, a_switch, b_switch)
 
-            #
-            # Now handle the second part .. pull properties from link_props if they exist
-            #
+                #
+                # Given that we know the the src and dst exist, the following query will either
+                # create the relationship if it doesn't exist, or update it if it does
+                #
+                isl_create_or_update = (
+                    "MATCH "
+                    "(src:switch {{name:'{src_dpid}'}}), (dst:switch {{name:'{dst_dpid}'}})\n"
+                    "MERGE (src)-[i:isl {{"
+                    "src_switch: '{src_dpid}', src_port: {src_port}, "
+                    "dst_switch: '{dst_dpid}', dst_port: {dst_port} "
+                    "}}]->(dst) "
+                    "SET "
+                    "i.latency = {latency}, "
+                    "i.speed = {speed}, "
+                    "i.max_bandwidth = {bandwidth}, "
+                    "i.status = 'active' "
+                ).format(
+                    latency=latency, speed=speed, bandwidth=available_bandwidth,
+                    src_dpid=a_switch, src_port=a_port,
+                    dst_dpid=b_switch, dst_port=b_port)
+                self.log.info('neo4j-query: %s', isl_create_or_update)
+                tx.run(isl_create_or_update)
 
-            src_sw, src_pt, dst_sw, dst_pt = a_switch, a_port, b_switch, b_port # use same names as TER code
-            query = 'MATCH (src:switch)-[i:isl]->(dst:switch) '
-            query += ' WHERE i.src_switch = "%s" ' \
-                     ' AND i.src_port = %s ' \
-                     ' AND i.dst_switch = "%s" ' \
-                     ' AND i.dst_port = %s ' % (src_sw, src_pt, dst_sw, dst_pt)
-            query += ' MATCH (lp:link_props) '
-            query += ' WHERE lp.src_switch = "%s" ' \
-                     ' AND lp.src_port = %s ' \
-                     ' AND lp.dst_switch = "%s" ' \
-                     ' AND lp.dst_port = %s ' % (src_sw, src_pt, dst_sw, dst_pt)
-            query += ' SET i += lp '
-            graph.run(query)
+                #
+                # Now handle the second part .. pull properties from link_props if they exist
+                #
 
-            #
-            # Finally, update the available_bandwidth..
-            #
-            flow_utils.update_isl_bandwidth(
-                    self.context, src_sw, src_pt, dst_sw, dst_pt)
+                src_sw, src_pt, dst_sw, dst_pt = a_switch, a_port, b_switch, b_port # use same names as TER code
+                query = 'MATCH (src:switch)-[i:isl]->(dst:switch) '
+                query += ' WHERE i.src_switch = "%s" ' \
+                         ' AND i.src_port = %s ' \
+                         ' AND i.dst_switch = "%s" ' \
+                         ' AND i.dst_port = %s ' % (src_sw, src_pt, dst_sw, dst_pt)
+                query += ' MATCH (lp:link_props) '
+                query += ' WHERE lp.src_switch = "%s" ' \
+                         ' AND lp.src_port = %s ' \
+                         ' AND lp.dst_switch = "%s" ' \
+                         ' AND lp.dst_port = %s ' % (src_sw, src_pt, dst_sw, dst_pt)
+                query += ' SET i += lp '
+                self.log.info('neo4j-query: %s', query)
+                tx.run(query)
 
-            self.log.info('ISL between %s and %s updated', a_switch, b_switch)
+                #
+                # Finally, update the available_bandwidth..
+                #
+                flow_utils.update_isl_bandwidth(
+                        self.context, src_sw, src_pt, dst_sw, dst_pt, tx)
 
-        except Exception as e:
-            self.log.exception(
-                    'ISL between %s and %s creation error: %s',
-                    a_switch, b_switch, e)
-            return False
+                self.log.info('ISL between %s and %s updated', a_switch, b_switch)
+
+                self.log.info('neo4j transaction commit')
+
+            except neo4j_errors.TransientError as e:
+                raise exc.RecoverableError(e)
 
         return True
 
     # TODO(surabujin): split on 2 method and drop out "propagate" argument
-    def create_flow(self, flow_id, flow, propagate=True):
+    def create_flow(self, tx, flow_id, flow, propagate=True):
         rules = flow_utils.build_rules(flow)
 
         self.log.info('Flow rules were built: flow_id=%s', flow_id)
-        flow_utils.store_flow(self.context, flow)
+        flow_utils.store_flow(self.context, tx, flow)
         self.log.info('Flow was stored: flow_id=%s', flow_id)
 
         if propagate:
@@ -444,8 +439,7 @@ class MessageItem(object):
         self.log.info('Flow rules were built: flow_id=%s', flow_id)
         rules = flow_utils.build_rules(flow)
 
-        # TODO: add tx to store_flow
-        flow_utils.store_flow(self.context, flow, tx)
+        flow_utils.store_flow(self.context, tx, flow)
         self.log.info('Flow was stored: flow_id=%s', flow_id)
 
         message_utils.send_install_commands(self.context, rules)
@@ -470,8 +464,8 @@ class MessageItem(object):
                 if operation == "CREATE" or operation == "PUSH":
                     propagate = operation == "CREATE"
                     # TODO: leverage transaction for creating both flows
-                    self.create_flow(flow_id, forward, propagate)
-                    self.create_flow(flow_id, reverse, propagate)
+                    self.create_flow(tx, flow_id, forward, propagate)
+                    self.create_flow(tx, flow_id, reverse, propagate)
 
                 elif operation == "DELETE" or operation == "UNPUSH":
                     propagate = operation == "DELETE"
