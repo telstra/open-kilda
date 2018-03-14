@@ -43,6 +43,7 @@ known_commands = ['org.openkilda.messaging.command.flow.FlowCreateRequest',
 
 def main_loop():
     pool_size = config.getint('gevent', 'worker.pool.size')
+    # pool_size = 1
     pool = gevent.pool.Pool(pool_size)
     logger.info('Started gevent pool with size %d', pool_size)
 
