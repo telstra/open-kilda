@@ -75,25 +75,21 @@ class MessageItem(object):
                 elif self.payload['state'] == "REMOVED":
                     event_handled = self.remove_switch()
 
-                if event_handled:
-                    message_utils.send_cache_message(self.payload,
-                                                     self.correlation_id)
-
             elif self.get_message_type() == MT_ISL:
                 if self.payload['state'] == "DISCOVERED":
                     event_handled = self.create_isl()
                 elif self.payload['state'] == "FAILED":
                     event_handled = self.isl_discovery_failed()
 
-                if event_handled:
-                    message_utils.send_cache_message(self.payload,
-                                                     self.correlation_id)
-
             elif self.get_message_type() == MT_PORT:
                 if self.payload['state'] == "DOWN":
                     event_handled = self.port_down()
                 else:
                     event_handled = True
+            # Cache topology expects to receive OFE events
+            if event_handled:
+                message_utils.send_cache_message(self.payload,
+                                                 self.correlation_id)
 
             elif self.get_message_type() == MT_FLOW_INFODATA:
                 event_handled = self.flow_operation()
