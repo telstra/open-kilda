@@ -224,6 +224,18 @@ event_delete.handle()
 
 print('TEST #8 - create ... A lot )')
 print("==> If this fails, it will not stop, run:  `ps -a | grep test_flow | cut -d ' ' -f 1 | xargs kill` ")
+#
+# NOTE: comment out the NORTHBOUND response in messageclasses::create_flow :: else ... otherwise you'll find that
+#       Kafka gets hung up.  The lines to comment out:
+#
+# message_utils.send_to_topic(
+#     payload=data,
+#     correlation_id=correlation_id,
+#     message_type=message_utils.MT_INFO,
+#     destination="NORTHBOUND",
+#     topic=config.KAFKA_NORTHBOUND_TOPIC
+
+#
 test_range = 20
 num_proc = 5
 
