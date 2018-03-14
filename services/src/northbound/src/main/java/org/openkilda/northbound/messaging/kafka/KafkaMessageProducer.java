@@ -15,15 +15,14 @@
 
 package org.openkilda.northbound.messaging.kafka;
 
-import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 import static org.openkilda.messaging.Utils.MAPPER;
 import static org.openkilda.messaging.error.ErrorType.DATA_INVALID;
 import static org.openkilda.messaging.error.ErrorType.INTERNAL_ERROR;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.northbound.messaging.MessageProducer;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -58,29 +57,29 @@ public class KafkaMessageProducer implements MessageProducer {
      * {@inheritDoc}
      */
     @Override
-    public void send(final String topic, final Object object) {
+    public void send(final String topic, final Message message) {
         ListenableFuture<SendResult<String, String>> future;
-        String message;
+        String messageToSend;
 
         try {
-            message = MAPPER.writeValueAsString(object);
+            messageToSend = MAPPER.writeValueAsString(message);
         } catch (JsonProcessingException exception) {
             String errorMessage = "Unable to serialize object";
-            logger.error("{}: object={}", errorMessage, object, exception);
-            throw new MessageException(DEFAULT_CORRELATION_ID, System.currentTimeMillis(),
-                    DATA_INVALID, errorMessage, object.toString());
+            logger.error("{}: object={}", errorMessage, message, exception);
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    DATA_INVALID, errorMessage, message.toString());
         }
 
-        future = kafkaTemplate.send(topic, message);
+        future = kafkaTemplate.send(topic, messageToSend);
         future.addCallback(new ListenableFutureCallback<SendResult<String, String>>() {
             @Override
             public void onSuccess(SendResult<String, String> result) {
-                logger.debug("Message sent: topic={}, message={}", topic, message);
+                logger.debug("Message sent: topic={}, message={}", topic, messageToSend);
             }
 
             @Override
             public void onFailure(Throwable exception) {
-                logger.error("Unable to send message: topic={}, message={}", topic, message, exception);
+                logger.error("Unable to send message: topic={}, message={}", topic, messageToSend, exception);
             }
         });
 
@@ -90,8 +89,8 @@ public class KafkaMessageProducer implements MessageProducer {
         } catch (TimeoutException | ExecutionException | InterruptedException exception) {
             String errorMessage = "Unable to send message";
             logger.error("{}: topic={}, message={}", errorMessage, topic, message, exception);
-            throw new MessageException(DEFAULT_CORRELATION_ID, System.currentTimeMillis(),
-                    INTERNAL_ERROR, errorMessage, message);
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    INTERNAL_ERROR, errorMessage, messageToSend);
         }
     }
 }

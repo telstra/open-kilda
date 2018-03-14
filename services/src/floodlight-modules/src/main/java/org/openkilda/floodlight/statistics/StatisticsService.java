@@ -16,7 +16,6 @@
 package org.openkilda.floodlight.statistics;
 
 import static java.util.stream.Collectors.toList;
-import static org.openkilda.messaging.Utils.SYSTEM_CORRELATION_ID;
 
 import org.openkilda.floodlight.kafka.KafkaMessageProducer;
 import org.openkilda.messaging.Destination;
@@ -57,6 +56,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
@@ -215,7 +215,7 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
         @Override
         public void onSuccess(List<T> data) {
             InfoMessage infoMessage = new InfoMessage(transform.apply(data),
-                    System.currentTimeMillis(), SYSTEM_CORRELATION_ID, Destination.WFM_STATS);
+                    System.currentTimeMillis(), UUID.randomUUID().toString(), Destination.WFM_STATS);
             kafkaProducer.postMessage(STATISTICS_TOPIC, infoMessage);
         }
 
