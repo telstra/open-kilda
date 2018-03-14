@@ -16,6 +16,7 @@
 
 import json
 import logging
+import multiprocessing
 
 import config
 import flow_utils
@@ -33,9 +34,12 @@ MT_SWITCH = "org.openkilda.messaging.info.event.SwitchInfoData"
 MT_ISL = "org.openkilda.messaging.info.event.IslInfoData"
 MT_PORT = "org.openkilda.messaging.info.event.PortInfoData"
 MT_FLOW_INFODATA = "org.openkilda.messaging.info.flow.FlowInfoData"
-MT_FLOW_RESPONSE  = "org.openkilda.messaging.info.flow.FlowResponse"
+MT_FLOW_RESPONSE = "org.openkilda.messaging.info.flow.FlowResponse"
 MT_NETWORK = "org.openkilda.messaging.info.discovery.NetworkInfoData"
 CD_NETWORK = "org.openkilda.messaging.command.discovery.NetworkCommandData"
+
+# This is used for blocking on flow changes.
+flow_sem = multiprocessing.Semaphore()
 
 
 class MessageItem(object):
@@ -370,7 +374,7 @@ class MessageItem(object):
         return True
 
     @staticmethod
-    def create_flow(flow_id, flow, correlation_id, propagate=True):
+    def create_flow(flow_id, flow, correlation_id, tx, propagate=True):
 
         try:
             rules = flow_utils.build_rules(flow)
@@ -378,7 +382,7 @@ class MessageItem(object):
             logger.info('Flow rules were built: correlation_id=%s, flow_id=%s',
                         correlation_id, flow_id)
 
-            flow_utils.store_flow(flow)
+            flow_utils.store_flow(flow, tx)
 
             logger.info('Flow was stored: correlation_id=%s, flow_id=%s',
                         correlation_id, flow_id)
@@ -517,31 +521,46 @@ class MessageItem(object):
                     'timestamp=%s, correlation_id=%s, payload=%s',
                     operation, timestamp, correlation_id, payload)
 
-        if operation == "CREATE" or operation == "PUSH":
-            propagate = operation == "CREATE"
-            # TODO: leverage transaction for creating both flows
-            self.create_flow(flow_id, forward, correlation_id, propagate)
-            self.create_flow(flow_id, reverse, correlation_id, propagate)
+        tx = None
+        flow_sem.acquire()
+        try:
+            if operation == "CREATE" or operation == "PUSH":
+                propagate = operation == "CREATE"
+                tx = graph.begin()
+                self.create_flow(flow_id, forward, correlation_id, tx, propagate)
+                self.create_flow(flow_id, reverse, correlation_id, tx, propagate)
+                tx.commit()
+                tx = None
 
-        elif operation == "DELETE" or operation == "UNPUSH":
-            tx = graph.begin()
-            propagate = operation == "DELETE"
-            MessageItem.delete_flow(flow_id, forward, correlation_id, tx, propagate)
-            MessageItem.delete_flow(flow_id, reverse, correlation_id, tx, propagate)
-            if propagate:
-                message_utils.send_info_message({'payload': forward, 'clazz': MT_FLOW_RESPONSE}, correlation_id)
-                message_utils.send_info_message({'payload': reverse, 'clazz': MT_FLOW_RESPONSE}, correlation_id)
-            tx.commit()
+            elif operation == "DELETE" or operation == "UNPUSH":
+                tx = graph.begin()
+                propagate = operation == "DELETE"
+                MessageItem.delete_flow(flow_id, forward, correlation_id, tx, propagate)
+                MessageItem.delete_flow(flow_id, reverse, correlation_id, tx, propagate)
+                if propagate:
+                    message_utils.send_info_message({'payload': forward, 'clazz': MT_FLOW_RESPONSE}, correlation_id)
+                    message_utils.send_info_message({'payload': reverse, 'clazz': MT_FLOW_RESPONSE}, correlation_id)
+                tx.commit()
+                tx = None
 
-        elif operation == "UPDATE":
-            tx = graph.begin()
-            MessageItem.update_flow(flow_id, forward, correlation_id, tx)
-            MessageItem.update_flow(flow_id, reverse, correlation_id, tx)
-            tx.commit()
-        else:
-            logger.warn('Flow operation is not supported: '
-                        'operation=%s, timestamp=%s, correlation_id=%s,',
-                        operation, timestamp, correlation_id)
+            elif operation == "UPDATE":
+                tx = graph.begin()
+                MessageItem.update_flow(flow_id, forward, correlation_id, tx)
+                MessageItem.update_flow(flow_id, reverse, correlation_id, tx)
+                tx.commit()
+                tx = None
+
+            else:
+                logger.warn('Flow operation is not supported: '
+                            'operation=%s, timestamp=%s, correlation_id=%s,',
+                            operation, timestamp, correlation_id)
+        except Exception:
+            if tx is not None:
+                tx.rollback()
+            flow_sem.release()
+            raise
+
+        flow_sem.release()
 
         logger.info('Flow %s request processed: '
                     'timestamp=%s, correlation_id=%s, payload=%s',
