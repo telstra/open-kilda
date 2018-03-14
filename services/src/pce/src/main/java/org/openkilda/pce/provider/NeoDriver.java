@@ -194,25 +194,25 @@ public class NeoDriver implements PathComputer {
 //
 //                        " CALL apoc.algo.dijkstraWithDefaultWeight(from, to, 'isl', 'cost', 700)" +
 //                        " YIELD path AS p, weight AS weight "
-                        " p = allShortestPaths((from)-[r:isl*..100]->(to)) " +
-                        " WITH REDUCE(cost = 0, rel in rels(p) | " +
-                        "   cost + CASE rel.cost WHEN rel.cost = 0 THEN 700 ELSE rel.cost END) AS cost, p "
-                ;
+                        " p = allShortestPaths((from)-[isl*..100]->(to)) ";
         parameters.put("src_switch", Values.value(flow.getSourceSwitch()));
         parameters.put("dst_switch", Values.value(flow.getDestinationSwitch()));
 
         StringJoiner where = new StringJoiner("\n    AND ", "where ", "");
         where.add("ALL(x in nodes(p) WHERE x.state = 'active')");
         if (flow.isIgnoreBandwidth()) {
-            where.add("ALL(y in r WHERE y.status = 'active')");
+            where.add("ALL(y in relationships(p) WHERE y.status = 'active')");
         } else {
-            where.add("ALL(y in r WHERE y.status = 'active' AND y.available_bandwidth >= {bandwidth})");
+            where.add("ALL(y in relationships(p) WHERE y.status = 'active' AND y.available_bandwidth >= {bandwidth})");
             parameters.put("bandwidth", Values.value(flow.getBandwidth()));
         }
 
+        String reduce = " WITH REDUCE(cost = 0, rel in rels(p) | " +
+                "   cost + CASE rel.cost WHEN rel.cost = 0 THEN 700 ELSE rel.cost END) AS cost, p ";
+
         String result = "RETURN p ORDER BY cost LIMIT 1";
 
-        String query = String.join("\n", subject, where.toString(), result);
+        String query = String.join("\n", subject, where.toString(), reduce, result);
         return new Statement(query, Values.value(parameters));
     }
 
