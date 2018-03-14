@@ -115,7 +115,12 @@ class RecordHandler implements Runnable {
         InstallIngressFlow command = (InstallIngressFlow) message.getData();
         logger.debug("Creating an ingress flow: {}", command);
 
-        int meterId = meterPool.allocate(command.getSwitchId(), command.getId());
+        Long meterId = command.getMeterId();
+        if (meterId == null) {
+            logger.error("Meter_id should be passed within flow command. Cookie is {}", command.getCookie());
+            meterId = (long) meterPool.allocate(command.getSwitchId(), command.getId());
+            logger.debug("Allocated meter_id {} for cookie {}", meterId, command.getCookie());
+        }
 
         try {
             context.getSwitchManager().installMeter(

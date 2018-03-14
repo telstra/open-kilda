@@ -30,7 +30,8 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class MeterPool {
     private static final Logger logger = LoggerFactory.getLogger(MeterPool.class);
-    private static final Integer MIN_METER_ID = 1;
+    //@carmine: Probably should also start it at 200 and not 1 … I doubt we’ll end up with 200 Metered flows before we fix this.
+    private static final Integer MIN_METER_ID = 200;
     private static final Integer MAX_METER_ID = 4095;
     private final Map<String, ResourcePool> switchMeterPool = new ConcurrentHashMap<>();
     private final Map<String, Set<Integer>> flowMeterPool = new ConcurrentHashMap<>();
