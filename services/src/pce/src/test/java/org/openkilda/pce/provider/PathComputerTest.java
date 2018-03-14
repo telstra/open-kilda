@@ -152,6 +152,21 @@ public class PathComputerTest {
         }
     }
 
+    private void createTriangleTopo(String pathABstatus, int pathABcost, int pathCcost) {
+        try ( Transaction tx = graphDb.beginTx() ) {
+            // A - B
+            // + C +
+            Node nodeA, nodeB, nodeC, nodeD;
+            nodeA = createNode("00:01");
+            nodeB = createNode("00:02");
+            nodeC = createNode("00:03");
+            addRel(nodeA, nodeB, pathABstatus, pathABcost, 1000);
+            addRel(nodeA, nodeC, "active", pathCcost, 1000);
+            addRel(nodeC, nodeB,  "active", pathCcost, 1000);
+            tx.success();
+        }
+    }
+
     @Test
     public void testGetPathByCostActive() throws UnroutablePathException {
         /*
@@ -183,6 +198,26 @@ public class PathComputerTest {
         Flow f = new Flow();
         f.setSourceSwitch("00:01");
         f.setDestinationSwitch("00:04");
+        f.setBandwidth(100);
+        ImmutablePair<PathInfoData, PathInfoData> path = nd.getPath(f, PathComputer.Strategy.COST);
+        // System.out.println("path = " + path);
+        Assert.assertNotNull(path);
+        Assert.assertEquals(4, path.left.getPath().size());
+        // ====> only difference is it should now have C as first hop .. since B is inactive
+        Assert.assertEquals("00:03", path.left.getPath().get(1).getSwitchId()); // chooses path B
+    }
+
+    @Test
+    public void testGetPathByCostInactiveOnTriangleTopo() throws UnroutablePathException {
+        /*
+         * simple happy path test .. but lowest path is inactive
+         */
+        createTriangleTopo("inactive", 10, 20);
+        Driver driver = GraphDatabase.driver( "bolt://localhost:7878", AuthTokens.basic( "neo4j", "password" ) );
+        NeoDriver nd = new NeoDriver(driver);
+        Flow f = new Flow();
+        f.setSourceSwitch("00:01");
+        f.setDestinationSwitch("00:02");
         f.setBandwidth(100);
         ImmutablePair<PathInfoData, PathInfoData> path = nd.getPath(f, PathComputer.Strategy.COST);
         // System.out.println("path = " + path);
