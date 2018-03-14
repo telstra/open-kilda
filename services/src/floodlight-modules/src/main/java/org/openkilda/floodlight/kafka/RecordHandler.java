@@ -47,11 +47,13 @@ class RecordHandler implements Runnable {
 
     private final ConsumerContext context;
     private final ConsumerRecord<String, String> record;
-    private final MeterPool meterPool = new MeterPool();
+    private final MeterPool meterPool;
 
-    public RecordHandler(ConsumerContext context, ConsumerRecord<String, String> record) {
+    public RecordHandler(ConsumerContext context, ConsumerRecord<String, String> record,
+            MeterPool meterPool) {
         this.context = context;
         this.record = record;
+        this.meterPool = meterPool;
     }
 
     protected void doControllerMsg(CommandMessage message) {
@@ -315,13 +317,14 @@ class RecordHandler implements Runnable {
 
     public static class Factory {
         private final ConsumerContext context;
+        private final MeterPool meterPool = new MeterPool();
 
         public Factory(ConsumerContext context) {
             this.context = context;
         }
 
         public RecordHandler produce(ConsumerRecord<String, String> record) {
-            return new RecordHandler(context, record);
+            return new RecordHandler(context, record, meterPool);
         }
     }
 }
