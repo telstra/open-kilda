@@ -67,7 +67,7 @@ public class NorthboundExceptionHandler extends ResponseEntityExceptionHandler {
                 break;
         }
 
-        MessageError error = new MessageError(request.getHeader(CORRELATION_ID), exception.getTimestamp(),
+        MessageError error = new MessageError(exception.getCorrelationId(), exception.getTimestamp(),
                 exception.getErrorType().toString(), exception.getMessage(), exception.getErrorDescription());
 
         logger.warn(format("Error %s caught.", error), exception);

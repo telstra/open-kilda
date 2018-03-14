@@ -43,6 +43,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListener, IFloodlightService {
     private static final Logger logger = LoggerFactory.getLogger(SwitchEventCollector.class);
@@ -274,7 +275,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
      * @return Message
      */
     private Message buildMessage(final InfoData data) {
-        return new InfoMessage(data, System.currentTimeMillis(), "system", null);
+        return new InfoMessage(data, System.currentTimeMillis(), UUID.randomUUID().toString(), null);
     }
 
     /**

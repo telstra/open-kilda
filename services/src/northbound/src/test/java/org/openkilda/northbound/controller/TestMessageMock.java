@@ -15,7 +15,6 @@
 
 package org.openkilda.northbound.controller;
 
-import static org.openkilda.messaging.Utils.SYSTEM_CORRELATION_ID;
 import static org.openkilda.messaging.error.ErrorType.OPERATION_TIMED_OUT;
 
 import org.openkilda.messaging.Destination;
@@ -112,8 +111,6 @@ public class TestMessageMock implements MessageProducer, MessageConsumer<Object>
 
         if (messages.containsKey(correlationId)) {
             data = messages.remove(correlationId);
-        } else if (messages.containsKey(SYSTEM_CORRELATION_ID)) {
-            data = messages.remove(SYSTEM_CORRELATION_ID);
         } else {
             throw new MessageException(correlationId, System.currentTimeMillis(),
                     OPERATION_TIMED_OUT, KafkaMessageConsumer.TIMEOUT_ERROR_MESSAGE, "kilda-test");
@@ -127,8 +124,7 @@ public class TestMessageMock implements MessageProducer, MessageConsumer<Object>
     }
 
     @Override
-    public void send(String topic, Object object) {
-        Message message = (Message) object;
+    public void send(String topic, Message message) {
         if (message instanceof CommandMessage) {
             messages.put(message.getCorrelationId(), ((CommandMessage) message).getData());
         }
