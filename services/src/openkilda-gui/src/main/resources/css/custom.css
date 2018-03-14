@@ -62,7 +62,13 @@ h1 {
 .clearfix {
 	clear: both;
 }
+*:focus {
+    outline: none;
+}
 
+input:focus {
+    border: 1px solid #00ccbe !important;
+}
 .main-header {
 	background: #1b1f26;
 	height: 55px;
@@ -1141,7 +1147,7 @@ table#flowTable.dataTable.no-footer {
 }
 
 table.dataTable thead th {
-	background: #c5c5c5;
+	background: #cecece;
 }
 
 table#flowTable.dataTable thead th, table#flowTable.dataTable thead td {
@@ -1152,6 +1158,11 @@ table#flowTable.dataTable thead th, table#flowTable.dataTable thead td {
 
 table.dataTable.no-footer {
 	border: none;
+}
+
+
+table#flowTable.dataTable tbody tr:hover {
+    background-color: #f6f6f6!important;
 }
 
 .dataTables_wrapper {
@@ -1213,10 +1224,24 @@ table#flowTable.dataTable.display tbody tr.odd>.sorting_1, table#flowTable.dataT
 }
 
 table#flowTable.dataTable .flowDataRow.even {
-	background: #e5e5e5;
+	/*background: #e5e5e5;*/
 }
 
+table#flowTable.dataTable .flowDataRow.odd {
+    background: none;
+}
+::placeholder { /* Chrome, Firefox, Opera, Safari 10.1+ */
+    color: #c6c6c6;
+    opacity: 1; /* Firefox */
+}
 
+:-ms-input-placeholder { /* Internet Explorer 10-11 */
+    color: #c6c6c6;
+}
+
+::-ms-input-placeholder { /* Microsoft Edge */
+    color: #c6c6c6;
+}
 .dataTables_filter{
 	font-weight:bold;
 }
@@ -1245,7 +1270,7 @@ table#flowTable.dataTable thead th .heading_search_box {
 	float: left;
     width: 100%;
     margin-left: -2px;
-    margin-top: 5px;
+    margin-top: 4px;
     padding: 5px;
     border: 1px solid #999;
 }
@@ -1431,11 +1456,6 @@ table#flowTable.dataTable .port_data_load td.divTableCell {
     border: 1px solid #ddd;
 }
 
-td.highlight {
-        font-weight: bold;
-        color: blue;
-}
-
 /*  #port-details-div {
 	font-size: 13px;
 	border: 1px solid #ccc;
@@ -1444,7 +1464,10 @@ td.highlight {
 	position: relative;
 } */
 
-
+td.highlight {
+        font-weight: bold;
+        color: blue;
+}
     
 .load-text {
 	position: absolute;

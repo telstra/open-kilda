@@ -33,7 +33,7 @@ function showflowData(response){
 	
 	if(!response || response.length==0) {
 		response=[]
-		common.infoMessage('No Flow Avaliable','info');
+		common.infoMessage('No Flow Available','info');
 	}
 	
 	var flowDetailsData = localStorage.getItem("flowDetailsData");
