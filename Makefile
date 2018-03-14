@@ -90,9 +90,12 @@ update-props-dryrun:
 tags := @TOPO,@FCRUD --tags @MVP1
 kilda := 127.0.0.1
 
-# ( @NB OR @STATS ) AND @MVP1
-# --tags @NB,@STATS --tags @MVP1
-# make atdd kilda=127.0.0.1 tags=@MVP1
+# EXAMPLES:
+#  ( @NB OR @STATS ) AND @MVP1
+#   --tags @NB,@STATS --tags @MVP1
+#   make atdd kilda=127.0.0.1 tags=@
+#   mvn -f services/src/atdd/pom.xml -Patdd test -Dkilda.host="127.0.0.1" -Dcucumber.options="--tags @CRUD_UPDATE"
+#   mvn -f services/src/atdd/pom.xml -Patdd test -Dkilda.host="127.0.0.1" -Dsurefire.useFile=false -Dcucumber.options="--tags @CRUD_UPDATE"
 
 atdd: update
 	mvn -f services/src/atdd/pom.xml -P$@ test -Dkilda.host="$(kilda)" -Dcucumber.options="--tags $(tags)"

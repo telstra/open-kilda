@@ -17,6 +17,7 @@
 import json
 import logging
 import multiprocessing
+import threading
 
 import config
 import flow_utils
@@ -39,7 +40,8 @@ MT_NETWORK = "org.openkilda.messaging.info.discovery.NetworkInfoData"
 CD_NETWORK = "org.openkilda.messaging.command.discovery.NetworkCommandData"
 
 # This is used for blocking on flow changes.
-flow_sem = multiprocessing.Semaphore()
+# flow_sem = multiprocessing.Semaphore()
+neo4j_update_lock = threading.RLock()
 
 
 class MessageItem(object):
@@ -522,7 +524,8 @@ class MessageItem(object):
                     operation, timestamp, correlation_id, payload)
 
         tx = None
-        flow_sem.acquire()
+        # flow_sem.acquire(timeout=10)  # wait 10 seconds .. then proceed .. possibly causing some issue.
+        neo4j_update_lock.acquire()
         try:
             if operation == "CREATE" or operation == "PUSH":
                 propagate = operation == "CREATE"
@@ -557,10 +560,12 @@ class MessageItem(object):
         except Exception:
             if tx is not None:
                 tx.rollback()
-            flow_sem.release()
+            # flow_sem.release()
             raise
 
-        flow_sem.release()
+        finally:
+            #flow_sem.release()
+            neo4j_update_lock.release()
 
         logger.info('Flow %s request processed: '
                     'timestamp=%s, correlation_id=%s, payload=%s',
