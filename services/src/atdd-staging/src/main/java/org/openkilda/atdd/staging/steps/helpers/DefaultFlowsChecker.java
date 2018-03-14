@@ -23,11 +23,12 @@ public final class DefaultFlowsChecker {
 
     public static boolean validateDefaultRules(SwitchEntry sw, FlowEntriesMap map, Scenario scenario) {
         FlowEntry flow = map.get(BROADCAST_FLOW);
-        boolean result = isValidDefaultFlow(flow, sw.getSwitchId(), scenario);
+        boolean result = isValidDefaultFlow(BROADCAST_FLOW, flow, sw.getSwitchId(), scenario);
+        result = result & isValidDropRule(map.get(DROP_FLOW), sw.getSwitchId(), scenario);
 
         if (!VERSION_12.equals(sw.getOFVersion())) {
-            result = result & isValidDropRule(map.get(DROP_FLOW), sw.getSwitchId(), scenario);
-            result = result & isValidDefaultFlow(map.get(NON_BROADCAST_FLOW), sw.getSwitchId(), scenario);
+            result = result & isValidDefaultFlow(NON_BROADCAST_FLOW,
+                    map.get(NON_BROADCAST_FLOW), sw.getSwitchId(), scenario);
         }
 
         return result;
@@ -55,10 +56,10 @@ public final class DefaultFlowsChecker {
         return valid;
     }
 
-    private static boolean isValidDefaultFlow(FlowEntry flow, String switchId, Scenario scenario) {
+    private static boolean isValidDefaultFlow(String flowId, FlowEntry flow, String switchId, Scenario scenario) {
         boolean valid = true;
         if (Objects.isNull(flow)) {
-            scenario.write(String.format("Switch %s doesn't contain %s flow", switchId, DROP_FLOW));
+            scenario.write(String.format("Switch %s doesn't contain %s flow", switchId, flowId));
             return false;
         }
 

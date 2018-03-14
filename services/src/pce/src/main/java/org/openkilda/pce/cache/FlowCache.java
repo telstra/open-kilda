@@ -193,6 +193,21 @@ public class FlowCache extends Cache {
     }
 
     /**
+     * Gets flows with specified switch and port in the path.
+     *
+     * @param portData port
+     * @return set of flows
+     */
+    public Set<ImmutablePair<Flow, Flow>> getActiveFlowsWithAffectedPath(PortInfoData portData) {
+        PathNode node = new PathNode(portData.getSwitchId(), portData.getPortNo(), 0);
+        return flowPool.values().stream()
+                .filter(flow -> flow.getLeft().getFlowPath().getPath().contains(node)
+                        || flow.getRight().getFlowPath().getPath().contains(node))
+                .filter(flow -> flow.getLeft().getState().isActive())
+                .collect(Collectors.toSet());
+    }
+
+    /**
      * Gets flows for state change.
      *
      * @param switchId switch id

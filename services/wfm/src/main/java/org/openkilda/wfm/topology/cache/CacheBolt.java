@@ -379,6 +379,8 @@ public class CacheBolt
         switch (port.getState()) {
             case DOWN:
             case DELETE:
+                Set<ImmutablePair<Flow, Flow>> affectedFlows = flowCache.getActiveFlowsWithAffectedPath(port);
+                emitRerouteCommands(affectedFlows, tuple, UUID.randomUUID().toString(), FlowOperation.UPDATE);
                 break;
 
             case UP:
