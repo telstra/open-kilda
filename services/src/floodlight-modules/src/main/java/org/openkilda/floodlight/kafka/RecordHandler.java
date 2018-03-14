@@ -117,9 +117,9 @@ class RecordHandler implements Runnable {
 
         Long meterId = command.getMeterId();
         if (meterId == null) {
-            logger.error("Meter_id should be passed within flow command. Cookie is {}", command.getCookie());
+            logger.error("Meter_id should be passed within ingress flow command. Cookie is {}", command.getCookie());
             meterId = (long) meterPool.allocate(command.getSwitchId(), command.getId());
-            logger.debug("Allocated meter_id {} for cookie {}", meterId, command.getCookie());
+            logger.error("Allocated meter_id {} for cookie {}", meterId, command.getCookie());
         }
 
         try {
@@ -206,7 +206,12 @@ class RecordHandler implements Runnable {
         InstallOneSwitchFlow command = (InstallOneSwitchFlow) message.getData();
         logger.debug("creating a flow through one switch: {}", command);
 
-        int meterId = meterPool.allocate(command.getSwitchId(), command.getId());
+        Long meterId = command.getMeterId();
+        if (meterId == null) {
+            logger.error("Meter_id should be passed within one switch flow command. Cookie is {}", command.getCookie());
+            meterId = (long) meterPool.allocate(command.getSwitchId(), command.getId());
+            logger.error("Allocated meter_id {} for cookie {}", meterId, command.getCookie());
+        }
 
         try {
             context.getSwitchManager().installMeter(
