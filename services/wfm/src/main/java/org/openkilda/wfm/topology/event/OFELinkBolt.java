@@ -63,6 +63,7 @@ import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * This class is the main class for tracking network topology. The most complicated part of
@@ -218,9 +219,8 @@ public class OFELinkBolt
         try {
             logger.debug("Send network dump request");
 
-            CommandMessage command = new CommandMessage(new NetworkCommandData(),
-                    System.currentTimeMillis(), Utils.SYSTEM_CORRELATION_ID,
-                    Destination.CONTROLLER);
+            CommandMessage command = new CommandMessage(new NetworkCommandData(), System.currentTimeMillis(),
+                    UUID.randomUUID().toString(), Destination.CONTROLLER);
             String json = Utils.MAPPER.writeValueAsString(command);
             collector.emit(islDiscoveryTopic, tuple, new Values(PAYLOAD, json));
         }

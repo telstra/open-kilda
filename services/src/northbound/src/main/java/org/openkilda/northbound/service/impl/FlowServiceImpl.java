@@ -50,6 +50,7 @@ import org.openkilda.northbound.service.BatchResults;
 import org.openkilda.northbound.service.FlowService;
 import org.openkilda.northbound.utils.Converter;
 
+import org.openkilda.northbound.utils.RequestCorrelation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -134,7 +135,8 @@ public class FlowServiceImpl implements FlowService {
      * {@inheritDoc}
      */
     @Override
-    public FlowPayload createFlow(final FlowPayload flow, final String correlationId) {
+    public FlowPayload createFlow(final FlowPayload flow) {
+        final String correlationId = RequestCorrelation.getId();
         LOGGER.debug("Create flow: {}={}", CORRELATION_ID, correlationId);
         FlowCreateRequest data = new FlowCreateRequest(Converter.buildFlowByFlowPayload(flow));
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
@@ -149,7 +151,8 @@ public class FlowServiceImpl implements FlowService {
      * {@inheritDoc}
      */
     @Override
-    public FlowPayload deleteFlow(final String id, final String correlationId) {
+    public FlowPayload deleteFlow(final String id) {
+        final String correlationId = RequestCorrelation.getId();
         LOGGER.debug("Delete flow: {}={}", CORRELATION_ID, correlationId);
         messageConsumer.clear();
         CommandMessage request = _sendDeleteFlow(id, correlationId);
@@ -184,7 +187,8 @@ public class FlowServiceImpl implements FlowService {
      * {@inheritDoc}
      */
     @Override
-    public FlowPayload getFlow(final String id, final String correlationId) {
+    public FlowPayload getFlow(final String id) {
+        final String correlationId = RequestCorrelation.getId();
         LOGGER.debug("Get flow: {}={}", CORRELATION_ID, correlationId);
         FlowGetRequest data = new FlowGetRequest(new FlowIdStatusPayload(id, null));
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
@@ -200,7 +204,8 @@ public class FlowServiceImpl implements FlowService {
      * {@inheritDoc}
      */
     @Override
-    public FlowPayload updateFlow(final FlowPayload flow, final String correlationId) {
+    public FlowPayload updateFlow(final FlowPayload flow) {
+        final String correlationId = RequestCorrelation.getId();
         LOGGER.debug("Update flow: {}={}", CORRELATION_ID, correlationId);
         FlowUpdateRequest data = new FlowUpdateRequest(Converter.buildFlowByFlowPayload(flow));
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
@@ -215,7 +220,8 @@ public class FlowServiceImpl implements FlowService {
      * {@inheritDoc}
      */
     @Override
-    public List<FlowPayload> getFlows(final String correlationId) {
+    public List<FlowPayload> getFlows() {
+        final String correlationId = RequestCorrelation.getId();
         LOGGER.debug("\n\n\nGet flows: ENTER {}={}\n", CORRELATION_ID, correlationId);
         // TODO: why does FlowsGetRequest use empty FlowIdStatusPayload? Delete if not needed.
         FlowsGetRequest data = new FlowsGetRequest(new FlowIdStatusPayload());
@@ -233,11 +239,12 @@ public class FlowServiceImpl implements FlowService {
      * {@inheritDoc}
      */
     @Override
-    public List<FlowPayload> deleteFlows(final String correlationId) {
+    public List<FlowPayload> deleteFlows() {
+        String correlationId = RequestCorrelation.getId();
         LOGGER.debug("\n\nDELETE ALL FLOWS: ENTER {}={}\n", CORRELATION_ID, correlationId);
         ArrayList<FlowPayload> result = new ArrayList<>();
         // TODO: Need a getFlowIDs .. since that is all we need
-        List<FlowPayload> flows = this.getFlows(correlationId+"-GET");
+        List<FlowPayload> flows = this.getFlows();
 
         messageConsumer.clear();
 
@@ -262,7 +269,8 @@ public class FlowServiceImpl implements FlowService {
      * {@inheritDoc}
      */
     @Override
-    public FlowIdStatusPayload statusFlow(final String id, final String correlationId) {
+    public FlowIdStatusPayload statusFlow(final String id) {
+        final String correlationId = RequestCorrelation.getId();
         LOGGER.debug("Flow status: {}={}", CORRELATION_ID, correlationId);
         FlowStatusRequest data = new FlowStatusRequest(new FlowIdStatusPayload(id, null));
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
@@ -277,7 +285,8 @@ public class FlowServiceImpl implements FlowService {
      * {@inheritDoc}
      */
     @Override
-    public FlowPathPayload pathFlow(final String id, final String correlationId) {
+    public FlowPathPayload pathFlow(final String id) {
+        final String correlationId = RequestCorrelation.getId();
         LOGGER.debug("Flow path: {}={}", CORRELATION_ID, correlationId);
         FlowPathRequest data = new FlowPathRequest(new FlowIdStatusPayload(id, null));
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
@@ -292,23 +301,24 @@ public class FlowServiceImpl implements FlowService {
      * {@inheritDoc}
      */
     @Override
-    public BatchResults unpushFlows(List<FlowInfoData> externalFlows, String correlationId) {
-        return flowPushUnpush(externalFlows, correlationId, FlowOperation.UNPUSH);
+    public BatchResults unpushFlows(List<FlowInfoData> externalFlows) {
+        return flowPushUnpush(externalFlows, FlowOperation.UNPUSH);
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public BatchResults pushFlows(List<FlowInfoData> externalFlows, String correlationId) {
-        return flowPushUnpush(externalFlows, correlationId, FlowOperation.PUSH);
+    public BatchResults pushFlows(List<FlowInfoData> externalFlows) {
+        return flowPushUnpush(externalFlows, FlowOperation.PUSH);
     }
 
     /**
      * There are only minor differences between push and unpush .. this utility function helps
      */
-    private BatchResults flowPushUnpush(List<FlowInfoData> externalFlows, String correlationId,
+    private BatchResults flowPushUnpush(List<FlowInfoData> externalFlows,
                                         FlowOperation op) {
+        final String correlationId = RequestCorrelation.getId();
         LOGGER.debug("Flow {}: {}={}", op, CORRELATION_ID, correlationId);
         LOGGER.debug("Size of list: {}", externalFlows.size());
         // First, send them all, then wait for all the responses.
@@ -388,7 +398,8 @@ public class FlowServiceImpl implements FlowService {
      * {@inheritDoc}
      */
     @Override
-    public FlowPathPayload rerouteFlow(String flowId, String correlationId) {
+    public FlowPathPayload rerouteFlow(String flowId) {
+        final String correlationId = RequestCorrelation.getId();
         Flow flow = new Flow();
         flow.setFlowId(flowId);
         FlowRerouteRequest data = new FlowRerouteRequest(flow, FlowOperation.UPDATE);
@@ -406,7 +417,8 @@ public class FlowServiceImpl implements FlowService {
      * {@inheritDoc}
      */
     @Override
-    public FlowCacheSyncResults syncFlowCache(final String correlationId) {
+    public FlowCacheSyncResults syncFlowCache() {
+        final String correlationId = RequestCorrelation.getId();
         LOGGER.debug("Flow cache sync: {}={}", CORRELATION_ID, correlationId);
         FlowCacheSyncRequest data = new FlowCacheSyncRequest();
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);

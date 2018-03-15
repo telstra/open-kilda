@@ -26,6 +26,7 @@ import org.openkilda.northbound.messaging.HealthCheckMessageConsumer;
 import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.service.HealthCheckService;
 
+import org.openkilda.northbound.utils.RequestCorrelation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -92,7 +93,8 @@ public class HealthCheckImpl implements HealthCheckService {
      * @return the FlowModel instance
      */
     @Override
-    public HealthCheck getHealthCheck(String correlationId) {
+    public HealthCheck getHealthCheck() {
+        final String correlationId = RequestCorrelation.getId();
 
         healthCheckMessageConsumer.clear();
 
