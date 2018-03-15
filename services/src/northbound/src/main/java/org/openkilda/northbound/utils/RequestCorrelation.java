@@ -7,7 +7,7 @@ public final class RequestCorrelation {
 
     public static final String CORRELATION_ID = "correlation_id";
 
-    private static final ThreadLocal<String> ID = new ThreadLocal<>();
+    private static final InheritableThreadLocal<String> ID = new InheritableThreadLocal<>();
 
     public static String getId() { return ID.get(); }
 
