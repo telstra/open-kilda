@@ -15,16 +15,13 @@
 
 package org.openkilda.northbound.controller;
 
-import static org.openkilda.messaging.Utils.CORRELATION_ID;
-import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
-
-import org.openkilda.messaging.error.MessageError;
-import org.openkilda.messaging.model.HealthCheck;
-import org.openkilda.northbound.service.HealthCheckService;
-
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
+import org.openkilda.messaging.error.MessageError;
+import org.openkilda.messaging.model.HealthCheck;
+import org.openkilda.northbound.service.HealthCheckService;
+import org.openkilda.northbound.utils.RequestCorrelation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,7 +30,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
@@ -58,7 +54,6 @@ public class HealthCheckController {
     /**
      * Gets the health-check status.
      *
-     * @param correlationId request correlation id
      * @return health-check model entity
      */
     @ApiOperation(value = "Gets health-check status", response = HealthCheck.class)
@@ -71,11 +66,10 @@ public class HealthCheckController {
     @RequestMapping(value = "/health-check",
             method = RequestMethod.GET,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
-    public ResponseEntity<HealthCheck> getHealthCheck(
-            @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
+    public ResponseEntity<HealthCheck> getHealthCheck() {
         logger.debug("getHealthCheck");
 
-        HealthCheck healthCheck = healthCheckService.getHealthCheck(correlationId);
+        HealthCheck healthCheck = healthCheckService.getHealthCheck();
         HttpStatus status = healthCheck.hasNonOperational() ? HttpStatus.GATEWAY_TIMEOUT : HttpStatus.OK;
 
         return new ResponseEntity<>(healthCheck, new HttpHeaders(), status);

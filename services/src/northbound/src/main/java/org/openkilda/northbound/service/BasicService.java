@@ -16,17 +16,14 @@
 package org.openkilda.northbound.service;
 
 import static org.openkilda.messaging.Utils.CORRELATION_ID;
-import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 import static org.openkilda.messaging.error.ErrorType.INTERNAL_ERROR;
 
 import org.openkilda.messaging.Message;
-import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,7 +75,7 @@ public interface BasicService {
             String errorMessage = "Response message is empty";
             logger.error("{}: {}={}, command={}", errorMessage,
                     CORRELATION_ID, correlationId, requestMessage);
-            throw new MessageException(DEFAULT_CORRELATION_ID, System.currentTimeMillis(),
+            throw new MessageException(requestMessage.getCorrelationId(), System.currentTimeMillis(),
                     INTERNAL_ERROR, errorMessage, requestMessage.toString());
         }
         return data;

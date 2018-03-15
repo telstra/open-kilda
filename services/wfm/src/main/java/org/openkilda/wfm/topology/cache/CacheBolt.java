@@ -459,8 +459,8 @@ public class CacheBolt
         Values values = null;
 
         try {
-            CommandMessage command = new CommandMessage(new NetworkCommandData(),
-                    System.currentTimeMillis(), Utils.SYSTEM_CORRELATION_ID, Destination.TOPOLOGY_ENGINE);
+            CommandMessage command = new CommandMessage(new NetworkCommandData(), System.currentTimeMillis(),
+                    UUID.randomUUID().toString(), Destination.TOPOLOGY_ENGINE);
             values = new Values(Utils.MAPPER.writeValueAsString(command));
         } catch (IOException exception) {
             logger.error("Could not serialize network cache request", exception);

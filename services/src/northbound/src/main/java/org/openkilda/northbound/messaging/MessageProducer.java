@@ -15,6 +15,8 @@
 
 package org.openkilda.northbound.messaging;
 
+import org.openkilda.messaging.Message;
+
 public interface MessageProducer {
     /**
      * Kafka message send timeout.
@@ -25,7 +27,7 @@ public interface MessageProducer {
      * Sends messages to WorkFlowManager.
      *
      * @param topic  kafka topic
-     * @param object object to serialize and send
+     * @param message message to serialize and send
      */
-    void send(final String topic, final Object object);
+    void send(final String topic, final Message message);
 }
