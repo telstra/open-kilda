@@ -15,10 +15,15 @@
 
 package org.openkilda.atdd.staging.model.topology;
 
+import static java.util.Collections.emptyList;
+import static java.util.Collections.unmodifiableList;
+import static java.util.stream.Collectors.toList;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableRangeSet;
 import com.google.common.collect.Range;
 import com.google.common.collect.RangeSet;
@@ -28,10 +33,6 @@ import lombok.experimental.NonFinal;
 
 import java.util.List;
 import java.util.stream.Collectors;
-
-import static java.util.Collections.emptyList;
-import static java.util.Collections.unmodifiableList;
-import static java.util.stream.Collectors.toList;
 
 /**
  * Defines a topology with switches, links and trafgens.
@@ -57,6 +58,16 @@ public class TopologyDefinition {
             @JsonProperty("isls") List<Isl> isls,
             @JsonProperty("trafgens") List<Trafgen> trafgens,
             @JsonProperty("trafgen_config") TrafgenConfig trafgenConfig) {
+
+        Preconditions.checkArgument(
+                switches.size() == switches.stream().map(Switch::getDpId).distinct().count(),
+                "Switches must have no duplicates");
+        Preconditions.checkArgument(
+                isls.size() == isls.stream().distinct().count(), "Isls must have no duplicates");
+        Preconditions.checkArgument(
+                trafgens.size() == trafgens.stream().map(Trafgen::getName).distinct().count(),
+                "Trafgens must have no duplicates");
+
         return new TopologyDefinition(
                 unmodifiableList(switches),
                 unmodifiableList(isls),
@@ -216,6 +227,7 @@ public class TopologyDefinition {
     @Value
     @NonFinal
     public static class TrafgenConfig {
+
         @NonNull
         private String addressPoolBase;
         private int addressPoolPrefixLen;
