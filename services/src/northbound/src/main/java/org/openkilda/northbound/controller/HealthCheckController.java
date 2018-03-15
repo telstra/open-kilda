@@ -69,7 +69,7 @@ public class HealthCheckController {
     public ResponseEntity<HealthCheck> getHealthCheck() {
         logger.debug("getHealthCheck");
 
-        HealthCheck healthCheck = healthCheckService.getHealthCheck(RequestCorrelation.getId());
+        HealthCheck healthCheck = healthCheckService.getHealthCheck();
         HttpStatus status = healthCheck.hasNonOperational() ? HttpStatus.GATEWAY_TIMEOUT : HttpStatus.OK;
 
         return new ResponseEntity<>(healthCheck, new HttpHeaders(), status);
