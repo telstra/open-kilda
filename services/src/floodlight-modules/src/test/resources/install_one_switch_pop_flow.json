@@ -14,6 +14,7 @@
 		"output_vlan_type": "POP",
 		"bandwidth": 10000,
 		"meter_id": 1
-	}
+	},
+	"correlation_id": "test-be3b13a8-af08-44ee-b444-3e8ca31c86b8"
 }
 

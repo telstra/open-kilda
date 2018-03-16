@@ -12,6 +12,7 @@
 		"transit_vlan_id": 100,
 		"output_vlan_id": 200,
 		"output_vlan_type": "PUSH"
-	}
+	},
+	"correlation_id": "test-76294fc3-5363-4a98-a66e-e066e8ef6799"
 }
 

@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.flow;
 
+import static java.lang.String.format;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -1014,7 +1015,7 @@ public class FlowTopologyTest extends AbstractStormTest {
     @Ignore("Not reliable during batch run")
     public void ctrlDumpHandler() throws Exception {
         CtrlRequest request = new CtrlRequest(
-                "flowtopology/" + ComponentType.CRUD_BOLT.toString(), new RequestData("dump"), 1, "dump-correlation-id", Destination.WFM_CTRL);
+                "flowtopology/" + ComponentType.CRUD_BOLT.toString(), new RequestData("dump"), 1, format("test-%s", UUID.randomUUID()), Destination.WFM_CTRL);
 
         sendMessage(request, flowTopology.getConfig().getKafkaFlowTopic());
 
@@ -1215,7 +1216,7 @@ public class FlowTopologyTest extends AbstractStormTest {
 
     private void sendClearState() throws IOException, InterruptedException {
         CtrlRequest request = new CtrlRequest("flowtopology/" + ComponentType.CRUD_BOLT.toString(),
-                new RequestData("clearState"), 1, "clear-state-correlation-id", Destination.WFM_CTRL);
+                new RequestData("clearState"), 1, format("test-%s", UUID.randomUUID()), Destination.WFM_CTRL);
         sendMessage(request, topologyConfig.getKafkaCtrlTopic());
 
         ConsumerRecord<String, String> raw = ctrlConsumer.pollMessage();

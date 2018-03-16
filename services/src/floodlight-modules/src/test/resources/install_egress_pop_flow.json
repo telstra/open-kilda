@@ -12,6 +12,7 @@
 		"transit_vlan_id": 100,
 		"output_vlan_id": 0,
 		"output_vlan_type": "POP"
-	}
+	},
+	"correlation_id": "test-91af3878-a5c4-42c3-98b7-a9cec8b65dcb"
 }
 

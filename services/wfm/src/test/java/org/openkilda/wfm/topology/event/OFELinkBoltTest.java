@@ -1,14 +1,13 @@
 package org.openkilda.wfm.topology.event;
 
+import static java.lang.String.format;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.only;
-import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 import static org.openkilda.messaging.info.event.PortChangeType.UP;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import edu.emory.mathcs.backport.java.util.Collections;
 import org.apache.storm.state.InMemoryKeyValueState;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -37,8 +36,10 @@ import org.openkilda.wfm.topology.TopologyConfig;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.UUID;
 
 public class OFELinkBoltTest extends AbstractStormTest {
 
@@ -166,7 +167,7 @@ public class OFELinkBoltTest extends AbstractStormTest {
                 Collections.emptySet(),
                 Collections.emptySet());
 
-        InfoMessage info = new InfoMessage(dump, 0, DEFAULT_CORRELATION_ID, Destination.WFM);
+        InfoMessage info = new InfoMessage(dump, 0, format("test-%s", UUID.randomUUID()), Destination.WFM);
         String request = objectMapper.writeValueAsString(info);
         Tuple dumpTuple = new TupleImpl(context, new Values(request), TASK_ID_BOLT,
                 STREAM_ID_INPUT);
@@ -192,7 +193,7 @@ public class OFELinkBoltTest extends AbstractStormTest {
                 Collections.emptySet(),
                 Collections.emptySet());
 
-        InfoMessage info = new InfoMessage(dump, 0, DEFAULT_CORRELATION_ID, Destination.WFM);
+        InfoMessage info = new InfoMessage(dump, 0, format("test-%s", UUID.randomUUID()), Destination.WFM);
         String request = objectMapper.writeValueAsString(info);
         return new TupleImpl(context, new Values(request), TASK_ID_BOLT,
                 STREAM_ID_INPUT);

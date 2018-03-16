@@ -19,7 +19,6 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.VERIFICATION_BCAST_PACKET_DST;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.VERIFICATION_BCAST_PACKET_DST_MASK;
-import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 import static org.openkilda.messaging.Utils.ETH_TYPE;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_12;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_13;
@@ -39,6 +38,8 @@ import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.util.FlowModUtils;
 import org.openkilda.floodlight.kafka.KafkaMessageProducer;
 import org.openkilda.floodlight.switchmanager.web.SwitchManagerWebRoutable;
+import org.openkilda.floodlight.utils.CorrelationContext;
+import org.openkilda.floodlight.utils.OFMessageListenerProxyWithCorrelationContext;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
@@ -183,7 +184,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
         logger.info("Starting " + SwitchEventCollector.class.getCanonicalName());
         restApiService.addRestletRoutable(new SwitchManagerWebRoutable());
-        floodlightProvider.addOFMessageListener(OFType.ERROR, this);
+        floodlightProvider.addOFMessageListener(OFType.ERROR, new OFMessageListenerProxyWithCorrelationContext(this));
     }
 
     /**
@@ -196,7 +197,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         if (OFType.ERROR.equals(msg.getType())) {
             ErrorMessage error = new ErrorMessage(
                     new ErrorData(ErrorType.INTERNAL_ERROR, ((OFErrorMsg) msg).getErrType().toString(), null),
-                    System.currentTimeMillis(), DEFAULT_CORRELATION_ID, Destination.WFM_TRANSACTION);
+                    System.currentTimeMillis(), CorrelationContext.getId(), Destination.WFM_TRANSACTION);
             // TODO: Most/all commands are flow related, but not all. 'kilda.flow' might
             // not be the best place to send a generic error.
             kafkaProducer.postMessage("kilda.flow", error);
@@ -461,14 +462,16 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public long installMeter(final DatapathId dpid, final long bandwidth, final long burstSize, final long meterId)
             throws SwitchOperationException {
         if (meterId == 0) {
-            logger.info("skip installing meter {} on switch {} width bandwidth {}", meterId, dpid, bandwidth);
+            logger.info("skip installing meter {} on switch {} width bandwidth {}",
+                    new Object[] {meterId, dpid, bandwidth});
             return 0L;
         }
 
         IOFSwitch sw = lookupSwitch(dpid);
 
         if (OVS_MANUFACTURER.equals(sw.getSwitchDescription().getManufacturerDescription())) {
-            logger.info("skip installing meter {} on OVS switch {} width bandwidth {}", meterId, dpid, bandwidth);
+            logger.info("skip installing meter {} on OVS switch {} width bandwidth {}",
+                    new Object[] {meterId, dpid, bandwidth});
             return 0L;
         }
 
@@ -489,7 +492,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     private long installMeter(final IOFSwitch sw, final DatapathId dpid, final long bandwidth,
                                                      final long burstSize, final long meterId)
             throws OFInstallException {
-        logger.debug("installing meter {} on switch {} width bandwidth {}", meterId, dpid, bandwidth);
+        logger.debug("installing meter {} on switch {} width bandwidth {}", new Object[] {meterId, dpid, bandwidth});
 
         Set<OFMeterFlags> flags = new HashSet<>(Arrays.asList(OFMeterFlags.KBPS, OFMeterFlags.BURST));
         OFFactory ofFactory = sw.getOFFactory();
@@ -519,7 +522,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             final IOFSwitch sw, final DatapathId dpid,
             final long bandwidth, final long burstSize, final long meterId)
             throws OFInstallException {
-        logger.debug("installing legacy meter {} on OVS switch {} width bandwidth {}", meterId, dpid, bandwidth);
+        logger.debug("installing legacy meter {} on OVS switch {} width bandwidth {}",
+                new Object[] {meterId, dpid, bandwidth});
 
         Set<OFLegacyMeterFlags> flags = new HashSet<>(Arrays.asList(OFLegacyMeterFlags.KBPS, OFLegacyMeterFlags.BURST));
         OFFactory ofFactory = sw.getOFFactory();

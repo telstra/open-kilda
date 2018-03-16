@@ -91,7 +91,8 @@ public class FlowInfoData extends InfoData {
         this.flowId = flowId;
         this.payload = payload;
         this.operation = operation;
-        this.correlationId = correlationId;
+        this.correlationId = Objects.requireNonNull(correlationId, "correlationId must not be null");
+
     }
 
     /**
@@ -163,7 +164,7 @@ public class FlowInfoData extends InfoData {
      * @param correlationId flow request correlation id
      */
     public void setCorrelationId(String correlationId) {
-        this.correlationId = correlationId;
+        this.correlationId = Objects.requireNonNull(correlationId, "correlationId must not be null");
     }
 
     /**

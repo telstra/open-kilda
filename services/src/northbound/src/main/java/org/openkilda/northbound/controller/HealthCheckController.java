@@ -21,7 +21,6 @@ import io.swagger.annotations.ApiResponses;
 import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.model.HealthCheck;
 import org.openkilda.northbound.service.HealthCheckService;
-import org.openkilda.northbound.utils.RequestCorrelation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

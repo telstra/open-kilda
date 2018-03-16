@@ -15,7 +15,6 @@
 
 package org.openkilda.northbound.service;
 
-import static org.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.openkilda.messaging.error.ErrorType.INTERNAL_ERROR;
 
 import org.openkilda.messaging.Message;
@@ -39,42 +38,36 @@ public interface BasicService {
     /**
      * Validates info message.
      *
-     * @param correlationId     request correlation id
      * @param requestMessage    request command message
      * @param responseMessage   response info message
      * @return parsed response InfoData
      */
     default InfoData validateInfoMessage(final Message requestMessage,
-                                         final Message responseMessage,
-                                         final String correlationId) {
+                                         final Message responseMessage) {
         InfoData data;
         if (responseMessage != null) {
             if (responseMessage instanceof ErrorMessage) {
                 ErrorData error = ((ErrorMessage) responseMessage).getData();
-                logger.error("Response message is error: {}={}, command={}, error={}",
-                        CORRELATION_ID, correlationId, requestMessage, error);
+                logger.error("Response message is error: command={}, error={}", requestMessage, error);
                 throw new MessageException((ErrorMessage) responseMessage);
             } else if (responseMessage instanceof InfoMessage) {
                 InfoMessage info = (InfoMessage) responseMessage;
                 data = info.getData();
                 if (data == null) {
                     String errorMessage = "Response message data is empty";
-                    logger.error("{}: {}={}, command={}, info={}", errorMessage,
-                            CORRELATION_ID, correlationId, requestMessage, info);
+                    logger.error("{}: command={}, info={}", errorMessage, requestMessage, info);
                     throw new MessageException(responseMessage.getCorrelationId(), responseMessage.getTimestamp(),
                             INTERNAL_ERROR, errorMessage, requestMessage.toString());
                 }
             } else {
                 String errorMessage = "Response message type is unexpected";
-                logger.error("{}: {}:{}, command={}, message={}", errorMessage,
-                        CORRELATION_ID, correlationId, requestMessage, responseMessage);
+                logger.error("{}: command={}, message={}", errorMessage, requestMessage, responseMessage);
                 throw new MessageException(responseMessage.getCorrelationId(), responseMessage.getTimestamp(),
                         INTERNAL_ERROR, errorMessage, requestMessage.toString());
             }
         } else {
             String errorMessage = "Response message is empty";
-            logger.error("{}: {}={}, command={}", errorMessage,
-                    CORRELATION_ID, correlationId, requestMessage);
+            logger.error("{}: command={}", errorMessage, requestMessage);
             throw new MessageException(requestMessage.getCorrelationId(), System.currentTimeMillis(),
                     INTERNAL_ERROR, errorMessage, requestMessage.toString());
         }

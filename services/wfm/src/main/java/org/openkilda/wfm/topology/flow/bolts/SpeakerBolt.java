@@ -80,9 +80,8 @@ public class SpeakerBolt extends BaseRichBolt {
                     String switchId = ((BaseInstallFlow) data).getSwitchId();
                     String flowId = ((BaseInstallFlow) data).getId();
 
-                    logger.debug("Flow install message: {}={}, switch-id={}, {}={}, {}={}, message={}",
-                            Utils.CORRELATION_ID, message.getCorrelationId(), switchId,
-                            Utils.FLOW_ID, flowId, Utils.TRANSACTION_ID, transactionId, request);
+                    logger.debug("Flow install message: switch-id={}, {}={}, {}={}, message={}",
+                            switchId, Utils.FLOW_ID, flowId, Utils.TRANSACTION_ID, transactionId, request);
 
                     message.setDestination(Destination.TOPOLOGY_ENGINE);
                     values = new Values(MAPPER.writeValueAsString(message), switchId, flowId, transactionId);
@@ -95,17 +94,15 @@ public class SpeakerBolt extends BaseRichBolt {
                     String switchId = ((RemoveFlow) data).getSwitchId();
                     String flowId = ((RemoveFlow) data).getId();
 
-                    logger.debug("Flow remove message: {}={}, switch-id={}, {}={}, {}={}, message={}",
-                            Utils.CORRELATION_ID, message.getCorrelationId(), switchId,
-                            Utils.FLOW_ID, flowId, Utils.TRANSACTION_ID, transactionId, request);
+                    logger.debug("Flow remove message: switch-id={}, {}={}, {}={}, message={}",
+                            switchId, Utils.FLOW_ID, flowId, Utils.TRANSACTION_ID, transactionId, request);
 
                     message.setDestination(Destination.TOPOLOGY_ENGINE);
                     values = new Values(MAPPER.writeValueAsString(message), switchId, flowId, transactionId);
                     outputCollector.emit(StreamType.DELETE.toString(), tuple, values);
 
                 } else {
-                    logger.debug("Skip undefined command message: {}={}, message={}",
-                            Utils.CORRELATION_ID, message.getCorrelationId(), request);
+                    logger.debug("Skip undefined command message: message={}", request);
                 }
             } else if (message instanceof ErrorMessage) {
                 String flowId = ((ErrorMessage) message).getData().getErrorDescription();
@@ -113,24 +110,22 @@ public class SpeakerBolt extends BaseRichBolt {
 
                 // TODO: Should add debug message if receiving ErrorMessage.
                 if (flowId != null) {
-                    logger.error("Flow error message: {}={}, {}={}, message={}",
-                            Utils.CORRELATION_ID, message.getCorrelationId(), Utils.FLOW_ID, flowId, request);
+                    logger.error("Flow error message: {}={}, message={}",
+                            Utils.FLOW_ID, flowId, request);
 
                     values = new Values(flowId, status);
                     outputCollector.emit(StreamType.STATUS.toString(), tuple, values);
                 } else {
-                    logger.debug("Skip error message without flow-id: {}={}, message={}",
-                            Utils.CORRELATION_ID, message.getCorrelationId(), request);
+                    logger.debug("Skip error message without flow-id: message={}", request);
                 }
 
             } else {
                 // TODO: should this be a warn or error? Probably, after refactored / specific
                 // topics
-                logger.debug("Skip undefined message: {}={}, message={}",
-                        Utils.CORRELATION_ID, message.getCorrelationId(), request);
+                logger.debug("Skip undefined message: message={}", request);
             }
         } catch (IOException exception) {
-            logger.error("\n\nCould not deserialize message={}", request, exception);
+            logger.error("Could not deserialize message={}", request, exception);
         } finally {
             logger.debug("Speaker message ack: component={}, stream={}, tuple={}, values={}",
                     tuple.getSourceComponent(), tuple.getSourceStreamId(), tuple, values);

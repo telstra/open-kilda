@@ -83,7 +83,7 @@ public class MessageError implements Serializable {
                         @JsonProperty("error-type") final String type,
                         @JsonProperty("error-message") final String message,
                         @JsonProperty("error-description") final String description) {
-        this.correlationId = correlationId;
+        this.correlationId = Objects.requireNonNull(correlationId, "correlationId must not be null");
         this.timestamp = timestamp;
         this.errorType = type;
         this.errorMessage = message;

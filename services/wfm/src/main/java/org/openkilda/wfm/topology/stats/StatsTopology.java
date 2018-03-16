@@ -18,13 +18,13 @@ package org.openkilda.wfm.topology.stats;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.FLOW_STATS_METRIC_GEN;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.METER_CFG_STATS_METRIC_GEN;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.PORT_STATS_METRIC_GEN;
+import static org.openkilda.wfm.topology.utils.BoltProxyWithCorrelationContext.proxyWithCorrelationContext;
 
 import org.apache.storm.generated.StormTopology;
+import org.apache.storm.kafka.bolt.KafkaBolt;
 import org.apache.storm.kafka.spout.KafkaSpout;
 import org.apache.storm.topology.TopologyBuilder;
 import org.openkilda.messaging.ServiceType;
-import org.openkilda.pce.provider.NeoDriver;
-import org.openkilda.pce.provider.PathComputer;
 import org.openkilda.wfm.ConfigurationException;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.topology.AbstractTopology;
@@ -60,22 +60,27 @@ public class StatsTopology extends AbstractTopology {
 
         SpeakerBolt speakerBolt = new SpeakerBolt();
         final String statsOfsBolt = StatsComponentType.STATS_OFS_BOLT.toString();
-        builder.setBolt(statsOfsBolt, speakerBolt, parallelism)
+        builder.setBolt(statsOfsBolt, proxyWithCorrelationContext(speakerBolt), parallelism)
                 .shuffleGrouping(kafkaSpoutId);
 
-        builder.setBolt(PORT_STATS_METRIC_GEN.name(), new PortMetricGenBolt(), parallelism)
+        PortMetricGenBolt portMetricGenBolt = new PortMetricGenBolt();
+        builder.setBolt(PORT_STATS_METRIC_GEN.name(), proxyWithCorrelationContext(portMetricGenBolt), parallelism)
                 .fieldsGrouping(statsOfsBolt, StatsStreamType.PORT_STATS.toString(), fieldMessage);
-        builder.setBolt(METER_CFG_STATS_METRIC_GEN.name(), new MeterConfigMetricGenBolt(), parallelism)
+        MeterConfigMetricGenBolt meterConfigMetricGenBolt = new MeterConfigMetricGenBolt();
+        builder.setBolt(METER_CFG_STATS_METRIC_GEN.name(), proxyWithCorrelationContext(meterConfigMetricGenBolt), parallelism)
                 .fieldsGrouping(statsOfsBolt, StatsStreamType.METER_CONFIG_STATS.toString(), fieldMessage);
         logger.debug("starting flow_stats_metric_gen");
+        FlowMetricGenBolt flowMetricsGenBolt = createFlowMetricsGenBolt(config.getNeo4jHost(),
+                config.getNeo4jLogin(), config.getNeo4jPassword());
         builder.setBolt(FLOW_STATS_METRIC_GEN.name(),
-                createFlowMetricsGenBolt(config.getNeo4jHost(), config.getNeo4jLogin(), config.getNeo4jPassword()),
+                proxyWithCorrelationContext(flowMetricsGenBolt),
                 parallelism)
                 .fieldsGrouping(statsOfsBolt, StatsStreamType.FLOW_STATS.toString(), fieldMessage);
 
         final String openTsdbTopic = config.getKafkaOtsdbTopic();
         checkAndCreateTopic(openTsdbTopic);
-        builder.setBolt("stats-opentsdb", createKafkaBolt(openTsdbTopic))
+        KafkaBolt tsbdTopicKafkaBolt = createKafkaBolt(openTsdbTopic);
+        builder.setBolt("stats-opentsdb", proxyWithCorrelationContext(tsbdTopicKafkaBolt))
                 .shuffleGrouping(PORT_STATS_METRIC_GEN.name())
                 .shuffleGrouping(METER_CFG_STATS_METRIC_GEN.name())
                 .shuffleGrouping(FLOW_STATS_METRIC_GEN.name());

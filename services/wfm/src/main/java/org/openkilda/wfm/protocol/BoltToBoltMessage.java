@@ -3,8 +3,9 @@ package org.openkilda.wfm.protocol;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
-import org.openkilda.messaging.MessageData;
 import org.openkilda.wfm.MessageFormatException;
+
+import java.util.Objects;
 
 abstract public class BoltToBoltMessage<T> extends JsonMessage<T> {
     public static String FIELD_ID_CORRELATION_ID = "Correlation-Id";
@@ -23,7 +24,7 @@ abstract public class BoltToBoltMessage<T> extends JsonMessage<T> {
 
     public BoltToBoltMessage(T payload, String correlationId) {
         super(payload);
-        this.correlationId = correlationId;
+        this.correlationId = Objects.requireNonNull(correlationId, "correlationId must not be null");
     }
 
     public String getCorrelationId() {

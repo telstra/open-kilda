@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.opentsdb;
 
+import static org.openkilda.wfm.topology.utils.BoltProxyWithCorrelationContext.proxyWithCorrelationContext;
+
 import org.apache.storm.kafka.spout.KafkaSpout;
 import org.apache.storm.tuple.Fields;
 import org.openkilda.wfm.topology.opentsdb.bolts.DatapointParseBolt;
@@ -58,11 +60,13 @@ public class OpenTSDBTopology extends AbstractTopology {
         KafkaSpout kafkaSpout = createKafkaSpout(topic, spoutId);
         tb.setSpout(spoutId, kafkaSpout, config.getOpenTsdbNumSpouts());
 
-        tb.setBolt(parseBoltId, new DatapointParseBolt(), config.getGetDatapointParseBoltExecutors())
+        DatapointParseBolt datapointParseBolt = new DatapointParseBolt();
+        tb.setBolt(parseBoltId, proxyWithCorrelationContext(datapointParseBolt), config.getGetDatapointParseBoltExecutors())
                 .setNumTasks(config.getGetDatapointParseBoltWorkers())
                 .shuffleGrouping(spoutId);
 
-        tb.setBolt(boltId, new OpenTSDBFilterBolt(), config.getOpenTsdbFilterBoltExecutors())
+        OpenTSDBFilterBolt openTSDBFilterBolt = new OpenTSDBFilterBolt();
+        tb.setBolt(boltId, proxyWithCorrelationContext(openTSDBFilterBolt), config.getOpenTsdbFilterBoltExecutors())
                 .fieldsGrouping(parseBoltId, new Fields("hash"));
 
         OpenTsdbClient.Builder tsdbBuilder = OpenTsdbClient
@@ -73,7 +77,7 @@ public class OpenTSDBTopology extends AbstractTopology {
                 Collections.singletonList(TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER));
         openTsdbBolt.withBatchSize(config.getOpenTsdbBatchSize()).withFlushInterval(config.getOpenTsdbFlushInterval());
 //                .failTupleForFailedMetrics();
-        tb.setBolt("opentsdb", openTsdbBolt, config.getOpenTsdbBoltExecutors())
+        tb.setBolt("opentsdb", proxyWithCorrelationContext(openTsdbBolt), config.getOpenTsdbBoltExecutors())
                 .setNumTasks(config.getOpenTsdbBoltWorkers())
                 .shuffleGrouping(boltId);
 

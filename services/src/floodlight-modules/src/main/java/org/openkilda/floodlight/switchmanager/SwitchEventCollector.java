@@ -25,6 +25,8 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import org.openkilda.floodlight.kafka.KafkaMessageProducer;
+import org.openkilda.floodlight.utils.CorrelationContext;
+import org.openkilda.floodlight.utils.SwitchListenerProxyWithCorrelationContext;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Topic;
 import org.openkilda.messaging.info.InfoData;
@@ -43,7 +45,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
 public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListener, IFloodlightService {
     private static final Logger logger = LoggerFactory.getLogger(SwitchEventCollector.class);
@@ -212,7 +213,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
     @Override
     public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
         logger.info("Starting " + SwitchEventCollector.class.getCanonicalName());
-        switchService.addOFSwitchListener(this);
+        switchService.addOFSwitchListener(new SwitchListenerProxyWithCorrelationContext(this));
     }
 
     /**
@@ -275,7 +276,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
      * @return Message
      */
     private Message buildMessage(final InfoData data) {
-        return new InfoMessage(data, System.currentTimeMillis(), UUID.randomUUID().toString(), null);
+        return new InfoMessage(data, System.currentTimeMillis(), CorrelationContext.getId(), null);
     }
 
     /**

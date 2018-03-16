@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.utils;
 
+import static org.openkilda.wfm.topology.utils.BoltProxyWithCorrelationContext.proxyWithCorrelationContext;
+
 import org.openkilda.wfm.ConfigurationException;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.LaunchEnvironment;
@@ -60,7 +62,7 @@ public class KafkaFilerTopology extends AbstractTopology {
         if (directory.length() != 0)
             filer.withDir(new File(directory));
 
-        builder.setBolt("utils", filer, parallelism)
+        builder.setBolt("utils", proxyWithCorrelationContext(filer), parallelism)
                 .shuffleGrouping(spoutId);
         return builder.createTopology();
     }

@@ -34,7 +34,6 @@ import cucumber.api.java.en.When;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
-import org.apache.log4j.Logger;
 import org.glassfish.jersey.client.ClientConfig;
 import org.openkilda.KafkaUtils;
 import org.openkilda.flow.FlowUtils;
@@ -48,6 +47,8 @@ import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.topo.TestUtils;
 import org.openkilda.topo.TopologyHelp;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -57,8 +58,7 @@ import javax.ws.rs.core.Response;
 
 
 public class StormTopologyLCM {
-
-    private static final Logger LOGGER = Logger.getLogger(StormTopologyLCM.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(StormTopologyLCM.class);
 
     private static final String WFM_CONTAINER_NAME = "/wfm";
 

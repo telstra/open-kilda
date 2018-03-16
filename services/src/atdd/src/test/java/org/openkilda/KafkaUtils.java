@@ -16,6 +16,7 @@
 package org.openkilda;
 
 
+import static java.lang.String.format;
 import static org.openkilda.messaging.Destination.CTRL_CLIENT;
 import static org.openkilda.messaging.Destination.WFM_CTRL;
 import static org.openkilda.messaging.Utils.MAPPER;
@@ -43,6 +44,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 
 
@@ -101,7 +103,7 @@ public class KafkaUtils {
 
     public DumpStateManager getStateDumpsFromBolts() {
         long timestamp = System.currentTimeMillis();
-        String correlationId = String.format("atdd-%d", timestamp);
+        String correlationId = String.format("atdd-%s", UUID.randomUUID());
         CtrlRequest dumpRequest = new CtrlRequest("*", new RequestData("dump"), timestamp,
                 correlationId, WFM_CTRL);
         try {

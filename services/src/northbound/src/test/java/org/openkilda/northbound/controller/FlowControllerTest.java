@@ -15,8 +15,8 @@
 
 package org.openkilda.northbound.controller;
 
+import static java.lang.String.format;
 import static org.openkilda.messaging.Utils.CORRELATION_ID;
-import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 import static org.openkilda.messaging.Utils.MAPPER;
 import static org.openkilda.northbound.controller.TestMessageMock.ERROR_FLOW_ID;
 import static org.junit.Assert.assertEquals;
@@ -64,9 +64,11 @@ public class FlowControllerTest {
     private static final String PASSWORD = "kilda";
     private static final String ROLE = "ADMIN";
 
-    private static final MessageError AUTH_ERROR = new MessageError(DEFAULT_CORRELATION_ID, 0,
+    private static final String TEST_CORRELATION_ID = format("test-%s", UUID.randomUUID());
+
+    private static final MessageError AUTH_ERROR = new MessageError(TEST_CORRELATION_ID, 0,
             ErrorType.AUTH_FAILED.toString(), "Kilda", "InsufficientAuthenticationException");
-    private static final MessageError NOT_FOUND_ERROR = new MessageError(DEFAULT_CORRELATION_ID, 0,
+    private static final MessageError NOT_FOUND_ERROR = new MessageError(TEST_CORRELATION_ID, 0,
             ErrorType.NOT_FOUND.toString(), "Flow was not found", TestMessageMock.ERROR_FLOW_ID);
 
     private MockMvc mockMvc;
@@ -77,14 +79,14 @@ public class FlowControllerTest {
     @Before
     public void setUp() throws Exception {
         this.mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).apply(springSecurity()).build();
-        RequestCorrelation.setId(DEFAULT_CORRELATION_ID);
+        RequestCorrelation.create(TEST_CORRELATION_ID);
     }
 
     @Test
     @WithMockUser(username = USERNAME, password = PASSWORD, roles = ROLE)
     public void createFlow() throws Exception {
         MvcResult result = mockMvc.perform(put("/flows")
-                .header(CORRELATION_ID, testCorrelationId())
+                .header(CORRELATION_ID, TEST_CORRELATION_ID)
                 .contentType(APPLICATION_JSON_VALUE)
                 .content(MAPPER.writeValueAsString(TestMessageMock.flow)))
                 .andExpect(status().isOk())
@@ -99,7 +101,7 @@ public class FlowControllerTest {
     @WithMockUser(username = USERNAME, password = PASSWORD, roles = ROLE)
     public void getFlow() throws Exception {
         MvcResult result = mockMvc.perform(get("/flows/{flow-id}", TestMessageMock.FLOW_ID)
-                .header(CORRELATION_ID, testCorrelationId())
+                .header(CORRELATION_ID, TEST_CORRELATION_ID)
                 .contentType(APPLICATION_JSON_VALUE))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
@@ -112,7 +114,7 @@ public class FlowControllerTest {
     @WithMockUser(username = USERNAME, password = PASSWORD, roles = ROLE)
     public void deleteFlow() throws Exception {
         MvcResult result = mockMvc.perform(delete("/flows/{flow-id}", TestMessageMock.FLOW_ID)
-                .header(CORRELATION_ID, testCorrelationId())
+                .header(CORRELATION_ID, TEST_CORRELATION_ID)
                 .contentType(APPLICATION_JSON_VALUE))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
@@ -125,7 +127,7 @@ public class FlowControllerTest {
     @WithMockUser(username = USERNAME, password = PASSWORD, roles = ROLE)
     public void updateFlow() throws Exception {
         MvcResult result = mockMvc.perform(put("/flows/{flow-id}", TestMessageMock.FLOW_ID)
-                .header(CORRELATION_ID, testCorrelationId())
+                .header(CORRELATION_ID, TEST_CORRELATION_ID)
                 .contentType(APPLICATION_JSON_VALUE)
                 .content(MAPPER.writeValueAsString(TestMessageMock.flow)))
                 .andExpect(status().isOk())
@@ -139,7 +141,7 @@ public class FlowControllerTest {
     @WithMockUser(username = USERNAME, password = PASSWORD, roles = ROLE)
     public void getFlows() throws Exception {
         MvcResult result = mockMvc.perform(get("/flows", TestMessageMock.FLOW_ID)
-                .header(CORRELATION_ID, testCorrelationId())
+                .header(CORRELATION_ID, TEST_CORRELATION_ID)
                 .contentType(APPLICATION_JSON_VALUE))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
@@ -154,7 +156,7 @@ public class FlowControllerTest {
     @WithMockUser(username = USERNAME, password = PASSWORD, roles = ROLE)
     public void statusFlow() throws Exception {
         MvcResult result = mockMvc.perform(get("/flows/status/{flow-id}", TestMessageMock.FLOW_ID)
-                .header(CORRELATION_ID, testCorrelationId())
+                .header(CORRELATION_ID, TEST_CORRELATION_ID)
                 .contentType(APPLICATION_JSON_VALUE))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
@@ -168,7 +170,7 @@ public class FlowControllerTest {
     @WithMockUser(username = USERNAME, password = PASSWORD, roles = ROLE)
     public void pathFlow() throws Exception {
         MvcResult result = mockMvc.perform(get("/flows/path/{flow-id}", TestMessageMock.FLOW_ID)
-                .header(CORRELATION_ID, testCorrelationId())
+                .header(CORRELATION_ID, TEST_CORRELATION_ID)
                 .contentType(APPLICATION_JSON_VALUE))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
@@ -181,7 +183,7 @@ public class FlowControllerTest {
     @WithMockUser(username = USERNAME, password = PASSWORD, roles = ROLE)
     public void getNonExistingFlow() throws Exception {
         MvcResult result = mockMvc.perform(get("/flows/{flow-id}", ERROR_FLOW_ID)
-                .header(CORRELATION_ID, DEFAULT_CORRELATION_ID)
+                .header(CORRELATION_ID, TEST_CORRELATION_ID)
                 .contentType(APPLICATION_JSON_VALUE))
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
@@ -194,7 +196,7 @@ public class FlowControllerTest {
     @Test
     public void emptyCredentials() throws Exception {
         MvcResult result = mockMvc.perform(get("/flows/path/{flow-id}", TestMessageMock.FLOW_ID)
-                .header(CORRELATION_ID, DEFAULT_CORRELATION_ID)
+                .header(CORRELATION_ID, TEST_CORRELATION_ID)
                 .contentType(APPLICATION_JSON_VALUE))
                 .andExpect(status().isUnauthorized())
                 .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
@@ -202,9 +204,5 @@ public class FlowControllerTest {
 
         MessageError response = MAPPER.readValue(result.getResponse().getContentAsString(), MessageError.class);
         assertEquals(AUTH_ERROR, response);
-    }
-
-    private static String testCorrelationId() {
-        return UUID.randomUUID().toString();
     }
 }

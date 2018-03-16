@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.islstats;
 
+import static org.openkilda.wfm.topology.utils.BoltProxyWithCorrelationContext.proxyWithCorrelationContext;
+
 import org.apache.storm.kafka.bolt.KafkaBolt;
 import org.openkilda.wfm.ConfigurationException;
 import org.openkilda.wfm.topology.AbstractTopology;
@@ -24,9 +26,6 @@ import org.openkilda.wfm.topology.islstats.bolts.IslStatsBolt;
 import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
 import org.apache.storm.generated.StormTopology;
-import org.apache.storm.opentsdb.bolt.OpenTsdbBolt;
-import org.apache.storm.opentsdb.bolt.TupleOpenTsdbDatapointMapper;
-import org.apache.storm.opentsdb.client.OpenTsdbClient;
 import org.apache.storm.topology.TopologyBuilder;
 
 public class IslStatsTopology extends AbstractTopology {
@@ -52,13 +51,13 @@ public class IslStatsTopology extends AbstractTopology {
         final String verifyIslStatsBoltName = IslStatsBolt.class.getSimpleName();
         IslStatsBolt verifyIslStatsBolt = new IslStatsBolt();
         logger.debug("starting {} bolt", verifyIslStatsBoltName);
-        builder.setBolt(verifyIslStatsBoltName, verifyIslStatsBolt, config.getParallelism())
+        builder.setBolt(verifyIslStatsBoltName, proxyWithCorrelationContext(verifyIslStatsBolt), config.getParallelism())
                 .shuffleGrouping(spoutName);
 
         final String openTsdbTopic = config.getKafkaOtsdbTopic();
         checkAndCreateTopic(openTsdbTopic);
         KafkaBolt openTsdbBolt = createKafkaBolt(openTsdbTopic);
-        builder.setBolt("isl-stats-opentsdb", openTsdbBolt, config.getParallelism())
+        builder.setBolt("isl-stats-opentsdb", proxyWithCorrelationContext(openTsdbBolt), config.getParallelism())
                 .shuffleGrouping(verifyIslStatsBoltName);
 
         return builder.createTopology();

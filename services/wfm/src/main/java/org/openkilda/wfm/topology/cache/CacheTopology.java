@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.cache;
 
+import static org.openkilda.wfm.topology.utils.BoltProxyWithCorrelationContext.proxyWithCorrelationContext;
+
 import org.openkilda.messaging.ServiceType;
 import org.openkilda.wfm.ConfigurationException;
 import org.openkilda.wfm.CtrlBoltRef;
@@ -84,7 +86,7 @@ public class CacheTopology extends AbstractTopology {
          * Stores network cache.
          */
         CacheBolt cacheBolt = new CacheBolt(config.getDiscoveryTimeout());
-        boltSetup = builder.setBolt(BOLT_ID_CACHE, cacheBolt, parallelism)
+        boltSetup = builder.setBolt(BOLT_ID_CACHE, proxyWithCorrelationContext(cacheBolt), parallelism)
                 .shuffleGrouping(SPOUT_ID_COMMON)
 // (carmine) as per above comment, only a single input streamt
 //                .shuffleGrouping(SPOUT_ID_TOPOLOGY)
@@ -96,14 +98,14 @@ public class CacheTopology extends AbstractTopology {
          * Sends network events to storage.
          */
         kafkaBolt = createKafkaBolt(config.getKafkaTopoEngTopic());
-        builder.setBolt(BOLT_ID_COMMON_OUTPUT, kafkaBolt, parallelism)
+        builder.setBolt(BOLT_ID_COMMON_OUTPUT, proxyWithCorrelationContext(kafkaBolt), parallelism)
                 .shuffleGrouping(BOLT_ID_CACHE, StreamType.TPE.toString());
 
         /*
          * Sends cache dump and reroute requests to WFM topology.
          */
         kafkaBolt = createKafkaBolt(config.getKafkaFlowTopic());
-        builder.setBolt(BOLT_ID_TOPOLOGY_OUTPUT, kafkaBolt, parallelism)
+        builder.setBolt(BOLT_ID_TOPOLOGY_OUTPUT, proxyWithCorrelationContext(kafkaBolt), parallelism)
                 .shuffleGrouping(BOLT_ID_CACHE, StreamType.WFM_DUMP.toString());
 
         /*
@@ -111,7 +113,7 @@ public class CacheTopology extends AbstractTopology {
          */
         // FIXME(surabjin): 2 kafka bold with same topic (see previous bolt)
         KafkaBolt oFEKafkaBolt = createKafkaBolt(config.getKafkaFlowTopic());
-        builder.setBolt(BOLT_ID_OFE, oFEKafkaBolt, parallelism)
+        builder.setBolt(BOLT_ID_OFE, proxyWithCorrelationContext(oFEKafkaBolt), parallelism)
                 .shuffleGrouping(BOLT_ID_CACHE, StreamType.OFE.toString());
 
         createCtrlBranch(builder, ctrlTargets);

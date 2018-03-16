@@ -16,6 +16,8 @@
 package org.openkilda.messaging.error;
 
 
+import java.util.Objects;
+
 /**
  * The exception for notifying errors.
  */
@@ -47,7 +49,7 @@ public class MessageException extends CacheException {
     public MessageException(String correlationId, long timestamp, ErrorType errorType,
                             String errorMessage, String errorDescription) {
         super(errorType, errorMessage, errorDescription);
-        this.correlationId = correlationId;
+        this.correlationId = Objects.requireNonNull(correlationId, "correlationId must not be null");
         this.timestamp = timestamp;
     }
 

@@ -15,9 +15,8 @@
 
 package org.openkilda.messaging;
 
-import org.openkilda.messaging.payload.flow.OutputVlanType;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.openkilda.messaging.payload.flow.OutputVlanType;
 
 /**
  * Utils for flow commands.
@@ -62,13 +61,22 @@ public final class Utils {
      */
     public static final String FLOW_PATH = "flowpath";
     /**
-     * The default correlation ID value.
+     * @deprecated Reusage of the same correlation_id may lead to request processing conflicts or/and poor traceability in logs.
+     *
+     * A generated UUID per client's request / operation / system's event is recommended.
      */
+    @Deprecated
     public static final String DEFAULT_CORRELATION_ID = "admin-request";
     /**
-     * The default correlation ID value.
+     * @deprecated Reusage of the same correlation_id may lead to request processing conflicts or/and poor traceability in logs.
+     *
+     * A generated UUID per client's request / operation / system's event is recommended.
      */
+    @Deprecated
     public static final String SYSTEM_CORRELATION_ID = "system-request";
+
+    public static final String MISSING_CORRELATION_ID = "not-provided";
+
     /**
      * The health check operational status.
      */

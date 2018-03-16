@@ -81,9 +81,8 @@ public class TopologyEngineBolt extends BaseRichBolt {
                     String switchId = installData.getSwitchId();
                     String flowId = installData.getId();
 
-                    logger.debug("Flow install message: {}={}, switch-id={}, {}={}, {}={}, message={}",
-                            Utils.CORRELATION_ID, message.getCorrelationId(), switchId,
-                            Utils.FLOW_ID, flowId, Utils.TRANSACTION_ID, transactionId, request);
+                    logger.debug("Flow install message: switch-id={}, {}={}, {}={}, message={}",
+                            switchId, Utils.FLOW_ID, flowId, Utils.TRANSACTION_ID, transactionId, request);
 
                     // FIXME(surabujin): send here and in TE
                     message.setDestination(Destination.CONTROLLER);
@@ -97,38 +96,35 @@ public class TopologyEngineBolt extends BaseRichBolt {
                     String switchId = removeData.getSwitchId();
                     String flowId = removeData.getId();
 
-                    logger.debug("Flow remove message: {}={}, switch-id={}, {}={}, {}={}, message={}",
-                            Utils.CORRELATION_ID, message.getCorrelationId(), switchId,
-                            Utils.FLOW_ID, flowId, Utils.TRANSACTION_ID, transactionId, request);
+                    logger.debug("Flow remove message: switch-id={}, {}={}, {}={}, message={}",
+                            switchId, Utils.FLOW_ID, flowId, Utils.TRANSACTION_ID, transactionId, request);
 
                     message.setDestination(Destination.CONTROLLER);
                     values = new Values(MAPPER.writeValueAsString(message), switchId, flowId, transactionId);
                     outputCollector.emit(StreamType.DELETE.toString(), tuple, values);
 
                 } else {
-                    logger.debug("Skip undefined command message: {}={}, message={}",
-                            Utils.CORRELATION_ID, message.getCorrelationId(), request);
+                    logger.debug("Skip undefined command message: message={}", request);
                 }
             } else if (message instanceof InfoMessage) {
                 values = new Values(message);
 
-                logger.debug("Flow response message: {}={}, message={}",
-                        Utils.CORRELATION_ID, message.getCorrelationId(), request);
+                logger.debug("Flow response message: message={}", request);
 
                 outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
 
             } else if (message instanceof ErrorMessage) {
                 String flowId = ((ErrorMessage) message).getData().getErrorDescription();
 
-                logger.error("Flow error message: {}={}, {}={}, message={}",
-                        Utils.CORRELATION_ID, message.getCorrelationId(), Utils.FLOW_ID, flowId, request);
+                logger.error("Flow error message: {}={}, message={}",
+                        Utils.FLOW_ID, flowId, request);
 
                 values = new Values(message, flowId);
                 outputCollector.emit(StreamType.STATUS.toString(), tuple, values);
 
             } else {
-                logger.debug("Skip undefined message: {}={}, message={}",
-                        Utils.CORRELATION_ID, message.getCorrelationId(), request);
+                logger.debug("Skip undefined message: message={}",
+                        request);
             }
         } catch (IOException exception) {
             logger.error("Could not deserialize message={}", request, exception);

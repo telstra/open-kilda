@@ -1,5 +1,6 @@
 package org.openkilda.floodlight.kafka;
 
+import static java.lang.String.format;
 import static org.easymock.EasyMock.anyObject;
 import static org.easymock.EasyMock.eq;
 import static org.easymock.EasyMock.expect;
@@ -29,6 +30,7 @@ import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 
 import java.util.Map;
+import java.util.UUID;
 
 public class RecordHandlerTest extends EasyMockSupport {
     private static final String OUTPUT_DISCO_TOPIC = Topic.TOPO_DISCO;
@@ -120,7 +122,7 @@ public class RecordHandlerTest extends EasyMockSupport {
 
         // Create CommandMessage with NetworkCommandData for trigger network dump
         CommandMessage command = new CommandMessage(new NetworkCommandData(),
-                System.currentTimeMillis(), Utils.SYSTEM_CORRELATION_ID,
+                System.currentTimeMillis(), format("test-%s", UUID.randomUUID()),
                 Destination.CONTROLLER);
 
         // KafkaMessageCollector contains a complicated run logic with couple nested private

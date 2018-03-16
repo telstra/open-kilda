@@ -15,13 +15,8 @@
 
 package org.openkilda.northbound.config;
 
-import static org.openkilda.messaging.Utils.CORRELATION_ID;
-
 import org.openkilda.northbound.utils.ExecutionTimeInterceptor;
-import org.openkilda.northbound.utils.RequestCorrelation;
 import org.openkilda.northbound.utils.RequestCorrelationFilter;
-import org.slf4j.MDC;
-import org.slf4j.MDC.MDCCloseable;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -35,12 +30,7 @@ import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
 
-import java.io.IOException;
 import java.util.Collections;
-import javax.servlet.FilterChain;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 
 /**
  * The Web Application configuration.

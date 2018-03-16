@@ -28,6 +28,8 @@ import org.openkilda.northbound.messaging.MessageConsumer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
+import org.slf4j.MDC.MDCCloseable;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
@@ -69,17 +71,23 @@ public class KafkaMessageConsumer implements MessageConsumer<Object> {
      */
     @KafkaListener(id = "northbound-listener", topics = Topic.NORTHBOUND)
     public void receive(final String record) {
+        Message message;
+
         try {
             logger.trace("message received");
-            Message message = MAPPER.readValue(record, Message.class);
+            message = MAPPER.readValue(record, Message.class);
+        } catch (IOException exception) {
+            logger.error("Could not deserialize message: {}", record, exception);
+            return;
+        }
+
+        try (MDCCloseable closable = MDC.putCloseable(CORRELATION_ID, message.getCorrelationId())) {
             if (Destination.NORTHBOUND.equals(message.getDestination())) {
                 logger.debug("message received: {}", record);
                 messages.put(message.getCorrelationId(), message);
             } else {
                 logger.trace("Skip message: {}", message);
             }
-        } catch (IOException exception) {
-            logger.error("Could not deserialize message: {}", record, exception);
         }
     }
 

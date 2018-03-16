@@ -12,5 +12,6 @@
 		"transit_vlan_id": 100,
 		"output_vlan_id": 0,
 		"output_vlan_type": "NONE"
-	}
+	},
+	"correlation_id": "test-7a0f7bed-890f-4270-848a-6e9fd22cbf2f"
 }

@@ -1,11 +1,13 @@
 package org.openkilda.northbound.service.impl;
 
 import static java.util.Base64.getEncoder;
+import static org.openkilda.messaging.Utils.CORRELATION_ID;
 
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.northbound.converter.SwitchMapper;
 import org.openkilda.northbound.dto.SwitchDto;
 import org.openkilda.northbound.service.SwitchService;
+import org.openkilda.northbound.utils.RequestCorrelation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,13 +28,12 @@ import javax.annotation.PostConstruct;
 @Service
 public class SwitchServiceImpl implements SwitchService {
 
-    private final Logger LOGGER = LoggerFactory.getLogger(LinkServiceImpl.class);
+    private final Logger LOGGER = LoggerFactory.getLogger(SwitchServiceImpl.class);
     //todo: refactor to use interceptor or custom rest template
     private static final String auth = "kilda:kilda";
     private static final String authHeaderValue = "Basic " + getEncoder().encodeToString(auth.getBytes());
 
     private String switchesUrl;
-    private HttpHeaders headers;
 
     /**
      * The kafka topic.
@@ -53,9 +54,6 @@ public class SwitchServiceImpl implements SwitchService {
                 .pathSegment("api", "v1", "topology", "switches")
                 .build()
                 .toUriString();
-
-        headers = new HttpHeaders();
-        headers.add(HttpHeaders.AUTHORIZATION, authHeaderValue);
     }
 
     @Override
@@ -64,7 +62,7 @@ public class SwitchServiceImpl implements SwitchService {
 
         SwitchInfoData[] switches;
         try {
-            switches = restTemplate.exchange(switchesUrl, HttpMethod.GET, new HttpEntity<>(headers),
+            switches = restTemplate.exchange(switchesUrl, HttpMethod.GET, new HttpEntity<>(buildHttpHeaders()),
                     SwitchInfoData[].class).getBody();
             LOGGER.debug("Returned {} links", switches.length);
         } catch (RestClientException e) {
@@ -77,4 +75,11 @@ public class SwitchServiceImpl implements SwitchService {
                 .collect(Collectors.toList());
     }
 
+
+    private HttpHeaders buildHttpHeaders() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.AUTHORIZATION, authHeaderValue);
+        headers.add(CORRELATION_ID, RequestCorrelation.getId());
+        return headers;
+    }
 }

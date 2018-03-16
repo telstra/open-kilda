@@ -19,7 +19,6 @@ import static org.openkilda.messaging.Utils.MAPPER;
 
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
-import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.FlowCacheSyncRequest;
@@ -48,7 +47,6 @@ import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-import java.io.IOException;
 import java.util.Map;
 
 /**
@@ -118,11 +116,11 @@ public class SplitterBolt extends BaseRichBolt {
                     } else if (fid.getOperation() == FlowOperation.UNPUSH) {
                         outputCollector.emit(StreamType.UNPUSH.toString(), tuple, values);
                     } else {
-                        logger.warn("Skip undefined FlowInfoData Operation {}: {}={}",
-                                fid.getOperation(), Utils.CORRELATION_ID, message.getCorrelationId());
+                        logger.warn("Skip undefined FlowInfoData Operation {}",
+                                fid.getOperation());
                     }
                 } else {
-                    logger.warn("Skip undefined InfoMessage: {}={}", Utils.CORRELATION_ID, message.getCorrelationId());
+                    logger.warn("Skip undefined InfoMessage");
                 }
                 return;
             }
@@ -209,7 +207,7 @@ public class SplitterBolt extends BaseRichBolt {
                 outputCollector.emit(StreamType.CACHE_SYNC.toString(), tuple, values);
 
             } else {
-                logger.debug("Skip undefined CommandMessage: {}={}", Utils.CORRELATION_ID, message.getCorrelationId());
+                logger.debug("Skip undefined CommandMessage");
             }
 
 /*

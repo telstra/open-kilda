@@ -3,7 +3,6 @@ package org.openkilda.wfm;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.tuple.Tuple;
-import org.openkilda.wfm.topology.stats.StatsTopology;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,7 +12,7 @@ public abstract class AbstractAction implements Runnable {
     private final Tuple tuple;
 
     public AbstractAction(IKildaBolt bolt, Tuple tuple) {
-        this.logger = LoggerFactory.getLogger(StatsTopology.class);
+        this.logger = LoggerFactory.getLogger(AbstractAction.class);
 
         this.bolt = bolt;
         this.tuple = tuple;

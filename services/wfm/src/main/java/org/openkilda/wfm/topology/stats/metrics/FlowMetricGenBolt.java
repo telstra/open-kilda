@@ -16,7 +16,6 @@
 package org.openkilda.wfm.topology.stats.metrics;
 
 import static org.neo4j.helpers.collection.MapUtil.map;
-import static org.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.openkilda.wfm.topology.AbstractTopology.MESSAGE_FIELD;
 
 import org.apache.storm.task.OutputCollector;
@@ -92,8 +91,8 @@ public class FlowMetricGenBolt extends MetricGenBolt {
             return;
         }
 
-        LOGGER.debug("Flow stats message: {}={}, component={}, stream={}",
-                CORRELATION_ID, message.getCorrelationId(), componentId, StatsStreamType.valueOf(input.getSourceStreamId()));
+        LOGGER.debug("Flow stats message: component={}, stream={}",
+                componentId, StatsStreamType.valueOf(input.getSourceStreamId()));
         FlowStatsData data = (FlowStatsData) message.getData();
         long timestamp = message.getTimestamp();
         String switchId = data.getSwitchId().replaceAll(":", "");

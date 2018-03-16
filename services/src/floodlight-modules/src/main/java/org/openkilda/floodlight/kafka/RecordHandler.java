@@ -2,10 +2,14 @@ package org.openkilda.floodlight.kafka;
 
 import static org.openkilda.messaging.Utils.MAPPER;
 
+import net.floodlightcontroller.core.IOFSwitch;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.floodlight.switchmanager.MeterPool;
 import org.openkilda.floodlight.switchmanager.SwitchEventCollector;
 import org.openkilda.floodlight.switchmanager.SwitchOperationException;
+import org.openkilda.floodlight.utils.CorrelationContext;
+import org.openkilda.floodlight.utils.CorrelationContext.CorrelationContextClosable;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Topic;
 import org.openkilda.messaging.command.CommandData;
@@ -27,9 +31,6 @@ import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
-
-import net.floodlightcontroller.core.IOFSwitch;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.slf4j.Logger;
@@ -288,16 +289,24 @@ class RecordHandler implements Runnable {
     }
 
     private void parseRecord(ConsumerRecord<String, String> record) {
+        CommandMessage message;
         try {
-            String value = (String) record.value();
+            String value = record.value();
             // TODO: Prior to Message changes, this MAPPER would read Message ..
             //          but, changed to BaseMessage and got an error wrt "timestamp" ..
             //          so, need to experiment with why CommandMessage can't be read as
             //          a BaseMessage
-            CommandMessage message = MAPPER.readValue(value, CommandMessage.class);
-            doControllerMsg(message);
+            message = MAPPER.readValue(value, CommandMessage.class);
         } catch (Exception exception) {
             logger.error("error parsing record={}", record.value(), exception);
+            return;
+        }
+
+        // Process the message within the message correlation context.
+        try (CorrelationContextClosable closable = CorrelationContext.create(message.getCorrelationId())) {
+            doControllerMsg(message);
+        } catch (Exception exception) {
+            logger.error("error processing message={}", message, exception);
         }
     }
 
