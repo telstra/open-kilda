@@ -25,7 +25,7 @@ from topologylistener import flow_utils
 from topologylistener import message_utils
 
 
-logger = logging.getLogger(__name__)
+raw_logger = logging.getLogger(__name__)
 
 graph = flow_utils.graph
 switch_states = {
@@ -48,14 +48,14 @@ neo4j_update_lock = threading.RLock()
 
 
 class MessageItem(object):
-    def __init__(self, message):
-        self.message = message
+    def __init__(self, context, raw_request):
+        self.context = context
+        self.raw_request = raw_request
 
-        self.timestamp = str(self.message.get("timestamp"))
-        self.payload = self.message["payload"]
+        self.log = self.context.log(raw_logger)
+
+        self.payload = self.raw_request["payload"]
         self.kind = self.payload["clazz"]
-
-        self.correlation_id = self.message.get("correlation_id", "admin-request")
 
     def handle(self):
         if self.kind == MT_SWITCH:
@@ -99,14 +99,11 @@ class MessageItem(object):
 
         # Cache topology expects to receive OFE events
         if self.kind in {MT_SWITCH, MT_SWITCH, MT_PORT}:
-            message_utils.send_cache_message(self.payload,
-                                             self.correlation_id)
+            message_utils.send_cache_message(self.context, self.payload)
 
     def activate_switch(self):
         switch_id = self.payload['switch_id']
-
-        logger.info('Switch %s activation request: timestamp=%s',
-                    switch_id, self.timestamp)
+        self.log.debug('Switch %s activation request', switch_id)
 
         switch = graph.find_one('switch',
                                 property_key='name',
@@ -115,14 +112,13 @@ class MessageItem(object):
             graph.merge(switch)
             switch['state'] = "active"
             switch.push()
-            logger.info('Activating switch: %s', switch_id)
+            self.log.info('Activating switch: %s', switch_id)
         return True
 
     def create_switch(self):
         switch_id = self.payload['switch_id']
 
-        logger.info('Switch %s creation request: timestamp=%s',
-                    switch_id, self.timestamp)
+        self.log.debug('Switch %s create request', switch_id)
         query = (
             "MERGE (a:switch{{name:'{}'}}) "
             "SET "
@@ -140,15 +136,14 @@ class MessageItem(object):
             self.payload['controller']
         )
         graph.run(query)
-        logger.info("Successfully created switch %s", switch_id)
+
+        self.log.info("Successfully created switch %s", switch_id)
         return True
 
     def deactivate_switch(self):
         switch_id = self.payload['switch_id']
 
-        logger.info('Switch %s deactivation request: timestamp=%s, ',
-                    switch_id, self.timestamp)
-
+        self.log.debug('Switch %s deactivation request', switch_id)
         switch = graph.find_one('switch',
                                 property_key='name',
                                 property_value='{}'.format(switch_id))
@@ -156,18 +151,18 @@ class MessageItem(object):
             graph.merge(switch)
             switch['state'] = "inactive"
             switch.push()
-            logger.info('Deactivating switch: %s', switch_id)
+            self.log.info('Deactivating switch: %s', switch_id)
             return True
 
         else:
-            logger.warn('Switch %s does not exist in topology', switch_id)
+            self.log.warning('Switch %s does not exist in topology', switch_id)
+
         return True
 
     def remove_switch(self):
         switch_id = self.payload['switch_id']
 
-        logger.info('Switch %s removing request: timestamp=%s',
-                    switch_id, self.timestamp)
+        self.log.debug('Switch %s removing request', switch_id)
 
         try:
             switch = graph.find_one('switch',
@@ -177,7 +172,7 @@ class MessageItem(object):
                 graph.merge(switch)
                 switch['state'] = "removed"
                 switch.push()
-                logger.info('Removing switch: %s', switch_id)
+                self.log.info('Removing switch: %s', switch_id)
                 self.delete_isl(switch_id, None)
         except neo4j_errors.TransientError as e:
             raise exc.RecoverableError(e)
@@ -196,8 +191,7 @@ class MessageItem(object):
                             "src_switch: '{}', status: 'active'}}]->(b:switch) return r")
             return graph.run(exists_query.format(src_switch)).data()
 
-    @staticmethod
-    def delete_isl(src_switch, src_port):
+    def delete_isl(self, src_switch, src_port):
         """
         Delete the ISL if it exists.
 
@@ -206,8 +200,9 @@ class MessageItem(object):
         :return: True always, unless an exception occurs
         """
 
-        logger.info('Removing ISL, if it exists: src_switch=%s, src_port=%s',
-                    src_switch, src_port)
+        self.log.info(
+                'Removing ISL, if it exists: src_switch=%s, src_port=%s',
+                src_switch, src_port)
 
         if src_port:
             delete_query = ("MATCH (a:switch)-[r:isl {{"
@@ -221,8 +216,7 @@ class MessageItem(object):
 
         return True
 
-    @staticmethod
-    def deactivate_isl(src_switch, src_port):
+    def deactivate_isl(self, src_switch, src_port):
         """
         Update the ISL, if it exists, to a state of inactive
 
@@ -230,8 +224,9 @@ class MessageItem(object):
 
         :return: True always, unless an exception occurs
         """
-        logger.info('Deactivating ISL: src_switch=%s, src_port=%s',
-                    src_switch, src_port)
+        self.log.info(
+                'Deactivating ISL: src_switch=%s, src_port=%s',
+                src_switch, src_port)
 
         if src_port:
             query = ("MATCH (a:switch)-[r:isl {{"
@@ -254,8 +249,9 @@ class MessageItem(object):
         port_id = int(path[0]['port_no'])
 
         effective_policy = config.get("isl_failover_policy", "effective_policy")
-        logger.info('Isl failure: %s_%d -- apply policy %s: timestamp=%s',
-                    switch_id, port_id, effective_policy, self.timestamp)
+        self.log.info(
+                'Isl failure: %s_%d -- apply policy %s',
+                switch_id, port_id, effective_policy)
 
         if effective_policy == 'deactivate':
             self.deactivate_isl(switch_id, port_id)
@@ -268,8 +264,7 @@ class MessageItem(object):
         switch_id = self.payload['switch_id']
         port_id = int(self.payload['port_no'])
 
-        logger.info('Port %s_%d deletion request: timestamp=%s',
-                    switch_id, port_id, self.timestamp)
+        self.log.debug('Port %s_%d deletion request', switch_id, port_id)
 
         return self.delete_isl(switch_id, port_id)
 
@@ -294,8 +289,8 @@ class MessageItem(object):
         available_bandwidth = int(self.payload['available_bandwidth'])
 
         try:
-            logger.info('ISL %s_%d create or update request: timestamp=%s',
-                        a_switch, a_port, self.timestamp)
+            self.log.debug(
+                    'ISL %s_%d create or update request', a_switch, a_port)
 
             #
             # Given that we know the the src and dst exist, the following query will either
@@ -350,49 +345,45 @@ class MessageItem(object):
             #
             # Finally, update the available_bandwidth..
             #
-            flow_utils.update_isl_bandwidth(src_sw, src_pt, dst_sw, dst_pt)
+            flow_utils.update_isl_bandwidth(
+                    self.context, src_sw, src_pt, dst_sw, dst_pt)
 
-            logger.info('ISL between %s and %s updated', a_switch, b_switch)
+            self.log.info('ISL between %s and %s updated', a_switch, b_switch)
 
         except Exception as e:
-            logger.exception('ISL between %s and %s creation error: %s',
-                             a_switch, b_switch, e.message)
+            self.log.exception(
+                    'ISL between %s and %s creation error: %s',
+                    a_switch, b_switch, e)
             return False
 
         return True
 
     # TODO(surabujin): split on 2 method and drop out "propagate" argument
-    @staticmethod
-    def create_flow(flow_id, flow, correlation_id, tx, propagate=True):
+    def create_flow(self, flow_id, flow, propagate=True):
         rules = flow_utils.build_rules(flow)
 
-        logger.info('Flow rules were built: correlation_id=%s, flow_id=%s',
-                    correlation_id, flow_id)
-
-        flow_utils.store_flow(flow, tx)
-
-        logger.info('Flow was stored: correlation_id=%s, flow_id=%s',
-                    correlation_id, flow_id)
+        self.log.info('Flow rules were built: flow_id=%s', flow_id)
+        flow_utils.store_flow(self.context, flow)
+        self.log.info('Flow was stored: flow_id=%s', flow_id)
 
         if propagate:
-            message_utils.send_install_commands(rules, correlation_id)
-            logger.info('Flow rules INSTALLED: correlation_id=%s, flow_id=%s', correlation_id, flow_id)
-            message_utils.send_info_message({'payload': flow, 'clazz': MT_FLOW_RESPONSE}, correlation_id)
+            message_utils.send_install_commands(self.context, rules)
+            self.log.info('Flow rules INSTALLED: flow_id=%s', flow_id)
+            message_utils.send_info_message(
+                    self.context,
+                    {'payload': flow, 'clazz': MT_FLOW_RESPONSE})
         else:
             # The request is sent from Northbound .. send response back
-            logger.info('Flow rules NOT PROPAGATED: correlation_id=%s, flow_id=%s', correlation_id, flow_id)
-            data = {"payload":{"flowid": flow_id,"status": "UP"},
+            self.log.info('Flow rules NOT PROPAGATED: flow_id=%s', flow_id)
+            data = {"payload": {"flowid": flow_id, "status": "UP"},
                     "clazz": message_utils.MT_INFO_FLOW_STATUS}
             message_utils.send_to_topic(
-                    payload=data,
-                    correlation_id=correlation_id,
-                    message_type=message_utils.MT_INFO,
+                    self.context, data, message_utils.MT_INFO,
                     destination="NORTHBOUND",
-                    topic=config.KAFKA_NORTHBOUND_TOPIC
-            )
+                    topic=config.KAFKA_NORTHBOUND_TOPIC)
 
-    @staticmethod
-    def delete_flow(flow_id, flow, correlation_id, tx, propagate=True):
+    # TODO(surabujin): split on 2 method and drop out "propagate" argument
+    def delete_flow(self, flow_id, flow, parent_tx=None, propagate=True):
         """
         Simple algorithm - delete the stuff in the DB, send delete commands, send a response.
         Complexity - each segment in the path may have a separate cookie, so that information needs to be gathered.
@@ -410,95 +401,98 @@ class MessageItem(object):
         :param tx: py2neo transaction that cover whole flow operation
         :return: True, unless an exception is raised.
         """
+
         flow_cookie = int(flow['cookie'])
-        nodes = [{'switch_id': flow['src_switch'], 'flow_id': flow_id, 'cookie': flow_cookie}]
+        nodes = [{'switch_id': flow['src_switch'], 'flow_id': flow_id,
+                  'cookie': flow_cookie}]
         segments = flow_utils.fetch_flow_segments(flow_id, flow_cookie)
         for segment in segments:
-            # every segment should have a cookie field, based on merge_segment; but just in case..
+            # every segment should have a cookie field, based on merge_segment;
+            # but just in case..
             segment_cookie = segment.get('cookie', flow_cookie)
-            nodes.append({'switch_id': segment['dst_switch'], 'flow_id': flow_id, 'cookie': segment_cookie})
+            nodes.append(
+                    {'switch_id': segment['dst_switch'], 'flow_id': flow_id,
+                     'cookie': segment_cookie})
 
         if propagate:
-            logger.info('Flow rules remove start: correlation_id=%s, flow_id=%s, path=%s', correlation_id, flow_id,
-                        nodes)
-            message_utils.send_delete_commands(nodes, correlation_id)
-            logger.info('Flow rules removed end : correlation_id=%s, flow_id=%s', correlation_id, flow_id)
+            self.log.info(
+                    'Flow rules remove start: flow_id=%s, path=%s',
+                    flow_id, nodes)
+            message_utils.send_delete_commands(self.context, nodes)
+            self.log.info('Flow rules removed end: flow_id=%s', flow_id)
         else:
             # The request is sent from Northbound .. send response back
-            logger.info('Flow rules NOT PROPAGATED: correlation_id=%s, flow_id=%s', correlation_id, flow_id)
-            data = {"payload":{"flowid": flow_id,"status": "DOWN"},
+            self.log.info(
+                    'Flow rules NOT PROPAGATED: flow_id=%s', flow_id)
+            data = {"payload": {"flowid": flow_id, "status": "DOWN"},
                     "clazz": message_utils.MT_INFO_FLOW_STATUS}
             message_utils.send_to_topic(
-                payload=data,
-                correlation_id=correlation_id,
-                message_type=message_utils.MT_INFO,
-                destination="NORTHBOUND",
-                topic=config.KAFKA_NORTHBOUND_TOPIC
-            )
+                    self.context, data, message_utils.MT_INFO,
+                    destination="NORTHBOUND",
+                    topic=config.KAFKA_NORTHBOUND_TOPIC)
 
-        flow_utils.remove_flow(flow, tx)
+        flow_utils.remove_flow(self.context, flow, parent_tx)
 
-        logger.info('Flow was removed: correlation_id=%s, flow_id=%s', correlation_id, flow_id)
+        self.log.info('Flow was removed: flow_id=%s', flow_id)
 
-    @staticmethod
-    def update_flow(flow_id, flow, correlation_id, tx):
-        old_flow = flow_utils.get_old_flow(flow)
+    def update_flow(self, flow_id, flow, tx):
+        self.log.debug('Fetch flow info from DB')
+        old_flow = flow_utils.get_old_flow(self.context, flow)
 
-        logger.info('Flow rules were built: correlation_id=%s, flow_id=%s', correlation_id, flow_id)
+        self.log.debug('Create NEW/UPDATED flow')
+
+        self.log.info('Flow rules were built: flow_id=%s', flow_id)
         rules = flow_utils.build_rules(flow)
-        # TODO: add tx to store_flow
-        flow_utils.store_flow(flow, tx)
-        logger.info('Flow was stored: correlation_id=%s, flow_id=%s', correlation_id, flow_id)
-        message_utils.send_install_commands(rules, correlation_id)
 
-        MessageItem.delete_flow(old_flow['flowid'], old_flow, correlation_id, tx)
+        # TODO: add tx to store_flow
+        flow_utils.store_flow(self.context, flow, tx)
+        self.log.info('Flow was stored: flow_id=%s', flow_id)
+
+        message_utils.send_install_commands(self.context, rules)
+
+        self.log.debug('Remove OLD flow')
+        self.delete_flow(old_flow['flowid'], old_flow, tx)
 
         payload = {'payload': flow, 'clazz': MT_FLOW_RESPONSE}
-        message_utils.send_info_message(payload, correlation_id)
+        message_utils.send_info_message(self.context, payload)
 
     def flow_operation(self):
-        correlation_id = self.correlation_id
-        timestamp = self.timestamp
-        payload = self.payload
-
-        operation = payload['operation']
-        flows = payload['payload']
+        operation = self.payload['operation']
+        flows = self.payload['payload']
         forward = flows['forward']
         reverse = flows['reverse']
         flow_id = forward['flowid']
 
-        logger.info('Flow %s request processing: '
-                    'timestamp=%s, correlation_id=%s, payload=%s',
-                    operation, timestamp, correlation_id, payload)
+        self.log.debug('Flow %s request processing', operation)
 
         with neo4j_update_lock, graph.begin() as tx:
             try:
                 if operation == "CREATE" or operation == "PUSH":
                     propagate = operation == "CREATE"
                     # TODO: leverage transaction for creating both flows
-                    self.create_flow(flow_id, forward, correlation_id, tx, propagate)
-                    self.create_flow(flow_id, reverse, correlation_id, tx, propagate)
+                    self.create_flow(flow_id, forward, propagate)
+                    self.create_flow(flow_id, reverse, propagate)
 
                 elif operation == "DELETE" or operation == "UNPUSH":
                     propagate = operation == "DELETE"
-                    self.delete_flow(flow_id, forward, correlation_id, tx, propagate)
-                    self.delete_flow(flow_id, reverse, correlation_id, tx, propagate)
+                    self.delete_flow(flow_id, forward, tx, propagate)
+                    self.delete_flow(flow_id, reverse, tx, propagate)
                     if propagate:
                         message_utils.send_info_message(
-                                {'payload': forward, 'clazz': MT_FLOW_RESPONSE},
-                                correlation_id)
+                                self.context,
+                                {'payload': forward, 'clazz': MT_FLOW_RESPONSE})
                         message_utils.send_info_message(
-                                {'payload': reverse, 'clazz': MT_FLOW_RESPONSE},
-                                correlation_id)
+                                self.context,
+                                {'payload': reverse, 'clazz': MT_FLOW_RESPONSE})
 
                 elif operation == "UPDATE":
-                    self.update_flow(flow_id, forward, correlation_id, tx)
-                    self.update_flow(flow_id, reverse, correlation_id, tx)
+                    self.update_flow(flow_id, forward, tx)
+                    self.update_flow(flow_id, reverse, tx)
 
                 else:
-                    logger.warn('Flow operation is not supported: '
-                                'operation=%s, timestamp=%s, correlation_id=%s,',
-                                operation, timestamp, correlation_id)
+                    self.log.warning(
+                            'Unsupported flow operation %r have been requested',
+                            operation)
                     raise exc.NoHandlerError
 
             except neo4j_errors.TransientError as e:
@@ -519,18 +513,14 @@ class MessageItem(object):
                     extra_args['topic'] = config.KAFKA_NORTHBOUND_TOPIC
 
                 message_utils.send_error_message(
-                        correlation_id, kind, str(e), flow_id, **extra_args)
+                        self.context, kind, str(e), flow_id, **extra_args)
 
                 raise exc.UnrecoverableError()
 
-        logger.info('Flow %s request processed: '
-                    'timestamp=%s, correlation_id=%s, payload=%s',
-                    operation, timestamp, correlation_id, payload)
-
+        self.log.info('Flow %s request processed', operation)
         return True
 
-    @staticmethod
-    def get_switches():
+    def get_switches(self):
         try:
             query = "MATCH (n:switch) RETURN n"
             result = graph.run(query).data()
@@ -549,18 +539,17 @@ class MessageItem(object):
                 }
                 switches.append(switch)
 
-            logger.info('Got switches: %s', switches)
+            self.log.info('Got switches: %s', switches)
 
         except Exception as e:
-            logger.exception('Can not get switches', e.message)
+            self.log.exception('Can not get switches', e)
             raise
 
         return switches
 
-    @staticmethod
-    def get_isls():
+    def get_isls(self):
         try:
-            result = MessageItem.fetch_isls()
+            result = self.fetch_isls()
 
             isls = []
             for link in result:
@@ -584,16 +573,15 @@ class MessageItem(object):
                     'clazz': MT_ISL
                 }
                 isls.append(isl)
-            logger.info('Got isls: %s', isls)
+            self.log.info('Got isls: %s', isls)
 
         except Exception as e:
-            logger.exception('Can not get isls', e.message)
+            self.log.exception('Can not get isls', e)
             raise
 
         return isls
 
-    @staticmethod
-    def fetch_isls(pull=True,sort_key='src_switch'):
+    def fetch_isls(self, pull=True, sort_key='src_switch'):
         """
         :return: an unsorted list of ISL relationships with all properties pulled from the db if pull=True
         """
@@ -611,27 +599,25 @@ class MessageItem(object):
 
             return isls
         except Exception as e:
-            logger.exception('FAILED to get ISLs from the DB ', e.message)
+            self.log.exception('FAILED to get ISLs from the DB ', e.message)
             raise
 
     def dump_network(self):
-        correlation_id = self.correlation_id
-        step = "Init"
-        logger.info('Dump network request: timestamp=%s, correlation_id=%s',
-                    self.timestamp, correlation_id)
+        self.log.debug('Dump network request')
 
+        step = "Init"
         try:
             step = "Switches"
             switches = self.get_switches()
-            logger.debug("%s: %s", step, switches)
+            self.log.debug("%s: %s", step, switches)
 
             step = "ISLs"
             isls = self.get_isls()
-            logger.debug("%s: %s", step, isls)
+            self.log.debug("%s: %s", step, isls)
 
             step = "Flows"
-            flows = flow_utils.get_flows()
-            logger.debug("%s: %s", step, flows)
+            flows = flow_utils.get_flows(self.context)
+            self.log.debug("%s: %s", step, flows)
 
             step = "Send"
             payload = {
@@ -639,12 +625,12 @@ class MessageItem(object):
                 'isls': isls,
                 'flows': flows,
                 'clazz': MT_NETWORK}
-            message_utils.send_cache_message(payload, correlation_id)
+            message_utils.send_cache_message(self.context, payload)
 
         except Exception as e:
-            logger.exception('Can not dump network: %s', e.message)
+            self.log.exception('Can not dump network: %s', e)
             message_utils.send_error_message(
-                correlation_id, "INTERNAL_ERROR", e.message, step,
+                self.context, "INTERNAL_ERROR", str(e), step,
                 "WFM_CACHE", config.KAFKA_CACHE_TOPIC)
             raise
 

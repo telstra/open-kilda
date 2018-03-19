@@ -20,8 +20,10 @@ import logging
 from kafka import KafkaProducer
 
 from topologylistener import config
+from topologylistener import const
 
-logger = logging.getLogger(__name__)
+
+raw_logger = logging.getLogger(__name__)
 
 producer = KafkaProducer(bootstrap_servers=config.KAFKA_BOOTSTRAP_SERVERS)
 
@@ -137,34 +139,45 @@ def build_delete_flow(switch, flow_id, cookie, meter_id=0):
     return flow
 
 
-def send_to_topic(payload, correlation_id,
-                  message_type,
-                  destination="WFM",
-                  topic=config.KAFKA_FLOW_TOPIC):
+def send_to_topic(
+        context, payload, message_type,
+        destination="WFM", topic=config.KAFKA_FLOW_TOPIC):
     message = Message()
     message.payload = payload
     message.clazz = message_type
     message.destination = destination
     message.timestamp = make_timestamp()
-    message.correlation_id = correlation_id
+    message.correlation_id = context.correlation_id
 
     json_data = model_to_json(message)
     json_data = json_data.encode('utf-8')
-    logger.debug('Send message: topic=%s, message=%s', topic, json_data)
+
+    log = context.log(raw_logger)
+    if log.isEnabledFor(logging.DEBUG):
+        # Unpack just packed object is the easiest way to get "raw"
+        # representation of our model objects. It is expensive, but placing it
+        # behind "is DEBUG level enabled" condition should protect production
+        # execution from this calculations.
+        json_unpacked = json.loads(json_data)
+        log.debug(
+            'Send message to the topic=%s (see payload in extra %s field)',
+            topic, const.LOG_ATTR_JSON_PAYLOAD,
+            extra={const.LOG_ATTR_JSON_PAYLOAD: json_unpacked})
 
     promise = producer.send(topic, json_data)
     promise.get(timeout=5)
 
 
-def send_info_message(payload, correlation_id):
-    send_to_topic(payload, correlation_id, MT_INFO)
+def send_info_message(context, payload):
+    send_to_topic(context, payload, MT_INFO)
 
 
-def send_cache_message(payload, correlation_id):
-    send_to_topic(payload, correlation_id, MT_INFO, "WFM_CACHE", config.KAFKA_CACHE_TOPIC)
+def send_cache_message(context, payload):
+    send_to_topic(
+            context, payload, MT_INFO, "WFM_CACHE", config.KAFKA_CACHE_TOPIC)
 
 
-def send_error_message(correlation_id, error_type, error_message,
+def send_error_message(context, error_type, error_message,
                        error_description, destination="WFM",
                        topic=config.KAFKA_FLOW_TOPIC):
     # TODO: Who calls this .. need to pass in the right TOPIC
@@ -172,10 +185,10 @@ def send_error_message(correlation_id, error_type, error_message,
             "error-message": error_message,
             "error-description": error_description,
             "clazz": MT_ERROR_DATA}
-    send_to_topic(data, correlation_id, MT_ERROR, destination, topic)
+    send_to_topic(context, data, MT_ERROR, destination, topic)
 
 
-def send_install_commands(flow_rules, correlation_id):
+def send_install_commands(context, flow_rules):
     """
     flow_utils.get_rules() creates the flow rules starting with ingress, then
     transit, then egress. For the install, we would like to send the commands in
@@ -183,29 +196,37 @@ def send_install_commands(flow_rules, correlation_id):
     the for logic should go in reverse
     """
     for flow_rule in reversed(flow_rules):
-        send_to_topic(flow_rule, correlation_id, MT_COMMAND,
-                      destination="CONTROLLER", topic=config.KAFKA_SPEAKER_TOPIC)
+        send_to_topic(
+                context, flow_rule, MT_COMMAND,
+                destination="CONTROLLER", topic=config.KAFKA_SPEAKER_TOPIC)
         # FIXME(surabujin): WFM reroute this message into CONTROLLER
-        send_to_topic(flow_rule, correlation_id, MT_COMMAND,
-                      destination="WFM", topic=config.KAFKA_FLOW_TOPIC)
+        send_to_topic(
+                context, flow_rule, MT_COMMAND,
+                destination="WFM", topic=config.KAFKA_FLOW_TOPIC)
 
 
-def send_delete_commands(nodes, correlation_id):
+def send_delete_commands(context, nodes):
     """
     Build the message for each switch node in the path and send the message to
     both the speaker and the flow topic
 
+    :param context: current operation context
+    :type context: topologylistener.context.OperationContext
     :param nodes: array of dicts: switch_id; flow_id; cookie
     :return:
     """
 
-    logger.debug('Send Delete Commands: node count=%d', len(nodes))
+    context.log(raw_logger).debug(
+            'Send Delete Commands (nodes count=%d)', len(nodes))
     for node in nodes:
-        data = build_delete_flow(str(node['switch_id']), str(node['flow_id']), node['cookie'])
-        send_to_topic(data, correlation_id, MT_COMMAND,
-                      destination="CONTROLLER", topic=config.KAFKA_SPEAKER_TOPIC)
-        send_to_topic(data, correlation_id, MT_COMMAND,
-                      destination="WFM", topic=config.KAFKA_FLOW_TOPIC)
+        data = build_delete_flow(
+                str(node['switch_id']), str(node['flow_id']), node['cookie'])
+        send_to_topic(
+                context, data, MT_COMMAND,
+                destination="CONTROLLER", topic=config.KAFKA_SPEAKER_TOPIC)
+        send_to_topic(
+                context, data, MT_COMMAND,
+                destination="WFM", topic=config.KAFKA_FLOW_TOPIC)
 
 
 def model_to_json(entity, pretty=False):
