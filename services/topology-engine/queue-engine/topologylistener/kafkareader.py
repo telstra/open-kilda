@@ -13,6 +13,7 @@
 #   limitations under the License.
 #
 
+import datetime
 import os
 import time
 import logging
@@ -46,13 +47,16 @@ def create_consumer(config):
 
 
 def read_message(consumer):
-    try:
-        message = consumer.next()
-        if message.value is not "":
-            return message.value
-        else:
-            logger.debug('sleeping')
-            time.sleep(1)
+    kafka_record = consumer.next()
 
-    except Exception as e:
-        logger.exception('Can not read message: %s', e.message)
+    record_raw_time = float(kafka_record.timestamp) / 1000
+    record_time = datetime.datetime.fromtimestamp(record_raw_time)
+    logger.debug(
+            'Fetch message (partition: %s, offset: %s, timestamp: %.03f (%s), '
+            'timestamp-parsed: %s, size: %d)',
+            kafka_record.partition, kafka_record.offset, record_raw_time,
+            kafka_record.timestamp_type,
+            record_time.strftime('%Y.%m.%d %H:%M:%S.%f'),
+            len(kafka_record.value))
+
+    return kafka_record.value

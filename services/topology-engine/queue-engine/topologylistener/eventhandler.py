@@ -13,32 +13,20 @@
 #   limitations under the License.
 #
 
-import kafkareader
 import json
+import logging
 import time
 
 import gevent
 import gevent.pool
 import gevent.queue
+import kafkareader
 
-from messageclasses import MessageItem
-import logging
-import config
+from topologylistener import config
+from topologylistener import exc
+from topologylistener.messageclasses import MessageItem
 
 logger = logging.getLogger(__name__)
-
-known_messages = ['org.openkilda.messaging.info.event.SwitchInfoData',
-                  'org.openkilda.messaging.info.event.IslInfoData',
-                  'org.openkilda.messaging.info.event.PortInfoData',
-                  'org.openkilda.messaging.info.flow.FlowInfoData']
-known_commands = ['org.openkilda.messaging.command.flow.FlowCreateRequest',
-                  'org.openkilda.messaging.command.flow.FlowDeleteRequest',
-                  'org.openkilda.messaging.command.flow.FlowUpdateRequest',
-                  'org.openkilda.messaging.command.flow.FlowPathRequest',
-                  'org.openkilda.messaging.command.flow.FlowGetRequest',
-                  'org.openkilda.messaging.command.flow.FlowsGetRequest',
-                  'org.openkilda.messaging.command.flow.FlowRerouteRequest',
-                  'org.openkilda.messaging.command.discovery.NetworkCommandData']
 
 
 def main_loop():
@@ -49,33 +37,78 @@ def main_loop():
 
     consumer = kafkareader.create_consumer(config)
 
+    logger.info('Ready to handle requests')
+
     while True:
         try:
             raw_event = kafkareader.read_message(consumer)
             logger.debug('READ MESSAGE %s', raw_event)
-            event = MessageItem(**json.loads(raw_event))
+            message = unpack(raw_event)
 
-            if event.get_message_type() in known_messages\
-                    or event.get_command() in known_commands:
-                pool.spawn(topology_event_handler, event)
-            else:
-                logger.debug('Received unknown type or command %s', raw_event)
-
+            handler = gevent.Greenlet(event_handler, message)
+            handler.link(RequestResultReporter())
+            pool.start(handler)
+        except exc.InvalidDecodeError as e:
+            logger.error(e)
+            logger.error(
+                    'Raw input that lead to decode failure: %r', e.raw_request)
+        except exc.Error as e:
+            logger.error('%s', e)
         except Exception as e:
-            logger.exception(e.message)
+            logger.error('%s', e, exc_info=True)
 
 
-def topology_event_handler(event):
-    event_handled = False
+def event_handler(message):
+    logger.debug('Enter event_handler')
 
-    attempts = 0
-    while not event_handled and attempts < 5:
-        event_handled = event.handle()
-        attempts += 1
-        if not event_handled:
-            logger.error('Unable to process event: %s', event.get_type())
-            logger.error('Message body: %s', event.to_json())
-            time.sleep(.1)
+    event = MessageItem(message)
+    for attempt in range(5):
+        logger.debug('Request handling attempt #%d', attempt)
 
-    logger.debug('Event processed for: %s, correlation_id: %s',
-                 event.get_type(), event.correlation_id)
+        try:
+            event.handle()
+            break
+
+        except exc.RecoverableError:
+            logger.error('Attempt #%d end with failure', attempt)
+        except exc.UnrecoverableError as e:
+            logger.error('Internal error during message processing',
+                      exc_info=e.exc_info)
+            break
+        except exc.Error as e:
+            logger.error('%s', e)
+            break
+
+        # FIXME(surabujin): we should never do this
+        except Exception:
+            logger.error(
+                    'Unhandled exception during request processing',
+                    exc_info=True)
+            logger.error(
+                    'Treat ALL unhandled exceptions as recoverable errors '
+                    '(MUST BE FIXED).')
+
+        time.sleep(.2)
+
+    else:
+        logger.error('All attempts to complete request have failed')
+
+    logger.debug('Leave event_handler')
+
+
+def unpack(raw_message):
+    try:
+        message = json.loads(raw_message)
+    except (TypeError, ValueError) as e:
+        raise exc.InvalidDecodeError(e, raw_message)
+    return message
+
+
+class RequestResultReporter(object):
+    def __call__(self, handler):
+        if handler.successful():
+            logger.info('message processing is over')
+        else:
+            logger.error(
+                    'message processing failed (unhandled exception)',
+                    exc_info=handler.exc_info)

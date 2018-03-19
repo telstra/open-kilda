@@ -15,30 +15,21 @@
 
 import time
 import json
-from kafka import KafkaProducer
-
 import logging
 
-import config
+from kafka import KafkaProducer
+
+from topologylistener import config
+
+logger = logging.getLogger(__name__)
 
 producer = KafkaProducer(bootstrap_servers=config.KAFKA_BOOTSTRAP_SERVERS)
-logger = logging.getLogger(__name__)
 
 MT_ERROR = "org.openkilda.messaging.error.ErrorMessage"
 MT_COMMAND = "org.openkilda.messaging.command.CommandMessage"
 MT_INFO = "org.openkilda.messaging.info.InfoMessage"
 MT_INFO_FLOW_STATUS = "org.openkilda.messaging.info.flow.FlowStatusResponse"
 MT_ERROR_DATA = "org.openkilda.messaging.error.ErrorData"
-
-
-def get_timestamp():
-    return int(round(time.time() * 1000))
-
-
-class Flow(object):
-    def to_json(self):
-        return json.dumps(
-            self, default=lambda o: o.__dict__, sort_keys=False, indent=4)
 
 
 def build_ingress_flow(path_nodes, src_switch, src_port, src_vlan,
@@ -146,12 +137,6 @@ def build_delete_flow(switch, flow_id, cookie, meter_id=0):
     return flow
 
 
-class Message(object):
-    def to_json(self):
-        return json.dumps(
-            self, default=lambda o: o.__dict__, sort_keys=False, indent=4)
-
-
 def send_to_topic(payload, correlation_id,
                   message_type,
                   destination="WFM",
@@ -160,12 +145,15 @@ def send_to_topic(payload, correlation_id,
     message.payload = payload
     message.clazz = message_type
     message.destination = destination
-    message.timestamp = get_timestamp()
+    message.timestamp = make_timestamp()
     message.correlation_id = correlation_id
-    kafka_message = b'{}'.format(message.to_json())
-    logger.debug('Send message: topic=%s, message=%s', topic, kafka_message)
-    message_result = producer.send(topic, kafka_message)
-    message_result.get(timeout=5)
+
+    json_data = model_to_json(message)
+    json_data = json_data.encode('utf-8')
+    logger.debug('Send message: topic=%s, message=%s', topic, json_data)
+
+    promise = producer.send(topic, json_data)
+    promise.get(timeout=5)
 
 
 def send_info_message(payload, correlation_id):
@@ -189,8 +177,9 @@ def send_error_message(correlation_id, error_type, error_message,
 
 def send_install_commands(flow_rules, correlation_id):
     """
-    flow_utils.get_rules() creates the flow rules starting with ingress, then transit, then egress. For the install,
-    we would like to send the commands in opposite direction - egress, then transit, then ingress.  Consequently,
+    flow_utils.get_rules() creates the flow rules starting with ingress, then
+    transit, then egress. For the install, we would like to send the commands in
+    opposite direction - egress, then transit, then ingress.  Consequently,
     the for logic should go in reverse
     """
     for flow_rule in reversed(flow_rules):
@@ -203,7 +192,8 @@ def send_install_commands(flow_rules, correlation_id):
 
 def send_delete_commands(nodes, correlation_id):
     """
-    Build the message for each switch node in the path and send the message to both the speaker and the flow topic
+    Build the message for each switch node in the path and send the message to
+    both the speaker and the flow topic
 
     :param nodes: array of dicts: switch_id; flow_id; cookie
     :return:
@@ -216,3 +206,37 @@ def send_delete_commands(nodes, correlation_id):
                       destination="CONTROLLER", topic=config.KAFKA_SPEAKER_TOPIC)
         send_to_topic(data, correlation_id, MT_COMMAND,
                       destination="WFM", topic=config.KAFKA_FLOW_TOPIC)
+
+
+def model_to_json(entity, pretty=False):
+    extra = {}
+    if pretty:
+        extra['sort_keys'] = True
+        extra['indent'] = 4
+    return json.dumps(entity, cls=_ModelJsonEncoder, **extra)
+
+
+def make_timestamp():
+    return int(time.time() * 1000)
+
+
+class AbstractModel(object):
+    def make_serializable_representation(self):
+        return vars(self).copy()
+
+
+class Flow(AbstractModel):
+    pass
+
+
+class Message(AbstractModel):
+    pass
+
+
+class _ModelJsonEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, AbstractModel):
+            encoded = o.make_serializable_representation()
+        else:
+            encoded = super(_ModelJsonEncoder, self).default(o)
+        return encoded
