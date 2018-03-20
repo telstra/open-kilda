@@ -96,7 +96,7 @@ public class DiscoveryMechanismTest {
         public void verifyMocks() {
             verify(topologyEngineService).getActiveSwitches();
             verify(topologyEngineService).getActiveLinks();
-            verify(topologyDefinition, times(3)).getActiveSwitches();
+            verify(topologyDefinition, times(2)).getActiveSwitches();
             verify(topologyDefinition).getIslsForActiveSwitches();
         }
 
