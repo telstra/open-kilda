@@ -64,7 +64,7 @@ compile:
 
 unit:
 	$(MAKE) -C services/src
-	mvn -f services/wfm/pom.xml clean assembly:assembly
+	mvn -B -f services/wfm/pom.xml clean assembly:assembly
 
 clean-test:
 	docker-compose down
