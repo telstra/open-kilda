@@ -106,9 +106,24 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
 
         if (sw.getEnabledPortNumbers() != null) {
             for (OFPort p : sw.getEnabledPortNumbers()) {
-                kafkaProducer.postMessage(TOPO_EVENT_TOPIC, buildPortMessage(sw.getId(), p, PortChangeType.UP));
+                if (isPhysicalPort(p))
+                    kafkaProducer.postMessage(TOPO_EVENT_TOPIC, buildPortMessage(sw.getId(), p,
+                            PortChangeType.UP));
             }
         }
+    }
+
+    public boolean isPhysicalPort(OFPort p) {
+    return !(p.equals(OFPort.LOCAL) ||
+            p.equals(OFPort.ALL) ||
+            p.equals(OFPort.CONTROLLER) ||
+            p.equals(OFPort.ANY) ||
+            p.equals(OFPort.FLOOD) ||
+            p.equals(OFPort.ZERO) ||
+            p.equals(OFPort.NO_MASK) ||
+            p.equals(OFPort.IN_PORT) ||
+            p.equals(OFPort.NORMAL) ||
+            p.equals(OFPort.TABLE));
     }
 
     /**
@@ -116,8 +131,10 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
      */
     @Override
     public void switchPortChanged(final DatapathId switchId, final OFPortDesc port, final PortChangeType type) {
-        Message message = buildPortMessage(switchId, port, type);
-        kafkaProducer.postMessage(TOPO_EVENT_TOPIC, message);
+        if (isPhysicalPort(port.getPortNo())) {
+            Message message = buildPortMessage(switchId, port, type);
+            kafkaProducer.postMessage(TOPO_EVENT_TOPIC, message);
+        }
     }
 
     /**
