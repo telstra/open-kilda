@@ -15,11 +15,11 @@
 
 package org.openkilda.messaging.command.flow;
 
+import static java.lang.String.format;
 import static org.openkilda.messaging.Utils.MAPPER;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 
-import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.info.flow.FlowOperation;
 import org.openkilda.messaging.model.Flow;
@@ -27,11 +27,13 @@ import org.openkilda.messaging.model.ImmutablePair;
 
 import org.junit.Test;
 
+import java.util.UUID;
+
 public class FlowInfoDataTest {
     @Test
     public void toStringTest() throws Exception {
         FlowInfoData data = new FlowInfoData("", new ImmutablePair<>(new Flow(), new Flow()),
-                FlowOperation.CREATE, Utils.DEFAULT_CORRELATION_ID);
+                FlowOperation.CREATE, format("test-%s", UUID.randomUUID()));
         String dataString = data.toString();
         assertNotNull(dataString);
         assertFalse(dataString.isEmpty());

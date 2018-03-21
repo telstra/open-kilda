@@ -12,6 +12,7 @@
 		"transit_vlan_id": 100,
 		"output_vlan_id": 200,
 		"output_vlan_type": "REPLACE"
-	}
+	},
+	"correlation_id": "test-3fc82382-eae2-4536-80d7-b35baeb9a7f5"
 }
 

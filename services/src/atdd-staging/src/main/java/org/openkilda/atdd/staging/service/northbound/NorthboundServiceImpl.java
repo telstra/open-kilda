@@ -15,6 +15,8 @@
 
 package org.openkilda.atdd.staging.service.northbound;
 
+import static java.lang.String.format;
+
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.model.HealthCheck;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
@@ -32,6 +34,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class NorthboundServiceImpl implements NorthboundService {
@@ -96,7 +99,7 @@ public class NorthboundServiceImpl implements NorthboundService {
 
     private HttpHeaders buildHeadersWithCorrelationId() {
         HttpHeaders headers = new HttpHeaders();
-        headers.set(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()));
+        headers.set(Utils.CORRELATION_ID, format("atdd-%s", UUID.randomUUID()));
         return headers;
     }
 }

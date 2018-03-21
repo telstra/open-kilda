@@ -15,12 +15,8 @@
 
 package org.openkilda.northbound.config;
 
-import static org.openkilda.messaging.Utils.CORRELATION_ID;
-import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
-
 import org.openkilda.northbound.utils.ExecutionTimeInterceptor;
-import org.slf4j.MDC;
-import org.slf4j.MDC.MDCCloseable;
+import org.openkilda.northbound.utils.RequestCorrelationFilter;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -34,13 +30,7 @@ import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
 
-import java.io.IOException;
 import java.util.Collections;
-import java.util.Optional;
-import javax.servlet.FilterChain;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 
 /**
  * The Web Application configuration.
@@ -95,19 +85,6 @@ public class WebConfig extends WebMvcConfigurerAdapter {
 
     @Bean
     public OncePerRequestFilter requestCorrelationIdFilter() {
-        return new OncePerRequestFilter() {
-            @Override
-            protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
-                    FilterChain filterChain)
-                    throws ServletException, IOException {
-
-                // Put the request's correlationId into the logger context.
-                // MDC is picked up by the %X in log4j2 formatter .. resources/log4j2.xml
-                String correlationId = Optional.ofNullable(request.getHeader(CORRELATION_ID)).orElse(DEFAULT_CORRELATION_ID);
-                try(MDCCloseable closable = MDC.putCloseable(CORRELATION_ID, correlationId)) {
-                    filterChain.doFilter(request, response);
-                }
-            }
-        };
+        return new RequestCorrelationFilter();
     }
 }

@@ -46,6 +46,8 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.openkilda.floodlight.pathverification.type.PathType;
 import org.openkilda.floodlight.pathverification.web.PathVerificationServiceWebRoutable;
+import org.openkilda.floodlight.utils.CorrelationContext;
+import org.openkilda.floodlight.utils.OFMessageListenerProxyWithCorrelationContext;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Topic;
 import org.openkilda.messaging.info.InfoMessage;
@@ -180,7 +182,7 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
     @Override
     public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
         logger.info("Stating " + PathVerificationService.class.getCanonicalName());
-        floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
+        floodlightProvider.addOFMessageListener(OFType.PACKET_IN, new OFMessageListenerProxyWithCorrelationContext(this));
         restApiService.addRestletRoutable(new PathVerificationServiceWebRoutable());
         isAlive = true;
     }
@@ -244,12 +246,13 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
                 IOFSwitch dstSwitch = (dstSwId == null) ? null : switchService.getSwitch(dstSwId);
                 OFPacketOut ofPacketOut = generateVerificationPacket(srcSwitch, port, dstSwitch, true);
                 if (ofPacketOut != null) {
-                    logger.debug("==> Sending verification packet out {}/{}: {}", srcSwitch.getId().toString(), port.getPortNumber(),
-                            Hex.encodeHexString(ofPacketOut.getData()));
+                    logger.debug("==> Sending verification packet out {}/{}: {}",
+                            new Object[]{srcSwitch.getId().toString(), port.getPortNumber(),
+                                    Hex.encodeHexString(ofPacketOut.getData())});
                     result = srcSwitch.write(ofPacketOut);
                 } else {
                     logger.error("<== Received null from generateVerificationPacket, inputs where: " +
-                            "srcSwitch: {}, port: {}, dstSwitch: {}", srcSwitch, port, dstSwitch);
+                            "srcSwitch: {}, port: {}, dstSwitch: {}", new Object[]{srcSwitch, port, dstSwitch});
                 }
             }
         } catch (Exception exception) {
@@ -502,7 +505,7 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
             U64 latency = (timestamp != 0 && (time - timestamp) > 0) ? U64.of(time - timestamp) : U64.ZERO;
 
             logger.debug("link discovered: {}-{} ===( {} ms )===> {}-{}",
-                    remoteSwitch.getId(), remotePort, latency.getValue(), sw.getId(), inPort);
+                    new Object[]{remoteSwitch.getId(), remotePort, latency.getValue(), sw.getId(), inPort});
 
             // this verification packet was sent from remote switch/port to received switch/port
             // so the link direction is from remote switch/port to received switch/port
@@ -526,7 +529,7 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
             IslInfoData path = new IslInfoData(latency.getValue(), nodes, speed, IslChangeType.DISCOVERED,
                     getAvailableBandwidth(speed));
 
-            Message message = new InfoMessage(path, System.currentTimeMillis(), "system", null);
+            Message message = new InfoMessage(path, System.currentTimeMillis(), CorrelationContext.getId(), null);
 
             final String json = MAPPER.writeValueAsString(message);
             logger.debug("about to send {}", json);

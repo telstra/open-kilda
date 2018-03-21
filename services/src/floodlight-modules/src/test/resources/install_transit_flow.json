@@ -10,6 +10,7 @@
 		"input_port": 3,
 		"output_port": 2,
 		"transit_vlan_id": 100
-	}
+	},
+	"correlation_id": "test-7a34c29f-6758-493a-a5f3-fdec3b8a13f4"
 }
 

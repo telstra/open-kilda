@@ -2,13 +2,11 @@
 <Configuration status="WARN">
     <Appenders>
         <Console name="STDOUT" target="SYSTEM_OUT">
-            <PatternLayout pattern="%d{ISO8601} %-5p %c{1}:%L - %m%n"/>
+            <PatternLayout pattern="%d{ISO8601} %-5p %c{1.}:%L - [%X] %m%n"/>
         </Console>
     </Appenders>
     <Loggers>
-        <Logger name="org.openkilda" level="DEBUG" additivity="false">
-            <AppenderRef ref="STDOUT"/>
-        </Logger>
+        <Logger name="org.openkilda" level="DEBUG"/>
         <Root level="INFO">
             <AppenderRef ref="STDOUT"/>
         </Root>

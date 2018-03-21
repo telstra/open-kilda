@@ -15,10 +15,8 @@
 
 package org.openkilda.messaging.error;
 
-import static com.google.common.base.MoreObjects.firstNonNull;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static org.openkilda.messaging.Utils.CORRELATION_ID;
-import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 import static org.openkilda.messaging.Utils.TIMESTAMP;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -85,7 +83,7 @@ public class MessageError implements Serializable {
                         @JsonProperty("error-type") final String type,
                         @JsonProperty("error-message") final String message,
                         @JsonProperty("error-description") final String description) {
-        this.correlationId = firstNonNull(correlationId, DEFAULT_CORRELATION_ID);
+        this.correlationId = Objects.requireNonNull(correlationId, "correlationId must not be null");
         this.timestamp = timestamp;
         this.errorType = type;
         this.errorMessage = message;

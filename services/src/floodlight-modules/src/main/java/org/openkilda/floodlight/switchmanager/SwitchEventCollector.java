@@ -25,6 +25,8 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import org.openkilda.floodlight.kafka.KafkaMessageProducer;
+import org.openkilda.floodlight.utils.CorrelationContext;
+import org.openkilda.floodlight.utils.SwitchListenerProxyWithCorrelationContext;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Topic;
 import org.openkilda.messaging.info.InfoData;
@@ -211,7 +213,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
     @Override
     public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
         logger.info("Starting " + SwitchEventCollector.class.getCanonicalName());
-        switchService.addOFSwitchListener(this);
+        switchService.addOFSwitchListener(new SwitchListenerProxyWithCorrelationContext(this));
     }
 
     /**
@@ -274,7 +276,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
      * @return Message
      */
     private Message buildMessage(final InfoData data) {
-        return new InfoMessage(data, System.currentTimeMillis(), "system", null);
+        return new InfoMessage(data, System.currentTimeMillis(), CorrelationContext.getId(), null);
     }
 
     /**

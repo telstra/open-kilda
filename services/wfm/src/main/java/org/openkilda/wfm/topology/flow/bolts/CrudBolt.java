@@ -65,6 +65,7 @@ import org.openkilda.wfm.topology.flow.FlowTopology;
 import org.openkilda.wfm.topology.flow.StreamType;
 import org.openkilda.wfm.topology.flow.validation.FlowValidationException;
 import org.openkilda.wfm.topology.flow.validation.FlowValidator;
+import org.openkilda.wfm.topology.utils.CorrelationContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -172,7 +173,6 @@ public class CrudBolt
         ComponentType componentId = ComponentType.valueOf(tuple.getSourceComponent());
         StreamType streamId = StreamType.valueOf(tuple.getSourceStreamId());
         String flowId = tuple.getStringByField(Utils.FLOW_ID);
-        String correlationId = Utils.DEFAULT_CORRELATION_ID;
 
         try {
             logger.debug("Request tuple={}", tuple);
@@ -181,13 +181,12 @@ public class CrudBolt
 
                 case SPLITTER_BOLT:
                     Message msg = (Message) tuple.getValueByField(AbstractTopology.MESSAGE_FIELD);
-                    correlationId = msg.getCorrelationId();
 
                     CommandMessage cmsg = (msg instanceof CommandMessage) ? (CommandMessage) msg : null;
                     InfoMessage imsg = (msg instanceof InfoMessage) ? (InfoMessage) msg : null;
 
-                    logger.info("Flow request: {}={}, {}={}, component={}, stream={}",
-                            Utils.CORRELATION_ID, correlationId, Utils.FLOW_ID, flowId, componentId, streamId);
+                    logger.info("Flow request: {}={}, component={}, stream={}",
+                            Utils.FLOW_ID, flowId, componentId, streamId);
 
                     switch (streamId) {
                         case CREATE:
@@ -243,7 +242,7 @@ public class CrudBolt
 
                     switch (streamId) {
                         case STATUS:
-                            handleStateRequest(flowId, newStatus, tuple);
+                            handleStateRequest(flowId, newStatus, tuple, CorrelationContext.getId());
                             break;
                         default:
                             logger.debug("Unexpected stream: component={}, stream={}", componentId, streamId);
@@ -273,10 +272,10 @@ public class CrudBolt
             }
         } catch (CacheException exception) {
             String logMessage = format("%s: %s", exception.getErrorMessage(), exception.getErrorDescription());
-            logger.error("{}, {}={}, {}={}, component={}, stream={}", logMessage, Utils.CORRELATION_ID,
-                    correlationId, Utils.FLOW_ID, flowId, componentId, streamId, exception);
+            logger.error("{}, {}={}, component={}, stream={}", logMessage,
+                    Utils.FLOW_ID, flowId, componentId, streamId, exception);
 
-            ErrorMessage errorMessage = buildErrorMessage(correlationId, exception.getErrorType(),
+            ErrorMessage errorMessage = buildErrorMessage(CorrelationContext.getId(), exception.getErrorType(),
                     logMessage, componentId.toString().toLowerCase());
 
             Values error = new Values(errorMessage, exception.getErrorType());
@@ -618,13 +617,12 @@ public class CrudBolt
      * It is currently called from 2 places - a failed update (set flow to DOWN), and a STATUS
      * update from the TransactionBolt.
      */
-    private void handleStateRequest(String flowId, FlowState state, Tuple tuple) throws IOException {
+    private void handleStateRequest(String flowId, FlowState state, Tuple tuple, String correlationId) throws IOException {
         ImmutablePair<Flow, Flow> flow = flowCache.getFlow(flowId);
         logger.info("State flow: {}={}", flowId, state);
         flow.getLeft().setState(state);
         flow.getRight().setState(state);
 
-        final String correlationId = UUID.randomUUID().toString();
         FlowInfoData data = new FlowInfoData(flowId, flow, FlowOperation.STATE, correlationId);
         InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), correlationId);
 
@@ -645,7 +643,7 @@ public class CrudBolt
                 break;
 
             case UPDATE_FAILURE:
-                handleStateRequest(flowId, FlowState.DOWN, tuple);
+                handleStateRequest(flowId, FlowState.DOWN, tuple, message.getCorrelationId());
                 break;
 
             case DELETION_FAILURE:

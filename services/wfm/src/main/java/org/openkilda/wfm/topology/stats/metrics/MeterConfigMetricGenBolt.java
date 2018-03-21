@@ -15,7 +15,6 @@
 
 package org.openkilda.wfm.topology.stats.metrics;
 
-import static org.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.openkilda.wfm.topology.AbstractTopology.MESSAGE_FIELD;
 
 import com.google.common.collect.ImmutableMap;
@@ -45,8 +44,8 @@ public class MeterConfigMetricGenBolt extends MetricGenBolt {
             return;
         }
 
-        LOGGER.debug("Meter config stats message: {}={}, component={}, stream={}",
-                CORRELATION_ID, message.getCorrelationId(), componentId, StatsStreamType.valueOf(input.getSourceStreamId()));
+        LOGGER.debug("Meter config stats message: component={}, stream={}",
+                componentId, StatsStreamType.valueOf(input.getSourceStreamId()));
         MeterConfigStatsData data = (MeterConfigStatsData) message.getData();
         long timestamp = message.getTimestamp();
 

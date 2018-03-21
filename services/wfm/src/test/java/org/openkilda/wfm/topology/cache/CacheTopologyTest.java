@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.cache;
 
+import static java.lang.String.format;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -22,7 +23,7 @@ import static org.junit.Assert.assertTrue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
-import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.storm.Config;
@@ -233,7 +234,7 @@ public class CacheTopologyTest extends AbstractStormTest {
     @Test
     public void ctrlListHandler() throws Exception {
         CtrlRequest request = new CtrlRequest(
-                "cachetopology/*", new RequestData("list"), 1, "list-correlation-id", Destination.WFM_CTRL);
+                "cachetopology/*", new RequestData("list"), 1, format("test-%s", UUID.randomUUID()), Destination.WFM_CTRL);
 
         sendMessage(request, topology.getConfig().getKafkaCtrlTopic());
 
@@ -253,7 +254,7 @@ public class CacheTopologyTest extends AbstractStormTest {
     @Test
     public void ctrlDumpHandler() throws Exception {
         CtrlRequest request = new CtrlRequest(
-                "cachetopology/*", new RequestData("dump"), 1, "dump-correlation-id", Destination.WFM_CTRL);
+                "cachetopology/*", new RequestData("dump"), 1, format("test-%s", UUID.randomUUID()), Destination.WFM_CTRL);
 
         sendMessage(request, topology.getConfig().getKafkaCtrlTopic());
 
@@ -274,7 +275,7 @@ public class CacheTopologyTest extends AbstractStormTest {
     @Test
     public void ctrlSpecificRoute() throws Exception {
         CtrlRequest request = new CtrlRequest(
-                "cachetopology/cache", new RequestData("dump"), 1, "route-correlation-id", Destination.WFM_CTRL);
+                "cachetopology/cache", new RequestData("dump"), 1, format("test-%s", UUID.randomUUID()), Destination.WFM_CTRL);
         sendMessage(request, topology.getConfig().getKafkaCtrlTopic());
 
         ConsumerRecord<String, String> raw = ctrlConsumer.pollMessage();
@@ -366,18 +367,18 @@ public class CacheTopologyTest extends AbstractStormTest {
 
     private static void sendNetworkDump(NetworkInfoData data) throws IOException {
         System.out.println("Topology-Engine: Send Network Dump");
-        InfoMessage info = new InfoMessage(data, 0, UUID.randomUUID().toString(), Destination.WFM_CACHE);
+        InfoMessage info = new InfoMessage(data, 0, format("test-%s", UUID.randomUUID()), Destination.WFM_CACHE);
         sendMessage(info, topology.getConfig().getKafkaTopoCacheTopic());
     }
 
     private static <T extends InfoData> void sendData(T infoData) throws IOException {
-        InfoMessage info = new InfoMessage(infoData, 0, UUID.randomUUID().toString(), Destination.WFM_CACHE);
+        InfoMessage info = new InfoMessage(infoData, 0, format("test-%s", UUID.randomUUID()), Destination.WFM_CACHE);
         sendMessage(info, topology.getConfig().getKafkaTopoCacheTopic());
     }
 
     private static void sendFlowUpdate(ImmutablePair<Flow, Flow> flow) throws IOException {
         System.out.println("Flow Topology: Send Flow Creation Request");
-        String correlationId = UUID.randomUUID().toString();
+        String correlationId = format("test-%s", UUID.randomUUID());
         FlowInfoData data = new FlowInfoData(flow.getLeft().getFlowId(),
                 flow, FlowOperation.CREATE, correlationId);
         // TODO: as part of getting rid of OutputTopic, used TopoDiscoTopic. This feels wrong for
@@ -388,7 +389,7 @@ public class CacheTopologyTest extends AbstractStormTest {
 
     private static void sendClearState() throws IOException, InterruptedException {
         CtrlRequest request = new CtrlRequest(
-                "cachetopology/cache", new RequestData("clearState"), 1, "route-correlation-id",
+                "cachetopology/cache", new RequestData("clearState"), 1, format("test-%s", UUID.randomUUID()),
                 Destination.WFM_CTRL);
         sendMessage(request, topology.getConfig().getKafkaCtrlTopic());
 
@@ -401,7 +402,7 @@ public class CacheTopologyTest extends AbstractStormTest {
 
     private static void sendNetworkDumpRequest() throws IOException, InterruptedException {
         CtrlRequest request = new CtrlRequest("cachetopology/cache", new RequestData("dump"),
-                System.currentTimeMillis(), UUID.randomUUID().toString(), Destination.WFM_CTRL);
+                System.currentTimeMillis(), format("test-%s", UUID.randomUUID()), Destination.WFM_CTRL);
         sendMessage(request, topology.getConfig().getKafkaCtrlTopic());
     }
 
@@ -423,7 +424,7 @@ public class CacheTopologyTest extends AbstractStormTest {
         PathInfoData pathInfoData = new PathInfoData(0L, path);
         flow.setFlowPath(pathInfoData);
         ImmutablePair<Flow, Flow> immutablePair = new ImmutablePair<>(flow, flow);
-        return new FlowInfoData(flowId, immutablePair, FlowOperation.CREATE, UUID.randomUUID().toString());
+        return new FlowInfoData(flowId, immutablePair, FlowOperation.CREATE, format("test-%s", UUID.randomUUID()));
     }
 
     private static void waitDumpRequest() throws InterruptedException {

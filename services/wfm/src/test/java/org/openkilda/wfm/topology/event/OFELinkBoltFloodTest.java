@@ -16,8 +16,8 @@
 package org.openkilda.wfm.topology.event;
 
 
+import static java.lang.String.format;
 import static org.junit.Assert.assertEquals;
-import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.storm.Config;
@@ -72,7 +72,7 @@ public class OFELinkBoltFloodTest extends AbstractStormTest {
 
         SwitchInfoData data = new SwitchInfoData("switchId", SwitchState.ADDED, "address",
                 "hostname", "description", "controller");
-        InfoMessage message = new InfoMessage(data, System.currentTimeMillis(), UUID.randomUUID().toString());
+        InfoMessage message = new InfoMessage(data, System.currentTimeMillis(), format("test-%s", UUID.randomUUID()));
 
         // Floooding
         sendMessages(message, topology.getConfig().getKafkaTopoDiscoTopic(), floodSize);
@@ -88,7 +88,7 @@ public class OFELinkBoltFloodTest extends AbstractStormTest {
                 Collections.emptySet(),
                 Collections.emptySet());
 
-        InfoMessage info = new InfoMessage(dump, 0, DEFAULT_CORRELATION_ID, Destination.WFM);
+        InfoMessage info = new InfoMessage(dump, 0, format("test-%s", UUID.randomUUID()), Destination.WFM);
 
         String request = objectMapper.writeValueAsString(info);
         // Send DumpMessage to topic with offset floodSize+1.

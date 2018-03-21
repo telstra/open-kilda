@@ -49,6 +49,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
@@ -82,7 +83,7 @@ public class FlowUtils {
                 .path("/api/v1/health-check")
                 .request(MediaType.APPLICATION_JSON)
                 .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
-                .header(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()))
+                .header(Utils.CORRELATION_ID, String.format("atdd-%s", UUID.randomUUID()))
                 .get();
 
 
@@ -120,7 +121,7 @@ public class FlowUtils {
                 .resolveTemplate("flowid", flowId)
                 .request(MediaType.APPLICATION_JSON)
                 .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
-                .header(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()))
+                .header(Utils.CORRELATION_ID, String.format("atdd-%s", UUID.randomUUID()))
                 .get();
 
         System.out.println(format("===> Response = %s", response.toString()));
@@ -155,7 +156,7 @@ public class FlowUtils {
                 .path("/api/v1/flows")
                 .request(MediaType.APPLICATION_JSON)
                 .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
-                .header(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()))
+                .header(Utils.CORRELATION_ID, String.format("atdd-%s", UUID.randomUUID()))
                 .put(Entity.json(payload));
 
         System.out.println(format("===> Request Payload = %s", Entity.json(payload).getEntity()));
@@ -194,7 +195,7 @@ public class FlowUtils {
                 .resolveTemplate("flowid", flowId)
                 .request(MediaType.APPLICATION_JSON)
                 .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
-                .header(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()))
+                .header(Utils.CORRELATION_ID, String.format("atdd-%s", UUID.randomUUID()))
                 .put(Entity.json(payload));
 
         System.out.println(format("===> Request Payload = %s", Entity.json(payload).getEntity()));
@@ -232,7 +233,7 @@ public class FlowUtils {
                 .resolveTemplate("flowid", flowId)
                 .request(MediaType.APPLICATION_JSON)
                 .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
-                .header(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()))
+                .header(Utils.CORRELATION_ID, String.format("atdd-%s", UUID.randomUUID()))
                 .delete();
 
         System.out.println(format("===> Response = %s", response.toString()));
@@ -269,7 +270,7 @@ public class FlowUtils {
                 .resolveTemplate("flowid", flowId)
                 .request(MediaType.APPLICATION_JSON)
                 .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
-                .header(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()))
+                .header(Utils.CORRELATION_ID, String.format("atdd-%s", UUID.randomUUID()))
                 .get();
 
 
@@ -364,7 +365,7 @@ public class FlowUtils {
                 .resolveTemplate("flowid", flowId)
                 .request(MediaType.APPLICATION_JSON)
                 .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
-                .header(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()))
+                .header(Utils.CORRELATION_ID, String.format("atdd-%s", UUID.randomUUID()))
                 .get();
 
         System.out.println(format("===> Response = %s", response.toString()));
@@ -392,7 +393,7 @@ public class FlowUtils {
                 .path("/api/v1/flows")
                 .request(MediaType.APPLICATION_JSON)
                 .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
-                .header(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()))
+                .header(Utils.CORRELATION_ID, String.format("atdd-%s", UUID.randomUUID()))
                 .get();
 
         System.out.println(format("===> Response = %s", response.toString()));

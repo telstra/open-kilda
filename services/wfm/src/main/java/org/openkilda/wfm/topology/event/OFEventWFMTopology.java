@@ -15,12 +15,14 @@
 
 package org.openkilda.wfm.topology.event;
 
+import static org.openkilda.wfm.topology.utils.BoltProxyWithCorrelationContext.proxyWithCorrelationContext;
+
+import org.apache.storm.kafka.bolt.KafkaBolt;
 import org.openkilda.messaging.ServiceType;
 import org.openkilda.messaging.Topic;
 import org.openkilda.wfm.ConfigurationException;
 import org.openkilda.wfm.CtrlBoltRef;
 import org.openkilda.wfm.StreamNameCollisionException;
-import org.openkilda.wfm.ctrl.ICtrlBolt;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.LaunchEnvironment;
 
@@ -28,7 +30,6 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.topology.BoltDeclarer;
-import org.apache.storm.topology.IStatefulBolt;
 import org.apache.storm.topology.TopologyBuilder;
 
 import java.util.ArrayList;
@@ -94,23 +95,25 @@ public class OFEventWFMTopology extends AbstractTopology {
 
         builder.setSpout(spoutName, createKafkaSpout(kafkaTopoDiscoTopic, spoutName));
 
-        IStatefulBolt bolt = new OFELinkBolt(config);
+        OFELinkBolt ofeLinkBolt = new OFELinkBolt(config);
 
         // TODO: resolve the comments below; are there any state issues?
         // NB: with shuffleGrouping, we can't maintain state .. would need to parse first
         //      just to pull out switchID.
         // (crimi) - not sure I agree here .. state can be maintained, albeit distributed.
         //
-        BoltDeclarer bd = builder.setBolt(boltName, bolt, config.getParallelism())
+        BoltDeclarer bd = builder.setBolt(boltName, proxyWithCorrelationContext(ofeLinkBolt), config.getParallelism())
                 .shuffleGrouping(spoutName);
 
-        builder.setBolt(kafkaTopoEngTopic, createKafkaBolt(kafkaTopoEngTopic),
+        KafkaBolt topoEngTopicKafkaBolt = createKafkaBolt(kafkaTopoEngTopic);
+        builder.setBolt(kafkaTopoEngTopic, proxyWithCorrelationContext(topoEngTopicKafkaBolt),
                 config.getParallelism()).shuffleGrouping(boltName, kafkaTopoEngTopic);
-        builder.setBolt(kafkaSpeakerTopic, createKafkaBolt(kafkaSpeakerTopic),
+        KafkaBolt speakerTopicKafkaBolt = createKafkaBolt(kafkaSpeakerTopic);
+        builder.setBolt(kafkaSpeakerTopic, proxyWithCorrelationContext(speakerTopicKafkaBolt),
                 config.getParallelism()).shuffleGrouping(boltName, kafkaSpeakerTopic);
 
         // TODO: verify this ctrlTarget after refactoring.
-        ctrlTargets.add(new CtrlBoltRef(boltName, (ICtrlBolt) bolt, bd));
+        ctrlTargets.add(new CtrlBoltRef(boltName, ofeLinkBolt, bd));
         createCtrlBranch(builder, ctrlTargets);
         // TODO: verify WFM_TOPOLOGY health check
         createHealthCheckHandler(builder, ServiceType.WFM_TOPOLOGY.getId());

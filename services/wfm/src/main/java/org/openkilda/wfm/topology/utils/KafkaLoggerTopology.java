@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.utils;
 
+import static org.openkilda.wfm.topology.utils.BoltProxyWithCorrelationContext.proxyWithCorrelationContext;
+
 import org.openkilda.wfm.ConfigurationException;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.LaunchEnvironment;
@@ -65,7 +67,7 @@ public class KafkaLoggerTopology extends AbstractTopology {
                 .withLevel(config.getLoggerLevel())
                 .withWatermark(config.getLoggerWatermark());
 
-        builder.setBolt("Logger", logger, parallelism)
+        builder.setBolt("Logger", proxyWithCorrelationContext(logger), parallelism)
                 .shuffleGrouping(spoutId);
 
         return builder.createTopology();

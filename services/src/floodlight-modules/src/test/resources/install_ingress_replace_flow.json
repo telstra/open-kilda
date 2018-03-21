@@ -14,6 +14,7 @@
 		"output_vlan_type": "REPLACE",
 		"bandwidth": 10000,
 		"meter_id": 1
-	}
+	},
+	"correlation_id": "test-78d0afe4-f994-41dc-9888-60bef6363f62"
 }
 

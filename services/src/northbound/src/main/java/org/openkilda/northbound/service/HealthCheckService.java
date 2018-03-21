@@ -24,8 +24,7 @@ public interface HealthCheckService {
     /**
      * Gets health-check status.
      *
-     * @param correlationId request correlation id
      * @return {@link HealthCheckService} instance
      */
-    HealthCheck getHealthCheck(String correlationId);
+    HealthCheck getHealthCheck();
 }

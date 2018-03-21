@@ -14,6 +14,7 @@
 		"output_vlan_type": "PUSH",
 		"bandwidth": 10000,
 		"meter_id": 1
-	}
+	},
+	"correlation_id": "test-e0e4febd-bc62-421c-9349-782287fc05ca"
 }
 

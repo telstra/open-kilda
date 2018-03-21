@@ -27,7 +27,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
-import java.io.Serializable;
+import java.util.Objects;
 
 /**
  * Class represents high level view of every message used by any service.
@@ -70,7 +70,7 @@ public class Message extends BaseMessage {
                    @JsonProperty(CORRELATION_ID) final String correlationId,
                    @JsonProperty(DESTINATION) final Destination destination) {
         super(timestamp);
-        this.correlationId = correlationId;
+        this.correlationId = Objects.requireNonNull(correlationId, "correlationId must not be null");
         this.destination = destination;
     }
 
@@ -82,7 +82,7 @@ public class Message extends BaseMessage {
      */
     public Message(final long timestamp, final String correlationId) {
         super(timestamp);
-        this.correlationId = correlationId;
+        this.correlationId = Objects.requireNonNull(correlationId, "correlationId must not be null");
     }
 
     /**

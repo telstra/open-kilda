@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology;
 
+import static org.openkilda.wfm.topology.utils.BoltProxyWithCorrelationContext.proxyWithCorrelationContext;
+
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -47,7 +49,6 @@ import org.openkilda.wfm.topology.utils.KafkaRecordTranslator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 
@@ -230,11 +231,11 @@ public abstract class AbstractTopology implements Topology {
         builder.setSpout(SPOUT_ID_CTRL, kafkaSpout);
 
         RouteBolt route = new RouteBolt(getTopologyName());
-        builder.setBolt(BOLT_ID_CTRL_ROUTE, route)
+        builder.setBolt(BOLT_ID_CTRL_ROUTE, proxyWithCorrelationContext(route))
                 .shuffleGrouping(SPOUT_ID_CTRL);
 
         KafkaBolt kafkaBolt = createKafkaBolt(config.getKafkaCtrlTopic());
-        BoltDeclarer outputSetup = builder.setBolt(BOLT_ID_CTRL_OUTPUT, kafkaBolt)
+        BoltDeclarer outputSetup = builder.setBolt(BOLT_ID_CTRL_OUTPUT, proxyWithCorrelationContext(kafkaBolt))
                 .shuffleGrouping(BOLT_ID_CTRL_ROUTE, route.STREAM_ID_ERROR);
 
         for (CtrlBoltRef ref : targets) {
@@ -255,10 +256,10 @@ public abstract class AbstractTopology implements Topology {
         KafkaSpout healthCheckKafkaSpout = createKafkaSpout(Topic.HEALTH_CHECK, prefix);
         builder.setSpout(prefix + "HealthCheckKafkaSpout", healthCheckKafkaSpout, 1);
         HealthCheckBolt healthCheckBolt = new HealthCheckBolt(prefix);
-        builder.setBolt(prefix + "HealthCheckBolt", healthCheckBolt, 1)
+        builder.setBolt(prefix + "HealthCheckBolt", proxyWithCorrelationContext(healthCheckBolt), 1)
                 .shuffleGrouping(prefix + "HealthCheckKafkaSpout");
         KafkaBolt healthCheckKafkaBolt = createKafkaBolt(Topic.HEALTH_CHECK);
-        builder.setBolt(prefix + "HealthCheckKafkaBolt", healthCheckKafkaBolt, 1)
+        builder.setBolt(prefix + "HealthCheckKafkaBolt", proxyWithCorrelationContext(healthCheckKafkaBolt), 1)
                 .shuffleGrouping(prefix + "HealthCheckBolt", Topic.HEALTH_CHECK);
     }
 }

@@ -1,27 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration scan="true" debug="true" scanPeriod="5 seconds">
-  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
-    <encoder>
-      <pattern>%date{yyyy-MM-dd HH:mm:ss.S} %-5level [%logger{15}] %msg%n</pattern>
-    </encoder>
-  </appender>
-  <appender name="LOGSTASH" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
-    <destination>logstash.pendev:5002</destination>
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%date{ISO8601} %-5level %logger{15} - [%X] %msg%n</pattern>
+        </encoder>
+    </appender>
+    <appender name="LOGSTASH" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
+        <destination>logstash.pendev:5002</destination>
 
-    <!-- encoder is required -->
-    <encoder class="net.logstash.logback.encoder.LogstashEncoder" />
-  </appender>
-  <root level="INFO">
-    <appender-ref ref="STDOUT" />
-    <appender-ref ref="LOGSTASH" />
-  </root>
+        <!-- encoder is required -->
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder"/>
+    </appender>
+    <root level="INFO">
+        <appender-ref ref="STDOUT"/>
+        <appender-ref ref="LOGSTASH"/>
+    </root>
 
-  <logger name="io" level="ERROR"/> <!-- Netty logging -->
-  <logger name="LogService" level="ERROR"/> <!-- Restlet access logging -->
-  <logger name="net.floodlightcontroller" level="INFO"/>
-  <logger name="org.openkilda.floodlight.*" level="DEBUG"/>
-  <logger name="org.sdnplatform" level="ERROR"/>
-  <logger name="org.openkilda" level="DEBUG"/>
-  <logger name="ch.qos.logback" level="DEBUG"/>
+    <logger name="io" level="ERROR"/> <!-- Netty logging -->
+    <logger name="LogService" level="ERROR"/> <!-- Restlet access logging -->
+    <logger name="net.floodlightcontroller" level="INFO"/>
+    <logger name="org.openkilda.floodlight.*" level="DEBUG"/>
+    <logger name="org.sdnplatform" level="ERROR"/>
+    <logger name="org.openkilda" level="DEBUG"/>
+    <logger name="ch.qos.logback" level="DEBUG"/>
 
 </configuration>

@@ -14,5 +14,6 @@
 		"output_vlan_type": "NONE",
 		"bandwidth": 10000,
 		"meter_id": 1
-	}
+	},
+	"correlation_id": "test-3ab6d8c3-38fb-4bdd-9168-9085abfef728"
 }

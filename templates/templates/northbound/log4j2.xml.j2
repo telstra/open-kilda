@@ -2,13 +2,13 @@
 <Configuration monitorInterval="30">
     <Appenders>
         <Console name="STDOUT" target="SYSTEM_OUT">
-            <PatternLayout pattern="%d{ISO8601} | %-5.5p | %-32.32t | %-32.32c{1} | @project.name@ - @project.version@ | %m%n"/>
+            <PatternLayout pattern="%d{ISO8601} %-5p [%t] %c{1.} - [%X] %m%n"/>
         </Console>
 {% if logging.json_file %}
         <RollingFile name="J1" immediateFlush="false"
                  fileName="{{ logging.logfile_path }}/northbound.log.json"
                  filePattern="{{ logging.logfile_path }}/northbound.log.json.%i.gz">
-           <JSONLayout compact="true" eventEol="true"/>
+           <JSONLayout compact="true" eventEol="true" properties="true"/>
            <Policies>
             <SizeBasedTriggeringPolicy size="100 MB"/> <!-- Or every 100 MB -->
           </Policies>
@@ -17,12 +17,12 @@
 {% endif %}
 {% if logging.logstash %}
         <Socket name="LOGSTASH" host="{{ logging.logstash_host }}" port="{{ logging.port.northbound }}">
-            <JsonLayout compact="true" eventEol="true" />
+            <JsonLayout compact="true" eventEol="true" properties="true" />
         </Socket>
 {% endif %}
         <RollingFile name="ROLLINGFILE" fileName="/var/logs/northbound/app.log"
                 filePattern="/var/logs/northbound/app-%d{MM-dd-yyyy}-%i.log.gz">
-            <PatternLayout pattern="%d{ISO8601} | %-5.5p | %-32.32t | %-32.32c{1} | @project.name@ - @project.version@ | %m%n"/>
+            <PatternLayout pattern="%d{ISO8601} %-5p [%t] %c{1} - [%X] %m%n"/>
             <Policies>
                 <TimeBasedTriggeringPolicy />
                 <SizeBasedTriggeringPolicy size="250 MB"/>
@@ -30,7 +30,7 @@
         </RollingFile>
     </Appenders>
     <Loggers>
-        <Logger name="org.openkilda.northbound" level="DEBUG" />
+        <Logger name="org.openkilda" level="DEBUG" />
         <Root level="INFO">
             <AppenderRef ref="STDOUT"/>
 {% if logging.json_file %}

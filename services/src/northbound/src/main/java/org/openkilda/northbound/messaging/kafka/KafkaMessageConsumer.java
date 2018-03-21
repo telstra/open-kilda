@@ -17,7 +17,6 @@ package org.openkilda.northbound.messaging.kafka;
 
 import static org.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.openkilda.messaging.Utils.MAPPER;
-import static org.openkilda.messaging.Utils.SYSTEM_CORRELATION_ID;
 import static org.openkilda.messaging.error.ErrorType.INTERNAL_ERROR;
 import static org.openkilda.messaging.error.ErrorType.OPERATION_TIMED_OUT;
 import org.openkilda.messaging.Topic;
@@ -29,6 +28,8 @@ import org.openkilda.northbound.messaging.MessageConsumer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
+import org.slf4j.MDC.MDCCloseable;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
@@ -70,17 +71,23 @@ public class KafkaMessageConsumer implements MessageConsumer<Object> {
      */
     @KafkaListener(id = "northbound-listener", topics = Topic.NORTHBOUND)
     public void receive(final String record) {
+        Message message;
+
         try {
             logger.trace("message received");
-            Message message = MAPPER.readValue(record, Message.class);
+            message = MAPPER.readValue(record, Message.class);
+        } catch (IOException exception) {
+            logger.error("Could not deserialize message: {}", record, exception);
+            return;
+        }
+
+        try (MDCCloseable closable = MDC.putCloseable(CORRELATION_ID, message.getCorrelationId())) {
             if (Destination.NORTHBOUND.equals(message.getDestination())) {
                 logger.debug("message received: {}", record);
                 messages.put(message.getCorrelationId(), message);
             } else {
                 logger.trace("Skip message: {}", message);
             }
-        } catch (IOException exception) {
-            logger.error("Could not deserialize message: {}", record, exception);
         }
     }
 
@@ -93,8 +100,6 @@ public class KafkaMessageConsumer implements MessageConsumer<Object> {
             for (int i = POLL_TIMEOUT / POLL_PAUSE; i < POLL_TIMEOUT; i += POLL_PAUSE) {
                 if (messages.containsKey(correlationId)) {
                     return messages.remove(correlationId);
-                } else if (messages.containsKey(SYSTEM_CORRELATION_ID)) {
-                    return messages.remove(SYSTEM_CORRELATION_ID);
                 }
                 Thread.sleep(POLL_PAUSE);
             }

@@ -16,8 +16,10 @@
 package org.openkilda.floodlight.switchmanager.web;
 
 import net.floodlightcontroller.restserver.RestletRoutable;
+import org.openkilda.floodlight.utils.RequestCorrelationFilter;
 import org.restlet.Context;
 import org.restlet.Restlet;
+import org.restlet.routing.Filter;
 import org.restlet.routing.Router;
 
 /**
@@ -30,6 +32,10 @@ public class SwitchManagerWebRoutable implements RestletRoutable {
         router.attach("/flow", FlowResource.class);
         router.attach("/flows/switch_id/{switch_id}", FlowsResource.class);
         router.attach("/meters/switch_id/{switch_id}", MetersResource.class);
+
+        Filter filter = new RequestCorrelationFilter();
+        filter.setNext(router);
+
         return router;
     }
 

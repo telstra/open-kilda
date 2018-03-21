@@ -19,7 +19,6 @@ import static org.openkilda.messaging.Utils.MAPPER;
 
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
-import org.openkilda.messaging.Utils;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.flow.ComponentType;
 import org.openkilda.wfm.topology.flow.StreamType;
@@ -68,8 +67,8 @@ public class NorthboundReplyBolt extends BaseRichBolt {
                 case TOPOLOGY_ENGINE_BOLT:
                 case CRUD_BOLT:
                 case ERROR_BOLT:
-                    logger.debug("Flow response: {}={}, component={}, stream={}, message={}",
-                            Utils.CORRELATION_ID, message.getCorrelationId(), componentId, streamId, message);
+                    logger.debug("Flow response: component={}, stream={}, message={}",
+                            componentId, streamId, message);
 
                     message.setDestination(Destination.NORTHBOUND);
                     values = new Values(MAPPER.writeValueAsString(message));
@@ -78,8 +77,8 @@ public class NorthboundReplyBolt extends BaseRichBolt {
                     break;
 
                 default:
-                    logger.debug("Flow unknown response: {}={}, component={}, stream={}, message={}",
-                            Utils.CORRELATION_ID, message.getCorrelationId(), componentId, streamId, message);
+                    logger.debug("Flow unknown response: component={}, stream={}, message={}",
+                            componentId, streamId, message);
                     break;
             }
         } catch (JsonProcessingException exception) {
