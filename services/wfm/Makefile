@@ -20,7 +20,7 @@ all-in-one-tested:
 	mvn assembly:assembly
 
 all-in-one:
-	mvn assembly:assembly -DskipTests
+	mvn --batch-mode assembly:assembly -DskipTests
 
 deploy-wfm:
 	storm jar target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar \

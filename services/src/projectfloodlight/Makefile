@@ -23,7 +23,7 @@ openflow.lua: $(LOXIGEN_DIR)
 	sed 's/"eth"/"eth_withoutfcs"/' $(GENERATE_WIRESHARK)/$@ > $@
 
 $(OPENFLOWJ_JAR): $(GENERATE_OPENFLOWJ)
-	mvn -f $(GENERATE_OPENFLOWJ)/pom.xml clean install
+	mvn -f $(GENERATE_OPENFLOWJ)/pom.xml --batch-mode clean install
 
 clean-loxigen:
 	rm -rf $(OPENFLOWJ_MAVEN)
@@ -34,7 +34,7 @@ $(FLOODLIGHT_DIR):
 	git clone -b STABLE --single-branch https://github.com/kilda/floodlight.git $(FLOODLIGHT_DIR)
 
 $(FLOODLIGHT_JAR): $(FLOODLIGHT_DIR)
-	mvn -f $(FLOODLIGHT_DIR)/pom.xml clean install -DskipTests
+	mvn -f $(FLOODLIGHT_DIR)/pom.xml --batch-mode clean install -DskipTests
 	#mkdir /var/lib/floodlight
 	#chmod 777 /var/lib/floodlight
 
