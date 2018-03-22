@@ -18,7 +18,6 @@ package org.openkilda.floodlight.switchmanager;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.VERIFICATION_BCAST_PACKET_DST;
-import static org.openkilda.floodlight.pathverification.PathVerificationService.VERIFICATION_BCAST_PACKET_DST_MASK;
 import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 import static org.openkilda.messaging.Utils.ETH_TYPE;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_12;
@@ -99,10 +98,16 @@ import java.util.concurrent.TimeoutException;
  * Created by jonv on 29/3/17.
  */
 public class SwitchManager implements IFloodlightModule, IFloodlightService, ISwitchManager, IOFMessageListener {
+    private static final Logger logger = LoggerFactory.getLogger(SwitchManager.class);
+
     public static final long FLOW_COOKIE_MASK = 0x60000000FFFFFFFFL;
     static final U64 NON_SYSTEM_MASK = U64.of(0x80000000FFFFFFFFL);
     private static final long DROP_COOKIE = 0x8000000000000001L;
-    private static final Logger logger = LoggerFactory.getLogger(SwitchManager.class);
+
+    // This is invalid VID mask - it cut of highest bit that indicate presence of VLAN tag on package. But valid mask
+    // 0x1FFF lead to rule reject during install attempt on accton based switches.
+    private static short OF10_VLAN_MASK = 0x0FFF;
+
     private IFloodlightProviderService floodlightProvider;
     private IOFSwitchService ofSwitchService;
     private IRestApiService restApiService;
@@ -631,12 +636,16 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         //
         // Extra emphasis: vlan of 0 means match on port on not VLAN.
         //
+        mb.setExact(MatchField.IN_PORT, OFPort.of(inputPort));
         if (vlanId > 0) {
-            mb.setExact(MatchField.IN_PORT, OFPort.of(inputPort))
-                    .setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(vlanId));
-        } else {
-            mb.setExact(MatchField.IN_PORT, OFPort.of(inputPort));
+            if (0 <= OF_12.compareTo(sw.getOFFactory().getVersion())) {
+                mb.setMasked(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(vlanId),
+                        OFVlanVidMatch.ofRawVid(OF10_VLAN_MASK));
+            } else {
+                mb.setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(vlanId));
+            }
         }
+
         return mb.build();
     }
 
@@ -844,15 +853,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     private Match matchVerification(final IOFSwitch sw, final boolean isBroadcast) {
         MacAddress dstMac = isBroadcast ? MacAddress.of(VERIFICATION_BCAST_PACKET_DST) : dpidToMac(sw);
         Builder builder = sw.getOFFactory().buildMatch();
-        if (OF_12.compareTo(sw.getOFFactory().getVersion()) == 0) {
-            // some old swithes use mask 0x0 by default, so need to setup mask
-            // and I can't use mask MacAddress.NO_MASK(0xFFFFFFFFFFFFFFFFl) because of
-            // org.projectfloodlight.openflow.protocol.ver12.OFOxmEthDstMaskedVer12.getCanonical
-            // see commit 661a2222194454e2c763547cc1b963e3fe4a818c in loxigen
-            builder.setMasked(MatchField.ETH_DST, dstMac, MacAddress.of(VERIFICATION_BCAST_PACKET_DST_MASK));
-        } else {
-            builder.setExact(MatchField.ETH_DST, dstMac);
-        }
+        builder.setMasked(MatchField.ETH_DST, dstMac, MacAddress.NO_MASK);
         return builder.build();
     }
 
