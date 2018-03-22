@@ -15,6 +15,7 @@
 
 package org.openkilda.floodlight.switchmanager;
 
+import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.VERIFICATION_BCAST_PACKET_DST;
@@ -47,6 +48,7 @@ import org.projectfloodlight.openflow.protocol.OFErrorMsg;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowDelete;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
+import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFLegacyMeterBandDrop;
@@ -102,7 +104,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
     public static final long FLOW_COOKIE_MASK = 0x60000000FFFFFFFFL;
     static final U64 NON_SYSTEM_MASK = U64.of(0x80000000FFFFFFFFL);
-    private static final long DROP_COOKIE = 0x8000000000000001L;
+    static final long DROP_RULE_COOKIE = 0x8000000000000001L;
+    static final long VERIFICATION_RULE_COOKIE_2 = 0x8000000000000002L;
+    static final long VERIFICATION_RULE_COOKIE_3 = 0x8000000000000003L;
 
     // This is invalid VID mask - it cut of highest bit that indicate presence of VLAN tag on package. But valid mask
     // 0x1FFF lead to rule reject during install attempt on accton based switches.
@@ -496,7 +500,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             throws OFInstallException {
         logger.debug("installing meter {} on switch {} width bandwidth {}", meterId, dpid, bandwidth);
 
-        Set<OFMeterFlags> flags = new HashSet<>(Arrays.asList(OFMeterFlags.KBPS, OFMeterFlags.BURST));
+        Set<OFMeterFlags> flags = new HashSet<>(asList(OFMeterFlags.KBPS, OFMeterFlags.BURST));
         OFFactory ofFactory = sw.getOFFactory();
 
         OFMeterBandDrop.Builder bandBuilder = ofFactory.meterBands()
@@ -526,7 +530,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             throws OFInstallException {
         logger.debug("installing legacy meter {} on OVS switch {} width bandwidth {}", meterId, dpid, bandwidth);
 
-        Set<OFLegacyMeterFlags> flags = new HashSet<>(Arrays.asList(OFLegacyMeterFlags.KBPS, OFLegacyMeterFlags.BURST));
+        Set<OFLegacyMeterFlags> flags = new HashSet<>(asList(OFLegacyMeterFlags.KBPS, OFLegacyMeterFlags.BURST));
         OFFactory ofFactory = sw.getOFFactory();
 
         OFLegacyMeterBandDrop.Builder bandBuilder = ofFactory.legacyMeterBandDrop(bandwidth, burstSize).createBuilder();
@@ -619,6 +623,47 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .build();
 
         return pushFlow(sw, "--DeleteMeter--", meterDelete);
+    }
+
+    @Override
+    public List<Long> deleteAllNonDefaultRules(final DatapathId dpid) throws SwitchOperationException {
+        OFFlowStatsReply flowStats = dumpFlowTable(dpid);
+        IOFSwitch sw = lookupSwitch(dpid);
+        OFFactory ofFactory = sw.getOFFactory();
+
+        List<Long> removedRules = new ArrayList<>();
+
+        for (OFFlowStatsEntry flowStatsEntry : flowStats.getEntries()) {
+            long flowCookie = flowStatsEntry.getCookie().getValue();
+            if (flowCookie != DROP_RULE_COOKIE
+                    && flowCookie != VERIFICATION_RULE_COOKIE_2
+                    && flowCookie != VERIFICATION_RULE_COOKIE_3) {
+                OFFlowDelete flowDelete = ofFactory.buildFlowDelete()
+                        .setCookie(U64.of(flowCookie))
+                        .setCookieMask(NON_SYSTEM_MASK)
+                        .build();
+                pushFlow(sw, "--DeleteFlow--", flowDelete);
+
+                removedRules.add(flowCookie);
+            }
+        }
+
+        return removedRules;
+    }
+
+    @Override
+    public List<Long> deleteDefaultRules(final DatapathId dpid) throws SwitchOperationException {
+        IOFSwitch sw = lookupSwitch(dpid);
+        OFFactory ofFactory = sw.getOFFactory();
+
+        final List<Long> cookiesToRemove = asList(DROP_RULE_COOKIE, VERIFICATION_RULE_COOKIE_2, VERIFICATION_RULE_COOKIE_3);
+        for(long cookie : cookiesToRemove) {
+            OFFlowDelete dropFlowDelete = ofFactory.buildFlowDelete()
+                    .setCookie(U64.of(cookie))
+                    .build();
+            pushFlow(sw, "--DeleteFlow--", dropFlowDelete);
+        }
+        return cookiesToRemove;
     }
 
     /**
@@ -902,7 +947,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         actionList.add(actionSetDstMac(sw, dpidToMac(sw)));
         OFInstructionApplyActions instructionApplyActions = sw.getOFFactory().instructions()
                 .applyActions(actionList).createBuilder().build();
-        final long cookie = isBroadcast ? 0x8000000000000002L : 0x8000000000000003L;
+        final long cookie = isBroadcast ? VERIFICATION_RULE_COOKIE_2 : VERIFICATION_RULE_COOKIE_3;
         OFFlowMod flowMod = buildFlowMod(sw, match, null, instructionApplyActions,
                 cookie, FlowModUtils.PRIORITY_VERY_HIGH);
         String flowname = (isBroadcast) ? "Broadcast" : "Unicast";
@@ -918,7 +963,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      */
     private void installDropFlow(final DatapathId dpid) throws SwitchOperationException {
         IOFSwitch sw = lookupSwitch(dpid);
-        OFFlowMod flowMod = buildFlowMod(sw, null, null, null, DROP_COOKIE, 1);
+        OFFlowMod flowMod = buildFlowMod(sw, null, null, null, DROP_RULE_COOKIE, 1);
         String flowName = "--DropRule--" + dpid.toString();
         pushFlow(sw, flowName, flowMod);
     }

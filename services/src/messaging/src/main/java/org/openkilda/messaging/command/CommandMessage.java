@@ -50,7 +50,7 @@ public class CommandMessage extends Message {
      * Data of the command message.
      */
     @JsonProperty(PAYLOAD)
-    private CommandData data;
+    protected CommandData data;
 
     /**
      * Instance constructor.

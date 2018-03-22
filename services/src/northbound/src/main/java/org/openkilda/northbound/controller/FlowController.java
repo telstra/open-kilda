@@ -17,7 +17,6 @@ package org.openkilda.northbound.controller;
 
 import static org.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
-import static org.openkilda.messaging.Utils.EXTRA_AUTH;
 import static org.openkilda.messaging.Utils.FLOW_ID;
 
 import org.openkilda.messaging.error.MessageError;
@@ -32,6 +31,7 @@ import org.openkilda.northbound.service.FlowService;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
+import org.openkilda.northbound.utils.ExtraAuthRequired;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -223,20 +223,11 @@ public class FlowController {
             value = "/flows",
             method = RequestMethod.DELETE,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @ExtraAuthRequired
     @SuppressWarnings("unchecked") // the error is unchecked
     public ResponseEntity<List<FlowPayload>> deleteFlows(
-            @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId,
-            @RequestHeader(value = EXTRA_AUTH, defaultValue = "0") long extra_auth
-            ) {
-        logger.debug("Delete flows: {}={}, {}={}", CORRELATION_ID, correlationId, EXTRA_AUTH, extra_auth);
-
-        long current_auth = System.currentTimeMillis();
-        if (Math.abs(current_auth-extra_auth) > 120*1000) {
-            /*
-             * The request needs to be within 120 seconds of the system clock.
-             */
-            return new ResponseEntity("Invalid Auth: " + current_auth, new HttpHeaders(), HttpStatus.UNAUTHORIZED);
-        }
+            @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
+        logger.debug("Delete flows: {}={}", CORRELATION_ID);
 
         List<FlowPayload> response = flowService.deleteFlows(correlationId);
         return new ResponseEntity<>(response, new HttpHeaders(), HttpStatus.OK);

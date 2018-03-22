@@ -2,9 +2,18 @@ package org.openkilda.northbound.service.impl;
 
 import static java.util.Base64.getEncoder;
 
+import org.openkilda.messaging.Destination;
+import org.openkilda.messaging.Message;
+import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.CommandWithReplyToMessage;
+import org.openkilda.messaging.command.switches.DefaultRulesAction;
+import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.northbound.converter.SwitchMapper;
 import org.openkilda.northbound.dto.SwitchDto;
+import org.openkilda.northbound.messaging.MessageConsumer;
+import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.service.SwitchService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,6 +55,18 @@ public class SwitchServiceImpl implements SwitchService {
     @Autowired
     private RestTemplate restTemplate;
 
+    @Autowired
+    private MessageConsumer messageConsumer;
+
+    @Autowired
+    private MessageProducer messageProducer;
+
+    @Value("${kafka.speaker.topic}")
+    private String floodlightTopic;
+
+    @Value("${kafka.northbound.topic}")
+    private String northboundTopic;
+
     @PostConstruct
     void init() {
         switchesUrl = UriComponentsBuilder
@@ -77,4 +98,19 @@ public class SwitchServiceImpl implements SwitchService {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    public List<Long> deleteRules(String switchId, DefaultRulesAction defaultRules, String correlationId) {
+        LOGGER.debug("Delete switch rules request received");
+
+        messageConsumer.clear();
+
+        SwitchRulesDeleteRequest data = new SwitchRulesDeleteRequest(switchId, defaultRules);
+        CommandMessage request = new CommandWithReplyToMessage(data, System.currentTimeMillis(), correlationId,
+                Destination.CONTROLLER, northboundTopic);
+        messageProducer.send(floodlightTopic, request);
+
+        Message message = (Message) messageConsumer.poll(correlationId);
+        SwitchRulesResponse response = (SwitchRulesResponse) validateInfoMessage(request, message, correlationId);
+        return response.getRuleIds();
+    }
 }
