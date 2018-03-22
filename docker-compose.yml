@@ -26,6 +26,8 @@ services:
     ports:
       - "7474:7474"
       - "7687:7687"
+      - "16010:16010"
+      - "16011:16011"
     healthcheck:
       test: ["CMD-SHELL", "curl --fail http://localhost:7474/"]
       interval: 30s
