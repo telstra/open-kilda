@@ -47,11 +47,13 @@ class RecordHandler implements Runnable {
 
     private final ConsumerContext context;
     private final ConsumerRecord<String, String> record;
-    private final MeterPool meterPool = new MeterPool();
+    private final MeterPool meterPool;
 
-    public RecordHandler(ConsumerContext context, ConsumerRecord<String, String> record) {
+    public RecordHandler(ConsumerContext context, ConsumerRecord<String, String> record,
+            MeterPool meterPool) {
         this.context = context;
         this.record = record;
+        this.meterPool = meterPool;
     }
 
     protected void doControllerMsg(CommandMessage message) {
@@ -115,7 +117,12 @@ class RecordHandler implements Runnable {
         InstallIngressFlow command = (InstallIngressFlow) message.getData();
         logger.debug("Creating an ingress flow: {}", command);
 
-        int meterId = meterPool.allocate(command.getSwitchId(), command.getId());
+        Long meterId = command.getMeterId();
+        if (meterId == null) {
+            logger.error("Meter_id should be passed within ingress flow command. Cookie is {}", command.getCookie());
+            meterId = (long) meterPool.allocate(command.getSwitchId(), command.getId());
+            logger.error("Allocated meter_id {} for cookie {}", meterId, command.getCookie());
+        }
 
         try {
             context.getSwitchManager().installMeter(
@@ -201,7 +208,12 @@ class RecordHandler implements Runnable {
         InstallOneSwitchFlow command = (InstallOneSwitchFlow) message.getData();
         logger.debug("creating a flow through one switch: {}", command);
 
-        int meterId = meterPool.allocate(command.getSwitchId(), command.getId());
+        Long meterId = command.getMeterId();
+        if (meterId == null) {
+            logger.error("Meter_id should be passed within one switch flow command. Cookie is {}", command.getCookie());
+            meterId = (long) meterPool.allocate(command.getSwitchId(), command.getId());
+            logger.error("Allocated meter_id {} for cookie {}", meterId, command.getCookie());
+        }
 
         try {
             context.getSwitchManager().installMeter(
@@ -315,13 +327,14 @@ class RecordHandler implements Runnable {
 
     public static class Factory {
         private final ConsumerContext context;
+        private final MeterPool meterPool = new MeterPool();
 
         public Factory(ConsumerContext context) {
             this.context = context;
         }
 
         public RecordHandler produce(ConsumerRecord<String, String> record) {
-            return new RecordHandler(context, record);
+            return new RecordHandler(context, record, meterPool);
         }
     }
 }
