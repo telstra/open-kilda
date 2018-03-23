@@ -31,7 +31,7 @@ RUN git config --global user.name "John Doe"
 # Build Loxigen
 RUN git clone --recursive -b STABLE --single-branch https://github.com/kilda/loxigen.git /app/loxigen
 WORKDIR /app/loxigen
-RUN git am /app/pathes/loxigen/*.patch
+RUN find /app/pathes/loxigen -type f -name \*.patch | xargs --no-run-if-empty git am
 RUN make java
 WORKDIR /app/loxigen/loxi_output/openflowj
 RUN mvn install -DskipTests -Dmaven.javadoc.skip=true
@@ -39,7 +39,7 @@ RUN mvn install -DskipTests -Dmaven.javadoc.skip=true
 # Build Floodlight
 RUN git clone --recursive -b STABLE --single-branch  https://github.com/kilda/floodlight.git /app/floodlight
 WORKDIR /app/floodlight
-RUN git am /app/pathes/floodlight/*.patch
+RUN find /app/pathes/floodlight -type f -name \*.patch | xargs --no-run-if-empty git am
 RUN mvn install -DskipTests
 RUN mkdir /var/lib/floodlight
 RUN chmod 777 /var/lib/floodlight
