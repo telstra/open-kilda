@@ -15,11 +15,12 @@
 #
 
 import logging
-import threading
 
+import gevent.lock
 from py2neo.database import status as neo4j_errors
 
 from topologylistener import config
+from topologylistener import db
 from topologylistener import exc
 from topologylistener import flow_utils
 from topologylistener import message_utils
@@ -43,8 +44,7 @@ MT_NETWORK = "org.openkilda.messaging.info.discovery.NetworkInfoData"
 CD_NETWORK = "org.openkilda.messaging.command.discovery.NetworkCommandData"
 
 # This is used for blocking on flow changes.
-# flow_sem = multiprocessing.Semaphore()
-neo4j_update_lock = threading.RLock()
+neo4j_update_lock = gevent.lock.RLock()
 
 
 class MessageItem(object):
@@ -465,7 +465,7 @@ class MessageItem(object):
 
         self.log.debug('Flow %s request processing', operation)
 
-        with neo4j_update_lock, graph.begin() as tx:
+        with db.LockAdapter.wrap_lock(neo4j_update_lock), graph.begin() as tx:
             try:
                 if operation == "CREATE" or operation == "PUSH":
                     propagate = operation == "CREATE"

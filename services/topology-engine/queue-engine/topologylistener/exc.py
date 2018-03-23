@@ -68,3 +68,15 @@ class UnrecoverableError(Error):
 
     def __init__(self):
         super(UnrecoverableError, self).__init__(sys.exc_info())
+
+
+class LockTimeoutError(Error):
+    @property
+    def timeout(self):
+        return self.args[0]
+
+    def __init__(self, timeout):
+        super(LockTimeoutError, self).__init__(timeout)
+
+    def __str__(self):
+        return 'Can\'t acquire lock for {:.3f} seconds'.format(self.timeout)
