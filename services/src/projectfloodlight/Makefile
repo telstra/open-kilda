@@ -5,6 +5,11 @@ PROJECTFLOODLIGHT_MAVEN := ~/.m2/repository/org/projectfloodlight
 FLOODLIGHT_MAVEN := $(PROJECTFLOODLIGHT_MAVEN)/floodlight
 FLOODLIGHT_JAR := $(FLOODLIGHT_MAVEN)/1.2-SNAPSHOT/floodlight-1.2-kilda-2.jar
 OPENFLOWJ_MAVEN := $(PROJECTFLOODLIGHT_MAVEN)/openflowj
+#
+# NB: when changing this output, ensure to update:
+# --> services/src/pom.xml
+# --> services/wfm/pom.xml
+#
 OPENFLOWJ_JAR := $(OPENFLOWJ_MAVEN)/3.2.0-SNAPSHOT/openflowj-3.2.0-kilda-2.jar
 
 GENERATE_OPENFLOWJ = $(LOXIGEN_DIR)/loxi_output/openflowj
