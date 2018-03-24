@@ -16,7 +16,7 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
 
-        <openflowj.version>3.2.0-SNAPSHOT</openflowj.version>
+        <openflowj.version>3.2.0-kilda-2</openflowj.version>
         <storm.version>1.1.0</storm.version>
         <messaging.version>1.0-SNAPSHOT</messaging.version>
         <pce.version>1.0-SNAPSHOT</pce.version>
