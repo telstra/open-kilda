@@ -23,7 +23,25 @@ RUN apt-get update && \
   apt-get install -y --no-install-recommends git ant maven rsync && \
   rm -rf /var/lib/apt/lists/*
 
-ADD patches /app/pathes/
+
+# NOTE from dbogun:
+#
+#    patches make possible to apply floodlight and loxigen changes that are
+#    not merged in corresponding repositories yet. This feature required to
+#    test floodlight and loxigen changes before pushing them.
+#
+#    After commiting changes into local floodlight(loxigen) repo you should
+#    use command like
+#
+#    git format-patch -o $DEV_ROOT/open-kilda/base/base-floodlight/patches/floodlight origin/STABLE
+#
+#    to fill corresponding folder with patches.
+#
+#    After this you must rebuild floodlight docker container. As result you
+#    will have a floodlight docker image/container with you local changes in
+#    it.
+#
+ADD patches /app/patches/
 
 RUN git config --global user.email "dummy@dummy.org"
 RUN git config --global user.name "John Doe"
@@ -31,7 +49,7 @@ RUN git config --global user.name "John Doe"
 # Build Loxigen
 RUN git clone --recursive -b STABLE --single-branch https://github.com/kilda/loxigen.git /app/loxigen
 WORKDIR /app/loxigen
-RUN git am /app/pathes/loxigen/*.patch
+RUN git am --quiet /app/patches/loxigen/*.patch || echo "===> NO PATCHES <==="
 RUN make java
 WORKDIR /app/loxigen/loxi_output/openflowj
 RUN mvn install -DskipTests -Dmaven.javadoc.skip=true
@@ -39,7 +57,7 @@ RUN mvn install -DskipTests -Dmaven.javadoc.skip=true
 # Build Floodlight
 RUN git clone --recursive -b STABLE --single-branch  https://github.com/kilda/floodlight.git /app/floodlight
 WORKDIR /app/floodlight
-RUN git am /app/pathes/floodlight/*.patch
+RUN git am --quiet /app/patches/floodlight/*.patch || echo "===> NO PATCHES <==="
 RUN mvn install -DskipTests
 RUN mkdir /var/lib/floodlight
 RUN chmod 777 /var/lib/floodlight
