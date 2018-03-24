@@ -39,8 +39,8 @@ $(FLOODLIGHT_JAR): git-pull
 	#chmod 777 /var/lib/floodlight
 
 git-pull: $(LOXIGEN_DIR) $(FLOODLIGHT_DIR)
-	(cd "$(LOXIGEN_DIR)"; git fetch origin; git checkout STABLE; git merge --ff-only STABLE)
-	(cd "$(FLOODLIGHT_DIR)"; git fetch origin; git checkout STABLE; git merge --ff-only STABLE)
+	(cd "$(LOXIGEN_DIR)"; git fetch origin; git checkout STABLE; git pull -r)
+	(cd "$(FLOODLIGHT_DIR)"; git fetch origin; git checkout STABLE; git pull -r)
 
 clean-floodlight:
 	rm -rf $(FLOODLIGHT_MAVEN)
