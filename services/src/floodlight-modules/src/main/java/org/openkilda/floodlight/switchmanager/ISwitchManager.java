@@ -15,14 +15,14 @@
 
 package org.openkilda.floodlight.switchmanager;
 
-import org.openkilda.messaging.payload.flow.OutputVlanType;
-
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import org.openkilda.messaging.payload.flow.OutputVlanType;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
 import org.projectfloodlight.openflow.protocol.OFMeterConfigStatsReply;
 import org.projectfloodlight.openflow.types.DatapathId;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -154,4 +154,20 @@ public interface ISwitchManager extends IFloodlightService {
 
 
     Map<DatapathId, IOFSwitch> getAllSwitchMap();
+
+    /**
+     * Deletes all non-default rules from the switch
+     *
+     * @param dpid datapath ID of the switch
+     * @return the list of cookies for removed rules
+     */
+    List<Long> deleteAllNonDefaultRules(final DatapathId dpid) throws SwitchOperationException;
+
+    /**
+     * Deletes the default rules (drop + verification) from the switch
+     *
+     * @param dpid datapath ID of the switch
+     * @return the list of cookies for removed rules
+     */
+    List<Long> deleteDefaultRules(final DatapathId dpid) throws SwitchOperationException;
 }

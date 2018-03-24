@@ -19,6 +19,7 @@ import static org.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 
 import org.openkilda.northbound.utils.ExecutionTimeInterceptor;
+import org.openkilda.northbound.utils.ExtraAuthInterceptor;
 import org.slf4j.MDC;
 import org.slf4j.MDC.MDCCloseable;
 import org.springframework.boot.web.client.RestTemplateBuilder;
@@ -55,6 +56,7 @@ public class WebConfig extends WebMvcConfigurerAdapter {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(timeExecutionInterceptor());
+        registry.addInterceptor(extraAuthInterceptor());
     }
 
     /**
@@ -65,6 +67,11 @@ public class WebConfig extends WebMvcConfigurerAdapter {
     @Bean
     public ExecutionTimeInterceptor timeExecutionInterceptor() {
         return new ExecutionTimeInterceptor();
+    }
+
+    @Bean
+    public ExtraAuthInterceptor extraAuthInterceptor() {
+        return new ExtraAuthInterceptor();
     }
 
     /**

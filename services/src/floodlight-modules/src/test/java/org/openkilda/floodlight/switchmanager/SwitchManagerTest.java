@@ -15,6 +15,21 @@
 
 package org.openkilda.floodlight.switchmanager;
 
+import static java.util.Collections.singletonList;
+import static org.easymock.EasyMock.anyLong;
+import static org.easymock.EasyMock.anyObject;
+import static org.easymock.EasyMock.capture;
+import static org.easymock.EasyMock.createMock;
+import static org.easymock.EasyMock.expect;
+import static org.easymock.EasyMock.expectLastCall;
+import static org.easymock.EasyMock.mock;
+import static org.easymock.EasyMock.replay;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.hasItem;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.beans.HasPropertyWithValue.hasProperty;
+import static org.hamcrest.core.Every.everyItem;
+import static org.junit.Assert.assertEquals;
 import static org.openkilda.floodlight.Constants.bandwidth;
 import static org.openkilda.floodlight.Constants.burstSize;
 import static org.openkilda.floodlight.Constants.inputPort;
@@ -24,16 +39,11 @@ import static org.openkilda.floodlight.Constants.outputPort;
 import static org.openkilda.floodlight.Constants.outputVlanId;
 import static org.openkilda.floodlight.Constants.transitVlanId;
 import static org.openkilda.floodlight.message.command.encapsulation.PushSchemeOutputCommands.ofFactory;
-import static org.easymock.EasyMock.capture;
-import static org.easymock.EasyMock.createMock;
-import static org.easymock.EasyMock.expect;
-import static org.easymock.EasyMock.replay;
-import static org.junit.Assert.assertEquals;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.DROP_RULE_COOKIE;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.VERIFICATION_RULE_COOKIE_2;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.VERIFICATION_RULE_COOKIE_3;
 
-import org.openkilda.floodlight.message.command.encapsulation.OutputCommands;
-import org.openkilda.floodlight.message.command.encapsulation.ReplaceSchemeOutputCommands;
-import org.openkilda.messaging.payload.flow.OutputVlanType;
-
+import com.google.common.util.concurrent.ListenableFuture;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.SwitchDescription;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
@@ -41,14 +51,24 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.restserver.IRestApiService;
 import org.easymock.Capture;
+import org.easymock.CaptureType;
 import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
+import org.openkilda.floodlight.message.command.encapsulation.OutputCommands;
+import org.openkilda.floodlight.message.command.encapsulation.ReplaceSchemeOutputCommands;
+import org.openkilda.messaging.payload.flow.OutputVlanType;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.OFFlowModCommand;
+import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
+import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
+import org.projectfloodlight.openflow.protocol.OFFlowStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFMeterMod;
 import org.projectfloodlight.openflow.protocol.OFMeterModCommand;
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.U64;
+
+import java.util.List;
 
 public class SwitchManagerTest {
     private static final OutputCommands scheme = new ReplaceSchemeOutputCommands();
@@ -282,6 +302,63 @@ public class SwitchManagerTest {
         assertEquals(meterMod.getMeterId(), meterId);
     }
 
+    @Test
+    public void shouldDeleteAllNonDefaultRules() throws Exception {
+        // given
+        expect(ofSwitchService.getSwitch(dpid)).andStubReturn(iofSwitch);
+        expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
+
+        OFFlowStatsEntry ofFlowStatsEntry = mock(OFFlowStatsEntry.class);
+        expect(ofFlowStatsEntry.getCookie()).andReturn(U64.of(cookie));
+
+        OFFlowStatsReply ofFlowStatsReply = mock(OFFlowStatsReply.class);
+        expect(ofFlowStatsReply.getEntries()).andReturn(singletonList(ofFlowStatsEntry));
+
+        ListenableFuture<OFFlowStatsReply> ofStatsFuture = mock(ListenableFuture.class);
+        expect(ofStatsFuture.get(anyLong(), anyObject())).andReturn(ofFlowStatsReply);
+
+        expect(iofSwitch.writeRequest(anyObject(OFFlowStatsRequest.class))).andReturn(ofStatsFuture);
+
+        Capture<OFFlowMod> capture = EasyMock.newCapture();
+        expect(iofSwitch.write(capture(capture))).andReturn(true);
+        expectLastCall();
+
+        replay(ofSwitchService, iofSwitch, ofFlowStatsEntry, ofFlowStatsReply, ofStatsFuture);
+
+        // when
+        switchManager.deleteAllNonDefaultRules(dpid);
+
+        // then
+        final OFFlowMod actual = capture.getValue();
+        assertEquals(OFFlowModCommand.DELETE, actual.getCommand());
+        assertEquals(cookie, actual.getCookie().getValue());
+        assertEquals(SwitchManager.NON_SYSTEM_MASK, actual.getCookieMask());
+    }
+
+    @Test
+    public void shouldDeleteDefaultRules() throws Exception {
+        // given
+        expect(ofSwitchService.getSwitch(dpid)).andStubReturn(iofSwitch);
+        expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
+
+        Capture<OFFlowMod> capture = EasyMock.newCapture(CaptureType.ALL);
+        expect(iofSwitch.write(capture(capture))).andReturn(true).times(3);
+        expectLastCall();
+
+        replay(ofSwitchService, iofSwitch);
+
+        // when
+        switchManager.deleteDefaultRules(dpid);
+
+        // then
+        final List<OFFlowMod> actual = capture.getValues();
+        assertEquals(3, actual.size());
+        assertThat(actual, everyItem(hasProperty("command", equalTo(OFFlowModCommand.DELETE))));
+        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(DROP_RULE_COOKIE)))));
+        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(VERIFICATION_RULE_COOKIE_2)))));
+        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(VERIFICATION_RULE_COOKIE_3)))));
+    }
+
     private Capture<OFFlowMod> prepareForInstallTest() {
         Capture<OFFlowMod> capture = EasyMock.newCapture();
 
@@ -290,7 +367,7 @@ public class SwitchManagerTest {
         expect(iofSwitch.getSwitchDescription()).andStubReturn(switchDescription);
         expect(switchDescription.getManufacturerDescription()).andStubReturn("");
         expect(iofSwitch.write(capture(capture))).andReturn(true);
-        EasyMock.expectLastCall();
+        expectLastCall();
 
         replay(ofSwitchService);
         replay(iofSwitch);
@@ -307,7 +384,7 @@ public class SwitchManagerTest {
         expect(iofSwitch.getSwitchDescription()).andStubReturn(switchDescription);
         expect(switchDescription.getManufacturerDescription()).andStubReturn("");
         expect(iofSwitch.write(capture(capture))).andReturn(true);
-        EasyMock.expectLastCall();
+        expectLastCall();
 
         replay(ofSwitchService);
         replay(iofSwitch);
