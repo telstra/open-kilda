@@ -90,7 +90,7 @@ update-props-dryrun:
 # (crimi) - 2018.03.25 .. these tags seem to be the right tags for ATDD
 # tags := @TOPO,@FCRUD,@NB,@FPATH,@FREINSTALL,@PCE --tags @MVP1
 #
-tags := @TOPO,@FCRUD --tags @MVP1
+tags := @TOPO,@FCRUD,@FREINSTALL --tags @MVP1
 kilda := 127.0.0.1
 
 # EXAMPLES:
