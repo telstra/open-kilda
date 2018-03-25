@@ -42,8 +42,13 @@ known_commands = ['org.openkilda.messaging.command.flow.FlowCreateRequest',
 
 
 def main_loop():
-    pool_size = config.getint('gevent', 'worker.pool.size')
-    # pool_size = 1
+    # pool_size = config.getint('gevent', 'worker.pool.size')
+    # (crimi) - Setting pool_size to 1 to avoid deadlocks. This is until we are able to demonstrate that
+    #           the deadlocks are able to be avoided.
+    #           An improvement would be to do the DB updates on single worker, allowing everything else to
+    #           happen concurrently. But expected load for 1.0 isn't great .. more than manageable with 1 worker.
+    #
+    pool_size = 1
     pool = gevent.pool.Pool(pool_size)
     logger.info('Started gevent pool with size %d', pool_size)
 
