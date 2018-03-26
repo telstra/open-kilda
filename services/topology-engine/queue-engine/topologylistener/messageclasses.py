@@ -32,16 +32,22 @@ switch_states = {
 }
 
 MT_SWITCH = "org.openkilda.messaging.info.event.SwitchInfoData"
+MT_EXTENDED_SWITCH = "org.openkilda.messaging.info.event.SwitchInfoExtendedData"
 MT_ISL = "org.openkilda.messaging.info.event.IslInfoData"
 MT_PORT = "org.openkilda.messaging.info.event.PortInfoData"
 MT_FLOW_INFODATA = "org.openkilda.messaging.info.flow.FlowInfoData"
 MT_FLOW_RESPONSE = "org.openkilda.messaging.info.flow.FlowResponse"
 MT_NETWORK = "org.openkilda.messaging.info.discovery.NetworkInfoData"
+#feature toggle is the functionality to turn off/on specific features
+MT_STATE_TOGGLE = "org.openkilda.messaging.command.system.FeatureToggleStateRequest"
+MT_TOGGLE = "org.openkilda.messaging.command.system.FeatureToggleRequest"
 CD_NETWORK = "org.openkilda.messaging.command.discovery.NetworkCommandData"
 
 # This is used for blocking on flow changes.
 # flow_sem = multiprocessing.Semaphore()
 neo4j_update_lock = threading.RLock()
+
+sync_rules_on_activation = True
 
 
 class MessageItem(object):
@@ -102,6 +108,11 @@ class MessageItem(object):
 
             elif self.get_command() == CD_NETWORK:
                 event_handled = self.dump_network()
+
+            elif self.get_message_type() == MT_STATE_TOGGLE:
+                event_handled = self.get_feature_toggle_state()
+            elif self.get_message_type() == MT_TOGGLE:
+                event_handled = self.get_feature_toggle_state()
 
             if not event_handled:
                 logger.error('Message was not handled correctly: message=%s',
@@ -691,4 +702,16 @@ class MessageItem(object):
                 "WFM_CACHE", config.KAFKA_CACHE_TOPIC)
             raise
 
+        return True
+
+    def get_feature_toggle_state(self):
+        message = message_utils.build_load_sync_rules(sync_rules_on_activation)
+        message_utils.send_to_topic(message, self.correlation_id,
+                                    message_type=message_utils.MT_INFO,
+                                    destination="NORTHBOUND",
+                                    topic=config.KAFKA_NORTHBOUND_TOPIC)
+        return True
+
+    def update_feature_toggles(self):
+        sync_rules_on_activation = self.payload['sync_rules_on_activation']
         return True

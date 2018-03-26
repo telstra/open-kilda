@@ -146,6 +146,14 @@ def build_delete_flow(switch, flow_id, cookie, meter_id=0):
     return flow
 
 
+def build_load_sync_rules(sync_rules):
+    message = Message()
+    message.clazz = "org.openkilda.messaging.info.system.FeatureTogglesResponse"
+    message.sync_rules = sync_rules
+
+    return message
+
+
 class Message(object):
     def to_json(self):
         return json.dumps(

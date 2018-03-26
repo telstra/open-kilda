@@ -28,6 +28,7 @@ import config
 logger = logging.getLogger(__name__)
 
 known_messages = ['org.openkilda.messaging.info.event.SwitchInfoData',
+                  'org.openkilda.messaging.info.event.SwitchInfoExtendedData',
                   'org.openkilda.messaging.info.event.IslInfoData',
                   'org.openkilda.messaging.info.event.PortInfoData',
                   'org.openkilda.messaging.info.flow.FlowInfoData']
@@ -38,6 +39,8 @@ known_commands = ['org.openkilda.messaging.command.flow.FlowCreateRequest',
                   'org.openkilda.messaging.command.flow.FlowGetRequest',
                   'org.openkilda.messaging.command.flow.FlowsGetRequest',
                   'org.openkilda.messaging.command.flow.FlowRerouteRequest',
+                  'org.openkilda.messaging.command.system.FeatureToggleRequest',
+                  'org.openkilda.messaging.command.system.FeatureToggleStateRequest',
                   'org.openkilda.messaging.command.discovery.NetworkCommandData']
 
 
