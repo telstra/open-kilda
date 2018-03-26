@@ -32,12 +32,13 @@ switch_states = {
 }
 
 MT_SWITCH = "org.openkilda.messaging.info.event.SwitchInfoData"
-MT_EXTENDED_SWITCH = "org.openkilda.messaging.info.event.SwitchInfoExtendedData"
+MT_SWITCH_EXTENDED = "org.openkilda.messaging.info.event.SwitchInfoExtendedData"
 MT_ISL = "org.openkilda.messaging.info.event.IslInfoData"
 MT_PORT = "org.openkilda.messaging.info.event.PortInfoData"
 MT_FLOW_INFODATA = "org.openkilda.messaging.info.flow.FlowInfoData"
 MT_FLOW_RESPONSE = "org.openkilda.messaging.info.flow.FlowResponse"
 MT_NETWORK = "org.openkilda.messaging.info.discovery.NetworkInfoData"
+MT_SYNC_REQUEST = "org.openkilda.messaging.command.switches.SyncRulesRequest"
 #feature toggle is the functionality to turn off/on specific features
 MT_STATE_TOGGLE = "org.openkilda.messaging.command.system.FeatureToggleStateRequest"
 MT_TOGGLE = "org.openkilda.messaging.command.system.FeatureToggleRequest"
@@ -57,6 +58,7 @@ class MessageItem(object):
         self.payload = kwargs.get("payload", {})
         self.destination = kwargs.get("destination","")
         self.correlation_id = kwargs.get("correlation_id", "admin-request")
+        self.reply_to = kwargs.get("reply_to", "")
 
     def to_json(self):
         return json.dumps(
@@ -113,6 +115,15 @@ class MessageItem(object):
                 event_handled = self.get_feature_toggle_state()
             elif self.get_message_type() == MT_TOGGLE:
                 event_handled = self.get_feature_toggle_state()
+
+            elif self.get_message_type() == MT_SWITCH_EXTENDED:
+                if sync_rules_on_activation:
+                    event_handled = self.validate_switch()
+                else:
+                    event_handled = True
+
+            elif self.get_message_type() == MT_SYNC_REQUEST:
+                event_handled = self.validate_switch()
 
             if not event_handled:
                 logger.error('Message was not handled correctly: message=%s',
@@ -715,3 +726,55 @@ class MessageItem(object):
     def update_feature_toggles(self):
         sync_rules_on_activation = self.payload['sync_rules_on_activation']
         return True
+
+    def validate_switch(self):
+        switch_id = self.payload['switch_id']
+        query = "MATCH p = (sw:switch)-[segment:flow_segment]-() " \
+                "WHERE sw.name='{}' " \
+                "RETURN segment"
+        result = graph.run(query.format(switch_id)).data()
+
+        cookies = [x['cookies'] for x in self.payload['flows']]
+
+        commands = []
+
+        for relationship in result:
+            flow_segment = relationship['segment']
+            if flow_segment['cookie'] not in cookies:
+                logger.info('cookie %s is not found on switch %s',
+                            flow_segment['cookie'], switch_id)
+                commands.append(MessageItem.build_install_command(flow_segment,
+                                                                  switch_id))
+
+        for flow in self.payload['flows']:
+            logger.info(flow)
+
+        if self.reply_to:
+            MessageItem.send_sync_rules_response(commands)
+
+        return True
+
+
+    @staticmethod
+    def build_install_command(flow_segment, switch_id):
+        query = "match p = ()-[flow:flow]->() where flow.flowid='{}' " \
+                "return flow"
+        flow = graph.run(query.format(flow_segment['flowid'])).data()
+
+        output_action = flow_utils.choose_output_action(flow['src_vlan'],
+                                                        flow['dst_vlan'])
+
+        if flow_segment['src_switch'] == flow_segment['dst_switch']:
+            return message_utils.build_one_switch_flow(switch_id, flow,
+                                                       output_action)
+        elif flow['src_switch'] != switch_id or flow['dst_switch'] != switch_id:
+            return message_utils.build_intermediate_flows()
+        elif flow_segment['src_switch'] == switch_id:
+            return message_utils.build_ingress_flow(flow, output_action)
+        else:
+            return message_utils.build_egress_flow(flow, output_action)
+
+
+    @staticmethod
+    def send_sync_rules_response(installed_rules):
+        print 'test'

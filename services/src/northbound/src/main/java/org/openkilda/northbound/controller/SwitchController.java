@@ -3,7 +3,6 @@ package org.openkilda.northbound.controller;
 import static org.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 
-import io.swagger.annotations.*;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.InstallRulesAction;
@@ -12,6 +11,12 @@ import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.northbound.dto.SwitchDto;
 import org.openkilda.northbound.service.SwitchService;
 import org.openkilda.northbound.utils.ExtraAuthRequired;
+
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiParam;
+import io.swagger.annotations.ApiResponse;
+import io.swagger.annotations.ApiResponses;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,7 +24,14 @@ import org.springframework.context.annotation.PropertySource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Optional;
@@ -134,5 +146,26 @@ public class SwitchController {
         return ResponseEntity.ok(response);
     }
 
+
+
+    /**
+     * Sync rules on the switch.
+     * @param switchId id of the switch.
+     */
+    @ApiOperation(value = "Sync rules on the switch", response = SwitchDto.class)
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, response = FlowPayload.class, message = "Operation is successful"),
+            @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
+            @ApiResponse(code = 401, response = MessageError.class, message = "Unauthorized"),
+            @ApiResponse(code = 403, response = MessageError.class, message = "Forbidden"),
+            @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
+            @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
+            @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
+    @GetMapping(path = "/{switch_id}/sync_rules")
+    @ResponseStatus(HttpStatus.OK)
+    public void syncRules(@PathVariable(name = "switch_id") String switchId,
+            @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
+        switchService.syncRules(switchId, correlationId);
+    }
 
 }

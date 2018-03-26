@@ -20,6 +20,7 @@ import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.info.flow.FlowInfoData;
+import org.springframework.web.context.request.async.DeferredResult;
 
 import java.util.List;
 

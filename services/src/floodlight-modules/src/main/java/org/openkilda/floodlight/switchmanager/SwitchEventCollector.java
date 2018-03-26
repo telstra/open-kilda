@@ -17,13 +17,13 @@ package org.openkilda.floodlight.switchmanager;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchListener;
-import net.floodlightcontroller.core.LogicalOFMessageCategory;
 import net.floodlightcontroller.core.PortChangeType;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import org.openkilda.floodlight.converter.IOFSwitchConverter;
 import org.openkilda.floodlight.kafka.KafkaMessageProducer;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Topic;
@@ -33,13 +33,13 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
+import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -96,7 +96,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
     public void switchActivated(final DatapathId switchId) {
         final IOFSwitch sw = switchService.getSwitch(switchId);
 
-        Message message = buildSwitchMessage(sw, SwitchState.ACTIVATED);
+        Message message = buildExtendedSwitchMessage(sw, SwitchState.ACTIVATED, switchManager.dumpFlowTable(switchId));
         kafkaProducer.postMessage(TOPO_EVENT_TOPIC, message);
 
         try {
@@ -222,33 +222,6 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
     }
 
     /**
-     * Builds a SwitchInfoData from IOFSwitch.
-     *
-     * @param sw        switch instance
-     * @param eventType type of event
-     * @return Message
-     */
-    public static SwitchInfoData buildSwitchInfoData(IOFSwitch sw, SwitchState eventType) {
-        String switchId = sw.getId().toString();
-        InetSocketAddress address = (InetSocketAddress) sw.getInetAddress();
-        InetSocketAddress controller =(InetSocketAddress) sw.getConnectionByCategory(
-                LogicalOFMessageCategory.MAIN).getRemoteInetAddress();
-
-        return new SwitchInfoData(
-                switchId,
-                eventType,
-                String.format("%s:%d",
-                        address.getHostString(),
-                        address.getPort()),
-                address.getHostName(),
-                String.format("%s %s %s",
-                        sw.getSwitchDescription().getManufacturerDescription(),
-                        sw.getOFFactory().getVersion().toString(),
-                        sw.getSwitchDescription().getSoftwareDescription()),
-                controller.getHostString());
-    }
-
-    /**
      * Builds a switch message type.
      *
      * @param sw        switch instance
@@ -256,7 +229,20 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
      * @return Message
      */
     private Message buildSwitchMessage(final IOFSwitch sw, final SwitchState eventType) {
-        return buildMessage(buildSwitchInfoData(sw, eventType));
+        return buildMessage(IOFSwitchConverter.buildSwitchInfoData(sw, eventType));
+    }
+
+    /**
+     * Builds a switch message type with flows.
+     *
+     * @param sw        switch instance.
+     * @param eventType type of event.
+     * @param flowStats flows one the switch.
+     * @return Message
+     */
+    private Message buildExtendedSwitchMessage(final IOFSwitch sw, final SwitchState eventType,
+            OFFlowStatsReply flowStats) {
+        return buildMessage(IOFSwitchConverter.buildSwitchInfoDataExtended(sw, eventType, flowStats));
     }
 
     /**

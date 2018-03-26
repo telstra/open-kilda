@@ -3,6 +3,7 @@ package org.openkilda.northbound.service;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.InstallRulesAction;
+import org.openkilda.messaging.info.switches.SyncRulesResponse;
 import org.openkilda.northbound.dto.SwitchDto;
 
 import java.util.List;
@@ -42,4 +43,12 @@ public interface SwitchService extends BasicService {
      * @return the value of connection mode after the operation
      */
     ConnectModeRequest.Mode connectMode(ConnectModeRequest.Mode mode, String correlationId);
+
+    /**
+     * Install missed flows, that should be on switch but exist only in neo4j.
+     * @param switchId switchId id of switch.
+     * @param correlationId request correlation Id
+     * @return the result of that operation with the list of rules that were updated/deleted.
+     */
+    SyncRulesResponse syncRules(String switchId, String correlationId);
 }

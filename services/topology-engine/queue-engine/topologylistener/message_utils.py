@@ -71,6 +71,16 @@ def build_ingress_flow(path_nodes, src_switch, src_port, src_vlan,
     return flow
 
 
+def build_ingress_flow(stored_flow, output_action):
+    return build_ingress_flow(stored_flow['flowpath']['path'],
+                              stored_flow['src_switch'],
+                              stored_flow['src_port'], stored_flow['src_vlan'],
+                              stored_flow['bandwidth'],
+                              stored_flow['transit_vlan'],
+                              stored_flow['flow_id'], output_action,
+                              stored_flow['cookie'], stored_flow['meter_id'])
+
+
 def build_egress_flow(path_nodes, dst_switch, dst_port, dst_vlan,
                       transit_vlan, flow_id, output_action, cookie):
     input_port = None
@@ -96,6 +106,16 @@ def build_egress_flow(path_nodes, dst_switch, dst_port, dst_vlan,
     flow.output_vlan_type = output_action
 
     return flow
+
+
+def build_egress_flow(stored_flow, output_action):
+
+    return build_egress_flow(stored_flow['flowpath']['path'],
+                             stored_flow['dst_switch'], stored_flow['dst_port'],
+                             stored_flow['dst_vlan'],
+                             stored_flow['transit_vlan'],
+                             stored_flow['flowid'], output_action,
+                             stored_flow['cookie'])
 
 
 def build_intermediate_flows(switch, match, action, vlan, flow_id, cookie):
@@ -130,6 +150,24 @@ def build_one_switch_flow(switch, src_port, src_vlan, dst_port, dst_vlan,
     flow.output_vlan_type = output_action
     flow.bandwidth = bandwidth
     flow.meter_id = meter_id
+
+    return flow
+
+
+def build_one_switch_flow(switch, stored_flow, output_action):
+    flow = Flow()
+    flow.clazz = "org.openkilda.messaging.command.flow.InstallOneSwitchFlow"
+    flow.transaction_id = 0
+    flow.flowid = stored_flow['flow_id']
+    flow.cookie = stored_flow['cookie']
+    flow.switch_id = switch
+    flow.input_port = stored_flow['src_port']
+    flow.output_port = stored_flow['dst_port']
+    flow.input_vlan_id = stored_flow['src_vlan']
+    flow.output_vlan_id = stored_flow['dst_vlan']
+    flow.output_vlan_type = output_action
+    flow.bandwidth = stored_flow['bandwidth']
+    flow.meter_id = stored_flow['meter_id']
 
     return flow
 

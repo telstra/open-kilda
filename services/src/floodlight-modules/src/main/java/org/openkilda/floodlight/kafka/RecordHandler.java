@@ -4,9 +4,10 @@ import static org.openkilda.messaging.Utils.MAPPER;
 import static java.util.Arrays.asList;
 
 
+import org.openkilda.floodlight.converter.IOFSwitchConverter;
+import org.openkilda.floodlight.converter.OFFlowStatsConverter;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.floodlight.switchmanager.MeterPool;
-import org.openkilda.floodlight.switchmanager.SwitchEventCollector;
 import org.openkilda.floodlight.switchmanager.SwitchOperationException;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Topic;
@@ -21,7 +22,13 @@ import org.openkilda.messaging.command.flow.InstallIngressFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.openkilda.messaging.command.flow.InstallTransitFlow;
 import org.openkilda.messaging.command.flow.RemoveFlow;
-import org.openkilda.messaging.command.switches.*;
+import org.openkilda.messaging.command.switches.ConnectModeRequest;
+import org.openkilda.messaging.command.switches.DeleteRulesAction;
+import org.openkilda.messaging.command.switches.DumpRulesRequest;
+import org.openkilda.messaging.command.switches.InstallRulesAction;
+import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
+import org.openkilda.messaging.command.switches.InstallMissedFlowsRequest;
+import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
@@ -33,10 +40,13 @@ import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.messaging.info.switches.ConnectModeResponse;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
+import org.openkilda.messaging.info.rule.FlowEntry;
+import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.slf4j.Logger;
@@ -95,6 +105,10 @@ class RecordHandler implements Runnable {
                 doInstallSwitchRules(message, replyToTopic, replyDestination);
             } else if (data instanceof ConnectModeRequest) {
                 doConnectMode(message, replyToTopic, replyDestination);
+            } else if (data instanceof DumpRulesRequest) {
+                doDumpRulesRequest(message);
+            } else if (data instanceof InstallMissedFlowsRequest) {
+                doSyncRulesRequest(message);
             } else {
                 logger.error("unknown data type: {}", data.toString());
             }
@@ -461,6 +475,34 @@ class RecordHandler implements Runnable {
     }
 
 
+    private void doDumpRulesRequest(final CommandMessage message) {
+        DumpRulesRequest request = (DumpRulesRequest) message.getData();
+        final String switchId = request.getSwitchId();
+        logger.debug("Loading installed rules for switch {}", switchId);
+
+        OFFlowStatsReply reply = context.getSwitchManager().dumpFlowTable(DatapathId.of(switchId));
+        List<FlowEntry> flows = reply.getEntries().stream()
+                .map(OFFlowStatsConverter::toFlowEntry)
+                .collect(Collectors.toList());
+
+        SwitchFlowEntries response = SwitchFlowEntries.builder()
+                .switchId(switchId)
+                .flowEntries(flows)
+                .build();
+        InfoMessage infoMessage = new InfoMessage(response, message.getTimestamp(),
+                message.getCorrelationId());
+        context.getKafkaProducer().postMessage(OUTPUT_FLOW_TOPIC, infoMessage);
+    }
+
+    private void doSyncRulesRequest(final CommandMessage message) {
+        InstallMissedFlowsRequest request = (InstallMissedFlowsRequest) message.getData();
+        final String switchId = request.getSwitchId();
+        logger.debug("Processing rules to be updated for switch {}", switchId);
+
+
+
+    }
+
     private void parseRecord(ConsumerRecord<String, String> record) {
         try {
             String value = (String) record.value();
@@ -480,11 +522,10 @@ class RecordHandler implements Runnable {
         parseRecord(record);
     }
 
-    protected SwitchInfoData buildSwitchInfoData(IOFSwitch sw)
-    {
+    protected SwitchInfoData buildSwitchInfoData(IOFSwitch sw) {
         // I don't know is that correct
         SwitchState state = sw.isActive() ? SwitchState.ACTIVATED : SwitchState.ADDED;
-        return SwitchEventCollector.buildSwitchInfoData(sw, state);
+        return IOFSwitchConverter.buildSwitchInfoData(sw, state);
     }
 
     public static class Factory {
