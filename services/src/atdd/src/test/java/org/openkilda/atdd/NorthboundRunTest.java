@@ -24,7 +24,7 @@ import cucumber.api.java.en.Given;
 import cucumber.api.java.en.Then;
 import org.openkilda.SwitchesUtils;
 import org.openkilda.flow.FlowUtils;
-import org.openkilda.messaging.command.switches.DefaultRulesAction;
+import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
@@ -90,14 +90,14 @@ public class NorthboundRunTest {
 
     @Then("^delete all non-default rules on (.*) switch$")
     public void deleteAllNonDefaultRules(String switchId) {
-        List<Long> cookies = SwitchesUtils.deleteSwitchRules(switchId, DefaultRulesAction.IGNORE);
+        List<Long> cookies = SwitchesUtils.deleteSwitchRules(switchId, DeleteRulesAction.IGNORE);
         assertNotNull(cookies);
         cookies.forEach(cookie -> System.out.println(cookie));
     }
 
     @Then("^delete all rules on (.*) switch$")
     public void deleteAllDefaultRules(String switchId) {
-        List<Long> cookies = SwitchesUtils.deleteSwitchRules(switchId, DefaultRulesAction.DROP);
+        List<Long> cookies = SwitchesUtils.deleteSwitchRules(switchId, DeleteRulesAction.DROP);
         assertNotNull(cookies);
         cookies.forEach(cookie -> System.out.println(cookie));
     }

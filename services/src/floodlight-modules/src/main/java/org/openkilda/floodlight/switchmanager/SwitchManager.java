@@ -40,6 +40,7 @@ import net.floodlightcontroller.util.FlowModUtils;
 import org.openkilda.floodlight.kafka.KafkaMessageProducer;
 import org.openkilda.floodlight.switchmanager.web.SwitchManagerWebRoutable;
 import org.openkilda.messaging.Destination;
+import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
@@ -104,9 +105,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
     public static final long FLOW_COOKIE_MASK = 0x60000000FFFFFFFFL;
     static final U64 NON_SYSTEM_MASK = U64.of(0x80000000FFFFFFFFL);
-    static final long DROP_RULE_COOKIE = 0x8000000000000001L;
-    static final long VERIFICATION_RULE_COOKIE_2 = 0x8000000000000002L;
-    static final long VERIFICATION_RULE_COOKIE_3 = 0x8000000000000003L;
 
     // This is invalid VID mask - it cut of highest bit that indicate presence of VLAN tag on package. But valid mask
     // 0x1FFF lead to rule reject during install attempt on accton based switches.
@@ -116,6 +114,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     private IOFSwitchService ofSwitchService;
     private IRestApiService restApiService;
     private KafkaMessageProducer kafkaProducer;
+    private ConnectModeRequest.Mode connectMode;
 
     // IFloodlightModule Methods
 
@@ -182,6 +181,14 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         ofSwitchService = context.getServiceImpl(IOFSwitchService.class);
         restApiService = context.getServiceImpl(IRestApiService.class);
         kafkaProducer = context.getServiceImpl(KafkaMessageProducer.class);
+
+        String property = context.getConfigParams(this).get("connect-mode");
+        try {
+            connectMode = ConnectModeRequest.Mode.valueOf(property);
+        } catch (Exception e) {
+            logger.error("CONFIG EXCEPTION: connect-mode could not be set to {}, defaulting to AUTO", property);
+            connectMode = ConnectModeRequest.Mode.AUTO;
+        }
         // TODO: Ensure Kafka Topics are created..
     }
 
@@ -245,16 +252,21 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * {@inheritDoc}
      */
     @Override
+    public ConnectModeRequest.Mode connectMode(final ConnectModeRequest.Mode mode) {
+        if (mode != null) {
+            this.connectMode = mode;
+        }
+        return this.connectMode;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void installDefaultRules(final DatapathId dpid) throws SwitchOperationException {
         installDropFlow(dpid);
         installVerificationRule(dpid, true);
-        IOFSwitch sw = lookupSwitch(dpid);
-        if (sw.getOFFactory().getVersion().compareTo(OF_12) > 0) {
-            logger.debug("installing unicast verification match for {}", dpid.toString());
-            installVerificationRule(dpid, false);
-        } else {
-            logger.debug("not installing unicast verification match for {}", dpid.toString());
-        }
+        installVerificationRule(dpid, false);
     }
 
     /**
@@ -636,8 +648,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         for (OFFlowStatsEntry flowStatsEntry : flowStats.getEntries()) {
             long flowCookie = flowStatsEntry.getCookie().getValue();
             if (flowCookie != DROP_RULE_COOKIE
-                    && flowCookie != VERIFICATION_RULE_COOKIE_2
-                    && flowCookie != VERIFICATION_RULE_COOKIE_3) {
+                    && flowCookie != VERIFICATION_BROADCAST_RULE_COOKIE
+                    && flowCookie != VERIFICATION_UNICAST_RULE_COOKIE) {
                 OFFlowDelete flowDelete = ofFactory.buildFlowDelete()
                         .setCookie(U64.of(flowCookie))
                         .setCookieMask(NON_SYSTEM_MASK)
@@ -651,19 +663,27 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         return removedRules;
     }
 
+
     @Override
-    public List<Long> deleteDefaultRules(final DatapathId dpid) throws SwitchOperationException {
+    public List<Long> deleteRuleWithCookie(final DatapathId dpid, final List<Long> cookiesToRemove) throws SwitchOperationException {
         IOFSwitch sw = lookupSwitch(dpid);
         OFFactory ofFactory = sw.getOFFactory();
 
-        final List<Long> cookiesToRemove = asList(DROP_RULE_COOKIE, VERIFICATION_RULE_COOKIE_2, VERIFICATION_RULE_COOKIE_3);
         for(long cookie : cookiesToRemove) {
             OFFlowDelete dropFlowDelete = ofFactory.buildFlowDelete()
                     .setCookie(U64.of(cookie))
                     .build();
             pushFlow(sw, "--DeleteFlow--", dropFlowDelete);
         }
+        // TODO: it'd be better to identify what was deleted and what wasn't there .. and confirm it is deleted.
         return cookiesToRemove;
+    }
+
+
+    @Override
+    public List<Long> deleteDefaultRules(final DatapathId dpid) throws SwitchOperationException {
+        return deleteRuleWithCookie(dpid,
+                asList(DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE, VERIFICATION_UNICAST_RULE_COOKIE));
     }
 
     /**
@@ -929,15 +949,23 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
     /**
-     * Installs the verification rule
-     *
-     * @param dpid        datapathId of switch
-     * @param isBroadcast if broadcast then set a generic match; else specific to switch Id
-     * @throws SwitchOperationException
+     * {@inheritDoc}
      */
-    private void installVerificationRule(final DatapathId dpid, final boolean isBroadcast)
+    @Override
+    public void installVerificationRule(final DatapathId dpid, final boolean isBroadcast)
             throws SwitchOperationException {
         IOFSwitch sw = lookupSwitch(dpid);
+
+        // Don't install the unicast for OpenFlow 1.2 doesn't work properly
+        if (!isBroadcast) {
+            if (sw.getOFFactory().getVersion().compareTo(OF_12) > 0) {
+                logger.debug("installing unicast verification match for {}", dpid.toString());
+            } else {
+                logger.debug("not installing unicast verification match for {}", dpid.toString());
+                return;
+            }
+        }
+
         logger.debug("installing verification rule for {}",
                 dpid.toString());
 
@@ -947,7 +975,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         actionList.add(actionSetDstMac(sw, dpidToMac(sw)));
         OFInstructionApplyActions instructionApplyActions = sw.getOFFactory().instructions()
                 .applyActions(actionList).createBuilder().build();
-        final long cookie = isBroadcast ? VERIFICATION_RULE_COOKIE_2 : VERIFICATION_RULE_COOKIE_3;
+        final long cookie = isBroadcast ? VERIFICATION_BROADCAST_RULE_COOKIE : VERIFICATION_UNICAST_RULE_COOKIE;
         OFFlowMod flowMod = buildFlowMod(sw, match, null, instructionApplyActions,
                 cookie, FlowModUtils.PRIORITY_VERY_HIGH);
         String flowname = (isBroadcast) ? "Broadcast" : "Unicast";
@@ -956,12 +984,51 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
     /**
-     * Installs a last-resort rule to drop all packets that don't match any match.
+     * A simple Match rule based on destination mac address and mask.
+     * TODO: Could be generalized
+     *
+     * @param dstMac
+     * @param dstMask
+     * @return
+     */
+    private Match simpleDstMatch(IOFSwitch sw, String dstMac, String dstMask) throws SwitchOperationException {
+        Match match = null;
+        if (dstMac != null && dstMask != null && dstMac.length() > 0 && dstMask.length() > 0) {
+            Builder builder = sw.getOFFactory().buildMatch();
+            builder.setMasked(MatchField.ETH_DST, MacAddress.of(dstMac), MacAddress.NO_MASK);
+            match = builder.build();
+        }
+        return match;
+
+    }
+
+    /**
+     * Installs custom drop rule .. ie cookie, priority, match
      *
      * @param dpid datapathId of switch
+     * @param dstMac Destination Mac address to match on
+     * @param dstMask Destination Mask to match on
+     * @param cookie Cookie to use for this rule
+     * @param priority Priority of the rule
      * @throws SwitchOperationException
      */
-    private void installDropFlow(final DatapathId dpid) throws SwitchOperationException {
+    @Override
+    public void installDropFlowCustom(final DatapathId dpid, String dstMac, String dstMask,
+                                       final long cookie, final int priority) throws SwitchOperationException {
+        IOFSwitch sw = lookupSwitch(dpid);
+        Match match = simpleDstMatch(sw, dstMac, dstMask);
+        OFFlowMod flowMod = buildFlowMod(sw, match, null, null, cookie, priority);
+        String flowName = "--CustomDropRule--" + dpid.toString();
+        pushFlow(sw, flowName, flowMod);
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void installDropFlow(final DatapathId dpid) throws SwitchOperationException {
+        // TODO: leverage installDropFlowCustom
         IOFSwitch sw = lookupSwitch(dpid);
         OFFlowMod flowMod = buildFlowMod(sw, null, null, null, DROP_RULE_COOKIE, 1);
         String flowName = "--DropRule--" + dpid.toString();

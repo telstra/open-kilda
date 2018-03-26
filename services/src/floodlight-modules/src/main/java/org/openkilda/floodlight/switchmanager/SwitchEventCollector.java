@@ -27,6 +27,7 @@ import net.floodlightcontroller.core.module.IFloodlightService;
 import org.openkilda.floodlight.kafka.KafkaMessageProducer;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Topic;
+import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.PortInfoData;
@@ -99,7 +100,13 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
         kafkaProducer.postMessage(TOPO_EVENT_TOPIC, message);
 
         try {
-            switchManager.installDefaultRules(switchId);
+            ConnectModeRequest.Mode mode = switchManager.connectMode(null);
+            if (mode == ConnectModeRequest.Mode.AUTO){
+                switchManager.installDefaultRules(switchId);
+            } else if (mode == ConnectModeRequest.Mode.SAFE) {
+                // TODO: implement SAFE mode
+            }
+            // MANUAL MODE - Do Nothing
         } catch (SwitchOperationException e) {
             logger.error("Could not activate switch={}", switchId);
         }

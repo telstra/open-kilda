@@ -1,9 +1,8 @@
 package org.openkilda.floodlight.kafka;
 
 import static org.openkilda.messaging.Utils.MAPPER;
-import static org.openkilda.messaging.command.switches.DefaultRulesAction.DROP;
-import static org.openkilda.messaging.command.switches.DefaultRulesAction.DROP_ADD;
-import static org.openkilda.messaging.command.switches.DefaultRulesAction.OVERWRITE;
+import static java.util.Arrays.asList;
+
 
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.floodlight.switchmanager.MeterPool;
@@ -22,8 +21,7 @@ import org.openkilda.messaging.command.flow.InstallIngressFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.openkilda.messaging.command.flow.InstallTransitFlow;
 import org.openkilda.messaging.command.flow.RemoveFlow;
-import org.openkilda.messaging.command.switches.DefaultRulesAction;
-import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
+import org.openkilda.messaging.command.switches.*;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
@@ -33,6 +31,7 @@ import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
+import org.openkilda.messaging.info.switches.ConnectModeResponse;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
 
@@ -43,10 +42,7 @@ import org.projectfloodlight.openflow.types.OFPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 class RecordHandler implements Runnable {
@@ -95,6 +91,10 @@ class RecordHandler implements Runnable {
                 doNetworkDump(message);
             } else if (data instanceof SwitchRulesDeleteRequest) {
                 doDeleteSwitchRules(message, replyToTopic, replyDestination);
+            } else if (data instanceof SwitchRulesInstallRequest) {
+                doInstallSwitchRules(message, replyToTopic, replyDestination);
+            } else if (data instanceof ConnectModeRequest) {
+                doConnectMode(message, replyToTopic, replyDestination);
             } else {
                 logger.error("unknown data type: {}", data.toString());
             }
@@ -334,27 +334,99 @@ class RecordHandler implements Runnable {
         context.getKafkaProducer().postMessage(OUTPUT_DISCO_TOPIC, infoMessage);
     }
 
-    private void doDeleteSwitchRules(final CommandMessage message, String replyToTopic, Destination replyDestination) {
-        SwitchRulesDeleteRequest request = (SwitchRulesDeleteRequest) message.getData();
-        logger.debug("Deleting rules from '{}' switch", request.getSwitchId());
+
+    private void doInstallSwitchRules(final CommandMessage message, String replyToTopic, Destination replyDestination) {
+        SwitchRulesInstallRequest request = (SwitchRulesInstallRequest) message.getData();
+        logger.debug("Installing rules on '{}' switch: action={}", request.getSwitchId(), request.getInstallRulesAction());
 
         DatapathId dpid = DatapathId.of(request.getSwitchId());
         ISwitchManager switchManager = context.getSwitchManager();
+        InstallRulesAction installAction = request.getInstallRulesAction();
+        List<Long> installedRules = new ArrayList<>();
         try {
-            List<Long> removedRules = switchManager.deleteAllNonDefaultRules(dpid);
-
-            DefaultRulesAction defaultRulesAction = request.getDefaultRulesAction();
-            if (defaultRulesAction == DROP) {
-                List<Long> removedDefaultRules = switchManager.deleteDefaultRules(dpid);
-                // Return removedDefaultRules as a part of the result list.
-                removedRules.addAll(removedDefaultRules);
-
-            } else if (defaultRulesAction == DROP_ADD) {
-                switchManager.deleteDefaultRules(dpid);
+            if (installAction == InstallRulesAction.INSTALL_DROP ) {
+                switchManager.installDropFlow(dpid);
+                installedRules.add(ISwitchManager.DROP_RULE_COOKIE);
+            } else if (installAction == InstallRulesAction.INSTALL_BROADCAST) {
+                switchManager.installVerificationRule(dpid, true);
+                installedRules.add(ISwitchManager.VERIFICATION_BROADCAST_RULE_COOKIE);
+            } else if (installAction == InstallRulesAction.INSTALL_UNICAST) {
+                // TODO: this isn't always added (ie if OF1.2). Is there a better response?
+                switchManager.installVerificationRule(dpid, false);
+                installedRules.add(ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE);
+            } else {
                 switchManager.installDefaultRules(dpid);
+                installedRules.addAll(asList(
+                        ISwitchManager.DROP_RULE_COOKIE,
+                        ISwitchManager.VERIFICATION_BROADCAST_RULE_COOKIE,
+                        ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE
+                        ));
+            }
 
-            } else if (defaultRulesAction == OVERWRITE) {
-                switchManager.installDefaultRules(dpid);
+            SwitchRulesResponse response = new SwitchRulesResponse(installedRules);
+            InfoMessage infoMessage = new InfoMessage(response,
+                    System.currentTimeMillis(), message.getCorrelationId(), replyDestination);
+            context.getKafkaProducer().postMessage(replyToTopic, infoMessage);
+
+        } catch (SwitchOperationException e) {
+            ErrorData errorData = new ErrorData(ErrorType.CREATION_FAILURE, e.getMessage(), request.getSwitchId());
+            ErrorMessage error = new ErrorMessage(errorData,
+                    System.currentTimeMillis(), message.getCorrelationId(), replyDestination);
+            context.getKafkaProducer().postMessage(replyToTopic, error);
+        }
+    }
+
+    private void doDeleteSwitchRules(final CommandMessage message, String replyToTopic, Destination replyDestination) {
+        SwitchRulesDeleteRequest request = (SwitchRulesDeleteRequest) message.getData();
+        logger.debug("Deleting rules from '{}' switch: action={}", request.getSwitchId(), request.getDeleteRulesAction());
+
+        DatapathId dpid = DatapathId.of(request.getSwitchId());
+        ISwitchManager switchManager = context.getSwitchManager();
+        DeleteRulesAction deleteAction = request.getDeleteRulesAction();
+        List<Long> removedRules = new ArrayList<>();
+        try {
+            /*
+             * This first part .. we are either deleting one rule, or all non-default rules (the else)
+             */
+            List<Long> toRemove = new ArrayList<>();
+            if (deleteAction == DeleteRulesAction.ONE ) {
+                toRemove.add(request.getOneCookie());
+            } else if (deleteAction == DeleteRulesAction.REMOVE_DROP) {
+                toRemove.add(ISwitchManager.DROP_RULE_COOKIE);
+            } else if (deleteAction == DeleteRulesAction.REMOVE_BROADCAST) {
+                toRemove.add(ISwitchManager.VERIFICATION_BROADCAST_RULE_COOKIE);
+            } else if (deleteAction == DeleteRulesAction.REMOVE_UNICAST) {
+                toRemove.add(ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE);
+            } else if (deleteAction == DeleteRulesAction.REMOVE_DEFAULTS
+                    || deleteAction == DeleteRulesAction.REMOVE_ADD) {
+                toRemove.add(ISwitchManager.DROP_RULE_COOKIE);
+                toRemove.add(ISwitchManager.VERIFICATION_BROADCAST_RULE_COOKIE);
+                toRemove.add(ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE);
+            }
+
+            // toRemove is > 0 only if we are trying to delete base rule(s).
+            if (toRemove.size() > 0) {
+                removedRules.addAll(switchManager.deleteRuleWithCookie(dpid, toRemove));
+                if (deleteAction == DeleteRulesAction.REMOVE_ADD) {
+                    switchManager.installDefaultRules(dpid);
+                }
+            } else {
+                removedRules.addAll(switchManager.deleteAllNonDefaultRules(dpid));
+                /*
+                 * The Second part - only for a subset of actions.
+                 */
+                if (deleteAction == DeleteRulesAction.DROP) {
+                    List<Long> removedDefaultRules = switchManager.deleteDefaultRules(dpid);
+                    // Return removedDefaultRules as a part of the result list.
+                    removedRules.addAll(removedDefaultRules);
+
+                } else if (deleteAction == DeleteRulesAction.DROP_ADD) {
+                    switchManager.deleteDefaultRules(dpid);
+                    switchManager.installDefaultRules(dpid);
+
+                } else if (deleteAction == DeleteRulesAction.OVERWRITE) {
+                    switchManager.installDefaultRules(dpid);
+                }
             }
 
             SwitchRulesResponse response = new SwitchRulesResponse(removedRules);
@@ -369,6 +441,25 @@ class RecordHandler implements Runnable {
             context.getKafkaProducer().postMessage(replyToTopic, error);
         }
     }
+
+    private void doConnectMode(final CommandMessage message, String replyToTopic, Destination replyDestination) {
+        ConnectModeRequest request = (ConnectModeRequest) message.getData();
+        if (request.getMode() != null)
+            logger.debug("Setting CONNECT MODE to '{}'", request.getMode());
+        else
+            logger.debug("Getting CONNECT MODE");
+
+        ISwitchManager switchManager = context.getSwitchManager();
+        ConnectModeRequest.Mode result = switchManager.connectMode(request.getMode());
+
+        logger.debug("CONNECT MODE is now '{}'", result);
+        ConnectModeResponse response = new ConnectModeResponse(result);
+        InfoMessage infoMessage = new InfoMessage(response,
+                    System.currentTimeMillis(), message.getCorrelationId(), replyDestination);
+        context.getKafkaProducer().postMessage(replyToTopic, infoMessage);
+
+    }
+
 
     private void parseRecord(ConsumerRecord<String, String> record) {
         try {
