@@ -161,7 +161,7 @@ public class SwitchController {
             @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
             @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
             @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
-    @GetMapping(path = "/{switch_id}/sync_rules")
+    @GetMapping(path = "/switches/{switch_id}/sync_rules")
     @ResponseStatus(HttpStatus.OK)
     public void syncRules(@PathVariable(name = "switch_id") String switchId,
             @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {

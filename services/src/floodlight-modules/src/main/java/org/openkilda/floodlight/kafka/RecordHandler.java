@@ -4,6 +4,7 @@ import static org.openkilda.messaging.Utils.MAPPER;
 import static java.util.Arrays.asList;
 
 
+import org.apache.commons.lang.StringUtils;
 import org.openkilda.floodlight.converter.IOFSwitchConverter;
 import org.openkilda.floodlight.converter.OFFlowStatsConverter;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
@@ -17,6 +18,7 @@ import org.openkilda.messaging.command.CommandWithReplyToMessage;
 import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
 import org.openkilda.messaging.command.discovery.DiscoverPathCommandData;
 import org.openkilda.messaging.command.discovery.NetworkCommandData;
+import org.openkilda.messaging.command.flow.BaseFlow;
 import org.openkilda.messaging.command.flow.InstallEgressFlow;
 import org.openkilda.messaging.command.flow.InstallIngressFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
@@ -59,6 +61,7 @@ class RecordHandler implements Runnable {
     private static final Logger logger = LoggerFactory.getLogger(RecordHandler.class);
     private static final String OUTPUT_FLOW_TOPIC = Topic.FLOW;
     private static final String OUTPUT_DISCO_TOPIC = Topic.TOPO_DISCO;
+    private static final String TOPO_ENG_TOPIC = Topic.TOPO_ENG;
 
     private final ConsumerContext context;
     private final ConsumerRecord<String, String> record;
@@ -83,35 +86,7 @@ class RecordHandler implements Runnable {
 
         try {
             CommandData data = message.getData();
-            if (data instanceof DiscoverIslCommandData) {
-                doDiscoverIslCommand(data);
-            } else if (data instanceof DiscoverPathCommandData) {
-                doDiscoverPathCommand(data);
-            } else if (data instanceof InstallIngressFlow) {
-                doInstallIngressFlow(message, replyToTopic, replyDestination);
-            } else if (data instanceof InstallEgressFlow) {
-                doInstallEgressFlow(message, replyToTopic, replyDestination);
-            } else if (data instanceof InstallTransitFlow) {
-                doInstallTransitFlow(message, replyToTopic, replyDestination);
-            } else if (data instanceof InstallOneSwitchFlow) {
-                doInstallOneSwitchFlow(message, replyToTopic, replyDestination);
-            } else if (data instanceof RemoveFlow) {
-                doDeleteFlow(message, replyToTopic, replyDestination);
-            } else if (data instanceof NetworkCommandData) {
-                doNetworkDump(message);
-            } else if (data instanceof SwitchRulesDeleteRequest) {
-                doDeleteSwitchRules(message, replyToTopic, replyDestination);
-            } else if (data instanceof SwitchRulesInstallRequest) {
-                doInstallSwitchRules(message, replyToTopic, replyDestination);
-            } else if (data instanceof ConnectModeRequest) {
-                doConnectMode(message, replyToTopic, replyDestination);
-            } else if (data instanceof DumpRulesRequest) {
-                doDumpRulesRequest(message);
-            } else if (data instanceof InstallMissedFlowsRequest) {
-                doSyncRulesRequest(message);
-            } else {
-                logger.error("unknown data type: {}", data.toString());
-            }
+            handleCommand(message, data, replyToTopic, replyDestination);
         } catch (FlowCommandException e) {
             ErrorMessage error = new ErrorMessage(
                     e.makeErrorResponse(),
@@ -119,6 +94,39 @@ class RecordHandler implements Runnable {
             context.getKafkaProducer().postMessage(replyToTopic, error);
         } catch (Exception e) {
             logger.error("Unhandled exception: {}", e);
+        }
+    }
+
+    private void handleCommand(CommandMessage message, CommandData data, String replyToTopic,
+            Destination replyDestination) throws FlowCommandException {
+        if (data instanceof DiscoverIslCommandData) {
+            doDiscoverIslCommand(data);
+        } else if (data instanceof DiscoverPathCommandData) {
+            doDiscoverPathCommand(data);
+        } else if (data instanceof InstallIngressFlow) {
+            doInstallIngressFlow(message, replyToTopic, replyDestination);
+        } else if (data instanceof InstallEgressFlow) {
+            doInstallEgressFlow(message, replyToTopic, replyDestination);
+        } else if (data instanceof InstallTransitFlow) {
+            doInstallTransitFlow(message, replyToTopic, replyDestination);
+        } else if (data instanceof InstallOneSwitchFlow) {
+            doInstallOneSwitchFlow(message, replyToTopic, replyDestination);
+        } else if (data instanceof RemoveFlow) {
+            doDeleteFlow(message, replyToTopic, replyDestination);
+        } else if (data instanceof NetworkCommandData) {
+            doNetworkDump(message);
+        } else if (data instanceof SwitchRulesDeleteRequest) {
+            doDeleteSwitchRules(message, replyToTopic, replyDestination);
+        } else if (data instanceof SwitchRulesInstallRequest) {
+            doInstallSwitchRules(message, replyToTopic, replyDestination);
+        } else if (data instanceof ConnectModeRequest) {
+            doConnectMode(message, replyToTopic, replyDestination);
+        } else if (data instanceof DumpRulesRequest) {
+            doDumpRulesRequest(message);
+        } else if (data instanceof InstallMissedFlowsRequest) {
+            doSyncRulesRequest(message);
+        } else {
+            logger.error("unknown data type: {}", data.toString());
         }
     }
 
@@ -185,8 +193,10 @@ class RecordHandler implements Runnable {
                     command.getOutputVlanType(),
                     meterId);
 
-            message.setDestination(replyDestination);
-            context.getKafkaProducer().postMessage(replyToTopic, message);
+            if (!StringUtils.isBlank(replyToTopic)) {
+                message.setDestination(replyDestination);
+                context.getKafkaProducer().postMessage(replyToTopic, message);
+            }
         } catch (SwitchOperationException e) {
             throw new FlowCommandException(command.getId(), ErrorType.CREATION_FAILURE, e);
         }
@@ -213,8 +223,10 @@ class RecordHandler implements Runnable {
                     command.getOutputVlanId(),
                     command.getOutputVlanType());
 
-            message.setDestination(replyDestination);
-            context.getKafkaProducer().postMessage(replyToTopic, message);
+            if (!StringUtils.isBlank(replyToTopic)) {
+                message.setDestination(replyDestination);
+                context.getKafkaProducer().postMessage(replyToTopic, message);
+            }
         } catch (SwitchOperationException e) {
             throw new FlowCommandException(command.getId(), ErrorType.CREATION_FAILURE, e);
         }
@@ -239,8 +251,10 @@ class RecordHandler implements Runnable {
                     command.getOutputPort(),
                     command.getTransitVlanId());
 
-            message.setDestination(replyDestination);
-            context.getKafkaProducer().postMessage(replyToTopic, message);
+            if (!StringUtils.isBlank(replyToTopic)) {
+                message.setDestination(replyDestination);
+                context.getKafkaProducer().postMessage(replyToTopic, message);
+            }
         } catch (SwitchOperationException e) {
             throw new FlowCommandException(command.getId(), ErrorType.CREATION_FAILURE, e);
         }
@@ -280,8 +294,10 @@ class RecordHandler implements Runnable {
                     directOutputVlanType,
                     meterId);
 
-            message.setDestination(replyDestination);
-            context.getKafkaProducer().postMessage(replyToTopic, message);
+            if (!StringUtils.isBlank(replyToTopic)) {
+                message.setDestination(replyDestination);
+                context.getKafkaProducer().postMessage(replyToTopic, message);
+            }
         } catch (SwitchOperationException e) {
             throw new FlowCommandException(command.getId(), ErrorType.CREATION_FAILURE, e);
         }
@@ -474,7 +490,6 @@ class RecordHandler implements Runnable {
 
     }
 
-
     private void doDumpRulesRequest(final CommandMessage message) {
         DumpRulesRequest request = (DumpRulesRequest) message.getData();
         final String switchId = request.getSwitchId();
@@ -491,16 +506,18 @@ class RecordHandler implements Runnable {
                 .build();
         InfoMessage infoMessage = new InfoMessage(response, message.getTimestamp(),
                 message.getCorrelationId());
-        context.getKafkaProducer().postMessage(OUTPUT_FLOW_TOPIC, infoMessage);
+        context.getKafkaProducer().postMessage(TOPO_ENG_TOPIC, infoMessage);
     }
 
-    private void doSyncRulesRequest(final CommandMessage message) {
+    private void doSyncRulesRequest(final CommandMessage message) throws FlowCommandException {
         InstallMissedFlowsRequest request = (InstallMissedFlowsRequest) message.getData();
         final String switchId = request.getSwitchId();
         logger.debug("Processing rules to be updated for switch {}", switchId);
 
-
-
+        for (BaseFlow installCommand : request.getFlowCommands()) {
+            logger.debug("Processing command for switch {} {}", switchId, installCommand);
+            handleCommand(message, installCommand, StringUtils.EMPTY, Destination.TOPOLOGY_ENGINE);
+        }
     }
 
     private void parseRecord(ConsumerRecord<String, String> record) {
