@@ -39,9 +39,6 @@ import static org.openkilda.floodlight.Constants.outputPort;
 import static org.openkilda.floodlight.Constants.outputVlanId;
 import static org.openkilda.floodlight.Constants.transitVlanId;
 import static org.openkilda.floodlight.message.command.encapsulation.PushSchemeOutputCommands.ofFactory;
-import static org.openkilda.floodlight.switchmanager.SwitchManager.DROP_RULE_COOKIE;
-import static org.openkilda.floodlight.switchmanager.SwitchManager.VERIFICATION_RULE_COOKIE_2;
-import static org.openkilda.floodlight.switchmanager.SwitchManager.VERIFICATION_RULE_COOKIE_3;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import net.floodlightcontroller.core.IOFSwitch;
@@ -354,9 +351,9 @@ public class SwitchManagerTest {
         final List<OFFlowMod> actual = capture.getValues();
         assertEquals(3, actual.size());
         assertThat(actual, everyItem(hasProperty("command", equalTo(OFFlowModCommand.DELETE))));
-        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(DROP_RULE_COOKIE)))));
-        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(VERIFICATION_RULE_COOKIE_2)))));
-        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(VERIFICATION_RULE_COOKIE_3)))));
+        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(ISwitchManager.DROP_RULE_COOKIE)))));
+        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(ISwitchManager.VERIFICATION_BROADCAST_RULE_COOKIE)))));
+        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE)))));
     }
 
     private Capture<OFFlowMod> prepareForInstallTest() {

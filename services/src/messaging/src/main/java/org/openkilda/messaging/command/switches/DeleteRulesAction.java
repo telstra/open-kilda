@@ -18,17 +18,35 @@ package org.openkilda.messaging.command.switches;
 /**
  * Describes what to do about the switch default rules.
  */
-public enum DefaultRulesAction {
-    // Drop base rules.
+public enum DeleteRulesAction {
+    // Drop all rules
     DROP,
 
-    // Drop base rules, then add them back.
+    // Drop all rules, add back in the base default rules
     DROP_ADD,
 
-    // Don't drop the base rules - i.e. ignore them.
+    // Don't drop the default rules, but do drop everything else
     IGNORE,
 
-    // The same as IGNORE and ADD - i.e. re-install the base rules again.
-    OVERWRITE
+    // Drop all non-base rules (ie IGNORE), and add base rules back (eg overwrite)
+    OVERWRITE,
+
+    // Drop a single rule
+    ONE,
+
+    // Drop just the default / base drop rule
+    REMOVE_DROP,
+
+    // Drop just the verification (broadcast) rule only
+    REMOVE_BROADCAST,
+
+    // Drop just the verification (unicast) rule only
+    REMOVE_UNICAST,
+
+    // Drop all default rules (ie a combination of the above)
+    REMOVE_DEFAULTS,
+
+    // Drop the default, add them back .. presumably a good way to ensure the defaults are there
+    REMOVE_ADD
 }
 

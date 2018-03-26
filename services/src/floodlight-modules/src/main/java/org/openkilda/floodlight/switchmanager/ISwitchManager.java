@@ -17,6 +17,7 @@ package org.openkilda.floodlight.switchmanager;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
 import org.projectfloodlight.openflow.protocol.OFMeterConfigStatsReply;
@@ -31,14 +32,59 @@ import java.util.Map;
 public interface ISwitchManager extends IFloodlightService {
     /** OVS software switch manufacturer constant value. */
     String OVS_MANUFACTURER = "Nicira, Inc.";
+    long DROP_RULE_COOKIE = 0x8000000000000001L;
+    long VERIFICATION_BROADCAST_RULE_COOKIE = 0x8000000000000002L;
+    long VERIFICATION_UNICAST_RULE_COOKIE = 0x8000000000000003L;
+
+    /**
+     * @param mode the mode to use, if not null
+     * @return the connection mode after the set operation (if not null)
+     */
+    ConnectModeRequest.Mode connectMode(final ConnectModeRequest.Mode mode);
+
 
     /**
      * Adds default rules to install verification rules and final drop rule.
+     * Essentially, it calls installDropFlow and installVerificationRule twice (ie isBroadcast)
      *
      * @param dpid datapathId of switch
      * @throws SwitchOperationException in case of errors
      */
     void installDefaultRules(final DatapathId dpid) throws SwitchOperationException;
+
+    /**
+     * Installs the default verification rule, if it is allowed. One case where it isn't -
+     * if the switch is an OpenFlow 1.2 switch and isBroadcast = false. In that scenario, nothing
+     * happesn
+     *
+     * @param dpid datapathId of switch
+     * @param isBroadcast
+     * @throws SwitchOperationException in case of errors
+     */
+    void installVerificationRule(final DatapathId dpid, final boolean isBroadcast)
+            throws SwitchOperationException;
+
+    /**
+     * Installs the default drop rule.
+     *
+     * @param dpid datapathId of switch
+     * @throws SwitchOperationException in case of errors
+     */
+    void installDropFlow(final DatapathId dpid) throws SwitchOperationException;
+
+    /**
+     * Installs custom drop rule .. ie cookie, priority, match
+     *
+     * @param dpid datapathId of switch
+     * @param dstMac Destination Mac address to match on
+     * @param dstMask Destination Mask to match on
+     * @param cookie Cookie to use for this rule
+     * @param priority Priority of the rule
+     * @throws SwitchOperationException
+     */
+    void installDropFlowCustom(final DatapathId dpid, String dstMac, String dstMask,
+                               final long cookie, final int priority) throws SwitchOperationException;
+
 
     /**
      * Installs an flow on ingress switch.
@@ -50,6 +96,7 @@ public interface ISwitchManager extends IFloodlightService {
      * @param inputVlanId   input vlan to match on, 0 means not to match on vlan
      * @param transitVlanId vlan to add before outputing on outputPort
      * @return transaction id
+     * @throws SwitchOperationException Switch not found
      */
     long installIngressFlow(final DatapathId dpid, final String flowId, final Long cookie,
                                                     final int inputPort, final int outputPort, final int inputVlanId,
@@ -67,6 +114,7 @@ public interface ISwitchManager extends IFloodlightService {
      * @param outputVlanId   set vlan on packet before forwarding via outputPort; 0 means not to set
      * @param outputVlanType type of action to apply to the outputVlanId if greater than 0
      * @return transaction id
+     * @throws SwitchOperationException Switch not found
      */
     long installEgressFlow(final DatapathId dpid, final String flowId, final Long cookie,
                                                    final int inputPort, final int outputPort, final int transitVlanId,
@@ -82,6 +130,7 @@ public interface ISwitchManager extends IFloodlightService {
      * @param outputPort    port to forward packet out
      * @param transitVlanId vlan to match on inputPort
      * @return transaction id
+     * @throws SwitchOperationException Switch not found
      */
     long installTransitFlow(final DatapathId dpid, final String flowId, final Long cookie,
                                                     final int inputPort, final int outputPort, final int transitVlanId)
@@ -98,6 +147,7 @@ public interface ISwitchManager extends IFloodlightService {
      * @param outputVlanId   set vlan on packet before forwarding via outputPort; 0 means not to set
      * @param outputVlanType type of action to apply to the outputVlanId if greater than 0
      * @return transaction id
+     * @throws SwitchOperationException Switch not found
      */
     long installOneSwitchFlow(final DatapathId dpid, final String flowId, final Long cookie,
                                                       final int inputPort, final int outputPort, int inputVlanId,
@@ -117,6 +167,7 @@ public interface ISwitchManager extends IFloodlightService {
      *
      * @param dpid switch id
      * @return OF meter config stats entries
+     * @throws SwitchOperationException Switch not found
      */
     OFMeterConfigStatsReply dumpMeters(final DatapathId dpid) throws SwitchOperationException;
 
@@ -129,6 +180,7 @@ public interface ISwitchManager extends IFloodlightService {
      * @param burstSize the size of the burst
      * @param meterId   the meter ID
      * @return transaction id
+     * @throws SwitchOperationException Switch not found
      */
     long installMeter(final DatapathId dpid, final long bandwidth, final long burstSize,
                                               final long meterId) throws SwitchOperationException;
@@ -139,6 +191,7 @@ public interface ISwitchManager extends IFloodlightService {
      * @param dpid   datapath ID of the switch
      * @param flowId flow id
      * @return transaction id
+     * @throws SwitchOperationException Switch not found
      */
     long deleteFlow(final DatapathId dpid, final String flowId, final Long cookie)
             throws SwitchOperationException;
@@ -149,6 +202,7 @@ public interface ISwitchManager extends IFloodlightService {
      * @param dpid    datapath ID of the switch
      * @param meterId meter identifier
      * @return transaction id
+     * @throws SwitchOperationException Switch not found
      */
     long deleteMeter(final DatapathId dpid, final long meterId) throws SwitchOperationException;
 
@@ -160,6 +214,7 @@ public interface ISwitchManager extends IFloodlightService {
      *
      * @param dpid datapath ID of the switch
      * @return the list of cookies for removed rules
+     * @throws SwitchOperationException Switch not found
      */
     List<Long> deleteAllNonDefaultRules(final DatapathId dpid) throws SwitchOperationException;
 
@@ -168,6 +223,18 @@ public interface ISwitchManager extends IFloodlightService {
      *
      * @param dpid datapath ID of the switch
      * @return the list of cookies for removed rules
+     * @throws SwitchOperationException Switch not found
      */
     List<Long> deleteDefaultRules(final DatapathId dpid) throws SwitchOperationException;
+
+    /**
+     * Delete rules that match the list of cookies
+     *
+     * @param dpid datapath ID of the switch
+     * @param cookiesToRemove the list of cookies (rules) to remove
+     * @return the list of cookies for removed rules
+     * @throws SwitchOperationException Switch not found
+     */
+    List<Long> deleteRuleWithCookie(final DatapathId dpid, final List<Long> cookiesToRemove) throws SwitchOperationException;
+
 }

@@ -15,9 +15,6 @@
 
 package org.openkilda.messaging.command.switches;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
-import static org.openkilda.messaging.Utils.TIMESTAMP;
-
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -26,55 +23,43 @@ import org.openkilda.messaging.command.CommandData;
 
 import java.util.Objects;
 
+import static com.google.common.base.MoreObjects.toStringHelper;
+import static org.openkilda.messaging.Utils.TIMESTAMP;
+
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class SwitchRulesDeleteRequest extends CommandData {
+public class SwitchRulesInstallRequest extends CommandData {
 
     @JsonProperty("switch_id")
     private String switchId;
 
-    @JsonProperty("delete_rules")
-    private DeleteRulesAction deleteRulesAction;
+    @JsonProperty("install_rules")
+    private InstallRulesAction installRulesAction;
 
     /**
-     * Used for deleting one switch rule .. doesn't have to be a default rule.
-     */
-    @JsonProperty("one_cookie")
-    private Long oneCookie;
-
-    /**
-     * Constructs a delete switch rules request.
+     * Constructs an install switch rules request.
      *
-     * @param switchId switch id to delete rules from.
-     * @param deleteRulesAction defines what to do about the default rules
+     * @param switchId switch id to install rules on.
+     * @param installRulesAction defines what to do about the default rules
      */
     @JsonCreator
-    public SwitchRulesDeleteRequest(
+    public SwitchRulesInstallRequest(
             @JsonProperty("switch_id") String switchId,
-            @JsonProperty("delete_rules") DeleteRulesAction deleteRulesAction,
-            @JsonProperty("one_cookie") Long oneCookie
+            @JsonProperty("install_rules") InstallRulesAction installRulesAction
     ) {
         this.switchId = Objects.requireNonNull(switchId, "switch_id must not be null");
         if (!Utils.validateSwitchId(switchId)) {
             throw new IllegalArgumentException("switch_id has invalid value");
         }
 
-        this.deleteRulesAction = Objects.requireNonNull(deleteRulesAction);
-        // NB: oneCookie is only needed if DeleteRulesAction.ONE
-        if (this.deleteRulesAction == DeleteRulesAction.ONE) {
-            this.oneCookie = Objects.requireNonNull(oneCookie);
-        }
+        this.installRulesAction = Objects.requireNonNull(installRulesAction);
     }
 
     public String getSwitchId() {
         return switchId;
     }
 
-    public DeleteRulesAction getDeleteRulesAction() {
-        return deleteRulesAction;
-    }
-
-    public Long getOneCookie() {
-        return oneCookie;
+    public InstallRulesAction getInstallRulesAction() {
+        return installRulesAction;
     }
 
     @Override
@@ -82,8 +67,7 @@ public class SwitchRulesDeleteRequest extends CommandData {
         return toStringHelper(this)
                 .add(TIMESTAMP, timestamp)
                 .add("switch_id", switchId)
-                .add("delete_rules", deleteRulesAction)
-                .add("one_cookie", oneCookie)
+                .add("install_rules", installRulesAction)
                 .toString();
     }
 }

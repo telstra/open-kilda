@@ -13,7 +13,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.glassfish.jersey.client.ClientConfig;
 import org.openkilda.messaging.Utils;
-import org.openkilda.messaging.command.switches.DefaultRulesAction;
+import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.topo.exceptions.TopologyProcessingException;
@@ -136,7 +136,7 @@ public final class SwitchesUtils {
     /**
      * Delete switch rules through Northbound service.
      */
-    public static List<Long> deleteSwitchRules(String switchId, DefaultRulesAction defaultRules) {
+    public static List<Long> deleteSwitchRules(String switchId, DeleteRulesAction defaultRules) {
         System.out.println("\n==> Northbound Delete Switch Rules");
 
         Client client = ClientBuilder.newClient(new ClientConfig());
