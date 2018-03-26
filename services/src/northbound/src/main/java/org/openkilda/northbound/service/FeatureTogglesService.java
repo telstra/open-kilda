@@ -15,7 +15,7 @@
 
 package org.openkilda.northbound.service;
 
-import org.openkilda.northbound.dto.FeatureToggleDto;
+import org.openkilda.messaging.payload.FeatureTogglePayload;
 
 /**
  * Service to handle feature toggles requests.
@@ -26,11 +26,11 @@ public interface FeatureTogglesService extends BasicService {
      * Changes feature toggles values.
      * @param request configurations of feature toggles to be changed.
      */
-    void toggleFeatures(FeatureToggleDto request);
+    void toggleFeatures(FeatureTogglePayload request);
 
     /**
      * Method to get information about current feature toggles.
-     * @return {@link FeatureToggleDto} that shows what features are enabled and disabled.
+     * @return {@link FeatureTogglePayload} that shows what features are enabled and disabled.
      */
-    FeatureToggleDto getFeatureTogglesState();
+    FeatureTogglePayload getFeatureTogglesState();
 }

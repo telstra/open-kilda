@@ -40,6 +40,8 @@ MT_NETWORK = "org.openkilda.messaging.info.discovery.NetworkInfoData"
 #feature toggle is the functionality to turn off/on specific features
 MT_STATE_TOGGLE = "org.openkilda.messaging.command.system.FeatureToggleStateRequest"
 MT_TOGGLE = "org.openkilda.messaging.command.system.FeatureToggleRequest"
+MT_NETWORK_TOPOLOGY_CHANGE = (
+    "org.openkilda.messaging.info.event.NetworkTopologyChange")
 CD_NETWORK = "org.openkilda.messaging.command.discovery.NetworkCommandData"
 
 
@@ -117,6 +119,7 @@ class MessageItem(object):
             if event_handled:
                 message_utils.send_cache_message(self.payload,
                                                  self.correlation_id)
+                self.handle_topology_change()
 
             elif self.get_message_type() == MT_FLOW_INFODATA:
                 event_handled = self.flow_operation()
@@ -396,6 +399,26 @@ class MessageItem(object):
             return False
 
         return True
+
+    def handle_topology_change(self):
+        if self.get_message_type() != MT_ISL:
+            return
+        if self.payload['state'] != "DISCOVERED":
+            return
+        if not features_status[FEATURE_REROUTE_ON_ISL_DISCOVERY]:
+            return
+
+        path = self.payload['path']
+        node = path[0]
+
+        payload = {
+            'clazz': MT_NETWORK_TOPOLOGY_CHANGE,
+            'type': 'ENDPOINT_ADD',
+            'switch_id': node['switch_id'],
+            'port_number': node['port_no']}
+
+        message_utils.send_cache_message(
+                payload, self.correlation_id)
 
     @staticmethod
     def create_flow(flow_id, flow, correlation_id, tx, propagate=True):

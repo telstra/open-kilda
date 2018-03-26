@@ -21,8 +21,8 @@ import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.system.FeatureToggleRequest;
 import org.openkilda.messaging.command.system.FeatureToggleStateRequest;
 import org.openkilda.messaging.info.system.FeatureTogglesResponse;
+import org.openkilda.messaging.payload.FeatureTogglePayload;
 import org.openkilda.northbound.converter.FeatureTogglesMapper;
-import org.openkilda.northbound.dto.FeatureToggleDto;
 import org.openkilda.northbound.messaging.MessageConsumer;
 import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.service.FeatureTogglesService;
@@ -53,7 +53,7 @@ public class FeatureTogglesServiceImpl implements FeatureTogglesService {
     private FeatureTogglesMapper mapper;
 
     @Override
-    public void toggleFeatures(FeatureToggleDto dto) {
+    public void toggleFeatures(FeatureTogglePayload dto) {
         LOGGER.debug("Processing request to toggle features, new properties are {}", dto);
         FeatureToggleRequest request = mapper.toRequest(dto);
         CommandMessage message = new CommandMessage(request, System.currentTimeMillis(), UUID.randomUUID().toString(),
@@ -62,7 +62,7 @@ public class FeatureTogglesServiceImpl implements FeatureTogglesService {
     }
 
     @Override
-    public FeatureToggleDto getFeatureTogglesState() {
+    public FeatureTogglePayload getFeatureTogglesState() {
         String correlationId = UUID.randomUUID().toString();
         FeatureToggleStateRequest teRequest = new FeatureToggleStateRequest();
         CommandMessage requestMessage = new CommandMessage(teRequest, System.currentTimeMillis(),
