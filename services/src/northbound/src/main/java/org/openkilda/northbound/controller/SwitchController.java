@@ -90,7 +90,7 @@ public class SwitchController {
      * @return list of the cookies of the rules that have been deleted
      */
     @ApiOperation(value = "Get switch rules from the switch",
-            response = Long.class, responseContainer = "List")
+            response = SwitchFlowEntries.class)
     @GetMapping(value = "/switches/{switch-id}/rules",
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     @ResponseStatus(HttpStatus.OK)
