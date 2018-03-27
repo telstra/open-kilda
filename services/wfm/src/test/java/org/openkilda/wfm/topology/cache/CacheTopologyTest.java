@@ -27,10 +27,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.storm.Config;
 import org.apache.storm.generated.StormTopology;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.*;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
@@ -327,6 +324,7 @@ public class CacheTopologyTest extends AbstractStormTest {
         assertTrue(command.getPayload().getFlowId().equals(secondFlowId));
     }
 
+    @Ignore
     @Test
     public void flowShouldBeReroutedWhenIslDies() throws Exception {
         final String destSwitchId = "destSwitch";

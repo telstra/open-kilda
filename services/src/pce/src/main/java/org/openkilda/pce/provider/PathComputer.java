@@ -21,6 +21,8 @@ import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
 
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * PathComputation interface represent operations on flow path.
@@ -53,4 +55,12 @@ public interface PathComputer extends Serializable {
      */
     ImmutablePair<PathInfoData, PathInfoData> getPath(Flow flow, Strategy strategy) throws UnroutablePathException;
 
+    /**
+     * Interact with the PathComputer to get the FlowInfo for all flows.
+     *
+     * @return a list containing the "key" flow info for all flows.
+     */
+    default List<FlowInfo> getFlowInfo() {
+        return new ArrayList<>();
+    }
 }

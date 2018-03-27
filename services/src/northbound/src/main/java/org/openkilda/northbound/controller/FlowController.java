@@ -20,6 +20,7 @@ import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 import static org.openkilda.messaging.Utils.FLOW_ID;
 
 import org.openkilda.messaging.error.MessageError;
+import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
@@ -30,6 +31,7 @@ import org.openkilda.northbound.service.FlowService;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
+import org.openkilda.northbound.utils.ExtraAuthRequired;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -201,6 +203,38 @@ public class FlowController {
         return new ResponseEntity<>(response, new HttpHeaders(), HttpStatus.OK);
     }
 
+
+    /**
+     * Delete all flows.
+     *
+     * @param correlationId correlation ID header value
+     * @return list of flows that have been deleted
+     */
+    @ApiOperation(value = "Delete all flows. Requires special authorization", response = FlowPayload.class)
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, response = FlowPayload.class, message = "Operation is successful"),
+            @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
+            @ApiResponse(code = 401, response = MessageError.class, message = "Unauthorized"),
+            @ApiResponse(code = 403, response = MessageError.class, message = "Forbidden"),
+            @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
+            @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
+            @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
+    @RequestMapping(
+            value = "/flows",
+            method = RequestMethod.DELETE,
+            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @ExtraAuthRequired
+    @SuppressWarnings("unchecked") // the error is unchecked
+    public ResponseEntity<List<FlowPayload>> deleteFlows(
+            @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
+        logger.debug("Delete flows: {}={}", CORRELATION_ID);
+
+        List<FlowPayload> response = flowService.deleteFlows(correlationId);
+        return new ResponseEntity<>(response, new HttpHeaders(), HttpStatus.OK);
+    }
+
+
+
     /**
      * Gets flow status.
      *
@@ -338,5 +372,30 @@ public class FlowController {
         logger.debug("Received reroute request with correlation_id {} for flow {}", correlationId, flowId);
         return flowService.rerouteFlow(flowId, correlationId);
     }
+
+
+    /**
+     * Make sure any Flow caches are in sync with the DB. This is primarily a janitor primitive.
+     *
+     * @param correlationId correlation ID header value.
+     * @return a detailed response of the sync operation (added, deleted, modified, unchanged flows)
+     */
+    @ApiOperation(value = "Sync Flow Cache(s)", response = FlowCacheSyncResults.class)
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, response = FlowCacheSyncResults.class, message = "Operation is successful"),
+            @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
+            @ApiResponse(code = 401, response = MessageError.class, message = "Unauthorized"),
+            @ApiResponse(code = 403, response = MessageError.class, message = "Forbidden"),
+            @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
+            @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
+            @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
+    @RequestMapping(path = "/flows/cachesync",
+            method = RequestMethod.GET)
+    @ResponseStatus(HttpStatus.OK)
+    public FlowCacheSyncResults syncFlowCache(@RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
+        logger.debug("Received sync FlowCache with correlation_id {}", correlationId);
+        return flowService.syncFlowCache(correlationId);
+    }
+
 
 }

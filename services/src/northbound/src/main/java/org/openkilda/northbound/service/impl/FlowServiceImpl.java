@@ -29,13 +29,16 @@ import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowStatusRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.openkilda.messaging.command.flow.FlowsGetRequest;
+import org.openkilda.messaging.command.flow.FlowCacheSyncRequest;
 import org.openkilda.messaging.info.flow.FlowOperation;
 import org.openkilda.messaging.info.flow.FlowPathResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowStatusResponse;
 import org.openkilda.messaging.info.flow.FlowsResponse;
+import org.openkilda.messaging.info.flow.FlowCacheSyncResponse;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.model.Flow;
+import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
@@ -51,10 +54,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -151,16 +151,34 @@ public class FlowServiceImpl implements FlowService {
     @Override
     public FlowPayload deleteFlow(final String id, final String correlationId) {
         LOGGER.debug("Delete flow: {}={}", CORRELATION_ID, correlationId);
+        messageConsumer.clear();
+        CommandMessage request = _sendDeleteFlow(id, correlationId);
+        return _deleteFlowRespone(correlationId, request);
+    }
+
+    /**
+     * Non-blocking primitive .. just create and send delete request
+     * @return the request
+     */
+    private CommandMessage _sendDeleteFlow(final String id, final String correlationId) {
         Flow flow = new Flow();
         flow.setFlowId(id);
         FlowDeleteRequest data = new FlowDeleteRequest(flow);
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
-        messageConsumer.clear();
         messageProducer.send(topic, request);
+        return request;
+    }
+
+    /**
+     * Blocking primitive .. waits for the response .. and then converts to FlowPayload.
+     * @return the deleted flow.
+     */
+    private FlowPayload _deleteFlowRespone(final String correlationId, CommandMessage request) {
         Message message = (Message) messageConsumer.poll(correlationId);
         FlowResponse response = (FlowResponse) validateInfoMessage(request, message, correlationId);
         return Converter.buildFlowPayloadByFlow(response.getPayload());
     }
+
 
     /**
      * {@inheritDoc}
@@ -176,6 +194,7 @@ public class FlowServiceImpl implements FlowService {
         FlowResponse response = (FlowResponse) validateInfoMessage(request, message, correlationId);
         return Converter.buildFlowPayloadByFlow(response.getPayload());
     }
+
 
     /**
      * {@inheritDoc}
@@ -197,7 +216,8 @@ public class FlowServiceImpl implements FlowService {
      */
     @Override
     public List<FlowPayload> getFlows(final String correlationId) {
-        LOGGER.debug("\n\n\n\nGet flows: ENTER {}={}\n", CORRELATION_ID, correlationId);
+        LOGGER.debug("\n\n\nGet flows: ENTER {}={}\n", CORRELATION_ID, correlationId);
+        // TODO: why does FlowsGetRequest use empty FlowIdStatusPayload? Delete if not needed.
         FlowsGetRequest data = new FlowsGetRequest(new FlowIdStatusPayload());
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
         messageConsumer.clear();
@@ -205,7 +225,36 @@ public class FlowServiceImpl implements FlowService {
         Message message = (Message) messageConsumer.poll(correlationId);
         FlowsResponse response = (FlowsResponse) validateInfoMessage(request, message, correlationId);
         List<FlowPayload> result = Converter.buildFlowsPayloadByFlows(response.getPayload());
-        logger.debug("\nGet flows: EXIT {}\n\n\n\n", result);
+        logger.debug("\nGet flows: EXIT {}={}, num_flows {}\n\n\n", CORRELATION_ID, correlationId, result.size());
+        return result;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<FlowPayload> deleteFlows(final String correlationId) {
+        LOGGER.debug("\n\nDELETE ALL FLOWS: ENTER {}={}\n", CORRELATION_ID, correlationId);
+        ArrayList<FlowPayload> result = new ArrayList<>();
+        // TODO: Need a getFlowIDs .. since that is all we need
+        List<FlowPayload> flows = this.getFlows(correlationId+"-GET");
+
+        messageConsumer.clear();
+
+        // Send all the requests first
+        ArrayList<CommandMessage> requests = new ArrayList<>();
+        for (int i = 0; i < flows.size(); i++) {
+            String cid = correlationId + "-" + i;
+            FlowPayload flow = flows.get(i);
+            requests.add(_sendDeleteFlow(flow.getId(), cid));
+        }
+        // Now wait for the responses.
+        for (int i = 0; i < flows.size(); i++) {
+            String cid = correlationId + "-" + i;
+            result.add(_deleteFlowRespone(cid, requests.get(i)));
+        }
+
+        LOGGER.debug("\n\nDELETE ALL FLOWS: EXIT {}={}\n", CORRELATION_ID, correlationId);
         return result;
     }
 
@@ -335,6 +384,9 @@ public class FlowServiceImpl implements FlowService {
         return result;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public FlowPathPayload rerouteFlow(String flowId, String correlationId) {
         Flow flow = new Flow();
@@ -349,4 +401,20 @@ public class FlowServiceImpl implements FlowService {
         FlowPathResponse response = (FlowPathResponse) validateInfoMessage(command, message, correlationId);
         return Converter.buildFlowPathPayloadByFlowPath(flowId, response.getPayload());
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public FlowCacheSyncResults syncFlowCache(final String correlationId) {
+        LOGGER.debug("Flow cache sync: {}={}", CORRELATION_ID, correlationId);
+        FlowCacheSyncRequest data = new FlowCacheSyncRequest();
+        CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
+        messageConsumer.clear();
+        messageProducer.send(topic, request);
+        Message message = (Message) messageConsumer.poll(correlationId);
+        FlowCacheSyncResponse response = (FlowCacheSyncResponse) validateInfoMessage(request, message, correlationId);
+        return response.getPayload();
+    }
+
 }

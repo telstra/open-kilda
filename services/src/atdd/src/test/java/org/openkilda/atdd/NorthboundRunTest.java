@@ -20,16 +20,17 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.openkilda.flow.FlowUtils.getHealthCheck;
 
+import cucumber.api.java.en.Given;
+import cucumber.api.java.en.Then;
+import org.openkilda.SwitchesUtils;
 import org.openkilda.flow.FlowUtils;
+import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
-
-import cucumber.api.java.en.Given;
-import cucumber.api.java.en.Then;
 
 import java.util.Arrays;
 import java.util.List;
@@ -85,5 +86,19 @@ public class NorthboundRunTest {
         assertNotNull(payload);
         assertEquals(flowName, payload.getId());
         assertEquals(flowState, payload.getStatus());
+    }
+
+    @Then("^delete all non-default rules on (.*) switch$")
+    public void deleteAllNonDefaultRules(String switchId) {
+        List<Long> cookies = SwitchesUtils.deleteSwitchRules(switchId, DeleteRulesAction.IGNORE);
+        assertNotNull(cookies);
+        cookies.forEach(cookie -> System.out.println(cookie));
+    }
+
+    @Then("^delete all rules on (.*) switch$")
+    public void deleteAllDefaultRules(String switchId) {
+        List<Long> cookies = SwitchesUtils.deleteSwitchRules(switchId, DeleteRulesAction.DROP);
+        assertNotNull(cookies);
+        cookies.forEach(cookie -> System.out.println(cookie));
     }
 }

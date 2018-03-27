@@ -1,6 +1,8 @@
 package org.openkilda.floodlight.kafka;
 
 import static org.openkilda.messaging.Utils.MAPPER;
+import static java.util.Arrays.asList;
+
 
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.floodlight.switchmanager.MeterPool;
@@ -10,6 +12,7 @@ import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Topic;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.CommandWithReplyToMessage;
 import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
 import org.openkilda.messaging.command.discovery.DiscoverPathCommandData;
 import org.openkilda.messaging.command.discovery.NetworkCommandData;
@@ -19,6 +22,8 @@ import org.openkilda.messaging.command.flow.InstallIngressFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.openkilda.messaging.command.flow.InstallTransitFlow;
 import org.openkilda.messaging.command.flow.RemoveFlow;
+import org.openkilda.messaging.command.switches.*;
+import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoData;
@@ -29,6 +34,8 @@ import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
+import org.openkilda.messaging.info.switches.ConnectModeResponse;
+import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
 
 import net.floodlightcontroller.core.IOFSwitch;
@@ -39,11 +46,7 @@ import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 class RecordHandler implements Runnable {
@@ -53,14 +56,25 @@ class RecordHandler implements Runnable {
 
     private final ConsumerContext context;
     private final ConsumerRecord<String, String> record;
-    private final MeterPool meterPool = new MeterPool();
+    private final MeterPool meterPool;
 
-    public RecordHandler(ConsumerContext context, ConsumerRecord<String, String> record) {
+    public RecordHandler(ConsumerContext context, ConsumerRecord<String, String> record,
+            MeterPool meterPool) {
         this.context = context;
         this.record = record;
+        this.meterPool = meterPool;
     }
 
     protected void doControllerMsg(CommandMessage message) {
+        // Define the destination topic where the reply will be sent to.
+        final String replyToTopic;
+        if (message instanceof CommandWithReplyToMessage) {
+            replyToTopic = ((CommandWithReplyToMessage) message).getReplyTo();
+        } else {
+            replyToTopic = OUTPUT_FLOW_TOPIC;
+        }
+        final Destination replyDestination = getDestinationForTopic(replyToTopic);
+
         try {
             CommandData data = message.getData();
             if (data instanceof DiscoverIslCommandData) {
@@ -68,29 +82,43 @@ class RecordHandler implements Runnable {
             } else if (data instanceof DiscoverPathCommandData) {
                 doDiscoverPathCommand(data);
             } else if (data instanceof InstallIngressFlow) {
-                doInstallIngressFlow(message);
+                doInstallIngressFlow(message, replyToTopic, replyDestination);
             } else if (data instanceof InstallEgressFlow) {
-                doInstallEgressFlow(message);
+                doInstallEgressFlow(message, replyToTopic, replyDestination);
             } else if (data instanceof InstallTransitFlow) {
-                doInstallTransitFlow(message);
+                doInstallTransitFlow(message, replyToTopic, replyDestination);
             } else if (data instanceof InstallOneSwitchFlow) {
-                doInstallOneSwitchFlow(message);
+                doInstallOneSwitchFlow(message, replyToTopic, replyDestination);
             } else if (data instanceof RemoveFlow) {
-                doDeleteFlow(message);
+                doDeleteFlow(message, replyToTopic, replyDestination);
             } else if (data instanceof NetworkCommandData) {
                 doNetworkDump(message);
-            } else if (data instanceof PortsCommandData) {
-                doPortsDump(message);
+            } else if (data instanceof SwitchRulesDeleteRequest) {
+                doDeleteSwitchRules(message, replyToTopic, replyDestination);
+            } else if (data instanceof SwitchRulesInstallRequest) {
+                doInstallSwitchRules(message, replyToTopic, replyDestination);
+            } else if (data instanceof ConnectModeRequest) {
+                doConnectMode(message, replyToTopic, replyDestination);
             } else {
                 logger.error("unknown data type: {}", data.toString());
             }
         } catch (FlowCommandException e) {
             ErrorMessage error = new ErrorMessage(
                     e.makeErrorResponse(),
-                    System.currentTimeMillis(), message.getCorrelationId(), Destination.WFM_TRANSACTION);
-            context.getKafkaProducer().postMessage(OUTPUT_FLOW_TOPIC, error);
+                    System.currentTimeMillis(), message.getCorrelationId(), replyDestination);
+            context.getKafkaProducer().postMessage(replyToTopic, error);
         } catch (Exception e) {
             logger.error("Unhandled exception: {}", e);
+        }
+    }
+
+    private Destination getDestinationForTopic(String replyToTopic) {
+        //TODO: depending on the future system design, either get rid of destination or complete the switch-case.
+        switch (replyToTopic) {
+            case Topic.NORTHBOUND:
+                return Destination.NORTHBOUND;
+            default:
+                return Destination.WFM_TRANSACTION;
         }
     }
 
@@ -119,11 +147,17 @@ class RecordHandler implements Runnable {
      *
      * @param message command message for flow installation
      */
-    private void doInstallIngressFlow(final CommandMessage message) throws FlowCommandException {
+    private void doInstallIngressFlow(final CommandMessage message, String replyToTopic, Destination replyDestination)
+            throws FlowCommandException {
         InstallIngressFlow command = (InstallIngressFlow) message.getData();
         logger.debug("Creating an ingress flow: {}", command);
 
-        int meterId = meterPool.allocate(command.getSwitchId(), command.getId());
+        Long meterId = command.getMeterId();
+        if (meterId == null) {
+            logger.error("Meter_id should be passed within ingress flow command. Cookie is {}", command.getCookie());
+            meterId = (long) meterPool.allocate(command.getSwitchId(), command.getId());
+            logger.error("Allocated meter_id {} for cookie {}", meterId, command.getCookie());
+        }
 
         try {
             context.getSwitchManager().installMeter(
@@ -141,8 +175,8 @@ class RecordHandler implements Runnable {
                     command.getOutputVlanType(),
                     meterId);
 
-            message.setDestination(Destination.WFM_TRANSACTION);
-            context.getKafkaProducer().postMessage(OUTPUT_FLOW_TOPIC, message);
+            message.setDestination(replyDestination);
+            context.getKafkaProducer().postMessage(replyToTopic, message);
         } catch (SwitchOperationException e) {
             throw new FlowCommandException(command.getId(), ErrorType.CREATION_FAILURE, e);
         }
@@ -153,7 +187,8 @@ class RecordHandler implements Runnable {
      *
      * @param message command message for flow installation
      */
-    private void doInstallEgressFlow(final CommandMessage message) throws FlowCommandException {
+    private void doInstallEgressFlow(final CommandMessage message, String replyToTopic, Destination replyDestination)
+            throws FlowCommandException {
         InstallEgressFlow command = (InstallEgressFlow) message.getData();
         logger.debug("Creating an egress flow: {}", command);
 
@@ -168,8 +203,8 @@ class RecordHandler implements Runnable {
                     command.getOutputVlanId(),
                     command.getOutputVlanType());
 
-            message.setDestination(Destination.WFM_TRANSACTION);
-            context.getKafkaProducer().postMessage(OUTPUT_FLOW_TOPIC, message);
+            message.setDestination(replyDestination);
+            context.getKafkaProducer().postMessage(replyToTopic, message);
         } catch (SwitchOperationException e) {
             throw new FlowCommandException(command.getId(), ErrorType.CREATION_FAILURE, e);
         }
@@ -180,7 +215,8 @@ class RecordHandler implements Runnable {
      *
      * @param message command message for flow installation
      */
-    private void doInstallTransitFlow(final CommandMessage message) throws FlowCommandException {
+    private void doInstallTransitFlow(final CommandMessage message, String replyToTopic, Destination replyDestination)
+            throws FlowCommandException {
         InstallTransitFlow command = (InstallTransitFlow) message.getData();
         logger.debug("Creating a transit flow: {}", command);
 
@@ -193,8 +229,8 @@ class RecordHandler implements Runnable {
                     command.getOutputPort(),
                     command.getTransitVlanId());
 
-            message.setDestination(Destination.WFM_TRANSACTION);
-            context.getKafkaProducer().postMessage(OUTPUT_FLOW_TOPIC, message);
+            message.setDestination(replyDestination);
+            context.getKafkaProducer().postMessage(replyToTopic, message);
         } catch (SwitchOperationException e) {
             throw new FlowCommandException(command.getId(), ErrorType.CREATION_FAILURE, e);
         }
@@ -205,11 +241,17 @@ class RecordHandler implements Runnable {
      *
      * @param message command message for flow installation
      */
-    private void doInstallOneSwitchFlow(final CommandMessage message) throws FlowCommandException {
+    private void doInstallOneSwitchFlow(final CommandMessage message,
+            String replyToTopic, Destination replyDestination) throws FlowCommandException {
         InstallOneSwitchFlow command = (InstallOneSwitchFlow) message.getData();
         logger.debug("creating a flow through one switch: {}", command);
 
-        int meterId = meterPool.allocate(command.getSwitchId(), command.getId());
+        Long meterId = command.getMeterId();
+        if (meterId == null) {
+            logger.error("Meter_id should be passed within one switch flow command. Cookie is {}", command.getCookie());
+            meterId = (long) meterPool.allocate(command.getSwitchId(), command.getId());
+            logger.error("Allocated meter_id {} for cookie {}", meterId, command.getCookie());
+        }
 
         try {
             context.getSwitchManager().installMeter(
@@ -228,8 +270,8 @@ class RecordHandler implements Runnable {
                     directOutputVlanType,
                     meterId);
 
-            message.setDestination(Destination.WFM_TRANSACTION);
-            context.getKafkaProducer().postMessage(OUTPUT_FLOW_TOPIC, message);
+            message.setDestination(replyDestination);
+            context.getKafkaProducer().postMessage(replyToTopic, message);
         } catch (SwitchOperationException e) {
             throw new FlowCommandException(command.getId(), ErrorType.CREATION_FAILURE, e);
         }
@@ -240,7 +282,8 @@ class RecordHandler implements Runnable {
      *
      * @param message command message for flow installation
      */
-    private void doDeleteFlow(final CommandMessage message) throws FlowCommandException {
+    private void doDeleteFlow(final CommandMessage message, String replyToTopic, Destination replyDestination)
+            throws FlowCommandException {
         RemoveFlow command = (RemoveFlow) message.getData();
         logger.debug("deleting a flow: {}", command);
 
@@ -254,8 +297,8 @@ class RecordHandler implements Runnable {
                 switchManager.deleteMeter(dpid, meterId);
             }
 
-            message.setDestination(Destination.WFM_TRANSACTION);
-            context.getKafkaProducer().postMessage(OUTPUT_FLOW_TOPIC, message);
+            message.setDestination(replyDestination);
+            context.getKafkaProducer().postMessage(replyToTopic, message);
         } catch (SwitchOperationException e) {
             throw new FlowCommandException(command.getId(), ErrorType.DELETION_FAILURE, e);
         }
@@ -294,47 +337,129 @@ class RecordHandler implements Runnable {
 
         context.getKafkaProducer().postMessage(OUTPUT_DISCO_TOPIC, infoMessage);
     }
+    private void doInstallSwitchRules(final CommandMessage message, String replyToTopic, Destination replyDestination) {
+        SwitchRulesInstallRequest request = (SwitchRulesInstallRequest) message.getData();
+        logger.debug("Installing rules on '{}' switch: action={}", request.getSwitchId(), request.getInstallRulesAction());
 
-    private void doPortsDump(final CommandMessage message) {
-        logger.info("Creating ports dump");
-        PortsCommandData command = (PortsCommandData) message.getData();
+        DatapathId dpid = DatapathId.of(request.getSwitchId());
+        ISwitchManager switchManager = context.getSwitchManager();
+        InstallRulesAction installAction = request.getInstallRulesAction();
+        List<Long> installedRules = new ArrayList<>();
+        try {
+            if (installAction == InstallRulesAction.INSTALL_DROP ) {
+                switchManager.installDropFlow(dpid);
+                installedRules.add(ISwitchManager.DROP_RULE_COOKIE);
+            } else if (installAction == InstallRulesAction.INSTALL_BROADCAST) {
+                switchManager.installVerificationRule(dpid, true);
+                installedRules.add(ISwitchManager.VERIFICATION_BROADCAST_RULE_COOKIE);
+            } else if (installAction == InstallRulesAction.INSTALL_UNICAST) {
+                // TODO: this isn't always added (ie if OF1.2). Is there a better response?
+                switchManager.installVerificationRule(dpid, false);
+                installedRules.add(ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE);
+            } else {
+                switchManager.installDefaultRules(dpid);
+                installedRules.addAll(asList(
+                        ISwitchManager.DROP_RULE_COOKIE,
+                        ISwitchManager.VERIFICATION_BROADCAST_RULE_COOKIE,
+                        ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE
+                        ));
+            }
 
-        Map<DatapathId, IOFSwitch> allSwitchMap = context.getSwitchManager().getAllSwitchMap();
+            SwitchRulesResponse response = new SwitchRulesResponse(installedRules);
+            InfoMessage infoMessage = new InfoMessage(response,
+                    System.currentTimeMillis(), message.getCorrelationId(), replyDestination);
+            context.getKafkaProducer().postMessage(replyToTopic, infoMessage);
 
-        Set<PortInfoData> portsInfoData = allSwitchMap
-                .values()
-                .stream()
-                .flatMap(sw -> getPortInfo(sw, true).stream())
-                .collect(Collectors.toSet());
-
-        InfoMessage infoMessage = buildInfoMessage(new SwitchPortsData(portsInfoData, command.getRequester()),
-                message.getCorrelationId());
-
-        context.getKafkaProducer().postMessage(OUTPUT_DISCO_TOPIC,
-                buildInfoMessage(new SwitchPortsData(portsInfoData, command.getRequester()),
-                        message.getCorrelationId()));
-    }
-
-    private Set<PortInfoData> getPortInfo(IOFSwitch sw, boolean allPorts) {
-        Collection<OFPortDesc> ports;
-        if (allPorts) {
-            ports = sw.getPorts();
-        } else {
-            ports = sw.getEnabledPorts();
+        } catch (SwitchOperationException e) {
+            ErrorData errorData = new ErrorData(ErrorType.CREATION_FAILURE, e.getMessage(), request.getSwitchId());
+            ErrorMessage error = new ErrorMessage(errorData,
+                    System.currentTimeMillis(), message.getCorrelationId(), replyDestination);
+            context.getKafkaProducer().postMessage(replyToTopic, error);
         }
-
-        return ports.stream().map(port -> buildPortInfoData(sw, port)).collect(Collectors.toSet());
     }
 
-    private PortInfoData buildPortInfoData(IOFSwitch sw, OFPortDesc port) {
-        return new PortInfoData(sw.getId().toString(),
-                port.getPortNo().getPortNumber(),
-                null,
-                port.getState().equals(OFPortState.LINK_DOWN) ? PortChangeType.DOWN : PortChangeType.UP);
+    private void doDeleteSwitchRules(final CommandMessage message, String replyToTopic, Destination replyDestination) {
+        SwitchRulesDeleteRequest request = (SwitchRulesDeleteRequest) message.getData();
+        logger.debug("Deleting rules from '{}' switch: action={}", request.getSwitchId(), request.getDeleteRulesAction());
+
+        DatapathId dpid = DatapathId.of(request.getSwitchId());
+        ISwitchManager switchManager = context.getSwitchManager();
+        DeleteRulesAction deleteAction = request.getDeleteRulesAction();
+        List<Long> removedRules = new ArrayList<>();
+        try {
+            /*
+             * This first part .. we are either deleting one rule, or all non-default rules (the else)
+             */
+            List<Long> toRemove = new ArrayList<>();
+            if (deleteAction == DeleteRulesAction.ONE ) {
+                toRemove.add(request.getOneCookie());
+            } else if (deleteAction == DeleteRulesAction.REMOVE_DROP) {
+                toRemove.add(ISwitchManager.DROP_RULE_COOKIE);
+            } else if (deleteAction == DeleteRulesAction.REMOVE_BROADCAST) {
+                toRemove.add(ISwitchManager.VERIFICATION_BROADCAST_RULE_COOKIE);
+            } else if (deleteAction == DeleteRulesAction.REMOVE_UNICAST) {
+                toRemove.add(ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE);
+            } else if (deleteAction == DeleteRulesAction.REMOVE_DEFAULTS
+                    || deleteAction == DeleteRulesAction.REMOVE_ADD) {
+                toRemove.add(ISwitchManager.DROP_RULE_COOKIE);
+                toRemove.add(ISwitchManager.VERIFICATION_BROADCAST_RULE_COOKIE);
+                toRemove.add(ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE);
+            }
+
+            // toRemove is > 0 only if we are trying to delete base rule(s).
+            if (toRemove.size() > 0) {
+                removedRules.addAll(switchManager.deleteRuleWithCookie(dpid, toRemove));
+                if (deleteAction == DeleteRulesAction.REMOVE_ADD) {
+                    switchManager.installDefaultRules(dpid);
+                }
+            } else {
+                removedRules.addAll(switchManager.deleteAllNonDefaultRules(dpid));
+                /*
+                 * The Second part - only for a subset of actions.
+                 */
+                if (deleteAction == DeleteRulesAction.DROP) {
+                    List<Long> removedDefaultRules = switchManager.deleteDefaultRules(dpid);
+                    // Return removedDefaultRules as a part of the result list.
+                    removedRules.addAll(removedDefaultRules);
+
+                } else if (deleteAction == DeleteRulesAction.DROP_ADD) {
+                    switchManager.deleteDefaultRules(dpid);
+                    switchManager.installDefaultRules(dpid);
+
+                } else if (deleteAction == DeleteRulesAction.OVERWRITE) {
+                    switchManager.installDefaultRules(dpid);
+                }
+            }
+
+            SwitchRulesResponse response = new SwitchRulesResponse(removedRules);
+            InfoMessage infoMessage = new InfoMessage(response,
+                    System.currentTimeMillis(), message.getCorrelationId(), replyDestination);
+            context.getKafkaProducer().postMessage(replyToTopic, infoMessage);
+
+        } catch (SwitchOperationException e) {
+            ErrorData errorData = new ErrorData(ErrorType.DELETION_FAILURE, e.getMessage(), request.getSwitchId());
+            ErrorMessage error = new ErrorMessage(errorData,
+                    System.currentTimeMillis(), message.getCorrelationId(), replyDestination);
+            context.getKafkaProducer().postMessage(replyToTopic, error);
+        }
     }
 
-    private InfoMessage buildInfoMessage(InfoData data, String correlationId) {
-        return new InfoMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
+    private void doConnectMode(final CommandMessage message, String replyToTopic, Destination replyDestination) {
+        ConnectModeRequest request = (ConnectModeRequest) message.getData();
+        if (request.getMode() != null)
+            logger.debug("Setting CONNECT MODE to '{}'", request.getMode());
+        else
+            logger.debug("Getting CONNECT MODE");
+
+        ISwitchManager switchManager = context.getSwitchManager();
+        ConnectModeRequest.Mode result = switchManager.connectMode(request.getMode());
+
+        logger.debug("CONNECT MODE is now '{}'", result);
+        ConnectModeResponse response = new ConnectModeResponse(result);
+        InfoMessage infoMessage = new InfoMessage(response,
+                    System.currentTimeMillis(), message.getCorrelationId(), replyDestination);
+        context.getKafkaProducer().postMessage(replyToTopic, infoMessage);
+
     }
 
     private void parseRecord(ConsumerRecord<String, String> record) {
@@ -365,13 +490,14 @@ class RecordHandler implements Runnable {
 
     public static class Factory {
         private final ConsumerContext context;
+        private final MeterPool meterPool = new MeterPool();
 
         public Factory(ConsumerContext context) {
             this.context = context;
         }
 
         public RecordHandler produce(ConsumerRecord<String, String> record) {
-            return new RecordHandler(context, record);
+            return new RecordHandler(context, record, meterPool);
         }
     }
 }

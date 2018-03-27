@@ -17,6 +17,7 @@ package org.openkilda.northbound.controller;
 
 import static org.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
+import static org.openkilda.messaging.Utils.EXTRA_AUTH;
 import static org.openkilda.messaging.Utils.MAPPER;
 import static org.openkilda.northbound.controller.TestMessageMock.ERROR_FLOW_ID;
 import static org.junit.Assert.assertEquals;
@@ -53,6 +54,7 @@ import org.springframework.web.context.WebApplicationContext;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 @RunWith(SpringJUnit4ClassRunner.class)
 @WebAppConfiguration
@@ -117,6 +119,29 @@ public class FlowControllerTest {
                 .andReturn();
         FlowPayload response = MAPPER.readValue(result.getResponse().getContentAsString(), FlowPayload.class);
         assertEquals(TestMessageMock.flow, response);
+    }
+
+    @Test
+    @WithMockUser(username = USERNAME, password = PASSWORD, roles = ROLE)
+    public void deleteFlows() throws Exception {
+        MvcResult result = mockMvc.perform(delete("/flows")
+                .header(CORRELATION_ID, testCorrelationId())
+                .header(EXTRA_AUTH, System.currentTimeMillis() - TimeUnit.SECONDS.toMillis(119))
+                .contentType(APPLICATION_JSON_VALUE))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
+                .andReturn();
+        FlowPayload[] response = MAPPER.readValue(result.getResponse().getContentAsString(), FlowPayload[].class);
+        assertEquals(TestMessageMock.flow, response[0]);
+    }
+
+    @Test
+    @WithMockUser(username = USERNAME, password = PASSWORD, roles = ROLE)
+    public void shouldFailDeleteFlowsWithoutExtraAuth() throws Exception {
+        mockMvc.perform(delete("/flows")
+                .header(CORRELATION_ID, testCorrelationId())
+                .contentType(APPLICATION_JSON_VALUE))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

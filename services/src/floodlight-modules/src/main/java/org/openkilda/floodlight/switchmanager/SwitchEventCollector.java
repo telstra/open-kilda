@@ -27,6 +27,7 @@ import net.floodlightcontroller.core.module.IFloodlightService;
 import org.openkilda.floodlight.kafka.KafkaMessageProducer;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Topic;
+import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.PortInfoData;
@@ -84,6 +85,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
      */
     @Override
     public void switchRemoved(final DatapathId switchId) {
+        switchManager.stopSafeMode(switchId);
         Message message = buildSwitchMessage(switchId, SwitchState.REMOVED);
         kafkaProducer.postMessage(TOPO_EVENT_TOPIC, message);
     }
@@ -94,21 +96,40 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
     @Override
     public void switchActivated(final DatapathId switchId) {
         final IOFSwitch sw = switchService.getSwitch(switchId);
-
-        Message message = buildSwitchMessage(sw, SwitchState.ACTIVATED);
-        kafkaProducer.postMessage(TOPO_EVENT_TOPIC, message);
+        ConnectModeRequest.Mode mode = switchManager.connectMode(null);
 
         try {
-            switchManager.installDefaultRules(switchId);
+            if (mode == ConnectModeRequest.Mode.SAFE) {
+                // the bulk of work below is done as part of the safe protocol
+                switchManager.startSafeMode(switchId);
+                return;
+            }
+
+            switchManager.sendSwitchActivate(sw);
+            if (mode == ConnectModeRequest.Mode.AUTO){
+                switchManager.installDefaultRules(switchId);
+            }
+
+            // else MANUAL MODE - Don't install default rules. NB: without the default rules,
+            // ISL discovery will fail.
+            switchManager.sendPortUpEvents(sw);
         } catch (SwitchOperationException e) {
             logger.error("Could not activate switch={}", switchId);
         }
 
-        if (sw.getEnabledPortNumbers() != null) {
-            for (OFPort p : sw.getEnabledPortNumbers()) {
-                kafkaProducer.postMessage(TOPO_EVENT_TOPIC, buildPortMessage(sw.getId(), p, PortChangeType.UP));
-            }
-        }
+    }
+
+    public static boolean isPhysicalPort(OFPort p) {
+    return !(p.equals(OFPort.LOCAL) ||
+            p.equals(OFPort.ALL) ||
+            p.equals(OFPort.CONTROLLER) ||
+            p.equals(OFPort.ANY) ||
+            p.equals(OFPort.FLOOD) ||
+            p.equals(OFPort.ZERO) ||
+            p.equals(OFPort.NO_MASK) ||
+            p.equals(OFPort.IN_PORT) ||
+            p.equals(OFPort.NORMAL) ||
+            p.equals(OFPort.TABLE));
     }
 
     /**
@@ -116,8 +137,10 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
      */
     @Override
     public void switchPortChanged(final DatapathId switchId, final OFPortDesc port, final PortChangeType type) {
-        Message message = buildPortMessage(switchId, port, type);
-        kafkaProducer.postMessage(TOPO_EVENT_TOPIC, message);
+        if (isPhysicalPort(port.getPortNo())) {
+            Message message = buildPortMessage(switchId, port, type);
+            kafkaProducer.postMessage(TOPO_EVENT_TOPIC, message);
+        }
     }
 
     /**
@@ -138,6 +161,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
      */
     @Override
     public void switchDeactivated(final DatapathId switchId) {
+        switchManager.stopSafeMode(switchId);
         Message message = buildSwitchMessage(switchId, SwitchState.DEACTIVATED);
         kafkaProducer.postMessage(TOPO_EVENT_TOPIC, message);
     }
@@ -231,7 +255,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
      * @param eventType type of event
      * @return Message
      */
-    private Message buildSwitchMessage(final IOFSwitch sw, final SwitchState eventType) {
+    public static Message buildSwitchMessage(final IOFSwitch sw, final SwitchState eventType) {
         return buildMessage(buildSwitchInfoData(sw, eventType));
     }
 
@@ -242,7 +266,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
      * @param eventType type of event
      * @return Message
      */
-    private Message buildSwitchMessage(final DatapathId switchId, final SwitchState eventType) {
+    public static Message buildSwitchMessage(final DatapathId switchId, final SwitchState eventType) {
         final String unknown = "unknown";
 
         InfoData data = new SwitchInfoData(switchId.toString(), eventType, unknown, unknown, unknown, unknown);
@@ -256,7 +280,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
      * @param data data to use in the message body
      * @return Message
      */
-    private Message buildMessage(final InfoData data) {
+    public static Message buildMessage(final InfoData data) {
         return new InfoMessage(data, System.currentTimeMillis(), "system", null);
     }
 
@@ -268,7 +292,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
      * @param type     type of port event
      * @return Message
      */
-    private Message buildPortMessage(final DatapathId switchId, final OFPort port, final PortChangeType type) {
+    public static Message buildPortMessage(final DatapathId switchId, final OFPort port, final PortChangeType type) {
         InfoData data = new PortInfoData(switchId.toString(), port.getPortNumber(), null, toJsonType(type));
         return buildMessage(data);
     }
