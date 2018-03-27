@@ -231,7 +231,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
      * @param eventType type of event
      * @return Message
      */
-    private Message buildSwitchMessage(final IOFSwitch sw, final SwitchState eventType) {
+    public static Message buildSwitchMessage(final IOFSwitch sw, final SwitchState eventType) {
         return buildMessage(IOFSwitchConverter.buildSwitchInfoData(sw, eventType));
     }
 
@@ -243,7 +243,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
      * @param flowStats flows one the switch.
      * @return Message
      */
-    public static Message buildExtendedSwitchMessage(final IOFSwitch sw, final SwitchState eventType,
+    private Message buildExtendedSwitchMessage(final IOFSwitch sw, final SwitchState eventType,
             OFFlowStatsReply flowStats) {
         return buildMessage(IOFSwitchConverter.buildSwitchInfoDataExtended(sw, eventType, flowStats));
     }
