@@ -237,4 +237,25 @@ public interface ISwitchManager extends IFloodlightService {
      */
     List<Long> deleteRuleWithCookie(final DatapathId dpid, final List<Long> cookiesToRemove) throws SwitchOperationException;
 
+    /**
+     * Safely install default rules - ie monitor traffic.
+     *
+     * @param dpid the switch id to
+     * @throws SwitchOperationException
+     */
+    void startSafeMode(final DatapathId dpid) throws SwitchOperationException;
+
+    /**
+     * Stop the safe install .. switch is deactivated or removed.
+     *
+     * @param dpid the switch id to
+     * @throws SwitchOperationException
+     */
+    void stopSafeMode(final DatapathId dpid);
+
+    void safeModeTick();
+
+    void sendSwitchActivate(final IOFSwitch sw) throws SwitchOperationException;
+
+    void sendPortUpEvents(final IOFSwitch sw) throws SwitchOperationException;
 }

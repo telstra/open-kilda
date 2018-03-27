@@ -30,6 +30,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
+import java.util.Objects;
+
 /**
  * Class represents information message.
  */
@@ -112,5 +114,22 @@ public class InfoMessage extends Message {
                 .add(DESTINATION, destination)
                 .add(PAYLOAD, data)
                 .toString();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof InfoMessage)) return false;
+        InfoMessage that = (InfoMessage) o;
+        return Objects.equals(data, that.data) &&
+                timestamp == that.timestamp &&
+                correlationId.equals(that.correlationId) &&
+                destination == that.destination;
+    }
+
+    @Override
+    public int hashCode() {
+
+        return Objects.hash(data);
     }
 }

@@ -26,10 +26,7 @@ import static org.projectfloodlight.openflow.protocol.OFVersion.OF_13;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_15;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import net.floodlightcontroller.core.FloodlightContext;
-import net.floodlightcontroller.core.IFloodlightProviderService;
-import net.floodlightcontroller.core.IOFMessageListener;
-import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.*;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
@@ -40,10 +37,13 @@ import net.floodlightcontroller.util.FlowModUtils;
 import org.openkilda.floodlight.kafka.KafkaMessageProducer;
 import org.openkilda.floodlight.switchmanager.web.SwitchManagerWebRoutable;
 import org.openkilda.messaging.Destination;
+import org.openkilda.messaging.Message;
+import org.openkilda.messaging.Topic;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
 import org.projectfloodlight.openflow.protocol.OFErrorMsg;
 import org.projectfloodlight.openflow.protocol.OFFactory;
@@ -102,6 +102,8 @@ import java.util.concurrent.TimeoutException;
  */
 public class SwitchManager implements IFloodlightModule, IFloodlightService, ISwitchManager, IOFMessageListener {
     private static final Logger logger = LoggerFactory.getLogger(SwitchManager.class);
+
+    private static final String TOPO_EVENT_TOPIC = Topic.TOPO_DISCO;
 
     public static final long FLOW_COOKIE_MASK = 0x60000000FFFFFFFFL;
     static final U64 NON_SYSTEM_MASK = U64.of(0x80000000FFFFFFFFL);
@@ -1066,7 +1068,240 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         if (swInfo == null) {
             throw new SwitchOperationException(dpId);
         }
-
         return swInfo;
     }
+
+    /**
+     * A struct to collect all the data necessary to manage the safe application of base rules.
+     */
+    private static final class SafeData {
+        /** Any switch rule with a priority less than this will be ignored */
+        static final int PRIORITY_IGNORE_THRESHOLD = 100;
+        private static final int window = 5;
+
+        DatapathId dpid;
+
+        /**
+         * The time of data collections may be inconsistent .. so if we try to see whether the rate
+         * of data is different .. then use the captured timestamps to get an average.
+         */
+        List<Long> timestamps;
+        Map<Long,List<Long>> ruleByteCounts; // counter per cookie per timestamp
+        Map<Long,List<Long>> rulePktCounts;  // counter per cookie per timestamp
+        // Stages - 0 = not started; 1 = applied; 2 = okay; 3 = removed (too many errors)
+        int dropRuleStage;
+        int broadcastRuleStage;
+        int unicastRuleStage;
+
+        void consumeData(long timestamp, OFFlowStatsReply flowStats) {
+            timestamps.add(timestamp);
+
+            for (OFFlowStatsEntry flowStatsEntry : flowStats.getEntries()) {
+                if (flowStatsEntry.getPriority() <= PRIORITY_IGNORE_THRESHOLD)
+                    continue;
+
+                long flowCookie = flowStatsEntry.getCookie().getValue();
+                if (!ruleByteCounts.containsKey(flowCookie)){
+                    ruleByteCounts.put(flowCookie, new ArrayList<>());
+                    rulePktCounts.put(flowCookie, new ArrayList<>());
+                }
+                ruleByteCounts.get(flowCookie).add(flowStatsEntry.getByteCount().getValue());
+                rulePktCounts.get(flowCookie).add(flowStatsEntry.getPacketCount().getValue());
+            }
+        }
+
+        /** collect 2 windows per stage .. apply rule after first window */
+        boolean shouldApplyRule(int stage) {
+            return timestamps.size() == ((stage - 1)*2 + 1) * window;
+        }
+        boolean shouldTestRule(int stage) {
+            return timestamps.size() == ((stage - 1)*2 + 2) * window;
+        }
+        /** Starting with just the effect on packet count */
+        List<Integer> getRuleEffect(int stage) {
+            int start = (stage - 1)*2;
+            int middle = start + 1;
+            int end = middle + 1;
+            int good_counts = 0;
+            int bad_counts = 0;
+
+            for (List<Long> packets : rulePktCounts.values()){
+                long packets_before = packets.get(middle) - packets.get(start);
+                // We shouldn't start at the middle .. since we wouldn't have applied the rule yet.
+                // So, start at middle+1 .. that is the first data point after applying the rule.
+                long packets_after = packets.get(end) - packets.get(middle+1);
+                boolean rule_had_no_effect = (packets_before > 0 && packets_after > 0);
+                if (rule_had_no_effect)
+                    good_counts++;
+                else
+                    bad_counts++;
+            }
+            return asList(bad_counts,good_counts);
+        }
+        boolean isRuleOkay(List<Integer> ruleEffect) {
+            // Initial algorithm: if any rule was sending data and then stopped, then applied rule is not okay.
+            // The first array element has the count of "bad_counts" .. ie packet count before rule wasn't zero, but was zero after.
+            return ruleEffect.get(0) == 0;
+        }
+    }
+
+    private Map<DatapathId, SafeData> safeSwitches = new HashMap<>();
+    private long lastRun = 0l;
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void startSafeMode(final DatapathId dpid){
+        // Don't create a new object if one already exists .. ie, don't restart the process of
+        // installing base rules.
+        if (!safeSwitches.containsKey(dpid)){
+            SafeData safeData = safeSwitches.put(dpid, new SafeData());
+            safeData.dpid = dpid;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void stopSafeMode(final DatapathId dpid) {
+        safeSwitches.remove(dpid);
+    }
+
+    private static final long tick_length = 200;
+    private static final boolean BROADCAST = true;
+    private static final int DROP_STAGE = 1;
+    private static final int BROADCAST_STAGE = 2;
+    private static final int UNICAST_STAGE = 3;
+    // NB: The logic in safeModeTick relies on these RULE_* numbers. Mostly, it relies on the
+    // IS_GOOD and NO_GOOD being greater that TESTED. And in reality, TESTED is just the lower
+    // of IS_GOOD and NO_GOOD.
+    private static final int RULE_APPLIED = 1;
+    private static final int RULE_TESTED = 2;
+    private static final int RULE_IS_GOOD = 2;
+    private static final int RULE_NO_GOOD = 3;
+
+    @Override
+    public void safeModeTick() {
+        // this may be called sporadically, so we'll need to measure the time between calls ..
+        long time = System.currentTimeMillis();
+        if (time - lastRun < tick_length)
+            return;
+
+        lastRun = time;
+
+        Collection<SafeData> values = safeSwitches.values();
+        for (SafeData safeData : values) {
+            // Grab switch rule stats .. X pre and post .. X for 0, X for 1 .. make a decision.
+            try {
+                safeData.consumeData(time, dumpFlowTable(safeData.dpid));
+                int datapoints = safeData.timestamps.size();
+
+                if (safeData.dropRuleStage < RULE_TESTED) {
+
+                    logger.debug("SAFE MODE: Collected Data during Drop Rule Stage for '{}' ", safeData.dpid);
+                    if (safeData.shouldApplyRule(DROP_STAGE)){
+                        logger.info("SAFE MODE: APPLY Drop Rule for '{}' ", safeData.dpid);
+                        safeData.dropRuleStage = RULE_APPLIED;
+                        installDropFlow(safeData.dpid);
+                    } else if (safeData.shouldTestRule(DROP_STAGE)){
+                        List<Integer> ruleEffect = safeData.getRuleEffect(DROP_STAGE);
+                        if (safeData.isRuleOkay(ruleEffect)){
+                            logger.info("SAFE MODE: Drop Rule is GOOD for '{}' ", safeData.dpid);
+                            safeData.dropRuleStage = RULE_IS_GOOD;
+                        } else {
+                            logger.warn("SAFE MODE: Drop Rule is BAD for '{}'. " +
+                                            "Good Packet Count: {}. Bad Packet Count: {} ",
+                                    safeData.dpid, ruleEffect.get(0), ruleEffect.get(1));
+                            safeData.dropRuleStage = RULE_NO_GOOD;
+                            deleteRuleWithCookie(safeData.dpid, asList(ISwitchManager.DROP_RULE_COOKIE));
+                        }
+                    }
+
+                } else if (safeData.broadcastRuleStage < RULE_TESTED) {
+
+                    logger.debug("SAFE MODE: Collected Data during Broadcast Verification Rule Stage for '{}' ", safeData.dpid);
+                    if (safeData.shouldApplyRule(BROADCAST_STAGE)){
+                        logger.info("SAFE MODE: APPLY Broadcast Verification Rule for '{}' ", safeData.dpid);
+                        safeData.broadcastRuleStage = RULE_APPLIED;
+                        installVerificationRule(safeData.dpid, BROADCAST);
+                    } else if (safeData.shouldTestRule(BROADCAST_STAGE)){
+                        List<Integer> ruleEffect = safeData.getRuleEffect(BROADCAST_STAGE);
+                        if (safeData.isRuleOkay(ruleEffect)){
+                            logger.info("SAFE MODE: Broadcast Verification Rule is GOOD for '{}' ", safeData.dpid);
+                            safeData.broadcastRuleStage = RULE_IS_GOOD;
+                        } else {
+                            logger.warn("SAFE MODE: Broadcast Verification Rule is BAD for '{}'. " +
+                                            "Good Packet Count: {}. Bad Packet Count: {} ",
+                                    safeData.dpid, ruleEffect.get(0), ruleEffect.get(1));
+                            safeData.broadcastRuleStage = RULE_NO_GOOD;
+                            deleteRuleWithCookie(safeData.dpid, asList(ISwitchManager.VERIFICATION_BROADCAST_RULE_COOKIE));
+                        }
+                    }
+                } else if (safeData.unicastRuleStage < RULE_TESTED) {
+
+                    // TODO: make this smarter and advance the unicast if unicast not applied.
+                    logger.debug("SAFE MODE: Collected Data during Unicast Verification Rule Stage for '{}' ", safeData.dpid);
+                    if (safeData.shouldApplyRule(UNICAST_STAGE)){
+                        logger.info("SAFE MODE: APPLY Unicast Verification Rule for '{}' ", safeData.dpid);
+                        safeData.unicastRuleStage = RULE_APPLIED;
+                        installVerificationRule(safeData.dpid, !BROADCAST);
+                    } else if (safeData.shouldTestRule(UNICAST_STAGE)){
+                        List<Integer> ruleEffect = safeData.getRuleEffect(UNICAST_STAGE);
+                        if (safeData.isRuleOkay(ruleEffect)){
+                            logger.info("SAFE MODE: Unicast Verification Rule is GOOD for '{}' ", safeData.dpid);
+                            safeData.unicastRuleStage = RULE_IS_GOOD;
+                        } else {
+                            logger.warn("SAFE MODE: Unicast Verification Rule is BAD for '{}'. " +
+                                    "Good Packet Count: {}. Bad Packet Count: {} ",
+                                    safeData.dpid, ruleEffect.get(0), ruleEffect.get(1));
+                            safeData.unicastRuleStage = RULE_NO_GOOD;
+                            deleteRuleWithCookie(safeData.dpid, asList(ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE));
+                        }
+                    }
+
+                } else {
+                    // once done with installing rules, we need to notify kilda that the switch is up
+                    // and that ports up.
+                    logger.info("SAFE MODE: COMPLETED base rules for '{}' ", safeData.dpid);
+                    IOFSwitch sw = lookupSwitch(safeData.dpid);
+                    sendSwitchActivate(sw);
+                    sendPortUpEvents(sw);
+                    // WE ARE DONE!! Remove ourselves from the list.
+                    values.remove(safeData);  // will be reflected in safeSwitches
+                }
+            } catch (SwitchOperationException e) {
+                logger.error("Error while switch {} was in safe mode. Removing switch from " +
+                        "safe mode and NOT SENDING ACTIVATION. \nERROR: {}", safeData.dpid, e);
+                values.remove(safeData);
+            }
+        }
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void sendSwitchActivate(final IOFSwitch sw) throws SwitchOperationException {
+        Message message = SwitchEventCollector.buildSwitchMessage(sw, SwitchState.ACTIVATED);
+        kafkaProducer.postMessage(TOPO_EVENT_TOPIC, message);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void sendPortUpEvents(final IOFSwitch sw) throws SwitchOperationException {
+        if (sw.getEnabledPortNumbers() != null) {
+            for (OFPort p : sw.getEnabledPortNumbers()) {
+                if (SwitchEventCollector.isPhysicalPort(p))
+                    kafkaProducer.postMessage(TOPO_EVENT_TOPIC, SwitchEventCollector.buildPortMessage(sw.getId(), p,
+                            PortChangeType.UP));
+            }
+        }
+
+    }
+
 }
