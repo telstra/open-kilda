@@ -1,8 +1,22 @@
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
 package org.openkilda.atdd.staging.steps;
 
 import static com.nitorcreations.Matchers.reflectEquals;
 import static java.lang.String.format;
-import static java.util.Collections.emptyList;
+import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toList;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasProperty;
@@ -14,9 +28,16 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
+import com.google.common.annotations.VisibleForTesting;
+import cucumber.api.java.en.And;
+import cucumber.api.java.en.Given;
+import cucumber.api.java.en.Then;
+import cucumber.api.java.en.When;
+import cucumber.api.java8.En;
+import net.jodah.failsafe.Failsafe;
+import net.jodah.failsafe.RetryPolicy;
+import org.apache.logging.log4j.util.Strings;
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
-import org.openkilda.atdd.staging.model.topology.TopologyDefinition.OutPort;
-import org.openkilda.atdd.staging.model.topology.TopologyDefinition.Switch;
 import org.openkilda.atdd.staging.service.floodlight.FloodlightService;
 import org.openkilda.atdd.staging.service.northbound.NorthboundService;
 import org.openkilda.atdd.staging.service.topology.TopologyEngineService;
@@ -26,6 +47,7 @@ import org.openkilda.atdd.staging.service.traffexam.TraffExamService;
 import org.openkilda.atdd.staging.service.traffexam.model.Exam;
 import org.openkilda.atdd.staging.service.traffexam.model.ExamReport;
 import org.openkilda.atdd.staging.service.traffexam.model.FlowBidirectionalExam;
+import org.openkilda.atdd.staging.steps.helpers.FlowSetBuilder;
 import org.openkilda.atdd.staging.steps.helpers.FlowTrafficExamBuilder;
 import org.openkilda.atdd.staging.steps.helpers.TopologyChecker;
 import org.openkilda.messaging.info.event.IslInfoData;
@@ -33,25 +55,9 @@ import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
-import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
-
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.ContiguousSet;
-import com.google.common.collect.DiscreteDomain;
-import com.google.common.collect.Range;
-import com.google.common.collect.RangeSet;
-import com.google.common.collect.TreeRangeSet;
-import cucumber.api.java.en.And;
-import cucumber.api.java.en.Given;
-import cucumber.api.java.en.Then;
-import cucumber.api.java.en.When;
-import cucumber.api.java8.En;
-import net.jodah.failsafe.Failsafe;
-import net.jodah.failsafe.RetryPolicy;
-import org.apache.logging.log4j.util.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -60,7 +66,7 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -89,9 +95,7 @@ public class FlowCrudSteps implements En {
     private TraffExamService traffExam;
 
     @VisibleForTesting
-    List<FlowPayload> flows = emptyList();
-    @VisibleForTesting
-    RangeSet<Integer> allocatedVlans = TreeRangeSet.create();
+    Set<FlowPayload> flows = emptySet();
 
     @Given("^a reference topology$")
     public void checkTheTopology() {
@@ -112,105 +116,26 @@ public class FlowCrudSteps implements En {
 
     @Given("^flows over all switches$")
     public void defineFlowsOverAllSwitches() {
+        FlowSetBuilder builder = new FlowSetBuilder();
+
         final List<TopologyDefinition.Switch> switches = topologyDefinition.getActiveSwitches();
         // check each combination of active switches for a path between them and create a flow definition if the path exists
-        flows = switches.stream()
-                .flatMap(srcSwitch -> switches.stream()
-                        .filter(dstSwitch -> {
-                            List<PathInfoData> paths =
-                                    topologyEngineService.getPaths(srcSwitch.getDpId(), dstSwitch.getDpId());
-                            return !paths.isEmpty();
-                        })
-                        .map(dstSwitch -> {
-                            String flowId = format("%s-%s", srcSwitch.getName(), dstSwitch.getName());
-                            return buildFlow(flowId, srcSwitch, dstSwitch);
-                        })
-                        .filter(Objects::nonNull))
-                .collect(toList());
-    }
+        switches.forEach(srcSwitch ->
+                switches.forEach(dstSwitch -> {
+                    if(srcSwitch.getDpId().equals(dstSwitch.getDpId())) {
+                        return;
+                    }
 
-    private FlowPayload buildFlow(String flowId, Switch srcSwitch, Switch destSwitch) {
-        // Take the switch vlan ranges as the base
-        RangeSet<Integer> srcRangeSet = TreeRangeSet.create();
-        srcSwitch.getOutPorts().forEach(port -> srcRangeSet.addAll(port.getVlanRange()));
-        RangeSet<Integer> destRangeSet = TreeRangeSet.create();
-        destSwitch.getOutPorts().forEach(port -> destRangeSet.addAll(port.getVlanRange()));
-        // Exclude already allocated vlans
-        srcRangeSet.removeAll(allocatedVlans);
-        destRangeSet.removeAll(allocatedVlans);
+                    List<PathInfoData> paths =
+                            topologyEngineService.getPaths(srcSwitch.getDpId(), dstSwitch.getDpId());
+                    if (!paths.isEmpty()) {
+                        String flowId = format("%s-%s", srcSwitch.getName(), dstSwitch.getName());
+                        builder.addFlowInUniqueVlan(flowId, srcSwitch, dstSwitch);
+                    }
+                })
+        );
 
-        if (srcRangeSet.isEmpty() || destRangeSet.isEmpty()) {
-            LOGGER.warn("Unable to define a flow between {} and {} as no vlan available.", srcSwitch, destSwitch);
-            return null;
-        }
-
-        // Calculate intersection of the ranges
-        RangeSet<Integer> interRangeSet = TreeRangeSet.create(srcRangeSet);
-        interRangeSet.removeAll(destRangeSet.complement());
-        // Same vlan for source and destination
-        final Optional<Integer> sameVlan = interRangeSet.asRanges().stream()
-                .flatMap(range -> ContiguousSet.create(range, DiscreteDomain.integers()).stream())
-                .findFirst();
-
-        int srcVlan;
-        int destVlan;
-        if (sameVlan.isPresent()) {
-            srcVlan = sameVlan.get();
-            destVlan = sameVlan.get();
-        } else {
-            // Cross vlan flow
-            Optional<Integer> srcVlanOpt = srcRangeSet.asRanges().stream()
-                    .flatMap(range -> ContiguousSet.create(range, DiscreteDomain.integers()).stream())
-                    .findFirst();
-            if (!srcVlanOpt.isPresent()) {
-                LOGGER.warn("Unable to allocate a vlan for the switch {}.", srcSwitch);
-                return null;
-
-            }
-            srcVlan = srcVlanOpt.get();
-
-            Optional<Integer> destVlanOpt = destRangeSet.asRanges().stream()
-                    .flatMap(range -> ContiguousSet.create(range, DiscreteDomain.integers()).stream())
-                    .findFirst();
-            if (!destVlanOpt.isPresent()) {
-                LOGGER.warn("Unable to allocate a vlan for the switch {}.", destSwitch);
-                return null;
-
-            }
-            destVlan = destVlanOpt.get();
-        }
-
-        boolean sameSwitchFlow = srcSwitch.getDpId().equals(destSwitch.getDpId());
-
-        Optional<OutPort> srcPort = srcSwitch.getOutPorts().stream()
-                .filter(p -> p.getVlanRange().contains(srcVlan))
-                .findFirst();
-        int srcPortId = srcPort
-                .orElseThrow(() -> new IllegalStateException("Unable to allocate a port in found vlan."))
-                .getPort();
-
-        Optional<OutPort> destPort = destSwitch.getOutPorts().stream()
-                .filter(p -> p.getVlanRange().contains(destVlan))
-                .filter(p -> !sameSwitchFlow || p.getPort() != srcPortId)
-                .findFirst();
-        if (!destPort.isPresent()) {
-            if (sameSwitchFlow) {
-                LOGGER.warn("Unable to define a same switch flow for {} as no ports available.", srcSwitch);
-                return null;
-            } else {
-                throw new IllegalStateException("Unable to allocate a port in found vlan.");
-            }
-        }
-
-        // Record used vlan to archive uniqueness
-        allocatedVlans.add(Range.singleton(srcVlan));
-        allocatedVlans.add(Range.singleton(destVlan));
-
-        FlowEndpointPayload srcEndpoint = new FlowEndpointPayload(srcSwitch.getDpId(), srcPortId, srcVlan);
-        FlowEndpointPayload destEndpoint = new FlowEndpointPayload(destSwitch.getDpId(), destPort.get().getPort(),
-                destVlan);
-        return new FlowPayload(flowId, srcEndpoint, destEndpoint,
-                1, false, flowId, null);
+        flows = builder.getFlows();
     }
 
     @And("^each flow has unique flow_id$")
@@ -314,7 +239,8 @@ public class FlowCrudSteps implements En {
         }
 
         LOGGER.info(String.format(
-                "%d of %d flow's traffic examination have been started", examsInProgress.size(), flows.size()));
+                "%d of %d flow's traffic examination have been started", examsInProgress.size(),
+                flows.size()));
 
         if (0 < singleExams.size()) {
             LOGGER.warn(String.format("Kill %d incomplete(one direction) flow traffic exams.", singleExams.size()));

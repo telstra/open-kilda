@@ -24,6 +24,7 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.context.annotation.PropertySource;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.http.client.support.BasicAuthorizationInterceptor;
 import org.springframework.web.client.DefaultResponseErrorHandler;
@@ -82,10 +83,12 @@ public class ServiceConfig {
             private final Logger LOGGER = LoggerFactory.getLogger(ResponseErrorHandler.class);
 
             @Override
-            public void handleError(ClientHttpResponse clienthttpresponse) throws IOException {
-                LOGGER.error("HTTP response with status {} and body '{}'", clienthttpresponse.getStatusCode(),
-                        CharStreams.toString(new InputStreamReader(clienthttpresponse.getBody())));
-                super.handleError(clienthttpresponse);
+            public void handleError(ClientHttpResponse clientHttpResponse) throws IOException {
+                if(clientHttpResponse.getStatusCode() != HttpStatus.NOT_FOUND) {
+                    LOGGER.error("HTTP response with status {} and body '{}'", clientHttpResponse.getStatusCode(),
+                            CharStreams.toString(new InputStreamReader(clientHttpResponse.getBody())));
+                }
+                super.handleError(clientHttpResponse);
             }
         };
     }
