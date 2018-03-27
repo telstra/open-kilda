@@ -9,7 +9,7 @@
       "port": 5000
     },
     "stdout": {
-      "formatter": "default",
+      "formatter": "stdout",
       "class": "logging.StreamHandler",
       "stream": "ext://sys.stdout"
     }
@@ -27,13 +27,20 @@
     "topologylistener": {
       "level": "DEBUG"
     },
-    "neo4j": {
-      "level": "WARNING"
+    "kafka": {
+      "level": "NOTSET"
+    },
+    "neo4j.bolt": {
+      "level": "NOTSET"
+    },
+    "neo4j.http": {
+      "level": "NOTSET"
     }
   },
   "formatters": {
-    "default": {
-      "format": "%(asctime)23s | %(name)s [%(threadName)s] | %(levelname)-5s  | %(filename)s:%(lineno)d [%(funcName)s] | %(message)s"
+    "stdout": {
+      "()": "topologylistener.log.ContextAwareFormatter",
+      "format": "%(asctime)s %(levelname)s [%(threadName)s] %(name)s - [%(context)s] %(message)s"
     },
     "logstash_file": {
       "()": "logstash.formatter.LogstashFormatterVersion1",

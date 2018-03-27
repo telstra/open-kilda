@@ -14,9 +14,12 @@
 #
 
 import os
+import time
+
 from py2neo import Graph
 
-import config
+from topologylistener import config
+from topologylistener import exc
 
 
 def create_p2n_driver():
@@ -25,3 +28,28 @@ def create_p2n_driver():
         os.environ.get('neo4jpass') or config.get('neo4j', 'pass'),
         os.environ.get('neo4jhost') or config.get('neo4j', 'host')))
     return graph
+
+
+class LockAdapter(object):
+    @classmethod
+    def wrap_lock(cls, lock):
+        timeout = config.getint('neo4j', 'lock_timeout')
+        return cls(lock, timeout)
+
+    def __init__(self, lock, timeout):
+        self.lock = lock
+        self.timeout = timeout
+
+    def __enter__(self):
+        timeout = time.time() + self.timeout
+        while time.time() < timeout:
+            if self.lock.acquire(blocking=False):
+                break
+            time.sleep(.1)
+        else:
+            raise exc.LockTimeoutError(self.timeout)
+
+        return self
+
+    def __exit__(self, *exc_info):
+        self.lock.release()

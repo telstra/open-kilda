@@ -12,3 +12,17 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 #
+
+PROJECT_NAME = 'kilda'
+COMPONENT_NAME = 'topology-engine'
+COMPONENT_NAME_ABBREVIATION = 'TE'
+
+LOG_FORMAT_KEY = 'context'
+
+LOG_ATTR_CORRELATION_ID = 'correlation_id'
+LOG_ATTR_JSON_PAYLOAD = 'json_payload'
+
+LOG_ALL_FORMAT_ATTR = {
+    LOG_ATTR_CORRELATION_ID}
+LOG_ALL_TAIL_ATTR = {
+    LOG_ATTR_JSON_PAYLOAD}
