@@ -19,7 +19,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Value;
 import org.openkilda.messaging.command.CommandData;
-import org.openkilda.messaging.command.flow.BaseFlow;
+import org.openkilda.messaging.command.flow.BaseInstallFlow;
 
 import java.util.List;
 
@@ -31,11 +31,11 @@ public class InstallMissedFlowsRequest extends CommandData {
     private String switchId;
 
     @JsonProperty("flow_commands")
-    private List<BaseFlow> flowCommands;
+    private List<BaseInstallFlow> flowCommands;
 
     public InstallMissedFlowsRequest(
             @JsonProperty("switch_id") String switchId,
-            @JsonProperty("flow_commands") List<BaseFlow> flowCommands) {
+            @JsonProperty("flow_commands") List<BaseInstallFlow> flowCommands) {
         this.switchId = switchId;
         this.flowCommands = flowCommands;
     }

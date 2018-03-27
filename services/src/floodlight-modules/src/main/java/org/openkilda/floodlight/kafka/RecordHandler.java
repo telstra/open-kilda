@@ -17,7 +17,7 @@ import org.openkilda.messaging.command.CommandWithReplyToMessage;
 import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
 import org.openkilda.messaging.command.discovery.DiscoverPathCommandData;
 import org.openkilda.messaging.command.discovery.NetworkCommandData;
-import org.openkilda.messaging.command.flow.BaseFlow;
+import org.openkilda.messaging.command.flow.BaseInstallFlow;
 import org.openkilda.messaging.command.flow.InstallEgressFlow;
 import org.openkilda.messaging.command.flow.InstallIngressFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
@@ -46,7 +46,6 @@ import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
 
 import net.floodlightcontroller.core.IOFSwitch;
-import org.apache.commons.lang.StringUtils;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
 import org.projectfloodlight.openflow.types.DatapathId;
@@ -103,13 +102,13 @@ class RecordHandler implements Runnable {
         } else if (data instanceof DiscoverPathCommandData) {
             doDiscoverPathCommand(data);
         } else if (data instanceof InstallIngressFlow) {
-            doInstallIngressFlow(message, replyToTopic, replyDestination);
+            doProcessIngressFlow(message, replyToTopic, replyDestination);
         } else if (data instanceof InstallEgressFlow) {
-            doInstallEgressFlow(message, replyToTopic, replyDestination);
+            doProcessEgressFlow(message, replyToTopic, replyDestination);
         } else if (data instanceof InstallTransitFlow) {
-            doInstallTransitFlow(message, replyToTopic, replyDestination);
+            doProcessTransitFlow(message, replyToTopic, replyDestination);
         } else if (data instanceof InstallOneSwitchFlow) {
-            doInstallOneSwitchFlow(message, replyToTopic, replyDestination);
+            doProcessOneSwitchFlow(message, replyToTopic, replyDestination);
         } else if (data instanceof RemoveFlow) {
             doDeleteFlow(message, replyToTopic, replyDestination);
         } else if (data instanceof NetworkCommandData) {
@@ -160,13 +159,29 @@ class RecordHandler implements Runnable {
     }
 
     /**
-     * Installs ingress flow on the switch.
+     * Processes install ingress flow message.
      *
      * @param message command message for flow installation
      */
-    private void doInstallIngressFlow(final CommandMessage message, String replyToTopic, Destination replyDestination)
+    private void doProcessIngressFlow(final CommandMessage message, String replyToTopic, Destination replyDestination)
             throws FlowCommandException {
         InstallIngressFlow command = (InstallIngressFlow) message.getData();
+
+        try {
+            installIngressFlow(command);
+            message.setDestination(replyDestination);
+            context.getKafkaProducer().postMessage(replyToTopic, message);
+        } catch (SwitchOperationException e) {
+            throw new FlowCommandException(command.getId(), ErrorType.CREATION_FAILURE, e);
+        }
+    }
+
+    /**
+     * Installs ingress flow on the switch.
+     *
+     * @param command command message for flow installation
+     */
+    private void installIngressFlow(final InstallIngressFlow command) throws SwitchOperationException {
         logger.debug("Creating an ingress flow: {}", command);
 
         Long meterId = command.getMeterId();
@@ -176,26 +191,35 @@ class RecordHandler implements Runnable {
             logger.error("Allocated meter_id {} for cookie {}", meterId, command.getCookie());
         }
 
+        context.getSwitchManager().installMeter(
+                DatapathId.of(command.getSwitchId()),
+                command.getBandwidth(), 1024, meterId);
+
+        context.getSwitchManager().installIngressFlow(
+                DatapathId.of(command.getSwitchId()),
+                command.getId(),
+                command.getCookie(),
+                command.getInputPort(),
+                command.getOutputPort(),
+                command.getInputVlanId(),
+                command.getTransitVlanId(),
+                command.getOutputVlanType(),
+                meterId);
+    }
+
+    /**
+     * Processes egress flow install message.
+     *
+     * @param message command message for flow installation
+     */
+    private void doProcessEgressFlow(final CommandMessage message, String replyToTopic, Destination replyDestination)
+            throws FlowCommandException {
+        InstallEgressFlow command = (InstallEgressFlow) message.getData();
+
         try {
-            context.getSwitchManager().installMeter(
-                    DatapathId.of(command.getSwitchId()),
-                    command.getBandwidth(), 1024, meterId);
-
-            context.getSwitchManager().installIngressFlow(
-                    DatapathId.of(command.getSwitchId()),
-                    command.getId(),
-                    command.getCookie(),
-                    command.getInputPort(),
-                    command.getOutputPort(),
-                    command.getInputVlanId(),
-                    command.getTransitVlanId(),
-                    command.getOutputVlanType(),
-                    meterId);
-
-            if (!StringUtils.isBlank(replyToTopic)) {
-                message.setDestination(replyDestination);
-                context.getKafkaProducer().postMessage(replyToTopic, message);
-            }
+            installEgressFlow(command);
+            message.setDestination(replyDestination);
+            context.getKafkaProducer().postMessage(replyToTopic, message);
         } catch (SwitchOperationException e) {
             throw new FlowCommandException(command.getId(), ErrorType.CREATION_FAILURE, e);
         }
@@ -204,28 +228,35 @@ class RecordHandler implements Runnable {
     /**
      * Installs egress flow on the switch.
      *
-     * @param message command message for flow installation
+     * @param command command message for flow installation
      */
-    private void doInstallEgressFlow(final CommandMessage message, String replyToTopic, Destination replyDestination)
-            throws FlowCommandException {
-        InstallEgressFlow command = (InstallEgressFlow) message.getData();
+    private void installEgressFlow(InstallEgressFlow command) throws SwitchOperationException {
         logger.debug("Creating an egress flow: {}", command);
 
-        try {
-            context.getSwitchManager().installEgressFlow(
-                    DatapathId.of(command.getSwitchId()),
-                    command.getId(),
-                    command.getCookie(),
-                    command.getInputPort(),
-                    command.getOutputPort(),
-                    command.getTransitVlanId(),
-                    command.getOutputVlanId(),
-                    command.getOutputVlanType());
+        context.getSwitchManager().installEgressFlow(
+                DatapathId.of(command.getSwitchId()),
+                command.getId(),
+                command.getCookie(),
+                command.getInputPort(),
+                command.getOutputPort(),
+                command.getTransitVlanId(),
+                command.getOutputVlanId(),
+                command.getOutputVlanType());
+    }
 
-            if (!StringUtils.isBlank(replyToTopic)) {
-                message.setDestination(replyDestination);
-                context.getKafkaProducer().postMessage(replyToTopic, message);
-            }
+    /**
+     * Processes transit flow installing message.
+     *
+     * @param message command message for flow installation
+     */
+    private void doProcessTransitFlow(final CommandMessage message, String replyToTopic, Destination replyDestination)
+            throws FlowCommandException {
+        InstallTransitFlow command = (InstallTransitFlow) message.getData();
+
+        try {
+            installTransitFlow(command);
+            message.setDestination(replyDestination);
+            context.getKafkaProducer().postMessage(replyToTopic, message);
         } catch (SwitchOperationException e) {
             throw new FlowCommandException(command.getId(), ErrorType.CREATION_FAILURE, e);
         }
@@ -234,26 +265,34 @@ class RecordHandler implements Runnable {
     /**
      * Installs transit flow on the switch.
      *
-     * @param message command message for flow installation
+     * @param command command message for flow installation
      */
-    private void doInstallTransitFlow(final CommandMessage message, String replyToTopic, Destination replyDestination)
-            throws FlowCommandException {
-        InstallTransitFlow command = (InstallTransitFlow) message.getData();
+    private void installTransitFlow(final InstallTransitFlow command) throws SwitchOperationException {
         logger.debug("Creating a transit flow: {}", command);
 
-        try {
-            context.getSwitchManager().installTransitFlow(
-                    DatapathId.of(command.getSwitchId()),
-                    command.getId(),
-                    command.getCookie(),
-                    command.getInputPort(),
-                    command.getOutputPort(),
-                    command.getTransitVlanId());
+        context.getSwitchManager().installTransitFlow(
+                DatapathId.of(command.getSwitchId()),
+                command.getId(),
+                command.getCookie(),
+                command.getInputPort(),
+                command.getOutputPort(),
+                command.getTransitVlanId());
+    }
 
-            if (!StringUtils.isBlank(replyToTopic)) {
-                message.setDestination(replyDestination);
-                context.getKafkaProducer().postMessage(replyToTopic, message);
-            }
+    /**
+     * Processes one-switch flow installing message.
+     *
+     * @param message command message for flow installation
+     */
+    private void doProcessOneSwitchFlow(final CommandMessage message, String replyToTopic, Destination replyDestination)
+            throws FlowCommandException {
+        InstallOneSwitchFlow command = (InstallOneSwitchFlow) message.getData();
+        logger.debug("creating a flow through one switch: {}", command);
+
+        try {
+            installOneSwitchFlow(command);
+            message.setDestination(replyDestination);
+            context.getKafkaProducer().postMessage(replyToTopic, message);
         } catch (SwitchOperationException e) {
             throw new FlowCommandException(command.getId(), ErrorType.CREATION_FAILURE, e);
         }
@@ -262,13 +301,9 @@ class RecordHandler implements Runnable {
     /**
      * Installs flow through one switch.
      *
-     * @param message command message for flow installation
+     * @param command command message for flow installation
      */
-    private void doInstallOneSwitchFlow(final CommandMessage message,
-            String replyToTopic, Destination replyDestination) throws FlowCommandException {
-        InstallOneSwitchFlow command = (InstallOneSwitchFlow) message.getData();
-        logger.debug("creating a flow through one switch: {}", command);
-
+    private void installOneSwitchFlow(InstallOneSwitchFlow command) throws SwitchOperationException {
         Long meterId = command.getMeterId();
         if (meterId == null) {
             logger.error("Meter_id should be passed within one switch flow command. Cookie is {}", command.getCookie());
@@ -276,31 +311,22 @@ class RecordHandler implements Runnable {
             logger.error("Allocated meter_id {} for cookie {}", meterId, command.getCookie());
         }
 
-        try {
-            context.getSwitchManager().installMeter(
-                    DatapathId.of(command.getSwitchId()),
-                    command.getBandwidth(), 1024, meterId);
+        context.getSwitchManager().installMeter(
+                DatapathId.of(command.getSwitchId()),
+                command.getBandwidth(), 1024, meterId);
 
-            OutputVlanType directOutputVlanType = command.getOutputVlanType();
-            context.getSwitchManager().installOneSwitchFlow(
-                    DatapathId.of(command.getSwitchId()),
-                    command.getId(),
-                    command.getCookie(),
-                    command.getInputPort(),
-                    command.getOutputPort(),
-                    command.getInputVlanId(),
-                    command.getOutputVlanId(),
-                    directOutputVlanType,
-                    meterId);
-
-            if (!StringUtils.isBlank(replyToTopic)) {
-                message.setDestination(replyDestination);
-                context.getKafkaProducer().postMessage(replyToTopic, message);
-            }
-        } catch (SwitchOperationException e) {
-            throw new FlowCommandException(command.getId(), ErrorType.CREATION_FAILURE, e);
+        OutputVlanType directOutputVlanType = command.getOutputVlanType();
+        context.getSwitchManager().installOneSwitchFlow(
+                DatapathId.of(command.getSwitchId()),
+                command.getId(),
+                command.getCookie(),
+                command.getInputPort(),
+                command.getOutputPort(),
+                command.getInputVlanId(),
+                command.getOutputVlanId(),
+                directOutputVlanType,
+                meterId);
         }
-    }
 
     /**
      * Removes flow.
@@ -508,14 +534,30 @@ class RecordHandler implements Runnable {
         context.getKafkaProducer().postMessage(TOPO_ENG_TOPIC, infoMessage);
     }
 
-    private void doSyncRulesRequest(final CommandMessage message) throws FlowCommandException {
+    /**
+     * Installs missed flows on the switch.
+     * @param message with list of flows.
+     */
+    private void doSyncRulesRequest(final CommandMessage message) {
         InstallMissedFlowsRequest request = (InstallMissedFlowsRequest) message.getData();
         final String switchId = request.getSwitchId();
         logger.debug("Processing rules to be updated for switch {}", switchId);
 
-        for (BaseFlow installCommand : request.getFlowCommands()) {
-            logger.debug("Processing command for switch {} {}", switchId, installCommand);
-            handleCommand(message, installCommand, StringUtils.EMPTY, Destination.TOPOLOGY_ENGINE);
+        for (BaseInstallFlow command : request.getFlowCommands()) {
+            logger.debug("Processing command for switch {} {}", switchId, command);
+            try {
+                if (command instanceof InstallIngressFlow) {
+                    installIngressFlow((InstallIngressFlow) command);
+                } else if (command instanceof InstallEgressFlow) {
+                    installEgressFlow((InstallEgressFlow) command);
+                } else if (command instanceof InstallTransitFlow) {
+                    installTransitFlow((InstallTransitFlow) command);
+                } else if (command instanceof InstallOneSwitchFlow) {
+                    installOneSwitchFlow((InstallOneSwitchFlow) command);
+                }
+            } catch (SwitchOperationException e) {
+                logger.error("Error during flow installation", e);
+            }
         }
     }
 
