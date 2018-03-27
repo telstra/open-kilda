@@ -1,6 +1,7 @@
 package org.openkilda.floodlight.kafka;
 
 import org.openkilda.floodlight.kafka.RecordHandler.Factory;
+import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.messaging.ctrl.KafkaBreakTrigger;
 import org.openkilda.messaging.ctrl.KafkaBreakTarget;
 
@@ -19,8 +20,8 @@ public class TestAwareConsumer extends Consumer {
     private List<KafkaBreakTrigger> expectedTriggers;
 
     public TestAwareConsumer(ConsumerContext context, ExecutorService handlersPool,
-            Factory handlerFactory, String topic, String... moreTopics) {
-        super(context, handlersPool, handlerFactory, topic, moreTopics);
+                             Factory handlerFactory, ISwitchManager switchManager, String topic, String... moreTopics) {
+        super(context, handlersPool, handlerFactory, switchManager, topic, moreTopics);
 
         breakTrigger = new KafkaBreakTrigger(KafkaBreakTarget.FLOODLIGHT_CONSUMER);
 

@@ -3,6 +3,7 @@ package org.openkilda.floodlight.kafka;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,10 +19,12 @@ public class Consumer implements Runnable {
     private final ConsumerContext context;
     private final ExecutorService handlersPool;
     private final RecordHandler.Factory handlerFactory;
+    private final ISwitchManager switchManager; // HACK alert.. adding to facilitate safeSwitchTick()
+
 
     public Consumer(
             ConsumerContext context, ExecutorService handlersPool, RecordHandler.Factory handlerFactory,
-            String topic, String ...moreTopics) {
+            ISwitchManager switchManager, String topic, String ...moreTopics) {
         this.topics = new ArrayList<>(moreTopics.length + 1);
         this.topics.add(topic);
         this.topics.addAll(Arrays.asList(moreTopics));
@@ -29,6 +32,7 @@ public class Consumer implements Runnable {
         this.context = context;
         this.handlersPool = handlersPool;
         this.handlerFactory = handlerFactory;
+        this.switchManager = switchManager;
     }
 
     @Override
@@ -58,6 +62,7 @@ public class Consumer implements Runnable {
                     for (ConsumerRecord<String, String> record : batch) {
                         handle(record);
                     }
+                    switchManager.safeModeTick(); // HACK alert .. should go in its own timer loop
                 }
             } catch (Exception e) {
                 /*
