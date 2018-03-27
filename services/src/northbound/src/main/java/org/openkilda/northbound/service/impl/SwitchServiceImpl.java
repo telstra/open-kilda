@@ -2,6 +2,7 @@ package org.openkilda.northbound.service.impl;
 
 import static java.util.Base64.getEncoder;
 
+import org.openkilda.client.response.switches.SyncRulesOutput;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
@@ -154,13 +155,14 @@ public class SwitchServiceImpl implements SwitchService {
     }
 
     @Override
-    public SyncRulesResponse syncRules(String switchId, String correlationId) {
+    public SyncRulesOutput syncRules(String switchId, String correlationId) {
         SyncRulesRequest request = new SyncRulesRequest(switchId);
         CommandWithReplyToMessage commandMessage = new CommandWithReplyToMessage(request, System.currentTimeMillis(),
                 correlationId, Destination.TOPOLOGY_ENGINE, northboundTopic);
         messageProducer.send(topoEngTopic, commandMessage);
 
         Message message = messageConsumer.poll(correlationId);
-        return  (SyncRulesResponse) validateInfoMessage(commandMessage, message, correlationId);
+        SyncRulesResponse response = (SyncRulesResponse) validateInfoMessage(commandMessage, message, correlationId);
+        return switchMapper.toSuncRulesOutput(response);
     }
 }

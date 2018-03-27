@@ -29,7 +29,7 @@ import java.io.Serializable;
 public class FlowEntry implements Serializable {
 
     @JsonProperty("cookie")
-    private String cookie;
+    private long cookie;
     @JsonProperty("duration-sec")
     private long durationSeconds;
     @JsonProperty("duration-nsec")
@@ -57,7 +57,7 @@ public class FlowEntry implements Serializable {
 
     @JsonCreator
     public FlowEntry(
-            @JsonProperty("cookie") String cookie, @JsonProperty("duration-sec") long durationSeconds,
+            @JsonProperty("cookie") long cookie, @JsonProperty("duration-sec") long durationSeconds,
             @JsonProperty("duration-nsec") long durationNanoSeconds, @JsonProperty("table-id") long tableId,
             @JsonProperty("packet-count") long packetCount, @JsonProperty("version") String version,
             @JsonProperty("priority") int priority, @JsonProperty("idle-timeout") long idleTimeout,

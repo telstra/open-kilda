@@ -1,5 +1,6 @@
 package org.openkilda.northbound.service;
 
+import org.openkilda.client.response.switches.SyncRulesOutput;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.InstallRulesAction;
@@ -50,5 +51,5 @@ public interface SwitchService extends BasicService {
      * @param correlationId request correlation Id
      * @return the result of that operation with the list of rules that were updated/deleted.
      */
-    SyncRulesResponse syncRules(String switchId, String correlationId);
+    SyncRulesOutput syncRules(String switchId, String correlationId);
 }

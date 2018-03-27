@@ -3,10 +3,12 @@ package org.openkilda.northbound.controller;
 import static org.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 
+import org.openkilda.client.response.switches.SyncRulesOutput;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.InstallRulesAction;
 import org.openkilda.messaging.error.MessageError;
+import org.openkilda.messaging.info.switches.SyncRulesResponse;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.northbound.dto.SwitchDto;
 import org.openkilda.northbound.service.SwitchService;
@@ -147,12 +149,13 @@ public class SwitchController {
     }
 
 
-
     /**
-     * Sync rules on the switch.
-     * @param switchId id of the switch.
+     *
+     * @param switchId
+     * @param correlationId
+     * @return the list of rules on switch, specified what actions were applied.
      */
-    @ApiOperation(value = "Sync rules on the switch", response = SwitchDto.class)
+    @ApiOperation(value = "Sync rules on the switch", response = SyncRulesOutput.class)
     @ApiResponses(value = {
             @ApiResponse(code = 200, response = FlowPayload.class, message = "Operation is successful"),
             @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
@@ -163,9 +166,9 @@ public class SwitchController {
             @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
     @GetMapping(path = "/switches/{switch_id}/sync_rules")
     @ResponseStatus(HttpStatus.OK)
-    public void syncRules(@PathVariable(name = "switch_id") String switchId,
+    public SyncRulesOutput syncRules(@PathVariable(name = "switch_id") String switchId,
             @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
-        switchService.syncRules(switchId, correlationId);
+        return switchService.syncRules(switchId, correlationId);
     }
 
 }

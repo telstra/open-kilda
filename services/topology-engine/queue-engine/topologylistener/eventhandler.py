@@ -31,7 +31,8 @@ known_messages = ['org.openkilda.messaging.info.event.SwitchInfoData',
                   'org.openkilda.messaging.info.event.SwitchInfoExtendedData',
                   'org.openkilda.messaging.info.event.IslInfoData',
                   'org.openkilda.messaging.info.event.PortInfoData',
-                  'org.openkilda.messaging.info.flow.FlowInfoData']
+                  'org.openkilda.messaging.info.flow.FlowInfoData',
+                  'org.openkilda.messaging.info.rule.SwitchFlowEntries']
 known_commands = ['org.openkilda.messaging.command.flow.FlowCreateRequest',
                   'org.openkilda.messaging.command.flow.FlowDeleteRequest',
                   'org.openkilda.messaging.command.flow.FlowUpdateRequest',
@@ -41,6 +42,7 @@ known_commands = ['org.openkilda.messaging.command.flow.FlowCreateRequest',
                   'org.openkilda.messaging.command.flow.FlowRerouteRequest',
                   'org.openkilda.messaging.command.system.FeatureToggleRequest',
                   'org.openkilda.messaging.command.system.FeatureToggleStateRequest',
+                  'org.openkilda.messaging.command.switches.SyncRulesRequest',
                   'org.openkilda.messaging.command.discovery.NetworkCommandData']
 
 

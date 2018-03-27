@@ -70,7 +70,7 @@ public final class OFFlowStatsConverter {
                 .flags(entry.getFlags().stream()
                         .map(OFFlowModFlags::name)
                         .toArray(String[]::new))
-                .cookie(Long.toHexString(entry.getCookie().getValue()))
+                .cookie(entry.getCookie().getValue())
                 .tableId(entry.getTableId().getValue())
                 .match(buildFlowMatch(entry.getMatch()))
                 .instructions(buildFlowInstructions(entry.getInstructions()))
@@ -102,11 +102,11 @@ public final class OFFlowStatsConverter {
                 .stream()
                 .collect(Collectors.toMap(OFInstruction::getType, instruction -> instruction));
 
-        FlowApplyActions applyActions = Optional.of(instructionMap.get(OFInstructionType.APPLY_ACTIONS))
+        FlowApplyActions applyActions = Optional.ofNullable(instructionMap.get(OFInstructionType.APPLY_ACTIONS))
                 .map(OFFlowStatsConverter::buildApplyActions)
                 .orElse(null);
 
-        Long meter = Optional.of(instructionMap.get(OFInstructionType.METER))
+        Long meter = Optional.ofNullable(instructionMap.get(OFInstructionType.METER))
                 .map(instruction -> ((OFInstructionMeter) instruction).getMeterId())
                 .orElse(null);
 
