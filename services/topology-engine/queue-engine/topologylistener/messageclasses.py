@@ -137,7 +137,7 @@ class MessageItem(object):
                 event_handled = self.update_feature_toggles()
 
             elif self.get_message_type() == MT_SWITCH_EXTENDED:
-                if sync_rules_on_activation:
+                if features_status[FEATURE_SYNC_OFRULES]:
                     event_handled = self.validate_switch()
                 else:
                     event_handled = True
