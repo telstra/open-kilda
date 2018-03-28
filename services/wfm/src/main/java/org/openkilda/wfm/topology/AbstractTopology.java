@@ -200,6 +200,11 @@ public abstract class AbstractTopology implements Topology {
                 StringDeserializer.class, StringDeserializer.class, new CustomNamedSubscription(topic))
                 .setGroupId(String.format("%s__%s", getTopologyName(), spoutId))
                 .setRecordTranslator(new KafkaRecordTranslator<>())
+                // NB: There is an issue with using the default of "earliest uncommitted message" -
+                //      if we erase the topics, then the committed will be > the latest .. and so
+                //      we won't process any messages.
+                // NOW: we'll miss any messages generated while the topology is down.
+                .setFirstPollOffsetStrategy(KafkaSpoutConfig.FirstPollOffsetStrategy.LATEST)
                 .setMaxUncommittedOffsets(Integer.MAX_VALUE)
                 .setRetry(new KafkaSpoutRetryExponentialBackoff(TimeInterval.seconds(5),
                         TimeInterval.microSeconds(5), Integer.MAX_VALUE, TimeInterval.seconds(60)))
