@@ -1078,6 +1078,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         /** Any switch rule with a priority less than this will be ignored */
         static final int PRIORITY_IGNORE_THRESHOLD = 100;
         private static final int window = 5;
+        /** Used to filter out rules with low packet counts .. only test rules with more packets than this */
+        private static final int PACKET_COUNT_MIN = 5;
 
         DatapathId dpid;
 
@@ -1130,7 +1132,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 // We shouldn't start at the middle .. since we wouldn't have applied the rule yet.
                 // So, start at middle+1 .. that is the first data point after applying the rule.
                 long packets_after = packets.get(end) - packets.get(middle+1);
-                boolean rule_had_no_effect = (packets_before > 0 && packets_after > 0);
+                boolean rule_had_no_effect = (packets_before > PACKET_COUNT_MIN && packets_after > 0);
                 if (rule_had_no_effect)
                     good_counts++;
                 else
@@ -1141,7 +1143,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         boolean isRuleOkay(List<Integer> ruleEffect) {
             // Initial algorithm: if any rule was sending data and then stopped, then applied rule is not okay.
             // The first array element has the count of "bad_counts" .. ie packet count before rule wasn't zero, but was zero after.
-            return ruleEffect.get(0) == 0;
+            int bad_counts = ruleEffect.get(0);
+            return bad_counts == 0;
         }
     }
 
@@ -1169,7 +1172,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         safeSwitches.remove(dpid);
     }
 
-    private static final long tick_length = 200;
+    private static final long tick_length = 1000;
     private static final boolean BROADCAST = true;
     private static final int DROP_STAGE = 1;
     private static final int BROADCAST_STAGE = 2;
