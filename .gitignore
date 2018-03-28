@@ -21,3 +21,4 @@ logs/
 kilda-bins/
 tar/
 *.retry
+services/src/api/target/
