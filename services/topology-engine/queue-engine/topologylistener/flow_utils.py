@@ -30,6 +30,9 @@ __all__ = ['graph']
 graph = db.create_p2n_driver()
 logger = logging.getLogger(__name__)
 
+ignored_rules = ['0x8000000000000001', '0x8000000000000002',
+                 '0x8000000000000003']
+
 
 def is_forward_cookie(cookie):
     return int(cookie) & 0x4000000000000000
@@ -37,6 +40,14 @@ def is_forward_cookie(cookie):
 
 def is_reverse_cookie(cookie):
     return int(cookie) & 0x2000000000000000
+
+
+def cookie_to_hex(cookie):
+    value = hex(
+        ((cookie ^ 0xffffffffffffffff) + 1) * -1 if cookie < 0 else cookie)
+    if value.endswith("L"):
+        value = value[:-1]
+    return value
 
 
 def is_same_direction(first, second):

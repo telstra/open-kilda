@@ -10,11 +10,11 @@
         <version>1.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>messaging</artifactId>
+    <artifactId>api</artifactId>
     <version>1.0-SNAPSHOT</version>
     <packaging>jar</packaging>
-    <name>Messaging</name>
-    <description>Common messaging data structures</description>
+    <name>Api</name>
+    <description>Client messages</description>
 
     <properties>
         <lombok.version>1.16.20</lombok.version>
@@ -51,19 +51,7 @@
             <groupId>org.jacoco</groupId>
             <artifactId>jacoco-maven-plugin</artifactId>
         </dependency>
-        <dependency>
-            <groupId>org.apache.storm</groupId>
-            <artifactId>storm-core</artifactId>
-            <version>1.1.0</version>
-            <scope>provided</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>javax.servlet</groupId>
-                    <artifactId>servlet-api</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-     </dependencies>
+    </dependencies>
 
     <build>
         <plugins>

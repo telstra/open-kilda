@@ -71,6 +71,16 @@ def build_ingress_flow(path_nodes, src_switch, src_port, src_vlan,
     return flow
 
 
+def build_ingress_flow_from_db(stored_flow, output_action):
+    return build_ingress_flow(stored_flow['flowpath']['path'],
+                              stored_flow['src_switch'],
+                              stored_flow['src_port'], stored_flow['src_vlan'],
+                              stored_flow['bandwidth'],
+                              stored_flow['transit_vlan'],
+                              stored_flow['flowid'], output_action,
+                              stored_flow['cookie'], stored_flow['meter_id'])
+
+
 def build_egress_flow(path_nodes, dst_switch, dst_port, dst_vlan,
                       transit_vlan, flow_id, output_action, cookie):
     input_port = None
@@ -96,6 +106,16 @@ def build_egress_flow(path_nodes, dst_switch, dst_port, dst_vlan,
     flow.output_vlan_type = output_action
 
     return flow
+
+
+def build_egress_flow_from_db(stored_flow, output_action):
+    print stored_flow
+    return build_egress_flow(stored_flow['flowpath']['path'],
+                             stored_flow['dst_switch'], stored_flow['dst_port'],
+                             stored_flow['dst_vlan'],
+                             stored_flow['transit_vlan'],
+                             stored_flow['flowid'], output_action,
+                             stored_flow['cookie'])
 
 
 def build_intermediate_flows(switch, match, action, vlan, flow_id, cookie):
@@ -134,6 +154,24 @@ def build_one_switch_flow(switch, src_port, src_vlan, dst_port, dst_vlan,
     return flow
 
 
+def build_one_switch_flow_from_db(switch, stored_flow, output_action):
+    flow = Flow()
+    flow.clazz = "org.openkilda.messaging.command.flow.InstallOneSwitchFlow"
+    flow.transaction_id = 0
+    flow.flowid = stored_flow['flow_id']
+    flow.cookie = stored_flow['cookie']
+    flow.switch_id = switch
+    flow.input_port = stored_flow['src_port']
+    flow.output_port = stored_flow['dst_port']
+    flow.input_vlan_id = stored_flow['src_vlan']
+    flow.output_vlan_id = stored_flow['dst_vlan']
+    flow.output_vlan_type = output_action
+    flow.bandwidth = stored_flow['bandwidth']
+    flow.meter_id = stored_flow['meter_id']
+
+    return flow
+
+
 def build_delete_flow(switch, flow_id, cookie, meter_id=0):
     flow = Flow()
     flow.clazz = "org.openkilda.messaging.command.flow.RemoveFlow"
@@ -144,6 +182,43 @@ def build_delete_flow(switch, flow_id, cookie, meter_id=0):
     flow.meter_id = meter_id
 
     return flow
+
+
+def build_load_sync_rules(sync_rules):
+    message = Message()
+    message.clazz = "org.openkilda.messaging.info.system.FeatureTogglesResponse"
+    message.sync_rules = sync_rules
+
+    return message
+
+
+def send_dump_rules_request(switch_id, correlation_id):
+    message = Message()
+    message.clazz = 'org.openkilda.messaging.command.switches.DumpRulesRequest'
+    message.switch_id = switch_id
+    send_to_topic(message, correlation_id, MT_COMMAND,
+                  topic=config.KAFKA_SPEAKER_TOPIC)
+
+
+def send_sync_rules_response(added_rules, not_deleted, proper_rules,
+                             correlation_id):
+    message = Message()
+    message.clazz = 'org.openkilda.messaging.info.switches.SyncRulesResponse'
+    message.added_rules = list(added_rules)
+    message.not_deleted = list(not_deleted)
+    message.proper_rules = list(proper_rules)
+    send_to_topic(message, correlation_id, MT_INFO,
+                  destination="NORTHBOUND",
+                  topic=config.KAFKA_NORTHBOUND_TOPIC)
+
+
+def send_force_install_commands(switch_id, flow_commands, correlation_id):
+    message = Message()
+    message.clazz = 'org.openkilda.messaging.command.switches.InstallMissedFlowsRequest'
+    message.switch_id = switch_id
+    message.flow_commands = flow_commands
+    send_to_topic(message, correlation_id, MT_COMMAND,
+                  topic=config.KAFKA_SPEAKER_TOPIC)
 
 
 class Message(object):

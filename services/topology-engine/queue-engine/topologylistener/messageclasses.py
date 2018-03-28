@@ -14,9 +14,9 @@
 #   limitations under the License.
 #
 
+import collections
 import json
 import logging
-import multiprocessing
 import threading
 
 import config
@@ -32,16 +32,24 @@ switch_states = {
 }
 
 MT_SWITCH = "org.openkilda.messaging.info.event.SwitchInfoData"
+MT_SWITCH_EXTENDED = "org.openkilda.messaging.info.event.SwitchInfoExtendedData"
 MT_ISL = "org.openkilda.messaging.info.event.IslInfoData"
 MT_PORT = "org.openkilda.messaging.info.event.PortInfoData"
 MT_FLOW_INFODATA = "org.openkilda.messaging.info.flow.FlowInfoData"
 MT_FLOW_RESPONSE = "org.openkilda.messaging.info.flow.FlowResponse"
 MT_NETWORK = "org.openkilda.messaging.info.discovery.NetworkInfoData"
+MT_SYNC_REQUEST = "org.openkilda.messaging.command.switches.SyncRulesRequest"
+MT_SWITCH_RULES = "org.openkilda.messaging.info.rule.SwitchFlowEntries"
+#feature toggle is the functionality to turn off/on specific features
+MT_STATE_TOGGLE = "org.openkilda.messaging.command.system.FeatureToggleStateRequest"
+MT_TOGGLE = "org.openkilda.messaging.command.system.FeatureToggleRequest"
 CD_NETWORK = "org.openkilda.messaging.command.discovery.NetworkCommandData"
 
 # This is used for blocking on flow changes.
 # flow_sem = multiprocessing.Semaphore()
 neo4j_update_lock = threading.RLock()
+
+sync_rules_on_activation = True
 
 
 class MessageItem(object):
@@ -51,6 +59,7 @@ class MessageItem(object):
         self.payload = kwargs.get("payload", {})
         self.destination = kwargs.get("destination","")
         self.correlation_id = kwargs.get("correlation_id", "admin-request")
+        self.reply_to = kwargs.get("reply_to", "")
 
     def to_json(self):
         return json.dumps(
@@ -102,6 +111,23 @@ class MessageItem(object):
 
             elif self.get_command() == CD_NETWORK:
                 event_handled = self.dump_network()
+
+            elif self.get_message_type() == MT_STATE_TOGGLE:
+                event_handled = self.get_feature_toggle_state()
+            elif self.get_message_type() == MT_TOGGLE:
+                event_handled = self.get_feature_toggle_state()
+
+            elif self.get_message_type() == MT_SWITCH_EXTENDED:
+                if sync_rules_on_activation:
+                    event_handled = self.validate_switch()
+                else:
+                    event_handled = True
+
+            elif self.get_message_type() == MT_SYNC_REQUEST:
+                event_handled = self.send_dump_rules_request()
+
+            elif self.get_message_type() == MT_SWITCH_RULES:
+                event_handled = self.validate_switch(self.payload)
 
             if not event_handled:
                 logger.error('Message was not handled correctly: message=%s',
@@ -691,4 +717,144 @@ class MessageItem(object):
                 "WFM_CACHE", config.KAFKA_CACHE_TOPIC)
             raise
 
+        return True
+
+    def get_feature_toggle_state(self):
+        message = message_utils.build_load_sync_rules(sync_rules_on_activation)
+        message_utils.send_to_topic(message, self.correlation_id,
+                                    message_type=message_utils.MT_INFO,
+                                    destination="NORTHBOUND",
+                                    topic=config.KAFKA_NORTHBOUND_TOPIC)
+        return True
+
+    def update_feature_toggles(self):
+        sync_rules_on_activation = self.payload['sync_rules_on_activation']
+        return True
+
+    # todo(Nikita C): refactor/move to separate class
+    def validate_switch(self, dumped_rules=None):
+        switch_id = self.payload['switch_id']
+        query = "MATCH p = (sw:switch)-[segment:flow_segment]-() " \
+                "WHERE sw.name='{}' " \
+                "RETURN segment"
+        result = graph.run(query.format(switch_id)).data()
+
+        if dumped_rules:
+            cookies = [x['cookie'] for x in dumped_rules['flows']]
+        else:
+            cookies = [x['cookie'] for x in self.payload['flows']]
+
+        commands = []
+        # define three types of rules with cookies
+        missed_rules = set()
+        excess_rules = set()
+        proper_rules = set()
+
+        # group flow_segments by parent cookie, it is helpful for building
+        # transit switch rules
+        segment_pairs = collections.defaultdict(list)
+        for relationship in result:
+            flow_segment = relationship['segment']
+            segment_pairs[flow_segment['parent_cookie']].append(flow_segment)
+
+        # check whether the switch has all necessary cookies
+        for pair in segment_pairs.values():
+            cookie = pair[0]['parent_cookie']
+            cookie_hex = flow_utils.cookie_to_hex(cookie)
+            if pair[0]['parent_cookie'] not in cookies:
+                logger.error('Rule %s is not found on switch %s', cookie_hex,
+                             switch_id)
+                commands.extend(MessageItem.command_from_segment(pair,
+                                                                 switch_id))
+                missed_rules.add(cookie_hex)
+            else:
+                proper_rules.add(cookie_hex)
+
+        # check whether the switch has one-switch flows.
+        # since one-switch flows don't have flow_segments we have to validate
+        # such flows separately
+        query = "MATCH (sw:switch)-[r:flow]->(sw:switch) " \
+                "WHERE sw.name='{}' RETURN r"
+        result = graph.run(query.format(switch_id)).data()
+        for item in result:
+            flow = flow_utils.hydrate_flow(item)
+            cookie_hex = flow_utils.cookie_to_hex(flow['cookie'])
+
+            if flow['cookie'] not in cookies:
+                logger.error("Found missed one-switch flow %s for switch %s",
+                             cookie_hex, switch_id)
+                missed_rules.add(cookie_hex)
+                output_action = flow_utils.choose_output_action(
+                    flow['src_vlan'], flow['dst_vlan'])
+
+                commands.extend(message_utils.build_one_switch_flow_from_db(
+                    switch_id, flow, output_action))
+            else:
+                proper_rules.add(cookie_hex)
+
+        # check whether the switch has redundant rules
+        for flow in self.payload['flows']:
+            hex_cookie = flow_utils.cookie_to_hex(flow['cookie'])
+            if hex_cookie not in proper_rules and \
+                    hex_cookie not in flow_utils.ignored_rules:
+                logger.error('Rule %s is obsolete for the switch %s',
+                             hex_cookie, switch_id)
+                excess_rules.add(hex_cookie)
+
+        message_utils.send_force_install_commands(switch_id, commands,
+                                                  self.correlation_id)
+
+        if dumped_rules:
+            message_utils.send_sync_rules_response(missed_rules, excess_rules,
+                                                   proper_rules,
+                                                   self.correlation_id)
+        return True
+
+
+    @staticmethod
+    def command_from_segment(segment_pair, switch_id):
+        left_segment = segment_pair[0]
+        query = "match ()-[r:flow]->() where r.flowid='{}' " \
+                "and r.cookie={} return r"
+        result = graph.run(query.format(left_segment['flowid'],
+                                        left_segment['parent_cookie'])).data()
+
+        if not result:
+            logger.error("Flow with id %s was not found",
+                         left_segment['flowid'])
+            return
+
+        flow = flow_utils.hydrate_flow(result[0])
+        output_action = flow_utils.choose_output_action(flow['src_vlan'],
+                                                        flow['dst_vlan'])
+
+        # check if the flow is one-switch flow
+        if left_segment['src_switch'] == left_segment['dst_switch']:
+            yield message_utils.build_one_switch_flow_from_db(switch_id, flow,
+                                                              output_action)
+        # check if the switch is not source and not destination of the flow
+        if flow['src_switch'] != switch_id \
+                and flow['dst_switch'] != switch_id:
+            right_segment = segment_pair[1]
+            # define in_port and out_port for transit switch
+            if left_segment['dst_switch'] == switch_id and \
+                    left_segment['src_switch'] == switch_id:
+                in_port = left_segment['dst_port']
+                out_port = right_segment['src_port']
+            else:
+                in_port = right_segment['dst_port']
+                out_port = left_segment['src_port']
+
+            yield message_utils.build_intermediate_flows(
+                switch_id, in_port, out_port, flow['transit_vlan'],
+                flow['flowid'], left_segment['parent_cookie'])
+
+        elif left_segment['src_switch'] == switch_id:
+            yield message_utils.build_ingress_flow_from_db(flow, output_action)
+        else:
+            yield message_utils.build_egress_flow_from_db(flow, output_action)
+
+    def send_dump_rules_request(self):
+        message_utils.send_dump_rules_request(self.payload['switch_id'],
+                                              self.correlation_id)
         return True

@@ -48,6 +48,7 @@
         <module>pce</module>
         <module>floodlight-modules</module>
         <module>northbound</module>
+        <module>api</module>
         <module>atdd</module>
         <module>atdd-staging</module>
   </modules>
