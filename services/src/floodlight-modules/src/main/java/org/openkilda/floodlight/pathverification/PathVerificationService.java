@@ -87,8 +87,7 @@ import java.util.Map;
 import java.util.Properties;
 
 public class PathVerificationService implements IFloodlightModule, IOFMessageListener, IPathVerificationService {
-    public static final String VERIFICATION_BCAST_PACKET_DST = "08:ED:02:EF:FF:FF";
-    public static final long VERIFICATION_BCAST_PACKET_DST_MASK = 0xFFFFFFFFFFFFFFF0L;
+    public static final String VERIFICATION_BCAST_PACKET_DST = "08:ED:02:E3:FF:FF";
     public static final int VERIFICATION_PACKET_UDP_PORT = 61231;
     public static final String VERIFICATION_PACKET_IP_DST = "192.168.0.255";
     private static final String TOPIC = Topic.TOPO_DISCO;
@@ -205,6 +204,7 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
 
     @Override
     public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext context) {
+        logger.debug("PathVerificationService received new message of type {}: {}", msg.getType(), msg.toString());
         switch (msg.getType()) {
             case PACKET_IN:
                 return handlePacketIn(sw, (OFPacketIn) msg, context);

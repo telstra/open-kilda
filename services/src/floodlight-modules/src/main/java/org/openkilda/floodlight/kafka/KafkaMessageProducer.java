@@ -62,8 +62,8 @@ public class KafkaMessageProducer implements IFloodlightModule, IFloodlightServi
      * {@inheritDoc}
      */
     @Override
-    public void init(FloodlightModuleContext modueleContext) throws FloodlightModuleException {
-        Context context = new Context(modueleContext, this);
+    public void init(FloodlightModuleContext moduleContext) throws FloodlightModuleException {
+        Context context = new Context(moduleContext, this);
 
         initProducer(context);
         initHeartBeat(context);

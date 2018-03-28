@@ -15,6 +15,7 @@
 
 package org.openkilda.northbound.controller;
 
+import static java.util.Collections.singletonList;
 import static org.openkilda.messaging.Utils.SYSTEM_CORRELATION_ID;
 import static org.openkilda.messaging.error.ErrorType.OPERATION_TIMED_OUT;
 
@@ -29,6 +30,7 @@ import org.openkilda.messaging.command.flow.FlowPathRequest;
 import org.openkilda.messaging.command.flow.FlowStatusRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.openkilda.messaging.command.flow.FlowsGetRequest;
+import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
@@ -39,6 +41,7 @@ import org.openkilda.messaging.info.flow.FlowPathResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowStatusResponse;
 import org.openkilda.messaging.info.flow.FlowsResponse;
+import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
@@ -63,6 +66,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public class TestMessageMock implements MessageProducer, MessageConsumer<Object> {
     static final String FLOW_ID = "test-flow";
     static final String ERROR_FLOW_ID = "error-flow";
+    static final String TEST_SWITCH_ID = "test-switch";
+    static final long TEST_SWITCH_RULE_COOKIE = 1L;
     static final FlowEndpointPayload flowEndpoint = new FlowEndpointPayload(FLOW_ID, 1, 1);
     static final FlowPayload flow = new FlowPayload(FLOW_ID, flowEndpoint, flowEndpoint, 10000, false, FLOW_ID, null);
     static final FlowIdStatusPayload flowStatus = new FlowIdStatusPayload(FLOW_ID, FlowState.IN_PROGRESS);
@@ -70,9 +75,10 @@ public class TestMessageMock implements MessageProducer, MessageConsumer<Object>
     static final FlowPathPayload flowPath = new FlowPathPayload(FLOW_ID, path);
     static final Flow flowModel = new Flow(FLOW_ID, 10000, false, FLOW_ID, FLOW_ID, 1, 1, FLOW_ID, 1, 1);
     private static final FlowResponse flowResponse = new FlowResponse(flowModel);
-    private static final FlowsResponse flowsResponse = new FlowsResponse(Collections.singletonList(flowModel));
+    private static final FlowsResponse flowsResponse = new FlowsResponse(singletonList(flowModel));
     private static final FlowPathResponse flowPathResponse = new FlowPathResponse(path);
     private static final FlowStatusResponse flowStatusResponse = new FlowStatusResponse(flowStatus);
+    private static final SwitchRulesResponse switchRulesResponse = new SwitchRulesResponse(singletonList(TEST_SWITCH_RULE_COOKIE));
     private static final Map<String, CommandData> messages = new ConcurrentHashMap<>();
 
     /**
@@ -101,6 +107,8 @@ public class TestMessageMock implements MessageProducer, MessageConsumer<Object>
             return new InfoMessage(flowStatusResponse, 0, correlationId, Destination.NORTHBOUND);
         } else if (data instanceof FlowPathRequest) {
             return new InfoMessage(flowPathResponse, 0, correlationId, Destination.NORTHBOUND);
+        } else if (data instanceof SwitchRulesDeleteRequest) {
+            return new InfoMessage(switchRulesResponse, 0, correlationId, Destination.NORTHBOUND);
         } else {
             return null;
         }

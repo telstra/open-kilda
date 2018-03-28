@@ -64,3 +64,27 @@ Feature: Northbound tests
   This scenario setups flows across the entire set of switches and checks that these flows could be read from database
 
     Then flows dump contains 5 flows
+
+  @MVP1
+  Scenario: Delete non-default rules from a switch
+
+  This scenario setups a flow through a switch, deletes non-default rules from the switch and checks that the traffic is not pingable
+
+    Then flow nbdnr creation request with de:ad:be:ef:00:00:00:02 1 0 and de:ad:be:ef:00:00:00:03 2 0 and 1000 is successful
+    And flow nbdnr in UP state
+    And traffic through de:ad:be:ef:00:00:00:02 1 0 and de:ad:be:ef:00:00:00:03 2 0 and 1000 is pingable
+
+    Then delete all non-default rules on de:ad:be:ef:00:00:00:03 switch
+    And traffic through de:ad:be:ef:00:00:00:02 1 0 and de:ad:be:ef:00:00:00:03 2 0 and 1000 is not pingable
+
+  @MVP1
+  Scenario: Delete all rules from a switch
+
+  This scenario setups a flow through a switch, deletes all rules from the switch and checks that the traffic is not pingable
+
+    Then flow nbdar creation request with de:ad:be:ef:00:00:00:02 1 0 and de:ad:be:ef:00:00:00:03 2 0 and 1000 is successful
+    And flow nbdar in UP state
+    And traffic through de:ad:be:ef:00:00:00:02 1 0 and de:ad:be:ef:00:00:00:03 2 0 and 1000 is pingable
+
+    Then delete all rules on de:ad:be:ef:00:00:00:03 switch
+    And traffic through de:ad:be:ef:00:00:00:02 1 0 and de:ad:be:ef:00:00:00:03 2 0 and 1000 is not pingable

@@ -30,6 +30,7 @@ import org.openkilda.floodlight.message.command.encapsulation.ReplaceSchemeOutpu
 import org.openkilda.floodlight.pathverification.IPathVerificationService;
 import org.openkilda.floodlight.pathverification.PathVerificationService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
+import org.openkilda.floodlight.switchmanager.MeterPool;
 import org.openkilda.floodlight.switchmanager.SwitchEventCollector;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
 import org.openkilda.messaging.command.CommandData;
@@ -252,7 +253,7 @@ public class ReplaceInstallFlowTest {
 
         // create parser instance
         ConsumerContext kafkaContext = new ConsumerContext(context, collector);
-        RecordHandler parseRecord = new RecordHandler(kafkaContext, record);
+        RecordHandler parseRecord = new RecordHandler(kafkaContext, record, new MeterPool());
         // init test mocks
         Capture<OFFlowAdd> flowAddCapture = flowCommand == null ? null : newCapture(CaptureType.ALL);
         Capture<OFMeterMod> meterAddCapture = meterCommand == null ? null : newCapture(CaptureType.ALL);

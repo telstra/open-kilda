@@ -17,6 +17,7 @@ package org.openkilda.pce.cache;
 
 import org.openkilda.messaging.error.CacheException;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.info.event.NetworkTopologyChange;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
@@ -189,6 +190,21 @@ public class FlowCache extends Cache {
         return flowPool.values().stream().filter(flow ->
                 flow.getLeft().getFlowPath().getPath().contains(node)
                         || flow.getRight().getFlowPath().getPath().contains(node))
+                .collect(Collectors.toSet());
+    }
+
+    /**
+     * Gets flows with specified switch and port in the path.
+     *
+     * @param portData port
+     * @return set of flows
+     */
+    public Set<ImmutablePair<Flow, Flow>> getActiveFlowsWithAffectedPath(PortInfoData portData) {
+        PathNode node = new PathNode(portData.getSwitchId(), portData.getPortNo(), 0);
+        return flowPool.values().stream()
+                .filter(flow -> flow.getLeft().getFlowPath().getPath().contains(node)
+                        || flow.getRight().getFlowPath().getPath().contains(node))
+                .filter(flow -> flow.getLeft().getState().isActive())
                 .collect(Collectors.toSet());
     }
 
