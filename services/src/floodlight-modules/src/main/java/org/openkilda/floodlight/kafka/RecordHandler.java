@@ -16,6 +16,7 @@ import org.openkilda.messaging.command.CommandWithReplyToMessage;
 import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
 import org.openkilda.messaging.command.discovery.DiscoverPathCommandData;
 import org.openkilda.messaging.command.discovery.NetworkCommandData;
+import org.openkilda.messaging.command.discovery.PortsCommandData;
 import org.openkilda.messaging.command.flow.InstallEgressFlow;
 import org.openkilda.messaging.command.flow.InstallIngressFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
@@ -25,8 +26,10 @@ import org.openkilda.messaging.command.switches.*;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.NetworkInfoData;
+import org.openkilda.messaging.info.discovery.SwitchPortsData;
 import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
@@ -37,11 +40,12 @@ import org.openkilda.messaging.payload.flow.OutputVlanType;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.projectfloodlight.openflow.protocol.OFPortDesc;
+import org.projectfloodlight.openflow.protocol.OFPortState;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -333,8 +337,6 @@ class RecordHandler implements Runnable {
 
         context.getKafkaProducer().postMessage(OUTPUT_DISCO_TOPIC, infoMessage);
     }
-
-
     private void doInstallSwitchRules(final CommandMessage message, String replyToTopic, Destination replyDestination) {
         SwitchRulesInstallRequest request = (SwitchRulesInstallRequest) message.getData();
         logger.debug("Installing rules on '{}' switch: action={}", request.getSwitchId(), request.getInstallRulesAction());
@@ -459,7 +461,6 @@ class RecordHandler implements Runnable {
         context.getKafkaProducer().postMessage(replyToTopic, infoMessage);
 
     }
-
 
     private void parseRecord(ConsumerRecord<String, String> record) {
         try {

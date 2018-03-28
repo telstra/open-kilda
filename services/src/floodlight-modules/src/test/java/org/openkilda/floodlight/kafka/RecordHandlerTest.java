@@ -1,10 +1,7 @@
 package org.openkilda.floodlight.kafka;
 
-import static org.easymock.EasyMock.anyObject;
-import static org.easymock.EasyMock.eq;
-import static org.easymock.EasyMock.expect;
-import static org.easymock.EasyMock.verify;
-
+import org.easymock.Capture;
+import org.junit.Assert;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
 import org.openkilda.messaging.Destination;
@@ -12,7 +9,11 @@ import org.openkilda.messaging.Topic;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.discovery.NetworkCommandData;
+import org.openkilda.messaging.command.discovery.PortsCommandData;
 import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.discovery.SwitchPortsData;
+import org.openkilda.messaging.info.event.PortChangeType;
+import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
 
@@ -25,10 +26,18 @@ import org.easymock.EasyMockSupport;
 import org.junit.Before;
 import org.junit.Test;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
+import org.projectfloodlight.openflow.protocol.OFPortState;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import static org.easymock.EasyMock.*;
+import static org.hamcrest.Matchers.is;
 
 public class RecordHandlerTest extends EasyMockSupport {
     private static final String OUTPUT_DISCO_TOPIC = Topic.TOPO_DISCO;
@@ -132,4 +141,58 @@ public class RecordHandlerTest extends EasyMockSupport {
 
         // TODO: verify content of InfoMessage in producer.postMessage
     }
+
+//    @Test
+//    public void portDumpTest() {
+//        DatapathId dpid = DatapathId.of("de:ad:be:ef:00:00:00:00");
+//
+//        OFSwitch iofSwitch1 = mock(OFSwitch.class);
+//        Map<DatapathId, IOFSwitch> switches = ImmutableMap.of(
+//                DatapathId.of(1), iofSwitch1);
+//        expect(switchManager.getAllSwitchMap()).andReturn(switches);
+//        expect(iofSwitch1.getId()).andReturn(dpid).anyTimes();
+//
+//        OFPortDesc ofPortDesc1 = mock(OFPortDesc.class);
+//        OFPortDesc ofPortDesc2 = mock(OFPortDesc.class);
+//
+//        Set<OFPortState> portStateUp = new HashSet<>();
+//        portStateUp.add(OFPortState.LIVE);
+//
+//        expect(iofSwitch1.getPorts()).andReturn(ImmutableList.of(
+//                ofPortDesc1, ofPortDesc2));
+//        expect(ofPortDesc1.getPortNo()).andReturn(OFPort.ofInt(1));
+//        expect(ofPortDesc1.getState()).andReturn(portStateUp);
+//        expect(ofPortDesc2.getPortNo()).andReturn(OFPort.ofInt(2));
+//        expect(ofPortDesc2.getState()).andReturn(portStateUp);
+//
+//        long timestamp = System.currentTimeMillis();
+//
+//        Capture<String> capturedTopic = new Capture<>();
+//        Capture<InfoMessage> capturedMessage = new Capture<>();
+//        producer.postMessage(capture(capturedTopic), capture(capturedMessage));
+//
+//        replayAll();
+//
+//        CommandMessage command = new CommandMessage(new PortsCommandData("test-requester"), System.currentTimeMillis(),
+//                Utils.SYSTEM_CORRELATION_ID, Destination.WFM);
+//        handler.handleMessage(command);
+//        verify(producer);
+//
+//        // Ugly hack below to ensure timestamps are equal
+//        SwitchPortsData switchPortsData = new SwitchPortsData(
+//                Stream.of(1, 2)
+//                        .map(port -> new PortInfoData(dpid.toString(), port, null, PortChangeType.UP))
+//                        .collect(Collectors.toSet()),
+//                "test-requester");
+//        switchPortsData.setTimestamp(capturedMessage.getValue().getTimestamp());
+//
+//        InfoMessage expectedMessage = new InfoMessage(
+//                switchPortsData,
+//                capturedMessage.getValue().getTimestamp(),
+//                Utils.SYSTEM_CORRELATION_ID,
+//                Destination.WFM
+//        );
+//
+//        Assert.assertEquals(expectedMessage, capturedMessage.getValue());
+//    }
 }
