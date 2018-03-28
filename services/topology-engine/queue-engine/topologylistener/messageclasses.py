@@ -43,13 +43,31 @@ MT_SWITCH_RULES = "org.openkilda.messaging.info.rule.SwitchFlowEntries"
 #feature toggle is the functionality to turn off/on specific features
 MT_STATE_TOGGLE = "org.openkilda.messaging.command.system.FeatureToggleStateRequest"
 MT_TOGGLE = "org.openkilda.messaging.command.system.FeatureToggleRequest"
+MT_NETWORK_TOPOLOGY_CHANGE = (
+    "org.openkilda.messaging.info.event.NetworkTopologyChange")
 CD_NETWORK = "org.openkilda.messaging.command.discovery.NetworkCommandData"
+
+
+FEATURE_SYNC_OFRULES = 'sync_rules_on_activation'
+FEATURE_REROUTE_ON_ISL_DISCOVERY = 'flows_reroute_on_isl_discovery'
+
+features_status = {
+    FEATURE_SYNC_OFRULES: True,
+    FEATURE_REROUTE_ON_ISL_DISCOVERY: True
+}
+
+features_status_app_to_transport_map = {
+    FEATURE_SYNC_OFRULES: 'sync_rules',
+    FEATURE_REROUTE_ON_ISL_DISCOVERY: 'reflow_on_switch_activation'
+}
+features_status_transport_to_app_map = {
+    transport: app
+    for app, transport in features_status_app_to_transport_map.items()}
+
 
 # This is used for blocking on flow changes.
 # flow_sem = multiprocessing.Semaphore()
 neo4j_update_lock = threading.RLock()
-
-sync_rules_on_activation = True
 
 
 class MessageItem(object):
@@ -105,6 +123,7 @@ class MessageItem(object):
             if event_handled:
                 message_utils.send_cache_message(self.payload,
                                                  self.correlation_id)
+                self.handle_topology_change()
 
             elif self.get_message_type() == MT_FLOW_INFODATA:
                 event_handled = self.flow_operation()
@@ -115,7 +134,7 @@ class MessageItem(object):
             elif self.get_message_type() == MT_STATE_TOGGLE:
                 event_handled = self.get_feature_toggle_state()
             elif self.get_message_type() == MT_TOGGLE:
-                event_handled = self.get_feature_toggle_state()
+                event_handled = self.update_feature_toggles()
 
             elif self.get_message_type() == MT_SWITCH_EXTENDED:
                 if sync_rules_on_activation:
@@ -396,6 +415,26 @@ class MessageItem(object):
             return False
 
         return True
+
+    def handle_topology_change(self):
+        if self.get_message_type() != MT_ISL:
+            return
+        if self.payload['state'] != "DISCOVERED":
+            return
+        if not features_status[FEATURE_REROUTE_ON_ISL_DISCOVERY]:
+            return
+
+        path = self.payload['path']
+        node = path[0]
+
+        payload = {
+            'clazz': MT_NETWORK_TOPOLOGY_CHANGE,
+            'type': 'ENDPOINT_ADD',
+            'switch_id': node['switch_id'],
+            'port_number': node['port_no']}
+
+        message_utils.send_cache_message(
+                payload, self.correlation_id)
 
     @staticmethod
     def create_flow(flow_id, flow, correlation_id, tx, propagate=True):
@@ -720,15 +759,31 @@ class MessageItem(object):
         return True
 
     def get_feature_toggle_state(self):
-        message = message_utils.build_load_sync_rules(sync_rules_on_activation)
-        message_utils.send_to_topic(message, self.correlation_id,
+        payload = message_utils.make_features_status_response()
+        for feature, status in features_status.items():
+            transport_key = features_status_app_to_transport_map[feature]
+            setattr(payload, transport_key, status)
+
+        message_utils.send_to_topic(payload, self.correlation_id,
                                     message_type=message_utils.MT_INFO,
                                     destination="NORTHBOUND",
                                     topic=config.KAFKA_NORTHBOUND_TOPIC)
         return True
 
     def update_feature_toggles(self):
-        sync_rules_on_activation = self.payload['sync_rules_on_activation']
+        for transport_key in features_status_transport_to_app_map:
+            app_key = features_status_transport_to_app_map[transport_key]
+            try:
+                status = self.payload[transport_key]
+            except KeyError:
+                continue
+
+            current = features_status[app_key]
+            logger.info(
+                    'Set feature %s status to %s, previous value %s',
+                    app_key, status, current)
+            features_status[app_key] = status
+
         return True
 
     # todo(Nikita C): refactor/move to separate class

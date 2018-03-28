@@ -13,11 +13,11 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.dto;
+package org.openkilda.messaging.payload;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public class FeatureToggleDto {
+public class FeatureTogglePayload {
 
     @JsonProperty(value = "sync_rules")
     private Boolean syncRulesEnabled;
@@ -25,7 +25,7 @@ public class FeatureToggleDto {
     @JsonProperty(value = "reflow_on_switch_activation")
     private Boolean reflowOnSwitchActivationEnabled;
 
-    public FeatureToggleDto(
+    public FeatureTogglePayload(
             @JsonProperty(value = "sync_rules") Boolean syncRulesEnabled,
             @JsonProperty(value = "reflow_on_switch_activation") Boolean reflowOnSwitchActivationEnabled) {
         this.syncRulesEnabled = syncRulesEnabled;
@@ -42,7 +42,7 @@ public class FeatureToggleDto {
 
     @Override
     public String toString() {
-        return "FeatureToggleDto{" +
+        return "FeatureTogglePayload{" +
                 "syncRulesEnabled=" + syncRulesEnabled +
                 ", reflowOnSwitchActivationEnabled=" + reflowOnSwitchActivationEnabled +
                 '}';
