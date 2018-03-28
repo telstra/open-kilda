@@ -1,10 +1,7 @@
-package org.openkilda.atdd.staging.utils;
+package org.openkilda.atdd.staging.service.traffexam.networkpool;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-
-import org.openkilda.atdd.staging.service.traffexam.networkpool.Inet4Network;
-import org.openkilda.atdd.staging.service.traffexam.networkpool.Inet4ValueException;
 
 import org.junit.Test;
 

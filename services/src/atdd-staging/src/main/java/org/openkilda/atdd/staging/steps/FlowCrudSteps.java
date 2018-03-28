@@ -58,6 +58,7 @@ import org.openkilda.messaging.payload.flow.FlowState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -65,16 +66,10 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 
 public class FlowCrudSteps implements En {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(FlowCrudSteps.class);
-
-    // The retrier is used for repeating operations which depend on the system state and may change the result after delays.
-    private final RetryPolicy retryPolicy = new RetryPolicy()
-            .withDelay(2, TimeUnit.SECONDS)
-            .withMaxRetries(10);
 
     @Autowired
     private NorthboundService northboundService;
@@ -90,6 +85,10 @@ public class FlowCrudSteps implements En {
 
     @Autowired
     private TraffExamService traffExam;
+
+    @Autowired
+    @Qualifier("topologyEngineRetryPolicy")
+    private RetryPolicy retryPolicy;
 
     @VisibleForTesting
     Set<FlowPayload> flows = emptySet();
@@ -154,7 +153,7 @@ public class FlowCrudSteps implements En {
 
         for (Flow expectedFlow : expextedFlows) {
             ImmutablePair<Flow, Flow> flowPair = Failsafe.with(retryPolicy
-                    .abortIf(Objects::nonNull))
+                    .retryWhen(null))
                     .get(() -> topologyEngineService.getFlow(expectedFlow.getFlowId()));
 
             assertNotNull(format("The flow '%s' is missing.", expectedFlow.getFlowId()), flowPair);
@@ -167,7 +166,7 @@ public class FlowCrudSteps implements En {
     public void eachFlowIsInUpState() {
         for (FlowPayload flow : flows) {
             FlowIdStatusPayload status = Failsafe.with(retryPolicy
-                    .abortIf(p -> p != null && FlowState.UP == ((FlowIdStatusPayload) p).getStatus()))
+                    .retryIf(p -> p == null || ((FlowIdStatusPayload) p).getStatus() != FlowState.UP))
                     .get(() -> northboundService.getFlowStatus(flow.getId()));
 
             assertNotNull(status);
@@ -322,7 +321,8 @@ public class FlowCrudSteps implements En {
     public void eachFlowCanNotBeReadFromNorthbound() {
         for (FlowPayload flow : flows) {
             FlowPayload result = Failsafe.with(retryPolicy
-                    .abortIf(Objects::isNull))
+                    .abortWhen(null)
+                    .retryIf(Objects::nonNull))
                     .get(() -> northboundService.getFlow(flow.getId()));
 
             assertNull(format("The flow '%s' exists.", flow.getId()), result);
@@ -333,7 +333,8 @@ public class FlowCrudSteps implements En {
     public void eachFlowCanNotBeReadFromTopologyEngine() {
         for (FlowPayload flow : flows) {
             ImmutablePair<Flow, Flow> result = Failsafe.with(retryPolicy
-                    .abortIf(Objects::isNull))
+                    .abortWhen(null)
+                    .retryIf(Objects::nonNull))
                     .get(() -> topologyEngineService.getFlow(flow.getId()));
 
             assertNull(format("The flow '%s' exists.", flow.getId()), result);

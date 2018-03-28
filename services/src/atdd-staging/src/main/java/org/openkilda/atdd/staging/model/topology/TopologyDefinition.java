@@ -18,6 +18,7 @@ package org.openkilda.atdd.staging.model.topology;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.unmodifiableList;
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
@@ -32,6 +33,7 @@ import lombok.Value;
 import lombok.experimental.NonFinal;
 
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -79,6 +81,13 @@ public class TopologyDefinition {
         return switches.stream()
                 .filter(Switch::isActive)
                 .collect(toList());
+    }
+
+    public Set<String> getSkippedSwitchIds() {
+        return switches.stream()
+                .filter(sw -> sw.getStatus() == Status.Skip)
+                .map(Switch::getDpId)
+                .collect(toSet());
     }
 
     public List<Isl> getIslsForActiveSwitches() {

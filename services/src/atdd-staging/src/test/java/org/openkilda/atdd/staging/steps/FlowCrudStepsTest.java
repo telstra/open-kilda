@@ -79,10 +79,10 @@ public class FlowCrudStepsTest {
         assertEquals(1, flows.size());
         assertThat(flows, hasItem(allOf(
                 hasProperty("source", allOf(
-                        hasProperty("portId", equalTo(20)),
+                        hasProperty("portId", equalTo(10)),
                         hasProperty("vlanId", equalTo(1)))),
                 hasProperty("destination", allOf(
-                        hasProperty("portId", equalTo(20)),
+                        hasProperty("portId", equalTo(10)),
                         hasProperty("vlanId", equalTo(1))))
         )));
     }
@@ -104,19 +104,19 @@ public class FlowCrudStepsTest {
 
         assertThat(flows, hasItem(allOf(
                 hasProperty("source", allOf(
-                        hasProperty("portId", equalTo(20)),
+                        hasProperty("portId", equalTo(10)),
                         hasProperty("vlanId", equalTo(1)))),
                 hasProperty("destination", allOf(
-                        hasProperty("portId", equalTo(20)),
+                        hasProperty("portId", equalTo(10)),
                         hasProperty("vlanId", equalTo(1))))
         )));
 
         assertThat(flows, hasItem(allOf(
                 hasProperty("source", allOf(
-                        hasProperty("portId", equalTo(20)),
+                        hasProperty("portId", equalTo(10)),
                         hasProperty("vlanId", equalTo(2)))),
                 hasProperty("destination", allOf(
-                        hasProperty("portId", equalTo(20)),
+                        hasProperty("portId", equalTo(10)),
                         hasProperty("vlanId", equalTo(2))))
         )));
     }
@@ -150,10 +150,10 @@ public class FlowCrudStepsTest {
 
         assertThat(flows, hasItem(allOf(
                 hasProperty("source", allOf(
-                        hasProperty("portId", equalTo(20)),
+                        hasProperty("portId", equalTo(10)),
                         hasProperty("vlanId", equalTo(1)))),
                 hasProperty("destination", allOf(
-                        hasProperty("portId", equalTo(20)),
+                        hasProperty("portId", equalTo(10)),
                         hasProperty("vlanId", equalTo(50))))
         )));
     }

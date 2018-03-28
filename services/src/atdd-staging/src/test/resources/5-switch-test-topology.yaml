@@ -4,9 +4,9 @@ switches:
       of_version: OF_13
       status: active
       out_ports:
-        - port: 20
+        - port: 10
           vlan_range: 1..5, 22, 35..40
-        - port: 21
+        - port: 11
           vlan_range: 1..10
 
     - name: sw2
@@ -14,7 +14,7 @@ switches:
       of_version: OF_13
       status: active
       out_ports:
-        - port: 20
+        - port: 10
           vlan_range: 1..5
 
     - name: sw3
@@ -22,9 +22,9 @@ switches:
       of_version: OF_13
       status: active
       out_ports:
-        - port: 20
+        - port: 10
           vlan_range: 1..10
-        - port: 22
+        - port: 11
           vlan_range: 1..10
 
     - name: sw4
@@ -32,7 +32,7 @@ switches:
       of_version: OF_13
       status: active
       out_ports:
-        - port: 20
+        - port: 10
           vlan_range: 50
 
     - name: sw5
@@ -88,14 +88,21 @@ trafgens:
       iface: eth0
       control_endpoint: http://192.168.0.1:80/
       switch: sw1
-      switch_port: 11
+      switch_port: 10
       status: active
 
     - name: tg2
       iface: eth0
       control_endpoint: http://192.168.0.2:80/
+      switch: sw2
+      switch_port: 10
+      status: active
+
+    - name: tg3
+      iface: eth0
+      control_endpoint: http://192.168.0.3:80/
       switch: sw3
-      switch_port: 11
+      switch_port: 10
       status: active
 
 trafgen_config:

@@ -3,6 +3,8 @@ Feature: Flow CRUD
 
   Background:
     Given a reference topology
+    And all defined switches are discovered
+    And all defined links are detected
 
   Scenario: Create, read, update and delete flows across the entire set of switches
 

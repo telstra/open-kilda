@@ -16,6 +16,7 @@
 package org.openkilda.atdd.staging.config;
 
 import com.google.common.io.CharStreams;
+import net.jodah.failsafe.RetryPolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,6 +35,7 @@ import org.springframework.web.util.DefaultUriBuilderFactory;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.concurrent.TimeUnit;
 
 @Configuration
 @Profile("default")
@@ -65,6 +67,14 @@ public class ServiceConfig {
         return buildRestTemplateWithAuth(endpoint, username, password);
     }
 
+    // The retrier is used for repeating operations which depend on the system state and may change the result after delays.
+    @Bean(name = "topologyEngineRetryPolicy")
+    public RetryPolicy retryPolicy() {
+        return new RetryPolicy()
+                .withDelay(2, TimeUnit.SECONDS)
+                .withMaxRetries(10);
+    }
+
     @Bean(name = "traffExamRestTemplate")
     public RestTemplate traffExamRestTemplate() {
         return new RestTemplate();
@@ -84,7 +94,7 @@ public class ServiceConfig {
 
             @Override
             public void handleError(ClientHttpResponse clientHttpResponse) throws IOException {
-                if(clientHttpResponse.getStatusCode() != HttpStatus.NOT_FOUND) {
+                if (clientHttpResponse.getStatusCode() != HttpStatus.NOT_FOUND) {
                     LOGGER.error("HTTP response with status {} and body '{}'", clientHttpResponse.getStatusCode(),
                             CharStreams.toString(new InputStreamReader(clientHttpResponse.getBody())));
                 }

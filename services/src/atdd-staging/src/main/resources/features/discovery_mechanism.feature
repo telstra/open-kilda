@@ -6,7 +6,9 @@ Feature: Discovery Tests
 
   Scenario: Test discovery mechanism
 
-    Then all provided switches should be discovered
-    And all provided links should be detected
-    And floodlight should not find redundant switches
+    Given a reference topology
+    And all defined switches are discovered
+    And all defined links are detected
+
+    Then floodlight should not find redundant switches
     And default rules for switches are installed
