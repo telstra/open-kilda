@@ -1,5 +1,7 @@
 package org.openkilda.atdd.staging.service.traffexam;
 
+import static java.util.Collections.unmodifiableMap;
+
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition.Trafgen;
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition.TrafgenConfig;
@@ -20,7 +22,6 @@ import org.openkilda.atdd.staging.service.traffexam.model.ReportResponse;
 import org.openkilda.atdd.staging.service.traffexam.networkpool.Inet4Network;
 import org.openkilda.atdd.staging.service.traffexam.networkpool.Inet4NetworkPool;
 import org.openkilda.atdd.staging.service.traffexam.networkpool.Inet4ValueException;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
@@ -38,8 +39,15 @@ import java.net.Inet4Address;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.UnknownHostException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.InputMismatchException;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import javax.annotation.PostConstruct;
 
 @Service
 public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
@@ -50,27 +58,44 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
     @Qualifier("traffExamRestTemplate")
     private RestTemplate restTemplate;
 
-    private Map<UUID, Host> hostsPool = new HashMap<>();
+    @Autowired
+    private TopologyDefinition topology;
 
+    private Map<UUID, Host> hostsPool;
     private Inet4NetworkPool addressPool;
 
     private Map<UUID, Address> suppliedAddresses = new HashMap<>();
     private Map<UUID, HostResource> suppliedEndpoints = new HashMap<>();
     private List<HostResource> failedToRelease = new LinkedList<>();
 
-    public TraffExamServiceImpl(TopologyDefinition topology) {
+    @PostConstruct
+    void initializePools() {
+        hostsPool = new HashMap<>();
+
         for (Trafgen trafgen : topology.getActiveTrafgens()) {
-            UUID id = UUID.randomUUID();
+            URI controlEndpoint;
             try {
-                Host host = new Host(
-                        id, trafgen.getIfaceName(), new URI(trafgen.getControlEndpoint()), trafgen.getName());
-                hostsPool.put(id, host);
+                controlEndpoint = new URI(trafgen.getControlEndpoint());
             } catch (URISyntaxException e) {
-                throw new InputMismatchException(String.format(
+                throw new IllegalArgumentException(String.format(
                         "Invalid trafgen(%s) REST endpoint address \"%s\": %s",
-                        trafgen.getName(), trafgen.getControlEndpoint(), e));
+                        trafgen.getName(), trafgen.getControlEndpoint(), e.getMessage()), e);
             }
+
+            UUID id = UUID.randomUUID();
+            Host host = new Host(id, trafgen.getIfaceName(), controlEndpoint, trafgen.getName());
+
+            try {
+                restTemplate.headForHeaders(makeHostUri(host).path("endpoint").build());
+            }catch (RestClientException ex) {
+                throw new IllegalArgumentException(String.format(
+                        "The trafgen(%s) REST endpoint address \"%s\" can't be reached: %s",
+                        trafgen.getName(), trafgen.getControlEndpoint(), ex.getMessage()), ex);
+            }
+
+            hostsPool.put(id, host);
         }
+        hostsPool = unmodifiableMap(hostsPool);
 
         TrafgenConfig config = topology.getTrafgenConfig();
         Inet4Network network;

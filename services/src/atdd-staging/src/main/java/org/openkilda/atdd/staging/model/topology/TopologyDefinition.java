@@ -221,6 +221,7 @@ public class TopologyDefinition {
     public List<Trafgen> getActiveTrafgens() {
         return trafgens.stream()
                 .filter(Trafgen::isActive)
+                .filter(trafgen -> trafgen.getSwitchConnected().isActive())
                 .collect(Collectors.toList());
     }
 

@@ -32,7 +32,7 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * A container for flows ({@link FlowPayload}).
+ * A builder for flows ({@link FlowPayload}) in nonoverlapped VLANs.
  */
 public class FlowSetBuilder {
 

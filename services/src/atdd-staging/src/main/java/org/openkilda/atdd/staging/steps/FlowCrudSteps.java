@@ -22,11 +22,11 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
 
 import com.google.common.annotations.VisibleForTesting;
 import cucumber.api.java.en.And;
@@ -49,10 +49,7 @@ import org.openkilda.atdd.staging.service.traffexam.model.ExamReport;
 import org.openkilda.atdd.staging.service.traffexam.model.FlowBidirectionalExam;
 import org.openkilda.atdd.staging.steps.helpers.FlowSetBuilder;
 import org.openkilda.atdd.staging.steps.helpers.FlowTrafficExamBuilder;
-import org.openkilda.atdd.staging.steps.helpers.TopologyChecker;
-import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
-import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
@@ -97,24 +94,7 @@ public class FlowCrudSteps implements En {
     @VisibleForTesting
     Set<FlowPayload> flows = emptySet();
 
-    @Given("^a reference topology$")
-    public void checkTheTopology() {
-        List<TopologyDefinition.Switch> referenceSwitches = topologyDefinition.getActiveSwitches();
-        List<SwitchInfoData> actualSwitches = topologyEngineService.getActiveSwitches();
-
-        assertFalse("No switches were discovered", actualSwitches.isEmpty());
-        assertTrue("Expected and discovered switches are different",
-                TopologyChecker.matchSwitches(actualSwitches, referenceSwitches));
-
-        List<TopologyDefinition.Isl> referenceLinks = topologyDefinition.getIslsForActiveSwitches();
-        List<IslInfoData> actualLinks = topologyEngineService.getAllLinks();
-
-        assertFalse("No links were discovered", actualLinks.isEmpty());
-        assertTrue("Reference links were not discovered / not provided",
-                TopologyChecker.matchLinks(actualLinks, referenceLinks));
-    }
-
-    @Given("^flows over all switches$")
+    @Given("^flows defined over all switches$")
     public void defineFlowsOverAllSwitches() {
         FlowSetBuilder builder = new FlowSetBuilder();
 
@@ -126,8 +106,7 @@ public class FlowCrudSteps implements En {
                         return;
                     }
 
-                    List<PathInfoData> paths =
-                            topologyEngineService.getPaths(srcSwitch.getDpId(), dstSwitch.getDpId());
+                    List<PathInfoData> paths = topologyEngineService.getPaths(srcSwitch.getDpId(), dstSwitch.getDpId());
                     if (!paths.isEmpty()) {
                         String flowId = format("%s-%s", srcSwitch.getName(), dstSwitch.getName());
                         builder.addFlowInUniqueVlan(flowId, srcSwitch, dstSwitch);
@@ -185,7 +164,7 @@ public class FlowCrudSteps implements En {
     }
 
     @And("^each flow is in UP state$")
-    public void eachFlowIsInUPState() {
+    public void eachFlowIsInUpState() {
         for (FlowPayload flow : flows) {
             FlowIdStatusPayload status = Failsafe.with(retryPolicy
                     .abortIf(p -> p != null && FlowState.UP == ((FlowIdStatusPayload) p).getStatus()))
@@ -204,6 +183,7 @@ public class FlowCrudSteps implements En {
         for (FlowPayload flow : flows) {
             FlowPayload result = northboundService.getFlow(flow.getId());
             assertNotNull(result);
+            assertEquals(flow.getId(), result.getId());
         }
     }
 

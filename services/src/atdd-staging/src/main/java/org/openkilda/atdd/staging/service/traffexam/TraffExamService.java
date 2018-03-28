@@ -4,11 +4,8 @@ import org.openkilda.atdd.staging.service.traffexam.model.Exam;
 import org.openkilda.atdd.staging.service.traffexam.model.ExamReport;
 import org.openkilda.atdd.staging.service.traffexam.model.Host;
 
-import org.springframework.stereotype.Service;
-
 import java.util.List;
 
-@Service
 public interface TraffExamService {
     List<Host> listHosts();
     Host hostByName(String name) throws NoResultsFoundException;

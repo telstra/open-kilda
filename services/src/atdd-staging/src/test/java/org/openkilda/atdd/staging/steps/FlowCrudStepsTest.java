@@ -122,7 +122,7 @@ public class FlowCrudStepsTest {
     }
 
     @Test
-    public void shouldDefineFlowsOverTheSameSwitches() {
+    public void shouldSkipFlowsOverTheSameSwitches() {
         // given
         when(topologyEngineService.getPaths(eq("00:00:00:00:00:01"), eq("00:00:00:00:00:01")))
                 .thenReturn(singletonList(new PathInfoData()));
@@ -132,16 +132,7 @@ public class FlowCrudStepsTest {
 
         // then
         final Set<FlowPayload> flows = flowCrudSteps.flows;
-        assertEquals(1, flows.size());
-
-        assertThat(flows, hasItem(allOf(
-                hasProperty("source", allOf(
-                        hasProperty("portId", equalTo(20)),
-                        hasProperty("vlanId", equalTo(1)))),
-                hasProperty("destination", allOf(
-                        hasProperty("portId", equalTo(21)),
-                        hasProperty("vlanId", equalTo(1))))
-        )));
+        assertEquals(0, flows.size());
     }
 
     @Test
@@ -165,21 +156,6 @@ public class FlowCrudStepsTest {
                         hasProperty("portId", equalTo(20)),
                         hasProperty("vlanId", equalTo(50))))
         )));
-    }
-
-    @Test
-    public void failDefineFlowsWithPortConflict() {
-        // given
-        when(topologyEngineService.getPaths(eq("00:00:00:00:00:02"), eq("00:00:00:00:00:02")))
-                .thenReturn(singletonList(new PathInfoData()));
-
-        expectedException.expect(IllegalStateException.class);
-
-        // when
-        flowCrudSteps.defineFlowsOverAllSwitches();
-
-        // then
-        fail();
     }
 
     @Test

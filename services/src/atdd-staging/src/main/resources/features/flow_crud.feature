@@ -6,7 +6,7 @@ Feature: Flow CRUD
 
   Scenario: Create, read, update and delete flows across the entire set of switches
 
-    Given flows over all switches
+    Given flows defined over all switches
     And each flow has unique flow_id
     And each flow has max bandwidth set to 10000
 
