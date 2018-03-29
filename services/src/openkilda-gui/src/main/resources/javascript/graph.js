@@ -117,7 +117,25 @@ zoom = d3.behavior.zoom()
 //create force layout
 force = d3.layout.force()
 	.charge(-990)
-	.linkDistance(160)
+	.linkDistance(function(d) { 
+		var distance = 150;
+		try{
+			if(d.latency <= 10) {
+				distance = 70;
+			} else if(d.latency > 10 && d.latency <= 20) {
+				distance = 150;
+			} else if(d.latency > 20 && d.latency <= 30) {
+				distance = 250;
+			}else if(d.latency > 30 && d.latency <= 50) {
+				distance = 550;
+			} else if(d.latency > 50 && d.latency <= 100) {
+				distance = 750;
+			} else {
+				distance = 1000;
+			}
+		}catch(e){}
+        return distance; 
+    })
 	.size([width, height])
 	.on("tick", tick);
 
@@ -714,7 +732,13 @@ function searchNode(value) {
 	        var selected = node.filter(function (d, i) {
 	            return d.name != selectedVal;
 	        });
+	        
+	        var matched = node.filter(function (d, i) {
+	            return d.name == selectedVal;
+	        });
 	        selected.style("opacity", "0");
+	        
+	        matched.selectAll("circle").attr("class", "nodeover");
 	        
 	        var link = svg.selectAll(".link")
 	        link.style("opacity", "0");
@@ -725,6 +749,8 @@ function searchNode(value) {
 	        d3.selectAll(".node, .link, .flow-circle").transition()
 	            .duration(5000)
 	            .style("opacity", 1);
+	        selected.selectAll("circle")
+        		.attr("class", "circle")
 	    }
     }
 }

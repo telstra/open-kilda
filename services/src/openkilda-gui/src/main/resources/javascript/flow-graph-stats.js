@@ -50,10 +50,10 @@ $(document).ready(function() {
 	$("#datetimepicker7").val(YesterDayDate);	
 	$("#datetimepicker8").val(EndDate);
 	$('#datetimepicker7').datetimepicker({
-		  format:'Y/m/d h:i:s',
+		  format:'Y/m/d H:i:s',
 	});
 	$('#datetimepicker8').datetimepicker({
-		  format:'Y/m/d h:i:s',
+		  format:'Y/m/d H:i:s',
 	});
 	$('#datetimepicker_dark').datetimepicker({theme:'dark'})
 	var selMetric="packets";

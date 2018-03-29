@@ -40,15 +40,15 @@ $(document).ready(function() {
     var EndDate = moment(date).format("YYYY/MM/DD HH:mm:ss");
 	var convertedStartDate = moment(YesterDayDate).format("YYYY-MM-DD-HH:mm:ss");
 	var convertedEndDate = moment(EndDate).format("YYYY-MM-DD-HH:mm:ss");
-	var downsampling = "1s";
+	var downsampling = "10m";
 	$("#downsamplingISL").val(downsampling)
 	$("#datetimepicker7ISL").val(YesterDayDate);
 	$("#datetimepicker8ISL").val(EndDate);
 	$('#datetimepicker7ISL').datetimepicker({
-		  format:'Y/m/d h:i:s',
+		  format:'Y/m/d H:i:s',
 	});
 	$('#datetimepicker8ISL').datetimepicker({
-		  format:'Y/m/d h:i:s',
+		  format:'Y/m/d H:i:s',
 	});
 	$('#datetimepicker_dark').datetimepicker({theme:'dark'})
 		

@@ -97,7 +97,7 @@ public class StatsIntegrationService {
     }
 
     private Query getQuery(final String downsample, final String metric,
-            final Map<String, String[]> params, Integer index) {
+            final Map<String, String[]> params, Integer index,StatsType statsType) {
         List<Filter> filters = new ArrayList<Filter>();
         String paramDownSample = "";
         if (params != null) {
@@ -111,7 +111,9 @@ public class StatsIntegrationService {
         } 
         Query query = new Query();
         query.setAggregator(OpenTsDB.AGGREGATOR);
-        query.setRate(Boolean.valueOf(OpenTsDB.RATE));
+        if (!statsType.equals(StatsType.ISL)) {
+            query.setRate(Boolean.valueOf(OpenTsDB.RATE));
+        }
         if(validateDownSample(paramDownSample, query))
         	query.setDownsample(paramDownSample);
         query.setMetric(metric);
@@ -161,7 +163,7 @@ public class StatsIntegrationService {
         if(metricList != null && !metricList.isEmpty()){
         	for(int index = 0; index < metricList.size(); index++){
         		String metricName = metricList.get(index);
-        		queries.add(getQuery(downsample, metricName, params, index));
+        		queries.add(getQuery(downsample, metricName, params, index,statsType));
         	}
         }
         
