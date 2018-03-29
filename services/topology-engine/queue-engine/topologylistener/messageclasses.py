@@ -23,6 +23,8 @@ import config
 import flow_utils
 import message_utils
 
+from py2neo import Node
+
 logger = logging.getLogger(__name__)
 graph = flow_utils.graph
 switch_states = {
@@ -181,23 +183,19 @@ class MessageItem(object):
 
         logger.info('Switch %s creation request: timestamp=%s',
                     switch_id, self.timestamp)
-        query = (
-            "MERGE (a:switch{{name:'{}'}}) "
-            "SET "
-            "a.name='{}', "
-            "a.address='{}', "
-            "a.hostname='{}', "
-            "a.description='{}', "
-            "a.controller='{}', "
-            "a.state = 'active' "
-        ).format(
-            switch_id, switch_id,
-            self.payload['address'],
-            self.payload['hostname'],
-            self.payload['description'],
-            self.payload['controller']
-        )
-        graph.run(query)
+
+        # ensure it exists
+        switch = Node("switch",name=switch_id)
+        graph.merge(switch)
+
+        # now update it
+        switch['address'] = self.payload['address']
+        switch['hostname'] = self.payload['hostname']
+        switch['description'] = self.payload['description']
+        switch['controller'] = self.payload['controller']
+        switch['state'] = 'active'
+        switch.push()
+
         logger.info("Successfully created switch %s", switch_id)
         return True
 
