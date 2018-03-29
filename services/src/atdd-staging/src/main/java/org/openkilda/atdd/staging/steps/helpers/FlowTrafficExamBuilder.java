@@ -1,7 +1,7 @@
 package org.openkilda.atdd.staging.steps.helpers;
 
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
-import org.openkilda.atdd.staging.model.topology.TopologyDefinition.Trafgen;
+import org.openkilda.atdd.staging.model.topology.TopologyDefinition.TraffGen;
 import org.openkilda.atdd.staging.service.traffexam.FlowNotApplicableException;
 import org.openkilda.atdd.staging.service.traffexam.TraffExamService;
 import org.openkilda.atdd.staging.service.traffexam.model.FlowBidirectionalExam;
@@ -17,23 +17,23 @@ import java.util.Optional;
 public class FlowTrafficExamBuilder {
     private final TraffExamService traffExam;
 
-    private Map<NetworkEndpoint, Trafgen> endpointToTrafgen = new HashMap<>();
+    private Map<NetworkEndpoint, TraffGen> endpointToTraffGen = new HashMap<>();
 
     public FlowTrafficExamBuilder(TopologyDefinition topology, TraffExamService traffExam) {
         this.traffExam = traffExam;
 
-        for (Trafgen trafgen : topology.getActiveTrafgens()) {
+        for (TraffGen traffGen : topology.getActiveTraffGens()) {
             NetworkEndpoint endpoint = new NetworkEndpoint(
-                    trafgen.getSwitchConnected().getDpId(), trafgen.getSwitchPort());
-            endpointToTrafgen.put(endpoint, trafgen);
+                    traffGen.getSwitchConnected().getDpId(), traffGen.getSwitchPort());
+            endpointToTraffGen.put(endpoint, traffGen);
         }
     }
 
     public FlowBidirectionalExam makeBidirectionalExam(FlowPayload flow) throws FlowNotApplicableException {
-        Optional<Trafgen> source = Optional.ofNullable(
-                endpointToTrafgen.get(makeComparableEndpoint(flow.getSource())));
-        Optional<Trafgen> dest = Optional.ofNullable(
-                endpointToTrafgen.get(makeComparableEndpoint(flow.getDestination())));
+        Optional<TraffGen> source = Optional.ofNullable(
+                endpointToTraffGen.get(makeComparableEndpoint(flow.getSource())));
+        Optional<TraffGen> dest = Optional.ofNullable(
+                endpointToTraffGen.get(makeComparableEndpoint(flow.getDestination())));
 
         checkIsFlowApplicable(flow, source.isPresent(), dest.isPresent());
 

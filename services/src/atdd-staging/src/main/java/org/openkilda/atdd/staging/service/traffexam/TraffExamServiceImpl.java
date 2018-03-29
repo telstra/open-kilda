@@ -3,8 +3,8 @@ package org.openkilda.atdd.staging.service.traffexam;
 import static java.util.Collections.unmodifiableMap;
 
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
-import org.openkilda.atdd.staging.model.topology.TopologyDefinition.Trafgen;
-import org.openkilda.atdd.staging.model.topology.TopologyDefinition.TrafgenConfig;
+import org.openkilda.atdd.staging.model.topology.TopologyDefinition.TraffGen;
+import org.openkilda.atdd.staging.model.topology.TopologyDefinition.TraffGenConfig;
 import org.openkilda.atdd.staging.service.traffexam.model.Address;
 import org.openkilda.atdd.staging.service.traffexam.model.AddressResponse;
 import org.openkilda.atdd.staging.service.traffexam.model.ConsumerEndpoint;
@@ -72,32 +72,32 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
     void initializePools() {
         hostsPool = new HashMap<>();
 
-        for (Trafgen trafgen : topology.getActiveTrafgens()) {
+        for (TraffGen traffGen : topology.getActiveTraffGens()) {
             URI controlEndpoint;
             try {
-                controlEndpoint = new URI(trafgen.getControlEndpoint());
+                controlEndpoint = new URI(traffGen.getControlEndpoint());
             } catch (URISyntaxException e) {
                 throw new IllegalArgumentException(String.format(
-                        "Invalid trafgen(%s) REST endpoint address \"%s\": %s",
-                        trafgen.getName(), trafgen.getControlEndpoint(), e.getMessage()), e);
+                        "Invalid traffGen(%s) REST endpoint address \"%s\": %s",
+                        traffGen.getName(), traffGen.getControlEndpoint(), e.getMessage()), e);
             }
 
             UUID id = UUID.randomUUID();
-            Host host = new Host(id, trafgen.getIfaceName(), controlEndpoint, trafgen.getName());
+            Host host = new Host(id, traffGen.getIfaceName(), controlEndpoint, traffGen.getName());
 
             try {
                 restTemplate.headForHeaders(makeHostUri(host).path("endpoint").build());
             }catch (RestClientException ex) {
                 throw new IllegalArgumentException(String.format(
-                        "The trafgen(%s) REST endpoint address \"%s\" can't be reached: %s",
-                        trafgen.getName(), trafgen.getControlEndpoint(), ex.getMessage()), ex);
+                        "The traffGen(%s) REST endpoint address \"%s\" can't be reached: %s",
+                        traffGen.getName(), traffGen.getControlEndpoint(), ex.getMessage()), ex);
             }
 
             hostsPool.put(id, host);
         }
         hostsPool = unmodifiableMap(hostsPool);
 
-        TrafgenConfig config = topology.getTrafgenConfig();
+        TraffGenConfig config = topology.getTraffGenConfig();
         Inet4Network network;
         try {
             network = new Inet4Network(
@@ -105,7 +105,7 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
                     config.getAddressPoolPrefixLen());
         } catch (Inet4ValueException | UnknownHostException e) {
             throw new InputMismatchException(String.format(
-                    "Invalid trafgen address pool \"%s:%s\": %s",
+                    "Invalid traffGen address pool \"%s:%s\": %s",
                     config.getAddressPoolBase(), config.getAddressPoolPrefixLen(), e));
         }
         addressPool = new Inet4NetworkPool(network, 30);

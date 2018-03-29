@@ -43,87 +43,170 @@ public class FlowSetBuilder {
         return unmodifiableSet(flows);
     }
 
-    public void addFlowInUniqueVlan(String flowId, Switch srcSwitch, Switch destSwitch) {
-        // Take the switch vlan ranges as the base
-        RangeSet<Integer> srcRangeSet = TreeRangeSet.create();
-        srcSwitch.getOutPorts().forEach(port -> srcRangeSet.addAll(port.getVlanRange()));
-        RangeSet<Integer> destRangeSet = TreeRangeSet.create();
-        destSwitch.getOutPorts().forEach(port -> destRangeSet.addAll(port.getVlanRange()));
-        // Exclude already allocated vlans
-        srcRangeSet.removeAll(allocatedVlans);
-        destRangeSet.removeAll(allocatedVlans);
+    public void addFlow(String flowId, Switch srcSwitch, Switch destSwitch) {
+        FlowBuilder flow = new FlowBuilder(flowId, srcSwitch, destSwitch);
+        flows.add(flow.buildWithAnyPortsInUniqueVlan());
+    }
 
-        if (srcRangeSet.isEmpty() || destRangeSet.isEmpty()) {
-            throw new IllegalStateException(
-                    format("Unable to define a flow between %s and %s as no vlan available.", srcSwitch, destSwitch));
+    public void addFlow(String flowId, Switch srcSwitch, int srcPort, Switch destSwitch, int destPort) {
+        FlowBuilder flow = new FlowBuilder(flowId, srcSwitch, destSwitch);
+        flows.add(flow.buildInUniqueVlan(srcPort, destPort));
+    }
+
+    class FlowBuilder {
+
+        private String flowId;
+        private Switch srcSwitch;
+        private Switch destSwitch;
+
+        FlowBuilder(String flowId, Switch srcSwitch, Switch destSwitch) {
+            this.flowId = flowId;
+            this.srcSwitch = srcSwitch;
+            this.destSwitch = destSwitch;
         }
 
-        // Calculate intersection of the ranges
-        RangeSet<Integer> interRangeSet = TreeRangeSet.create(srcRangeSet);
-        interRangeSet.removeAll(destRangeSet.complement());
-        // Same vlan for source and destination
-        final Optional<Integer> sameVlan = interRangeSet.asRanges().stream()
-                .flatMap(range -> ContiguousSet.create(range, DiscreteDomain.integers()).stream())
-                .findFirst();
+        FlowPayload buildWithAnyPortsInUniqueVlan() {
+            // Take the switch vlan ranges as the base
+            RangeSet<Integer> srcRangeSet = TreeRangeSet.create();
+            srcSwitch.getOutPorts().forEach(port -> srcRangeSet.addAll(port.getVlanRange()));
+            RangeSet<Integer> destRangeSet = TreeRangeSet.create();
+            destSwitch.getOutPorts().forEach(port -> destRangeSet.addAll(port.getVlanRange()));
+            // Exclude already allocated vlans
+            srcRangeSet.removeAll(allocatedVlans);
+            destRangeSet.removeAll(allocatedVlans);
 
-        int srcVlan;
-        int destVlan;
-        if (sameVlan.isPresent()) {
-            srcVlan = sameVlan.get();
-            destVlan = sameVlan.get();
-        } else {
-            // Cross vlan flow
-            Optional<Integer> srcVlanOpt = srcRangeSet.asRanges().stream()
-                    .flatMap(range -> ContiguousSet.create(range, DiscreteDomain.integers()).stream())
+            int srcVlan = chooseSrcVlan(srcRangeSet, destRangeSet);
+            int destVlan = chooseDestVlan(srcRangeSet, destRangeSet);
+
+            boolean sameSwitchFlow = srcSwitch.getDpId().equals(destSwitch.getDpId());
+
+            Optional<OutPort> srcOutPort = srcSwitch.getOutPorts().stream()
+                    .filter(p -> p.getVlanRange().contains(srcVlan))
                     .findFirst();
-            if (!srcVlanOpt.isPresent()) {
-                throw new IllegalStateException(
-                        format("Unable to allocate a vlan for the switch %s.", srcSwitch));
+            int srcPort = srcOutPort
+                    .orElseThrow(() -> new IllegalStateException("Unable to allocate a port in found vlan."))
+                    .getPort();
 
-            }
-            srcVlan = srcVlanOpt.get();
-
-            Optional<Integer> destVlanOpt = destRangeSet.asRanges().stream()
-                    .flatMap(range -> ContiguousSet.create(range, DiscreteDomain.integers()).stream())
+            Optional<OutPort> destOutPort = destSwitch.getOutPorts().stream()
+                    .filter(p -> p.getVlanRange().contains(destVlan))
+                    .filter(p -> !sameSwitchFlow || p.getPort() != srcPort)
                     .findFirst();
-            if (!destVlanOpt.isPresent()) {
-                throw new IllegalStateException(
-                        format("Unable to allocate a vlan for the switch %s.", destSwitch));
-            }
-            destVlan = destVlanOpt.get();
+            int destPort = destOutPort
+                    .orElseThrow(() -> {
+                        if (sameSwitchFlow) {
+                            return new IllegalStateException(
+                                    format("Unable to define a same switch flow for %s as no ports available.",
+                                            srcSwitch));
+                        } else {
+                            return new IllegalStateException("Unable to allocate a port in found vlan.");
+                        }
+                    })
+                    .getPort();
+
+            // Record used vlan to archive uniqueness
+            allocatedVlans.add(Range.singleton(srcVlan));
+            allocatedVlans.add(Range.singleton(destVlan));
+
+            return buildFlowPayload(srcPort, srcVlan, destPort, destVlan);
         }
 
-        boolean sameSwitchFlow = srcSwitch.getDpId().equals(destSwitch.getDpId());
+        FlowPayload buildInUniqueVlan(int srcPort, int destPort) {
+            RangeSet<Integer> srcRangeSet = TreeRangeSet.create();
+            srcRangeSet.addAll(srcSwitch.getOutPorts().stream()
+                    .filter(port -> port.getPort() == srcPort)
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            format("Unable to define a flow for %d port on %s switch.", srcPort, srcSwitch))
+                    ).getVlanRange());
 
-        Optional<OutPort> srcPort = srcSwitch.getOutPorts().stream()
-                .filter(p -> p.getVlanRange().contains(srcVlan))
-                .findFirst();
-        int srcPortId = srcPort
-                .orElseThrow(() -> new IllegalStateException("Unable to allocate a port in found vlan."))
-                .getPort();
+            RangeSet<Integer> destRangeSet = TreeRangeSet.create();
+            destRangeSet.addAll(destSwitch.getOutPorts().stream()
+                    .filter(port -> port.getPort() == destPort)
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            format("Unable to define a flow for %d port on %s switch.", destPort, destSwitch))
+                    ).getVlanRange());
+            // Exclude already allocated vlans
+            srcRangeSet.removeAll(allocatedVlans);
+            destRangeSet.removeAll(allocatedVlans);
 
-        Optional<OutPort> destPort = destSwitch.getOutPorts().stream()
-                .filter(p -> p.getVlanRange().contains(destVlan))
-                .filter(p -> !sameSwitchFlow || p.getPort() != srcPortId)
-                .findFirst();
-        if (!destPort.isPresent()) {
-            if (sameSwitchFlow) {
+            int srcVlan = chooseSrcVlan(srcRangeSet, destRangeSet);
+            int destVlan = chooseDestVlan(srcRangeSet, destRangeSet);
+
+            // Record used vlan to archive uniqueness
+            allocatedVlans.add(Range.singleton(srcVlan));
+            allocatedVlans.add(Range.singleton(destVlan));
+
+            return buildFlowPayload(srcPort, srcVlan, destPort, destVlan);
+        }
+
+        private int chooseSrcVlan(RangeSet<Integer> srcRangeSet, RangeSet<Integer> destRangeSet) {
+            if (srcRangeSet.isEmpty() || destRangeSet.isEmpty()) {
                 throw new IllegalStateException(
-                        format("Unable to define a same switch flow for %s as no ports available.", srcSwitch));
+                        format("Unable to define a flow between %s and %s as no vlan available.", srcSwitch,
+                                destSwitch));
+            }
+
+            // Calculate intersection of the ranges
+            RangeSet<Integer> interRangeSet = TreeRangeSet.create(srcRangeSet);
+            interRangeSet.removeAll(destRangeSet.complement());
+            // Same vlan for source and destination
+            final Optional<Integer> sameVlan = interRangeSet.asRanges().stream()
+                    .flatMap(range -> ContiguousSet.create(range, DiscreteDomain.integers()).stream())
+                    .findFirst();
+
+            if (sameVlan.isPresent()) {
+                return sameVlan.get();
             } else {
-                throw new IllegalStateException("Unable to allocate a port in found vlan.");
+                // Cross vlan flow
+                Optional<Integer> srcVlanOpt = srcRangeSet.asRanges().stream()
+                        .flatMap(range -> ContiguousSet.create(range, DiscreteDomain.integers()).stream())
+                        .findFirst();
+                if (!srcVlanOpt.isPresent()) {
+                    throw new IllegalStateException(
+                            format("Unable to allocate a vlan for the switch %s.", srcSwitch));
+
+                }
+                return srcVlanOpt.get();
             }
         }
 
-        // Record used vlan to archive uniqueness
-        allocatedVlans.add(Range.singleton(srcVlan));
-        allocatedVlans.add(Range.singleton(destVlan));
+        private int chooseDestVlan(RangeSet<Integer> srcRangeSet, RangeSet<Integer> destRangeSet) {
+            if (srcRangeSet.isEmpty() || destRangeSet.isEmpty()) {
+                throw new IllegalStateException(
+                        format("Unable to define a flow between %s and %s as no vlan available.", srcSwitch,
+                                destSwitch));
+            }
 
-        FlowEndpointPayload srcEndpoint = new FlowEndpointPayload(srcSwitch.getDpId(), srcPortId, srcVlan);
-        FlowEndpointPayload destEndpoint = new FlowEndpointPayload(destSwitch.getDpId(), destPort.get().getPort(),
-                destVlan);
+            // Calculate intersection of the ranges
+            RangeSet<Integer> interRangeSet = TreeRangeSet.create(srcRangeSet);
+            interRangeSet.removeAll(destRangeSet.complement());
+            // Same vlan for source and destination
+            final Optional<Integer> sameVlan = interRangeSet.asRanges().stream()
+                    .flatMap(range -> ContiguousSet.create(range, DiscreteDomain.integers()).stream())
+                    .findFirst();
 
-        flows.add(new FlowPayload(flowId, srcEndpoint, destEndpoint,
-                1, false, flowId, null));
+            if (sameVlan.isPresent()) {
+                return sameVlan.get();
+            } else {
+                // Cross vlan flow
+                Optional<Integer> destVlanOpt = destRangeSet.asRanges().stream()
+                        .flatMap(range -> ContiguousSet.create(range, DiscreteDomain.integers()).stream())
+                        .findFirst();
+                if (!destVlanOpt.isPresent()) {
+                    throw new IllegalStateException(
+                            format("Unable to allocate a vlan for the switch %s.", destSwitch));
+                }
+                return destVlanOpt.get();
+            }
+        }
+
+        private FlowPayload buildFlowPayload(int srcPort, int srcVlan, int destPort, int destVlan) {
+            FlowEndpointPayload srcEndpoint = new FlowEndpointPayload(srcSwitch.getDpId(), srcPort, srcVlan);
+            FlowEndpointPayload destEndpoint = new FlowEndpointPayload(destSwitch.getDpId(), destPort, destVlan);
+
+            return new FlowPayload(flowId, srcEndpoint, destEndpoint,
+                    1, false, flowId, null);
+        }
     }
 }

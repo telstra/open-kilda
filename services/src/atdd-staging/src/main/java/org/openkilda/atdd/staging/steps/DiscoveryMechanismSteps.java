@@ -60,7 +60,7 @@ public class DiscoveryMechanismSteps implements En {
 
     @Then("^default rules for switches are installed")
     public void checkDefaultRules() {
-        List<SwitchEntry> floodlightSwitches = floodlightService.getSwitches();
+        List<SwitchEntry> floodlightSwitches = fetchFloodlightSwitches();
 
         List<SwitchEntry> switchesWithInvalidFlows = floodlightSwitches.stream()
                 .filter(sw -> {

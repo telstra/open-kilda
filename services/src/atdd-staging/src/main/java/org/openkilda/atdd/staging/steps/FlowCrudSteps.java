@@ -18,6 +18,7 @@ import static com.nitorcreations.Matchers.reflectEquals;
 import static java.lang.String.format;
 import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toList;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.is;
@@ -93,22 +94,27 @@ public class FlowCrudSteps implements En {
     @VisibleForTesting
     Set<FlowPayload> flows = emptySet();
 
-    @Given("^flows defined over all switches$")
-    public void defineFlowsOverAllSwitches() {
+    @Given("^flows defined over active switches in the reference topology$")
+    public void defineFlowsOverActiveSwitches() {
         FlowSetBuilder builder = new FlowSetBuilder();
 
         final List<TopologyDefinition.Switch> switches = topologyDefinition.getActiveSwitches();
         // check each combination of active switches for a path between them and create a flow definition if the path exists
         switches.forEach(srcSwitch ->
                 switches.forEach(dstSwitch -> {
-                    if(srcSwitch.getDpId().equals(dstSwitch.getDpId())) {
+                    // skip the same switch flow and reverse combination of switches
+                    if (srcSwitch.getDpId().compareTo(dstSwitch.getDpId()) >= 0) {
                         return;
                     }
 
-                    List<PathInfoData> paths = topologyEngineService.getPaths(srcSwitch.getDpId(), dstSwitch.getDpId());
-                    if (!paths.isEmpty()) {
+                    // test only bi-directional flow
+                    List<PathInfoData> forwardPath = topologyEngineService
+                            .getPaths(srcSwitch.getDpId(), dstSwitch.getDpId());
+                    List<PathInfoData> reversePath = topologyEngineService
+                            .getPaths(dstSwitch.getDpId(), srcSwitch.getDpId());
+                    if (!forwardPath.isEmpty() && !reversePath.isEmpty()) {
                         String flowId = format("%s-%s", srcSwitch.getName(), dstSwitch.getName());
-                        builder.addFlowInUniqueVlan(flowId, srcSwitch, dstSwitch);
+                        builder.addFlow(flowId, srcSwitch, dstSwitch);
                     }
                 })
         );
@@ -116,9 +122,37 @@ public class FlowCrudSteps implements En {
         flows = builder.getFlows();
     }
 
+    @Given("^flows defined over active traffgens in the reference topology$")
+    public void defineFlowsOverActiveTraffgens() {
+        FlowSetBuilder builder = new FlowSetBuilder();
+
+        final List<TopologyDefinition.TraffGen> traffGens = topologyDefinition.getActiveTraffGens();
+        // check each combination of active traffGens and create a flow definition
+        traffGens.forEach(srcTraffGen -> {
+            TopologyDefinition.Switch srcSwitch = srcTraffGen.getSwitchConnected();
+            traffGens.forEach(dstTraffGen -> {
+                TopologyDefinition.Switch dstSwitch = dstTraffGen.getSwitchConnected();
+                // skip the same switch flow and reverse combination of switches
+                if (srcSwitch.getDpId().compareTo(dstSwitch.getDpId()) >= 0) {
+                    return;
+                }
+
+                String flowId = format("%s-%s", srcSwitch.getName(), dstSwitch.getName());
+                builder.addFlow(flowId, srcSwitch, srcTraffGen.getSwitchPort(), dstSwitch, dstTraffGen.getSwitchPort());
+            });
+        });
+
+        flows = builder.getFlows();
+    }
+
     @And("^each flow has unique flow_id$")
     public void setUniqueFlowIdToEachFlow() {
         flows.forEach(flow -> flow.setId(format("%s-%s", flow.getId(), UUID.randomUUID().toString())));
+    }
+
+    @And("^each flow has flow_id with (.*) prefix$")
+    public void buildFlowIdToEachFlow(String flowIdPrefix) {
+        flows.forEach(flow -> flow.setId(format("%s-%s", flowIdPrefix, flow.getId())));
     }
 
     @And("^each flow has max bandwidth set to (\\d+)$")
@@ -130,8 +164,11 @@ public class FlowCrudSteps implements En {
     public void creationRequestForEachFlowIsSuccessful() {
         for (FlowPayload flow : flows) {
             FlowPayload result = northboundService.addFlow(flow);
-            assertThat(result, reflectEquals(flow, "lastUpdated"));
-            assertThat(result, hasProperty("lastUpdated", notNullValue()));
+
+            assertThat(format("A flow creation request for '%s' failed.", flow.getId()), result,
+                    reflectEquals(flow, "lastUpdated"));
+            assertThat(format("The flow '%s' has wrong lastUpdated returned by Northbound.", flow.getId()), result,
+                    hasProperty("lastUpdated", notNullValue()));
         }
     }
 
@@ -156,8 +193,8 @@ public class FlowCrudSteps implements En {
                     .retryWhen(null))
                     .get(() -> topologyEngineService.getFlow(expectedFlow.getFlowId()));
 
-            assertNotNull(format("The flow '%s' is missing.", expectedFlow.getFlowId()), flowPair);
-            assertThat(format("The flow '%s' is different.", expectedFlow.getFlowId()),
+            assertNotNull(format("The flow '%s' is missing in TopologyEngine.", expectedFlow.getFlowId()), flowPair);
+            assertThat(format("The flow '%s' in TopologyEngine is different from defined.", expectedFlow.getFlowId()),
                     flowPair.getLeft(), is(equalTo(expectedFlow)));
         }
     }
@@ -169,10 +206,10 @@ public class FlowCrudSteps implements En {
                     .retryIf(p -> p == null || ((FlowIdStatusPayload) p).getStatus() != FlowState.UP))
                     .get(() -> northboundService.getFlowStatus(flow.getId()));
 
-            assertNotNull(status);
-            assertThat(format("The flow status for '%s' can't be retrived.", flow.getId()),
+            assertNotNull(format("The flow status for '%s' can't be retrived from Northbound.", flow.getId()), status);
+            assertThat(format("The flow '%s' in Northbound is different from defined.", flow.getId()),
                     status, hasProperty("id", equalTo(flow.getId())));
-            assertThat(format("The flow '%s' has wrong status.", flow.getId()),
+            assertThat(format("The flow '%s' has wrong status in Northbound.", flow.getId()),
                     status, hasProperty("status", equalTo(FlowState.UP)));
         }
     }
@@ -181,8 +218,10 @@ public class FlowCrudSteps implements En {
     public void eachFlowCanBeReadFromNorthbound() {
         for (FlowPayload flow : flows) {
             FlowPayload result = northboundService.getFlow(flow.getId());
-            assertNotNull(result);
-            assertEquals(flow.getId(), result.getId());
+
+            assertNotNull(format("The flow '%s' is missing in Northbound.", flow.getId()), result);
+            assertEquals(format("The flow '%s' in Northbound is different from defined.", flow.getId()), flow.getId(),
+                    result.getId());
         }
     }
 
@@ -276,7 +315,7 @@ public class FlowCrudSteps implements En {
                 issues = true;
             }
 
-            if (! isTraffic.stream().allMatch(value -> value)) {
+            if (!isTraffic.stream().allMatch(value -> value)) {
                 LOGGER.error(String.format("Flow's %s traffic is missing", flow.getId()));
                 issues = true;
             }
@@ -285,7 +324,7 @@ public class FlowCrudSteps implements En {
                 LOGGER.warn(String.format("Flow %s is loosing packages", flow.getId()));
             }
 
-            if (! isBandwidthMatch.stream().allMatch(value -> value)) {
+            if (!isBandwidthMatch.stream().allMatch(value -> value)) {
                 LOGGER.error("Flow %s does not provide requested bandwidth", flow.getId());
                 issues = true;
             }
@@ -296,12 +335,19 @@ public class FlowCrudSteps implements En {
 
     @Then("^each flow can be updated with (\\d+) max bandwidth$")
     public void eachFlowCanBeUpdatedWithBandwidth(int bandwidth) {
+        List<String> updatedFlowIds = new ArrayList<>();
+
         for (FlowPayload flow : flows) {
             flow.setMaximumBandwidth(bandwidth);
 
             FlowPayload result = northboundService.updateFlow(flow.getId(), flow);
-            assertNotNull(result);
+            if (result != null) {
+                updatedFlowIds.add(result.getId());
+            }
         }
+
+        assertThat("Updated flows in Northbound don't match expected", updatedFlowIds, containsInAnyOrder(
+                flows.stream().map(flow -> equalTo(flow.getId())).collect(toList())));
     }
 
     @And("^each flow has rules installed with (\\d+) max bandwidth$")
@@ -311,10 +357,17 @@ public class FlowCrudSteps implements En {
 
     @Then("^each flow can be deleted$")
     public void eachFlowCanBeDeleted() {
+        List<String> deletedFlowIds = new ArrayList<>();
+
         for (FlowPayload flow : flows) {
             FlowPayload result = northboundService.deleteFlow(flow.getId());
-            assertNotNull(result);
+            if (result != null) {
+                deletedFlowIds.add(result.getId());
+            }
         }
+
+        assertThat("Deleted flows from Northbound don't match expected", deletedFlowIds, containsInAnyOrder(
+                flows.stream().map(flow -> equalTo(flow.getId())).collect(toList())));
     }
 
     @And("^each flow can not be read from Northbound$")

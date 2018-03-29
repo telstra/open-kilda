@@ -58,7 +58,7 @@ public class TopologyVerificationSteps implements En {
         this.scenario = scenario;
     }
 
-    @Given("^a reference topology$")
+    @Given("^the reference topology$")
     public void checkTheTopology() {
         Set<String> skippedSwitches = topologyDefinition.getSkippedSwitchIds();
 

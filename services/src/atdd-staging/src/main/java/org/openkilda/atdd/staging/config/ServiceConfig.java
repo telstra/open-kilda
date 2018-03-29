@@ -39,7 +39,7 @@ import java.util.concurrent.TimeUnit;
 
 @Configuration
 @Profile("default")
-@PropertySource("file:///${kilda.config.file}")
+@PropertySource("file:${kilda.config.file}")
 @ComponentScan(basePackages = {"org.openkilda.atdd.staging.service"})
 public class ServiceConfig {
 
