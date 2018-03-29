@@ -96,9 +96,10 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
     @Override
     public void switchActivated(final DatapathId switchId) {
         final IOFSwitch sw = switchService.getSwitch(switchId);
+        logger.info("ACTIVATING SWITCH: {}", switchId);
 
-        Message message = buildExtendedSwitchMessage(sw, SwitchState.ACTIVATED, switchManager.dumpFlowTable(switchId));
-        kafkaProducer.postMessage(TOPO_EVENT_TOPIC, message);
+//        Message message = buildExtendedSwitchMessage(sw, SwitchState.ACTIVATED, switchManager.dumpFlowTable(switchId));
+//        kafkaProducer.postMessage(TOPO_EVENT_TOPIC, message);
         ConnectModeRequest.Mode mode = switchManager.connectMode(null);
 
         try {

@@ -434,9 +434,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         OFFactory ofFactory = sw.getOFFactory();
         OFFlowStatsRequest flowRequest = ofFactory.buildFlowStatsRequest()
-                .setMatch(sw.getOFFactory().matchWildcardAll())
-                .setTableId(TableId.ALL)
-                .setOutPort(OFPort.ANY)
                 .setOutGroup(OFGroup.ANY)
                 .setCookieMask(U64.ZERO)
                 .build();
