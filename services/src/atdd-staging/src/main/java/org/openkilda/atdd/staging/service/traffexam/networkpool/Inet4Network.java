@@ -19,7 +19,7 @@ public class Inet4Network {
 
     public Inet4Network subnet(long index, int prefix)
             throws Inet4ValueException {
-        this.checkPrefix(prefix, this.prefix);
+        this.checkPrefix(prefix, prefix);
 
         index <<= 32 - prefix;
         Inet4Address target = this.merge(index);
@@ -43,7 +43,7 @@ public class Inet4Network {
             throws Inet4ValueException {
         byte unpacked[] = address.getAddress();
 
-        for (int idx = 0; idx < unpacked.length && mask[idx] != 0; idx++) {
+        for (int idx = 0; idx < unpacked.length; idx++) {
             unpacked[idx] &= mask[idx];
         }
 

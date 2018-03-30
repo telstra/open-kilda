@@ -5,7 +5,8 @@ import java.util.InputMismatchException;
 public class Exam {
     private final Host source;
     private final Host dest;
-    private Vlan vlan;
+    private Vlan sourceVlan;
+    private Vlan destVlan;
     private Bandwidth bandwidthLimit;
     private TimeLimit timeLimitSeconds;
 
@@ -24,13 +25,23 @@ public class Exam {
         return dest;
     }
 
-    public Vlan getVlan() {
-        return vlan;
+    public Vlan getSourceVlan() {
+        return sourceVlan;
     }
 
-    public Exam withVlan(Vlan vlan) {
-        fieldRewriteCheck(this.vlan);
-        this.vlan = vlan;
+    public Vlan getDestVlan() {
+        return destVlan;
+    }
+
+    public Exam withSourceVlan(Vlan vlan) {
+        fieldRewriteCheck(this.sourceVlan);
+        this.sourceVlan = vlan;
+        return this;
+    }
+
+    public Exam withDestVlan(Vlan vlan) {
+        fieldRewriteCheck(this.destVlan);
+        this.destVlan = vlan;
         return this;
     }
 

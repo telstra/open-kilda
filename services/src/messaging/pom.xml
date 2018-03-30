@@ -17,6 +17,7 @@
     <description>Common messaging data structures</description>
 
     <properties>
+        <commons-lang3.version>3.7</commons-lang3.version>
         <lombok.version>1.16.20</lombok.version>
     </properties>
 
@@ -63,7 +64,12 @@
                 </exclusion>
             </exclusions>
         </dependency>
-     </dependencies>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>${commons-lang3.version}</version>
+        </dependency>
+    </dependencies>
 
     <build>
         <plugins>

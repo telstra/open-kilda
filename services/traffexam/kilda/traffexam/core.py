@@ -79,15 +79,27 @@ def check_privileges():
 
 
 def setup_environment(context):
+    context.acquire_resources(system.IPDBRoot)
+
+    iface_info_getter = system.RootIfaceInfo(context)
+    target_iface = iface_info_getter(context.iface.index)
+
     context.acquire_resources(
-            system.IPDBRoot,
             system.NetworkNamespace,
-            system.VEthPair,
-            system.BridgeIface,
-            system.TargetIfaceCleanUp,
+            system.VEthPair)
+
+    if target_iface.kind != 'bridge':
+        context.acquire_resources(
+                system.BridgeToTarget,
+                system.TargetIfaceCleanUp)
+    else:
+        context.acquire_resources(system.JoinTargetBridge)
+
+    context.acquire_resources(
             system.OwnedNetworksCleanUp,
             system.NSNetworksCleanUp,
-            system.NSGatewaySetUp)
+            system.NSGatewaySetUp,
+            system.TargetIfaceSetUp)
 
 
 class SigCHLD(common.AbstractSignal):

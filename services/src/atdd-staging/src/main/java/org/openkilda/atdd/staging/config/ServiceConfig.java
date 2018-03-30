@@ -16,6 +16,7 @@
 package org.openkilda.atdd.staging.config;
 
 import com.google.common.io.CharStreams;
+import net.jodah.failsafe.RetryPolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,6 +25,7 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.context.annotation.PropertySource;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.http.client.support.BasicAuthorizationInterceptor;
 import org.springframework.web.client.DefaultResponseErrorHandler;
@@ -33,10 +35,11 @@ import org.springframework.web.util.DefaultUriBuilderFactory;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.concurrent.TimeUnit;
 
 @Configuration
 @Profile("default")
-@PropertySource("file:///${kilda.config.file}")
+@PropertySource("file:${kilda.config.file}")
 @ComponentScan(basePackages = {"org.openkilda.atdd.staging.service"})
 public class ServiceConfig {
 
@@ -64,6 +67,14 @@ public class ServiceConfig {
         return buildRestTemplateWithAuth(endpoint, username, password);
     }
 
+    // The retrier is used for repeating operations which depend on the system state and may change the result after delays.
+    @Bean(name = "topologyEngineRetryPolicy")
+    public RetryPolicy retryPolicy() {
+        return new RetryPolicy()
+                .withDelay(2, TimeUnit.SECONDS)
+                .withMaxRetries(10);
+    }
+
     @Bean(name = "traffExamRestTemplate")
     public RestTemplate traffExamRestTemplate() {
         return new RestTemplate();
@@ -82,10 +93,12 @@ public class ServiceConfig {
             private final Logger LOGGER = LoggerFactory.getLogger(ResponseErrorHandler.class);
 
             @Override
-            public void handleError(ClientHttpResponse clienthttpresponse) throws IOException {
-                LOGGER.error("HTTP response with status {} and body '{}'", clienthttpresponse.getStatusCode(),
-                        CharStreams.toString(new InputStreamReader(clienthttpresponse.getBody())));
-                super.handleError(clienthttpresponse);
+            public void handleError(ClientHttpResponse clientHttpResponse) throws IOException {
+                if (clientHttpResponse.getStatusCode() != HttpStatus.NOT_FOUND) {
+                    LOGGER.error("HTTP response with status {} and body '{}'", clientHttpResponse.getStatusCode(),
+                            CharStreams.toString(new InputStreamReader(clientHttpResponse.getBody())));
+                }
+                super.handleError(clientHttpResponse);
             }
         };
     }

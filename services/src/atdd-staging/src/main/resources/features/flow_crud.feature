@@ -1,12 +1,16 @@
+@Flow
 Feature: Flow CRUD
   This feature tests flow CRUD operations.
 
   Background:
-    Given a reference topology
+    Given the reference topology
+    And all defined switches are discovered
+    And all defined links are detected
 
-  Scenario: Create, read, update and delete flows across the entire set of switches
+  @CRUD
+  Scenario: Create, read, update and delete flows across the entire set of defined switches
 
-    Given flows over all switches
+    Given flows defined over active switches in the reference topology
     And each flow has unique flow_id
     And each flow has max bandwidth set to 10000
 

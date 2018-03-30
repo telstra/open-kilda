@@ -1,8 +1,10 @@
 package org.openkilda.atdd.staging.service.traffexam;
 
+import static java.util.Collections.unmodifiableMap;
+
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
-import org.openkilda.atdd.staging.model.topology.TopologyDefinition.Trafgen;
-import org.openkilda.atdd.staging.model.topology.TopologyDefinition.TrafgenConfig;
+import org.openkilda.atdd.staging.model.topology.TopologyDefinition.TraffGen;
+import org.openkilda.atdd.staging.model.topology.TopologyDefinition.TraffGenConfig;
 import org.openkilda.atdd.staging.service.traffexam.model.Address;
 import org.openkilda.atdd.staging.service.traffexam.model.AddressResponse;
 import org.openkilda.atdd.staging.service.traffexam.model.ConsumerEndpoint;
@@ -20,7 +22,6 @@ import org.openkilda.atdd.staging.service.traffexam.model.ReportResponse;
 import org.openkilda.atdd.staging.service.traffexam.networkpool.Inet4Network;
 import org.openkilda.atdd.staging.service.traffexam.networkpool.Inet4NetworkPool;
 import org.openkilda.atdd.staging.service.traffexam.networkpool.Inet4ValueException;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
@@ -45,7 +46,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import javax.naming.directory.InvalidAttributesException;
+import java.util.concurrent.TimeUnit;
+import javax.annotation.PostConstruct;
 
 @Service
 public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
@@ -56,29 +58,46 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
     @Qualifier("traffExamRestTemplate")
     private RestTemplate restTemplate;
 
-    private Map<UUID, Host> hostsPool = new HashMap<>();
+    @Autowired
+    private TopologyDefinition topology;
 
+    private Map<UUID, Host> hostsPool;
     private Inet4NetworkPool addressPool;
 
     private Map<UUID, Address> suppliedAddresses = new HashMap<>();
     private Map<UUID, HostResource> suppliedEndpoints = new HashMap<>();
     private List<HostResource> failedToRelease = new LinkedList<>();
 
-    public TraffExamServiceImpl(TopologyDefinition topology) {
-        for (Trafgen trafgen : topology.getActiveTrafgens()) {
-            UUID id = UUID.randomUUID();
-            try {
-                Host host = new Host(
-                        id, trafgen.getIfaceName(), new URI(trafgen.getControlEndpoint()), trafgen.getName());
-                hostsPool.put(id, host);
-            } catch (URISyntaxException e) {
-                throw new InputMismatchException(String.format(
-                        "Invalid trafgen(%s) REST endpoint address \"%s\": %s",
-                        trafgen.getName(), trafgen.getControlEndpoint(), e));
-            }
-        }
+    @PostConstruct
+    void initializePools() {
+        hostsPool = new HashMap<>();
 
-        TrafgenConfig config = topology.getTrafgenConfig();
+        for (TraffGen traffGen : topology.getActiveTraffGens()) {
+            URI controlEndpoint;
+            try {
+                controlEndpoint = new URI(traffGen.getControlEndpoint());
+            } catch (URISyntaxException e) {
+                throw new IllegalArgumentException(String.format(
+                        "Invalid traffGen(%s) REST endpoint address \"%s\": %s",
+                        traffGen.getName(), traffGen.getControlEndpoint(), e.getMessage()), e);
+            }
+
+            UUID id = UUID.randomUUID();
+            Host host = new Host(id, traffGen.getIfaceName(), controlEndpoint, traffGen.getName());
+
+            try {
+                restTemplate.headForHeaders(makeHostUri(host).path("endpoint").build());
+            }catch (RestClientException ex) {
+                throw new IllegalArgumentException(String.format(
+                        "The traffGen(%s) REST endpoint address \"%s\" can't be reached: %s",
+                        traffGen.getName(), traffGen.getControlEndpoint(), ex.getMessage()), ex);
+            }
+
+            hostsPool.put(id, host);
+        }
+        hostsPool = unmodifiableMap(hostsPool);
+
+        TraffGenConfig config = topology.getTraffGenConfig();
         Inet4Network network;
         try {
             network = new Inet4Network(
@@ -86,7 +105,7 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
                     config.getAddressPoolPrefixLen());
         } catch (Inet4ValueException | UnknownHostException e) {
             throw new InputMismatchException(String.format(
-                    "Invalid trafgen address pool \"%s:%s\": %s",
+                    "Invalid traffGen address pool \"%s:%s\": %s",
                     config.getAddressPoolBase(), config.getAddressPoolPrefixLen(), e));
         }
         addressPool = new Inet4NetworkPool(network, 30);
@@ -98,11 +117,9 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
     }
 
     @Override
-    public Host hostByName(String name)
-            throws InvalidAttributesException, NoResultsFoundException {
+    public Host hostByName(String name) throws NoResultsFoundException {
         if (name == null) {
-            throw new InvalidAttributesException(
-                    "Attribute \"name\" must not be null");
+            throw new IllegalArgumentException("Argument \"name\" must not be null");
         }
 
         Host target = null;
@@ -140,14 +157,16 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
         ExamResources resources = null;
         List<HostResource> supplied = new ArrayList<>(4);
         try {
-            Address sourceAddress = assignAddress(
-                    exam.getSource(), new Address(
-                            subnet.address(1), subnet.getPrefix()));
+            Address sourceAddress = new Address(
+                    subnet.address(1), subnet.getPrefix());
+            sourceAddress.setVlan(exam.getSourceVlan());
+            sourceAddress = assignAddress(exam.getSource(), sourceAddress);
             supplied.add(sourceAddress);
 
-            Address destAddress = assignAddress(
-                    exam.getDest(), new Address(
-                            subnet.address(2), subnet.getPrefix()));
+            Address destAddress = new Address(
+                    subnet.address(2), subnet.getPrefix());
+            destAddress.setVlan(exam.getDestVlan());
+            destAddress = assignAddress(exam.getDest(), destAddress);
             supplied.add(destAddress);
 
             ConsumerEndpoint consumer = (ConsumerEndpoint) assignEndpoint(
@@ -187,13 +206,52 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
         return exam;
     }
 
+    public List<ExamReport> waitExam(List<Exam> exams) {
+        return this.waitExam(exams, true);
+    }
+
+    @Override
+    public List<ExamReport> waitExam(List<Exam> exams, boolean cleanup) {
+        List<ExamReport> results = new ArrayList<>(exams.size());
+
+        for (Exam current : exams) {
+            // current backend implementation do not allow infinite
+            // execution, so we can have infinite loop here
+            while (true) try {
+                try {
+                    results.add(fetchReport(current));
+                    break;
+                } catch (ExamNotFinishedException e) {
+                    TimeUnit.SECONDS.sleep(1);
+                }
+            } catch (InterruptedException e) {
+                // ignore interrupt exceptions
+            }
+
+            if (cleanup) {
+                stopExam(current);
+            }
+        }
+
+        return results;
+    }
+
     @Override
     public ExamReport fetchReport(Exam exam) throws NoResultsFoundException, ExamNotFinishedException {
         ExamResources resources = retrieveExamResources(exam);
 
-        return new ExamReport(
-                fetchEndpointReport(resources.getProducer()),
-                fetchEndpointReport(resources.getConsumer()));
+        EndpointReport producerReport = fetchEndpointReport(resources.getProducer());
+        EndpointReport consumerReport;
+        try {
+            consumerReport = fetchEndpointReport(resources.getConsumer());
+        } catch (ExamNotFinishedException e) {
+            if (producerReport.getError() == null) {
+                throw e;
+            }
+            consumerReport = new EndpointReport("Don't wait for consumer report due to error on producer side");
+        }
+
+        return new ExamReport(exam, producerReport, consumerReport);
     }
 
     @Override
