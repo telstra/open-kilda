@@ -106,7 +106,12 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
     private static final String TOPO_EVENT_TOPIC = Topic.TOPO_DISCO;
 
-    public static final long FLOW_COOKIE_MASK = 0x60000000FFFFFFFFL;
+    /**
+     * Make sure we clear the top bit .. that is for NON_SYSTEM_MASK. This mask is applied to
+     * Cookie IDs when creating a flow.
+     */
+    public static final long FLOW_COOKIE_MASK = 0x7FFFFFFFFFFFFFFFL;
+
     static final U64 NON_SYSTEM_MASK = U64.of(0x80000000FFFFFFFFL);
 
     // This is invalid VID mask - it cut of highest bit that indicate presence of VLAN tag on package. But valid mask
@@ -672,6 +677,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         for(long cookie : cookiesToRemove) {
             OFFlowDelete dropFlowDelete = ofFactory.buildFlowDelete()
                     .setCookie(U64.of(cookie))
+                    .setCookieMask(NON_SYSTEM_MASK)
                     .build();
             pushFlow(sw, "--DeleteFlow--", dropFlowDelete);
         }
