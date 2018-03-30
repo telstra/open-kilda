@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.flow;
 
+import org.apache.storm.Config;
 import org.openkilda.messaging.ServiceType;
 import org.openkilda.messaging.Utils;
 import org.openkilda.pce.provider.Auth;
@@ -26,16 +27,19 @@ import org.openkilda.wfm.StreamNameCollisionException;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.flow.bolts.CrudBolt;
 import org.openkilda.wfm.topology.flow.bolts.ErrorBolt;
+import org.openkilda.wfm.topology.flow.bolts.LcmFlowCacheSyncBolt;
 import org.openkilda.wfm.topology.flow.bolts.NorthboundReplyBolt;
 import org.openkilda.wfm.topology.flow.bolts.SpeakerBolt;
 import org.openkilda.wfm.topology.flow.bolts.SplitterBolt;
 import org.openkilda.wfm.topology.flow.bolts.TopologyEngineBolt;
 import org.openkilda.wfm.topology.flow.bolts.TransactionBolt;
+import org.openkilda.wfm.topology.utils.LcmKafkaSpout;
 
 import org.apache.storm.generated.ComponentObject;
 import org.apache.storm.generated.StormTopology;
-import org.apache.storm.kafka.spout.KafkaSpout;
 import org.apache.storm.kafka.bolt.KafkaBolt;
+import org.apache.storm.kafka.spout.KafkaSpout;
+import org.apache.storm.kafka.spout.KafkaSpoutConfig;
 import org.apache.storm.topology.BoltDeclarer;
 import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Fields;
@@ -92,12 +96,26 @@ public class FlowTopology extends AbstractTopology {
         BoltDeclarer boltSetup;
         Integer parallelism = config.getParallelism();
 
+        KafkaSpoutConfig<String, String> kafkaSpoutConfig;
+        KafkaSpout<String, String> kafkaSpout;
+
+        builder.setSpout(
+                ComponentType.LCM_SPOUT.toString(),
+                createKafkaSpout(config.getKafkaFlowTopic(), ComponentType.LCM_SPOUT.toString()), 1);
+        builder.setBolt(
+                ComponentType.LCM_FLOW_SYNC_BOLT.toString(),
+                new LcmFlowCacheSyncBolt(ComponentType.NORTHBOUND_KAFKA_SPOUT.toString()),
+                1)
+                .shuffleGrouping(ComponentType.NORTHBOUND_KAFKA_SPOUT.toString(), LcmKafkaSpout.STREAM_ID_LCM)
+                .shuffleGrouping(ComponentType.LCM_SPOUT.toString());
+
         /*
          * Spout receives all Northbound requests.
          */
-        KafkaSpout northboundKafkaSpout = createKafkaSpout(
-                config.getKafkaFlowTopic(), ComponentType.NORTHBOUND_KAFKA_SPOUT.toString());
-        builder.setSpout(ComponentType.NORTHBOUND_KAFKA_SPOUT.toString(), northboundKafkaSpout, parallelism);
+        kafkaSpoutConfig = makeKafkaSpoutConfigBuilder(
+                ComponentType.NORTHBOUND_KAFKA_SPOUT.toString(), config.getKafkaFlowTopic()).build();
+        kafkaSpout = new LcmKafkaSpout<>(kafkaSpoutConfig);
+        builder.setSpout(ComponentType.NORTHBOUND_KAFKA_SPOUT.toString(), kafkaSpout, parallelism);
 
         /*
          * Bolt splits requests on streams.
@@ -130,7 +148,9 @@ public class FlowTopology extends AbstractTopology {
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.CACHE_SYNC.toString(), fieldFlowId)
                 .fieldsGrouping(ComponentType.TRANSACTION_BOLT.toString(), StreamType.STATUS.toString(), fieldFlowId)
                 .fieldsGrouping(ComponentType.SPEAKER_BOLT.toString(), StreamType.STATUS.toString(), fieldFlowId)
-                .fieldsGrouping(ComponentType.TOPOLOGY_ENGINE_BOLT.toString(), StreamType.STATUS.toString(), fieldFlowId);
+                .fieldsGrouping(ComponentType.TOPOLOGY_ENGINE_BOLT.toString(), StreamType.STATUS.toString(), fieldFlowId)
+                .shuffleGrouping(
+                        ComponentType.LCM_FLOW_SYNC_BOLT.toString(), LcmFlowCacheSyncBolt.STREAM_ID_SYNC_FLOW_CACHE);
         ctrlTargets.add(new CtrlBoltRef(ComponentType.CRUD_BOLT.toString(), crudBolt, boltSetup));
 
         /*
@@ -219,6 +239,10 @@ public class FlowTopology extends AbstractTopology {
 
         createCtrlBranch(builder, ctrlTargets);
         createHealthCheckHandler(builder, ServiceType.FLOW_TOPOLOGY.getId());
+
+        builder.setBolt(
+                ComponentType.TOPOLOGY_ENGINE_OUTPUT.toString(), createKafkaBolt(config.getKafkaTopoEngTopic()), 1)
+                .shuffleGrouping(ComponentType.LCM_FLOW_SYNC_BOLT.toString(), LcmFlowCacheSyncBolt.STREAM_ID_TPE);
 
         return builder.createTopology();
     }
