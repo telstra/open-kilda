@@ -15,7 +15,7 @@
 
 package org.openkilda.northbound.controller;
 
-import org.openkilda.northbound.dto.FeatureToggleDto;
+import org.openkilda.messaging.payload.FeatureTogglePayload;
 import org.openkilda.northbound.service.FeatureTogglesService;
 
 import io.swagger.annotations.ApiOperation;
@@ -41,16 +41,16 @@ public class FeatureTogglesController {
     private FeatureTogglesService featureTogglesService;
 
     @ApiOperation(value = "Toggle kilda features")
-    @RequestMapping(method = RequestMethod.PATCH)
+    @RequestMapping(method = RequestMethod.POST)
     @ResponseStatus(HttpStatus.OK)
-    public void toggleFeatures(@RequestBody FeatureToggleDto request) {
+    public void toggleFeatures(@RequestBody FeatureTogglePayload request) {
         featureTogglesService.toggleFeatures(request);
     }
 
-    @ApiOperation(value = "Get states of feature toggles", response = FeatureToggleDto.class)
+    @ApiOperation(value = "Get states of feature toggles", response = FeatureTogglePayload.class)
     @GetMapping
     @ResponseStatus(HttpStatus.OK)
-    public FeatureToggleDto getFeatureTogglesState() {
+    public FeatureTogglePayload getFeatureTogglesState() {
         return featureTogglesService.getFeatureTogglesState();
     }
 }

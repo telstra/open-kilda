@@ -17,6 +17,7 @@ package org.openkilda.pce.cache;
 
 import org.openkilda.messaging.error.CacheException;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.info.event.NetworkTopologyChange;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;

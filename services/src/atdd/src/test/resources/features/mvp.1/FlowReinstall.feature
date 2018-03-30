@@ -34,11 +34,34 @@ Feature: Flow re-reinstalling after switch comes back up.
     When flow pcet creation request with de:ad:be:ef:00:00:00:01 2 0 and de:ad:be:ef:00:00:00:03 2 0 and 100 is successful
     And flow pcet in UP state
 
-    When switch 00000001 is turned off
+    When switch 00000002 is turned off
     Then flow pcet in DOWN state
 
-    When switch 00000001 is turned on
+    When switch 00000002 is turned on
     Then flow pcet in UP state
+
+  @MVP1
+  Scenario: Re-installing transit flow when no other path is available and reflow feature is turned off.
+
+  This scenario creates linear topology of three switches(00000001, 00000002, 00000003), and create from from switch
+  00000001 to 00000003. There is only 1 possible path for this flow. So when when switch 00000002 is turned off, flow
+  should switch to DOWN state. When switch 00000002 will be recovered, flow must stay in DOWN state due to disabled
+  flows reroute on switch activation.
+
+    Given a clean flow topology
+    And a clean controller
+    And a random linear topology of 3 switches
+    And topology contains 8 links
+    When flow disableReflowTest creation request with de:ad:be:ef:00:00:00:01 2 0 and de:ad:be:ef:00:00:00:03 2 0 and 100 is successful
+    And flow disableReflowTest in UP state
+
+    And flow reroute feature is off
+    When switch 00000002 is turned off
+    Then flow disableReflowTest in DOWN state
+
+    When switch 00000002 is turned on
+    And topology contains 8 links
+    Then flow disableReflowTest in DOWN state
 
   @MVP1
   Scenario: Re-installing transit flow after changing path.

@@ -30,6 +30,7 @@ import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.HealthCheck;
 import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.payload.FeatureTogglePayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
@@ -60,13 +61,14 @@ import javax.ws.rs.core.Response;
 
 
 public class FlowUtils {
+
     private static final String auth = topologyUsername + ":" + topologyPassword;
     private static final String authHeaderValue = "Basic " + getEncoder().encodeToString(auth.getBytes());
     private static final String FEATURE_TIME = String.valueOf(System.currentTimeMillis());
     private static final int WAIT_ATTEMPTS = 10;
     private static final int WAIT_DELAY = 2;
 
-    public static final Client clientFactory(){
+    public static final Client clientFactory() {
         Client client = ClientBuilder.newClient(new ClientConfig()).register(JacksonFeature.class);
         return client;
     }
@@ -84,7 +86,6 @@ public class FlowUtils {
                 .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
                 .header(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()))
                 .get();
-
 
         System.out.println(format("===> Response = %s", response.toString()));
         System.out.println(format("===> Northbound Health-Check Time: %,.3f", getTimeDuration(current)));
@@ -177,7 +178,7 @@ public class FlowUtils {
     /**
      * Updates flow through Northbound service.
      *
-     * @param flowId  flow id
+     * @param flowId flow id
      * @param payload flow JSON data
      * @return The JSON document of the created flow
      */
@@ -272,7 +273,6 @@ public class FlowUtils {
                 .header(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()))
                 .get();
 
-
         System.out.println(format("===> Response = %s", response.toString()));
         System.out.println(format("===> Northbound Get Flow Path Time: %,.3f", getTimeDuration(current)));
 
@@ -310,8 +310,6 @@ public class FlowUtils {
     /**
      * call doGetFlowStatusRequest until it got success codes 2xx. If it got not 2xx code and not 404 code it
      * raise error. If it get 404 code it ends successfully.
-     *
-     * @param flowId
      */
     public static void waitFlowDeletion(String flowId) throws InterruptedException, FlowOperationException {
         for (int attempt = 0; attempt < WAIT_ATTEMPTS; attempt += 1) {
@@ -400,7 +398,8 @@ public class FlowUtils {
 
         int responseCode = response.getStatus();
         if (responseCode == 200) {
-            List<FlowPayload> flows = response.readEntity(new GenericType<List<FlowPayload>>() {});
+            List<FlowPayload> flows = response.readEntity(new GenericType<List<FlowPayload>>() {
+            });
             System.out.println(format("====> Northbound Get Flow Dump = %d", flows.size()));
             return flows;
         } else {
@@ -433,7 +432,8 @@ public class FlowUtils {
 
         try {
             List<Flow> flows = new ObjectMapper().readValue(response.readEntity(String.class),
-                    new TypeReference<List<Flow>>() {});
+                    new TypeReference<List<Flow>>() {
+                    });
             System.out.println(format("====> Topology-Engine Dump Flows = %d", flows.size()));
 
             return flows;
@@ -448,7 +448,7 @@ public class FlowUtils {
      *
      * @return The JSON document of all flows
      */
-    public static Integer getLinkBandwidth(final String src_switch, final String src_port)  {
+    public static Integer getLinkBandwidth(final String src_switch, final String src_port) {
         System.out.println("\n==> Topology-Engine Link Bandwidth");
 
         long current = System.currentTimeMillis();
@@ -464,7 +464,6 @@ public class FlowUtils {
                 .request()
                 .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
                 .get();
-
 
         System.out.println(format("===> Response = %s", response.toString()));
         System.out.println(format("===> Topology-Engine Link Bandwidth Time: %,.3f", getTimeDuration(current)));
@@ -513,11 +512,11 @@ public class FlowUtils {
             System.out.println(format("=====> Cleanup Flows, nbflow count = %d",
                     nbFlows.size()));
 
-            nbFlows.forEach(flow->flows.add(flow.getId()));
+            nbFlows.forEach(flow -> flows.add(flow.getId()));
 
             // Get the flows through the TE Rest API ... loop until the math works out.
             List<Flow> tpeFlows = new ArrayList<>();
-            for (int i = 0; i < 10; ++i){
+            for (int i = 0; i < 10; ++i) {
                 tpeFlows = dumpFlows();
                 if (tpeFlows.size() == nbFlows.size() * 2) {
                     tpeFlows.forEach(flow -> flows.add(flow.getFlowId()));
@@ -532,9 +531,9 @@ public class FlowUtils {
             flows.forEach(FlowUtils::deleteFlow);
 
             // Wait for them to become zero
-            int nb_count=-1;
-            int ter_count=-1;
-            for (int i = 0; i < 10; ++i){
+            int nb_count = -1;
+            int ter_count = -1;
+            for (int i = 0; i < 10; ++i) {
                 TimeUnit.SECONDS.sleep(2);
                 nb_count = dumpFlows().size();
                 ter_count = getFlowDump().size();
@@ -593,5 +592,41 @@ public class FlowUtils {
         boolean isEnabled = Boolean.valueOf(System.getProperty("traffic", "true"));
         System.out.println(format("\n=====> Traffic check is %s", isEnabled ? "enabled" : "disabled"));
         return isEnabled;
+    }
+
+    public static FeatureTogglePayload updateFeaturesStatus(FeatureTogglePayload desired) {
+        System.out.println("\n==> toggle features status");
+
+        Client client = clientFactory();
+
+        Response response;
+        response = client
+                .target(northboundEndpoint)
+                .path("/api/v1/features")
+                .request(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
+                .header(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()))
+                .post(Entity.json(desired));
+
+        System.out.println(format("===> Response = %s", response.toString()));
+
+        if (response.getStatus() != 200) {
+            System.out.println(format("====> Error: Northbound Create Flow = POST status: %s", response.getStatus()));
+            return null;
+        }
+
+        response = client
+                .target(northboundEndpoint)
+                .path("/api/v1/features")
+                .request(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
+                .header(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()))
+                .get();
+        if (response.getStatus() != 200) {
+            System.out.println(format("====> Error: Northbound Create Flow = GET status: %s", response.getStatus()));
+            return null;
+        }
+
+        return response.readEntity(FeatureTogglePayload.class);
     }
 }

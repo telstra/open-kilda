@@ -17,17 +17,6 @@ package org.openkilda.wfm.topology.cache;
 
 import static org.openkilda.messaging.Utils.MAPPER;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.Sets;
-import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.lang.StringUtils;
-import org.apache.storm.state.InMemoryKeyValueState;
-import org.apache.storm.task.OutputCollector;
-import org.apache.storm.task.TopologyContext;
-import org.apache.storm.topology.OutputFieldsDeclarer;
-import org.apache.storm.tuple.Tuple;
-import org.apache.storm.tuple.Values;
 import org.openkilda.messaging.BaseMessage;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
@@ -46,6 +35,7 @@ import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.NetworkInfoData;
 import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.messaging.info.event.NetworkTopologyChange;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
@@ -64,6 +54,18 @@ import org.openkilda.wfm.ctrl.ICtrlBolt;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.cache.service.CacheWarmingService;
 import org.openkilda.wfm.topology.utils.AbstractTickStatefulBolt;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Sets;
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang.StringUtils;
+import org.apache.storm.state.InMemoryKeyValueState;
+import org.apache.storm.task.OutputCollector;
+import org.apache.storm.task.TopologyContext;
+import org.apache.storm.topology.OutputFieldsDeclarer;
+import org.apache.storm.tuple.Tuple;
+import org.apache.storm.tuple.Values;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -232,6 +234,11 @@ public class CacheBolt
 
                     FlowInfoData flowData = (FlowInfoData) data;
                     handleFlowEvent(flowData, tuple);
+                } else if (data instanceof NetworkTopologyChange) {
+                    logger.info("Switch flows reroute request");
+
+                    NetworkTopologyChange topologyChange = (NetworkTopologyChange) data;
+                    handleNetworkTopologyChangeEvent(topologyChange, tuple);
                 } else {
                     logger.error("Skip undefined info data type {}", json);
                 }
@@ -346,9 +353,6 @@ public class CacheBolt
                 } else {
                     networkCache.createIsl(isl);
                 }
-
-                affectedFlows = getFlowsForRerouting(isl);
-                emitRerouteCommands(affectedFlows, tuple, UUID.randomUUID().toString(), FlowOperation.UPDATE);
                 break;
 
             case FAILED:
@@ -357,6 +361,7 @@ public class CacheBolt
                 } catch (CacheException exception) {
                     logger.warn("{}:{}", exception.getErrorMessage(), exception.getErrorDescription());
                 }
+
                 affectedFlows = flowCache.getActiveFlowsWithAffectedPath(isl);
                 emitRerouteCommands(affectedFlows, tuple, UUID.randomUUID().toString(), FlowOperation.UPDATE);
                 break;
@@ -395,6 +400,26 @@ public class CacheBolt
                 logger.warn("Unknown state update isl info message");
                 break;
         }
+    }
+
+    private void handleNetworkTopologyChangeEvent(NetworkTopologyChange topologyChange, Tuple tuple) {
+        Set<ImmutablePair<Flow, Flow>> affectedFlows;
+
+        switch (topologyChange.getType()) {
+            case ENDPOINT_DROP:
+                // TODO(surabujin): need implementation
+                return;
+
+            case ENDPOINT_ADD:
+                affectedFlows = getFlowsForRerouting(topologyChange);
+                break;
+
+            default:
+                logger.error("Unhandled reroute type: {}", topologyChange.getType());
+                return;
+        }
+
+        emitRerouteCommands(affectedFlows, tuple, UUID.randomUUID().toString(), FlowOperation.UPDATE);
     }
 
     private void emitFlowMessage(InfoData data, Tuple tuple, String correlationId) throws IOException {
@@ -600,19 +625,12 @@ public class CacheBolt
         return prevPath;
     }
 
-    private Set<ImmutablePair<Flow, Flow>> getFlowsForRerouting(IslInfoData isl) {
+    private Set<ImmutablePair<Flow, Flow>> getFlowsForRerouting(NetworkTopologyChange rerouteData) {
         Set<ImmutablePair<Flow, Flow>> inactiveFlows = flowCache.dumpFlows().stream()
                 .filter(flow -> FlowState.DOWN.equals(flow.getLeft().getState()))
                 .collect(Collectors.toSet());
 
-        //As we get isl discovery we may be sure that switches are alive,
-        //so we can try to reroute transit flow to the original path.
-        String srcSwitch = isl.getPath().stream()
-                .filter(node -> node.getSeqId() == 0)
-                .findFirst()
-                .map(PathNode::getSwitchId)
-                .get();
-        Set<ImmutablePair<Flow, Flow>> transitFlows = getTransitFlowsPreviouslyInstalled(srcSwitch);
+        Set<ImmutablePair<Flow, Flow>> transitFlows = getTransitFlowsPreviouslyInstalled(rerouteData.getSwitchId());
         return Sets.union(inactiveFlows, transitFlows);
 
     }

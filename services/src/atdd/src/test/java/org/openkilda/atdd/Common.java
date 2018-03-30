@@ -18,6 +18,7 @@ package org.openkilda.atdd;
 import cucumber.api.java.en.Given;
 
 import org.openkilda.flow.FlowUtils;
+import org.openkilda.messaging.payload.FeatureTogglePayload;
 import org.openkilda.topo.TestUtils;
 
 /**
@@ -58,5 +59,8 @@ public class Common {
     @Given("^a clean flow topology$")
     public void a_clean_flow_topology() throws Throwable {
         FlowUtils.cleanupFlows();
+
+        FeatureTogglePayload features = new FeatureTogglePayload(true, true);
+        FlowUtils.updateFeaturesStatus(features);
     }
 }
