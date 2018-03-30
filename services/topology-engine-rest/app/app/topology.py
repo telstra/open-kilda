@@ -613,7 +613,7 @@ def api_v1_topology_link_bandwidth(src_switch, src_port):
 @application.route('/api/v1/topology/routes/src/<src_switch>/dst/<dst_switch>')
 @login_required
 def api_v1_routes_between_nodes(src_switch, dst_switch):
-    depth = request.args.get('depth') or '50'
+    depth = request.args.get('depth') or '10'
     query = (
         "MATCH p=(src:switch{{name:'{src_switch}'}})-[:isl*..{depth}]->"
         "(dst:switch{{name:'{dst_switch}'}}) "
