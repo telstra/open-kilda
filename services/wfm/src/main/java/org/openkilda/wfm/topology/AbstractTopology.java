@@ -15,24 +15,6 @@
 
 package org.openkilda.wfm.topology;
 
-import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.common.serialization.StringDeserializer;
-import org.apache.storm.Config;
-import org.apache.storm.LocalCluster;
-import org.apache.storm.StormSubmitter;
-import org.apache.storm.kafka.bolt.KafkaBolt;
-import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
-import org.apache.storm.kafka.bolt.selector.DefaultTopicSelector;
-import org.apache.storm.kafka.spout.KafkaSpout;
-import org.apache.storm.kafka.spout.KafkaSpoutConfig;
-import org.apache.storm.kafka.spout.KafkaSpoutRetryExponentialBackoff;
-import org.apache.storm.kafka.spout.KafkaSpoutRetryExponentialBackoff.TimeInterval;
-import org.apache.storm.thrift.TException;
-import org.apache.storm.topology.BoltDeclarer;
-import org.apache.storm.topology.TopologyBuilder;
-import org.apache.storm.tuple.Fields;
-import org.kohsuke.args4j.CmdLineException;
 import org.openkilda.messaging.Topic;
 import org.openkilda.wfm.ConfigurationException;
 import org.openkilda.wfm.CtrlBoltRef;
@@ -44,10 +26,26 @@ import org.openkilda.wfm.ctrl.RouteBolt;
 import org.openkilda.wfm.kafka.CustomNamedSubscription;
 import org.openkilda.wfm.topology.utils.HealthCheckBolt;
 import org.openkilda.wfm.topology.utils.KafkaRecordTranslator;
+
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.storm.Config;
+import org.apache.storm.LocalCluster;
+import org.apache.storm.StormSubmitter;
+import org.apache.storm.kafka.bolt.KafkaBolt;
+import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
+import org.apache.storm.kafka.bolt.selector.DefaultTopicSelector;
+import org.apache.storm.kafka.spout.KafkaSpout;
+import org.apache.storm.kafka.spout.KafkaSpoutConfig;
+import org.apache.storm.thrift.TException;
+import org.apache.storm.topology.BoltDeclarer;
+import org.apache.storm.topology.TopologyBuilder;
+import org.apache.storm.tuple.Fields;
+import org.kohsuke.args4j.CmdLineException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 
@@ -194,23 +192,11 @@ public abstract class AbstractTopology implements Topology {
      * @param topic Kafka topic
      * @return {@link KafkaSpout}
      */
-    protected KafkaSpout createKafkaSpout(String topic, String spoutId) {
-
-        KafkaSpoutConfig<String, String> spoutConfig = new KafkaSpoutConfig.Builder<>(config.getKafkaHosts(),
-                StringDeserializer.class, StringDeserializer.class, new CustomNamedSubscription(topic))
-                .setGroupId(String.format("%s__%s", getTopologyName(), spoutId))
-                .setRecordTranslator(new KafkaRecordTranslator<>())
-                // NB: There is an issue with using the default of "earliest uncommitted message" -
-                //      if we erase the topics, then the committed will be > the latest .. and so
-                //      we won't process any messages.
-                // NOW: we'll miss any messages generated while the topology is down.
-                .setFirstPollOffsetStrategy(KafkaSpoutConfig.FirstPollOffsetStrategy.LATEST)
-                .setMaxUncommittedOffsets(Integer.MAX_VALUE)
-                .setRetry(new KafkaSpoutRetryExponentialBackoff(TimeInterval.seconds(5),
-                        TimeInterval.microSeconds(5), Integer.MAX_VALUE, TimeInterval.seconds(60)))
+    protected KafkaSpout<String, String> createKafkaSpout(String topic, String spoutId) {
+        KafkaSpoutConfig<String, String> config = makeKafkaSpoutConfigBuilder(spoutId, topic)
                 .build();
 
-        return new KafkaSpout<>(spoutConfig);
+        return new KafkaSpout<>(config);
     }
 
     /**
@@ -265,5 +251,24 @@ public abstract class AbstractTopology implements Topology {
         KafkaBolt healthCheckKafkaBolt = createKafkaBolt(Topic.HEALTH_CHECK);
         builder.setBolt(prefix + "HealthCheckKafkaBolt", healthCheckKafkaBolt, 1)
                 .shuffleGrouping(prefix + "HealthCheckBolt", Topic.HEALTH_CHECK);
+    }
+
+    protected KafkaSpoutConfig.Builder<String, String> makeKafkaSpoutConfigBuilder(String spoutId, String topic) {
+        return new KafkaSpoutConfig.Builder<>(
+                config.getKafkaHosts(), StringDeserializer.class, StringDeserializer.class,
+                new CustomNamedSubscription(topic))
+
+                .setGroupId(makeKafkaGroupName(spoutId))
+                .setRecordTranslator(new KafkaRecordTranslator<>())
+
+                // NB: There is an issue with using the default of "earliest uncommitted message" -
+                //      if we erase the topics, then the committed will be > the latest .. and so
+                //      we won't process any messages.
+                // NOW: we'll miss any messages generated while the topology is down.
+                .setFirstPollOffsetStrategy(KafkaSpoutConfig.FirstPollOffsetStrategy.LATEST);
+    }
+
+    protected String makeKafkaGroupName(String spoutId) {
+        return String.format("%s__%s", getTopologyName(), spoutId);
     }
 }

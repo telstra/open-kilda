@@ -18,14 +18,6 @@ package org.openkilda.wfm.topology.flow.bolts;
 import static java.lang.String.format;
 import static org.openkilda.messaging.Utils.MAPPER;
 
-import com.google.common.annotations.VisibleForTesting;
-import org.apache.storm.state.InMemoryKeyValueState;
-import org.apache.storm.task.OutputCollector;
-import org.apache.storm.task.TopologyContext;
-import org.apache.storm.topology.OutputFieldsDeclarer;
-import org.apache.storm.topology.base.BaseStatefulBolt;
-import org.apache.storm.tuple.Tuple;
-import org.apache.storm.tuple.Values;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
@@ -43,8 +35,15 @@ import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.discovery.NetworkInfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
-import org.openkilda.messaging.info.flow.*;
+import org.openkilda.messaging.info.flow.FlowCacheSyncResponse;
+import org.openkilda.messaging.info.flow.FlowInfoData;
+import org.openkilda.messaging.info.flow.FlowOperation;
+import org.openkilda.messaging.info.flow.FlowPathResponse;
+import org.openkilda.messaging.info.flow.FlowResponse;
+import org.openkilda.messaging.info.flow.FlowStatusResponse;
+import org.openkilda.messaging.info.flow.FlowsResponse;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
@@ -65,11 +64,25 @@ import org.openkilda.wfm.topology.flow.FlowTopology;
 import org.openkilda.wfm.topology.flow.StreamType;
 import org.openkilda.wfm.topology.flow.validation.FlowValidationException;
 import org.openkilda.wfm.topology.flow.validation.FlowValidator;
+
+import com.google.common.annotations.VisibleForTesting;
+import org.apache.storm.state.InMemoryKeyValueState;
+import org.apache.storm.task.OutputCollector;
+import org.apache.storm.task.TopologyContext;
+import org.apache.storm.topology.OutputFieldsDeclarer;
+import org.apache.storm.topology.base.BaseStatefulBolt;
+import org.apache.storm.tuple.Tuple;
+import org.apache.storm.tuple.Values;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 public class CrudBolt
@@ -170,9 +183,14 @@ public class CrudBolt
         logger.trace("Flow Cache before: {}", flowCache);
 
         ComponentType componentId = ComponentType.valueOf(tuple.getSourceComponent());
-        StreamType streamId = StreamType.valueOf(tuple.getSourceStreamId());
-        String flowId = tuple.getStringByField(Utils.FLOW_ID);
         String correlationId = Utils.DEFAULT_CORRELATION_ID;
+
+        StreamType streamId = null;
+        String flowId = null;
+        if (!componentId.equals(ComponentType.LCM_FLOW_SYNC_BOLT)) {
+            streamId = StreamType.valueOf(tuple.getSourceStreamId());
+            flowId = tuple.getStringByField(Utils.FLOW_ID);
+        }
 
         try {
             logger.debug("Request tuple={}", tuple);
@@ -265,6 +283,14 @@ public class CrudBolt
                             logger.debug("Unexpected stream: component={}, stream={}", componentId, streamId);
                             break;
                     }
+                    break;
+
+                case LCM_FLOW_SYNC_BOLT:
+                    logger.debug("Got network dump from TE");
+
+                    NetworkInfoData networkDump = (NetworkInfoData) tuple.getValueByField(
+                            LcmFlowCacheSyncBolt.FIELD_ID_NETWORK_DUMP);
+                    handleFlowSync(networkDump);
                     break;
 
                 default:
@@ -661,6 +687,13 @@ public class CrudBolt
 
         Values error = new Values(message, errorType);
         outputCollector.emit(StreamType.ERROR.toString(), tuple, error);
+    }
+
+    private void handleFlowSync(NetworkInfoData networkDump) {
+        Set<ImmutablePair<Flow, Flow>> flows = networkDump.getFlows();
+
+        logger.info("Load flows {}", flows.size());
+        flows.forEach(flowCache::putFlow);
     }
 
     /**
