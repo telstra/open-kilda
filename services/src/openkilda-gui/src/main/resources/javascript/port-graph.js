@@ -44,7 +44,7 @@ $(document).ready(function() {
 
 	$.datetimepicker.setLocale('en');
 	$('#datetimepicker7').datetimepicker({
-		  format:'Y/m/d h:i:s',
+		  format:'Y/m/d H:i:s',
 	});
 	var date = new Date()
 	var yesterday = new Date(date.getTime());
@@ -61,7 +61,7 @@ $(document).ready(function() {
 	$("#datetimepicker8").val(EndDate);
 
 	$('#datetimepicker8').datetimepicker({
-		  format:'Y/m/d h:i:s',
+		  format:'Y/m/d H:i:s',
 	});
 
 	$('#datetimepicker_dark').datetimepicker({theme:'dark'})
