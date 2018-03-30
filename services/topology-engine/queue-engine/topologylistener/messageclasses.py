@@ -48,7 +48,6 @@ MT_TOGGLE = "org.openkilda.messaging.command.system.FeatureToggleRequest"
 MT_NETWORK_TOPOLOGY_CHANGE = (
     "org.openkilda.messaging.info.event.NetworkTopologyChange")
 CD_NETWORK = "org.openkilda.messaging.command.discovery.NetworkCommandData"
-CD_FLOWS_SYNC_REQUEST = 'org.openkilda.messaging.command.FlowsSyncRequest'
 
 
 FEATURE_SYNC_OFRULES = 'sync_rules_on_activation'
@@ -130,10 +129,6 @@ class MessageItem(object):
 
             elif self.get_message_type() == MT_FLOW_INFODATA:
                 event_handled = self.flow_operation()
-
-            elif self.get_command() == CD_FLOWS_SYNC_REQUEST:
-                self.handle_flow_topology_sync()
-                event_handled = True
 
             elif self.get_command() == CD_NETWORK:
                 event_handled = self.dump_network()
@@ -760,16 +755,6 @@ class MessageItem(object):
             raise
 
         return True
-
-    def handle_flow_topology_sync(self):
-        payload = {
-            'switches': [],
-            'isls': [],
-            'flows': flow_utils.get_flows(),
-            'clazz': MT_NETWORK}
-        message_utils.send_to_topic(
-            payload, self.correlation_id, message_utils.MT_INFO,
-            destination="WFM_FLOW_LCM", topic=config.KAFKA_FLOW_TOPIC)
 
     def get_feature_toggle_state(self):
         payload = message_utils.make_features_status_response()
