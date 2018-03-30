@@ -344,6 +344,7 @@ def hydrate_flow(one_row):
     flow = json.loads(json.dumps(one_row['r'],
                                  default=lambda o: o.__dict__,
                                  sort_keys=True))
+    path.setdefault('clazz', 'org.openkilda.messaging.info.event.PathInfoData')
     flow['flowpath'] = path
     return flow
 
