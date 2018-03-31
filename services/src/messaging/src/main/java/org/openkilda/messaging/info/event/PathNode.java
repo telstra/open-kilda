@@ -68,6 +68,13 @@ public class PathNode implements Serializable {
     private Long segmentLatency;
 
     /**
+     * If a per segment cookie is set.
+     */
+    @JsonInclude(JsonInclude.Include.NON_DEFAULT) // Needed to exclude when not set
+    @JsonProperty("cookie")
+    private Long cookie;
+
+    /**
      * Default constructor.
      */
     public PathNode() {
@@ -83,6 +90,7 @@ public class PathNode implements Serializable {
         this.portNo = that.portNo;
         this.switchId = that.switchId;
         this.segmentLatency = that.segmentLatency;
+        this.cookie = that.cookie;
     }
 
     /**
@@ -110,10 +118,12 @@ public class PathNode implements Serializable {
     public PathNode(@JsonProperty("switch_id") final String switchId,
                     @JsonProperty("port_no") final int portNo,
                     @JsonProperty("seq_id") final int seqId,
+                    @JsonProperty("cookie") final Long cookie,
                     @JsonProperty("segment_latency") final Long segmentLatency) {
         this.switchId = switchId;
         this.portNo = portNo;
         this.seqId = seqId;
+        this.cookie = cookie
         this.segmentLatency = segmentLatency;
     }
 
@@ -195,6 +205,17 @@ public class PathNode implements Serializable {
     @JsonProperty("segment_latency")
     public void setSegLatency(final long latency) {
         this.segmentLatency = latency;
+    }
+
+
+    @JsonProperty("cookie")
+    public Long getCookie() {
+        return cookie;
+    }
+
+    @JsonProperty("cookie")
+    public void setCookie(Long cookie) {
+        this.cookie = cookie;
     }
 
     /**
