@@ -114,7 +114,9 @@ public class FlowTopology extends AbstractTopology {
          */
         kafkaSpoutConfig = makeKafkaSpoutConfigBuilder(
                 ComponentType.NORTHBOUND_KAFKA_SPOUT.toString(), config.getKafkaFlowTopic()).build();
-        kafkaSpout = new LcmKafkaSpout<>(kafkaSpoutConfig);
+        // (crimi) - commenting out LcmKafkaSpout here due to dying worker
+        //kafkaSpout = new LcmKafkaSpout<>(kafkaSpoutConfig);
+        kafkaSpout = new KafkaSpout<>(kafkaSpoutConfig);
         builder.setSpout(ComponentType.NORTHBOUND_KAFKA_SPOUT.toString(), kafkaSpout, parallelism);
 
         /*

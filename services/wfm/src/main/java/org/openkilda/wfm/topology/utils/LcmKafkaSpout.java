@@ -30,7 +30,7 @@ public class LcmKafkaSpout<K, V> extends KafkaSpout<K, V> {
     @Override
     public void nextTuple() {
         if (isSyncDone) {
-            logger.info("Proxy .nextTuple() call to super object");
+            logger.trace("Proxy .nextTuple() call to super object");
             super.nextTuple();
         } else if (syncEventId == null) {
             logger.info("Spout {} - sending LCM sync event", spoutId);
