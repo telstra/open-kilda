@@ -19,7 +19,7 @@ public interface MessageConsumer<T> {
     /**
      * Kafka message queue poll timeout.
      */
-    int POLL_TIMEOUT = 10 * 1000;
+    int POLL_TIMEOUT = 120 * 1000;
 
     /**
      * Kafka message queue poll pause.
