@@ -69,6 +69,10 @@ public class OpenTSDBTopology extends AbstractTopology {
                 .newBuilder(config.getOpenTsDBHosts())
                 .sync(config.getOpenTsdbTimeout())
                 .returnDetails();
+        if(config.isOpenTsdbClientChunkedRequestsEnabled()) {
+            tsdbBuilder.enableChunkedEncoding();
+        }
+
         OpenTsdbBolt openTsdbBolt = new OpenTsdbBolt(tsdbBuilder,
                 Collections.singletonList(TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER));
         openTsdbBolt.withBatchSize(config.getOpenTsdbBatchSize()).withFlushInterval(config.getOpenTsdbFlushInterval());
