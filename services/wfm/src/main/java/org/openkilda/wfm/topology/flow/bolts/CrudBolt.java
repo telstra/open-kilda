@@ -410,7 +410,7 @@ public class CrudBolt
         flowCache.pushFlow(flow);
 
         // Update Cache
-        FlowInfoData data = new FlowInfoData(flow.getLeft().getFlowId(), flow, FlowOperation.CREATE,
+        FlowInfoData data = new FlowInfoData(flow.getLeft().getFlowId(), flow, FlowOperation.PUSH,
                 message.getCorrelationId());
         InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), message.getCorrelationId());
         Values topology = new Values(MAPPER.writeValueAsString(infoMessage));
@@ -429,7 +429,7 @@ public class CrudBolt
         ImmutablePair<Flow, Flow> flow = flowCache.deleteFlow(flowId);
 
         // Update Cache
-        FlowInfoData data = new FlowInfoData(flowId, flow, FlowOperation.DELETE, message.getCorrelationId());
+        FlowInfoData data = new FlowInfoData(flowId, flow, FlowOperation.UNPUSH, message.getCorrelationId());
         InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), message.getCorrelationId());
         Values topology = new Values(MAPPER.writeValueAsString(infoMessage));
         outputCollector.emit(StreamType.DELETE.toString(), tuple, topology);
