@@ -106,6 +106,14 @@ public class PathNode implements Serializable {
         this.seqId = seqId;
     }
 
+    public PathNode(final String switchId, final int portNo, final int seqId, final Long segmentLatency) {
+        this.switchId = switchId;
+        this.portNo = portNo;
+        this.seqId = seqId;
+        this.segmentLatency = segmentLatency;
+        this.cookie = null;
+    }
+
     /**
      * Instance creator.
      *
