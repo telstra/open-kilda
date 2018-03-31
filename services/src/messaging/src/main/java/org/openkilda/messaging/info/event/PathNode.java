@@ -123,7 +123,7 @@ public class PathNode implements Serializable {
         this.switchId = switchId;
         this.portNo = portNo;
         this.seqId = seqId;
-        this.cookie = cookie
+        this.cookie = cookie;
         this.segmentLatency = segmentLatency;
     }
 
