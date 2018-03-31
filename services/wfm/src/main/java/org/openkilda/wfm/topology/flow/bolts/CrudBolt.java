@@ -409,6 +409,13 @@ public class CrudBolt
 
         flowCache.pushFlow(flow);
 
+        // Update Cache
+        FlowInfoData data = new FlowInfoData(flow.getLeft().getFlowId(), flow, FlowOperation.CREATE,
+                message.getCorrelationId());
+        InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), message.getCorrelationId());
+        Values topology = new Values(MAPPER.writeValueAsString(infoMessage));
+        outputCollector.emit(StreamType.CREATE.toString(), tuple, topology);
+
         Values northbound = new Values(new InfoMessage(new FlowStatusResponse(new FlowIdStatusPayload(flowId, FlowState.UP)),
                 message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
         outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
@@ -418,7 +425,15 @@ public class CrudBolt
         logger.info("UNPUSH flow: {} :: {}", flowId, message);
         FlowInfoData fid = (FlowInfoData) message.getData();
 
-        flowCache.deleteFlow(flowId);
+
+        ImmutablePair<Flow, Flow> flow = flowCache.deleteFlow(flowId);
+
+        // Update Cache
+        FlowInfoData data = new FlowInfoData(flowId, flow, FlowOperation.DELETE, message.getCorrelationId());
+        InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), message.getCorrelationId());
+        Values topology = new Values(MAPPER.writeValueAsString(infoMessage));
+        outputCollector.emit(StreamType.DELETE.toString(), tuple, topology);
+
 
         Values northbound = new Values(new InfoMessage(new FlowStatusResponse(new FlowIdStatusPayload(flowId, FlowState.DOWN)),
                 message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
