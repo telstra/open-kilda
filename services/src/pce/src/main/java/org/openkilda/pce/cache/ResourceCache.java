@@ -216,7 +216,8 @@ public class ResourceCache extends Cache {
      * @return deallocated meter id value or null if value was not allocated earlier
      */
     public synchronized Integer deallocateMeterId(String switchId, Integer meterId) {
-        return meterPool.get(switchId).deallocate(meterId);
+        ResourcePool switchMeterPool = meterPool.get(switchId);
+        return switchMeterPool != null ? switchMeterPool.deallocate(meterId) : null;
     }
 
     /**
@@ -226,7 +227,8 @@ public class ResourceCache extends Cache {
      * @return deallocated meter id values
      */
     public synchronized Set<Integer> deallocateMeterId(String switchId) {
-        return meterPool.remove(switchId).dumpPool();
+        ResourcePool switchMeterPool = meterPool.remove(switchId);
+        return switchMeterPool != null ? switchMeterPool.dumpPool() : null;
     }
 
     /**
