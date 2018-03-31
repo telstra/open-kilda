@@ -527,9 +527,9 @@ public class CacheBolt
 
             case UNPUSH:
                 logger.debug("Flow UNPUSH message received: {}", flowData);
-                String flowsId = flowData.getPayload().getLeft().getFlowId();
-                flowCache.removeFlow(flowsId);
-                reroutedFlows.remove(flowsId);
+                String flowsId2 = flowData.getPayload().getLeft().getFlowId();
+                flowCache.removeFlow(flowsId2);
+                reroutedFlows.remove(flowsId2);
                 logger.info("Flow UNPUSH message processed: {}", flowData);
                 break;
 
