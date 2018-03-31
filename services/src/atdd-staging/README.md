@@ -14,10 +14,8 @@ switches:
       of_version: OF_13
       status: active
       out_ports:
-        - port: 20
+        - port: 10
           vlan_range: 1..10, 22, 35..40
-        - port: 21
-          vlan_range: 1..10
 
     - name: sw2
       dp_id: 00:00:00:00:00:02
@@ -29,9 +27,7 @@ switches:
       of_version: OF_13
       status: active
       out_ports:
-        - port: 20
-          vlan_range: 1..10, 22, 35..40
-        - port: 22
+        - port: 12
           vlan_range: 1..10
 
 isls:
@@ -53,18 +49,22 @@ isls:
       dst_port: 3
       max_bandwidth: 10000
 
-trafgens:
+traffgens:
     - name: tg1
       control_endpoint: http://192.168.0.1:80/
       switch: sw1
-      switch_port: 11
+      switch_port: 10
       status: active
 
     - name: tg2
       control_endpoint: http://192.168.0.2:80/
       switch: sw3
-      switch_port: 11
+      switch_port: 12
       status: active
+      
+traffgen_config:
+    address_pool_base: 192.168.1.0
+    address_pool_prefix_len: 20      
 ```
 
 ### Kilda configuration

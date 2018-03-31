@@ -18,6 +18,7 @@ package org.openkilda.atdd.staging.model.topology;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.unmodifiableList;
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
@@ -32,10 +33,11 @@ import lombok.Value;
 import lombok.experimental.NonFinal;
 
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Defines a topology with switches, links and trafgens.
+ * Defines a topology with switches, links and traffgens.
  * <p>
  * Topology definition objects are immutable and can't be changed after creation.
  */
@@ -48,16 +50,16 @@ public class TopologyDefinition {
     @NonNull
     private List<Isl> isls;
     @NonNull
-    private List<Trafgen> trafgens;
+    private List<TraffGen> traffGens;
     @NonNull
-    private TrafgenConfig trafgenConfig;
+    private TraffGenConfig traffGenConfig;
 
     @JsonCreator
     public static TopologyDefinition factory(
             @JsonProperty("switches") List<Switch> switches,
             @JsonProperty("isls") List<Isl> isls,
-            @JsonProperty("trafgens") List<Trafgen> trafgens,
-            @JsonProperty("trafgen_config") TrafgenConfig trafgenConfig) {
+            @JsonProperty("traffgens") List<TraffGen> traffGens,
+            @JsonProperty("traffgen_config") TraffGenConfig traffGenConfig) {
 
         Preconditions.checkArgument(
                 switches.size() == switches.stream().map(Switch::getDpId).distinct().count(),
@@ -65,20 +67,27 @@ public class TopologyDefinition {
         Preconditions.checkArgument(
                 isls.size() == isls.stream().distinct().count(), "Isls must have no duplicates");
         Preconditions.checkArgument(
-                trafgens.size() == trafgens.stream().map(Trafgen::getName).distinct().count(),
-                "Trafgens must have no duplicates");
+                traffGens.size() == traffGens.stream().map(TraffGen::getName).distinct().count(),
+                "TraffGens must have no duplicates");
 
         return new TopologyDefinition(
                 unmodifiableList(switches),
                 unmodifiableList(isls),
-                unmodifiableList(trafgens),
-                trafgenConfig);
+                unmodifiableList(traffGens),
+                traffGenConfig);
     }
 
     public List<Switch> getActiveSwitches() {
         return switches.stream()
                 .filter(Switch::isActive)
                 .collect(toList());
+    }
+
+    public Set<String> getSkippedSwitchIds() {
+        return switches.stream()
+                .filter(sw -> sw.getStatus() == Status.Skip)
+                .map(Switch::getDpId)
+                .collect(toSet());
     }
 
     public List<Isl> getIslsForActiveSwitches() {
@@ -188,7 +197,7 @@ public class TopologyDefinition {
 
     @Value
     @NonFinal
-    public static class Trafgen {
+    public static class TraffGen {
 
         @NonNull
         private String name;
@@ -203,14 +212,14 @@ public class TopologyDefinition {
         private Status status;
 
         @JsonCreator
-        public static Trafgen factory(
+        public static TraffGen factory(
                 @JsonProperty("name") String name,
                 @JsonProperty("iface") String ifaceName,
                 @JsonProperty("control_endpoint") String controlEndpoint,
                 @JsonProperty("switch") Switch switchConnected,
                 @JsonProperty("switch_port") int switchPort,
                 @JsonProperty("status") Status status) {
-            return new Trafgen(name, controlEndpoint, ifaceName, switchConnected, switchPort, status);
+            return new TraffGen(name, controlEndpoint, ifaceName, switchConnected, switchPort, status);
         }
 
         public boolean isActive() {
@@ -218,25 +227,26 @@ public class TopologyDefinition {
         }
     }
 
-    public List<Trafgen> getActiveTrafgens() {
-        return trafgens.stream()
-                .filter(Trafgen::isActive)
+    public List<TraffGen> getActiveTraffGens() {
+        return traffGens.stream()
+                .filter(TraffGen::isActive)
+                .filter(traffGen -> traffGen.getSwitchConnected().isActive())
                 .collect(Collectors.toList());
     }
 
     @Value
     @NonFinal
-    public static class TrafgenConfig {
+    public static class TraffGenConfig {
 
         @NonNull
         private String addressPoolBase;
         private int addressPoolPrefixLen;
 
         @JsonCreator
-        public static TrafgenConfig factory(
+        public static TraffGenConfig factory(
                 @JsonProperty("address_pool_base") String addressPoolBase,
                 @JsonProperty("address_pool_prefix_len") int addressPoolPrefixLen) {
-            return new TrafgenConfig(addressPoolBase, addressPoolPrefixLen);
+            return new TraffGenConfig(addressPoolBase, addressPoolPrefixLen);
         }
     }
 

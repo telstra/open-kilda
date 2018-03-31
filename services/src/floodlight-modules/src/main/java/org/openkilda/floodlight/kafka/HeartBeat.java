@@ -27,7 +27,9 @@ public class HeartBeat {
         TimerTask replace = new HeartBeatAction(producer, topic);
         timer.scheduleAtFixedRate(replace, interval, interval);
 
-        task.cancel();
-        task = replace;
+        synchronized (this) {
+            task.cancel();
+            task = replace;
+        }
     }
 }

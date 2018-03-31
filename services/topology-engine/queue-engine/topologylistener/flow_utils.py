@@ -35,11 +35,23 @@ ignored_rules = ['0x8000000000000001', '0x8000000000000002',
 
 
 def is_forward_cookie(cookie):
-    return int(cookie) & 0x4000000000000000
+    cookie = int(cookie)
+    # trying to distinguish kilda and not kilda produced cookies
+    if cookie & 0xE000000000000000:
+        is_match = cookie & 0x4000000000000000
+    else:
+        is_match = (cookie & 0x0080000000000000) == 0
+    return bool(is_match)
 
 
 def is_reverse_cookie(cookie):
-    return int(cookie) & 0x2000000000000000
+    cookie = int(cookie)
+    # trying to distinguish kilda and not kilda produced cookies
+    if cookie & 0xE000000000000000:
+        is_match = cookie & 0x2000000000000000
+    else:
+        is_match = (cookie & 0x0080000000000000) != 0
+    return bool(is_match)
 
 
 def cookie_to_hex(cookie):
@@ -344,6 +356,7 @@ def hydrate_flow(one_row):
     flow = json.loads(json.dumps(one_row['r'],
                                  default=lambda o: o.__dict__,
                                  sort_keys=True))
+    path.setdefault('clazz', 'org.openkilda.messaging.info.event.PathInfoData')
     flow['flowpath'] = path
     return flow
 

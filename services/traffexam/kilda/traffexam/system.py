@@ -68,7 +68,7 @@ class Abstract(context_module.ContextConsumer):
         self.create()
 
 
-class _IfaceManager(_IpMixin, Abstract):
+class _IfaceManager(_IpMixin):
     def iface_drop(self, name):
         klass = type(self)
         try:
@@ -154,7 +154,7 @@ class NetworkNamespace(_IPDBAllocator):
 GWDescriptor = collections.namedtuple('GWDescription', ('root', 'ns'))
 
 
-class VEthPair(RootIPDBMixin, _IfaceManager):
+class VEthPair(RootIPDBMixin, _IfaceManager, Abstract):
     ns_gw_name = 'gw'
 
     def create(self):
@@ -225,7 +225,7 @@ class VEthPair(RootIPDBMixin, _IfaceManager):
         return ('.'.join((base, tail)) for tail in 'AB')
 
 
-class BridgeIface(RootIPDBMixin, _IfaceManager):
+class BridgeToTarget(RootIPDBMixin, _IfaceManager, Abstract):
     def create(self):
         name = self.context.make_bridge_name()
         try:
@@ -269,12 +269,32 @@ class _ConfigureMixin(Abstract):
         pass
 
 
-class TargetIfaceCleanUp(RootIPDBMixin, _ConfigureMixin, _IfaceManager):
+class TargetIfaceCleanUp(RootIPDBMixin, _IfaceManager, _ConfigureMixin):
     def configure(self):
         self.iface_drop_all_addresses(self.context.iface.index)
 
 
-class OwnedNetworksCleanUp(RootIPDBMixin, _ConfigureMixin, _IfaceManager):
+class JoinTargetBridge(RootIPDBMixin, _IfaceManager, _ConfigureMixin):
+    def configure(self):
+        veth = self.context.shared_registry.fetch(VEthPair)
+        veth_index = self.iface_get_info(veth.root).index
+
+        try:
+            with self.get_ipdb().interfaces[self.context.iface.index] as iface:
+                iface.add_port(veth_index)
+        except OSError as e:
+            raise exc.SystemResourceError(type(self), veth.root) from e
+        except KeyError:
+            raise exc.SystemResourceDamagedError(
+                    type(self), self.context.iface.name, 'interface not found')
+
+
+class TargetIfaceSetUp(RootIPDBMixin, _IfaceManager, _ConfigureMixin):
+    def configure(self):
+        self.iface_set_up(self.context.iface.index)
+
+
+class OwnedNetworksCleanUp(RootIPDBMixin, _IfaceManager, _ConfigureMixin):
     def configure(self):
         self.iface_drop_all_addresses(self.context.make_bridge_name())
 
@@ -282,7 +302,7 @@ class OwnedNetworksCleanUp(RootIPDBMixin, _ConfigureMixin, _IfaceManager):
         self.iface_drop_all_addresses(veth.root)
 
 
-class NSNetworksCleanUp(NSIPDBMixin, _ConfigureMixin, _IfaceManager):
+class NSNetworksCleanUp(NSIPDBMixin, _IfaceManager, _ConfigureMixin):
     def configure(self):
         veth = self.context.shared_registry.fetch(VEthPair)
 
@@ -298,11 +318,14 @@ class NSNetworksCleanUp(NSIPDBMixin, _ConfigureMixin, _IfaceManager):
         keep_iface = {
             self.iface_get_info(veth.ns).index,
             self.iface_get_info('lo').index}
+        keep_iface_kinds = {None, 'sit'}
 
         for name in tuple(self.get_ipdb().interfaces):
             if not isinstance(name, int):
                 continue
             if name in keep_iface:
+                continue
+            if self.iface_get_info(name).kind in keep_iface_kinds:
                 continue
 
             try:
@@ -312,6 +335,11 @@ class NSNetworksCleanUp(NSIPDBMixin, _ConfigureMixin, _IfaceManager):
                     raise
 
 
-class NSGatewaySetUp(NSIPDBMixin, _ConfigureMixin, _IfaceManager):
+class NSGatewaySetUp(NSIPDBMixin, _IfaceManager, _ConfigureMixin):
     def configure(self):
         self.iface_set_up(self.context.shared_registry.fetch(VEthPair).ns)
+
+
+class RootIfaceInfo(RootIPDBMixin, _IfaceManager):
+    def __call__(self, name):
+        return self.iface_get_info(name)

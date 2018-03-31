@@ -63,6 +63,7 @@ import org.projectfloodlight.openflow.protocol.OFMeterFlags;
 import org.projectfloodlight.openflow.protocol.OFMeterMod;
 import org.projectfloodlight.openflow.protocol.OFMeterModCommand;
 import org.projectfloodlight.openflow.protocol.OFType;
+import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActions;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
@@ -105,7 +106,12 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
     private static final String TOPO_EVENT_TOPIC = Topic.TOPO_DISCO;
 
-    public static final long FLOW_COOKIE_MASK = 0x60000000FFFFFFFFL;
+    /**
+     * Make sure we clear the top bit .. that is for NON_SYSTEM_MASK. This mask is applied to
+     * Cookie IDs when creating a flow.
+     */
+    public static final long FLOW_COOKIE_MASK = 0x7FFFFFFFFFFFFFFFL;
+
     static final U64 NON_SYSTEM_MASK = U64.of(0x80000000FFFFFFFFL);
 
     // This is invalid VID mask - it cut of highest bit that indicate presence of VLAN tag on package. But valid mask
@@ -671,6 +677,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         for(long cookie : cookiesToRemove) {
             OFFlowDelete dropFlowDelete = ofFactory.buildFlowDelete()
                     .setCookie(U64.of(cookie))
+                    .setCookieMask(NON_SYSTEM_MASK)
                     .build();
             pushFlow(sw, "--DeleteFlow--", dropFlowDelete);
         }
@@ -1029,9 +1036,14 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public void installDropFlow(final DatapathId dpid) throws SwitchOperationException {
         // TODO: leverage installDropFlowCustom
         IOFSwitch sw = lookupSwitch(dpid);
-        OFFlowMod flowMod = buildFlowMod(sw, null, null, null, DROP_RULE_COOKIE, 1);
-        String flowName = "--DropRule--" + dpid.toString();
-        pushFlow(sw, flowName, flowMod);
+        if (sw.getOFFactory().getVersion() == OFVersion.OF_12) {
+            logger.debug("Skip installation of drop flow for switch {}", dpid.toString());
+        } else {
+            logger.debug("Installing drop flow for switch {}", dpid.toString());
+            OFFlowMod flowMod = buildFlowMod(sw, null, null, null, DROP_RULE_COOKIE, 1);
+            String flowName = "--DropRule--" + dpid.toString();
+            pushFlow(sw, flowName, flowMod);
+        }
     }
 
     /**

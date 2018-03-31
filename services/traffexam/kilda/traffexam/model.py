@@ -82,10 +82,11 @@ class BindAddress(object):
 
 
 class Default(object):
-    def __init__(self, value, produce=False):
+    def __init__(self, value, produce=False, override_none=True):
         self._resolve_cache = weakref.WeakKeyDictionary()
         self.value = value
         self.produce = produce
+        self.override_none = override_none
 
     def __get__(self, instance, owner):
         if instance is None:
@@ -142,6 +143,9 @@ class Abstract(object):
                 continue
 
             extra.remove(name)
+
+            if attr.override_none and fields[name] is None:
+                continue
             setattr(self, name, fields[name])
 
         if extra:
@@ -275,10 +279,6 @@ class ProducerEndpoint(_Endpoint):
     def __init__(self, remote_address, **fields):
         super().__init__(**fields)
         self.remote_address = remote_address
-
-        if 'bandwidth' in vars(self) and self.bandwidth is None:
-            # force usage of default value
-            del self.bandwidth
 
         if not self.time:
             raise ValueError('Invalid time: {!r}'.format(self.time))

@@ -15,45 +15,30 @@
 
 package org.openkilda.messaging.payload.flow;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
-
 import org.openkilda.messaging.Utils;
+import org.openkilda.messaging.model.NetworkEndpoint;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.google.common.base.MoreObjects;
+import org.apache.commons.lang3.builder.EqualsBuilder;
 
-import java.io.Serializable;
 import java.util.Objects;
 
 /**
  * Flow endpoint representation class.
+ *
+ * TODO(surabujin): should be moved into org.openkilda.messaging.model package
  */
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonPropertyOrder({
-        "switch-id",
-        "port-id",
-        "vlan-id"})
-public class FlowEndpointPayload implements Serializable {
+public class FlowEndpointPayload extends NetworkEndpoint {
     /**
      * The constant serialVersionUID.
      */
     private static final long serialVersionUID = 1L;
-
-    /**
-     * The switch id.
-     */
-    @JsonProperty("switch-id")
-    private String switchId;
-
-    /**
-     * The port id.
-     */
-    @JsonProperty("port-id")
-    private Integer portId;
 
     /**
      * The port id.
@@ -72,56 +57,8 @@ public class FlowEndpointPayload implements Serializable {
     public FlowEndpointPayload(@JsonProperty("switch-id") String switchId,
                                @JsonProperty("port-id") Integer portId,
                                @JsonProperty("vlan-id") Integer vlanId) {
-        setSwitchId(switchId);
-        setPortId(portId);
+        super(switchId, portId);
         setVlanId(vlanId);
-    }
-
-    /**
-     * Returns switch id.
-     *
-     * @return switch id
-     */
-    public String getSwitchId() {
-        return switchId;
-    }
-
-    /**
-     * Sets switch id.
-     *
-     * @param switchId switch id
-     */
-    public void setSwitchId(String switchId) {
-        if (switchId == null) {
-            throw new IllegalArgumentException("need to set switch id");
-        } else if (!Utils.validateSwitchId(switchId)) {
-            throw new IllegalArgumentException("need to set valid value for switch id");
-        }
-
-        this.switchId = switchId;
-    }
-
-    /**
-     * Returns port id.
-     *
-     * @return port id
-     */
-    public Integer getPortId() {
-        return portId;
-    }
-
-    /**
-     * Sets port id.
-     *
-     * @param portId port id
-     */
-    public void setPortId(Integer portId) {
-        if (portId == null) {
-            throw new IllegalArgumentException("need to set port id");
-        } else if (portId < 0L) {
-            throw new IllegalArgumentException("need to set positive value for port id");
-        }
-        this.portId = portId;
     }
 
     /**
@@ -138,7 +75,7 @@ public class FlowEndpointPayload implements Serializable {
      *
      * @param vlanId vlan id
      */
-    public void setVlanId(Integer vlanId) {
+    private void setVlanId(Integer vlanId) {
         if (vlanId == null) {
             this.vlanId = 0;
         } else if (Utils.validateVlanRange(vlanId)) {
@@ -153,18 +90,13 @@ public class FlowEndpointPayload implements Serializable {
      */
     @Override
     public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-
-        if (obj == null || !(obj instanceof FlowEndpointPayload)) {
-            return false;
-        }
-
+        if (this == obj) return true;
+        if (obj == null || getClass() != obj.getClass()) return false;
         FlowEndpointPayload that = (FlowEndpointPayload) obj;
-        return Objects.equals(getSwitchId(), that.getSwitchId())
-                && Objects.equals(getPortId(), that.getPortId())
-                && Objects.equals(getVlanId(), that.getVlanId());
+        return new EqualsBuilder()
+                .appendSuper(super.equals(obj))
+                .append(vlanId, that.vlanId)
+                .isEquals();
     }
 
     /**
@@ -172,7 +104,7 @@ public class FlowEndpointPayload implements Serializable {
      */
     @Override
     public int hashCode() {
-        return Objects.hash(switchId, portId, vlanId);
+        return Objects.hash(getSwitchDpId(), getPortId(), vlanId);
     }
 
     /**
@@ -180,9 +112,9 @@ public class FlowEndpointPayload implements Serializable {
      */
     @Override
     public String toString() {
-        return toStringHelper(this)
-                .add("switch-id", switchId)
-                .add("port-id", portId)
+        return MoreObjects.toStringHelper(this)
+                .add("switch-id", getSwitchDpId())
+                .add("port-id", getPortId())
                 .add("vlan-id", vlanId)
                 .toString();
     }
