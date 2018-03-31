@@ -518,6 +518,22 @@ public class CacheBolt
 
     private void handleFlowEvent(FlowInfoData flowData, Tuple tuple) throws IOException {
         switch (flowData.getOperation()) {
+            case PUSH:
+                logger.debug("Flow PUSH message received: {}", flowData);
+                flowCache.putFlow(flowData.getPayload());
+                logger.info("Flow PUSH message processed: {}", flowData);
+                // do not emit to TPE .. NB will send directly
+                break;
+
+            case UNPUSH:
+                logger.debug("Flow UNPUSH message received: {}", flowData);
+                String flowsId2 = flowData.getPayload().getLeft().getFlowId();
+                flowCache.removeFlow(flowsId2);
+                reroutedFlows.remove(flowsId2);
+                logger.info("Flow UNPUSH message processed: {}", flowData);
+                break;
+
+
             case CREATE:
                 // TODO: This should be more lenient .. in case of retries
                 flowCache.putFlow(flowData.getPayload());

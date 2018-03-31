@@ -15,7 +15,9 @@
 
 package org.openkilda.pce.cache;
 
+import static java.lang.String.format;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.model.Flow;
@@ -31,6 +33,7 @@ import org.junit.Test;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 
 public class ResourceCacheTest {
     private static final String SWITCH_ID = "switch-id";
@@ -195,5 +198,23 @@ public class ResourceCacheTest {
         assertEquals(Collections.emptySet(), allocatedCookies);
         assertEquals(Collections.emptySet(), allocatedVlanIds);
         assertEquals(Collections.emptySet(), allocatedMeterIds);
+    }
+
+    @Test
+    public void shouldSkipDellocateMeterPoolIfSwitchNotFound(){
+        // given
+        final String switchId = format("%s-%s", SWITCH_ID, UUID.randomUUID());
+
+        // then
+        assertNull(resourceCache.deallocateMeterId(switchId));
+    }
+
+    @Test
+    public void shouldSkipDellocateMeterIdIfSwitchNotFound(){
+        // given
+        final String switchId = format("%s-%s", SWITCH_ID, UUID.randomUUID());
+
+        // then
+        assertNull(resourceCache.deallocateMeterId(switchId, forwardCreatedFlow.getMeterId()));
     }
 }

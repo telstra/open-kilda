@@ -21,6 +21,7 @@ kafka.topic.topo.disco = {{ kafka_topic_topo_disco }}
 kafka.topic.topo.eng = {{ kafka_topic_topo_eng }}
 
 opentsdb.hosts = {{ opentsdb_hosts }}
+
 opentsdb.timeout = {{ opentsdb_timeout }}
 opentsdb.num.spouts = {{ opentsdb_num_spouts }}
 opentsdb.num.opentsdbfilterbolt = {{ opentsdb_num_opentsdbfilterbolt }}
@@ -31,6 +32,7 @@ opentsdb.workers.datapointparserbolt = {{ opentsdb_workers_datapointparserbolt }
 opentsdb.batch.size = {{ opentsdb_batch_size }}
 opentsdb.flush.interval = {{ opentsdb_flush_interval }}
 opentsdb.workers = {{ opentsdb_workers }}
+opentsdb.client.chunked-requests.enabled=true
 
 neo4j.hosts = {{ neo4j_hosts }}
 neo4j.user = {{ neo4j_user }}

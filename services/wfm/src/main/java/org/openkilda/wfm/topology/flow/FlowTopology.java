@@ -99,22 +99,24 @@ public class FlowTopology extends AbstractTopology {
         KafkaSpoutConfig<String, String> kafkaSpoutConfig;
         KafkaSpout<String, String> kafkaSpout;
 
-        builder.setSpout(
-                ComponentType.LCM_SPOUT.toString(),
-                createKafkaSpout(config.getKafkaFlowTopic(), ComponentType.LCM_SPOUT.toString()), 1);
-        builder.setBolt(
-                ComponentType.LCM_FLOW_SYNC_BOLT.toString(),
-                new LcmFlowCacheSyncBolt(ComponentType.NORTHBOUND_KAFKA_SPOUT.toString()),
-                1)
-                .shuffleGrouping(ComponentType.NORTHBOUND_KAFKA_SPOUT.toString(), LcmKafkaSpout.STREAM_ID_LCM)
-                .shuffleGrouping(ComponentType.LCM_SPOUT.toString());
+//        builder.setSpout(
+//                ComponentType.LCM_SPOUT.toString(),
+//                createKafkaSpout(config.getKafkaFlowTopic(), ComponentType.LCM_SPOUT.toString()), 1);
+//        builder.setBolt(
+//                ComponentType.LCM_FLOW_SYNC_BOLT.toString(),
+//                new LcmFlowCacheSyncBolt(ComponentType.NORTHBOUND_KAFKA_SPOUT.toString()),
+//                1)
+//                .shuffleGrouping(ComponentType.NORTHBOUND_KAFKA_SPOUT.toString(), LcmKafkaSpout.STREAM_ID_LCM)
+//                .shuffleGrouping(ComponentType.LCM_SPOUT.toString());
 
         /*
          * Spout receives all Northbound requests.
          */
         kafkaSpoutConfig = makeKafkaSpoutConfigBuilder(
                 ComponentType.NORTHBOUND_KAFKA_SPOUT.toString(), config.getKafkaFlowTopic()).build();
-        kafkaSpout = new LcmKafkaSpout<>(kafkaSpoutConfig);
+        // (crimi) - commenting out LcmKafkaSpout here due to dying worker
+        //kafkaSpout = new LcmKafkaSpout<>(kafkaSpoutConfig);
+        kafkaSpout = new KafkaSpout<>(kafkaSpoutConfig);
         builder.setSpout(ComponentType.NORTHBOUND_KAFKA_SPOUT.toString(), kafkaSpout, parallelism);
 
         /*
@@ -148,9 +150,9 @@ public class FlowTopology extends AbstractTopology {
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.CACHE_SYNC.toString(), fieldFlowId)
                 .fieldsGrouping(ComponentType.TRANSACTION_BOLT.toString(), StreamType.STATUS.toString(), fieldFlowId)
                 .fieldsGrouping(ComponentType.SPEAKER_BOLT.toString(), StreamType.STATUS.toString(), fieldFlowId)
-                .fieldsGrouping(ComponentType.TOPOLOGY_ENGINE_BOLT.toString(), StreamType.STATUS.toString(), fieldFlowId)
-                .shuffleGrouping(
-                        ComponentType.LCM_FLOW_SYNC_BOLT.toString(), LcmFlowCacheSyncBolt.STREAM_ID_SYNC_FLOW_CACHE);
+                .fieldsGrouping(ComponentType.TOPOLOGY_ENGINE_BOLT.toString(), StreamType.STATUS.toString(), fieldFlowId);
+//                .shuffleGrouping(
+//                        ComponentType.LCM_FLOW_SYNC_BOLT.toString(), LcmFlowCacheSyncBolt.STREAM_ID_SYNC_FLOW_CACHE);
         ctrlTargets.add(new CtrlBoltRef(ComponentType.CRUD_BOLT.toString(), crudBolt, boltSetup));
 
         /*
@@ -240,9 +242,9 @@ public class FlowTopology extends AbstractTopology {
         createCtrlBranch(builder, ctrlTargets);
         createHealthCheckHandler(builder, ServiceType.FLOW_TOPOLOGY.getId());
 
-        builder.setBolt(
-                ComponentType.TOPOLOGY_ENGINE_OUTPUT.toString(), createKafkaBolt(config.getKafkaTopoEngTopic()), 1)
-                .shuffleGrouping(ComponentType.LCM_FLOW_SYNC_BOLT.toString(), LcmFlowCacheSyncBolt.STREAM_ID_TPE);
+//        builder.setBolt(
+//                ComponentType.TOPOLOGY_ENGINE_OUTPUT.toString(), createKafkaBolt(config.getKafkaTopoEngTopic()), 1)
+//                .shuffleGrouping(ComponentType.LCM_FLOW_SYNC_BOLT.toString(), LcmFlowCacheSyncBolt.STREAM_ID_TPE);
 
         return builder.createTopology();
     }
