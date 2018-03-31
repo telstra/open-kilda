@@ -22,6 +22,8 @@ kafka.topic.topo.eng = {{ kafka_topic_topo_eng }}
 
 opentsdb.hosts = {{ opentsdb_hosts }}
 opentsdb.timeout = 30
+opentsdb.client.chunked-requests.enabled=true
+
 opentsdb.num.spouts = 5
 opentsdb.num.opentsdbfilterbolt = 10
 opentsdb.num.opentsdbbolt = 10
