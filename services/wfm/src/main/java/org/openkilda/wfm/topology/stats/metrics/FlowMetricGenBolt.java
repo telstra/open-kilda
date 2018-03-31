@@ -119,7 +119,7 @@ public class FlowMetricGenBolt extends MetricGenBolt {
         tags.put("switchid", switchId);
         tags.put("cookie", String.valueOf(entry.getCookie()));
         tags.put("tableid", String.valueOf(entry.getTableId()));
-        if (flow.getFlowId() == null) {
+        if (flow == null || flow.getFlowId() == null) {
             tags.put("flowid", "unknown");
         } else {
             tags.put("flowid", flow.getFlowId());
