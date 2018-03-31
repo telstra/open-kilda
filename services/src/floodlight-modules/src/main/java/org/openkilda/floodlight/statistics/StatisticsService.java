@@ -121,7 +121,7 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
                                 .setCookieMask(SYSTEM_MASK)
                                 .build();
 
-                        logger.debug("Getting port stats for switch={}", iofSwitch.getId());
+                        logger.trace("Getting port stats for switch={}", iofSwitch.getId());
 
                         Futures.addCallback(iofSwitch.writeStatsRequest(portStatsRequest),
                                 new RequestCallback<>(data -> {
@@ -182,7 +182,7 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
 
                         if (factory.getVersion().compareTo(OFVersion.OF_15) != 0) {
                             // skip flow stats for OF 1.5 protocol version
-                            logger.debug("Getting flow stats for switch={}", iofSwitch.getId());
+                            logger.trace("Getting flow stats for switch={}", iofSwitch.getId());
 
                             Futures.addCallback(iofSwitch.writeStatsRequest(flowStatsRequest),
                                     new RequestCallback<>(data -> {
