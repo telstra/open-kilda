@@ -519,23 +519,26 @@ public class CacheBolt
     private void handleFlowEvent(FlowInfoData flowData, Tuple tuple) throws IOException {
         switch (flowData.getOperation()) {
             case PUSH:
-                logger.debug("Flow PUSH message received: {}", flowData);
+            case PUSH_PROPAGATE:
+                logger.debug("Flow {} message received: {}", flowData.getOperation(), flowData);
                 flowCache.putFlow(flowData.getPayload());
-                logger.info("Flow PUSH message processed: {}", flowData);
+                logger.info("Flow {} message processed: {}", flowData.getOperation(), flowData);
                 // do not emit to TPE .. NB will send directly
                 break;
 
             case UNPUSH:
-                logger.debug("Flow UNPUSH message received: {}", flowData);
+            case UNPUSH_PROPAGATE:
+                logger.debug("Flow {} message received: {}", flowData.getOperation(), flowData);
                 String flowsId2 = flowData.getPayload().getLeft().getFlowId();
                 flowCache.removeFlow(flowsId2);
                 reroutedFlows.remove(flowsId2);
-                logger.info("Flow UNPUSH message processed: {}", flowData);
+                logger.info("Flow {} message processed: {}", flowData.getOperation(), flowData);
                 break;
 
 
             case CREATE:
                 // TODO: This should be more lenient .. in case of retries
+                logger.debug("Flow create message received: {}", flowData);
                 flowCache.putFlow(flowData.getPayload());
                 emitFlowMessage(flowData, tuple, flowData.getCorrelationId());
                 logger.info("Flow create message sent: {}", flowData);
@@ -543,6 +546,7 @@ public class CacheBolt
 
             case DELETE:
                 // TODO: This should be more lenient .. in case of retries
+                logger.debug("Flow remove message received: {}", flowData);
                 String flowsId = flowData.getPayload().getLeft().getFlowId();
                 flowCache.removeFlow(flowsId);
                 reroutedFlows.remove(flowsId);
@@ -551,6 +555,7 @@ public class CacheBolt
                 break;
 
             case UPDATE:
+                logger.info("Flow update message received: {}", flowData);
                 processFlowUpdate(flowData.getPayload().getLeft());
                 // TODO: This should be more lenient .. in case of retries
                 flowCache.putFlow(flowData.getPayload());

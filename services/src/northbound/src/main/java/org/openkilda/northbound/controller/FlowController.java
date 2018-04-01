@@ -19,6 +19,7 @@ import static org.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 import static org.openkilda.messaging.Utils.FLOW_ID;
 
+import io.swagger.annotations.ApiParam;
 import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
@@ -43,6 +44,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * REST Controller for flow requests.
@@ -299,7 +301,7 @@ public class FlowController {
      * @param correlationId correlation ID header value
      * @return list of flow
      */
-    @ApiOperation(value = "Push flows without expectation of modifying switches", response = BatchResults.class)
+    @ApiOperation(value = "Push flows without expectation of modifying switches. It can push to switch and validate.", response = BatchResults.class)
     @ApiResponses(value = {
             @ApiResponse(code = 200, response = BatchResults.class, message = "Operation is successful"),
             @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
@@ -314,9 +316,18 @@ public class FlowController {
     @ResponseStatus(HttpStatus.OK)
     public BatchResults pushFlows(
             @RequestBody List<FlowInfoData> externalFlows,
+            @ApiParam(value = "default: false. If true, this will propagate rules to the switches.",
+                    required = false)
+            @RequestParam("propagate") Optional<Boolean> propagate,
+            @ApiParam(value = "default: false. If true, will wait until poll timeout for validation.",
+                    required = false)
+            @RequestParam("propagate") Optional<Boolean> verify,
             @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
-
-        return flowService.pushFlows(externalFlows, correlationId);
+        Boolean defaultPropagate = false;
+        Boolean defaultVerify = false;
+        return flowService.pushFlows(externalFlows, correlationId,
+                propagate.orElse(defaultPropagate),
+                verify.orElse(defaultVerify));
     }
 
 
@@ -327,7 +338,7 @@ public class FlowController {
      * @param correlationId correlation ID header value
      * @return list of flow
      */
-    @ApiOperation(value = "Unpush flows without expectation of modifying switches", response = BatchResults.class)
+    @ApiOperation(value = "Unpush flows without expectation of modifying switches. It can push to switch and validate.", response = BatchResults.class)
     @ApiResponses(value = {
             @ApiResponse(code = 200, response = BatchResults.class, message = "Operation is successful"),
             @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
@@ -342,9 +353,19 @@ public class FlowController {
     @ResponseStatus(HttpStatus.OK)
     public BatchResults unpushFlows(
             @RequestBody List<FlowInfoData> externalFlows,
+            @ApiParam(value = "default: false. If true, this will propagate rules to the switches.",
+                    required = false)
+            @RequestParam("propagate") Optional<Boolean> propagate,
+            @ApiParam(value = "default: false. If true, will wait until poll timeout for validation.",
+                    required = false)
+            @RequestParam("propagate") Optional<Boolean> verify,
             @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
 
-        return flowService.unpushFlows(externalFlows, correlationId);
+        Boolean defaultPropagate = false;
+        Boolean defaultVerify = false;
+        return flowService.unpushFlows(externalFlows, correlationId,
+                propagate.orElse(defaultPropagate),
+                verify.orElse(defaultVerify));
     }
 
 

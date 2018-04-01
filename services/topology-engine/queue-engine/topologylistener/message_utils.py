@@ -268,6 +268,10 @@ def send_install_commands(flow_rules, correlation_id):
     the for logic should go in reverse
     """
     for flow_rule in reversed(flow_rules):
+        # TODO: (same as delete todo) Whereas this is part of the current workflow .. feels like we should have the workflow manager work
+        #       as a hub and spoke ... ie: send delete to FL, get confirmation. Then send delete to DB, get confirmation.
+        #       Then send a message to a FLOW_EVENT topic that says "FLOW CREATED"
+
         send_to_topic(flow_rule, correlation_id, MT_COMMAND,
                       destination="CONTROLLER", topic=config.KAFKA_SPEAKER_TOPIC)
         # FIXME(surabujin): WFM reroute this message into CONTROLLER
@@ -286,6 +290,9 @@ def send_delete_commands(nodes, correlation_id):
     logger.debug('Send Delete Commands: node count=%d', len(nodes))
     for node in nodes:
         data = build_delete_flow(str(node['switch_id']), str(node['flow_id']), node['cookie'])
+        # TODO: Whereas this is part of the current workflow .. feels like we should have the workflow manager work
+        #       as a hub and spoke ... ie: send delete to FL, get confirmation. Then send delete to DB, get confirmation.
+        #       Then send a message to a FLOW_EVENT topic that says "FLOW DELETED"
         send_to_topic(data, correlation_id, MT_COMMAND,
                       destination="CONTROLLER", topic=config.KAFKA_SPEAKER_TOPIC)
         send_to_topic(data, correlation_id, MT_COMMAND,
