@@ -20,6 +20,7 @@ import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.info.flow.FlowInfoData;
+import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.springframework.web.context.request.async.DeferredResult;
 
 import java.util.List;
@@ -132,9 +133,9 @@ public interface FlowService extends BasicService {
      *
      * @param flowId id of flow to be rerouted.
      * @param correlationId request correlation Id
-     * @return updated flow path information.
+     * @return updated flow path information with the result whether or not path was changed.
      */
-    FlowPathPayload rerouteFlow(final String flowId, final String correlationId);
+    FlowReroutePayload rerouteFlow(final String flowId, final String correlationId);
 
 
     /**
