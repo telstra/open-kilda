@@ -62,6 +62,7 @@ import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.flow.ComponentType;
 import org.openkilda.wfm.topology.flow.FlowTopology;
 import org.openkilda.wfm.topology.flow.StreamType;
+import org.openkilda.wfm.topology.flow.utils.BidirectionalFlow;
 import org.openkilda.wfm.topology.flow.validation.FlowValidationException;
 import org.openkilda.wfm.topology.flow.validation.FlowValidator;
 
@@ -77,12 +78,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class CrudBolt
@@ -143,6 +139,7 @@ public class CrudBolt
             flowCache = new FlowCache();
             this.caches.put(FLOW_CACHE, flowCache);
         }
+        initFlowCache();
     }
 
     /**
@@ -730,6 +727,22 @@ public class CrudBolt
 
     private boolean isFlowActive(ImmutablePair<Flow, Flow> flowPair) {
         return flowPair.getLeft().getState().isActive() && flowPair.getRight().getState().isActive();
+    }
+
+    private void initFlowCache() {
+        Map<String, BidirectionalFlow> flowPairsMap = new HashMap<>();
+        for (Flow flow : pathComputer.getAllFlows()) {
+            if (!flowPairsMap.containsKey(flow.getFlowId())) {
+                flowPairsMap.put(flow.getFlowId(), new BidirectionalFlow());
+            }
+
+            BidirectionalFlow pair = flowPairsMap.get(flow.getFlowId());
+            pair.add(flow);
+        }
+
+        for (BidirectionalFlow bidirectionalFlow : flowPairsMap.values()) {
+            flowCache.pushFlow(bidirectionalFlow.makeFlowPair());
+        }
     }
 
     @Override

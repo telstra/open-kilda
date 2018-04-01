@@ -29,6 +29,7 @@ import org.neo4j.driver.v1.Value;
 import org.neo4j.driver.v1.Values;
 import org.neo4j.driver.v1.exceptions.NoSuchRecordException;
 import org.neo4j.driver.v1.types.Relationship;
+import org.openkilda.pce.api.FlowAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -138,6 +139,36 @@ public class NeoDriver implements PathComputer {
             );
         }
         return flows;
+    }
+
+    @Override
+    public List<Flow> getAllFlows() {
+        String q =
+                "MATCH (:switch)-[f:flow]->(:switch) " +
+                "RETURN f.flowid as flowid, " +
+                "f.bandwidth as bandwidth, " +
+                "f.ignore_bandwidth as ignore_bandwidth, " +
+                "f.cookie as cookie, " +
+                "f.description as description, " +
+                "f.last_updated as last_updated, " +
+                "f.src_switch as src_switch, " +
+                "f.dst_switch as dst_switch, " +
+                "f.src_port as src_port, " +
+                "f.dst_port as dst_port, " +
+                "f.src_vlan as src_vlan, " +
+                "f.dst_vlan as dst_vlan, " +
+                "f.meter_id as meter_id, " +
+                "f.transit_vlan as transit_vlan";
+
+        Session session = driver.session();
+        StatementResult queryResults = session.run(q);
+        List<Flow> results = new LinkedList<>();
+        for (Record record : queryResults.list()) {
+            FlowAdapter adapter = new FlowAdapter(record);
+            results.add(adapter.getFlow());
+        }
+
+        return results;
     }
 
     /**

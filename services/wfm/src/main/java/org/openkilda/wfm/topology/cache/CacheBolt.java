@@ -21,7 +21,6 @@ import org.openkilda.messaging.BaseMessage;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
-import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.discovery.NetworkCommandData;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
@@ -39,7 +38,6 @@ import org.openkilda.messaging.info.event.NetworkTopologyChange;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.info.flow.FlowOperation;
 import org.openkilda.messaging.model.Flow;
@@ -168,7 +166,6 @@ public class CacheBolt
             this.state.put(FLOW_CACHE, flowCache);
         }
 
-        cacheWarmingService = new CacheWarmingService(networkCache);
         reroutedFlows.clear();
     }
 
@@ -318,7 +315,7 @@ public class CacheBolt
 
             case ADDED:
             case ACTIVATED:
-                onSwitchUp(sw, tuple);
+                onSwitchUp(sw);
                 break;
 
             case REMOVED:
@@ -496,21 +493,10 @@ public class CacheBolt
         return values;
     }
 
-    private void onSwitchUp(SwitchInfoData sw, Tuple tuple) throws IOException {
+    private void onSwitchUp(SwitchInfoData sw) throws IOException {
         logger.info("Switch {} is {}", sw.getSwitchId(), sw.getState().getType());
         if (networkCache.cacheContainsSwitch(sw.getSwitchId())) {
-            SwitchState prevState = networkCache.getSwitch(sw.getSwitchId()).getState();
             networkCache.updateSwitch(sw);
-
-            if (prevState == SwitchState.CACHED) {
-                String switchId = sw.getSwitchId();
-                List<PortInfoData> ports = cacheWarmingService.getPortsForDiscovering(switchId);
-                logger.info("Found {} links for discovery", ports.size());
-                sendPortCachedEvent(ports);
-
-                List<? extends CommandData> commands = cacheWarmingService.getFlowCommands(switchId);
-                sendFlowCommands(commands);
-            }
         } else {
             networkCache.createSwitch(sw);
         }
@@ -575,31 +561,6 @@ public class CacheBolt
                 logger.warn("Skip undefined flow operation {}", flowData);
                 break;
         }
-    }
-
-    private void sendFlowCommands(List<? extends CommandData> commands) {
-        commands.forEach(command -> {
-            try {
-                outputCollector.emit(StreamType.WFM_DUMP.toString(), new Values(MAPPER.writeValueAsString(command)));
-                logger.debug("Flow command request sent from CacheBolt: {}", command);
-            } catch (JsonProcessingException e) {
-                logger.error("Error during serializing CommandData", e);
-            }
-        });
-    }
-
-    private void sendPortCachedEvent(List<PortInfoData> ports) {
-        ports.forEach(portInfoData -> {
-            String correlationId = UUID.randomUUID().toString();
-            InfoMessage message = new InfoMessage(portInfoData, System.currentTimeMillis(), correlationId,
-                    Destination.WFM);
-            try {
-                outputCollector.emit(StreamType.OFE.toString(), new Values(MAPPER.writeValueAsString(message)));
-                logger.info("Isl discovery request sent from CacheBolt with correlationId {}", correlationId);
-            } catch (JsonProcessingException e) {
-                logger.error("Error during serializing PortInfoData", e);
-            }
-        });
     }
 
     /**
