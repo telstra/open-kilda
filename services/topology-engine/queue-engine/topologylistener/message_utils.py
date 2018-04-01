@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 
 MT_ERROR = "org.openkilda.messaging.error.ErrorMessage"
 MT_COMMAND = "org.openkilda.messaging.command.CommandMessage"
+MT_COMMAND_REPLY = "org.openkilda.messaging.command.CommandWithReplyToMessage"
 MT_INFO = "org.openkilda.messaging.info.InfoMessage"
 MT_INFO_FLOW_STATUS = "org.openkilda.messaging.info.flow.FlowStatusResponse"
 MT_ERROR_DATA = "org.openkilda.messaging.error.ErrorData"
@@ -195,8 +196,10 @@ def send_dump_rules_request(switch_id, correlation_id):
     message = Message()
     message.clazz = 'org.openkilda.messaging.command.switches.DumpRulesRequest'
     message.switch_id = switch_id
-    send_to_topic(message, correlation_id, MT_COMMAND,
-                  topic=config.KAFKA_SPEAKER_TOPIC)
+    reply_to = {"reply_to": config.KAFKA_TOPO_ENG_TOPIC }
+    send_to_topic(message, correlation_id, MT_COMMAND_REPLY,
+                  topic=config.KAFKA_SPEAKER_TOPIC,
+                  extra=reply_to)
 
 
 def send_sync_rules_response(added_rules, not_deleted, proper_rules,
@@ -225,17 +228,26 @@ class Message(object):
         return json.dumps(
             self, default=lambda o: o.__dict__, sort_keys=False, indent=4)
 
+    def add(self, vals):
+        self.__dict__.update(vals)
+
 
 def send_to_topic(payload, correlation_id,
                   message_type,
                   destination="WFM",
-                  topic=config.KAFKA_FLOW_TOPIC):
+                  topic=config.KAFKA_FLOW_TOPIC,
+                  extra=None):
+    """
+    :param extra: a dict that will be added to the message. Useful for adding reply_to for Command With Reply.
+    """
     message = Message()
     message.payload = payload
     message.clazz = message_type
     message.destination = destination
     message.timestamp = get_timestamp()
     message.correlation_id = correlation_id
+    if extra:
+        message.add(extra)
     kafka_message = b'{}'.format(message.to_json())
     logger.debug('Send message: topic=%s, message=%s', topic, kafka_message)
     message_result = producer.send(topic, kafka_message)
