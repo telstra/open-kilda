@@ -15,7 +15,6 @@
 
 package org.openkilda.northbound.service.impl;
 
-import static java.util.Base64.getEncoder;
 import static org.openkilda.messaging.Utils.CORRELATION_ID;
 
 import org.openkilda.messaging.Destination;
@@ -44,12 +43,16 @@ import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.northbound.dto.FlowValidationDto;
 import org.openkilda.northbound.messaging.MessageConsumer;
 import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.service.BatchResults;
 import org.openkilda.northbound.service.FlowService;
 import org.openkilda.northbound.utils.Converter;
 
+import org.openkilda.pce.provider.Auth;
+import org.openkilda.pce.provider.AuthNeo4j;
+import org.openkilda.pce.provider.PathComputer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -57,7 +60,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.web.util.UriComponentsBuilder;
 
 import javax.annotation.PostConstruct;
 import java.util.ArrayList;
@@ -72,10 +74,9 @@ public class FlowServiceImpl implements FlowService {
      * The logger.
      */
     private static final Logger LOGGER = LoggerFactory.getLogger(FlowServiceImpl.class);
-    //todo: refactor to use interceptor or custom rest template
-    private static final String auth = "kilda:kilda";
-    private static final String authHeaderValue = "Basic " + getEncoder().encodeToString(auth.getBytes());
 
+    private PathComputer pathComputer;
+    private Auth pathComputerAuth;
 
     /**
      * The kafka topic for the flow topology
@@ -88,6 +89,19 @@ public class FlowServiceImpl implements FlowService {
      */
     @Value("${kafka.topo.eng.topic}")
     private String topoEngTopic;
+
+
+    @Value("${neo4j.hosts}")
+    private String neoHost;
+
+    @Value("${neo4j.user}")
+    private String neoUser;
+
+    @Value("${neo4j.pswd}")
+    private String neoPswd;
+
+
+
 
     /**
      * Kafka message consumer.
@@ -121,8 +135,9 @@ public class FlowServiceImpl implements FlowService {
 
     @PostConstruct
     void init() {
-        headers = new HttpHeaders();
-        headers.add(HttpHeaders.AUTHORIZATION, authHeaderValue);
+        pathComputerAuth = new AuthNeo4j(neoHost, neoUser, neoPswd);
+        pathComputer = pathComputerAuth.connect();
+
     }
 
 
@@ -405,6 +420,26 @@ public class FlowServiceImpl implements FlowService {
         logger.debug("Got response {}", message);
         FlowPathResponse response = (FlowPathResponse) validateInfoMessage(command, message, correlationId);
         return Converter.buildFlowPathPayloadByFlowPath(flowId, response.getPayload());
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public FlowValidationDto validateFlow(final String flowId, final String correlationId) {
+        /*
+         * Algorithm:
+         * 1) Grab the flow from the database
+         * 2) Grab the information off of each switch
+         * 3) Do the comparison
+         */
+
+        FlowValidationDto result = new FlowValidationDto();
+        Flow flow = pathComputer.getFlow(flowId);
+        result.setFlow(flow);
+        result.setFlowId(flowId);
+        return result;
     }
 
     /**

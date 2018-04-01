@@ -15,6 +15,7 @@ import org.openkilda.messaging.command.switches.DumpRulesRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
 import org.openkilda.messaging.command.switches.SyncRulesRequest;
 import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.switches.ConnectModeResponse;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
@@ -37,6 +38,7 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -122,10 +124,17 @@ public class SwitchServiceImpl implements SwitchService {
                 correlationId, Destination.CONTROLLER, northboundTopic);
         messageProducer.send(floodlightTopic, commandMessage);
         Message message = messageConsumer.poll(correlationId);
-        if (cookie > 0L) {
-            // TODO: Add cookie filter
-        }
         SwitchFlowEntries response = (SwitchFlowEntries) validateInfoMessage(commandMessage, message, correlationId);
+
+        if (cookie > 0L) {
+            List<FlowEntry> matchedFlows = new ArrayList<>();
+            for (FlowEntry entry : response.getFlowEntries()){
+                if (cookie.equals(entry.getCookie())){
+                    matchedFlows.add(entry);
+                }
+            }
+            response = new SwitchFlowEntries(response.getSwitchId(), matchedFlows);
+        }
         return response;
     }
 

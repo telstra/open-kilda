@@ -80,24 +80,26 @@ public class SwitchController {
      * Get switch rules.
      *
      * @param switchId the switch
-     * @param oneCookie filter the response based on this cookie
+     * @param cookie filter the response based on this cookie
      * @param correlationId correlation ID header value
      * @return list of the cookies of the rules that have been deleted
      */
-    @ApiOperation(value = "Get switch rules",
+    @ApiOperation(value = "Get switch rules from the switch",
             response = Long.class, responseContainer = "List")
     @GetMapping(value = "/switches/{switch-id}/rules",
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     @ResponseStatus(HttpStatus.OK)
     public SwitchFlowEntries getSwitchRules(
             @PathVariable("switch-id") String switchId,
-            @RequestParam("one-cookie") Optional<Long> oneCookie,
+            @ApiParam(value = "Results will be filtered based on matching the cookie.",
+                    required = false)
+            @RequestParam("cookie") Optional<Long> cookie,
             @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
 
         if (correlationId.equals(DEFAULT_CORRELATION_ID))
             correlationId = getUniqueCorrelation();
 
-        SwitchFlowEntries response = switchService.getRules(switchId, oneCookie.orElse(0L), correlationId);
+        SwitchFlowEntries response = switchService.getRules(switchId, cookie.orElse(0L), correlationId);
         return response;
     }
 
