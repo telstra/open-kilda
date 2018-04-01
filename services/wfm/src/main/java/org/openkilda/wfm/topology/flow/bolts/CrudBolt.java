@@ -733,7 +733,7 @@ public class CrudBolt
     private void initFlowCache() {
         Map<String, BidirectionalFlow> flowPairsMap = new HashMap<>();
         for (Flow flow : pathComputer.getAllFlows()) {
-            if (! flowPairsMap.containsKey(flow.getFlowId())) {
+            if (!flowPairsMap.containsKey(flow.getFlowId())) {
                 flowPairsMap.put(flow.getFlowId(), new BidirectionalFlow());
             }
 

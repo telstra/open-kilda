@@ -1,6 +1,5 @@
 package org.openkilda.pce.api;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import org.neo4j.driver.v1.Record;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.event.PathInfoData;
@@ -22,16 +21,6 @@ public class FlowAdapter {
                     "Can\'t deserialize flow path: json=%s", pathJson), e);
         }
 
-        String stateString = dbRecord.get("state").asString();
-        FlowState state;
-        try {
-            state = FlowState.valueOf(stateString);
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException(String.format(
-                    "Invalid value in \"state\" field: %s", stateString));
-        }
-
-
         flow = new Flow(
                 dbRecord.get(Utils.FLOW_ID).asString(),
                 dbRecord.get("bandwidth").asInt(),
@@ -47,7 +36,7 @@ public class FlowAdapter {
                 dbRecord.get("dst_vlan").asInt(),
                 dbRecord.get("meter_id").asInt(),
                 dbRecord.get("transit_vlan").asInt(),
-                path, state
+                path, FlowState.CACHED
         );
     }
 
