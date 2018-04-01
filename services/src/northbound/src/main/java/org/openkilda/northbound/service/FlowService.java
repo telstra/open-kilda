@@ -20,6 +20,7 @@ import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.info.flow.FlowInfoData;
+import org.openkilda.northbound.dto.FlowValidationDto;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.springframework.web.context.request.async.DeferredResult;
 
@@ -127,7 +128,6 @@ public interface FlowService extends BasicService {
                              Boolean propagate, Boolean verify
     );
 
-
     /**
      * Performs rerouting of specific flow.
      *
@@ -136,6 +136,18 @@ public interface FlowService extends BasicService {
      * @return updated flow path information with the result whether or not path was changed.
      */
     FlowReroutePayload rerouteFlow(final String flowId, final String correlationId);
+
+
+    /**
+     * Performs validation of specific flow - ie comparing what is in the database with what is
+     * on the network.
+     *
+     * @param flowId id of the flow
+     * @param correlationId request correlation Id
+     * @return the results of the comparison
+     */
+    FlowValidationDto validateFlow(final String flowId, final String correlationId);
+
 
 
     /**

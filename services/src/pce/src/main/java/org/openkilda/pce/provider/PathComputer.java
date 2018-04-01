@@ -74,4 +74,14 @@ public interface PathComputer extends Serializable {
     default List<Flow> getAllFlows() {
         return new ArrayList<>();
     }
+
+    /**
+     * Read a single flow from Neo4j and covert to our common representation
+     * org.openkilda.messaging.model.Flow
+     *
+     * @return the Flow if it exists, null otherwise.
+     */
+    default Flow getFlow(String flowId) {
+        return null;
+    }
 }

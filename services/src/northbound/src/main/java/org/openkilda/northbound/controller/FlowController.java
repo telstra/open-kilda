@@ -26,6 +26,7 @@ import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.info.flow.FlowInfoData;
+import org.openkilda.northbound.dto.FlowValidationDto;
 import org.openkilda.northbound.service.BatchResults;
 import org.openkilda.northbound.service.FlowService;
 
@@ -440,6 +441,38 @@ public class FlowController {
         logger.debug("Received reroute request with correlation_id {} for flow {}", correlationId, flowId);
         return flowService.rerouteFlow(flowId, correlationId);
     }
+
+
+    /**
+     * Compares the Flow from the DB to what is on each switch.
+     *
+     * @param flowId id of flow to be rerouted.
+     * @param correlationId correlation ID header value.
+     * @return flow payload with updated path.
+     */
+    @ApiOperation(value = "Validate flow, comparing the DB to each switch", response = FlowPathPayload.class)
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, response = FlowPathPayload.class, message = "Operation is successful"),
+            @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
+            @ApiResponse(code = 401, response = MessageError.class, message = "Unauthorized"),
+            @ApiResponse(code = 403, response = MessageError.class, message = "Forbidden"),
+            @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
+            @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
+            @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
+    @RequestMapping(path = "/flows/{flow_id}/validate",
+            method = RequestMethod.PATCH)
+    @ResponseStatus(HttpStatus.OK)
+    public FlowValidationDto validateFlow(@PathVariable("flow_id") String flowId,
+                                          @RequestHeader(value = CORRELATION_ID,
+                                                defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
+
+        if (correlationId.equals(DEFAULT_CORRELATION_ID))
+            correlationId = getUniqueCorrelation();
+
+        logger.debug("Received Flow Validation request with correlation_id {} for flow {}", correlationId, flowId);
+        return flowService.validateFlow(flowId, correlationId);
+    }
+
 
 
     /**

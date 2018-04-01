@@ -18,6 +18,7 @@
     <description>Northbound API service provides API for Kilda controller</description>
 
     <properties>
+        <pce.version>1.0-SNAPSHOT</pce.version>
         <spring.kafka.version>1.2.2.RELEASE</spring.kafka.version>
         <spring.webmvc.version>4.3.10.RELEASE</spring.webmvc.version>
         <spring.boot.version>1.5.6.RELEASE</spring.boot.version>
@@ -40,6 +41,17 @@
             <groupId>org.openkilda</groupId>
             <artifactId>api</artifactId>
             <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openkilda</groupId>
+            <artifactId>pce</artifactId>
+            <version>${pce.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-log4j12</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <!-- Spring dependencies -->
