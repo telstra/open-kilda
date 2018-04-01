@@ -55,7 +55,7 @@ FEATURE_SYNC_OFRULES = 'sync_rules_on_activation'
 FEATURE_REROUTE_ON_ISL_DISCOVERY = 'flows_reroute_on_isl_discovery'
 
 features_status = {
-    FEATURE_SYNC_OFRULES: True,
+    FEATURE_SYNC_OFRULES: False,
     FEATURE_REROUTE_ON_ISL_DISCOVERY: True
 }
 
