@@ -139,6 +139,7 @@ public class CrudBolt
             flowCache = new FlowCache();
             this.caches.put(FLOW_CACHE, flowCache);
         }
+        initFlowCache();
     }
 
     /**
@@ -165,8 +166,6 @@ public class CrudBolt
         this.outputCollector = outputCollector;
 
         pathComputer = pathComputerAuth.connect();
-
-        initFlowCache();
     }
 
     /**
