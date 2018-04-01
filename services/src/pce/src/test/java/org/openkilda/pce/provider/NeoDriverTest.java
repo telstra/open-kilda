@@ -1,5 +1,6 @@
 package org.openkilda.pce.provider;
 
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -39,12 +40,13 @@ public class NeoDriverTest {
                 .setConfig( bolt.enabled, "true" )
                 .setConfig( bolt.listen_address, "localhost:7878" )
                 .newGraphDatabase();
+        }
 
-        // Shuts down nicely when the VM exits
-        Runtime.getRuntime().addShutdownHook( new Thread(() -> {
-            graphDb.shutdown();
-        }));
+    @AfterClass
+    public static void teatDownOnce() {
+        graphDb.shutdown();
     }
+
 
     @Test
     public void getAllFlows() {

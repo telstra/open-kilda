@@ -1,6 +1,5 @@
 package org.openkilda.pce.provider;
 
-import static junit.framework.TestCase.assertTrue;
 import static org.junit.Assert.assertEquals;
 
 import org.junit.*;
@@ -50,16 +49,11 @@ public class PathComputerTest {
                 .setConfig( bolt.enabled, "true" )
                 .setConfig( bolt.listen_address, "localhost:7878" )
                 .newGraphDatabase();
-
-        // Shuts down nicely when the VM exits
-        Runtime.getRuntime().addShutdownHook( new Thread(() -> {
-            System.out.println("Killing Elephants \uD83D\uDC18");
-            graphDb.shutdown();
-        }));
     }
 
     @AfterClass
     public static void teatDownOnce() {
+        graphDb.shutdown();
     }
 
     @Before
