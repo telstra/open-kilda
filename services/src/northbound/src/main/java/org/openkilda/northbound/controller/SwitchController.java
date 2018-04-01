@@ -8,6 +8,7 @@ import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.InstallRulesAction;
 import org.openkilda.messaging.error.MessageError;
+import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.switches.SyncRulesResponse;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.northbound.dto.SwitchDto;
@@ -71,6 +72,36 @@ public class SwitchController {
         return switchService.getSwitches();
     }
 
+    private String getUniqueCorrelation(){
+        return DEFAULT_CORRELATION_ID+"-"+System.currentTimeMillis();
+    }
+
+    /**
+     * Get switch rules.
+     *
+     * @param switchId the switch
+     * @param oneCookie filter the response based on this cookie
+     * @param correlationId correlation ID header value
+     * @return list of the cookies of the rules that have been deleted
+     */
+    @ApiOperation(value = "Get switch rules",
+            response = Long.class, responseContainer = "List")
+    @GetMapping(value = "/switches/{switch-id}/rules",
+            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @ResponseStatus(HttpStatus.OK)
+    public SwitchFlowEntries getSwitchRules(
+            @PathVariable("switch-id") String switchId,
+            @RequestParam("one-cookie") Optional<Long> oneCookie,
+            @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
+
+        if (correlationId.equals(DEFAULT_CORRELATION_ID))
+            correlationId = getUniqueCorrelation();
+
+        SwitchFlowEntries response = switchService.getRules(switchId, oneCookie.orElse(0L), correlationId);
+        return response;
+    }
+
+
     /**
      * Delete switch rules.
      *
@@ -94,6 +125,10 @@ public class SwitchController {
             @RequestParam("delete-action") Optional<DeleteRulesAction> deleteAction,
             @RequestParam("one-cookie") Optional<Long> oneCookie,
             @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
+
+        if (correlationId.equals(DEFAULT_CORRELATION_ID))
+            correlationId = getUniqueCorrelation();
+
         List<Long> response = switchService
                 .deleteRules(switchId, deleteAction.orElse(DeleteRulesAction.IGNORE), oneCookie.orElse(0L), correlationId);
         return ResponseEntity.ok(response);
@@ -119,6 +154,10 @@ public class SwitchController {
                     required = false)
             @RequestParam("install-action") Optional<InstallRulesAction> installAction,
             @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
+
+        if (correlationId.equals(DEFAULT_CORRELATION_ID))
+            correlationId = getUniqueCorrelation();
+
         List<Long> response = switchService
                 .installRules(switchId, installAction.orElse(InstallRulesAction.INSTALL_DEFAULTS), correlationId);
         return ResponseEntity.ok(response);
@@ -144,6 +183,10 @@ public class SwitchController {
     public ResponseEntity toggleSwitchConnectMode(
             @RequestParam("mode") ConnectModeRequest.Mode mode,
             @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
+
+        if (correlationId.equals(DEFAULT_CORRELATION_ID))
+            correlationId = getUniqueCorrelation();
+
         ConnectModeRequest.Mode response = switchService.connectMode(mode, correlationId);
         return ResponseEntity.ok(response);
     }
@@ -168,6 +211,10 @@ public class SwitchController {
     @ResponseStatus(HttpStatus.OK)
     public SyncRulesOutput syncRules(@PathVariable(name = "switch_id") String switchId,
             @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
+
+        if (correlationId.equals(DEFAULT_CORRELATION_ID))
+            correlationId = getUniqueCorrelation();
+
         return switchService.syncRules(switchId, correlationId);
     }
 
