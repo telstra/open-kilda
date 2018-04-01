@@ -144,8 +144,21 @@ public class NeoDriver implements PathComputer {
     @Override
     public List<Flow> getAllFlows() {
         String q =
-                "MATCH (:switch)-[f:flow]->(:switch)\n" +
-                "RETURN f";
+                "MATCH (:switch)-[f:flow]->(:switch) " +
+                "RETURN f.flowid as flowid, " +
+                "f.bandwidth as bandwidth, " +
+                "f.ignore_bandwidth as ignore_bandwidth, " +
+                "f.cookie as cookie, " +
+                "f.description as description, " +
+                "f.last_updated as last_updated, " +
+                "f.src_switch as src_switch, " +
+                "f.dst_switch as dst_switch, " +
+                "f.src_port as src_port, " +
+                "f.dst_port as dst_port, " +
+                "f.src_vlan as src_vlan, " +
+                "f.dst_vlan as dst_vlan, " +
+                "f.meter_id as meter_id, " +
+                "f.transit_vlan as transit_vlan";
 
         Session session = driver.session();
         StatementResult queryResults = session.run(q);
