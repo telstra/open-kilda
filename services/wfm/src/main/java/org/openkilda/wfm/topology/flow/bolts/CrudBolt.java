@@ -41,6 +41,7 @@ import org.openkilda.messaging.info.flow.FlowCacheSyncResponse;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.info.flow.FlowOperation;
 import org.openkilda.messaging.info.flow.FlowPathResponse;
+import org.openkilda.messaging.info.flow.FlowRerouteResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowStatusResponse;
 import org.openkilda.messaging.info.flow.FlowsResponse;
@@ -498,16 +499,19 @@ public class CrudBolt
                 flow = flowCache.getFlow(flowId);
 
                 try {
+                    logger.debug("Origin flow {} path: {}", flowId, flow.getLeft().getFlowPath());
                     ImmutablePair<PathInfoData, PathInfoData> path =
                             pathComputer.getPath(flow.getLeft(), Strategy.COST);
-                    logger.info("Rerouted flow path: {}", path);
+                    logger.debug("Rerouted flow {} with path: {}", flowId, path.getLeft());
+                    boolean isFoundNewPath = false;
                     //no need to emit changes if path wasn't changed and flow is active.
                     if (!path.getLeft().equals(flow.getLeft().getFlowPath()) || !isFlowActive(flow)) {
+                        isFoundNewPath = true;
                         flow.getLeft().setState(FlowState.DOWN);
                         flow.getRight().setState(FlowState.DOWN);
 
                         flow = flowCache.updateFlow(flow.getLeft(), path);
-                        logger.info("Rerouted flow: {}", flow);
+                        logger.info("Rerouted flow with new path: {}", flow);
 
                         FlowInfoData data = new FlowInfoData(flowId, flow, FlowOperation.UPDATE,
                                 message.getCorrelationId());
@@ -520,10 +524,12 @@ public class CrudBolt
                     }
 
                     logger.debug("Sending response to NB. Correlation id {}", message.getCorrelationId());
-                    Values response = new Values(new InfoMessage(new FlowPathResponse(flow.left.getFlowPath()),
-                            message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
-                    outputCollector.emit(StreamType.RESPONSE.toString(), tuple, response);
+                    FlowRerouteResponse response = new FlowRerouteResponse(flow.left.getFlowPath(), isFoundNewPath);
+                    Values values = new Values(new InfoMessage(response, message.getTimestamp(),
+                            message.getCorrelationId(), Destination.NORTHBOUND));
+                    outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
                 } catch (UnroutablePathException e) {
+                    logger.debug("There is no path available for the flow {}", flowId);
                     flow.getLeft().setState(FlowState.DOWN);
                     flow.getRight().setState(FlowState.DOWN);
                     throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),

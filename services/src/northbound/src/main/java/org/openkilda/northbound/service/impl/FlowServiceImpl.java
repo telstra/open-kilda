@@ -31,6 +31,7 @@ import org.openkilda.messaging.command.flow.FlowsGetRequest;
 import org.openkilda.messaging.command.flow.FlowCacheSyncRequest;
 import org.openkilda.messaging.info.flow.FlowOperation;
 import org.openkilda.messaging.info.flow.FlowPathResponse;
+import org.openkilda.messaging.info.flow.FlowRerouteResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowStatusResponse;
 import org.openkilda.messaging.info.flow.FlowsResponse;
@@ -42,6 +43,7 @@ import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.info.flow.FlowInfoData;
+import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.northbound.dto.FlowValidationDto;
 import org.openkilda.northbound.messaging.MessageConsumer;
@@ -408,7 +410,7 @@ public class FlowServiceImpl implements FlowService {
      * {@inheritDoc}
      */
     @Override
-    public FlowPathPayload rerouteFlow(String flowId, String correlationId) {
+    public FlowReroutePayload rerouteFlow(String flowId, String correlationId) {
         Flow flow = new Flow();
         flow.setFlowId(flowId);
         FlowRerouteRequest data = new FlowRerouteRequest(flow, FlowOperation.UPDATE);
@@ -418,8 +420,8 @@ public class FlowServiceImpl implements FlowService {
 
         Message message = (Message) messageConsumer.poll(correlationId);
         logger.debug("Got response {}", message);
-        FlowPathResponse response = (FlowPathResponse) validateInfoMessage(command, message, correlationId);
-        return Converter.buildFlowPathPayloadByFlowPath(flowId, response.getPayload());
+        FlowRerouteResponse response = (FlowRerouteResponse) validateInfoMessage(command, message, correlationId);
+        return Converter.buildReroutePayload(flowId, response.getPayload(), response.isRerouted());
     }
 
 

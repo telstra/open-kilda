@@ -20,6 +20,7 @@ import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -90,5 +91,16 @@ public final class Converter {
      */
     public static FlowPathPayload buildFlowPathPayloadByFlowPath(String flowId, PathInfoData path) {
         return new FlowPathPayload(flowId, path);
+    }
+
+    /**
+     * Builds {@link FlowReroutePayload} instance by {@link Flow} instance.
+     *
+     * @param flowId flow id
+     * @param path {@link PathInfoData} instance
+     * @return {@link FlowReroutePayload} instance
+     */
+    public static FlowReroutePayload buildReroutePayload(String flowId, PathInfoData path, boolean rerouted) {
+        return new FlowReroutePayload(flowId, path, rerouted);
     }
 }
