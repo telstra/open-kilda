@@ -106,7 +106,6 @@ public class FlowServiceImpl implements FlowService {
     /**
      * Standard variables for calling out to an ENDPOINT
      */
-    private String pushFlowsUrlBase;
     private HttpHeaders headers;
 
     /**
@@ -124,8 +123,6 @@ public class FlowServiceImpl implements FlowService {
 
     @PostConstruct
     void init() {
-        pushFlowsUrlBase = UriComponentsBuilder.fromHttpUrl(topologyEngineRest)
-                .pathSegment("api", "v1", "push", "flows").build().toUriString();
         headers = new HttpHeaders();
         headers.add(HttpHeaders.AUTHORIZATION, authHeaderValue);
     }
@@ -294,16 +291,24 @@ public class FlowServiceImpl implements FlowService {
      * {@inheritDoc}
      */
     @Override
-    public BatchResults unpushFlows(List<FlowInfoData> externalFlows, String correlationId) {
-        return flowPushUnpush(externalFlows, correlationId, FlowOperation.UNPUSH);
+    public BatchResults unpushFlows(List<FlowInfoData> externalFlows, String correlationId,
+                                    Boolean propagate, Boolean verify
+    ) {
+        FlowOperation op = (propagate) ? FlowOperation.UNPUSH_PROPAGATE : FlowOperation.UNPUSH;
+        // TODO: ADD the VERIFY implementation
+        return flowPushUnpush(externalFlows, correlationId, op);
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public BatchResults pushFlows(List<FlowInfoData> externalFlows, String correlationId) {
-        return flowPushUnpush(externalFlows, correlationId, FlowOperation.PUSH);
+    public BatchResults pushFlows(List<FlowInfoData> externalFlows, String correlationId,
+                                  Boolean propagate, Boolean verify
+    ) {
+        FlowOperation op = (propagate) ? FlowOperation.PUSH_PROPAGATE : FlowOperation.PUSH;
+        // TODO: ADD the VERIFY implementation
+        return flowPushUnpush(externalFlows, correlationId, op);
     }
 
     /**
@@ -341,7 +346,7 @@ public class FlowServiceImpl implements FlowService {
         for (int i = 0; i < externalFlows.size(); i++) {
             String flowCorrelation = correlationId + "-FLOW-" + i;
             String teCorrelation = correlationId + "-TE-" + i;
-            FlowState expectedState = (op == FlowOperation.PUSH) ? FlowState.UP : FlowState.DOWN;
+            FlowState expectedState = (op == FlowOperation.PUSH || op == FlowOperation.PUSH_PROPAGATE) ? FlowState.UP : FlowState.DOWN;
             try {
                 Message flowMessage = (Message) messageConsumer.poll(flowCorrelation);
                 FlowStatusResponse response = (FlowStatusResponse) validateInfoMessage(flowRequests.get(i), flowMessage, correlationId);

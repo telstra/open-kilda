@@ -15,6 +15,7 @@ import org.openkilda.messaging.command.switches.DumpRulesRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
 import org.openkilda.messaging.command.switches.SyncRulesRequest;
 import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.switches.ConnectModeResponse;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.info.switches.SyncRulesResponse;
@@ -88,6 +89,9 @@ public class SwitchServiceImpl implements SwitchService {
         headers.add(HttpHeaders.AUTHORIZATION, authHeaderValue);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public List<SwitchDto> getSwitches() {
         LOGGER.debug("Get switch request received");
@@ -107,12 +111,30 @@ public class SwitchServiceImpl implements SwitchService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public SwitchFlowEntries getRules(String switchId, Long cookie, String correlationId) {
+
+        DumpRulesRequest request = new DumpRulesRequest(switchId);
+        CommandWithReplyToMessage commandMessage = new CommandWithReplyToMessage(request, System.currentTimeMillis(),
+                correlationId, Destination.CONTROLLER, northboundTopic);
+        messageProducer.send(floodlightTopic, commandMessage);
+        Message message = messageConsumer.poll(correlationId);
+        if (cookie > 0L) {
+            // TODO: Add cookie filter
+        }
+        SwitchFlowEntries response = (SwitchFlowEntries) validateInfoMessage(commandMessage, message, correlationId);
+        return response;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public List<Long> deleteRules(String switchId, DeleteRulesAction deleteAction, Long cookie, String correlationId) {
         LOGGER.debug("Delete switch rules request received");
-
-        // TODO: remove  messageConsumer.clear() as a part of NB cleanup (clear isn't required)
-        messageConsumer.clear();
 
         SwitchRulesDeleteRequest data = new SwitchRulesDeleteRequest(switchId, deleteAction, cookie);
         CommandMessage request = new CommandWithReplyToMessage(data, System.currentTimeMillis(), correlationId,
@@ -125,6 +147,9 @@ public class SwitchServiceImpl implements SwitchService {
     }
 
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public List<Long> installRules(String switchId, InstallRulesAction installAction, String correlationId) {
         LOGGER.debug("Install switch rules request received");
@@ -140,6 +165,9 @@ public class SwitchServiceImpl implements SwitchService {
     }
 
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public ConnectModeRequest.Mode connectMode(ConnectModeRequest.Mode mode, String correlationId) {
         LOGGER.debug("Set/Get switch connect mode request received: mode = {}", mode);
@@ -154,6 +182,9 @@ public class SwitchServiceImpl implements SwitchService {
         return response.getMode();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public SyncRulesOutput syncRules(String switchId, String correlationId) {
         SyncRulesRequest request = new SyncRulesRequest(switchId);

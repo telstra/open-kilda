@@ -440,7 +440,12 @@ class MessageItem(object):
                 payload, self.correlation_id)
 
     @staticmethod
-    def create_flow(flow_id, flow, correlation_id, tx, propagate=True):
+    def create_flow(flow_id, flow, correlation_id, tx, propagate=True, from_nb=False):
+        """
+        :param propagate: If true, send to switch
+        :param from_nb: If true, send response to NORTHBOUND API; otherwise to FLOW_TOPOLOGY
+        :return:
+        """
 
         try:
             rules = flow_utils.build_rules(flow)
@@ -456,6 +461,8 @@ class MessageItem(object):
             if propagate:
                 message_utils.send_install_commands(rules, correlation_id)
                 logger.info('Flow rules INSTALLED: correlation_id=%s, flow_id=%s', correlation_id, flow_id)
+
+            if not from_nb:
                 message_utils.send_info_message({'payload': flow, 'clazz': MT_FLOW_RESPONSE}, correlation_id)
             else:
                 # The request is sent from Northbound .. send response back
@@ -472,7 +479,7 @@ class MessageItem(object):
 
         except Exception as e:
             logger.exception('Can not create flow: %s', flow_id)
-            if propagate:
+            if not from_nb:
                 # Propagate is the normal scenario, so send response back to FLOW
                 message_utils.send_error_message(correlation_id, "CREATION_FAILURE", e.message, flow_id)
             else:
@@ -484,7 +491,7 @@ class MessageItem(object):
         return True
 
     @staticmethod
-    def delete_flow(flow_id, flow, correlation_id, parent_tx=None, propagate=True):
+    def delete_flow(flow_id, flow, correlation_id, parent_tx=None, propagate=True, from_nb=False):
         """
         Simple algorithm - delete the stuff in the DB, send delete commands, send a response.
         Complexity - each segment in the path may have a separate cookie, so that information needs to be gathered.
@@ -514,9 +521,10 @@ class MessageItem(object):
                             nodes)
                 message_utils.send_delete_commands(nodes, correlation_id)
                 logger.info('Flow rules removed end : correlation_id=%s, flow_id=%s', correlation_id, flow_id)
-            else:
+
+            if from_nb:
                 # The request is sent from Northbound .. send response back
-                logger.info('Flow rules NOT PROPAGATED: correlation_id=%s, flow_id=%s', correlation_id, flow_id)
+                logger.info('Flow rules from NB: correlation_id=%s, flow_id=%s', correlation_id, flow_id)
                 data = {"payload":{"flowid": flow_id,"status": "DOWN"},
                         "clazz": message_utils.MT_INFO_FLOW_STATUS}
                 message_utils.send_to_topic(
@@ -533,7 +541,7 @@ class MessageItem(object):
 
         except Exception as e:
             logger.exception('Can not delete flow: %s', e.message)
-            if propagate:
+            if not from_nb:
                 # Propagate is the normal scenario, so send response back to FLOW
                 message_utils.send_error_message(correlation_id, "DELETION_FAILURE", e.message, flow_id)
             else:
@@ -591,26 +599,29 @@ class MessageItem(object):
         # flow_sem.acquire(timeout=10)  # wait 10 seconds .. then proceed .. possibly causing some issue.
         neo4j_update_lock.acquire()
         try:
-            if operation == "CREATE" or operation == "PUSH":
-                propagate = operation == "CREATE"
+            OP = operation.upper()
+            if OP == "CREATE" or OP == "PUSH" or OP == "PUSH_PROPAGATE":
+                propagate = (OP == "CREATE" or OP == "PUSH_PROPAGATE")
+                from_nb = (OP == "PUSH" or OP == "PUSH_PROPAGATE")
                 tx = graph.begin()
-                self.create_flow(flow_id, forward, correlation_id, tx, propagate)
-                self.create_flow(flow_id, reverse, correlation_id, tx, propagate)
+                self.create_flow(flow_id, forward, correlation_id, tx, propagate, from_nb)
+                self.create_flow(flow_id, reverse, correlation_id, tx, propagate, from_nb)
                 tx.commit()
                 tx = None
 
-            elif operation == "DELETE" or operation == "UNPUSH":
+            elif OP == "DELETE" or OP == "UNPUSH" or OP == "UNPUSH_PROPAGATE":
                 tx = graph.begin()
-                propagate = operation == "DELETE"
-                MessageItem.delete_flow(flow_id, forward, correlation_id, tx, propagate)
-                MessageItem.delete_flow(flow_id, reverse, correlation_id, tx, propagate)
-                if propagate:
+                propagate = (OP == "DELETE" or OP == "UNPUSH_PROPAGATE")
+                from_nb = (OP == "UNPUSH" or OP == "UNPUSH_PROPAGATE")
+                MessageItem.delete_flow(flow_id, forward, correlation_id, tx, propagate, from_nb)
+                MessageItem.delete_flow(flow_id, reverse, correlation_id, tx, propagate, from_nb)
+                if not from_nb:
                     message_utils.send_info_message({'payload': forward, 'clazz': MT_FLOW_RESPONSE}, correlation_id)
                     message_utils.send_info_message({'payload': reverse, 'clazz': MT_FLOW_RESPONSE}, correlation_id)
                 tx.commit()
                 tx = None
 
-            elif operation == "UPDATE":
+            elif OP == "UPDATE":
                 tx = graph.begin()
                 MessageItem.update_flow(flow_id, forward, correlation_id, tx)
                 MessageItem.update_flow(flow_id, reverse, correlation_id, tx)

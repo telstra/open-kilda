@@ -19,6 +19,7 @@ import static org.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 import static org.openkilda.messaging.Utils.FLOW_ID;
 
+import io.swagger.annotations.ApiParam;
 import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
@@ -43,6 +44,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
+
 
 /**
  * REST Controller for flow requests.
@@ -60,6 +63,10 @@ public class FlowController {
      */
     @Autowired
     private FlowService flowService;
+
+    private String getUniqueCorrelation(){
+        return DEFAULT_CORRELATION_ID+"-"+System.currentTimeMillis();
+    }
 
     /**
      * Creates new flow.
@@ -85,6 +92,10 @@ public class FlowController {
     public ResponseEntity<FlowPayload> createFlow(
             @RequestBody FlowPayload flow,
             @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
+
+        if (correlationId.equals(DEFAULT_CORRELATION_ID))
+            correlationId = getUniqueCorrelation();
+
         logger.debug("Create flow: {}={}, flow={}", CORRELATION_ID, correlationId, flow);
         FlowPayload response = flowService.createFlow(flow, correlationId);
         return new ResponseEntity<>(response, new HttpHeaders(), HttpStatus.OK);
@@ -113,6 +124,10 @@ public class FlowController {
     public ResponseEntity<FlowPayload> getFlow(
             @PathVariable(name = "flow-id") String flowId,
             @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
+
+        if (correlationId.equals(DEFAULT_CORRELATION_ID))
+            correlationId = getUniqueCorrelation();
+
         logger.debug("Get flow: {}={}, {}={}", CORRELATION_ID, correlationId, FLOW_ID, flowId);
         FlowPayload response = flowService.getFlow(flowId, correlationId);
         return new ResponseEntity<>(response, new HttpHeaders(), HttpStatus.OK);
@@ -141,6 +156,10 @@ public class FlowController {
     public ResponseEntity<FlowPayload> deleteFlow(
             @PathVariable(name = "flow-id") String flowId,
             @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
+
+        if (correlationId.equals(DEFAULT_CORRELATION_ID))
+            correlationId = getUniqueCorrelation();
+
         logger.debug("Delete flow: {}={}, {}={}", CORRELATION_ID, correlationId, FLOW_ID, flowId);
         FlowPayload response = flowService.deleteFlow(flowId, correlationId);
         return new ResponseEntity<>(response, new HttpHeaders(), HttpStatus.OK);
@@ -172,6 +191,10 @@ public class FlowController {
             @PathVariable(name = "flow-id") String flowId,
             @RequestBody FlowPayload flow,
             @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
+
+        if (correlationId.equals(DEFAULT_CORRELATION_ID))
+            correlationId = getUniqueCorrelation();
+
         logger.debug("Update flow: {}={}, {}={}, flow={}", CORRELATION_ID, correlationId, FLOW_ID, flowId, flow);
         FlowPayload response = flowService.updateFlow(flow, correlationId);
         return new ResponseEntity<>(response, new HttpHeaders(), HttpStatus.OK);
@@ -198,6 +221,10 @@ public class FlowController {
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<List<FlowPayload>> getFlows(
             @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
+
+        if (correlationId.equals(DEFAULT_CORRELATION_ID))
+            correlationId = getUniqueCorrelation();
+
         logger.debug("Get flows: {}={}", CORRELATION_ID, correlationId);
         List<FlowPayload> response = flowService.getFlows(correlationId);
         return new ResponseEntity<>(response, new HttpHeaders(), HttpStatus.OK);
@@ -227,8 +254,11 @@ public class FlowController {
     @SuppressWarnings("unchecked") // the error is unchecked
     public ResponseEntity<List<FlowPayload>> deleteFlows(
             @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
-        logger.debug("Delete flows: {}={}", CORRELATION_ID);
 
+        if (correlationId.equals(DEFAULT_CORRELATION_ID))
+            correlationId = getUniqueCorrelation();
+
+        logger.debug("Delete flows: {}={}", CORRELATION_ID);
         List<FlowPayload> response = flowService.deleteFlows(correlationId);
         return new ResponseEntity<>(response, new HttpHeaders(), HttpStatus.OK);
     }
@@ -258,6 +288,10 @@ public class FlowController {
     public ResponseEntity<FlowIdStatusPayload> statusFlow(
             @PathVariable(name = "flow-id") String flowId,
             @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
+
+        if (correlationId.equals(DEFAULT_CORRELATION_ID))
+            correlationId = getUniqueCorrelation();
+
         logger.debug("Flow status: {}={}", CORRELATION_ID, correlationId);
         FlowIdStatusPayload response = flowService.statusFlow(flowId, correlationId);
         return new ResponseEntity<>(response, new HttpHeaders(), HttpStatus.OK);
@@ -285,6 +319,10 @@ public class FlowController {
     public ResponseEntity<FlowPathPayload> pathFlow(
             @PathVariable(name = "flow-id") String flowId,
             @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
+
+        if (correlationId.equals(DEFAULT_CORRELATION_ID))
+            correlationId = getUniqueCorrelation();
+
         logger.debug("Flow path: {}={}, {}={}", CORRELATION_ID, correlationId, FLOW_ID, flowId);
         FlowPathPayload response = flowService.pathFlow(flowId, correlationId);
         return new ResponseEntity<>(response, new HttpHeaders(), HttpStatus.OK);
@@ -299,7 +337,7 @@ public class FlowController {
      * @param correlationId correlation ID header value
      * @return list of flow
      */
-    @ApiOperation(value = "Push flows without expectation of modifying switches", response = BatchResults.class)
+    @ApiOperation(value = "Push flows without expectation of modifying switches. It can push to switch and validate.", response = BatchResults.class)
     @ApiResponses(value = {
             @ApiResponse(code = 200, response = BatchResults.class, message = "Operation is successful"),
             @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
@@ -314,9 +352,22 @@ public class FlowController {
     @ResponseStatus(HttpStatus.OK)
     public BatchResults pushFlows(
             @RequestBody List<FlowInfoData> externalFlows,
+            @ApiParam(value = "default: false. If true, this will propagate rules to the switches.",
+                    required = false)
+            @RequestParam("propagate") Optional<Boolean> propagate,
+            @ApiParam(value = "default: false. If true, will wait until poll timeout for validation.",
+                    required = false)
+            @RequestParam("propagate") Optional<Boolean> verify,
             @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
 
-        return flowService.pushFlows(externalFlows, correlationId);
+        if (correlationId.equals(DEFAULT_CORRELATION_ID))
+            correlationId = getUniqueCorrelation();
+
+        Boolean defaultPropagate = false;
+        Boolean defaultVerify = false;
+        return flowService.pushFlows(externalFlows, correlationId,
+                propagate.orElse(defaultPropagate),
+                verify.orElse(defaultVerify));
     }
 
 
@@ -327,7 +378,7 @@ public class FlowController {
      * @param correlationId correlation ID header value
      * @return list of flow
      */
-    @ApiOperation(value = "Unpush flows without expectation of modifying switches", response = BatchResults.class)
+    @ApiOperation(value = "Unpush flows without expectation of modifying switches. It can push to switch and validate.", response = BatchResults.class)
     @ApiResponses(value = {
             @ApiResponse(code = 200, response = BatchResults.class, message = "Operation is successful"),
             @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
@@ -342,9 +393,22 @@ public class FlowController {
     @ResponseStatus(HttpStatus.OK)
     public BatchResults unpushFlows(
             @RequestBody List<FlowInfoData> externalFlows,
+            @ApiParam(value = "default: false. If true, this will propagate rules to the switches.",
+                    required = false)
+            @RequestParam("propagate") Optional<Boolean> propagate,
+            @ApiParam(value = "default: false. If true, will wait until poll timeout for validation.",
+                    required = false)
+            @RequestParam("propagate") Optional<Boolean> verify,
             @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
 
-        return flowService.unpushFlows(externalFlows, correlationId);
+        if (correlationId.equals(DEFAULT_CORRELATION_ID))
+            correlationId = getUniqueCorrelation();
+
+        Boolean defaultPropagate = false;
+        Boolean defaultVerify = false;
+        return flowService.unpushFlows(externalFlows, correlationId,
+                propagate.orElse(defaultPropagate),
+                verify.orElse(defaultVerify));
     }
 
 
@@ -369,6 +433,10 @@ public class FlowController {
     @ResponseStatus(HttpStatus.OK)
     public FlowPathPayload rerouteFlow(@PathVariable("flow_id") String flowId,
             @RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
+
+        if (correlationId.equals(DEFAULT_CORRELATION_ID))
+            correlationId = getUniqueCorrelation();
+
         logger.debug("Received reroute request with correlation_id {} for flow {}", correlationId, flowId);
         return flowService.rerouteFlow(flowId, correlationId);
     }
@@ -393,6 +461,10 @@ public class FlowController {
             method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
     public FlowCacheSyncResults syncFlowCache(@RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
+
+        if (correlationId.equals(DEFAULT_CORRELATION_ID))
+            correlationId = getUniqueCorrelation();
+
         logger.debug("Received sync FlowCache with correlation_id {}", correlationId);
         return flowService.syncFlowCache(correlationId);
     }

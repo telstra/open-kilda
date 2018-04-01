@@ -105,18 +105,27 @@ public interface FlowService extends BasicService {
      *
      * @param externalFlows   the list of flows to push.
      * @param correlationId request correlation Id
+     * @param propagate if true, the path/rules will be propagated to the switch
+     * @param verify if true, we'll wait up to poll seconds to confirm if rules have been applied
+     *
      * @return
      */
-    BatchResults pushFlows(final List<FlowInfoData> externalFlows, final String correlationId);
+    BatchResults pushFlows(final List<FlowInfoData> externalFlows, final String correlationId,
+                           Boolean propagate, Boolean verify
+    );
 
     /**
      * Use this to unpush flows .. ie undo a push
      *
      * @param externalFlows   the list of flows to unpush.
      * @param correlationId request correlation Id
+     * @param propagate if true, the path/rules will be propagated to the switch
+     * @param verify if true, we'll wait up to poll seconds to confirm if rules have been applied
      * @return
      */
-    BatchResults unpushFlows(final List<FlowInfoData> externalFlows, final String correlationId);
+    BatchResults unpushFlows(final List<FlowInfoData> externalFlows, final String correlationId,
+                             Boolean propagate, Boolean verify
+    );
 
 
     /**

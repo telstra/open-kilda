@@ -88,7 +88,7 @@ public class SwitchIntegrationService {
 
                 if (csNames != null && !StringUtils.isEmpty(csNames) && csNames.size() > 0) {
 
-                    if (csNames.containsKey(switchId)) {
+                    if (csNames.containsKey(switchId.toLowerCase()) || csNames.containsKey(switchId.toUpperCase())) {
                         if (!IoUtil.chkStringIsNotEmpty(csNames.get(switchId))) {
                             switchInfo.setName(switchId);
                         } else {

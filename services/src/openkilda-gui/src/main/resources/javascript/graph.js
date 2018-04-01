@@ -116,25 +116,15 @@ zoom = d3.behavior.zoom()
 	//.on("zoom", redraw);
 //create force layout
 force = d3.layout.force()
-	.charge(-990)
+	.charge(-2000)
 	.linkDistance(function(d) { 
 		var distance = 150;
 		try{
-			if(d.latency <= 10) {
-				distance = 70;
-			} else if(d.latency > 10 && d.latency <= 20) {
-				distance = 150;
-			} else if(d.latency > 20 && d.latency <= 30) {
-				distance = 250;
-			}else if(d.latency > 30 && d.latency <= 50) {
-				distance = 550;
-			} else if(d.latency > 50 && d.latency <= 100) {
-				distance = 750;
-			} else {
-				distance = 1000;
+			if(!d.flow_count){
+				distance = d.latency + 50;
 			}
 		}catch(e){}
-        return distance; 
+        return distance;  
     })
 	.size([width, height])
 	.on("tick", tick);
