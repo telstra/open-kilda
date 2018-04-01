@@ -29,6 +29,7 @@ import org.neo4j.driver.v1.Value;
 import org.neo4j.driver.v1.Values;
 import org.neo4j.driver.v1.exceptions.NoSuchRecordException;
 import org.neo4j.driver.v1.types.Relationship;
+import org.openkilda.pce.api.FlowAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -138,6 +139,23 @@ public class NeoDriver implements PathComputer {
             );
         }
         return flows;
+    }
+
+    @Override
+    public List<Flow> getAllFlows() {
+        String q =
+                "MATCH (:switch)-[f:flow]->(:switch)\n" +
+                "RETURN f";
+
+        Session session = driver.session();
+        StatementResult queryResults = session.run(q);
+        List<Flow> results = new LinkedList<>();
+        for (Record record : queryResults.list()) {
+            FlowAdapter adapter = new FlowAdapter(record);
+            results.add(adapter.getFlow());
+        }
+
+        return results;
     }
 
     /**

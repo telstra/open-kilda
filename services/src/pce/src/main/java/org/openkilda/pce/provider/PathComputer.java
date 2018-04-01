@@ -22,6 +22,7 @@ import org.openkilda.messaging.model.ImmutablePair;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -61,6 +62,16 @@ public interface PathComputer extends Serializable {
      * @return a list containing the "key" flow info for all flows.
      */
     default List<FlowInfo> getFlowInfo() {
+        return new ArrayList<>();
+    }
+
+    /**
+     * Read flows from Neo4j and covert them in our common representation
+     * org.openkilda.messaging.model.Flow
+     *
+     * @return all flow objects stored in neo4j
+     */
+    default List<Flow> getAllFlows() {
         return new ArrayList<>();
     }
 }
