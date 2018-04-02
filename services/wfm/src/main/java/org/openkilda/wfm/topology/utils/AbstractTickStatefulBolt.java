@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.utils;
 
+import org.apache.storm.utils.TupleUtils;
 import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
 import org.apache.storm.Config;
@@ -64,11 +65,6 @@ public abstract class AbstractTickStatefulBolt<T extends State> extends BaseStat
         return conf;
     }
 
-    protected boolean isTickTuple(Tuple tuple) {
-        return (tuple.getSourceComponent().equals(Constants.SYSTEM_COMPONENT_ID)
-                && tuple.getSourceStreamId().equals(Constants.SYSTEM_TICK_STREAM_ID));
-    }
-
     @Override
     public void prepare(Map conf, TopologyContext context, OutputCollector collector) {
         _collector = collector;
@@ -77,7 +73,7 @@ public abstract class AbstractTickStatefulBolt<T extends State> extends BaseStat
     //execute is called to process tuples
     @Override
     public void execute(Tuple tuple) {
-        if (isTickTuple(tuple)) {
+        if (TupleUtils.isTick(tuple)) {
             doTick(tuple);
         } else {
             doWork(tuple);
