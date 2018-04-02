@@ -22,7 +22,6 @@ import org.openkilda.messaging.model.ImmutablePair;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -84,6 +83,13 @@ public interface PathComputer extends Serializable {
      * @return the Flow if it exists, null otherwise.
      */
     default List<Flow> getFlow(String flowId) {
+        return null;
+    }
+
+    /*
+     * @return all flows (forward and reverse) by id, if exist.
+     */
+    default List<Flow> getFlows(String flowId) {
         return null;
     }
 }

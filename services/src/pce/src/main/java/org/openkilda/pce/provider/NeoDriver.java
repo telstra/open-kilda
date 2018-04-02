@@ -146,9 +146,14 @@ public class NeoDriver implements PathComputer {
      */
     @Override
     public List<Flow> getFlow(String flowId) {
-        String where = "WHERE f.flowid='" + flowId + "' ";
-        List<Flow> found = _getFlows(where);
+        List<Flow> found = getFlows(flowId);
         return found.size() > 0 ? found : null;
+    }
+
+    @Override
+    public List<Flow> getFlows(String flowId) {
+        String where = "WHERE f.flowid='" + flowId + "' ";
+        return _getFlows(where);
     }
 
     @Override

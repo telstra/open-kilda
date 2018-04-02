@@ -29,6 +29,7 @@ import org.openkilda.messaging.command.flow.FlowStatusRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.openkilda.messaging.command.flow.FlowsGetRequest;
 import org.openkilda.messaging.command.flow.FlowCacheSyncRequest;
+import org.openkilda.messaging.command.flow.SynchronizeCacheAction;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.flow.FlowOperation;
 import org.openkilda.messaging.info.flow.FlowPathResponse;
@@ -64,8 +65,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.PropertySource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.access.method.P;
 import org.springframework.stereotype.Service;
@@ -743,9 +742,9 @@ public class FlowServiceImpl implements FlowService {
      * {@inheritDoc}
      */
     @Override
-    public FlowCacheSyncResults syncFlowCache(final String correlationId) {
-        LOGGER.debug("Flow cache sync: {}={}", CORRELATION_ID, correlationId);
-        FlowCacheSyncRequest data = new FlowCacheSyncRequest();
+    public FlowCacheSyncResults syncFlowCache(SynchronizeCacheAction syncCacheAction, String correlationId) {
+        LOGGER.debug("Flow cache sync: {}={}, SynchronizeCacheAction={}", CORRELATION_ID, correlationId, syncCacheAction);
+        FlowCacheSyncRequest data = new FlowCacheSyncRequest(syncCacheAction);
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
         messageConsumer.clear();
         messageProducer.send(topic, request);
