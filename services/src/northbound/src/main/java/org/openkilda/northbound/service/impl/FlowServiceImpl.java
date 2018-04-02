@@ -612,8 +612,15 @@ public class FlowServiceImpl implements FlowService {
                     result.add(new PathDiscrepancyDto("" + expected, "cookie", expected.cookie, matched.cookie));
                 if (!matched.inPort.equals(expected.inPort))
                     result.add(new PathDiscrepancyDto("" + expected, "inPort", expected.inPort, matched.inPort));
-                if (!matched.inVlan.equals(expected.inVlan))
-                    result.add(new PathDiscrepancyDto("" + expected, "inVlan", expected.inVlan, matched.inVlan));
+                if (matched.inVlan != null && matched.inVlan.length() > 0) {
+                    if (!matched.inVlan.equals(expected.inVlan))
+                        result.add(new PathDiscrepancyDto("" + expected, "inVlan", expected.inVlan, matched.inVlan));
+                } else {
+                    /* If match is empty, but expected isn't, then we have a discrepancy */
+                    if (expected.inVlan != null && expected.inVlan.length() > 0) {
+                        result.add(new PathDiscrepancyDto("" + expected, "inVlan", expected.inVlan, matched.inVlan));
+                    }
+                }
                 if (matched.outPort != null && matched.outPort.length() > 0) {
                     if (!matched.outPort.equals(expected.outPort))
                         result.add(new PathDiscrepancyDto("" + expected, "outPort", expected.outPort, matched.outPort));
