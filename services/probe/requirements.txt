@@ -3,3 +3,4 @@ requests
 Click
 PTable
 kafka-python
+py2neo
