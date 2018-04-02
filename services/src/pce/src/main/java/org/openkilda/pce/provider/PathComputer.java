@@ -76,12 +76,14 @@ public interface PathComputer extends Serializable {
     }
 
     /**
-     * Read a single flow from Neo4j and covert to our common representation
-     * org.openkilda.messaging.model.Flow
+     * Read a single flow from Neo4j and convert to our common representation
+     * org.openkilda.messaging.model.Flow.
+     *
+     * In reality, a single flow will typically be bi-directional, so just represent as a list.
      *
      * @return the Flow if it exists, null otherwise.
      */
-    default Flow getFlow(String flowId) {
+    default List<Flow> getFlow(String flowId) {
         return null;
     }
 }

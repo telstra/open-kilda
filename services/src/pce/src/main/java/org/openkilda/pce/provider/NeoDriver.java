@@ -145,10 +145,10 @@ public class NeoDriver implements PathComputer {
      * @return the first one found, if it exists.
      */
     @Override
-    public Flow getFlow(String flowId) {
+    public List<Flow> getFlow(String flowId) {
         String where = "WHERE f.flowid='" + flowId + "' ";
         List<Flow> found = _getFlows(where);
-        return found.size() > 0 ? found.get(0) : null;
+        return found.size() > 0 ? found : null;
     }
 
     @Override
