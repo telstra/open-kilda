@@ -15,7 +15,8 @@ import org.openkilda.messaging.info.event.PathNode;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class PathDiscrepancyDto {
 
-    private PathNode node;
+    /** The rule will be a hybrid of what is expected */
+    private String rule;
     private String field;
 
     @JsonProperty("expected_value")
@@ -24,13 +25,19 @@ public class PathDiscrepancyDto {
     @JsonProperty("actual_value")
     private String actualValue;
 
-
-    public PathNode getNode() {
-        return node;
+    public PathDiscrepancyDto(String rule, String field, String expectedValue, String actualValue) {
+        this.rule = rule;
+        this.field = field;
+        this.expectedValue = expectedValue;
+        this.actualValue = actualValue;
     }
 
-    public void setNode(PathNode node) {
-        this.node = node;
+    public String getRule() {
+        return rule;
+    }
+
+    public void setRule(String rule) {
+        this.rule = rule;
     }
 
     public String getField() {

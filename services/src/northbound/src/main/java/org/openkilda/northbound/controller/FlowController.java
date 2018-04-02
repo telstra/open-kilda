@@ -464,7 +464,7 @@ public class FlowController {
     @RequestMapping(path = "/flows/{flow_id}/validate",
             method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
-    public ResponseEntity<FlowValidationDto> validateFlow(@PathVariable("flow_id") String flowId,
+    public ResponseEntity<List<FlowValidationDto>> validateFlow(@PathVariable("flow_id") String flowId,
                                           @RequestHeader(value = CORRELATION_ID,
                                                 defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
 
@@ -472,15 +472,15 @@ public class FlowController {
             correlationId = getUniqueCorrelation();
 
         logger.debug("Received Flow Validation request with correlation_id {} for flow {}", correlationId, flowId);
-        ResponseEntity<FlowValidationDto> response;
+        ResponseEntity<List<FlowValidationDto>> response;
 
         try {
-            FlowValidationDto result = flowService.validateFlow(flowId, correlationId);
+            List<FlowValidationDto> result = flowService.validateFlow(flowId, correlationId);
             if (result == null) {
                 logger.info("VALIDATE FLOW: Flow Not Found: {}", flowId);
-                response = new ResponseEntity<FlowValidationDto>(null, new HttpHeaders(), HttpStatus.NOT_FOUND);
+                response = new ResponseEntity<>(null, new HttpHeaders(), HttpStatus.NOT_FOUND);
             } else {
-                response = new ResponseEntity<FlowValidationDto>(result, new HttpHeaders(), HttpStatus.OK);
+                response = new ResponseEntity<>(result, new HttpHeaders(), HttpStatus.OK);
             }
         } catch (InvalidPathException e) {
             logger.error("VALIDATE FLOW: Flow has no path: {}", flowId);
