@@ -534,15 +534,21 @@ public class FlowServiceImpl implements FlowService {
                 return result;
 
             for (FlowEntry switchRule : rules.getFlowEntries()){
+                logger.debug("FlowEntry: {}", switchRule);
                 SimpleSwitchRule rule = new SimpleSwitchRule();
                 rule.switchId = rules.getSwitchId();
                 rule.cookie = ""+switchRule.getCookie();
                 rule.inPort = switchRule.getMatch().getInPort();
                 rule.inVlan = switchRule.getMatch().getVlanVid();
-                // The outVlan could be empty. If it is, then pop is?
-                rule.outVlan = switchRule.getInstructions().getApplyActions().getPushVlan();
-                // Is getFlowOutput() the right method?
-                rule.outPort = switchRule.getInstructions().getApplyActions().getFlowOutput();
+                if (switchRule.getInstructions() != null){
+                    // TODO: What is the right way to get OUT VLAN and OUT PORT?  How does it vary?
+                    if (switchRule.getInstructions().getApplyActions() != null) {
+                        // The outVlan could be empty. If it is, then pop is?
+                        rule.outVlan = switchRule.getInstructions().getApplyActions().getPushVlan();
+                        // Is getFlowOutput() the right method?
+                        rule.outPort = switchRule.getInstructions().getApplyActions().getFlowOutput();
+                    }
+                }
                 rule.pktCount = switchRule.getPacketCount();
                 rule.byteCount = switchRule.getByteCount();
                 result.add(rule);
