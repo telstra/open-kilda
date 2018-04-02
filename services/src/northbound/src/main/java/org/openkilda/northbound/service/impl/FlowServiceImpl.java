@@ -599,20 +599,26 @@ public class FlowServiceImpl implements FlowService {
              */
             if (matched == null) {
                 result.add( new PathDiscrepancyDto(""+expected, "all", ""+expected, "") );
+                pktCounts.add(-1L);
+                byteCounts.add(-1L);
             } else {
                 if (!matched.cookie.equals(expected.cookie))
-                    result.add( new PathDiscrepancyDto(""+expected, "cookie", expected.cookie, matched.cookie) );
+                    result.add(new PathDiscrepancyDto("" + expected, "cookie", expected.cookie, matched.cookie));
                 if (!matched.inPort.equals(expected.inPort))
-                    result.add( new PathDiscrepancyDto(""+expected, "inPort", expected.inPort, matched.inPort) );
+                    result.add(new PathDiscrepancyDto("" + expected, "inPort", expected.inPort, matched.inPort));
                 if (!matched.inVlan.equals(expected.inVlan))
-                    result.add( new PathDiscrepancyDto(""+expected, "inVlan", expected.inVlan, matched.inVlan) );
-                if (matched.outPort != null && matched.outPort.length() > 0)
+                    result.add(new PathDiscrepancyDto("" + expected, "inVlan", expected.inVlan, matched.inVlan));
+                if (matched.outPort != null && matched.outPort.length() > 0) {
                     if (!matched.outPort.equals(expected.outPort))
-                        result.add( new PathDiscrepancyDto(""+expected, "outPort", expected.outPort, matched.outPort) );
-                if (matched.outVlan != null && matched.outVlan.length() > 0)
-                    if (!matched.outVlan.equals(expected.outVlan))
-                        result.add( new PathDiscrepancyDto(""+expected, "outVlan", expected.outVlan, matched.outVlan) );
+                        result.add(new PathDiscrepancyDto("" + expected, "outPort", expected.outPort, matched.outPort));
                 }
+                if (matched.outVlan != null && matched.outVlan.length() > 0) {
+                    if (!matched.outVlan.equals(expected.outVlan))
+                        result.add(new PathDiscrepancyDto("" + expected, "outVlan", expected.outVlan, matched.outVlan));
+                }
+                pktCounts.add(matched.pktCount);
+                byteCounts.add(matched.byteCount);
+            }
 
             return result;
         }
