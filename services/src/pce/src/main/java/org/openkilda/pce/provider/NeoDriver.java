@@ -174,6 +174,7 @@ public class NeoDriver implements PathComputer {
                         "f.dst_port as dst_port, " +
                         "f.src_vlan as src_vlan, " +
                         "f.dst_vlan as dst_vlan, " +
+                        "f.flowpath as path, " +
                         "f.meter_id as meter_id, " +
                         "f.transit_vlan as transit_vlan";
 

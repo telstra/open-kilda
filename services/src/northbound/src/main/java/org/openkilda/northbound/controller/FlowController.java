@@ -45,6 +45,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.nio.file.InvalidPathException;
 import java.util.List;
 import java.util.Optional;
 
@@ -471,12 +472,20 @@ public class FlowController {
             correlationId = getUniqueCorrelation();
 
         logger.debug("Received Flow Validation request with correlation_id {} for flow {}", correlationId, flowId);
-        FlowValidationDto result = flowService.validateFlow(flowId, correlationId);
         ResponseEntity<FlowValidationDto> response;
-        if (result == null)
+
+        try {
+            FlowValidationDto result = flowService.validateFlow(flowId, correlationId);
+            if (result == null)
+                logger.info("VALIDATE FLOW: Flow Not Found: {}", flowId);
+                response = new ResponseEntity<FlowValidationDto>(null, new HttpHeaders(), HttpStatus.NOT_FOUND);
+            else
+                response = new ResponseEntity<FlowValidationDto>(result, new HttpHeaders(), HttpStatus.OK);
+        } catch (InvalidPathException e) {
+            logger.error("VALIDATE FLOW: Flow has no path: {}", flowId);
+            logger.error(e.getMessage());
             response = new ResponseEntity<>(null, new HttpHeaders(), HttpStatus.NOT_FOUND);
-        else
-            response = new ResponseEntity<>(result, new HttpHeaders(), HttpStatus.OK);
+        }
         return response;
     }
 
