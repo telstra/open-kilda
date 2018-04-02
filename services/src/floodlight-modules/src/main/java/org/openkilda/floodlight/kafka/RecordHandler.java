@@ -381,7 +381,8 @@ class RecordHandler implements Runnable {
                 switchesInfoData,
                 portsInfoData,
                 Collections.emptySet(),
-                Collections.emptySet());
+                Collections.emptySet(),
+                null);
 
         InfoMessage infoMessage = new InfoMessage(dump, System.currentTimeMillis(),
                 message.getCorrelationId());

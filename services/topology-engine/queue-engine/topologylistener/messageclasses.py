@@ -39,7 +39,6 @@ MT_ISL = "org.openkilda.messaging.info.event.IslInfoData"
 MT_PORT = "org.openkilda.messaging.info.event.PortInfoData"
 MT_FLOW_INFODATA = "org.openkilda.messaging.info.flow.FlowInfoData"
 MT_FLOW_RESPONSE = "org.openkilda.messaging.info.flow.FlowResponse"
-MT_NETWORK = "org.openkilda.messaging.info.discovery.NetworkInfoData"
 MT_SYNC_REQUEST = "org.openkilda.messaging.command.switches.SyncRulesRequest"
 MT_SWITCH_RULES = "org.openkilda.messaging.info.rule.SwitchFlowEntries"
 #feature toggle is the functionality to turn off/on specific features
@@ -756,12 +755,8 @@ class MessageItem(object):
             logger.debug("%s: %s", step, flows)
 
             step = "Send"
-            payload = {
-                'switches': switches,
-                'isls': isls,
-                'flows': flows,
-                'clazz': MT_NETWORK}
-            message_utils.send_cache_message(payload, correlation_id)
+            message_utils.send_network_dump(
+                correlation_id, switches, isls, flows)
 
         except Exception as e:
             logger.exception('Can not dump network: %s', e.message)
@@ -777,7 +772,7 @@ class MessageItem(object):
             'switches': [],
             'isls': [],
             'flows': flow_utils.get_flows(),
-            'clazz': MT_NETWORK}
+            'clazz': message_utils.MT_NETWORK}
         message_utils.send_to_topic(
             payload, self.correlation_id, message_utils.MT_INFO,
             destination="WFM_FLOW_LCM", topic=config.KAFKA_FLOW_TOPIC)

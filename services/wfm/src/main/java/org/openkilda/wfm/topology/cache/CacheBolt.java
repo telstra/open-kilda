@@ -32,6 +32,7 @@ import org.openkilda.messaging.ctrl.state.NetworkDump;
 import org.openkilda.messaging.error.CacheException;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.discovery.ChunkDescriptor;
 import org.openkilda.messaging.info.discovery.NetworkInfoData;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.NetworkTopologyChange;
@@ -120,6 +121,9 @@ public class CacheBolt
 
     private CacheWarmingService cacheWarmingService;
 
+    private String dumpRequestCorrelationId = null;
+    private Set<Integer> dumpRequestUnprocessedChunks = null;
+
     private TopologyContext context;
     private OutputCollector outputCollector;
 
@@ -190,7 +194,6 @@ public class CacheBolt
         logger.trace("State before: {}", state);
 
         String json = tuple.getString(0);
-        String source = tuple.getSourceComponent();
 
         /*
           (carmine) Hack Alert
@@ -204,12 +207,12 @@ public class CacheBolt
             BaseMessage bm = MAPPER.readValue(json, BaseMessage.class);
             if (bm instanceof InfoMessage) {
                 InfoMessage message = (InfoMessage) bm;
+                String correlationId = message.getCorrelationId();
                 InfoData data = message.getData();
 
                 if (data instanceof NetworkInfoData) {
                     logger.debug("Storage content message {}", json);
-                    handleNetworkDump(data, tuple);
-                    isReceivedCacheInfo = true;
+                    handleNetworkDump(correlationId, (NetworkInfoData) data, tuple);
                 } else if (!isReceivedCacheInfo) {
                     logger.debug("Cache message fail due bolt not initialized: "
                                     + "component={}, stream={}, tuple={}",
@@ -290,20 +293,49 @@ public class CacheBolt
         output.declareStream(STREAM_ID_CTRL, AbstractTopology.fieldMessage);
     }
 
-    private void handleNetworkDump(InfoData info, Tuple tuple) {
-        if (info instanceof NetworkInfoData) {
-            NetworkInfoData data = (NetworkInfoData) info;
-            logger.info("Fill network state {}", data);
-            data.getSwitches().forEach(networkCache::createOrUpdateSwitch);
-            data.getIsls().forEach(networkCache::createOrUpdateIsl);
-            logger.info("Load flows {}", data.getFlows().size());
-            data.getFlows().forEach(flowCache::putFlow);
-            logger.info("Loaded flows {}", flowCache);
-            emitRestoreCommands(data.getFlows(), tuple);
-            logger.info("Flows restore commands sent");
+    private void handleNetworkDump(String correlationId, NetworkInfoData data, Tuple tuple) {
+        if (!dumpRequestCorrelationId.equals(correlationId)) {
+            logger.info(
+                    "Ignore network dump with mismatch correlation id (expect: {}, got: {})",
+                    dumpRequestCorrelationId, correlationId);
+            return;
+        }
 
+        logger.info("Fill network state {}", data);
+        data.getSwitches().forEach(networkCache::createOrUpdateSwitch);
+        data.getIsls().forEach(networkCache::createOrUpdateIsl);
+
+        logger.info("Load flows {}", data.getFlows().size());
+        data.getFlows().forEach(flowCache::putFlow);
+
+        logger.info("Loaded flows {}", flowCache);
+        emitRestoreCommands(data.getFlows(), tuple);
+
+        logger.info("Flows restore commands sent");
+
+        ChunkDescriptor chunk = data.getChunk();
+        if (chunk != null) {
+            logger.info(
+                    "Got network dump chunk: {} of {}",
+                    chunk.getCurrent(), chunk.getTotal());
+
+            if (dumpRequestUnprocessedChunks == null) {
+                dumpRequestUnprocessedChunks = new HashSet<>();
+                for (int idx = 1; idx <= chunk.getTotal(); idx += 1) {
+                    dumpRequestUnprocessedChunks.add(idx);
+                }
+            }
+
+            dumpRequestUnprocessedChunks.remove(chunk.getCurrent());
+            logger.debug("Unprocessed network dump chunks: {}", dumpRequestUnprocessedChunks);
+
+            if (dumpRequestUnprocessedChunks.size() == 0) {
+                logger.info("All network dump chunks are processed, {} is ready to process requests", this.getClass().getName());
+                isReceivedCacheInfo = true;
+            }
         } else {
-            logger.warn("Incorrect network state {}", info);
+            logger.info("Got network dump not sliced on chunks");
+            isReceivedCacheInfo = true;
         }
     }
 
@@ -482,9 +514,10 @@ public class CacheBolt
     private Values getNetworkRequest() {
         Values values = null;
 
+        dumpRequestCorrelationId = UUID.randomUUID().toString();
         try {
             CommandMessage command = new CommandMessage(new NetworkCommandData(),
-                    System.currentTimeMillis(), Utils.SYSTEM_CORRELATION_ID, Destination.TOPOLOGY_ENGINE);
+                    System.currentTimeMillis(), dumpRequestCorrelationId, Destination.TOPOLOGY_ENGINE);
             values = new Values(Utils.MAPPER.writeValueAsString(command));
         } catch (IOException exception) {
             logger.error("Could not serialize network cache request", exception);
