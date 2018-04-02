@@ -144,7 +144,8 @@ public interface FlowService extends BasicService {
      *
      * @param flowId id of the flow
      * @param correlationId request correlation Id
-     * @return the results of the comparison
+     * @return the results of the comparison, or null if the flow isn't found.
+     * @throws java.nio.file.InvalidPathException if the flow doesn't return a path and it should.
      */
     FlowValidationDto validateFlow(final String flowId, final String correlationId);
 

@@ -70,6 +70,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import javax.annotation.PostConstruct;
+import java.nio.file.InvalidPathException;
 import java.util.*;
 
 /**
@@ -446,12 +447,23 @@ public class FlowServiceImpl implements FlowService {
          */
 
         Flow flow = pathComputer.getFlow(flowId);
+        if (flow == null)
+            return null;
+
+        logger.debug("VALIDATE FLOW: Found Flow: {}", flow);
 
         /*
          * Since we are getting switch rules, we can use a set.
          */
         Set<String> switches = new HashSet<>();
         switches.add(flow.getSourceSwitch());
+
+        if (flow.getFlowPath() == null) {
+            // TODO: An empty path is okay if the src/dst switch are the same.
+            throw new InvalidPathException(flowId, "Flow Path was not returned.");
+        }
+
+        // TODO: account for no flowpath .. single switch flow
         for (PathNode node : flow.getFlowPath().getPath()) {
             switches.add(node.getSwitchId());
         }
@@ -491,7 +503,7 @@ public class FlowServiceImpl implements FlowService {
         result.setFlow(flow);
         result.setFlowId(flowId);
         result.setDiscrepancies(discrepencies);
-        result.setAsExpected(discrepencies.size() > 0);
+        result.setAsExpected(discrepencies.size() == 0);
         return result;
     }
 

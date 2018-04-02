@@ -21,6 +21,7 @@ import static org.openkilda.messaging.Utils.FLOW_ID;
 
 import io.swagger.annotations.ApiParam;
 import org.openkilda.messaging.error.MessageError;
+import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
@@ -44,6 +45,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.nio.file.InvalidPathException;
 import java.util.List;
 import java.util.Optional;
 
@@ -460,9 +462,9 @@ public class FlowController {
             @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
             @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
     @RequestMapping(path = "/flows/{flow_id}/validate",
-            method = RequestMethod.PATCH)
+            method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
-    public FlowValidationDto validateFlow(@PathVariable("flow_id") String flowId,
+    public ResponseEntity<FlowValidationDto> validateFlow(@PathVariable("flow_id") String flowId,
                                           @RequestHeader(value = CORRELATION_ID,
                                                 defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
 
@@ -470,7 +472,22 @@ public class FlowController {
             correlationId = getUniqueCorrelation();
 
         logger.debug("Received Flow Validation request with correlation_id {} for flow {}", correlationId, flowId);
-        return flowService.validateFlow(flowId, correlationId);
+        ResponseEntity<FlowValidationDto> response;
+
+        try {
+            FlowValidationDto result = flowService.validateFlow(flowId, correlationId);
+            if (result == null) {
+                logger.info("VALIDATE FLOW: Flow Not Found: {}", flowId);
+                response = new ResponseEntity<FlowValidationDto>(null, new HttpHeaders(), HttpStatus.NOT_FOUND);
+            } else {
+                response = new ResponseEntity<FlowValidationDto>(result, new HttpHeaders(), HttpStatus.OK);
+            }
+        } catch (InvalidPathException e) {
+            logger.error("VALIDATE FLOW: Flow has no path: {}", flowId);
+            logger.error(e.getMessage());
+            response = new ResponseEntity<>(null, new HttpHeaders(), HttpStatus.NOT_FOUND);
+        }
+        return response;
     }
 
 

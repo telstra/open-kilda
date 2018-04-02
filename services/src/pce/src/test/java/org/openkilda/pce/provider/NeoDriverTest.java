@@ -43,7 +43,7 @@ public class NeoDriverTest {
         }
 
     @AfterClass
-    public static void teatDownOnce() {
+    public static void tearDownOnce() {
         graphDb.shutdown();
     }
 
@@ -67,6 +67,7 @@ public class NeoDriverTest {
             rel1.setProperty("dst_port",2);
             rel1.setProperty("src_vlan",5);
             rel1.setProperty("dst_vlan",5);
+            rel1.setProperty("path","\"{\"path\": [], \"latency_ns\": 0, \"timestamp\": 1522528031909}\"");
             rel1.setProperty("bandwidth",200);
             rel1.setProperty("ignore_bandwidth", true);
             rel1.setProperty("description","description");
