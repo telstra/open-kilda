@@ -570,7 +570,7 @@ public class FlowServiceImpl implements FlowService {
              */
             SimpleSwitchRule matched = null;
             for (SimpleSwitchRule sr : possibleActual) {
-                if (sr.cookie.equals(expected.cookie)) {
+                if (sr.cookie != null && sr.cookie.equals(expected.cookie)) {
                     matched = sr;
                     break;
                 }
@@ -580,8 +580,9 @@ public class FlowServiceImpl implements FlowService {
              */
             if (matched == null) {
                 for (SimpleSwitchRule sr : possibleActual) {
-                    if (sr.inPort.equals(expected.inPort) &&
-                            sr.inVlan.equals(expected.inVlan)) {
+
+                    if (sr.inPort != null && sr.inPort.equals(expected.inPort) &&
+                            sr.inVlan != null && sr.inVlan.equals(expected.inVlan)) {
                         matched = sr;
                         break;
                     }
@@ -592,8 +593,8 @@ public class FlowServiceImpl implements FlowService {
              */
             if (matched == null) {
                 for (SimpleSwitchRule sr : possibleActual) {
-                    if (sr.outPort.equals(expected.outPort) &&
-                            sr.outVlan.equals(expected.outVlan)) {
+                    if (sr.outPort != null && sr.outPort.equals(expected.outPort) &&
+                            sr.outVlan != null && sr.outVlan.equals(expected.outVlan)) {
                         matched = sr;
                         break;
                     }
@@ -608,9 +609,9 @@ public class FlowServiceImpl implements FlowService {
                 pktCounts.add(-1L);
                 byteCounts.add(-1L);
             } else {
-                if (!matched.cookie.equals(expected.cookie))
+                if (matched.cookie != null && !matched.cookie.equals(expected.cookie))
                     result.add(new PathDiscrepancyDto("" + expected, "cookie", expected.cookie, matched.cookie));
-                if (!matched.inPort.equals(expected.inPort))
+                if (matched.inPort != null && !matched.inPort.equals(expected.inPort))
                     result.add(new PathDiscrepancyDto("" + expected, "inPort", expected.inPort, matched.inPort));
                 if (matched.inVlan != null && matched.inVlan.length() > 0) {
                     if (!matched.inVlan.equals(expected.inVlan))
