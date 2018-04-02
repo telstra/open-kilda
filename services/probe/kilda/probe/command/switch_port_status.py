@@ -14,11 +14,14 @@
 #
 
 import logging
-import pprint
 import json
 import requests
+import traceback
 
 import click
+from kilda.probe.entity.message import create_dump_state_by_switch
+
+from kilda.probe.messaging import receive_with_context_async, send_with_context
 from py2neo import Graph
 
 from prettytable import PrettyTable
@@ -28,7 +31,8 @@ LOG = logging.getLogger(__name__)
 
 def print_table(records):
     table = PrettyTable(
-        ['PORT', 'FL-PORT', 'FL-LINK', 'NEO4J-SRC', 'NEO4J-DST', 'REMOTE'])
+        ['PORT', 'FL-PORT', 'FL-LINK', 'NEO4J-SRC', 'NEO4J-DST',
+         'NEO4J-REMOTE', 'WFM-ISL-STATUS'])
     for port_id, v in records.items():
         table.add_row(
             [port_id,
@@ -36,7 +40,8 @@ def print_table(records):
              v.get('FL_LINK', '-'),
              v.get('NEO4J_SRC', '-'),
              v.get('NEO4J_DST', '-'),
-             v.get('REMOTE', '-')
+             v.get('REMOTE', '-'),
+             v.get('WFM_ISL_STATUS', '-')
              ])
     print(table)
 
@@ -100,20 +105,69 @@ def neo4g_ports_for_switch(ctx, switch_id):
     return retval
 
 
+def wfm_ports_for_switch(ctx, switch_id):
+    message = create_dump_state_by_switch(ctx.correlation_id,
+                                          'wfm/kilda.topo.disco-bolt',
+                                          switch_id)
+
+    with receive_with_context_async(ctx) as records:
+        send_with_context(ctx, message.serialize())
+
+    if not records:
+        LOG.error("wfm/kilda.topo.disco-bolt NO RESPONSE")
+
+    retval = {}
+
+    for record in records:
+        data = json.loads(record.value)
+        payload = data['payload']
+
+        for port in payload['state']['discovery']:
+            retval[int(port['port_id'])] = {
+                'WFM_ISL_STATUS': 'UP' if port['found_isl'] else 'DOWN'
+            }
+
+    return retval
+
+
 @click.command(name='switch-port-status')
 @click.argument('switch-id')
 @click.pass_obj
 def switch_port_status_command(ctx, switch_id):
-    fl_results = fl_get_ports_for_switch(ctx, switch_id)
+    try:
+        wfm_results = wfm_ports_for_switch(ctx, switch_id)
+        wfm_results_no_records = len(wfm_results) == 0
+    except Exception as ex:
+        traceback.print_exc()
+        wfm_results = {}
+        wfm_results_no_records = False
+
+    try:
+        fl_results = fl_get_ports_for_switch(ctx, switch_id)
+    except Exception as ex:
+        traceback.print_exc()
+        fl_results = {}
+
+    try:
+        neo4j_results = neo4g_ports_for_switch(ctx, switch_id)
+    except Exception as ex:
+        traceback.print_exc()
+        neo4j_results = {}
+
+    port_ids = set(list(fl_results.keys()) +
+                   list(neo4j_results.keys()) +
+                   list(wfm_results.keys()))
+
     results = {}
 
-    neo4j_results = neo4g_ports_for_switch(ctx, switch_id)
-
-    port_ids = set(list(fl_results.keys()) + list(neo4j_results.keys()))
+    if wfm_results_no_records:
+        wfm_results = {port_id: {'WFM_ISL_STATUS': 'NO DATA'} for port_id in
+                       port_ids}
 
     for port in port_ids:
         results[port] = {}
         results[port].update(fl_results.get(port, {}))
         results[port].update(neo4j_results.get(port, {}))
+        results[port].update(wfm_results.get(port, {}))
 
     print_table(results)
