@@ -159,7 +159,7 @@ def build_one_switch_flow_from_db(switch, stored_flow, output_action):
     flow = Flow()
     flow.clazz = "org.openkilda.messaging.command.flow.InstallOneSwitchFlow"
     flow.transaction_id = 0
-    flow.flowid = stored_flow['flow_id']
+    flow.flowid = stored_flow['flowid']
     flow.cookie = stored_flow['cookie']
     flow.switch_id = switch
     flow.input_port = stored_flow['src_port']
