@@ -421,7 +421,7 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
         try {
             verificationPacket = deserialize(eth);
         } catch (Exception exception) {
-            logger.error("Deserialization failure: {}, exception: {}", exception.getMessage(), exception);
+            logger.trace("Deserialization failure: {}, exception: {}", exception.getMessage(), exception);
             return Command.CONTINUE;
         }
 

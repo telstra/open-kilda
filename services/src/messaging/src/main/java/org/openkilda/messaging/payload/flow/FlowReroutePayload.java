@@ -13,29 +13,22 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.messaging;
+package org.openkilda.messaging.payload.flow;
 
-public interface MessageConsumer<T> {
-    /**
-     * Kafka message queue poll timeout.
-     */
-    int POLL_TIMEOUT = 120 * 1000;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import org.openkilda.messaging.info.event.PathInfoData;
 
-    /**
-     * Kafka message queue poll pause.
-     */
-    int POLL_PAUSE = 100;
+public class FlowReroutePayload extends FlowPathPayload {
 
-    /**
-     * Polls Kafka message queue.
-     *
-     * @param correlationId correlation id
-     * @return received message
-     */
-    T poll(final String correlationId);
+    @JsonProperty("rerouted")
+    private boolean rerouted;
 
-    /**
-     * Clears message queue.
-     */
-    void clear();
+    public FlowReroutePayload(String id, PathInfoData path, boolean rerouted) {
+        super(id, path);
+        this.rerouted = rerouted;
+    }
+
+    public boolean isRerouted() {
+        return rerouted;
+    }
 }

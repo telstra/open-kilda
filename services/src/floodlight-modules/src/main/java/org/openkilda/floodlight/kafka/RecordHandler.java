@@ -120,7 +120,7 @@ class RecordHandler implements Runnable {
         } else if (data instanceof ConnectModeRequest) {
             doConnectMode(message, replyToTopic, replyDestination);
         } else if (data instanceof DumpRulesRequest) {
-            doDumpRulesRequest(message);
+            doDumpRulesRequest(message, replyToTopic);
         } else if (data instanceof InstallMissedFlowsRequest) {
             doSyncRulesRequest(message);
         } else {
@@ -381,7 +381,8 @@ class RecordHandler implements Runnable {
                 switchesInfoData,
                 portsInfoData,
                 Collections.emptySet(),
-                Collections.emptySet());
+                Collections.emptySet(),
+                null);
 
         InfoMessage infoMessage = new InfoMessage(dump, System.currentTimeMillis(),
                 message.getCorrelationId());
@@ -515,7 +516,7 @@ class RecordHandler implements Runnable {
 
     }
 
-    private void doDumpRulesRequest(final CommandMessage message) {
+    private void doDumpRulesRequest(final CommandMessage message,  String replyToTopic) {
         DumpRulesRequest request = (DumpRulesRequest) message.getData();
         final String switchId = request.getSwitchId();
         logger.debug("Loading installed rules for switch {}", switchId);
@@ -531,7 +532,7 @@ class RecordHandler implements Runnable {
                 .build();
         InfoMessage infoMessage = new InfoMessage(response, message.getTimestamp(),
                 message.getCorrelationId());
-        context.getKafkaProducer().postMessage(TOPO_ENG_TOPIC, infoMessage);
+        context.getKafkaProducer().postMessage(replyToTopic, infoMessage);
     }
 
     /**

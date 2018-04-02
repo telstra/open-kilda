@@ -47,7 +47,7 @@ import java.util.concurrent.TimeUnit;
 @RunWith(SpringJUnit4ClassRunner.class)
 @WebAppConfiguration
 @ContextConfiguration(classes = TestConfig.class)
-public class SwitchControllerTest {
+public class SwitchControllerTest extends NorthboundBaseTest {
 
     private static final String USERNAME = "kilda";
     private static final String PASSWORD = "kilda";

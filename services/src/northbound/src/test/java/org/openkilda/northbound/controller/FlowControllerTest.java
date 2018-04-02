@@ -60,7 +60,7 @@ import java.util.concurrent.TimeUnit;
 @WebAppConfiguration
 @ContextConfiguration(classes = TestConfig.class)
 @TestPropertySource("classpath:northbound.properties")
-public class FlowControllerTest {
+public class FlowControllerTest extends NorthboundBaseTest {
     private static final String USERNAME = "kilda";
     private static final String PASSWORD = "kilda";
     private static final String ROLE = "ADMIN";

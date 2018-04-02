@@ -233,6 +233,12 @@ public class TransactionBolt
     }
 
     @Override
+    public AbstractDumpState dumpStateBySwitchId(String switchId) {
+        // Not implemented
+        return new TransactionBoltState(new HashMap<>());
+    }
+
+    @Override
     public TopologyContext getContext() {
         return context;
     }

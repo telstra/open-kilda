@@ -22,6 +22,7 @@ import click
 from kilda.probe.command.list import list_command
 from kilda.probe.command.monitor import monitor_command, bolt_command
 from kilda.probe.command.dump_state import dump_state_command
+from kilda.probe.command.switch_port_status import switch_port_status_command
 
 LOG = logging.getLogger(__name__)
 
@@ -33,10 +34,11 @@ def init_logger(level):
                                    '%(message)s')
     else:
         logging.basicConfig(level=level,
-                            format='%(asctime)s | %(message)s')
+                            format='%(asctime)s  | %(message)s')
 
-        kafka = logging.getLogger('kafka')
-        kafka.setLevel(logging.ERROR)
+        logging.getLogger('kafka').setLevel(logging.ERROR)
+        logging.getLogger('neo4j').setLevel(logging.ERROR)
+        logging.getLogger('httpstream').setLevel(logging.ERROR)
 
 
 def generate_correlation_id():
@@ -51,6 +53,10 @@ class Context(object):
         self._kafka_bootstrap_servers = None
         self._kafka_topic = None
         self._timeout = None
+        self._fl_host = None
+        self._neo4j_host = None
+        self._neo4j_user = None
+        self._neo4j_pass = None
 
     @property
     def debug(self):
@@ -85,6 +91,38 @@ class Context(object):
         self._kafka_topic = value
 
     @property
+    def fl_host(self):
+        return self._fl_host
+
+    @fl_host.setter
+    def fl_host(self, value):
+        self._fl_host = value
+
+    @property
+    def neo4j_host(self):
+        return self._neo4j_host
+
+    @neo4j_host.setter
+    def neo4j_host(self, value):
+        self._neo4j_host = value
+
+    @property
+    def neo4j_user(self):
+        return self._neo4j_user
+
+    @neo4j_user.setter
+    def neo4j_user(self, value):
+        self._neo4j_user = value
+
+    @property
+    def neo4j_pass(self):
+        return self._neo4j_pass
+
+    @neo4j_pass.setter
+    def neo4j_pass(self, value):
+        self._neo4j_pass = value
+
+    @property
     def timeout(self):
         return self._timeout
 
@@ -99,10 +137,15 @@ class Context(object):
 @click.option('--kafka-bootstrap-servers', default='localhost',
               envvar='KAFKA_BOOTSTRAP_SERVERS')
 @click.option('--kafka-topic', default='kilda.ctrl', envvar='KAFKA_TOPIC')
+@click.option('--fl-host', default='http://localhost:8180', envvar='FL')
+@click.option('--neo4j-host', default='localhost',
+              envvar='NEO4G_HOST')
+@click.option('--neo4j-user', default='neo4j', envvar='NEO4G_USER')
+@click.option('--neo4j-pass', default='temppass', envvar='NEO4G_PASS')
 @click.option('--timeout', default=2)
 @click.pass_obj
 def cli(ctx, debug, correlation_id, kafka_bootstrap_servers, kafka_topic,
-        timeout):
+        fl_host, neo4j_host, neo4j_user, neo4j_pass, timeout):
     init_logger(logging.DEBUG if debug else logging.INFO)
     ctx.debug = debug
     ctx.correlation_id = correlation_id
@@ -110,12 +153,17 @@ def cli(ctx, debug, correlation_id, kafka_bootstrap_servers, kafka_topic,
     ctx.kafka_bootstrap_servers = kafka_bootstrap_servers
     ctx.kafka_topic = kafka_topic
     ctx.timeout = timeout
+    ctx.fl_host = fl_host
+    ctx.neo4j_host = neo4j_host
+    ctx.neo4j_user = neo4j_user
+    ctx.neo4j_pass = neo4j_pass
 
 
 cli.add_command(list_command)
 cli.add_command(monitor_command)
 cli.add_command(bolt_command)
 cli.add_command(dump_state_command)
+cli.add_command(switch_port_status_command)
 
 
 def main():

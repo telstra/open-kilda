@@ -83,14 +83,9 @@ public class KafkaMessageConsumer implements MessageConsumer<Message> {
     @KafkaListener(id = "northbound-listener", topics = Topic.NORTHBOUND)
     public void receive(final String record) {
         try {
-            logger.trace("message received");
+            logger.debug("message received: {}", record);
             Message message = MAPPER.readValue(record, Message.class);
-            if (Destination.NORTHBOUND.equals(message.getDestination())) {
-                logger.debug("message received: {}", record);
-                messages.put(message.getCorrelationId(), message);
-            } else {
-                logger.trace("Skip message: {}", message);
-            }
+            messages.put(message.getCorrelationId(), message);
         } catch (IOException exception) {
             logger.error("Could not deserialize message: {}", record, exception);
         }

@@ -4,6 +4,7 @@ import org.openkilda.client.response.switches.SyncRulesOutput;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.InstallRulesAction;
+import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.switches.SyncRulesResponse;
 import org.openkilda.northbound.dto.SwitchDto;
 
@@ -12,6 +13,16 @@ import java.util.List;
 public interface SwitchService extends BasicService {
 
     List<SwitchDto> getSwitches();
+
+    /**
+     * Get all rules from the switch. If cookie is specified, then return just that cookie rule.
+     *
+     * @param switchId the switch
+     * @param cookie if > 0, then filter the results based on that cookie
+     * @param correlationId request correlation Id
+     * @return the list of rules
+     */
+    SwitchFlowEntries getRules(String switchId, Long cookie, String correlationId);
 
     /**
      * Deletes all rules from the switch. The flag (@code deleteAction) defines what to do about the default rules.

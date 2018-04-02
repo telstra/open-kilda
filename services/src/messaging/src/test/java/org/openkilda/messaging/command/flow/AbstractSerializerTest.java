@@ -586,7 +586,8 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
                 new HashSet<>(Arrays.asList(sw1, sw2)),
                 new HashSet<>(),
                 Collections.singleton(isl),
-                Collections.singleton(new ImmutablePair<>(flowModel, flowModel)));
+                Collections.singleton(new ImmutablePair<>(flowModel, flowModel)),
+                null);
         System.out.println(data);
 
         InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);

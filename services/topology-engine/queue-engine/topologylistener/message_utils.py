@@ -13,12 +13,13 @@
 #   limitations under the License.
 #
 
+import collections
+import copy
 import time
 import json
-from kafka import KafkaProducer
-
 import logging
 
+from kafka import KafkaProducer
 import config
 
 producer = KafkaProducer(bootstrap_servers=config.KAFKA_BOOTSTRAP_SERVERS)
@@ -26,9 +27,14 @@ logger = logging.getLogger(__name__)
 
 MT_ERROR = "org.openkilda.messaging.error.ErrorMessage"
 MT_COMMAND = "org.openkilda.messaging.command.CommandMessage"
+MT_COMMAND_REPLY = "org.openkilda.messaging.command.CommandWithReplyToMessage"
 MT_INFO = "org.openkilda.messaging.info.InfoMessage"
 MT_INFO_FLOW_STATUS = "org.openkilda.messaging.info.flow.FlowStatusResponse"
 MT_ERROR_DATA = "org.openkilda.messaging.error.ErrorData"
+
+MT_NETWORK = "org.openkilda.messaging.info.discovery.NetworkInfoData"
+
+Mb = 2 ** 20
 
 
 def get_timestamp():
@@ -38,7 +44,7 @@ def get_timestamp():
 class Flow(object):
     def to_json(self):
         return json.dumps(
-            self, default=lambda o: o.__dict__, sort_keys=False, indent=4)
+            self, default=lambda o: o.__dict__)
 
 
 def build_ingress_flow(path_nodes, src_switch, src_port, src_vlan,
@@ -158,7 +164,7 @@ def build_one_switch_flow_from_db(switch, stored_flow, output_action):
     flow = Flow()
     flow.clazz = "org.openkilda.messaging.command.flow.InstallOneSwitchFlow"
     flow.transaction_id = 0
-    flow.flowid = stored_flow['flow_id']
+    flow.flowid = stored_flow['flowid']
     flow.cookie = stored_flow['cookie']
     flow.switch_id = switch
     flow.input_port = stored_flow['src_port']
@@ -195,8 +201,10 @@ def send_dump_rules_request(switch_id, correlation_id):
     message = Message()
     message.clazz = 'org.openkilda.messaging.command.switches.DumpRulesRequest'
     message.switch_id = switch_id
-    send_to_topic(message, correlation_id, MT_COMMAND,
-                  topic=config.KAFKA_SPEAKER_TOPIC)
+    reply_to = {"reply_to": config.KAFKA_TOPO_ENG_TOPIC }
+    send_to_topic(message, correlation_id, MT_COMMAND_REPLY,
+                  topic=config.KAFKA_SPEAKER_TOPIC,
+                  extra=reply_to)
 
 
 def send_sync_rules_response(added_rules, not_deleted, proper_rules,
@@ -223,19 +231,28 @@ def send_force_install_commands(switch_id, flow_commands, correlation_id):
 class Message(object):
     def to_json(self):
         return json.dumps(
-            self, default=lambda o: o.__dict__, sort_keys=False, indent=4)
+            self, default=lambda o: o.__dict__)
+
+    def add(self, vals):
+        self.__dict__.update(vals)
 
 
 def send_to_topic(payload, correlation_id,
                   message_type,
                   destination="WFM",
-                  topic=config.KAFKA_FLOW_TOPIC):
+                  topic=config.KAFKA_FLOW_TOPIC,
+                  extra=None):
+    """
+    :param extra: a dict that will be added to the message. Useful for adding reply_to for Command With Reply.
+    """
     message = Message()
     message.payload = payload
     message.clazz = message_type
     message.destination = destination
     message.timestamp = get_timestamp()
     message.correlation_id = correlation_id
+    if extra:
+        message.add(extra)
     kafka_message = b'{}'.format(message.to_json())
     logger.debug('Send message: topic=%s, message=%s', topic, kafka_message)
     message_result = producer.send(topic, kafka_message)
@@ -268,6 +285,10 @@ def send_install_commands(flow_rules, correlation_id):
     the for logic should go in reverse
     """
     for flow_rule in reversed(flow_rules):
+        # TODO: (same as delete todo) Whereas this is part of the current workflow .. feels like we should have the workflow manager work
+        #       as a hub and spoke ... ie: send delete to FL, get confirmation. Then send delete to DB, get confirmation.
+        #       Then send a message to a FLOW_EVENT topic that says "FLOW CREATED"
+
         send_to_topic(flow_rule, correlation_id, MT_COMMAND,
                       destination="CONTROLLER", topic=config.KAFKA_SPEAKER_TOPIC)
         # FIXME(surabujin): WFM reroute this message into CONTROLLER
@@ -286,7 +307,81 @@ def send_delete_commands(nodes, correlation_id):
     logger.debug('Send Delete Commands: node count=%d', len(nodes))
     for node in nodes:
         data = build_delete_flow(str(node['switch_id']), str(node['flow_id']), node['cookie'])
+        # TODO: Whereas this is part of the current workflow .. feels like we should have the workflow manager work
+        #       as a hub and spoke ... ie: send delete to FL, get confirmation. Then send delete to DB, get confirmation.
+        #       Then send a message to a FLOW_EVENT topic that says "FLOW DELETED"
         send_to_topic(data, correlation_id, MT_COMMAND,
                       destination="CONTROLLER", topic=config.KAFKA_SPEAKER_TOPIC)
         send_to_topic(data, correlation_id, MT_COMMAND,
                       destination="WFM", topic=config.KAFKA_FLOW_TOPIC)
+
+
+ChunkDescriptor = collections.namedtuple(
+    'ChunkDescriptor', ('current', 'total'))
+DumpEntity = collections.namedtuple(
+    'DumpEntity', ('need_space', 'key', 'payload'))
+
+
+def send_network_dump(
+        correlation_id, switch_set, isl_set, flow_set, size_limit=2 * Mb):
+    optimal_size = int(size_limit * .95)
+
+    some_big_index = 1 << 32
+    payload_template = {
+        'chunk': ChunkDescriptor(some_big_index, some_big_index),
+        'switches': [],
+        'isls': [],
+        'flows': [],
+        'clazz': MT_NETWORK}
+
+    wrapper_overhead = len(json.dumps(payload_template))
+    dump_chunks = []
+    for key, data in (
+            ('switches', switch_set),
+            ('isls', isl_set),
+            ('flows', flow_set)):
+
+        for payload in data:
+            packed = json.dumps(payload)
+            dump_chunks.append(DumpEntity(len(packed), key, payload))
+
+    dump_chunks.sort(key=lambda x: x.need_space, reverse=True)
+
+    last_is_empty = False
+    produced_chunks = []
+    while dump_chunks:
+        current = copy.deepcopy(payload_template)
+        left_place = optimal_size - wrapper_overhead
+
+        processed = []
+        for idx, entity in enumerate(dump_chunks):
+            if left_place - entity.need_space < 0:
+                continue
+
+            current[entity.key].append(entity.payload)
+            left_place -= entity.need_space
+            processed.insert(0, idx)
+
+        for idx in processed:
+            del dump_chunks[idx]
+
+        if not processed and last_is_empty:
+            raise ValueError((
+                'Can\'t fit any more entities in chunks with size '
+                'limit {}({}). Size of smallest left entity: {}').format(
+                    size_limit, optimal_size, dump_chunks[-1].need_space))
+
+        last_is_empty = not bool(processed)
+        produced_chunks.append(current)
+
+    if not produced_chunks:
+        logger.debug('There is no any entity in produced network dump')
+        produced_chunks.append(payload_template)
+
+    for idx, chunk in enumerate(produced_chunks):
+        descriptor = ChunkDescriptor(
+            idx + 1, len(produced_chunks))
+        chunk['chunk'] = descriptor._asdict()
+        logger.debug('Send network dump [{}/{}]'.format(
+            descriptor.current, descriptor.total))
+        send_cache_message(chunk, correlation_id)

@@ -20,6 +20,8 @@ import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.info.flow.FlowInfoData;
+import org.openkilda.northbound.dto.FlowValidationDto;
+import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.springframework.web.context.request.async.DeferredResult;
 
 import java.util.List;
@@ -104,28 +106,49 @@ public interface FlowService extends BasicService {
      *
      * @param externalFlows   the list of flows to push.
      * @param correlationId request correlation Id
+     * @param propagate if true, the path/rules will be propagated to the switch
+     * @param verify if true, we'll wait up to poll seconds to confirm if rules have been applied
+     *
      * @return
      */
-    BatchResults pushFlows(final List<FlowInfoData> externalFlows, final String correlationId);
+    BatchResults pushFlows(final List<FlowInfoData> externalFlows, final String correlationId,
+                           Boolean propagate, Boolean verify
+    );
 
     /**
      * Use this to unpush flows .. ie undo a push
      *
      * @param externalFlows   the list of flows to unpush.
      * @param correlationId request correlation Id
+     * @param propagate if true, the path/rules will be propagated to the switch
+     * @param verify if true, we'll wait up to poll seconds to confirm if rules have been applied
      * @return
      */
-    BatchResults unpushFlows(final List<FlowInfoData> externalFlows, final String correlationId);
-
+    BatchResults unpushFlows(final List<FlowInfoData> externalFlows, final String correlationId,
+                             Boolean propagate, Boolean verify
+    );
 
     /**
      * Performs rerouting of specific flow.
      *
      * @param flowId id of flow to be rerouted.
      * @param correlationId request correlation Id
-     * @return updated flow path information.
+     * @return updated flow path information with the result whether or not path was changed.
      */
-    FlowPathPayload rerouteFlow(final String flowId, final String correlationId);
+    FlowReroutePayload rerouteFlow(final String flowId, final String correlationId);
+
+
+    /**
+     * Performs validation of specific flow - ie comparing what is in the database with what is
+     * on the network.
+     *
+     * @param flowId id of the flow
+     * @param correlationId request correlation Id
+     * @return the results of the comparison, or null if the flow isn't found.
+     * @throws java.nio.file.InvalidPathException if the flow doesn't return a path and it should.
+     */
+    List<FlowValidationDto> validateFlow(final String flowId, final String correlationId);
+
 
 
     /**

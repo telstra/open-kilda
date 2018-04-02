@@ -17,7 +17,7 @@
         </RollingFile>
     </Appenders>
     <Loggers>
-        <Logger name="org.openkilda.northbound" level="DEBUG" />
+        <Logger name="org.openkilda" level="DEBUG" />
         <Root level="INFO">
             <AppenderRef ref="STDOUT"/>
             <AppenderRef ref="LOGSTASH"/>

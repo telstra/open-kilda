@@ -17,7 +17,6 @@ package org.openkilda.pce.cache;
 
 import org.openkilda.messaging.error.CacheException;
 import org.openkilda.messaging.error.ErrorType;
-import org.openkilda.messaging.info.event.NetworkTopologyChange;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
@@ -136,7 +135,7 @@ public class FlowCache extends Cache {
     }
 
     /**
-     * Gets active flows with specified switch in the path.
+     * Gets active or cached flows with specified switch in the path.
      *
      * @param switchId switch id
      * @return set of flows
@@ -148,7 +147,7 @@ public class FlowCache extends Cache {
                         || flow.getRight().getFlowPath().getPath().stream()
                         .anyMatch(node -> node.getSwitchId().equals(switchId))
                         || isOneSwitchFlow(flow) && flow.getLeft().getSourceSwitch().equals(switchId))
-                .filter(flow -> FlowState.UP == flow.getLeft().getState())
+                .filter(flow -> flow.getLeft().getState().isActiveOrCached())
                 .collect(Collectors.toSet());
     }
 
@@ -175,7 +174,7 @@ public class FlowCache extends Cache {
         return flowPool.values().stream()
                 .filter(flow -> flow.getLeft().getFlowPath().getPath().contains(islData.getPath().get(0))
                         || flow.getRight().getFlowPath().getPath().contains(islData.getPath().get(0)))
-                .filter(flow -> FlowState.UP == flow.getLeft().getState())
+                .filter(flow -> flow.getLeft().getState().isActiveOrCached())
                 .collect(Collectors.toSet());
     }
 
@@ -204,7 +203,7 @@ public class FlowCache extends Cache {
         return flowPool.values().stream()
                 .filter(flow -> flow.getLeft().getFlowPath().getPath().contains(node)
                         || flow.getRight().getFlowPath().getPath().contains(node))
-                .filter(flow -> flow.getLeft().getState().isActive())
+                .filter(flow -> flow.getLeft().getState().isActiveOrCached())
                 .collect(Collectors.toSet());
     }
 

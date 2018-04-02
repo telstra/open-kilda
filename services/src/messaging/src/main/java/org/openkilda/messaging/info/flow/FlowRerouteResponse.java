@@ -17,36 +17,23 @@ package org.openkilda.messaging.info.flow;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.openkilda.messaging.Utils;
+import org.openkilda.messaging.info.event.PathInfoData;
 
-public enum FlowOperation {
-    CREATE("Create"),
-    DELETE("Delete"),
-    UPDATE("Update"),
-    STATE("State"),
-    PUSH("Push"),       // used to pre-populate flows
-    PUSH_PROPAGATE("Push_Propagate"),       // used to pre-populate flows, and push to switch
-    UNPUSH("Unpush"),   // used to un-pre-populate flows
-    UNPUSH_PROPAGATE("Unpush_Propagate"),   // used to un-pre-populate flows, and push to switch
-    CACHE("Cache");
+public class FlowRerouteResponse extends FlowPathResponse {
 
-    @JsonProperty("operation")
-    private final String operation;
+    @JsonProperty("rerouted")
+    private boolean rerouted;
 
     @JsonCreator
-    FlowOperation(@JsonProperty("operation") String operation) {
-        this.operation = operation;
+    public FlowRerouteResponse(
+            @JsonProperty(Utils.PAYLOAD) PathInfoData payload,
+            @JsonProperty("rerouted") boolean rerouted) {
+        super(payload);
+        this.rerouted = rerouted;
     }
 
-    public String getOperation() {
-        return this.operation;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public String toString() {
-        return operation;
+    public boolean isRerouted() {
+        return rerouted;
     }
 }
-

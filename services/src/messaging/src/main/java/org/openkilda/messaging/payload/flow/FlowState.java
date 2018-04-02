@@ -43,7 +43,7 @@ public enum FlowState {
     DOWN("Down"),
 
     /**
-     * Flow is cached.
+     * Flow is cached. It means this flow is read from db and cached.
      */
     CACHED("Cached");
 
@@ -82,6 +82,10 @@ public enum FlowState {
 
     public boolean isActive() {
         return this == UP;
+    }
+
+    public boolean isActiveOrCached() {
+        return this == UP || this == CACHED;
     }
 }
 

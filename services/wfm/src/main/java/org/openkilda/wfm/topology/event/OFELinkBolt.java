@@ -18,6 +18,15 @@ package org.openkilda.wfm.topology.event;
 import static org.openkilda.messaging.Utils.MAPPER;
 import static org.openkilda.messaging.Utils.PAYLOAD;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.common.annotations.VisibleForTesting;
+import org.apache.storm.state.KeyValueState;
+import org.apache.storm.task.OutputCollector;
+import org.apache.storm.task.TopologyContext;
+import org.apache.storm.topology.OutputFieldsDeclarer;
+import org.apache.storm.tuple.Fields;
+import org.apache.storm.tuple.Tuple;
+import org.apache.storm.tuple.Values;
 import org.openkilda.messaging.BaseMessage;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.HeartBeat;
@@ -36,26 +45,16 @@ import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
+import org.openkilda.messaging.model.DiscoveryNode;
 import org.openkilda.wfm.OFEMessageUtils;
 import org.openkilda.wfm.WatchDog;
 import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
 import org.openkilda.wfm.isl.DiscoveryManager;
-import org.openkilda.messaging.model.DiscoveryNode;
 import org.openkilda.wfm.isl.DummyIIslFilter;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.TopologyConfig;
 import org.openkilda.wfm.topology.utils.AbstractTickStatefulBolt;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.google.common.annotations.VisibleForTesting;
-import org.apache.storm.state.KeyValueState;
-import org.apache.storm.task.OutputCollector;
-import org.apache.storm.task.TopologyContext;
-import org.apache.storm.topology.OutputFieldsDeclarer;
-import org.apache.storm.tuple.Fields;
-import org.apache.storm.tuple.Tuple;
-import org.apache.storm.tuple.Values;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,6 +62,8 @@ import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * This class is the main class for tracking network topology. The most complicated part of
@@ -431,6 +432,21 @@ public class OFELinkBolt
     @Override
     public String getCtrlStreamId() {
         return STREAM_ID_CTRL;
+    }
+
+    @Override
+    public AbstractDumpState dumpStateBySwitchId(String switchId) {
+
+        List<DiscoveryNode> filteredDiscoveryQueue =  discoveryQueue.stream().
+                filter(node -> node.getSwitchId().equals(switchId)).
+                collect(Collectors.toList());
+
+        Set<DiscoveryNode> filterdIslFilter = islFilter.getMatchSet().stream().
+                filter(node -> node.getSwitchId().equals(switchId)).
+                collect(Collectors.toSet());
+
+
+        return new OFELinkBoltState(filteredDiscoveryQueue, filterdIslFilter);
     }
 
     @Override
