@@ -46,7 +46,7 @@ import java.util.List;
 @WebAppConfiguration
 @ContextConfiguration(classes = TestLinkPropsConfig.class)
 @TestPropertySource("classpath:northbound.properties")
-public class LinkPropsTest {
+public class LinkPropsTest extends NorthboundBaseTest {
 
     private MockRestServiceServer mockServer;
 
@@ -60,6 +60,7 @@ public class LinkPropsTest {
     private String topologyEngineRest;
 
     private UriComponentsBuilder linkPropsBuilder;
+
 
     @Before
     public void setUp() throws Exception {

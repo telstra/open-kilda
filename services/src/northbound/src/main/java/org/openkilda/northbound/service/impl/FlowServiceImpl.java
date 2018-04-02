@@ -29,6 +29,7 @@ import org.openkilda.messaging.command.flow.FlowStatusRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.openkilda.messaging.command.flow.FlowsGetRequest;
 import org.openkilda.messaging.command.flow.FlowCacheSyncRequest;
+import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.flow.FlowOperation;
 import org.openkilda.messaging.info.flow.FlowPathResponse;
 import org.openkilda.messaging.info.flow.FlowRerouteResponse;
@@ -37,6 +38,7 @@ import org.openkilda.messaging.info.flow.FlowStatusResponse;
 import org.openkilda.messaging.info.flow.FlowsResponse;
 import org.openkilda.messaging.info.flow.FlowCacheSyncResponse;
 import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
@@ -46,10 +48,12 @@ import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.northbound.dto.FlowValidationDto;
+import org.openkilda.northbound.dto.PathDiscrepancyDto;
 import org.openkilda.northbound.messaging.MessageConsumer;
 import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.service.BatchResults;
 import org.openkilda.northbound.service.FlowService;
+import org.openkilda.northbound.service.SwitchService;
 import org.openkilda.northbound.utils.Converter;
 
 import org.openkilda.pce.provider.Auth;
@@ -59,13 +63,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.PropertySource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import javax.annotation.PostConstruct;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 /**
  * Manages operations with flows.
@@ -102,8 +107,11 @@ public class FlowServiceImpl implements FlowService {
     @Value("${neo4j.pswd}")
     private String neoPswd;
 
-
-
+    /**
+     * Used to get switch rules
+     */
+    @Autowired
+    private SwitchService switchService;
 
     /**
      * Kafka message consumer.
@@ -437,10 +445,53 @@ public class FlowServiceImpl implements FlowService {
          * 3) Do the comparison
          */
 
-        FlowValidationDto result = new FlowValidationDto();
         Flow flow = pathComputer.getFlow(flowId);
+
+        /*
+         * Since we are getting switch rules, we can use a set.
+         */
+        Set<String> switches = new HashSet<>();
+        switches.add(flow.getSourceSwitch());
+        for (PathNode node : flow.getFlowPath().getPath()) {
+            switches.add(node.getSwitchId());
+        }
+        switches.add(flow.getDestinationSwitch());
+
+        /*)
+         * Now Walk the list, getting the switch rules, so we can process the comparisons.
+         */
+        Long ignoreCookie = 0L;
+        int correlation_iter = 1;
+        Map<String, SwitchFlowEntries> rules = new HashMap<>();
+        for (String switchid : switches){
+            String corr_id = correlationId+"-"+correlation_iter++;
+            rules.put(switchid, switchService.getRules(switchid,ignoreCookie, corr_id));
+        }
+
+        /*
+         * TODO: Start comparisons .. for now, just dumping number of rules.
+         *
+         * Comparison Algorithm:
+         * (1) Look for Ingress Rule
+         * (2) Look for Egress Rule
+         * (3) Look for Each Transit piece, if any.
+         */
+        List<PathDiscrepancyDto> discrepencies = new ArrayList<>();
+        for (String switchid : switches){
+            PathDiscrepancyDto disc = new PathDiscrepancyDto();
+            disc.setField("switch rule count for " + switchid);
+            disc.getExpectedValue("69");
+            int numRules = (rules.get(switchid) == null) 0 : rules.get(switchid).getFlowEntries().size();
+            disc.setActualValue(""+numRules);
+            disc.setNode(new PathNode());  // TODO : to facilitate, should do this based on PathNode list .. add Ingress as seq(0), and Egress as seq(len+1)
+            discrepencies.add(disc);
+        }
+
+        FlowValidationDto result = new FlowValidationDto();
         result.setFlow(flow);
         result.setFlowId(flowId);
+        result.setDiscrepancies(discrepencies);
+        result.setAsExpected(discrepencies.size() > 0);
         return result;
     }
 
