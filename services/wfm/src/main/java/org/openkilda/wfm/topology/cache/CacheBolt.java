@@ -357,7 +357,8 @@ public class CacheBolt
                 }
 
                 affectedFlows = flowCache.getActiveFlowsWithAffectedPath(sw.getSwitchId());
-                emitRerouteCommands(affectedFlows, tuple, UUID.randomUUID().toString(), FlowOperation.UPDATE);
+                String reason = String.format("switch %s is %s", sw.getSwitchId(), sw.getState());
+                emitRerouteCommands(affectedFlows, tuple, UUID.randomUUID().toString(), FlowOperation.UPDATE, reason);
                 break;
 
             case CACHED:
@@ -392,7 +393,9 @@ public class CacheBolt
                 }
 
                 affectedFlows = flowCache.getActiveFlowsWithAffectedPath(isl);
-                emitRerouteCommands(affectedFlows, tuple, UUID.randomUUID().toString(), FlowOperation.UPDATE);
+                String reason = String.format("isl %s FAILED", isl.getId());
+                emitRerouteCommands(affectedFlows, tuple, UUID.randomUUID().toString(),
+                        FlowOperation.UPDATE, reason);
                 break;
 
             case OTHER_UPDATE:
@@ -414,7 +417,8 @@ public class CacheBolt
             case DOWN:
             case DELETE:
                 Set<ImmutablePair<Flow, Flow>> affectedFlows = flowCache.getActiveFlowsWithAffectedPath(port);
-                emitRerouteCommands(affectedFlows, tuple, UUID.randomUUID().toString(), FlowOperation.UPDATE);
+                String reason = String.format("port %s_%s is %s", port.getSwitchId(), port.getPortNo(), port.getState());
+                emitRerouteCommands(affectedFlows, tuple, UUID.randomUUID().toString(), FlowOperation.UPDATE, reason);
                 break;
 
             case UP:
@@ -447,8 +451,11 @@ public class CacheBolt
                 logger.error("Unhandled reroute type: {}", topologyChange.getType());
                 return;
         }
-
-        emitRerouteCommands(affectedFlows, tuple, UUID.randomUUID().toString(), FlowOperation.UPDATE);
+        String reason = String.format("network topology change  %s_%s is %s",
+                topologyChange.getSwitchId(), topologyChange.getPortNumber(),
+                topologyChange.getType());
+        emitRerouteCommands(affectedFlows, tuple, UUID.randomUUID().toString(),
+                FlowOperation.UPDATE, reason);
     }
 
     private void emitFlowMessage(InfoData data, Tuple tuple, String correlationId) throws IOException {
@@ -492,7 +499,7 @@ public class CacheBolt
     }
 
     private void emitRerouteCommands(Set<ImmutablePair<Flow, Flow>> flows, Tuple tuple,
-                                     String correlationId, FlowOperation operation) {
+                                     String correlationId, FlowOperation operation, String reason) {
         for (ImmutablePair<Flow, Flow> flow : flows) {
             try {
                 flow.getLeft().setState(FlowState.DOWN);
@@ -503,8 +510,8 @@ public class CacheBolt
                         request, System.currentTimeMillis(), correlationId, Destination.WFM)));
                 outputCollector.emit(StreamType.WFM_DUMP.toString(), tuple, values);
 
-                logger.debug("Flow {} reroute command message sent with correlationId {}",
-                        flow.getLeft().getFlowId(), correlationId);
+                logger.warn("Flow {} reroute command message sent with correlationId {} reason {}",
+                        flow.getLeft().getFlowId(), correlationId, reason);
             } catch (JsonProcessingException exception) {
                 logger.error("Could not format flow reroute request by flow={}", flow, exception);
             }
