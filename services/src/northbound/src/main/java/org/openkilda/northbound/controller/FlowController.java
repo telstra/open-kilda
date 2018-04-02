@@ -476,11 +476,12 @@ public class FlowController {
 
         try {
             FlowValidationDto result = flowService.validateFlow(flowId, correlationId);
-            if (result == null)
+            if (result == null) {
                 logger.info("VALIDATE FLOW: Flow Not Found: {}", flowId);
                 response = new ResponseEntity<FlowValidationDto>(null, new HttpHeaders(), HttpStatus.NOT_FOUND);
-            else
+            } else {
                 response = new ResponseEntity<FlowValidationDto>(result, new HttpHeaders(), HttpStatus.OK);
+            }
         } catch (InvalidPathException e) {
             logger.error("VALIDATE FLOW: Flow has no path: {}", flowId);
             logger.error(e.getMessage());
