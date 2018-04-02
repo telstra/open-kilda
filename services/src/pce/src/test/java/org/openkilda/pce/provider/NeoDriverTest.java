@@ -43,7 +43,7 @@ public class NeoDriverTest {
         }
 
     @AfterClass
-    public static void teatDownOnce() {
+    public static void tearDownOnce() {
         graphDb.shutdown();
     }
 

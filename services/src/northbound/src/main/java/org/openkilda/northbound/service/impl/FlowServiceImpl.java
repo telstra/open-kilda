@@ -446,6 +446,8 @@ public class FlowServiceImpl implements FlowService {
          */
 
         Flow flow = pathComputer.getFlow(flowId);
+        if (flow == null)
+            return null;
 
         /*
          * Since we are getting switch rules, we can use a set.

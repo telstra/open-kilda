@@ -21,6 +21,7 @@ import static org.openkilda.messaging.Utils.FLOW_ID;
 
 import io.swagger.annotations.ApiParam;
 import org.openkilda.messaging.error.MessageError;
+import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
@@ -460,9 +461,9 @@ public class FlowController {
             @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
             @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
     @RequestMapping(path = "/flows/{flow_id}/validate",
-            method = RequestMethod.PATCH)
+            method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
-    public FlowValidationDto validateFlow(@PathVariable("flow_id") String flowId,
+    public ResponseEntity<FlowValidationDto> validateFlow(@PathVariable("flow_id") String flowId,
                                           @RequestHeader(value = CORRELATION_ID,
                                                 defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {
 
@@ -470,7 +471,13 @@ public class FlowController {
             correlationId = getUniqueCorrelation();
 
         logger.debug("Received Flow Validation request with correlation_id {} for flow {}", correlationId, flowId);
-        return flowService.validateFlow(flowId, correlationId);
+        FlowValidationDto result = flowService.validateFlow(flowId, correlationId);
+        ResponseEntity<FlowValidationDto> response;
+        if (result == null)
+            response = new ResponseEntity<>(null, new HttpHeaders(), HttpStatus.NOT_FOUND);
+        else
+            response = new ResponseEntity<>(result, new HttpHeaders(), HttpStatus.OK);
+        return response;
     }
 
 
