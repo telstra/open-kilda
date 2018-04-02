@@ -1299,9 +1299,12 @@ table#flowTable.dataTable thead th i {
 }
 
 table#flowTable.dataTable .divTableCell {
-	overflow: hidden;
+	    position: relative;
     text-overflow: ellipsis;
-    position: relative;
+    white-space: nowrap;
+    background-position: right 10px;
+    padding: 10px 20px 10px 18px;
+    overflow: hidden;
 }
 #topology-hover-txt {
 	width: 300px;

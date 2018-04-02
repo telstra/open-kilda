@@ -167,7 +167,7 @@ public class SwitchIntegrationService {
                 }
             }
         } catch (Exception ex) {
-            LOGGER.error("Inside getSwitchInfoSetName unable to find switch file path Exception :",
+            LOGGER.error("Inside getCustomSwitchNameFromFile unable to find switch file path Exception :",
                     ex);
         }
         return csNames;
