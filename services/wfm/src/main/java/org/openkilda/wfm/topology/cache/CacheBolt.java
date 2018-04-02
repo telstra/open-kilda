@@ -652,6 +652,16 @@ public class CacheBolt
     }
 
     @Override
+    public AbstractDumpState dumpStateBySwitchId(String switchId) {
+        // Not implemented
+        NetworkDump networkDump = new NetworkDump(
+                new HashSet<>(),
+                new HashSet<>());
+        FlowDump flowDump = new FlowDump(new HashSet<>());
+        return new CacheBoltState(networkDump, flowDump);
+    }
+
+    @Override
     public String getCtrlStreamId() {
         return STREAM_ID_CTRL;
     }

@@ -764,6 +764,12 @@ public class CrudBolt
         initState(new InMemoryKeyValueState<>());
     }
 
+    @Override
+    public AbstractDumpState dumpStateBySwitchId(String switchId) {
+        // Not implemented
+        return new CrudBoltState(new FlowDump(new HashSet<>()));
+    }
+
 
     @Override
     public String getCtrlStreamId() {
