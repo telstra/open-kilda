@@ -504,7 +504,6 @@ public class FlowServiceImpl implements FlowService {
                     rule.cookie = ""+inNode.getCookie();
                     if (rule.cookie == null || rule.cookie.length() == 0 || rule.cookie.equals("null"))
                         rule.cookie = ""+flow.getCookie();
-                    rule.cookie = ""+inNode.getCookie();
                     rule.inVlan = ""+flow.getTransitVlan();
                     rule.outVlan = ""+flow.getTransitVlan();
                     rule.outPort = ""+outNode.getPortNo();
@@ -550,6 +549,9 @@ public class FlowServiceImpl implements FlowService {
                     if (switchRule.getInstructions().getApplyActions() != null) {
                         // The outVlan could be empty. If it is, then pop is?
                         rule.outVlan = switchRule.getInstructions().getApplyActions().getPushVlan();
+                        if (rule.outVlan != null && rule.outVlan.equals("0x8100")){
+                            rule.outVlan = switchRule.getInstructions().getApplyActions().getFieldAction().getFieldValue();
+                        }
                         // Is getFlowOutput() the right method?
                         rule.outPort = switchRule.getInstructions().getApplyActions().getFlowOutput();
                     }
