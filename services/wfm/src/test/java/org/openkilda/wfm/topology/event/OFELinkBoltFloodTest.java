@@ -86,7 +86,8 @@ public class OFELinkBoltFloodTest extends AbstractStormTest {
                 "test", Collections.emptySet(),
                 Collections.emptySet(),
                 Collections.emptySet(),
-                Collections.emptySet());
+                Collections.emptySet(),
+                null);
 
         InfoMessage info = new InfoMessage(dump, 0, DEFAULT_CORRELATION_ID, Destination.WFM);
 
