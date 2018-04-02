@@ -501,6 +501,12 @@ public class FlowServiceImpl implements FlowService {
                     rule = new SimpleSwitchRule();
                     rule.switchId = inNode.getSwitchId();
                     rule.inPort = ""+inNode.getPortNo();
+                    if (inNode.getCookie() == null || inNode.getCookie() == 0L)
+                        // The rule uses the flow cookie
+                        rule.cookie = ""+flow.getCookie();
+                    else
+                        // The rule has a per segment cookie
+                        rule.cookie = ""+inNode.getCookie();
                     rule.cookie = ""+inNode.getCookie();
                     rule.inVlan = ""+flow.getTransitVlan();
                     rule.outVlan = ""+flow.getTransitVlan();
@@ -618,7 +624,7 @@ public class FlowServiceImpl implements FlowService {
                         result.add(new PathDiscrepancyDto("" + expected, "inVlan", expected.inVlan, matched.inVlan));
                 } else {
                     /* If match is empty, but expected isn't, then we have a discrepancy */
-                    if (expected.inVlan != null && expected.inVlan.length() > 0) {
+                    if (expected.inVlan != null && expected.inVlan.length() > 0 && !expected.inVlan.equals("0")) {
                         result.add(new PathDiscrepancyDto("" + expected, "inVlan", expected.inVlan, matched.inVlan));
                     }
                 }
