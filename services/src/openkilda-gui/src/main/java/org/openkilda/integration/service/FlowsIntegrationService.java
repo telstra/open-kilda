@@ -61,18 +61,18 @@ public class FlowsIntegrationService {
         List<Flow> flowList = getAllFlowList();
         if (flowList != null) {
             List<FlowInfo> flows = FlowConverter.toFlowsInfo(flowList);
-//            if (!CollectionUtil.isEmpty(flows)) {
-//                flows.forEach(flowInfo -> {
-//                    try {
-//                        String status = getFlowStatus(flowInfo.getFlowid());
-//                        flowInfo.setStatus(status);
-//                    } catch (Exception e) {
-//                        LOGGER.error("Exception while retriving flow status. Exception: " + e, e);
-//                    }
-//                });
-//            } else {
-//                throw new ContentNotFoundException();
-//            }
+            if (!CollectionUtil.isEmpty(flows)) {
+                flows.forEach(flowInfo -> {
+                    try {
+                        String status = getFlowStatus(flowInfo.getFlowid());
+                        flowInfo.setStatus(status);
+                    } catch (Exception e) {
+                        LOGGER.error("Exception while retriving flow status. Exception: " + e, e);
+                    }
+                });
+            } else {
+                throw new ContentNotFoundException();
+            }
             return flows;
         }
         return null;
