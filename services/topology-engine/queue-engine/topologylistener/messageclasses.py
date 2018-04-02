@@ -841,7 +841,7 @@ class MessageItem(object):
             cookie = pair[0]['parent_cookie']
             cookie_hex = flow_utils.cookie_to_hex(cookie)
             if pair[0]['parent_cookie'] not in cookies:
-                logger.error('Rule %s is not found on switch %s', cookie_hex,
+                logger.warn('Rule %s is not found on switch %s', cookie_hex,
                              switch_id)
                 commands.extend(MessageItem.command_from_segment(pair,
                                                                  switch_id))
@@ -860,13 +860,13 @@ class MessageItem(object):
             cookie_hex = flow_utils.cookie_to_hex(flow['cookie'])
 
             if flow['cookie'] not in cookies:
-                logger.error("Found missed one-switch flow %s for switch %s",
+                logger.warn("Found missed one-switch flow %s for switch %s",
                              cookie_hex, switch_id)
                 missed_rules.add(cookie_hex)
                 output_action = flow_utils.choose_output_action(
                     flow['src_vlan'], flow['dst_vlan'])
 
-                commands.extend(message_utils.build_one_switch_flow_from_db(
+                commands.append(message_utils.build_one_switch_flow_from_db(
                     switch_id, flow, output_action))
             else:
                 proper_rules.add(cookie_hex)
