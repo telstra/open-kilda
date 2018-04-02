@@ -480,8 +480,8 @@ public class FlowServiceImpl implements FlowService {
         for (String switchid : switches){
             PathDiscrepancyDto disc = new PathDiscrepancyDto();
             disc.setField("switch rule count for " + switchid);
-            disc.getExpectedValue("69");
-            int numRules = (rules.get(switchid) == null) 0 : rules.get(switchid).getFlowEntries().size();
+            disc.setExpectedValue("69");
+            int numRules = (rules.get(switchid) == null) ? 0 : rules.get(switchid).getFlowEntries().size();
             disc.setActualValue(""+numRules);
             disc.setNode(new PathNode());  // TODO : to facilitate, should do this based on PathNode list .. add Ingress as seq(0), and Egress as seq(len+1)
             discrepencies.add(disc);
