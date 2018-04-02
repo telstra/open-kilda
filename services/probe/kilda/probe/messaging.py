@@ -43,7 +43,7 @@ def receive_with_context_async(context):
         try:
             data = json.loads(record.value)
             if (data['correlation_id'] == context.correlation_id and
-                data['destination'] == 'CTRL_CLIENT'):
+                        data['destination'] == 'CTRL_CLIENT'):
                 LOG.debug('New message in topic:\n%s', pprint.pformat(data))
                 records.append(record)
         except Exception:
@@ -51,7 +51,9 @@ def receive_with_context_async(context):
 
     progress_green_thread = gevent.spawn(progress)
 
-    green_thread = gevent.spawn(receive_with_context, context, collector)
+    offset = get_last_offset_with_context(context)
+    green_thread = gevent.spawn(receive_with_context, context, collector,
+                                offset)
 
     yield records
 
@@ -62,14 +64,32 @@ def receive_with_context_async(context):
     sys.stdout.flush()
 
 
-def receive_with_context(context, callback):
-    receive(context.kafka_bootstrap_servers, context.kafka_topic, callback)
+def receive_with_context(context, callback, offset):
+    receive(context.kafka_bootstrap_servers, context.kafka_topic, callback,
+            offset)
 
 
-def receive(bootstrap_servers, topic, callback):
-    consumer = kafka.KafkaConsumer(topic, bootstrap_servers=bootstrap_servers)
+def receive(bootstrap_servers, topic, callback, offset):
+    consumer = kafka.KafkaConsumer(bootstrap_servers=bootstrap_servers,
+                                   enable_auto_commit=False)
+
+    partition = kafka.TopicPartition(topic, 0)
+    consumer.assign([partition])
+    consumer.seek(partition, offset)
     for msg in consumer:
         callback(msg)
+
+
+def get_last_offset_with_context(context):
+    consumer = kafka.KafkaConsumer(
+        bootstrap_servers=context.kafka_bootstrap_servers,
+        enable_auto_commit=False)
+
+    partition = kafka.TopicPartition(context.kafka_topic, 0)
+    consumer.assign([partition])
+    pos = consumer.position(partition)
+    consumer.close(autocommit=False)
+    return pos
 
 
 def progress():
