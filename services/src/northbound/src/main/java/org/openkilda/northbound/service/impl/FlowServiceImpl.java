@@ -502,7 +502,7 @@ public class FlowServiceImpl implements FlowService {
                     rule.switchId = inNode.getSwitchId();
                     rule.inPort = ""+inNode.getPortNo();
                     rule.cookie = ""+inNode.getCookie();
-                    if (rule.cookie == null || rule.cookie.length() == 0)
+                    if (rule.cookie == null || rule.cookie.length() == 0 || rule.cookie.equals("null"))
                         rule.cookie = ""+flow.getCookie();
                     rule.cookie = ""+inNode.getCookie();
                     rule.inVlan = ""+flow.getTransitVlan();
@@ -523,7 +523,7 @@ public class FlowServiceImpl implements FlowService {
                 rule.inVlan = ""+flow.getTransitVlan();
                 rule.inPort = ""+path.get(path.size()-1).getPortNo();
                 rule.cookie = ""+path.get(path.size()-1).getCookie();
-                if (rule.cookie == null || rule.cookie.length() == 0)
+                if (rule.cookie == null || rule.cookie.length() == 0 || rule.cookie.equals("null"))
                     rule.cookie = ""+flow.getCookie();
                 result.add(rule);
             }
