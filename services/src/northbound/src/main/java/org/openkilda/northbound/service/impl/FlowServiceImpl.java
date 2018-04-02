@@ -502,6 +502,8 @@ public class FlowServiceImpl implements FlowService {
                     rule.switchId = inNode.getSwitchId();
                     rule.inPort = ""+inNode.getPortNo();
                     rule.cookie = ""+inNode.getCookie();
+                    if (rule.cookie == null || rule.cookie.length() == 0 || rule.cookie.equals("null"))
+                        rule.cookie = ""+flow.getCookie();
                     rule.inVlan = ""+flow.getTransitVlan();
                     rule.outVlan = ""+flow.getTransitVlan();
                     rule.outPort = ""+outNode.getPortNo();
@@ -520,6 +522,8 @@ public class FlowServiceImpl implements FlowService {
                 rule.inVlan = ""+flow.getTransitVlan();
                 rule.inPort = ""+path.get(path.size()-1).getPortNo();
                 rule.cookie = ""+path.get(path.size()-1).getCookie();
+                if (rule.cookie == null || rule.cookie.length() == 0 || rule.cookie.equals("null"))
+                    rule.cookie = ""+flow.getCookie();
                 result.add(rule);
             }
             return result;
@@ -534,15 +538,24 @@ public class FlowServiceImpl implements FlowService {
                 return result;
 
             for (FlowEntry switchRule : rules.getFlowEntries()){
+                logger.debug("FlowEntry: {}", switchRule);
                 SimpleSwitchRule rule = new SimpleSwitchRule();
                 rule.switchId = rules.getSwitchId();
                 rule.cookie = ""+switchRule.getCookie();
                 rule.inPort = switchRule.getMatch().getInPort();
                 rule.inVlan = switchRule.getMatch().getVlanVid();
-                // The outVlan could be empty. If it is, then pop is?
-                rule.outVlan = switchRule.getInstructions().getApplyActions().getPushVlan();
-                // Is getFlowOutput() the right method?
-                rule.outPort = switchRule.getInstructions().getApplyActions().getFlowOutput();
+                if (switchRule.getInstructions() != null){
+                    // TODO: What is the right way to get OUT VLAN and OUT PORT?  How does it vary?
+                    if (switchRule.getInstructions().getApplyActions() != null) {
+                        // The outVlan could be empty. If it is, then pop is?
+                        rule.outVlan = switchRule.getInstructions().getApplyActions().getPushVlan();
+                        if (rule.outVlan != null && rule.outVlan.equals("0x8100")){
+                            rule.outVlan = switchRule.getInstructions().getApplyActions().getFieldAction().getFieldValue();
+                        }
+                        // Is getFlowOutput() the right method?
+                        rule.outPort = switchRule.getInstructions().getApplyActions().getFlowOutput();
+                    }
+                }
                 rule.pktCount = switchRule.getPacketCount();
                 rule.byteCount = switchRule.getByteCount();
                 result.add(rule);
@@ -564,7 +577,7 @@ public class FlowServiceImpl implements FlowService {
              */
             SimpleSwitchRule matched = null;
             for (SimpleSwitchRule sr : possibleActual) {
-                if (sr.cookie.equals(expected.cookie)) {
+                if (sr.cookie != null && sr.cookie.equals(expected.cookie)) {
                     matched = sr;
                     break;
                 }
@@ -574,8 +587,9 @@ public class FlowServiceImpl implements FlowService {
              */
             if (matched == null) {
                 for (SimpleSwitchRule sr : possibleActual) {
-                    if (sr.inPort.equals(expected.inPort) &&
-                            sr.inVlan.equals(expected.inVlan)) {
+
+                    if (sr.inPort != null && sr.inPort.equals(expected.inPort) &&
+                            sr.inVlan != null && sr.inVlan.equals(expected.inVlan)) {
                         matched = sr;
                         break;
                     }
@@ -586,8 +600,8 @@ public class FlowServiceImpl implements FlowService {
              */
             if (matched == null) {
                 for (SimpleSwitchRule sr : possibleActual) {
-                    if (sr.outPort.equals(expected.outPort) &&
-                            sr.outVlan.equals(expected.outVlan)) {
+                    if (sr.outPort != null && sr.outPort.equals(expected.outPort) &&
+                            sr.outVlan != null && sr.outVlan.equals(expected.outVlan)) {
                         matched = sr;
                         break;
                     }
@@ -599,20 +613,33 @@ public class FlowServiceImpl implements FlowService {
              */
             if (matched == null) {
                 result.add( new PathDiscrepancyDto(""+expected, "all", ""+expected, "") );
+                pktCounts.add(-1L);
+                byteCounts.add(-1L);
             } else {
-                if (!matched.cookie.equals(expected.cookie))
-                    result.add( new PathDiscrepancyDto(""+expected, "cookie", expected.cookie, matched.cookie) );
-                if (!matched.inPort.equals(expected.inPort))
-                    result.add( new PathDiscrepancyDto(""+expected, "inPort", expected.inPort, matched.inPort) );
-                if (!matched.inVlan.equals(expected.inVlan))
-                    result.add( new PathDiscrepancyDto(""+expected, "inVlan", expected.inVlan, matched.inVlan) );
-                if (matched.outPort != null && matched.outPort.length() > 0)
-                    if (!matched.outPort.equals(expected.outPort))
-                        result.add( new PathDiscrepancyDto(""+expected, "outPort", expected.outPort, matched.outPort) );
-                if (matched.outVlan != null && matched.outVlan.length() > 0)
-                    if (!matched.outVlan.equals(expected.outVlan))
-                        result.add( new PathDiscrepancyDto(""+expected, "outVlan", expected.outVlan, matched.outVlan) );
+                if (matched.cookie != null && !matched.cookie.equals(expected.cookie))
+                    result.add(new PathDiscrepancyDto("" + expected, "cookie", expected.cookie, matched.cookie));
+                if (matched.inPort != null && !matched.inPort.equals(expected.inPort))
+                    result.add(new PathDiscrepancyDto("" + expected, "inPort", expected.inPort, matched.inPort));
+                if (matched.inVlan != null && matched.inVlan.length() > 0) {
+                    if (!matched.inVlan.equals(expected.inVlan))
+                        result.add(new PathDiscrepancyDto("" + expected, "inVlan", expected.inVlan, matched.inVlan));
+                } else {
+                    /* If match is empty, but expected isn't, then we have a discrepancy */
+                    if (expected.inVlan != null && expected.inVlan.length() > 0 && !expected.inVlan.equals("0")) {
+                        result.add(new PathDiscrepancyDto("" + expected, "inVlan", expected.inVlan, matched.inVlan));
+                    }
                 }
+                if (matched.outPort != null && matched.outPort.length() > 0) {
+                    if (!matched.outPort.equals(expected.outPort))
+                        result.add(new PathDiscrepancyDto("" + expected, "outPort", expected.outPort, matched.outPort));
+                }
+                if (matched.outVlan != null && matched.outVlan.length() > 0) {
+                    if (!matched.outVlan.equals(expected.outVlan))
+                        result.add(new PathDiscrepancyDto("" + expected, "outVlan", expected.outVlan, matched.outVlan));
+                }
+                pktCounts.add(matched.pktCount);
+                byteCounts.add(matched.byteCount);
+            }
 
             return result;
         }
