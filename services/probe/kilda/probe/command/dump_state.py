@@ -91,7 +91,7 @@ def print_isls(isls, border):
         columns.update(d.keys())
 
     columns -= {'id', 'path', 'message_type', 'p0:segment_latency',
-                'created_in_cache', 'updated_in_cache'}
+                'created_in_cache', 'updated_in_cache', 'clazz'}
 
     sorted_columns = ['id'] + sorted(list(columns)) + ['created_in_cache',
                                                        'updated_in_cache']
@@ -113,7 +113,7 @@ def print_isls(isls, border):
     convert_timefied_to_human(raw)
 
     for d in raw:
-        table.add_row([d[x] for x in sorted_columns_with_names.keys()])
+        table.add_row([d.get(x, '-') for x in sorted_columns_with_names.keys()])
 
     print(table)
 
