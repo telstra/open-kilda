@@ -503,7 +503,7 @@ public class FlowServiceImpl implements FlowService {
         result.setFlow(flow);
         result.setFlowId(flowId);
         result.setDiscrepancies(discrepencies);
-        result.setAsExpected(discrepencies.size() > 0);
+        result.setAsExpected(discrepencies.size() == 0);
         return result;
     }
 

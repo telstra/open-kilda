@@ -5,6 +5,9 @@ import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.pce.provider.NeoDriver;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
@@ -12,18 +15,20 @@ public class FlowAdapter {
     private final Flow flow;
 
     public FlowAdapter(Record dbRecord) {
-        String pathJson = dbRecord.get("path").asString();
+        String pathJson = dbRecord.get("path").asString().trim();
+
         if (pathJson.equals("null")){
-            pathJson = "\"{\"path\": [], \"latency_ns\": 0, \"timestamp\": 0}\"";
+            pathJson = "{\"path\": [], \"latency_ns\": 0, \"timestamp\": 0}";
         }
 
         /*
          * The 'clazz' value is stripped when storing in the database, but we need it in the string
          * in order for MAPPER to do its thing.  So, let's add it back in at the very beginning.
          */
-        String remaining = pathJson.substring(2);
+        String start = pathJson.substring(0,pathJson.length()-1);
         PathInfoData path;
-        pathJson = "{\"clazz\":\"org.openkilda.messaging.info.event.PathInfoData\", " + remaining;
+        pathJson = start+", \"clazz\":\"org.openkilda.messaging.info.event.PathInfoData\"}";
+
         try {
             path = Utils.MAPPER.readValue(pathJson, PathInfoData.class);
         } catch (IOException e) {
