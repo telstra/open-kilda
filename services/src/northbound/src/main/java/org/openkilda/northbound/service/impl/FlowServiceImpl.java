@@ -501,12 +501,9 @@ public class FlowServiceImpl implements FlowService {
                     rule = new SimpleSwitchRule();
                     rule.switchId = inNode.getSwitchId();
                     rule.inPort = ""+inNode.getPortNo();
-                    if (inNode.getCookie() == null || inNode.getCookie() == 0L)
-                        // The rule uses the flow cookie
+                    rule.cookie = ""+inNode.getCookie();
+                    if (rule.cookie == null || rule.cookie.length() == 0)
                         rule.cookie = ""+flow.getCookie();
-                    else
-                        // The rule has a per segment cookie
-                        rule.cookie = ""+inNode.getCookie();
                     rule.cookie = ""+inNode.getCookie();
                     rule.inVlan = ""+flow.getTransitVlan();
                     rule.outVlan = ""+flow.getTransitVlan();
@@ -526,6 +523,8 @@ public class FlowServiceImpl implements FlowService {
                 rule.inVlan = ""+flow.getTransitVlan();
                 rule.inPort = ""+path.get(path.size()-1).getPortNo();
                 rule.cookie = ""+path.get(path.size()-1).getCookie();
+                if (rule.cookie == null || rule.cookie.length() == 0)
+                    rule.cookie = ""+flow.getCookie();
                 result.add(rule);
             }
             return result;
