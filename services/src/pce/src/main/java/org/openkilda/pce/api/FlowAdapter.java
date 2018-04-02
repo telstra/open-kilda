@@ -13,7 +13,17 @@ public class FlowAdapter {
 
     public FlowAdapter(Record dbRecord) {
         String pathJson = dbRecord.get("path").asString();
+        if (pathJson.equals("null")){
+            pathJson = "\"{\"path\": [], \"latency_ns\": 0, \"timestamp\": 0}\"";
+        }
+
+        /*
+         * The 'clazz' value is stripped when storing in the database, but we need it in the string
+         * in order for MAPPER to do its thing.  So, let's add it back in at the very beginning.
+         */
+        String remaining = pathJson.substring(2);
         PathInfoData path;
+        pathJson = "{\"clazz\":\"org.openkilda.messaging.info.event.PathInfoData\", " + remaining;
         try {
             path = Utils.MAPPER.readValue(pathJson, PathInfoData.class);
         } catch (IOException e) {
