@@ -82,7 +82,9 @@ public class SwitchIntegrationService {
             Map<String, String> csNames = getCustomSwitchNameFromFile();
 
             for (SwitchInfo switchInfo : switches) {
+
                 switchInfo.setName(customSwitchName(csNames, switchInfo.getSwitchId()));
+
             }
         }
         return switches;

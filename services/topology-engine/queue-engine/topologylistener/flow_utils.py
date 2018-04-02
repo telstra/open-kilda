@@ -386,6 +386,7 @@ def get_old_flow(new_flow):
             return dict(old_flow)
 
 
+# Note this methods is used for LCM functionality. Adds CACHED state to the flow
 def get_flows():
     flows = {}
     query = "MATCH (a:switch)-[r:flow]->(b:switch) RETURN r"
@@ -394,6 +395,7 @@ def get_flows():
 
         for data in result:
             flow = hydrate_flow(data)
+            flow['state'] = 'Cached'
             flow_pair = flows.get(flow['flowid'], {})
             if is_forward_cookie(flow['cookie']):
                 flow_pair['forward'] = flow

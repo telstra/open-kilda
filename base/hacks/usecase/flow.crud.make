@@ -12,7 +12,8 @@
 #   3) make -f base/hacks/usecase/flow.crud.make deploy-flow-topo
 #   4) make -f base/hacks/usecase/flow.crud.make deploy-flows
 #   5) make -f base/hacks/usecase/flow.crud.make get-flows
-#   6) make -f base/hacks/usecase/flow.crud.make clean-flows
+#   6) make -f base/hacks/usecase/flow.crud.make validate-flows
+#   7) make -f base/hacks/usecase/flow.crud.make clean-flows
 #   *) make -f base/hacks/usecase/flow.crud.make dump.flow
 #   *) make -f base/hacks/usecase/flow.crud.make dump.topo.disco
 #   *) make -f base/hacks/usecase/flow.crud.make dump.speaker
@@ -79,7 +80,7 @@ login-mininet:
 ## - You can verify the sequence of events through inspection of the right kafka queues.
 ## - It starts with creating a topology in mininet
 ## =~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=
-.PHONY: deploy-flow-topo clean-topo deploy-flows clean-flows get-flows
+.PHONY: deploy-flow-topo clean-topo deploy-flows clean-flows get-flows validate-flows
 
 deploy-flow-topo:
 	@echo ""
@@ -103,6 +104,10 @@ clean-flows:
 get-flows:
 	@echo ""
 	cd services/topology-engine/queue-engine/tests/smoke-tests && ./get-flow-rules.py
+
+validate-flows:
+	@echo ""
+	cd base/hacks/usecase && ./validate_flows.sh
 
 
 ## =~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=

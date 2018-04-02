@@ -56,9 +56,29 @@ class CtrlCommandMessage(Message):
                                                  payload, correlation_id)
 
 
+class DumpBySwitchCtrlCommandMessage(Message):
+
+    JAVA_REQUEST_DATA = \
+        'org.openkilda.messaging.ctrl.DumpStateBySwitchRequestData'
+
+    def __init__(self, destination, correlation_id, switch_id):
+        payload = {
+            'clazz': self.JAVA_REQUEST_DATA,
+            'action': 'dumpBySwitch',
+            'switch_id': switch_id
+        }
+
+        super(DumpBySwitchCtrlCommandMessage, self).__init__(destination,
+                                                 payload, correlation_id)
+
+
 def create_list(correlation_id):
     return CtrlCommandMessage('*', correlation_id, 'list')
 
 
 def create_dump_state(correlation_id, destination):
     return CtrlCommandMessage(destination, correlation_id, 'dump')
+
+
+def create_dump_state_by_switch(correlation_id, destination, switch):
+    return DumpBySwitchCtrlCommandMessage(destination, correlation_id, switch)

@@ -41,6 +41,7 @@ import org.openkilda.messaging.info.flow.FlowCacheSyncResponse;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.info.flow.FlowOperation;
 import org.openkilda.messaging.info.flow.FlowPathResponse;
+import org.openkilda.messaging.info.flow.FlowRerouteResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowStatusResponse;
 import org.openkilda.messaging.info.flow.FlowsResponse;
@@ -62,6 +63,7 @@ import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.flow.ComponentType;
 import org.openkilda.wfm.topology.flow.FlowTopology;
 import org.openkilda.wfm.topology.flow.StreamType;
+import org.openkilda.wfm.topology.flow.utils.BidirectionalFlow;
 import org.openkilda.wfm.topology.flow.validation.FlowValidationException;
 import org.openkilda.wfm.topology.flow.validation.FlowValidator;
 
@@ -77,12 +79,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class CrudBolt
@@ -143,6 +140,7 @@ public class CrudBolt
             flowCache = new FlowCache();
             this.caches.put(FLOW_CACHE, flowCache);
         }
+        initFlowCache();
     }
 
     /**
@@ -409,6 +407,13 @@ public class CrudBolt
 
         flowCache.pushFlow(flow);
 
+        // Update Cache
+        FlowInfoData data = new FlowInfoData(flow.getLeft().getFlowId(), flow, FlowOperation.PUSH,
+                message.getCorrelationId());
+        InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), message.getCorrelationId());
+        Values topology = new Values(MAPPER.writeValueAsString(infoMessage));
+        outputCollector.emit(StreamType.CREATE.toString(), tuple, topology);
+
         Values northbound = new Values(new InfoMessage(new FlowStatusResponse(new FlowIdStatusPayload(flowId, FlowState.UP)),
                 message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
         outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
@@ -418,7 +423,15 @@ public class CrudBolt
         logger.info("UNPUSH flow: {} :: {}", flowId, message);
         FlowInfoData fid = (FlowInfoData) message.getData();
 
-        flowCache.deleteFlow(flowId);
+
+        ImmutablePair<Flow, Flow> flow = flowCache.deleteFlow(flowId);
+
+        // Update Cache
+        FlowInfoData data = new FlowInfoData(flowId, flow, FlowOperation.UNPUSH, message.getCorrelationId());
+        InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), message.getCorrelationId());
+        Values topology = new Values(MAPPER.writeValueAsString(infoMessage));
+        outputCollector.emit(StreamType.DELETE.toString(), tuple, topology);
+
 
         Values northbound = new Values(new InfoMessage(new FlowStatusResponse(new FlowIdStatusPayload(flowId, FlowState.DOWN)),
                 message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
@@ -478,7 +491,7 @@ public class CrudBolt
         Flow requestedFlow = request.getPayload();
         final String flowId = requestedFlow.getFlowId();
         ImmutablePair<Flow, Flow> flow;
-        logger.debug("Handling reroute request with correlationId {}", message.getCorrelationId());
+        logger.warn("Handling reroute request with correlationId {}", message.getCorrelationId());
 
         switch (request.getOperation()) {
 
@@ -486,16 +499,19 @@ public class CrudBolt
                 flow = flowCache.getFlow(flowId);
 
                 try {
+                    logger.warn("Origin flow {} path: {}", flowId, flow.getLeft().getFlowPath());
                     ImmutablePair<PathInfoData, PathInfoData> path =
                             pathComputer.getPath(flow.getLeft(), Strategy.COST);
-                    logger.info("Rerouted flow path: {}", path);
+                    logger.warn("Rerouted flow {} with path: {}", flowId, path.getLeft());
+                    boolean isFoundNewPath = false;
                     //no need to emit changes if path wasn't changed and flow is active.
                     if (!path.getLeft().equals(flow.getLeft().getFlowPath()) || !isFlowActive(flow)) {
+                        isFoundNewPath = true;
                         flow.getLeft().setState(FlowState.DOWN);
                         flow.getRight().setState(FlowState.DOWN);
 
                         flow = flowCache.updateFlow(flow.getLeft(), path);
-                        logger.info("Rerouted flow: {}", flow);
+                        logger.warn("Rerouted flow with new path: {}", flow);
 
                         FlowInfoData data = new FlowInfoData(flowId, flow, FlowOperation.UPDATE,
                                 message.getCorrelationId());
@@ -504,14 +520,16 @@ public class CrudBolt
                         Values topology = new Values(MAPPER.writeValueAsString(infoMessage));
                         outputCollector.emit(StreamType.UPDATE.toString(), tuple, topology);
                     } else {
-                        logger.debug("Reroute was unsuccessful: can't find new path");
+                        logger.warn("Reroute was unsuccessful: can't find new path");
                     }
 
                     logger.debug("Sending response to NB. Correlation id {}", message.getCorrelationId());
-                    Values response = new Values(new InfoMessage(new FlowPathResponse(flow.left.getFlowPath()),
-                            message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
-                    outputCollector.emit(StreamType.RESPONSE.toString(), tuple, response);
+                    FlowRerouteResponse response = new FlowRerouteResponse(flow.left.getFlowPath(), isFoundNewPath);
+                    Values values = new Values(new InfoMessage(response, message.getTimestamp(),
+                            message.getCorrelationId(), Destination.NORTHBOUND));
+                    outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
                 } catch (UnroutablePathException e) {
+                    logger.warn("There is no path available for the flow {}", flowId);
                     flow.getLeft().setState(FlowState.DOWN);
                     flow.getRight().setState(FlowState.DOWN);
                     throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
@@ -521,14 +539,14 @@ public class CrudBolt
 
             case CREATE:
                 flow = flowCache.getFlow(flowId);
-                logger.info("State flow: {}={}", flow.getLeft().getFlowId(), FlowState.UP);
+                logger.warn("State flow: {}={}", flow.getLeft().getFlowId(), FlowState.UP);
                 flow.getLeft().setState(FlowState.UP);
                 flow.getRight().setState(FlowState.UP);
                 break;
 
             case DELETE:
                 flow = flowCache.getFlow(flowId);
-                logger.info("State flow: {}={}", flow.getLeft().getFlowId(), FlowState.DOWN);
+                logger.warn("State flow: {}={}", flow.getLeft().getFlowId(), FlowState.DOWN);
                 flow.getLeft().setState(FlowState.DOWN);
                 flow.getRight().setState(FlowState.DOWN);
                 break;
@@ -717,6 +735,22 @@ public class CrudBolt
         return flowPair.getLeft().getState().isActive() && flowPair.getRight().getState().isActive();
     }
 
+    private void initFlowCache() {
+        Map<String, BidirectionalFlow> flowPairsMap = new HashMap<>();
+        for (Flow flow : pathComputer.getAllFlows()) {
+            if (!flowPairsMap.containsKey(flow.getFlowId())) {
+                flowPairsMap.put(flow.getFlowId(), new BidirectionalFlow());
+            }
+
+            BidirectionalFlow pair = flowPairsMap.get(flow.getFlowId());
+            pair.add(flow);
+        }
+
+        for (BidirectionalFlow bidirectionalFlow : flowPairsMap.values()) {
+            flowCache.pushFlow(bidirectionalFlow.makeFlowPair());
+        }
+    }
+
     @Override
     public AbstractDumpState dumpState() {
         FlowDump flowDump = new FlowDump(flowCache.dumpFlows());
@@ -728,6 +762,12 @@ public class CrudBolt
     public void clearState() {
         logger.info("State clear request from test");
         initState(new InMemoryKeyValueState<>());
+    }
+
+    @Override
+    public AbstractDumpState dumpStateBySwitchId(String switchId) {
+        // Not implemented
+        return new CrudBoltState(new FlowDump(new HashSet<>()));
     }
 
 

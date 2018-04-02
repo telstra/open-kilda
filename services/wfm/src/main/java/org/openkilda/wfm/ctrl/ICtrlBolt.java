@@ -11,4 +11,6 @@ public interface ICtrlBolt extends IKildaBolt {
 
     @VisibleForTesting
     default void clearState() { }
+
+    AbstractDumpState dumpStateBySwitchId(String switchId);
 }

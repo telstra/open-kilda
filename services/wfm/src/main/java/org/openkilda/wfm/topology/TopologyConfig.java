@@ -45,6 +45,8 @@ public class TopologyConfig {
 
     private String openTsDBHosts;
     private Integer openTsdbTimeout;
+    private boolean openTsdbClientChunkedRequestsEnabled;
+
     private Integer openTsdbNumSpouts;
     private Integer openTsdbFilterBoltExecutors;
     private Integer openTsdbBoltExecutors;
@@ -96,6 +98,7 @@ public class TopologyConfig {
 
         openTsDBHosts = config.getString("opentsdb.hosts");
         openTsdbTimeout = (int)(config.getFloat("opentsdb.timeout") * 1000);
+        openTsdbClientChunkedRequestsEnabled = config.getBoolean("opentsdb.client.chunked-requests.enabled");
         openTsdbNumSpouts = config.getInteger("opentsdb.num.spouts");
         openTsdbFilterBoltExecutors = config.getInteger("opentsdb.num.opentsdbfilterbolt");
         openTsdbBoltExecutors = config.getInteger("opentsdb.num.opentsdbbolt");
@@ -241,6 +244,10 @@ public class TopologyConfig {
 
     public Integer getOpenTsdbTimeout() {
         return openTsdbTimeout;
+    }
+
+    public boolean isOpenTsdbClientChunkedRequestsEnabled() {
+        return openTsdbClientChunkedRequestsEnabled;
     }
 
     public Integer getOpenTsdbNumSpouts() {
