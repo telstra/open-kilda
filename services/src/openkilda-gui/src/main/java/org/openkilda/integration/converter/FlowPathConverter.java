@@ -3,6 +3,8 @@ package org.openkilda.integration.converter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 
 import org.openkilda.integration.model.response.FlowPathInfoData;
 import org.openkilda.integration.model.response.FlowPayload;
@@ -40,17 +42,18 @@ public class FlowPathConverter {
      */
     private List<PathNode> setPath(FlowPathInfoData flowPathInfoData) {
         List<PathNode> pathNodes = new ArrayList<PathNode>();
-        org.openkilda.integration.model.response.PathInfoData flowpath =
+        PathInfoData flowpath =
                 flowPathInfoData.getFlowpath();
-        List<org.openkilda.integration.model.response.PathNode> paths = flowpath.getPath();
+        List<PathNode> paths = flowpath.getPath();
+        Set<PathNode> sortedPathSet = new TreeSet<>(paths);
         Integer inport = null;
+        String switchId = "";
         Integer seq_id = 0;
         Map<String, String> csNames = switchIntegrationService.getCustomSwitchNameFromFile();
 
         if (paths != null && !paths.isEmpty()) {
-
-            for (org.openkilda.integration.model.response.PathNode path : paths) {
-                if (path.getSeqId() == 1) {
+            for (PathNode path : sortedPathSet) {
+                if (seq_id == 0) {
 
                     String switchName = switchIntegrationService.customSwitchName(csNames,
                             flowPathInfoData.getSrcSwitch());
@@ -58,13 +61,22 @@ public class FlowPathConverter {
                             path.getPortNo(), switchName));
                     seq_id++;
                 } else {
-                    if (path.getSeqId() % 2 == 1) {
+                    if(path.getSwitchId().equalsIgnoreCase(switchId)){
+                        String switchName = switchIntegrationService.customSwitchName(csNames,
+                                path.getSwitchId());
+                        pathNodes.add(new PathNode(seq_id, inport, path.getPortNo(), switchName));
+                        seq_id++;
+                    }else{
+                       switchId = path.getSwitchId();
+                       inport = path.getPortNo();
+                    }
+                   /* if (path.getSeqId() % 2 == 0) {
                         String switchName = switchIntegrationService.customSwitchName(csNames,
                                 path.getSwitchId());
                         pathNodes.add(new PathNode(seq_id, inport, path.getPortNo(), switchName));
                         seq_id++;
                     } else
-                        inport = path.getPortNo();
+                        inport = path.getPortNo();*/
                 }
             }
         }
