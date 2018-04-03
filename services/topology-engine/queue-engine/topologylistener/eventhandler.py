@@ -44,7 +44,8 @@ known_commands = ['org.openkilda.messaging.command.flow.FlowCreateRequest',
                   'org.openkilda.messaging.command.system.FeatureToggleStateRequest',
                   'org.openkilda.messaging.command.switches.SyncRulesRequest',
                   'org.openkilda.messaging.command.discovery.NetworkCommandData',
-                  'org.openkilda.messaging.command.FlowsSyncRequest']
+                  'org.openkilda.messaging.command.FlowsSyncRequest',
+                  'org.openkilda.messaging.command.discovery.MarkOfflineCommandData']
 
 
 def main_loop():

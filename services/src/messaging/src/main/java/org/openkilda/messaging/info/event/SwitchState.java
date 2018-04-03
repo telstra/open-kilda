@@ -28,6 +28,8 @@ import java.util.Arrays;
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public enum SwitchState {
+    UNKNOWN("UNKNOWN"),
+
     /**
      * Activated switch event message type.
      */

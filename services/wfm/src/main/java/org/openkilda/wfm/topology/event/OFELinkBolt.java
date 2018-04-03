@@ -18,7 +18,6 @@ package org.openkilda.wfm.topology.event;
 import static org.openkilda.messaging.Utils.MAPPER;
 import static org.openkilda.messaging.Utils.PAYLOAD;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.storm.state.KeyValueState;
 import org.apache.storm.task.OutputCollector;
@@ -31,13 +30,16 @@ import org.openkilda.messaging.BaseMessage;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.HeartBeat;
 import org.openkilda.messaging.Utils;
+import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.messaging.command.discovery.NetworkCommandData;
+import org.openkilda.messaging.command.discovery.MarkOfflineCommandData;
+import org.openkilda.messaging.command.discovery.SyncNetworkCommandData;
 import org.openkilda.messaging.ctrl.AbstractDumpState;
 import org.openkilda.messaging.ctrl.state.OFELinkBoltState;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.NetworkInfoData;
+import org.openkilda.messaging.info.discovery.NetworkSyncMarker;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
@@ -63,6 +65,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -91,8 +94,8 @@ public class OFELinkBolt
 
     private final String STREAM_ID_CTRL = "ctrl";
     private final String STATE_ID_DISCOVERY = "discovery-manager";
-    private final String topoEngTopic;
-    private final String islDiscoveryTopic;
+    final static String STREAM_ID_SPEAKER = "SPEAKER_STREAM";
+    final static String STREAM_ID_TOPO_ENGINE = "TOPO_ENG_STREAM";
 
     private final int islHealthCheckInterval;
     private final int islHealthCheckTimeout;
@@ -115,7 +118,7 @@ public class OFELinkBolt
     /**
      * Cache request send flag
      */
-    private boolean isCacheRequestSend = false;
+    private boolean isSyncRequestSend = false;
 
     /**
      * Default constructor .. default health check frequency
@@ -128,10 +131,7 @@ public class OFELinkBolt
         this.islHealthFailureLimit = config.getDiscoveryLimit();
 
         watchDogInterval = config.getDiscoverySpeakerFailureTimeout();
-
-        topoEngTopic = config.getKafkaTopoEngTopic();
-        islDiscoveryTopic = config.getKafkaSpeakerTopic();
-    }
+        }
 
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
@@ -151,7 +151,7 @@ public class OFELinkBolt
         Object payload = state.get(STATE_ID_DISCOVERY);
         if (payload == null) {
             payload = discoveryQueue = new LinkedList<>();
-            state.put(islDiscoveryTopic, payload);
+            state.put(STREAM_ID_SPEAKER, payload);
         } else {
             discoveryQueue = (LinkedList<DiscoveryNode>) payload;
         }
@@ -170,10 +170,11 @@ public class OFELinkBolt
 
         if (isOnline != isSpeakerAvailable) {
             if (isSpeakerAvailable) {
-                logger.warn("Switch into ONLINE mode");
-                isCacheRequestSend = false;
+                logger.warn("Floodlight is available, switching WFM into online mode");
+                isSyncRequestSend = false;
             } else {
-                logger.warn("Switch into OFFLINE mode");
+                logger.warn("Floodlight is not available, switching WFM into offline mode");
+                sendMessage(tuple, new MarkOfflineCommandData(), STREAM_ID_TOPO_ENGINE);
                 isReceivedCacheInfo = false;
             }
         }
@@ -183,14 +184,11 @@ public class OFELinkBolt
             return;
         }
 
-        if (!isCacheRequestSend)
-        {
+        if (!isSyncRequestSend) {
             // Only one message to FL needed
-            isCacheRequestSend = true;
-            sendNetworkRequest(tuple);
-        }
-        else if (isReceivedCacheInfo)
-        {
+            isSyncRequestSend = true;
+            sendMessage(tuple, new SyncNetworkCommandData(), STREAM_ID_SPEAKER);
+        } else if (isReceivedCacheInfo) {
             // On first tick(or after network outage), we send network dump request to FL,
             // and then we ignore all ticks till cache not received
             DiscoveryManager.Plan discoveryPlan = discovery.makeDiscoveryPlan();
@@ -213,31 +211,12 @@ public class OFELinkBolt
     }
 
     /**
-     * Send network dump request to FL
-     */
-    private void sendNetworkRequest(Tuple tuple) {
-        try {
-            logger.debug("Send network dump request");
-
-            CommandMessage command = new CommandMessage(new NetworkCommandData(),
-                    System.currentTimeMillis(), Utils.SYSTEM_CORRELATION_ID,
-                    Destination.CONTROLLER);
-            String json = Utils.MAPPER.writeValueAsString(command);
-            collector.emit(islDiscoveryTopic, tuple, new Values(PAYLOAD, json));
-        }
-        catch (JsonProcessingException exception)
-        {
-            logger.error("Could not serialize network cache request", exception);
-        }
-    }
-
-    /**
      * Helper method for sending an ISL Discovery Message
      */
     private void sendDiscoveryMessage(Tuple tuple, DiscoveryManager.Node node) throws IOException {
         String json = OFEMessageUtils.createIslDiscovery(node.switchId, node.portId);
         logger.debug("LINK: Send ISL discovery command: {}", json);
-        collector.emit(islDiscoveryTopic, tuple, new Values(PAYLOAD, json));
+        collector.emit(STREAM_ID_SPEAKER, tuple, new Values(PAYLOAD, json));
     }
 
 
@@ -265,8 +244,7 @@ public class OFELinkBolt
 
             if (bm instanceof InfoMessage) {
                 InfoData data = ((InfoMessage)bm).getData();
-                if (data instanceof NetworkInfoData) {
-                    handleNetworkDump(tuple, (NetworkInfoData)data);
+                if (data instanceof NetworkSyncMarker) {
                     isReceivedCacheInfo = true;
                 } else if (!isReceivedCacheInfo) {
                     logger.debug("Bolt is not initialized mark tuple as fail");
@@ -299,13 +277,6 @@ public class OFELinkBolt
         }
     }
 
-    private void handleNetworkDump(Tuple tuple, NetworkInfoData data) {
-        logger.info("Start process network dump");
-        data.getSwitches().forEach( switchInfo -> handleSwitchEvent(tuple, switchInfo) );
-        data.getPorts().forEach( portInfo -> handlePortEvent(tuple, portInfo) );
-        logger.info("Finish process network dump");
-    }
-
     private void handleSwitchEvent(Tuple tuple, SwitchInfoData switchData) {
         String switchID = switchData.getSwitchId();
         String state = "" + switchData.getState();
@@ -333,7 +304,7 @@ public class OFELinkBolt
      */
     private void passToTopologyEngine(Tuple tuple) {
         String json = tuple.getString(0);
-        collector.emit(topoEngTopic, tuple, new Values(PAYLOAD, json));
+        collector.emit(STREAM_ID_TOPO_ENGINE, tuple, new Values(PAYLOAD, json));
     }
 
     private void handlePortEvent(Tuple tuple, PortInfoData portData) {
@@ -406,7 +377,7 @@ public class OFELinkBolt
         String discoFail = OFEMessageUtils.createIslFail(switchId, portId);
 //        Values dataVal = new Values(PAYLOAD, discoFail, switchId, portId, OFEMessageUtils.LINK_DOWN);
 //        collector.emit(topoEngTopic, tuple, dataVal);
-        collector.emit(topoEngTopic, tuple, new Values(PAYLOAD, discoFail));
+        collector.emit(STREAM_ID_TOPO_ENGINE, tuple, new Values(PAYLOAD, discoFail));
         discovery.handleFailed(switchId, portId);
         logger.warn("LINK: Send ISL discovery failure message={}", discoFail);
     }
@@ -416,10 +387,20 @@ public class OFELinkBolt
                 PortChangeType.CACHED.getType().equals(state);
     }
 
+    private void sendMessage(Tuple tuple, CommandData data, String streamId) {
+        try {
+            CommandMessage message = new CommandMessage(data, System.currentTimeMillis(),
+                    UUID.randomUUID().toString(), Destination.TOPOLOGY_ENGINE);
+            collector.emit(streamId, tuple, new Values(PAYLOAD, Utils.MAPPER.writeValueAsString(message)));
+        } catch (IOException e) {
+            logger.error("Error during creation comamand", e);
+        }
+    }
+
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declareStream(islDiscoveryTopic, new Fields("key", "message"));
-        declarer.declareStream(topoEngTopic, new Fields("key", "message"));
+        declarer.declareStream(STREAM_ID_SPEAKER, new Fields("key", "message"));
+        declarer.declareStream(STREAM_ID_TOPO_ENGINE, new Fields("key", "message"));
         // FIXME(dbogun): use proper tuple format
         declarer.declareStream(STREAM_ID_CTRL, AbstractTopology.fieldMessage);
     }
@@ -460,8 +441,7 @@ public class OFELinkBolt
     }
 
     @VisibleForTesting
-    List<DiscoveryNode> getDiscoveryQueue()
-    {
+    List<DiscoveryNode> getDiscoveryQueue() {
         return this.discoveryQueue;
     }
 }
