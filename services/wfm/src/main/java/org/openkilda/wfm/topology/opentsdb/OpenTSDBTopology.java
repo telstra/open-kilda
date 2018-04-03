@@ -67,7 +67,8 @@ public class OpenTSDBTopology extends AbstractTopology {
 
         OpenTsdbClient.Builder tsdbBuilder = OpenTsdbClient
                 .newBuilder(config.getOpenTsDBHosts())
-                .sync(config.getOpenTsdbTimeout())
+//                .sync(config.getOpenTsdbTimeout())
+                .sync(30000)
                 .returnDetails();
         if(config.isOpenTsdbClientChunkedRequestsEnabled()) {
             tsdbBuilder.enableChunkedEncoding();
