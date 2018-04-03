@@ -32,7 +32,7 @@ LOG = logging.getLogger(__name__)
 def print_table(records):
     table = PrettyTable(
         ['PORT', 'FL-PORT', 'FL-LINK', 'NEO4J-SRC', 'NEO4J-DST',
-         'NEO4J-REMOTE', 'WFM-ISL-STATUS'])
+         'NEO4J-REMOTE', 'WFM-ISL-FOUND', 'WFM-ISL-STATUS'])
     for port_id, v in records.items():
         table.add_row(
             [port_id,
@@ -41,6 +41,7 @@ def print_table(records):
              v.get('NEO4J_SRC', '-'),
              v.get('NEO4J_DST', '-'),
              v.get('REMOTE', '-'),
+             v.get('WFM_ISL_FOUND', '-'),
              v.get('WFM_ISL_STATUS', '-')
              ])
     print(table)
@@ -123,8 +124,17 @@ def wfm_ports_for_switch(ctx, switch_id):
         payload = data['payload']
 
         for port in payload['state']['discovery']:
+
+            if port['consecutive_success'] == 0:
+                status = 'DOWN'
+            elif port['consecutive_failure'] == 0:
+                status = 'UP'
+            else:
+                status = 'N/A'
+
             retval[int(port['port_id'])] = {
-                'WFM_ISL_STATUS': 'UP' if port['found_isl'] else 'DOWN'
+                'WFM_ISL_FOUND': 'FOUND' if port['found_isl'] else 'NOT FOUND',
+                'WFM_ISL_STATUS': '{}'.format(status)
             }
 
     return retval
@@ -161,7 +171,7 @@ def switch_port_status_command(ctx, switch_id):
     results = {}
 
     if wfm_results_no_records:
-        wfm_results = {port_id: {'WFM_ISL_STATUS': 'NO DATA'} for port_id in
+        wfm_results = {port_id: {'WFM_ISL_FOUND': 'NO DATA'} for port_id in
                        port_ids}
 
     for port in port_ids:
