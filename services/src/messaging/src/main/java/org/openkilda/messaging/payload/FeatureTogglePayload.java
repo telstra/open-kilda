@@ -47,7 +47,6 @@ public class FeatureTogglePayload {
 			@JsonProperty("delete_flow") Boolean deleteFlowEnabled,
 			@JsonProperty("push_flow") Boolean pushFlowEnabled,
 			@JsonProperty("unpush_flow") Boolean unpushFlowEnabled) {
-		super();
 		this.syncRulesEnabled = syncRulesEnabled;
 		this.reflowOnSwitchActivationEnabled = reflowOnSwitchActivationEnabled;
 		this.createFlowEnabled = createFlowEnabled;
