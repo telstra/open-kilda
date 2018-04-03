@@ -65,22 +65,21 @@ public class OpenTSDBTopology extends AbstractTopology {
         tb.setBolt(boltId, new OpenTSDBFilterBolt(), config.getOpenTsdbFilterBoltExecutors())
                 .fieldsGrouping(parseBoltId, new Fields("hash"));
 
-//        OpenTsdbClient.Builder tsdbBuilder = OpenTsdbClient
-//                .newBuilder(config.getOpenTsDBHosts())
-////                .sync(config.getOpenTsdbTimeout())
-//                .sync(30000)
-//                .returnDetails();
-//        if(config.isOpenTsdbClientChunkedRequestsEnabled()) {
-//            tsdbBuilder.enableChunkedEncoding();
-//        }
-//
-//        OpenTsdbBolt openTsdbBolt = new OpenTsdbBolt(tsdbBuilder,
-//                Collections.singletonList(TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER));
-//        openTsdbBolt.withBatchSize(config.getOpenTsdbBatchSize()).withFlushInterval(config.getOpenTsdbFlushInterval());
-////                .failTupleForFailedMetrics();
-//        tb.setBolt("opentsdb", openTsdbBolt, config.getOpenTsdbBoltExecutors())
-//                .setNumTasks(config.getOpenTsdbBoltWorkers())
-//                .shuffleGrouping(boltId);
+        OpenTsdbClient.Builder tsdbBuilder = OpenTsdbClient
+                .newBuilder(config.getOpenTsDBHosts())
+//                .sync(config.getOpenTsdbTimeout())
+                .returnDetails();
+        if(config.isOpenTsdbClientChunkedRequestsEnabled()) {
+            tsdbBuilder.enableChunkedEncoding();
+        }
+
+        OpenTsdbBolt openTsdbBolt = new OpenTsdbBolt(tsdbBuilder,
+                Collections.singletonList(TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER));
+        openTsdbBolt.withBatchSize(config.getOpenTsdbBatchSize()).withFlushInterval(config.getOpenTsdbFlushInterval());
+//                .failTupleForFailedMetrics();
+        tb.setBolt("opentsdb", openTsdbBolt, config.getOpenTsdbBoltExecutors())
+                .setNumTasks(config.getOpenTsdbBoltWorkers())
+                .shuffleGrouping(boltId);
 
         return tb.createTopology();
     }

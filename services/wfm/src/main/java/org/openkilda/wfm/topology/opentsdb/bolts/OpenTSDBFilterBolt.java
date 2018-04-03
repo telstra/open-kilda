@@ -81,15 +81,15 @@ public class OpenTSDBFilterBolt extends BaseRichBolt {
     }
 
     private void addDatapoint(Datapoint datapoint) {
-        LOGGER.debug("adding datapoint: " + datapoint.hashCode());
+        LOGGER.debug("adding datapoint: " + datapoint.simpleHashCode());
         LOGGER.debug("storage.size: " + storage.size());
-        storage.put(datapoint.hashCode(), datapoint);
+        storage.put(datapoint.simpleHashCode(), datapoint);
     }
 
     private boolean isUpdateRequired(Datapoint datapoint) {
         boolean update = true;
-        if (storage.containsKey(datapoint.hashCode())) {
-            Datapoint prevDatapoint = storage.get(datapoint.hashCode());
+        if (storage.containsKey(datapoint.simpleHashCode())) {
+            Datapoint prevDatapoint = storage.get(datapoint.simpleHashCode());
             update = !prevDatapoint.getValue().equals(datapoint.getValue()) ||
                     datapoint.getTime() - prevDatapoint.getTime() >= TEN_MINUTES;
         }
