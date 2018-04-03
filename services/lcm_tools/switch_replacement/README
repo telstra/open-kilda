@@ -1,0 +1,26 @@
+== Install
+$ pip install -r requirements.txt
+
+== Before migrations checks
+    - ensure that New Switch was plugged in
+    - ensure that all ISLS to New switch were discovered
+
+== Before migrations actions:
+    - lookup Old Swithc DPID
+    - lookup New Swithc DPID
+    - prepare ports mapping and store it in this directory, in following format:
+    file name format : <old_swithc dpid>-to-<new_swithc dpid>-ports.json
+    file name sample: 0000b0724-to-0000b03d3-ports.json
+    file content format:
+    {
+        "str": int,
+    }
+    file content sample:
+    {
+        "1": 1,
+        "2": 2,
+        "3": 3
+    }
+
+== Run
+$ python python switch_replace_master.py --old_switch_id 0000b0724 --new_switch_id 0000b03d3 --neo_passwd test
