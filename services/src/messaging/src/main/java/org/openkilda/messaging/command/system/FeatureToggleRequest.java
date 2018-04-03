@@ -15,33 +15,59 @@
 
 package org.openkilda.messaging.command.system;
 
+import org.openkilda.messaging.command.CommandData;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
+
 import lombok.Builder;
 import lombok.Value;
-import org.openkilda.messaging.command.CommandData;
 
 @Value
 @Builder
 @JsonInclude(Include.NON_NULL)
 public class FeatureToggleRequest extends CommandData {
 
-    @JsonProperty(value = "sync_rules")
-    private Boolean syncRulesEnabled;
+	@JsonProperty(value = "sync_rules")
+	private Boolean syncRulesEnabled;
 
-    @JsonProperty(value = "reflow_on_switch_activation")
-    private Boolean reflowOnSwitchActivationEnabled;
+	@JsonProperty(value = "reflow_on_switch_activation")
+	private Boolean reflowOnSwitchActivationEnabled;
 
-    @JsonProperty(value = "child_correlation_id")
-    private String childCorrelationId;
+	@JsonProperty("create_flow")
+	private Boolean createFlowEnabled;
 
-    public FeatureToggleRequest(
-            @JsonProperty(value = "sync_rules") Boolean syncRulesEnabled,
-            @JsonProperty(value = "reflow_on_switch_activation") Boolean reflowOnSwitchActivationEnabled,
-            @JsonProperty(value = "child_correlation_id") String childCorrelationId) {
-        this.syncRulesEnabled = syncRulesEnabled;
-        this.reflowOnSwitchActivationEnabled = reflowOnSwitchActivationEnabled;
-        this.childCorrelationId = childCorrelationId;
-    }
+	@JsonProperty("update_flow")
+	private Boolean updateFlowEnabled;
+
+	@JsonProperty("delete_flow")
+	private Boolean deleteFlowEnabled;
+
+	@JsonProperty("push_flow")
+	private Boolean pushFlowEnabled;
+
+	@JsonProperty("unpush_flow")
+	private Boolean unpushFlowEnabled;
+
+	@JsonProperty(value = "child_correlation_id")
+	private String childCorrelationId;
+
+	public FeatureToggleRequest(@JsonProperty(value = "sync_rules") Boolean syncRulesEnabled,
+			@JsonProperty(value = "reflow_on_switch_activation") Boolean reflowOnSwitchActivationEnabled,
+			@JsonProperty("create_flow") Boolean createFlowEnabled,
+			@JsonProperty("update_flow") Boolean updateFlowEnabled,
+			@JsonProperty("delete_flow") Boolean deleteFlowEnabled,
+			@JsonProperty("push_flow") Boolean pushFlowEnabled,
+			@JsonProperty("unpush_flow") Boolean unpushFlowEnabled,
+			@JsonProperty(value = "child_correlation_id") String childCorrelationId) {
+		this.syncRulesEnabled = syncRulesEnabled;
+		this.reflowOnSwitchActivationEnabled = reflowOnSwitchActivationEnabled;
+		this.createFlowEnabled = createFlowEnabled;
+		this.updateFlowEnabled = updateFlowEnabled;
+		this.deleteFlowEnabled = deleteFlowEnabled;
+		this.pushFlowEnabled = pushFlowEnabled;
+		this.unpushFlowEnabled = unpushFlowEnabled;
+		this.childCorrelationId = childCorrelationId;
+	}
 }

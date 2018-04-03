@@ -57,7 +57,7 @@ public class FlowReinstallTest {
     public void flowRerouteFeatureStatus(final String statusString) {
         boolean status = statusString.equals("on");
 
-        FeatureTogglePayload desired = new FeatureTogglePayload(null, status);
+        FeatureTogglePayload desired = new FeatureTogglePayload(null, status, null, null, null, null, null);
         FeatureTogglePayload result = FlowUtils.updateFeaturesStatus(desired);
 
         assertNotNull(result);
