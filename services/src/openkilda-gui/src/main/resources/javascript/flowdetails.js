@@ -88,16 +88,20 @@ function showFlowPathData(response) {
 			
 			
 			if(obj.length <= 5) {
-				var path_html = '<div class="path"><div class="number" id="port-number-a">'
+				var path_html = '<div class="path"><div class="number" data-balloon="' 
+					+ obj[i].switch_id + '" data-balloon-pos="up" id="port-number-a">'
 					+ obj[i].in_port_no + '</div><div class="line"></div><div class="text" id ="switch-name">' 
-					+ obj[i].switch_id + '</div><div class="line"></div><div class="number" id="port-number-a">'
+					+ obj[i].switch_id + '</div><div class="line"></div><div class="number" data-balloon="' 
+					+ obj[i].switch_id + '" data-balloon-pos="up" id="port-number-a">'
 					+ obj[i].out_port_no + '</div><div class="line"></div></div>';
 
 				$('#ForwardRow').append(path_html);		
 			} else {
-				var path_html = '<div class="path"><div class="number" id="port-number-a">'
+				var path_html = '<div class="path"><div class="number" data-balloon="' 
+					+ obj[i].switch_id + '" data-balloon-pos="up" id="port-number-a">'
 					+ obj[i].in_port_no + '</div><div class="line"></div><div class="text" id ="switch-name">' 
-					+ obj[i].switch_id + '</div><div class="line"></div><div class="number" id="port-number-a">'
+					+ obj[i].switch_id + '</div><div class="line"></div><div class="number" data-balloon="' 
+					+ obj[i].switch_id + '" data-balloon-pos="up" id="port-number-a">'
 					+ obj[i].out_port_no + '</div><div class="line"></div><div class="vertical-line"></div><div class="horizontal-line"></div><div class="vertical-line-2"></div></div>';
 				
 				$('#ForwardRow').append(path_html);
@@ -124,16 +128,20 @@ function showFlowPathData(response) {
 			
 			
 			if(obj.length <= 5) {
-				var path_html = '<div class="path"><div class="number" id="port-number-a">'
+				var path_html = '<div class="path"><div class="number" data-balloon="' 
+					+ obj[i].switch_id + '" data-balloon-pos="up" id="port-number-a">'
 					+ obj[i].in_port_no + '</div><div class="line"></div><div class="text" id ="switch-name">' 
-					+ obj[i].switch_id + '</div><div class="line"></div><div class="number" id="port-number-a">'
+					+ obj[i].switch_id + '</div><div class="line"></div><div class="number" data-balloon="' 
+					+ obj[i].switch_id + '" data-balloon-pos="up" id="port-number-a">'
 					+ obj[i].out_port_no + '</div><div class="line"></div></div>';
 
 				$('#ReversePath').append(path_html);		
 			} else {
-				var path_html = '<div class="path"><div class="number" id="port-number-a">'
+				var path_html = '<div class="path"><div class="number" data-balloon="' 
+					+ obj[i].switch_id + '" data-balloon-pos="up" id="port-number-a">'
 					+ obj[i].in_port_no + '</div><div class="line"></div><div class="text" id ="switch-name">' 
-					+ obj[i].switch_id + '</div><div class="line"></div><div class="number" id="port-number-a">'
+					+ obj[i].switch_id + '</div><div class="line"></div><div class="number" data-balloon="' 
+					+ obj[i].switch_id + '" data-balloon-pos="up" id="port-number-a">'
 					+ obj[i].out_port_no + '</div><div class="line"></div><div class="vertical-line"></div><div class="horizontal-line"></div><div class="vertical-line-2"></div></div>';
 				
 				$('#ReversePath').append(path_html);

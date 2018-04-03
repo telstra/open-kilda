@@ -58,9 +58,8 @@ public class SwitchIntegrationService {
      * @throws IntegrationException
      */
     public List<SwitchInfo> getSwitches() {
-        HttpResponse response =
-                restClientManager.invoke(applicationProperties.getSwitches(), HttpMethod.GET, "",
-                        "", applicationService.getAuthHeader());
+        HttpResponse response = restClientManager.invoke(applicationProperties.getSwitches(),
+                HttpMethod.GET, "", "", applicationService.getAuthHeader());
         if (RestClientManager.isValidResponse(response)) {
             List<SwitchInfo> switchesResponse =
                     restClientManager.getResponseList(response, SwitchInfo.class);
@@ -83,25 +82,33 @@ public class SwitchIntegrationService {
             Map<String, String> csNames = getCustomSwitchNameFromFile();
 
             for (SwitchInfo switchInfo : switches) {
-
-                String switchId = switchInfo.getSwitchId();
-
-                if (csNames != null && !StringUtils.isEmpty(csNames) && csNames.size() > 0) {
-
-                    if (csNames.containsKey(switchId.toLowerCase()) || csNames.containsKey(switchId.toUpperCase())) {
-                        if (!IoUtil.chkStringIsNotEmpty(csNames.get(switchId))) {
-                            switchInfo.setName(switchId);
-                        } else {
-                            switchInfo.setName(csNames.get(switchId));
-                        }
-                    } else {
-                        switchInfo.setName(switchId);
-                    }
-                } else
-                    switchInfo.setName(switchId);
+                switchInfo.setName(customSwitchName(csNames, switchInfo.getSwitchId()));
             }
         }
         return switches;
+    }
+
+    /**
+     * This Method is used to set custom Switch name.
+     * 
+     * @param csNames
+     * @param switchId
+     * @return
+     */
+    public String customSwitchName(Map<String, String> csNames, String switchId) {
+        if (csNames != null && !StringUtils.isEmpty(csNames) && csNames.size() > 0) {
+            if (csNames.containsKey(switchId.toLowerCase())
+                    || csNames.containsKey(switchId.toUpperCase())) {
+                if (!IoUtil.chkStringIsNotEmpty(csNames.get(switchId))) {
+                    return switchId;
+                } else {
+                    return csNames.get(switchId);
+                }
+            } else {
+                return switchId;
+            }
+        } else
+            return switchId;
     }
 
     /**
@@ -110,9 +117,8 @@ public class SwitchIntegrationService {
      * @return the isl links
      */
     public List<IslLinkInfo> getIslLinks() {
-        HttpResponse response =
-                restClientManager.invoke(applicationProperties.getLinks(), HttpMethod.GET, "", "",
-                        applicationService.getAuthHeader());
+        HttpResponse response = restClientManager.invoke(applicationProperties.getLinks(),
+                HttpMethod.GET, "", "", applicationService.getAuthHeader());
         if (RestClientManager.isValidResponse(response)) {
             List<IslLink> links = restClientManager.getResponseList(response, IslLink.class);
             if (CollectionUtil.isEmpty(links)) {
@@ -131,9 +137,8 @@ public class SwitchIntegrationService {
      */
     public List<PortInfo> getSwitchPorts(final String switchId) throws IntegrationException {
         try {
-            HttpResponse response =
-                    restClientManager.invoke(applicationProperties.getSwitchPorts(),
-                            HttpMethod.GET, "", "", "");
+            HttpResponse response = restClientManager.invoke(applicationProperties.getSwitchPorts(),
+                    HttpMethod.GET, "", "", "");
             if (RestClientManager.isValidResponse(response)) {
                 String responseEntity = IoUtil.toString(response.getEntity().getContent());
                 JSONObject jsonObject = JsonUtil.toObject(responseEntity, JSONObject.class);
@@ -147,7 +152,7 @@ public class SwitchIntegrationService {
     }
 
     @SuppressWarnings("unchecked")
-    private Map<String, String> getCustomSwitchNameFromFile() {
+    public Map<String, String> getCustomSwitchNameFromFile() {
         Map<String, String> csNames = new HashMap<String, String>();
 
         InputStream inputStream = null;
@@ -162,7 +167,7 @@ public class SwitchIntegrationService {
                 }
             }
         } catch (Exception ex) {
-            LOGGER.error("Inside getSwitchInfoSetName unable to find switch file path Exception :",
+            LOGGER.error("Inside getCustomSwitchNameFromFile unable to find switch file path Exception :",
                     ex);
         }
         return csNames;
