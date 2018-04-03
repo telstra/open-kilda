@@ -16,7 +16,6 @@
 package org.openkilda.atdd;
 
 import cucumber.api.java.en.Given;
-
 import org.openkilda.flow.FlowUtils;
 import org.openkilda.messaging.payload.FeatureTogglePayload;
 import org.openkilda.topo.TestUtils;
@@ -31,24 +30,25 @@ public class Common {
      */
     public static Common latest;
 
-    public String   kildaHost = "localhost";
-    
-    
-    public Common(){
+    public String kildaHost = "localhost";
+
+
+    public Common() {
         latest = this;
     }
 
-    public Common setHost(String kildaHost){
+    public Common setHost(String kildaHost) {
         this.kildaHost = kildaHost;
         return this;
     }
+
     /**
      * This code will make sure there aren't any topologies
      */
     @Given("^a clean controller$")
     public void a_clean_controller() throws Throwable {
         // Write code here that turns the phrase above into concrete actions
-        setHost(System.getProperty("kilda.host",kildaHost));
+        setHost(System.getProperty("kilda.host", kildaHost));
 
         TestUtils.clearEverything(kildaHost);
     }
@@ -60,7 +60,8 @@ public class Common {
     public void a_clean_flow_topology() throws Throwable {
         FlowUtils.cleanupFlows();
 
-        FeatureTogglePayload features = new FeatureTogglePayload(true, true);
+        FeatureTogglePayload features = new FeatureTogglePayload(true, true, true, true, true, true,
+                true);
         FlowUtils.updateFeaturesStatus(features);
     }
 }
