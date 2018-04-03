@@ -33,7 +33,7 @@ import org.springframework.web.bind.annotation.RestController;
  * REST Controller for toggle existed feature in kilda without having to re-deploy code.
  */
 @RestController
-@RequestMapping("/features")
+@RequestMapping("/v1/features")
 @PropertySource("classpath:northbound.properties")
 public class FeatureTogglesController {
 

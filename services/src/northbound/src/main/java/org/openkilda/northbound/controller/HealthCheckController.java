@@ -68,7 +68,7 @@ public class HealthCheckController {
             @ApiResponse(code = 403, response = MessageError.class, message = "Forbidden"),
             @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
             @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
-    @RequestMapping(value = "/health-check",
+    @RequestMapping(value = "/v1/health-check",
             method = RequestMethod.GET,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<HealthCheck> getHealthCheck(

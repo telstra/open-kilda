@@ -87,8 +87,7 @@ public class FlowController {
             @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
             @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
             @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
-    @RequestMapping(
-            value = "/flows",
+    @RequestMapping(value = "/v1/flows",
             method = RequestMethod.PUT,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE,
             consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -120,8 +119,7 @@ public class FlowController {
             @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
             @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
             @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
-    @RequestMapping(
-            value = "/flows/{flow-id}",
+    @RequestMapping(value = "/v1/flows/{flow-id}",
             method = RequestMethod.GET,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<FlowPayload> getFlow(
@@ -152,8 +150,7 @@ public class FlowController {
             @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
             @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
             @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
-    @RequestMapping(
-            value = "/flows/{flow-id}",
+    @RequestMapping(value = "/v1/flows/{flow-id}",
             method = RequestMethod.DELETE,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<FlowPayload> deleteFlow(
@@ -185,8 +182,7 @@ public class FlowController {
             @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
             @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
             @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
-    @RequestMapping(
-            value = "/flows/{flow-id}",
+    @RequestMapping(value = "/v1/flows/{flow-id}",
             method = RequestMethod.PUT,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE,
             consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -218,8 +214,7 @@ public class FlowController {
             @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
             @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
             @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
-    @RequestMapping(
-            value = "/flows",
+    @RequestMapping(value = "/v1/flows",
             method = RequestMethod.GET,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<List<FlowPayload>> getFlows(
@@ -249,8 +244,7 @@ public class FlowController {
             @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
             @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
             @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
-    @RequestMapping(
-            value = "/flows",
+    @RequestMapping(value = "/v1/flows",
             method = RequestMethod.DELETE,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     @ExtraAuthRequired
@@ -284,8 +278,7 @@ public class FlowController {
             @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
             @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
             @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
-    @RequestMapping(
-            value = "/flows/status/{flow-id}",
+    @RequestMapping(value = "/v1/flows/status/{flow-id}",
             method = RequestMethod.GET,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<FlowIdStatusPayload> statusFlow(
@@ -316,8 +309,7 @@ public class FlowController {
             @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
             @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
             @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
-    @RequestMapping(
-            value = "/flows/path/{flow-id}", method = RequestMethod.GET,
+    @RequestMapping(value = "/v1/flows/path/{flow-id}", method = RequestMethod.GET,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<FlowPathPayload> pathFlow(
             @PathVariable(name = "flow-id") String flowId,
@@ -349,7 +341,7 @@ public class FlowController {
             @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
             @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
             @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
-    @RequestMapping(path = "/push/flows",
+    @RequestMapping(path = "/v1/push/flows",
             method = RequestMethod.PUT,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     @ResponseStatus(HttpStatus.OK)
@@ -390,7 +382,7 @@ public class FlowController {
             @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
             @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
             @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
-    @RequestMapping(path = "/unpush/flows",
+    @RequestMapping(path = "/v1/unpush/flows",
             method = RequestMethod.PUT,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     @ResponseStatus(HttpStatus.OK)
@@ -431,7 +423,7 @@ public class FlowController {
             @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
             @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
             @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
-    @RequestMapping(path = "/flows/{flow_id}/reroute",
+    @RequestMapping(path = "/v1/flows/{flow_id}/reroute",
             method = RequestMethod.PATCH)
     @ResponseStatus(HttpStatus.OK)
     public FlowPathPayload rerouteFlow(@PathVariable("flow_id") String flowId,
@@ -461,7 +453,7 @@ public class FlowController {
             @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
             @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
             @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
-    @RequestMapping(path = "/flows/{flow_id}/validate",
+    @RequestMapping(path = "/v1/flows/{flow_id}/validate",
             method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
     public ResponseEntity<List<FlowValidationDto>> validateFlow(@PathVariable("flow_id") String flowId,
@@ -507,7 +499,7 @@ public class FlowController {
             @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
             @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
             @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
-    @RequestMapping(path = "/flows/cachesync",
+    @RequestMapping(path = "/v1/flows/cachesync",
             method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
     public FlowCacheSyncResults syncFlowCache(@RequestHeader(value = CORRELATION_ID, defaultValue = DEFAULT_CORRELATION_ID) String correlationId) {

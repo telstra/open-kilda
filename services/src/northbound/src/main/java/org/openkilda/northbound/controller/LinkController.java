@@ -63,7 +63,7 @@ public class LinkController {
             @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
             @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
             @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
-    @RequestMapping(path = "/link/props",
+    @RequestMapping(path = "/v1/link/props",
             method = RequestMethod.GET,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     @ResponseStatus(HttpStatus.OK)
@@ -86,7 +86,7 @@ public class LinkController {
             @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
             @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
             @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
-    @RequestMapping(path = "/link/props",
+    @RequestMapping(path = "/v1/link/props",
             method = RequestMethod.PUT,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     @ResponseStatus(HttpStatus.OK)
@@ -110,7 +110,7 @@ public class LinkController {
             @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
             @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
             @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
-    @RequestMapping(path = "/link/props",
+    @RequestMapping(path = "/v1/link/props",
             method = RequestMethod.DELETE,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     @ResponseStatus(HttpStatus.OK)
