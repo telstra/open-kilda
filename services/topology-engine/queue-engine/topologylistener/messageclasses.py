@@ -52,16 +52,32 @@ CD_FLOWS_SYNC_REQUEST = 'org.openkilda.messaging.command.FlowsSyncRequest'
 
 FEATURE_SYNC_OFRULES = 'sync_rules_on_activation'
 FEATURE_REROUTE_ON_ISL_DISCOVERY = 'flows_reroute_on_isl_discovery'
+FEATURE_CREATE_FLOW = 'create_flow'
+FEATURE_UPDATE_FLOW = 'update_flow'
+FEATURE_DELETE_FLOW = 'delete_flow'
+FEATURE_PUSH_FLOW = 'push_flow'
+FEATURE_UNPUSH_FLOW = 'unpush_flow'
 
 features_status = {
     FEATURE_SYNC_OFRULES: False,
-    FEATURE_REROUTE_ON_ISL_DISCOVERY: True
+    FEATURE_REROUTE_ON_ISL_DISCOVERY: True,
+    FEATURE_CREATE_FLOW: False,
+    FEATURE_UPDATE_FLOW: False,
+    FEATURE_DELETE_FLOW: False,
+    FEATURE_PUSH_FLOW:   False,
+    FEATURE_UNPUSH_FLOW: False,
 }
 
 features_status_app_to_transport_map = {
     FEATURE_SYNC_OFRULES: 'sync_rules',
-    FEATURE_REROUTE_ON_ISL_DISCOVERY: 'reflow_on_switch_activation'
+    FEATURE_REROUTE_ON_ISL_DISCOVERY: 'reflow_on_switch_activation',
+    FEATURE_CREATE_FLOW: 'create_flow',
+    FEATURE_UPDATE_FLOW: 'update_flow',
+    FEATURE_DELETE_FLOW: 'delete_flow',
+    FEATURE_PUSH_FLOW: 'push_flow',
+    FEATURE_UNPUSH_FLOW: 'unpush_flow'
 }
+
 features_status_transport_to_app_map = {
     transport: app
     for app, transport in features_status_app_to_transport_map.items()}
@@ -70,6 +86,24 @@ features_status_transport_to_app_map = {
 # This is used for blocking on flow changes.
 # flow_sem = multiprocessing.Semaphore()
 neo4j_update_lock = threading.RLock()
+
+
+def update_config():
+    config_node = Node('config', name='config')
+    graph.merge(config_node)
+    for feature, name in features_status_app_to_transport_map.items():
+        config_node[name] = features_status[feature]
+    config_node.push()
+    return True
+
+
+def read_config():
+    config_node = graph.find_one('config')
+    if config_node is not None:
+        for feature, name in features_status_app_to_transport_map.items():
+            features_status[feature] = config_node[name]
+
+read_config()
 
 
 class MessageItem(object):
@@ -579,6 +613,30 @@ class MessageItem(object):
 
         return True
 
+    def not_allow_flow_operation(self):
+        op = self.payload['operation'].upper()
+
+        # (nmarchenko) I do that for readability and to avoid double binary
+        # negation
+        allow = False
+
+        if op == "CREATE" and features_status[FEATURE_CREATE_FLOW]:
+            return allow
+        if op == "PUSH" and features_status[FEATURE_PUSH_FLOW]:
+            return allow
+        if op == "PUSH_PROPAGATE" and features_status[FEATURE_CREATE_FLOW]:
+            return allow
+        if op == "DELETE" and features_status[FEATURE_DELETE_FLOW]:
+            return allow
+        if op == "UNPUSH" and features_status[FEATURE_UNPUSH_FLOW]:
+            return allow
+        if op == "UNPUSH_PROPAGATE" and features_status[FEATURE_DELETE_FLOW]:
+            return allow
+        if op == "UPDATE" and features_status[FEATURE_UPDATE_FLOW]:
+            return allow
+
+        return not allow
+
     def flow_operation(self):
         correlation_id = self.correlation_id
         timestamp = self.timestamp
@@ -589,6 +647,12 @@ class MessageItem(object):
         forward = flows['forward']
         reverse = flows['reverse']
         flow_id = forward['flowid']
+
+        if self.not_allow_flow_operation():
+            logger.info('Flow %s request is not allow: '
+                    'timestamp=%s, correlation_id=%s, payload=%s',
+                    operation, timestamp, correlation_id, payload)
+            return True
 
         logger.info('Flow %s request processing: '
                     'timestamp=%s, correlation_id=%s, payload=%s',
@@ -802,6 +866,8 @@ class MessageItem(object):
                     'Set feature %s status to %s, previous value %s',
                     app_key, status, current)
             features_status[app_key] = status
+
+        update_config()
 
         return True
 
