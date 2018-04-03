@@ -309,6 +309,9 @@ public class CrudBolt
         } catch (IOException exception) {
             logger.error("Could not deserialize message {}", tuple, exception);
 
+        } catch (Exception e) {
+            logger.error(String.format("Unhandled exception in %s", getClass().getName()), e);
+
         } finally {
             logger.debug("Command message ack: component={}, stream={}, tuple={}",
                     tuple.getSourceComponent(), tuple.getSourceStreamId(), tuple);
