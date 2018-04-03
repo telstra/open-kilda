@@ -64,7 +64,7 @@ def receive_with_context_async(context):
     sys.stdout.flush()
 
 
-def receive_with_context(context, callback, offset):
+def receive_with_context(context, callback, offset=None):
     receive(context.kafka_bootstrap_servers, context.kafka_topic, callback,
             offset)
 
@@ -75,7 +75,8 @@ def receive(bootstrap_servers, topic, callback, offset):
 
     partition = kafka.TopicPartition(topic, 0)
     consumer.assign([partition])
-    consumer.seek(partition, offset)
+    if offset is not None:
+        consumer.seek(partition, offset)
     for msg in consumer:
         callback(msg)
 
