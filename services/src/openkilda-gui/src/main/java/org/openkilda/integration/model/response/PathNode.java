@@ -1,12 +1,13 @@
 package org.openkilda.integration.model.response;
 
+import java.io.Serializable;
+import java.util.Objects;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-
-import java.io.Serializable;
 
 /**
  * The Class Path.
@@ -16,7 +17,7 @@ import java.io.Serializable;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonPropertyOrder({"port_no", "segment_latency", "seq_id", "switch_id"})
-public class PathNode implements Serializable {
+public class PathNode implements Serializable , Comparable<PathNode>{
 
     /** The port no. */
     @JsonProperty("port_no")
@@ -165,14 +166,50 @@ public class PathNode implements Serializable {
     public void setOutPortNo(final Integer outPortNo) {
         this.outPortNo = outPortNo;
     }
+    
+    
+    
 
-	@Override
+    @Override
 	public String toString() {
 		return "PathNode [portNo=" + portNo + ", segmentLatency="
 				+ segmentLatency + ", seqId=" + seqId + ", switchId="
 				+ switchId + ", inPortNo=" + inPortNo + ", outPortNo="
 				+ outPortNo + "]";
 	}
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + ((seqId == null) ? 0 : seqId.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        PathNode other = (PathNode) obj;
+        if (seqId == null) {
+            if (other.seqId != null)
+                return false;
+        } else if (!seqId.equals(other.seqId))
+            return false;
+        return true;
+    }
+
+    @Override
+    public int compareTo(PathNode obj) {
+        final int before = -1;
+        final int equal = 0;
+        final int after = 1;
+        return this.equals(obj) ? equal : this.seqId < obj.seqId ? before : after;
+    }
     
     
 
