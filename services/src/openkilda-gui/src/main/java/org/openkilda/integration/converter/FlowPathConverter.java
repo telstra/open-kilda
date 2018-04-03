@@ -70,13 +70,6 @@ public class FlowPathConverter {
                        switchId = path.getSwitchId();
                        inport = path.getPortNo();
                     }
-                   /* if (path.getSeqId() % 2 == 0) {
-                        String switchName = switchIntegrationService.customSwitchName(csNames,
-                                path.getSwitchId());
-                        pathNodes.add(new PathNode(seq_id, inport, path.getPortNo(), switchName));
-                        seq_id++;
-                    } else
-                        inport = path.getPortNo();*/
                 }
             }
         }
