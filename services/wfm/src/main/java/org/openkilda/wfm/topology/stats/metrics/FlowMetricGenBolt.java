@@ -52,11 +52,11 @@ public class FlowMetricGenBolt extends MetricGenBolt {
     private static final Logger LOGGER = LoggerFactory.getLogger(FlowMetricGenBolt.class);
     private final Map<Long, FlowResult> cookieMap = new HashMap<>();
     private CypherExecutor cypher;
-    private final String neoUri;
+//    private final String neoUri;
 
 
     public FlowMetricGenBolt() {
-        neoUri = "bolt://localhost:7687";
+//        neoUri = "bolt://localhost:7687";
     }
     /**
      * Instantiates a new Flow metric gen bolt.
@@ -66,7 +66,7 @@ public class FlowMetricGenBolt extends MetricGenBolt {
      * @param neo4jPasswd the neo 4 j passwd
      */
     public FlowMetricGenBolt(String neo4jHost, String neo4jUser, String neo4jPasswd) {
-        neoUri = String.format("bolt://%s:%s@%s", neo4jUser, neo4jPasswd, neo4jHost);
+//        neoUri = String.format("bolt://%s:%s@%s", neo4jUser, neo4jPasswd, neo4jHost);
     }
 
     @Override
@@ -74,12 +74,12 @@ public class FlowMetricGenBolt extends MetricGenBolt {
         this.collector = collector;
 
         // Create a hashmap of cookies to flows such that we can add the flowid to the tsdb stat
-        try {
-            cypher = createCypherExecutor(neoUri);
-            warmCookieMap();
-        } catch (ServiceUnavailableException | IllegalArgumentException e) {
-            LOGGER.error("Error connecting to nego4j", e);
-        }
+//        try {
+//            cypher = createCypherExecutor(neoUri);
+//            warmCookieMap();
+//        } catch (ServiceUnavailableException | IllegalArgumentException e) {
+//            LOGGER.error("Error connecting to nego4j", e);
+//        }
     }
 
     @Override
@@ -114,33 +114,33 @@ public class FlowMetricGenBolt extends MetricGenBolt {
     }
 
     private void emit(FlowStatsEntry entry, long timestamp, String switchId) throws Exception {
-        FlowResult flow = getFlowFromCache(entry.getCookie());
+//        FlowResult flow = getFlowFromCache(entry.getCookie());
         Map<String, String> tags = new HashMap<>();
         tags.put("switchid", switchId);
         tags.put("cookie", String.valueOf(entry.getCookie()));
         tags.put("tableid", String.valueOf(entry.getTableId()));
-        if (flow == null || flow.getFlowId() == null) {
-            tags.put("flowid", "unknown");
-        } else {
-            tags.put("flowid", flow.getFlowId());
-        }
+//        if (flow == null || flow.getFlowId() == null) {
+//            tags.put("flowid", "unknown");
+//        } else {
+//            tags.put("flowid", flow.getFlowId());
+//        }
         collector.emit(tuple("pen.flow.raw.packets", timestamp, entry.getPacketCount(), tags));
         collector.emit(tuple("pen.flow.raw.bytes", timestamp, entry.getByteCount(), tags));
         collector.emit(tuple("pen.flow.raw.bits", timestamp, entry.getByteCount() * 8, tags));
 
-        /**
-         * If this is the destination switch for the flow, then add to TSDB for pen.flow.* stats.  This is needed
-         * as there is needed to provide simple lookup of flow stats
-         **/
-        if (switchId.equals(flow.getDstSw().replaceAll(":", ""))) {
-            tags.remove("cookie");  //Doing this to prevent creation of yet another object
-            tags.remove("tableid");
-            tags.remove("switchid");
-            tags.put("direction", flow.getDirection());
-            collector.emit(tuple("pen.flow.packets", timestamp, entry.getPacketCount(), tags));
-            collector.emit(tuple("pen.flow.bytes", timestamp, entry.getByteCount(), tags));
-            collector.emit(tuple("pen.flow.bits", timestamp, entry.getByteCount() * 8, tags));
-        }
+//        /**
+//         * If this is the destination switch for the flow, then add to TSDB for pen.flow.* stats.  This is needed
+//         * as there is needed to provide simple lookup of flow stats
+//         **/
+//        if (switchId.equals(flow.getDstSw().replaceAll(":", ""))) {
+//            tags.remove("cookie");  //Doing this to prevent creation of yet another object
+//            tags.remove("tableid");
+//            tags.remove("switchid");
+//            tags.put("direction", flow.getDirection());
+//            collector.emit(tuple("pen.flow.packets", timestamp, entry.getPacketCount(), tags));
+//            collector.emit(tuple("pen.flow.bytes", timestamp, entry.getByteCount(), tags));
+//            collector.emit(tuple("pen.flow.bits", timestamp, entry.getByteCount() * 8, tags));
+//        }
     }
 
 
