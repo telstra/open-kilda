@@ -409,7 +409,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         System.out.println(resultData);
         assertEquals(data, resultData);
         assertEquals(data.hashCode(), resultData.hashCode());
-        assertEquals(Collections.singletonList(flowModel).hashCode(), resultData.getFlowIds().hashCode());
+        assertEquals(Collections.singletonList(flowModel.getFlowId()).hashCode(), resultData.getFlowIds().hashCode());
     }
 
     @Test
