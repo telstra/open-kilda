@@ -652,6 +652,14 @@ class MessageItem(object):
             logger.info('Flow %s request is not allow: '
                     'timestamp=%s, correlation_id=%s, payload=%s',
                     operation, timestamp, correlation_id, payload)
+
+            # TODO: We really should use the reply-to field, at least in NB, so that we know to send the response.
+            op = payload['operation'].upper()
+            if op == "PUSH" or op == "PUSH_PROPAGATE" or op == "UNPUSH" or op == "UNPUSH_PROPAGATE":
+                message_utils.send_error_message(
+                    correlation_id, 'REQUEST_INVALID', op+"-FAILURE - NOT ALLOWED RIGHT NOW - Toggle the feature to allow this behavior", "",
+                    destination="NORTHBOUND", topic=config.KAFKA_NORTHBOUND_TOPIC)
+
             return True
 
         logger.info('Flow %s request processing: '
