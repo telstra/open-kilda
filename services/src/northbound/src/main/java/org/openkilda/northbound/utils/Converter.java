@@ -69,7 +69,8 @@ public final class Converter {
                 flow.getBandwidth(),
                 flow.isIgnoreBandwidth(),
                 flow.getDescription(),
-                flow.getLastUpdated());
+                flow.getLastUpdated(),
+                flow.getState().getState());
     }
 
     /**

@@ -21,6 +21,9 @@ public class SwitchDto {
     @JsonProperty("description")
     private String description;
 
+    @JsonProperty("state")
+    private String state;
+
     public String getSwitchId() {
         return switchId;
     }
@@ -51,5 +54,13 @@ public class SwitchDto {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getState() {
+        return state;
+    }
+
+    public void setState(String state) {
+        this.state = state;
     }
 }

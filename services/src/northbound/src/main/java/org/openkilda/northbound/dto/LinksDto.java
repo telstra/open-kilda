@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import org.openkilda.messaging.info.event.IslChangeType;
 
 import java.util.HashMap;
 import java.util.List;
@@ -19,6 +20,9 @@ public class LinksDto {
 
     @JsonProperty("available_bandwidth")
     private long availableBandwidth;
+
+    @JsonProperty("state")
+    protected IslChangeType state;
 
     private List<PathDto> path;
 
@@ -51,6 +55,14 @@ public class LinksDto {
 
     public void setPath(List<PathDto> path) {
         this.path = path;
+    }
+
+    public IslChangeType getState() {
+        return state;
+    }
+
+    public void setState(IslChangeType state) {
+        this.state = state;
     }
 
     // Capture all other fields that Jackson do not match other members

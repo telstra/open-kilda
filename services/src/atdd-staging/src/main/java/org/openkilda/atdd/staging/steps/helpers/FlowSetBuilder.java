@@ -26,6 +26,7 @@ import org.openkilda.atdd.staging.model.topology.TopologyDefinition.OutPort;
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition.Switch;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.messaging.payload.flow.FlowState;
 
 import java.util.HashSet;
 import java.util.Optional;
@@ -206,7 +207,7 @@ public class FlowSetBuilder {
             FlowEndpointPayload destEndpoint = new FlowEndpointPayload(destSwitch.getDpId(), destPort, destVlan);
 
             return new FlowPayload(flowId, srcEndpoint, destEndpoint,
-                    1, false, flowId, null);
+                    1, false, flowId, null, FlowState.UP.getState());
         }
     }
 }
