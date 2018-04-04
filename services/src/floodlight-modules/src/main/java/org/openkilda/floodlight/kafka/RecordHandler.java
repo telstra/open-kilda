@@ -335,7 +335,8 @@ class RecordHandler implements Runnable {
         try {
             switchManager.deleteFlow(dpid, command.getId(), command.getCookie());
 
-            Integer meterId = meterPool.deallocate(command.getSwitchId(), command.getId());
+            // FIXME(surabujin): QUICK FIX - try to drop meterPool completely
+            Long meterId = command.getMeterId();
             if (meterId != null) {
                 switchManager.deleteMeter(dpid, meterId);
             }
