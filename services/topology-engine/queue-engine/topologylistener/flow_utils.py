@@ -395,7 +395,7 @@ def get_flows():
 
         for data in result:
             flow = hydrate_flow(data)
-            flow['state'] = 'Cached'
+            flow['state'] = 'CACHED'
             flow_pair = flows.get(flow['flowid'], {})
             if is_forward_cookie(flow['cookie']):
                 flow_pair['forward'] = flow
