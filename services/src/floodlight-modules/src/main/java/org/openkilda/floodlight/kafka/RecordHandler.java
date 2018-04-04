@@ -184,12 +184,8 @@ class RecordHandler implements Runnable {
     private void installIngressFlow(final InstallIngressFlow command) throws SwitchOperationException {
         logger.debug("Creating an ingress flow: {}", command);
 
-        Long meterId = command.getMeterId();
-        if (meterId == null) {
-            logger.error("Meter_id should be passed within ingress flow command. Cookie is {}", command.getCookie());
-            meterId = (long) meterPool.allocate(command.getSwitchId(), command.getId());
-            logger.error("Allocated meter_id {} for cookie {}", meterId, command.getCookie());
-        }
+        Long meterId = allocateMeterId(
+                command.getMeterId(), command.getSwitchId(), command.getId(), command.getCookie());
 
         context.getSwitchManager().installMeter(
                 DatapathId.of(command.getSwitchId()),
@@ -304,12 +300,8 @@ class RecordHandler implements Runnable {
      * @param command command message for flow installation
      */
     private void installOneSwitchFlow(InstallOneSwitchFlow command) throws SwitchOperationException {
-        Long meterId = command.getMeterId();
-        if (meterId == null) {
-            logger.error("Meter_id should be passed within one switch flow command. Cookie is {}", command.getCookie());
-            meterId = (long) meterPool.allocate(command.getSwitchId(), command.getId());
-            logger.error("Allocated meter_id {} for cookie {}", meterId, command.getCookie());
-        }
+        Long meterId = allocateMeterId(
+                command.getMeterId(), command.getSwitchId(), command.getId(), command.getCookie());
 
         context.getSwitchManager().installMeter(
                 DatapathId.of(command.getSwitchId()),
@@ -560,6 +552,19 @@ class RecordHandler implements Runnable {
                 logger.error("Error during flow installation", e);
             }
         }
+    }
+
+    private long allocateMeterId(Long meterId, String switchId, String flowId, Long cookie) {
+        long allocatedId;
+
+        if (meterId == null) {
+            logger.error("Meter_id should be passed within one switch flow command. Cookie is {}", cookie);
+            allocatedId = (long) meterPool.allocate(switchId, flowId);
+            logger.error("Allocated meter_id {} for cookie {}", allocatedId, cookie);
+        } else {
+            allocatedId = meterPool.allocate(switchId, flowId, Math.toIntExact(meterId));
+        }
+        return allocatedId;
     }
 
     private void parseRecord(ConsumerRecord<String, String> record) {
