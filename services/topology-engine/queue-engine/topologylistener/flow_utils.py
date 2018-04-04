@@ -385,6 +385,12 @@ def get_old_flow(new_flow):
             logger.info('Flow was found: flow=%s', old_flow)
             return dict(old_flow)
 
+    # FIXME(surabujin): use custom exception!!!
+    raise Exception(
+        'Requested flow {}(cookie={}) don\'t found corresponding flow (with '
+        'matching direction in Neo4j)'.format(
+            new_flow['flowid'], new_flow['cookie']))
+
 
 # Note this methods is used for LCM functionality. Adds CACHED state to the flow
 def get_flows():
