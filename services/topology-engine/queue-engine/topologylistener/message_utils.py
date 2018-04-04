@@ -34,7 +34,7 @@ MT_ERROR_DATA = "org.openkilda.messaging.error.ErrorData"
 
 MT_NETWORK = "org.openkilda.messaging.info.discovery.NetworkInfoData"
 
-Mb = 2 ** 20
+Kb = 2 ** 10
 
 
 def get_timestamp():
@@ -323,7 +323,7 @@ DumpEntity = collections.namedtuple(
 
 
 def send_network_dump(
-        correlation_id, switch_set, isl_set, flow_set, size_limit=2 * Mb):
+        correlation_id, switch_set, isl_set, flow_set, size_limit=32 * Kb):
     optimal_size = int(size_limit * .95)
 
     some_big_index = 1 << 32
