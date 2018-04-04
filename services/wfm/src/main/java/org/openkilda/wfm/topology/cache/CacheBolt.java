@@ -21,7 +21,9 @@ import org.openkilda.messaging.BaseMessage;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
+import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.discovery.MarkOfflineCommandData;
 import org.openkilda.messaging.command.discovery.NetworkCommandData;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowRestoreRequest;
@@ -203,7 +205,6 @@ public class CacheBolt
          */
         // TODO: Eliminate the inefficiency introduced through the hack
         try {
-            logger.info("Received cache data={}", tuple);
             BaseMessage bm = MAPPER.readValue(json, BaseMessage.class);
             if (bm instanceof InfoMessage) {
                 InfoMessage message = (InfoMessage) bm;
@@ -242,6 +243,12 @@ public class CacheBolt
                 } else {
                     logger.error("Skip undefined info data type {}", json);
                 }
+            } else if (bm instanceof CommandMessage) {
+                CommandData command = ((CommandMessage) bm).getData();
+                if (command instanceof MarkOfflineCommandData) {
+                    logger.debug("Mark network as unavailable (set UNKNOWN state)");
+                    networkCache.markNetworkOffline();
+                }
             } else {
                 logger.error("Skip undefined message type {}", json);
             }
@@ -250,7 +257,8 @@ public class CacheBolt
             logger.error("Could not process message {}", tuple, exception);
 
         } catch (IOException exception) {
-            logger.error("Could not deserialize message {}", tuple, exception);
+            logger.error("Could not deserialize message", exception);
+            logger.error("Failed JSON tat lead to deserialization error:\n{}", json);
         } finally {
             if (isReceivedCacheInfo) {
                 outputCollector.ack(tuple);

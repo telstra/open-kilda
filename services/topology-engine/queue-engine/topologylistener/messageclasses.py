@@ -47,8 +47,14 @@ MT_TOGGLE = "org.openkilda.messaging.command.system.FeatureToggleRequest"
 MT_NETWORK_TOPOLOGY_CHANGE = (
     "org.openkilda.messaging.info.event.NetworkTopologyChange")
 CD_NETWORK = "org.openkilda.messaging.command.discovery.NetworkCommandData"
+CD_MARK_NETWORK_OFFLINE = 'org.openkilda.messaging.command.discovery.MarkOfflineCommandData'
 CD_FLOWS_SYNC_REQUEST = 'org.openkilda.messaging.command.FlowsSyncRequest'
 
+SW_STATUS_UNKNOWN = 'unknown'
+SW_STATUS_ACTIVE = 'active'
+
+ISL_STATUS_UNKNOWN = SW_STATUS_UNKNOWN
+ISL_STATUS_ACTIVE = SW_STATUS_ACTIVE
 
 FEATURE_SYNC_OFRULES = 'sync_rules_on_activation'
 FEATURE_REROUTE_ON_ISL_DISCOVERY = 'flows_reroute_on_isl_discovery'
@@ -187,6 +193,10 @@ class MessageItem(object):
 
             elif self.get_message_type() == MT_SWITCH_RULES:
                 event_handled = self.validate_switch(self.payload)
+
+            elif self.get_command() == CD_MARK_NETWORK_OFFLINE:
+                self.mark_network_offline()
+                event_handled = True
 
             if not event_handled:
                 logger.error('Message was not handled correctly: message=%s',
@@ -998,3 +1008,24 @@ class MessageItem(object):
         message_utils.send_dump_rules_request(self.payload['switch_id'],
                                               self.correlation_id)
         return True
+
+    def mark_network_offline(self):
+        logger.info('Going to switch all network topology into UNKNOWN state')
+
+        queue_switch_nodes = (
+            'MATCH (sw:switch)\n'
+            'SET sw.state=\'{status}\'').format(status=SW_STATUS_UNKNOWN)
+        queue_isl_nodes = (
+            'MATCH (:switch)-[l:isl]->(:switch)\n'
+            'SET l.status=\'{status}\'').format(status=ISL_STATUS_UNKNOWN)
+
+        with neo4j_update_lock, graph.begin() as tx:
+            for q in queue_switch_nodes, queue_isl_nodes:
+                tx.run(q)
+
+        logger.info('Network topology is in UNKNOWN state')
+
+        # propagate status into cache topologies
+        message_utils.send_to_topic(
+            self.payload, self.correlation_id, message_utils.MT_COMMAND,
+            destination="WFM_CACHE", topic=config.KAFKA_CACHE_TOPIC)

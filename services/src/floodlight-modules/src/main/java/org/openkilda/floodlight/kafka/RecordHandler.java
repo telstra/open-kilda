@@ -17,6 +17,7 @@ import org.openkilda.messaging.command.CommandWithReplyToMessage;
 import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
 import org.openkilda.messaging.command.discovery.DiscoverPathCommandData;
 import org.openkilda.messaging.command.discovery.NetworkCommandData;
+import org.openkilda.messaging.command.discovery.SyncNetworkCommandData;
 import org.openkilda.messaging.command.flow.BaseInstallFlow;
 import org.openkilda.messaging.command.flow.InstallEgressFlow;
 import org.openkilda.messaging.command.flow.InstallIngressFlow;
@@ -35,6 +36,7 @@ import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.NetworkInfoData;
+import org.openkilda.messaging.info.discovery.NetworkSyncMarker;
 import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
@@ -48,6 +50,7 @@ import org.openkilda.messaging.payload.flow.OutputVlanType;
 import net.floodlightcontroller.core.IOFSwitch;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
+import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.slf4j.Logger;
@@ -123,6 +126,8 @@ class RecordHandler implements Runnable {
             doDumpRulesRequest(message, replyToTopic);
         } else if (data instanceof InstallMissedFlowsRequest) {
             doSyncRulesRequest(message);
+        } else if (data instanceof SyncNetworkCommandData) {
+            doSyncNetworkData(message);
         } else {
             logger.error("unknown data type: {}", data.toString());
         }
@@ -560,6 +565,42 @@ class RecordHandler implements Runnable {
                 logger.error("Error during flow installation", e);
             }
         }
+    }
+
+    /**
+     * Processes request from WFM topology to send all switches.
+     * @param message request message.
+     */
+    private void doSyncNetworkData(final CommandMessage message) {
+        logger.debug("Processing request from WFM to dump switches. {}", message.getCorrelationId());
+
+
+        Map<DatapathId, IOFSwitch> allSwitchMap = context.getSwitchManager().getAllSwitchMap();
+
+        final String correlationId = UUID.randomUUID().toString();
+        context.getKafkaProducer().postMessage(OUTPUT_DISCO_TOPIC,
+                new InfoMessage(new NetworkSyncMarker(), System.currentTimeMillis(), correlationId));
+
+        allSwitchMap.values().stream()
+                .map(this::buildSwitchInfoData)
+                .forEach(sw ->
+                        context.getKafkaProducer().postMessage(OUTPUT_DISCO_TOPIC,
+                                new InfoMessage(sw, System.currentTimeMillis(), correlationId)));
+
+        allSwitchMap.values().stream()
+                .flatMap(sw ->
+                        sw.getEnabledPorts().stream()
+                                .map(port -> buildPort(sw, port))
+                                .collect(Collectors.toSet())
+                                .stream())
+                .forEach(port ->
+                        context.getKafkaProducer().postMessage(OUTPUT_DISCO_TOPIC,
+                                new InfoMessage(port, System.currentTimeMillis(), correlationId)));
+    }
+
+    private PortInfoData buildPort(IOFSwitch sw, OFPortDesc port) {
+        return new PortInfoData(sw.getId().toString(), port.getPortNo().getPortNumber(), null,
+                PortChangeType.UP);
     }
 
     private void parseRecord(ConsumerRecord<String, String> record) {

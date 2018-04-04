@@ -4,11 +4,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.only;
 import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
-import static org.openkilda.messaging.info.event.PortChangeType.UP;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import edu.emory.mathcs.backport.java.util.Collections;
 import org.apache.storm.state.InMemoryKeyValueState;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -22,22 +20,16 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.messaging.command.discovery.NetworkCommandData;
+import org.openkilda.messaging.command.discovery.SyncNetworkCommandData;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.discovery.NetworkInfoData;
-import org.openkilda.messaging.info.event.PortInfoData;
-import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.messaging.info.event.SwitchState;
+import org.openkilda.messaging.info.discovery.NetworkSyncMarker;
 import org.openkilda.wfm.AbstractStormTest;
 import org.openkilda.wfm.ConfigurationException;
-import org.openkilda.messaging.model.DiscoveryNode;
 import org.openkilda.wfm.protocol.KafkaMessage;
 import org.openkilda.wfm.topology.OutputCollectorMock;
 import org.openkilda.wfm.topology.TopologyConfig;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 
 public class OFELinkBoltTest extends AbstractStormTest {
@@ -133,53 +125,15 @@ public class OFELinkBoltTest extends AbstractStormTest {
                 captorAnchor.capture(),
                 captorTuple.capture());
 
-        assertEquals(config.getKafkaSpeakerTopic(), captorStreamId.getValue());
+        assertEquals(OFELinkBolt.STREAM_ID_SPEAKER, captorStreamId.getValue());
 
         Values values = captorTuple.getValue();
         String payload = (String) values.get(1);
 
-        CommandMessage commandMessage = objectMapper.readValue(payload, CommandMessage.class);
-        assertTrue(commandMessage.getData() instanceof NetworkCommandData);
+        CommandMessage message = objectMapper.readValue(payload, CommandMessage.class);
+        assertTrue(message.getData() instanceof SyncNetworkCommandData);
 
     }
-
-    /**
-     * Part of warm mechanism checks. That test verifies appropriately unpack and fill inner
-     * cache after getting network dump information from FL.
-     */
-    @Test
-    public void cacheLoadCheck() throws IOException {
-        // Send cache data and verify is inner state is ok
-
-        SwitchInfoData sw1 = new SwitchInfoData("sw1", SwitchState.ADDED, "127.0.0.1", "localhost",
-                "test switch", "kilda");
-        SwitchInfoData sw2 = new SwitchInfoData("sw2", SwitchState.ADDED, "127.0.0.1", "localhost",
-                "test switch", "kilda");
-
-        PortInfoData sw1Port1 = new PortInfoData(sw1.getSwitchId(), 1, null, UP);
-        PortInfoData sw2Port1 = new PortInfoData(sw2.getSwitchId(), 1, null, UP);
-
-        NetworkInfoData dump = new NetworkInfoData(
-                "test",
-                new HashSet<>(Arrays.asList(sw1, sw2)),
-                new HashSet<>(Arrays.asList(sw1Port1, sw2Port1)),
-                Collections.emptySet(),
-                Collections.emptySet(),
-                null);
-
-        InfoMessage info = new InfoMessage(dump, 0, DEFAULT_CORRELATION_ID, Destination.WFM);
-        String request = objectMapper.writeValueAsString(info);
-        Tuple dumpTuple = new TupleImpl(context, new Values(request), TASK_ID_BOLT,
-                STREAM_ID_INPUT);
-        bolt.doWork(dumpTuple);
-
-        List<DiscoveryNode> discoveryQueue = bolt.getDiscoveryQueue();
-
-        // I don't check discoveryQueue contents because that should be done in a test for
-        // handleSwitchEvent and handlePortEvent.
-        assertEquals(2, discoveryQueue.size());
-    }
-
 
     public void initBolt() throws JsonProcessingException {
         Tuple dumpTuple = getDumpTuple();
@@ -187,14 +141,9 @@ public class OFELinkBoltTest extends AbstractStormTest {
     }
 
     public Tuple getDumpTuple() throws JsonProcessingException {
-        NetworkInfoData dump = new NetworkInfoData(
-                "test", Collections.emptySet(),
-                Collections.emptySet(),
-                Collections.emptySet(),
-                Collections.emptySet(),
-                null);
+        NetworkSyncMarker syncMarker = new NetworkSyncMarker();
 
-        InfoMessage info = new InfoMessage(dump, 0, DEFAULT_CORRELATION_ID, Destination.WFM);
+        InfoMessage info = new InfoMessage(syncMarker, 0, DEFAULT_CORRELATION_ID, Destination.WFM);
         String request = objectMapper.writeValueAsString(info);
         return new TupleImpl(context, new Values(request), TASK_ID_BOLT,
                 STREAM_ID_INPUT);

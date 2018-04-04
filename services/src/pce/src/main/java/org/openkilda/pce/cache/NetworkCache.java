@@ -17,6 +17,7 @@ package org.openkilda.pce.cache;
 
 import org.openkilda.messaging.error.CacheException;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
@@ -442,6 +443,15 @@ public class NetworkCache extends Cache {
         logger.debug("Is isl {} in cache", islId);
 
         return islPool.containsKey(islId);
+    }
+
+    public void markNetworkOffline() {
+        for (IslInfoData isl : islPool.values()) {
+            isl.setState(IslChangeType.UNKNOWN);
+        }
+        for (SwitchInfoData sw : switchPool.values()) {
+            sw.setState(SwitchState.UNKNOWN);
+        }
     }
 
     /**

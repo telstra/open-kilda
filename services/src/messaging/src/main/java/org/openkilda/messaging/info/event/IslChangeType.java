@@ -28,6 +28,8 @@ import java.util.Arrays;
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public enum IslChangeType {
+    UNKNOWN("UNKNOWN"),
+
     /**
      * Isl discovered message type.
      */
