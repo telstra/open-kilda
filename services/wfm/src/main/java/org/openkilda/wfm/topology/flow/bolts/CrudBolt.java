@@ -30,6 +30,7 @@ import org.apache.storm.topology.base.BaseStatefulBolt;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 import org.apache.commons.lang.StringUtils;
+import org.neo4j.cypher.InvalidArgumentException;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
@@ -857,11 +858,22 @@ public class CrudBolt
             }
 
             BidirectionalFlow pair = flowPairsMap.get(flow.getFlowId());
-            pair.add(flow);
+            try {
+                pair.add(flow);
+            } catch (IllegalArgumentException e) {
+                logger.error("Invalid half-flow {}: {}", flow.getFlowId(), e.toString());
+            }
         }
 
         for (BidirectionalFlow bidirectionalFlow : flowPairsMap.values()) {
-            flowCache.pushFlow(bidirectionalFlow.makeFlowPair());
+            try {
+                flowCache.pushFlow(bidirectionalFlow.makeFlowPair());
+            } catch (InvalidArgumentException e) {
+                logger.error(
+                        "Invalid flow pairing {}: {}",
+                        bidirectionalFlow.anyDefined().getFlowId(),
+                        e.toString());
+            }
         }
     }
 
