@@ -306,10 +306,11 @@ public class CacheBolt
         data.getIsls().forEach(networkCache::createOrUpdateIsl);
 
         logger.info("Load flows {}", data.getFlows().size());
-        data.getFlows().forEach(flowCache::putFlow);
+        data.getFlows().forEach(flowCache::pushFlow);
 
-        logger.info("Loaded flows {}", flowCache);
-        emitRestoreCommands(data.getFlows(), tuple);
+        // FIXME(surabujin): deprecated and should be droppped
+//        logger.info("Loaded flows {}", flowCache);
+//        emitRestoreCommands(data.getFlows(), tuple);
 
         logger.info("Flows restore commands sent");
 
@@ -472,6 +473,7 @@ public class CacheBolt
         logger.info("Flow command message sent");
     }
 
+    // FIXME(surabujin): deprecated and should be droppped
     private void emitRestoreCommands(Set<ImmutablePair<Flow, Flow>> flows, Tuple tuple) {
         if (flows != null) {
 
