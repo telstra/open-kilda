@@ -6,7 +6,6 @@ import org.apache.http.HttpResponse;
 import org.openkilda.helper.RestClientManager;
 import org.openkilda.integration.converter.FlowConverter;
 import org.openkilda.integration.converter.FlowPathConverter;
-import org.openkilda.integration.exception.ContentNotFoundException;
 import org.openkilda.integration.exception.IntegrationException;
 import org.openkilda.integration.exception.InvalidResponseException;
 import org.openkilda.integration.model.Flow;
@@ -16,7 +15,6 @@ import org.openkilda.model.FlowInfo;
 import org.openkilda.model.FlowPath;
 import org.openkilda.service.ApplicationService;
 import org.openkilda.utility.ApplicationProperties;
-import org.openkilda.utility.CollectionUtil;
 import org.openkilda.utility.IoUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,20 +58,7 @@ public class FlowsIntegrationService {
 
         List<Flow> flowList = getAllFlowList();
         if (flowList != null) {
-            List<FlowInfo> flows = FlowConverter.toFlowsInfo(flowList);
-            if (!CollectionUtil.isEmpty(flows)) {
-                flows.forEach(flowInfo -> {
-                    try {
-                        String status = getFlowStatus(flowInfo.getFlowid());
-                        flowInfo.setStatus(status);
-                    } catch (Exception e) {
-                        LOGGER.error("Exception while retriving flow status. Exception: " + e, e);
-                    }
-                });
-            } else {
-                throw new ContentNotFoundException();
-            }
-            return flows;
+            return FlowConverter.toFlowsInfo(flowList);
         }
         return null;
     }
