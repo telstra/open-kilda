@@ -29,6 +29,7 @@ import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseStatefulBolt;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
+import org.apache.commons.lang.StringUtils;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
@@ -321,6 +322,9 @@ public class CrudBolt
 
         } catch (IOException exception) {
             logger.error("Could not deserialize message {}", tuple, exception);
+
+        } catch (Exception e) {
+            logger.error(String.format("Unhandled exception in %s", getClass().getName()), e);
 
         } finally {
             logger.debug("Command message ack: component={}, stream={}, tuple={}",
@@ -722,11 +726,14 @@ public class CrudBolt
     }
 
     private void handleDumpRequest(CommandMessage message, Tuple tuple) {
-        List<Flow> flows = flowCache.dumpFlows().stream().map(this::buildFlowResponse).collect(Collectors.toList());
+        List<String> flowIds = flowCache.dumpFlows().stream()
+                .map(ImmutablePair::getLeft)
+                .map(Flow::getFlowId)
+                .collect(Collectors.toList());
 
-        logger.info("Dump flows: {}", flows);
+        logger.info("Dump flows: {}", StringUtils.join(flowIds, ", "));
 
-        Values northbound = new Values(new InfoMessage(new FlowsResponse(flows),
+        Values northbound = new Values(new InfoMessage(new FlowsResponse(flowIds),
                 message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
         outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
     }

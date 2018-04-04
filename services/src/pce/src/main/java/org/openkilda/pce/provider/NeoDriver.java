@@ -220,7 +220,7 @@ public class NeoDriver implements PathComputer {
 
         String subject =
                 "MATCH (a:switch{name:{src_switch}}),(b:switch{name:{dst_switch}}), " +
-                "p = shortestPath((a)-[r:isl*..100]->(b))";
+                "p = shortestPath((a)-[r:isl*..35]->(b))";
         parameters.put("src_switch", Values.value(flow.getSourceSwitch()));
         parameters.put("dst_switch", Values.value(flow.getDestinationSwitch()));
 
@@ -250,7 +250,7 @@ public class NeoDriver implements PathComputer {
 //
 //                        " CALL apoc.algo.dijkstraWithDefaultWeight(from, to, 'isl', 'cost', 700)" +
 //                        " YIELD path AS p, weight AS weight "
-                        " p = allShortestPaths((from)-[isl*..100]->(to)) ";
+                        " p = allShortestPaths((from)-[:isl*..35]->(to)) ";
         parameters.put("src_switch", Values.value(flow.getSourceSwitch()));
         parameters.put("dst_switch", Values.value(flow.getDestinationSwitch()));
 

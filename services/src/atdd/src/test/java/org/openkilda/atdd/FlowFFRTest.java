@@ -29,6 +29,7 @@ import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.topo.TopologyHelp;
 
 import cucumber.api.java.en.Given;
@@ -76,7 +77,7 @@ public class FlowFFRTest {
         FlowPayload flowPayload = new FlowPayload(FlowUtils.getFlowName(flowId),
                 new FlowEndpointPayload(sourceSwitch, sourcePort, sourceVlan),
                 new FlowEndpointPayload(destinationSwitch, destinationPort, destinationVlan),
-                bandwidth, false, flowId, null);
+                bandwidth, false, flowId, null, FlowState.UP.getState());
 
         FlowPayload response = FlowUtils.putFlow(flowPayload);
         assertNotNull(response);

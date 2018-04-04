@@ -7,7 +7,7 @@ projectfloodlight:
 	$(MAKE) -C projectfloodlight
 
 build: projectfloodlight
-	mvn -B -DskipTests clean install
+	mvn -B clean install
 
 build-pce:
 	mvn install -pl pce -am -DskipTests

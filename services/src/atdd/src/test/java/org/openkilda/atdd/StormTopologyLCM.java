@@ -108,7 +108,7 @@ public class StormTopologyLCM {
         FlowPayload flowPayload = new FlowPayload(flowId,
                 new FlowEndpointPayload("00:01:00:00:00:00:00:01", 1, 100),
                 new FlowEndpointPayload("00:01:00:00:00:00:00:02", 1, 100),
-                10000, false, flowId, null);
+                10000, false, flowId, null, FlowState.UP.getState());
 
         FlowPayload response = null;
         for (int i = 0; i < 10; ++i) {
