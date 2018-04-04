@@ -3,6 +3,7 @@ package org.openkilda.wfm.topology.flow.utils;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
 
+import javax.naming.directory.InvalidAttributesException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -34,6 +35,18 @@ public class BidirectionalFlow {
         }
 
         flowId = flow.getFlowId();
+    }
+
+    public Flow anyDefined() {
+        if (forward != null) {
+            return forward;
+        }
+        if (reverse != null) {
+            return reverse;
+        }
+
+        // FIXME(surabujin): make custom exception class
+        throw new IllegalArgumentException("No one half-flow pieces defined");
     }
 
     public ImmutablePair<Flow, Flow> makeFlowPair() {
