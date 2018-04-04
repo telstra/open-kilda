@@ -542,12 +542,15 @@ class MessageItem(object):
             # we'll have a delete per segment based on the destination. Consequently, the "single switch flow" is
             # automatically addressed using this algorithm.
             flow_cookie = int(flow['cookie'])
-            nodes = [{'switch_id': flow['src_switch'], 'flow_id': flow_id, 'cookie': flow_cookie}]
+            nodes = [
+                {'switch_id': flow['src_switch'], 'flow_id': flow_id, 'cookie': flow_cookie, 'meter_id': flow['meter_id']}]
             segments = flow_utils.fetch_flow_segments(flow_id, flow_cookie)
             for segment in segments:
                 # every segment should have a cookie field, based on merge_segment; but just in case..
                 segment_cookie = segment.get('cookie', flow_cookie)
-                nodes.append({'switch_id': segment['dst_switch'], 'flow_id': flow_id, 'cookie': segment_cookie})
+                nodes.append({
+                    'switch_id': segment['dst_switch'], 'flow_id': flow_id, 'cookie': segment_cookie,
+                    'meter_id': None})
 
             if propagate:
                 logger.info('Flow rules remove start: correlation_id=%s, flow_id=%s, path=%s', correlation_id, flow_id,
