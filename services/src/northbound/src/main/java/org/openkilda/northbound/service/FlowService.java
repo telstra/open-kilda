@@ -15,14 +15,14 @@
 
 package org.openkilda.northbound.service;
 
+import org.openkilda.messaging.command.flow.SynchronizeCacheAction;
+import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
-import org.openkilda.messaging.info.flow.FlowInfoData;
-import org.openkilda.northbound.dto.FlowValidationDto;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
-import org.springframework.web.context.request.async.DeferredResult;
+import org.openkilda.northbound.dto.FlowValidationDto;
 
 import java.util.List;
 
@@ -149,13 +149,12 @@ public interface FlowService extends BasicService {
      */
     List<FlowValidationDto> validateFlow(final String flowId, final String correlationId);
 
-
-
     /**
      * Sync the FlowCache in the flow topology (in case it is out of sync.
      *
+     * @param syncCacheAction describes how to synchronize the cache.
      * @param correlationId request correlation Id
-     * @return updated flow path information.
+     * @return details on performed updates.
      */
-    FlowCacheSyncResults syncFlowCache(final String correlationId);
+    FlowCacheSyncResults syncFlowCache(SynchronizeCacheAction syncCacheAction, String correlationId);
 }

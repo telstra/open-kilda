@@ -27,7 +27,11 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.storm.Config;
 import org.apache.storm.generated.StormTopology;
-import org.junit.*;
+import org.junit.AfterClass;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Ignore;
+import org.junit.Test;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
@@ -56,7 +60,6 @@ import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.wfm.AbstractStormTest;
 import org.openkilda.wfm.topology.TestKafkaConsumer;
-import org.openkilda.wfm.topology.flow.ComponentType;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -130,8 +133,8 @@ public class CacheTopologyTest extends AbstractStormTest {
         ctrlConsumer.clear();
 
         sendClearState();
-        waitDumpRequest();
-        sendNetworkDump(dump);
+        String correlationId = waitDumpRequest();
+        sendNetworkDump(dump, correlationId);
     }
 
     @AfterClass
@@ -194,7 +197,7 @@ public class CacheTopologyTest extends AbstractStormTest {
         System.out.println("Cache receives InfoData before NetworkDump Test");
 
         sendClearState();
-        waitDumpRequest();
+        String correlationId = waitDumpRequest();
 
         // Send switchUpdate info to not initialized bolt
         sendData(sw);
@@ -205,7 +208,7 @@ public class CacheTopologyTest extends AbstractStormTest {
         assertTrue(CollectionUtils.isEmpty(networkDump.getSwitches()));
 
         // Init bolt with dump from TE
-        sendNetworkDump(dump);
+        sendNetworkDump(dump, correlationId);
 
         // Check if SwitchInfoData is ok
         sendNetworkDumpRequest();
@@ -364,9 +367,9 @@ public class CacheTopologyTest extends AbstractStormTest {
         kProducer.pushMessage(topic, request);
     }
 
-    private static void sendNetworkDump(NetworkInfoData data) throws IOException {
+    private static void sendNetworkDump(NetworkInfoData data, String correlationId) throws IOException {
         System.out.println("Topology-Engine: Send Network Dump");
-        InfoMessage info = new InfoMessage(data, 0, UUID.randomUUID().toString(), Destination.WFM_CACHE);
+        InfoMessage info = new InfoMessage(data, 0, correlationId, Destination.WFM_CACHE);
         sendMessage(info, topology.getConfig().getKafkaTopoCacheTopic());
     }
 
@@ -427,13 +430,17 @@ public class CacheTopologyTest extends AbstractStormTest {
         return new FlowInfoData(flowId, immutablePair, FlowOperation.CREATE, UUID.randomUUID().toString());
     }
 
-    private static void waitDumpRequest() throws InterruptedException {
+    private static String waitDumpRequest() throws InterruptedException, IOException {
+        ConsumerRecord<String, String> raw;
         int sec = 0;
-        while (teConsumer.pollMessage(1000) == null)
+        while ((raw = teConsumer.pollMessage(1000)) == null)
         {
             System.out.println("Waiting For Dump Request");
             assertTrue("Waiting For Dump Request failed", ++sec < 20);
         }
         System.out.println("Waiting For Dump Request");
+
+        Message request = objectMapper.readValue(raw.value(), Message.class);
+        return request.getCorrelationId();
     }
 }

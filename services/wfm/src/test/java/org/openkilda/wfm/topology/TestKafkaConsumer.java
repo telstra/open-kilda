@@ -29,6 +29,7 @@ import org.openkilda.messaging.info.InfoMessage;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -83,6 +84,10 @@ public class TestKafkaConsumer extends Thread {
 
     public ConsumerRecord<String, String> pollMessage() throws InterruptedException {
         return pollMessage(KAFKA_MESSAGE_POLL_TIMEOUT);
+    }
+
+    public String pollMessageValue() throws InterruptedException {
+        return Optional.ofNullable(pollMessage()).map(ConsumerRecord::value).orElse(null);
     }
 
     public ConsumerRecord<String, String> pollMessage(final long timeout) throws InterruptedException {
