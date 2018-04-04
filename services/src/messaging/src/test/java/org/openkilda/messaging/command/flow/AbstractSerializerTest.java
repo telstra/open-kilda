@@ -393,7 +393,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
 
     @Test
     public void flowsResponseTest() throws IOException, ClassNotFoundException {
-        FlowsResponse data = new FlowsResponse(Collections.singletonList(flowModel));
+        FlowsResponse data = new FlowsResponse(Collections.singletonList(flowModel.getFlowId()));
         System.out.println(data);
 
         InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
@@ -409,7 +409,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         System.out.println(resultData);
         assertEquals(data, resultData);
         assertEquals(data.hashCode(), resultData.hashCode());
-        assertEquals(Collections.singletonList(flowModel).hashCode(), resultData.getPayload().hashCode());
+        assertEquals(Collections.singletonList(flowModel).hashCode(), resultData.getFlowIds().hashCode());
     }
 
     @Test

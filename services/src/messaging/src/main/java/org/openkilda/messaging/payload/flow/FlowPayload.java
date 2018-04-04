@@ -88,6 +88,9 @@ public class FlowPayload implements Serializable {
     @JsonProperty("last-updated")
     private String lastUpdated;
 
+    @JsonProperty("status")
+    private String status;
+
     /**
      * Instance constructor.
      *
@@ -106,7 +109,8 @@ public class FlowPayload implements Serializable {
                        @JsonProperty("maximum-bandwidth") int maximumBandwidth,
                        @JsonProperty("ignore_bandwidth") Boolean ignoreBandwidth,
                        @JsonProperty("description") String description,
-                       @JsonProperty("last-updated") String lastUpdated) {
+                       @JsonProperty("last-updated") String lastUpdated,
+                       @JsonProperty("status") String status) {
         setId(id);
         setSource(source);
         setDestination(destination);
@@ -114,6 +118,7 @@ public class FlowPayload implements Serializable {
         setIgnoreBandwidth(ignoreBandwidth);
         setDescription(description);
         setLastUpdated(lastUpdated);
+        setStatus(status);
     }
 
     /**
@@ -256,6 +261,14 @@ public class FlowPayload implements Serializable {
      */
     public void setLastUpdated(String lastUpdated) {
         this.lastUpdated = lastUpdated;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 
     /**

@@ -515,8 +515,8 @@ public class FlowTopologyTest extends AbstractStormTest {
         InfoMessage infoMessage = objectMapper.readValue(record.value(), InfoMessage.class);
         FlowsResponse infoData = (FlowsResponse) infoMessage.getData();
         assertNotNull(infoData);
-        assertNotNull(infoData.getPayload());
-        assertFalse(infoData.getPayload().isEmpty());
+        assertNotNull(infoData.getFlowIds());
+        assertFalse(infoData.getFlowIds().isEmpty());
     }
 
     @Test
@@ -749,7 +749,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         ConsumerRecord<String, String> nbRecord;
         String flowId = UUID.randomUUID().toString();
 
-        List<Flow> payload = dumpFlowCommand(flowId);
+        List<String> payload = dumpFlowCommand(flowId);
 
         nbRecord = nbConsumer.pollMessage();
         assertNotNull(nbRecord);
@@ -760,7 +760,7 @@ public class FlowTopologyTest extends AbstractStormTest {
 
         FlowsResponse responseData = (FlowsResponse) response.getData();
         assertNotNull(responseData);
-        assertEquals(payload, responseData.getPayload());
+        assertEquals(payload, responseData.getFlowIds());
     }
 
     @Test
@@ -1140,10 +1140,10 @@ public class FlowTopologyTest extends AbstractStormTest {
         return flowPayload;
     }
 
-    private List<Flow> dumpFlowCommand(final String flowId) throws IOException {
+    private List<String> dumpFlowCommand(final String flowId) throws IOException {
         System.out.println("TOPOLOGY: Get flows");
         Flow flow = new Flow(flowId, 10000, false, "", "test-switch", 1, 2, "test-switch", 1, 2);
-        List<Flow> payload = Collections.singletonList(flow);
+        List<String> payload = Collections.singletonList(flow.getFlowId());
         FlowsResponse infoData = new FlowsResponse(payload);
         InfoMessage infoMessage = new InfoMessage(infoData, 0, "dump-flows", Destination.WFM);
         sendTopologyEngineMessage(infoMessage);

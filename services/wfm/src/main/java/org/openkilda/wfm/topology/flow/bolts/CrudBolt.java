@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.flow.bolts;
 import static java.lang.String.format;
 import static org.openkilda.messaging.Utils.MAPPER;
 
+import org.apache.commons.lang.StringUtils;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
@@ -618,11 +619,14 @@ public class CrudBolt
     }
 
     private void handleDumpRequest(CommandMessage message, Tuple tuple) {
-        List<Flow> flows = flowCache.dumpFlows().stream().map(this::buildFlowResponse).collect(Collectors.toList());
+        List<String> flowIds = flowCache.dumpFlows().stream()
+                .map(ImmutablePair::getLeft)
+                .map(Flow::getFlowId)
+                .collect(Collectors.toList());
 
-        logger.info("Dump flows: {}", flows);
+        logger.info("Dump flows: {}", StringUtils.join(flowIds, ", "));
 
-        Values northbound = new Values(new InfoMessage(new FlowsResponse(flows),
+        Values northbound = new Values(new InfoMessage(new FlowsResponse(flowIds),
                 message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
         outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
     }
