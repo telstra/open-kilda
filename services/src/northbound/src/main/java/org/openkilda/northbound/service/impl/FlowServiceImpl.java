@@ -29,6 +29,7 @@ import org.openkilda.messaging.command.flow.FlowStatusRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.openkilda.messaging.command.flow.FlowsGetRequest;
 import org.openkilda.messaging.command.flow.FlowCacheSyncRequest;
+import org.openkilda.messaging.command.flow.SynchronizeCacheAction;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.flow.FlowOperation;
 import org.openkilda.messaging.info.flow.FlowPathResponse;
@@ -64,10 +65,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.PropertySource;
 import org.springframework.http.HttpHeaders;
-import org.springframework.security.access.method.P;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -254,7 +252,7 @@ public class FlowServiceImpl implements FlowService {
         messageProducer.send(topic, request);
         Message message = (Message) messageConsumer.poll(correlationId);
         FlowsResponse response = (FlowsResponse) validateInfoMessage(request, message, correlationId);
-        List<FlowPayload> result = Converter.buildFlowsPayloadByFlows(response.getPayload());
+        List<FlowPayload> result = collectFlows(response.getFlowIds(), correlationId);
         logger.debug("\nGet flows: EXIT {}={}, num_flows {}\n\n\n", CORRELATION_ID, correlationId, result.size());
         return result;
     }
@@ -743,15 +741,38 @@ public class FlowServiceImpl implements FlowService {
      * {@inheritDoc}
      */
     @Override
-    public FlowCacheSyncResults syncFlowCache(final String correlationId) {
-        LOGGER.debug("Flow cache sync: {}={}", CORRELATION_ID, correlationId);
-        FlowCacheSyncRequest data = new FlowCacheSyncRequest();
+    public FlowCacheSyncResults syncFlowCache(SynchronizeCacheAction syncCacheAction, String correlationId) {
+        LOGGER.debug("Flow cache sync: {}={}, SynchronizeCacheAction={}", CORRELATION_ID, correlationId, syncCacheAction);
+        FlowCacheSyncRequest data = new FlowCacheSyncRequest(syncCacheAction);
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
         messageConsumer.clear();
         messageProducer.send(topic, request);
         Message message = (Message) messageConsumer.poll(correlationId);
         FlowCacheSyncResponse response = (FlowCacheSyncResponse) validateInfoMessage(request, message, correlationId);
         return response.getPayload();
+    }
+
+    private List<FlowPayload> collectFlows(List<String> flowIds, String correlationId) {
+        int requestsAmount = flowIds.size();
+        List<FlowPayload> result = new ArrayList<>(requestsAmount);
+        List<CommandMessage> requests = new ArrayList<>(requestsAmount);
+
+        for (String id : flowIds) {
+            String getFlowCorrelationId = correlationId + id;
+            FlowGetRequest data = new FlowGetRequest(new FlowIdStatusPayload(id, null));
+            CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), getFlowCorrelationId,
+                    Destination.WFM);
+            messageProducer.send(topic, request);
+            requests.add(request);
+        }
+
+        for (CommandMessage request : requests) {
+            Message message = (Message) messageConsumer.poll(request.getCorrelationId());
+            FlowResponse response = (FlowResponse) validateInfoMessage(request, message, correlationId);
+            result.add(Converter.buildFlowPayloadByFlow(response.getPayload()));
+        }
+
+        return result;
     }
 
 }

@@ -163,7 +163,8 @@ public class FlowTopology extends AbstractTopology {
                 .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.CREATE.toString())
                 .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.UPDATE.toString())
                 .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.DELETE.toString())
-                .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.STATUS.toString());
+                .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.STATUS.toString())
+                .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.CACHE_SYNC.toString());
 
         /*
          * Spout receives Topology Engine response

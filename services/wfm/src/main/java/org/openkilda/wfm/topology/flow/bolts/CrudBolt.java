@@ -17,15 +17,29 @@ package org.openkilda.wfm.topology.flow.bolts;
 
 import static java.lang.String.format;
 import static org.openkilda.messaging.Utils.MAPPER;
+import static org.openkilda.messaging.info.flow.FlowOperation.DELETE;
+import static org.openkilda.messaging.info.flow.FlowOperation.UPDATE;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.common.annotations.VisibleForTesting;
+import org.apache.storm.state.InMemoryKeyValueState;
+import org.apache.storm.task.OutputCollector;
+import org.apache.storm.task.TopologyContext;
+import org.apache.storm.topology.OutputFieldsDeclarer;
+import org.apache.storm.topology.base.BaseStatefulBolt;
+import org.apache.storm.tuple.Tuple;
+import org.apache.storm.tuple.Values;
+import org.apache.commons.lang.StringUtils;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.flow.FlowCacheSyncRequest;
 import org.openkilda.messaging.command.flow.FlowCreateRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowRestoreRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
+import org.openkilda.messaging.command.flow.SynchronizeCacheAction;
 import org.openkilda.messaging.ctrl.AbstractDumpState;
 import org.openkilda.messaging.ctrl.state.CrudBoltState;
 import org.openkilda.messaging.ctrl.state.FlowDump;
@@ -66,21 +80,20 @@ import org.openkilda.wfm.topology.flow.StreamType;
 import org.openkilda.wfm.topology.flow.utils.BidirectionalFlow;
 import org.openkilda.wfm.topology.flow.validation.FlowValidationException;
 import org.openkilda.wfm.topology.flow.validation.FlowValidator;
-
-import com.google.common.annotations.VisibleForTesting;
-import org.apache.storm.state.InMemoryKeyValueState;
-import org.apache.storm.task.OutputCollector;
-import org.apache.storm.task.TopologyContext;
-import org.apache.storm.topology.OutputFieldsDeclarer;
-import org.apache.storm.topology.base.BaseStatefulBolt;
-import org.apache.storm.tuple.Tuple;
-import org.apache.storm.tuple.Values;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import javax.annotation.Nullable;
 
 public class CrudBolt
         extends BaseStatefulBolt<InMemoryKeyValueState<String, FlowCache>>
@@ -153,6 +166,7 @@ public class CrudBolt
         outputFieldsDeclarer.declareStream(StreamType.DELETE.toString(), AbstractTopology.fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.STATUS.toString(), AbstractTopology.fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.RESPONSE.toString(), AbstractTopology.fieldMessage);
+        outputFieldsDeclarer.declareStream(StreamType.CACHE_SYNC.toString(), AbstractTopology.fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.ERROR.toString(), FlowTopology.fieldsMessageErrorType);
         // FIXME(dbogun): use proper tuple format
         outputFieldsDeclarer.declareStream(STREAM_ID_CTRL, AbstractTopology.fieldMessage);
@@ -309,6 +323,9 @@ public class CrudBolt
         } catch (IOException exception) {
             logger.error("Could not deserialize message {}", tuple, exception);
 
+        } catch (Exception e) {
+            logger.error(String.format("Unhandled exception in %s", getClass().getName()), e);
+
         } finally {
             logger.debug("Command message ack: component={}, stream={}, tuple={}",
                     tuple.getSourceComponent(), tuple.getSourceStreamId(), tuple);
@@ -319,86 +336,180 @@ public class CrudBolt
         logger.trace("Flow Cache after: {}", flowCache);
     }
 
-    private void handleCacheSyncRequest(CommandMessage message, Tuple tuple) throws IOException {
+    private void handleCacheSyncRequest(CommandMessage message, Tuple tuple) {
         logger.info("CACHE SYNCE: {}", message);
 
-        // NB: This is going to be a "bulky" operation - get all flows from DB, and synchronize
-        //      with the cache.
+        FlowCacheSyncRequest request = (FlowCacheSyncRequest) message.getData();
 
+        // NB: This is going to be a "bulky" operation - get all flows from DB, and synchronize with the cache.
 
         List<String> droppedFlows = new ArrayList<>();
         List<String> addedFlows = new ArrayList<>();
-        List<String> modifiedFlows = new ArrayList<>();
+        List<String> modifiedFlowChanges = new ArrayList<>();
+        List<String> modifiedFlowIds = new ArrayList<>();
         List<String> unchangedFlows = new ArrayList<>();
 
         List<FlowInfo> flowInfos = pathComputer.getFlowInfo();
 
         // Instead of determining left/right .. store based on flowid_& cookie
-        HashMap<String,FlowInfo> flowToInfo = new HashMap<>();
-        for (FlowInfo fi : flowInfos){
-            flowToInfo.put(fi.getFlowId()+fi.getCookie(),fi);
+        HashMap<String, FlowInfo> flowToInfo = new HashMap<>();
+        for (FlowInfo fi : flowInfos) {
+            flowToInfo.put(fi.getFlowId() + fi.getCookie(), fi);
         }
 
         // We first look at comparing what is in the DB to what is in the Cache
-        for (FlowInfo fi : flowInfos){
+        for (FlowInfo fi : flowInfos) {
             String flowid = fi.getFlowId();
-            if (flowCache.cacheContainsFlow(flowid)){
+            if (flowCache.cacheContainsFlow(flowid)) {
                 // TODO: better, more holistic comparison
                 // TODO: if the flow is modified, then just leverage drop / add primitives.
                 // TODO: Ensure that the DB is always the source of truth - cache and db ops part of transaction.
                 // Need to compare both sides
-                ImmutablePair<Flow,Flow> fc = flowCache.getFlow(flowid);
+                ImmutablePair<Flow, Flow> fc = flowCache.getFlow(flowid);
 
-                int count = modifiedFlows.size();
-                if (fi.getCookie() != fc.left.getCookie() && fi.getCookie() != fc.right.getCookie())
-                    modifiedFlows.add("cookie: " + flowid + ":" + fi.getCookie() + ":" + fc.left.getCookie() + ":" + fc.right.getCookie());
-                if (fi.getMeterId() != fc.left.getMeterId() && fi.getMeterId() != fc.right.getMeterId())
-                    modifiedFlows.add("meter: " + flowid + ":" + fi.getMeterId() + ":" + fc.left.getMeterId() + ":" + fc.right.getMeterId());
-                if (fi.getTransitVlanId() != fc.left.getTransitVlan() && fi.getTransitVlanId() != fc.right.getTransitVlan())
-                    modifiedFlows.add("transit: " + flowid + ":" + fi.getTransitVlanId() + ":" + fc.left.getTransitVlan() + ":" + fc.right.getTransitVlan());
-                if (!fi.getSrcSwitchId().equals(fc.left.getSourceSwitch()) && !fi.getSrcSwitchId().equals(fc.right.getSourceSwitch()))
-                    modifiedFlows.add("switch: " + flowid + "|" + fi.getSrcSwitchId() + "|" + fc.left.getSourceSwitch() + "|" + fc.right.getSourceSwitch());
-                if (count == modifiedFlows.size())
+                int count = modifiedFlowChanges.size();
+                if (fi.getCookie() != fc.left.getCookie() && fi.getCookie() != fc.right.getCookie()) {
+                    modifiedFlowChanges
+                            .add("cookie: " + flowid + ":" + fi.getCookie() + ":" + fc.left.getCookie() + ":" + fc.right
+                                    .getCookie());
+                }
+                if (fi.getMeterId() != fc.left.getMeterId() && fi.getMeterId() != fc.right.getMeterId()) {
+                    modifiedFlowChanges
+                            .add("meter: " + flowid + ":" + fi.getMeterId() + ":" + fc.left.getMeterId() + ":"
+                                    + fc.right.getMeterId());
+                }
+                if (fi.getTransitVlanId() != fc.left.getTransitVlan() && fi.getTransitVlanId() != fc.right
+                        .getTransitVlan()) {
+                    modifiedFlowChanges
+                            .add("transit: " + flowid + ":" + fi.getTransitVlanId() + ":" + fc.left.getTransitVlan()
+                                    + ":" + fc.right.getTransitVlan());
+                }
+                if (!fi.getSrcSwitchId().equals(fc.left.getSourceSwitch()) && !fi.getSrcSwitchId()
+                        .equals(fc.right.getSourceSwitch())) {
+                    modifiedFlowChanges
+                            .add("switch: " + flowid + "|" + fi.getSrcSwitchId() + "|" + fc.left.getSourceSwitch() + "|"
+                                    + fc.right.getSourceSwitch());
+                }
+
+                if (count == modifiedFlowChanges.size()) {
                     unchangedFlows.add(flowid);
+                } else {
+                    modifiedFlowIds.add(flowid);
+                }
             } else {
                 // TODO: need to get the flow from the DB and add it properly
                 addedFlows.add(flowid);
+
             }
         }
 
         // Now we see if the cache holds things not in the DB
-        for (ImmutablePair<Flow, Flow> flow : flowCache.dumpFlows()){
+        for (ImmutablePair<Flow, Flow> flow : flowCache.dumpFlows()) {
             String key = flow.left.getFlowId() + flow.left.getCookie();
             // compare the left .. if it is in, then check the right .. o/w remove it (no need to check right
-            if (!flowToInfo.containsKey(key)){
-/* (carmine) - This code is to drop the flow from the cache since it isn't in the DB
- *  But - the user can just as easily call delete in the NB API .. which should do the right thing.
- *  So, for now, just add the flow id.
- */
-//                String removedFlow = flowCache.removeFlow(flow.left.getFlowId()).toString();
-//                String asJson = MAPPER.writeValueAsString(removedFlow);
-//                droppedFlows.add(asJson);
+            if (!flowToInfo.containsKey(key)) {
                 droppedFlows.add(flow.left.getFlowId());
             } else {
                 key = flow.right.getFlowId() + flow.right.getCookie();
                 if (!flowToInfo.containsKey(key)) {
-// (carmine) - same comment..
-//                    String removedFlow = flowCache.removeFlow(flow.left.getFlowId()).toString();
-//                    String asJson = MAPPER.writeValueAsString(removedFlow);
-//                    droppedFlows.add(asJson);
                     droppedFlows.add(flow.right.getFlowId());
                 }
             }
         }
 
+        if (request.getSynchronizeCache() == SynchronizeCacheAction.SYNCHRONIZE_CACHE) {
+            synchronizeCache(addedFlows, modifiedFlowIds, droppedFlows, tuple, message.getCorrelationId());
+        } else if (request.getSynchronizeCache() == SynchronizeCacheAction.INVALIDATE_CACHE) {
+            invalidateCache(addedFlows, modifiedFlowIds, droppedFlows, tuple, message.getCorrelationId());
+        }
+
         FlowCacheSyncResults results = new FlowCacheSyncResults(
                 droppedFlows.toArray(new String[0]), addedFlows.toArray(new String[0]),
-                modifiedFlows.toArray(new String[0]), unchangedFlows.toArray(new String[0]));
+                modifiedFlowChanges.toArray(new String[0]), unchangedFlows.toArray(new String[0]));
         Values northbound = new Values(new InfoMessage(new FlowCacheSyncResponse(results),
                 message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
         outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
     }
 
+    /**
+     * Synchronize the cache, propagate updates further (i.e. emit FlowOperation.CACHE)
+     */
+    private void synchronizeCache(List<String> addedFlowIds, List<String> modifiedFlowIds, List<String> droppedFlowIds,
+            Tuple tuple, String correlationId) {
+        logger.info("Synchronizing the flow cache data: {} dropped, {} added, {} modified.",
+                droppedFlowIds.size(), addedFlowIds.size(), modifiedFlowIds.size());
+
+        deleteFromCache(droppedFlowIds, tuple, correlationId);
+
+        // override added/modified flows in the cache
+        Stream.concat(addedFlowIds.stream(), modifiedFlowIds.stream())
+                .map(pathComputer::getFlows)
+                .filter(flows -> !flows.isEmpty())
+                .map(flows -> {
+                    BidirectionalFlow flowPair = new BidirectionalFlow();
+                    flows.forEach(flowPair::add);
+                    return flowPair;
+                })
+                .forEach(flowPair -> {
+                    final ImmutablePair<Flow, Flow> flow = flowPair.makeFlowPair();
+                    final String flowId = flow.getLeft().getFlowId();
+                    logger.debug("Refresh the flow: {}", flowId);
+
+                    flowCache.pushFlow(flow);
+
+                    // propagate updates further
+                    emitCacheSyncInfoMessage(flowId, flow, tuple, correlationId);
+                });
+    }
+
+    /**
+     * Purge and re-initialize the cache, propagate updates further (i.e. emit FlowOperation.CACHE)
+     */
+    private void invalidateCache(List<String> addedFlowIds, List<String> modifiedFlowIds, List<String> droppedFlowIds,
+            Tuple tuple, String correlationId) {
+        logger.info("Invalidating the flow cache data: {} dropped, {} added, {} modified.",
+                droppedFlowIds.size(), addedFlowIds.size(), modifiedFlowIds.size());
+
+        deleteFromCache(droppedFlowIds, tuple, correlationId);
+
+        initFlowCache();
+
+        // propagate updates further
+        flowCache.dumpFlows()
+                .forEach(flow -> {
+                    final String flowId = flow.getLeft().getFlowId();
+                    logger.debug("Refresh the flow: {}", flowId);
+
+                    emitCacheSyncInfoMessage(flowId, flow, tuple, correlationId);
+                });
+    }
+
+    /**
+     * Remove the flows from the cache and propagate changes further (i.e. emit FlowOperation.DELETE)
+     */
+    private void deleteFromCache(List<String> droppedFlowIds, Tuple tuple, String correlationId) {
+        droppedFlowIds.forEach(flowId -> {
+            logger.debug("Delete the flow: {}", flowId);
+
+            flowCache.removeFlow(flowId);
+
+            emitCacheSyncInfoMessage(flowId, null, tuple, correlationId);
+        });
+    }
+
+    private void emitCacheSyncInfoMessage(String flowId, @Nullable ImmutablePair<Flow, Flow> flow,
+            Tuple tuple, String correlationId) {
+        String subCorrelationId = format("%s-%s", correlationId, flowId);
+        FlowInfoData data = new FlowInfoData(flowId, flow, FlowOperation.CACHE, subCorrelationId);
+        InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), subCorrelationId);
+
+        try {
+            Values topology = new Values(MAPPER.writeValueAsString(infoMessage));
+            outputCollector.emit(StreamType.CACHE_SYNC.toString(), tuple, topology);
+        } catch (JsonProcessingException e) {
+            logger.error("Unable to serialize the message: {}", infoMessage);
+        }
+    }
 
     private void handlePushRequest(String flowId, InfoMessage message, Tuple tuple) throws IOException {
         logger.info("PUSH flow: {} :: {}", flowId, message);
@@ -444,7 +555,7 @@ public class CrudBolt
 
         logger.info("Deleted flow: {}", flow);
 
-        FlowInfoData data = new FlowInfoData(flowId, flow, FlowOperation.DELETE, message.getCorrelationId());
+        FlowInfoData data = new FlowInfoData(flowId, flow, DELETE, message.getCorrelationId());
         InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), message.getCorrelationId());
         Values topology = new Values(MAPPER.writeValueAsString(infoMessage));
         outputCollector.emit(StreamType.DELETE.toString(), tuple, topology);
@@ -513,7 +624,7 @@ public class CrudBolt
                         flow = flowCache.updateFlow(flow.getLeft(), path);
                         logger.warn("Rerouted flow with new path: {}", flow);
 
-                        FlowInfoData data = new FlowInfoData(flowId, flow, FlowOperation.UPDATE,
+                        FlowInfoData data = new FlowInfoData(flowId, flow, UPDATE,
                                 message.getCorrelationId());
                         InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(),
                                 message.getCorrelationId());
@@ -574,7 +685,7 @@ public class CrudBolt
 
             Values topology = new Values(Utils.MAPPER.writeValueAsString(
                     new FlowInfoData(requestedFlow.getLeft().getFlowId(), flow,
-                            FlowOperation.UPDATE, message.getCorrelationId())));
+                            UPDATE, message.getCorrelationId())));
             outputCollector.emit(StreamType.UPDATE.toString(), tuple, topology);
         } catch (UnroutablePathException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
@@ -603,7 +714,7 @@ public class CrudBolt
         ImmutablePair<Flow, Flow> flow = flowCache.updateFlow(requestedFlow, path);
         logger.info("Updated flow: {}", flow);
 
-        FlowInfoData data = new FlowInfoData(requestedFlow.getFlowId(), flow, FlowOperation.UPDATE,
+        FlowInfoData data = new FlowInfoData(requestedFlow.getFlowId(), flow, UPDATE,
                 message.getCorrelationId());
         InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), message.getCorrelationId());
         Values topology = new Values(MAPPER.writeValueAsString(infoMessage));
@@ -615,11 +726,14 @@ public class CrudBolt
     }
 
     private void handleDumpRequest(CommandMessage message, Tuple tuple) {
-        List<Flow> flows = flowCache.dumpFlows().stream().map(this::buildFlowResponse).collect(Collectors.toList());
+        List<String> flowIds = flowCache.dumpFlows().stream()
+                .map(ImmutablePair::getLeft)
+                .map(Flow::getFlowId)
+                .collect(Collectors.toList());
 
-        logger.info("Dump flows: {}", flows);
+        logger.info("Dump flows: {}", StringUtils.join(flowIds, ", "));
 
-        Values northbound = new Values(new InfoMessage(new FlowsResponse(flows),
+        Values northbound = new Values(new InfoMessage(new FlowsResponse(flowIds),
                 message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
         outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
     }

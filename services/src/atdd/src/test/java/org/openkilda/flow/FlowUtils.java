@@ -24,6 +24,7 @@ import static org.openkilda.DefaultParameters.topologyEndpoint;
 import static org.openkilda.DefaultParameters.topologyPassword;
 import static org.openkilda.DefaultParameters.topologyUsername;
 
+import org.glassfish.jersey.client.HttpUrlConnectorProvider;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.info.event.PathInfoData;
@@ -31,6 +32,7 @@ import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.HealthCheck;
 import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.messaging.payload.FeatureTogglePayload;
+import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
@@ -628,5 +630,93 @@ public class FlowUtils {
         }
 
         return response.readEntity(FeatureTogglePayload.class);
+    }
+
+    /**
+     * Perform the flow cache synchronization (via Northbound service).
+     */
+    public static FlowCacheSyncResults synchFlowCache() {
+        System.out.println("\n==> Northbound Sync Flow Cache");
+
+        long current = System.currentTimeMillis();
+        Client client = clientFactory();
+        // Enable support of PATCH method
+        client.property(HttpUrlConnectorProvider.SET_METHOD_WORKAROUND, true);
+
+        Response response = client
+                .target(northboundEndpoint)
+                .path("/api/v1/flows/cache")
+                .request(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
+                .header(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()))
+                .method("PATCH");
+
+        System.out.println(format("===> Northbound Sync Flow Cache Time: %,.3f", getTimeDuration(current)));
+
+        if (response.getStatus() != 200) {
+            System.out.println(format("====> Error: Northbound Sync Flow Cache = PATCH status: %s", response.getStatus()));
+            return null;
+        }
+
+        System.out.println(format("===> Response = %s", response.toString()));
+        return response.readEntity(FlowCacheSyncResults.class);
+    }
+
+    /**
+     * Perform the flow cache invalidation (via Northbound service).
+     */
+    public static FlowCacheSyncResults invalidateFlowCache() {
+        System.out.println("\n==> Northbound Invalidate Flow Cache");
+
+        long current = System.currentTimeMillis();
+        Client client = clientFactory();
+
+        Response response = client
+                .target(northboundEndpoint)
+                .path("/api/v1/flows/cache")
+                .request(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
+                .header(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()))
+                .delete();
+
+        System.out.println(format("===> Northbound Invalidate Flow Cache Time: %,.3f", getTimeDuration(current)));
+
+        if (response.getStatus() != 200) {
+            System.out.println(format("====> Error: Northbound Invalidate Flow Cache = PATCH status: %s", response.getStatus()));
+            return null;
+        }
+
+        System.out.println(format("===> Response = %s", response.toString()));
+        return response.readEntity(FlowCacheSyncResults.class);
+    }
+
+    /**
+     * Deletes flow through TopologyEngine service.
+     */
+    public static boolean deleteFlowViaTE(final String flowId) {
+        System.out.println("\n==> TopologyEngine Delete Flow");
+
+        long current = System.currentTimeMillis();
+        Client client = clientFactory();
+
+        Response response = client
+                .target(topologyEndpoint)
+                .path("/api/v1/flow/{flowid}")
+                .resolveTemplate("flowid", flowId)
+                .request(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
+                .delete();
+
+        System.out.println(format("===> TopologyEngine Delete Flow Time: %,.3f", getTimeDuration(current)));
+
+        int status = response.getStatus();
+        if (status != 200) {
+            System.out.println(String.format("====> Error: TopologyEngine Delete Flow = %s",
+                    response.readEntity(String.class)));
+            return false;
+        }
+
+        System.out.println(format("====> TopologyEngine Delete Flow = %s", response.readEntity(String.class)));
+        return true;
     }
 }

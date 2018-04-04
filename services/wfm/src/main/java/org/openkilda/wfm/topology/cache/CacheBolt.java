@@ -595,6 +595,12 @@ public class CacheBolt
                 break;
 
             case CACHE:
+                logger.debug("Sync flow cache message received: {}", flowData);
+                if(flowData.getPayload() != null) {
+                    flowCache.putFlow(flowData.getPayload());
+                } else {
+                    flowCache.removeFlow(flowData.getFlowId());
+                }
                 break;
 
             default:
