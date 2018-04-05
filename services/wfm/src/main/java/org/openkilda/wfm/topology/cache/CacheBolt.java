@@ -51,7 +51,6 @@ import org.openkilda.pce.cache.ResourceCache;
 import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
 import org.openkilda.wfm.topology.AbstractTopology;
-import org.openkilda.wfm.topology.cache.service.CacheWarmingService;
 import org.openkilda.wfm.topology.utils.AbstractTickStatefulBolt;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -118,8 +117,6 @@ public class CacheBolt
      * Here is a mapping between switch and all flows that was rerouted because switch went down.
      */
     private final Map<String, Set<String>> reroutedFlows = new ConcurrentHashMap<>();
-
-    private CacheWarmingService cacheWarmingService;
 
     private String dumpRequestCorrelationId = null;
     private Set<Integer> dumpRequestUnprocessedChunks = null;
@@ -203,7 +200,6 @@ public class CacheBolt
          */
         // TODO: Eliminate the inefficiency introduced through the hack
         try {
-            logger.info("Received cache data={}", tuple);
             BaseMessage bm = MAPPER.readValue(json, BaseMessage.class);
             if (bm instanceof InfoMessage) {
                 InfoMessage message = (InfoMessage) bm;
@@ -218,39 +214,37 @@ public class CacheBolt
                                     + "component={}, stream={}, tuple={}",
                             tuple.getSourceComponent(), tuple.getSourceStreamId(), tuple);
                 } else if (data instanceof SwitchInfoData) {
-                    logger.info("Cache update switch info data: {}", data);
                     handleSwitchEvent((SwitchInfoData) data, tuple);
 
                 } else if (data instanceof IslInfoData) {
-                    logger.info("Cache update isl info data: {}", data);
                     handleIslEvent((IslInfoData) data, tuple);
 
                 } else if (data instanceof PortInfoData) {
-                    logger.info("Cache update port info data: {}", data);
                     handlePortEvent((PortInfoData) data, tuple);
 
                 } else if (data instanceof FlowInfoData) {
-                    logger.info("Cache update flow data: {}", data);
 
                     FlowInfoData flowData = (FlowInfoData) data;
-                    handleFlowEvent(flowData, tuple);
+                    handleFlowEvent(flowData, tuple, correlationId);
                 } else if (data instanceof NetworkTopologyChange) {
-                    logger.info("Switch flows reroute request");
+                    logger.debug("Switch flows reroute request");
 
                     NetworkTopologyChange topologyChange = (NetworkTopologyChange) data;
                     handleNetworkTopologyChangeEvent(topologyChange, tuple);
                 } else {
-                    logger.error("Skip undefined info data type {}", json);
+                    logger.warn("Skip undefined info data type {}", json);
                 }
             } else {
-                logger.error("Skip undefined message type {}", json);
+                logger.warn("Skip undefined message type {}", json);
             }
 
         } catch (CacheException exception) {
             logger.error("Could not process message {}", tuple, exception);
+            outputCollector.ack(tuple);
 
         } catch (IOException exception) {
             logger.error("Could not deserialize message {}", tuple, exception);
+            outputCollector.ack(tuple);
         } finally {
             if (isReceivedCacheInfo) {
                 outputCollector.ack(tuple);
@@ -341,7 +335,7 @@ public class CacheBolt
     }
 
     private void handleSwitchEvent(SwitchInfoData sw, Tuple tuple) throws IOException {
-        logger.info("State update switch {} message {}", sw.getSwitchId(), sw.getState());
+        logger.debug("State update switch {} message {}", sw.getSwitchId(), sw.getState());
         Set<ImmutablePair<Flow, Flow>> affectedFlows;
 
         switch (sw.getState()) {
@@ -374,7 +368,7 @@ public class CacheBolt
     }
 
     private void handleIslEvent(IslInfoData isl, Tuple tuple) {
-        logger.info("State update isl {} message cached {}", isl.getId(), isl.getState());
+        logger.debug("State update isl {} message cached {}", isl.getId(), isl.getState());
         Set<ImmutablePair<Flow, Flow>> affectedFlows;
 
         switch (isl.getState()) {
@@ -412,7 +406,8 @@ public class CacheBolt
     }
 
     private void handlePortEvent(PortInfoData port, Tuple tuple) {
-        logger.info("State update port {}_{} message cached {}", port.getSwitchId(), port.getPortNo(), port.getState());
+        logger.debug("State update port {}_{} message cached {}",
+                port.getSwitchId(), port.getPortNo(), port.getState());
 
         switch (port.getState()) {
             case DOWN:
@@ -463,14 +458,14 @@ public class CacheBolt
         Message message = new InfoMessage(data, System.currentTimeMillis(),
                 correlationId, Destination.TOPOLOGY_ENGINE);
         outputCollector.emit(StreamType.TPE.toString(), tuple, new Values(MAPPER.writeValueAsString(message)));
-        logger.info("Flow command message sent");
+        logger.debug("Flow command message sent");
     }
 
     private void emitFlowCrudMessage(InfoData data, Tuple tuple, String correlationId) throws IOException {
         Message message = new InfoMessage(data, System.currentTimeMillis(),
                 correlationId, Destination.WFM);
         outputCollector.emit(StreamType.WFM_DUMP.toString(), tuple, new Values(MAPPER.writeValueAsString(message)));
-        logger.info("Flow command message sent");
+        logger.debug("Flow command message sent");
     }
 
     // FIXME(surabujin): deprecated and should be droppped
@@ -544,60 +539,62 @@ public class CacheBolt
         }
     }
 
-    private void handleFlowEvent(FlowInfoData flowData, Tuple tuple) throws IOException {
+    private void handleFlowEvent(FlowInfoData flowData, Tuple tuple, String correlationId) throws IOException {
         switch (flowData.getOperation()) {
             case PUSH:
             case PUSH_PROPAGATE:
-                logger.debug("Flow {} message received: {}", flowData.getOperation(), flowData);
+                logger.debug("Flow {} message received: {}, correlationId: {}", flowData.getOperation(), flowData,
+                        correlationId);
                 flowCache.putFlow(flowData.getPayload());
-                logger.info("Flow {} message processed: {}", flowData.getOperation(), flowData);
                 // do not emit to TPE .. NB will send directly
                 break;
 
             case UNPUSH:
             case UNPUSH_PROPAGATE:
-                logger.debug("Flow {} message received: {}", flowData.getOperation(), flowData);
+                logger.trace("Flow {} message received: {}, correlationId: {}", flowData.getOperation(), flowData,
+                        correlationId);
                 String flowsId2 = flowData.getPayload().getLeft().getFlowId();
                 flowCache.removeFlow(flowsId2);
                 reroutedFlows.remove(flowsId2);
-                logger.info("Flow {} message processed: {}", flowData.getOperation(), flowData);
+                logger.debug("Flow {} message processed: {}, correlationId: {}", flowData.getOperation(), flowData,
+                        correlationId);
                 break;
 
 
             case CREATE:
                 // TODO: This should be more lenient .. in case of retries
-                logger.debug("Flow create message received: {}", flowData);
+                logger.trace("Flow create message received: {}, correlationId: {}", flowData, correlationId);
                 flowCache.putFlow(flowData.getPayload());
                 emitFlowMessage(flowData, tuple, flowData.getCorrelationId());
-                logger.info("Flow create message sent: {}", flowData);
+                logger.debug("Flow create message sent: {}, correlationId: {}", flowData, correlationId);
                 break;
 
             case DELETE:
                 // TODO: This should be more lenient .. in case of retries
-                logger.debug("Flow remove message received: {}", flowData);
+                logger.trace("Flow remove message received: {}, correlationId: {}", flowData, correlationId);
                 String flowsId = flowData.getPayload().getLeft().getFlowId();
                 flowCache.removeFlow(flowsId);
                 reroutedFlows.remove(flowsId);
                 emitFlowMessage(flowData, tuple, flowData.getCorrelationId());
-                logger.info("Flow remove message sent: {}", flowData);
+                logger.debug("Flow remove message sent: {}, correlationId: {} ", flowData, correlationId);
                 break;
 
             case UPDATE:
-                logger.info("Flow update message received: {}", flowData);
+                logger.trace("Flow update message received: {}, correlationId: {}", flowData, correlationId);
                 processFlowUpdate(flowData.getPayload().getLeft());
                 // TODO: This should be more lenient .. in case of retries
                 flowCache.putFlow(flowData.getPayload());
                 emitFlowMessage(flowData, tuple, flowData.getCorrelationId());
-                logger.info("Flow update message sent: {}", flowData);
+                logger.debug("Flow update message sent: {}, correlationId: {}", flowData, correlationId);
                 break;
 
             case STATE:
                 flowCache.putFlow(flowData.getPayload());
-                logger.info("Flow state changed: {}", flowData);
+                logger.debug("Flow state changed: {}, correlationId: {}", flowData, correlationId);
                 break;
 
             case CACHE:
-                logger.debug("Sync flow cache message received: {}", flowData);
+                logger.debug("Sync flow cache message received: {}, correlationId: {}", flowData, correlationId);
                 if(flowData.getPayload() != null) {
                     flowCache.putFlow(flowData.getPayload());
                 } else {
