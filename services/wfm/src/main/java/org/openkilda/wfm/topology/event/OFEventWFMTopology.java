@@ -105,9 +105,9 @@ public class OFEventWFMTopology extends AbstractTopology {
                 .shuffleGrouping(spoutName);
 
         builder.setBolt(kafkaTopoEngTopic, createKafkaBolt(kafkaTopoEngTopic),
-                config.getParallelism()).shuffleGrouping(boltName, kafkaTopoEngTopic);
+                config.getParallelism()).shuffleGrouping(boltName, OFELinkBolt.STREAM_ID_TOPO_ENGINE);
         builder.setBolt(kafkaSpeakerTopic, createKafkaBolt(kafkaSpeakerTopic),
-                config.getParallelism()).shuffleGrouping(boltName, kafkaSpeakerTopic);
+                config.getParallelism()).shuffleGrouping(boltName, OFELinkBolt.STREAM_ID_SPEAKER);
 
         // TODO: verify this ctrlTarget after refactoring.
         ctrlTargets.add(new CtrlBoltRef(boltName, (ICtrlBolt) bolt, bd));

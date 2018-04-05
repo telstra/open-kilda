@@ -17,7 +17,10 @@ public class TopologyConfig {
     private Integer discoveryInterval;
     private Integer discoveryTimeout;
     private Integer discoveryLimit;
-    private float discoverySpeakerFailureTimeout;
+    private final float discoverySpeakerFailureTimeout;
+    private final float discoveryDropOutdatedInputIn;
+    private final float discoveryDumpRequestTimeout;
+
     private String filterDirectory;
     private Level loggerLevel;
     private String loggerWatermark;
@@ -76,6 +79,8 @@ public class TopologyConfig {
         filterDirectory = config.getString("filter.directory");
         loggerLevel = Level.valueOf(config.getString("logger.level"));
         loggerWatermark = config.getString("logger.watermark");
+        discoveryDropOutdatedInputIn = config.getFloat("discovery.drop-input-message-in-seconds");
+        discoveryDumpRequestTimeout = config.getFloat("discovery.dump-request-timeout-seconds");
 
         zookeeperHosts = config.getString("zookeeper.hosts");
         zookeeperSessionTimeout = (int)(config.getFloat("zookeeper.session.timeout") * 1000);
@@ -156,6 +161,14 @@ public class TopologyConfig {
 
     public String getFilterDirectory() {
         return filterDirectory;
+    }
+
+    public float getDiscoveryDropOutdatedInputIn() {
+        return discoveryDropOutdatedInputIn;
+    }
+
+    public float getDiscoveryDumpRequestTimeout() {
+        return discoveryDumpRequestTimeout;
     }
 
     public Level getLoggerLevel() {
