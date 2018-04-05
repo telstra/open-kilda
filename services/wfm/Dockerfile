@@ -21,15 +21,13 @@ RUN apt-get update
 RUN pip install kafka
 RUN echo "PATH=$PATH:/opt/storm/bin" >> ~/.bashrc
 
-
+WORKDIR /app
 ADD app/deploy_topos_and_monitor.sh /app/
 RUN chmod 777 /app/deploy_topos_and_monitor.sh
 ADD Makefile /app/
 ADD src/main/resources/topology.properties /app/
-ADD target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar /app/target/
-RUN TZ=Australia/Melbourne date >> /container_baked_on.txt
-
-WORKDIR /app
-
-# Default command.
 CMD ["/app/deploy_topos_and_monitor.sh", "topology.properties"]
+
+ADD target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar /app/target/
+
+RUN TZ=Australia/Melbourne date >> /container_baked_on.txt

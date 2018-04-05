@@ -34,7 +34,8 @@ import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.discovery.NetworkInfoData;
+import org.openkilda.messaging.info.discovery.NetworkSyncBeginMarker;
+import org.openkilda.messaging.info.discovery.NetworkSyncEndMarker;
 import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
@@ -48,6 +49,7 @@ import org.openkilda.messaging.payload.flow.OutputVlanType;
 import net.floodlightcontroller.core.IOFSwitch;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
+import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.slf4j.Logger;
@@ -354,35 +356,38 @@ class RecordHandler implements Runnable {
      * @param message NetworkCommandData
      */
     private void doNetworkDump(final CommandMessage message) {
-        logger.info("Create network dump");
-        NetworkCommandData command = (NetworkCommandData) message.getData();
+        String correlationId = message.getCorrelationId();
+        KafkaMessageProducer kafkaProducer = context.getKafkaProducer();
+
+        logger.debug("Processing request from WFM to dump switches. {}", correlationId);
+
+        kafkaProducer.postMessage(OUTPUT_DISCO_TOPIC,
+                new InfoMessage(new NetworkSyncBeginMarker(), System.currentTimeMillis(), correlationId));
 
         Map<DatapathId, IOFSwitch> allSwitchMap = context.getSwitchManager().getAllSwitchMap();
 
-        Set<SwitchInfoData> switchesInfoData = allSwitchMap.values().stream().map(
-                this::buildSwitchInfoData).collect(Collectors.toSet());
+        allSwitchMap.values().stream()
+                .map(this::buildSwitchInfoData)
+                .forEach(sw ->
+                        kafkaProducer.postMessage(OUTPUT_DISCO_TOPIC,
+                                new InfoMessage(sw, System.currentTimeMillis(), correlationId)));
 
-        Set<PortInfoData> portsInfoData = allSwitchMap.values().stream().flatMap(sw ->
-                sw.getEnabledPorts().stream().map( port ->
-                        new PortInfoData(sw.getId().toString(), port.getPortNo().getPortNumber(), null,
-                        PortChangeType.UP)
-                    ).collect(Collectors.toSet()).stream())
-                .collect(Collectors.toSet());
+        allSwitchMap.values().stream()
+                .flatMap(sw ->
+                        sw.getEnabledPorts().stream()
+                                .map(port -> buildPort(sw, port))
+                                .collect(Collectors.toSet())
+                                .stream())
+                .forEach(port ->
+                        kafkaProducer.postMessage(OUTPUT_DISCO_TOPIC,
+                                new InfoMessage(port, System.currentTimeMillis(), correlationId)));
 
-        NetworkInfoData dump = new NetworkInfoData(
-                command.getRequester(),
-                switchesInfoData,
-                portsInfoData,
-                Collections.emptySet(),
-                Collections.emptySet(),
-                null);
-
-        InfoMessage infoMessage = new InfoMessage(dump, System.currentTimeMillis(),
-                message.getCorrelationId());
-
-        context.getKafkaProducer().postMessage(OUTPUT_DISCO_TOPIC, infoMessage);
+        kafkaProducer.postMessage(
+                OUTPUT_DISCO_TOPIC,
+                new InfoMessage(
+                        new NetworkSyncEndMarker(), System.currentTimeMillis(),
+                        correlationId));
     }
-
 
     private void doInstallSwitchRules(final CommandMessage message, String replyToTopic, Destination replyDestination) {
         SwitchRulesInstallRequest request = (SwitchRulesInstallRequest) message.getData();
@@ -591,6 +596,11 @@ class RecordHandler implements Runnable {
         // I don't know is that correct
         SwitchState state = sw.isActive() ? SwitchState.ACTIVATED : SwitchState.ADDED;
         return IOFSwitchConverter.buildSwitchInfoData(sw, state);
+    }
+
+    private PortInfoData buildPort(IOFSwitch sw, OFPortDesc port) {
+        return new PortInfoData(sw.getId().toString(), port.getPortNo().getPortNumber(), null,
+                PortChangeType.UP);
     }
 
     public static class Factory {
