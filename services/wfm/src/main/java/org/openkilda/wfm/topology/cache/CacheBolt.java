@@ -256,22 +256,6 @@ public class CacheBolt
         output.declareStream(STREAM_ID_CTRL, AbstractTopology.fieldMessage);
     }
 
-    private void initCache(NetworkInfoData data) {
-        if (data != null) {
-            List<FlowInfo> flowInfos = pathComputer.getFlowInfo();
-            logger.info("Fill network state {}", data);
-            data.getSwitches().forEach(networkCache::createOrUpdateSwitch);
-            data.getIsls().forEach(networkCache::createOrUpdateIsl);
-
-            logger.info("Load flows {}", data.getFlows().size());
-            data.getFlows().forEach(flowCache::pushFlow);
-
-            // FIXME(surabujin): deprecated and should be droppped
-            //        logger.info("Loaded flows {}", flowCache);
-            //        emitRestoreCommands(data.getFlows(), tuple);
-        }
-    }
-
     private void handleSwitchEvent(SwitchInfoData sw, Tuple tuple) throws IOException {
         logger.debug("State update switch {} message {}", sw.getSwitchId(), sw.getState());
         Set<ImmutablePair<Flow, Flow>> affectedFlows;
@@ -603,24 +587,18 @@ public class CacheBolt
     }
 
     private void initNetwork() {
-        Set<SwitchInfoData> switches = new HashSet<>();
-        Set<IslInfoData> links = new HashSet<>();
+        logger.info("Network Cache: Initializing");
+        Set<SwitchInfoData> switches = new HashSet<>(pathComputer.getSwitches());
+        Set<IslInfoData> links = new HashSet<>(pathComputer.getIsls());
 
+        // Since this is initNetwork, we can call load, which will call "Create" inside of networkCache.
+        // The alternative is to call networkCache::createOrUpdateSwitch / networkCache::createOrUpdateIsl
         networkCache.load(switches, links);
+        logger.info("Network Cache: Initialized");
     }
 
     private void initFlowCache() {
-        Map<String, BidirectionalFlow> flowPairsMap = getFlowPairs();
-        for (BidirectionalFlow bidirectionalFlow : flowPairsMap.values()) {
-            try {
-                flowCache.pushFlow(bidirectionalFlow.makeFlowPair());
-            } catch (InvalidArgumentException e) {
-                logger.error("Invalid flow pairing {}: {}", bidirectionalFlow.anyDefined().getFlowId(), e.toString());
-            }
-        }
-    }
-
-    private Map<String, BidirectionalFlow> getFlowPairs() {
+        logger.info("Flow Cache: Initializing");
         Map<String, BidirectionalFlow> flowPairsMap = new HashMap<>();
         for (Flow flow : pathComputer.getAllFlows()) {
             if (!flowPairsMap.containsKey(flow.getFlowId())) {
@@ -635,7 +613,17 @@ public class CacheBolt
             }
         }
 
-        return flowPairsMap;
+        for (BidirectionalFlow bidirectionalFlow : flowPairsMap.values()) {
+            try {
+                flowCache.pushFlow(bidirectionalFlow.makeFlowPair());
+            } catch (InvalidArgumentException e) {
+                logger.error(
+                        "Invalid flow pairing {}: {}",
+                        bidirectionalFlow.anyDefined().getFlowId(),
+                        e.toString());
+            }
+        }
+        logger.info("Flow Cache: Initialized");
     }
 
     @Override

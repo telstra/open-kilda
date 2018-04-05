@@ -15,6 +15,10 @@ import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.io.fs.FileUtils;
 import org.neo4j.kernel.configuration.BoltConnector;
+import org.openkilda.messaging.info.event.IslChangeType;
+import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.messaging.model.Flow;
 
 import java.io.File;
@@ -81,5 +85,88 @@ public class NeoDriverTest {
         Assert.assertEquals("f1", flow.getFlowId());
         Assert.assertEquals(true, flow.isIgnoreBandwidth());
     }
+
+
+    @Test
+    public void getAllIsl() {
+        try ( Transaction tx = graphDb.beginTx() ) {
+            Node node1, node2;
+            node1 = graphDb.createNode(Label.label("switch"));
+            node1.setProperty("name", "00:01");
+            node2 = graphDb.createNode(Label.label("switch"));
+            node2.setProperty("name", "00:02");
+            Relationship rel1 = node1.createRelationshipTo(node2, RelationshipType.withName("isl"));
+            Relationship rel2 = node2.createRelationshipTo(node1, RelationshipType.withName("isl"));
+            rel1.setProperty("src_switch","00:01");
+            rel1.setProperty("src_port",1);
+            rel1.setProperty("dst_switch","00:02");
+            rel1.setProperty("dst_port",2);
+            rel1.setProperty("speed",200);
+            rel1.setProperty("max_bandwidth",300);
+            rel1.setProperty("latency",400);
+            rel1.setProperty("available_bandwidth",500);
+            rel1.setProperty("status","active");
+
+            rel2.setProperty("src_switch","00:02");
+            rel2.setProperty("src_port",3);
+            rel2.setProperty("dst_switch","00:01");
+            rel2.setProperty("dst_port",4);
+            rel2.setProperty("speed",600);
+            rel2.setProperty("max_bandwidth",700);
+            rel2.setProperty("latency",800);
+            rel2.setProperty("available_bandwidth",900);
+            rel2.setProperty("status","inactive");
+
+            tx.success();
+        }
+
+        List<IslInfoData> isls = target.getIsls();
+        IslInfoData isl = isls.get(0);
+        Assert.assertEquals(200, isl.getSpeed());
+        Assert.assertEquals("00:01", isl.getPath().get(0).getSwitchId());
+        Assert.assertEquals(IslChangeType.DISCOVERED, isl.getState());
+
+        isl = isls.get(1);
+        Assert.assertEquals(IslChangeType.FAILED, isl.getState());
+
+    }
+
+
+    @Test
+    public void getAllSwitches() {
+        try ( Transaction tx = graphDb.beginTx() ) {
+            Node node1, node2;
+            node1 = graphDb.createNode(Label.label("switch"));
+            node1.setProperty("name", "00:01");
+            node1.setProperty("address","1");
+            node1.setProperty("hostname","2");
+            node1.setProperty("description","3");
+            node1.setProperty("controller","4");
+            node1.setProperty("state","active");
+
+            node2 = graphDb.createNode(Label.label("switch"));
+            node2.setProperty("name", "00:02");
+            node2.setProperty("address","5");
+            node2.setProperty("hostname","6");
+            node2.setProperty("description","7");
+            node2.setProperty("controller","8");
+            node2.setProperty("state","inactive");
+
+            tx.success();
+        }
+
+        List<SwitchInfoData> switches = target.getSwitches();
+        SwitchInfoData switch1 = switches.get(0);
+        Assert.assertEquals("00:01", switch1.getSwitchId());
+        Assert.assertEquals(SwitchState.ACTIVATED, switch1.getState());
+
+        SwitchInfoData switch2 = switches.get(1);
+        Assert.assertEquals("00:02", switch2.getSwitchId());
+        Assert.assertNotEquals(SwitchState.ACTIVATED, switch2.getState());
+    }
+
+
+
+
 
 }
