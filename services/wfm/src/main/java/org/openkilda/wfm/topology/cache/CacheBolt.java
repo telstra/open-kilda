@@ -587,16 +587,18 @@ public class CacheBolt
     }
 
     private void initNetwork() {
+        logger.info("Network Cache: Initializing");
         Set<SwitchInfoData> switches = new HashSet<>(pathComputer.getSwitches());
         Set<IslInfoData> links = new HashSet<>(pathComputer.getIsls());
 
         // Since this is initNetwork, we can call load, which will call "Create" inside of networkCache.
         // The alternative is to call networkCache::createOrUpdateSwitch / networkCache::createOrUpdateIsl
         networkCache.load(switches, links);
-
+        logger.info("Network Cache: Initialized");
     }
 
     private void initFlowCache() {
+        logger.info("Flow Cache: Initializing");
         Map<String, BidirectionalFlow> flowPairsMap = new HashMap<>();
         for (Flow flow : pathComputer.getAllFlows()) {
             if (!flowPairsMap.containsKey(flow.getFlowId())) {
@@ -621,6 +623,7 @@ public class CacheBolt
                         e.toString());
             }
         }
+        logger.info("Flow Cache: Initialized");
     }
 
     @Override
