@@ -18,8 +18,7 @@ package org.openkilda.wfm.topology.cache;
 import static org.openkilda.messaging.Utils.MAPPER;
 
 import org.apache.storm.topology.base.BaseStatefulBolt;
-import org.glassfish.jersey.client.ClientConfig;
-import org.glassfish.jersey.client.ClientProperties;
+import org.neo4j.cypher.InvalidArgumentException;
 import org.openkilda.messaging.BaseMessage;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
@@ -49,6 +48,9 @@ import org.openkilda.pce.cache.Cache;
 import org.openkilda.pce.cache.FlowCache;
 import org.openkilda.pce.cache.NetworkCache;
 import org.openkilda.pce.cache.ResourceCache;
+import org.openkilda.pce.provider.Auth;
+import org.openkilda.pce.provider.FlowInfo;
+import org.openkilda.pce.provider.PathComputer;
 import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
 import org.openkilda.wfm.topology.AbstractTopology;
@@ -64,12 +66,14 @@ import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
-import org.openkilda.wfm.topology.TopologyConfig;
+import org.openkilda.wfm.topology.flow.utils.BidirectionalFlow;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -118,6 +122,12 @@ public class CacheBolt
     private InMemoryKeyValueState<String, Cache> state;
 
     /**
+     * Path computer for getting all flows.
+     */
+    private PathComputer pathComputer;
+    private final Auth pathComputerAuth;
+
+    /**
      * We need to store rerouted flows for ability to restore initial path if it is possible.
      * Here is a mapping between switch and all flows that was rerouted because switch went down.
      */
@@ -126,11 +136,10 @@ public class CacheBolt
     private TopologyContext context;
     private OutputCollector outputCollector;
 
-    private String topologyEngineRestEndpoint;
     private final static int DUMP_INTERVAL = 60000;
 
-    CacheBolt(TopologyConfig config) {
-        this.topologyEngineRestEndpoint = config.getTopologyEngineRestEndpoint();
+    CacheBolt(Auth pathComputerAuth) {
+        this.pathComputerAuth = pathComputerAuth;
     }
 
     /**
@@ -155,8 +164,8 @@ public class CacheBolt
         reroutedFlows.clear();
 
         logger.info("Request initial network state");
-        NetworkInfoData initialNetworkState = fetchInitialNetworkState();
-        loadInitialNetworkState(initialNetworkState);
+        initFlowCache();
+        initNetwork();
     }
 
     /**
@@ -166,6 +175,7 @@ public class CacheBolt
     public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
         this.context = topologyContext;
         this.outputCollector = outputCollector;
+        pathComputer = pathComputerAuth.connect();
     }
 
     /**
@@ -246,8 +256,9 @@ public class CacheBolt
         output.declareStream(STREAM_ID_CTRL, AbstractTopology.fieldMessage);
     }
 
-    private void loadInitialNetworkState(NetworkInfoData data) {
+    private void initCache(NetworkInfoData data) {
         if (data != null) {
+            List<FlowInfo> flowInfos = pathComputer.getFlowInfo();
             logger.info("Fill network state {}", data);
             data.getSwitches().forEach(networkCache::createOrUpdateSwitch);
             data.getIsls().forEach(networkCache::createOrUpdateIsl);
@@ -256,8 +267,8 @@ public class CacheBolt
             data.getFlows().forEach(flowCache::pushFlow);
 
             // FIXME(surabujin): deprecated and should be droppped
-    //        logger.info("Loaded flows {}", flowCache);
-    //        emitRestoreCommands(data.getFlows(), tuple);
+            //        logger.info("Loaded flows {}", flowCache);
+            //        emitRestoreCommands(data.getFlows(), tuple);
         }
     }
 
@@ -423,7 +434,7 @@ public class CacheBolt
     }
 
     private void emitRerouteCommands(Set<ImmutablePair<Flow, Flow>> flows, Tuple tuple,
-                                     String correlationId, FlowOperation operation, String reason) {
+            String correlationId, FlowOperation operation, String reason) {
         for (ImmutablePair<Flow, Flow> flow : flows) {
             try {
                 flow.getLeft().setState(FlowState.DOWN);
@@ -591,41 +602,40 @@ public class CacheBolt
         }
     }
 
-    private NetworkInfoData fetchInitialNetworkState() {
-        NetworkInfoData result = null;
-        Client client = ClientBuilder.newClient(new ClientConfig());
-        client.property(ClientProperties.CONNECT_TIMEOUT, 120000);
-        client.property(ClientProperties.READ_TIMEOUT,    120000);
-        logger.info("Endpoint of topology-engine-rest {}", topologyEngineRestEndpoint);
+    private void initNetwork() {
+        Set<SwitchInfoData> switches = new HashSet<>();
+        Set<IslInfoData> links = new HashSet<>();
 
-        logger.info("Starting to collection network info data");
-        try {
-            while (result == null) {
-                Response response;
-                try {
-                    response = client
-                            .target(topologyEngineRestEndpoint)
-                            .path("/api/v1/dump_network")
-                            .request()
-                            .get();
+        networkCache.load(switches, links);
+    }
 
-                    if (response != null && response.getStatus() == 200) {
-                        result = response.readEntity(NetworkInfoData.class);
-                    }
-                }  catch (ProcessingException e) {
-                    logger.error("Network dump error. NetworkInfoData is in incorrect format", e);
-                }
-
-                if (result == null) {
-                    Thread.sleep(DUMP_INTERVAL);
-                }
+    private void initFlowCache() {
+        Map<String, BidirectionalFlow> flowPairsMap = getFlowPairs();
+        for (BidirectionalFlow bidirectionalFlow : flowPairsMap.values()) {
+            try {
+                flowCache.pushFlow(bidirectionalFlow.makeFlowPair());
+            } catch (InvalidArgumentException e) {
+                logger.error("Invalid flow pairing {}: {}", bidirectionalFlow.anyDefined().getFlowId(), e.toString());
             }
-            logger.info("Got network dump");
-        } catch (InterruptedException e) {
-            logger.error("Network dump error.", e);
+        }
+    }
+
+    private Map<String, BidirectionalFlow> getFlowPairs() {
+        Map<String, BidirectionalFlow> flowPairsMap = new HashMap<>();
+        for (Flow flow : pathComputer.getAllFlows()) {
+            if (!flowPairsMap.containsKey(flow.getFlowId())) {
+                flowPairsMap.put(flow.getFlowId(), new BidirectionalFlow());
+            }
+
+            BidirectionalFlow pair = flowPairsMap.get(flow.getFlowId());
+            try {
+                pair.add(flow);
+            } catch (IllegalArgumentException e) {
+                logger.error("Invalid half-flow {}: {}", flow.getFlowId(), e.toString());
+            }
         }
 
-        return result;
+        return flowPairsMap;
     }
 
     @Override
