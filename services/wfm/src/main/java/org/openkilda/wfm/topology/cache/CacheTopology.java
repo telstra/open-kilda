@@ -83,7 +83,7 @@ public class CacheTopology extends AbstractTopology {
         /*
          * Stores network cache.
          */
-        CacheBolt cacheBolt = new CacheBolt(config);
+        CacheBolt cacheBolt = new CacheBolt(config.getDiscoveryTimeout());
         boltSetup = builder.setBolt(BOLT_ID_CACHE, cacheBolt, parallelism)
                 .shuffleGrouping(SPOUT_ID_COMMON)
 // (carmine) as per above comment, only a single input streamt
