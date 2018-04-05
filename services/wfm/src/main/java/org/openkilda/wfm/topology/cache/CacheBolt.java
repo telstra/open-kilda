@@ -600,7 +600,12 @@ public class CacheBolt
     private void initFlowCache() {
         logger.info("Flow Cache: Initializing");
         Map<String, BidirectionalFlow> flowPairsMap = new HashMap<>();
-        for (Flow flow : pathComputer.getAllFlows()) {
+        List<Flow> flows = pathComputer.getAllFlows();
+        logger.info("Flow Cache: Initializing - {} flows", flows.size());
+
+        for (Flow flow : flows) {
+            // TODO: change to debug level
+            logger.info("Flow Cache: Initializing - processing flow: {}", flow);
             if (!flowPairsMap.containsKey(flow.getFlowId())) {
                 flowPairsMap.put(flow.getFlowId(), new BidirectionalFlow());
             }
