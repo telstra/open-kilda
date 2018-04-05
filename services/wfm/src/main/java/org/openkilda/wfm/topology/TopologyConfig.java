@@ -60,8 +60,6 @@ public class TopologyConfig {
     private String neo4jLogin;
     private String neo4jPassword;
 
-    private String topologyEngineRestEndpoint;
-
     private PropertiesReader config;
 
     public TopologyConfig(PropertiesReader config) throws ConfigurationException {
@@ -113,8 +111,6 @@ public class TopologyConfig {
         neo4jHost = config.getString("neo4j.hosts");
         neo4jLogin = config.getString("neo4j.user");
         neo4jPassword = config.getString("neo4j.pswd");
-
-        topologyEngineRestEndpoint = config.getString("topology.engine.rest.endpoint");
     }
 
     public Boolean getLocal() {
@@ -296,9 +292,5 @@ public class TopologyConfig {
 
     public String getNeo4jPassword() {
         return neo4jPassword;
-    }
-
-    public String getTopologyEngineRestEndpoint() {
-        return topologyEngineRestEndpoint;
     }
 }
