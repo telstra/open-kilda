@@ -18,6 +18,8 @@ package org.openkilda.wfm.topology.cache;
 import static org.openkilda.messaging.Utils.MAPPER;
 
 import org.apache.storm.topology.base.BaseStatefulBolt;
+import org.glassfish.jersey.client.ClientConfig;
+import org.glassfish.jersey.client.ClientProperties;
 import org.openkilda.messaging.BaseMessage;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
@@ -76,6 +78,10 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import javax.ws.rs.ProcessingException;
+import javax.ws.rs.client.Client;
+import javax.ws.rs.client.ClientBuilder;
+import javax.ws.rs.core.Response;
 
 public class CacheBolt
         extends BaseStatefulBolt<InMemoryKeyValueState<String, Cache>>
@@ -241,16 +247,18 @@ public class CacheBolt
     }
 
     private void loadInitialNetworkState(NetworkInfoData data) {
-        logger.info("Fill network state {}", data);
-        data.getSwitches().forEach(networkCache::createOrUpdateSwitch);
-        data.getIsls().forEach(networkCache::createOrUpdateIsl);
+        if (data != null) {
+            logger.info("Fill network state {}", data);
+            data.getSwitches().forEach(networkCache::createOrUpdateSwitch);
+            data.getIsls().forEach(networkCache::createOrUpdateIsl);
 
-        logger.info("Load flows {}", data.getFlows().size());
-        data.getFlows().forEach(flowCache::pushFlow);
+            logger.info("Load flows {}", data.getFlows().size());
+            data.getFlows().forEach(flowCache::pushFlow);
 
-        // FIXME(surabujin): deprecated and should be droppped
-//        logger.info("Loaded flows {}", flowCache);
-//        emitRestoreCommands(data.getFlows(), tuple);
+            // FIXME(surabujin): deprecated and should be droppped
+    //        logger.info("Loaded flows {}", flowCache);
+    //        emitRestoreCommands(data.getFlows(), tuple);
+        }
     }
 
     private void handleSwitchEvent(SwitchInfoData sw, Tuple tuple) throws IOException {
@@ -584,12 +592,29 @@ public class CacheBolt
     }
 
     private NetworkInfoData fetchInitialNetworkState() {
+        NetworkInfoData result = null;
+        Client client = ClientBuilder.newClient(new ClientConfig());
+        client.property(ClientProperties.CONNECT_TIMEOUT, 120000);
+        client.property(ClientProperties.READ_TIMEOUT,    120000);
 
+        logger.info("Starting to collection network info data");
+        Response response;
+        do {
+            response = client
+                    .target(topologyEngineRestEndpoint)
+                    .path("/api/v1/dump_network")
+                    .request()
+                    .get();
+        } while (response == null || response.getStatus() != 200);
 
-        // TODO
-        logger.info("Got network dump - %d bytes", json.length());
-        // TODO
-        return null;
+        try {
+            result = response.readEntity(NetworkInfoData.class);
+            logger.info("Got network dump");
+        } catch (ProcessingException e) {
+            logger.error("Network dump error. NetworkInfoData is in incorrect format", e);
+        }
+
+        return result;
     }
 
     @Override
@@ -605,8 +630,6 @@ public class CacheBolt
     public void clearState() {
         logger.info("State clear request from test");
         initState(new InMemoryKeyValueState<>());
-        isReceivedCacheInfo = false;
-        timePassed = 0;
     }
 
     @Override
