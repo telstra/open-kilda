@@ -37,7 +37,7 @@ import org.openkilda.messaging.ctrl.AbstractDumpState;
 import org.openkilda.messaging.ctrl.state.OFELinkBoltState;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.discovery.NetworkInfoData;
+import org.openkilda.messaging.info.discovery.NetworkSyncMarker;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
@@ -216,9 +216,9 @@ public class OFELinkBolt
      * Send network dump request to FL
      */
     private void sendNetworkRequest(Tuple tuple) {
-        try {
-            logger.debug("Send network dump request");
+        logger.info("Send network dump request");
 
+        try {
             CommandMessage command = new CommandMessage(new NetworkCommandData(),
                     System.currentTimeMillis(), Utils.SYSTEM_CORRELATION_ID,
                     Destination.CONTROLLER);
@@ -265,11 +265,11 @@ public class OFELinkBolt
 
             if (bm instanceof InfoMessage) {
                 InfoData data = ((InfoMessage)bm).getData();
-                if (data instanceof NetworkInfoData) {
-                    handleNetworkDump(tuple, (NetworkInfoData)data);
+                if (data instanceof NetworkSyncMarker) {
+                    logger.info("Got response on network sync request, start processing network events");
                     isReceivedCacheInfo = true;
                 } else if (!isReceivedCacheInfo) {
-                    logger.debug("Bolt is not initialized mark tuple as fail");
+                    logger.warn("Bolt is not initialized mark skip tuple");
                 } else if (data instanceof SwitchInfoData) {
                     handleSwitchEvent(tuple, (SwitchInfoData) data);
                     passToTopologyEngine(tuple);
@@ -289,21 +289,10 @@ public class OFELinkBolt
             // means that we found something that isn't. If this criteria changes, then
             // change the logger level.
             logger.error("Unknown Message type={}", json);
+            collector.ack(tuple);
         } finally {
-            // We mark as fail all tuples while bolt is not initialized
-            if (isReceivedCacheInfo) {
-                collector.ack(tuple);
-            } else {
-                collector.fail(tuple);
-            }
+            collector.ack(tuple);
         }
-    }
-
-    private void handleNetworkDump(Tuple tuple, NetworkInfoData data) {
-        logger.info("Start process network dump");
-        data.getSwitches().forEach( switchInfo -> handleSwitchEvent(tuple, switchInfo) );
-        data.getPorts().forEach( portInfo -> handlePortEvent(tuple, portInfo) );
-        logger.info("Finish process network dump");
     }
 
     private void handleSwitchEvent(Tuple tuple, SwitchInfoData switchData) {

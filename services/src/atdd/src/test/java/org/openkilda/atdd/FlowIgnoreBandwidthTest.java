@@ -65,8 +65,8 @@ public class FlowIgnoreBandwidthTest {
     public void flowIgnoreBandwidthBetweenSwitchesWithBandwidthIsCreated(String source, String dest, int bandwidth)
             throws InterruptedException {
         String flowId = FlowUtils.getFlowName("flowId");
-        FlowEndpointPayload sourcePoint = new FlowEndpointPayload(source, 1, 0);
-        FlowEndpointPayload destPoint = new FlowEndpointPayload(dest, 2, 0);
+        FlowEndpointPayload sourcePoint = new FlowEndpointPayload(source, 4, 0);
+        FlowEndpointPayload destPoint = new FlowEndpointPayload(dest, 4, 0);
         FlowPayload requestPayload = new FlowPayload(
                 flowId, sourcePoint, destPoint, bandwidth, true, "Flow that ignore ISL bandwidth", null,
                 FlowState.UP.getState());
