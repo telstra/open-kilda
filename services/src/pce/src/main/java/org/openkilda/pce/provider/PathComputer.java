@@ -15,6 +15,7 @@
 
 package org.openkilda.pce.provider;
 
+import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.model.Flow;
@@ -92,4 +93,13 @@ public interface PathComputer extends Serializable {
     default List<Flow> getFlows(String flowId) {
         return null;
     }
+
+    default List<SwitchInfoData> getSwitches() {
+        return null;
+    }
+
+    default List<IslInfoData> getIsls() {
+        return null;
+    }
+
 }

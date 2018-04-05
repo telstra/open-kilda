@@ -15,8 +15,7 @@
 
 package org.openkilda.pce.provider;
 
-import org.openkilda.messaging.info.event.PathInfoData;
-import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.messaging.info.event.*;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
 
@@ -195,6 +194,86 @@ public class NeoDriver implements PathComputer {
         return results;
     }
 
+    @Override
+    public  List<SwitchInfoData> getSwitches() {
+        String q =
+                "MATCH (sw:switch) " +
+                        "RETURN " +
+                        "sw.name as name, " +
+                        "sw.address as address, " +
+                        "sw.hostname as hostname, " +
+                        "sw.description as description, " +
+                        "sw.controller as controller, " +
+                        "sw.state as state " +
+                        "order by sw.name";
+
+        logger.debug("Executing getSwitches Query: {}", q);
+        Session session = driver.session();
+        StatementResult queryResults = session.run(q);
+        List<SwitchInfoData> results = new LinkedList<>();
+        for (Record record : queryResults.list()) {
+            SwitchInfoData sw = new SwitchInfoData();
+            sw.setAddress(record.get("address").asString());
+            sw.setController(record.get("controller").asString());
+            sw.setDescription(record.get("description").asString());
+            sw.setHostname(record.get("hostname").asString());
+
+            String status = record.get("state").asString();
+            SwitchState st = ("active".equals(status)) ? SwitchState.ACTIVATED : SwitchState.CACHED;
+            sw.setState(st);
+
+            sw.setSwitchId(record.get("name").asString());
+            results.add(sw);
+        }
+        return results;
+    }
+
+    @Override
+    public List<IslInfoData> getIsls() {
+
+        String q =
+                "MATCH (:switch)-[isl:isl]->(:switch) " +
+                        "RETURN " +
+                        "isl.src_switch as src_switch, " +
+                        "isl.src_port as src_port, " +
+                        "isl.dst_switch as dst_switch, " +
+                        "isl.dst_port as dst_port, " +
+                        "isl.speed as speed, " +
+                        "isl.max_bandwidth as max_bandwidth, " +
+                        "isl.latency as latency, " +
+                        "isl.available_bandwidth as available_bandwidth, " +
+                        "isl.status as status " +
+                        "order by isl.src_switch";
+
+        logger.debug("Executing getSwitches Query: {}", q);
+        Session session = driver.session();
+        StatementResult queryResults = session.run(q);
+        List<IslInfoData> results = new LinkedList<>();
+        for (Record record : queryResults.list()) {
+            IslInfoData isl = new IslInfoData();
+            // max_bandwidth not used in IslInfoData
+            List<PathNode> pathNodes = new ArrayList<>();
+            PathNode src = new PathNode();
+            src.setSwitchId(record.get("src_switch").asString());
+            src.setPortNo(record.get("src_port").asInt());
+            pathNodes.add(src);
+            PathNode dst = new PathNode();
+            dst.setSwitchId(record.get("dst_switch").asString());
+            dst.setPortNo(record.get("dst_port").asInt());
+            pathNodes.add(dst);
+
+            isl.setPath(pathNodes);
+            isl.setSpeed(record.get("speed").asInt());
+            isl.setLatency(record.get("latency").asInt());
+            isl.setAvailableBandwidth(record.get("available_bandwidth").asInt());
+            String status = record.get("status").asString();
+            IslChangeType ct = ("active".equals(status)) ? IslChangeType.DISCOVERED : IslChangeType.FAILED;
+            isl.setState(ct);
+            isl.setTimestamp(System.currentTimeMillis());
+            results.add(isl);
+        }
+        return results;
+    }
 
     /**
      * Create the query based on what the strategy is.
