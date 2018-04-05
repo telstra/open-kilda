@@ -17,6 +17,9 @@ package org.openkilda.wfm.topology.cache;
 
 import static org.openkilda.messaging.Utils.MAPPER;
 
+import org.apache.storm.topology.base.BaseStatefulBolt;
+import org.glassfish.jersey.client.ClientConfig;
+import org.glassfish.jersey.client.ClientProperties;
 import org.openkilda.messaging.BaseMessage;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
@@ -32,7 +35,6 @@ import org.openkilda.messaging.ctrl.state.NetworkDump;
 import org.openkilda.messaging.error.CacheException;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.discovery.ChunkDescriptor;
 import org.openkilda.messaging.info.discovery.NetworkInfoData;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.NetworkTopologyChange;
@@ -51,7 +53,6 @@ import org.openkilda.pce.cache.ResourceCache;
 import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
 import org.openkilda.wfm.topology.AbstractTopology;
-import org.openkilda.wfm.topology.utils.AbstractTickStatefulBolt;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.annotations.VisibleForTesting;
@@ -64,6 +65,7 @@ import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
+import org.openkilda.wfm.topology.TopologyConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,9 +78,13 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import javax.ws.rs.ProcessingException;
+import javax.ws.rs.client.Client;
+import javax.ws.rs.client.ClientBuilder;
+import javax.ws.rs.core.Response;
 
 public class CacheBolt
-        extends AbstractTickStatefulBolt<InMemoryKeyValueState<String, Cache>>
+        extends BaseStatefulBolt<InMemoryKeyValueState<String, Cache>>
         implements ICtrlBolt {
     public static final String STREAM_ID_CTRL = "ctrl";
 
@@ -118,35 +124,14 @@ public class CacheBolt
      */
     private final Map<String, Set<String>> reroutedFlows = new ConcurrentHashMap<>();
 
-    private String dumpRequestCorrelationId = null;
-    private Set<Integer> dumpRequestUnprocessedChunks = null;
-
     private TopologyContext context;
     private OutputCollector outputCollector;
 
-    /**
-     * Time passed.
-     */
-    private int timePassed = 0;
+    private String topologyEngineRestEndpoint;
 
-    /**
-     * Discovery interval.
-     */
-    private final int discoveryInterval;
-
-    /**
-     * Instance constructor.
-     *
-     * @param discoveryInterval discovery interval
-     */
-    CacheBolt(int discoveryInterval) {
-        this.discoveryInterval = discoveryInterval;
+    CacheBolt(TopologyConfig config) {
+        this.topologyEngineRestEndpoint = config.getTopologyEngineRestEndpoint();
     }
-
-    /**
-     * Initialization flag
-     */
-    private boolean isReceivedCacheInfo = false;
 
     /**
      * {@inheritDoc}
@@ -177,14 +162,17 @@ public class CacheBolt
     public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
         this.context = topologyContext;
         this.outputCollector = outputCollector;
+
+        logger.info("Request initial network state");
+        NetworkInfoData initialNetworkState = fetchInitialNetworkState();
+        loadInitialNetworkState(initialNetworkState);
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public void doWork(Tuple tuple) {
-
+    public void execute (Tuple tuple){
         if (CtrlAction.boltHandlerEntrance(this, tuple))
             return;
 
@@ -203,17 +191,10 @@ public class CacheBolt
             BaseMessage bm = MAPPER.readValue(json, BaseMessage.class);
             if (bm instanceof InfoMessage) {
                 InfoMessage message = (InfoMessage) bm;
-                String correlationId = message.getCorrelationId();
                 InfoData data = message.getData();
 
-                if (data instanceof NetworkInfoData) {
-                    logger.debug("Storage content message {}", json);
-                    handleNetworkDump(correlationId, (NetworkInfoData) data, tuple);
-                } else if (!isReceivedCacheInfo) {
-                    logger.debug("Cache message fail due bolt not initialized: "
-                                    + "component={}, stream={}, tuple={}",
-                            tuple.getSourceComponent(), tuple.getSourceStreamId(), tuple);
-                } else if (data instanceof SwitchInfoData) {
+                if (data instanceof SwitchInfoData) {
+                    logger.info("Cache update switch info data: {}", data);
                     handleSwitchEvent((SwitchInfoData) data, tuple);
 
                 } else if (data instanceof IslInfoData) {
@@ -244,35 +225,13 @@ public class CacheBolt
 
         } catch (IOException exception) {
             logger.error("Could not deserialize message {}", tuple, exception);
-            outputCollector.ack(tuple);
+        } catch (Exception e) {
+            logger.error(String.format("Unhandled exception in %s", getClass().getName()), e);
         } finally {
-            if (isReceivedCacheInfo) {
-                outputCollector.ack(tuple);
-            } else {
-                outputCollector.fail(tuple);
-            }
+            outputCollector.ack(tuple);
         }
 
         logger.trace("State after: {}", state);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    protected void doTick(Tuple tuple) {
-        // FIXME(dbogun): tick only once, because timePassed never reset
-        if (timePassed == discoveryInterval) {
-            Values values = getNetworkRequest();
-            if (values != null) {
-                outputCollector.emit(StreamType.TPE.toString(), tuple, values);
-            } else {
-                logger.error("Could not send network cache request");
-            }
-        }
-        if (timePassed <= discoveryInterval) {
-            timePassed += 1;
-        }
     }
 
     /**
@@ -287,50 +246,18 @@ public class CacheBolt
         output.declareStream(STREAM_ID_CTRL, AbstractTopology.fieldMessage);
     }
 
-    private void handleNetworkDump(String correlationId, NetworkInfoData data, Tuple tuple) {
-        if (!dumpRequestCorrelationId.equals(correlationId)) {
-            logger.info(
-                    "Ignore network dump with mismatch correlation id (expect: {}, got: {})",
-                    dumpRequestCorrelationId, correlationId);
-            return;
-        }
+    private void loadInitialNetworkState(NetworkInfoData data) {
+        if (data != null) {
+            logger.info("Fill network state {}", data);
+            data.getSwitches().forEach(networkCache::createOrUpdateSwitch);
+            data.getIsls().forEach(networkCache::createOrUpdateIsl);
 
-        logger.info("Fill network state {}", data);
-        data.getSwitches().forEach(networkCache::createOrUpdateSwitch);
-        data.getIsls().forEach(networkCache::createOrUpdateIsl);
+            logger.info("Load flows {}", data.getFlows().size());
+            data.getFlows().forEach(flowCache::pushFlow);
 
-        logger.info("Load flows {}", data.getFlows().size());
-        data.getFlows().forEach(flowCache::pushFlow);
-
-        // FIXME(surabujin): deprecated and should be droppped
-//        logger.info("Loaded flows {}", flowCache);
-//        emitRestoreCommands(data.getFlows(), tuple);
-
-        logger.info("Flows restore commands sent");
-
-        ChunkDescriptor chunk = data.getChunk();
-        if (chunk != null) {
-            logger.info(
-                    "Got network dump chunk: {} of {}",
-                    chunk.getCurrent(), chunk.getTotal());
-
-            if (dumpRequestUnprocessedChunks == null) {
-                dumpRequestUnprocessedChunks = new HashSet<>();
-                for (int idx = 1; idx <= chunk.getTotal(); idx += 1) {
-                    dumpRequestUnprocessedChunks.add(idx);
-                }
-            }
-
-            dumpRequestUnprocessedChunks.remove(chunk.getCurrent());
-            logger.debug("Unprocessed network dump chunks: {}", dumpRequestUnprocessedChunks);
-
-            if (dumpRequestUnprocessedChunks.size() == 0) {
-                logger.info("All network dump chunks are processed, {} is ready to process requests", this.getClass().getName());
-                isReceivedCacheInfo = true;
-            }
-        } else {
-            logger.info("Got network dump not sliced on chunks");
-            isReceivedCacheInfo = true;
+            // FIXME(surabujin): deprecated and should be droppped
+    //        logger.info("Loaded flows {}", flowCache);
+    //        emitRestoreCommands(data.getFlows(), tuple);
         }
     }
 
@@ -515,21 +442,6 @@ public class CacheBolt
         }
     }
 
-    private Values getNetworkRequest() {
-        Values values = null;
-
-        dumpRequestCorrelationId = UUID.randomUUID().toString();
-        try {
-            CommandMessage command = new CommandMessage(new NetworkCommandData(),
-                    System.currentTimeMillis(), dumpRequestCorrelationId, Destination.TOPOLOGY_ENGINE);
-            values = new Values(Utils.MAPPER.writeValueAsString(command));
-        } catch (IOException exception) {
-            logger.error("Could not serialize network cache request", exception);
-        }
-
-        return values;
-    }
-
     private void onSwitchUp(SwitchInfoData sw) throws IOException {
         logger.info("Switch {} is {}", sw.getSwitchId(), sw.getState().getType());
         if (networkCache.cacheContainsSwitch(sw.getSwitchId())) {
@@ -679,6 +591,32 @@ public class CacheBolt
         }
     }
 
+    private NetworkInfoData fetchInitialNetworkState() {
+        NetworkInfoData result = null;
+        Client client = ClientBuilder.newClient(new ClientConfig());
+        client.property(ClientProperties.CONNECT_TIMEOUT, 120000);
+        client.property(ClientProperties.READ_TIMEOUT,    120000);
+
+        logger.info("Starting to collection network info data");
+        Response response;
+        do {
+            response = client
+                    .target(topologyEngineRestEndpoint)
+                    .path("/api/v1/dump_network")
+                    .request()
+                    .get();
+        } while (response == null || response.getStatus() != 200);
+
+        try {
+            result = response.readEntity(NetworkInfoData.class);
+            logger.info("Got network dump");
+        } catch (ProcessingException e) {
+            logger.error("Network dump error. NetworkInfoData is in incorrect format", e);
+        }
+
+        return result;
+    }
+
     @Override
     public AbstractDumpState dumpState() {
         NetworkDump networkDump = new NetworkDump(
@@ -692,8 +630,6 @@ public class CacheBolt
     public void clearState() {
         logger.info("State clear request from test");
         initState(new InMemoryKeyValueState<>());
-        isReceivedCacheInfo = false;
-        timePassed = 0;
     }
 
     @Override
