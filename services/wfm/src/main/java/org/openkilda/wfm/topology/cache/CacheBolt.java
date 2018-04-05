@@ -25,7 +25,6 @@ import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.messaging.command.discovery.NetworkCommandData;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowRestoreRequest;
 import org.openkilda.messaging.ctrl.AbstractDumpState;
@@ -128,6 +127,7 @@ public class CacheBolt
     private OutputCollector outputCollector;
 
     private String topologyEngineRestEndpoint;
+    private final static int DUMP_INTERVAL = 60000;
 
     CacheBolt(TopologyConfig config) {
         this.topologyEngineRestEndpoint = config.getTopologyEngineRestEndpoint();
@@ -596,22 +596,33 @@ public class CacheBolt
         Client client = ClientBuilder.newClient(new ClientConfig());
         client.property(ClientProperties.CONNECT_TIMEOUT, 120000);
         client.property(ClientProperties.READ_TIMEOUT,    120000);
+        logger.info("Endpoint of topology-engine-rest {}", topologyEngineRestEndpoint);
 
         logger.info("Starting to collection network info data");
-        Response response;
-        do {
-            response = client
-                    .target(topologyEngineRestEndpoint)
-                    .path("/api/v1/dump_network")
-                    .request()
-                    .get();
-        } while (response == null || response.getStatus() != 200);
-
         try {
-            result = response.readEntity(NetworkInfoData.class);
+            while (result == null) {
+                Response response;
+                try {
+                    response = client
+                            .target(topologyEngineRestEndpoint)
+                            .path("/api/v1/dump_network")
+                            .request()
+                            .get();
+
+                    if (response != null && response.getStatus() == 200) {
+                        result = response.readEntity(NetworkInfoData.class);
+                    }
+                }  catch (ProcessingException e) {
+                    logger.error("Network dump error. NetworkInfoData is in incorrect format", e);
+                }
+
+                if (result == null) {
+                    Thread.sleep(DUMP_INTERVAL);
+                }
+            }
             logger.info("Got network dump");
-        } catch (ProcessingException e) {
-            logger.error("Network dump error. NetworkInfoData is in incorrect format", e);
+        } catch (InterruptedException e) {
+            logger.error("Network dump error.", e);
         }
 
         return result;
