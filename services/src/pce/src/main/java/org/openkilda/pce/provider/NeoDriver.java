@@ -256,10 +256,12 @@ public class NeoDriver implements PathComputer {
             PathNode src = new PathNode();
             src.setSwitchId(record.get("src_switch").asString());
             src.setPortNo(record.get("src_port").asInt());
+            src.setSegLatency(record.get("latency").asInt());
             pathNodes.add(src);
             PathNode dst = new PathNode();
             dst.setSwitchId(record.get("dst_switch").asString());
             dst.setPortNo(record.get("dst_port").asInt());
+            dst.setSegLatency(record.get("latency").asInt());
             pathNodes.add(dst);
 
             isl.setPath(pathNodes);
