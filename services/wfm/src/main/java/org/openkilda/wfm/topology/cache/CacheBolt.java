@@ -591,9 +591,18 @@ public class CacheBolt
         Set<SwitchInfoData> switches = new HashSet<>(pathComputer.getSwitches());
         Set<IslInfoData> links = new HashSet<>(pathComputer.getIsls());
 
-        // Since this is initNetwork, we can call load, which will call "Create" inside of networkCache.
+        logger.info("Network Cache: Initializing - {} Switches (size)", switches.size());
+        logger.info("Network Cache: Initializing - {} ISLs (size)", links.size());
+
+        //
+        // We will call createOrUpdate to ensure we can ignore duplicates.
+        //
         // The alternative is to call networkCache::createOrUpdateSwitch / networkCache::createOrUpdateIsl
-        networkCache.load(switches, links);
+        // networkCache.load(switches, links);
+
+        switches.forEach(networkCache::createOrUpdateSwitch);
+        links.forEach(networkCache::createOrUpdateIsl);
+
         logger.info("Network Cache: Initialized");
     }
 
