@@ -85,11 +85,13 @@ public class NorthboundReplyBolt extends BaseRichBolt {
         } catch (JsonProcessingException exception) {
             logger.error("Could not serialize message: component={}, stream={}, message={}",
                     componentId, streamId, message);
+        } catch (Exception e) {
+            logger.error(String.format("Unhandled exception in %s", getClass().getName()), e);
         } finally {
+            outputCollector.ack(tuple);
+
             logger.debug("Northbound-Reply message ack: component={}, stream={}, tuple={}, values={}",
                     tuple.getSourceComponent(), tuple.getSourceStreamId(), tuple, values);
-
-            outputCollector.ack(tuple);
         }
     }
 

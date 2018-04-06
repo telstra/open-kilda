@@ -131,11 +131,13 @@ public class SpeakerBolt extends BaseRichBolt {
             }
         } catch (IOException exception) {
             logger.error("\n\nCould not deserialize message={}", request, exception);
+        } catch (Exception e) {
+            logger.error(String.format("Unhandled exception in %s", getClass().getName()), e);
         } finally {
+            outputCollector.ack(tuple);
+
             logger.debug("Speaker message ack: component={}, stream={}, tuple={}, values={}",
                     tuple.getSourceComponent(), tuple.getSourceStreamId(), tuple, values);
-
-            outputCollector.ack(tuple);
         }
     }
 
