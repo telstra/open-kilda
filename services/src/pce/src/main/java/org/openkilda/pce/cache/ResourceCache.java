@@ -15,18 +15,19 @@
 
 package org.openkilda.pce.cache;
 
+import com.google.common.base.MoreObjects;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.messaging.payload.ResourcePool;
-
-import com.google.common.base.MoreObjects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 /**
  * ResourceManager class contains basic operations on resources.
@@ -258,6 +259,15 @@ public class ResourceCache extends Cache {
     public Set<Integer> getAllMeterIds(String switchId) {
         return meterPool.containsKey(switchId) ? meterPool.get(switchId).dumpPool() : Collections.emptySet();
     }
+
+    public Map<String, Set<Integer>> getAllMeterIds() {
+        return meterPool.entrySet().stream()
+                        .collect(Collectors.toMap(
+                                Entry::getKey,
+                                e -> e.getValue().dumpPool())
+                        );
+    }
+
 
     /**
      * Allocates flow resources. All flows come here .. single switch and multi switch flows.
