@@ -31,7 +31,7 @@ import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
-import org.openkilda.northbound.dto.FlowValidationDto;
+import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.northbound.service.BatchResults;
 import org.openkilda.northbound.service.FlowService;
 import org.openkilda.northbound.utils.ExtraAuthRequired;
@@ -397,7 +397,8 @@ public class FlowController {
      * @param correlationId correlation ID header value.
      * @return flow payload with updated path.
      */
-    @ApiOperation(value = "Validate flow, comparing the DB to each switch", response = FlowPathPayload.class)
+    @ApiOperation(value = "Validate flow, comparing the DB to each switch", response = FlowValidationDto.class,
+            responseContainer = "List")
     @ApiResponses(value = {
             @ApiResponse(code = 200, response = FlowValidationDto.class, message = "Operation is successful")})
     @RequestMapping(path = "/flows/{flow_id}/validate",
@@ -417,14 +418,14 @@ public class FlowController {
             List<FlowValidationDto> result = flowService.validateFlow(flowId, correlationId);
             if (result == null) {
                 logger.info("VALIDATE FLOW: Flow Not Found: {}", flowId);
-                response = new ResponseEntity<>(null, new HttpHeaders(), HttpStatus.NOT_FOUND);
+                response = ResponseEntity.notFound().build();
             } else {
-                response = new ResponseEntity<>(result, new HttpHeaders(), HttpStatus.OK);
+                response = ResponseEntity.ok(result);
             }
         } catch (InvalidPathException e) {
             logger.error("VALIDATE FLOW: Flow has no path: {}", flowId);
             logger.error(e.getMessage());
-            response = new ResponseEntity<>(null, new HttpHeaders(), HttpStatus.NOT_FOUND);
+            response = ResponseEntity.notFound().build();
         }
         return response;
     }

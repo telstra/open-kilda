@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.client.response.switches;
+package org.openkilda.northbound.dto.switches;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;

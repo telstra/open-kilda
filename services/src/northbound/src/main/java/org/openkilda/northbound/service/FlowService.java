@@ -22,7 +22,7 @@ import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
-import org.openkilda.northbound.dto.FlowValidationDto;
+import org.openkilda.northbound.dto.flows.FlowValidationDto;
 
 import java.util.List;
 

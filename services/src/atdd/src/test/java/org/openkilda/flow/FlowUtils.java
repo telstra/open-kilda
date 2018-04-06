@@ -38,6 +38,7 @@ import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.pce.RecoverableException;
+import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.pce.provider.PathComputer;
 import org.openkilda.pce.provider.UnroutablePathException;
 import org.openkilda.topo.exceptions.TopologyProcessingException;
@@ -720,4 +721,36 @@ public class FlowUtils {
         System.out.println(format("====> TopologyEngine Delete Flow = %s", response.readEntity(String.class)));
         return true;
     }
+
+    /**
+     * Validate the flow path and rules (e.g. whether properly installed).
+     */
+    public static List<FlowValidationDto> validateFlow(final String flowId) {
+        System.out.println("\n==> Northbound Validate Flow");
+
+        Client client = ClientBuilder.newClient(new ClientConfig());
+
+        Response response = client
+                .target(northboundEndpoint)
+                .path("/api/v1/flows/{flow-id}/validate")
+                .resolveTemplate("flow-id", flowId)
+                .request(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
+                .header(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()))
+                .get();
+
+        System.out.println(format("===> Response = %s", response.toString()));
+
+        int responseCode = response.getStatus();
+        if (responseCode == 200) {
+            List<FlowValidationDto> flowDiscrepancy = response.readEntity(new GenericType<List<FlowValidationDto>>() {});
+            System.out.println(format("====> Northbound Validate Flow = %s", flowDiscrepancy));
+            return flowDiscrepancy;
+        } else {
+            System.out.println(format("====> Error: Northbound Validate Flow = %s",
+                    response.readEntity(MessageError.class)));
+            return null;
+        }
+    }
+
 }

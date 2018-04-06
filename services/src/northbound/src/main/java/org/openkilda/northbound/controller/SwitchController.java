@@ -3,13 +3,12 @@ package org.openkilda.northbound.controller;
 import static org.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 
-import org.openkilda.client.response.switches.SyncRulesOutput;
+import org.openkilda.northbound.dto.switches.SyncRulesOutput;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.InstallRulesAction;
 import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
-import org.openkilda.messaging.info.switches.SyncRulesResponse;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.northbound.dto.SwitchDto;
 import org.openkilda.northbound.service.SwitchService;
