@@ -65,7 +65,8 @@ function showSwitchData(response){
 	$(".switchdetails_div_hostname").html(response.hostname);
     $(".switchdetails_div_address").html(response.address);
     $(".switchdetails_div_switch_id").html(response.switch_id);
-    $(".switchdetails_div_desc").html(response.description);  
+    $(".switchdetails_div_desc").html(response.description); 
+    $(".switchdetails_div_state").html(response.state); 
 }
 
 var event;
@@ -81,7 +82,7 @@ function showPortData(response) {
 
 	if(!response || response.length==0) {
 		response=[]
-		common.infoMessage('No Ports Avaliable','info');
+		common.infoMessage('No Ports Available','info');
 	}
 	
 	$("#flowTable #div_loader").remove();

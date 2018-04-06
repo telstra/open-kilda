@@ -13,6 +13,12 @@
 
 var responseData = [];
 
+var ISL = {
+	DISCOVERED: "#00baff",
+    FAILED :  "#d93923",
+    UNIDIR : "#333"
+};
+
 var api = {
 	getSwitches: function(){
 		$.ajax({
@@ -225,48 +231,70 @@ graph = {
 		d3.select(window).on("resize", resize);
 		link = link.data(links)
 		.enter().append("path")
-		.attr("class", "link")
+		.attr("class", function(d, index) {
+	        if (d.hasOwnProperty("flow_count")) {
+	            return "link logical";
+	        } else {
+	            if (d.unidirectional || d.state && d.state.toLowerCase()== "failed"){
+                    return "link physical down";
+                }else{
+                    return "link physical";
+                }
+	        }
+		})
 		.attr("id", function(d, index) {
 	        return "link" + index;
 	    })
-	    .attr("class", "link")
 	    .on("mouseover", function(d, index) {
-	        var element = $("#link" + index)[0];	        
-	      if (element.getAttribute("stroke") == "#00baff") {
-	    	  element.setAttribute("class", "isloverlay");
-	       } else {
-	    	   element.setAttribute("class", "overlay");
-	      }	      
+	        var element = $("#link" + index)[0];	
+	        if (d.hasOwnProperty("flow_count")) {
+	        	element.setAttribute("class", "link logical overlay");
+	        } else {
+	            if (d.unidirectional || d.state && d.state.toLowerCase()== "failed"){
+                    element.setAttribute("class","link physical pathoverlay");
+                }else{
+	        	element.setAttribute("class","link physical overlay");
+                }
+	        }
 	    }).on("mouseout", function(d, index) {
 	        var element = $("#link" + index)[0];
-	        element.setAttribute("class", "link");
-
-	    }).on(
-	        "click",
-	        function(d, index) {
-	            var element = $("#link" + index)[0];
-	            
-	  	      if (element.getAttribute("stroke") == "#00baff") {
-		    	  element.setAttribute("class", "isloverlay");
-		       } else {
-		    	   element.setAttribute("class", "overlay");
-		       }
-	 
-	            if (element.getAttribute("stroke") == "#228B22" ||
-	                element.getAttribute("stroke") == "green") {
-	                showFlowDetails(d);
-	            } else {
-	                showLinkDetails(d);
+	        if (d.hasOwnProperty("flow_count")) {
+	        	element.setAttribute("class", "link logical");
+	        } else {
+	            if (d.unidirectional || d.state && d.state.toLowerCase()== "failed"){
+	                element.setAttribute("class","link physical down");
+	            }else{
+	                element.setAttribute("class","link physical");
 	            }
-
-	        }).attr("stroke", function(d, index) {
+	        }
+	    }).on("click", function(d, index) {
+            var element = $("#link" + index)[0];
+            if (d.hasOwnProperty("flow_count")) {
+	        	element.setAttribute("class", "link logical overlay");
+	        	showFlowDetails(d);
+	        } else {
+	            
+	            if (d.unidirectional || d.state && d.state.toLowerCase()== "failed"){
+                    element.setAttribute("class","link physical pathoverlay");
+                }else{
+                    element.setAttribute("class","link physical overlay");
+                }
+	        	showLinkDetails(d);
+	        }
+        }).attr("stroke", function(d, index) {
 	        if (d.hasOwnProperty("flow_count")) {
 	            return "#228B22";
 	        } else {
-	            return "#00baff";
+	            if (d.unidirectional){
+                    return ISL.UNIDIR;
+                } else if(d.state && d.state.toLowerCase()== "discovered"){
+                    return ISL.DISCOVERED;
+                }
+	            
+	        	return ISL.FAILED;
 	        }
-
-	    });
+	        
+        });
 		node = node.data(nodes)
 			.enter().append("g")
 			.attr("class", "node")
@@ -274,10 +302,15 @@ graph = {
 			.call(drag);
 		circle = node.append("circle")
 			.attr("r", radius)
-			.attr("class", "circle")
-			.attr('id', function(nodes, index) {
-			    circleElement = "circle" + index;
-			    return "circle" + index;
+			.attr("class",  function(d, index) {
+				var classes = "circle blue";
+				if(d.state && d.state.toLowerCase() == "deactivated"){
+					classes = "circle red";
+				}
+			    return classes;
+			})
+			.attr('id', function(d, index) {
+			    return "circle_" + d.switch_id;
 			})
 			.style("cursor", "move");
 			
@@ -322,11 +355,16 @@ graph = {
 		    }
 		
 		}).on("mouseover", function(d, index) {
-		    var cName = document.getElementById("circle" + index).className;
+		    var cName = document.getElementById("circle_" + d.switch_id).className;
 		    circleClass = cName.baseVal;
 		
-		    var element = $("#circle" + index)[0];
-		    element.setAttribute("class", "nodeover");
+		    var element = document.getElementById("circle_" + d.switch_id);
+		    
+		    var classes = "circle blue hover";
+			if(d.state && d.state.toLowerCase() == "deactivated"){
+				classes = "circle red hover";
+			}
+		    element.setAttribute("class", classes);
 		    var rec = element.getBoundingClientRect();
 		    $('#topology-hover-txt').css('display', 'block');
 		    $('#topology-hover-txt').css('top', rec.y + 'px');
@@ -346,24 +384,19 @@ graph = {
 		    	$("#topology-hover-txt").addClass("left");
 		    }
 		}).on("mouseout", function(d, index) {
-		    $('#topology-hover-txt').css('display', 'none');
+			$('#topology-hover-txt').css('display', 'none');
 		    if (flagHover == false) {
 		        flagHover = true;
-		
-		    } else {
-		        if (circleClass == "circle") {
-		            var element = $("#circle" + index)[0];
-		            element.setAttribute("class", "circle");
-		        } else {
-		
-		        }
 		    }
-		
+		    else{
+		    	var element = document.getElementById("circle_" + d.switch_id);
+			    var classes = "circle blue";
+				if(d.state && d.state.toLowerCase() == "deactivated"){
+					classes = "circle red";
+				}
+			    element.setAttribute("class", classes);
+		    }
 		});
-		
-		
-		
-		
 		flow_count = svg.selectAll(".flow_count")
 	    	.data(links)
 	    	.enter().append("g").attr("class","flow-circle");
@@ -388,11 +421,21 @@ graph = {
 	        };
 	    }).on("mouseover", function(d, index) {
 	        var element = $("#link" + index)[0];
-	        element.setAttribute("class", "overlay");
+	        if (d.hasOwnProperty("flow_count")) {
+	            classes = "link logical overlay";
+	        } else {
+	        	classes =  "link physical overlay";
+	        }
+	        element.setAttribute("class", classes);
 	
 	    }).on("mouseout", function(d, index) {
 	        var element = $("#link" + index)[0];
-	        element.setAttribute("class", "link");
+	        if (d.hasOwnProperty("flow_count")) {
+	            classes = "link logical";
+	        } else {
+	        	classes =  "link physical";
+	        }
+	        element.setAttribute("class", classes);
 	    }).on(
 	        "click",
 	        function(d, index) {
@@ -592,13 +635,15 @@ function reset() {
 	
 	d3.selectAll('g.node')
     .each(function(d) {
-    	var element = $("#circle" + d.index)[0];
-        element.setAttribute("class", "circle")
+    	var element = document.getElementById("circle_" + d.switch_id);
+    	var classes = "circle blue";
+		if(d.state && d.state.toLowerCase() == "deactivated"){
+			classes = "circle red";
+		}
+		element.setAttribute("class", classes);
     	d3.select(this).classed("fixed", d.fixed = false);
     });
-	
-	
-    force.resume();
+	force.resume();
 	panzoom.reset();
 }
 
@@ -611,9 +656,13 @@ function zoomClick(id) {
 	}
 }
 
-function dblclick(d) {
-	var element = $("#circle" + d.index)[0];
-    element.setAttribute("class", "circle")
+function dblclick(d,index) {
+	var element = document.getElementById("circle_" + d.switch_id);
+	var classes = "circle blue";
+	if(d.state && d.state.toLowerCase() == "deactivated"){
+		classes = "circle red";
+	}
+    element.setAttribute("class", classes);
     doubleClickTime = new Date();
     d3.select(this).classed("fixed", d.fixed = false);
     force.resume();
@@ -623,9 +672,9 @@ function dragstart(d) {
 	d3.event.sourceEvent.stopPropagation();
 	d3.select(this).classed("fixed", d.fixed = true);
 }
-function dragend(d, i) {
-    flagHover = false;
-    d.fixed = true;
+function dragend(d, index) {
+	flagHover = false;
+	d.fixed = true;
     tick();
     force.resume();
     // d3.event.sourceEvent.stopPropagation();
@@ -719,16 +768,36 @@ function searchNode(value) {
 	    if (selectedVal == "none") {
 	        //node.style("stroke", "#666").style("stroke-width", "1");
 	    } else {
-	        var selected = node.filter(function (d, i) {
+	    	
+	    	d3.selectAll('g.node')
+	        .each(function(d) {
+	        	var element = document.getElementById("circle_" + d.switch_id);
+	        	var classes = "circle blue";
+	    		if(d.state && d.state.toLowerCase() == "deactivated"){
+	    			classes = "circle red";
+	    		}
+	    		element.setAttribute("class", classes);
+	        });
+	    	
+	        var unmatched = node.filter(function (d, i) {
 	            return d.name != selectedVal;
 	        });
 	        
 	        var matched = node.filter(function (d, i) {
 	            return d.name == selectedVal;
 	        });
-	        selected.style("opacity", "0");
 	        
-	        matched.selectAll("circle").attr("class", "nodeover");
+	        unmatched.style("opacity", "0");
+	        
+	        
+	        matched.filter(function (d, index) {
+	        	var element = document.getElementById("circle_" + d.switch_id);
+			    var classes = "circle blue hover";
+				if(d.state && d.state.toLowerCase() == "deactivated"){
+					classes = "circle red hover";
+				}
+			    element.setAttribute("class", classes);
+	        });
 	        
 	        var link = svg.selectAll(".link")
 	        link.style("opacity", "0");
@@ -739,12 +808,49 @@ function searchNode(value) {
 	        d3.selectAll(".node, .link, .flow-circle").transition()
 	            .duration(5000)
 	            .style("opacity", 1);
-	        selected.selectAll("circle")
-        		.attr("class", "circle")
+        	/*unmatched.selectAll("circle")
+    		.attr("class", function(d,index){
+    			var element = document.getElementById("circle_" + d.switch_id);
+    			var classes = "circle blue";
+				if(d.state && d.state.toLowerCase() == "deactivated"){
+					classes = "circle red";
+				}
+				element.setAttribute("class", classes);
+			});*/
+	       
 	    }
     }
 }
 
+$('.isl_flow').click(function(e){
+	var id = $(this).attr("id");
+	var duration = 500;
+	var isLogicalChecked = $('#logical:checked').length; 
+	var isPhysicalChecked = $('#physical:checked').length; 
+	if(id == "logical"){
+		if(isLogicalChecked){
+			d3.selectAll(".logical,.flow-circle").transition()
+	            .duration(duration)
+	            .style("opacity", 1);
+		}else{
+			d3.selectAll(".logical,.flow-circle").transition()
+	            .duration(duration)
+	            .style("opacity", 0);
+		}
+	}
+	if(id == "physical"){
+		if(isPhysicalChecked){
+			d3.selectAll(".physical").transition()
+	            .duration(duration)
+	            .style("opacity", 1);
+		}else{
+			d3.selectAll(".physical").transition()
+	            .duration(duration)
+	            .style("opacity", 0);
+		}
+	}
+	
+});
 
 $(document).ready(function() {
 	$('body').css('pointer-events', 'all');
@@ -753,7 +859,7 @@ $(document).ready(function() {
 $("#searchbox").click(function (e) {
     $('#ui-container').toggleClass('active');
     e.stopPropagation()
-    $('#search').val('');
+    $('#search').val('').focus();
 });
 	
 $(function() {

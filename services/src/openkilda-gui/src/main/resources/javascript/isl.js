@@ -33,9 +33,9 @@ function showLinkDetails(linkData) {
 		$(".link_div_source_port").html(linkData.src_port);
 		$(".link_div_destination_switch").html(linkData.target_switch);
 		$(".link_div_destination_port").html(linkData.dst_port);
-		$(".isl_div_speed").html(linkData.speed);
+		$(".isl_div_speed").html(linkData.speed/1000+" Mbps");
 		$(".isl_div_latency").html(linkData.latency);
-		$(".isl_div_avaliable_bandwidth").html(linkData.available_bandwidth);
+		$(".isl_div_avaliable_bandwidth").html(linkData.available_bandwidth/1000+" Mbps");
 	
 }
 

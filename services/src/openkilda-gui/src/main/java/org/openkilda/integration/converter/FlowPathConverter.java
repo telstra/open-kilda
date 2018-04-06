@@ -72,10 +72,15 @@ public class FlowPathConverter {
                     }
                 }
             }
+            String switchName =
+                    switchIntegrationService.customSwitchName(csNames, flowPathInfoData.getDstSwitch());
+            pathNodes.add(new PathNode(seq_id, inport, flowPathInfoData.getDstPort(), switchName));
+        }else{
+            String switchName = switchIntegrationService.customSwitchName(csNames,
+                    flowPathInfoData.getSrcSwitch());
+            pathNodes.add(new PathNode(seq_id, flowPathInfoData.getSrcPort(), flowPathInfoData.getDstPort(), switchName));
         }
-        String switchName =
-                switchIntegrationService.customSwitchName(csNames, flowPathInfoData.getDstSwitch());
-        pathNodes.add(new PathNode(seq_id, inport, flowPathInfoData.getDstPort(), switchName));
+        
         return pathNodes;
     }
 }

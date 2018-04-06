@@ -13,8 +13,8 @@ import java.io.Serializable;
  * @author Gaurav Chugh
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonPropertyOrder({"switch_id", "address", "hostname", "description"})
-@JsonIgnoreProperties(ignoreUnknown=true)
+@JsonPropertyOrder({"switch_id", "address", "hostname", "description", "state"})
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class SwitchInfo implements Serializable {
     @JsonProperty("switch_id")
     private String switchId;
@@ -26,6 +26,9 @@ public class SwitchInfo implements Serializable {
     private String description;
     @JsonProperty("name")
     private String name;
+
+    @JsonProperty("state")
+    private String state;
 
     /** The Constant serialVersionUID. */
     private final static long serialVersionUID = 6763064864461521069L;
@@ -62,19 +65,28 @@ public class SwitchInfo implements Serializable {
         this.description = description;
     }
 
-    
+
     public String getName() {
-		return name;
-	}
+        return name;
+    }
 
-	public void setName(String name) {
-		this.name = name;
-	}
+    public void setName(String name) {
+        this.name = name;
+    }
 
-	@Override
+    public String getState() {
+        return state;
+    }
+
+    public void setState(String state) {
+        this.state = state;
+    }
+
+    @Override
     public String toString() {
         return "SwitchInfo [switchId=" + switchId + ", address=" + address + ", hostname="
-                + hostname + ", description=" + description + ", name=" + name + "]";
+                + hostname + ", description=" + description + ", name=" + name + ", state=" + state
+                + "]";
     }
 
 }

@@ -341,16 +341,42 @@ input:focus {
 }
 
 path.link {
-	fill: none;
-	stroke-width: 2.5px;
+    fill: none;
+    stroke-width: 2.5px;
 }
 
-.circle {
+path.down {
+    stroke-width: 7.5px !important;
+}
+
+.pathoverlay {
+    fill: none;
+    opacity: 0.4;
+    stroke-width: 12.5px !important;
+    cursor: pointer;
+}
+
+.circle.blue {
 	fill: white;
 	stroke: #00baff;
 	stroke-width: 1px;
 }
+.circle.red {
+	fill: #d93923;
+	stroke: #d93923;
+	stroke-width: 6px;
+}
 
+.circle.blue.hover {
+	fill: #c8e3f5;
+	stroke: #addff1;
+	stroke-width: 8px;
+}
+.circle.red.hover {
+    fill: #f6e2e7;
+    stroke: #ff8aa6;
+    stroke-width: 8px;
+}
 text {
 	font: 12px sans-serif;
 	pointer-events: none;
@@ -422,15 +448,8 @@ div.tooltip {
 
 .overlay {
 	fill: none;
-	stroke: #aedcae;
-	stroke-width: 8px;
-	cursor: pointer;
-}
-
-.isloverlay {
-	fill: none;
-	stroke: #c8e3f5;
-	stroke-width: 8px;
+	opacity: 0.4;
+	stroke-width: 8px !important;
 	cursor: pointer;
 }
 
@@ -444,12 +463,6 @@ div.tooltip {
 
 .show {
 	display: block;
-}
-
-.nodeover {
-	fill: #c8e3f5;
-	stroke: #addff1;
-	stroke-width: 8px;
 }
 
 div.container p {

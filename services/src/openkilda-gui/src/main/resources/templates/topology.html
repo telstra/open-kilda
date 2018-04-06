@@ -97,8 +97,10 @@
 			</div> -->
 			<div class="col-sm-3 checkbox-wrapper pull-right">	
 				<div class="check">
-					<input type="checkbox" name="switch" value="switch" id="showDetail">SHOW
-					DETAILS</input>
+					<input type="checkbox" name="switch" value="switch" id="showDetail"/>Show
+					Switch<br/>
+					<input type="checkbox" name="logical" class="isl_flow" value="logical" checked="checked" id="logical"/>Show Flow<br/>
+					<input type="checkbox" name="logical" class="isl_flow" value="physical" checked="checked" id="physical"/>Show ISL<br/>
 				</div>
 				<div class="check-connections">
 					<div class="lconnection c-block">
@@ -113,7 +115,7 @@
 					<button id="reset" onclick="reset()" class="ui-button ui-widget ui-corner-all">Reset</button> -->
 								
 						<div id="ui-container" class="ui-widget">
-						   <input id="search" placeholder="Search"/>   <!-- onclick ="searchNode()" -->
+						   <input id="search" autofocus="autofocus" placeholder="Search"/>   <!-- onclick ="searchNode()" -->
 						    <!-- <button type="button" placeholder="Search Switch" class="btn btn-search">Search</button> -->
 						    <i id="searchbox" class="icon-search" title="Search"></i>	
 						</div>	

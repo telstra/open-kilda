@@ -21,47 +21,53 @@ public class FlowInfo implements Serializable {
     @JsonProperty("flowid")
     private String flowid;
 
-    
+
     @JsonProperty("source_switch")
     private String sourceSwitch;
 
-    
+
     @JsonProperty("src_port")
     private int srcPort;
 
-    
+
     @JsonProperty("src_vlan")
     private int srcVlan;
 
-    
+
+    @JsonProperty("target_switch_name")
+    private String targetSwitchName;
+
+    @JsonProperty("source_switch_name")
+    private String sourceSwitchName;
+
     @JsonProperty("target_switch")
     private String targetSwitch;
 
-    
+
     @JsonProperty("dst_port")
     private int dstPort;
 
-    
+
     @JsonProperty("dst_vlan")
     private int dstVlan;
 
-    
+
     @JsonProperty("maximum_bandwidth")
     private int maximumBandwidth;
 
-    
+
     @JsonProperty("status")
     private String status;
 
-    
+
     @JsonProperty("description")
     private String description;
 
-    
+
     @JsonProperty("last-updated")
     private String lastUpdated;
 
-    
+
     private final static long serialVersionUID = -7015976328478701934L;
 
     /**
@@ -69,7 +75,7 @@ public class FlowInfo implements Serializable {
      *
      * @return the flowid
      */
-    
+
     public String getFlowid() {
         return flowid;
     }
@@ -79,7 +85,7 @@ public class FlowInfo implements Serializable {
      *
      * @param flowid the new flowid
      */
-    
+
     public void setFlowid(final String flowid) {
         this.flowid = flowid;
     }
@@ -89,7 +95,7 @@ public class FlowInfo implements Serializable {
      *
      * @return the source switch
      */
-    
+
     public String getSourceSwitch() {
         return sourceSwitch;
     }
@@ -99,7 +105,7 @@ public class FlowInfo implements Serializable {
      *
      * @param sourceSwitch the new source switch
      */
-    
+
     public void setSourceSwitch(final String sourceSwitch) {
         this.sourceSwitch = sourceSwitch;
     }
@@ -109,7 +115,7 @@ public class FlowInfo implements Serializable {
      *
      * @return the src port
      */
-    
+
     public int getSrcPort() {
         return srcPort;
     }
@@ -119,7 +125,7 @@ public class FlowInfo implements Serializable {
      *
      * @param srcPort the new src port
      */
-    
+
     public void setSrcPort(final int srcPort) {
         this.srcPort = srcPort;
     }
@@ -129,7 +135,7 @@ public class FlowInfo implements Serializable {
      *
      * @return the src vlan
      */
-    
+
     public int getSrcVlan() {
         return srcVlan;
     }
@@ -139,7 +145,7 @@ public class FlowInfo implements Serializable {
      *
      * @param srcVlan the new src vlan
      */
-    
+
     public void setSrcVlan(final int srcVlan) {
         this.srcVlan = srcVlan;
     }
@@ -149,7 +155,7 @@ public class FlowInfo implements Serializable {
      *
      * @return the target switch
      */
-    
+
     public String getTargetSwitch() {
         return targetSwitch;
     }
@@ -159,7 +165,7 @@ public class FlowInfo implements Serializable {
      *
      * @param targetSwitch the new target switch
      */
-    
+
     public void setTargetSwitch(final String targetSwitch) {
         this.targetSwitch = targetSwitch;
     }
@@ -169,7 +175,7 @@ public class FlowInfo implements Serializable {
      *
      * @return the dst port
      */
-    
+
     public int getDstPort() {
         return dstPort;
     }
@@ -179,7 +185,7 @@ public class FlowInfo implements Serializable {
      *
      * @param dstPort the new dst port
      */
-    
+
     public void setDstPort(final int dstPort) {
         this.dstPort = dstPort;
     }
@@ -189,7 +195,7 @@ public class FlowInfo implements Serializable {
      *
      * @return the dst vlan
      */
-    
+
     public int getDstVlan() {
         return dstVlan;
     }
@@ -199,7 +205,7 @@ public class FlowInfo implements Serializable {
      *
      * @param dstVlan the new dst vlan
      */
-    
+
     public void setDstVlan(final int dstVlan) {
         this.dstVlan = dstVlan;
     }
@@ -209,7 +215,7 @@ public class FlowInfo implements Serializable {
      *
      * @return the maximum bandwidth
      */
-    
+
     public int getMaximumBandwidth() {
         return maximumBandwidth;
     }
@@ -219,7 +225,7 @@ public class FlowInfo implements Serializable {
      *
      * @param maximumBandwidth the new maximum bandwidth
      */
-    
+
     public void setMaximumBandwidth(final int maximumBandwidth) {
         this.maximumBandwidth = maximumBandwidth;
     }
@@ -229,7 +235,7 @@ public class FlowInfo implements Serializable {
      *
      * @return the status
      */
-    
+
     public String getStatus() {
         return status;
     }
@@ -239,7 +245,7 @@ public class FlowInfo implements Serializable {
      *
      * @param status the new status
      */
-    
+
     public void setStatus(final String status) {
         this.status = status;
     }
@@ -249,7 +255,7 @@ public class FlowInfo implements Serializable {
      *
      * @return the description
      */
-    
+
     public String getDescription() {
         return description;
     }
@@ -259,7 +265,7 @@ public class FlowInfo implements Serializable {
      *
      * @param description the new description
      */
-    
+
     public void setDescription(final String description) {
         this.description = description;
     }
@@ -269,7 +275,7 @@ public class FlowInfo implements Serializable {
      *
      * @return the last updated
      */
-    
+
     public String getLastUpdated() {
         return lastUpdated;
     }
@@ -279,9 +285,25 @@ public class FlowInfo implements Serializable {
      *
      * @param lastUpdated the new last updated
      */
-    
+
     public void setLastUpdated(final String lastUpdated) {
         this.lastUpdated = lastUpdated;
+    }
+
+    public String getTargetSwitchName() {
+        return targetSwitchName;
+    }
+
+    public void setTargetSwitchName(String targetSwitchName) {
+        this.targetSwitchName = targetSwitchName;
+    }
+
+    public String getSourceSwitchName() {
+        return sourceSwitchName;
+    }
+
+    public void setSourceSwitchName(String sourceSwitchName) {
+        this.sourceSwitchName = sourceSwitchName;
     }
 
 }
