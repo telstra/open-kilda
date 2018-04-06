@@ -361,32 +361,38 @@ class RecordHandler implements Runnable {
 
         logger.debug("Processing request from WFM to dump switches. {}", correlationId);
 
-        kafkaProducer.postMessage(OUTPUT_DISCO_TOPIC,
-                new InfoMessage(new NetworkSyncBeginMarker(), System.currentTimeMillis(), correlationId));
+        kafkaProducer.getProducer().enableGuaranteedOrder(OUTPUT_DISCO_TOPIC);
+        try {
 
-        Map<DatapathId, IOFSwitch> allSwitchMap = context.getSwitchManager().getAllSwitchMap();
+            kafkaProducer.postMessage(OUTPUT_DISCO_TOPIC,
+                    new InfoMessage(new NetworkSyncBeginMarker(), System.currentTimeMillis(), correlationId));
 
-        allSwitchMap.values().stream()
-                .map(this::buildSwitchInfoData)
-                .forEach(sw ->
-                        kafkaProducer.postMessage(OUTPUT_DISCO_TOPIC,
-                                new InfoMessage(sw, System.currentTimeMillis(), correlationId)));
+            Map<DatapathId, IOFSwitch> allSwitchMap = context.getSwitchManager().getAllSwitchMap();
 
-        allSwitchMap.values().stream()
-                .flatMap(sw ->
-                        sw.getEnabledPorts().stream()
-                                .map(port -> buildPort(sw, port))
-                                .collect(Collectors.toSet())
-                                .stream())
-                .forEach(port ->
-                        kafkaProducer.postMessage(OUTPUT_DISCO_TOPIC,
-                                new InfoMessage(port, System.currentTimeMillis(), correlationId)));
+            allSwitchMap.values().stream()
+                    .map(this::buildSwitchInfoData)
+                    .forEach(sw ->
+                            kafkaProducer.postMessage(OUTPUT_DISCO_TOPIC,
+                                    new InfoMessage(sw, System.currentTimeMillis(), correlationId)));
 
-        kafkaProducer.postMessage(
-                OUTPUT_DISCO_TOPIC,
-                new InfoMessage(
-                        new NetworkSyncEndMarker(), System.currentTimeMillis(),
-                        correlationId));
+            allSwitchMap.values().stream()
+                    .flatMap(sw ->
+                            sw.getEnabledPorts().stream()
+                                    .map(port -> buildPort(sw, port))
+                                    .collect(Collectors.toSet())
+                                    .stream())
+                    .forEach(port ->
+                            kafkaProducer.postMessage(OUTPUT_DISCO_TOPIC,
+                                    new InfoMessage(port, System.currentTimeMillis(), correlationId)));
+
+            kafkaProducer.postMessage(
+                    OUTPUT_DISCO_TOPIC,
+                    new InfoMessage(
+                            new NetworkSyncEndMarker(), System.currentTimeMillis(),
+                            correlationId));
+        } finally {
+            kafkaProducer.getProducer().disableGuaranteedOrder(OUTPUT_DISCO_TOPIC);
+        }
     }
 
     private void doInstallSwitchRules(final CommandMessage message, String replyToTopic, Destination replyDestination) {
