@@ -20,6 +20,7 @@ import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.pce.RecoverableException;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -54,7 +55,7 @@ public interface PathComputer extends Serializable {
      * @param flow {@link Flow} instances
      * @return {@link PathInfoData} instances
      */
-    ImmutablePair<PathInfoData, PathInfoData> getPath(Flow flow, Strategy strategy) throws UnroutablePathException;
+    ImmutablePair<PathInfoData, PathInfoData> getPath(Flow flow, Strategy strategy) throws UnroutablePathException, RecoverableException;
 
     /**
      * Interact with the PathComputer to get the FlowInfo for all flows.

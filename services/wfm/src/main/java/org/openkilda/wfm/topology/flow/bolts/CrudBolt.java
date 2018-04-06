@@ -66,6 +66,7 @@ import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.pce.RecoverableException;
 import org.openkilda.pce.cache.FlowCache;
 import org.openkilda.pce.cache.ResourceCache;
 import org.openkilda.pce.provider.Auth;
@@ -207,11 +208,11 @@ public class CrudBolt
             flowId = tuple.getStringByField(Utils.FLOW_ID);
         }
 
+        boolean isRecoverable = false;
         try {
             logger.debug("Request tuple={}", tuple);
 
             switch (componentId) {
-
                 case SPLITTER_BOLT:
                     Message msg = (Message) tuple.getValueByField(AbstractTopology.MESSAGE_FIELD);
                     correlationId = msg.getCorrelationId();
@@ -312,6 +313,11 @@ public class CrudBolt
                     logger.debug("Unexpected component: {}", componentId);
                     break;
             }
+        } catch (RecoverableException e) {
+            // FIXME(surabujin): implement retry limit
+            logger.error("Recoverable error (do not try to recoverable it until retry limit will be implemented): {}", e);
+            // isRecoverable = true;
+
         } catch (CacheException exception) {
             String logMessage = format("%s: %s", exception.getErrorMessage(), exception.getErrorDescription());
             logger.error("{}, {}={}, {}={}, component={}, stream={}", logMessage, Utils.CORRELATION_ID,
@@ -333,7 +339,11 @@ public class CrudBolt
             logger.debug("Command message ack: component={}, stream={}, tuple={}",
                     tuple.getSourceComponent(), tuple.getSourceStreamId(), tuple);
 
-            outputCollector.ack(tuple);
+            if (isRecoverable) {
+                outputCollector.fail(tuple);
+            } else {
+                outputCollector.ack(tuple);
+            }
         }
 
         logger.trace("Flow Cache after: {}", flowCache);
@@ -568,7 +578,7 @@ public class CrudBolt
         outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
     }
 
-    private void handleCreateRequest(CommandMessage message, Tuple tuple) throws IOException {
+    private void handleCreateRequest(CommandMessage message, Tuple tuple) throws IOException, RecoverableException {
         Flow requestedFlow = ((FlowCreateRequest) message.getData()).getPayload();
 
         ImmutablePair<PathInfoData, PathInfoData> path;
@@ -600,7 +610,7 @@ public class CrudBolt
         outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
     }
 
-    private void handleRerouteRequest(CommandMessage message, Tuple tuple) throws IOException {
+    private void handleRerouteRequest(CommandMessage message, Tuple tuple) throws IOException, RecoverableException {
         FlowRerouteRequest request = (FlowRerouteRequest) message.getData();
         Flow requestedFlow = request.getPayload();
         final String flowId = requestedFlow.getFlowId();
@@ -671,7 +681,7 @@ public class CrudBolt
         }
     }
 
-    private void handleRestoreRequest(CommandMessage message, Tuple tuple) throws IOException {
+    private void handleRestoreRequest(CommandMessage message, Tuple tuple) throws IOException, RecoverableException {
         ImmutablePair<Flow, Flow> requestedFlow = ((FlowRestoreRequest) message.getData()).getPayload();
 
         try {
@@ -696,7 +706,7 @@ public class CrudBolt
         }
     }
 
-    private void handleUpdateRequest(CommandMessage message, Tuple tuple) throws IOException {
+    private void handleUpdateRequest(CommandMessage message, Tuple tuple) throws IOException, RecoverableException {
         Flow requestedFlow = ((FlowUpdateRequest) message.getData()).getPayload();
 
         ImmutablePair<PathInfoData, PathInfoData> path;

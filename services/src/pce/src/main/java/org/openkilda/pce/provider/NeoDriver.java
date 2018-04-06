@@ -18,6 +18,8 @@ package org.openkilda.pce.provider;
 import org.openkilda.messaging.info.event.*;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.pce.RecoverableException;
+import org.openkilda.pce.api.FlowAdapter;
 
 import org.neo4j.driver.v1.Driver;
 import org.neo4j.driver.v1.Record;
@@ -26,9 +28,10 @@ import org.neo4j.driver.v1.Statement;
 import org.neo4j.driver.v1.StatementResult;
 import org.neo4j.driver.v1.Value;
 import org.neo4j.driver.v1.Values;
+import org.neo4j.driver.v1.exceptions.ClientException;
 import org.neo4j.driver.v1.exceptions.NoSuchRecordException;
+import org.neo4j.driver.v1.exceptions.TransientException;
 import org.neo4j.driver.v1.types.Relationship;
-import org.openkilda.pce.api.FlowAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,7 +60,7 @@ public class NeoDriver implements PathComputer {
      */
     @Override
     public ImmutablePair<PathInfoData, PathInfoData> getPath(Flow flow, Strategy strategy)
-            throws UnroutablePathException {
+            throws UnroutablePathException, RecoverableException {
 
         long latency = 0L;
         List<PathNode> forwardNodes = new LinkedList<>();
@@ -65,45 +68,50 @@ public class NeoDriver implements PathComputer {
 
         if (! flow.isOneSwitchFlow()) {
             Statement statement = getPathQuery(flow, strategy);
-            logger.debug("QUERY: {}", statement.toString());
+            logger.info("QUERY: {}", statement.toString());
 
             try (Session session = driver.session()) {
                 StatementResult result = session.run(statement);
 
-                try {
-                    Record record = result.next();
+                Record record = result.next();
 
-                    LinkedList<Relationship> isls = new LinkedList<>();
-                    record.get(0).asPath().relationships().forEach(isls::add);
+                LinkedList<Relationship> isls = new LinkedList<>();
+                record.get(0).asPath().relationships().forEach(isls::add);
 
-                    int seqId = 0;
-                    for (Relationship isl : isls) {
-                        latency += isl.get("latency").asLong();
+                int seqId = 0;
+                for (Relationship isl : isls) {
+                    latency += isl.get("latency").asLong();
 
-                        forwardNodes.add(new PathNode(isl.get("src_switch").asString(),
-                                isl.get("src_port").asInt(), seqId, isl.get("latency").asLong()));
-                        seqId++;
+                    forwardNodes.add(new PathNode(isl.get("src_switch").asString(),
+                            isl.get("src_port").asInt(), seqId, isl.get("latency").asLong()));
+                    seqId++;
 
-                        forwardNodes.add(new PathNode(isl.get("dst_switch").asString(),
-                                isl.get("dst_port").asInt(), seqId, 0L));
-                        seqId++;
-                    }
-
-                    seqId = 0;
-                    Collections.reverse(isls);
-
-                    for (Relationship isl : isls) {
-                        reverseNodes.add(new PathNode(isl.get("dst_switch").asString(),
-                                isl.get("dst_port").asInt(), seqId, isl.get("latency").asLong()));
-                        seqId++;
-
-                        reverseNodes.add(new PathNode(isl.get("src_switch").asString(),
-                                isl.get("src_port").asInt(), seqId, 0L));
-                        seqId++;
-                    }
-                } catch (NoSuchRecordException e) {
-                    throw new UnroutablePathException(flow);
+                    forwardNodes.add(new PathNode(isl.get("dst_switch").asString(),
+                            isl.get("dst_port").asInt(), seqId, 0L));
+                    seqId++;
                 }
+
+                seqId = 0;
+                Collections.reverse(isls);
+
+                for (Relationship isl : isls) {
+                    reverseNodes.add(new PathNode(isl.get("dst_switch").asString(),
+                            isl.get("dst_port").asInt(), seqId, isl.get("latency").asLong()));
+                    seqId++;
+
+                    reverseNodes.add(new PathNode(isl.get("src_switch").asString(),
+                            isl.get("src_port").asInt(), seqId, 0L));
+                    seqId++;
+                }
+
+            // FIXME(surabujin): Need to catch and trace exact exception thrown in recoverable places.
+            } catch (TransientException e) {
+                throw new RecoverableException("TransientError from neo4j", e);
+            } catch (ClientException e) {
+                throw new RecoverableException("ClientException from neo4j", e);
+
+            } catch (NoSuchRecordException e) {
+                throw new UnroutablePathException(flow);
             }
         } else {
             logger.info("No path computation for one-switch flow");
