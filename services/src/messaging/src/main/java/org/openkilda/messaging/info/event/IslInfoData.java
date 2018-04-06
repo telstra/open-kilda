@@ -127,7 +127,7 @@ public class IslInfoData extends PathInfoData {
      *
      * @param id id to set
      */
-    public void setIs(String id) {
+    public void setId(String id) {
         this.id = id;
     }
 

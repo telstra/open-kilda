@@ -250,7 +250,6 @@ public class NeoDriver implements PathComputer {
         StatementResult queryResults = session.run(q);
         List<IslInfoData> results = new LinkedList<>();
         for (Record record : queryResults.list()) {
-            IslInfoData isl = new IslInfoData();
             // max_bandwidth not used in IslInfoData
             List<PathNode> pathNodes = new ArrayList<>();
             PathNode src = new PathNode();
@@ -263,15 +262,19 @@ public class NeoDriver implements PathComputer {
             dst.setPortNo(record.get("dst_port").asInt());
             dst.setSegLatency(record.get("latency").asInt());
             pathNodes.add(dst);
-
-            isl.setPath(pathNodes);
-            isl.setSpeed(record.get("speed").asInt());
-            isl.setLatency(record.get("latency").asInt());
-            isl.setAvailableBandwidth(record.get("available_bandwidth").asInt());
+            
             String status = record.get("status").asString();
-            IslChangeType ct = ("active".equals(status)) ? IslChangeType.DISCOVERED : IslChangeType.FAILED;
-            isl.setState(ct);
+            IslChangeType state = ("active".equals(status)) ? IslChangeType.DISCOVERED : IslChangeType.FAILED;
+
+            IslInfoData isl = new IslInfoData(
+                    record.get("latency").asInt(),
+                    pathNodes,
+                    record.get("speed").asInt(),
+                    state,
+                    record.get("available_bandwidth").asInt()
+            );
             isl.setTimestamp(System.currentTimeMillis());
+
             results.add(isl);
         }
         return results;
