@@ -35,8 +35,12 @@ def send(bootstrap_servers, topic, message):
     future.get(timeout=60)
 
 
+class ExitFromLoop(Exception):
+    pass
+
+
 @contextmanager
-def receive_with_context_async(context):
+def receive_with_context_async(context, expected_count=None):
     records = []
 
     def collector(record):
@@ -46,6 +50,10 @@ def receive_with_context_async(context):
                         data['destination'] == 'CTRL_CLIENT'):
                 LOG.debug('New message in topic:\n%s', pprint.pformat(data))
                 records.append(record)
+                if expected_count is not None and len(records) >= expected_count:
+                    raise ExitFromLoop()
+        except ExitFromLoop as ex:
+            raise ex
         except Exception:
             LOG.exception('error on %s', record)
 
@@ -78,7 +86,10 @@ def receive(bootstrap_servers, topic, callback, offset):
     if offset is not None:
         consumer.seek(partition, offset)
     for msg in consumer:
-        callback(msg)
+        try:
+            callback(msg)
+        except ExitFromLoop as ex:
+            return
 
 
 def get_last_offset_with_context(context):
