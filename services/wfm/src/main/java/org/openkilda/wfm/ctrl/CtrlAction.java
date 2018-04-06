@@ -43,6 +43,9 @@ public class CtrlAction extends AbstractAction {
             case "dumpBySwitch":
                 action = new DumpBySwitchStateAction(this, message);
                 break;
+            case "dumpResorceCache":
+                action = new DumpByResorceCacheAction(this, message);
+                break;
             default:
                 throw new UnsupportedActionException(payload.getAction());
         }

@@ -19,6 +19,7 @@ import socket
 
 import click
 
+from kilda.probe.command.dump_resource_state import dump_resource_state
 from kilda.probe.command.list import list_command
 from kilda.probe.command.monitor import monitor_command, bolt_command
 from kilda.probe.command.dump_state import dump_state_command
@@ -164,6 +165,7 @@ cli.add_command(monitor_command)
 cli.add_command(bolt_command)
 cli.add_command(dump_state_command)
 cli.add_command(switch_port_status_command)
+cli.add_command(dump_resource_state)
 
 
 def main():

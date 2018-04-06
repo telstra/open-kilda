@@ -44,6 +44,7 @@ import org.openkilda.messaging.command.flow.SynchronizeCacheAction;
 import org.openkilda.messaging.ctrl.AbstractDumpState;
 import org.openkilda.messaging.ctrl.state.CrudBoltState;
 import org.openkilda.messaging.ctrl.state.FlowDump;
+import org.openkilda.messaging.ctrl.state.ResorceCacheBoltState;
 import org.openkilda.messaging.error.CacheException;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
@@ -90,6 +91,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -910,5 +912,14 @@ public class CrudBolt
     @Override
     public OutputCollector getOutput() {
         return outputCollector;
+    }
+
+    @Override
+    public Optional<AbstractDumpState> dumpResorceCacheState()
+    {
+        return Optional.of(new ResorceCacheBoltState(
+                flowCache.getAllocatedMeters(),
+                flowCache.getAllocatedVlans(),
+                flowCache.getAllocatedCookies()));
     }
 }

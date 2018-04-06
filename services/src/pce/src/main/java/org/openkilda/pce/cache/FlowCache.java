@@ -633,6 +633,22 @@ public class FlowCache extends Cache {
                 .collect(Collectors.toSet());
     }
 
+
+    public Set<Integer> getAllocatedVlans()
+    {
+        return resourceCache.getAllVlanIds();
+    }
+
+    public Set<Integer> getAllocatedCookies()
+    {
+        return resourceCache.getAllCookies();
+    }
+
+    public Map<String, Set<Integer>> getAllocatedMeters()
+    {
+        return resourceCache.getAllMeterIds();
+    }
+
     /**
      * {@inheritDoc}
      */

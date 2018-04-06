@@ -82,3 +82,7 @@ def create_dump_state(correlation_id, destination):
 
 def create_dump_state_by_switch(correlation_id, destination, switch):
     return DumpBySwitchCtrlCommandMessage(destination, correlation_id, switch)
+
+
+def create_resource_dump_state(correlation_id, destination):
+    return CtrlCommandMessage(destination, correlation_id, 'dumpResorceCache')
