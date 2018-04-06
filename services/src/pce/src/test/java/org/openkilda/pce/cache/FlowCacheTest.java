@@ -84,13 +84,13 @@ public class FlowCacheTest {
         Flow forward = newFlow.left;
         assertEquals(1 | ResourceCache.FORWARD_FLOW_COOKIE_MASK, forward.getCookie());
         assertEquals(2, forward.getTransitVlan());
-        assertEquals(1, forward.getMeterId());
+        assertEquals(ResourceCache.MIN_METER_ID, forward.getMeterId());
         assertEquals(path.getLeft(), forward.getFlowPath());
 
         Flow reverse = newFlow.right;
         assertEquals(1 | ResourceCache.REVERSE_FLOW_COOKIE_MASK, reverse.getCookie());
         assertEquals(3, reverse.getTransitVlan());
-        assertEquals(1, reverse.getMeterId());
+        assertEquals(ResourceCache.MIN_METER_ID, reverse.getMeterId());
         assertEquals(path.getRight(), reverse.getFlowPath());
 
         assertEquals(1, flowCache.dumpFlows().size());

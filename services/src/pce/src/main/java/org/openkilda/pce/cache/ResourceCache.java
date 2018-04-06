@@ -49,14 +49,9 @@ public class ResourceCache extends Cache {
     public static final long REVERSE_FLOW_COOKIE_MASK = 0x2000000000000000L;
 
     /**
-     * Maximum meter id value.
+     * Minimum vlan id value.
      */
-    static final int MAX_METER_ID = 4095;
-
-    /**
-     * Minimum meter id value.
-     */
-    static final int MIN_METER_ID = 1;
+    static final int MIN_VLAN_ID = 2;
 
     /**
      * Maximum vlan id value.
@@ -64,9 +59,16 @@ public class ResourceCache extends Cache {
     static final int MAX_VLAN_ID = 4094;
 
     /**
-     * Minimum vlan id value.
+     * Minimum meter id value.
      */
-    static final int MIN_VLAN_ID = 2;
+    static final int MIN_METER_ID = 11;
+
+    /**
+     * Maximum meter id value.
+     * NB: Should be the same as VLAN range at the least, could be more. The formula
+     * ensures we have a sufficient range
+     */
+    static final int MAX_METER_ID = MIN_METER_ID + MAX_VLAN_ID - MIN_VLAN_ID;
 
     /**
      * Maximum cookie value.
