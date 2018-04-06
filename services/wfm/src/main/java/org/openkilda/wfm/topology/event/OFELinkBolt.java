@@ -290,12 +290,7 @@ public class OFELinkBolt
             // change the logger level.
             logger.error("Unknown Message type={}", json);
         } finally {
-            // We mark as fail all tuples while bolt is not initialized
-            if (isReceivedCacheInfo) {
-                collector.ack(tuple);
-            } else {
-                collector.fail(tuple);
-            }
+            collector.ack(tuple);
         }
     }
 

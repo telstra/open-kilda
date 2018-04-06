@@ -107,7 +107,8 @@ public class FlowMetricGenBolt extends MetricGenBolt {
             collector.ack(input);
         } catch (ServiceUnavailableException e) {
             LOGGER.error("Error process: {}", input.toString(), e);
-            collector.fail(input); // If we can't connect to Neo then don't know if valid input
+            collector.ack(input); // If we can't connect to Neo then don't know if valid input, but if NEO is down puts a loop to
+                                  // kafka, so fail the request.
         } catch (Exception e) {
             collector.ack(input); // We tried, no need to try again
         }
