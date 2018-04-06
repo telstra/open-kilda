@@ -37,6 +37,7 @@ import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.pce.RecoverableException;
 import org.openkilda.pce.provider.PathComputer;
 import org.openkilda.pce.provider.UnroutablePathException;
 import org.openkilda.topo.exceptions.TopologyProcessingException;
@@ -585,7 +586,7 @@ public class FlowUtils {
      * @return flow path
      */
     public static ImmutablePair<PathInfoData, PathInfoData> getFlowPath(Flow flow)
-            throws InterruptedException, UnroutablePathException {
+            throws InterruptedException, UnroutablePathException, RecoverableException {
         Thread.sleep(1000);
         return pathComputer.getPath(flow, PathComputer.Strategy.COST);
     }

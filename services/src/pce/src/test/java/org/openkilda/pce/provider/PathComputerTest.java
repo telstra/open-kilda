@@ -23,6 +23,7 @@ import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.neo.NeoUtils;
 import org.openkilda.neo.OkNode;
 import org.openkilda.neo.NeoUtils.OkRels;
+import org.openkilda.pce.RecoverableException;
 
 /**
  * The primary goals of this test package are to emulate the Acceptance Tests in the ATDD module.
@@ -162,7 +163,7 @@ public class PathComputerTest {
     }
 
     @Test
-    public void testGetPathByCostActive() throws UnroutablePathException {
+    public void testGetPathByCostActive() throws UnroutablePathException, RecoverableException {
         /*
          * simple happy path test .. everything has cost
          */
@@ -182,7 +183,7 @@ public class PathComputerTest {
 
 
     @Test
-    public void testGetPathByCostInactive() throws UnroutablePathException {
+    public void testGetPathByCostInactive() throws UnroutablePathException, RecoverableException {
         /*
          * simple happy path test .. but lowest path is inactive
          */
@@ -202,7 +203,7 @@ public class PathComputerTest {
     }
 
     @Test
-    public void testGetPathByCostInactiveOnTriangleTopo() throws UnroutablePathException {
+    public void testGetPathByCostInactiveOnTriangleTopo() throws UnroutablePathException, RecoverableException {
         /*
          * simple happy path test .. but lowest path is inactive
          */
@@ -222,7 +223,7 @@ public class PathComputerTest {
     }
 
     @Test
-    public void testGetPathByCostNoCost() throws UnroutablePathException {
+    public void testGetPathByCostNoCost() throws UnroutablePathException, RecoverableException {
         /*
          * simple happy path test .. but pathB has no cost .. but still cheaper than pathC (test the default)
          */
@@ -243,7 +244,7 @@ public class PathComputerTest {
 
 
     @Test(expected = UnroutablePathException.class)
-    public void testGetPathNoPath() throws UnroutablePathException {
+    public void testGetPathNoPath() throws UnroutablePathException, RecoverableException {
         /*
          * simple happy path test .. but pathB has no cost .. but still cheaper than pathC (test the default)
          */
