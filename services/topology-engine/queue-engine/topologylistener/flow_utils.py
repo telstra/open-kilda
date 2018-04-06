@@ -101,9 +101,18 @@ def get_rules(src_switch, src_port, src_vlan, dst_switch, dst_port, dst_vlan,
         nodes, src_switch, src_port, src_vlan, bandwidth,
         transit_vlan, flowid, output_action, cookie, meter_id))
 
-    flows.extend(message_utils.build_intermediate_flows(
-        _['switch_id'], _['port_no'], __['port_no'], transit_vlan, flowid,
-        cookie) for _, __ in zip(nodes[1:-1], nodes[2:]))
+    for i in range(1, len(nodes)-1, 2):
+        src = nodes[i]
+        dst = nodes[i+1]
+
+        if src['switch_id'] != dst['switch_id']:
+            msg = 'Found non-paired node in the flowpath: {}'.format(flowpath)
+            logger.error(msg)
+            raise ValueError(msg)
+
+        flows.append(message_utils.build_intermediate_flows(
+            src['switch_id'], src['port_no'], dst['port_no'], transit_vlan, flowid,
+            cookie))
 
     flows.append(message_utils.build_egress_flow(
         nodes, dst_switch, dst_port, dst_vlan,
