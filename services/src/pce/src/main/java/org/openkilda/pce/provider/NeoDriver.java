@@ -262,7 +262,7 @@ public class NeoDriver implements PathComputer {
             dst.setPortNo(record.get("dst_port").asInt());
             dst.setSegLatency(record.get("latency").asInt());
             pathNodes.add(dst);
-            
+
             String status = record.get("status").asString();
             IslChangeType state = ("active".equals(status)) ? IslChangeType.DISCOVERED : IslChangeType.FAILED;
 
