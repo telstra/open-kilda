@@ -601,11 +601,9 @@ public class CacheBolt
         logger.info("Flow Cache: Initializing");
         Map<String, BidirectionalFlow> flowPairsMap = new HashMap<>();
         List<Flow> flows = pathComputer.getAllFlows();
-        logger.info("Flow Cache: Initializing - {} flows", flows.size());
+        logger.info("Flow Cache: Initializing - {} flows (size)", flows.size());
 
         for (Flow flow : flows) {
-            // TODO: change to debug level
-            logger.info("Flow Cache: Initializing - processing flow: {}", flow);
             if (!flowPairsMap.containsKey(flow.getFlowId())) {
                 flowPairsMap.put(flow.getFlowId(), new BidirectionalFlow());
             }

@@ -70,7 +70,7 @@ public class ResourceCache extends Cache {
     /**
      * Maximum cookie value.
      */
-    static final int MAX_COOKIE = 4095;
+    static final int MAX_COOKIE = 128*1024;
 
     /**
      * Minimum cookie value.
@@ -260,19 +260,30 @@ public class ResourceCache extends Cache {
     }
 
     /**
-     * Allocates flow resources.
+     * Allocates flow resources. All flows come here .. single switch and multi switch flows.
      *
      * @param flow flow
      */
     public void allocateFlow(ImmutablePair<Flow, Flow> flow) {
+
         if (flow.left != null) {
             allocateCookie((int) (FLOW_COOKIE_VALUE_MASK & flow.left.getCookie()));
-            allocateVlanId(flow.left.getTransitVlan());
+            if (!flow.left.isOneSwitchFlow()) {
+                // Don't allocate if one switch .. it is zero
+                // .. and allocateVlanId *will* allocate if it is zero, which consumes a very
+                // .. limited resource unnecessarily
+                allocateVlanId(flow.left.getTransitVlan());
+            }
             allocateMeterId(flow.left.getSourceSwitch(), flow.left.getMeterId());
         }
 
         if (flow.right != null) {
-            allocateVlanId(flow.right.getTransitVlan());
+            if (!flow.right.isOneSwitchFlow()) {
+                // Don't allocate if one switch .. it is zero
+                // .. and allocateVlanId *will* allocate if it is zero, which consumes a very
+                // .. limited resource unnecessarily
+                allocateVlanId(flow.right.getTransitVlan());
+            }
             allocateMeterId(flow.right.getSourceSwitch(), flow.right.getMeterId());
         }
     }
