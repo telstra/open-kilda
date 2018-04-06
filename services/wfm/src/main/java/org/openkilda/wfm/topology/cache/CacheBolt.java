@@ -601,7 +601,14 @@ public class CacheBolt
         // networkCache.load(switches, links);
 
         switches.forEach(networkCache::createOrUpdateSwitch);
-        links.forEach(networkCache::createOrUpdateIsl);
+
+        for (IslInfoData isl : links) {
+            try {
+                networkCache.createOrUpdateIsl(isl);
+            } catch (Exception e) {
+                logger.error("CacheBolt :: initNetwork :: add ISL caused error --> isl = {} ; Exception = {}", isl, e);
+            }
+        }
 
         logger.info("Network Cache: Initialized");
     }
