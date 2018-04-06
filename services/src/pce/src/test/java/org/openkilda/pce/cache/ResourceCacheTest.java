@@ -19,24 +19,25 @@ import static java.lang.String.format;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
+import edu.emory.mathcs.backport.java.util.Collections;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.pce.NetworkTopologyConstants;
 
-import edu.emory.mathcs.backport.java.util.Collections;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
 public class ResourceCacheTest {
     private static final String SWITCH_ID = "switch-id";
+    private static final String SWITCH_ID_2 = "switch-id-2";
     private final Flow forwardCreatedFlow = new Flow("created-flow", 0, false, 10L, "description",
             "timestamp", "sw3", "sw4", 21, 22, 100, 200, 4, 4, new PathInfoData(), FlowState.ALLOCATED);
     private final Flow reverseCreatedFlow = new Flow("created-flow", 0, false, 10L, "description",
@@ -224,4 +225,30 @@ public class ResourceCacheTest {
         // then
         assertNull(resourceCache.deallocateMeterId(switchId, forwardCreatedFlow.getMeterId()));
     }
+
+    @Test
+    public void getAllMeterIds(){
+        int first = resourceCache.allocateMeterId(SWITCH_ID);
+        assertEquals(1, first);
+
+        int second = resourceCache.allocateMeterId(SWITCH_ID);
+        assertEquals(2, second);
+
+        int third = resourceCache.allocateMeterId(SWITCH_ID);
+        assertEquals(3, third);
+
+
+        first = resourceCache.allocateMeterId(SWITCH_ID_2);
+        assertEquals(1, first);
+
+        second = resourceCache.allocateMeterId(SWITCH_ID_2);
+        assertEquals(2, second);
+
+        Map<String, Set<Integer>> allMeterIds = resourceCache.getAllMeterIds();
+        assertEquals(2, allMeterIds.size());
+        assertEquals(3, allMeterIds.get(SWITCH_ID).size());
+        assertEquals(2, allMeterIds.get(SWITCH_ID_2).size());
+    }
+
+
 }

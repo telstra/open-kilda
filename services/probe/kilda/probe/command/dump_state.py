@@ -212,8 +212,15 @@ def print_table(records, border):
 @click.option('--border/--no-border', default=True)
 @click.option('--table', 'output_type', flag_value='table', default=True)
 @click.option('--json', 'output_type', flag_value='json')
+@click.option('--allow-dangerous-operation/--prevent-dangerous-operation', default=False)
 @click.pass_obj
-def dump_state_command(ctx, destination, border, output_type):
+def dump_state_command(ctx, destination, border, output_type, allow_dangerous_operation):
+
+    if not allow_dangerous_operation:
+        click.secho("DON'T RUN ON PRODUCTION MAY CAUSE OVERSIZED KAFKA MESSAGE",
+                    blink=True, bold=True)
+        return
+
     message = create_dump_state(ctx.correlation_id, destination=destination)
     LOG.debug('command = {}'.format(message.serialize()))
 
