@@ -32,6 +32,7 @@ import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.pce.RecoverableException;
 import org.openkilda.pce.provider.UnroutablePathException;
 import org.openkilda.topo.TopologyHelp;
 import org.openkilda.topo.exceptions.TopologyProcessingException;
@@ -145,7 +146,7 @@ public class FlowPathTest {
     @Then("^flow (.*) with (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) path correct$")
     public void flowPathCorrect(String flowId, String sourceSwitch, int sourcePort, int sourceVlan,
             String destinationSwitch, int destinationPort, int destinationVlan, int bandwidth)
-            throws UnroutablePathException, InterruptedException {
+            throws UnroutablePathException, InterruptedException, RecoverableException {
         Flow flow = new Flow(FlowUtils.getFlowName(flowId), bandwidth, false, flowId, sourceSwitch,
                 sourcePort, sourceVlan, destinationSwitch, destinationPort, destinationVlan);
         ImmutablePair<PathInfoData, PathInfoData> path = FlowUtils.getFlowPath(flow);
