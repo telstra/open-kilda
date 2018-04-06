@@ -28,9 +28,11 @@ import config
 logger = logging.getLogger(__name__)
 
 known_messages = ['org.openkilda.messaging.info.event.SwitchInfoData',
+                  'org.openkilda.messaging.info.event.SwitchInfoExtendedData',
                   'org.openkilda.messaging.info.event.IslInfoData',
                   'org.openkilda.messaging.info.event.PortInfoData',
-                  'org.openkilda.messaging.info.flow.FlowInfoData']
+                  'org.openkilda.messaging.info.flow.FlowInfoData',
+                  'org.openkilda.messaging.info.rule.SwitchFlowEntries']
 known_commands = ['org.openkilda.messaging.command.flow.FlowCreateRequest',
                   'org.openkilda.messaging.command.flow.FlowDeleteRequest',
                   'org.openkilda.messaging.command.flow.FlowUpdateRequest',
@@ -38,11 +40,21 @@ known_commands = ['org.openkilda.messaging.command.flow.FlowCreateRequest',
                   'org.openkilda.messaging.command.flow.FlowGetRequest',
                   'org.openkilda.messaging.command.flow.FlowsGetRequest',
                   'org.openkilda.messaging.command.flow.FlowRerouteRequest',
-                  'org.openkilda.messaging.command.discovery.NetworkCommandData']
+                  'org.openkilda.messaging.command.system.FeatureToggleRequest',
+                  'org.openkilda.messaging.command.system.FeatureToggleStateRequest',
+                  'org.openkilda.messaging.command.switches.SyncRulesRequest',
+                  'org.openkilda.messaging.command.discovery.NetworkCommandData',
+                  'org.openkilda.messaging.command.FlowsSyncRequest']
 
 
 def main_loop():
-    pool_size = config.getint('gevent', 'worker.pool.size')
+    # pool_size = config.getint('gevent', 'worker.pool.size')
+    # (crimi) - Setting pool_size to 1 to avoid deadlocks. This is until we are able to demonstrate that
+    #           the deadlocks are able to be avoided.
+    #           An improvement would be to do the DB updates on single worker, allowing everything else to
+    #           happen concurrently. But expected load for 1.0 isn't great .. more than manageable with 1 worker.
+    #
+    pool_size = 1
     pool = gevent.pool.Pool(pool_size)
     logger.info('Started gevent pool with size %d', pool_size)
 

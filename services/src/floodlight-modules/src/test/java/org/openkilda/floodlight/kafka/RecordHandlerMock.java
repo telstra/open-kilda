@@ -1,5 +1,6 @@
 package org.openkilda.floodlight.kafka;
 
+import org.openkilda.floodlight.switchmanager.MeterPool;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 
@@ -15,7 +16,7 @@ class RecordHandlerMock extends RecordHandler {
     Map<DatapathId, SwitchInfoData> switchInfoDataOverride;
 
     RecordHandlerMock(ConsumerContext context) {
-        super(context, EasyMock.mock(ConsumerRecord.class));
+        super(context, EasyMock.mock(ConsumerRecord.class), new MeterPool());
         switchInfoDataOverride = new HashMap<>();
     }
 

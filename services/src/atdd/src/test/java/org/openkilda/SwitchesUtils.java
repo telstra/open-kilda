@@ -3,6 +3,7 @@ package org.openkilda;
 import static java.lang.String.format;
 import static java.util.Base64.getEncoder;
 import static org.openkilda.DefaultParameters.mininetEndpoint;
+import static org.openkilda.DefaultParameters.northboundEndpoint;
 import static org.openkilda.DefaultParameters.topologyEndpoint;
 import static org.openkilda.DefaultParameters.topologyPassword;
 import static org.openkilda.DefaultParameters.topologyUsername;
@@ -11,6 +12,9 @@ import static org.openkilda.DefaultParameters.trafficEndpoint;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.glassfish.jersey.client.ClientConfig;
+import org.openkilda.messaging.Utils;
+import org.openkilda.messaging.command.switches.DeleteRulesAction;
+import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.topo.exceptions.TopologyProcessingException;
 
@@ -19,6 +23,7 @@ import java.util.List;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.Entity;
+import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -128,4 +133,39 @@ public final class SwitchesUtils {
     }
 
 
+    /**
+     * Delete switch rules through Northbound service.
+     */
+    public static List<Long> deleteSwitchRules(String switchId, DeleteRulesAction defaultRules) {
+        System.out.println("\n==> Northbound Delete Switch Rules");
+
+        Client client = ClientBuilder.newClient(new ClientConfig());
+
+        Response response = client
+                .target(northboundEndpoint)
+                .path("/api/v1/switches/")
+                .path("{switch-id}")
+                .path("rules")
+                .queryParam("defaultRules", defaultRules)
+                .resolveTemplate("switch-id", switchId)
+
+                .request(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
+                .header(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()))
+                .header(Utils.EXTRA_AUTH, String.valueOf(System.currentTimeMillis()))
+                .delete();
+
+        System.out.println(format("===> Response = %s", response.toString()));
+
+        int responseCode = response.getStatus();
+        if (responseCode == 200) {
+            List<Long> cookies = response.readEntity(new GenericType<List<Long>>() {});
+            System.out.println(format("====> Northbound Delete Switch Rules = %d", cookies.size()));
+            return cookies;
+        } else {
+            System.out.println(format("====> Error: Northbound Delete Switch Rules = %s",
+                    response.readEntity(MessageError.class)));
+            return null;
+        }
+    }
 }

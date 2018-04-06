@@ -21,16 +21,18 @@ kafka.topic.topo.disco = {{ kafka_topic_topo_disco }}
 kafka.topic.topo.eng = {{ kafka_topic_topo_eng }}
 
 opentsdb.hosts = {{ opentsdb_hosts }}
-opentsdb.timeout = 30
-opentsdb.num.spouts = 5
-opentsdb.num.opentsdbfilterbolt = 10
-opentsdb.num.opentsdbbolt = 10
-opentsdb.workers.opentsdbolt = 20
-opentsdb.num.datapointparserbolt = 1
-opentsdb.workers.datapointparserbolt = 2
-opentsdb.batch.size = 50
-opentsdb.flush.interval = 1
-opentsdb.workers = 10
+
+opentsdb.timeout = {{ opentsdb_timeout }}
+opentsdb.num.spouts = {{ opentsdb_num_spouts }}
+opentsdb.num.opentsdbfilterbolt = {{ opentsdb_num_opentsdbfilterbolt }}
+opentsdb.num.opentsdbbolt = {{ opentsdb_num_opentsdbbolt }}
+opentsdb.workers.opentsdbolt = {{ opentsdb_workers_opentsdbolt }}
+opentsdb.num.datapointparserbolt = {{ opentsdb_num_datapointparserbolt }}
+opentsdb.workers.datapointparserbolt = {{ opentsdb_workers_datapointparserbolt }}
+opentsdb.batch.size = {{ opentsdb_batch_size }}
+opentsdb.flush.interval = {{ opentsdb_flush_interval }}
+opentsdb.workers = {{ opentsdb_workers }}
+opentsdb.client.chunked-requests.enabled=true
 
 neo4j.hosts = {{ neo4j_hosts }}
 neo4j.user = {{ neo4j_user }}
@@ -39,6 +41,10 @@ neo4j.pswd = {{ neo4j_password }}
 filter.directory =
 logger.level = INFO
 logger.watermark =
+
+topology.engine.rest.endpoint = {{ topology_engine_rest_endpoint }}:{{ topology_engine_rest_port }}
+topology.engine.rest.login =
+topology.engine.rest.password =
 
 #######
 # Discovery

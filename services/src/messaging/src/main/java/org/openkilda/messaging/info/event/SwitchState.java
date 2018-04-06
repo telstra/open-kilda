@@ -49,6 +49,11 @@ public enum SwitchState {
     DEACTIVATED("DEACTIVATED"),
 
     /**
+     * When switch is under validating process.
+     */
+    VALIDATING("VALIDATING"),
+
+    /**
      * Removed switch event message type.
      */
     REMOVED("REMOVED"),

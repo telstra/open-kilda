@@ -15,19 +15,30 @@
 
 package org.openkilda.northbound.controller;
 
+import static org.openkilda.messaging.Utils.CORRELATION_ID;
+import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
+import static org.openkilda.messaging.Utils.FLOW_ID;
 import static org.openkilda.messaging.Utils.EXTRA_AUTH;
 
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiParam;
+import io.swagger.annotations.ApiResponse;
+import io.swagger.annotations.ApiResponses;
+import org.openkilda.messaging.command.flow.SynchronizeCacheAction;
 import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.northbound.dto.FlowValidationDto;
 import org.openkilda.northbound.service.BatchResults;
 import org.openkilda.northbound.service.FlowService;
+import org.openkilda.northbound.utils.ExtraAuthRequired;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,14 +54,35 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
 
+import java.nio.file.InvalidPathException;
 import java.util.List;
+import java.util.Optional;
+
 
 /**
  * REST Controller for flow requests.
  */
 @RestController
 @PropertySource("classpath:northbound.properties")
+@Api
+@ApiResponses(value = {
+        @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
+        @ApiResponse(code = 401, response = MessageError.class, message = "Unauthorized"),
+        @ApiResponse(code = 403, response = MessageError.class, message = "Forbidden"),
+        @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
+        @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
+        @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
 public class FlowController {
     /**
      * The logger.
@@ -70,14 +102,7 @@ public class FlowController {
      * @return flow
      */
     @ApiOperation(value = "Creates new flow", response = FlowPayload.class)
-    @ApiResponses(value = {
-            @ApiResponse(code = 200, response = FlowPayload.class, message = "Operation is successful"),
-            @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
-            @ApiResponse(code = 401, response = MessageError.class, message = "Unauthorized"),
-            @ApiResponse(code = 403, response = MessageError.class, message = "Forbidden"),
-            @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
-            @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
-            @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
+    @ApiResponse(code = 200, response = FlowPayload.class, message = "Operation is successful")
     @RequestMapping(
             value = "/flows",
             method = RequestMethod.PUT,
@@ -95,20 +120,13 @@ public class FlowController {
      * @return flow
      */
     @ApiOperation(value = "Gets flow", response = FlowPayload.class)
-    @ApiResponses(value = {
-            @ApiResponse(code = 200, response = FlowPayload.class, message = "Operation is successful"),
-            @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
-            @ApiResponse(code = 401, response = MessageError.class, message = "Unauthorized"),
-            @ApiResponse(code = 403, response = MessageError.class, message = "Forbidden"),
-            @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
-            @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
-            @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
+    @ApiResponse(code = 200, response = FlowPayload.class, message = "Operation is successful")
     @RequestMapping(
             value = "/flows/{flow-id}",
             method = RequestMethod.GET,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
-    public ResponseEntity<FlowPayload> getFlow(
-            @PathVariable(name = "flow-id") String flowId) {
+    public ResponseEntity<FlowPayload> getFlow(@PathVariable(name = "flow-id") String flowId) {
+        logger.debug("Get flow: {}={}", FLOW_ID, flowId);
         FlowPayload response = flowService.getFlow(flowId);
         return new ResponseEntity<>(response, new HttpHeaders(), HttpStatus.OK);
     }
@@ -120,20 +138,13 @@ public class FlowController {
      * @return flow
      */
     @ApiOperation(value = "Deletes flow", response = FlowPayload.class)
-    @ApiResponses(value = {
-            @ApiResponse(code = 200, response = FlowPayload.class, message = "Operation is successful"),
-            @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
-            @ApiResponse(code = 401, response = MessageError.class, message = "Unauthorized"),
-            @ApiResponse(code = 403, response = MessageError.class, message = "Forbidden"),
-            @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
-            @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
-            @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
+    @ApiResponse(code = 200, response = FlowPayload.class, message = "Operation is successful")
     @RequestMapping(
             value = "/flows/{flow-id}",
             method = RequestMethod.DELETE,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
-    public ResponseEntity<FlowPayload> deleteFlow(
-            @PathVariable(name = "flow-id") String flowId) {
+    public ResponseEntity<FlowPayload> deleteFlow(@PathVariable(name = "flow-id") String flowId) {
+        logger.debug("Delete flow: {}={}", FLOW_ID, flowId);
         FlowPayload response = flowService.deleteFlow(flowId);
         return new ResponseEntity<>(response, new HttpHeaders(), HttpStatus.OK);
     }
@@ -146,14 +157,7 @@ public class FlowController {
      * @return flow
      */
     @ApiOperation(value = "Updates flow", response = FlowPayload.class)
-    @ApiResponses(value = {
-            @ApiResponse(code = 200, response = FlowPayload.class, message = "Operation is successful"),
-            @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
-            @ApiResponse(code = 401, response = MessageError.class, message = "Unauthorized"),
-            @ApiResponse(code = 403, response = MessageError.class, message = "Forbidden"),
-            @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
-            @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
-            @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
+    @ApiResponse(code = 200, response = FlowPayload.class, message = "Operation is successful")
     @RequestMapping(
             value = "/flows/{flow-id}",
             method = RequestMethod.PUT,
@@ -172,14 +176,7 @@ public class FlowController {
      * @return list of flow
      */
     @ApiOperation(value = "Dumps all flows", response = FlowPayload.class)
-    @ApiResponses(value = {
-            @ApiResponse(code = 200, response = FlowPayload.class, message = "Operation is successful"),
-            @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
-            @ApiResponse(code = 401, response = MessageError.class, message = "Unauthorized"),
-            @ApiResponse(code = 403, response = MessageError.class, message = "Forbidden"),
-            @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
-            @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
-            @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
+    @ApiResponse(code = 200, response = FlowPayload.class, responseContainer = "List", message = "Operation is successful")
     @RequestMapping(
             value = "/flows",
             method = RequestMethod.GET,
@@ -196,18 +193,12 @@ public class FlowController {
      * @return list of flows that have been deleted
      */
     @ApiOperation(value = "Delete all flows. Requires special authorization", response = FlowPayload.class)
-    @ApiResponses(value = {
-            @ApiResponse(code = 200, response = FlowPayload.class, message = "Operation is successful"),
-            @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
-            @ApiResponse(code = 401, response = MessageError.class, message = "Unauthorized"),
-            @ApiResponse(code = 403, response = MessageError.class, message = "Forbidden"),
-            @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
-            @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
-            @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
+    @ApiResponse(code = 200, response = FlowPayload.class, responseContainer = "List", message = "Operation is successful")
     @RequestMapping(
             value = "/flows",
             method = RequestMethod.DELETE,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @ExtraAuthRequired
     @SuppressWarnings("unchecked") // the error is unchecked
     public ResponseEntity<List<FlowPayload>> deleteFlows(
             @RequestHeader(value = EXTRA_AUTH, defaultValue = "0") long extra_auth) {
@@ -233,13 +224,7 @@ public class FlowController {
      */
     @ApiOperation(value = "Gets flow status", response = FlowIdStatusPayload.class)
     @ApiResponses(value = {
-            @ApiResponse(code = 200, response = FlowIdStatusPayload.class, message = "Operation is successful"),
-            @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
-            @ApiResponse(code = 401, response = MessageError.class, message = "Unauthorized"),
-            @ApiResponse(code = 403, response = MessageError.class, message = "Forbidden"),
-            @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
-            @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
-            @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
+            @ApiResponse(code = 200, response = FlowIdStatusPayload.class, message = "Operation is successful")})
     @RequestMapping(
             value = "/flows/status/{flow-id}",
             method = RequestMethod.GET,
@@ -257,13 +242,7 @@ public class FlowController {
      */
     @ApiOperation(value = "Gets flow path", response = FlowPathPayload.class)
     @ApiResponses(value = {
-            @ApiResponse(code = 200, response = FlowPathPayload.class, message = "Operation is successful"),
-            @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
-            @ApiResponse(code = 401, response = MessageError.class, message = "Unauthorized"),
-            @ApiResponse(code = 403, response = MessageError.class, message = "Forbidden"),
-            @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
-            @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
-            @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
+            @ApiResponse(code = 200, response = FlowPathPayload.class, message = "Operation is successful")})
     @RequestMapping(
             value = "/flows/path/{flow-id}", method = RequestMethod.GET,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
@@ -280,22 +259,25 @@ public class FlowController {
      * @param externalFlows a list of flows to push to kilda for it to absorb without expectation of creating the flow rules
      * @return list of flow
      */
-    @ApiOperation(value = "Push flows without expectation of modifying switches", response = BatchResults.class)
+    @ApiOperation(value = "Push flows without expectation of modifying switches. It can push to switch and validate.", response = BatchResults.class)
     @ApiResponses(value = {
-            @ApiResponse(code = 200, response = BatchResults.class, message = "Operation is successful"),
-            @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
-            @ApiResponse(code = 401, response = MessageError.class, message = "Unauthorized"),
-            @ApiResponse(code = 403, response = MessageError.class, message = "Forbidden"),
-            @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
-            @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
-            @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
+            @ApiResponse(code = 200, response = BatchResults.class, message = "Operation is successful")})
     @RequestMapping(path = "/push/flows",
             method = RequestMethod.PUT,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     @ResponseStatus(HttpStatus.OK)
-    public BatchResults pushFlows(@RequestBody List<FlowInfoData> externalFlows) {
+    public BatchResults pushFlows(
+            @RequestBody List<FlowInfoData> externalFlows,
+            @ApiParam(value = "default: false. If true, this will propagate rules to the switches.",
+                    required = false)
+            @RequestParam("propagate") Optional<Boolean> propagate,
+            @ApiParam(value = "default: false. If true, will wait until poll timeout for validation.",
+                    required = false)
+            @RequestParam("propagate") Optional<Boolean> verify) {
 
-        return flowService.pushFlows(externalFlows);
+        Boolean defaultPropagate = false;
+        Boolean defaultVerify = false;
+        return flowService.pushFlows(externalFlows, propagate.orElse(defaultPropagate), verify.orElse(defaultVerify));
     }
 
 
@@ -305,21 +287,24 @@ public class FlowController {
      * @param externalFlows a list of flows to unpush without propagation to Floodlight
      * @return list of flow
      */
-    @ApiOperation(value = "Unpush flows without expectation of modifying switches", response = BatchResults.class)
+    @ApiOperation(value = "Unpush flows without expectation of modifying switches. It can push to switch and validate.", response = BatchResults.class)
     @ApiResponses(value = {
-            @ApiResponse(code = 200, response = BatchResults.class, message = "Operation is successful"),
-            @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
-            @ApiResponse(code = 401, response = MessageError.class, message = "Unauthorized"),
-            @ApiResponse(code = 403, response = MessageError.class, message = "Forbidden"),
-            @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
-            @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
-            @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
+            @ApiResponse(code = 200, response = BatchResults.class, message = "Operation is successful")})
     @RequestMapping(path = "/unpush/flows",
             method = RequestMethod.PUT,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     @ResponseStatus(HttpStatus.OK)
-    public BatchResults unpushFlows(@RequestBody List<FlowInfoData> externalFlows) {
-        return flowService.unpushFlows(externalFlows);
+    public BatchResults unpushFlows(
+            @RequestBody List<FlowInfoData> externalFlows,
+            @ApiParam(value = "default: false. If true, this will propagate rules to the switches.",
+                    required = false)
+            @RequestParam("propagate") Optional<Boolean> propagate,
+            @ApiParam(value = "default: false. If true, will wait until poll timeout for validation.",
+                    required = false)
+            @RequestParam("propagate") Optional<Boolean> verify) {
+        Boolean defaultPropagate = false;
+        Boolean defaultVerify = false;
+        return flowService.unpushFlows(externalFlows, propagate.orElse(defaultPropagate), verify.orElse(defaultVerify));
     }
 
 
@@ -331,20 +316,48 @@ public class FlowController {
      */
     @ApiOperation(value = "Reroute flow", response = FlowPathPayload.class)
     @ApiResponses(value = {
-            @ApiResponse(code = 200, response = FlowPathPayload.class, message = "Operation is successful"),
-            @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
-            @ApiResponse(code = 401, response = MessageError.class, message = "Unauthorized"),
-            @ApiResponse(code = 403, response = MessageError.class, message = "Forbidden"),
-            @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
-            @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
-            @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
+            @ApiResponse(code = 200, response = FlowPathPayload.class, message = "Operation is successful")})
     @RequestMapping(path = "/flows/{flow_id}/reroute",
             method = RequestMethod.PATCH)
     @ResponseStatus(HttpStatus.OK)
     public FlowPathPayload rerouteFlow(@PathVariable("flow_id") String flowId) {
+        logger.debug("Received reroute request for flow {}", flowId);
         return flowService.rerouteFlow(flowId);
     }
 
+
+    /**
+     * Compares the Flow from the DB to what is on each switch.
+     *
+     * @param flowId id of flow to be rerouted.
+     * @return flow payload with updated path.
+     */
+    @ApiOperation(value = "Validate flow, comparing the DB to each switch", response = FlowPathPayload.class)
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, response = FlowValidationDto.class, message = "Operation is successful")})
+    @RequestMapping(path = "/flows/{flow_id}/validate",
+            method = RequestMethod.GET)
+    @ResponseStatus(HttpStatus.OK)
+    public ResponseEntity<List<FlowValidationDto>> validateFlow(@PathVariable("flow_id") String flowId) {
+
+        logger.debug("Received Flow Validation request with flow {}", flowId);
+        ResponseEntity<List<FlowValidationDto>> response;
+
+        try {
+            List<FlowValidationDto> result = flowService.validateFlow(flowId);
+            if (result == null) {
+                logger.info("VALIDATE FLOW: Flow Not Found: {}", flowId);
+                response = new ResponseEntity<>(null, new HttpHeaders(), HttpStatus.NOT_FOUND);
+            } else {
+                response = new ResponseEntity<>(result, new HttpHeaders(), HttpStatus.OK);
+            }
+        } catch (InvalidPathException e) {
+            logger.error("VALIDATE FLOW: Flow has no path: {}", flowId);
+            logger.error(e.getMessage());
+            response = new ResponseEntity<>(null, new HttpHeaders(), HttpStatus.NOT_FOUND);
+        }
+        return response;
+    }
 
     /**
      * Make sure any Flow caches are in sync with the DB. This is primarily a janitor primitive.
@@ -353,19 +366,44 @@ public class FlowController {
      */
     @ApiOperation(value = "Sync Flow Cache(s)", response = FlowCacheSyncResults.class)
     @ApiResponses(value = {
-            @ApiResponse(code = 200, response = FlowCacheSyncResults.class, message = "Operation is successful"),
-            @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
-            @ApiResponse(code = 401, response = MessageError.class, message = "Unauthorized"),
-            @ApiResponse(code = 403, response = MessageError.class, message = "Forbidden"),
-            @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
-            @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
-            @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
+            @ApiResponse(code = 200, response = FlowCacheSyncResults.class, message = "Operation is successful")})
     @RequestMapping(path = "/flows/cachesync",
             method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
     public FlowCacheSyncResults syncFlowCache() {
-        return flowService.syncFlowCache();
+
+        logger.debug("Received sync FlowCache");
+        return flowService.syncFlowCache(SynchronizeCacheAction.NONE);
     }
 
+    /**
+     * Invalidate (purge) the flow cache and initialize it with DB data.
+     *
+     * @return a response of the invalidate operation
+     */
+    @ApiOperation(value = "Invalidate (purge) Flow Cache(s)", response = FlowCacheSyncResults.class)
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, response = FlowCacheSyncResults.class, message = "Operation is successful")})
+    @DeleteMapping(path = "/flows/cache")
+    @ResponseStatus(HttpStatus.OK)
+    public FlowCacheSyncResults invalidateFlowCache() {
+        logger.debug("Received Invalidate FlowCache");
+        return flowService.syncFlowCache(SynchronizeCacheAction.INVALIDATE_CACHE);
+    }
+
+    /**
+     * Refresh (synchronize) the flow cache with DB data.
+     *
+     * @return a detailed response of the refresh operation (added, deleted, modified, unchanged flows)
+     */
+    @ApiOperation(value = "Refresh Flow Cache(s)", response = FlowCacheSyncResults.class)
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, response = FlowCacheSyncResults.class, message = "Operation is successful")})
+    @PatchMapping(path = "/flows/cache")
+    @ResponseStatus(HttpStatus.OK)
+    public FlowCacheSyncResults refreshFlowCache() {
+        logger.debug("Received Refresh FlowCache");
+        return flowService.syncFlowCache(SynchronizeCacheAction.SYNCHRONIZE_CACHE);
+    }
 
 }

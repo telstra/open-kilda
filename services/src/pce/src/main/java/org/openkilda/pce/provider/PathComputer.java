@@ -15,6 +15,7 @@
 
 package org.openkilda.pce.provider;
 
+import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.model.Flow;
@@ -63,4 +64,42 @@ public interface PathComputer extends Serializable {
     default List<FlowInfo> getFlowInfo() {
         return new ArrayList<>();
     }
+
+    /**
+     * Read flows from Neo4j and covert them in our common representation
+     * org.openkilda.messaging.model.Flow
+     *
+     * @return all flow objects stored in neo4j
+     */
+    default List<Flow> getAllFlows() {
+        return new ArrayList<>();
+    }
+
+    /**
+     * Read a single flow from Neo4j and convert to our common representation
+     * org.openkilda.messaging.model.Flow.
+     *
+     * In reality, a single flow will typically be bi-directional, so just represent as a list.
+     *
+     * @return the Flow if it exists, null otherwise.
+     */
+    default List<Flow> getFlow(String flowId) {
+        return null;
+    }
+
+    /*
+     * @return all flows (forward and reverse) by id, if exist.
+     */
+    default List<Flow> getFlows(String flowId) {
+        return null;
+    }
+
+    default List<SwitchInfoData> getSwitches() {
+        return null;
+    }
+
+    default List<IslInfoData> getIsls() {
+        return null;
+    }
+
 }

@@ -50,6 +50,8 @@ public class FlowCacheTest {
     private final Flow firstFlow = new Flow("first-flow", 0, false, "first-flow", "sw1", 11, 100, "sw3", 11, 200);
     private final Flow secondFlow = new Flow("second-flow", 0, false, "second-flow", "sw5", 12, 100, "sw3", 12, 200);
     private final Flow thirdFlow = new Flow("third-flow", 0, false, "third-flow", "sw3", 21, 100, "sw3", 22, 200);
+    private final Flow fourthFlow = new Flow("fourth-flow", 0, false, "fourth-flow", "sw4", 21, 100, "sw4", 22, 200);
+    private final Flow fifthFlow = new Flow("fifth-flow", 0, false, "fifth-flow", "sw5", 21, 100, "sw5", 22, 200);
 
     @Before
     public void setUp() {
@@ -82,17 +84,39 @@ public class FlowCacheTest {
         Flow forward = newFlow.left;
         assertEquals(1 | ResourceCache.FORWARD_FLOW_COOKIE_MASK, forward.getCookie());
         assertEquals(2, forward.getTransitVlan());
-        assertEquals(1, forward.getMeterId());
+        assertEquals(ResourceCache.MIN_METER_ID, forward.getMeterId());
         assertEquals(path.getLeft(), forward.getFlowPath());
 
         Flow reverse = newFlow.right;
         assertEquals(1 | ResourceCache.REVERSE_FLOW_COOKIE_MASK, reverse.getCookie());
         assertEquals(3, reverse.getTransitVlan());
-        assertEquals(1, reverse.getMeterId());
+        assertEquals(ResourceCache.MIN_METER_ID, reverse.getMeterId());
         assertEquals(path.getRight(), reverse.getFlowPath());
 
         assertEquals(1, flowCache.dumpFlows().size());
     }
+
+
+    @Test
+    public void createSingleSwitchFlows() throws Exception {
+        /*
+         * This is to validate that single switch flows don't consume transit vlans.
+         */
+        ImmutablePair<PathInfoData, PathInfoData> path1 = computer.getPath(thirdFlow, defaultStrategy);
+        ImmutablePair<PathInfoData, PathInfoData> path2 = computer.getPath(fourthFlow, defaultStrategy);
+        ImmutablePair<PathInfoData, PathInfoData> path3 = computer.getPath(fifthFlow, defaultStrategy);
+
+        for (int i = 0; i < 1000; i++) {
+            thirdFlow.setFlowId(thirdFlow.getFlowId()+i);
+            fourthFlow.setFlowId(fourthFlow.getFlowId()+i);
+            fifthFlow.setFlowId(fifthFlow.getFlowId()+i);
+            flowCache.createFlow(thirdFlow, path1);
+            flowCache.createFlow(fourthFlow, path2);
+            flowCache.createFlow(fifthFlow, path3);
+        }
+
+    }
+
 
     @Test(expected = CacheException.class)
     public void createAlreadyExistentFlow() throws Exception {

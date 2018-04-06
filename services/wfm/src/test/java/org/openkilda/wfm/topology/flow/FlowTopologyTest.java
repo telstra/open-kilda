@@ -34,6 +34,7 @@ import org.junit.Test;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.flow.FlowCacheSyncRequest;
 import org.openkilda.messaging.command.flow.FlowCreateRequest;
 import org.openkilda.messaging.command.flow.FlowDeleteRequest;
 import org.openkilda.messaging.command.flow.FlowGetRequest;
@@ -43,6 +44,7 @@ import org.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.openkilda.messaging.command.flow.FlowsGetRequest;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.openkilda.messaging.command.flow.RemoveFlow;
+import org.openkilda.messaging.command.flow.SynchronizeCacheAction;
 import org.openkilda.messaging.ctrl.CtrlRequest;
 import org.openkilda.messaging.ctrl.CtrlResponse;
 import org.openkilda.messaging.ctrl.DumpStateResponseData;
@@ -55,13 +57,16 @@ import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.messaging.info.flow.FlowCacheSyncResponse;
 import org.openkilda.messaging.info.flow.FlowInfoData;
+import org.openkilda.messaging.info.flow.FlowOperation;
 import org.openkilda.messaging.info.flow.FlowPathResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowStatusResponse;
 import org.openkilda.messaging.info.flow.FlowsResponse;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
@@ -73,6 +78,8 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 public class FlowTopologyTest extends AbstractStormTest {
     private static final long COOKIE = 0x1FFFFFFFFL;
@@ -515,8 +522,8 @@ public class FlowTopologyTest extends AbstractStormTest {
         InfoMessage infoMessage = objectMapper.readValue(record.value(), InfoMessage.class);
         FlowsResponse infoData = (FlowsResponse) infoMessage.getData();
         assertNotNull(infoData);
-        assertNotNull(infoData.getPayload());
-        assertFalse(infoData.getPayload().isEmpty());
+        assertNotNull(infoData.getFlowIds());
+        assertFalse(infoData.getFlowIds().isEmpty());
     }
 
     @Test
@@ -749,7 +756,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         ConsumerRecord<String, String> nbRecord;
         String flowId = UUID.randomUUID().toString();
 
-        List<Flow> payload = dumpFlowCommand(flowId);
+        List<String> payload = dumpFlowCommand(flowId);
 
         nbRecord = nbConsumer.pollMessage();
         assertNotNull(nbRecord);
@@ -760,7 +767,7 @@ public class FlowTopologyTest extends AbstractStormTest {
 
         FlowsResponse responseData = (FlowsResponse) response.getData();
         assertNotNull(responseData);
-        assertEquals(payload, responseData.getPayload());
+        assertEquals(payload, responseData.getFlowIds());
     }
 
     @Test
@@ -1032,6 +1039,87 @@ public class FlowTopologyTest extends AbstractStormTest {
         assertTrue(payload instanceof DumpStateResponseData);
     }
 
+    @Test
+    public void shouldSyncCacheProvideDifferenceWithFlowsTest() throws Exception {
+        String flowId = UUID.randomUUID().toString();
+
+        createFlow(flowId);
+
+        nbConsumer.clear();
+
+        FlowCacheSyncRequest commandData = new FlowCacheSyncRequest(SynchronizeCacheAction.NONE);
+        CommandMessage message = new CommandMessage(commandData, 0, "sync-cache-flow", Destination.WFM);
+        sendFlowMessage(message);
+
+        String nbMessageValue = nbConsumer.pollMessageValue();
+        assertNotNull(nbMessageValue);
+
+        InfoMessage infoMessage = objectMapper.readValue(nbMessageValue, InfoMessage.class);
+        FlowCacheSyncResponse infoData = (FlowCacheSyncResponse) infoMessage.getData();
+        FlowCacheSyncResults flowNbPayload = infoData.getPayload();
+        assertNotNull(flowNbPayload);
+        assertEquals(1, flowNbPayload.getDroppedFlows().length);
+        assertEquals(flowId, flowNbPayload.getDroppedFlows()[0]);
+    }
+
+    @Test
+    public void shouldSyncCacheWithFlowsTest() throws Exception {
+        String flowId = UUID.randomUUID().toString();
+
+        createFlow(flowId);
+
+        cacheConsumer.clear();
+
+        FlowCacheSyncRequest commandData = new FlowCacheSyncRequest(SynchronizeCacheAction.SYNCHRONIZE_CACHE);
+        CommandMessage message = new CommandMessage(commandData, 0, "sync-cache-flow", Destination.WFM);
+        sendFlowMessage(message);
+
+        String cacheMessageValue = cacheConsumer.pollMessageValue();
+        InfoMessage infoMessage = objectMapper.readValue(cacheMessageValue, InfoMessage.class);
+        FlowInfoData infoData = (FlowInfoData)infoMessage.getData();
+        assertEquals(FlowOperation.CACHE, infoData.getOperation());
+        assertEquals(flowId, infoData.getFlowId());
+
+        nbConsumer.clear();
+
+        statusFlow(flowId);
+
+        String nbMessageValue = nbConsumer.pollMessageValue();
+        assertNotNull(nbMessageValue);
+
+        ErrorMessage errorMessage = objectMapper.readValue(nbMessageValue, ErrorMessage.class);
+        assertEquals(ErrorType.NOT_FOUND, errorMessage.getData().getErrorType());
+    }
+
+    @Test
+    public void shouldInvalidateCacheWithFlowsTest() throws Exception {
+        String flowId = UUID.randomUUID().toString();
+
+        createFlow(flowId);
+
+        cacheConsumer.clear();
+
+        FlowCacheSyncRequest commandData = new FlowCacheSyncRequest(SynchronizeCacheAction.INVALIDATE_CACHE);
+        CommandMessage message = new CommandMessage(commandData, 0, "sync-cache-flow", Destination.WFM);
+        sendFlowMessage(message);
+
+        String cacheMessageValue = cacheConsumer.pollMessageValue();
+        InfoMessage infoMessage = objectMapper.readValue(cacheMessageValue, InfoMessage.class);
+        FlowInfoData infoData = (FlowInfoData)infoMessage.getData();
+        assertEquals(FlowOperation.CACHE, infoData.getOperation());
+        assertEquals(flowId, infoData.getFlowId());
+
+        nbConsumer.clear();
+
+        statusFlow(flowId);
+
+        String nbMessageValue = nbConsumer.pollMessageValue();
+        assertNotNull(nbMessageValue);
+
+        ErrorMessage errorMessage = objectMapper.readValue(nbMessageValue, ErrorMessage.class);
+        assertEquals(ErrorType.NOT_FOUND, errorMessage.getData().getErrorType());
+    }
+
     private Flow deleteFlow(final String flowId) throws IOException {
         System.out.println("NORTHBOUND: Delete flow");
         Flow payload = new Flow();
@@ -1140,10 +1228,10 @@ public class FlowTopologyTest extends AbstractStormTest {
         return flowPayload;
     }
 
-    private List<Flow> dumpFlowCommand(final String flowId) throws IOException {
+    private List<String> dumpFlowCommand(final String flowId) throws IOException {
         System.out.println("TOPOLOGY: Get flows");
         Flow flow = new Flow(flowId, 10000, false, "", "test-switch", 1, 2, "test-switch", 1, 2);
-        List<Flow> payload = Collections.singletonList(flow);
+        List<String> payload = Collections.singletonList(flow.getFlowId());
         FlowsResponse infoData = new FlowsResponse(payload);
         InfoMessage infoMessage = new InfoMessage(infoData, 0, "dump-flows", Destination.WFM);
         sendTopologyEngineMessage(infoMessage);

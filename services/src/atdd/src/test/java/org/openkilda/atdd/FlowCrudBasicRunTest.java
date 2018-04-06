@@ -30,6 +30,7 @@ import org.openkilda.flow.FlowUtils;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.topo.TopologyHelp;
 
 import cucumber.api.java.en.Given;
@@ -66,7 +67,7 @@ public class FlowCrudBasicRunTest {
         flowPayload = new FlowPayload(FlowUtils.getFlowName(flowId),
                 new FlowEndpointPayload(sourceSwitch, sourcePort, sourceVlan),
                 new FlowEndpointPayload(destinationSwitch, destinationPort, destinationVlan),
-                bandwidth, false, flowId, null);
+                bandwidth, false, flowId, null, FlowState.UP.getState());
 
         FlowPayload response = FlowUtils.putFlow(flowPayload);
         assertNotNull(response);
@@ -82,7 +83,7 @@ public class FlowCrudBasicRunTest {
         flowPayload = new FlowPayload(FlowUtils.getFlowName(flowId),
                 new FlowEndpointPayload(sourceSwitch, sourcePort, sourceVlan),
                 new FlowEndpointPayload(destinationSwitch, destinationPort, destinationVlan),
-                bandwidth, false, flowId, null);
+                bandwidth, false, flowId, null, FlowState.DOWN.getState());
 
         FlowPayload response = FlowUtils.putFlow(flowPayload);
 
@@ -112,10 +113,10 @@ public class FlowCrudBasicRunTest {
         System.out.println(String.format("===> Flow was created at %s\n", flow.getLastUpdated()));
 
         assertEquals(FlowUtils.getFlowName(flowId), flow.getId());
-        assertEquals(sourceSwitch, flow.getSource().getSwitchId());
+        assertEquals(sourceSwitch, flow.getSource().getSwitchDpId());
         assertEquals(sourcePort, flow.getSource().getPortId().longValue());
         assertEquals(sourceVlan, flow.getSource().getVlanId().longValue());
-        assertEquals(destinationSwitch, flow.getDestination().getSwitchId());
+        assertEquals(destinationSwitch, flow.getDestination().getSwitchDpId());
         assertEquals(destinationPort, flow.getDestination().getPortId().longValue());
         assertEquals(destinationVlan, flow.getDestination().getVlanId().longValue());
         assertEquals(bandwidth, flow.getMaximumBandwidth());

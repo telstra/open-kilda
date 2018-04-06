@@ -13,8 +13,9 @@
 #   `PYTHONPATH= python tests/test_flow_segments.py`
 #
 
-import time
+import sys, copy
 from topologylistener import flow_utils, messageclasses, config
+from multiprocessing import Pool
 
 
 flow1 = {
@@ -219,3 +220,35 @@ print('TEST #7 - delete flow through front door (almost .. starting with dict)')
 event_delete = messageclasses.MessageItem(**delete_flow)
 event_delete.handle()
 # TODO: test something here related to delete
+
+
+print('TEST #8 - create ... A lot )')
+print("==> If this fails, it will not stop, run:  `ps -a | grep test_flow | cut -d ' ' -f 1 | xargs kill` ")
+#
+# NOTE: comment out the NORTHBOUND response in messageclasses::create_flow :: else ... otherwise you'll find that
+#       Kafka gets hung up.  The lines to comment out:
+#
+# message_utils.send_to_topic(
+#     payload=data,
+#     correlation_id=correlation_id,
+#     message_type=message_utils.MT_INFO,
+#     destination="NORTHBOUND",
+#     topic=config.KAFKA_NORTHBOUND_TOPIC
+
+#
+test_range = 20
+num_proc = 5
+
+def do_push_alot(iteration):
+    if iteration % num_proc == 0:
+        sys.stdout.write(" {}".format(iteration))
+        sys.stdout.flush()
+    cf = copy.deepcopy(create_flow)
+    cf[u'payload'][u'operation'] = "PUSH"
+    messageclasses.MessageItem(**cf).handle()
+
+
+p = Pool(processes=num_proc)
+p.map(do_push_alot, range(test_range))
+print(" DONE ")
+print(" ")

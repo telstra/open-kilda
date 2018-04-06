@@ -70,3 +70,11 @@ deploy-opentsdb:
 kill-opentsdb:
 	storm kill opentsdb >/dev/null 2>&1
 
+deploy-portstate:
+	storm jar target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar \
+		org.openkilda.wfm.topology.portstate.PortStateTopology \
+		--name=portstate ${config}
+
+kill-portstate:
+	storm kill portstate >/dev/null 2>&1
+

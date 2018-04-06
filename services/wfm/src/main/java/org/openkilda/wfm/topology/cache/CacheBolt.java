@@ -26,30 +26,30 @@ import org.apache.storm.state.InMemoryKeyValueState;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
+import org.apache.storm.topology.base.BaseStatefulBolt;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
+import org.neo4j.cypher.InvalidArgumentException;
 import org.openkilda.messaging.BaseMessage;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
-import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.messaging.command.discovery.NetworkCommandData;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowRestoreRequest;
 import org.openkilda.messaging.ctrl.AbstractDumpState;
 import org.openkilda.messaging.ctrl.state.CacheBoltState;
 import org.openkilda.messaging.ctrl.state.FlowDump;
 import org.openkilda.messaging.ctrl.state.NetworkDump;
+import org.openkilda.messaging.ctrl.state.ResorceCacheBoltState;
 import org.openkilda.messaging.error.CacheException;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.discovery.NetworkInfoData;
 import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.messaging.info.event.NetworkTopologyChange;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.info.flow.FlowOperation;
 import org.openkilda.messaging.model.Flow;
@@ -59,26 +59,29 @@ import org.openkilda.pce.cache.Cache;
 import org.openkilda.pce.cache.FlowCache;
 import org.openkilda.pce.cache.NetworkCache;
 import org.openkilda.pce.cache.ResourceCache;
+import org.openkilda.pce.provider.Auth;
+import org.openkilda.pce.provider.PathComputer;
 import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
 import org.openkilda.wfm.topology.AbstractTopology;
-import org.openkilda.wfm.topology.cache.service.CacheWarmingService;
-import org.openkilda.wfm.topology.utils.AbstractTickStatefulBolt;
+import org.openkilda.wfm.topology.flow.utils.BidirectionalFlow;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 public class CacheBolt
-        extends AbstractTickStatefulBolt<InMemoryKeyValueState<String, Cache>>
+        extends BaseStatefulBolt<InMemoryKeyValueState<String, Cache>>
         implements ICtrlBolt {
     public static final String STREAM_ID_CTRL = "ctrl";
 
@@ -113,39 +116,25 @@ public class CacheBolt
     private InMemoryKeyValueState<String, Cache> state;
 
     /**
+     * Path computer for getting all flows.
+     */
+    private PathComputer pathComputer;
+    private final Auth pathComputerAuth;
+
+    /**
      * We need to store rerouted flows for ability to restore initial path if it is possible.
      * Here is a mapping between switch and all flows that was rerouted because switch went down.
      */
     private final Map<String, Set<String>> reroutedFlows = new ConcurrentHashMap<>();
 
-    private CacheWarmingService cacheWarmingService;
-
     private TopologyContext context;
     private OutputCollector outputCollector;
 
-    /**
-     * Time passed.
-     */
-    private int timePassed = 0;
+    private final static int DUMP_INTERVAL = 60000;
 
-    /**
-     * Discovery interval.
-     */
-    private final int discoveryInterval;
-
-    /**
-     * Instance constructor.
-     *
-     * @param discoveryInterval discovery interval
-     */
-    CacheBolt(int discoveryInterval) {
-        this.discoveryInterval = discoveryInterval;
+    CacheBolt(Auth pathComputerAuth) {
+        this.pathComputerAuth = pathComputerAuth;
     }
-
-    /**
-     * Initialization flag
-     */
-    private boolean isReceivedCacheInfo = false;
 
     /**
      * {@inheritDoc}
@@ -166,8 +155,11 @@ public class CacheBolt
             this.state.put(FLOW_CACHE, flowCache);
         }
 
-        cacheWarmingService = new CacheWarmingService(networkCache);
         reroutedFlows.clear();
+
+        logger.info("Request initial network state");
+        initFlowCache();
+        initNetwork();
     }
 
     /**
@@ -177,21 +169,20 @@ public class CacheBolt
     public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
         this.context = topologyContext;
         this.outputCollector = outputCollector;
+        pathComputer = pathComputerAuth.connect();
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public void doWork(Tuple tuple) {
-
+    public void execute (Tuple tuple){
         if (CtrlAction.boltHandlerEntrance(this, tuple))
             return;
 
         logger.trace("State before: {}", state);
 
         String json = tuple.getString(0);
-        String source = tuple.getSourceComponent();
 
         /*
           (carmine) Hack Alert
@@ -201,77 +192,50 @@ public class CacheBolt
          */
         // TODO: Eliminate the inefficiency introduced through the hack
         try {
-            logger.info("Received cache data={}", tuple);
             BaseMessage bm = MAPPER.readValue(json, BaseMessage.class);
             if (bm instanceof InfoMessage) {
                 InfoMessage message = (InfoMessage) bm;
                 InfoData data = message.getData();
 
-                if (data instanceof NetworkInfoData) {
-                    logger.debug("Storage content message {}", json);
-                    handleNetworkDump(data, tuple);
-                    isReceivedCacheInfo = true;
-                } else if (!isReceivedCacheInfo) {
-                    logger.debug("Cache message fail due bolt not initialized: "
-                                    + "component={}, stream={}, tuple={}",
-                            tuple.getSourceComponent(), tuple.getSourceStreamId(), tuple);
-                } else if (data instanceof SwitchInfoData) {
+                if (data instanceof SwitchInfoData) {
                     logger.info("Cache update switch info data: {}", data);
                     handleSwitchEvent((SwitchInfoData) data, tuple);
 
                 } else if (data instanceof IslInfoData) {
-                    logger.info("Cache update isl info data: {}", data);
                     handleIslEvent((IslInfoData) data, tuple);
 
                 } else if (data instanceof PortInfoData) {
-                    logger.info("Cache update port info data: {}", data);
                     handlePortEvent((PortInfoData) data, tuple);
 
                 } else if (data instanceof FlowInfoData) {
-                    logger.info("Cache update flow data: {}", data);
 
                     FlowInfoData flowData = (FlowInfoData) data;
-                    handleFlowEvent(flowData, tuple);
+                    handleFlowEvent(flowData, tuple, message.getCorrelationId());
+                } else if (data instanceof NetworkTopologyChange) {
+                    logger.debug("Switch flows reroute request");
+
+                    NetworkTopologyChange topologyChange = (NetworkTopologyChange) data;
+                    handleNetworkTopologyChangeEvent(topologyChange, tuple);
                 } else {
-                    logger.error("Skip undefined info data type {}", json);
+                    logger.warn("Skip undefined info data type {}", json);
                 }
             } else {
-                logger.error("Skip undefined message type {}", json);
+                logger.warn("Skip undefined message type {}", json);
             }
 
         } catch (CacheException exception) {
             logger.error("Could not process message {}", tuple, exception);
+            outputCollector.ack(tuple);
 
         } catch (IOException exception) {
             logger.error("Could not deserialize message {}", tuple, exception);
+        } catch (Exception e) {
+            logger.error(String.format("Unhandled exception in %s", getClass().getName()), e);
         } finally {
-            if (isReceivedCacheInfo) {
-                outputCollector.ack(tuple);
-            } else {
-                outputCollector.fail(tuple);
-            }
+            outputCollector.ack(tuple);
         }
 
         logger.trace("State after: {}", state);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    protected void doTick(Tuple tuple) {
-        // FIXME(dbogun): tick only once, because timePassed never reset
-        if (timePassed == discoveryInterval) {
-            Values values = getNetworkRequest();
-            if (values != null) {
-                outputCollector.emit(StreamType.TPE.toString(), tuple, values);
-            } else {
-                logger.error("Could not send network cache request");
-            }
-        }
-        if (timePassed <= discoveryInterval) {
-            timePassed += 1;
-        }
     }
 
     /**
@@ -286,32 +250,15 @@ public class CacheBolt
         output.declareStream(STREAM_ID_CTRL, AbstractTopology.fieldMessage);
     }
 
-    private void handleNetworkDump(InfoData info, Tuple tuple) {
-        if (info instanceof NetworkInfoData) {
-            NetworkInfoData data = (NetworkInfoData) info;
-            logger.info("Fill network state {}", data);
-            data.getSwitches().forEach(networkCache::createOrUpdateSwitch);
-            data.getIsls().forEach(networkCache::createOrUpdateIsl);
-            logger.info("Load flows {}", data.getFlows().size());
-            data.getFlows().forEach(flowCache::putFlow);
-            logger.info("Loaded flows {}", flowCache);
-            emitRestoreCommands(data.getFlows(), tuple);
-            logger.info("Flows restore commands sent");
-
-        } else {
-            logger.warn("Incorrect network state {}", info);
-        }
-    }
-
     private void handleSwitchEvent(SwitchInfoData sw, Tuple tuple) throws IOException {
-        logger.info("State update switch {} message {}", sw.getSwitchId(), sw.getState());
+        logger.debug("State update switch {} message {}", sw.getSwitchId(), sw.getState());
         Set<ImmutablePair<Flow, Flow>> affectedFlows;
 
         switch (sw.getState()) {
 
             case ADDED:
             case ACTIVATED:
-                onSwitchUp(sw, tuple);
+                onSwitchUp(sw);
                 break;
 
             case REMOVED:
@@ -321,7 +268,8 @@ public class CacheBolt
                 }
 
                 affectedFlows = flowCache.getActiveFlowsWithAffectedPath(sw.getSwitchId());
-                emitRerouteCommands(affectedFlows, tuple, UUID.randomUUID().toString(), FlowOperation.UPDATE);
+                String reason = String.format("switch %s is %s", sw.getSwitchId(), sw.getState());
+                emitRerouteCommands(affectedFlows, tuple, UUID.randomUUID().toString(), FlowOperation.UPDATE, reason);
                 break;
 
             case CACHED:
@@ -336,7 +284,7 @@ public class CacheBolt
     }
 
     private void handleIslEvent(IslInfoData isl, Tuple tuple) {
-        logger.info("State update isl {} message cached {}", isl.getId(), isl.getState());
+        logger.debug("State update isl {} message cached {}", isl.getId(), isl.getState());
         Set<ImmutablePair<Flow, Flow>> affectedFlows;
 
         switch (isl.getState()) {
@@ -346,9 +294,6 @@ public class CacheBolt
                 } else {
                     networkCache.createIsl(isl);
                 }
-
-                affectedFlows = getFlowsForRerouting(isl);
-                emitRerouteCommands(affectedFlows, tuple, UUID.randomUUID().toString(), FlowOperation.UPDATE);
                 break;
 
             case FAILED:
@@ -357,8 +302,11 @@ public class CacheBolt
                 } catch (CacheException exception) {
                     logger.warn("{}:{}", exception.getErrorMessage(), exception.getErrorDescription());
                 }
+
                 affectedFlows = flowCache.getActiveFlowsWithAffectedPath(isl);
-                emitRerouteCommands(affectedFlows, tuple, UUID.randomUUID().toString(), FlowOperation.UPDATE);
+                String reason = String.format("isl %s FAILED", isl.getId());
+                emitRerouteCommands(affectedFlows, tuple, UUID.randomUUID().toString(),
+                        FlowOperation.UPDATE, reason);
                 break;
 
             case OTHER_UPDATE:
@@ -374,11 +322,15 @@ public class CacheBolt
     }
 
     private void handlePortEvent(PortInfoData port, Tuple tuple) {
-        logger.info("State update port {}_{} message cached {}", port.getSwitchId(), port.getPortNo(), port.getState());
+        logger.debug("State update port {}_{} message cached {}",
+                port.getSwitchId(), port.getPortNo(), port.getState());
 
         switch (port.getState()) {
             case DOWN:
             case DELETE:
+                Set<ImmutablePair<Flow, Flow>> affectedFlows = flowCache.getActiveFlowsWithAffectedPath(port);
+                String reason = String.format("port %s_%s is %s", port.getSwitchId(), port.getPortNo(), port.getState());
+                emitRerouteCommands(affectedFlows, tuple, UUID.randomUUID().toString(), FlowOperation.UPDATE, reason);
                 break;
 
             case UP:
@@ -395,20 +347,44 @@ public class CacheBolt
         }
     }
 
+    private void handleNetworkTopologyChangeEvent(NetworkTopologyChange topologyChange, Tuple tuple) {
+        Set<ImmutablePair<Flow, Flow>> affectedFlows;
+
+        switch (topologyChange.getType()) {
+            case ENDPOINT_DROP:
+                // TODO(surabujin): need implementation
+                return;
+
+            case ENDPOINT_ADD:
+                affectedFlows = getFlowsForRerouting(topologyChange);
+                break;
+
+            default:
+                logger.error("Unhandled reroute type: {}", topologyChange.getType());
+                return;
+        }
+        String reason = String.format("network topology change  %s_%s is %s",
+                topologyChange.getSwitchId(), topologyChange.getPortNumber(),
+                topologyChange.getType());
+        emitRerouteCommands(affectedFlows, tuple, UUID.randomUUID().toString(),
+                FlowOperation.UPDATE, reason);
+    }
+
     private void emitFlowMessage(InfoData data, Tuple tuple, String correlationId) throws IOException {
         Message message = new InfoMessage(data, System.currentTimeMillis(),
                 correlationId, Destination.TOPOLOGY_ENGINE);
         outputCollector.emit(StreamType.TPE.toString(), tuple, new Values(MAPPER.writeValueAsString(message)));
-        logger.info("Flow command message sent");
+        logger.debug("Flow command message sent");
     }
 
     private void emitFlowCrudMessage(InfoData data, Tuple tuple, String correlationId) throws IOException {
         Message message = new InfoMessage(data, System.currentTimeMillis(),
                 correlationId, Destination.WFM);
         outputCollector.emit(StreamType.WFM_DUMP.toString(), tuple, new Values(MAPPER.writeValueAsString(message)));
-        logger.info("Flow command message sent");
+        logger.debug("Flow command message sent");
     }
 
+    // FIXME(surabujin): deprecated and should be droppped
     private void emitRestoreCommands(Set<ImmutablePair<Flow, Flow>> flows, Tuple tuple) {
         if (flows != null) {
 
@@ -436,7 +412,7 @@ public class CacheBolt
     }
 
     private void emitRerouteCommands(Set<ImmutablePair<Flow, Flow>> flows, Tuple tuple,
-                                     String correlationId, FlowOperation operation) {
+            String correlationId, FlowOperation operation, String reason) {
         for (ImmutablePair<Flow, Flow> flow : flows) {
             try {
                 flow.getLeft().setState(FlowState.DOWN);
@@ -447,111 +423,90 @@ public class CacheBolt
                         request, System.currentTimeMillis(), correlationId, Destination.WFM)));
                 outputCollector.emit(StreamType.WFM_DUMP.toString(), tuple, values);
 
-                logger.debug("Flow {} reroute command message sent with correlationId {}",
-                        flow.getLeft().getFlowId(), correlationId);
+                logger.warn("Flow {} reroute command message sent with correlationId {} reason {}",
+                        flow.getLeft().getFlowId(), correlationId, reason);
             } catch (JsonProcessingException exception) {
                 logger.error("Could not format flow reroute request by flow={}", flow, exception);
             }
         }
     }
 
-    private Values getNetworkRequest() {
-        Values values = null;
-
-        try {
-            CommandMessage command = new CommandMessage(new NetworkCommandData(), System.currentTimeMillis(),
-                    UUID.randomUUID().toString(), Destination.TOPOLOGY_ENGINE);
-            values = new Values(Utils.MAPPER.writeValueAsString(command));
-        } catch (IOException exception) {
-            logger.error("Could not serialize network cache request", exception);
-        }
-
-        return values;
-    }
-
-    private void onSwitchUp(SwitchInfoData sw, Tuple tuple) throws IOException {
+    private void onSwitchUp(SwitchInfoData sw) throws IOException {
         logger.info("Switch {} is {}", sw.getSwitchId(), sw.getState().getType());
         if (networkCache.cacheContainsSwitch(sw.getSwitchId())) {
-            SwitchState prevState = networkCache.getSwitch(sw.getSwitchId()).getState();
             networkCache.updateSwitch(sw);
-
-            if (prevState == SwitchState.CACHED) {
-                String switchId = sw.getSwitchId();
-                List<PortInfoData> ports = cacheWarmingService.getPortsForDiscovering(switchId);
-                logger.info("Found {} links for discovery", ports.size());
-                sendPortCachedEvent(ports);
-
-                List<? extends CommandData> commands = cacheWarmingService.getFlowCommands(switchId);
-                sendFlowCommands(commands);
-            }
         } else {
             networkCache.createSwitch(sw);
         }
     }
 
-    private void handleFlowEvent(FlowInfoData flowData, Tuple tuple) throws IOException {
+    private void handleFlowEvent(FlowInfoData flowData, Tuple tuple, String correlationId) throws IOException {
         switch (flowData.getOperation()) {
+            case PUSH:
+            case PUSH_PROPAGATE:
+                logger.debug("Flow {} message received: {}, correlationId: {}", flowData.getOperation(), flowData,
+                        correlationId);
+                flowCache.putFlow(flowData.getPayload());
+                // do not emit to TPE .. NB will send directly
+                break;
+
+            case UNPUSH:
+            case UNPUSH_PROPAGATE:
+                logger.trace("Flow {} message received: {}, correlationId: {}", flowData.getOperation(), flowData,
+                        correlationId);
+                String flowsId2 = flowData.getPayload().getLeft().getFlowId();
+                flowCache.removeFlow(flowsId2);
+                reroutedFlows.remove(flowsId2);
+                logger.debug("Flow {} message processed: {}, correlationId: {}", flowData.getOperation(), flowData,
+                        correlationId);
+                break;
+
+
             case CREATE:
                 // TODO: This should be more lenient .. in case of retries
+                logger.trace("Flow create message received: {}, correlationId: {}", flowData, correlationId);
                 flowCache.putFlow(flowData.getPayload());
                 emitFlowMessage(flowData, tuple, flowData.getCorrelationId());
-                logger.info("Flow create message sent: {}", flowData);
+                logger.debug("Flow create message sent: {}, correlationId: {}", flowData, correlationId);
                 break;
 
             case DELETE:
                 // TODO: This should be more lenient .. in case of retries
+                logger.trace("Flow remove message received: {}, correlationId: {}", flowData, correlationId);
                 String flowsId = flowData.getPayload().getLeft().getFlowId();
                 flowCache.removeFlow(flowsId);
                 reroutedFlows.remove(flowsId);
                 emitFlowMessage(flowData, tuple, flowData.getCorrelationId());
-                logger.info("Flow remove message sent: {}", flowData);
+                logger.debug("Flow remove message sent: {}, correlationId: {} ", flowData, correlationId);
                 break;
 
             case UPDATE:
+                logger.trace("Flow update message received: {}, correlationId: {}", flowData, correlationId);
                 processFlowUpdate(flowData.getPayload().getLeft());
                 // TODO: This should be more lenient .. in case of retries
                 flowCache.putFlow(flowData.getPayload());
                 emitFlowMessage(flowData, tuple, flowData.getCorrelationId());
-                logger.info("Flow update message sent: {}", flowData);
+                logger.debug("Flow update message sent: {}, correlationId: {}", flowData, correlationId);
                 break;
 
             case STATE:
                 flowCache.putFlow(flowData.getPayload());
-                logger.info("Flow state changed: {}", flowData);
+                logger.debug("Flow state changed: {}, correlationId: {}", flowData, correlationId);
                 break;
 
             case CACHE:
+                logger.debug("Sync flow cache message received: {}, correlationId: {}", flowData, correlationId);
+                if(flowData.getPayload() != null) {
+                    flowCache.putFlow(flowData.getPayload());
+                } else {
+                    flowCache.removeFlow(flowData.getFlowId());
+                }
                 break;
 
             default:
                 logger.warn("Skip undefined flow operation {}", flowData);
                 break;
         }
-    }
-
-    private void sendFlowCommands(List<? extends CommandData> commands) {
-        commands.forEach(command -> {
-            try {
-                outputCollector.emit(StreamType.WFM_DUMP.toString(), new Values(MAPPER.writeValueAsString(command)));
-                logger.debug("Flow command request sent from CacheBolt: {}", command);
-            } catch (JsonProcessingException e) {
-                logger.error("Error during serializing CommandData", e);
-            }
-        });
-    }
-
-    private void sendPortCachedEvent(List<PortInfoData> ports) {
-        ports.forEach(portInfoData -> {
-            String correlationId = UUID.randomUUID().toString();
-            InfoMessage message = new InfoMessage(portInfoData, System.currentTimeMillis(), correlationId,
-                    Destination.WFM);
-            try {
-                outputCollector.emit(StreamType.OFE.toString(), new Values(MAPPER.writeValueAsString(message)));
-                logger.info("Isl discovery request sent from CacheBolt with correlationId {}", correlationId);
-            } catch (JsonProcessingException e) {
-                logger.error("Error during serializing PortInfoData", e);
-            }
-        });
     }
 
     /**
@@ -598,19 +553,12 @@ public class CacheBolt
         return prevPath;
     }
 
-    private Set<ImmutablePair<Flow, Flow>> getFlowsForRerouting(IslInfoData isl) {
+    private Set<ImmutablePair<Flow, Flow>> getFlowsForRerouting(NetworkTopologyChange rerouteData) {
         Set<ImmutablePair<Flow, Flow>> inactiveFlows = flowCache.dumpFlows().stream()
                 .filter(flow -> FlowState.DOWN.equals(flow.getLeft().getState()))
                 .collect(Collectors.toSet());
 
-        //As we get isl discovery we may be sure that switches are alive,
-        //so we can try to reroute transit flow to the original path.
-        String srcSwitch = isl.getPath().stream()
-                .filter(node -> node.getSeqId() == 0)
-                .findFirst()
-                .map(PathNode::getSwitchId)
-                .get();
-        Set<ImmutablePair<Flow, Flow>> transitFlows = getTransitFlowsPreviouslyInstalled(srcSwitch);
+        Set<ImmutablePair<Flow, Flow>> transitFlows = getTransitFlowsPreviouslyInstalled(rerouteData.getSwitchId());
         return Sets.union(inactiveFlows, transitFlows);
 
     }
@@ -632,6 +580,65 @@ public class CacheBolt
         }
     }
 
+    private void initNetwork() {
+        logger.info("Network Cache: Initializing");
+        Set<SwitchInfoData> switches = new HashSet<>(pathComputer.getSwitches());
+        Set<IslInfoData> links = new HashSet<>(pathComputer.getIsls());
+
+        logger.info("Network Cache: Initializing - {} Switches (size)", switches.size());
+        logger.info("Network Cache: Initializing - {} ISLs (size)", links.size());
+
+        //
+        // We will call createOrUpdate to ensure we can ignore duplicates.
+        //
+        // The alternative is to call networkCache::createOrUpdateSwitch / networkCache::createOrUpdateIsl
+        // networkCache.load(switches, links);
+
+        switches.forEach(networkCache::createOrUpdateSwitch);
+
+        for (IslInfoData isl : links) {
+            try {
+                networkCache.createOrUpdateIsl(isl);
+            } catch (Exception e) {
+                logger.error("CacheBolt :: initNetwork :: add ISL caused error --> isl = {} ; Exception = {}", isl, e);
+            }
+        }
+
+        logger.info("Network Cache: Initialized");
+    }
+
+    private void initFlowCache() {
+        logger.info("Flow Cache: Initializing");
+        Map<String, BidirectionalFlow> flowPairsMap = new HashMap<>();
+        List<Flow> flows = pathComputer.getAllFlows();
+        logger.info("Flow Cache: Initializing - {} flows (size)", flows.size());
+
+        for (Flow flow : flows) {
+            if (!flowPairsMap.containsKey(flow.getFlowId())) {
+                flowPairsMap.put(flow.getFlowId(), new BidirectionalFlow());
+            }
+
+            BidirectionalFlow pair = flowPairsMap.get(flow.getFlowId());
+            try {
+                pair.add(flow);
+            } catch (IllegalArgumentException e) {
+                logger.error("Invalid half-flow {}: {}", flow.getFlowId(), e.toString());
+            }
+        }
+
+        for (BidirectionalFlow bidirectionalFlow : flowPairsMap.values()) {
+            try {
+                flowCache.pushFlow(bidirectionalFlow.makeFlowPair());
+            } catch (InvalidArgumentException e) {
+                logger.error(
+                        "Invalid flow pairing {}: {}",
+                        bidirectionalFlow.anyDefined().getFlowId(),
+                        e.toString());
+            }
+        }
+        logger.info("Flow Cache: Initialized");
+    }
+
     @Override
     public AbstractDumpState dumpState() {
         NetworkDump networkDump = new NetworkDump(
@@ -645,8 +652,16 @@ public class CacheBolt
     public void clearState() {
         logger.info("State clear request from test");
         initState(new InMemoryKeyValueState<>());
-        isReceivedCacheInfo = false;
-        timePassed = 0;
+    }
+
+    @Override
+    public AbstractDumpState dumpStateBySwitchId(String switchId) {
+        // Not implemented
+        NetworkDump networkDump = new NetworkDump(
+                new HashSet<>(),
+                new HashSet<>());
+        FlowDump flowDump = new FlowDump(new HashSet<>());
+        return new CacheBoltState(networkDump, flowDump);
     }
 
     @Override
@@ -662,5 +677,14 @@ public class CacheBolt
     @Override
     public OutputCollector getOutput() {
         return outputCollector;
+    }
+
+    @Override
+    public Optional<AbstractDumpState> dumpResorceCacheState()
+    {
+        return Optional.of(new ResorceCacheBoltState(
+                flowCache.getAllocatedMeters(),
+                flowCache.getAllocatedVlans(),
+                flowCache.getAllocatedCookies()));
     }
 }

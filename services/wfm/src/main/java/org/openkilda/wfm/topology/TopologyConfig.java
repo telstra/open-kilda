@@ -45,6 +45,8 @@ public class TopologyConfig {
 
     private String openTsDBHosts;
     private Integer openTsdbTimeout;
+    private boolean openTsdbClientChunkedRequestsEnabled;
+
     private Integer openTsdbNumSpouts;
     private Integer openTsdbFilterBoltExecutors;
     private Integer openTsdbBoltExecutors;
@@ -57,6 +59,8 @@ public class TopologyConfig {
     private String neo4jHost;
     private String neo4jLogin;
     private String neo4jPassword;
+
+    private String topologyEngineRestEndpoint;
 
     private PropertiesReader config;
 
@@ -96,6 +100,7 @@ public class TopologyConfig {
 
         openTsDBHosts = config.getString("opentsdb.hosts");
         openTsdbTimeout = (int)(config.getFloat("opentsdb.timeout") * 1000);
+        openTsdbClientChunkedRequestsEnabled = config.getBoolean("opentsdb.client.chunked-requests.enabled");
         openTsdbNumSpouts = config.getInteger("opentsdb.num.spouts");
         openTsdbFilterBoltExecutors = config.getInteger("opentsdb.num.opentsdbfilterbolt");
         openTsdbBoltExecutors = config.getInteger("opentsdb.num.opentsdbbolt");
@@ -108,6 +113,8 @@ public class TopologyConfig {
         neo4jHost = config.getString("neo4j.hosts");
         neo4jLogin = config.getString("neo4j.user");
         neo4jPassword = config.getString("neo4j.pswd");
+
+        topologyEngineRestEndpoint = config.getString("topology.engine.rest.endpoint");
     }
 
     public Boolean getLocal() {
@@ -243,6 +250,10 @@ public class TopologyConfig {
         return openTsdbTimeout;
     }
 
+    public boolean isOpenTsdbClientChunkedRequestsEnabled() {
+        return openTsdbClientChunkedRequestsEnabled;
+    }
+
     public Integer getOpenTsdbNumSpouts() {
         return openTsdbNumSpouts;
     }
@@ -285,5 +296,9 @@ public class TopologyConfig {
 
     public String getNeo4jPassword() {
         return neo4jPassword;
+    }
+
+    public String getTopologyEngineRestEndpoint() {
+        return topologyEngineRestEndpoint;
     }
 }

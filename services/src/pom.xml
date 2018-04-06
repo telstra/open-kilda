@@ -22,7 +22,7 @@
         <cucumber.version>1.2.5</cucumber.version>
         <easymock.version>3.4</easymock.version>
         <enunciate.version>2.9.1</enunciate.version>
-        <floodlight.version>1.2-SNAPSHOT</floodlight.version>
+        <floodlight.version>1.2-kilda-2</floodlight.version>
         <guava.version>20.0</guava.version>
         <httpclient.version>3.1</httpclient.version>
         <jackson.version>2.8.8</jackson.version>
@@ -37,8 +37,8 @@
         <maven.source.version>3.0.1</maven.source.version>
         <maven.surefire.version>2.20</maven.surefire.version>
         <mockito.version>2.8.47</mockito.version>
-        <neo4j.version>1.4.2</neo4j.version>
-        <openflowj.version>3.2.0-SNAPSHOT</openflowj.version>
+        <neo4j.version>1.4.6</neo4j.version>
+        <openflowj.version>3.2.0-kilda-2</openflowj.version>
         <slf4j.version>1.7.25</slf4j.version>
         <snakeyaml.version>1.18</snakeyaml.version>
     </properties>
@@ -48,6 +48,7 @@
         <module>pce</module>
         <module>floodlight-modules</module>
         <module>northbound</module>
+        <module>api</module>
         <module>atdd</module>
         <module>atdd-staging</module>
   </modules>

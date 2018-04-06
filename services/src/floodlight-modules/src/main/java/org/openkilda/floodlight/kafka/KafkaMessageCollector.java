@@ -15,6 +15,8 @@
 
 package org.openkilda.floodlight.kafka;
 
+import net.floodlightcontroller.core.internal.IOFSwitchService;
+import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.messaging.Topic;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
@@ -63,6 +65,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
     public void startUp(FloodlightModuleContext moduleContext) throws FloodlightModuleException {
         ConsumerContext context = new ConsumerContext(moduleContext, this);
         RecordHandler.Factory handlerFactory = new RecordHandler.Factory(context);
+        ISwitchManager switchManager = moduleContext.getServiceImpl(ISwitchManager.class);
 
         logger.info("Starting {}", this.getClass().getCanonicalName());
         try {
@@ -70,9 +73,9 @@ public class KafkaMessageCollector implements IFloodlightModule {
 
             Consumer consumer;
             if (! "YES".equals(context.configLookup("testing-mode"))) {
-                consumer = new Consumer(context, parseRecordExecutor, handlerFactory, INPUT_TOPIC);
+                consumer = new Consumer(context, parseRecordExecutor, handlerFactory, switchManager, INPUT_TOPIC);
             } else {
-                consumer = new TestAwareConsumer(context, parseRecordExecutor, handlerFactory, INPUT_TOPIC);
+                consumer = new TestAwareConsumer(context, parseRecordExecutor, handlerFactory, switchManager, INPUT_TOPIC);
             }
             Executors.newSingleThreadExecutor().execute(consumer);
         } catch (Exception exception) {

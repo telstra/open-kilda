@@ -102,8 +102,8 @@ public class FlowCache extends Cache {
      * @param flow The flow to track / allocate.
      */
     public void pushFlow(ImmutablePair<Flow, Flow> flow) {
-        putFlow(flow);
         resourceCache.allocateFlow(flow);
+        putFlow(flow);
     }
 
     /**
@@ -135,7 +135,7 @@ public class FlowCache extends Cache {
     }
 
     /**
-     * Gets active flows with specified switch in the path.
+     * Gets active or cached flows with specified switch in the path.
      *
      * @param switchId switch id
      * @return set of flows
@@ -147,7 +147,7 @@ public class FlowCache extends Cache {
                         || flow.getRight().getFlowPath().getPath().stream()
                         .anyMatch(node -> node.getSwitchId().equals(switchId))
                         || isOneSwitchFlow(flow) && flow.getLeft().getSourceSwitch().equals(switchId))
-                .filter(flow -> FlowState.UP == flow.getLeft().getState())
+                .filter(flow -> flow.getLeft().getState().isActiveOrCached())
                 .collect(Collectors.toSet());
     }
 
@@ -174,7 +174,7 @@ public class FlowCache extends Cache {
         return flowPool.values().stream()
                 .filter(flow -> flow.getLeft().getFlowPath().getPath().contains(islData.getPath().get(0))
                         || flow.getRight().getFlowPath().getPath().contains(islData.getPath().get(0)))
-                .filter(flow -> FlowState.UP == flow.getLeft().getState())
+                .filter(flow -> flow.getLeft().getState().isActiveOrCached())
                 .collect(Collectors.toSet());
     }
 
@@ -189,6 +189,21 @@ public class FlowCache extends Cache {
         return flowPool.values().stream().filter(flow ->
                 flow.getLeft().getFlowPath().getPath().contains(node)
                         || flow.getRight().getFlowPath().getPath().contains(node))
+                .collect(Collectors.toSet());
+    }
+
+    /**
+     * Gets flows with specified switch and port in the path.
+     *
+     * @param portData port
+     * @return set of flows
+     */
+    public Set<ImmutablePair<Flow, Flow>> getActiveFlowsWithAffectedPath(PortInfoData portData) {
+        PathNode node = new PathNode(portData.getSwitchId(), portData.getPortNo(), 0);
+        return flowPool.values().stream()
+                .filter(flow -> flow.getLeft().getFlowPath().getPath().contains(node)
+                        || flow.getRight().getFlowPath().getPath().contains(node))
+                .filter(flow -> flow.getLeft().getState().isActiveOrCached())
                 .collect(Collectors.toSet());
     }
 
@@ -428,6 +443,21 @@ public class FlowCache extends Cache {
         String timestamp = Utils.getIsoTimestamp();
         int cookie = cache.allocateCookie((int) flow.getLeft().getCookie());
 
+        /*
+         * If either side is a SingleSwitchFlow .. don't allocate a vlan.
+         * If it is a oneswitch in one direction, it should be a one switch in the other direction,
+         * but there is probably some weird scenario where the return path isn't the same.. ie
+         * return path goes out somewhere, but forward is one switch. This probably never happens.
+         */
+        int forwardVlan = 0;
+        int reverseVlan = 0;
+        if (!flow.getLeft().isOneSwitchFlow()) {
+            forwardVlan = cache.allocateVlanId();
+        }
+        if (!flow.getRight().isOneSwitchFlow()) {
+            reverseVlan = cache.allocateVlanId();
+        }
+
         Flow forward = new Flow(
                 flow.getLeft().getFlowId(),
                 flow.getLeft().getBandwidth(),
@@ -441,7 +471,7 @@ public class FlowCache extends Cache {
                 flow.getLeft().getSourceVlan(),
                 flow.getLeft().getDestinationVlan(),
                 cache.allocateMeterId(flow.getLeft().getSourceSwitch(), flow.getLeft().getMeterId()),
-                cache.allocateVlanId(flow.getLeft().getTransitVlan()),
+                forwardVlan,
                 path.getLeft(),
                 FlowState.ALLOCATED);
 
@@ -458,7 +488,7 @@ public class FlowCache extends Cache {
                 flow.getRight().getSourceVlan(),
                 flow.getRight().getDestinationVlan(),
                 cache.allocateMeterId(flow.getRight().getSourceSwitch(), flow.getRight().getMeterId()),
-                cache.allocateVlanId(flow.getRight().getTransitVlan()),
+                reverseVlan,
                 path.getRight(),
                 FlowState.ALLOCATED);
 
@@ -479,6 +509,16 @@ public class FlowCache extends Cache {
         String timestamp = Utils.getIsoTimestamp();
         int cookie = cache.allocateCookie();
 
+        /*
+         * If either side is a SingleSwitchFlow .. don't allocate a vlan.
+         */
+        int forwardVlan = 0;
+        int reverseVlan = 0;
+        if (!flow.isOneSwitchFlow()) {
+            forwardVlan = cache.allocateVlanId();
+            reverseVlan = cache.allocateVlanId();
+        }
+
         Flow forward = new Flow(
                 flow.getFlowId(),
                 flow.getBandwidth(),
@@ -493,7 +533,7 @@ public class FlowCache extends Cache {
                 flow.getSourceVlan(),
                 flow.getDestinationVlan(),
                 cache.allocateMeterId(flow.getSourceSwitch()),
-                cache.allocateVlanId(),
+                forwardVlan,
                 path.getLeft(),
                 FlowState.ALLOCATED);
 
@@ -511,7 +551,7 @@ public class FlowCache extends Cache {
                 flow.getDestinationVlan(),
                 flow.getSourceVlan(),
                 cache.allocateMeterId(flow.getDestinationSwitch()),
-                cache.allocateVlanId(),
+                reverseVlan,
                 path.getRight(),
                 FlowState.ALLOCATED);
 
@@ -591,6 +631,22 @@ public class FlowCache extends Cache {
         return flowPool.values().stream()
                 .filter(flowPair -> Objects.nonNull(getFlowLinkedEndpoint(flowPair, switchId)))
                 .collect(Collectors.toSet());
+    }
+
+
+    public Set<Integer> getAllocatedVlans()
+    {
+        return resourceCache.getAllVlanIds();
+    }
+
+    public Set<Integer> getAllocatedCookies()
+    {
+        return resourceCache.getAllCookies();
+    }
+
+    public Map<String, Set<Integer>> getAllocatedMeters()
+    {
+        return resourceCache.getAllMeterIds();
     }
 
     /**

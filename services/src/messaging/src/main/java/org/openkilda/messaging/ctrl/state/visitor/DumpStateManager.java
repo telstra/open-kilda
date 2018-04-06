@@ -22,6 +22,7 @@ import org.openkilda.messaging.ctrl.DumpStateResponseData;
 import org.openkilda.messaging.ctrl.state.CacheBoltState;
 import org.openkilda.messaging.ctrl.state.CrudBoltState;
 import org.openkilda.messaging.ctrl.state.OFELinkBoltState;
+import org.openkilda.messaging.ctrl.state.ResorceCacheBoltState;
 import org.openkilda.messaging.ctrl.state.TransactionBoltState;
 
 import java.util.List;
@@ -35,6 +36,7 @@ public class DumpStateManager {
     private CrudBoltState crudBoltState;
     private OFELinkBoltState ofeLinkBoltState;
     private TransactionBoltState transactionBoltState;
+    private ResorceCacheBoltState resorceCacheBoltState;
 
     private DumpStateVisitor addVisitor = new DumpStateVisitor(this);
 
@@ -80,5 +82,14 @@ public class DumpStateManager {
     public void setTransactionBoltState(
             TransactionBoltState transactionBoltState) {
         this.transactionBoltState = transactionBoltState;
+    }
+
+    public ResorceCacheBoltState getResorceCacheBoltState() {
+        return resorceCacheBoltState;
+    }
+
+    public void setResorceCacheBoltState(
+            ResorceCacheBoltState resorceCacheBoltState) {
+        this.resorceCacheBoltState = resorceCacheBoltState;
     }
 }

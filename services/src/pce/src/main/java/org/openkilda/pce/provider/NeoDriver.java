@@ -15,8 +15,7 @@
 
 package org.openkilda.pce.provider;
 
-import org.openkilda.messaging.info.event.PathInfoData;
-import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.messaging.info.event.*;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
 
@@ -29,6 +28,7 @@ import org.neo4j.driver.v1.Value;
 import org.neo4j.driver.v1.Values;
 import org.neo4j.driver.v1.exceptions.NoSuchRecordException;
 import org.neo4j.driver.v1.types.Relationship;
+import org.openkilda.pce.api.FlowAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -141,6 +141,146 @@ public class NeoDriver implements PathComputer {
     }
 
     /**
+     * @return the first one found, if it exists.
+     */
+    @Override
+    public List<Flow> getFlow(String flowId) {
+        List<Flow> found = getFlows(flowId);
+        return found.size() > 0 ? found : null;
+    }
+
+    @Override
+    public List<Flow> getFlows(String flowId) {
+        String where = "WHERE f.flowid='" + flowId + "' ";
+        return _getFlows(where);
+    }
+
+    @Override
+    public List<Flow> getAllFlows() {
+        String noWhere = " ";
+        return _getFlows(noWhere);
+    }
+
+
+    private List<Flow> _getFlows(String whereClause) {
+        String q =
+                "MATCH (:switch)-[f:flow]->(:switch) " +
+                        whereClause +
+                        "RETURN f.flowid as flowid, " +
+                        "f.bandwidth as bandwidth, " +
+                        "f.ignore_bandwidth as ignore_bandwidth, " +
+                        "f.cookie as cookie, " +
+                        "f.description as description, " +
+                        "f.last_updated as last_updated, " +
+                        "f.src_switch as src_switch, " +
+                        "f.dst_switch as dst_switch, " +
+                        "f.src_port as src_port, " +
+                        "f.dst_port as dst_port, " +
+                        "f.src_vlan as src_vlan, " +
+                        "f.dst_vlan as dst_vlan, " +
+                        "f.flowpath as path, " +
+                        "f.meter_id as meter_id, " +
+                        "f.transit_vlan as transit_vlan";
+
+        logger.debug("Executing getFlows Query: {}", q);
+        Session session = driver.session();
+        StatementResult queryResults = session.run(q);
+        List<Flow> results = new LinkedList<>();
+        for (Record record : queryResults.list()) {
+            FlowAdapter adapter = new FlowAdapter(record);
+            results.add(adapter.getFlow());
+        }
+
+        return results;
+    }
+
+    @Override
+    public  List<SwitchInfoData> getSwitches() {
+        String q =
+                "MATCH (sw:switch) " +
+                        "RETURN " +
+                        "sw.name as name, " +
+                        "sw.address as address, " +
+                        "sw.hostname as hostname, " +
+                        "sw.description as description, " +
+                        "sw.controller as controller, " +
+                        "sw.state as state " +
+                        "order by sw.name";
+
+        logger.debug("Executing getSwitches Query: {}", q);
+        Session session = driver.session();
+        StatementResult queryResults = session.run(q);
+        List<SwitchInfoData> results = new LinkedList<>();
+        for (Record record : queryResults.list()) {
+            SwitchInfoData sw = new SwitchInfoData();
+            sw.setAddress(record.get("address").asString());
+            sw.setController(record.get("controller").asString());
+            sw.setDescription(record.get("description").asString());
+            sw.setHostname(record.get("hostname").asString());
+
+            String status = record.get("state").asString();
+            SwitchState st = ("active".equals(status)) ? SwitchState.ACTIVATED : SwitchState.CACHED;
+            sw.setState(st);
+
+            sw.setSwitchId(record.get("name").asString());
+            results.add(sw);
+        }
+        return results;
+    }
+
+    @Override
+    public List<IslInfoData> getIsls() {
+
+        String q =
+                "MATCH (:switch)-[isl:isl]->(:switch) " +
+                        "RETURN " +
+                        "isl.src_switch as src_switch, " +
+                        "isl.src_port as src_port, " +
+                        "isl.dst_switch as dst_switch, " +
+                        "isl.dst_port as dst_port, " +
+                        "isl.speed as speed, " +
+                        "isl.max_bandwidth as max_bandwidth, " +
+                        "isl.latency as latency, " +
+                        "isl.available_bandwidth as available_bandwidth, " +
+                        "isl.status as status " +
+                        "order by isl.src_switch";
+
+        logger.debug("Executing getSwitches Query: {}", q);
+        Session session = driver.session();
+        StatementResult queryResults = session.run(q);
+        List<IslInfoData> results = new LinkedList<>();
+        for (Record record : queryResults.list()) {
+            // max_bandwidth not used in IslInfoData
+            List<PathNode> pathNodes = new ArrayList<>();
+            PathNode src = new PathNode();
+            src.setSwitchId(record.get("src_switch").asString());
+            src.setPortNo(record.get("src_port").asInt());
+            src.setSegLatency(record.get("latency").asInt());
+            pathNodes.add(src);
+            PathNode dst = new PathNode();
+            dst.setSwitchId(record.get("dst_switch").asString());
+            dst.setPortNo(record.get("dst_port").asInt());
+            dst.setSegLatency(record.get("latency").asInt());
+            pathNodes.add(dst);
+
+            String status = record.get("status").asString();
+            IslChangeType state = ("active".equals(status)) ? IslChangeType.DISCOVERED : IslChangeType.FAILED;
+
+            IslInfoData isl = new IslInfoData(
+                    record.get("latency").asInt(),
+                    pathNodes,
+                    record.get("speed").asInt(),
+                    state,
+                    record.get("available_bandwidth").asInt()
+            );
+            isl.setTimestamp(System.currentTimeMillis());
+
+            results.add(isl);
+        }
+        return results;
+    }
+
+    /**
      * Create the query based on what the strategy is.
      */
     private Statement getPathQuery(Flow flow, Strategy strategy){
@@ -164,7 +304,7 @@ public class NeoDriver implements PathComputer {
 
         String subject =
                 "MATCH (a:switch{name:{src_switch}}),(b:switch{name:{dst_switch}}), " +
-                "p = shortestPath((a)-[r:isl*..100]->(b))";
+                "p = shortestPath((a)-[r:isl*..35]->(b))";
         parameters.put("src_switch", Values.value(flow.getSourceSwitch()));
         parameters.put("dst_switch", Values.value(flow.getDestinationSwitch()));
 
@@ -194,25 +334,25 @@ public class NeoDriver implements PathComputer {
 //
 //                        " CALL apoc.algo.dijkstraWithDefaultWeight(from, to, 'isl', 'cost', 700)" +
 //                        " YIELD path AS p, weight AS weight "
-                        " p = allShortestPaths((from)-[r:isl*..100]->(to)) " +
-                        " WITH REDUCE(cost = 0, rel in rels(p) | " +
-                        "   cost + CASE rel.cost WHEN rel.cost = 0 THEN 700 ELSE rel.cost END) AS cost, p "
-                ;
+                        " p = allShortestPaths((from)-[:isl*..35]->(to)) ";
         parameters.put("src_switch", Values.value(flow.getSourceSwitch()));
         parameters.put("dst_switch", Values.value(flow.getDestinationSwitch()));
 
         StringJoiner where = new StringJoiner("\n    AND ", "where ", "");
         where.add("ALL(x in nodes(p) WHERE x.state = 'active')");
         if (flow.isIgnoreBandwidth()) {
-            where.add("ALL(y in r WHERE y.status = 'active')");
+            where.add("ALL(y in relationships(p) WHERE y.status = 'active')");
         } else {
-            where.add("ALL(y in r WHERE y.status = 'active' AND y.available_bandwidth >= {bandwidth})");
+            where.add("ALL(y in relationships(p) WHERE y.status = 'active' AND y.available_bandwidth >= {bandwidth})");
             parameters.put("bandwidth", Values.value(flow.getBandwidth()));
         }
 
+        String reduce = " WITH REDUCE(cost = 0, rel in rels(p) | " +
+                "   cost + CASE rel.cost WHEN rel.cost = 0 THEN 700 ELSE rel.cost END) AS cost, p ";
+
         String result = "RETURN p ORDER BY cost LIMIT 1";
 
-        String query = String.join("\n", subject, where.toString(), result);
+        String query = String.join("\n", subject, where.toString(), reduce, result);
         return new Statement(query, Values.value(parameters));
     }
 

@@ -46,7 +46,7 @@ public final class IslLinkConverter {
         return null;
     }
 
-    public static IslLinkInfo toIslLinkInfo(final IslLink islLink) {
+    private static IslLinkInfo toIslLinkInfo(final IslLink islLink) {
         IslLinkInfo islLinkInfo = new IslLinkInfo();
         islLinkInfo.setAvailableBandwidth(islLink.getAvailableBandwidth());
         islLinkInfo.setSpeed(islLink.getSpeed());
@@ -56,10 +56,16 @@ public final class IslLinkConverter {
             if (islPaths.get(0) != null) {
                 islLinkInfo.setSrcPort(islPaths.get(0).getPortNo());
                 islLinkInfo.setSrcSwitch(islPaths.get(0).getSwitchId());
+                if(islPaths.get(0).getSegmentLatency() > 0){
+                    islLinkInfo.setLatency(islPaths.get(0).getSegmentLatency());
+                }
             }
             if (islPaths.get(1) != null) {
                 islLinkInfo.setDstPort(islPaths.get(1).getPortNo());
                 islLinkInfo.setDstSwitch(islPaths.get(1).getSwitchId());
+                if (islPaths.get(1).getSegmentLatency() > 0) {
+                    islLinkInfo.setLatency(islPaths.get(1).getSegmentLatency());
+                }
             }
         }
         return islLinkInfo;

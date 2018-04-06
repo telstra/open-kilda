@@ -27,7 +27,9 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Arrays;
@@ -50,8 +52,16 @@ public class NorthboundServiceImpl implements NorthboundService {
 
     @Override
     public FlowPayload getFlow(String flowId) {
-        return restTemplate.exchange("/api/v1/flows/{flow_id}", HttpMethod.GET,
-                new HttpEntity(buildHeadersWithCorrelationId()), FlowPayload.class, flowId).getBody();
+        try {
+            return restTemplate.exchange("/api/v1/flows/{flow_id}", HttpMethod.GET,
+                    new HttpEntity(buildHeadersWithCorrelationId()), FlowPayload.class, flowId).getBody();
+        } catch (HttpClientErrorException ex) {
+            if (ex.getStatusCode() != HttpStatus.NOT_FOUND) {
+                throw ex;
+            }
+
+            return null;
+        }
     }
 
     @Override
@@ -71,8 +81,16 @@ public class NorthboundServiceImpl implements NorthboundService {
 
     @Override
     public FlowPayload deleteFlow(String flowId) {
-        return restTemplate.exchange("/api/v1/flows/{flow_id}", HttpMethod.DELETE,
-                new HttpEntity(buildHeadersWithCorrelationId()), FlowPayload.class, flowId).getBody();
+        try {
+            return restTemplate.exchange("/api/v1/flows/{flow_id}", HttpMethod.DELETE,
+                    new HttpEntity(buildHeadersWithCorrelationId()), FlowPayload.class, flowId).getBody();
+        } catch (HttpClientErrorException ex) {
+            if (ex.getStatusCode() != HttpStatus.NOT_FOUND) {
+                throw ex;
+            }
+
+            return null;
+        }
     }
 
     @Override

@@ -28,7 +28,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Arrays;
@@ -69,8 +71,17 @@ public class TopologyEngineServiceImpl implements TopologyEngineService {
 
     @Override
     public ImmutablePair<Flow, Flow> getFlow(String flowId) {
-        return restTemplate.exchange("/api/v1/topology/flows/{flow_id}", HttpMethod.GET, null,
-                new ParameterizedTypeReference<ImmutablePair<Flow, Flow>>() {}, flowId).getBody();
+        try {
+            return restTemplate.exchange("/api/v1/topology/flows/{flow_id}", HttpMethod.GET, null,
+                    new ParameterizedTypeReference<ImmutablePair<Flow, Flow>>() {
+                    }, flowId).getBody();
+        } catch (HttpClientErrorException ex) {
+            if (ex.getStatusCode() != HttpStatus.NOT_FOUND) {
+                throw ex;
+            }
+
+            return null;
+        }
     }
 
     @Override

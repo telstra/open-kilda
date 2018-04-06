@@ -64,7 +64,7 @@ compile:
 
 unit:
 	$(MAKE) -C services/src
-	mvn -f services/wfm/pom.xml clean assembly:assembly
+	mvn -B -f services/wfm/pom.xml clean assembly:assembly
 
 clean-test:
 	docker-compose down
@@ -87,12 +87,18 @@ update-props-dryrun:
 # NB: Adjust the default tags as ATDD tests are created and validated.
 # 		Regarding syntax .. @A,@B is logical OR .. --tags @A --tags @B is logical AND
 #
-tags := @TOPO,@FCRUD --tags @MVP1
+# (crimi) - 2018.03.25 .. these tags seem to be the right tags for ATDD
+# tags := @TOPO,@FCRUD,@NB,@FPATH,@FREINSTALL,@PCE --tags @MVP1
+#
+tags := @TOPO,@FCRUD,@FREINSTALL --tags @MVP1
 kilda := 127.0.0.1
 
-# ( @NB OR @STATS ) AND @MVP1
-# --tags @NB,@STATS --tags @MVP1
-# make atdd kilda=127.0.0.1 tags=@MVP1
+# EXAMPLES:
+#  ( @NB OR @STATS ) AND @MVP1
+#   --tags @NB,@STATS --tags @MVP1
+#   make atdd kilda=127.0.0.1 tags=@
+#   mvn -f services/src/atdd/pom.xml -Patdd test -Dkilda.host="127.0.0.1" -Dcucumber.options="--tags @CRUD_UPDATE"
+#   mvn -f services/src/atdd/pom.xml -Patdd test -Dkilda.host="127.0.0.1" -Dsurefire.useFile=false -Dcucumber.options="--tags @CRUD_UPDATE"
 
 atdd: update
 	mvn -f services/src/atdd/pom.xml -P$@ test -Dkilda.host="$(kilda)" -Dcucumber.options="--tags $(tags)"

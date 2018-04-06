@@ -15,11 +15,14 @@
 
 package org.openkilda.northbound.service;
 
+import org.openkilda.messaging.command.flow.SynchronizeCacheAction;
+import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
-import org.openkilda.messaging.info.flow.FlowInfoData;
+import org.openkilda.messaging.payload.flow.FlowReroutePayload;
+import org.openkilda.northbound.dto.FlowValidationDto;
 
 import java.util.List;
 
@@ -94,32 +97,47 @@ public interface FlowService extends BasicService {
      * Use this to push flows that may not be in the database / caches but they should be
      *
      * @param externalFlows   the list of flows to push.
+     * @param propagate if true, the path/rules will be propagated to the switch
+     * @param verify if true, we'll wait up to poll seconds to confirm if rules have been applied
+     *
      * @return
      */
-    BatchResults pushFlows(final List<FlowInfoData> externalFlows);
+    BatchResults pushFlows(final List<FlowInfoData> externalFlows, Boolean propagate, Boolean verify);
 
     /**
      * Use this to unpush flows .. ie undo a push
      *
      * @param externalFlows   the list of flows to unpush.
+     * @param propagate if true, the path/rules will be propagated to the switch
+     * @param verify if true, we'll wait up to poll seconds to confirm if rules have been applied
      * @return
      */
-    BatchResults unpushFlows(final List<FlowInfoData> externalFlows);
-
+    BatchResults unpushFlows(final List<FlowInfoData> externalFlows, Boolean propagate, Boolean verify);
 
     /**
      * Performs rerouting of specific flow.
      *
      * @param flowId id of flow to be rerouted.
-     * @return updated flow path information.
+     * @return updated flow path information with the result whether or not path was changed.
      */
-    FlowPathPayload rerouteFlow(final String flowId);
+    FlowReroutePayload rerouteFlow(final String flowId);
 
+
+    /**
+     * Performs validation of specific flow - ie comparing what is in the database with what is
+     * on the network.
+     *
+     * @param flowId id of the flow
+     * @return the results of the comparison, or null if the flow isn't found.
+     * @throws java.nio.file.InvalidPathException if the flow doesn't return a path and it should.
+     */
+    List<FlowValidationDto> validateFlow(final String flowId);
 
     /**
      * Sync the FlowCache in the flow topology (in case it is out of sync.
      *
-     * @return updated flow path information.
+     * @param syncCacheAction describes how to synchronize the cache.
+     * @return details on performed updates.
      */
-    FlowCacheSyncResults syncFlowCache();
+    FlowCacheSyncResults syncFlowCache(SynchronizeCacheAction syncCacheAction);
 }

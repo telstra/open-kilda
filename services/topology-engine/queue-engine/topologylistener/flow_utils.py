@@ -30,13 +30,36 @@ __all__ = ['graph']
 graph = db.create_p2n_driver()
 logger = logging.getLogger(__name__)
 
+ignored_rules = ['0x8000000000000001', '0x8000000000000002',
+                 '0x8000000000000003']
+
 
 def is_forward_cookie(cookie):
-    return int(cookie) & 0x4000000000000000
+    cookie = int(cookie)
+    # trying to distinguish kilda and not kilda produced cookies
+    if cookie & 0xE000000000000000:
+        is_match = cookie & 0x4000000000000000
+    else:
+        is_match = (cookie & 0x0080000000000000) == 0
+    return bool(is_match)
 
 
 def is_reverse_cookie(cookie):
-    return int(cookie) & 0x2000000000000000
+    cookie = int(cookie)
+    # trying to distinguish kilda and not kilda produced cookies
+    if cookie & 0xE000000000000000:
+        is_match = cookie & 0x2000000000000000
+    else:
+        is_match = (cookie & 0x0080000000000000) != 0
+    return bool(is_match)
+
+
+def cookie_to_hex(cookie):
+    value = hex(
+        ((cookie ^ 0xffffffffffffffff) + 1) * -1 if cookie < 0 else cookie)
+    if value.endswith("L"):
+        value = value[:-1]
+    return value
 
 
 def is_same_direction(first, second):
@@ -333,6 +356,7 @@ def hydrate_flow(one_row):
     flow = json.loads(json.dumps(one_row['r'],
                                  default=lambda o: o.__dict__,
                                  sort_keys=True))
+    path.setdefault('clazz', 'org.openkilda.messaging.info.event.PathInfoData')
     flow['flowpath'] = path
     return flow
 
@@ -361,7 +385,14 @@ def get_old_flow(new_flow):
             logger.info('Flow was found: flow=%s', old_flow)
             return dict(old_flow)
 
+    # FIXME(surabujin): use custom exception!!!
+    raise Exception(
+        'Requested flow {}(cookie={}) don\'t found corresponding flow (with '
+        'matching direction in Neo4j)'.format(
+            new_flow['flowid'], new_flow['cookie']))
 
+
+# Note this methods is used for LCM functionality. Adds CACHED state to the flow
 def get_flows():
     flows = {}
     query = "MATCH (a:switch)-[r:flow]->(b:switch) RETURN r"
@@ -370,6 +401,7 @@ def get_flows():
 
         for data in result:
             flow = hydrate_flow(data)
+            flow['state'] = 'CACHED'
             flow_pair = flows.get(flow['flowid'], {})
             if is_forward_cookie(flow['cookie']):
                 flow_pair['forward'] = flow

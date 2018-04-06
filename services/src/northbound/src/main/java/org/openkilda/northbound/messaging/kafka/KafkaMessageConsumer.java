@@ -19,15 +19,16 @@ import static org.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.openkilda.messaging.Utils.MAPPER;
 import static org.openkilda.messaging.error.ErrorType.INTERNAL_ERROR;
 import static org.openkilda.messaging.error.ErrorType.OPERATION_TIMED_OUT;
-import org.openkilda.messaging.Topic;
 
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
+import org.openkilda.messaging.Topic;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.northbound.messaging.MessageConsumer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
@@ -35,13 +36,16 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import javax.annotation.PostConstruct;
+import org.apache.commons.collections4.map.PassiveExpiringMap;
 
 /**
  * Kafka message consumer.
  */
 @Component
 @PropertySource("classpath:northbound.properties")
-public class KafkaMessageConsumer implements MessageConsumer<Object> {
+public class KafkaMessageConsumer implements MessageConsumer<Message> {
     /**
      * Error description for interrupted exception.
      */
@@ -57,10 +61,18 @@ public class KafkaMessageConsumer implements MessageConsumer<Object> {
      */
     private static final Logger logger = LoggerFactory.getLogger(KafkaMessageConsumer.class);
 
+    @Value("${northbound.messages.expiration.minutes}")
+    private int expiredTime;
+
     /**
      * Messages map.
      */
-    private volatile Map<String, Object> messages = new ConcurrentHashMap<>();
+    private Map<String, Message> messages;
+
+    @PostConstruct
+    public void setUp() {
+        messages = new PassiveExpiringMap<>(expiredTime, TimeUnit.MINUTES, new ConcurrentHashMap<String, Message>());
+    }
 
     /**
      * Receives messages from WorkFlowManager queue.
@@ -70,14 +82,9 @@ public class KafkaMessageConsumer implements MessageConsumer<Object> {
     @KafkaListener(id = "northbound-listener", topics = Topic.NORTHBOUND)
     public void receive(final String record) {
         try {
-            logger.trace("message received");
+            logger.debug("message received: {}", record);
             Message message = MAPPER.readValue(record, Message.class);
-            if (Destination.NORTHBOUND.equals(message.getDestination())) {
-                logger.debug("message received: {}", record);
-                messages.put(message.getCorrelationId(), message);
-            } else {
-                logger.trace("Skip message: {}", message);
-            }
+            messages.put(message.getCorrelationId(), message);
         } catch (IOException exception) {
             logger.error("Could not deserialize message: {}", record, exception);
         }
@@ -87,7 +94,7 @@ public class KafkaMessageConsumer implements MessageConsumer<Object> {
      * {@inheritDoc}
      */
     @Override
-    public Object poll(final String correlationId) {
+    public Message poll(final String correlationId) {
         try {
             for (int i = POLL_TIMEOUT / POLL_PAUSE; i < POLL_TIMEOUT; i += POLL_PAUSE) {
                 if (messages.containsKey(correlationId)) {
@@ -105,11 +112,36 @@ public class KafkaMessageConsumer implements MessageConsumer<Object> {
                 OPERATION_TIMED_OUT, TIMEOUT_ERROR_MESSAGE, Topic.NORTHBOUND);
     }
 
+    //todo(Nikita C): rewrite current poll method using async way.
+/*
+    @Async
+    public CompletableFuture<Message> asyncPoll(final String correlationId) {
+        try {
+            for (int i = POLL_TIMEOUT / POLL_PAUSE; i < POLL_TIMEOUT; i += POLL_PAUSE) {
+                if (messages.containsKey(correlationId)) {
+                    return CompletableFuture.completedFuture(messages.remove(correlationId));
+                } else if (messages.containsKey(SYSTEM_CORRELATION_ID)) {
+                    return CompletableFuture.completedFuture(messages.remove(SYSTEM_CORRELATION_ID));
+                }
+                Thread.sleep(POLL_PAUSE);
+            }
+        } catch (InterruptedException exception) {
+            logger.error("{}: {}={}", INTERRUPTED_ERROR_MESSAGE, CORRELATION_ID, correlationId);
+            throw new MessageException(correlationId, System.currentTimeMillis(),
+                    INTERNAL_ERROR, INTERRUPTED_ERROR_MESSAGE, Topic.NORTHBOUND);
+        }
+        logger.error("{}: {}={}", TIMEOUT_ERROR_MESSAGE, CORRELATION_ID, correlationId);
+        throw new MessageException(correlationId, System.currentTimeMillis(),
+                OPERATION_TIMED_OUT, TIMEOUT_ERROR_MESSAGE, Topic.NORTHBOUND);
+    }
+*/
+
     /**
      * {@inheritDoc}
      */
     @Override
     public void clear() {
-        messages.clear();
+        //we shouldn't clear up collection, outdated messages are removing by default.
+        //messages.clear();
     }
 }

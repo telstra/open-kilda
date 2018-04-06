@@ -15,29 +15,34 @@
 
 package org.openkilda.pce.cache;
 
+import static java.lang.String.format;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
+import edu.emory.mathcs.backport.java.util.Collections;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.pce.NetworkTopologyConstants;
 
-import edu.emory.mathcs.backport.java.util.Collections;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 public class ResourceCacheTest {
     private static final String SWITCH_ID = "switch-id";
+    private static final String SWITCH_ID_2 = "switch-id-2";
     private final Flow forwardCreatedFlow = new Flow("created-flow", 0, false, 10L, "description",
-            "timestamp", "sw3", "sw3", 21, 22, 100, 200, 4, 4, new PathInfoData(), FlowState.ALLOCATED);
+            "timestamp", "sw3", "sw4", 21, 22, 100, 200, 4, 4, new PathInfoData(), FlowState.ALLOCATED);
     private final Flow reverseCreatedFlow = new Flow("created-flow", 0, false, 10L, "description",
-            "timestamp", "sw3", "sw3", 22, 21, 200, 100, 5, 5, new PathInfoData(), FlowState.ALLOCATED);
+            "timestamp", "sw4", "sw3", 22, 21, 200, 100, 5, 5, new PathInfoData(), FlowState.ALLOCATED);
     private ResourceCache resourceCache;
 
     @After
@@ -104,24 +109,25 @@ public class ResourceCacheTest {
     @Test
     public void meterIdPool() throws Exception {
         resourceCache.allocateMeterId(SWITCH_ID, 4);
+        int m1 = ResourceCache.MIN_METER_ID;
 
         int first = resourceCache.allocateMeterId(SWITCH_ID);
-        assertEquals(1, first);
+        assertEquals(m1, first);
 
         int second = resourceCache.allocateMeterId(SWITCH_ID);
-        assertEquals(2, second);
+        assertEquals(m1+1, second);
 
         int third = resourceCache.allocateMeterId(SWITCH_ID);
-        assertEquals(3, third);
+        assertEquals(m1+2, third);
 
         resourceCache.deallocateMeterId(SWITCH_ID, second);
         int fourth = resourceCache.allocateMeterId(SWITCH_ID);
-        assertEquals(2, fourth);
+        assertEquals(m1+1, fourth);
 
         assertEquals(4, resourceCache.getAllMeterIds(SWITCH_ID).size());
 
         int fifth = resourceCache.allocateMeterId(SWITCH_ID);
-        assertEquals(5, fifth);
+        assertEquals(m1+3, fifth);
 
         assertEquals(5, resourceCache.deallocateMeterId(SWITCH_ID).size());
         assertEquals(0, resourceCache.getAllMeterIds(SWITCH_ID).size());
@@ -136,15 +142,18 @@ public class ResourceCacheTest {
         }
     }
 
-    @Test(expected = ArrayIndexOutOfBoundsException.class)
-    public void cookiePoolFullTest() {
-        resourceCache.allocateCookie();
-        int i = ResourceCache.MIN_COOKIE;
-        while (i++ <= ResourceCache.MAX_COOKIE) {
-            resourceCache.allocateCookie();
-        }
-    }
 
+// (crimi - 2018.04.06  ... Don't do this ... cookie pool is massive
+//
+//    @Test(expected = ArrayIndexOutOfBoundsException.class)
+//    public void cookiePoolFullTest() {
+//        resourceCache.allocateCookie();
+//        int i = ResourceCache.MIN_COOKIE;
+//        while (i++ <= ResourceCache.MAX_COOKIE) {
+//            resourceCache.allocateCookie();
+//        }
+//    }
+//
     @Test(expected = ArrayIndexOutOfBoundsException.class)
     public void meterIdPoolFullTest() {
         resourceCache.allocateMeterId(SWITCH_ID);
@@ -161,8 +170,12 @@ public class ResourceCacheTest {
 
         Set<Integer> allocatedCookies = resourceCache.getAllCookies();
         Set<Integer> allocatedVlanIds = resourceCache.getAllVlanIds();
-        Set<Integer> allocatedMeterIds = resourceCache.getAllMeterIds(
-                NetworkTopologyConstants.sw3.getSwitchId());
+        Set<Integer> allocatedMeterIds = new HashSet<>();
+
+        allocatedMeterIds.addAll(resourceCache.getAllMeterIds(
+                NetworkTopologyConstants.sw3.getSwitchId()));
+        allocatedMeterIds.addAll(resourceCache.getAllMeterIds(
+                NetworkTopologyConstants.sw4.getSwitchId()));
 
         Set<Integer> expectedCookies = new HashSet<>(Arrays.asList(
                 (int) forwardCreatedFlow.getCookie(),
@@ -196,4 +209,70 @@ public class ResourceCacheTest {
         assertEquals(Collections.emptySet(), allocatedVlanIds);
         assertEquals(Collections.emptySet(), allocatedMeterIds);
     }
+
+    @Test
+    public void shouldSkipDellocateMeterPoolIfSwitchNotFound(){
+        // given
+        final String switchId = format("%s-%s", SWITCH_ID, UUID.randomUUID());
+
+        // then
+        assertNull(resourceCache.deallocateMeterId(switchId));
+    }
+
+    @Test
+    public void shouldSkipDellocateMeterIdIfSwitchNotFound(){
+        // given
+        final String switchId = format("%s-%s", SWITCH_ID, UUID.randomUUID());
+
+        // then
+        assertNull(resourceCache.deallocateMeterId(switchId, forwardCreatedFlow.getMeterId()));
+    }
+
+    @Test
+    public void getAllMeterIds(){
+        int first = resourceCache.allocateMeterId(SWITCH_ID);
+        assertEquals(ResourceCache.MIN_METER_ID, first);
+
+        int second = resourceCache.allocateMeterId(SWITCH_ID);
+        assertEquals(ResourceCache.MIN_METER_ID+1, second);
+
+        int third = resourceCache.allocateMeterId(SWITCH_ID);
+        assertEquals(ResourceCache.MIN_METER_ID+2, third);
+
+        first = resourceCache.allocateMeterId(SWITCH_ID_2);
+        assertEquals(ResourceCache.MIN_METER_ID, first);
+
+        second = resourceCache.allocateMeterId(SWITCH_ID_2);
+        assertEquals(ResourceCache.MIN_METER_ID+1, second);
+
+        Map<String, Set<Integer>> allMeterIds = resourceCache.getAllMeterIds();
+        assertEquals(2, allMeterIds.size());
+        assertEquals(3, allMeterIds.get(SWITCH_ID).size());
+        assertEquals(2, allMeterIds.get(SWITCH_ID_2).size());
+    }
+
+
+    @Test
+    public void earlyMeterIds(){
+        /*
+         * Test that we can add a meter id less than the minimum, assuming the minimum is > 1.
+         */
+        int m1 = ResourceCache.MIN_METER_ID;
+        int first = resourceCache.allocateMeterId(SWITCH_ID);
+        assertEquals(m1, first);
+
+        resourceCache.allocateMeterId(SWITCH_ID,m1-1);
+        assertEquals(2, resourceCache.getAllMeterIds(SWITCH_ID).size());
+        assertTrue(resourceCache.getAllMeterIds(SWITCH_ID).contains(m1-1));
+
+        /*
+         * verify that if we delete all, and then request a new vlan, it starts at min.
+         */
+        resourceCache.deallocateMeterId(SWITCH_ID,m1);
+        resourceCache.deallocateMeterId(SWITCH_ID,m1-1);
+        first = resourceCache.allocateMeterId(SWITCH_ID);
+        assertEquals(m1, first);
+    }
+
+
 }

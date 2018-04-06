@@ -92,5 +92,9 @@ public enum ComponentType {
     /**
      * Error bolt. Processes errors.
      */
-    ERROR_BOLT
+    ERROR_BOLT,
+
+    LCM_SPOUT,
+    LCM_FLOW_SYNC_BOLT,
+    TOPOLOGY_ENGINE_OUTPUT
 }

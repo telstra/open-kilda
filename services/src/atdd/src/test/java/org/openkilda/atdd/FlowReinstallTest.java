@@ -1,16 +1,20 @@
 package org.openkilda.atdd;
 
 import static org.awaitility.Awaitility.await;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+
+import org.openkilda.SwitchesUtils;
+import org.openkilda.flow.FlowUtils;
+import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.messaging.payload.FeatureTogglePayload;
+import org.openkilda.messaging.payload.flow.FlowPathPayload;
 
 import cucumber.api.java.en.Then;
 import cucumber.api.java.en.When;
 import org.apache.commons.lang.StringUtils;
 import org.awaitility.Duration;
-import org.openkilda.SwitchesUtils;
-import org.openkilda.flow.FlowUtils;
-import org.openkilda.messaging.info.event.PathNode;
-import org.openkilda.messaging.payload.flow.FlowPathPayload;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -47,5 +51,17 @@ public class FlowReinstallTest {
                 return !contains;
             }
         });
+    }
+
+    @When("flow reroute feature is (on|off)$")
+    public void flowRerouteFeatureStatus(final String statusString) {
+        boolean status = statusString.equals("on");
+
+        FeatureTogglePayload desired = new FeatureTogglePayload(null, status, null, null, null, null, null);
+        FeatureTogglePayload result = FlowUtils.updateFeaturesStatus(desired);
+
+        assertNotNull(result);
+        assertEquals(status, result.getReflowOnSwitchActivationEnabled());
+        assertEquals(desired.getReflowOnSwitchActivationEnabled(), result.getReflowOnSwitchActivationEnabled());
     }
 }

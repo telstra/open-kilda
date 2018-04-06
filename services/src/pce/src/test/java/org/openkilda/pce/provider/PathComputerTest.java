@@ -1,6 +1,5 @@
 package org.openkilda.pce.provider;
 
-import static junit.framework.TestCase.assertTrue;
 import static org.junit.Assert.assertEquals;
 
 import org.junit.*;
@@ -50,16 +49,11 @@ public class PathComputerTest {
                 .setConfig( bolt.enabled, "true" )
                 .setConfig( bolt.listen_address, "localhost:7878" )
                 .newGraphDatabase();
-
-        // Shuts down nicely when the VM exits
-        Runtime.getRuntime().addShutdownHook( new Thread(() -> {
-            System.out.println("Killing Elephants \uD83D\uDC18");
-            graphDb.shutdown();
-        }));
     }
 
     @AfterClass
     public static void teatDownOnce() {
+        graphDb.shutdown();
     }
 
     @Before
@@ -131,7 +125,7 @@ public class PathComputerTest {
         return rel;
     }
 
-    private void createDiamond(String pathBstatus, int pathBcost, int pathCcost) {
+    private void createDiamond(String pathBstatus, String pathCstatus, int pathBcost, int pathCcost) {
         try ( Transaction tx = graphDb.beginTx() ) {
             // A - B - D
             //   + C +
@@ -141,13 +135,28 @@ public class PathComputerTest {
             nodeC = createNode("00:03");
             nodeD = createNode("00:04");
             addRel(nodeA, nodeB, pathBstatus, pathBcost, 1000);
-            addRel(nodeA, nodeC, "active", pathCcost, 1000);
+            addRel(nodeA, nodeC, pathCstatus, pathCcost, 1000);
             addRel(nodeB, nodeD, pathBstatus, pathBcost, 1000);
-            addRel(nodeC, nodeD, "active", pathCcost, 1000);
+            addRel(nodeC, nodeD, pathCstatus, pathCcost, 1000);
             addRel(nodeB, nodeA, pathBstatus, pathBcost, 1000);
-            addRel(nodeC, nodeA, "active", pathCcost, 1000);
+            addRel(nodeC, nodeA, pathCstatus, pathCcost, 1000);
             addRel(nodeD, nodeB, pathBstatus, pathBcost, 1000);
-            addRel(nodeD, nodeC, "active", pathCcost, 1000);
+            addRel(nodeD, nodeC, pathCstatus, pathCcost, 1000);
+            tx.success();
+        }
+    }
+
+    private void createTriangleTopo(String pathABstatus, int pathABcost, int pathCcost) {
+        try ( Transaction tx = graphDb.beginTx() ) {
+            // A - B
+            // + C +
+            Node nodeA, nodeB, nodeC, nodeD;
+            nodeA = createNode("00:01");
+            nodeB = createNode("00:02");
+            nodeC = createNode("00:03");
+            addRel(nodeA, nodeB, pathABstatus, pathABcost, 1000);
+            addRel(nodeA, nodeC, "active", pathCcost, 1000);
+            addRel(nodeC, nodeB,  "active", pathCcost, 1000);
             tx.success();
         }
     }
@@ -157,7 +166,7 @@ public class PathComputerTest {
         /*
          * simple happy path test .. everything has cost
          */
-        createDiamond("active", 10, 20);
+        createDiamond("active", "active", 10, 20);
         Driver driver = GraphDatabase.driver( "bolt://localhost:7878", AuthTokens.basic( "neo4j", "password" ) );
         NeoDriver nd = new NeoDriver(driver);
         Flow f = new Flow();
@@ -177,7 +186,7 @@ public class PathComputerTest {
         /*
          * simple happy path test .. but lowest path is inactive
          */
-        createDiamond("inactive", 10, 20);
+        createDiamond("inactive", "active", 10, 20);
         Driver driver = GraphDatabase.driver( "bolt://localhost:7878", AuthTokens.basic( "neo4j", "password" ) );
         NeoDriver nd = new NeoDriver(driver);
         Flow f = new Flow();
@@ -193,11 +202,31 @@ public class PathComputerTest {
     }
 
     @Test
+    public void testGetPathByCostInactiveOnTriangleTopo() throws UnroutablePathException {
+        /*
+         * simple happy path test .. but lowest path is inactive
+         */
+        createTriangleTopo("inactive", 10, 20);
+        Driver driver = GraphDatabase.driver( "bolt://localhost:7878", AuthTokens.basic( "neo4j", "password" ) );
+        NeoDriver nd = new NeoDriver(driver);
+        Flow f = new Flow();
+        f.setSourceSwitch("00:01");
+        f.setDestinationSwitch("00:02");
+        f.setBandwidth(100);
+        ImmutablePair<PathInfoData, PathInfoData> path = nd.getPath(f, PathComputer.Strategy.COST);
+        // System.out.println("path = " + path);
+        Assert.assertNotNull(path);
+        Assert.assertEquals(4, path.left.getPath().size());
+        // ====> only difference is it should now have C as first hop .. since B is inactive
+        Assert.assertEquals("00:03", path.left.getPath().get(1).getSwitchId()); // chooses path B
+    }
+
+    @Test
     public void testGetPathByCostNoCost() throws UnroutablePathException {
         /*
          * simple happy path test .. but pathB has no cost .. but still cheaper than pathC (test the default)
          */
-        createDiamond("active", -1, 2000);
+        createDiamond("active", "active",  -1, 2000);
         Driver driver = GraphDatabase.driver( "bolt://localhost:7878", AuthTokens.basic( "neo4j", "password" ) );
         NeoDriver nd = new NeoDriver(driver);
         Flow f = new Flow();
@@ -212,6 +241,21 @@ public class PathComputerTest {
         Assert.assertEquals("00:02", path.left.getPath().get(1).getSwitchId()); // chooses path B
     }
 
+
+    @Test(expected = UnroutablePathException.class)
+    public void testGetPathNoPath() throws UnroutablePathException {
+        /*
+         * simple happy path test .. but pathB has no cost .. but still cheaper than pathC (test the default)
+         */
+        createDiamond("inactive", "inactive", 10, 30);
+        Driver driver = GraphDatabase.driver( "bolt://localhost:7878", AuthTokens.basic( "neo4j", "password" ) );
+        NeoDriver nd = new NeoDriver(driver);
+        Flow f = new Flow();
+        f.setSourceSwitch("00:01");
+        f.setDestinationSwitch("00:04");
+        f.setBandwidth(100);
+        ImmutablePair<PathInfoData, PathInfoData> path = nd.getPath(f, PathComputer.Strategy.COST);
+    }
 
     /* ==========> TESTING DIJKSTRA
      * THE FOLLOWING CAN BE USED DIRECTLY IN THE NEO4J BROWSER.

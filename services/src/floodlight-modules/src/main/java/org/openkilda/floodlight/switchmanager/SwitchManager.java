@@ -15,10 +15,10 @@
 
 package org.openkilda.floodlight.switchmanager;
 
+import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.VERIFICATION_BCAST_PACKET_DST;
-import static org.openkilda.floodlight.pathverification.PathVerificationService.VERIFICATION_BCAST_PACKET_DST_MASK;
 import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 import static org.openkilda.messaging.Utils.ETH_TYPE;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_12;
@@ -26,10 +26,7 @@ import static org.projectfloodlight.openflow.protocol.OFVersion.OF_13;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_15;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import net.floodlightcontroller.core.FloodlightContext;
-import net.floodlightcontroller.core.IFloodlightProviderService;
-import net.floodlightcontroller.core.IOFMessageListener;
-import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.*;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
@@ -40,14 +37,19 @@ import net.floodlightcontroller.util.FlowModUtils;
 import org.openkilda.floodlight.kafka.KafkaMessageProducer;
 import org.openkilda.floodlight.switchmanager.web.SwitchManagerWebRoutable;
 import org.openkilda.messaging.Destination;
+import org.openkilda.messaging.Message;
+import org.openkilda.messaging.Topic;
+import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
 import org.projectfloodlight.openflow.protocol.OFErrorMsg;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowDelete;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
+import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFLegacyMeterBandDrop;
@@ -61,6 +63,7 @@ import org.projectfloodlight.openflow.protocol.OFMeterFlags;
 import org.projectfloodlight.openflow.protocol.OFMeterMod;
 import org.projectfloodlight.openflow.protocol.OFMeterModCommand;
 import org.projectfloodlight.openflow.protocol.OFType;
+import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActions;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
@@ -99,14 +102,27 @@ import java.util.concurrent.TimeoutException;
  * Created by jonv on 29/3/17.
  */
 public class SwitchManager implements IFloodlightModule, IFloodlightService, ISwitchManager, IOFMessageListener {
-    public static final long FLOW_COOKIE_MASK = 0x60000000FFFFFFFFL;
-    static final U64 NON_SYSTEM_MASK = U64.of(0x80000000FFFFFFFFL);
-    private static final long DROP_COOKIE = 0x8000000000000001L;
     private static final Logger logger = LoggerFactory.getLogger(SwitchManager.class);
+
+    private static final String TOPO_EVENT_TOPIC = Topic.TOPO_DISCO;
+
+    /**
+     * Make sure we clear the top bit .. that is for NON_SYSTEM_MASK. This mask is applied to
+     * Cookie IDs when creating a flow.
+     */
+    public static final long FLOW_COOKIE_MASK = 0x7FFFFFFFFFFFFFFFL;
+
+    static final U64 NON_SYSTEM_MASK = U64.of(0x80000000FFFFFFFFL);
+
+    // This is invalid VID mask - it cut of highest bit that indicate presence of VLAN tag on package. But valid mask
+    // 0x1FFF lead to rule reject during install attempt on accton based switches.
+    private static short OF10_VLAN_MASK = 0x0FFF;
+
     private IFloodlightProviderService floodlightProvider;
     private IOFSwitchService ofSwitchService;
     private IRestApiService restApiService;
     private KafkaMessageProducer kafkaProducer;
+    private ConnectModeRequest.Mode connectMode;
 
     // IFloodlightModule Methods
 
@@ -173,6 +189,14 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         ofSwitchService = context.getServiceImpl(IOFSwitchService.class);
         restApiService = context.getServiceImpl(IRestApiService.class);
         kafkaProducer = context.getServiceImpl(KafkaMessageProducer.class);
+
+        String property = context.getConfigParams(this).get("connect-mode");
+        try {
+            connectMode = ConnectModeRequest.Mode.valueOf(property);
+        } catch (Exception e) {
+            logger.error("CONFIG EXCEPTION: connect-mode could not be set to {}, defaulting to AUTO", property);
+            connectMode = ConnectModeRequest.Mode.AUTO;
+        }
         // TODO: Ensure Kafka Topics are created..
     }
 
@@ -236,16 +260,21 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * {@inheritDoc}
      */
     @Override
+    public ConnectModeRequest.Mode connectMode(final ConnectModeRequest.Mode mode) {
+        if (mode != null) {
+            this.connectMode = mode;
+        }
+        return this.connectMode;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void installDefaultRules(final DatapathId dpid) throws SwitchOperationException {
         installDropFlow(dpid);
         installVerificationRule(dpid, true);
-        IOFSwitch sw = lookupSwitch(dpid);
-        if (sw.getOFFactory().getVersion().compareTo(OF_12) > 0) {
-            logger.debug("installing unicast verification match for {}", dpid.toString());
-            installVerificationRule(dpid, false);
-        } else {
-            logger.debug("not installing unicast verification match for {}", dpid.toString());
-        }
+        installVerificationRule(dpid, false);
     }
 
     /**
@@ -411,9 +440,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         OFFactory ofFactory = sw.getOFFactory();
         OFFlowStatsRequest flowRequest = ofFactory.buildFlowStatsRequest()
-                .setMatch(sw.getOFFactory().matchWildcardAll())
-                .setTableId(TableId.ALL)
-                .setOutPort(OFPort.ANY)
                 .setOutGroup(OFGroup.ANY)
                 .setCookieMask(U64.ZERO)
                 .build();
@@ -491,7 +517,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             throws OFInstallException {
         logger.debug("installing meter {} on switch {} width bandwidth {}", meterId, dpid, bandwidth);
 
-        Set<OFMeterFlags> flags = new HashSet<>(Arrays.asList(OFMeterFlags.KBPS, OFMeterFlags.BURST));
+        Set<OFMeterFlags> flags = new HashSet<>(asList(OFMeterFlags.KBPS, OFMeterFlags.BURST));
         OFFactory ofFactory = sw.getOFFactory();
 
         OFMeterBandDrop.Builder bandBuilder = ofFactory.meterBands()
@@ -521,7 +547,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             throws OFInstallException {
         logger.debug("installing legacy meter {} on OVS switch {} width bandwidth {}", meterId, dpid, bandwidth);
 
-        Set<OFLegacyMeterFlags> flags = new HashSet<>(Arrays.asList(OFLegacyMeterFlags.KBPS, OFLegacyMeterFlags.BURST));
+        Set<OFLegacyMeterFlags> flags = new HashSet<>(asList(OFLegacyMeterFlags.KBPS, OFLegacyMeterFlags.BURST));
         OFFactory ofFactory = sw.getOFFactory();
 
         OFLegacyMeterBandDrop.Builder bandBuilder = ofFactory.legacyMeterBandDrop(bandwidth, burstSize).createBuilder();
@@ -616,6 +642,56 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         return pushFlow(sw, "--DeleteMeter--", meterDelete);
     }
 
+    @Override
+    public List<Long> deleteAllNonDefaultRules(final DatapathId dpid) throws SwitchOperationException {
+        OFFlowStatsReply flowStats = dumpFlowTable(dpid);
+        IOFSwitch sw = lookupSwitch(dpid);
+        OFFactory ofFactory = sw.getOFFactory();
+
+        List<Long> removedRules = new ArrayList<>();
+
+        for (OFFlowStatsEntry flowStatsEntry : flowStats.getEntries()) {
+            long flowCookie = flowStatsEntry.getCookie().getValue();
+            if (flowCookie != DROP_RULE_COOKIE
+                    && flowCookie != VERIFICATION_BROADCAST_RULE_COOKIE
+                    && flowCookie != VERIFICATION_UNICAST_RULE_COOKIE) {
+                OFFlowDelete flowDelete = ofFactory.buildFlowDelete()
+                        .setCookie(U64.of(flowCookie))
+                        .setCookieMask(NON_SYSTEM_MASK)
+                        .build();
+                pushFlow(sw, "--DeleteFlow--", flowDelete);
+
+                removedRules.add(flowCookie);
+            }
+        }
+
+        return removedRules;
+    }
+
+
+    @Override
+    public List<Long> deleteRuleWithCookie(final DatapathId dpid, final List<Long> cookiesToRemove) throws SwitchOperationException {
+        IOFSwitch sw = lookupSwitch(dpid);
+        OFFactory ofFactory = sw.getOFFactory();
+
+        for(long cookie : cookiesToRemove) {
+            OFFlowDelete dropFlowDelete = ofFactory.buildFlowDelete()
+                    .setCookie(U64.of(cookie))
+                    .setCookieMask(NON_SYSTEM_MASK)
+                    .build();
+            pushFlow(sw, "--DeleteFlow--", dropFlowDelete);
+        }
+        // TODO: it'd be better to identify what was deleted and what wasn't there .. and confirm it is deleted.
+        return cookiesToRemove;
+    }
+
+
+    @Override
+    public List<Long> deleteDefaultRules(final DatapathId dpid) throws SwitchOperationException {
+        return deleteRuleWithCookie(dpid,
+                asList(DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE, VERIFICATION_UNICAST_RULE_COOKIE));
+    }
+
     /**
      * Creates a Match based on an inputPort and VlanID.
      * NB1: that this match only matches on the outer most tag which must be of ether-type 0x8100.
@@ -631,12 +707,16 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         //
         // Extra emphasis: vlan of 0 means match on port on not VLAN.
         //
+        mb.setExact(MatchField.IN_PORT, OFPort.of(inputPort));
         if (vlanId > 0) {
-            mb.setExact(MatchField.IN_PORT, OFPort.of(inputPort))
-                    .setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(vlanId));
-        } else {
-            mb.setExact(MatchField.IN_PORT, OFPort.of(inputPort));
+            if (0 <= OF_12.compareTo(sw.getOFFactory().getVersion())) {
+                mb.setMasked(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(vlanId),
+                        OFVlanVidMatch.ofRawVid(OF10_VLAN_MASK));
+            } else {
+                mb.setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(vlanId));
+            }
         }
+
         return mb.build();
     }
 
@@ -844,15 +924,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     private Match matchVerification(final IOFSwitch sw, final boolean isBroadcast) {
         MacAddress dstMac = isBroadcast ? MacAddress.of(VERIFICATION_BCAST_PACKET_DST) : dpidToMac(sw);
         Builder builder = sw.getOFFactory().buildMatch();
-        if (OF_12.compareTo(sw.getOFFactory().getVersion()) == 0) {
-            // some old swithes use mask 0x0 by default, so need to setup mask
-            // and I can't use mask MacAddress.NO_MASK(0xFFFFFFFFFFFFFFFFl) because of
-            // org.projectfloodlight.openflow.protocol.ver12.OFOxmEthDstMaskedVer12.getCanonical
-            // see commit 661a2222194454e2c763547cc1b963e3fe4a818c in loxigen
-            builder.setMasked(MatchField.ETH_DST, dstMac, MacAddress.of(VERIFICATION_BCAST_PACKET_DST_MASK));
-        } else {
-            builder.setExact(MatchField.ETH_DST, dstMac);
-        }
+        builder.setMasked(MatchField.ETH_DST, dstMac, MacAddress.NO_MASK);
         return builder.build();
     }
 
@@ -883,15 +955,23 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
     /**
-     * Installs the verification rule
-     *
-     * @param dpid        datapathId of switch
-     * @param isBroadcast if broadcast then set a generic match; else specific to switch Id
-     * @throws SwitchOperationException
+     * {@inheritDoc}
      */
-    private void installVerificationRule(final DatapathId dpid, final boolean isBroadcast)
+    @Override
+    public void installVerificationRule(final DatapathId dpid, final boolean isBroadcast)
             throws SwitchOperationException {
         IOFSwitch sw = lookupSwitch(dpid);
+
+        // Don't install the unicast for OpenFlow 1.2 doesn't work properly
+        if (!isBroadcast) {
+            if (sw.getOFFactory().getVersion().compareTo(OF_12) > 0) {
+                logger.debug("installing unicast verification match for {}", dpid.toString());
+            } else {
+                logger.debug("not installing unicast verification match for {}", dpid.toString());
+                return;
+            }
+        }
+
         logger.debug("installing verification rule for {}",
                 dpid.toString());
 
@@ -901,7 +981,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         actionList.add(actionSetDstMac(sw, dpidToMac(sw)));
         OFInstructionApplyActions instructionApplyActions = sw.getOFFactory().instructions()
                 .applyActions(actionList).createBuilder().build();
-        final long cookie = isBroadcast ? 0x8000000000000002L : 0x8000000000000003L;
+        final long cookie = isBroadcast ? VERIFICATION_BROADCAST_RULE_COOKIE : VERIFICATION_UNICAST_RULE_COOKIE;
         OFFlowMod flowMod = buildFlowMod(sw, match, null, instructionApplyActions,
                 cookie, FlowModUtils.PRIORITY_VERY_HIGH);
         String flowname = (isBroadcast) ? "Broadcast" : "Unicast";
@@ -910,16 +990,60 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
     /**
-     * Installs a last-resort rule to drop all packets that don't match any match.
+     * A simple Match rule based on destination mac address and mask.
+     * TODO: Could be generalized
+     *
+     * @param dstMac
+     * @param dstMask
+     * @return
+     */
+    private Match simpleDstMatch(IOFSwitch sw, String dstMac, String dstMask) throws SwitchOperationException {
+        Match match = null;
+        if (dstMac != null && dstMask != null && dstMac.length() > 0 && dstMask.length() > 0) {
+            Builder builder = sw.getOFFactory().buildMatch();
+            builder.setMasked(MatchField.ETH_DST, MacAddress.of(dstMac), MacAddress.NO_MASK);
+            match = builder.build();
+        }
+        return match;
+
+    }
+
+    /**
+     * Installs custom drop rule .. ie cookie, priority, match
      *
      * @param dpid datapathId of switch
+     * @param dstMac Destination Mac address to match on
+     * @param dstMask Destination Mask to match on
+     * @param cookie Cookie to use for this rule
+     * @param priority Priority of the rule
      * @throws SwitchOperationException
      */
-    private void installDropFlow(final DatapathId dpid) throws SwitchOperationException {
+    @Override
+    public void installDropFlowCustom(final DatapathId dpid, String dstMac, String dstMask,
+                                       final long cookie, final int priority) throws SwitchOperationException {
         IOFSwitch sw = lookupSwitch(dpid);
-        OFFlowMod flowMod = buildFlowMod(sw, null, null, null, DROP_COOKIE, 1);
-        String flowName = "--DropRule--" + dpid.toString();
+        Match match = simpleDstMatch(sw, dstMac, dstMask);
+        OFFlowMod flowMod = buildFlowMod(sw, match, null, null, cookie, priority);
+        String flowName = "--CustomDropRule--" + dpid.toString();
         pushFlow(sw, flowName, flowMod);
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void installDropFlow(final DatapathId dpid) throws SwitchOperationException {
+        // TODO: leverage installDropFlowCustom
+        IOFSwitch sw = lookupSwitch(dpid);
+        if (sw.getOFFactory().getVersion() == OFVersion.OF_12) {
+            logger.debug("Skip installation of drop flow for switch {}", dpid.toString());
+        } else {
+            logger.debug("Installing drop flow for switch {}", dpid.toString());
+            OFFlowMod flowMod = buildFlowMod(sw, null, null, null, DROP_RULE_COOKIE, 1);
+            String flowName = "--DropRule--" + dpid.toString();
+            pushFlow(sw, flowName, flowMod);
+        }
     }
 
     /**
@@ -953,7 +1077,243 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         if (swInfo == null) {
             throw new SwitchOperationException(dpId);
         }
-
         return swInfo;
     }
+
+    /**
+     * A struct to collect all the data necessary to manage the safe application of base rules.
+     */
+    private static final class SafeData {
+        /** Any switch rule with a priority less than this will be ignored */
+        static final int PRIORITY_IGNORE_THRESHOLD = 100;
+        private static final int window = 5;
+        /** Used to filter out rules with low packet counts .. only test rules with more packets than this */
+        private static final int PACKET_COUNT_MIN = 5;
+
+        DatapathId dpid;
+
+        /**
+         * The time of data collections may be inconsistent .. so if we try to see whether the rate
+         * of data is different .. then use the captured timestamps to get an average.
+         */
+        List<Long> timestamps;
+        Map<Long,List<Long>> ruleByteCounts; // counter per cookie per timestamp
+        Map<Long,List<Long>> rulePktCounts;  // counter per cookie per timestamp
+        // Stages - 0 = not started; 1 = applied; 2 = okay; 3 = removed (too many errors)
+        int dropRuleStage;
+        int broadcastRuleStage;
+        int unicastRuleStage;
+
+        void consumeData(long timestamp, OFFlowStatsReply flowStats) {
+            timestamps.add(timestamp);
+
+            for (OFFlowStatsEntry flowStatsEntry : flowStats.getEntries()) {
+                if (flowStatsEntry.getPriority() <= PRIORITY_IGNORE_THRESHOLD)
+                    continue;
+
+                long flowCookie = flowStatsEntry.getCookie().getValue();
+                if (!ruleByteCounts.containsKey(flowCookie)){
+                    ruleByteCounts.put(flowCookie, new ArrayList<>());
+                    rulePktCounts.put(flowCookie, new ArrayList<>());
+                }
+                ruleByteCounts.get(flowCookie).add(flowStatsEntry.getByteCount().getValue());
+                rulePktCounts.get(flowCookie).add(flowStatsEntry.getPacketCount().getValue());
+            }
+        }
+
+        /** collect 2 windows per stage .. apply rule after first window */
+        boolean shouldApplyRule(int stage) {
+            return timestamps.size() == ((stage - 1)*2 + 1) * window;
+        }
+        boolean shouldTestRule(int stage) {
+            return timestamps.size() == ((stage - 1)*2 + 2) * window;
+        }
+        /** Starting with just the effect on packet count */
+        List<Integer> getRuleEffect(int stage) {
+            int start = (stage - 1)*2;
+            int middle = start + 1;
+            int end = middle + 1;
+            int good_counts = 0;
+            int bad_counts = 0;
+
+            for (List<Long> packets : rulePktCounts.values()){
+                long packets_before = packets.get(middle) - packets.get(start);
+                // We shouldn't start at the middle .. since we wouldn't have applied the rule yet.
+                // So, start at middle+1 .. that is the first data point after applying the rule.
+                long packets_after = packets.get(end) - packets.get(middle+1);
+                boolean rule_had_no_effect = (packets_before > PACKET_COUNT_MIN && packets_after > 0);
+                if (rule_had_no_effect)
+                    good_counts++;
+                else
+                    bad_counts++;
+            }
+            return asList(bad_counts,good_counts);
+        }
+        boolean isRuleOkay(List<Integer> ruleEffect) {
+            // Initial algorithm: if any rule was sending data and then stopped, then applied rule is not okay.
+            // The first array element has the count of "bad_counts" .. ie packet count before rule wasn't zero, but was zero after.
+            int bad_counts = ruleEffect.get(0);
+            return bad_counts == 0;
+        }
+    }
+
+    private Map<DatapathId, SafeData> safeSwitches = new HashMap<>();
+    private long lastRun = 0l;
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void startSafeMode(final DatapathId dpid){
+        // Don't create a new object if one already exists .. ie, don't restart the process of
+        // installing base rules.
+        if (!safeSwitches.containsKey(dpid)){
+            SafeData safeData = safeSwitches.put(dpid, new SafeData());
+            safeData.dpid = dpid;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void stopSafeMode(final DatapathId dpid) {
+        safeSwitches.remove(dpid);
+    }
+
+    private static final long tick_length = 1000;
+    private static final boolean BROADCAST = true;
+    private static final int DROP_STAGE = 1;
+    private static final int BROADCAST_STAGE = 2;
+    private static final int UNICAST_STAGE = 3;
+    // NB: The logic in safeModeTick relies on these RULE_* numbers. Mostly, it relies on the
+    // IS_GOOD and NO_GOOD being greater that TESTED. And in reality, TESTED is just the lower
+    // of IS_GOOD and NO_GOOD.
+    private static final int RULE_APPLIED = 1;
+    private static final int RULE_TESTED = 2;
+    private static final int RULE_IS_GOOD = 2;
+    private static final int RULE_NO_GOOD = 3;
+
+    @Override
+    public void safeModeTick() {
+        // this may be called sporadically, so we'll need to measure the time between calls ..
+        long time = System.currentTimeMillis();
+        if (time - lastRun < tick_length)
+            return;
+
+        lastRun = time;
+
+        Collection<SafeData> values = safeSwitches.values();
+        for (SafeData safeData : values) {
+            // Grab switch rule stats .. X pre and post .. X for 0, X for 1 .. make a decision.
+            try {
+                safeData.consumeData(time, dumpFlowTable(safeData.dpid));
+                int datapoints = safeData.timestamps.size();
+
+                if (safeData.dropRuleStage < RULE_TESTED) {
+
+                    logger.debug("SAFE MODE: Collected Data during Drop Rule Stage for '{}' ", safeData.dpid);
+                    if (safeData.shouldApplyRule(DROP_STAGE)){
+                        logger.info("SAFE MODE: APPLY Drop Rule for '{}' ", safeData.dpid);
+                        safeData.dropRuleStage = RULE_APPLIED;
+                        installDropFlow(safeData.dpid);
+                    } else if (safeData.shouldTestRule(DROP_STAGE)){
+                        List<Integer> ruleEffect = safeData.getRuleEffect(DROP_STAGE);
+                        if (safeData.isRuleOkay(ruleEffect)){
+                            logger.info("SAFE MODE: Drop Rule is GOOD for '{}' ", safeData.dpid);
+                            safeData.dropRuleStage = RULE_IS_GOOD;
+                        } else {
+                            logger.warn("SAFE MODE: Drop Rule is BAD for '{}'. " +
+                                            "Good Packet Count: {}. Bad Packet Count: {} ",
+                                    safeData.dpid, ruleEffect.get(0), ruleEffect.get(1));
+                            safeData.dropRuleStage = RULE_NO_GOOD;
+                            deleteRuleWithCookie(safeData.dpid, asList(ISwitchManager.DROP_RULE_COOKIE));
+                        }
+                    }
+
+                } else if (safeData.broadcastRuleStage < RULE_TESTED) {
+
+                    logger.debug("SAFE MODE: Collected Data during Broadcast Verification Rule Stage for '{}' ", safeData.dpid);
+                    if (safeData.shouldApplyRule(BROADCAST_STAGE)){
+                        logger.info("SAFE MODE: APPLY Broadcast Verification Rule for '{}' ", safeData.dpid);
+                        safeData.broadcastRuleStage = RULE_APPLIED;
+                        installVerificationRule(safeData.dpid, BROADCAST);
+                    } else if (safeData.shouldTestRule(BROADCAST_STAGE)){
+                        List<Integer> ruleEffect = safeData.getRuleEffect(BROADCAST_STAGE);
+                        if (safeData.isRuleOkay(ruleEffect)){
+                            logger.info("SAFE MODE: Broadcast Verification Rule is GOOD for '{}' ", safeData.dpid);
+                            safeData.broadcastRuleStage = RULE_IS_GOOD;
+                        } else {
+                            logger.warn("SAFE MODE: Broadcast Verification Rule is BAD for '{}'. " +
+                                            "Good Packet Count: {}. Bad Packet Count: {} ",
+                                    safeData.dpid, ruleEffect.get(0), ruleEffect.get(1));
+                            safeData.broadcastRuleStage = RULE_NO_GOOD;
+                            deleteRuleWithCookie(safeData.dpid, asList(ISwitchManager.VERIFICATION_BROADCAST_RULE_COOKIE));
+                        }
+                    }
+                } else if (safeData.unicastRuleStage < RULE_TESTED) {
+
+                    // TODO: make this smarter and advance the unicast if unicast not applied.
+                    logger.debug("SAFE MODE: Collected Data during Unicast Verification Rule Stage for '{}' ", safeData.dpid);
+                    if (safeData.shouldApplyRule(UNICAST_STAGE)){
+                        logger.info("SAFE MODE: APPLY Unicast Verification Rule for '{}' ", safeData.dpid);
+                        safeData.unicastRuleStage = RULE_APPLIED;
+                        installVerificationRule(safeData.dpid, !BROADCAST);
+                    } else if (safeData.shouldTestRule(UNICAST_STAGE)){
+                        List<Integer> ruleEffect = safeData.getRuleEffect(UNICAST_STAGE);
+                        if (safeData.isRuleOkay(ruleEffect)){
+                            logger.info("SAFE MODE: Unicast Verification Rule is GOOD for '{}' ", safeData.dpid);
+                            safeData.unicastRuleStage = RULE_IS_GOOD;
+                        } else {
+                            logger.warn("SAFE MODE: Unicast Verification Rule is BAD for '{}'. " +
+                                    "Good Packet Count: {}. Bad Packet Count: {} ",
+                                    safeData.dpid, ruleEffect.get(0), ruleEffect.get(1));
+                            safeData.unicastRuleStage = RULE_NO_GOOD;
+                            deleteRuleWithCookie(safeData.dpid, asList(ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE));
+                        }
+                    }
+
+                } else {
+                    // once done with installing rules, we need to notify kilda that the switch is up
+                    // and that ports up.
+                    logger.info("SAFE MODE: COMPLETED base rules for '{}' ", safeData.dpid);
+                    IOFSwitch sw = lookupSwitch(safeData.dpid);
+                    sendSwitchActivate(sw);
+                    sendPortUpEvents(sw);
+                    // WE ARE DONE!! Remove ourselves from the list.
+                    values.remove(safeData);  // will be reflected in safeSwitches
+                }
+            } catch (SwitchOperationException e) {
+                logger.error("Error while switch {} was in safe mode. Removing switch from " +
+                        "safe mode and NOT SENDING ACTIVATION. \nERROR: {}", safeData.dpid, e);
+                values.remove(safeData);
+            }
+        }
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void sendSwitchActivate(final IOFSwitch sw) throws SwitchOperationException {
+        Message message = SwitchEventCollector.buildSwitchMessage(sw, SwitchState.ACTIVATED);
+        kafkaProducer.postMessage(TOPO_EVENT_TOPIC, message);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void sendPortUpEvents(final IOFSwitch sw) throws SwitchOperationException {
+        if (sw.getEnabledPortNumbers() != null) {
+            for (OFPort p : sw.getEnabledPortNumbers()) {
+                if (SwitchEventCollector.isPhysicalPort(p))
+                    kafkaProducer.postMessage(TOPO_EVENT_TOPIC, SwitchEventCollector.buildPortMessage(sw.getId(), p,
+                            PortChangeType.UP));
+            }
+        }
+
+    }
+
 }

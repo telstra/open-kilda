@@ -30,7 +30,8 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class MeterPool {
     private static final Logger logger = LoggerFactory.getLogger(MeterPool.class);
-    private static final Integer MIN_METER_ID = 1;
+    //@carmine: Probably should also start it at 200 and not 1 … I doubt we’ll end up with 200 Metered flows before we fix this.
+    private static final Integer MIN_METER_ID = 200;
     private static final Integer MAX_METER_ID = 4095;
     private final Map<String, ResourcePool> switchMeterPool = new ConcurrentHashMap<>();
     private final Map<String, Set<Integer>> flowMeterPool = new ConcurrentHashMap<>();
@@ -44,21 +45,25 @@ public class MeterPool {
         return pool == null ? null : pool.dumpPool();
     }
 
-    public synchronized Integer allocate(final String switchId, final String flowId) {
-        ResourcePool switchPool = switchMeterPool.get(switchId);
-        if (switchPool == null) {
-            switchPool = new ResourcePool(MIN_METER_ID, MAX_METER_ID);
-            switchMeterPool.put(switchId, switchPool);
+    public synchronized Integer allocate(final String switchId, final String flowId, Integer meterId) {
+        ResourcePool switchPool = getSwitchPool(switchId);
+        Set<Integer> flowPool = getFlowPool(flowId);
+
+        Integer allocatedMeterId = switchPool.allocate(meterId);
+        if (allocatedMeterId == null) {
+            logger.warn("Meter pool already have record for meter id {}", meterId);
+            allocatedMeterId = meterId;
         }
+        flowPool.add(allocatedMeterId);
+
+        return allocatedMeterId;
+    }
+
+    public synchronized Integer allocate(final String switchId, final String flowId) {
+        ResourcePool switchPool = getSwitchPool(switchId);
+        Set<Integer> flowPool = getFlowPool(flowId);
 
         Integer meterId = switchPool.allocate();
-
-        Set<Integer> flowPool = flowMeterPool.get(flowId);
-        if (flowPool == null) {
-            flowPool = new HashSet<>();
-            flowMeterPool.put(flowId, flowPool);
-        }
-
         flowPool.add(meterId);
 
         return meterId;
@@ -86,5 +91,19 @@ public class MeterPool {
         }
 
         return meterId;
+    }
+
+    private ResourcePool getSwitchPool(final String switchId) {
+        ResourcePool switchPool = switchMeterPool.get(switchId);
+        if (switchPool == null) {
+            switchPool = new ResourcePool(MIN_METER_ID, MAX_METER_ID);
+            switchMeterPool.put(switchId, switchPool);
+        }
+
+        return switchPool;
+    }
+
+    private Set<Integer> getFlowPool(final String flowId) {
+        return flowMeterPool.computeIfAbsent(flowId, k -> new HashSet<>());
     }
 }

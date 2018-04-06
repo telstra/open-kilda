@@ -15,7 +15,10 @@
 
 package org.openkilda.wfm.topology.cache;
 
+import org.apache.storm.generated.ComponentObject;
 import org.openkilda.messaging.ServiceType;
+import org.openkilda.pce.provider.Auth;
+import org.openkilda.pce.provider.AuthNeo4j;
 import org.openkilda.wfm.ConfigurationException;
 import org.openkilda.wfm.CtrlBoltRef;
 import org.openkilda.wfm.LaunchEnvironment;
@@ -43,8 +46,12 @@ public class CacheTopology extends AbstractTopology {
     static final String SPOUT_ID_COMMON = "generic";
 //    static final String SPOUT_ID_TOPOLOGY = "topology";
 
+    private final Auth pathComputerAuth;
+
     public CacheTopology(LaunchEnvironment env) throws ConfigurationException {
         super(env);
+        pathComputerAuth = new AuthNeo4j(config.getNeo4jHost(), config.getNeo4jLogin(), config.getNeo4jPassword());
+
 
         logger.debug("Topology built {}: zookeeper={}, kafka={}, parallelism={}, workers={}",
                 getTopologyName(), config.getZookeeperHosts(), config.getKafkaHosts(), config.getParallelism(),
@@ -83,7 +90,8 @@ public class CacheTopology extends AbstractTopology {
         /*
          * Stores network cache.
          */
-        CacheBolt cacheBolt = new CacheBolt(config.getDiscoveryTimeout());
+        CacheBolt cacheBolt = new CacheBolt(pathComputerAuth);
+        ComponentObject.serialized_java(org.apache.storm.utils.Utils.javaSerialize(pathComputerAuth));
         boltSetup = builder.setBolt(BOLT_ID_CACHE, cacheBolt, parallelism)
                 .shuffleGrouping(SPOUT_ID_COMMON)
 // (carmine) as per above comment, only a single input streamt

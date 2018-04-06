@@ -255,6 +255,10 @@ public class NetworkCache extends Cache {
     public SwitchInfoData createOrUpdateSwitch(SwitchInfoData newSwitch) {
         logger.debug("Create Or Update {} switch with {} parameters", newSwitch);
 
+        if (newSwitch ==  null) {
+            throw new IllegalArgumentException("Switch can't be null in createOrUpdateSwitch");
+        }
+
         if (cacheContainsSwitch(newSwitch.getSwitchId())) {
             return updateSwitch(newSwitch);
         } else {
@@ -392,6 +396,10 @@ public class NetworkCache extends Cache {
      */
     public IslInfoData createOrUpdateIsl(IslInfoData isl) {
         logger.debug("Create or Update {} isl with {} parameters", isl);
+
+        if (isl == null){
+            throw new IllegalArgumentException("ISL can't be null in createOrUpdateIsl");
+        }
 
         if (cacheContainsIsl(isl.getId())) {
             return updateIsl(isl);

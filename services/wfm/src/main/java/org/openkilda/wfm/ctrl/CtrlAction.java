@@ -3,9 +3,9 @@ package org.openkilda.wfm.ctrl;
 import org.apache.storm.tuple.Tuple;
 import org.openkilda.messaging.ctrl.RequestData;
 import org.openkilda.wfm.AbstractAction;
+import org.openkilda.wfm.MessageFormatException;
 import org.openkilda.wfm.UnsupportedActionException;
 import org.openkilda.wfm.topology.AbstractTopology;
-import org.openkilda.wfm.MessageFormatException;
 
 public class CtrlAction extends AbstractAction {
     private Boolean isHandled = false;
@@ -39,6 +39,12 @@ public class CtrlAction extends AbstractAction {
                 break;
             case "clearState":
                 action = new ClearStateAction(this, message);
+                break;
+            case "dumpBySwitch":
+                action = new DumpBySwitchStateAction(this, message);
+                break;
+            case "dumpResorceCache":
+                action = new DumpByResorceCacheAction(this, message);
                 break;
             default:
                 throw new UnsupportedActionException(payload.getAction());

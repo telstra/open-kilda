@@ -31,7 +31,7 @@ import java.io.IOException;
 @Profile("default")
 public class TopologyConfig {
 
-    @Value("file:///${topology.definition.file}")
+    @Value("file:${topology.definition.file}")
     private Resource topologyDefinitionFile;
 
     @Bean

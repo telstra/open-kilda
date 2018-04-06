@@ -39,6 +39,8 @@ public class Flow implements Serializable {
      */
     private static final long serialVersionUID = 1L;
 
+    private static long MASK_COOKIE_FLAGS = 0x0000_0000_FFFF_FFFFL;
+
     /**
      * Flow id.
      */
@@ -550,6 +552,51 @@ public class Flow implements Serializable {
             return sourceSwitch == null && destinationSwitch == null;
         }
         return sourceSwitch.equals(destinationSwitch);
+    }
+
+    @JsonIgnore
+    public long getFlagglessCookie() {
+        return cookie & MASK_COOKIE_FLAGS;
+    }
+
+    @JsonIgnore
+    public boolean isForward() {
+        boolean isForward = cookieMarkedAsFroward();
+        boolean isReversed = cookieMarkedAsReversed();
+
+        if (isForward && isReversed) {
+            throw new IllegalArgumentException(
+                    "Invalid cookie flags combinations - it mark as forward and reverse flow at same time.");
+        }
+
+        return isForward;
+    }
+
+    @JsonIgnore
+    public boolean isReverse() {
+        return !isForward();
+    }
+
+    private boolean cookieMarkedAsFroward() {
+        boolean isMatch;
+
+        if ((cookie & 0xE000000000000000L) != 0) {
+            isMatch = (cookie & 0x4000000000000000L) != 0;
+        } else {
+            isMatch = (cookie & 0x0080000000000000L) == 0;
+        }
+        return isMatch;
+
+    }
+
+    private boolean cookieMarkedAsReversed() {
+        boolean isMatch;
+        if ((cookie & 0xE000000000000000L) != 0) {
+            isMatch = (cookie & 0x2000000000000000L) != 0;
+        } else {
+            isMatch = (cookie & 0x0080000000000000L) != 0;
+        }
+        return isMatch;
     }
 
     /**

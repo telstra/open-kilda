@@ -64,3 +64,60 @@ Feature: Northbound tests
   This scenario setups flows across the entire set of switches and checks that these flows could be read from database
 
     Then flows dump contains 5 flows
+
+  @MVP1
+  Scenario: Delete non-default rules from a switch
+
+  This scenario setups a flow through a switch, deletes non-default rules from the switch and checks that the traffic is not pingable
+
+    Then flow nbdnr creation request with de:ad:be:ef:00:00:00:02 1 0 and de:ad:be:ef:00:00:00:03 2 0 and 1000 is successful
+    And flow nbdnr in UP state
+    And traffic through de:ad:be:ef:00:00:00:02 1 0 and de:ad:be:ef:00:00:00:03 2 0 and 1000 is pingable
+
+    Then delete all non-default rules on de:ad:be:ef:00:00:00:03 switch
+    And traffic through de:ad:be:ef:00:00:00:02 1 0 and de:ad:be:ef:00:00:00:03 2 0 and 1000 is not pingable
+
+  @MVP1
+  Scenario: Delete all rules from a switch
+
+  This scenario setups a flow through a switch, deletes all rules from the switch and checks that the traffic is not pingable
+
+    Then flow nbdar creation request with de:ad:be:ef:00:00:00:02 1 0 and de:ad:be:ef:00:00:00:03 2 0 and 1000 is successful
+    And flow nbdar in UP state
+    And traffic through de:ad:be:ef:00:00:00:02 1 0 and de:ad:be:ef:00:00:00:03 2 0 and 1000 is pingable
+
+    Then delete all rules on de:ad:be:ef:00:00:00:03 switch
+    And traffic through de:ad:be:ef:00:00:00:02 1 0 and de:ad:be:ef:00:00:00:03 2 0 and 1000 is not pingable
+
+  @MVP1
+  Scenario: Synchronize Flow Cache
+
+  This scenario setups flows through NB, then deletes from DB and perform synchronization of the flow cache
+
+    Given flow sfc1 creation request with de:ad:be:ef:00:00:00:03 1 0 and de:ad:be:ef:00:00:00:05 2 0 and 10000 is successful
+    And flow sfc2 creation request with de:ad:be:ef:00:00:00:04 1 0 and de:ad:be:ef:00:00:00:06 2 0 and 10000 is successful
+    And flows dump contains 2 flows
+
+    When flow sfc1 could be deleted from DB
+    And flows dump contains 2 flows
+
+    Then synchronize flow cache is successful with 1 dropped flows
+    And flows dump contains 1 flows
+
+  @MVP1
+  Scenario: Invalidate Flow Cache
+
+  This scenario setups flows through NB, then deletes from DB and perform invalidation of the flow cache
+
+    Given flow ifc1 creation request with de:ad:be:ef:00:00:00:03 1 0 and de:ad:be:ef:00:00:00:05 2 0 and 10000 is successful
+    And flow ifc2 creation request with de:ad:be:ef:00:00:00:04 1 0 and de:ad:be:ef:00:00:00:06 2 0 and 10000 is successful
+    And flow ifc3 creation request with de:ad:be:ef:00:00:00:05 1 0 and de:ad:be:ef:00:00:00:07 2 0 and 10000 is successful
+    And flows dump contains 3 flows
+
+    When flow ifc2 could be deleted from DB
+    And flows dump contains 3 flows
+
+    Then invalidate flow cache is successful with 1 dropped flows
+    And flows dump contains 2 flows
+
+

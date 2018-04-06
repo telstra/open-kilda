@@ -15,18 +15,19 @@
 
 package org.openkilda.pce.cache;
 
+import com.google.common.base.MoreObjects;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.messaging.payload.ResourcePool;
-
-import com.google.common.base.MoreObjects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 /**
  * ResourceManager class contains basic operations on resources.
@@ -48,14 +49,9 @@ public class ResourceCache extends Cache {
     public static final long REVERSE_FLOW_COOKIE_MASK = 0x2000000000000000L;
 
     /**
-     * Maximum meter id value.
+     * Minimum vlan id value.
      */
-    static final int MAX_METER_ID = 4095;
-
-    /**
-     * Minimum meter id value.
-     */
-    static final int MIN_METER_ID = 1;
+    static final int MIN_VLAN_ID = 2;
 
     /**
      * Maximum vlan id value.
@@ -63,14 +59,21 @@ public class ResourceCache extends Cache {
     static final int MAX_VLAN_ID = 4094;
 
     /**
-     * Minimum vlan id value.
+     * Minimum meter id value.
      */
-    static final int MIN_VLAN_ID = 2;
+    static final int MIN_METER_ID = 11;
+
+    /**
+     * Maximum meter id value.
+     * NB: Should be the same as VLAN range at the least, could be more. The formula
+     * ensures we have a sufficient range
+     */
+    static final int MAX_METER_ID = MIN_METER_ID + MAX_VLAN_ID - MIN_VLAN_ID;
 
     /**
      * Maximum cookie value.
      */
-    static final int MAX_COOKIE = 4095;
+    static final int MAX_COOKIE = 128*1024;
 
     /**
      * Minimum cookie value.
@@ -216,7 +219,8 @@ public class ResourceCache extends Cache {
      * @return deallocated meter id value or null if value was not allocated earlier
      */
     public synchronized Integer deallocateMeterId(String switchId, Integer meterId) {
-        return meterPool.get(switchId).deallocate(meterId);
+        ResourcePool switchMeterPool = meterPool.get(switchId);
+        return switchMeterPool != null ? switchMeterPool.deallocate(meterId) : null;
     }
 
     /**
@@ -226,7 +230,8 @@ public class ResourceCache extends Cache {
      * @return deallocated meter id values
      */
     public synchronized Set<Integer> deallocateMeterId(String switchId) {
-        return meterPool.remove(switchId).dumpPool();
+        ResourcePool switchMeterPool = meterPool.remove(switchId);
+        return switchMeterPool != null ? switchMeterPool.dumpPool() : null;
     }
 
     /**
@@ -257,20 +262,40 @@ public class ResourceCache extends Cache {
         return meterPool.containsKey(switchId) ? meterPool.get(switchId).dumpPool() : Collections.emptySet();
     }
 
+    public Map<String, Set<Integer>> getAllMeterIds() {
+        return meterPool.entrySet().stream()
+                        .collect(Collectors.toMap(
+                                Entry::getKey,
+                                e -> e.getValue().dumpPool())
+                        );
+    }
+
+
     /**
-     * Allocates flow resources.
+     * Allocates flow resources. All flows come here .. single switch and multi switch flows.
      *
      * @param flow flow
      */
     public void allocateFlow(ImmutablePair<Flow, Flow> flow) {
+
         if (flow.left != null) {
             allocateCookie((int) (FLOW_COOKIE_VALUE_MASK & flow.left.getCookie()));
-            allocateVlanId(flow.left.getTransitVlan());
+            if (!flow.left.isOneSwitchFlow()) {
+                // Don't allocate if one switch .. it is zero
+                // .. and allocateVlanId *will* allocate if it is zero, which consumes a very
+                // .. limited resource unnecessarily
+                allocateVlanId(flow.left.getTransitVlan());
+            }
             allocateMeterId(flow.left.getSourceSwitch(), flow.left.getMeterId());
         }
 
         if (flow.right != null) {
-            allocateVlanId(flow.right.getTransitVlan());
+            if (!flow.right.isOneSwitchFlow()) {
+                // Don't allocate if one switch .. it is zero
+                // .. and allocateVlanId *will* allocate if it is zero, which consumes a very
+                // .. limited resource unnecessarily
+                allocateVlanId(flow.right.getTransitVlan());
+            }
             allocateMeterId(flow.right.getSourceSwitch(), flow.right.getMeterId());
         }
     }

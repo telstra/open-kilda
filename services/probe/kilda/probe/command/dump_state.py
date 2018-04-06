@@ -91,7 +91,7 @@ def print_isls(isls, border):
         columns.update(d.keys())
 
     columns -= {'id', 'path', 'message_type', 'p0:segment_latency',
-                'created_in_cache', 'updated_in_cache'}
+                'created_in_cache', 'updated_in_cache', 'clazz'}
 
     sorted_columns = ['id'] + sorted(list(columns)) + ['created_in_cache',
                                                        'updated_in_cache']
@@ -113,7 +113,7 @@ def print_isls(isls, border):
     convert_timefied_to_human(raw)
 
     for d in raw:
-        table.add_row([d[x] for x in sorted_columns_with_names.keys()])
+        table.add_row([d.get(x, '-') for x in sorted_columns_with_names.keys()])
 
     print(table)
 
@@ -212,8 +212,15 @@ def print_table(records, border):
 @click.option('--border/--no-border', default=True)
 @click.option('--table', 'output_type', flag_value='table', default=True)
 @click.option('--json', 'output_type', flag_value='json')
+@click.option('--allow-dangerous-operation/--prevent-dangerous-operation', default=False)
 @click.pass_obj
-def dump_state_command(ctx, destination, border, output_type):
+def dump_state_command(ctx, destination, border, output_type, allow_dangerous_operation):
+
+    if not allow_dangerous_operation:
+        click.secho("DON'T RUN ON PRODUCTION MAY CAUSE OVERSIZED KAFKA MESSAGE",
+                    blink=True, bold=True)
+        return
+
     message = create_dump_state(ctx.correlation_id, destination=destination)
     LOG.debug('command = {}'.format(message.serialize()))
 
