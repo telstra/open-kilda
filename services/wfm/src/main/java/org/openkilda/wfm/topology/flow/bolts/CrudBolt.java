@@ -196,8 +196,6 @@ public class CrudBolt
         if (CtrlAction.boltHandlerEntrance(this, tuple))
             return;
 
-        logger.trace("Flow Cache before: {}", flowCache);
-
         ComponentType componentId = ComponentType.valueOf(tuple.getSourceComponent());
         String correlationId = Utils.DEFAULT_CORRELATION_ID;
 
@@ -336,6 +334,8 @@ public class CrudBolt
             logger.error(String.format("Unhandled exception in %s", getClass().getName()), e);
 
         } finally {
+            outputCollector.ack(tuple);
+
             logger.debug("Command message ack: component={}, stream={}, tuple={}",
                     tuple.getSourceComponent(), tuple.getSourceStreamId(), tuple);
 
@@ -345,8 +345,6 @@ public class CrudBolt
                 outputCollector.ack(tuple);
             }
         }
-
-        logger.trace("Flow Cache after: {}", flowCache);
     }
 
     private void handleCacheSyncRequest(CommandMessage message, Tuple tuple) {

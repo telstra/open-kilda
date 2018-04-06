@@ -225,8 +225,6 @@ public class CacheBolt
 
         } catch (CacheException exception) {
             logger.error("Could not process message {}", tuple, exception);
-            outputCollector.ack(tuple);
-
         } catch (IOException exception) {
             logger.error("Could not deserialize message {}", tuple, exception);
         } catch (Exception e) {

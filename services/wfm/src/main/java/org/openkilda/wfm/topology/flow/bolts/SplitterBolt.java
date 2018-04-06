@@ -90,7 +90,7 @@ public class SplitterBolt extends BaseRichBolt {
         Values values = new Values(request);
 
         try {
-            Message message =  tryMessage(request);
+            Message message = tryMessage(request);
             if (message == null
                     || !Destination.WFM.equals(message.getDestination())
                     || !(message instanceof CommandMessage || message instanceof InfoMessage)
@@ -232,12 +232,14 @@ public class SplitterBolt extends BaseRichBolt {
 //            values = new Values(errorMessage, ErrorType.INTERNAL_ERROR);
 //            outputCollector.emit(StreamType.ERROR.toString(), tuple, values);
 
+        } catch (Exception e) {
+            logger.error(String.format("Unhandled exception in %s", getClass().getName()), e);
+
         } finally {
+            outputCollector.ack(tuple);
+
             logger.debug("Splitter message ack: component={}, stream={}, tuple={}, values={}",
                     tuple.getSourceComponent(), tuple.getSourceStreamId(), tuple, values);
-
-
-            outputCollector.ack(tuple);
         }
     }
 

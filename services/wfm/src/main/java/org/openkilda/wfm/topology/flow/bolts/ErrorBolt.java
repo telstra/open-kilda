@@ -85,10 +85,10 @@ public class ErrorBolt extends BaseRichBolt {
         } catch (Exception exception) {
             logger.error("Could not process message: {}", tuple, exception);
         } finally {
+            outputCollector.ack(tuple);
+
             logger.debug("Error message ack: component={}, stream={}, tuple={}, values={}",
                     tuple.getSourceComponent(), tuple.getSourceStreamId(), tuple, values);
-
-            outputCollector.ack(tuple);
         }
     }
 

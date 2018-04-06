@@ -178,12 +178,13 @@ public class TransactionBolt
 
             values = new Values(flowId, FlowState.DOWN);
             outputCollector.emit(StreamType.STATUS.toString(), tuple, values);
-
+        } catch (Exception e) {
+            logger.error(String.format("Unhandled exception in %s", getClass().getName()), e);
         } finally {
+            outputCollector.ack(tuple);
+
             logger.debug("Transaction message ack: component={}, stream={}, tuple={}, values={}",
                     tuple.getSourceComponent(), tuple.getSourceStreamId(), tuple, values);
-
-            outputCollector.ack(tuple);
         }
 
         logger.trace("States after: {}", transactions);

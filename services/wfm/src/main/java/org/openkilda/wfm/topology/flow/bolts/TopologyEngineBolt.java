@@ -132,11 +132,13 @@ public class TopologyEngineBolt extends BaseRichBolt {
             }
         } catch (IOException exception) {
             logger.error("Could not deserialize message={}", request, exception);
+        } catch (Exception e) {
+            logger.error(String.format("Unhandled exception in %s", getClass().getName()), e);
         } finally {
+            outputCollector.ack(tuple);
+
             logger.debug("Topology-Engine message ack: component={}, stream={}, tuple={}, values={}",
                     tuple.getSourceComponent(), tuple.getSourceStreamId(), tuple, values);
-
-            outputCollector.ack(tuple);
         }
     }
 
