@@ -1,11 +1,11 @@
 package org.openkilda.model;
 
+import java.io.Serializable;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-
-import java.io.Serializable;
 
 /**
  * The Class Switchrelation.
@@ -44,12 +44,14 @@ public class IslLinkInfo implements Serializable {
     @JsonProperty("state")
     private String state;
 
+    private boolean isUnidirectional;
+
     /**
      * Gets the src port.
      *
      * @return the src port
      */
-    
+
     public int getSrcPort() {
         return srcPort;
     }
@@ -59,7 +61,7 @@ public class IslLinkInfo implements Serializable {
      *
      * @param srcPort the new src port
      */
-    
+
     public void setSrcPort(final int srcPort) {
         this.srcPort = srcPort;
     }
@@ -69,7 +71,7 @@ public class IslLinkInfo implements Serializable {
      *
      * @return the latency
      */
-    
+
     public int getLatency() {
         return latency;
     }
@@ -79,7 +81,7 @@ public class IslLinkInfo implements Serializable {
      *
      * @param latency the new latency
      */
-    
+
     public void setLatency(final int latency) {
         this.latency = latency;
     }
@@ -98,7 +100,7 @@ public class IslLinkInfo implements Serializable {
      *
      * @param srcSwitch the new src switch
      */
-    
+
     public void setSrcSwitch(final String srcSwitch) {
         this.srcSwitch = srcSwitch;
     }
@@ -128,7 +130,7 @@ public class IslLinkInfo implements Serializable {
      *
      * @return the dst port
      */
-    
+
     public int getDstPort() {
         return dstPort;
     }
@@ -138,7 +140,7 @@ public class IslLinkInfo implements Serializable {
      *
      * @param dstPort the new dst port
      */
-    
+
     public void setDstPort(final int dstPort) {
         this.dstPort = dstPort;
     }
@@ -148,7 +150,7 @@ public class IslLinkInfo implements Serializable {
      *
      * @return the dst switch
      */
-    
+
     public String getDstSwitch() {
         return dstSwitch;
     }
@@ -158,7 +160,7 @@ public class IslLinkInfo implements Serializable {
      *
      * @param dstSwitch the new dst switch
      */
-    
+
     public void setDstSwitch(final String dstSwitch) {
         this.dstSwitch = dstSwitch;
     }
@@ -168,7 +170,7 @@ public class IslLinkInfo implements Serializable {
      *
      * @return the speed
      */
-    
+
     public int getSpeed() {
         return speed;
     }
@@ -178,7 +180,7 @@ public class IslLinkInfo implements Serializable {
      *
      * @param speed the new speed
      */
-    
+
     public void setSpeed(final int speed) {
         this.speed = speed;
     }
@@ -188,7 +190,7 @@ public class IslLinkInfo implements Serializable {
      *
      * @return the state
      */
-    
+
     public String getState() {
         return state;
     }
@@ -198,9 +200,54 @@ public class IslLinkInfo implements Serializable {
      *
      * @param state the new state
      */
-    
+
     public void setState(final String state) {
         this.state = state;
+    }
+
+    public boolean isUnidirectional() {
+        return isUnidirectional;
+    }
+
+    public void setUnidirectional(boolean isUnidirectional) {
+        this.isUnidirectional = isUnidirectional;
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + dstPort;
+        result = prime * result + ((dstSwitch == null) ? 0 : dstSwitch.hashCode());
+        result = prime * result + srcPort;
+        result = prime * result + ((srcSwitch == null) ? 0 : srcSwitch.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        IslLinkInfo other = (IslLinkInfo) obj;
+        if (dstPort != other.dstPort && dstPort != other.srcPort)
+            return false;
+        if (dstSwitch == null) {
+            if (other.dstSwitch != null && other.srcSwitch != null)
+                return false;
+        } else if (!dstSwitch.equals(other.dstSwitch) && !dstSwitch.equals(other.srcSwitch))
+            return false;
+        if (srcPort != other.srcPort && srcPort != other.dstPort)
+            return false;
+        if (srcSwitch == null) {
+            if (other.srcSwitch != null && other.dstSwitch != null)
+                return false;
+        } else if (!srcSwitch.equals(other.srcSwitch) && !srcSwitch.equals(other.dstSwitch))
+            return false;
+        return true;
     }
 
 }

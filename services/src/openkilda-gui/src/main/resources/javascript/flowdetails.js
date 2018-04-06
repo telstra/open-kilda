@@ -23,11 +23,13 @@ function showFlowData(obj) {
 	$(".flow_div_flow_id").html(obj.flow_id);
 	$(".flow_div_source_switch").html(obj.source_switch);
 	$(".flow_div_source_port").html(obj.src_port);
+	$(".flow_div_source_switch_name").html(obj.source_switch_name);
+	$(".flow_div_destination_switch_name").html(obj.target_switch_name);
 	$(".flow_div_source_vlan").html(obj.src_vlan);
 	$(".flow_div_destination_switch").html(obj.target_switch);
 	$(".flow_div_destination_port").html(obj.dst_port);
 	$(".flow_div_destination_vlan").html(obj.dst_vlan);
-	$(".flow_div_maximum_bandwidth").html(obj.maximum_bandwidth);
+	$(".flow_div_maximum_bandwidth").html(obj.maximum_bandwidth/1000+" Mbps");
 	$(".flow_div_Status").html(obj.status);
 
 	if (!obj.description == "") {

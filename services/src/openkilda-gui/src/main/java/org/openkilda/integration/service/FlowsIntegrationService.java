@@ -40,7 +40,9 @@ public class FlowsIntegrationService {
     @Autowired
     FlowPathConverter flowPathConverter;
 
-
+    @Autowired
+    FlowConverter flowConverter;
+    
     @Autowired
     private ApplicationProperties applicationProperties;
 
@@ -58,7 +60,7 @@ public class FlowsIntegrationService {
 
         List<Flow> flowList = getAllFlowList();
         if (flowList != null) {
-            return FlowConverter.toFlowsInfo(flowList);
+            return flowConverter.toFlowsInfo(flowList);
         }
         return null;
     }

@@ -28,6 +28,9 @@ public class Flow {
 
     @JsonProperty("last-updated")
     private String lastUpdated;
+    
+    @JsonProperty("status")
+    private String status;
 
     public String getId() {
         return id;
@@ -77,12 +80,19 @@ public class Flow {
         this.lastUpdated = lastUpdated;
     }
 
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
 
     @Override
     public String toString() {
         return "Flow [id=" + id + ", source=" + source + ", destination=" + destination
                 + ", maximumBandwidth=" + maximumBandwidth + ", description=" + description
-                + ", lastUpdated=" + lastUpdated + "]";
+                + ", lastUpdated=" + lastUpdated + ", status=" + status + "]";
     }
 
 }

@@ -38,14 +38,20 @@ function showSwitchData(response){
 	
 	 for(var i = 0; i < response.length; i++) {
 		 var tableRow = "<tr id='div_"+(i+1)+"' class='flowDataRow'>"
+		 				+"<td class='divTableCell' title ='"+((response[i].switch_id === "" || response[i].switch_id == undefined)?"-":response[i].switch_id)+"'>"+((response[i].switch_id === "" || response[i].switch_id == undefined)?"-":response[i].switch_id)+"</td>"
 		 				+"<td class='divTableCell' title ='"+((response[i].name === "" || response[i].name == undefined)?"-":response[i].name)+"'>"+((response[i].name === "" || response[i].name == undefined)?"-":response[i].name)+"</td>"
-		 			    +"<td class='divTableCell' title ='"+((response[i].switch_id === "" || response[i].switch_id == undefined)?"-":response[i].switch_id)+"'>"+((response[i].switch_id === "" || response[i].switch_id == undefined)?"-":response[i].switch_id)+"</td>"
 		 			    +"<td class='divTableCell' title ='"+((response[i].address === "" || response[i].address == undefined)?"-":response[i].address)+"'>"+((response[i].address === "" || response[i].address == undefined)?"-":response[i].address)+"</td>"
 		 			    +"<td class='divTableCell' title ='"+((response[i].hostname === "" || response[i].hostname == undefined)?"-":response[i].hostname)+"'>"+((response[i].hostname === "" || response[i].hostname == undefined)?"-":response[i].hostname)+"</td>"
 		 			    +"<td class='divTableCell' title ='"+((response[i].description ==="" || response[i].description == undefined)?"-":response[i].description)+"'>"+((response[i].description === "" || response[i].description == undefined)?"-":response[i].description)+"</td>"
+		 			    +"<td class='divTableCell' title ='"+((response[i].state ==="" || response[i].state == undefined)?"-":response[i].state)+"'>"+((response[i].state === "" || response[i].state == undefined)?"-":response[i].state)+"</td>"
 		 			    +"</tr>";
-		
 		$("#flowTable").append(tableRow);
+		
+		if(response[i].state && (response[i].state == "ACTIVATED")) {
+		   	$("#div_"+(i+1)).addClass('up-state');
+        } else {
+        	$("#div_"+(i+1)).addClass('down-state');
+        }
 	 }
 	 
 	 var tableVar  =  $('#flowTable').DataTable( {
@@ -59,8 +65,9 @@ function showSwitchData(response){
 		                { sWidth: '15%' },
 		                { sWidth: '15%' },
 		                { sWidth: '15%' },
-		                { sWidth: '25%' },
-		                { sWidth: '30%' } ]
+		                { sWidth: '15%' },
+		                { sWidth: '30%' },
+		                { sWidth: '10%' }]
 	 });
 	 
 	 tableVar.columns().every( function () {
@@ -81,13 +88,13 @@ function setFlowData(domObj) {
 	
 	$(domObj).html()
 	
-	var flowData = {'name':"",'switch_id':"",'address':"",'hostname':"",'description':""};
+	var flowData = {'switch_id':"",'name':"",'address':"",'hostname':"",'description':"",'state':""};
 	
 	if($(domObj).find('td:nth-child(1)').html()){
-		flowData.name = $(domObj).find('td:nth-child(1)').html();
+		flowData.switch_id = $(domObj).find('td:nth-child(1)').html();
 	}
 	if($(domObj).find('td:nth-child(2)').html()){
-		flowData.switch_id = $(domObj).find('td:nth-child(2)').html();
+		flowData.name = $(domObj).find('td:nth-child(2)').html();
 	}
 	if($(domObj).find('td:nth-child(3)')){
 		flowData.address = $(domObj).find('td:nth-child(3)').html();
@@ -97,6 +104,9 @@ function setFlowData(domObj) {
 	}	
 	if($(domObj).find('td:nth-child(5)')){
 		flowData.description = $(domObj).find('td:nth-child(5)').html();
+	}
+	if($(domObj).find('td:nth-child(6)')){
+		flowData.state = $(domObj).find('td:nth-child(6)').html();
 	}
 	localStorage.setItem('switchDetailsJSON',JSON.stringify(flowData));
 	window.location = "switch/details#"+"id#"+ flowData.switch_id;

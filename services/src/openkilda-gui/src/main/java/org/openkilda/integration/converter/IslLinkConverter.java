@@ -9,35 +9,42 @@ import org.openkilda.model.IslLinkInfo;
 
 public final class IslLinkConverter {
 
-    private IslLinkConverter() {
-    }
+    private IslLinkConverter() {}
 
     public static List<IslLinkInfo> toIslLinksInfo(final List<IslLink> islLinks) {
-        if(islLinks != null) {
+        if (islLinks != null) {
             final List<IslLinkInfo> islLinkInfos = new ArrayList<>();
             islLinks.forEach(islLink -> {
+
                 IslLinkInfo islLinkInfo = toIslLinkInfo(islLink);
 
-                boolean isSwitchRelationAdd = false;
-
-                if (islLinkInfos.size() == 0) {
-                    islLinkInfos.add(islLinkInfo);
+                if (islLinkInfos.contains(islLinkInfo)) {
+                    islLinkInfos.get(islLinkInfos.indexOf(islLinkInfo)).setUnidirectional(false);
                 } else {
-                    for (int i = 0; i < islLinkInfos.size(); i++) {
-                        IslLinkInfo flowInfo = islLinkInfos.get(i);
-                        if (flowInfo.getDstPort() == islLinkInfo.getSrcPort()
-                                && flowInfo.getDstSwitch().equalsIgnoreCase(islLinkInfo.getSrcSwitch())
-                                && flowInfo.getSrcPort() == islLinkInfo.getDstPort()
-                                && flowInfo.getSrcSwitch().equalsIgnoreCase(islLinkInfo.getDstSwitch())) {
-                            isSwitchRelationAdd = false;
-                            break;
-                        } else {
-                            isSwitchRelationAdd = true;
 
-                        }
-                    }
-                    if (isSwitchRelationAdd) {
+                    boolean isSwitchRelationAdd = false;
+
+                    if (islLinkInfos.size() == 0) {
                         islLinkInfos.add(islLinkInfo);
+                    } else {
+                        for (int i = 0; i < islLinkInfos.size(); i++) {
+                            IslLinkInfo flowInfo = islLinkInfos.get(i);
+                            if (flowInfo.getDstPort() == islLinkInfo.getSrcPort()
+                                    && flowInfo.getDstSwitch()
+                                            .equalsIgnoreCase(islLinkInfo.getSrcSwitch())
+                                    && flowInfo.getSrcPort() == islLinkInfo.getDstPort()
+                                    && flowInfo.getSrcSwitch()
+                                            .equalsIgnoreCase(islLinkInfo.getDstSwitch())) {
+                                isSwitchRelationAdd = false;
+                                break;
+                            } else {
+                                isSwitchRelationAdd = true;
+
+                            }
+                        }
+                        if (isSwitchRelationAdd) {
+                            islLinkInfos.add(islLinkInfo);
+                        }
                     }
                 }
             });
@@ -48,15 +55,16 @@ public final class IslLinkConverter {
 
     private static IslLinkInfo toIslLinkInfo(final IslLink islLink) {
         IslLinkInfo islLinkInfo = new IslLinkInfo();
+        islLinkInfo.setUnidirectional(true);
         islLinkInfo.setAvailableBandwidth(islLink.getAvailableBandwidth());
         islLinkInfo.setSpeed(islLink.getSpeed());
-
+        islLinkInfo.setState(islLink.getState());
         List<IslPath> islPaths = islLink.getPath();
         if (islPaths != null && !islPaths.isEmpty()) {
             if (islPaths.get(0) != null) {
                 islLinkInfo.setSrcPort(islPaths.get(0).getPortNo());
                 islLinkInfo.setSrcSwitch(islPaths.get(0).getSwitchId());
-                if(islPaths.get(0).getSegmentLatency() > 0){
+                if (islPaths.get(0).getSegmentLatency() > 0) {
                     islLinkInfo.setLatency(islPaths.get(0).getSegmentLatency());
                 }
             }
