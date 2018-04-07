@@ -414,3 +414,32 @@ def get_flows():
         logger.exception('"Can not get flows: %s', e.message)
         raise
     return flows.values()
+
+
+def precreate_switches(tx, *nodes):
+    switches = [x.lower() for x in nodes]
+    switches.sort()
+
+    for dpid in switches:
+        q = (
+            "MERGE (sw:switch {{name:'{}'}}) "
+            "ON CREATE SET sw.state = 'inactive' "
+            "ON MATCH SET sw.tx_override_workaround = 'dummy'").format(dpid)
+        logger.info('neo4j-query: %s', q)
+        tx.run(q)
+
+
+def precreate_isls(tx, *links):
+    for isl in sorted(links):
+        q = (
+            'MERGE (:switch {{name: "{source.dpid}"}})-[link:isl {{\n'
+            '  src_switch: "{source.dpid}",\n'
+            '  src_port: {source.port},\n'
+            '  dst_switch: "{dest.dpid}",\n'
+            '  dst_port: {dest.port}\n'
+            '}}]->(:switch {{name: "{dest.dpid}"}})\n'
+            'ON CREATE SET link.status="{status}"').format(
+                source=isl.source, dest=isl.dest, status='inactive')
+
+        logger.debug('ISL precreate query:\n%s', q)
+        tx.run(q)
