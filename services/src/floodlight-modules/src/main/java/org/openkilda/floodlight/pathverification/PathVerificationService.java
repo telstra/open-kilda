@@ -85,7 +85,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.UUID;
 
 public class PathVerificationService implements IFloodlightModule, IOFMessageListener, IPathVerificationService {
     public static final String VERIFICATION_BCAST_PACKET_DST = "08:ED:02:E3:FF:FF";
@@ -527,7 +526,7 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
             IslInfoData path = new IslInfoData(latency.getValue(), nodes, speed, IslChangeType.DISCOVERED,
                     getAvailableBandwidth(speed));
 
-            Message message = new InfoMessage(path, System.currentTimeMillis(), UUID.randomUUID().toString(), null);
+            Message message = new InfoMessage(path, System.currentTimeMillis(), "system", null);
 
             final String json = MAPPER.writeValueAsString(message);
             logger.debug("about to send {}", json);

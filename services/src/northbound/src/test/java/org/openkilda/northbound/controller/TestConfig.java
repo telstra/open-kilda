@@ -22,8 +22,6 @@ import org.openkilda.northbound.config.WebConfig;
 import org.openkilda.northbound.messaging.HealthCheckMessageConsumer;
 import org.openkilda.northbound.messaging.MessageConsumer;
 import org.openkilda.northbound.messaging.MessageProducer;
-
-import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;

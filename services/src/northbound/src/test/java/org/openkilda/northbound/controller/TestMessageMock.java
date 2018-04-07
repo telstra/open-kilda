@@ -138,8 +138,7 @@ public class TestMessageMock implements MessageProducer, MessageConsumer<Object>
     }
 
     @Override
-    public void send(String topic, Object object) {
-        Message message = (Message) object;
+    public void send(String topic, Message message) {
         if (message instanceof CommandMessage) {
             messages.put(message.getCorrelationId(), ((CommandMessage) message).getData());
         }

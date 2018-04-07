@@ -19,14 +19,13 @@ import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.ServiceType;
 import org.openkilda.messaging.Topic;
 import org.openkilda.messaging.Utils;
-import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.discovery.HealthCheckCommandData;
 import org.openkilda.messaging.model.HealthCheck;
 import org.openkilda.northbound.messaging.HealthCheckMessageConsumer;
 import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.service.HealthCheckService;
 
-import org.openkilda.northbound.utils.RequestCorrelation;
+import org.openkilda.northbound.utils.RequestCorrelationId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -95,7 +94,7 @@ public class HealthCheckImpl implements HealthCheckService {
      */
     @Override
     public HealthCheck getHealthCheck() {
-        final String correlationId = RequestCorrelation.getId();
+        final String correlationId = RequestCorrelationId.getId();
 
         // FIXME(surabujin): restore health check operation
         /*

@@ -1,3 +1,18 @@
+/* Copyright 2017 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.openkilda.northbound.utils;
 
 import static org.openkilda.messaging.Utils.CORRELATION_ID;
@@ -20,17 +35,21 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RequestCorrelationFilter.class);
 
+    /**
+     * Generates new correlation_id and add it into passing correlation id in the header.
+     */
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-        String correlationId = request.getHeader(RequestCorrelation.CORRELATION_ID);
+        String correlationId = request.getHeader(RequestCorrelationId.CORRELATION_ID);
         if (StringUtils.isBlank(correlationId)) {
             correlationId = UUID.randomUUID().toString();
-            LOGGER.debug("CorrelationId was not sent, generated one: {}", correlationId);
+            LOGGER.trace("CorrelationId was not sent, generated one: {}", correlationId);
         } else {
-            LOGGER.debug("Found correlationId in header: {}", correlationId);
+            correlationId = UUID.randomUUID().toString() + " : " + correlationId;
+            LOGGER.trace("Found correlationId in header. Chaining: {}", correlationId);
         }
-        RequestCorrelation.setId(correlationId);
+        RequestCorrelationId.setId(correlationId);
 
         // Put the request's correlationId into the logger context.
         // MDC is picked up by the %X in log4j2 formatter .. resources/log4j2.xml
