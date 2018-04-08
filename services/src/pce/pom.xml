@@ -22,10 +22,31 @@
             <artifactId>messaging</artifactId>
             <version>${project.version}</version>
         </dependency>
-
+        <dependency>
+            <groupId>org.neo4j</groupId>
+            <artifactId>neo4j</artifactId>
+            <version>${neo4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.neo4j.test</groupId>
+            <artifactId>neo4j-harness</artifactId>
+            <version>${neo4j.version}</version>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>org.neo4j.driver</groupId>
             <artifactId>neo4j-java-driver</artifactId>
+            <version>1.5.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.neo4j</groupId>
+            <artifactId>neo4j-bolt</artifactId>
+            <version>${neo4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.neo4j</groupId>
+            <artifactId>neo4j-slf4j</artifactId>
+            <version>${neo4j.version}</version>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -38,16 +59,6 @@
         <dependency>
             <groupId>org.jacoco</groupId>
             <artifactId>jacoco-maven-plugin</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.neo4j</groupId>
-            <artifactId>neo4j</artifactId>
-            <version>3.3.1</version>
-        </dependency>
-        <dependency>
-            <groupId>org.neo4j</groupId>
-            <artifactId>neo4j-bolt</artifactId>
-            <version>3.3.1</version>
         </dependency>
     </dependencies>
 
