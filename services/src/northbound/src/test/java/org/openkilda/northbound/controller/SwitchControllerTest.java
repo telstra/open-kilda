@@ -31,6 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.openkilda.northbound.utils.RequestCorrelationFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ContextConfiguration;
@@ -60,7 +61,10 @@ public class SwitchControllerTest extends NorthboundBaseTest {
 
     @Before
     public void setUp() throws Exception {
-        this.mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).apply(springSecurity()).build();
+        this.mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext)
+                .addFilters(new RequestCorrelationFilter())
+                .apply(springSecurity())
+                .build();
     }
 
     @Test

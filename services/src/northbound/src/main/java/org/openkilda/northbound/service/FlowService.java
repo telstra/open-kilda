@@ -34,108 +34,93 @@ public interface FlowService extends BasicService {
      * Creates flow.
      *
      * @param flow          flow
-     * @param correlationId request correlation Id
      * @return created flow
      */
-    FlowPayload createFlow(final FlowPayload flow, final String correlationId);
+    FlowPayload createFlow(final FlowPayload flow);
 
     /**
      * Deletes flow.
      *
      * @param id            flow id
-     * @param correlationId request correlation Id
      * @return deleted flow
      */
-    FlowPayload deleteFlow(final String id, final String correlationId);
+    FlowPayload deleteFlow(final String id);
 
     /**
      * Updates flow.
      *
      * @param flow          flow
-     * @param correlationId request correlation Id
      * @return updated flow
      */
-    FlowPayload updateFlow(final FlowPayload flow, final String correlationId);
+    FlowPayload updateFlow(final FlowPayload flow);
 
     /**
      * Gets flow by id.
      *
      * @param id            flow id
-     * @param correlationId request correlation Id
      * @return flow
      */
-    FlowPayload getFlow(final String id, final String correlationId);
+    FlowPayload getFlow(final String id);
 
     /**
      * Gets all the flows.
      *
-     * @param correlationId request correlation id
      * @return the list of all flows with specified status
      */
-    List<FlowPayload> getFlows(final String correlationId);
+    List<FlowPayload> getFlows();
 
     /**
      * Deletes all flows. Primarily this is a combination of getFlows and deleteFlow.
      * This should be called with care ..
      *
-     * @param correlationId request correlation Id
      * @return the list of all deleted flows
      */
-    List<FlowPayload> deleteFlows(final String correlationId);
+    List<FlowPayload> deleteFlows();
 
     /**
      * Gets flow status by id.
      *
      * @param id            flow id
-     * @param correlationId request correlation Id
      * @return flow status
      */
-    FlowIdStatusPayload statusFlow(final String id, final String correlationId);
+    FlowIdStatusPayload statusFlow(final String id);
 
     /**
      * Gets flow path by id.
      *
      * @param id            flow id
-     * @param correlationId request correlation Id
      * @return Flow path
      */
-    FlowPathPayload pathFlow(final String id, final String correlationId);
+    FlowPathPayload pathFlow(final String id);
 
     /**
      * Use this to push flows that may not be in the database / caches but they should be
      *
      * @param externalFlows   the list of flows to push.
-     * @param correlationId request correlation Id
      * @param propagate if true, the path/rules will be propagated to the switch
      * @param verify if true, we'll wait up to poll seconds to confirm if rules have been applied
      *
      * @return
      */
-    BatchResults pushFlows(final List<FlowInfoData> externalFlows, final String correlationId,
-                           Boolean propagate, Boolean verify
-    );
+    BatchResults pushFlows(final List<FlowInfoData> externalFlows, Boolean propagate, Boolean verify);
 
     /**
      * Use this to unpush flows .. ie undo a push
      *
      * @param externalFlows   the list of flows to unpush.
-     * @param correlationId request correlation Id
      * @param propagate if true, the path/rules will be propagated to the switch
      * @param verify if true, we'll wait up to poll seconds to confirm if rules have been applied
      * @return
      */
-    BatchResults unpushFlows(final List<FlowInfoData> externalFlows, final String correlationId,
-                             Boolean propagate, Boolean verify
-    );
+    BatchResults unpushFlows(final List<FlowInfoData> externalFlows, Boolean propagate, Boolean verify);
 
     /**
      * Performs rerouting of specific flow.
      *
      * @param flowId id of flow to be rerouted.
-     * @param correlationId request correlation Id
      * @return updated flow path information with the result whether or not path was changed.
      */
-    FlowReroutePayload rerouteFlow(final String flowId, final String correlationId);
+    FlowReroutePayload rerouteFlow(final String flowId);
 
 
     /**
@@ -143,18 +128,16 @@ public interface FlowService extends BasicService {
      * on the network.
      *
      * @param flowId id of the flow
-     * @param correlationId request correlation Id
      * @return the results of the comparison, or null if the flow isn't found.
      * @throws java.nio.file.InvalidPathException if the flow doesn't return a path and it should.
      */
-    List<FlowValidationDto> validateFlow(final String flowId, final String correlationId);
+    List<FlowValidationDto> validateFlow(final String flowId);
 
     /**
      * Sync the FlowCache in the flow topology (in case it is out of sync.
      *
      * @param syncCacheAction describes how to synchronize the cache.
-     * @param correlationId request correlation Id
      * @return details on performed updates.
      */
-    FlowCacheSyncResults syncFlowCache(SynchronizeCacheAction syncCacheAction, String correlationId);
+    FlowCacheSyncResults syncFlowCache(SynchronizeCacheAction syncCacheAction);
 }

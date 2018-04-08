@@ -40,6 +40,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.openkilda.northbound.utils.RequestCorrelationId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ContextConfiguration;
@@ -78,6 +79,7 @@ public class FlowControllerTest extends NorthboundBaseTest {
     @Before
     public void setUp() throws Exception {
         this.mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).apply(springSecurity()).build();
+        RequestCorrelationId.setId(DEFAULT_CORRELATION_ID);
     }
 
     @Test

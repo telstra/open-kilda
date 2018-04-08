@@ -1,3 +1,18 @@
+/* Copyright 2017 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.openkilda.northbound.service.impl;
 
 import static java.util.Base64.getEncoder;
@@ -26,6 +41,7 @@ import org.openkilda.northbound.messaging.MessageConsumer;
 import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.service.SwitchService;
 
+import org.openkilda.northbound.utils.RequestCorrelationId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -118,7 +134,6 @@ public class SwitchServiceImpl implements SwitchService {
      */
     @Override
     public SwitchFlowEntries getRules(String switchId, Long cookie, String correlationId) {
-
         DumpRulesRequest request = new DumpRulesRequest(switchId);
         CommandWithReplyToMessage commandMessage = new CommandWithReplyToMessage(request, System.currentTimeMillis(),
                 correlationId, Destination.CONTROLLER, northboundTopic);
@@ -138,11 +153,17 @@ public class SwitchServiceImpl implements SwitchService {
         return response;
     }
 
+    @Override
+    public SwitchFlowEntries getRules(String switchId, Long cookie) {
+        return getRules(switchId, cookie, RequestCorrelationId.getId());
+    }
+
     /**
      * {@inheritDoc}
      */
     @Override
-    public List<Long> deleteRules(String switchId, DeleteRulesAction deleteAction, Long cookie, String correlationId) {
+    public List<Long> deleteRules(String switchId, DeleteRulesAction deleteAction, Long cookie) {
+        final String correlationId = RequestCorrelationId.getId();
         LOGGER.debug("Delete switch rules request received");
 
         SwitchRulesDeleteRequest data = new SwitchRulesDeleteRequest(switchId, deleteAction, cookie);
@@ -160,7 +181,8 @@ public class SwitchServiceImpl implements SwitchService {
      * {@inheritDoc}
      */
     @Override
-    public List<Long> installRules(String switchId, InstallRulesAction installAction, String correlationId) {
+    public List<Long> installRules(String switchId, InstallRulesAction installAction) {
+        final String correlationId = RequestCorrelationId.getId();
         LOGGER.debug("Install switch rules request received");
 
         SwitchRulesInstallRequest data = new SwitchRulesInstallRequest(switchId, installAction);
@@ -178,7 +200,8 @@ public class SwitchServiceImpl implements SwitchService {
      * {@inheritDoc}
      */
     @Override
-    public ConnectModeRequest.Mode connectMode(ConnectModeRequest.Mode mode, String correlationId) {
+    public ConnectModeRequest.Mode connectMode(ConnectModeRequest.Mode mode) {
+        final String correlationId = RequestCorrelationId.getId();
         LOGGER.debug("Set/Get switch connect mode request received: mode = {}", mode);
 
         ConnectModeRequest data = new ConnectModeRequest(mode);
@@ -195,7 +218,8 @@ public class SwitchServiceImpl implements SwitchService {
      * {@inheritDoc}
      */
     @Override
-    public SyncRulesOutput syncRules(String switchId, String correlationId) {
+    public SyncRulesOutput syncRules(String switchId) {
+        final String correlationId = RequestCorrelationId.getId();
         SyncRulesRequest request = new SyncRulesRequest(switchId);
         CommandWithReplyToMessage commandMessage = new CommandWithReplyToMessage(request, System.currentTimeMillis(),
                 correlationId, Destination.TOPOLOGY_ENGINE, northboundTopic);

@@ -17,7 +17,6 @@ package org.openkilda.northbound.messaging.kafka;
 
 import static org.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.openkilda.messaging.Utils.MAPPER;
-import static org.openkilda.messaging.Utils.SYSTEM_CORRELATION_ID;
 import static org.openkilda.messaging.error.ErrorType.INTERNAL_ERROR;
 import static org.openkilda.messaging.error.ErrorType.OPERATION_TIMED_OUT;
 
@@ -100,8 +99,6 @@ public class KafkaMessageConsumer implements MessageConsumer<Message> {
             for (int i = POLL_TIMEOUT / POLL_PAUSE; i < POLL_TIMEOUT; i += POLL_PAUSE) {
                 if (messages.containsKey(correlationId)) {
                     return messages.remove(correlationId);
-                } else if (messages.containsKey(SYSTEM_CORRELATION_ID)) {
-                    return messages.remove(SYSTEM_CORRELATION_ID);
                 }
                 Thread.sleep(POLL_PAUSE);
             }

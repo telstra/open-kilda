@@ -13,18 +13,19 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.service;
-
-import org.openkilda.messaging.model.HealthCheck;
+package org.openkilda.northbound.utils;
 
 /**
- * HealthCheckService is for getting info about components status.
+ * Correlation id for every single request request.
  */
-public interface HealthCheckService {
-    /**
-     * Gets health-check status.
-     *
-     * @return {@link HealthCheckService} instance
-     */
-    HealthCheck getHealthCheck();
+public final class RequestCorrelationId {
+
+    public static final String CORRELATION_ID = "correlation_id";
+
+    private static final InheritableThreadLocal<String> ID = new InheritableThreadLocal<>();
+
+    public static String getId() { return ID.get(); }
+
+    public static void setId(String correlationId) { ID.set(correlationId); }
+
 }
