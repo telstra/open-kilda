@@ -17,6 +17,7 @@
 import collections
 import json
 import logging
+import textwrap
 import threading
 
 import config
@@ -24,6 +25,8 @@ import flow_utils
 import message_utils
 
 from py2neo import Node
+
+from topologylistener import model
 
 logger = logging.getLogger(__name__)
 graph = flow_utils.graph
@@ -312,8 +315,36 @@ class MessageItem(object):
 
         return True
 
-    @staticmethod
-    def deactivate_isl(src_switch, src_port):
+    def isl_fetch_and_deactivate(self, tx, dpid, port):
+        flow_utils.precreate_switches(tx, dpid)
+        q = (
+            'MATCH (src:switch)-[link:isl]->(dst:switch)\n'
+            'WHERE src.name="{src_name}" AND link.src_port={port}\n'
+            'RETURN src, link, dst').format(src_name=dpid, port=port)
+        results = tx.run(q)
+
+        if not results:
+            logger.info('There is no ISL %s_%s', dpid, port)
+
+        idx = 0
+        for record in results:
+            if 0 < idx:
+                # FIXME(surabujin): use own exception
+                raise ValueError(
+                    'More than 1 ISL starts on %s_%s', dpid, port)
+
+            idx += 1
+
+            logger.info(
+                'ISL found on %s_%s, deactivating', dpid, port)
+            isl = model.InterSwitchLink.new_from_db(
+                record['src'], record['dst'], record['link'])
+
+            flow_utils.precreate_isls(tx, isl)
+            self.deactivate_isl(tx, isl.source.dpid, isl.source.port)
+            self.isl_update_status(tx, isl)
+
+    def deactivate_isl(self, tx, src_switch, src_port):
         """
         Update the ISL, if it exists, to a state of inactive
 
@@ -327,12 +358,12 @@ class MessageItem(object):
         if src_port:
             query = ("MATCH (a:switch)-[r:isl {{"
                      "src_switch: '{}', "
-                     "src_port: {}}}]->(b:switch) SET r.status = 'inactive'")
-            graph.run(query.format(src_switch, src_port)).data()
+                     "src_port: {}}}]->(b:switch) SET r.actual = 'inactive'")
+            tx.run(query.format(src_switch, src_port)).data()
         else:
             query = ("MATCH (a:switch)-[r:isl {{"
-                     "src_switch: '{}'}}]->(b:switch) SET r.status = 'inactive'")
-            graph.run(query.format(src_switch)).data()
+                     "src_switch: '{}'}}]->(b:switch) SET r.actual = 'inactive'")
+            tx.run(query.format(src_switch)).data()
 
         return True
 
@@ -342,18 +373,16 @@ class MessageItem(object):
         """
         path = self.payload['path']
         switch_id = path[0]['switch_id']
-        port_id = int(path[0]['port_no'])
+        port = int(path[0]['port_no'])
 
         effective_policy = config.get("isl_failover_policy", "effective_policy")
         logger.info('Isl failure: %s_%d -- apply policy %s: timestamp=%s',
-                    switch_id, port_id, effective_policy, self.timestamp)
+                    switch_id, port, effective_policy, self.timestamp)
 
-        if effective_policy == 'deactivate':
-            self.deactivate_isl(switch_id, port_id)
-        else: # effective_policy == 'delete':
-            # The last option is to delete .. which is a catchall, ie unknown policy
-            self.delete_isl(switch_id, port_id)
-        return True # the event was "handled"
+        with graph.begin() as tx:
+            self.isl_fetch_and_deactivate(tx, switch_id, port)
+
+        return True
 
     def port_down(self):
         switch_id = self.payload['switch_id']
@@ -362,7 +391,10 @@ class MessageItem(object):
         logger.info('Port %s_%d deletion request: timestamp=%s',
                     switch_id, port_id, self.timestamp)
 
-        return self.delete_isl(switch_id, port_id)
+        with graph.begin() as tx:
+            self.isl_fetch_and_deactivate(tx, switch_id, port_id)
+
+        return True
 
     def create_isl(self):
         """
@@ -388,37 +420,44 @@ class MessageItem(object):
             logger.info('ISL %s_%d create or update request: timestamp=%s',
                         a_switch, a_port, self.timestamp)
 
-            #
-            # Given that we know the the src and dst exist, the following query will either
-            # create the relationship if it doesn't exist, or update it if it does
-            #
-            isl_create_or_update = (
-                "MERGE "
-                "(src:switch {{name:'{}'}}) "
-                "ON CREATE SET src.state = 'inactive' "
-                "MERGE "
-                "(dst:switch {{name:'{}'}}) "
-                "ON CREATE SET dst.state = 'inactive' "
-                "MERGE "
-                "(src)-[i:isl {{"
-                "src_switch: '{}', src_port: {}, "
-                "dst_switch: '{}', dst_port: {} "
-                "}}]->(dst) "
-                "SET "
-                "i.latency = {}, "
-                "i.speed = {}, "
-                "i.max_bandwidth = {}, "
-                "i.status = 'active' "
-            ).format(
-                a_switch,
-                b_switch,
-                a_switch, a_port,
-                b_switch, b_port,
-                latency,
-                speed,
-                available_bandwidth
-            )
-            graph.run(isl_create_or_update)
+            with graph.begin() as tx:
+                #
+                # Given that we know the the src and dst exist, the following query will either
+                # create the relationship if it doesn't exist, or update it if it does
+                #
+                isl_create_or_update = (
+                    "MERGE "
+                    "(src:switch {{name:'{}'}}) "
+                    "ON CREATE SET src.state = 'inactive' "
+                    "MERGE "
+                    "(dst:switch {{name:'{}'}}) "
+                    "ON CREATE SET dst.state = 'inactive' "
+                    "MERGE "
+                    "(src)-[i:isl {{"
+                    "src_switch: '{}', src_port: {}, "
+                    "dst_switch: '{}', dst_port: {} "
+                    "}}]->(dst) "
+                    "SET "
+                    "i.latency = {}, "
+                    "i.speed = {}, "
+                    "i.max_bandwidth = {}, "
+                    "i.actual = 'active', "
+                    "i.status = 'inactive'"
+                ).format(
+                    a_switch,
+                    b_switch,
+                    a_switch, a_port,
+                    b_switch, b_port,
+                    latency,
+                    speed,
+                    available_bandwidth
+                )
+                tx.run(isl_create_or_update)
+
+                isl = model.InterSwitchLink.new_from_isl_data(self.payload)
+                isl.ensure_path_complete()
+                flow_utils.precreate_isls(tx, isl)
+                self.isl_update_status(tx, isl)
 
             #
             # Now handle the second part .. pull properties from link_props if they exist
@@ -451,6 +490,53 @@ class MessageItem(object):
             return False
 
         return True
+
+    def isl_update_status(self, tx, isl):
+        update_status_query = textwrap.dedent("""
+            MATCH
+              (:switch {{name:"{source.dpid}"}})
+              -
+              [self:isl {{
+                src_switch: "{source.dpid}",
+                src_port: {source.port},
+                dst_switch: "{dest.dpid}",
+                dst_port: {dest.port}
+              }}]
+              ->
+              (:switch {{name:"{dest.dpid}"}})
+            MATCH
+              (:switch {{name:"{dest.dpid}"}})
+              -
+              [peer:isl {{
+                src_switch: "{dest.dpid}",
+                src_port: {dest.port},
+                dst_switch: "{source.dpid}",
+                dst_port: {source.port}
+              }}]
+              ->
+              (:switch {{name:"{source.dpid}"}})
+
+            WITH self, peer,
+              CASE WHEN self.actual = '{status_up}' AND peer.actual = '{status_up}' 
+                   THEN '{status_up}' ELSE '{status_down}' END AS isl_status
+
+            SET self.status=isl_status
+            SET peer.status=isl_status""").format(
+                source=isl.source, dest=isl.dest,
+                status_up='active', status_down='inactive')
+
+        logger.debug('ISL update status query:\n%s', update_status_query)
+        cursor = tx.run(update_status_query)
+
+        stats = cursor.stats()
+        if stats['properties_set'] != 2:
+            logger.error(
+                'ISL update status query do not update one or both edges '
+                'of ISL.')
+            logger.error('ISL update status query:\n%s', update_status_query)
+            logger.error(
+                'ISL update status query stats:\n%s',
+                json.dumps(stats, indent=2))
 
     def handle_topology_change(self):
         if self.get_message_type() != MT_ISL:
