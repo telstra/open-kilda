@@ -25,6 +25,7 @@
         <kafka.version>0.10.2.1</kafka.version>
         <provided.scope>provided</provided.scope>
         <neo4j.version>3.3.3</neo4j.version>
+        <neo4j.java.driver.version>1.5.1</neo4j.java.driver.version>
     </properties>
 
     <profiles>
@@ -46,7 +47,7 @@
         <dependency>
             <groupId>org.neo4j.driver</groupId>
             <artifactId>neo4j-java-driver</artifactId>
-            <version>1.5.1</version>
+            <version>${neo4j.java.driver.version}</version>
         </dependency>
         <dependency>
             <groupId>org.openkilda</groupId>
