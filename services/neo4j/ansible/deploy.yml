@@ -16,6 +16,7 @@
     with_items:
     - neo4j
     - curl
+    - vim
     become_method: sudo
     become_user: root
     become: true

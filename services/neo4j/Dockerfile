@@ -31,6 +31,10 @@ RUN wget \
   https://github.com/neo4j-contrib/neo4j-apoc-procedures/releases/download/3.3.0.1/apoc-3.3.0.1-all.jar \
    -O /var/lib/neo4j/plugins/apoc-3.3.0.1-all.jar
 
+RUN wget \
+  https://github.com/neo4j-contrib/neo4j-graph-algorithms/releases/download/3.3.2.0/graph-algorithms-algo-3.3.2.0.jar \
+   -O /var/lib/neo4j/plugins/graph-algorithms-algo-3.3.2.0.jar
+
 ADD neo4j-config/neo4j.conf /etc/neo4j/neo4j.conf
 ADD neo4j-config/auth /var/lib/neo4j/data/dbms/auth
 ADD init/neo4j-queries.cql /app/neo4j-queries.cql
