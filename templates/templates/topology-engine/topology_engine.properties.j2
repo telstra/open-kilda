@@ -17,6 +17,7 @@ hosts={{ zookeeper_hosts }}
 host={{ neo4j_host }}
 user={{ neo4j_user }}
 pass={{ neo4j_password }}
+socket.timeout=30
 
 [isl_failover_policy]
 # effective_policy determines what to do with a failed link.
