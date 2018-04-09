@@ -442,7 +442,7 @@ def put_link_props(props):
     else:
         # (1) Create the link_props and then (2) propagate to the isl if it exists
         query_merge = 'MERGE (lp:link_props { src_switch:"%s", src_port:%s, dst_switch:"%s", dst_port:%s })' % (src_sw, src_pt, dst_sw, dst_pt)
-        query_set, success, message = build_props_query(props.get('props', {}))
+        query_set, success, message = build_props_query(props.get('props', {}), 'lp')
         if not success:
             return False, message
         query = query_merge + query_set
@@ -455,18 +455,24 @@ def put_link_props(props):
         query += ' WHERE i.src_switch = "%s" AND i.src_port = %s AND i.dst_switch = "%s" AND i.dst_port = %s ' % (src_sw, src_pt, dst_sw, dst_pt)
         query += ' MATCH (lp:link_props) '
         query += ' WHERE lp.src_switch = "%s" AND lp.src_port = %s AND lp.dst_switch = "%s" AND lp.dst_port = %s ' % (src_sw, src_pt, dst_sw, dst_pt)
-        query += ' SET i += lp '
+        # (3) Apply the link properties .. based on what was passed in.
+        # NB: This only ever applies to the link what was passed in.  If it is a subset, then old values won't be added as part of this.
+        query_set, success, _ = build_props_query(props.get('props', {}), 'i')
+        if success:
+            query += query_set
+
         logger.debug('\n LINK_PROP -> ISL QUERY = %s ', query)
         neo4j_connect.data(query)
 
         return True, 1
 
 
-def build_props_query(props):
+def build_props_query(props, var_name):
     """
     For use in a "SET" .. build the query, and error if a reserved word is used
 
     :param props: The props
+    :param var_name: The name of the variable to assign to ... ie lp.cost = , or i.cost =
     :return:
     """
     reserved_words = ['latency', 'speed', 'available_bandwidth', 'status']
@@ -475,7 +481,13 @@ def build_props_query(props):
         for (k,v) in props.iteritems():
             if k in reserved_words:
                 return query_set, False, 'RESERVED WORD VIOLATION: do not use %s' % k
-            query_set += 'lp.%s = "%s", ' % (k, v)
+            "".startswith("0x")
+            if v.isdigit():
+                query_set += var_name + '.%s = %s, ' % (k, v)
+            elif v.startswith("0x"):
+                query_set += var_name + '.%s = %s, ' % (k, int(v,16))
+            else:
+                query_set += var_name + '.%s = "%s", ' % (k, v)
         query_set = ' SET ' + query_set[:-2]
     return query_set, True, ''
 
