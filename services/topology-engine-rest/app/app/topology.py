@@ -481,7 +481,6 @@ def build_props_query(props, var_name):
         for (k,v) in props.iteritems():
             if k in reserved_words:
                 return query_set, False, 'RESERVED WORD VIOLATION: do not use %s' % k
-            "".startswith("0x")
             if v.isdigit():
                 query_set += var_name + '.%s = %s, ' % (k, v)
             elif v.startswith("0x"):
