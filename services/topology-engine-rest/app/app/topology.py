@@ -257,6 +257,10 @@ def handle_get_props(args):
     hier_results = []
     for row in [dict(x['lp']) for x in result]:
         not_primary_props = {k:v for k,v in row.items() if k not in PRIMARY_KEYS}
+        # The API contract is to return values as strings .. which affects how json objects are created / read.
+        # So, loop through all values.
+        for k,v in not_primary_props.items():
+            not_primary_props[k] = str(v)       # ensure all values are strings .. which fulfills the API contract
         primary_props = {k:v for k,v in row.items() if k in PRIMARY_KEYS}
         primary_props['props'] = not_primary_props
         hier_results.append(primary_props)
@@ -489,7 +493,6 @@ def build_props_query(props, var_name):
                 query_set += var_name + '.%s = "%s", ' % (k, v)
         query_set = ' SET ' + query_set[:-2]
     return query_set, True, ''
-
 
 
 def get_link_prop_keys(props):
