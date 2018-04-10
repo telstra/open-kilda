@@ -24,7 +24,6 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageError;
 import org.projectfloodlight.openflow.protocol.OFActionType;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
-import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
 import org.projectfloodlight.openflow.protocol.OFInstructionType;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActionMeter;
@@ -146,11 +145,11 @@ public class FlowsResource extends ServerResource {
                 .get(ISwitchManager.class.getCanonicalName());
 
         try {
-            OFFlowStatsReply replay = switchManager.dumpFlowTable(DatapathId.of(switchId));
-            LOGGER.debug("OF_STATS: {}", replay);
+            List<OFFlowStatsEntry> flowEntries = switchManager.dumpFlowTable(DatapathId.of(switchId));
+            LOGGER.debug("OF_STATS: {}", flowEntries);
 
-            if (replay != null) {
-                for (OFFlowStatsEntry entry : replay.getEntries()) {
+            if (flowEntries != null) {
+                for (OFFlowStatsEntry entry : flowEntries) {
                     String key = String.format("flow-0x%s",
                             Long.toHexString(entry.getCookie().getValue()).toUpperCase());
                     response.put(key, buildFlowStat(entry));

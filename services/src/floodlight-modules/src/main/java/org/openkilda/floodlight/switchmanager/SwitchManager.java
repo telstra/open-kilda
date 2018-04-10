@@ -62,6 +62,8 @@ import org.projectfloodlight.openflow.protocol.OFMeterConfigStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFMeterFlags;
 import org.projectfloodlight.openflow.protocol.OFMeterMod;
 import org.projectfloodlight.openflow.protocol.OFMeterModCommand;
+import org.projectfloodlight.openflow.protocol.OFStatsReplyFlags;
+import org.projectfloodlight.openflow.protocol.OFStatsRequestFlags;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
@@ -81,7 +83,6 @@ import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFGroup;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.OFVlanVidMatch;
-import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -89,6 +90,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -431,8 +433,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * {@inheritDoc}
      */
     @Override
-    public OFFlowStatsReply dumpFlowTable(final DatapathId dpid) {
-        OFFlowStatsReply values = null;
+    public List<OFFlowStatsEntry> dumpFlowTable(final DatapathId dpid) {
+        List<OFFlowStatsEntry> entries = new ArrayList<>();
         IOFSwitch sw = ofSwitchService.getSwitch(dpid);
         if (sw == null) {
             throw new IllegalArgumentException(String.format("Switch %s was not found", dpid.toString()));
@@ -446,12 +448,29 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         try {
             ListenableFuture<OFFlowStatsReply> future = sw.writeRequest(flowRequest);
-            values = future.get(10, TimeUnit.SECONDS);
+            OFFlowStatsReply values = future.get(10, TimeUnit.SECONDS);
+            entries.addAll(values.getEntries());
+
+            // floodlight loads up to 25 items per the request.
+            boolean withMoreReplies = values.getFlags().contains(OFStatsReplyFlags.REPLY_MORE);
+            while (withMoreReplies) {
+                flowRequest = ofFactory.buildFlowStatsRequest()
+                        .setXid(values.getXid())
+                        .setFlags(Collections.singleton(OFStatsRequestFlags.REQ_MORE))
+                        .build();
+                future = sw.writeRequest(flowRequest);
+                OFFlowStatsReply nextReply = future.get(10, TimeUnit.SECONDS);
+                entries.addAll(nextReply.getEntries());
+
+                // check whether next page is available or not.
+                withMoreReplies = nextReply.getFlags().contains(OFStatsReplyFlags.REPLY_MORE);
+            }
+
         } catch (ExecutionException | InterruptedException | TimeoutException e) {
             logger.error("Could not get flow stats: {}", e.getMessage());
         }
 
-        return values;
+        return entries;
     }
 
     /**
@@ -644,13 +663,13 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
     @Override
     public List<Long> deleteAllNonDefaultRules(final DatapathId dpid) throws SwitchOperationException {
-        OFFlowStatsReply flowStats = dumpFlowTable(dpid);
+        List<OFFlowStatsEntry> flowStats = dumpFlowTable(dpid);
         IOFSwitch sw = lookupSwitch(dpid);
         OFFactory ofFactory = sw.getOFFactory();
 
         List<Long> removedRules = new ArrayList<>();
 
-        for (OFFlowStatsEntry flowStatsEntry : flowStats.getEntries()) {
+        for (OFFlowStatsEntry flowStatsEntry : flowStats) {
             long flowCookie = flowStatsEntry.getCookie().getValue();
             if (flowCookie != DROP_RULE_COOKIE
                     && flowCookie != VERIFICATION_BROADCAST_RULE_COOKIE
@@ -1104,10 +1123,10 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         int broadcastRuleStage;
         int unicastRuleStage;
 
-        void consumeData(long timestamp, OFFlowStatsReply flowStats) {
+        void consumeData(long timestamp, List<OFFlowStatsEntry> flowEntries) {
             timestamps.add(timestamp);
 
-            for (OFFlowStatsEntry flowStatsEntry : flowStats.getEntries()) {
+            for (OFFlowStatsEntry flowStatsEntry : flowEntries) {
                 if (flowStatsEntry.getPriority() <= PRIORITY_IGNORE_THRESHOLD)
                     continue;
 

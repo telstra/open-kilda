@@ -47,7 +47,7 @@ import org.openkilda.messaging.payload.flow.OutputVlanType;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
+import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.slf4j.Logger;
@@ -514,8 +514,8 @@ class RecordHandler implements Runnable {
         final String switchId = request.getSwitchId();
         logger.debug("Loading installed rules for switch {}", switchId);
 
-        OFFlowStatsReply reply = context.getSwitchManager().dumpFlowTable(DatapathId.of(switchId));
-        List<FlowEntry> flows = reply.getEntries().stream()
+        List<OFFlowStatsEntry> flowEntries = context.getSwitchManager().dumpFlowTable(DatapathId.of(switchId));
+        List<FlowEntry> flows = flowEntries.stream()
                 .map(OFFlowStatsConverter::toFlowEntry)
                 .collect(Collectors.toList());
 
