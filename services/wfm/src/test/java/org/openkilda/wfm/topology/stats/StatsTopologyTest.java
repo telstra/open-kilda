@@ -29,8 +29,8 @@ import org.apache.storm.testing.FixedTuple;
 import org.apache.storm.testing.MockedSources;
 import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Values;
-import org.junit.Test;
 import org.junit.Ignore;
+import org.junit.Test;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Utils;
@@ -45,13 +45,15 @@ import org.openkilda.messaging.info.stats.PortStatsData;
 import org.openkilda.messaging.info.stats.PortStatsEntry;
 import org.openkilda.messaging.info.stats.PortStatsReply;
 import org.openkilda.wfm.StableAbstractStormTest;
-import org.openkilda.wfm.topology.TestFlowGenMetricsBolt;
 import org.openkilda.wfm.topology.TestingKafkaBolt;
-import org.openkilda.wfm.topology.stats.metrics.FlowMetricGenBolt;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.IntStream;
 
 public class StatsTopologyTest extends StableAbstractStormTest {
@@ -213,9 +215,5 @@ public class StatsTopologyTest extends StableAbstractStormTest {
             return kafkaBolt;
         }
 
-        @Override
-        protected FlowMetricGenBolt createFlowMetricsGenBolt(String host, String username, String password) {
-            return new TestFlowGenMetricsBolt(cookie, flowId, switchId, switchId);
-        }
     }
 }
