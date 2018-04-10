@@ -60,6 +60,9 @@ def build_ingress_flow(path_nodes, src_switch, src_port, src_vlan,
         raise ValueError('Output port was not found for ingress flow rule',
                          "path={}".format(path_nodes))
 
+    logger.debug('build_ingress_flow: flow_id=%s, cookie=%s, src_switch=%s, src_port=%s, src_vlan=%s, transit_vlan=%s, output_port=%s, output_action=%s',
+                flow_id, cookie, src_switch, src_port, src_vlan, transit_vlan, output_port, output_action)
+
     flow = Flow()
     flow.clazz = "org.openkilda.messaging.command.flow.InstallIngressFlow"
     flow.transaction_id = 0
@@ -99,6 +102,9 @@ def build_egress_flow(path_nodes, dst_switch, dst_port, dst_vlan,
         raise ValueError('Input port was not found for egress flow rule',
                          "path={}".format(path_nodes))
 
+    logger.debug('build_egress_flow: flow_id=%s, cookie=%s, dst_switch=%s, dst_port=%s, dst_vlan=%s, transit_vlan=%s, input_port=%s, output_action=%s',
+                flow_id, cookie, dst_switch, dst_port, dst_vlan, transit_vlan, input_port, output_action)
+
     flow = Flow()
     flow.clazz = "org.openkilda.messaging.command.flow.InstallEgressFlow"
     flow.transaction_id = 0
@@ -126,6 +132,9 @@ def build_egress_flow_from_db(stored_flow, output_action):
 
 def build_intermediate_flows(switch, match, action, vlan, flow_id, cookie):
     # output action is always NONE for transit vlan id
+
+    logger.debug('build_intermediate_flows: flow_id=%s, cookie=%s, switch=%s, input_port=%s, output_port=%s, transit_vlan=%s',
+                flow_id, cookie, switch, match, action, vlan)
 
     flow = Flow()
     flow.clazz = "org.openkilda.messaging.command.flow.InstallTransitFlow"

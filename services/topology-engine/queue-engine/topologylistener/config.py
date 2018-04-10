@@ -44,3 +44,12 @@ KAFKA_TOPO_ENG_TOPIC = config.get('kafka', 'topo.eng.topic')
 KAFKA_NORTHBOUND_TOPIC = config.get('kafka', 'northbound.topic')
 
 ZOOKEEPER_HOSTS = config.get('zookeeper', 'hosts')
+
+try:
+    value = config.getfloat('neo4j', 'socket.timeout')
+except ConfigParser.NoOptionError:
+    value = 30.0
+
+NEO4J_SOCKET_TIMEOUT = value
+
+del value

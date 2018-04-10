@@ -1,7 +1,7 @@
 package org.openkilda.northbound.converter;
 
 import org.mapstruct.Mapper;
-import org.openkilda.client.response.switches.SyncRulesOutput;
+import org.openkilda.northbound.dto.switches.SyncRulesOutput;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.switches.SyncRulesResponse;
 import org.openkilda.northbound.dto.SwitchDto;
