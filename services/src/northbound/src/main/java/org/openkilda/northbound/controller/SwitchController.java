@@ -21,7 +21,6 @@ import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.InstallRulesAction;
 import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
-import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.northbound.dto.SwitchDto;
 import org.openkilda.northbound.service.SwitchService;
 import org.openkilda.northbound.utils.ExtraAuthRequired;
@@ -54,9 +53,9 @@ import java.util.Optional;
  */
 @RestController
 @PropertySource("classpath:northbound.properties")
-@Api(value = "switches")
+@Api
 @ApiResponses(value = {
-        @ApiResponse(code = 200, response = FlowPayload.class, message = "Operation is successful"),
+        @ApiResponse(code = 200, message = "Operation is successful"),
         @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
         @ApiResponse(code = 401, response = MessageError.class, message = "Unauthorized"),
         @ApiResponse(code = 403, response = MessageError.class, message = "Forbidden"),
@@ -75,7 +74,7 @@ public class SwitchController {
      *
      * @return list of links.
      */
-    @ApiOperation(value = "Get all available switches", response = SwitchDto.class)
+    @ApiOperation(value = "Get all available switches", response = SwitchDto.class, responseContainer = "List")
     @GetMapping(path = "/switches")
     @ResponseStatus(HttpStatus.OK)
     public List<SwitchDto> getSwitches() {
@@ -89,8 +88,7 @@ public class SwitchController {
      * @param cookie filter the response based on this cookie
      * @return list of the cookies of the rules that have been deleted
      */
-    @ApiOperation(value = "Get switch rules from the switch",
-            response = Long.class, responseContainer = "List")
+    @ApiOperation(value = "Get switch rules from the switch", response = SwitchFlowEntries.class)
     @GetMapping(value = "/switches/{switch-id}/rules",
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     @ResponseStatus(HttpStatus.OK)
@@ -138,7 +136,7 @@ public class SwitchController {
      * @return list of the cookies of the rules that have been installed
      */
     @ApiOperation(value = "Install switch rules. Requires special authorization",
-            response = String.class, responseContainer = "List")
+            response = Long.class, responseContainer = "List")
     @PutMapping(value = "/switches/{switch-id}/rules",
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     @ExtraAuthRequired
@@ -182,14 +180,6 @@ public class SwitchController {
      * @return the list of rules on switch, specified what actions were applied.
      */
     @ApiOperation(value = "Sync rules on the switch", response = SyncRulesOutput.class)
-    @ApiResponses(value = {
-            @ApiResponse(code = 200, response = FlowPayload.class, message = "Operation is successful"),
-            @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
-            @ApiResponse(code = 401, response = MessageError.class, message = "Unauthorized"),
-            @ApiResponse(code = 403, response = MessageError.class, message = "Forbidden"),
-            @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
-            @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
-            @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
     @GetMapping(path = "/switches/{switch_id}/sync_rules")
     @ResponseStatus(HttpStatus.OK)
     public SyncRulesOutput syncRules(@PathVariable(name = "switch_id") String switchId) {
