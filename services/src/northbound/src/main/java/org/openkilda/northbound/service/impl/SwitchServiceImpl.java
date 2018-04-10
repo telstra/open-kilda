@@ -17,7 +17,7 @@ package org.openkilda.northbound.service.impl;
 
 import static java.util.Base64.getEncoder;
 
-import org.openkilda.client.response.switches.SyncRulesOutput;
+import org.openkilda.northbound.dto.switches.SyncRulesOutput;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;

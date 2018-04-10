@@ -15,7 +15,7 @@
 
 package org.openkilda.northbound.controller;
 
-import org.openkilda.client.response.switches.SyncRulesOutput;
+import org.openkilda.northbound.dto.switches.SyncRulesOutput;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.InstallRulesAction;
