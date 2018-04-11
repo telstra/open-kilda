@@ -13,40 +13,28 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.info.switches;
+package org.openkilda.northbound.dto.switches;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Builder;
 import lombok.Value;
-import org.openkilda.messaging.info.InfoData;
 
 import java.util.List;
 
 @Value
-public class SyncRulesResponse extends InfoData {
-
-    @JsonProperty("missing_rules")
-    private List<String> missingRules;
-
-    @JsonProperty("proper_rules")
-    private List<String> properRules;
-
-    @JsonProperty("excess_rules")
-    private List<String> excessRules;
+public class RulesSyncResult extends RulesValidationResult {
 
     @JsonProperty("installed_rules")
     private List<String> installedRules;
 
     @JsonCreator
-    public SyncRulesResponse(
+    public RulesSyncResult(
             @JsonProperty("missing_rules") List<String> missingRules,
             @JsonProperty("proper_rules") List<String> properRules,
             @JsonProperty("excess_rules") List<String> excessRules,
             @JsonProperty("installed_rules") List<String> installedRules) {
-        this.missingRules = missingRules;
-        this.properRules = properRules;
-        this.excessRules = excessRules;
+        super(missingRules, properRules, excessRules);
+
         this.installedRules = installedRules;
     }
 }

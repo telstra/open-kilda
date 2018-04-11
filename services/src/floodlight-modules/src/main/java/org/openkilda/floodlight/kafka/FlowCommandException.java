@@ -14,8 +14,15 @@ public class FlowCommandException extends Exception {
         this.type = type;
     }
 
+    public FlowCommandException(String flowId, ErrorType type, String message) {
+        super(message);
+        this.flowId = flowId;
+        this.type = type;
+    }
+
     public ErrorData makeErrorResponse() {
-        return new ErrorData(getType(), getCause().getMessage(), getFlowId());
+        String message = getCause() != null ? getCause().getMessage() : getMessage();
+        return new ErrorData(getType(), message, getFlowId());
     }
 
     public String getFlowId() {

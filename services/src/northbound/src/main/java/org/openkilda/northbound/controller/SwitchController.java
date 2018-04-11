@@ -15,7 +15,11 @@
 
 package org.openkilda.northbound.controller;
 
-import org.openkilda.northbound.dto.switches.SyncRulesOutput;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiParam;
+import io.swagger.annotations.ApiResponse;
+import io.swagger.annotations.ApiResponses;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.InstallRulesAction;
@@ -23,14 +27,10 @@ import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.northbound.dto.SwitchDto;
+import org.openkilda.northbound.dto.switches.RulesSyncResult;
+import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.northbound.service.SwitchService;
 import org.openkilda.northbound.utils.ExtraAuthRequired;
-
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiParam;
-import io.swagger.annotations.ApiResponse;
-import io.swagger.annotations.ApiResponses;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -175,25 +175,27 @@ public class SwitchController {
         return ResponseEntity.ok(response);
     }
 
-
     /**
+     * Validate the rules installed on the switch against the flows in Neo4J.
      *
-     * @param switchId
-     * @return the list of rules on switch, specified what actions were applied.
+     * @return the validation details.
      */
-    @ApiOperation(value = "Sync rules on the switch", response = SyncRulesOutput.class)
-    @ApiResponses(value = {
-            @ApiResponse(code = 200, response = FlowPayload.class, message = "Operation is successful"),
-            @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
-            @ApiResponse(code = 401, response = MessageError.class, message = "Unauthorized"),
-            @ApiResponse(code = 403, response = MessageError.class, message = "Forbidden"),
-            @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
-            @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
-            @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
-    @GetMapping(path = "/switches/{switch_id}/sync_rules")
+    @ApiOperation(value = "Validate the rules installed on the switch", response = RulesValidationResult.class)
+    @GetMapping(path = "/switches/{switch_id}/rules/validate")
     @ResponseStatus(HttpStatus.OK)
-    public SyncRulesOutput syncRules(@PathVariable(name = "switch_id") String switchId) {
-        return switchService.syncRules(switchId);
+    public RulesValidationResult validateRules(@PathVariable(name = "switch_id") String switchId) {
+        return switchService.validateRules(switchId);
     }
 
+    /**
+     * Synchronize (install) missing flows that should be on the switch but exist only in neo4j.
+     *
+     * @return the synchronization result.
+     */
+    @ApiOperation(value = "Synchronize rules on the switch", response = RulesSyncResult.class)
+    @GetMapping(path = "/switches/{switch_id}/rules/synchronize")
+    @ResponseStatus(HttpStatus.OK)
+    public RulesSyncResult syncRules(@PathVariable(name = "switch_id") String switchId) {
+        return switchService.syncRules(switchId);
+    }
 }

@@ -15,20 +15,22 @@
 
 package org.openkilda.northbound.service.impl;
 
+import static java.lang.String.format;
 import static java.util.Base64.getEncoder;
+import static java.util.Collections.emptyList;
 
-import org.openkilda.northbound.dto.switches.SyncRulesOutput;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.CommandWithReplyToMessage;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
+import org.openkilda.messaging.command.switches.DumpRulesRequest;
 import org.openkilda.messaging.command.switches.InstallRulesAction;
 import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
-import org.openkilda.messaging.command.switches.DumpRulesRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
-import org.openkilda.messaging.command.switches.SyncRulesRequest;
+import org.openkilda.messaging.command.switches.SwitchRulesSyncRequest;
+import org.openkilda.messaging.command.switches.SwitchRulesValidateRequest;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
@@ -37,10 +39,11 @@ import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.info.switches.SyncRulesResponse;
 import org.openkilda.northbound.converter.SwitchMapper;
 import org.openkilda.northbound.dto.SwitchDto;
+import org.openkilda.northbound.dto.switches.RulesSyncResult;
+import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.northbound.messaging.MessageConsumer;
 import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.service.SwitchService;
-
 import org.openkilda.northbound.utils.RequestCorrelationId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,6 +53,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -143,8 +147,8 @@ public class SwitchServiceImpl implements SwitchService {
 
         if (cookie > 0L) {
             List<FlowEntry> matchedFlows = new ArrayList<>();
-            for (FlowEntry entry : response.getFlowEntries()){
-                if (cookie.equals(entry.getCookie())){
+            for (FlowEntry entry : response.getFlowEntries()) {
+                if (cookie.equals(entry.getCookie())) {
                     matchedFlows.add(entry);
                 }
             }
@@ -214,19 +218,44 @@ public class SwitchServiceImpl implements SwitchService {
         return response.getMode();
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
-    public SyncRulesOutput syncRules(String switchId) {
+    public RulesValidationResult validateRules(String switchId) {
         final String correlationId = RequestCorrelationId.getId();
-        SyncRulesRequest request = new SyncRulesRequest(switchId);
-        CommandWithReplyToMessage commandMessage = new CommandWithReplyToMessage(request, System.currentTimeMillis(),
-                correlationId, Destination.TOPOLOGY_ENGINE, northboundTopic);
-        messageProducer.send(topoEngTopic, commandMessage);
 
-        Message message = messageConsumer.poll(correlationId);
-        SyncRulesResponse response = (SyncRulesResponse) validateInfoMessage(commandMessage, message, correlationId);
-        return switchMapper.toSuncRulesOutput(response);
+        CommandWithReplyToMessage validateCommandMessage = new CommandWithReplyToMessage(
+                new SwitchRulesValidateRequest(switchId),
+                System.currentTimeMillis(), correlationId, Destination.TOPOLOGY_ENGINE, northboundTopic);
+        messageProducer.send(topoEngTopic, validateCommandMessage);
+
+        Message validateResponseMessage = messageConsumer.poll(correlationId);
+        SyncRulesResponse validateResponse = (SyncRulesResponse) validateInfoMessage(validateCommandMessage,
+                validateResponseMessage, correlationId);
+
+        return switchMapper.toRulesValidationResult(validateResponse);
+    }
+
+    @Override
+    public RulesSyncResult syncRules(String switchId) {
+        RulesValidationResult validationResult = validateRules(switchId);
+        List<String> missingRules = validationResult.getMissingRules();
+
+        if (CollectionUtils.isEmpty(missingRules)) {
+            return switchMapper.toRulesSyncResult(validationResult, emptyList());
+        }
+
+        LOGGER.debug("The validation result for switch {}: missing rules = {}", switchId, missingRules);
+
+        // Synchronize the missing rules
+        String syncCorrelationId = format("%s-sync", RequestCorrelationId.getId());
+        CommandWithReplyToMessage syncCommandMessage = new CommandWithReplyToMessage(
+                new SwitchRulesSyncRequest(switchId, missingRules),
+                System.currentTimeMillis(), syncCorrelationId, Destination.TOPOLOGY_ENGINE, northboundTopic);
+        messageProducer.send(topoEngTopic, syncCommandMessage);
+
+        Message syncResponseMessage = messageConsumer.poll(syncCorrelationId);
+        SyncRulesResponse syncResponse = (SyncRulesResponse) validateInfoMessage(syncCommandMessage,
+                syncResponseMessage, syncCorrelationId);
+
+        return switchMapper.toRulesSyncResult(validationResult, syncResponse.getInstalledRules());
     }
 }

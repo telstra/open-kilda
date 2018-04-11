@@ -16,8 +16,10 @@
 package org.openkilda.atdd;
 
 
+import static org.hamcrest.Matchers.empty;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.openkilda.flow.FlowUtils.getHealthCheck;
 
@@ -34,6 +36,8 @@ import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.northbound.dto.switches.RulesSyncResult;
+import org.openkilda.northbound.dto.switches.RulesValidationResult;
 
 import java.util.Arrays;
 import java.util.List;
@@ -46,7 +50,7 @@ public class NorthboundRunTest {
             new PathNode("de:ad:be:ef:00:00:00:04", 2, 2),
             new PathNode("de:ad:be:ef:00:00:00:05", 1, 3)));
 
-    @Then("^path of flow (.*) could be read$")
+    @Then("^path of flow (\\w+) could be read$")
     public void checkFlowPath(final String flowId) {
         String flowName = FlowUtils.getFlowName(flowId);
 
@@ -57,7 +61,7 @@ public class NorthboundRunTest {
         assertEquals(expectedFlowPath, payload.getPath());
     }
 
-    @Then("^status of flow (.*) could be read$")
+    @Then("^status of flow (\\w+) could be read$")
     public void checkFlowStatus(final String flowId) throws Exception {
         String flowName = FlowUtils.getFlowName(flowId);
         FlowIdStatusPayload payload = FlowUtils.waitFlowStatus(flowName, expectedFlowStatus);
@@ -91,7 +95,7 @@ public class NorthboundRunTest {
         assertEquals(flowState, payload.getStatus());
     }
 
-    @Then("^delete all non-default rules on (.*) switch$")
+    @Then("^delete all non-default rules on ([\\w:]+) switch$")
     public void deleteAllNonDefaultRules(String switchId) {
         List<Long> cookies = SwitchesUtils.deleteSwitchRules(switchId, DeleteRulesAction.IGNORE);
         assertNotNull(cookies);
@@ -119,11 +123,45 @@ public class NorthboundRunTest {
         assertEquals(droppedFlowsCount, results.getDroppedFlows().length);
     }
 
-    @When("^flow (.*) could be deleted from DB$")
+    @When("^flow (\\w+) could be deleted from DB$")
     public void deleteFlowFromDbViaTE(final String flowName) {
         String flowId = FlowUtils.getFlowName(flowName);
         boolean deleted = FlowUtils.deleteFlowViaTE(flowId);
 
         assertTrue(deleted);
+    }
+
+    @Then("^validation of rules on ([\\w:]+) switch is successful with no discrepancies$")
+    public void validateSwitchRules(String switchId) {
+        RulesValidationResult validateResult = SwitchesUtils.validateSwitchRules(switchId);
+
+        assertThat("The switch has excessive rules.", validateResult.getExcessRules(), empty());
+        assertThat("The switch has missing rules.", validateResult.getMissingRules(), empty());
+    }
+
+    @Then("^validation of rules on ([\\w:]+) switch has passed and (\\d+) rules are missing$")
+    public void validateSwitchWithMissingRules(String switchId, int missingRulesCount) {
+        RulesValidationResult validateResult = SwitchesUtils.validateSwitchRules(switchId);
+
+        assertEquals("Switch doesn't have expected missing rules.", missingRulesCount,
+                validateResult.getMissingRules().size());
+        assertThat("The switch has excessive rules.", validateResult.getExcessRules(), empty());
+    }
+
+    @Then("^validation of rules on ([\\w:]+) switch has passed and (\\d+) excessive rules are present$")
+    public void validateSwitchWithExcessiveRules(String switchId, int excessiveRulesCount) {
+        RulesValidationResult validateResult = SwitchesUtils.validateSwitchRules(switchId);
+
+        assertEquals("Switch doesn't have expected excessive rules.", excessiveRulesCount,
+                validateResult.getExcessRules().size());
+        assertThat("The switch has missing rules.", validateResult.getMissingRules(), empty());
+    }
+
+    @Then("^synchronization of rules on ([\\w:]+) switch is successful with (\\d+) rules installed$")
+    public void synchronizeSwitchWithInstalledRules(String switchId, int installedRulesCount) {
+        RulesSyncResult validateResult = SwitchesUtils.synchronizeSwitchRules(switchId);
+
+        assertEquals("Switch doesn't have expected installed rules.", installedRulesCount,
+                validateResult.getInstalledRules().size());
     }
 }

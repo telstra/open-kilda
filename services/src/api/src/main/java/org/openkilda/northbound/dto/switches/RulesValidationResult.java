@@ -17,31 +17,31 @@ package org.openkilda.northbound.dto.switches;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Builder;
 import lombok.Value;
+import lombok.experimental.NonFinal;
 
 import java.util.List;
 
 @Value
-@Builder
-public class SyncRulesOutput {
+@NonFinal
+public class RulesValidationResult {
 
-    @JsonProperty("added_rules")
-    private List<String> addedRules;
+    @JsonProperty("missing_rules")
+    private List<String> missingRules;
 
     @JsonProperty("proper_rules")
     private List<String> properRules;
 
-    @JsonProperty("not_deleted")
-    private List<String> notDeleted;
+    @JsonProperty("excess_rules")
+    private List<String> excessRules;
 
     @JsonCreator
-    public SyncRulesOutput(
-            @JsonProperty("added_rules") List<String> addedRules,
+    public RulesValidationResult(
+            @JsonProperty("missing_rules") List<String> missingRules,
             @JsonProperty("proper_rules") List<String> properRules,
-            @JsonProperty("not_deleted") List<String> notDeleted) {
-        this.addedRules = addedRules;
+            @JsonProperty("excess_rules") List<String> excessRules) {
+        this.missingRules = missingRules;
         this.properRules = properRules;
-        this.notDeleted = notDeleted;
+        this.excessRules = excessRules;
     }
 }

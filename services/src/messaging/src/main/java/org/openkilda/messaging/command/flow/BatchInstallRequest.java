@@ -13,23 +13,30 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.command.switches;
+package org.openkilda.messaging.command.flow;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Value;
 import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.command.flow.BaseInstallFlow;
+
+import java.util.List;
 
 @Value
 @Builder
-public class SyncRulesRequest extends CommandData {
+public class BatchInstallRequest extends CommandData {
 
     @JsonProperty("switch_id")
     private String switchId;
 
-    public SyncRulesRequest(
-        @JsonProperty("switch_id") String switchId) {
-       this.switchId = switchId;
+    @JsonProperty("flow_commands")
+    private List<BaseInstallFlow> flowCommands;
+
+    public BatchInstallRequest(
+            @JsonProperty("switch_id") String switchId,
+            @JsonProperty("flow_commands") List<BaseInstallFlow> flowCommands) {
+        this.switchId = switchId;
+        this.flowCommands = flowCommands;
     }
 }
-

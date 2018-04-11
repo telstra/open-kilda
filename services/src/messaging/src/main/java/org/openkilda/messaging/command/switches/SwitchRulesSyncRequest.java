@@ -16,27 +16,25 @@
 package org.openkilda.messaging.command.switches;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Builder;
 import lombok.Value;
 import org.openkilda.messaging.command.CommandData;
-import org.openkilda.messaging.command.flow.BaseInstallFlow;
 
 import java.util.List;
 
 @Value
-@Builder
-public class InstallMissedFlowsRequest extends CommandData {
+public class SwitchRulesSyncRequest extends CommandData {
 
     @JsonProperty("switch_id")
     private String switchId;
 
-    @JsonProperty("flow_commands")
-    private List<BaseInstallFlow> flowCommands;
+    @JsonProperty("rules")
+    private List<String> rules;
 
-    public InstallMissedFlowsRequest(
-            @JsonProperty("switch_id") String switchId,
-            @JsonProperty("flow_commands") List<BaseInstallFlow> flowCommands) {
-        this.switchId = switchId;
-        this.flowCommands = flowCommands;
+    public SwitchRulesSyncRequest(
+        @JsonProperty("switch_id") String switchId,
+        @JsonProperty("rules") List<String> rules) {
+       this.switchId = switchId;
+       this.rules = rules;
     }
 }
+
