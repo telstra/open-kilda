@@ -50,6 +50,9 @@ public class SwitchIntegrationService {
 
     @Autowired
     private ApplicationService applicationService;
+    
+    @Autowired
+    private IslLinkConverter islLinkConverter;
 
     /**
      * Gets the switches.
@@ -124,7 +127,7 @@ public class SwitchIntegrationService {
             if (CollectionUtil.isEmpty(links)) {
                 throw new ContentNotFoundException();
             }
-            return IslLinkConverter.toIslLinksInfo(links);
+            return islLinkConverter.toIslLinksInfo(links);
         }
         return null;
     }
