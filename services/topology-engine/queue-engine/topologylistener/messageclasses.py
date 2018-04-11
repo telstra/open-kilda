@@ -172,9 +172,6 @@ class MessageItem(object):
                 self.handle_flow_topology_sync()
                 event_handled = True
 
-            elif self.get_command() == CD_NETWORK:
-                event_handled = self.dump_network()
-
             elif self.get_message_type() == MT_STATE_TOGGLE:
                 event_handled = self.get_feature_toggle_state()
             elif self.get_message_type() == MT_TOGGLE:
@@ -809,72 +806,6 @@ class MessageItem(object):
 
         return True
 
-
-    @staticmethod
-    def get_switches():
-        try:
-            query = "MATCH (n:switch) RETURN n"
-            result = graph.run(query).data()
-
-            switches = []
-            for data in result:
-                node = data['n']
-                switch = {
-                    'switch_id': node['name'],
-                    'state': switch_states[node['state']],
-                    'address': node['address'],
-                    'hostname': node['hostname'],
-                    'description': node['description'],
-                    'controller': node['controller'],
-                    'clazz': MT_SWITCH,
-                }
-                switches.append(switch)
-
-            logger.info('Got switches: %s', switches)
-
-        except Exception as e:
-            logger.exception('Can not get switches', e.message)
-            raise
-
-        return switches
-
-
-    @staticmethod
-    def get_isls():
-        try:
-            result = MessageItem.fetch_isls()
-
-            isls = []
-            for link in result:
-                # link = data['r']
-                isl = {
-                    'id': str(
-                        link['src_switch'] + '_' + str(link['src_port'])),
-                    'speed': int(link['speed']),
-                    'latency_ns': int(link['latency']),
-                    'available_bandwidth': int(link['available_bandwidth']),
-                    'state': "DISCOVERED",
-                    'path': [
-                        {'switch_id': str(link['src_switch']),
-                         'port_no': int(link['src_port']),
-                         'seq_id': 0,
-                         'segment_latency': int(link['latency'])},
-                        {'switch_id': str(link['dst_switch']),
-                         'port_no': int(link['dst_port']),
-                         'seq_id': 1,
-                         'segment_latency': 0}],
-                    'clazz': MT_ISL
-                }
-                isls.append(isl)
-            logger.info('Got isls: %s', isls)
-
-        except Exception as e:
-            logger.exception('Can not get isls', e.message)
-            raise
-
-        return isls
-
-
     @staticmethod
     def fetch_isls(pull=True,sort_key='src_switch'):
         """
@@ -896,42 +827,6 @@ class MessageItem(object):
         except Exception as e:
             logger.exception('FAILED to get ISLs from the DB ', e.message)
             raise
-
-    def dump_network(self):
-        correlation_id = self.correlation_id
-        step = "Init"
-        logger.info('Dump network request: timestamp=%s, correlation_id=%s',
-                    self.timestamp, correlation_id)
-
-        try:
-            step = "Switches"
-            switches = self.get_switches()
-            logger.debug("%s: %s", step, switches)
-
-            step = "ISLs"
-            isls = self.get_isls()
-            logger.debug("%s: %s", step, isls)
-
-            step = "Flows"
-            flows = flow_utils.get_flows()
-            logger.debug("%s: %s", step, flows)
-
-            step = "Send"
-            payload = {
-                'switches': switches,
-                'isls': isls,
-                'flows': flows,
-                'clazz': MT_NETWORK}
-            message_utils.send_cache_message(payload, correlation_id)
-
-        except Exception as e:
-            logger.exception('Can not dump network: %s', e.message)
-            message_utils.send_error_message(
-                correlation_id, "INTERNAL_ERROR", e.message, step,
-                "WFM_CACHE", config.KAFKA_CACHE_TOPIC)
-            raise
-
-        return True
 
     def handle_flow_topology_sync(self):
         payload = {
