@@ -62,8 +62,6 @@ import org.projectfloodlight.openflow.protocol.OFMeterConfigStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFMeterFlags;
 import org.projectfloodlight.openflow.protocol.OFMeterMod;
 import org.projectfloodlight.openflow.protocol.OFMeterModCommand;
-import org.projectfloodlight.openflow.protocol.OFStatsReplyFlags;
-import org.projectfloodlight.openflow.protocol.OFStatsRequestFlags;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
@@ -90,15 +88,16 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
 
 /**
  * Created by jonv on 29/3/17.
@@ -447,25 +446,14 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .build();
 
         try {
-            ListenableFuture<OFFlowStatsReply> future = sw.writeRequest(flowRequest);
-            OFFlowStatsReply values = future.get(10, TimeUnit.SECONDS);
-            entries.addAll(values.getEntries());
-
-            // floodlight loads up to 25 items per the request.
-            boolean withMoreReplies = values.getFlags().contains(OFStatsReplyFlags.REPLY_MORE);
-            while (withMoreReplies) {
-                flowRequest = ofFactory.buildFlowStatsRequest()
-                        .setXid(values.getXid())
-                        .setFlags(Collections.singleton(OFStatsRequestFlags.REQ_MORE))
-                        .build();
-                future = sw.writeRequest(flowRequest);
-                OFFlowStatsReply nextReply = future.get(10, TimeUnit.SECONDS);
-                entries.addAll(nextReply.getEntries());
-
-                // check whether next page is available or not.
-                withMoreReplies = nextReply.getFlags().contains(OFStatsReplyFlags.REPLY_MORE);
+            Future<List<OFFlowStatsReply>> future = sw.writeStatsRequest(flowRequest);
+            List<OFFlowStatsReply> values = future.get(10, TimeUnit.SECONDS);
+            if (values != null) {
+                entries = values.stream()
+                        .map(OFFlowStatsReply::getEntries)
+                        .flatMap(List::stream)
+                        .collect(Collectors.toList());
             }
-
         } catch (ExecutionException | InterruptedException | TimeoutException e) {
             logger.error("Could not get flow stats: {}", e.getMessage());
         }

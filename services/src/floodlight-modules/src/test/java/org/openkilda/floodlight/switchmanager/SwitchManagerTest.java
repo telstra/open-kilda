@@ -16,7 +16,6 @@
 package org.openkilda.floodlight.switchmanager;
 
 import static java.util.Collections.emptySet;
-import static java.util.Collections.singleton;
 import static java.util.Collections.singletonList;
 import static org.easymock.EasyMock.anyLong;
 import static org.easymock.EasyMock.anyObject;
@@ -64,10 +63,10 @@ import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFMeterMod;
 import org.projectfloodlight.openflow.protocol.OFMeterModCommand;
-import org.projectfloodlight.openflow.protocol.OFStatsReplyFlags;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.U64;
 
+import java.util.Collections;
 import java.util.List;
 
 public class SwitchManagerTest {
@@ -315,11 +314,12 @@ public class SwitchManagerTest {
         expect(ofFlowStatsReply.getEntries()).andReturn(singletonList(ofFlowStatsEntry));
         expect(ofFlowStatsReply.getXid()).andReturn(0L);
         expect(ofFlowStatsReply.getFlags()).andReturn(emptySet());
+        List<OFFlowStatsReply> replies = Collections.singletonList(ofFlowStatsReply);
 
-        ListenableFuture<OFFlowStatsReply> ofStatsFuture = mock(ListenableFuture.class);
-        expect(ofStatsFuture.get(anyLong(), anyObject())).andReturn(ofFlowStatsReply).times(2);
+        ListenableFuture<List<OFFlowStatsReply>> ofStatsFuture = mock(ListenableFuture.class);
+        expect(ofStatsFuture.get(anyLong(), anyObject())).andReturn(replies).times(1);
 
-        expect(iofSwitch.writeRequest(anyObject(OFFlowStatsRequest.class))).andReturn(ofStatsFuture);
+        expect(iofSwitch.writeStatsRequest(anyObject(OFFlowStatsRequest.class))).andReturn(ofStatsFuture);
 
         Capture<OFFlowMod> capture = EasyMock.newCapture();
         expect(iofSwitch.write(capture(capture))).andReturn(true);
