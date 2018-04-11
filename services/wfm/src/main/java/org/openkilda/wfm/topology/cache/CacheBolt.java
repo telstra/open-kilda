@@ -183,6 +183,7 @@ public class CacheBolt
         logger.trace("State before: {}", state);
 
         String json = tuple.getString(0);
+        String source = tuple.getSourceComponent();
 
         /*
           (carmine) Hack Alert
