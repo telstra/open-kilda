@@ -20,6 +20,10 @@ import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.pce.RecoverableException;
 import org.openkilda.pce.api.FlowAdapter;
+import org.openkilda.pce.model.AvailableNetwork;
+import org.openkilda.pce.model.EndPoint;
+import org.openkilda.pce.model.SimpleIsl;
+import org.openkilda.pce.model.SimpleSwitch;
 
 import org.neo4j.driver.v1.Driver;
 import org.neo4j.driver.v1.Record;
@@ -235,6 +239,50 @@ public class NeoDriver implements PathComputer {
         }
         return results;
     }
+
+    /**
+     * This will return a network where everything is active and the isls have the bandwidth needed.
+     * This is a specialization of the general query to get the entire network.
+     *
+     * NB: If the more common case is required at some point, refactor this into reusing the getAll,
+     * then filter the results.
+     *
+     * @param ignore_bandwidth if false, then filter the ISLs based on available_bandwidth
+     * @param available_bandwidth
+     * @return
+     */
+    @Override
+    public AvailableNetwork getAvailableNetwork(boolean ignore_bandwidth, int available_bandwidth) {
+
+        String q = "MATCH (src:switch)-[isl:isl]->(dst:switch)" +
+                " WHERE src.state = 'active' AND dst.state = 'active' AND isl.status = 'active' " +
+                "   AND src.name IS NOT NULL AND dst.name IS NOT NULL";
+        if (!ignore_bandwidth)
+                q += "   AND isl.available_bandwidth >= " + available_bandwidth;
+        q += " RETURN src.name as src_name, dst.name as dst_name " +
+                ", isl.src_port as src_port " +
+                ", isl.dst_port as dst_port " +
+                ", isl.cost as cost " +
+                ", isl.latency as latency " +
+                " ORDER BY src.name";
+
+        logger.debug("Executing getAvailableNetwork Query: {}", q);
+        AvailableNetwork network = new AvailableNetwork();
+        Session session = driver.session();
+        StatementResult queryResults = session.run(q);
+        for (Record record : queryResults.list()) {
+            network.initOneEntry(
+                    record.get("src_name").asString(),
+                    record.get("dst_name").asString(),
+                    record.get("src_port").asInt(),
+                    record.get("dst_port").asInt(),
+                    record.get("cost").asInt(),
+                    record.get("latency").asInt()
+                    );
+        }
+        return network;
+    }
+
 
     @Override
     public List<IslInfoData> getIsls() {

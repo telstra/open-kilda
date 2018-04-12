@@ -56,7 +56,7 @@ public class NetworkCache extends Cache {
     private final Map<String, SwitchInfoData> switchPool = new ConcurrentHashMap<>();
 
     /**
-     * Isl pool.
+     * SimpleIsl pool.
      */
     private final Map<String, IslInfoData> islPool = new ConcurrentHashMap<>();
 
@@ -186,7 +186,7 @@ public class NetworkCache extends Cache {
         SwitchInfoData node = switchPool.get(switchId);
         if (node == null) {
             throw new CacheException(ErrorType.NOT_FOUND, "Can not get switch",
-                    String.format("Switch %s not found", switchId));
+                    String.format("SimpleSwitch %s not found", switchId));
         }
 
         return node;
@@ -207,7 +207,7 @@ public class NetworkCache extends Cache {
         SwitchInfoData oldSwitch = switchPool.get(switchId);
         if (oldSwitch != null) {
             throw new CacheException(ErrorType.ALREADY_EXISTS, "Can not create switch",
-                    String.format("Switch %s already exists", switchId));
+                    String.format("SimpleSwitch %s already exists", switchId));
         }
 
         newSwitch.setCreatedInCacheNow();
@@ -232,7 +232,7 @@ public class NetworkCache extends Cache {
         SwitchInfoData oldSwitch = switchPool.remove(switchId);
         if (oldSwitch == null) {
             throw new CacheException(ErrorType.NOT_FOUND, "Can not update switch",
-                    String.format("Switch %s not found", switchId));
+                    String.format("SimpleSwitch %s not found", switchId));
         }
 
         newSwitch.copyTimeTag(oldSwitch);
@@ -256,7 +256,7 @@ public class NetworkCache extends Cache {
         logger.debug("Create Or Update {} switch with {} parameters", newSwitch);
 
         if (newSwitch ==  null) {
-            throw new IllegalArgumentException("Switch can't be null in createOrUpdateSwitch");
+            throw new IllegalArgumentException("SimpleSwitch can't be null in createOrUpdateSwitch");
         }
 
         if (cacheContainsSwitch(newSwitch.getSwitchId())) {
@@ -279,7 +279,7 @@ public class NetworkCache extends Cache {
         SwitchInfoData node = switchPool.remove(switchId);
         if (node == null) {
             throw new CacheException(ErrorType.NOT_FOUND, "Can not delete switch",
-                    String.format("Switch %s not found", switchId));
+                    String.format("SimpleSwitch %s not found", switchId));
         }
 
         network.removeNode(node);
@@ -339,7 +339,7 @@ public class NetworkCache extends Cache {
         IslInfoData isl = islPool.get(islId);
         if (isl == null) {
             throw new CacheException(ErrorType.NOT_FOUND, "Can not get isl",
-                    String.format("Isl %s not found", islId));
+                    String.format("SimpleIsl %s not found", islId));
         }
 
         return islPool.get(islId);
@@ -421,7 +421,7 @@ public class NetworkCache extends Cache {
         IslInfoData isl = islPool.remove(islId);
         if (isl == null) {
             throw new CacheException(ErrorType.NOT_FOUND, "Can not delete isl",
-                    String.format("Isl %s not found", islId));
+                    String.format("SimpleIsl %s not found", islId));
         }
 
         network.removeEdge(isl);

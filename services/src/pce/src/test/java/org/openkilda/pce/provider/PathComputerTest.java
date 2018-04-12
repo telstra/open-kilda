@@ -5,6 +5,9 @@ import static org.junit.Assert.assertEquals;
 import org.junit.*;
 
 import java.io.File;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.LinkedList;
 import java.util.List;
 
 import org.neo4j.driver.v1.AuthTokens;
@@ -24,6 +27,10 @@ import org.openkilda.neo.NeoUtils;
 import org.openkilda.neo.OkNode;
 import org.openkilda.neo.NeoUtils.OkRels;
 import org.openkilda.pce.RecoverableException;
+import org.openkilda.pce.algo.SimpleGetShortestPath;
+import org.openkilda.pce.model.AvailableNetwork;
+import org.openkilda.pce.model.SimpleIsl;
+import org.openkilda.pce.model.SimpleSwitch;
 
 /**
  * The primary goals of this test package are to emulate the Acceptance Tests in the ATDD module.
@@ -36,6 +43,8 @@ public class PathComputerTest {
     private static GraphDatabaseService graphDb;
 
     private static final File databaseDirectory = new File( "target/neo4j-test-db" );
+    private static Driver driver;
+    private static NeoDriver nd;
 
     @BeforeClass
     public static void setUpOnce() throws Exception {
@@ -50,31 +59,16 @@ public class PathComputerTest {
                 .setConfig( bolt.enabled, "true" )
                 .setConfig( bolt.listen_address, "localhost:7878" )
                 .newGraphDatabase();
+
+        driver = GraphDatabase.driver( "bolt://localhost:7878", AuthTokens.basic( "neo4j", "password" ) );
+        nd = new NeoDriver(driver);
+
     }
 
     @AfterClass
     public static void teatDownOnce() {
+        driver.close();
         graphDb.shutdown();
-    }
-
-    @Before
-    public void setUp() {
-        /*
-         * Make sure we start from a known state
-         */
-//        try ( Transaction tx = graphDb.beginTx() )
-//        {
-//            Node firstNode = graphDb.createNode();
-//            firstNode.setProperty("name","00:03");
-//            Node secondNode = graphDb.createNode();
-//            secondNode.setProperty("name","00:03");
-//            Relationship relationship;
-//
-//            relationship = firstNode.createRelationshipTo( secondNode, RelTypes.KNOWS );
-//            relationship.setProperty( "message", "brave Neo4j " );
-//            tx.success();
-//        }
-
     }
 
     @Test
@@ -94,16 +88,12 @@ public class PathComputerTest {
             tx.success();
         }
 
-        Driver driver = GraphDatabase.driver( "bolt://localhost:7878", AuthTokens.basic( "neo4j", "password" ) );
-        NeoDriver nd = new NeoDriver(driver);
         List<FlowInfo> fi = nd.getFlowInfo();
         Assert.assertEquals(fi.get(0).getFlowId(), "f1");
         Assert.assertEquals(fi.get(0).getCookie(), 3);
         Assert.assertEquals(fi.get(0).getMeterId(), 2);
         Assert.assertEquals(fi.get(0).getTransitVlanId(), 1);
         Assert.assertEquals(fi.get(0).getSrcSwitchId(), "00:03");
-
-
     }
 
     private Node createNode(String name) {
@@ -112,52 +102,76 @@ public class PathComputerTest {
         n.setProperty("state", "active");
         return n;
     }
-    private Relationship addRel (Node n1, Node n2, String status, int cost, int bw){
+    private Relationship addRel (Node n1, Node n2, String status, int cost, int bw, int port){
         Relationship rel;
         rel = n1.createRelationshipTo(n2, RelationshipType.withName("isl"));
         rel.setProperty("status",status);
         if (cost >= 0) {rel.setProperty("cost", cost);}
         rel.setProperty("available_bandwidth", bw);
         rel.setProperty("latency", 5);
-        rel.setProperty("src_port", 5);
-        rel.setProperty("dst_port", 5);
+        rel.setProperty("src_port", port);
+        rel.setProperty("dst_port", port);
         rel.setProperty("src_switch", n1.getProperty("name"));
         rel.setProperty("dst_switch", n2.getProperty("name"));
         return rel;
     }
 
     private void createDiamond(String pathBstatus, String pathCstatus, int pathBcost, int pathCcost) {
+        createDiamond(pathBstatus, pathCstatus, pathBcost, pathCcost, "00:", 1);
+    }
+
+    private void createDiamond(String pathBstatus, String pathCstatus, int pathBcost, int pathCcost, String switchStart, int startIndex) {
         try ( Transaction tx = graphDb.beginTx() ) {
             // A - B - D
             //   + C +
             Node nodeA, nodeB, nodeC, nodeD;
-            nodeA = createNode("00:01");
-            nodeB = createNode("00:02");
-            nodeC = createNode("00:03");
-            nodeD = createNode("00:04");
-            addRel(nodeA, nodeB, pathBstatus, pathBcost, 1000);
-            addRel(nodeA, nodeC, pathCstatus, pathCcost, 1000);
-            addRel(nodeB, nodeD, pathBstatus, pathBcost, 1000);
-            addRel(nodeC, nodeD, pathCstatus, pathCcost, 1000);
-            addRel(nodeB, nodeA, pathBstatus, pathBcost, 1000);
-            addRel(nodeC, nodeA, pathCstatus, pathCcost, 1000);
-            addRel(nodeD, nodeB, pathBstatus, pathBcost, 1000);
-            addRel(nodeD, nodeC, pathCstatus, pathCcost, 1000);
+            int index = startIndex;
+            nodeA = createNode(switchStart + String.format("%02X", index++));
+            nodeB = createNode(switchStart + String.format("%02X", index++));
+            nodeC = createNode(switchStart + String.format("%02X", index++));
+            nodeD = createNode(switchStart + String.format("%02X", index++));
+            addRel(nodeA, nodeB, pathBstatus, pathBcost, 1000, 5);
+            addRel(nodeA, nodeC, pathCstatus, pathCcost, 1000, 6);
+            addRel(nodeB, nodeD, pathBstatus, pathBcost, 1000, 6);
+            addRel(nodeC, nodeD, pathCstatus, pathCcost, 1000, 5);
+            addRel(nodeB, nodeA, pathBstatus, pathBcost, 1000, 5);
+            addRel(nodeC, nodeA, pathCstatus, pathCcost, 1000, 6);
+            addRel(nodeD, nodeB, pathBstatus, pathBcost, 1000, 6);
+            addRel(nodeD, nodeC, pathCstatus, pathCcost, 1000, 5);
             tx.success();
         }
     }
 
+    private void connectDiamonds(String aName, String bName, String status, int cost, int port) {
+        try ( Transaction tx = graphDb.beginTx() ) {
+            // A - B - D
+            //   + C +
+            Node nodeA = graphDb.findNode(Label.label("switch"),"name", aName);
+            Node nodeB = graphDb.findNode(Label.label("switch"),"name", bName);
+            addRel(nodeA, nodeB, status, cost, 1000, port);
+            addRel(nodeB, nodeA, status, cost, 1000, port);
+            tx.success();
+        }
+    }
+
+
     private void createTriangleTopo(String pathABstatus, int pathABcost, int pathCcost) {
+        createTriangleTopo(pathABstatus, pathABcost, pathCcost, "00:", 1);
+    }
+
+    private void createTriangleTopo(String pathABstatus, int pathABcost, int pathCcost, String switchStart, int startIndex) {
         try ( Transaction tx = graphDb.beginTx() ) {
             // A - B
             // + C +
-            Node nodeA, nodeB, nodeC, nodeD;
-            nodeA = createNode("00:01");
-            nodeB = createNode("00:02");
-            nodeC = createNode("00:03");
-            addRel(nodeA, nodeB, pathABstatus, pathABcost, 1000);
-            addRel(nodeA, nodeC, "active", pathCcost, 1000);
-            addRel(nodeC, nodeB,  "active", pathCcost, 1000);
+            Node nodeA, nodeB, nodeC;
+            int index = startIndex;
+
+            nodeA = createNode(switchStart + String.format("%02X", index++));
+            nodeB = createNode(switchStart + String.format("%02X", index++));
+            nodeC = createNode(switchStart + String.format("%02X", index++));
+            addRel(nodeA, nodeB, pathABstatus, pathABcost, 1000, 5);
+            addRel(nodeA, nodeC, "active", pathCcost, 1000, 6);
+            addRel(nodeC, nodeB,  "active", pathCcost, 1000, 7);
             tx.success();
         }
     }
@@ -168,8 +182,6 @@ public class PathComputerTest {
          * simple happy path test .. everything has cost
          */
         createDiamond("active", "active", 10, 20);
-        Driver driver = GraphDatabase.driver( "bolt://localhost:7878", AuthTokens.basic( "neo4j", "password" ) );
-        NeoDriver nd = new NeoDriver(driver);
         Flow f = new Flow();
         f.setSourceSwitch("00:01");
         f.setDestinationSwitch("00:04");
@@ -188,8 +200,6 @@ public class PathComputerTest {
          * simple happy path test .. but lowest path is inactive
          */
         createDiamond("inactive", "active", 10, 20);
-        Driver driver = GraphDatabase.driver( "bolt://localhost:7878", AuthTokens.basic( "neo4j", "password" ) );
-        NeoDriver nd = new NeoDriver(driver);
         Flow f = new Flow();
         f.setSourceSwitch("00:01");
         f.setDestinationSwitch("00:04");
@@ -208,8 +218,6 @@ public class PathComputerTest {
          * simple happy path test .. but lowest path is inactive
          */
         createTriangleTopo("inactive", 10, 20);
-        Driver driver = GraphDatabase.driver( "bolt://localhost:7878", AuthTokens.basic( "neo4j", "password" ) );
-        NeoDriver nd = new NeoDriver(driver);
         Flow f = new Flow();
         f.setSourceSwitch("00:01");
         f.setDestinationSwitch("00:02");
@@ -228,8 +236,6 @@ public class PathComputerTest {
          * simple happy path test .. but pathB has no cost .. but still cheaper than pathC (test the default)
          */
         createDiamond("active", "active",  -1, 2000);
-        Driver driver = GraphDatabase.driver( "bolt://localhost:7878", AuthTokens.basic( "neo4j", "password" ) );
-        NeoDriver nd = new NeoDriver(driver);
         Flow f = new Flow();
         f.setSourceSwitch("00:01");
         f.setDestinationSwitch("00:04");
@@ -249,8 +255,6 @@ public class PathComputerTest {
          * simple happy path test .. but pathB has no cost .. but still cheaper than pathC (test the default)
          */
         createDiamond("inactive", "inactive", 10, 30);
-        Driver driver = GraphDatabase.driver( "bolt://localhost:7878", AuthTokens.basic( "neo4j", "password" ) );
-        NeoDriver nd = new NeoDriver(driver);
         Flow f = new Flow();
         f.setSourceSwitch("00:01");
         f.setDestinationSwitch("00:04");
@@ -258,147 +262,130 @@ public class PathComputerTest {
         ImmutablePair<PathInfoData, PathInfoData> path = nd.getPath(f, PathComputer.Strategy.COST);
     }
 
-    /* ==========> TESTING DIJKSTRA
-     * THE FOLLOWING CAN BE USED DIRECTLY IN THE NEO4J BROWSER.
 
-     MERGE (A:switch {name:'00:01', state:'active'})
-     MERGE (B:switch {name:'00:02', state:'active'})
-     MERGE (C:switch {name:'00:03', state:'active'})
-     MERGE (D:switch {name:'00:04', state:'active'})
-     MERGE (A)-[ab:isl {available_bandwidth:1000, cost:10, status:'inactive'}]->(B)
-     MERGE (A)-[ac:isl {available_bandwidth:1000, cost:20, status:'active'}]->(C)
-     MERGE (B)-[bd:isl {available_bandwidth:1000, cost:10, status:'inactive'}]->(D)
-     MERGE (C)-[cd:isl {available_bandwidth:1000, cost:20, status:'active'}]->(D)
-     MERGE (B)-[ba:isl {available_bandwidth:1000, cost:10, status:'inactive'}]->(A)
-     MERGE (C)-[ca:isl {available_bandwidth:1000, cost:20, status:'active'}]->(A)
-     MERGE (D)-[db:isl {available_bandwidth:1000, cost:10, status:'inactive'}]->(B)
-     MERGE (D)-[dc:isl {available_bandwidth:1000, cost:20, status:'active'}]->(C)
-     return A,B,C,D
-
-    TESTING with no_cost:
-
-     MERGE (A:switch {name:'00:01', state:'active'})
-     MERGE (B:switch {name:'00:02', state:'active'})
-     MERGE (C:switch {name:'00:03', state:'active'})
-     MERGE (D:switch {name:'00:04', state:'active'})
-     MERGE (A)-[ab:isl {available_bandwidth:1000, status:'inactive'}]->(B)
-     MERGE (A)-[ac:isl {available_bandwidth:1000, status:'active'}]->(C)
-     MERGE (B)-[bd:isl {available_bandwidth:1000, status:'inactive'}]->(D)
-     MERGE (C)-[cd:isl {available_bandwidth:1000, status:'active'}]->(D)
-     MERGE (B)-[ba:isl {available_bandwidth:1000, status:'inactive'}]->(A)
-     MERGE (C)-[ca:isl {available_bandwidth:1000, status:'active'}]->(A)
-     MERGE (D)-[db:isl {available_bandwidth:1000, status:'inactive'}]->(B)
-     MERGE (D)-[dc:isl {available_bandwidth:1000, status:'active'}]->(C)
-     return A,B,C,D
-
-==> WORKS
-     MATCH (from:switch{name:"00:01"}), (to:switch{name:"00:04"})
-     CALL apoc.algo.dijkstraWithDefaultWeight(from, to, 'isl', 'cost', 700) YIELD path AS p, weight AS weight
-     RETURN p, weight
-
-
-     MATCH (from:switch{name:"00:01"}), (to:switch{name:"00:04"})
-     CALL apoc.algo.dijkstraWithDefaultWeight(from, to, 'isl', 'cost', 700) YIELD path AS p, weight AS weight
-     WHERE ALL(y in rels(p) WHERE y.status = 'active')
-     RETURN p, weight
-
-
-     MATCH (from:switch), (to:switch)
-     CALL apoc.algo.dijkstraWithDefaultWeight(from, to, 'isl', 'cost', 700) YIELD path AS p, weight AS weight
-     WHERE from.name = "00:01" AND to.name = "00:04" AND ALL(r IN rels(path) WHERE r.state = 'active')
-     RETURN p, weight
-
-
-MATCH (from:switch{name:"00:01"}), (to:switch{name:"00:04"}), paths = allShortestPaths((from)-[r:isl*]->(to))
-WITH REDUCE(cost = 0, rel in rels(paths) | cost + rel.cost) AS cost, paths
-WHERE ALL (x in r WHERE x.status = 'active')
-RETURN paths, cost
-ORDER BY cost
-LIMIT 1
-
-==> WORKS
-MATCH (from:switch{name:"00:01"}), (to:switch{name:"00:04"}), paths = allShortestPaths((from)-[r:isl*..100]->(to))
-WITH REDUCE(cost = 0, rel in rels(paths) | cost + rel.cost) AS cost, paths
-WHERE ALL (x in r WHERE x.status = 'active')
-RETURN paths ORDER BY cost LIMIT 1
-
-==> WORKING WITH NO COST
-MATCH (from:switch{name:"00:01"}), (to:switch{name:"00:04"}), paths = allShortestPaths((from)-[r:isl*..100]->(to))
-WITH REDUCE(cost = 0, rel in rels(paths) | cost + rel.cost) AS cost, paths
-WHERE ALL (x in r WHERE x.status = 'active')
-RETURN paths ORDER BY cost LIMIT 1
-
-
-MATCH (a:switch{name:"00:01"}),(b:switch{name:"00:04"}), p = shortestPath((a)-[r:isl*..100]->(b))
-where ALL(x in nodes(p) WHERE x.state = 'active')
-    AND ALL(y in r WHERE y.status = 'active' AND y.available_bandwidth >= 100)
-RETURN p
-
-==> WORKS
-MATCH (a:switch{name:"00:01"}),(b:switch{name:"00:04"}), p = shortestPath((a)-[r:isl*..100]->(b))
-WHERE ALL(y in r WHERE y.status = 'active' AND y.available_bandwidth >= 100)
-return p
-
-        StringJoiner where = new StringJoiner("\n    AND ", "where ", "");
-        where.add("ALL(x in nodes(p) WHERE x.state = 'active')");
-        if (flow.isIgnoreBandwidth()) {
-            where.add("ALL(y in r WHERE y.status = 'active')");
-
-
-
-
-        StringJoiner where = new StringJoiner("\n    AND ", "where ", "");
-        where.add("ALL(x in nodes(p) WHERE x.state = 'active')");
-        if (flow.isIgnoreBandwidth()) {
-            where.add("ALL(y in r WHERE y.status = 'active')");
-        } else {
-            where.add("ALL(y in r WHERE y.status = 'active' AND y.available_bandwidth >= {bandwidth})");
-            parameters.put("bandwidth", Values.value(flow.getBandwidth()));
-        }
-
-        String result = "RETURN p";
-
-
+    /**
+     * Test the mechanisms of the in memory getPath
      */
-
-        /**
-         * Current status of this test is .. in alpha:
-         * - it works with standard graph node
-         * - but we want to evolve it to work with an oknode, so that we can filter relationships
-         */
-    @Ignore
     @Test
-    public void dijkstraAlgorithm() {
-        NeoUtils nuts = new NeoUtils(graphDb);
-        OkNode nodeA,nodeB,nodeC;
-        try ( Transaction tx = graphDb.beginTx() ) {
-            nodeA = nuts.node( "A" );
-            nodeB = nuts.node( "B" );
-            nodeC = nuts.node( "C" );
-            nodeA.edge(OkRels.isl, nodeB).property("length", 2d);
-            nodeB.edge(OkRels.isl, nodeC).property("length", 3d);
-            nodeA.edge(OkRels.isl, nodeC).property("length", 10d);
-            tx.success();
-        }
+    public void getPathTest_InitState() {
+        createDiamond("active", "active", 10, 20);
+        boolean ignore_bw = false;
 
-        try ( Transaction tx = graphDb.beginTx() ) {
-            Dijkstra<Double> dike = nuts.getDijkstra(0d, OkRels.isl, "length", nodeA, nodeC);
-            //assertEquals(5.0d,  dike.getCost().doubleValue(), 0.01);
-            assertEquals(3,  dike.getPathAsNodes().size());
-            tx.success();
-        }
+        long time = System.currentTimeMillis();
+        System.out.println("start = " + time);
+        AvailableNetwork network = nd.getAvailableNetwork(ignore_bw, 0);
+        System.out.println("\nNETWORK = " + network);
+
+        System.out.println("AvailableNetwork = " + (System.currentTimeMillis() - time));
+        System.out.println("network.getCounts() = " + network.getCounts());
+
+        time = System.currentTimeMillis();
+        network.removeSelfLoops().reduceByCost();
+        System.out.println("network.getCounts() = " + network.getCounts());
+        System.out.println("After Counts = " + (System.currentTimeMillis() - time));
+
+        time = System.currentTimeMillis();
+        network = nd.getAvailableNetwork(ignore_bw, 0);
+        System.out.println("2nd AvailableNetwork = " + (System.currentTimeMillis() - time));
+        SimpleSwitch[] switches = new SimpleSwitch[network.getSwitches().values().size()];
+        Arrays.sort(network.getSwitches().values().toArray(switches));
+        Assert.assertEquals(4, switches.length);
+        Assert.assertEquals("00:01", switches[0].dpid);
+        Assert.assertEquals("00:04", switches[3].dpid);
+        Assert.assertEquals(2, switches[0].outbound.size());
+        Assert.assertEquals(1, switches[0].outbound.get("00:02").size());
+        Assert.assertEquals(10, switches[0].outbound.get("00:02").iterator().next().cost);
+        Assert.assertEquals(1, switches[0].outbound.get("00:03").size());
+        Assert.assertEquals(20, switches[0].outbound.get("00:03").iterator().next().cost);
+
+        time = System.currentTimeMillis();
+        SimpleGetShortestPath sgsp = new SimpleGetShortestPath(network, "00:01", "00:03", 35);
+        LinkedList<SimpleIsl> result = sgsp.getPath();
+        System.out.println("TIME: SimpleGetShortestPath.getPath -> " + (System.currentTimeMillis() - time));
+        System.out.println("result = " + result);
+
+        time = System.currentTimeMillis();
+        sgsp = new SimpleGetShortestPath(network, "00:01", "00:04", 35);
+        result = sgsp.getPath();
+        System.out.println("TIME: SimpleGetShortestPath.getPath -> " + (System.currentTimeMillis() - time));
+        System.out.println("result = " + result);
     }
 
-    @After
-    public void tearDown() {
-        /*
-         * Delete Everything
-         */
-        try ( Transaction tx = graphDb.beginTx() )
-        {
-//            graphDb.findNodes().
-            tx.success();
+    /**
+     * Create a couple of islands .. try to find a path between them .. validate no path is
+     * returned, and that the function completes in reasonable time ( < 10ms);
+     */
+    @Test
+    public void getPathTest_Islands() {
+        createDiamond("active", "active", 10, 20, "00:", 1);
+        createDiamond("active", "active", 10, 20, "01:", 1);
+        boolean ignore_bw = false;
+
+        AvailableNetwork network = nd.getAvailableNetwork(ignore_bw, 0);
+        network.removeSelfLoops().reduceByCost();
+
+        // THIS ONE SHOULD WORK
+        long time = System.currentTimeMillis();
+        SimpleGetShortestPath sgsp = new SimpleGetShortestPath(network, "00:01", "00:03", 35);
+        LinkedList<SimpleIsl> result = sgsp.getPath();
+        System.out.println("TIME: SimpleGetShortestPath.getPath -> " + (System.currentTimeMillis() - time));
+        System.out.println("result = " + result);
+
+        // THIS ONE SHOULD FAIL
+        time = System.currentTimeMillis();
+        sgsp = new SimpleGetShortestPath(network, "00:01", "01:04", 35);
+        result = sgsp.getPath();
+        System.out.println("TIME: SimpleGetShortestPath.getPath -> " + (System.currentTimeMillis() - time));
+        System.out.println("result = " + result);
+    }
+
+    /**
+     * See how it works with a large network.
+     * It takes a while to create the network .. therefore @Ignore so that it doesn't slow down unit tests.
+     */
+    @Ignore
+    @Test
+    public void getPathTest_Large() {
+        createDiamond("active", "active", 10, 20, "00:", 1);
+
+        for (int i = 0; i < 50; i++) {
+            createDiamond("active", "active", 10, 20, "10:", 4*i+1);
+            createDiamond("active", "active", 10, 20, "11:", 4*i+1);
+            createDiamond("active", "active", 10, 20, "12:", 4*i+1);
+            createDiamond("active", "active", 10, 20, "13:", 4*i+1);
         }
+        for (int i = 0; i < 49; i++) {
+            String prev = String.format("%02X", 4*i+4);
+            String next = String.format("%02X", 4*i+5);
+            connectDiamonds("10:"+prev, "10:"+next, "active", 20, 50);
+            connectDiamonds("11:"+prev, "11:"+next, "active", 20, 50);
+            connectDiamonds("12:"+prev, "12:"+next, "active", 20, 50);
+            connectDiamonds("13:"+prev, "13:"+next, "active", 20, 50);
+        }
+        connectDiamonds("10:99", "11:22", "active", 20, 50);
+        connectDiamonds("11:99", "12:22", "active", 20, 50);
+        connectDiamonds("12:99", "13:22", "active", 20, 50);
+        connectDiamonds("13:99", "10:22", "active", 20, 50);
+
+        boolean ignore_bw = false;
+
+        AvailableNetwork network = nd.getAvailableNetwork(ignore_bw, 0);
+        network.removeSelfLoops().reduceByCost();
+        System.out.println("network.getCounts() = " + network.getCounts());
+
+        // THIS ONE SHOULD WORK
+        long time = System.currentTimeMillis();
+        SimpleGetShortestPath sgsp = new SimpleGetShortestPath(network, "10:01", "11:03", 200);
+        LinkedList<SimpleIsl> result = sgsp.getPath();
+        System.out.println("TIME: SimpleGetShortestPath.getPath -> " + (System.currentTimeMillis() - time));
+        System.out.println("Path Length = " + result.size());
+
+        // THIS ONE SHOULD FAIL
+        time = System.currentTimeMillis();
+        sgsp = new SimpleGetShortestPath(network, "00:01", "11:04", 100);
+        result = sgsp.getPath();
+        System.out.println("TIME: SimpleGetShortestPath.getPath -> " + (System.currentTimeMillis() - time));
+        System.out.println("Path Length = " + result.size());
     }
 
 
