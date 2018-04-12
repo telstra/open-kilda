@@ -1,0 +1,6 @@
+MATCH (:switch) -[rel:flow]-> (:switch)
+WITH rel.cookie as affected_cookie, COUNT(rel.cookie) as cookie_num
+WHERE cookie_num > 1
+MATCH (:switch) -[rel2:flow]-> (:switch)
+WHERE rel2.cookie = affected_cookie
+RETURN affected_cookie, rel2.flowid as affected_flow_id
