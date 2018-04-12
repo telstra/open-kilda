@@ -136,8 +136,37 @@ Feature: Northbound tests
     Given a clean flow topology
     And flow vfr creation request with de:ad:be:ef:00:00:00:01 1 110 and de:ad:be:ef:00:00:00:04 2 110 and 1000 is successful
     And flow vfr in UP state
-    And rules for flow vfr are installed with no discrepancies
+    And validation of flow vfr is successful with no discrepancies
 
     When delete all non-default rules on de:ad:be:ef:00:00:00:03 switch
 
-    Then rules for flow vfr have discrepancies
+    Then validation of flow vfr has passed and discrepancies are found
+
+  @MVP1
+  Scenario: Validate switch with missing rules
+
+  This scenario setups a flow through NB, then delete rules from an intermediate switch and perform switch validation check
+
+    Given a clean flow topology
+    And flow vsmr creation request with de:ad:be:ef:00:00:00:01 1 111 and de:ad:be:ef:00:00:00:04 2 111 and 1000 is successful
+    And flow vsmr in UP state
+    And validation of rules on de:ad:be:ef:00:00:00:03 switch is successful with no discrepancies
+
+    When delete all non-default rules on de:ad:be:ef:00:00:00:03 switch
+
+    Then validation of rules on de:ad:be:ef:00:00:00:03 switch has passed and 2 rules are missing
+
+  @MVP1
+  Scenario: Synchronize switch rules
+
+  This scenario setups a flow through NB, then delete rules from an intermediate switch and perform switch synchronization
+
+    Given a clean flow topology
+    And flow ssr creation request with de:ad:be:ef:00:00:00:01 1 113 and de:ad:be:ef:00:00:00:04 2 113 and 1000 is successful
+    And flow ssr in UP state
+    And validation of rules on de:ad:be:ef:00:00:00:03 switch is successful with no discrepancies
+
+    When delete all non-default rules on de:ad:be:ef:00:00:00:03 switch
+
+    Then synchronization of rules on de:ad:be:ef:00:00:00:03 switch is successful with 2 rules installed
+    And validation of rules on de:ad:be:ef:00:00:00:03 switch is successful with no discrepancies

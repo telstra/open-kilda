@@ -169,7 +169,7 @@ public class FlowCrudBasicRunTest {
         assertEquals(expectedFlowCount, actualFlowCount);
     }
 
-    @Then("^rules for flow (.*) are installed with no discrepancies$")
+    @Then("^validation of flow (.*) is successful with no discrepancies$")
     public void checkRulesInstalled(final String flowName) {
         String flowId = FlowUtils.getFlowName(flowName);
         List<FlowValidationDto> flowValidationResult = FlowUtils.validateFlow(flowId);
@@ -181,7 +181,7 @@ public class FlowCrudBasicRunTest {
         });
     }
 
-    @Then("^rules for flow (.*) have discrepancies$")
+    @Then("^validation of flow (.*) has passed and discrepancies are found$")
     public void checkRulesHaveDiscrepancies(final String flowName) {
         String flowId = FlowUtils.getFlowName(flowName);
         List<FlowValidationDto> flowValidationResult = FlowUtils.validateFlow(flowId);

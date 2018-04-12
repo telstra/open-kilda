@@ -28,7 +28,7 @@ import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.DumpRulesRequest;
 import org.openkilda.messaging.command.switches.InstallRulesAction;
 import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
-import org.openkilda.messaging.command.switches.InstallMissedFlowsRequest;
+import org.openkilda.messaging.command.flow.BatchInstallRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
@@ -124,8 +124,8 @@ class RecordHandler implements Runnable {
             doConnectMode(message, replyToTopic, replyDestination);
         } else if (data instanceof DumpRulesRequest) {
             doDumpRulesRequest(message, replyToTopic);
-        } else if (data instanceof InstallMissedFlowsRequest) {
-            doSyncRulesRequest(message);
+        } else if (data instanceof BatchInstallRequest) {
+            doBatchInstall(message);
         } else {
             logger.error("unknown data type: {}", data.toString());
         }
@@ -542,13 +542,14 @@ class RecordHandler implements Runnable {
     }
 
     /**
-     * Installs missed flows on the switch.
+     * Batch install of flows on the switch.
+     *
      * @param message with list of flows.
      */
-    private void doSyncRulesRequest(final CommandMessage message) {
-        InstallMissedFlowsRequest request = (InstallMissedFlowsRequest) message.getData();
+    private void doBatchInstall(final CommandMessage message) throws FlowCommandException {
+        BatchInstallRequest request = (BatchInstallRequest) message.getData();
         final String switchId = request.getSwitchId();
-        logger.debug("Processing rules to be updated for switch {}", switchId);
+        logger.debug("Processing flow commands for switch {}", switchId);
 
         for (BaseInstallFlow command : request.getFlowCommands()) {
             logger.debug("Processing command for switch {} {}", switchId, command);
@@ -561,6 +562,9 @@ class RecordHandler implements Runnable {
                     installTransitFlow((InstallTransitFlow) command);
                 } else if (command instanceof InstallOneSwitchFlow) {
                     installOneSwitchFlow((InstallOneSwitchFlow) command);
+                } else {
+                    throw new FlowCommandException(command.getId(), ErrorType.REQUEST_INVALID,
+                            "Unsupported command for batch install." );
                 }
             } catch (SwitchOperationException e) {
                 logger.error("Error during flow installation", e);

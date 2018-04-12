@@ -211,13 +211,22 @@ def send_dump_rules_request(switch_id, correlation_id):
                   extra=reply_to)
 
 
-def send_sync_rules_response(added_rules, not_deleted, proper_rules,
-                             correlation_id):
+def send_validation_rules_response(missing_rules, excess_rules, proper_rules,
+    correlation_id):
     message = Message()
     message.clazz = 'org.openkilda.messaging.info.switches.SyncRulesResponse'
-    message.added_rules = list(added_rules)
-    message.not_deleted = list(not_deleted)
+    message.missing_rules = list(missing_rules)
+    message.excess_rules = list(excess_rules)
     message.proper_rules = list(proper_rules)
+    send_to_topic(message, correlation_id, MT_INFO,
+                  destination="NORTHBOUND",
+                  topic=config.KAFKA_NORTHBOUND_TOPIC)
+
+
+def send_sync_rules_response(installed_rules, correlation_id):
+    message = Message()
+    message.clazz = 'org.openkilda.messaging.info.switches.SyncRulesResponse'
+    message.installed_rules = list(installed_rules)
     send_to_topic(message, correlation_id, MT_INFO,
                   destination="NORTHBOUND",
                   topic=config.KAFKA_NORTHBOUND_TOPIC)
@@ -225,7 +234,7 @@ def send_sync_rules_response(added_rules, not_deleted, proper_rules,
 
 def send_force_install_commands(switch_id, flow_commands, correlation_id):
     message = Message()
-    message.clazz = 'org.openkilda.messaging.command.switches.InstallMissedFlowsRequest'
+    message.clazz = 'org.openkilda.messaging.command.flow.BatchInstallRequest'
     message.switch_id = switch_id
     message.flow_commands = flow_commands
     send_to_topic(message, correlation_id, MT_COMMAND,
