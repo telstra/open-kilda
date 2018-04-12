@@ -57,27 +57,27 @@ public class OpenTSDBFilterBolt extends BaseRichBolt {
     }
     
     @Override
-	public Map<String, Object> getComponentConfiguration() {
-    	Config conf = new Config();
-		conf.put(Config.TOPOLOGY_TICK_TUPLE_FREQ_SECS, TEN_MINUTES);
-		return conf;
-	}
+    public Map<String, Object> getComponentConfiguration() {
+        Config conf = new Config();
+        conf.put(Config.TOPOLOGY_TICK_TUPLE_FREQ_SECS, TEN_MINUTES);
+        return conf;
+    }
 
 
-	@Override
+    @Override
     public void execute(Tuple tuple) {
-		
-		if (isTickTuple(tuple)) {
-			Set<Integer> keys = storage.keySet();
-			// opentsdb using current epoch time (date +%s) in seconds
-			long now  = System.currentTimeMillis()/1000;
-			for (Integer key: keys) {
-				storage.compute(key, (k, v) -> now - v.getTime() > TEN_MINUTES ? null: v);
-			}
-			collector.ack(tuple);
-			return;		
-		}
-		
+        
+        if (isTickTuple(tuple)) {
+            Set<Integer> keys = storage.keySet();
+            // opentsdb using current epoch time (date +%s) in seconds
+            long now  = System.currentTimeMillis()/1000;
+            for (Integer key: keys) {
+                storage.compute(key, (k, v) -> now - v.getTime() > TEN_MINUTES ? null: v);
+            }
+            collector.ack(tuple);
+            return;
+        }
+        
         if (!tuple.contains("datapoint")) { //TODO: Should make sure tuple comes from correct bolt, ie not TickTuple
             collector.ack(tuple);
             return;
@@ -119,10 +119,10 @@ public class OpenTSDBFilterBolt extends BaseRichBolt {
     }
     
     private boolean isTickTuple(Tuple tuple) {
-    	String sourceComponent = tuple.getSourceComponent();
-    	String sourceStreamId = tuple.getSourceStreamId();
-    	
-    	return sourceComponent.equals(Constants.SYSTEM_COMPONENT_ID) &&
-    			sourceStreamId.equals(Constants.SYSTEM_TICK_STREAM_ID);
+        String sourceComponent = tuple.getSourceComponent();
+        String sourceStreamId = tuple.getSourceStreamId();
+        
+        return sourceComponent.equals(Constants.SYSTEM_COMPONENT_ID) &&
+                sourceStreamId.equals(Constants.SYSTEM_TICK_STREAM_ID);
     }
 }
