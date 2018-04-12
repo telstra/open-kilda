@@ -70,24 +70,30 @@ Feature: Northbound tests
 
   This scenario setups a flow through a switch, deletes non-default rules from the switch and checks that the traffic is not pingable
 
-    Then flow nbdnr creation request with de:ad:be:ef:00:00:00:02 1 106 and de:ad:be:ef:00:00:00:03 2 106 and 1000 is successful
+    Given 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:03 switch
+
+    When flow nbdnr creation request with de:ad:be:ef:00:00:00:02 1 106 and de:ad:be:ef:00:00:00:03 2 106 and 1000 is successful
     And flow nbdnr in UP state
     And traffic through de:ad:be:ef:00:00:00:02 1 106 and de:ad:be:ef:00:00:00:03 2 106 and 1000 is pingable
 
     Then delete all non-default rules on de:ad:be:ef:00:00:00:03 switch
     And traffic through de:ad:be:ef:00:00:00:02 1 106 and de:ad:be:ef:00:00:00:03 2 106 and 1000 is not pingable
+    And 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:03 switch
 
   @MVP1
   Scenario: Delete all rules from a switch
 
   This scenario setups a flow through a switch, deletes all rules from the switch and checks that the traffic is not pingable
 
-    Then flow nbdar creation request with de:ad:be:ef:00:00:00:02 1 107 and de:ad:be:ef:00:00:00:03 2 107 and 1000 is successful
+    Given 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:03 switch
+
+    When flow nbdar creation request with de:ad:be:ef:00:00:00:02 1 107 and de:ad:be:ef:00:00:00:03 2 107 and 1000 is successful
     And flow nbdar in UP state
     And traffic through de:ad:be:ef:00:00:00:02 1 107 and de:ad:be:ef:00:00:00:03 2 107 and 1000 is pingable
 
     Then delete all rules on de:ad:be:ef:00:00:00:03 switch
     And traffic through de:ad:be:ef:00:00:00:02 1 107 and de:ad:be:ef:00:00:00:03 2 107 and 1000 is not pingable
+    And No rules installed on de:ad:be:ef:00:00:00:03 switch
 
   @MVP1
   Scenario: Synchronize Flow Cache

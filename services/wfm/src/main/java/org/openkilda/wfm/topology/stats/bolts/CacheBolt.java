@@ -121,8 +121,7 @@ public class CacheBolt extends BaseRichBolt {
                     cookieToFlow.remove(cookie);
                 }
 
-                Commands command = Commands
-                        .valueOf(tuple.getStringByField(FieldsNames.COMMAND.name()));
+                Commands command = (Commands)tuple.getValueByField(FieldsNames.COMMAND.name());
 
                 switch (command) {
                     case UPDATE:
@@ -136,7 +135,7 @@ public class CacheBolt extends BaseRichBolt {
                         break;
                 }
 
-                logger.info("updated cookieToFlow: {}", cookieToFlow);
+                logger.debug("updated cookieToFlow: {}", cookieToFlow);
             } else if (componentId == STATS_OFS_BOLT) {
                 InfoMessage message = (InfoMessage) tuple.getValueByField(MESSAGE_FIELD);
 

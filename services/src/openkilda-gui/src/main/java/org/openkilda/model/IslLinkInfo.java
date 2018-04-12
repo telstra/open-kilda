@@ -29,6 +29,9 @@ public class IslLinkInfo implements Serializable {
     @JsonProperty("source_switch")
     private String srcSwitch;
 
+    @JsonProperty("source_switch_name")
+    private String srcSwitchName;
+
     @JsonProperty("available_bandwidth")
     private int availableBandwidth;
 
@@ -37,6 +40,9 @@ public class IslLinkInfo implements Serializable {
 
     @JsonProperty("target_switch")
     private String dstSwitch;
+
+    @JsonProperty("target_switch_name")
+    private String dstSwitchName;
 
     @JsonProperty("speed")
     private int speed;
@@ -203,6 +209,22 @@ public class IslLinkInfo implements Serializable {
 
     public void setState(final String state) {
         this.state = state;
+    }
+
+    public String getSrcSwitchName() {
+        return srcSwitchName;
+    }
+
+    public void setSrcSwitchName(String srcSwitchName) {
+        this.srcSwitchName = srcSwitchName;
+    }
+
+    public String getDstSwitchName() {
+        return dstSwitchName;
+    }
+
+    public void setDstSwitchName(String dstSwitchName) {
+        this.dstSwitchName = dstSwitchName;
     }
 
     public boolean isUnidirectional() {

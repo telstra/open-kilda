@@ -2,21 +2,28 @@ package org.openkilda.integration.converter;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.openkilda.integration.model.response.IslLink;
 import org.openkilda.integration.model.response.IslPath;
+import org.openkilda.integration.service.SwitchIntegrationService;
 import org.openkilda.model.IslLinkInfo;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
-public final class IslLinkConverter {
+@Component
+public class IslLinkConverter {
 
-    private IslLinkConverter() {}
+    @Autowired
+    private SwitchIntegrationService switchIntegrationService;
 
-    public static List<IslLinkInfo> toIslLinksInfo(final List<IslLink> islLinks) {
+    public List<IslLinkInfo> toIslLinksInfo(final List<IslLink> islLinks) {
         if (islLinks != null) {
             final List<IslLinkInfo> islLinkInfos = new ArrayList<>();
+            final Map<String, String> csNames = switchIntegrationService.getCustomSwitchNameFromFile();
             islLinks.forEach(islLink -> {
 
-                IslLinkInfo islLinkInfo = toIslLinkInfo(islLink);
+                IslLinkInfo islLinkInfo = toIslLinkInfo(islLink,csNames);
 
                 if (islLinkInfos.contains(islLinkInfo)) {
                     islLinkInfos.get(islLinkInfos.indexOf(islLinkInfo)).setUnidirectional(false);
@@ -53,7 +60,7 @@ public final class IslLinkConverter {
         return null;
     }
 
-    private static IslLinkInfo toIslLinkInfo(final IslLink islLink) {
+    private IslLinkInfo toIslLinkInfo(final IslLink islLink,final Map<String,String> csNames) {
         IslLinkInfo islLinkInfo = new IslLinkInfo();
         islLinkInfo.setUnidirectional(true);
         islLinkInfo.setAvailableBandwidth(islLink.getAvailableBandwidth());
@@ -64,6 +71,8 @@ public final class IslLinkConverter {
             if (islPaths.get(0) != null) {
                 islLinkInfo.setSrcPort(islPaths.get(0).getPortNo());
                 islLinkInfo.setSrcSwitch(islPaths.get(0).getSwitchId());
+                islLinkInfo.setSrcSwitchName(switchIntegrationService.customSwitchName(csNames,
+                        islPaths.get(0).getSwitchId()));
                 if (islPaths.get(0).getSegmentLatency() > 0) {
                     islLinkInfo.setLatency(islPaths.get(0).getSegmentLatency());
                 }
@@ -71,6 +80,8 @@ public final class IslLinkConverter {
             if (islPaths.get(1) != null) {
                 islLinkInfo.setDstPort(islPaths.get(1).getPortNo());
                 islLinkInfo.setDstSwitch(islPaths.get(1).getSwitchId());
+                islLinkInfo.setDstSwitchName(switchIntegrationService.customSwitchName(csNames,
+                        islPaths.get(1).getSwitchId()));
                 if (islPaths.get(1).getSegmentLatency() > 0) {
                     islLinkInfo.setLatency(islPaths.get(1).getSegmentLatency());
                 }

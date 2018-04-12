@@ -42,6 +42,7 @@ MT_ISL = "org.openkilda.messaging.info.event.IslInfoData"
 MT_PORT = "org.openkilda.messaging.info.event.PortInfoData"
 MT_FLOW_INFODATA = "org.openkilda.messaging.info.flow.FlowInfoData"
 MT_FLOW_RESPONSE = "org.openkilda.messaging.info.flow.FlowResponse"
+MT_NETWORK = "org.openkilda.messaging.info.discovery.NetworkInfoData"
 MT_SYNC_REQUEST = "org.openkilda.messaging.command.switches.SyncRulesRequest"
 MT_SWITCH_RULES = "org.openkilda.messaging.info.rule.SwitchFlowEntries"
 #feature toggle is the functionality to turn off/on specific features
@@ -170,9 +171,6 @@ class MessageItem(object):
             elif self.get_command() == CD_FLOWS_SYNC_REQUEST:
                 self.handle_flow_topology_sync()
                 event_handled = True
-
-            elif self.get_command() == CD_NETWORK:
-                event_handled = self.dump_network()
 
             elif self.get_message_type() == MT_STATE_TOGGLE:
                 event_handled = self.get_feature_toggle_state()
@@ -808,72 +806,6 @@ class MessageItem(object):
 
         return True
 
-
-    @staticmethod
-    def get_switches():
-        try:
-            query = "MATCH (n:switch) RETURN n"
-            result = graph.run(query).data()
-
-            switches = []
-            for data in result:
-                node = data['n']
-                switch = {
-                    'switch_id': node['name'],
-                    'state': switch_states[node['state']],
-                    'address': node['address'],
-                    'hostname': node['hostname'],
-                    'description': node['description'],
-                    'controller': node['controller'],
-                    'clazz': MT_SWITCH,
-                }
-                switches.append(switch)
-
-            logger.info('Got switches: %s', switches)
-
-        except Exception as e:
-            logger.exception('Can not get switches', e.message)
-            raise
-
-        return switches
-
-
-    @staticmethod
-    def get_isls():
-        try:
-            result = MessageItem.fetch_isls()
-
-            isls = []
-            for link in result:
-                # link = data['r']
-                isl = {
-                    'id': str(
-                        link['src_switch'] + '_' + str(link['src_port'])),
-                    'speed': int(link['speed']),
-                    'latency_ns': int(link['latency']),
-                    'available_bandwidth': int(link['available_bandwidth']),
-                    'state': "DISCOVERED",
-                    'path': [
-                        {'switch_id': str(link['src_switch']),
-                         'port_no': int(link['src_port']),
-                         'seq_id': 0,
-                         'segment_latency': int(link['latency'])},
-                        {'switch_id': str(link['dst_switch']),
-                         'port_no': int(link['dst_port']),
-                         'seq_id': 1,
-                         'segment_latency': 0}],
-                    'clazz': MT_ISL
-                }
-                isls.append(isl)
-            logger.info('Got isls: %s', isls)
-
-        except Exception as e:
-            logger.exception('Can not get isls', e.message)
-            raise
-
-        return isls
-
-
     @staticmethod
     def fetch_isls(pull=True,sort_key='src_switch'):
         """
@@ -896,44 +828,12 @@ class MessageItem(object):
             logger.exception('FAILED to get ISLs from the DB ', e.message)
             raise
 
-    def dump_network(self):
-        correlation_id = self.correlation_id
-        step = "Init"
-        logger.info('Dump network request: timestamp=%s, correlation_id=%s',
-                    self.timestamp, correlation_id)
-
-        try:
-            step = "Switches"
-            switches = self.get_switches()
-            logger.debug("%s: %s", step, switches)
-
-            step = "ISLs"
-            isls = self.get_isls()
-            logger.debug("%s: %s", step, isls)
-
-            step = "Flows"
-            flows = flow_utils.get_flows()
-            logger.debug("%s: %s", step, flows)
-
-            step = "Send"
-            message_utils.send_network_dump(
-                correlation_id, switches, isls, flows)
-
-        except Exception as e:
-            logger.exception('Can not dump network: %s', e.message)
-            message_utils.send_error_message(
-                correlation_id, "INTERNAL_ERROR", e.message, step,
-                "WFM_CACHE", config.KAFKA_CACHE_TOPIC)
-            raise
-
-        return True
-
     def handle_flow_topology_sync(self):
         payload = {
             'switches': [],
             'isls': [],
             'flows': flow_utils.get_flows(),
-            'clazz': message_utils.MT_NETWORK}
+            'clazz': MT_NETWORK}
         message_utils.send_to_topic(
             payload, self.correlation_id, message_utils.MT_INFO,
             destination="WFM_FLOW_LCM", topic=config.KAFKA_FLOW_TOPIC)
