@@ -167,5 +167,22 @@ public class NorthboundRunTest {
         assertEquals("Switch doesn't have expected installed rules.", installedRulesCount,
                 validateResult.getInstalledRules().size());
     }
-      
+
+    @Then("^([\\w,]+) rules are installed on ([\\w:]+) switch$")
+    public void checkThatRulesAreInstalled(String ruleCookies, String switchId) {
+        List<FlowEntry> actualRules = SwitchesUtils.dumpSwitchRules(switchId);
+        assertNotNull(actualRules);
+        List<String> actualRuleCookies = actualRules.stream()
+                .map(entry -> Long.toHexString(entry.getCookie()))
+                .collect(Collectors.toList());
+
+        assertThat("Switch doesn't contain expected rules.", actualRuleCookies, hasItems(ruleCookies.split(",")));
+    }
+
+    @Then("No rules installed on ([\\w:]+) switch$")
+    public void checkThatNoRulesAreInstalled(String switchId) {
+        List<FlowEntry> actualRules = SwitchesUtils.dumpSwitchRules(switchId);
+        assertNotNull(actualRules);
+        assertTrue("Switch contains rules, but expect to have none.", actualRules.isEmpty());
+    }
 }

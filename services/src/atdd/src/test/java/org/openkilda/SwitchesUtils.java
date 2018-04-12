@@ -16,6 +16,8 @@ import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.info.rule.FlowEntry;
+import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.topo.exceptions.TopologyProcessingException;
@@ -166,6 +168,38 @@ public final class SwitchesUtils {
             return cookies;
         } else {
             System.out.println(format("====> Error: Northbound Delete Switch Rules = %s",
+                    response.readEntity(MessageError.class)));
+            return null;
+        }
+    }
+
+    /**
+     * Returns rules of a switch (via Northbound service).
+     */
+    public static List<FlowEntry> dumpSwitchRules(String switchId) {
+        System.out.println("\n==> Northbound Dump Switch Rules");
+
+        Client client = ClientBuilder.newClient(new ClientConfig());
+
+        Response response = client
+                .target(northboundEndpoint)
+                .path("/api/v1/switches/{switch-id}/rules")
+                .resolveTemplate("switch-id", switchId)
+
+                .request(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
+                .header(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()))
+                .get();
+
+        System.out.println(format("===> Response = %s", response.toString()));
+
+        int responseCode = response.getStatus();
+        if (responseCode == 200) {
+            SwitchFlowEntries rules = response.readEntity(SwitchFlowEntries.class);
+            System.out.println(format("====> Northbound Dump Switch Rules = %s", rules.getFlowEntries()));
+            return rules.getFlowEntries();
+        } else {
+            System.out.println(format("====> Error: Northbound Dump Switch Rules = %s",
                     response.readEntity(MessageError.class)));
             return null;
         }
