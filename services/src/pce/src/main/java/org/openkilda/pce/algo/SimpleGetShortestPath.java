@@ -67,6 +67,13 @@ public class SimpleGetShortestPath {
 
     }
 
+
+    /**
+     * Call this method to find a path from start to end (src_dpid to dst_dpid), particularly if you
+     * have no idea if the path exists or what the best path is.
+     *
+     * @return An ordered list that represents the path from start to end.
+     */
     public LinkedList<SimpleIsl> getPath() {
         LinkedList<SimpleIsl> result = new LinkedList<>();
         HashMap<SimpleSwitch, SearchNode> toVisitLookup = new HashMap<>();  // constant lookup
@@ -77,15 +84,8 @@ public class SimpleGetShortestPath {
         toVisit.add(toVisitLookup.get(start));
         while (toVisit.size() > 0){
             SearchNode current = toVisit.pop();
-            SearchNode prior = visited.get(current.dst_sw);
-            if (prior != null) {
-                // We've already visited this one .. keep going only if this is cheaper
-                if (current.parentCost >= prior.parentCost)
-                    continue;
-            }
-            // Either this is the first time, or this is cheaper .. either way, put this one in
-            visited.put(current.dst_sw, current);
 
+            // Determine if this node is the destination node.
             if (current.dst_sw.equals(end)) {
                 // We found the destination
                 if (current.parentCost < bestCost) {
@@ -98,8 +98,19 @@ public class SimpleGetShortestPath {
                 continue;
             }
 
+            // Otherwise, if we've been here before, see if this path is better
+            SearchNode prior = visited.get(current.dst_sw);
+            if (prior != null) {
+                // We've already visited this one .. keep going only if this is cheaper
+                if (current.parentCost >= prior.parentCost)
+                    continue;
+            }
+            // Either this is the first time, or this is cheaper .. either way, this node should
+            // be the one in the visited list
+            visited.put(current.dst_sw, current);
+
+            // Stop processing entirely if we've gone too far, or over bestCost
             if (current.allowedDepth < 0 || current.parentCost > bestCost)
-                // Stop processing entirely if we've gone too far, or over bestCost
                 continue;
 
             // At this stage .. haven't found END, haven't gone too deep, and we are not over cost.
@@ -117,6 +128,29 @@ public class SimpleGetShortestPath {
         return result;
     }
 
+
+    /**
+     * This is generally called after getPath() to find the path back.  The path back could be
+     * asymmetric. The hint will be used to determine if it exists.  If it does, then use it as
+     * the start bestCost and bestPath.  That should help speed things along.
+     *
+     * Whereas it's possible that could build up the SearchNodes for this path (if found) and put
+     * them into the visited bucket, we'll start without that optimization and decide later whether
+     * adding it provides any efficiencies
+     *
+     * @param hint The path to use as a starting point. It can be in reverse order (we'll reverse it)
+     * @return An ordered list that represents the path from start to end.
+     */
+    public LinkedList<SimpleIsl> getPath(LinkedList<SimpleIsl> hint) {
+        // First, see if the first and last nodes match our start and end, or whether the list
+        // needs to be reversed
+    }
+
+
+    /**
+     * This class facilitates the algorithm by collecting salient pieces of information that are
+     * necessary for tracking search data per search node.
+     */
     private class SearchNode implements Cloneable {
         SimpleSwitch dst_sw;
         int allowedDepth;
