@@ -629,10 +629,10 @@ public class CrudBolt
                             pathComputer.getPath(flow.getLeft(), Strategy.COST);
                     logger.warn("Rerouted flow {} with path: {}, correlationId {}", flowId, path.getLeft(),
                             correlationId);
-                    boolean isFoundNewPath = false;
+                    boolean isFoundNewPath = (!path.getLeft().equals(flow.getLeft().getFlowPath()) || !isFlowActive(flow));
                     //no need to emit changes if path wasn't changed and flow is active.
-                    if (!path.getLeft().equals(flow.getLeft().getFlowPath()) || !isFlowActive(flow)) {
-                        isFoundNewPath = true;
+                    //force means to update flow even if path is not changed.
+                    if (isFoundNewPath || request.isForce()) {
                         flow.getLeft().setState(FlowState.DOWN);
                         flow.getRight().setState(FlowState.DOWN);
 

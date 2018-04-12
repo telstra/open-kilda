@@ -30,6 +30,7 @@ import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.northbound.service.BatchResults;
 import org.openkilda.northbound.service.FlowService;
@@ -301,6 +302,22 @@ public class FlowController {
         return flowService.rerouteFlow(flowId);
     }
 
+    /**
+     * Initiates flow synchronization (reinstalling). In other words it means flow update with newly generated rules.
+     *
+     * @param flowId id of flow to be rerouted.
+     * @return flow payload with updated path.
+     */
+    @ApiOperation(value = "Sync flow", response = FlowReroutePayload.class)
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, response = FlowReroutePayload.class, message = "Operation is successful")})
+    @RequestMapping(path = "/flows/{flow_id}/sync",
+            method = RequestMethod.PATCH)
+    @ResponseStatus(HttpStatus.OK)
+    public FlowReroutePayload syncFlow(@PathVariable("flow_id") String flowId) {
+        logger.debug("Received sync flow request for flow {}", flowId);
+        return flowService.syncFlow(flowId);
+    }
 
     /**
      * Compares the Flow from the DB to what is on each switch.

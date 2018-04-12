@@ -58,23 +58,36 @@ public class FlowRerouteRequest extends CommandData {
     private FlowOperation operation;
 
     /**
+     * Update flow even if path will not be changed.
+     */
+    @JsonProperty("force")
+    private boolean force;
+
+    /**
      * Default constructor.
      */
     public FlowRerouteRequest() {
     }
 
+    public FlowRerouteRequest(Flow payload, FlowOperation operation) {
+        setPayload(payload);
+        setOperation(operation);
+    }
     /**
      * Instance constructor.
      *
      * @param payload flow operation payload
      * @param operation flow operation type
+     * @param force try to update flow even if path won't be changed.
      * @throws IllegalArgumentException if payload is null
      */
     @JsonCreator
     public FlowRerouteRequest(@JsonProperty(Utils.PAYLOAD) Flow payload,
-                              @JsonProperty("operation") FlowOperation operation) {
+                              @JsonProperty("operation") FlowOperation operation,
+                              @JsonProperty("force") boolean force) {
         setPayload(payload);
         setOperation(operation);
+        setForce(force);
     }
 
     /**
@@ -114,6 +127,14 @@ public class FlowRerouteRequest extends CommandData {
      */
     public void setOperation(FlowOperation operation) {
         this.operation = operation;
+    }
+
+    public boolean isForce() {
+        return force;
+    }
+
+    public void setForce(boolean force) {
+        this.force = force;
     }
 
     /**
