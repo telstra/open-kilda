@@ -13,19 +13,9 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.stats;
+package org.openkilda.messaging.info.discovery;
 
-/**
- * Represents components used in {@link StatsTopology}.
- */
-public enum StatsComponentType {
-    STATS_OFS_KAFKA_SPOUT,
-    STATS_OFS_BOLT,
-    PORT_STATS_METRIC_GEN,
-    METER_CFG_STATS_METRIC_GEN,
-    FLOW_STATS_METRIC_GEN,
-    ERROR_BOLT,
-    STATS_CACHE_BOLT,
-    STATS_KILDA_SPEAKER_SPOUT,
-    STATS_CACHE_FILTER_BOLT
+import org.openkilda.messaging.info.InfoData;
+
+public class NetworkSyncEndMarker extends InfoData {
 }

@@ -164,8 +164,7 @@ public class OFELinkBoltTest extends AbstractStormTest {
                 new HashSet<>(Arrays.asList(sw1, sw2)),
                 new HashSet<>(Arrays.asList(sw1Port1, sw2Port1)),
                 Collections.emptySet(),
-                Collections.emptySet(),
-                null);
+                Collections.emptySet());
 
         InfoMessage info = new InfoMessage(dump, 0, DEFAULT_CORRELATION_ID, Destination.WFM);
         String request = objectMapper.writeValueAsString(info);
@@ -191,8 +190,7 @@ public class OFELinkBoltTest extends AbstractStormTest {
                 "test", Collections.emptySet(),
                 Collections.emptySet(),
                 Collections.emptySet(),
-                Collections.emptySet(),
-                null);
+                Collections.emptySet());
 
         InfoMessage info = new InfoMessage(dump, 0, DEFAULT_CORRELATION_ID, Destination.WFM);
         String request = objectMapper.writeValueAsString(info);

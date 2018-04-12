@@ -13,13 +13,14 @@
 #   limitations under the License.
 #
 
-FROM kilda/base-floodlight
+FROM kilda/base-ubuntu
 
 ADD src/main/resources/floodlightkilda.properties /app
 ADD src/main/resources/logback.xml /app
-ADD target/floodlight-modules.jar /app/floodlight-modules/target/
+ADD run-deps/floodlight.jar /app/floodlight.jar
+ADD target/floodlight-modules.jar /app/floodlight-modules.jar
 
 CMD ["java", "-Dlogback.configurationFile=/app/logback.xml", "-cp", \
-     "/app/floodlight/target/floodlight.jar:/app/floodlight-modules/target/floodlight-modules.jar", \
+     "/app/floodlight.jar:/app/floodlight-modules.jar", \
      "net.floodlightcontroller.core.Main", "-cf", "/app/floodlightkilda.properties"]
 

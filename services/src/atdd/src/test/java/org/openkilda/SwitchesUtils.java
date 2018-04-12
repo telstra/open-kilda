@@ -138,7 +138,7 @@ public final class SwitchesUtils {
     /**
      * Delete switch rules through Northbound service.
      */
-    public static List<Long> deleteSwitchRules(String switchId, DeleteRulesAction defaultRules) {
+    public static List<Long> deleteSwitchRules(String switchId, DeleteRulesAction deleteAction) {
         System.out.println("\n==> Northbound Delete Switch Rules");
 
         Client client = ClientBuilder.newClient(new ClientConfig());
@@ -148,7 +148,7 @@ public final class SwitchesUtils {
                 .path("/api/v1/switches/")
                 .path("{switch-id}")
                 .path("rules")
-                .queryParam("defaultRules", defaultRules)
+                .queryParam("delete-action", deleteAction)
                 .resolveTemplate("switch-id", switchId)
 
                 .request(MediaType.APPLICATION_JSON)

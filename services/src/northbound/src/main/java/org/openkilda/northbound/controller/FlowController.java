@@ -30,6 +30,7 @@ import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.northbound.service.BatchResults;
 import org.openkilda.northbound.service.FlowService;
@@ -65,6 +66,7 @@ import java.util.Optional;
 @PropertySource("classpath:northbound.properties")
 @Api
 @ApiResponses(value = {
+        @ApiResponse(code = 200, message = "Operation is successful"),
         @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
         @ApiResponse(code = 401, response = MessageError.class, message = "Unauthorized"),
         @ApiResponse(code = 403, response = MessageError.class, message = "Forbidden"),
@@ -90,7 +92,6 @@ public class FlowController {
      * @return flow
      */
     @ApiOperation(value = "Creates new flow", response = FlowPayload.class)
-    @ApiResponse(code = 200, response = FlowPayload.class, message = "Operation is successful")
     @RequestMapping(
             value = "/flows",
             method = RequestMethod.PUT,
@@ -108,7 +109,6 @@ public class FlowController {
      * @return flow
      */
     @ApiOperation(value = "Gets flow", response = FlowPayload.class)
-    @ApiResponse(code = 200, response = FlowPayload.class, message = "Operation is successful")
     @RequestMapping(
             value = "/flows/{flow-id}",
             method = RequestMethod.GET,
@@ -126,7 +126,6 @@ public class FlowController {
      * @return flow
      */
     @ApiOperation(value = "Deletes flow", response = FlowPayload.class)
-    @ApiResponse(code = 200, response = FlowPayload.class, message = "Operation is successful")
     @RequestMapping(
             value = "/flows/{flow-id}",
             method = RequestMethod.DELETE,
@@ -145,7 +144,6 @@ public class FlowController {
      * @return flow
      */
     @ApiOperation(value = "Updates flow", response = FlowPayload.class)
-    @ApiResponse(code = 200, response = FlowPayload.class, message = "Operation is successful")
     @RequestMapping(
             value = "/flows/{flow-id}",
             method = RequestMethod.PUT,
@@ -163,8 +161,7 @@ public class FlowController {
      *
      * @return list of flow
      */
-    @ApiOperation(value = "Dumps all flows", response = FlowPayload.class)
-    @ApiResponse(code = 200, response = FlowPayload.class, responseContainer = "List", message = "Operation is successful")
+    @ApiOperation(value = "Dumps all flows", response = FlowPayload.class, responseContainer = "List")
     @RequestMapping(
             value = "/flows",
             method = RequestMethod.GET,
@@ -180,8 +177,8 @@ public class FlowController {
      *
      * @return list of flows that have been deleted
      */
-    @ApiOperation(value = "Delete all flows. Requires special authorization", response = FlowPayload.class)
-    @ApiResponse(code = 200, response = FlowPayload.class, responseContainer = "List", message = "Operation is successful")
+    @ApiOperation(value = "Delete all flows. Requires special authorization", response = FlowPayload.class,
+            responseContainer = "List")
     @RequestMapping(
             value = "/flows",
             method = RequestMethod.DELETE,
@@ -211,8 +208,6 @@ public class FlowController {
      * @return list of flow
      */
     @ApiOperation(value = "Gets flow status", response = FlowIdStatusPayload.class)
-    @ApiResponses(value = {
-            @ApiResponse(code = 200, response = FlowIdStatusPayload.class, message = "Operation is successful")})
     @RequestMapping(
             value = "/flows/status/{flow-id}",
             method = RequestMethod.GET,
@@ -229,8 +224,6 @@ public class FlowController {
      * @return list of flow
      */
     @ApiOperation(value = "Gets flow path", response = FlowPathPayload.class)
-    @ApiResponses(value = {
-            @ApiResponse(code = 200, response = FlowPathPayload.class, message = "Operation is successful")})
     @RequestMapping(
             value = "/flows/path/{flow-id}", method = RequestMethod.GET,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
@@ -247,9 +240,8 @@ public class FlowController {
      * @param externalFlows a list of flows to push to kilda for it to absorb without expectation of creating the flow rules
      * @return list of flow
      */
-    @ApiOperation(value = "Push flows without expectation of modifying switches. It can push to switch and validate.", response = BatchResults.class)
-    @ApiResponses(value = {
-            @ApiResponse(code = 200, response = BatchResults.class, message = "Operation is successful")})
+    @ApiOperation(value = "Push flows without expectation of modifying switches. It can push to switch and validate.",
+            response = BatchResults.class)
     @RequestMapping(path = "/push/flows",
             method = RequestMethod.PUT,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
@@ -275,9 +267,8 @@ public class FlowController {
      * @param externalFlows a list of flows to unpush without propagation to Floodlight
      * @return list of flow
      */
-    @ApiOperation(value = "Unpush flows without expectation of modifying switches. It can push to switch and validate.", response = BatchResults.class)
-    @ApiResponses(value = {
-            @ApiResponse(code = 200, response = BatchResults.class, message = "Operation is successful")})
+    @ApiOperation(value = "Unpush flows without expectation of modifying switches. It can push to switch and validate.",
+            response = BatchResults.class)
     @RequestMapping(path = "/unpush/flows",
             method = RequestMethod.PUT,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
@@ -303,8 +294,6 @@ public class FlowController {
      * @return flow payload with updated path.
      */
     @ApiOperation(value = "Reroute flow", response = FlowPathPayload.class)
-    @ApiResponses(value = {
-            @ApiResponse(code = 200, response = FlowPathPayload.class, message = "Operation is successful")})
     @RequestMapping(path = "/flows/{flow_id}/reroute",
             method = RequestMethod.PATCH)
     @ResponseStatus(HttpStatus.OK)
@@ -313,6 +302,22 @@ public class FlowController {
         return flowService.rerouteFlow(flowId);
     }
 
+    /**
+     * Initiates flow synchronization (reinstalling). In other words it means flow update with newly generated rules.
+     *
+     * @param flowId id of flow to be rerouted.
+     * @return flow payload with updated path.
+     */
+    @ApiOperation(value = "Sync flow", response = FlowReroutePayload.class)
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, response = FlowReroutePayload.class, message = "Operation is successful")})
+    @RequestMapping(path = "/flows/{flow_id}/sync",
+            method = RequestMethod.PATCH)
+    @ResponseStatus(HttpStatus.OK)
+    public FlowReroutePayload syncFlow(@PathVariable("flow_id") String flowId) {
+        logger.debug("Received sync flow request for flow {}", flowId);
+        return flowService.syncFlow(flowId);
+    }
 
     /**
      * Compares the Flow from the DB to what is on each switch.
@@ -322,8 +327,6 @@ public class FlowController {
      */
     @ApiOperation(value = "Validate flow, comparing the DB to each switch", response = FlowValidationDto.class,
             responseContainer = "List")
-    @ApiResponses(value = {
-            @ApiResponse(code = 200, response = FlowValidationDto.class, message = "Operation is successful")})
     @RequestMapping(path = "/flows/{flow_id}/validate",
             method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
@@ -354,8 +357,6 @@ public class FlowController {
      * @return a detailed response of the sync operation (added, deleted, modified, unchanged flows)
      */
     @ApiOperation(value = "Sync Flow Cache(s)", response = FlowCacheSyncResults.class)
-    @ApiResponses(value = {
-            @ApiResponse(code = 200, response = FlowCacheSyncResults.class, message = "Operation is successful")})
     @RequestMapping(path = "/flows/cachesync",
             method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
@@ -371,8 +372,6 @@ public class FlowController {
      * @return a response of the invalidate operation
      */
     @ApiOperation(value = "Invalidate (purge) Flow Cache(s)", response = FlowCacheSyncResults.class)
-    @ApiResponses(value = {
-            @ApiResponse(code = 200, response = FlowCacheSyncResults.class, message = "Operation is successful")})
     @DeleteMapping(path = "/flows/cache")
     @ResponseStatus(HttpStatus.OK)
     public FlowCacheSyncResults invalidateFlowCache() {
@@ -386,8 +385,6 @@ public class FlowController {
      * @return a detailed response of the refresh operation (added, deleted, modified, unchanged flows)
      */
     @ApiOperation(value = "Refresh Flow Cache(s)", response = FlowCacheSyncResults.class)
-    @ApiResponses(value = {
-            @ApiResponse(code = 200, response = FlowCacheSyncResults.class, message = "Operation is successful")})
     @PatchMapping(path = "/flows/cache")
     @ResponseStatus(HttpStatus.OK)
     public FlowCacheSyncResults refreshFlowCache() {

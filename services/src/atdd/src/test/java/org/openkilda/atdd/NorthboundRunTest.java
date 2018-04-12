@@ -17,6 +17,7 @@ package org.openkilda.atdd;
 
 
 import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.Matchers.hasItems;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
@@ -31,6 +32,7 @@ import org.openkilda.flow.FlowUtils;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
@@ -41,6 +43,7 @@ import org.openkilda.northbound.dto.switches.RulesValidationResult;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class NorthboundRunTest {
     private static final FlowState expectedFlowStatus = FlowState.UP;
@@ -163,5 +166,25 @@ public class NorthboundRunTest {
 
         assertEquals("Switch doesn't have expected installed rules.", installedRulesCount,
                 validateResult.getInstalledRules().size());
+
+      
+    // TODO - during merge conflict, this was in the prior commit .. is it still used?
+    @Then("^(.*) rules are installed on (.*) switch$")
+    public void checkThatRulesAreInstalled(String ruleCookies, String switchId) {
+        List<FlowEntry> actualRules = SwitchesUtils.dumpSwitchRules(switchId);
+        assertNotNull(actualRules);
+        List<String> actualRuleCookies = actualRules.stream()
+                .map(entry -> Long.toHexString(entry.getCookie()))
+                .collect(Collectors.toList());
+
+        assertThat("Switch doesn't contain expected rules.", actualRuleCookies, hasItems(ruleCookies.split(",")));
+    }
+
+    // TODO - during merge conflict, this was in the prior commit .. is it still used?
+    @Then("No rules installed on (.*) switch$")
+    public void checkThatNoRulesAreInstalled(String switchId) {
+        List<FlowEntry> actualRules = SwitchesUtils.dumpSwitchRules(switchId);
+        assertNotNull(actualRules);
+        assertTrue("Switch contains rules, but expect to have none.", actualRules.isEmpty());
     }
 }

@@ -15,6 +15,9 @@
 
 package org.openkilda.northbound.controller;
 
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiResponse;
+import io.swagger.annotations.ApiResponses;
 import org.openkilda.messaging.payload.FeatureTogglePayload;
 import org.openkilda.northbound.service.FeatureTogglesService;
 
@@ -35,12 +38,16 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/features")
 @PropertySource("classpath:northbound.properties")
+@Api
 public class FeatureTogglesController {
 
     @Autowired
     private FeatureTogglesService featureTogglesService;
 
     @ApiOperation(value = "Toggle kilda features")
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, message = "Operation is successful")
+    })
     @RequestMapping(method = RequestMethod.POST)
     @ResponseStatus(HttpStatus.OK)
     public void toggleFeatures(@RequestBody FeatureTogglePayload request) {
@@ -48,6 +55,9 @@ public class FeatureTogglesController {
     }
 
     @ApiOperation(value = "Get states of feature toggles", response = FeatureTogglePayload.class)
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, message = "Operation is successful")
+    })
     @GetMapping
     @ResponseStatus(HttpStatus.OK)
     public FeatureTogglePayload getFeatureTogglesState() {
