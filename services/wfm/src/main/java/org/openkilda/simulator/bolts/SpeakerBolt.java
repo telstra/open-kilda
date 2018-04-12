@@ -316,7 +316,7 @@ public class SpeakerBolt extends BaseRichBolt {
                     doSimulatorCommand(tuple);
                     break;
                 default:
-                    logger.error("tuple from unknown source: {}", tupleSource);
+                    logger.error("tuple from UNKNOWN source: {}", tupleSource);
             }
         } catch (Exception e) {
             logger.error(e.toString());

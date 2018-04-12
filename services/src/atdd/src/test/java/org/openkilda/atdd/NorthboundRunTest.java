@@ -16,8 +16,10 @@
 package org.openkilda.atdd;
 
 
+import static org.hamcrest.Matchers.hasItems;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.openkilda.flow.FlowUtils.getHealthCheck;
 
@@ -29,6 +31,7 @@ import org.openkilda.flow.FlowUtils;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
@@ -37,6 +40,7 @@ import org.openkilda.messaging.payload.flow.FlowState;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class NorthboundRunTest {
     private static final FlowState expectedFlowStatus = FlowState.UP;
@@ -125,5 +129,23 @@ public class NorthboundRunTest {
         boolean deleted = FlowUtils.deleteFlowViaTE(flowId);
 
         assertTrue(deleted);
+    }
+
+    @Then("^(.*) rules are installed on (.*) switch$")
+    public void checkThatRulesAreInstalled(String ruleCookies, String switchId) {
+        List<FlowEntry> actualRules = SwitchesUtils.dumpSwitchRules(switchId);
+        assertNotNull(actualRules);
+        List<String> actualRuleCookies = actualRules.stream()
+                .map(entry -> Long.toHexString(entry.getCookie()))
+                .collect(Collectors.toList());
+
+        assertThat("Switch doesn't contain expected rules.", actualRuleCookies, hasItems(ruleCookies.split(",")));
+    }
+
+    @Then("No rules installed on (.*) switch$")
+    public void checkThatNoRulesAreInstalled(String switchId) {
+        List<FlowEntry> actualRules = SwitchesUtils.dumpSwitchRules(switchId);
+        assertNotNull(actualRules);
+        assertTrue("Switch contains rules, but expect to have none.", actualRules.isEmpty());
     }
 }

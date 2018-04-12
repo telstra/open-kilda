@@ -78,7 +78,7 @@ public class ErrorBolt extends BaseRichBolt {
                     outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
                     break;
                 default:
-                    logger.debug("Skip message from unknown component: component={}, stream={}, error-type={}",
+                    logger.debug("Skip message from UNKNOWN component: component={}, stream={}, error-type={}",
                             componentId, streamId, errorType);
                     break;
             }

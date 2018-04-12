@@ -9,6 +9,34 @@
  * @return {/switch/flows} will return flow details
  */
 
+var cookie = new function() {
+    this.set = function ( name, value, days ) {
+        var expires = "";
+        days = typeof days !== 'undefined' ? days : 10;
+        if ( days ) {
+            var date = new Date();
+            date.setTime( date.getTime() + ( days * 24 * 60 * 60 * 1000 ) );
+            expires = "; expires=" + date.toGMTString();
+        }
+        document.cookie = name + "=" + value + expires + "; path=/";
+    };
+
+    this.get = function ( name ) {
+        var nameEQ = name + "=";
+        var ca = document.cookie.split( ';' );
+        for ( var i = 0; i < ca.length; i++ ) {
+            var c = ca[ i ];
+            while ( c.charAt(0) == ' ' ) c = c.substring( 1, c.length );
+            if ( c.indexOf( nameEQ ) == 0 ) return c.substring( nameEQ.length, c.length );
+        }
+        return null;
+    };
+
+    this.delete = function ( name ) {
+        this.set( name, "", -1 );
+    };
+}
+
 /** ajax call to switch api to get switch details */
 
 var responseData = [];
@@ -18,6 +46,17 @@ var ISL = {
     FAILED :  "#d93923",
     UNIDIR : "#333"
 };
+
+var RIGHT_CHECKBOXES = {
+	SWITCH_CHECKED: 0,
+	ISL_CHECKED: 1,
+	FLOW_CHECKED: 0
+}	
+
+var cookieCheckboxes = cookie.get( 'RIGHT_CHECKBOXES');
+if(cookieCheckboxes == null){
+	cookie.set( 'RIGHT_CHECKBOXES', JSON.stringify(RIGHT_CHECKBOXES), 365 );
+}
 
 var api = {
 	getSwitches: function(){
@@ -121,25 +160,17 @@ zoom = d3.behavior.zoom()
 	.scaleExtent([min_zoom, max_zoom])
 	//.on("zoom", redraw);
 //create force layout
-force = d3.layout.force()
-	.charge(-2000)
-	.linkDistance(function(d) { 
-		var distance = 150;
-		try{
-			if(!d.flow_count){
-				distance = d.latency + 50;
-			}
-		}catch(e){}
-        return distance;  
-    })
+/*force = d3.layout.force()
+    .charge(-2090)
+    .linkDistance(200)
 	.size([width, height])
 	.on("tick", tick);
-
 
 
 drag = force.drag()
 	.on("dragstart", dragstart)
 	.on("dragend", dragend);
+*/
 svg = d3.select("#switchesgraph").append("svg")
 	.attr("width", width)
 	.attr("height", height)
@@ -221,11 +252,22 @@ graph = {
 			linkedByIndex[d.source + "," + d.target] = true;
 		});
 		
-		force
-			.nodes(nodes)
-			.links(links)
-			.start();
 		
+		force = self.force = d3.layout.force()
+        .nodes(nodes)
+        .links(links)
+        .gravity(.05)
+        .charge(-2090)
+       	.linkDistance(200)
+       	.size([width, height])
+        .start();
+		
+		
+		drag = d3.behavior.drag()
+	        .on("dragstart", dragstart)
+	        .on("drag", dragmove)
+	        .on("dragend", dragend);
+		 
 		resize();
 		//window.focus();
 		d3.select(window).on("resize", resize);
@@ -246,6 +288,9 @@ graph = {
 	        return "link" + index;
 	    })
 	    .on("mouseover", function(d, index) {
+	    	
+	    	$('#switch_hover').css('display', 'none');
+			
 	        var element = $("#link" + index)[0];	
 	        if (d.hasOwnProperty("flow_count")) {
 	        	element.setAttribute("class", "link logical overlay");
@@ -253,8 +298,29 @@ graph = {
 	            if (d.unidirectional || d.state && d.state.toLowerCase()== "failed"){
                     element.setAttribute("class","link physical pathoverlay");
                 }else{
-	        	element.setAttribute("class","link physical overlay");
+                	element.setAttribute("class","link physical overlay");
                 }
+	            
+	            var rec = element.getBoundingClientRect();
+			    $('#topology-hover-txt, #isl_hover').css('display', 'block');
+			    $('#topology-hover-txt').css('top', rec.y + 'px');
+			    $('#topology-hover-txt').css('left', rec.x + 'px');
+			    
+			    d3.select(".isldetails_div_source_port").html("<span>" + d.src_port + "</span>");
+			    d3.select(".isldetails_div_destination_port").html("<span>" + d.dst_port + "</span>");
+			    d3.select(".isldetails_div_source_switch_name").html("<span>" + d.source_switch_name + "</span>");
+			    d3.select(".isldetails_div_destination_switch_name").html("<span>" + d.target_switch_name + "</span>");
+			    d3.select(".switchdetails_div_speed").html("<span>" + d.speed/1000 + " Mbps</span>");
+			    d3.select(".switchdetails_div_state").html("<span>" + d.state + "</span>");
+			    d3.select(".switchdetails_div_bandwidth").html("<span>" + d.available_bandwidth/1000 + " Mbps</span>");
+			    var bound = HorizontallyBound(document.getElementById("switchesgraph"), document.getElementById("topology-hover-txt"));
+			    if(bound){
+			    	$("#topology-hover-txt").removeClass("left");
+			    }else{
+			    	var left = rec.x - (300 + 100); // subtract width of tooltip box + circle radius
+			    	$('#topology-hover-txt').css('left', left + 'px');
+			    	$("#topology-hover-txt").addClass("left");
+			    }
 	        }
 	    }).on("mouseout", function(d, index) {
 	        var element = $("#link" + index)[0];
@@ -267,6 +333,10 @@ graph = {
 	                element.setAttribute("class","link physical");
 	            }
 	        }
+	        
+	        if (!$('#topology-hover-txt').is(':hover')) {
+	    		$('#topology-hover-txt, #isl_hover').css('display', 'none');
+	    	}
 	    }).on("click", function(d, index) {
             var element = $("#link" + index)[0];
             if (d.hasOwnProperty("flow_count")) {
@@ -355,6 +425,9 @@ graph = {
 		    }
 		
 		}).on("mouseover", function(d, index) {
+			
+			$('#isl_hover').css('display', 'none');
+			
 		    var cName = document.getElementById("circle_" + d.switch_id).className;
 		    circleClass = cName.baseVal;
 		
@@ -366,7 +439,7 @@ graph = {
 			}
 		    element.setAttribute("class", classes);
 		    var rec = element.getBoundingClientRect();
-		    $('#topology-hover-txt').css('display', 'block');
+		    $('#topology-hover-txt, #switch_hover').css('display', 'block');
 		    $('#topology-hover-txt').css('top', rec.y + 'px');
 		    $('#topology-hover-txt').css('left', rec.x + 'px');
 		
@@ -384,8 +457,7 @@ graph = {
 		    	$("#topology-hover-txt").addClass("left");
 		    }
 		}).on("mouseout", function(d, index) {
-			$('#topology-hover-txt').css('display', 'none');
-		    if (flagHover == false) {
+			if (flagHover == false) {
 		        flagHover = true;
 		    }
 		    else{
@@ -396,6 +468,9 @@ graph = {
 				}
 			    element.setAttribute("class", classes);
 		    }
+		    if (!$('#topology-hover-txt').is(':hover')) {
+	    		$('#topology-hover-txt, #switch_hover').css('display', 'none');
+	    	}
 		});
 		flow_count = svg.selectAll(".flow_count")
 	    	.data(links)
@@ -481,6 +556,20 @@ graph = {
 				zoomFit(0.95, 500);
 			}
 		});
+		
+		force.on("tick", tick);
+
+		/* Hide Flows */
+		
+		var storageValue = cookie.get('RIGHT_CHECKBOXES');
+		if(storageValue != null){
+			try{
+				storageValue = JSON.parse(storageValue);
+				updateRightPanel(storageValue);
+			}catch(e){
+				updateRightPanel(storageValue);
+			}
+		}
 	}	
 }
 function sortLinks() {
@@ -670,24 +759,26 @@ function dblclick(d,index) {
 function dragstart(d) {
 	force.stop()
 	d3.event.sourceEvent.stopPropagation();
-	d3.select(this).classed("fixed", d.fixed = true);
+	//d3.select(this).classed("fixed", d.fixed = true);
 }
-function dragend(d, index) {
+function dragmove(d, i) {
+    d.px += d3.event.dx;
+    d.py += d3.event.dy;
+    d.x += d3.event.dx;
+    d.y += d3.event.dy; 
+    tick(); // this is the key to make it work together with updating both px,py,x,y on d !
+}
+
+function dragend(d, i) {
 	flagHover = false;
-	d.fixed = true;
+	d.fixed = true; // of course set the node to fixed so the force doesn't include the node in its auto positioning stuff
     tick();
-    force.resume();
-    // d3.event.sourceEvent.stopPropagation();
+ //   force.resume();
 }
-$("#showDetail").on("click", function(){
+
+$("#switch").on("click", function(){
 	checked = $('input[name="switch"]:checked').length; 
-	var element = $(".switchname");
-	
-	if(checked){
-		element.addClass("show").removeClass("hide");
-	}else{
-		element.removeClass("show").addClass("hide");
-	}
+	updateRightPanel({SWITCH_CHECKED : checked});
 });
 
 function zoomFit(paddingPercent, transitionDuration) {
@@ -824,35 +915,21 @@ function searchNode(value) {
 
 $('.isl_flow').click(function(e){
 	var id = $(this).attr("id");
-	var duration = 500;
 	var isLogicalChecked = $('#logical:checked').length; 
 	var isPhysicalChecked = $('#physical:checked').length; 
 	if(id == "logical"){
-		if(isLogicalChecked){
-			d3.selectAll(".logical,.flow-circle").transition()
-	            .duration(duration)
-	            .style("opacity", 1);
-		}else{
-			d3.selectAll(".logical,.flow-circle").transition()
-	            .duration(duration)
-	            .style("opacity", 0);
-		}
+		updateRightPanel({FLOW_CHECKED : isLogicalChecked});
 	}
 	if(id == "physical"){
-		if(isPhysicalChecked){
-			d3.selectAll(".physical").transition()
-	            .duration(duration)
-	            .style("opacity", 1);
-		}else{
-			d3.selectAll(".physical").transition()
-	            .duration(duration)
-	            .style("opacity", 0);
-		}
+		updateRightPanel({ISL_CHECKED : isPhysicalChecked});
 	}
 	
 });
 
 $(document).ready(function() {
+	$('body').on("click", function() { 
+		$('#topology-hover-txt').css('display', 'none');
+    });
 	$('body').css('pointer-events', 'all');
 });
 
@@ -891,6 +968,55 @@ $.fn.enterKey = function (fnc) {
         })
     })
 }
+
+function updateRightPanel(obj){
+	/*var storageValue = cookie.get('RIGHT_CHECKBOXES');
+	if(storageValue != null){
+		try{
+			storageValue = JSON.parse(storageValue);
+		}catch(e){}
+		
+	}*/
+	var duration = 500;
+	if(obj.hasOwnProperty("SWITCH_CHECKED")){
+		RIGHT_CHECKBOXES.SWITCH_CHECKED = obj.SWITCH_CHECKED;
+		$("#switch").attr("checked", !!obj.SWITCH_CHECKED);
+		var element = $(".switchname");
+		if(obj.SWITCH_CHECKED){
+			element.addClass("show").removeClass("hide");
+		}else{
+			element.removeClass("show").addClass("hide");
+		}
+	}
+	if(obj.hasOwnProperty("ISL_CHECKED")){
+		RIGHT_CHECKBOXES.ISL_CHECKED = obj.ISL_CHECKED;
+		$("#physical").attr("checked", !!obj.ISL_CHECKED);
+		if(obj.ISL_CHECKED){
+			d3.selectAll(".physical").transition()
+	            .duration(duration)
+	            .style("opacity", 1);
+		}else{
+			d3.selectAll(".physical").transition()
+	            .duration(duration)
+	            .style("opacity", 0);
+		}
+	}
+	if(obj.hasOwnProperty("FLOW_CHECKED")){
+		RIGHT_CHECKBOXES.FLOW_CHECKED = obj.FLOW_CHECKED;
+		$("#logical").attr("checked", !!obj.FLOW_CHECKED);
+		if(obj.FLOW_CHECKED){
+			d3.selectAll(".logical,.flow-circle").transition()
+	            .duration(duration)
+	            .style("opacity", 1);
+		}else{
+			d3.selectAll(".logical,.flow-circle").transition()
+	            .duration(duration)
+	            .style("opacity", 0);
+		}
+	}
+	cookie.set('RIGHT_CHECKBOXES', JSON.stringify(RIGHT_CHECKBOXES));
+}
+
 
 
 /* ]]> */
