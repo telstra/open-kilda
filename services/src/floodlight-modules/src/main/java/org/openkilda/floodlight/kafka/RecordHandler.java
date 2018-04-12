@@ -356,6 +356,7 @@ class RecordHandler implements Runnable {
      * @param message NetworkCommandData
      */
     private void doNetworkDump(final CommandMessage message) {
+
         String correlationId = message.getCorrelationId();
         KafkaMessageProducer kafkaProducer = context.getKafkaProducer();
 
