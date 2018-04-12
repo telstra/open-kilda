@@ -22,7 +22,7 @@ import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
-import org.openkilda.northbound.dto.FlowValidationDto;
+import org.openkilda.northbound.dto.flows.FlowValidationDto;
 
 import java.util.List;
 
@@ -122,6 +122,13 @@ public interface FlowService extends BasicService {
      */
     FlowReroutePayload rerouteFlow(final String flowId);
 
+    /**
+     * Performs synchronization (reinstalling) of specific flow.
+     *
+     * @param flowId id of flow to be synchronized.
+     * @return updated flow.
+     */
+    FlowReroutePayload syncFlow(final String flowId);
 
     /**
      * Performs validation of specific flow - ie comparing what is in the database with what is

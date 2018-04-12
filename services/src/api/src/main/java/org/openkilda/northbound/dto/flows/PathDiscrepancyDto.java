@@ -1,10 +1,10 @@
-package org.openkilda.northbound.dto;
+package org.openkilda.northbound.dto.flows;
 
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import org.openkilda.messaging.info.event.PathNode;
 
 /**
  * PathDiscrepancyDto is used to capture differences between expected and actual values in a path.
@@ -25,7 +25,12 @@ public class PathDiscrepancyDto {
     @JsonProperty("actual_value")
     private String actualValue;
 
-    public PathDiscrepancyDto(String rule, String field, String expectedValue, String actualValue) {
+    @JsonCreator
+    public PathDiscrepancyDto(
+            @JsonProperty("rule") String rule,
+            @JsonProperty("field") String field,
+            @JsonProperty("expected_value") String expectedValue,
+            @JsonProperty("actual_value") String actualValue) {
         this.rule = rule;
         this.field = field;
         this.expectedValue = expectedValue;

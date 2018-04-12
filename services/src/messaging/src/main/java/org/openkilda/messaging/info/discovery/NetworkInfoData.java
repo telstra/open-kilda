@@ -80,9 +80,6 @@ public class NetworkInfoData extends InfoData {
     @JsonProperty("flows")
     private Set<ImmutablePair<Flow, Flow>> flows;
 
-    @JsonProperty("chunk")
-    private ChunkDescriptor chunk;
-
     /**
      * Default constructor.
      */
@@ -102,14 +99,12 @@ public class NetworkInfoData extends InfoData {
                            @JsonProperty("switches") Set<SwitchInfoData> switches,
                            @JsonProperty("ports") Set<PortInfoData> ports,
                            @JsonProperty("isls") Set<IslInfoData> isls,
-                           @JsonProperty("flows") Set<ImmutablePair<Flow, Flow>> flows,
-                           @JsonProperty("chunk") ChunkDescriptor chunk) {
+                           @JsonProperty("flows") Set<ImmutablePair<Flow, Flow>> flows) {
         this.requester = requester;
         this.switches = switches;
         this.ports = ports;
         this.isls = isls;
         this.flows = flows;
-        this.chunk = chunk;
     }
 
     /**
@@ -201,10 +196,6 @@ public class NetworkInfoData extends InfoData {
      */
     public void setFlows(Set<ImmutablePair<Flow, Flow>> flows) {
         this.flows = flows;
-    }
-
-    public ChunkDescriptor getChunk() {
-        return chunk;
     }
 
     /**

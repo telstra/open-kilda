@@ -14,6 +14,8 @@
 #
 
 import os
+import socket
+
 from py2neo import Graph
 
 import config
@@ -25,3 +27,20 @@ def create_p2n_driver():
         os.environ.get('neo4jpass') or config.get('neo4j', 'pass'),
         os.environ.get('neo4jhost') or config.get('neo4j', 'host')))
     return graph
+
+
+# neo4j monkey patching staff
+
+dummy = object()
+
+
+def create_connection(address, timeout=dummy, source_address=None):
+    if timeout is dummy:
+        timeout = config.NEO4J_SOCKET_TIMEOUT
+    return socket.create_connection(
+        address, timeout, source_address=source_address)
+
+
+# Remove endless hang after Neo4j disconnect
+import py2neo.packages.neo4j.v1.bolt
+py2neo.packages.neo4j.v1.bolt.create_connection = create_connection

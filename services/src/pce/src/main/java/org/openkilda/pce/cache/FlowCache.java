@@ -250,7 +250,7 @@ public class FlowCache extends Cache {
             // TODO: Is this really an exception? Should we just return null or empty?
             //      Feels like the caller should address this, and anticipate empty.
             throw new CacheException(ErrorType.NOT_FOUND, "Can not get flow",
-                    String.format("Flow %s not found in set %s", flowId, flowPool.keySet()));
+                    String.format("Flow %s not found", flowId));
         }
 
         return flow;

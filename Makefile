@@ -9,7 +9,6 @@ build-base: compile
 	rsync -au kilda-bins/kafka* services/kafka/tar/
 	rsync -au kilda-bins/apache-storm* services/storm/tar/
 	docker build -t kilda/base-ubuntu:latest base/kilda-base-ubuntu/
-	docker build -t kilda/base-floodlight:latest base/base-floodlight/
 	docker build -t kilda/zookeeper:latest services/zookeeper
 	docker build -t kilda/kafka:latest services/kafka
 	docker build -t kilda/hbase:latest services/hbase

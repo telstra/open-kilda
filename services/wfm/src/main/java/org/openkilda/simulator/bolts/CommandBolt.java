@@ -74,7 +74,7 @@ public class CommandBolt extends BaseRichBolt {
                 switchCommand = Commands.DO_DELETE_FLOW;
                 sw = ((RemoveFlow) data).getSwitchId();
             } else {
-                logger.error("unknown data type: {}", data.toString());
+                logger.error("UNKNOWN data type: {}", data.toString());
                 throw new Exception("Unknown command {}".format(data.getClass().getSimpleName()));
             }
             List<Integer> taskIDs = collector.emit(SimulatorTopology.COMMAND_BOLT_STREAM, tuple,

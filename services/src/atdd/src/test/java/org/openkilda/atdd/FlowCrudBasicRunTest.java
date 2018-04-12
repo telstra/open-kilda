@@ -15,6 +15,10 @@
 
 package org.openkilda.atdd;
 
+import static java.lang.String.format;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.Matchers.not;
 import static org.openkilda.DefaultParameters.trafficEndpoint;
 import static org.openkilda.DefaultParameters.mininetEndpoint;
 import static org.openkilda.flow.FlowUtils.getTimeDuration;
@@ -31,6 +35,7 @@ import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.topo.TopologyHelp;
 
 import cucumber.api.java.en.Given;
@@ -110,7 +115,7 @@ public class FlowCrudBasicRunTest {
         FlowPayload flow = FlowUtils.getFlow(FlowUtils.getFlowName(flowId));
         assertNotNull(flow);
 
-        System.out.println(String.format("===> Flow was created at %s\n", flow.getLastUpdated()));
+        System.out.println(format("===> Flow was created at %s\n", flow.getLastUpdated()));
 
         assertEquals(FlowUtils.getFlowName(flowId), flow.getId());
         assertEquals(sourceSwitch, flow.getSource().getSwitchDpId());
@@ -164,6 +169,30 @@ public class FlowCrudBasicRunTest {
         assertEquals(expectedFlowCount, actualFlowCount);
     }
 
+    @Then("^validation of flow (.*) is successful with no discrepancies$")
+    public void checkRulesInstalled(final String flowName) {
+        String flowId = FlowUtils.getFlowName(flowName);
+        List<FlowValidationDto> flowValidationResult = FlowUtils.validateFlow(flowId);
+
+        flowValidationResult.forEach(flowValidation -> {
+            assertEquals(flowId, flowValidation.getFlowId());
+            assertTrue(format("The flow %s didn't pass validation.", flowId), flowValidation.getAsExpected());
+            assertThat("The flow has discrepancies.", flowValidation.getDiscrepancies(), empty());
+        });
+    }
+
+    @Then("^validation of flow (.*) has passed and discrepancies are found$")
+    public void checkRulesHaveDiscrepancies(final String flowName) {
+        String flowId = FlowUtils.getFlowName(flowName);
+        List<FlowValidationDto> flowValidationResult = FlowUtils.validateFlow(flowId);
+
+        flowValidationResult.forEach(flowValidation -> {
+            assertEquals(flowId, flowValidation.getFlowId());
+            assertFalse(format("The flow %s pass validation.", flowId), flowValidation.getAsExpected());
+            assertThat("The flow has no discrepancies.", flowValidation.getDiscrepancies(), not(empty()));
+        });
+    }
+
     @Then("^rules with (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) are installed$")
     public void checkRulesInstall(final String sourceSwitch, final int sourcePort, final int sourceVlan,
                                   final String destinationSwitch, final int destinationPort, final int destinationVlan,
@@ -208,7 +237,7 @@ public class FlowCrudBasicRunTest {
             String to = "0000000" + (toNum + 1);
             int fromPort = from.equals("00000001") ? 1 : 2;
             int toPort = 1;
-            System.out.println(String.format("from:%s:%d::%d via %s, To:%s:%d::%d via %s",
+            System.out.println(format("from:%s:%d::%d via %s, To:%s:%d::%d via %s",
                     from,fromPort,sourceVlan,sourceSwitch,
                     to,toPort,destinationVlan,destSwitch));
 
@@ -225,8 +254,8 @@ public class FlowCrudBasicRunTest {
                     .request()
                     .get();
 
-            System.out.println(String.format("======> Response = %s", result.toString()));
-            System.out.println(String.format("======> Send traffic Time: %,.3f", getTimeDuration(current)));
+            System.out.println(format("======> Response = %s", result.toString()));
+            System.out.println(format("======> Send traffic Time: %,.3f", getTimeDuration(current)));
 
             return result.getStatus();
         } else {
@@ -259,7 +288,7 @@ public class FlowCrudBasicRunTest {
             String to = "0000000" + (toNum + 1);
             int fromPort = from.equals("00000001") ? 1 : 2;
             int toPort = 1;
-            System.out.println(String.format("from:%s:%d::%d via %s, To:%s:%d::%d via %s",
+            System.out.println(format("from:%s:%d::%d via %s, To:%s:%d::%d via %s",
                     from,fromPort,sourceVlan,sourceSwitch,
                     to,toPort,destinationVlan,destSwitch));
 
@@ -278,8 +307,8 @@ public class FlowCrudBasicRunTest {
 
             int status = result.getStatus();
             String body = result.readEntity(String.class);
-            System.out.println(String.format("======> Response = %s, BODY = %s", result.toString(), body));
-            System.out.println(String.format("======> Send traffic Time: %,.3f", getTimeDuration(current)));
+            System.out.println(format("======> Response = %s, BODY = %s", result.toString(), body));
+            System.out.println(format("======> Send traffic Time: %,.3f", getTimeDuration(current)));
 
             if (body.equals("NOOP"))
                 return expectedStatus;
@@ -373,7 +402,7 @@ public class FlowCrudBasicRunTest {
         if (expectedFlowsCount >= 0) {
             int arbitraryCount = 3;
             for (int i = 0; i < arbitraryCount; i++) {
-                System.out.println(String.format("\n=====> Flow Count is %d, expecting %d",
+                System.out.println(format("\n=====> Flow Count is %d, expecting %d",
                         flows.size(), expectedFlowsCount));
                 if (expectedFlowsCount == flows.size()) {
                     break;
@@ -382,7 +411,7 @@ public class FlowCrudBasicRunTest {
                 flows = FlowUtils.dumpFlows();
             }
             if (expectedFlowsCount != flows.size()) {
-                System.out.println(String.format("\n=====> FLOW COUNT doesn't match, flows: %s",
+                System.out.println(format("\n=====> FLOW COUNT doesn't match, flows: %s",
                         flows.toString()));
             }
         }

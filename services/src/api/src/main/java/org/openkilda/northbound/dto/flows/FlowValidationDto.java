@@ -1,10 +1,9 @@
-package org.openkilda.northbound.dto;
+package org.openkilda.northbound.dto.flows;
 
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import org.openkilda.messaging.model.Flow;
 
 import java.util.List;
 

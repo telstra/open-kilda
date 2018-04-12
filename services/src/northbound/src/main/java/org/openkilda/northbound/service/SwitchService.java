@@ -1,11 +1,12 @@
 package org.openkilda.northbound.service;
 
-import org.openkilda.client.response.switches.SyncRulesOutput;
+import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.InstallRulesAction;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.northbound.dto.SwitchDto;
+import org.openkilda.northbound.dto.switches.RulesValidationResult;
 
 import java.util.List;
 
@@ -62,9 +63,18 @@ public interface SwitchService extends BasicService {
     ConnectModeRequest.Mode connectMode(ConnectModeRequest.Mode mode);
 
     /**
-     * Install missed flows, that should be on switch but exist only in neo4j.
-     * @param switchId switchId id of switch.
-     * @return the result of that operation with the list of rules that were updated/deleted.
+     * Validate the rules installed on the switch against the flows in Neo4J.
+     *
+     * @param switchId switch to validate rules on.
+     * @return the validation details.
      */
-    SyncRulesOutput syncRules(String switchId);
+    RulesValidationResult validateRules(String switchId);
+
+    /**
+     * Synchronize (install) missing flows that should be on the switch but exist only in Neo4J.
+     *
+     * @param switchId switch to synchronize rules on.
+     * @return the synchronization result.
+     */
+    RulesSyncResult syncRules(String switchId);
 }

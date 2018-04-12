@@ -20,6 +20,7 @@ import static org.openkilda.messaging.Utils.PAYLOAD;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.annotations.VisibleForTesting;
+import org.apache.storm.kafka.spout.internal.Timer;
 import org.apache.storm.state.KeyValueState;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -37,7 +38,8 @@ import org.openkilda.messaging.ctrl.AbstractDumpState;
 import org.openkilda.messaging.ctrl.state.OFELinkBoltState;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.discovery.NetworkInfoData;
+import org.openkilda.messaging.info.discovery.NetworkSyncBeginMarker;
+import org.openkilda.messaging.info.discovery.NetworkSyncEndMarker;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
@@ -59,10 +61,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -99,7 +99,6 @@ public class OFELinkBolt
     private final int islHealthFailureLimit;
     private final float watchDogInterval;
     private WatchDog watchDog;
-    private boolean isOnline = true;
     private TopologyContext context;
     private OutputCollector collector;
 
@@ -107,15 +106,10 @@ public class OFELinkBolt
     private DiscoveryManager discovery;
     private LinkedList<DiscoveryNode> discoveryQueue;
 
-    /**
-     * Initialization flag
-     */
-    private boolean isReceivedCacheInfo = false;
-
-    /**
-     * Cache request send flag
-     */
-    private boolean isCacheRequestSend = false;
+    private String dumpRequestCorrelationId = null;
+    private float dumpRequestTimeout;
+    private Timer dumpRequestTimer;
+    private State state = State.NEED_SYNC;
 
     /**
      * Default constructor .. default health check frequency
@@ -128,6 +122,7 @@ public class OFELinkBolt
         this.islHealthFailureLimit = config.getDiscoveryLimit();
 
         watchDogInterval = config.getDiscoverySpeakerFailureTimeout();
+        dumpRequestTimeout = config.getDiscoveryDumpRequestTimeout();
 
         topoEngTopic = config.getKafkaTopoEngTopic();
         islDiscoveryTopic = config.getKafkaSpeakerTopic();
@@ -168,60 +163,68 @@ public class OFELinkBolt
     protected void doTick(Tuple tuple) {
         boolean isSpeakerAvailable = watchDog.isAvailable();
 
-        if (isOnline != isSpeakerAvailable) {
-            if (isSpeakerAvailable) {
-                logger.warn("Switch into ONLINE mode");
-                isCacheRequestSend = false;
-            } else {
-                logger.warn("Switch into OFFLINE mode");
-                isReceivedCacheInfo = false;
-            }
-        }
-        isOnline = isSpeakerAvailable;
-
-        if (! isOnline) {
-            return;
+        if (!isSpeakerAvailable) {
+            stateTransition(State.OFFLINE);
         }
 
-        if (!isCacheRequestSend)
-        {
-            // Only one message to FL needed
-            isCacheRequestSend = true;
-            sendNetworkRequest(tuple);
-        }
-        else if (isReceivedCacheInfo)
-        {
-            // On first tick(or after network outage), we send network dump request to FL,
-            // and then we ignore all ticks till cache not received
-            DiscoveryManager.Plan discoveryPlan = discovery.makeDiscoveryPlan();
-            try {
-                for (DiscoveryManager.Node node : discoveryPlan.needDiscovery) {
-                    sendDiscoveryMessage(tuple, node);
+        switch (state) {
+            case NEED_SYNC:
+                dumpRequestCorrelationId = sendNetworkRequest(tuple);
+                enableDumpRequestTimer();
+                stateTransition(State.WAIT_SYNC);
+                break;
+
+            case WAIT_SYNC:
+            case SYNC_IN_PROGRESS:
+                if (dumpRequestTimer.isExpiredResetOnTrue()) {
+                    logger.error("Did not get network dump, send one more dump request");
+                    dumpRequestCorrelationId = sendNetworkRequest(tuple);
                 }
+                break;
 
-                for (DiscoveryManager.Node node : discoveryPlan.discoveryFailure) {
-                    // this is somewhat incongruous - we send failure to TE, but we send
-                    // discovery to FL ..
-                    // Reality is that the handleDiscovery/handleFailure below does the work
-                    //
-                    sendDiscoveryFailed(node.switchId, node.portId, tuple);
+            case OFFLINE:
+                if (isSpeakerAvailable) {
+                    logger.info("Switch into ONLINE mode");
+                    stateTransition(State.NEED_SYNC);
                 }
-            } catch (IOException e) {
-                logger.error("Unable to encode message: {}", e);
-            }
+                break;
+
+            case MAIN:
+                DiscoveryManager.Plan discoveryPlan = discovery.makeDiscoveryPlan();
+                try {
+                    for (DiscoveryManager.Node node : discoveryPlan.needDiscovery) {
+                        sendDiscoveryMessage(tuple, node);
+                    }
+
+                    for (DiscoveryManager.Node node : discoveryPlan.discoveryFailure) {
+                        // this is somewhat incongruous - we send failure to TE, but we send
+                        // discovery to FL ..
+                        // Reality is that the handleDiscovery/handleFailure below does the work
+                        //
+                        sendDiscoveryFailed(node.switchId, node.portId, tuple);
+                    }
+                } catch (IOException e) {
+                    logger.error("Unable to encode message: {}", e);
+                }
+                break;
+
         }
     }
 
     /**
      * Send network dump request to FL
      */
-    private void sendNetworkRequest(Tuple tuple) {
-        try {
-            logger.debug("Send network dump request");
+    private String sendNetworkRequest(Tuple tuple) {
+        String correlationId = UUID.randomUUID().toString();
+        CommandMessage command = new CommandMessage(new NetworkCommandData(),
+                System.currentTimeMillis(), correlationId,
+                Destination.CONTROLLER);
 
-            CommandMessage command = new CommandMessage(new NetworkCommandData(),
-                    System.currentTimeMillis(), Utils.SYSTEM_CORRELATION_ID,
-                    Destination.CONTROLLER);
+        logger.info(
+                "Send network dump request (correlation-id: {})",
+                correlationId);
+
+        try {
             String json = Utils.MAPPER.writeValueAsString(command);
             collector.emit(islDiscoveryTopic, tuple, new Values(PAYLOAD, json));
         }
@@ -229,6 +232,8 @@ public class OFELinkBolt
         {
             logger.error("Could not serialize network cache request", exception);
         }
+
+        return correlationId;
     }
 
     /**
@@ -239,7 +244,6 @@ public class OFELinkBolt
         logger.debug("LINK: Send ISL discovery command: {}", json);
         collector.emit(islDiscoveryTopic, tuple, new Values(PAYLOAD, json));
     }
-
 
     @Override
     protected void doWork(Tuple tuple) {
@@ -259,46 +263,125 @@ public class OFELinkBolt
 //        }
 
         String json = tuple.getString(0);
-        try {
-            BaseMessage bm = MAPPER.readValue(json, BaseMessage.class);
-            watchDog.reset();
 
-            if (bm instanceof InfoMessage) {
-                InfoData data = ((InfoMessage)bm).getData();
-                if (data instanceof NetworkInfoData) {
-                    handleNetworkDump(tuple, (NetworkInfoData)data);
-                    isReceivedCacheInfo = true;
-                } else if (!isReceivedCacheInfo) {
-                    logger.debug("Bolt is not initialized mark tuple as fail");
-                } else if (data instanceof SwitchInfoData) {
-                    handleSwitchEvent(tuple, (SwitchInfoData) data);
-                    passToTopologyEngine(tuple);
-                } else if (data instanceof PortInfoData) {
-                    handlePortEvent(tuple, (PortInfoData) data);
-                    passToTopologyEngine(tuple);
-                } else if (data instanceof IslInfoData) {
-                    handleIslEvent(tuple, (IslInfoData) data);
-                } else {
-                    logger.warn("Unknown InfoData type={}", data);
-                }
-            } else if (bm instanceof HeartBeat) {
-                logger.debug("Got speaker's heart beat");
-            }
+        BaseMessage message;
+        try {
+            message = MAPPER.readValue(json, BaseMessage.class);
+            watchDog.reset();
         } catch (IOException e) {
-            // All messages should be derived from BaseMessage .. so an exception here
-            // means that we found something that isn't. If this criteria changes, then
-            // change the logger level.
+            collector.ack(tuple);
             logger.error("Unknown Message type={}", json);
+            return;
+        }
+
+        try {
+            if (message instanceof InfoMessage) {
+                dispatch(tuple, (InfoMessage) message);
+            } else if (message instanceof HeartBeat) {
+                logger.debug("Got speaker's heart beat");
+                stateTransition(State.NEED_SYNC, State.OFFLINE);
+            }
+        } catch (Exception e) {
+            logger.error(String.format("Unhandled exception in %s", getClass().getName()), e);
         } finally {
             collector.ack(tuple);
         }
     }
 
-    private void handleNetworkDump(Tuple tuple, NetworkInfoData data) {
-        logger.info("Start process network dump");
-        data.getSwitches().forEach( switchInfo -> handleSwitchEvent(tuple, switchInfo) );
-        data.getPorts().forEach( portInfo -> handlePortEvent(tuple, portInfo) );
-        logger.info("Finish process network dump");
+    private void dispatch(Tuple tuple, InfoMessage infoMessage) {
+        switch (state) {
+            case NEED_SYNC:
+                dispatchNeedSync(tuple, infoMessage);
+                break;
+            case WAIT_SYNC:
+                dispatchWaitSync(tuple, infoMessage);
+                break;
+            case SYNC_IN_PROGRESS:
+                dispatchSyncInProgress(tuple, infoMessage);
+                break;
+            case OFFLINE:
+                dispatchOffline(tuple, infoMessage);
+                break;
+            case MAIN:
+                dispatchMain(tuple, infoMessage);
+                break;
+            default:
+                reportInvalidEvent(infoMessage.getData());
+        }
+    }
+
+    private void dispatchNeedSync(Tuple tuple, InfoMessage infoMessage) {
+        logger.warn("Bolt internal state is out of sync with FL, skip tuple");
+    }
+
+    private void dispatchWaitSync(Tuple tuple, InfoMessage infoMessage) {
+        InfoData data = infoMessage.getData();
+        if (data instanceof NetworkSyncBeginMarker) {
+            if (dumpRequestCorrelationId.equals(infoMessage.getCorrelationId())) {
+                logger.info("Got response on network sync request, start processing network events");
+                enableDumpRequestTimer();
+                stateTransition(State.SYNC_IN_PROGRESS);
+            } else {
+                logger.warn(
+                        "Got response on network sync request with invalid " +
+                        "correlation-id(expect: \"{}\", got: \"{}\")",
+                        dumpRequestCorrelationId, infoMessage.getCorrelationId());
+            }
+        } else {
+            reportInvalidEvent(data);
+        }
+    }
+
+    private void dispatchSyncInProgress(Tuple tuple, InfoMessage infoMessage) {
+        InfoData data = infoMessage.getData();
+        if (data instanceof SwitchInfoData) {
+            handleSwitchEvent(tuple, (SwitchInfoData) data);
+        } else if (data instanceof PortInfoData) {
+            handlePortEvent(tuple, (PortInfoData) data);
+        } else if (data instanceof NetworkSyncEndMarker) {
+            logger.info("End of network sync stream received");
+            stateTransition(State.MAIN);
+        } else {
+            reportInvalidEvent(data);
+        }
+    }
+
+    private void dispatchOffline(Tuple tuple, InfoMessage infoMessage) {
+        logger.warn("Got input while in offline mode, it mean the possibility to try sync state");
+        watchDog.reset();
+        stateTransition(State.NEED_SYNC);
+    }
+
+    private void dispatchMain(Tuple tuple, InfoMessage infoMessage) {
+        InfoData data = infoMessage.getData();
+        if (data instanceof SwitchInfoData) {
+            handleSwitchEvent(tuple, (SwitchInfoData) data);
+            passToTopologyEngine(tuple);
+        } else if (data instanceof PortInfoData) {
+            handlePortEvent(tuple, (PortInfoData) data);
+            passToTopologyEngine(tuple);
+        } else if (data instanceof IslInfoData) {
+            handleIslEvent(tuple, (IslInfoData) data);
+        } else {
+            reportInvalidEvent(data);
+        }
+    }
+
+    private void stateTransition(State switchTo) {
+        logger.info("State transition to {} (current {})", switchTo, state);
+        state = switchTo;
+    }
+
+    private void stateTransition(State switchTo, State onlyInState) {
+        if (state == onlyInState) {
+            stateTransition(switchTo);
+        }
+    }
+
+    private void reportInvalidEvent(InfoData event) {
+        logger.error(
+                "Unhandled event: state={}, type={}", state,
+                event.getClass().getName());
     }
 
     private void handleSwitchEvent(Tuple tuple, SwitchInfoData switchData) {
@@ -411,6 +494,11 @@ public class OFELinkBolt
                 PortChangeType.CACHED.getType().equals(state);
     }
 
+    private void enableDumpRequestTimer() {
+        long expireDelay = (int) (dumpRequestTimeout * 1000);
+        dumpRequestTimer = new Timer(expireDelay, expireDelay, TimeUnit.MILLISECONDS);
+    }
+
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         declarer.declareStream(islDiscoveryTopic, new Fields("key", "message"));
@@ -458,5 +546,13 @@ public class OFELinkBolt
     List<DiscoveryNode> getDiscoveryQueue()
     {
         return this.discoveryQueue;
+    }
+
+    private enum State {
+        NEED_SYNC,
+        WAIT_SYNC,
+        SYNC_IN_PROGRESS,
+        OFFLINE,
+        MAIN
     }
 }

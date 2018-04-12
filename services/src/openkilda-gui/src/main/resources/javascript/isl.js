@@ -30,8 +30,10 @@ function showLinkDetails(linkData) {
 		$('#DownsampleID').show();
 		var size = 0, key;
 		$(".link_div_source_switch").html(linkData.source_switch);
+		$(".link_div_source_switch_name").html(linkData.source_switch_name);
 		$(".link_div_source_port").html(linkData.src_port);
 		$(".link_div_destination_switch").html(linkData.target_switch);
+		$(".link_div_destination_switch_name").html(linkData.target_switch_name);
 		$(".link_div_destination_port").html(linkData.dst_port);
 		$(".isl_div_speed").html(linkData.speed/1000+" Mbps");
 		$(".isl_div_latency").html(linkData.latency);

@@ -195,15 +195,16 @@ public class NeoDriver implements PathComputer {
                         "f.transit_vlan as transit_vlan";
 
         logger.debug("Executing getFlows Query: {}", q);
-        Session session = driver.session();
-        StatementResult queryResults = session.run(q);
-        List<Flow> results = new LinkedList<>();
-        for (Record record : queryResults.list()) {
-            FlowAdapter adapter = new FlowAdapter(record);
-            results.add(adapter.getFlow());
-        }
 
-        return results;
+        try (Session session = driver.session()) {
+            StatementResult queryResults = session.run(q);
+            List<Flow> results = new ArrayList<>();
+            for (Record record : queryResults.list()) {
+                FlowAdapter adapter = new FlowAdapter(record);
+                results.add(adapter.getFlow());
+            }
+            return results;
+        }
     }
 
     @Override

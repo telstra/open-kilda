@@ -49,8 +49,8 @@ import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowState;
-import org.openkilda.northbound.dto.FlowValidationDto;
-import org.openkilda.northbound.dto.PathDiscrepancyDto;
+import org.openkilda.northbound.dto.flows.FlowValidationDto;
+import org.openkilda.northbound.dto.flows.PathDiscrepancyDto;
 import org.openkilda.northbound.messaging.MessageConsumer;
 import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.service.BatchResults;
@@ -434,6 +434,22 @@ public class FlowServiceImpl implements FlowService {
         Flow flow = new Flow();
         flow.setFlowId(flowId);
         FlowRerouteRequest data = new FlowRerouteRequest(flow, FlowOperation.UPDATE);
+        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
+        messageConsumer.clear();
+        messageProducer.send(topic, command);
+
+        Message message = (Message) messageConsumer.poll(correlationId);
+        logger.debug("Got response {}", message);
+        FlowRerouteResponse response = (FlowRerouteResponse) validateInfoMessage(command, message, correlationId);
+        return Converter.buildReroutePayload(flowId, response.getPayload(), response.isRerouted());
+    }
+
+    @Override
+    public FlowReroutePayload syncFlow(String flowId) {
+        final String correlationId = RequestCorrelationId.getId();
+        Flow flow = new Flow();
+        flow.setFlowId(flowId);
+        FlowRerouteRequest data = new FlowRerouteRequest(flow, FlowOperation.UPDATE, true);
         CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
         messageConsumer.clear();
         messageProducer.send(topic, command);

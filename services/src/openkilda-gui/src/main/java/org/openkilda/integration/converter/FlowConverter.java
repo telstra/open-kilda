@@ -20,16 +20,16 @@ public class FlowConverter {
     public List<FlowInfo> toFlowsInfo(final List<Flow> flows) {
         if (!CollectionUtil.isEmpty(flows)) {
             final List<FlowInfo> flowsInfo = new ArrayList<>();
+            final Map<String, String> csNames = switchIntegrationService.getCustomSwitchNameFromFile();
             flows.forEach(flow -> {
-                flowsInfo.add(toFlowInfo(flow));
+                flowsInfo.add(toFlowInfo(flow,csNames));
             });
             return flowsInfo;
         }
         return null;
     }
 
-    public FlowInfo toFlowInfo(final Flow flow) {
-        Map<String, String> csNames = switchIntegrationService.getCustomSwitchNameFromFile();
+    public FlowInfo toFlowInfo(final Flow flow,Map <String,String> csNames) {
         FlowInfo flowInfo = new FlowInfo();
         flowInfo.setFlowid(flow.getId());
         flowInfo.setMaximumBandwidth(flow.getMaximumBandwidth());
@@ -47,8 +47,8 @@ public class FlowConverter {
         FlowEndpoint destination = flow.getDestination();
         if (destination != null) {
             String switchName = switchIntegrationService.customSwitchName(csNames,
-                    source.getSwitchId());
-            flowInfo.setTargetSwitch(switchName);
+                    destination.getSwitchId());
+            flowInfo.setTargetSwitchName(switchName);
             flowInfo.setTargetSwitch(destination.getSwitchId());
             flowInfo.setDstPort(destination.getPortId());
             flowInfo.setDstVlan(destination.getVlanId());

@@ -348,7 +348,7 @@ public class CrudBolt
     }
 
     private void handleCacheSyncRequest(CommandMessage message, Tuple tuple) {
-        logger.info("CACHE SYNCE: {}", message);
+        logger.debug("CACHE SYNCE: {}", message);
 
         FlowCacheSyncRequest request = (FlowCacheSyncRequest) message.getData();
 
@@ -564,7 +564,7 @@ public class CrudBolt
     private void handleDeleteRequest(String flowId, CommandMessage message, Tuple tuple) throws IOException {
         ImmutablePair<Flow, Flow> flow = flowCache.deleteFlow(flowId);
 
-        logger.info("Deleted flow: {}", flow);
+        logger.info("Deleted flow: {}", flowId);
 
         FlowInfoData data = new FlowInfoData(flowId, flow, DELETE, message.getCorrelationId());
         InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), message.getCorrelationId());
@@ -584,7 +584,8 @@ public class CrudBolt
             new FlowValidator(flowCache).checkFlowForEndpointConflicts(requestedFlow);
 
             path = pathComputer.getPath(requestedFlow, Strategy.COST);
-            logger.info("Created flow path: {}", path);
+            logger.info("Creating flow {}. Found path: {}, correlationId: {}", requestedFlow.getFlowId(), path,
+                    message.getCorrelationId());
 
         } catch (FlowValidationException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
@@ -595,7 +596,7 @@ public class CrudBolt
         }
 
         ImmutablePair<Flow, Flow> flow = flowCache.createFlow(requestedFlow, path);
-        logger.info("Created flow: {}", flow);
+        logger.info("Created flow: {}, correlationId: {}", flow, message.getCorrelationId());
 
         FlowInfoData data = new FlowInfoData(requestedFlow.getFlowId(), flow, FlowOperation.CREATE,
                 message.getCorrelationId());
@@ -613,7 +614,8 @@ public class CrudBolt
         Flow requestedFlow = request.getPayload();
         final String flowId = requestedFlow.getFlowId();
         ImmutablePair<Flow, Flow> flow;
-        logger.warn("Handling reroute request with correlationId {}", message.getCorrelationId());
+        String correlationId = message.getCorrelationId();
+        logger.warn("Handling reroute request with correlationId {}", correlationId);
 
         switch (request.getOperation()) {
 
@@ -621,19 +623,21 @@ public class CrudBolt
                 flow = flowCache.getFlow(flowId);
 
                 try {
-                    logger.warn("Origin flow {} path: {}", flowId, flow.getLeft().getFlowPath());
+                    logger.warn("Origin flow {} path: {} correlationId {}", flowId, flow.getLeft().getFlowPath(),
+                            correlationId);
                     ImmutablePair<PathInfoData, PathInfoData> path =
                             pathComputer.getPath(flow.getLeft(), Strategy.COST);
-                    logger.warn("Rerouted flow {} with path: {}", flowId, path.getLeft());
-                    boolean isFoundNewPath = false;
+                    logger.warn("Rerouted flow {} with path: {}, correlationId {}", flowId, path.getLeft(),
+                            correlationId);
+                    boolean isFoundNewPath = (!path.getLeft().equals(flow.getLeft().getFlowPath()) || !isFlowActive(flow));
                     //no need to emit changes if path wasn't changed and flow is active.
-                    if (!path.getLeft().equals(flow.getLeft().getFlowPath()) || !isFlowActive(flow)) {
-                        isFoundNewPath = true;
+                    //force means to update flow even if path is not changed.
+                    if (isFoundNewPath || request.isForce()) {
                         flow.getLeft().setState(FlowState.DOWN);
                         flow.getRight().setState(FlowState.DOWN);
 
                         flow = flowCache.updateFlow(flow.getLeft(), path);
-                        logger.warn("Rerouted flow with new path: {}", flow);
+                        logger.warn("Rerouted flow with new path: {}, correlationId {}", flow, correlationId);
 
                         FlowInfoData data = new FlowInfoData(flowId, flow, UPDATE,
                                 message.getCorrelationId());
@@ -642,33 +646,37 @@ public class CrudBolt
                         Values topology = new Values(MAPPER.writeValueAsString(infoMessage));
                         outputCollector.emit(StreamType.UPDATE.toString(), tuple, topology);
                     } else {
-                        logger.warn("Reroute was unsuccessful: can't find new path");
+                        logger.warn("Reroute {} is unsuccessful: can't find new path. CorrelationId: {}",
+                                flowId, correlationId);
                     }
 
-                    logger.debug("Sending response to NB. Correlation id {}", message.getCorrelationId());
+                    logger.debug("Sending response to NB. Correlation id {}", correlationId);
                     FlowRerouteResponse response = new FlowRerouteResponse(flow.left.getFlowPath(), isFoundNewPath);
                     Values values = new Values(new InfoMessage(response, message.getTimestamp(),
                             message.getCorrelationId(), Destination.NORTHBOUND));
                     outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
                 } catch (UnroutablePathException e) {
-                    logger.warn("There is no path available for the flow {}", flowId);
+                    logger.warn("There is no path available for the flow {}, correlationId: {}", flowId,
+                            correlationId);
                     flow.getLeft().setState(FlowState.DOWN);
                     flow.getRight().setState(FlowState.DOWN);
-                    throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    throw new MessageException(correlationId, System.currentTimeMillis(),
                             ErrorType.UPDATE_FAILURE, "Could not reroute flow", "Path was not found");
                 }
                 break;
 
             case CREATE:
                 flow = flowCache.getFlow(flowId);
-                logger.warn("State flow: {}={}", flow.getLeft().getFlowId(), FlowState.UP);
+                logger.warn("State flow: {}={}, correlationId: {}", flow.getLeft().getFlowId(), FlowState.UP,
+                        message.getCorrelationId());
                 flow.getLeft().setState(FlowState.UP);
                 flow.getRight().setState(FlowState.UP);
                 break;
 
             case DELETE:
                 flow = flowCache.getFlow(flowId);
-                logger.warn("State flow: {}={}", flow.getLeft().getFlowId(), FlowState.DOWN);
+                logger.warn("State flow: {}={}, correlationId: {}", flow.getLeft().getFlowId(), FlowState.DOWN,
+                        message.getCorrelationId());
                 flow.getLeft().setState(FlowState.DOWN);
                 flow.getRight().setState(FlowState.DOWN);
                 break;
@@ -706,13 +714,14 @@ public class CrudBolt
 
     private void handleUpdateRequest(CommandMessage message, Tuple tuple) throws IOException, RecoverableException {
         Flow requestedFlow = ((FlowUpdateRequest) message.getData()).getPayload();
+        String correlationId = message.getCorrelationId();
 
         ImmutablePair<PathInfoData, PathInfoData> path;
         try {
             new FlowValidator(flowCache).checkFlowForEndpointConflicts(requestedFlow);
 
             path = pathComputer.getPath(requestedFlow, Strategy.COST);
-            logger.info("Updated flow path: {}", path);
+            logger.info("Updated flow path: {}, correlationId {}", path, correlationId);
 
         } catch (FlowValidationException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
@@ -723,7 +732,7 @@ public class CrudBolt
         }
 
         ImmutablePair<Flow, Flow> flow = flowCache.updateFlow(requestedFlow, path);
-        logger.info("Updated flow: {}", flow);
+        logger.info("Updated flow: {}, correlationId {}", flow, correlationId);
 
         FlowInfoData data = new FlowInfoData(requestedFlow.getFlowId(), flow, UPDATE,
                 message.getCorrelationId());
@@ -752,7 +761,7 @@ public class CrudBolt
     private void handleReadRequest(String flowId, CommandMessage message, Tuple tuple) {
         ImmutablePair<Flow, Flow> flow = flowCache.getFlow(flowId);
 
-        logger.info("Got flow: {}", flow);
+        logger.info("Got flow: {}, correlationId: {}", flow, message.getCorrelationId());
 
         Values northbound = new Values(new InfoMessage(new FlowResponse(buildFlowResponse(flow)),
                 message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
@@ -762,7 +771,7 @@ public class CrudBolt
     private void handlePathRequest(String flowId, CommandMessage message, Tuple tuple) throws IOException {
         ImmutablePair<Flow, Flow> flow = flowCache.getFlow(flowId);
 
-        logger.info("Path flow: {}", flow);
+        logger.debug("Path flow: {}, correlationId {}", flow, message.getCorrelationId());
 
         Values northbound = new Values(new InfoMessage(new FlowPathResponse(flow.left.getFlowPath()),
                 message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
@@ -773,7 +782,7 @@ public class CrudBolt
         ImmutablePair<Flow, Flow> flow = flowCache.getFlow(flowId);
         FlowState status = flow.getLeft().getState();
 
-        logger.info("Status flow: {}={}", flowId, status);
+        logger.debug("Status flow: {}={}", flowId, status);
 
         Values northbound = new Values(new InfoMessage(new FlowStatusResponse(new FlowIdStatusPayload(flowId, status)),
                 message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
@@ -793,6 +802,7 @@ public class CrudBolt
         flow.getLeft().setState(state);
         flow.getRight().setState(state);
 
+        //FIXME: looks like we have to use received correlationId, don't generate new one.
         final String correlationId = UUID.randomUUID().toString();
         FlowInfoData data = new FlowInfoData(flowId, flow, FlowOperation.STATE, correlationId);
         InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), correlationId);
