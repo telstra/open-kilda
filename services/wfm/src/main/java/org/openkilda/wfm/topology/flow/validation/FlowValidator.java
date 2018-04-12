@@ -67,7 +67,7 @@ public class FlowValidator {
 
         // Check the destination
         Set<Flow> conflictsOnDest;
-        if (requestedFlow.getSourceVlan() == 0) {
+        if (requestedFlow.getDestinationVlan() == 0) {
             conflictsOnDest = flowCache.getFlowsForEndpoint(
                     requestedFlow.getDestinationSwitch(),
                     requestedFlow.getDestinationPort());

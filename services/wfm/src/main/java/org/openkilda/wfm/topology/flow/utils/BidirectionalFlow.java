@@ -25,7 +25,7 @@ public class BidirectionalFlow {
         if (current != null) {
             throw new IllegalArgumentException(
                     String.format("The flow(%s) for %s is already set",
-                            flowId, isForward ? "forward" : "reverse"));
+                            flowId, isForward ? "FORWARD" : "REVERSE"));
         }
 
         if (isForward) {
@@ -52,10 +52,10 @@ public class BidirectionalFlow {
     public ImmutablePair<Flow, Flow> makeFlowPair() {
         List<String> missing = new ArrayList<>(2);
         if (forward == null) {
-            missing.add("forward is missing");
+            missing.add("FORWARD is missing");
         }
         if (reverse == null) {
-            missing.add("reverse is missing");
+            missing.add("REVERSE is missing");
         }
         if (0 < missing.size()) {
             throw new IllegalArgumentException(
