@@ -108,9 +108,48 @@ public class PathComputerTest {
         rel.setProperty("dst_switch", n2.getProperty("name"));
         return rel;
     }
+    private Relationship addRelAsString (Node n1, Node n2, String status, String cost, int bw, int port){
+        Relationship rel;
+        rel = n1.createRelationshipTo(n2, RelationshipType.withName("isl"));
+        rel.setProperty("status",status);
+        if (cost != null && !cost.isEmpty()) {rel.setProperty("cost", cost);}
+        rel.setProperty("available_bandwidth", bw);
+        rel.setProperty("latency", 5);
+        rel.setProperty("src_port", port);
+        rel.setProperty("dst_port", port);
+        rel.setProperty("src_switch", n1.getProperty("name"));
+        rel.setProperty("dst_switch", n2.getProperty("name"));
+        return rel;
+    }
+
 
     private void createDiamond(String pathBstatus, String pathCstatus, int pathBcost, int pathCcost) {
         createDiamond(pathBstatus, pathCstatus, pathBcost, pathCcost, "00:", 1);
+    }
+
+    /**
+     * This will create a diamond with cost as string.
+     */
+    private void createDiamondAsString(String pathBstatus, String pathCstatus, String pathBcost, String pathCcost, String switchStart, int startIndex) {
+        try ( Transaction tx = graphDb.beginTx() ) {
+            // A - B - D
+            //   + C +
+            Node nodeA, nodeB, nodeC, nodeD;
+            int index = startIndex;
+            nodeA = createNode(switchStart + String.format("%02X", index++));
+            nodeB = createNode(switchStart + String.format("%02X", index++));
+            nodeC = createNode(switchStart + String.format("%02X", index++));
+            nodeD = createNode(switchStart + String.format("%02X", index++));
+            addRelAsString(nodeA, nodeB, pathBstatus, pathBcost, 1000, 5);
+            addRelAsString(nodeA, nodeC, pathCstatus, pathCcost, 1000, 6);
+            addRelAsString(nodeB, nodeD, pathBstatus, pathBcost, 1000, 6);
+            addRelAsString(nodeC, nodeD, pathCstatus, pathCcost, 1000, 5);
+            addRelAsString(nodeB, nodeA, pathBstatus, pathBcost, 1000, 5);
+            addRelAsString(nodeC, nodeA, pathCstatus, pathCcost, 1000, 6);
+            addRelAsString(nodeD, nodeB, pathBstatus, pathBcost, 1000, 6);
+            addRelAsString(nodeD, nodeC, pathCstatus, pathCcost, 1000, 5);
+            tx.success();
+        }
     }
 
     private void createDiamond(String pathBstatus, String pathCstatus, int pathBcost, int pathCcost, String switchStart, int startIndex) {
@@ -188,6 +227,24 @@ public class PathComputerTest {
         Assert.assertNotNull(path);
         Assert.assertEquals(4, path.left.getPath().size());
         Assert.assertEquals("00:02", path.left.getPath().get(1).getSwitchId()); // chooses path B
+    }
+
+
+    @Test
+    public void testGetPathByCostActive_AsStr() throws UnroutablePathException, RecoverableException {
+        /*
+         * simple happy path test .. everything has cost
+         */
+        createDiamondAsString("active", "active", "10", "20", "FF:", 1);
+        Flow f = new Flow();
+        f.setSourceSwitch("FF:01");
+        f.setDestinationSwitch("FF:04");
+        f.setBandwidth(100);
+        ImmutablePair<PathInfoData, PathInfoData> path = nd.getPath(f, PathComputer.Strategy.COST);
+        //System.out.println("path = " + path);
+        Assert.assertNotNull(path);
+        Assert.assertEquals(4, path.left.getPath().size());
+        Assert.assertEquals("FF:02", path.left.getPath().get(1).getSwitchId()); // chooses path B
     }
 
 
@@ -392,7 +449,6 @@ public class PathComputerTest {
      * to something installable.
      */
     @Test
-    @Ignore
     public void verifyConversionToPair() throws UnroutablePathException, RecoverableException {
         createDiamond("active", "active", 10, 20, "09:", 1);
         Flow flow = new Flow();

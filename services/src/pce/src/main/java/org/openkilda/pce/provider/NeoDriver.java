@@ -16,6 +16,8 @@
 package org.openkilda.pce.provider;
 
 import org.apache.commons.lang3.tuple.Pair;
+import org.neo4j.driver.v1.*;
+import org.neo4j.driver.v1.types.Type;
 import org.openkilda.messaging.info.event.*;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
@@ -25,10 +27,6 @@ import org.openkilda.pce.api.FlowAdapter;
 import org.openkilda.pce.model.AvailableNetwork;
 import org.openkilda.pce.model.SimpleIsl;
 
-import org.neo4j.driver.v1.Driver;
-import org.neo4j.driver.v1.Record;
-import org.neo4j.driver.v1.Session;
-import org.neo4j.driver.v1.StatementResult;
 import org.neo4j.driver.v1.exceptions.ClientException;
 import org.neo4j.driver.v1.exceptions.NoSuchRecordException;
 import org.neo4j.driver.v1.exceptions.TransientException;
@@ -266,12 +264,21 @@ public class NeoDriver implements PathComputer {
         Session session = driver.session();
         StatementResult queryResults = session.run(q);
         for (Record record : queryResults.list()) {
+            /*
+             * The cost may be a string or integer ... so, regarding cost, get the object.toString
+             * so that we know it is always a string and then parse as Int.
+             */
+            int cost = 0;
+            Value vCost = record.get("cost");
+            if (!vCost.isNull()){
+                cost = Integer.parseInt(vCost.asObject().toString());
+            }
             network.initOneEntry(
                     record.get("src_name").asString(),
                     record.get("dst_name").asString(),
                     record.get("src_port").asInt(),
                     record.get("dst_port").asInt(),
-                    record.get("cost").isNull() ? 0 : record.get("cost").asInt(),
+                    cost,
                     record.get("latency").asInt()
                     );
         }
