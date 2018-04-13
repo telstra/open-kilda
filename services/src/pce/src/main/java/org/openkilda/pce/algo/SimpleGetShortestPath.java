@@ -14,12 +14,15 @@
  */
 package org.openkilda.pce.algo;
 
-import org.neo4j.cypher.InvalidArgumentException;
+import com.google.common.collect.Lists;
 import org.openkilda.pce.model.AvailableNetwork;
 import org.openkilda.pce.model.SimpleIsl;
 import org.openkilda.pce.model.SimpleSwitch;
 
 import java.util.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * This algorithm is optimized for finding a bidirectional path between the start and end nodes.
@@ -47,6 +50,11 @@ import java.util.*;
  *      . add each neighbor to the investigation list, where neighbor.outbound.dst != current node.
  */
 public class SimpleGetShortestPath {
+
+    /**
+     * Logger.
+     */
+    private static final Logger logger = LoggerFactory.getLogger(SimpleGetShortestPath.class);
 
     private AvailableNetwork network;
     private SimpleSwitch start;
@@ -131,8 +139,9 @@ public class SimpleGetShortestPath {
 
     /**
      * This is generally called after getPath() to find the path back.  The path back could be
-     * asymmetric. The hint will be used to determine if it exists.  If it does, then use it as
-     * the start bestCost and bestPath.  That should help speed things along.
+     * asymmetric, but this will increase the odds that we return the symmetric path if it exists.
+     * The hint will be used to determine if it exists.  If it does, then use it as the start
+     * bestCost and bestPath.  That should help speed things along.
      *
      * Whereas it's possible that could build up the SearchNodes for this path (if found) and put
      * them into the visited bucket, we'll start without that optimization and decide later whether
@@ -141,9 +150,76 @@ public class SimpleGetShortestPath {
      * @param hint The path to use as a starting point. It can be in reverse order (we'll reverse it)
      * @return An ordered list that represents the path from start to end.
      */
-    public LinkedList<SimpleIsl> getPath(LinkedList<SimpleIsl> hint) {
+    public LinkedList<SimpleIsl> getPath(List<SimpleIsl> hint) {
         // First, see if the first and last nodes match our start and end, or whether the list
         // needs to be reversed
+        if (hint != null && hint.size() > 0) {
+            SimpleSwitch from = network.getSimpleSwitch(hint.get(0).src_dpid);
+            SimpleSwitch to = network.getSimpleSwitch(hint.get(hint.size()-1).dst_dpid);
+            if (start.equals(to) && end.equals(from)) {
+                logger.trace("getPath w/ Hint: Reversing the path from {}->{} to {}->{}", from,to,to,from);
+                // looks like hint wasn't reversed .. revers the order, and swap src/dst.
+                hint = swapSrcDst(Lists.reverse(hint));
+                // re-run from and to .. it should now match.
+                from = network.getSimpleSwitch(hint.get(0).src_dpid);
+                to = network.getSimpleSwitch(hint.get(hint.size()-1).dst_dpid);
+            }
+
+            // If the start/end equals from/to, then confirm the path and see if we can use it.
+            if (start.equals(from) && end.equals(to)) {
+                logger.trace("getPath w/ Hint: hint matches start/ed {}->{}", from,to);
+                // need to validate that the path exists .. and if so .. set bestCost and bestPath
+                SearchNode best = confirmIsls(hint);
+                if (best != null) {
+                    logger.debug("getPath w/ Hint: the hint path EXISTS for {}->{}", from,to);
+                    bestCost = best.parentCost;
+                    bestPath = best;
+                } else {
+                    logger.info("getPath w/ Hint: the hint path DOES NOT EXIST for {}->{}, will find new path", from,to);
+                }
+            }
+        }
+        return getPath();
+    }
+
+    /** This helper function is used with getPath(hint) and will swap the src and dst of each isl in the list */
+    private List<SimpleIsl> swapSrcDst(List<SimpleIsl> originalIsls) {
+        List<SimpleIsl> mirrorIsls = new ArrayList<>();
+        for (SimpleIsl original : originalIsls) {
+            // this swaps the src and dst fields
+            mirrorIsls.add(new SimpleIsl(original.dst_dpid, original.src_dpid, original.dst_port,
+                    original.src_port, original.cost, original.latency));
+        }
+        return mirrorIsls;
+    }
+
+    /** This helper function is used with getPath(hint) to confirm the hint path exists */
+    private SearchNode confirmIsls(List<SimpleIsl> srcIsls) {
+        int totalCost = 0;
+        LinkedList<SimpleIsl> confirmedIsls = new LinkedList<>();
+
+        boolean validPath = true;
+        for (SimpleIsl i : srcIsls) {
+            boolean foundThisOne = false;
+            for (SimpleIsl orig : network.getSimpleSwitch(i.src_dpid).outbound.get(i.dst_dpid)) {
+                if (i.equals(orig)) {
+                    foundThisOne = true;
+                    confirmedIsls.add(orig);
+                    totalCost += orig.cost;
+                    break; // stop looking, we found the isl
+                }
+            }
+            if (!foundThisOne) {
+                validPath = false;
+                break; // found an isl that doesn't exist, stop looking for others
+            }
+        }
+
+        if (validPath) {
+            return new SearchNode(this.allowedDepth - confirmedIsls.size(), totalCost,
+                    network.getSimpleSwitch(confirmedIsls.peekLast().dst_dpid), confirmedIsls);
+        }
+        return null;
     }
 
 
@@ -173,7 +249,7 @@ public class SimpleGetShortestPath {
         public SearchNode addNode(SimpleIsl nextIsl) {
             SearchNode newNode = this.clone();
             newNode.parentPath.add(nextIsl);
-            newNode.dst_sw = network.getSwitches().get(nextIsl.dst_dpid);
+            newNode.dst_sw = network.getSimpleSwitch(nextIsl.dst_dpid);
             newNode.allowedDepth--;
             newNode.parentCost += nextIsl.cost;
             return newNode;

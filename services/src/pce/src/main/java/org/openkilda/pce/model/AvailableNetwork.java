@@ -49,7 +49,7 @@ public class AvailableNetwork {
 
     public AvailableNetwork initOneEntry(String src_dpid, String dst_dpid, int src_port, int dst_port,
                                          int cost, int latency) {
-        SimpleSwitch src_sw, dst_sw;
+        SimpleSwitch src_sw;
         SimpleIsl isl;
 
         src_sw = initSwitch(src_dpid);
@@ -63,6 +63,14 @@ public class AvailableNetwork {
     public Map<String, SimpleSwitch> getSwitches() {
         return switches;
     }
+
+    /**
+     * @return the SimpleSwitch associated with the dpid
+     */
+    public SimpleSwitch getSimpleSwitch(String dpid) {
+        return switches.get(dpid);
+    }
+
 
     /**
      * This call can be used to determine the effect of things like reduceByCost and removeSelfLoops
