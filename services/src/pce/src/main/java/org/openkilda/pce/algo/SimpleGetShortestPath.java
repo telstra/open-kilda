@@ -69,10 +69,9 @@ public class SimpleGetShortestPath {
         this.end = network.getSwitches().get(dst_dpid);
         this.allowedDepth = allowedDepth;
         if (this.start == null)
-            throw new IllegalArgumentException("The START switch does not exist: " + src_dpid);
+            logger.warn("SOURCE node doesn't exist. It isn't in the AVAILABLE network: {}", src_dpid);
         if (this.end == null)
-            throw new IllegalArgumentException("The END switch does not exist: " + dst_dpid);
-
+            logger.warn("DESTINATION node doesn't exist. It isn't in the AVAILABLE network: {}", dst_dpid);
     }
 
 
@@ -80,16 +79,18 @@ public class SimpleGetShortestPath {
      * Call this method to find a path from start to end (src_dpid to dst_dpid), particularly if you
      * have no idea if the path exists or what the best path is.
      *
-     * @return An ordered list that represents the path from start to end.
+     * @return An ordered list that represents the path from start to end, or an empty list
      */
     public LinkedList<SimpleIsl> getPath() {
-        LinkedList<SimpleIsl> result = new LinkedList<>();
         HashMap<SimpleSwitch, SearchNode> toVisitLookup = new HashMap<>();  // constant lookup
         LinkedList<SearchNode> toVisit = new LinkedList<>();                // working list
         HashMap<SimpleSwitch, SearchNode> visited = new HashMap<>();
 
-        toVisitLookup.put(start, new SearchNode(allowedDepth, 0, start));
-        toVisit.add(toVisitLookup.get(start));
+        if (start != null && end != null) {
+            toVisitLookup.put(start, new SearchNode(allowedDepth, 0, start));
+            toVisit.add(toVisitLookup.get(start));
+        }
+
         while (toVisit.size() > 0){
             SearchNode current = toVisit.pop();
 
@@ -130,10 +131,7 @@ public class SimpleGetShortestPath {
             }
         }
 
-        if (bestPath != null)
-            result = bestPath.parentPath;
-
-        return result;
+        return (bestPath != null) ? bestPath.parentPath : new LinkedList<>();
     }
 
 

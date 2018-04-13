@@ -1,20 +1,15 @@
 package org.openkilda.pce.provider;
 
-import static org.junit.Assert.assertEquals;
-
 import org.junit.*;
 
 import java.io.File;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 
-import org.neo4j.driver.v1.AuthTokens;
-import org.neo4j.driver.v1.Driver;
-import org.neo4j.driver.v1.GraphDatabase;
-import org.neo4j.graphalgo.impl.shortestpath.Dijkstra;
+import org.neo4j.driver.v1.*;
 import org.neo4j.graphdb.*;
+import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.io.fs.FileUtils;
 import org.neo4j.kernel.configuration.BoltConnector;
@@ -23,9 +18,6 @@ import org.neo4j.kernel.configuration.BoltConnector;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
-import org.openkilda.neo.NeoUtils;
-import org.openkilda.neo.OkNode;
-import org.openkilda.neo.NeoUtils.OkRels;
 import org.openkilda.pce.RecoverableException;
 import org.openkilda.pce.algo.SimpleGetShortestPath;
 import org.openkilda.pce.model.AvailableNetwork;
@@ -169,9 +161,13 @@ public class PathComputerTest {
             nodeA = createNode(switchStart + String.format("%02X", index++));
             nodeB = createNode(switchStart + String.format("%02X", index++));
             nodeC = createNode(switchStart + String.format("%02X", index++));
+
             addRel(nodeA, nodeB, pathABstatus, pathABcost, 1000, 5);
+            addRel(nodeB, nodeA, pathABstatus, pathABcost, 1000, 5);
             addRel(nodeA, nodeC, "active", pathCcost, 1000, 6);
+            addRel(nodeC, nodeA, "active", pathCcost, 1000, 6);
             addRel(nodeC, nodeB,  "active", pathCcost, 1000, 7);
+            addRel(nodeB, nodeC,  "active", pathCcost, 1000, 7);
             tx.success();
         }
     }
@@ -199,17 +195,17 @@ public class PathComputerTest {
         /*
          * simple happy path test .. but lowest path is inactive
          */
-        createDiamond("inactive", "active", 10, 20);
+        createDiamond("inactive", "active", 10, 20, "01:", 1);
         Flow f = new Flow();
-        f.setSourceSwitch("00:01");
-        f.setDestinationSwitch("00:04");
+        f.setSourceSwitch("01:01");
+        f.setDestinationSwitch("01:04");
         f.setBandwidth(100);
         ImmutablePair<PathInfoData, PathInfoData> path = nd.getPath(f, PathComputer.Strategy.COST);
         // System.out.println("path = " + path);
         Assert.assertNotNull(path);
         Assert.assertEquals(4, path.left.getPath().size());
         // ====> only difference is it should now have C as first hop .. since B is inactive
-        Assert.assertEquals("00:03", path.left.getPath().get(1).getSwitchId()); // chooses path B
+        Assert.assertEquals("01:03", path.left.getPath().get(1).getSwitchId()); // chooses path B
     }
 
     @Test
@@ -217,17 +213,17 @@ public class PathComputerTest {
         /*
          * simple happy path test .. but lowest path is inactive
          */
-        createTriangleTopo("inactive", 10, 20);
+        createTriangleTopo("inactive", 5, 20, "02:", 1);
         Flow f = new Flow();
-        f.setSourceSwitch("00:01");
-        f.setDestinationSwitch("00:02");
+        f.setSourceSwitch("02:01");
+        f.setDestinationSwitch("02:02");
         f.setBandwidth(100);
         ImmutablePair<PathInfoData, PathInfoData> path = nd.getPath(f, PathComputer.Strategy.COST);
-        // System.out.println("path = " + path);
+        System.out.println("path = " + path);
         Assert.assertNotNull(path);
         Assert.assertEquals(4, path.left.getPath().size());
         // ====> only difference is it should now have C as first hop .. since B is inactive
-        Assert.assertEquals("00:03", path.left.getPath().get(1).getSwitchId()); // chooses path B
+        Assert.assertEquals("02:03", path.left.getPath().get(1).getSwitchId()); // chooses path B
     }
 
     @Test
@@ -235,17 +231,17 @@ public class PathComputerTest {
         /*
          * simple happy path test .. but pathB has no cost .. but still cheaper than pathC (test the default)
          */
-        createDiamond("active", "active",  -1, 2000);
+        createDiamond("active", "active",  -1, 2000, "03:", 1);
         Flow f = new Flow();
-        f.setSourceSwitch("00:01");
-        f.setDestinationSwitch("00:04");
+        f.setSourceSwitch("03:01");
+        f.setDestinationSwitch("03:04");
         f.setBandwidth(100);
         ImmutablePair<PathInfoData, PathInfoData> path = nd.getPath(f, PathComputer.Strategy.COST);
         // System.out.println("path = " + path);
         Assert.assertNotNull(path);
         Assert.assertEquals(4, path.left.getPath().size());
         // ====> Should choose B .. because default cost (700) cheaper than 2000
-        Assert.assertEquals("00:02", path.left.getPath().get(1).getSwitchId()); // chooses path B
+        Assert.assertEquals("03:02", path.left.getPath().get(1).getSwitchId()); // chooses path B
     }
 
 
@@ -254,10 +250,10 @@ public class PathComputerTest {
         /*
          * simple happy path test .. but pathB has no cost .. but still cheaper than pathC (test the default)
          */
-        createDiamond("inactive", "inactive", 10, 30);
+        createDiamond("inactive", "inactive", 10, 30, "04:", 1);
         Flow f = new Flow();
-        f.setSourceSwitch("00:01");
-        f.setDestinationSwitch("00:04");
+        f.setSourceSwitch("04:01");
+        f.setDestinationSwitch("04:04");
         f.setBandwidth(100);
         ImmutablePair<PathInfoData, PathInfoData> path = nd.getPath(f, PathComputer.Strategy.COST);
     }
@@ -268,7 +264,7 @@ public class PathComputerTest {
      */
     @Test
     public void getPathTest_InitState() {
-        createDiamond("active", "active", 10, 20);
+        createDiamond("active", "active", 10, 20, "05:", 1);
         boolean ignore_bw = false;
 
         long time = System.currentTimeMillis();
@@ -290,22 +286,22 @@ public class PathComputerTest {
         SimpleSwitch[] switches = new SimpleSwitch[network.getSwitches().values().size()];
         Arrays.sort(network.getSwitches().values().toArray(switches));
         Assert.assertEquals(4, switches.length);
-        Assert.assertEquals("00:01", switches[0].dpid);
-        Assert.assertEquals("00:04", switches[3].dpid);
+        Assert.assertEquals("05:01", switches[0].dpid);
+        Assert.assertEquals("05:04", switches[3].dpid);
         Assert.assertEquals(2, switches[0].outbound.size());
-        Assert.assertEquals(1, switches[0].outbound.get("00:02").size());
-        Assert.assertEquals(10, switches[0].outbound.get("00:02").iterator().next().cost);
-        Assert.assertEquals(1, switches[0].outbound.get("00:03").size());
-        Assert.assertEquals(20, switches[0].outbound.get("00:03").iterator().next().cost);
+        Assert.assertEquals(1, switches[0].outbound.get("05:02").size());
+        Assert.assertEquals(10, switches[0].outbound.get("05:02").iterator().next().cost);
+        Assert.assertEquals(1, switches[0].outbound.get("05:03").size());
+        Assert.assertEquals(20, switches[0].outbound.get("05:03").iterator().next().cost);
 
         time = System.currentTimeMillis();
-        SimpleGetShortestPath sgsp = new SimpleGetShortestPath(network, "00:01", "00:03", 35);
+        SimpleGetShortestPath sgsp = new SimpleGetShortestPath(network, "05:01", "05:03", 35);
         LinkedList<SimpleIsl> result = sgsp.getPath();
         System.out.println("TIME: SimpleGetShortestPath.getPath -> " + (System.currentTimeMillis() - time));
         System.out.println("result = " + result);
 
         time = System.currentTimeMillis();
-        sgsp = new SimpleGetShortestPath(network, "00:01", "00:04", 35);
+        sgsp = new SimpleGetShortestPath(network, "05:01", "05:04", 35);
         result = sgsp.getPath();
         System.out.println("TIME: SimpleGetShortestPath.getPath -> " + (System.currentTimeMillis() - time));
         System.out.println("result = " + result);
@@ -317,8 +313,8 @@ public class PathComputerTest {
      */
     @Test
     public void getPathTest_Islands() {
-        createDiamond("active", "active", 10, 20, "00:", 1);
-        createDiamond("active", "active", 10, 20, "01:", 1);
+        createDiamond("active", "active", 10, 20, "06:", 1);
+        createDiamond("active", "active", 10, 20, "07:", 1);
         boolean ignore_bw = false;
 
         AvailableNetwork network = nd.getAvailableNetwork(ignore_bw, 0);
@@ -326,14 +322,14 @@ public class PathComputerTest {
 
         // THIS ONE SHOULD WORK
         long time = System.currentTimeMillis();
-        SimpleGetShortestPath sgsp = new SimpleGetShortestPath(network, "00:01", "00:03", 35);
+        SimpleGetShortestPath sgsp = new SimpleGetShortestPath(network, "06:01", "06:03", 35);
         LinkedList<SimpleIsl> result = sgsp.getPath();
         System.out.println("TIME: SimpleGetShortestPath.getPath -> " + (System.currentTimeMillis() - time));
         System.out.println("result = " + result);
 
         // THIS ONE SHOULD FAIL
         time = System.currentTimeMillis();
-        sgsp = new SimpleGetShortestPath(network, "00:01", "01:04", 35);
+        sgsp = new SimpleGetShortestPath(network, "06:01", "07:04", 35);
         result = sgsp.getPath();
         System.out.println("TIME: SimpleGetShortestPath.getPath -> " + (System.currentTimeMillis() - time));
         System.out.println("result = " + result);
@@ -346,7 +342,7 @@ public class PathComputerTest {
     @Ignore
     @Test
     public void getPathTest_Large() {
-        createDiamond("active", "active", 10, 20, "00:", 1);
+        createDiamond("active", "active", 10, 20, "08:", 1);
 
         for (int i = 0; i < 50; i++) {
             createDiamond("active", "active", 10, 20, "10:", 4*i+1);
@@ -382,7 +378,7 @@ public class PathComputerTest {
 
         // THIS ONE SHOULD FAIL
         time = System.currentTimeMillis();
-        sgsp = new SimpleGetShortestPath(network, "00:01", "11:04", 100);
+        sgsp = new SimpleGetShortestPath(network, "08:01", "11:04", 100);
         result = sgsp.getPath();
         System.out.println("TIME: SimpleGetShortestPath.getPath -> " + (System.currentTimeMillis() - time));
         System.out.println("Path Length = " + result.size());

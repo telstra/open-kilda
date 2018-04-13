@@ -69,9 +69,11 @@ public class NeoDriver implements PathComputer {
         if (! flow.isOneSwitchFlow()) {
             try {
                 Pair<LinkedList<SimpleIsl>,LinkedList<SimpleIsl>> biPath = getPathFromNetwork(flow, strategy);
-                LinkedList<SimpleIsl> forwardIsl = biPath.getLeft();
+                if (biPath.getLeft().size() == 0 || biPath.getRight().size() == 0)
+                    throw new UnroutablePathException(flow);
 
                 int seqId = 0;
+                LinkedList<SimpleIsl> forwardIsl = biPath.getLeft();
                 for (SimpleIsl isl : forwardIsl) {
                     latency += isl.latency;
                     forwardNodes.add(new PathNode(isl.src_dpid, isl.src_port, seqId++, (long)isl.latency));
@@ -89,8 +91,6 @@ public class NeoDriver implements PathComputer {
                 throw new RecoverableException("TransientError from neo4j", e);
             } catch (ClientException e) {
                 throw new RecoverableException("ClientException from neo4j", e);
-            } catch (NoSuchRecordException e) {
-                throw new UnroutablePathException(flow);
             }
         } else {
             logger.info("No path computation for one-switch flow");
@@ -271,7 +271,7 @@ public class NeoDriver implements PathComputer {
                     record.get("dst_name").asString(),
                     record.get("src_port").asInt(),
                     record.get("dst_port").asInt(),
-                    record.get("cost").asInt(),
+                    record.get("cost").isNull() ? 0 : record.get("cost").asInt(),
                     record.get("latency").asInt()
                     );
         }
