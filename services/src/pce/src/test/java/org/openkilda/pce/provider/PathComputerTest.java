@@ -16,6 +16,7 @@ import org.neo4j.kernel.configuration.BoltConnector;
 
 
 import org.openkilda.messaging.info.event.PathInfoData;
+import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.pce.RecoverableException;
@@ -383,6 +384,34 @@ public class PathComputerTest {
         System.out.println("TIME: SimpleGetShortestPath.getPath -> " + (System.currentTimeMillis() - time));
         System.out.println("Path Length = " + result.size());
     }
+
+
+    /**
+     * This verifies that the getPath in NeoDriver returns what we expect.
+     * Essentially, this tests the additional logic wrt taking the results of the algo and convert
+     * to something installable.
+     */
+    @Test
+    @Ignore
+    public void verifyConversionToPair() throws UnroutablePathException, RecoverableException {
+        createDiamond("active", "active", 10, 20, "09:", 1);
+        Flow flow = new Flow();
+        String start = "09:01";
+        String end = "09:04";
+        flow.setSourceSwitch(start);      // getPath will find an isl port
+        flow.setDestinationSwitch(end);
+        flow.setIgnoreBandwidth(false);
+        flow.setBandwidth(10);
+        ImmutablePair<PathInfoData, PathInfoData> result = nd.getPath(flow,PathComputer.Strategy.COST);
+        // ensure start/end switches match
+        List<PathNode> left = result.left.getPath();
+        Assert.assertEquals(start, left.get(0).getSwitchId());
+        Assert.assertEquals(end, left.get(left.size()-1).getSwitchId());
+        List<PathNode> right = result.right.getPath();
+        Assert.assertEquals(end, right.get(0).getSwitchId());
+        Assert.assertEquals(start, right.get(right.size()-1).getSwitchId());
+    }
+
 
 
 }

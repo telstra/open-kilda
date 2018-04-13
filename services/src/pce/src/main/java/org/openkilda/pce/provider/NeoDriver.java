@@ -81,7 +81,7 @@ public class NeoDriver implements PathComputer {
                 }
 
                 seqId = 0;
-                LinkedList<SimpleIsl> reverseIsl = biPath.getLeft();
+                LinkedList<SimpleIsl> reverseIsl = biPath.getRight();
                 for (SimpleIsl isl : reverseIsl) {
                     reverseNodes.add(new PathNode(isl.src_dpid, isl.src_port, seqId++, (long)isl.latency));
                     reverseNodes.add(new PathNode(isl.dst_dpid, isl.dst_port, seqId++, 0L));
