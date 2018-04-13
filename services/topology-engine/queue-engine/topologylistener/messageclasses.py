@@ -43,7 +43,6 @@ MT_FLOW_RESPONSE = "org.openkilda.messaging.info.flow.FlowResponse"
 MT_VALID_REQUEST = "org.openkilda.messaging.command.switches.SwitchRulesValidateRequest"
 MT_SYNC_REQUEST = "org.openkilda.messaging.command.switches.SwitchRulesSyncRequest"
 MT_NETWORK = "org.openkilda.messaging.info.discovery.NetworkInfoData"
-MT_SYNC_REQUEST = "org.openkilda.messaging.command.switches.SyncRulesRequest"
 MT_SWITCH_RULES = "org.openkilda.messaging.info.rule.SwitchFlowEntries"
 #feature toggle is the functionality to turn off/on specific features
 MT_STATE_TOGGLE = "org.openkilda.messaging.command.system.FeatureToggleStateRequest"
@@ -903,6 +902,8 @@ class MessageItem(object):
     def sync_switch_rules(self):
         switch_id = self.payload['switch_id']
         rules_to_sync = self.payload['rules']
+
+        logger.debug('Switch rules synchronization for rules: %s', rules_to_sync)
 
         sync_actions = flow_utils.build_commands_to_sync_rules(switch_id,
                                                            rules_to_sync)

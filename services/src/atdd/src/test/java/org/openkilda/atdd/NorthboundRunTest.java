@@ -166,10 +166,9 @@ public class NorthboundRunTest {
 
         assertEquals("Switch doesn't have expected installed rules.", installedRulesCount,
                 validateResult.getInstalledRules().size());
+    }
 
-      
-    // TODO - during merge conflict, this was in the prior commit .. is it still used?
-    @Then("^(.*) rules are installed on (.*) switch$")
+    @Then("^([\\w,]+) rules are installed on ([\\w:]+) switch$")
     public void checkThatRulesAreInstalled(String ruleCookies, String switchId) {
         List<FlowEntry> actualRules = SwitchesUtils.dumpSwitchRules(switchId);
         assertNotNull(actualRules);
@@ -180,8 +179,7 @@ public class NorthboundRunTest {
         assertThat("Switch doesn't contain expected rules.", actualRuleCookies, hasItems(ruleCookies.split(",")));
     }
 
-    // TODO - during merge conflict, this was in the prior commit .. is it still used?
-    @Then("No rules installed on (.*) switch$")
+    @Then("No rules installed on ([\\w:]+) switch$")
     public void checkThatNoRulesAreInstalled(String switchId) {
         List<FlowEntry> actualRules = SwitchesUtils.dumpSwitchRules(switchId);
         assertNotNull(actualRules);

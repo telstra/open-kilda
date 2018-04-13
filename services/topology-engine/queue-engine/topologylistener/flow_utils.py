@@ -527,7 +527,7 @@ def validate_switch_rules(switch_id, switch_rules):
         hex_cookie = cookie_to_hex(flow['cookie'])
         if hex_cookie not in proper_rules and \
             hex_cookie not in ignored_rules:
-            logger.error('Rule %s is obsolete for the switch %s', hex_cookie, switch_id)
+            logger.error('Rule %s is excessive on the switch %s', hex_cookie, switch_id)
             excess_rules.add(hex_cookie)
 
     return {"missing_rules": missing_rules, "excess_rules": excess_rules,
