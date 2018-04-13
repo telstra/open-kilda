@@ -77,7 +77,7 @@ public class PathComputerMock implements PathComputer {
     }
 
     private PathInfoData path(SwitchInfoData srcSwitch, SwitchInfoData dstSwitch, int bandwidth) {
-        System.out.println("Get Path By Switch Instances " + bandwidth + ": " + srcSwitch + " - " + dstSwitch);
+        System.out.println("Get Path By SimpleSwitch Instances " + bandwidth + ": " + srcSwitch + " - " + dstSwitch);
 
         LinkedList<IslInfoData> islInfoDataLinkedList = new LinkedList<>();
         List<PathNode> nodes = new ArrayList<>();
