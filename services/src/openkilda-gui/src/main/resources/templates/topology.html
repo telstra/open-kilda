@@ -72,19 +72,19 @@
 					<label class="col-sm-3 col-form-label" style='font-weight: bold;'>Name:</label>
 					<p class="col-sm-9 switchdetails_div_switch_name"></p>
 				</div>
-
 				<div class="form-group row">
-					<label class="col-sm-3 col-form-label" style='font-weight: bold;'>Controller:</label>
-					<p class="col-sm-9 switchdetails_div_controller"></p>
+					<label class="col-sm-3 col-form-label" style='font-weight: bold;'>SwitchId:</label>
+					<p class="col-sm-9 switchdetails_div_name"></p>
+				</div>
+				<div class="form-group row">
+					<label class="col-sm-3 col-form-label" style='font-weight: bold;'>State:</label>
+					<p class="col-sm-9 switchdetails_div_state"></p>
 				</div>
 				<div class="form-group row">
 					<label class="col-sm-3 col-form-label" style='font-weight: bold;'>Address:</label>
 					<p class="col-sm-9 switchdetails_div_address"></p>
 				</div>
-				<div class="form-group row">
-					<label class="col-sm-3 col-form-label" style='font-weight: bold;'>SwitchId:</label>
-					<p class="col-sm-9 switchdetails_div_name"></p>
-				</div>
+				
 				<div class="form-group row">
 					<label class="col-sm-3 col-form-label" style='font-weight: bold;'>Description:</label>
 					<p class="col-sm-9 switchdetails_div_desc"></p>
@@ -94,41 +94,51 @@
 			<div class="form-wrapper" id="isl_hover" style="display:none">
 				<div class="form-group row">
 					<label class="col-sm-5 col-form-label" style='font-weight: bold;'>Src Switch:</label>
-					<p class="col-sm-6 isldetails_div_source_switch_name"></p>
+					<p class="col-sm-6 isldetails_div_source_switch"></p>
 				</div>
 				<div class="form-group row">
 					<label class="col-sm-5 col-form-label" style='font-weight: bold;'>Src Port:</label>
 					<p class="col-sm-6 isldetails_div_source_port"></p>
 				</div>
 				<div class="form-group row">
-					<label class="col-sm-5 col-form-label" style='font-weight: bold;'>Dest Switch:</label>
-					<p class="col-sm-6 isldetails_div_destination_switch_name"></p>
+					<label class="col-sm-5 col-form-label" style='font-weight: bold;'>Dst Switch:</label>
+					<p class="col-sm-6 isldetails_div_destination_switch"></p>
 				</div>
 				<div class="form-group row">
-					<label class="col-sm-5 col-form-label" style='font-weight: bold;'>Dest Port:</label>
+					<label class="col-sm-5 col-form-label" style='font-weight: bold;'>Dst Port:</label>
 					<p class="col-sm-6 isldetails_div_destination_port"></p>
 				</div>
 				<div class="form-group row">
 					<label class="col-sm-5 col-form-label" style='font-weight: bold;'>State:</label>
-					<p class="col-sm-6 switchdetails_div_state"></p>
+					<p class="col-sm-6 isldetails_div_state"></p>
 				</div>
 				<div class="form-group row">
 					<label class="col-sm-5 col-form-label" style='font-weight: bold;'>Speed:</label>
-					<p class="col-sm-6 switchdetails_div_speed"></p>
+					<p class="col-sm-6 isldetails_div_speed"></p>
 				</div>
 				<div class="form-group row">
 					<label class="col-sm-5 col-form-label" style='font-weight: bold;'>Available Bandwidth:</label>
-					<p class="col-sm-6 switchdetails_div_bandwidth"></p>
+					<p class="col-sm-6 isldetails_div_bandwidth"></p>
 				</div>
 			</div>
 			
 		</div>
 		<div class="container-fluid">
 		<div class="row">
-			<!-- <div class="col-sm-10">
-			</div> -->
-			<div class="col-sm-3 checkbox-wrapper pull-right">	
+					<div class="col-sm-3 checkbox-wrapper pull-right">	
 				<div class="check">
+					<input type="checkbox" name="auto_refresh" class="isl_flow" value="auto_refresh" id="auto_refresh"/>Auto Refresh<br/>
+					<span class="auto_refresh_interval hide">
+						<span id="refresh_dropdown">
+							
+						</span>
+						<span id="m_s_dropdown_span">
+							<select id="m_s_dropdown">
+								<option value="m">Min.</option>
+								<option value="s">Sec</option>
+							</select>
+						</span>
+					</span>
 					<input type="checkbox" name="switch" value="switch" id="switch"/>Show
 					Switch<br/>
 					<input type="checkbox" name="logical" class="isl_flow" value="logical" id="logical"/>Show Flow<br/>
@@ -168,7 +178,8 @@
 			<span class="popuptext" id="linkDiv"></span>
 		</div>
 
-
+		<script th:inline="javascript" src="javascript/common.js"
+		th:src="@{javascript/common.js}"></script>
 		<div th:include="fragments/importResources:: graphImports"></div>
 		
 		
@@ -191,7 +202,5 @@
 		</div>
 	</div>
 	
-	<script th:inline="javascript" src="javascript/common.js"
-		th:src="@{javascript/common.js}"></script>
 </body>
 </html>

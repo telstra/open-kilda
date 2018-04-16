@@ -29,9 +29,12 @@ GET_TOPOLOGY_FLOWS=${tpe.base.url}/topology/flows
 nb.base.url={{ northbound_endpoint }}:{{ northbound_rest_port }}/api/v1
 GET_FLOW=${nb.base.url}/flows
 GET_FLOW_STATUS=${GET_FLOW}/status/
+GET_FLOW_REROUTE=${GET_FLOW}/{flow_id}/reroute
+GET_FLOW_VALIDATE=${GET_FLOW}/{flow_id}/validate
 GET_PATH_FLOW = ${GET_FLOW}/path
 GET_SWITCHES=${nb.base.url}/switches
 GET_LINKS=${nb.base.url}/links
+GET_LINK_PROPS=${nb.base.url}/link/props
 
 
 #OPEN TSDB Base URL
