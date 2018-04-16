@@ -35,6 +35,9 @@ public class ApplicationProperties {
     @Value("${GET_LINKS}")
     private String links;
 
+    @Value("${GET_LINK_PROPS}")
+    private String linkProps;
+
     @Value("${nb.base.url}")
     private String nbBaseUrl;
 
@@ -49,6 +52,12 @@ public class ApplicationProperties {
 
     @Value("${GET_FLOW_STATUS}")
     private String flowStatus;
+
+    @Value("${GET_FLOW_REROUTE}")
+    private String flowReroute;
+
+    @Value("${GET_FLOW_VALIDATE}")
+    private String flowValidate;
 
     @Value("${opentsdb.base.url}")
     private String openTsdbBaseUrl;
@@ -83,6 +92,10 @@ public class ApplicationProperties {
 
     public String getLinks() {
         return links;
+    }
+
+    public String getLinkProps() {
+        return linkProps;
     }
 
     public String getNbBaseUrl() {
@@ -123,6 +136,14 @@ public class ApplicationProperties {
 
     public String getSwitchDataFilePath() {
         return switchDataFilePath;
+    }
+
+    public String getFlowReroute() {
+        return flowReroute;
+    }
+
+    public String getFlowValidate() {
+        return flowValidate;
     }
 
 

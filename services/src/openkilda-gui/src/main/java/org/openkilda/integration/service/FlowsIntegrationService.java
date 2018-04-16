@@ -42,7 +42,7 @@ public class FlowsIntegrationService {
 
     @Autowired
     FlowConverter flowConverter;
-    
+
     @Autowired
     private ApplicationProperties applicationProperties;
 
@@ -128,6 +128,70 @@ public class FlowsIntegrationService {
             }
         } catch (Exception exception) {
             LOGGER.error("Exception in getAllFlowList " + exception.getMessage());
+            throw new IntegrationException(exception);
+        }
+        return null;
+    }
+
+    /**
+     * Re route flow by flow id.
+     * 
+     * @param flowId
+     * @return flow path.
+     */
+    public FlowPath rerouteFlow(String flowId) {
+        try {
+            HttpResponse response = restClientManager.invoke(
+                    applicationProperties.getFlowReroute().replace("{flow_id}", flowId),
+                    HttpMethod.PATCH, "", "", applicationService.getAuthHeader());
+            if (RestClientManager.isValidResponse(response)) {
+                FlowPath flowPath = restClientManager.getResponse(response, FlowPath.class);
+                return flowPath;
+            } else {
+                String content = IoUtil.toString(response.getEntity().getContent());
+                throw new InvalidResponseException(response.getStatusLine().getStatusCode(),
+                        content);
+            }
+        } catch (Exception exception) {
+            LOGGER.error("Exception in rerouteFlow " + exception.getMessage());
+            throw new IntegrationException(exception);
+        }
+    }
+
+    /**
+     * Flow validation by flow id.
+     * 
+     * @param flowId
+     * @return
+     */
+    public String validateFlow(String flowId) {
+        try {
+            HttpResponse response = restClientManager.invoke(
+                    applicationProperties.getFlowValidate().replace("{flow_id}", flowId),
+                    HttpMethod.GET, "", "", applicationService.getAuthHeader());
+            return IoUtil.toString(response.getEntity().getContent());
+        } catch (Exception exception) {
+            LOGGER.error("Exception in validateFlow " + exception.getMessage());
+            throw new IntegrationException(exception);
+        }
+    }
+
+    /**
+     * Flow by flow id.
+     * 
+     * @param flowId
+     * @return
+     */
+    public Flow getFlowById(String flowId) {
+        try {
+            HttpResponse response =
+                    restClientManager.invoke(applicationProperties.getFlows() + "/" + flowId,
+                            HttpMethod.GET, "", "", applicationService.getAuthHeader());
+            if (RestClientManager.isValidResponse(response)) {
+                return restClientManager.getResponse(response, Flow.class);
+            }
+        } catch (Exception exception) {
+            LOGGER.error("Exception in getFlowById " + exception.getMessage());
             throw new IntegrationException(exception);
         }
         return null;

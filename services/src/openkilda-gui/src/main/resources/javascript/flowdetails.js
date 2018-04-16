@@ -15,9 +15,27 @@ $(document).ready(function() {
 	showFlowData(obj);
 	getMetricDetails.getFlowMetricData();
 	$('body').css('pointer-events','all');
+	$('#reroute_flow').click(function(e){
+		e.preventDefault();
+		callReRoute(obj.flow_id);
+		
+	})
+	
+	$('#validate_flow_btn').click(function(e){
+		e.preventDefault();
+		callValidateFlow(obj.flow_id);
+	})
 })
 
-
+function callValidateFlow(flow_id){
+	$('#validate_json_loader').show();
+	$('#validate_json').html("")
+		common.getData("/flows/" + flow_id+"/validate","GET").then(function(response) { // calling re-route api
+				var responseData = JSON.stringify(response,null,2);
+				$('#validate_json').html(responseData)
+				$('#validate_json_loader').hide();
+		})
+}
 function showFlowData(obj) {
 
 	$(".flow_div_flow_id").html(obj.flow_id);
@@ -29,7 +47,7 @@ function showFlowData(obj) {
 	$(".flow_div_destination_switch").html(obj.target_switch);
 	$(".flow_div_destination_port").html(obj.dst_port);
 	$(".flow_div_destination_vlan").html(obj.dst_vlan);
-	$(".flow_div_maximum_bandwidth").html(obj.maximum_bandwidth/1000+" Mbps");
+	$(".flow_div_maximum_bandwidth").html(obj.maximum_bandwidth);
 	$(".flow_div_Status").html(obj.status);
 
 	if (!obj.description == "") {
@@ -40,6 +58,25 @@ function showFlowData(obj) {
 	callFlowPath(obj.flow_id);
 }
 
+/** dev: Neeraj
+ * functionality : call re-route api 
+ *  **/
+function callReRoute(flow_id){
+	$("#path_reroute_loader").show();
+	$('#ForwardRow').find('div').remove();
+	$('#ReversePath').find('div').remove();
+	common.getData("/flows/" + flow_id+"/reroute","GET").then(function(res) { // calling re-route api
+		if(res && typeof(res.rerouted)!=='undefined' && res.rerouted){
+			common.infoMessage('Flow : '+flow_id+" successfully re-routed!","success");
+		} else {
+			common.infoMessage('Flow : '+flow_id+" already on best route!","info");
+		}
+		common.getData("/flows/path/" + flow_id,"GET").then(function(response) { //calling flow path api again
+			showFlowPathData(response,true);
+		})
+	})
+	
+}
 function callFlowPath(flow_id) {
 	
 	common.getData("/flows/path/" + flow_id,"GET").then(function(response) {
@@ -47,7 +84,7 @@ function callFlowPath(flow_id) {
 	})
 }
 
-function showFlowPathData(response) {
+function showFlowPathData(response ,isloader) {
 
 	var tmp_length = 0;
 	for(var t in response) {
@@ -152,5 +189,8 @@ function showFlowPathData(response) {
 	}
 	
 	$(".path:last-child .line:nth-child(6)").hide();	
+	if(isloader){
+		$("#path_reroute_loader").hide();
+	}
 }
 /* ]]> */

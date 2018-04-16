@@ -9,37 +9,15 @@
  * @return {/switch/flows} will return flow details
  */
 
-var cookie = new function() {
-    this.set = function ( name, value, days ) {
-        var expires = "";
-        days = typeof days !== 'undefined' ? days : 10;
-        if ( days ) {
-            var date = new Date();
-            date.setTime( date.getTime() + ( days * 24 * 60 * 60 * 1000 ) );
-            expires = "; expires=" + date.toGMTString();
-        }
-        document.cookie = name + "=" + value + expires + "; path=/";
-    };
-
-    this.get = function ( name ) {
-        var nameEQ = name + "=";
-        var ca = document.cookie.split( ';' );
-        for ( var i = 0; i < ca.length; i++ ) {
-            var c = ca[ i ];
-            while ( c.charAt(0) == ' ' ) c = c.substring( 1, c.length );
-            if ( c.indexOf( nameEQ ) == 0 ) return c.substring( nameEQ.length, c.length );
-        }
-        return null;
-    };
-
-    this.delete = function ( name ) {
-        this.set( name, "", -1 );
-    };
-}
 
 /** ajax call to switch api to get switch details */
 
-var responseData = [];
+var responseData = {
+	switch:{data:[],reload:false},
+	isl:{data:[],reload:false},
+	flow:{data:[],reload:false}
+};
+  
 
 var ISL = {
 	DISCOVERED: "#00baff",
@@ -50,12 +28,16 @@ var ISL = {
 var RIGHT_CHECKBOXES = {
 	SWITCH_CHECKED: 0,
 	ISL_CHECKED: 1,
-	FLOW_CHECKED: 0
+	FLOW_CHECKED: 0,
+	REFRESH_CHECKED: 0,
+	REFRESH_INTERVAL: 1,
+	REFRESH_TYPE: "m"
 }	
+var switchIntervalId,islIntervalId;
 
 var cookieCheckboxes = cookie.get( 'RIGHT_CHECKBOXES');
 if(cookieCheckboxes == null){
-	cookie.set( 'RIGHT_CHECKBOXES', JSON.stringify(RIGHT_CHECKBOXES), 365 );
+	cookie.set( 'RIGHT_CHECKBOXES', JSON.stringify(RIGHT_CHECKBOXES));
 }
 
 var api = {
@@ -66,7 +48,7 @@ var api = {
 			success : function(response) {
 				if(response)
 				{
-					responseData.push(response);
+					responseData.switch.data = response;
 					api.getLink();
 				}
 				else
@@ -88,9 +70,22 @@ var api = {
 			type : 'GET',
 			success : function(response) {
 				if (response) {
-					responseData.push(response);
-				} 
-				api.getFlowCount();
+					responseData.isl.data = response;
+				}
+				var storageValue = cookie.get('RIGHT_CHECKBOXES');
+				if(storageValue != null){
+					try{
+						storageValue = JSON.parse(storageValue);
+						if(storageValue.FLOW_CHECKED){
+							api.getFlowCount();
+						}else{
+							graph.init(responseData);
+						}
+					}catch(e){
+						api.getFlowCount();
+					}
+				}
+				
 			},
 			error : function(errResponse) {
 				graph.init(responseData);
@@ -111,7 +106,7 @@ var api = {
 						flows.push(response[i]);
 					}
 					
-					responseData.push(flows);
+					responseData.flow.data = flows;
 				}
 				graph.init(responseData);
 			},
@@ -161,7 +156,7 @@ zoom = d3.behavior.zoom()
 	//.on("zoom", redraw);
 //create force layout
 /*force = d3.layout.force()
-    .charge(-2090)
+    .charge(-1000)
     .linkDistance(200)
 	.size([width, height])
 	.on("tick", tick);
@@ -191,10 +186,10 @@ node = svg.selectAll(".node");
 
 graph = {
 
-	init: function(data){
+	init: function(responseData){
 	    
-		if (data[0].length == 0 && data[1].length == 0 && data[2].length == 0) {
-			common.infoMessage('No Data Avaliable','info');
+		if (responseData.switch.data.length == 0 && responseData.isl.data.length == 0 && responseData.flow.data.length == 0) {
+			common.infoMessage('No Data Available','info');
 			return false;
 		}
 
@@ -205,11 +200,54 @@ graph = {
 		 * The second array, called links below, identifies all the links between
 		 * the nodes.
 		 */
-		nodes = data[0];
-		links = data[1] == undefined ? [] : data[1];
-		flows = data[2] == undefined ? [] : data[2];
+		nodes = responseData.switch.data;
+		links = responseData.isl.data;
+		flows = responseData.flow.data;
+		
+		var linksArr = [];
 		if (links.length>0 && flows.length>0) {
-			links = links.concat(flows);
+			try{
+				var result = common.groupBy(links, function(item)
+				{
+					return [item.source_switch, item.target_switch];
+				});
+				for(var i=0,len=result.length;i<len;i++){
+					var row = result[i];
+					row[0].failedObj = {
+						count: 0,
+						isl: []
+					};
+					row[0].discoveredObj = {
+						count: 0,
+						isl: []
+					};
+					row[0].unidirectionalObj = {
+						count: 0,
+						isl: []
+					};
+					
+					if(row.length>1){
+						for(var j=0,len1=row.length;j<len1;j++){
+							if(row[j].state.toLowerCase()=="failed"){
+								row[0].failedObj.count++;
+								row[0].failedObj.isl.push(row[j]);
+							}
+							if(row[j].state.toLowerCase()=="discovered"){
+								row[0].discoveredObj.count++;
+								row[0].discoveredObj.isl.push(row[j]);
+							}
+							if(row[j].unidirectional){
+								row[0].unidirectionalObj.count++;
+								row[0].unidirectionalObj.isl.push(row[j]);
+							}
+						}
+					}
+					linksArr.push(row[0]);
+				}
+			}catch(e){
+				links = links.concat(flows);
+			}
+			links = linksArr.concat(flows);
 		}
 		
 		optArray = optArray.sort();
@@ -252,16 +290,13 @@ graph = {
 			linkedByIndex[d.source + "," + d.target] = true;
 		});
 		
-		
 		force = self.force = d3.layout.force()
         .nodes(nodes)
         .links(links)
-        .gravity(.05)
-        .charge(-2090)
+        .charge(-1000)
        	.linkDistance(200)
        	.size([width, height])
         .start();
-		
 		
 		drag = d3.behavior.drag()
 	        .on("dragstart", dragstart)
@@ -288,10 +323,8 @@ graph = {
 	        return "link" + index;
 	    })
 	    .on("mouseover", function(d, index) {
-	    	
 	    	$('#switch_hover').css('display', 'none');
-			
-	        var element = $("#link" + index)[0];	
+		    var element = $("#link" + index)[0];	
 	        if (d.hasOwnProperty("flow_count")) {
 	        	element.setAttribute("class", "link logical overlay");
 	        } else {
@@ -300,27 +333,30 @@ graph = {
                 }else{
                 	element.setAttribute("class","link physical overlay");
                 }
-	            
+	            $(element).on('mousemove',function(e){
+	            	$('#topology-hover-txt').css('top', (e.pageY) + 'px');
+				    $('#topology-hover-txt').css('left', (e.pageX) + 'px');
+				    var bound = HorizontallyBound(document.getElementById("switchesgraph"), document.getElementById("topology-hover-txt"));
+				    if(bound){
+				    	$("#topology-hover-txt").removeClass("left");
+				    }else{
+				    	var left = e.pageX - (300 + 100); // subtract width of tooltip box + circle radius
+				    	$('#topology-hover-txt').css('left', left + 'px');
+				    	$("#topology-hover-txt").addClass("left");
+				    }
+	            })
 	            var rec = element.getBoundingClientRect();
 			    $('#topology-hover-txt, #isl_hover').css('display', 'block');
-			    $('#topology-hover-txt').css('top', rec.y + 'px');
-			    $('#topology-hover-txt').css('left', rec.x + 'px');
-			    
 			    d3.select(".isldetails_div_source_port").html("<span>" + d.src_port + "</span>");
 			    d3.select(".isldetails_div_destination_port").html("<span>" + d.dst_port + "</span>");
-			    d3.select(".isldetails_div_source_switch_name").html("<span>" + d.source_switch_name + "</span>");
-			    d3.select(".isldetails_div_destination_switch_name").html("<span>" + d.target_switch_name + "</span>");
-			    d3.select(".switchdetails_div_speed").html("<span>" + d.speed/1000 + " Mbps</span>");
-			    d3.select(".switchdetails_div_state").html("<span>" + d.state + "</span>");
-			    d3.select(".switchdetails_div_bandwidth").html("<span>" + d.available_bandwidth/1000 + " Mbps</span>");
-			    var bound = HorizontallyBound(document.getElementById("switchesgraph"), document.getElementById("topology-hover-txt"));
-			    if(bound){
-			    	$("#topology-hover-txt").removeClass("left");
-			    }else{
-			    	var left = rec.x - (300 + 100); // subtract width of tooltip box + circle radius
-			    	$('#topology-hover-txt').css('left', left + 'px');
-			    	$("#topology-hover-txt").addClass("left");
-			    }
+			    d3.select(".isldetails_div_source_switch").html("<span>" + d.source_switch_name + "</span>");
+			    d3.select(".isldetails_div_destination_switch").html("<span>" + d.target_switch_name + "</span>");
+			    d3.select(".isldetails_div_speed").html("<span>" + d.speed/1000 + " Mbps</span>");
+			    d3.select(".isldetails_div_state").html("<span>" + d.state + "</span>");
+			    d3.select(".isldetails_div_latency").html("<span>" + d.latency + "</span>");
+			    d3.select(".isldetails_div_bandwidth").html("<span>" + d.available_bandwidth/1000 + " Mbps</span>");
+			    d3.select(".isldetails_div_unidirectional").html("<span>" + d.unidirectional + "</span>"); 
+			    
 	        }
 	    }).on("mouseout", function(d, index) {
 	        var element = $("#link" + index)[0];
@@ -445,6 +481,7 @@ graph = {
 		
 		    d3.select(".switchdetails_div_switch_name").html("<span>" + d.name + "</span>");
 		    d3.select(".switchdetails_div_controller").html("<span>" + d.switch_id + "</span>");
+		    d3.select(".switchdetails_div_state").html("<span>" + d.state + "</span>");
 		    d3.select(".switchdetails_div_address").html("<span>" + d.address + "</span>");
 		    d3.select(".switchdetails_div_name").html("<span>" + d.switch_id + "</span>");
 		    d3.select(".switchdetails_div_desc").html("<span>" + d.description + "</span>");
@@ -472,89 +509,37 @@ graph = {
 	    		$('#topology-hover-txt, #switch_hover').css('display', 'none');
 	    	}
 		});
-		flow_count = svg.selectAll(".flow_count")
-	    	.data(links)
-	    	.enter().append("g").attr("class","flow-circle");
-	
-		flow_count.append("circle")
-	    .attr("dy", ".35em")
-	    .style("font-size", nominal_text_size + "px")
-	
-	
-	    .attr("r", function(d, index) {
-	        var element = $("#link" + index)[0];
-	        var f = d.flow_count;
-	        if (element.getAttribute("stroke") == "#228B22" || element.getAttribute("stroke") == "green") {
-	        	if(f<10){
-	        		r = 10;
-        		}else if(f>=10 && f<100){
-	        		r = 12;
-        		}else{
-        			r = 16;
-        		}
-	            return r;
-	        };
-	    }).on("mouseover", function(d, index) {
-	        var element = $("#link" + index)[0];
-	        if (d.hasOwnProperty("flow_count")) {
-	            classes = "link logical overlay";
-	        } else {
-	        	classes =  "link physical overlay";
-	        }
-	        element.setAttribute("class", classes);
-	
-	    }).on("mouseout", function(d, index) {
-	        var element = $("#link" + index)[0];
-	        if (d.hasOwnProperty("flow_count")) {
-	            classes = "link logical";
-	        } else {
-	        	classes =  "link physical";
-	        }
-	        element.setAttribute("class", classes);
-	    }).on(
-	        "click",
-	        function(d, index) {
-	
-	            showFlowDetails(d);
-	        })
-	    .attr("class", "linecircle")
-	    .attr("id", function(d, index) {
-	        var id = "_" + index;
-	        return id;
-	    })
-	    .attr("fill", function(d) {
-	        return "#d3d3d3";
-	    }).call(force.drag)
-	
-	
-	flow_count.append("text")
-	    .attr("dx", function(d) {
-	    	var f = d.flow_count;
-	    	if(f<10){
-        		r = -3;
-    		}else if(f>=10 && f<100){
-        		r = -6;
-    		}else{
-    			r = -9;
-    		}
-	        return r
-	    })
-	    .attr("dy", function(d) {
-	        return 5
-	    })
-	    .attr("fill", function(d) {
-	        return "black";
-	    })
-	    .text(function(d) {
-	        var value = d.flow_count;
-	        return value;
-	    });
+		
+		
+		graph.circle();
 		force.on('end', function() {
 			$("#wait").css("display", "none");
 			$("#switchesgraph").removeClass("hide");
 			if(zoomFitCall){
 				zoomFit(0.95, 500);
 			}
+			
+			/*
+			try{
+				positions = cookie.get('NODES_COORDINATES');
+				if(positions){
+					positions = JSON.parse(positions);
+					// control the coordinates here
+				    d3.selectAll("g.node").attr("transform", function(d){
+				    	try{
+				    		d.x = positions[d.switch_id][0];
+					    	d.y = positions[d.switch_id][1];
+				    	}catch(e){
+				    		
+				    	}
+				    	
+				        return "translate("+d.x+","+d.y+")";
+				    });
+					tick();
+				}
+			}catch(e){
+				console.log(e);
+			} */
 		});
 		
 		force.on("tick", tick);
@@ -567,10 +552,87 @@ graph = {
 				storageValue = JSON.parse(storageValue);
 				updateRightPanel(storageValue);
 			}catch(e){
-				updateRightPanel(storageValue);
+				updateRightPanel(RIGHT_CHECKBOXES);
 			}
 		}
-	}	
+	},
+	circle : function(){
+		flow_count = svg.selectAll(".flow_count")
+	    	.data(links)
+	    	.enter().append("g").attr("class","flow-circle");
+	
+		flow_count.append("circle")
+	    	.attr("dy", ".35em")
+	    	.style("font-size", nominal_text_size + "px")
+	
+		    .attr("r", function(d, index) {
+		        var element = $("#link" + index)[0];
+		        var f = d.flow_count;
+		        if (element.getAttribute("stroke") == "#228B22" || element.getAttribute("stroke") == "green") {
+		        	if(f<10){
+		        		r = 10;
+		    		}else if(f>=10 && f<100){
+		        		r = 12;
+		    		}else{
+		    			r = 16;
+		    		}
+		            return r;
+		        };
+		    }).on("mouseover", function(d, index) {
+		        var element = $("#link" + index)[0];
+		        if (d.hasOwnProperty("flow_count")) {
+		            classes = "link logical overlay";
+		        } else {
+		        	classes =  "link physical overlay";
+		        }
+		        element.setAttribute("class", classes);
+		
+		    }).on("mouseout", function(d, index) {
+		        var element = $("#link" + index)[0];
+		        if (d.hasOwnProperty("flow_count")) {
+		            classes = "link logical";
+		        } else {
+		        	classes =  "link physical";
+		        }
+		        element.setAttribute("class", classes);
+		    }).on(
+		        "click",
+		        function(d, index) {
+		
+		            showFlowDetails(d);
+		        })
+		    .attr("class", "linecircle")
+		    .attr("id", function(d, index) {
+		        var id = "_" + index;
+		        return id;
+		    })
+		    .attr("fill", function(d) {
+		        return "#d3d3d3";
+		    }).call(force.drag)
+		    
+		    flow_count.append("text")
+		    .attr("dx", function(d) {
+		    	var f = d.flow_count;
+		    	if(f<10){
+	        		r = -3;
+	    		}else if(f>=10 && f<100){
+	        		r = -6;
+	    		}else{
+	    			r = -9;
+	    		}
+		        return r
+		    })
+		    .attr("dy", function(d) {
+		        return 5
+		    })
+		    .attr("fill", function(d) {
+		        return "black";
+		    })
+		    .text(function(d) {
+		        var value = d.flow_count;
+		        return value;
+		    });
+	}
 }
 function sortLinks() {
 	links.sort(function(a, b) {
@@ -681,10 +743,6 @@ function tick() {
 	node.attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
 	
 	flow_count.attr("transform", function(d, index) {
-	    var pathEl = d3.select('#link' + index).node();
-	    var midpoint = pathEl.getPointAtLength(pathEl.getTotalLength() / 2);
-	    var ydata = midpoint.x / 2;
-	    var xvalue = midpoint.y / 2;
 	    var xvalue = (d.source.y + d.target.y) / 2;
 	    var yvalue = (d.source.x + d.target.x) / 2;
 	    if(d.source_switch == d.target_switch){
@@ -721,7 +779,6 @@ function interpolateZoom (translate, scale) {
     });
 }
 function reset() {
-	
 	d3.selectAll('g.node')
     .each(function(d) {
     	var element = document.getElementById("circle_" + d.switch_id);
@@ -734,10 +791,10 @@ function reset() {
     });
 	force.resume();
 	panzoom.reset();
+	cookie.delete("NODES_COORDINATES");
 }
 
 function zoomClick(id) {
-	
 	if(id === 'zoom_in'){
 		panzoom.zoomIn()
 	}else{
@@ -773,7 +830,8 @@ function dragend(d, i) {
 	flagHover = false;
 	d.fixed = true; // of course set the node to fixed so the force doesn't include the node in its auto positioning stuff
     tick();
- //   force.resume();
+    //force.resume();
+    updateCoordinates();
 }
 
 $("#switch").on("click", function(){
@@ -795,14 +853,23 @@ function zoomFit(paddingPercent, transitionDuration) {
 	var translate = [fullWidth / 2 - scale * midX, fullHeight / 2 - scale * midY];
 	
 	
-	
 	zoom.scale(scale).translate(translate);
 	
 	svg.transition().duration(transitionDuration || 0) // milliseconds
 	.attr("transform", "translate(" + translate + ")scale(" + scale + ")");
 
 	zoomFitCall = false;
+	
 }
+
+function updateCoordinates(){
+	var coordinates = {}
+	nodes.forEach(function(d){
+		coordinates[d.switch_id] = [Math.round(d.x * 100) / 100, Math.round(d.y * 100) / 100];
+	})
+	cookie.set('NODES_COORDINATES', JSON.stringify(coordinates));
+}
+
 function resize() {
     var w = window.innerWidth,
     h = window.innerHeight;
@@ -837,6 +904,7 @@ var options = {
 	        doubleClick: false
 	      }
 }
+
 var panzoom = $("svg").svgPanZoom(options);
 localStorage.clear();
 var parentRect;
@@ -913,12 +981,26 @@ function searchNode(value) {
     }
 }
 
+$('#auto_refresh').click(function(e){
+	var isRefreshChecked = $('#auto_refresh:checked').length;
+	updateRightPanel({
+		REFRESH_CHECKED : isRefreshChecked, 
+		REFRESH_INTERVAL : $("#auto_refresh_interval").val(),
+		REFRESH_TYPE : $("#m_s_dropdown").val()
+	});
+});
+
 $('.isl_flow').click(function(e){
 	var id = $(this).attr("id");
 	var isLogicalChecked = $('#logical:checked').length; 
 	var isPhysicalChecked = $('#physical:checked').length; 
 	if(id == "logical"){
 		updateRightPanel({FLOW_CHECKED : isLogicalChecked});
+		if(isLogicalChecked){
+			if(responseData.flow.data.length == 0){
+				location.reload();
+			}
+		}
 	}
 	if(id == "physical"){
 		updateRightPanel({ISL_CHECKED : isPhysicalChecked});
@@ -970,13 +1052,7 @@ $.fn.enterKey = function (fnc) {
 }
 
 function updateRightPanel(obj){
-	/*var storageValue = cookie.get('RIGHT_CHECKBOXES');
-	if(storageValue != null){
-		try{
-			storageValue = JSON.parse(storageValue);
-		}catch(e){}
-		
-	}*/
+	
 	var duration = 500;
 	if(obj.hasOwnProperty("SWITCH_CHECKED")){
 		RIGHT_CHECKBOXES.SWITCH_CHECKED = obj.SWITCH_CHECKED;
@@ -1014,9 +1090,166 @@ function updateRightPanel(obj){
 	            .style("opacity", 0);
 		}
 	}
+	
+	if(obj.hasOwnProperty("REFRESH_CHECKED")){
+		RIGHT_CHECKBOXES.REFRESH_CHECKED = obj.REFRESH_CHECKED;
+		$("#auto_refresh").attr("checked", !!obj.REFRESH_CHECKED);
+		if(obj.REFRESH_CHECKED){
+			$(".auto_refresh_interval").removeClass("hide");
+			refreshDropdown();
+			$("#auto_refresh_interval").val(1);
+			$("#m_s_dropdown").val("m");
+		}else{
+			$("#auto_refresh_interval").val(1);
+			$("#m_s_dropdown").val("m");
+			$(".auto_refresh_interval").addClass("hide");
+			interval.clearSwitch();
+			interval.clearISL();
+		}
+	}
+	
+	if(obj.hasOwnProperty("REFRESH_INTERVAL")){
+		RIGHT_CHECKBOXES.REFRESH_INTERVAL = obj.REFRESH_INTERVAL;
+		
+		if(RIGHT_CHECKBOXES.REFRESH_CHECKED && common.isNumeric(RIGHT_CHECKBOXES.REFRESH_INTERVAL)){
+			$("#auto_refresh_interval").val(obj.REFRESH_INTERVAL);
+			interval.set();
+		}
+	}	
+	
+	if(obj.hasOwnProperty("REFRESH_TYPE")){
+		RIGHT_CHECKBOXES.REFRESH_TYPE = obj.REFRESH_TYPE;
+		if(RIGHT_CHECKBOXES.REFRESH_CHECKED){
+			$("#m_s_dropdown").val(obj.REFRESH_TYPE);
+			interval.set();
+		}
+	}
 	cookie.set('RIGHT_CHECKBOXES', JSON.stringify(RIGHT_CHECKBOXES));
 }
 
+var interval = {
+	get:function(){
+		
+		if($("#m_s_dropdown").val() == "m"){
+			multiplier = 60000;
+		}else{
+			multiplier = 1000;
+		}
+		
+		return multiplier * parseInt($("#auto_refresh_interval").val());
+	},
+	set:function(){
+		interval.clearSwitch();
+		interval.clearISL();
+		switchIntervalId = setTimeout(this.switch, this.get());
+		islIntervalId = setTimeout(this.isl, this.get());
+	},
+	clearSwitch:function(){
+		if(switchIntervalId){
+			clearTimeout(switchIntervalId);
+			switchIntervalId = undefined;
+		}
+	},	
+	clearISL:function(){
+		if(islIntervalId){
+			clearTimeout(islIntervalId);
+			islIntervalId = undefined;
+		}
+	},	
+	switch: function(reloadInterval){
+		console.info("Switch API Called after ", $("#auto_refresh_interval").val(), $("#m_s_dropdown").val() == "m" ? "miniute(s)": "second(s)");
+		$.ajax({
+			url : APP_CONTEXT + "/switch/list",
+			type : 'GET',
+			success : function(response) {
+				if(response)
+				{
+					nodes.forEach(function(d){
+						for(var i=0,len=response.length;i<len;i++){
+							if(d.switch_id == response[i].switch_id){
+								var classes = "circle blue";
+								if(d.state && d.state.toLowerCase() == "deactivated"){
+									classes = "circle red";
+								}
+								d.state = response[i].state;
+							    var element = document.getElementById("circle_" + d.switch_id);
+							    element.setAttribute("class", classes);
+							    break;
+							}
+						}
+					});
+					if(switchIntervalId){
+						interval.clearSwitch(switchIntervalId);
+						switchIntervalId = setTimeout(interval.switch, interval.get());
+					}
+				}	
+			},
+			dataType : "json"
+		});
+		
+	},
+	isl: function(reloadInterval){
+		console.info("ISL API Called after ", $("#auto_refresh_interval").val(), $("#m_s_dropdown").val() == "m" ? "miniute(s)": "second(s)");
+		$.ajax({
+			url : APP_CONTEXT + "/switch/links",
+			type : 'GET',
+			success : function(response) {
+				if(response)
+				{
+					links.forEach(function(d,index){
+						for(var i=0,len=response.length;i<len;i++){
+							if(d.source_switch == response[i].source_switch && d.target_switch == response[i].target_switch){
+								if (d.unidirectional || d.state && d.state.toLowerCase()== "failed"){
+									classes = "link physical down";
+				                }else{
+				                	classes = "link physical";
+				                }
+								d.state = response[i].state;
+							    var element = document.getElementById("link" + index);
+							    
+							    var stroke = ISL.FAILED;
+							    
+							    if (d.unidirectional){
+				                    stroke = ISL.UNIDIR;
+				                } else if(d.state && d.state.toLowerCase()== "discovered"){
+				                	stroke = ISL.DISCOVERED;
+				                }
+							    
+							    element.setAttribute("class", classes);
+							    element.setAttribute("stroke", stroke);
+					            
+							    break;
+							}
+						}
+					});
+					if(islIntervalId){
+						interval.clearISL(islIntervalId);
+						islIntervalId = setTimeout(interval.isl, interval.get());
+					}
+				}	
+			},
+			dataType : "json"
+		});
+	}
+}
+$(document).on('change', '#auto_refresh_interval, #m_s_dropdown', function () {
+	updateRightPanel({
+		REFRESH_INTERVAL : $("#auto_refresh_interval").val(),
+		REFRESH_TYPE : $("#m_s_dropdown").val()
+	});
+})
+
+function refreshDropdown(){
+	var minutes = document.createElement('select');
+	minutes.setAttribute('id', 'auto_refresh_interval');
+	for (var m=1; m<=60; m++) {
+	    var option = document.createElement('option');
+	    option.setAttribute('value', m);
+	    option.appendChild(document.createTextNode(m));
+	    minutes.appendChild(option);
+	}
+	$("#refresh_dropdown").html(minutes);
+}
 
 
 /* ]]> */

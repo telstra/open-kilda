@@ -1,16 +1,10 @@
 package org.openkilda.integration.service;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpMethod;
-import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
-
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.URL;
+import java.net.URLEncoder;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +18,7 @@ import org.openkilda.integration.exception.ContentNotFoundException;
 import org.openkilda.integration.exception.IntegrationException;
 import org.openkilda.integration.model.response.IslLink;
 import org.openkilda.model.IslLinkInfo;
+import org.openkilda.model.LinkProps;
 import org.openkilda.model.PortInfo;
 import org.openkilda.model.SwitchInfo;
 import org.openkilda.service.ApplicationService;
@@ -31,6 +26,13 @@ import org.openkilda.utility.ApplicationProperties;
 import org.openkilda.utility.CollectionUtil;
 import org.openkilda.utility.IoUtil;
 import org.openkilda.utility.JsonUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpMethod;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+import org.springframework.web.util.UriComponentsBuilder;
 
 /**
  * The Class SwitchIntegrationService.
@@ -50,7 +52,7 @@ public class SwitchIntegrationService {
 
     @Autowired
     private ApplicationService applicationService;
-    
+
     @Autowired
     private IslLinkConverter islLinkConverter;
 
@@ -96,7 +98,7 @@ public class SwitchIntegrationService {
      * 
      * @param csNames
      * @param switchId
-     * @return
+     * @return switch name
      */
     public String customSwitchName(Map<String, String> csNames, String switchId) {
         if (csNames != null && !StringUtils.isEmpty(csNames) && csNames.size() > 0) {
@@ -133,6 +135,30 @@ public class SwitchIntegrationService {
     }
 
     /**
+     * Gets the isl link cost.
+     *
+     * @return the isl link cost
+     */
+    public LinkProps getIslLinkProps(LinkProps keys) {
+        UriComponentsBuilder builder =
+                UriComponentsBuilder.fromHttpUrl(applicationProperties.getLinkProps());
+        builder = setLinkProps(keys, builder);
+        String fullUri = builder.build().toUriString();
+        HttpResponse response = restClientManager.invoke(fullUri, HttpMethod.GET, "", "",
+                applicationService.getAuthHeader());
+        if (RestClientManager.isValidResponse(response)) {
+            List<LinkProps> linkPropsResponse =
+                    restClientManager.getResponseList(response, LinkProps.class);
+            if (CollectionUtil.isEmpty(linkPropsResponse)) {
+                throw new ContentNotFoundException();
+            } else {
+                return linkPropsResponse.get(0);
+            }
+        }
+        return null;
+    }
+
+    /**
      * Gets the switch ports.
      *
      * @return the switch ports
@@ -154,6 +180,11 @@ public class SwitchIntegrationService {
         return null;
     }
 
+    /**
+     * Get custom switch name from file.
+     * 
+     * @return
+     */
     @SuppressWarnings("unchecked")
     public Map<String, String> getCustomSwitchNameFromFile() {
         Map<String, String> csNames = new HashMap<String, String>();
@@ -170,10 +201,63 @@ public class SwitchIntegrationService {
                 }
             }
         } catch (Exception ex) {
-            LOGGER.error("Inside getCustomSwitchNameFromFile unable to find switch file path Exception :",
+            LOGGER.error(
+                    "Inside getCustomSwitchNameFromFile unable to find switch file path Exception :",
                     ex);
         }
         return csNames;
 
+    }
+
+    /**
+     * Update isl link props.
+     * 
+     * @param keys
+     * @return link props
+     */
+    public LinkProps updateIslLinkProps(LinkProps keys) {
+        UriComponentsBuilder builder =
+                UriComponentsBuilder.fromHttpUrl(applicationProperties.getLinkProps());
+        builder = setLinkProps(keys, builder);
+        String fullUri = builder.build().toUriString();
+        HttpResponse response = restClientManager.invoke(fullUri, HttpMethod.PUT, "", "",
+                applicationService.getAuthHeader());
+        if (RestClientManager.isValidResponse(response)) {
+            List<LinkProps> linkPropsResponse =
+                    restClientManager.getResponseList(response, LinkProps.class);
+            if (CollectionUtil.isEmpty(linkPropsResponse)) {
+                throw new ContentNotFoundException();
+            } else {
+                return linkPropsResponse.get(0);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * This Method is used to set link props.
+     * 
+     * @param keys
+     * @param builder
+     * @return UriComponentsBuilder
+     */
+    private UriComponentsBuilder setLinkProps(LinkProps keys, UriComponentsBuilder builder) {
+        try {
+            if (keys != null) {
+                if (!keys.getSrc_switch().isEmpty())
+                    builder.queryParam("src_switch",
+                            URLEncoder.encode(keys.getSrc_switch(), "UTF-8"));
+                if (!keys.getSrc_port().isEmpty())
+                    builder.queryParam("src_port", URLEncoder.encode(keys.getSrc_port(), "UTF-8"));
+                if (!keys.getDst_switch().isEmpty())
+                    builder.queryParam("dst_switch",
+                            URLEncoder.encode(keys.getDst_switch(), "UTF-8"));
+                if (!keys.getDst_port().isEmpty())
+                    builder.queryParam("dst_port", URLEncoder.encode(keys.getDst_port(), "UTF-8"));
+            }
+        } catch (UnsupportedEncodingException e) {
+            throw new ContentNotFoundException();
+        }
+        return builder;
     }
 }

@@ -4,8 +4,11 @@
 /*Global Variable Constant*/
 var metricVarList = ["bits:Bits/sec","megabytes:MegaBytes/sec","packets:Packets/sec","drops:Drops/sec","errors:Errors/sec", "collisions:Collisions","frameerror:Frame Errors","overerror:Overruns","crcerror:CRC Errors"];
 
-var key = window.location.href;
-if(key.includes("isl")) {
+var href = window.location.href;
+var lastslashindex = href.lastIndexOf('/');
+var page = $.trim(href.substring(lastslashindex  + 1));
+
+if(page == "isl") {
 	var linkData = localStorage.getItem("linkData");
 	var obj = JSON.parse(linkData);
 	var srcSwitch = obj.source_switch;
@@ -19,33 +22,74 @@ var graphIntervalISLName;
 
 var common = {	
 		getData:function(apiUrl,requestType){	
-		return $.ajax({url : APP_CONTEXT+apiUrl,type : requestType,dataType : "json"});							
+			return $.ajax({url : APP_CONTEXT+apiUrl,type : requestType,dataType : "json"});							
 		},
 		infoMessage:function(msz,type){
-		$.toast({heading:(type =='info'?'Information':type), text: msz, showHideTransition: 'fade',position: 'top-right', icon: type, hideAfter : 6000})
+			$.toast({heading:(type =='info'?'Information':type), text: msz, showHideTransition: 'fade',position: 'top-right', icon: type, hideAfter : 6000})
+		},
+		toggleSwitchID:function(switchid){
+			var prefix = "SW";
+			var switchPrefix = switchid.substring(0,2);
+			if (prefix == switchPrefix){
+				return this.addCharacter(switchid,2).join(':').substring(3);
+			}else{
+				return prefix+switchid.replace(/:/g , "");
+			}
+			
+		},
+		addCharacter: function(str, n) {
+		    var ret = [];
+		    
+		    for(var i = 0, len = str.length; i < len; i += n) {
+		       ret.push(str.substr(i, n))
+		    }
+		    return ret;
+		},
+		isNumeric: function(value) {
+			return !isNaN(value) && (function(x) { return (x | 0) === x; })(parseFloat(value));
+		},		
+		validateNumber: function(event) {
+		    var key = window.event ? event.keyCode : event.which;
+		    if (event.keyCode === 8 || event.keyCode === 46) {
+		        return true;
+		    } else if ( key < 48 || key > 57 ) {
+		        return false;
+		    } else {
+		    	return true;
+		    }
+		},
+		groupBy: function(array , f)
+		{
+		  var groups = {};
+		  array.forEach( function( o )
+		  {
+		    var group = JSON.stringify( f(o) );
+		    groups[group] = groups[group] || [];
+		    groups[group].push( o );  
+		  });
+		  return Object.keys(groups).map( function( group )
+		  {
+		    return groups[group]; 
+		  })
 		}
 }
 
 /** sub menu related code start **/
 var urlString = window.location.href;
-	$("#menubar-tbn li").each(function(){
+$("#menubar-tbn li").each(function(){
 	$(this).removeClass();
 })
 
-if(urlString.indexOf("topology") != -1 || urlString.indexOf("portdetails") != -1 || urlString.indexOf("isl") != -1){
-	$("#topology-menu-id").addClass("active")
-}
-
-else if(urlString.indexOf("flows") != -1 || urlString.indexOf("flowdetails") != -1) {
-	$("#flows-menu-id").addClass("active")
-}
-
-else if( urlString.indexOf("switch") != -1) {
-	$("#switch-menu-id").addClass("active")
-}
-
-else if(urlString.indexOf("home") != -1) {
+if(page == "home"){
 	$("#home-menu-id").addClass("active")
+}else if(page == "topology"){
+	$("#topology-menu-id").addClass("active")
+}else if(page == "flows" || page == "flowdetails" || (page.indexOf('details')!==-1 && href.indexOf('flows')!==-1)){
+	$("#flows-menu-id").addClass("active")
+}else if(page == "isllist" || page == "isl"){
+	$("#isl-menu-id").addClass("active")
+}else if(page == "switch" || (page.indexOf('details')!==-1 && href.indexOf('switch')!==-1)){ 
+	$("#switch-menu-id").addClass("active")
 }
 /** sub menu related code End **/
 
@@ -69,29 +113,20 @@ var loadGraph = {
 			requests =  $.ajax({url : APP_CONTEXT+apiUrl,type : requestType,
 					dataType : "json",
 					error : function(errResponse) {	
-						
-						if(domId == "check1" && !$("#check2").prop("checked")) {
+						if(domId == 'source'){
 							$("#waitisl1").css("display", "none");	
 						}
-						if(domId == "check2" && !$("#check1").prop("checked")) {
+						if(domId == 'target'){
 							$("#waitisl2").css("display", "none");	
 						}
-						if(domId == "check1" && $("#check2").prop("checked")) {
-							$("#waitisl1").css("display", "none");
-							$("#waitisl2").css("display", "none");	
-						}
-						if(domId == "check2" && $("#check1").prop("checked")) {
-							$("#waitisl1").css("display", "none");
-							$("#waitisl2").css("display", "none");	
-						}if(domId == undefined && domId == undefined){
-							$("#waitisl1").css("display", "none");
-							$("#waitisl2").css("display", "none");	
-						}
-						if(!$("#check1").prop("checked") && !$("#check2").prop("checked")) {
+						if($('#selectedGraph').val() == 'isl'){
 							$("#wait1").css("display", "none");
 						}
-						
-						if($("#check1").prop("checked") || $("#check2").prop("checked")) {
+						if(domId == undefined && domId == undefined){
+							$("#waitisl1").css("display", "none");
+							$("#waitisl2").css("display", "none");	
+						}
+						if($('#selectedGraph').val() != 'isl' ) {
 							showIslSwitchStats.showIslSwitchStatsData(errResponse,selMetric,null,domId);
 						} else{
 							showStatsGraph.showStatsData(errResponse,selMetric,null,domId);
@@ -114,7 +149,7 @@ var graphAutoReload = {
 				if(checkbox == false){
 										
 					$("#autoreloadISL").val('');
-					if($("#check1").prop("checked") || $("#check2").prop("checked")) {
+					if($('#selectedGraph').val() == 'source' || $('#selectedGraph').val() == 'target') {
 						clearInterval(graphInterval);
 						clearInterval(graphIntervalISLName);		
 						
@@ -131,7 +166,6 @@ var graphAutoReload = {
 				$("#autoreload").toggle();
 				var checkbox =  $("#check").prop("checked");
 				if(checkbox == false){
-					
 					$("#autoreload").val('');
 					clearInterval(callIntervalData);
 					clearInterval(graphInterval);
@@ -155,7 +189,6 @@ var graphAutoReload = {
 		var data = response;
 		var jsonResponse = response.responseJSON;
 		var graphData = [];
-		 
 		 if(data){
 			 if(data.length == 0){
 					if(graphCode == 0) {
@@ -176,21 +209,6 @@ var graphAutoReload = {
 							 	  });	
 						 return;
 					}
-					if(graphCode == 2) {
-						 var g = new Dygraph(document.getElementById("source-graph_div"), [],
-							 	 {
-							 		      drawPoints: false,
-							 		      labels: "test",	 		      
-							 		      colors: ["#495cff","#aad200"],
-							 	  });	
-						 var g = new Dygraph(document.getElementById("dest-graph_div"), [],
-							 	 {
-							 		      drawPoints: false,
-							 		      labels: "test",	 		      
-							 		      colors: ["#495cff","#aad200"],
-							 	  });	
-						 return;
-					}
 				 
 			 var g = new Dygraph(document.getElementById("graphdiv"), [],
 				 	 {
@@ -203,7 +221,6 @@ var graphAutoReload = {
 		 }
 		 
 		if(!jsonResponse) {
-			
 		    	var getValue = data[0].dps;	    	
 		    	 metric1 = data[0].metric;	
 		    	 
@@ -260,14 +277,14 @@ var graphAutoReload = {
 		}
 		if(graphCode == undefined){
 					
-			if(domId == "check1") {
+			if(domId == 'source') {
 				var g = new Dygraph(document.getElementById("source-graph_div"), graphData,
 						{
 							 		      drawPoints: false,
 							 		      labels: labels,	 		      
 							 		      colors: ["#495cff","#aad200"],
 						});
-			}else if(domId == "check2") {
+			}else if(domId == 'target') {
 				var g = new Dygraph(document.getElementById("dest-graph_div"), graphData,
 						{
 							 		      drawPoints: false,
@@ -276,7 +293,7 @@ var graphAutoReload = {
 						});
 			} else {
 
-			if(!$("#check1").prop("checked") && !$("#check2").prop("checked")) {
+			if($('#selectedGraph').val() =='isl') {
 				var g = new Dygraph(document.getElementById("graphdiv"), graphData,
 						{    										
 							 		      drawPoints: false,
@@ -293,7 +310,7 @@ var graphAutoReload = {
 										 		      colors: ["#495cff","#aad200"],
 							});
 				       } 
-				       if(domId != undefined && graphCode == null && $("#check1").prop("checked")) {
+				       if(domId != undefined && graphCode == null && $('#selectedGraph').val() =='source' ) {
 					       var g1 = new Dygraph(document.getElementById("source-graph_div"), graphData,
 									  {
 										 		      drawPoints: false,
@@ -301,7 +318,7 @@ var graphAutoReload = {
 										 		      colors: ["#495cff","#aad200"],
 									  });
 				       }
-				       if(domId != undefined && graphCode == null && $("#check2").prop("checked")) {
+				       if(domId != undefined && graphCode == null && $('#selectedGraph').val() =='target') {
 							 var g2 = new Dygraph(document.getElementById("dest-graph_div"), graphData,
 									  {
 										 		      drawPoints: false,
@@ -332,20 +349,6 @@ var graphAutoReload = {
 
 			
 		}
-		if(graphCode == 2) {
-			 var g1 = new Dygraph(document.getElementById("source-graph_div"), graphData,
-			  {
-				 		      drawPoints: false,
-				 		      labels: labels,	 		      
-				 		      colors: ["#495cff","#aad200"],
-			  });
-			 var g2 = new Dygraph(document.getElementById("dest-graph_div"), graphData,
-			  {
-				 		      drawPoints: false,
-				 		      labels: labels,	 		      
-				 		      colors: ["#495cff","#aad200"],
-			 });	
-		}	
 			     
 	}
 }
@@ -377,21 +380,6 @@ var showIslSwitchStats = {
 							 return;
 						}
 						if(graphCode == 1) {
-							 var g = new Dygraph(document.getElementById("dest-graph_div"), [],
-								 	 {
-								 		      drawPoints: false,
-								 		      labels: "test",	 		      
-								 		      colors: ["#495cff","#aad200"],
-								 	  });	
-							 return;
-						}
-						if(graphCode == 2) {
-							 var g = new Dygraph(document.getElementById("source-graph_div"), [],
-								 	 {
-								 		      drawPoints: false,
-								 		      labels: "test",	 		      
-								 		      colors: ["#495cff","#aad200"],
-								 	  });	
 							 var g = new Dygraph(document.getElementById("dest-graph_div"), [],
 								 	 {
 								 		      drawPoints: false,
@@ -461,14 +449,14 @@ var showIslSwitchStats = {
 			}
 			if(graphCode == undefined){
 						
-				if(domId == "check1") {
+				if(domId=='source') {
 					var g = new Dygraph(document.getElementById("source-graph_div"), graphData,
 							{
 								 		      drawPoints: false,
 								 		      labels: labels,	 		      
 								 		      colors: ["#495cff","#aad200"],
 							});
-				}else if(domId == "check2") {
+				}else if(domId == 'target') {
 					var g = new Dygraph(document.getElementById("dest-graph_div"), graphData,
 							{
 								 		      drawPoints: false,
@@ -476,7 +464,7 @@ var showIslSwitchStats = {
 								 		      colors: ["#495cff","#aad200"],
 							});
 				} else {
-					       if(domId != undefined && graphCode == null && $("#check1").prop("checked")) {
+					       if(domId != undefined && graphCode == null && $('#selectedGraph').val() == 'source') {
 						       var g1 = new Dygraph(document.getElementById("source-graph_div"), graphData,
 										  {
 											 		      drawPoints: false,
@@ -484,7 +472,7 @@ var showIslSwitchStats = {
 											 		      colors: ["#495cff","#aad200"],
 										  });
 					       }
-					       if(domId != undefined && graphCode == null && $("#check2").prop("checked")) {
+					       if(domId != undefined && graphCode == null &&  $('#selectedGraph').val() == 'target' ) {
 								 var g2 = new Dygraph(document.getElementById("dest-graph_div"), graphData,
 										  {
 											 		      drawPoints: false,
@@ -515,20 +503,7 @@ var showIslSwitchStats = {
 
 				
 			}
-			if(graphCode == 2) {
-				 var g1 = new Dygraph(document.getElementById("source-graph_div"), graphData,
-				  {
-					 		      drawPoints: false,
-					 		      labels: labels,	 		      
-					 		      colors: ["#495cff","#aad200"],
-				  });
-				 var g2 = new Dygraph(document.getElementById("dest-graph_div"), graphData,
-				  {
-					 		      drawPoints: false,
-					 		      labels: labels,	 		      
-					 		      colors: ["#495cff","#aad200"],
-				 });	
-			}    
+			    
 	  }
 }
 
@@ -658,7 +633,7 @@ var islDetails = {
 			
 		},
 		getIslMetricData:function(domObj) {
-			
+			var selectedgraph = $('#selectedGraph').val();
 			var metricArray = [];			
 			metricArray = metricVarList;
 			var optionHTML = "";
@@ -680,51 +655,28 @@ var islDetails = {
 						$('#menulistISL').val('bits');				
 					}	
 			}
-						
-			if($("#check1").prop("checked") || $("#check2").prop("checked")){
+			if(selectedgraph == 'source' || selectedgraph == 'target'){
 				$("#islMetric").show();
 				$("#graphrowDiv").show();
+				$('#isl_latency_graph').hide();
+				if(selectedgraph == 'source'){ 
+					$('#sourceGraphDiv').show();
+					$('#targetGraphDiv').hide();
+			    	$("#source-graph_div").show();
+			    	$("#dest-graph_div").hide();
+					getISLGraphData(srcSwitch,srcPort,selectedgraph);
+				}else if(selectedgraph == 'target'){ 
+					$('#sourceGraphDiv').hide();
+					$('#targetGraphDiv').show();
+					$("#source-graph_div").hide();
+			    	$("#dest-graph_div").show();
+				    getISLGraphData(targetSwitch,targetPort,selectedgraph);
+				}
 			}
-			
-			if(!$("#check1").prop("checked") && !$("#check2").prop("checked")){
+			if(selectedgraph == 'isl'){
 				$("#islMetric").hide();
 				$("#graphrowDiv").hide();
-			}
-
-
-			if($("#check1").prop("checked") && !$("#check2").prop("checked")){
-				
-				$(".source-header").show();
-				$(".target-header").hide();
-		    	$("#source-graph_div").show();
-		    	$("#dest-graph_div").hide();
-				    if(domObj.id == "check1"){
-				    	getISLGraphData(srcSwitch,srcPort,domObj.id);
-				    }
-					
-			}
-			
-			if(!$("#check1").prop("checked") && $("#check2").prop("checked")){
-								
-				$(".target-header").show();
-				$(".source-header").hide();
-				$("#source-graph_div").hide();
-		    	$("#dest-graph_div").show();
-		    	
-				if(domObj.id == "check2"){
-			    	getISLGraphData(targetSwitch,targetPort,domObj.id);
-			    }
-			}
-			
-			
-			if($("#check2").prop("checked") && $("#check1").prop("checked")){
-							
-				$(".source-header").show();
-				$(".target-header").show();
-				$("#source-graph_div").show();
-		    	$("#dest-graph_div").show();			
-		    	getISLGraphData(srcSwitch,srcPort,domObj.id);
-				getISLGraphData(targetSwitch,targetPort,domObj.id);
+				$('#isl_latency_graph').show();
 			}
 		}
 }
@@ -732,30 +684,22 @@ var islDetails = {
 function getISLGraphData(switchId,portId,domId) {
 
 	var graphDivCode;
-	if($("#check1").prop("checked")){
-		$(".source-header").show();
-		$(".target-header").hide();
+	var selectedGraph = $('#selectedGraph').val();
+	if(selectedGraph == 'source' ){
+		$('#sourceGraphDiv').show();
+		$('#targetGraphDiv').hide();
 		graphDivCode = 0;
 		$("#waitisl2").hide();
 		$("#waitisl1").show();
 	}
 
-	if($("#check2").prop("checked")) {
-		$(".source-header").hide();
-		$(".target-header").show();
+	if(selectedGraph == 'target') {
+		$('#sourceGraphDiv').hide();
+		$('#targetGraphDiv').show();
 		graphDivCode = 1;
 		$("#waitisl1").hide();
 		$("#waitisl2").show();		
 	}
-	
-	if($("#check1").prop("checked") && $("#check2").prop("checked")) {		
-		$(".source-header").show();
-		$(".target-header").show();
-		graphDivCode = 2;
-		$("#waitisl1").show();
-		$("#waitisl2").show();
-	}
-
 	var regex = new RegExp("^\\d+(s|h|m){1}$");
 	var currentDate = new Date();
 	var startDate = new Date($("#datetimepicker7ISL").val());
@@ -827,43 +771,31 @@ if(test) {
 			$('body').css('pointer-events', 'all');
 			showIslSwitchStats.showIslSwitchStatsData(response,selMetric,graphDivCode,""); 
 		}
-		if(graphDivCode ==2) {
-			$("#waitisl1").css("display", "none");
-			$("#waitisl2").css("display", "none");
-			showIslSwitchStats.showIslSwitchStatsData(response,selMetric,graphDivCode,""); 
-		}
+//		if(graphDivCode ==2) { 
+//			$("#waitisl1").css("display", "none");
+//			$("#waitisl2").css("display", "none");
+//			showIslSwitchStats.showIslSwitchStatsData(response,selMetric,graphDivCode,""); 
+//		}
 		
 })
 	
 			
 			if(autoreloadISL){  
 				
-				if($("#check1").prop("checked") && !$("#check2").prop("checked")) {	
+				if(selectedGraph =='source') {	
 					clearInterval(graphIntervalISL);
 					graphIntervalISL = setInterval(function(){
 						callIslSwitchIntervalData(srcSwitch,srcPort) 
 					}, 1000*autoreloadISL);
 				}
 				
-				if(!$("#check1").prop("checked") && $("#check2").prop("checked")) {
+				if(selectedGraph == 'target') {
 					clearInterval(graphIntervalISL);
 					graphIntervalISL = setInterval(function(){
 						callIslSwitchIntervalData(targetSwitch,targetPort) 
 					}, 1000*autoreloadISL);
 				}
-				
-				if($("#check1").prop("checked") && $("#check2").prop("checked")) {
-
-					clearInterval(graphIntervalISL);
-					graphIntervalISL = setInterval(function(){
-						callIslSwitchIntervalData(srcSwitch,srcPort) 
-					}, 1000*autoreloadISL);
-					
-					clearInterval(graphIntervalISLName);
-					graphIntervalISLName = setInterval(function(){
-						callIslSwitchIntervalData(targetSwitch,targetPort) 
-					}, 1000*autoreloadISL);
-				}
+			
 		   }
 	}	
 }
@@ -872,18 +804,11 @@ $(function() {
 	
 	$("#datetimepicker7ISL,#datetimepicker8ISL,#downsamplingISL,#menulistISL,#autoreloadISL").on("change",function(event) {
 
-		if($("#check1").prop("checked") || $("#check2").prop("checked")) {
-			if($("#check1").prop("checked") && !$("#check2").prop("checked")){
-				  getISLGraphData(srcSwitch,srcPort);	  
-			}
+		if($("#selectedGraph").val() =='source') {
+				  getISLGraphData(srcSwitch,srcPort);	
 		}
-		if(!$("#check1").prop("checked") && $("#check2").prop("checked")){
+		if($("#selectedGraph").val() =='target'){
 		    getISLGraphData(targetSwitch,targetPort);
-		}
-		
-		if($("#check1").prop("checked") && $("#check2").prop("checked")){
-			getISLGraphData(srcSwitch,srcPort);
-			getISLGraphData(targetSwitch,targetPort);
 		}
 	});
 });
@@ -902,20 +827,16 @@ function callIslSwitchIntervalData(switchId,portId){
 	var url = "/stats/switchid/"+switchId+"/port/"+portId+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric;
 	loadGraph.loadGraphData(url,"GET",selMetric).then(function(response) {
 		
-	if($("#check1").prop("checked") && !$("#check2").prop("checked")){
+	if($("#selectedGraph").val() =='source'){
 		$("#waitisl1").css("display", "none");
 		$('body').css('pointer-events', 'all'); 	  
 	}
-	if(!$("#check1").prop("checked") && $("#check2").prop("checked")){
+	if($("#selectedGraph").val() =='target'){
 		$("#waitisl2").css("display", "none");
 		$('body').css('pointer-events', 'all'); 	  
 	}
 	
-	if($("#check1").prop("checked") && $("#check2").prop("checked")){
-		$("#waitisl1").css("display", "none");
-		$("#waitisl2").css("display", "none");
-		$('body').css('pointer-events', 'all'); 	  
-	}
+	
 	showIslSwitchStats.showIslSwitchStatsData(response,selMetric,graphDivCode,""); 
 	})
 }
@@ -947,4 +868,60 @@ var cookie = new function() {
     };
 }
 
+/** copy to clipboard functionality **/
+$(function(){
+	// disable right click
+	 $( ".copy_to_clipBoard" ).contextmenu(function(e){
+		 e.preventDefault();
+		 $(e.target).addClass('selected');
+		 var menuHtml = '<div class="contextmenu"><ul><li class="copy_data" onclick="copySelectedData()">Copy to clipboard</li></ul></div>';
+		 $('body').find('.contextmenu').remove();
+		 $('body').append(menuHtml);
+		 $('.contextmenu').css({
+			 	top: e.pageY+'px',
+		        left: e.pageX+'px',
+		        "z-index":2,
+		    }).show();
+	 });
+	 	
+	$('.contextmenu').click(function(e) {
+	     $('.contextmenu').hide();
+	 });
+	 $(document).click(function() {
+	     $('.contextmenu').hide();
+	 });
+})
+function fallbackCopyTextToClipboard(text) {
+	  var textArea = document.createElement("textarea");
+	  textArea.value = text;
+	  document.body.appendChild(textArea);
+	  textArea.focus();
+	  textArea.select();
+	
+	  try {
+		 $('.copy_to_clipBoard').removeClass('selected');
+	    var successful = document.execCommand('copy');
+	    var msg = successful ? 'successful' : 'unsuccessful';
+	    console.log('Fallback: Copying text command was ' + msg);
+	  } catch (err) {
+	    console.error('Fallback: Oops, unable to copy', err);
+	  }
+	
+	  document.body.removeChild(textArea);
+}
+		
+ function copySelectedData(){
+	 	var text = $(".copy_to_clipBoard.selected").html();
+	 	if (!navigator.clipboard) {
+		    fallbackCopyTextToClipboard(text);
+		    return;
+		  }
+		  navigator.clipboard.writeText(text).then(function() {
+			$('.copy_to_clipBoard').removeClass('selected');
+		    console.log('Async: Copying to clipboard was successful!');
+		  }, function(err) {
+		    console.error('Async: Could not copy text: ', err);
+		  });
+ }
+/** copy to clipboard functionality end ***/
 /* ]]> */

@@ -15,7 +15,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JsonPropertyOrder({"flowid", "flowpath"})
+@JsonPropertyOrder({"flowid", "flowpath","rerouted"})
 public class FlowPath implements Serializable{
 
     /**
@@ -28,6 +28,9 @@ public class FlowPath implements Serializable{
 
     @JsonProperty("flowpath")
     private PathInfoData flowpath;
+    
+    @JsonProperty("rerouted")
+    private Boolean rerouted;
 
     @JsonCreator
     public FlowPath(){

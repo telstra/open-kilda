@@ -4,24 +4,24 @@
 	xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3">
 <head>
 <meta charset="utf-8"></meta>
-<title>KILDA</title>
+<title>OPEN KILDA</title>
 <link th:href="@{../images/kilda.png}" rel="shortcut icon" type="image/png"></link>
+<link th:href="@{../css/on-off-switch.css}" rel="stylesheet" type="text/css" />
 </head>
 <body>
-<div th:include="fragments/importResources:: commonPathImports"></div>
-<div th:include="fragments/importResources:: statsImports"></div>
-
 
 	<div th:replace="fragments/header :: header" ></div>
 	<div th:replace="fragments/menu :: menu" ></div>
-
+	<div th:include="fragments/importResources:: commonPathImports"></div>
+	<div th:include="fragments/importResources:: statsImports"></div>
+	<div th:include="fragments/importResources:: toggleSwitch"></div>
 	<div class="content">
 		<div class="row">
 			<div class="navigation-bar container-fluid">
 				<ul class="col-lg-12">
 					<li><a th:href="@{/home}">Home</a></li>
 					<li><i class="icon-double-angle-right"></i><a
-						th:href="@{/topology}">Topology</a></li>
+						th:href="@{/switch/isllist}">ISL</a></li>
 					<li><i class="icon-double-angle-right"></i>ISL Details</li>
 				</ul>
 			</div>
@@ -41,9 +41,15 @@
 							<label class='col-sm-4 col-form-label'>Port:</label>
 							<p class='col-sm-8 link_div_source_port'></p>
 						</div>
+						
 						<div class='form-group row'>
 							<label class='col-sm-4 col-form-label'>Switch Id:</label>
-							<p class='col-sm-8 link_div_source_switch'></p>
+							<div class='col-sm-4'>
+								<span class="link_div_source_switch copy_to_clipBoard"></span>
+							</div>
+							<div class='col-sm-4'>	
+								<input type="hidden" id="on-off-switch-src" name="src_switch" value="0"/>
+							</div>
 						</div>
 						<div class='form-group row'>
 							<label class='col-sm-4 col-form-label'>Name:</label>
@@ -61,11 +67,16 @@
 							<p class='col-sm-8 link_div_destination_port'></p>
 						</div>
 						<div class='form-group row'>
-							<label class='col-sm-4 col-form-label'> Switch Id:</label>
-							<p class='col-sm-8 link_div_destination_switch'></p>
+							<label class='col-sm-4 col-form-label'>Switch Id:</label>
+							<div class='col-sm-4'>
+								<span class="link_div_destination_switch copy_to_clipBoard"></span>
+							</div>
+							<div class='col-sm-4'>	
+								<input type="hidden" id="on-off-switch-dest" name="dest_switch" value="0"/>
+							</div>
 						</div>
 						<div class='form-group row'>
-							<label class='col-sm-4 col-form-label'> Name:</label>
+							<label class='col-sm-4 col-form-label'> Switch Name:</label>
 							<p class='col-sm-8 link_div_destination_switch_name'></p>
 						</div>
 					</div>
@@ -86,6 +97,11 @@
 							<label class='col-sm-4 col-form-label'>Latency:</label>
 							<p class='col-sm-8 isl_div_latency'></p>
 						</div>
+						
+						<div class='form-group row isl_sbl_details'>
+							<label class='col-sm-4 col-form-label'>Cost:</label>
+							<p class='col-sm-8 isl_div_cost'></p>
+						</div>
 
 						<!-- ISL Avaliable Bandwidth Details -->
 						<div class='form-group row isl_sbl_details'>
@@ -103,13 +119,33 @@
 					<h5 class='modal-title'>GRAPH</h5>
 					<div id="stats_div" class="topology-graph">
 						<div class="col-xs-8">
+							<div id="isl_latency_graph" >
 								<div id="wait1" class="bg-data-loader" style="bottom:1px;">
+										<div class="loader"></div>
+									</div>
+									
+								<h2 class="isl-header text-center">ISL Latency Graph</h2>	
+								<div id="graphdiv"></div>
+							</div>
+							
+							<div class="row" id="graphrowDiv" style="display: none;">
+								<div class="col-xs-8" id="sourceGraphDiv" style="display:none;">
+								 <div id="waitisl1" class="bg-data-loader" style="display:none;">
 									<div class="loader"></div>
 								</div>
-								
-							<h2 class="isl-header text-center">ISL Latency Graph</h2>	
-							<div id="graphdiv"></div>
-							
+								<h2 class="source-header text-center">Source Graph</h2>
+								 
+									<div id="source-graph_div"></div>
+								</div>
+								<div class="col-xs-8" id="targetGraphDiv" style="display:none;">
+									<div id="waitisl2" class="bg-data-loader" style="display:none;">
+										<div class="loader"></div>
+									</div>
+									
+									<h2 class="target-header text-center">Destination Graph</h2> 
+									<div id="dest-graph_div"></div>
+								</div>
+							</div>
 						</div>
 
 
@@ -165,17 +201,18 @@
 								</fieldset>
 								
 								<fieldset  id="SourceDestinationSwitchId" class="form-group">
-									<label class="col-xs-4 text-label">Source Switch:</label>
-									<div class="col-xs-1">
-										<input type="checkbox" id="check1" onclick="islDetails.getIslMetricData(this)" style="margin-top: 12px;" /> 
-									   <span class="error-message"></span>
-									</div>									
-									<label class="col-xs-5 text-label text-right">Destination Switch:</label>
-									<div class="col-xs-1">
-										<input type="checkbox" id="check2" onclick="islDetails.getIslMetricData(this)" style="margin-top: 12px;" />
-									   <span class="error-message"></span>
-									
-									</div>
+								<label class="col-xs-4 text-label">Graph:</label>
+								<div class="col-xs-8">
+									<span class="form-control kilda_select"> 
+										<span class="selectbox_arrow"></span> 
+											<select class="selectbox_list" id="selectedGraph" onChange="islDetails.getIslMetricData(this)">
+											<option value="isl">ISL Latency Graph</option>
+											<option value="source">Source Graph</option>
+											<option value="target">Destination Graph</option>
+										</select>
+									</span>
+								</div>
+								
 								</fieldset>
 								
 								<fieldset class="form-group" id="islMetric" style="display: none;">
@@ -197,7 +234,7 @@
 							</div>
 						</div>
 						
-						<div class="col-lg-12">
+						<!-- div class="col-lg-12">
 							<div class="row" id="graphrowDiv" style="display: none;">
 								<div class="col-sm-6">
 								 <div id="waitisl1" class="bg-data-loader" style="display:none;">
@@ -216,7 +253,7 @@
 									<div id="dest-graph_div"></div>
 								</div>
 							</div>
-						</div>
+						</div -->
 					</div>
 					
 				</div>
@@ -231,5 +268,26 @@
 	<div th:replace="fragments/footer :: footer" ></div>
 	<script th:inline="javascript" src="../javascript/isl.js"></script>
 	<script th:inline="javascript" src="../javascript/isl-graph-stats.js"></script>
+	
+	<script>
+		$(document).ready(function() {
+			new DG.OnOffSwitch({
+			    el: '#on-off-switch-src',
+			    textOn: 'Legacy',
+			    textOff: 'Kilda',
+			    listener:function(name, checked){
+			    	$('.link_div_source_switch').html(common.toggleSwitchID($('.link_div_source_switch').html()));
+			    }
+			});
+			new DG.OnOffSwitch({
+			    el: '#on-off-switch-dest',
+			    textOn: 'Legacy',
+			    textOff: 'Kilda',
+			    listener:function(name, checked){
+			    	$('.link_div_destination_switch').html(common.toggleSwitchID($('.link_div_destination_switch').html()));
+			    }
+			});
+		});
+	</script>
 </body>
 </html>
