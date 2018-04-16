@@ -98,7 +98,7 @@ public class OpenTSDBFilterBoltTest {
         target.prepare(Collections.emptyMap(), null, outputCollector);
         target.execute(tuple);
 
-        mockTuple(TIMESTAMP + TimeUnit.MINUTES.toSeconds(10) - 1);
+        mockTuple(TIMESTAMP + TimeUnit.MINUTES.toMillis(10) - 1);
         target.execute(tuple);
 
         verify(outputCollector, times(1)).emit(argumentCaptor.capture());
@@ -106,7 +106,21 @@ public class OpenTSDBFilterBoltTest {
     }
 
     @Test
-    public void shouldEmitMessageBothIfHashcodeConflicts() throws Exception {
+    public void shouldEmitBothMessagesBecauseOfInterval() throws Exception {
+        mockTuple();
+
+        target.prepare(Collections.emptyMap(), null, outputCollector);
+        target.execute(tuple);
+
+        mockTuple(TIMESTAMP + TimeUnit.MINUTES.toMillis(10) + 1);
+        target.execute(tuple);
+
+        verify(outputCollector, times(2)).emit(argumentCaptor.capture());
+        verify(outputCollector, times(2)).ack(any(Tuple.class));
+    }
+
+    @Test
+    public void shouldEmitBothMessagesIfHashcodeConflicts() throws Exception {
         target.prepare(Collections.emptyMap(), null, outputCollector);
 
         Datapoint infoData1 = new Datapoint("1", TIMESTAMP, singletonMap("key",  "a"), VALUE);
