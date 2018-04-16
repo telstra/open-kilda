@@ -773,7 +773,7 @@ function dragend(d, i) {
 	flagHover = false;
 	d.fixed = true; // of course set the node to fixed so the force doesn't include the node in its auto positioning stuff
     tick();
-    force.resume();
+ //   force.resume();
 }
 
 $("#switch").on("click", function(){

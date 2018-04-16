@@ -21,6 +21,7 @@ import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.pce.RecoverableException;
+import org.openkilda.pce.model.AvailableNetwork;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -103,4 +104,7 @@ public interface PathComputer extends Serializable {
         return null;
     }
 
+    default AvailableNetwork getAvailableNetwork(boolean ignore_bandwidth, int available_bandwidth) {
+        return null;
+    }
 }

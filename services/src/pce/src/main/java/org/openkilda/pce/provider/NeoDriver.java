@@ -15,23 +15,21 @@
 
 package org.openkilda.pce.provider;
 
+import org.apache.commons.lang3.tuple.Pair;
+import org.neo4j.driver.v1.*;
+import org.neo4j.driver.v1.types.Type;
 import org.openkilda.messaging.info.event.*;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.pce.RecoverableException;
+import org.openkilda.pce.algo.SimpleGetShortestPath;
 import org.openkilda.pce.api.FlowAdapter;
+import org.openkilda.pce.model.AvailableNetwork;
+import org.openkilda.pce.model.SimpleIsl;
 
-import org.neo4j.driver.v1.Driver;
-import org.neo4j.driver.v1.Record;
-import org.neo4j.driver.v1.Session;
-import org.neo4j.driver.v1.Statement;
-import org.neo4j.driver.v1.StatementResult;
-import org.neo4j.driver.v1.Value;
-import org.neo4j.driver.v1.Values;
 import org.neo4j.driver.v1.exceptions.ClientException;
 import org.neo4j.driver.v1.exceptions.NoSuchRecordException;
 import org.neo4j.driver.v1.exceptions.TransientException;
-import org.neo4j.driver.v1.types.Relationship;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,57 +65,55 @@ public class NeoDriver implements PathComputer {
         List<PathNode> reverseNodes = new LinkedList<>();
 
         if (! flow.isOneSwitchFlow()) {
-            Statement statement = getPathQuery(flow, strategy);
-            logger.info("QUERY: {}", statement.toString());
-
-            try (Session session = driver.session()) {
-                StatementResult result = session.run(statement);
-
-                Record record = result.next();
-
-                LinkedList<Relationship> isls = new LinkedList<>();
-                record.get(0).asPath().relationships().forEach(isls::add);
+            try {
+                Pair<LinkedList<SimpleIsl>,LinkedList<SimpleIsl>> biPath = getPathFromNetwork(flow, strategy);
+                if (biPath.getLeft().size() == 0 || biPath.getRight().size() == 0)
+                    throw new UnroutablePathException(flow);
 
                 int seqId = 0;
-                for (Relationship isl : isls) {
-                    latency += isl.get("latency").asLong();
-
-                    forwardNodes.add(new PathNode(isl.get("src_switch").asString(),
-                            isl.get("src_port").asInt(), seqId, isl.get("latency").asLong()));
-                    seqId++;
-
-                    forwardNodes.add(new PathNode(isl.get("dst_switch").asString(),
-                            isl.get("dst_port").asInt(), seqId, 0L));
-                    seqId++;
+                LinkedList<SimpleIsl> forwardIsl = biPath.getLeft();
+                for (SimpleIsl isl : forwardIsl) {
+                    latency += isl.latency;
+                    forwardNodes.add(new PathNode(isl.src_dpid, isl.src_port, seqId++, (long)isl.latency));
+                    forwardNodes.add(new PathNode(isl.dst_dpid, isl.dst_port, seqId++, 0L));
                 }
 
                 seqId = 0;
-                Collections.reverse(isls);
-
-                for (Relationship isl : isls) {
-                    reverseNodes.add(new PathNode(isl.get("dst_switch").asString(),
-                            isl.get("dst_port").asInt(), seqId, isl.get("latency").asLong()));
-                    seqId++;
-
-                    reverseNodes.add(new PathNode(isl.get("src_switch").asString(),
-                            isl.get("src_port").asInt(), seqId, 0L));
-                    seqId++;
+                LinkedList<SimpleIsl> reverseIsl = biPath.getRight();
+                for (SimpleIsl isl : reverseIsl) {
+                    reverseNodes.add(new PathNode(isl.src_dpid, isl.src_port, seqId++, (long)isl.latency));
+                    reverseNodes.add(new PathNode(isl.dst_dpid, isl.dst_port, seqId++, 0L));
                 }
-
             // FIXME(surabujin): Need to catch and trace exact exception thrown in recoverable places.
             } catch (TransientException e) {
                 throw new RecoverableException("TransientError from neo4j", e);
             } catch (ClientException e) {
                 throw new RecoverableException("ClientException from neo4j", e);
-
-            } catch (NoSuchRecordException e) {
-                throw new UnroutablePathException(flow);
             }
         } else {
             logger.info("No path computation for one-switch flow");
         }
 
         return new ImmutablePair<>(new PathInfoData(latency, forwardNodes), new PathInfoData(latency, reverseNodes));
+    }
+
+    /**
+     * Create the query based on what the strategy is.
+     */
+    private Pair<LinkedList<SimpleIsl>,LinkedList<SimpleIsl>> getPathFromNetwork(Flow flow, Strategy strategy){
+
+        switch (strategy) {
+            default:
+                AvailableNetwork network = getAvailableNetwork(flow.isIgnoreBandwidth(), flow.getBandwidth());
+                network.removeSelfLoops().reduceByCost();
+                SimpleGetShortestPath forward = new SimpleGetShortestPath(network, flow.getSourceSwitch(), flow.getDestinationSwitch(), 35);
+                SimpleGetShortestPath reverse = new SimpleGetShortestPath(network, flow.getDestinationSwitch(), flow.getSourceSwitch(), 35);
+
+                LinkedList<SimpleIsl> fPath = forward.getPath();
+                LinkedList<SimpleIsl> rPath = reverse.getPath(fPath);
+                Pair<LinkedList<SimpleIsl>,LinkedList<SimpleIsl>> biPath = Pair.of(fPath,rPath);
+                return biPath;
+        }
     }
 
 
@@ -191,15 +187,16 @@ public class NeoDriver implements PathComputer {
                         "f.transit_vlan as transit_vlan";
 
         logger.debug("Executing getFlows Query: {}", q);
-        Session session = driver.session();
-        StatementResult queryResults = session.run(q);
-        List<Flow> results = new LinkedList<>();
-        for (Record record : queryResults.list()) {
-            FlowAdapter adapter = new FlowAdapter(record);
-            results.add(adapter.getFlow());
-        }
 
-        return results;
+        try (Session session = driver.session()) {
+            StatementResult queryResults = session.run(q);
+            List<Flow> results = new ArrayList<>();
+            for (Record record : queryResults.list()) {
+                FlowAdapter adapter = new FlowAdapter(record);
+                results.add(adapter.getFlow());
+            }
+            return results;
+        }
     }
 
     @Override
@@ -235,6 +232,59 @@ public class NeoDriver implements PathComputer {
         }
         return results;
     }
+
+    /**
+     * This will return a network where everything is active and the isls have the bandwidth needed.
+     * This is a specialization of the general query to get the entire network.
+     *
+     * NB: If the more common case is required at some point, refactor this into reusing the getAll,
+     * then filter the results.
+     *
+     * @param ignore_bandwidth if false, then filter the ISLs based on available_bandwidth
+     * @param available_bandwidth
+     * @return
+     */
+    @Override
+    public AvailableNetwork getAvailableNetwork(boolean ignore_bandwidth, int available_bandwidth) {
+
+        String q = "MATCH (src:switch)-[isl:isl]->(dst:switch)" +
+                " WHERE src.state = 'active' AND dst.state = 'active' AND isl.status = 'active' " +
+                "   AND src.name IS NOT NULL AND dst.name IS NOT NULL";
+        if (!ignore_bandwidth)
+                q += "   AND isl.available_bandwidth >= " + available_bandwidth;
+        q += " RETURN src.name as src_name, dst.name as dst_name " +
+                ", isl.src_port as src_port " +
+                ", isl.dst_port as dst_port " +
+                ", isl.cost as cost " +
+                ", isl.latency as latency " +
+                " ORDER BY src.name";
+
+        logger.debug("Executing getAvailableNetwork Query: {}", q);
+        AvailableNetwork network = new AvailableNetwork();
+        Session session = driver.session();
+        StatementResult queryResults = session.run(q);
+        for (Record record : queryResults.list()) {
+            /*
+             * The cost may be a string or integer ... so, regarding cost, get the object.toString
+             * so that we know it is always a string and then parse as Int.
+             */
+            int cost = 0;
+            Value vCost = record.get("cost");
+            if (!vCost.isNull()){
+                cost = Integer.parseInt(vCost.asObject().toString());
+            }
+            network.initOneEntry(
+                    record.get("src_name").asString(),
+                    record.get("dst_name").asString(),
+                    record.get("src_port").asInt(),
+                    record.get("dst_port").asInt(),
+                    cost,
+                    record.get("latency").asInt()
+                    );
+        }
+        return network;
+    }
+
 
     @Override
     public List<IslInfoData> getIsls() {
@@ -288,80 +338,5 @@ public class NeoDriver implements PathComputer {
         return results;
     }
 
-    /**
-     * Create the query based on what the strategy is.
-     */
-    private Statement getPathQuery(Flow flow, Strategy strategy){
-        /*
-         * TODO: implement strategy
-         */
-
-
-        switch (strategy) {
-            case COST:
-                return makeCostPathQuery(flow);
-
-            default:
-                return makeHopsPathQuery(flow);
-        }
-
-    }
-
-    private Statement makeHopsPathQuery(Flow flow) {
-        HashMap<String,Value> parameters = new HashMap<>();
-
-        String subject =
-                "MATCH (a:switch{name:{src_switch}}),(b:switch{name:{dst_switch}}), " +
-                "p = shortestPath((a)-[r:isl*..35]->(b))";
-        parameters.put("src_switch", Values.value(flow.getSourceSwitch()));
-        parameters.put("dst_switch", Values.value(flow.getDestinationSwitch()));
-
-        StringJoiner where = new StringJoiner("\n    AND ", "where ", "");
-        where.add("ALL(x in nodes(p) WHERE x.state = 'active')");
-        if (flow.isIgnoreBandwidth()) {
-            where.add("ALL(y in r WHERE y.status = 'active')");
-        } else {
-            where.add("ALL(y in r WHERE y.status = 'active' AND y.available_bandwidth >= {bandwidth})");
-            parameters.put("bandwidth", Values.value(flow.getBandwidth()));
-        }
-
-        String result = "RETURN p";
-
-        String query = String.join("\n", subject, where.toString(), result);
-        return new Statement(query, Values.value(parameters));
-    }
-
-
-    private Statement makeCostPathQuery(Flow flow) {
-        HashMap<String,Value> parameters = new HashMap<>();
-
-        String subject =
-                "MATCH (from:switch{name:{src_switch}}),(to:switch{name:{dst_switch}}), " +
-// (crimi) - unclear how to filter the relationships dijkstra looks out based on properties.
-// Probably need to re-write the function and add it to our neo4j container.
-//
-//                        " CALL apoc.algo.dijkstraWithDefaultWeight(from, to, 'isl', 'cost', 700)" +
-//                        " YIELD path AS p, weight AS weight "
-                        " p = allShortestPaths((from)-[:isl*..35]->(to)) ";
-        parameters.put("src_switch", Values.value(flow.getSourceSwitch()));
-        parameters.put("dst_switch", Values.value(flow.getDestinationSwitch()));
-
-        StringJoiner where = new StringJoiner("\n    AND ", "where ", "");
-        where.add("ALL(x in nodes(p) WHERE x.state = 'active')");
-        if (flow.isIgnoreBandwidth()) {
-            where.add("ALL(y in relationships(p) WHERE y.status = 'active')");
-        } else {
-            where.add("ALL(y in relationships(p) WHERE y.status = 'active' AND y.available_bandwidth >= {bandwidth})");
-            parameters.put("bandwidth", Values.value(flow.getBandwidth()));
-        }
-
-        String reduce = " WITH REDUCE(cost = 0, rel in rels(p) | " +
-                "   cost + CASE rel.cost WHEN rel.cost = 0 THEN 700 ELSE rel.cost END) AS cost, p ";
-
-        String result = "RETURN p ORDER BY cost LIMIT 1";
-
-        String query = String.join("\n", subject, where.toString(), reduce, result);
-        return new Statement(query, Values.value(parameters));
-    }
 
 }

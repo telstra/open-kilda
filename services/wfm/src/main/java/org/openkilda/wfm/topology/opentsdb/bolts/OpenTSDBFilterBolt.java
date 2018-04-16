@@ -15,10 +15,9 @@
 
 package org.openkilda.wfm.topology.opentsdb.bolts;
 
-import static org.openkilda.messaging.Utils.MAPPER;
-
-import org.slf4j.LoggerFactory;
-import org.slf4j.Logger;
+import lombok.Value;
+import org.apache.storm.Config;
+import org.apache.storm.Constants;
 import org.apache.storm.opentsdb.bolt.TupleOpenTsdbDatapointMapper;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -27,34 +26,59 @@ import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.openkilda.messaging.info.Datapoint;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
 
 public class OpenTSDBFilterBolt extends BaseRichBolt {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OpenTSDBFilterBolt.class);
-    private static final long TEN_MINUTES = 60000L;
-
+    private static final long TEN_MINUTES = TimeUnit.SECONDS.convert(10, TimeUnit.MINUTES);
+    
     private static final Fields DECLARED_FIELDS =
             new Fields(TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER.getMetricField(),
                     TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER.getTimestampField(),
                     TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER.getValueField(),
                     TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER.getTagsField());
 
-    private ConcurrentMap<Integer, Datapoint> storage = new ConcurrentHashMap<>();
+    private Map<DatapointKey, Datapoint> storage = new HashMap<>();
     private OutputCollector collector;
 
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         this.collector = collector;
     }
+    
+    @Override
+    public Map<String, Object> getComponentConfiguration() {
+        Config conf = new Config();
+        conf.put(Config.TOPOLOGY_TICK_TUPLE_FREQ_SECS, TEN_MINUTES);
+        return conf;
+    }
+
 
     @Override
     public void execute(Tuple tuple) {
+        
+        if (isTickTuple(tuple)) {
+            Set<DatapointKey> keys = storage.keySet();
+            // opentsdb using current epoch time (date +%s) in seconds
+            long now  = System.currentTimeMillis()/1000;
+            for (DatapointKey key: keys) {
+                storage.compute(key, (k, v) -> now - v.getTime() > TEN_MINUTES ? null: v);
+            }
+            collector.ack(tuple);
+            return;
+        }
+        
         if (!tuple.contains("datapoint")) { //TODO: Should make sure tuple comes from correct bolt, ie not TickTuple
             collector.ack(tuple);
             return;
@@ -62,15 +86,16 @@ public class OpenTSDBFilterBolt extends BaseRichBolt {
 
         Datapoint datapoint = (Datapoint) tuple.getValueByField("datapoint");
 
-
         if (isUpdateRequired(datapoint)) {
             addDatapoint(datapoint);
 
             List<Object> stream = Stream.of(datapoint.getMetric(), datapoint.getTime(), datapoint.getValue(),
                     datapoint.getTags()).collect(Collectors.toList());
 
-            LOGGER.debug("emit: " + stream);
+            LOGGER.debug("emit datapoint: {}", stream);
             collector.emit(stream);
+        } else {
+            LOGGER.debug("skip datapoint: {}", datapoint);
         }
         collector.ack(tuple);
     }
@@ -81,18 +106,35 @@ public class OpenTSDBFilterBolt extends BaseRichBolt {
     }
 
     private void addDatapoint(Datapoint datapoint) {
-        LOGGER.debug("adding datapoint: " + datapoint.simpleHashCode());
-        LOGGER.debug("storage.size: " + storage.size());
-        storage.put(datapoint.simpleHashCode(), datapoint);
+        LOGGER.debug("adding datapoint: {}", datapoint);
+        LOGGER.debug("storage.size: {}", storage.size());
+        storage.put(new DatapointKey(datapoint.getMetric(), datapoint.getTags()), datapoint);
     }
 
     private boolean isUpdateRequired(Datapoint datapoint) {
         boolean update = true;
-        if (storage.containsKey(datapoint.simpleHashCode())) {
-            Datapoint prevDatapoint = storage.get(datapoint.simpleHashCode());
+        Datapoint prevDatapoint = storage.get(new DatapointKey(datapoint.getMetric(), datapoint.getTags()));
+        if (prevDatapoint != null) {
+
             update = !prevDatapoint.getValue().equals(datapoint.getValue()) ||
                     datapoint.getTime() - prevDatapoint.getTime() >= TEN_MINUTES;
         }
         return update;
+    }
+    
+    private boolean isTickTuple(Tuple tuple) {
+        String sourceComponent = tuple.getSourceComponent();
+        String sourceStreamId = tuple.getSourceStreamId();
+        
+        return Constants.SYSTEM_COMPONENT_ID.equals(sourceComponent) &&
+                Constants.SYSTEM_TICK_STREAM_ID.equals(sourceStreamId);
+    }
+
+    @Value
+    private static class DatapointKey {
+
+        private String metric;
+
+        private Map<String, String> tags;
     }
 }

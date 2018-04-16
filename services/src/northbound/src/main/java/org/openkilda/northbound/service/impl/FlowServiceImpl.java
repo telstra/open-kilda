@@ -444,6 +444,22 @@ public class FlowServiceImpl implements FlowService {
         return Converter.buildReroutePayload(flowId, response.getPayload(), response.isRerouted());
     }
 
+    @Override
+    public FlowReroutePayload syncFlow(String flowId) {
+        final String correlationId = RequestCorrelationId.getId();
+        Flow flow = new Flow();
+        flow.setFlowId(flowId);
+        FlowRerouteRequest data = new FlowRerouteRequest(flow, FlowOperation.UPDATE, true);
+        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
+        messageConsumer.clear();
+        messageProducer.send(topic, command);
+
+        Message message = (Message) messageConsumer.poll(correlationId);
+        logger.debug("Got response {}", message);
+        FlowRerouteResponse response = (FlowRerouteResponse) validateInfoMessage(command, message, correlationId);
+        return Converter.buildReroutePayload(flowId, response.getPayload(), response.isRerouted());
+    }
+
     private static final class SimpleSwitchRule {
         public String switchId; // so we don't get lost
         public String cookie;

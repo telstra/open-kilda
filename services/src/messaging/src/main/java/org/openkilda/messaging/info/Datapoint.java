@@ -15,6 +15,8 @@
 
 package org.openkilda.messaging.info;
 
+import static com.google.common.base.MoreObjects.toStringHelper;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -124,5 +126,15 @@ public class Datapoint extends InfoData {
         int result = metric != null ? metric.hashCode() : 0;
         result = 31 * result + (tags != null ? tags.hashCode() : 0);
         return result;
+    }
+
+    @Override
+    public String toString() {
+        return toStringHelper(this)
+                .add("metric", metric)
+                .add("time", time)
+                .add("tags", tags)
+                .add("value", value)
+                .toString();
     }
 }

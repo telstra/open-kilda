@@ -19,7 +19,7 @@ import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
-import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
+import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFMeterConfigStatsReply;
 import org.projectfloodlight.openflow.types.DatapathId;
 
@@ -160,7 +160,7 @@ public interface ISwitchManager extends IFloodlightService {
      * @param dpid switch id
      * @return OF flow stats entries
      */
-    OFFlowStatsReply dumpFlowTable(final DatapathId dpid);
+    List<OFFlowStatsEntry> dumpFlowTable(final DatapathId dpid);
 
     /**
      * Returns list of installed meters
