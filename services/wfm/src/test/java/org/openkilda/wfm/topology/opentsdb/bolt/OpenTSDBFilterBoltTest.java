@@ -1,5 +1,6 @@
 package org.openkilda.wfm.topology.opentsdb.bolt;
 
+import static java.util.Collections.singletonMap;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
@@ -32,6 +33,7 @@ import org.openkilda.wfm.topology.opentsdb.bolts.OpenTSDBFilterBolt;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @RunWith(MockitoJUnitRunner.class)
 public class OpenTSDBFilterBoltTest {
@@ -96,10 +98,29 @@ public class OpenTSDBFilterBoltTest {
         target.prepare(Collections.emptyMap(), null, outputCollector);
         target.execute(tuple);
 
-        mockTuple(TIMESTAMP + 59999);
+        mockTuple(TIMESTAMP + TimeUnit.MINUTES.toSeconds(10) - 1);
         target.execute(tuple);
 
         verify(outputCollector, times(1)).emit(argumentCaptor.capture());
+        verify(outputCollector, times(2)).ack(any(Tuple.class));
+    }
+
+    @Test
+    public void shouldEmitMessageBothIfHashcodeConflicts() throws Exception {
+        target.prepare(Collections.emptyMap(), null, outputCollector);
+
+        Datapoint infoData1 = new Datapoint("1", TIMESTAMP, singletonMap("key",  "a"), VALUE);
+        Datapoint infoData2 = new Datapoint("2", TIMESTAMP, singletonMap("key",  "\u0040"), VALUE);
+        assertEquals(infoData1.simpleHashCode(), infoData2.simpleHashCode());
+
+        when(tuple.contains(eq("datapoint"))).thenReturn(true);
+        when(tuple.getValueByField(eq("datapoint"))).thenReturn(infoData1);
+        target.execute(tuple);
+
+        when(tuple.getValueByField(eq("datapoint"))).thenReturn(infoData2);
+        target.execute(tuple);
+
+        verify(outputCollector, times(2)).emit(argumentCaptor.capture());
         verify(outputCollector, times(2)).ack(any(Tuple.class));
     }
 
