@@ -19,6 +19,7 @@ import static java.lang.String.format;
 import static java.util.Base64.getEncoder;
 import static java.util.Collections.emptyList;
 
+import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
@@ -162,15 +163,27 @@ public class SwitchServiceImpl implements SwitchService {
         return getRules(switchId, cookie, RequestCorrelationId.getId());
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
-    public List<Long> deleteRules(String switchId, DeleteRulesAction deleteAction, Long cookie) {
+    public List<Long> deleteRules(String switchId, DeleteRulesAction deleteAction) {
         final String correlationId = RequestCorrelationId.getId();
-        LOGGER.debug("Delete switch rules request received");
+        LOGGER.debug("Delete switch rules request received: deleteAction={}", deleteAction);
 
-        SwitchRulesDeleteRequest data = new SwitchRulesDeleteRequest(switchId, deleteAction, cookie);
+        SwitchRulesDeleteRequest data = new SwitchRulesDeleteRequest(switchId, deleteAction, null);
+        CommandMessage request = new CommandWithReplyToMessage(data, System.currentTimeMillis(), correlationId,
+                Destination.CONTROLLER, northboundTopic);
+        messageProducer.send(floodlightTopic, request);
+
+        Message message = messageConsumer.poll(correlationId);
+        SwitchRulesResponse response = (SwitchRulesResponse) validateInfoMessage(request, message, correlationId);
+        return response.getRuleIds();
+    }
+
+    @Override
+    public List<Long> deleteRules(String switchId, DeleteRulesCriteria criteria) {
+        final String correlationId = RequestCorrelationId.getId();
+        LOGGER.debug("Delete switch rules request received: criteria={}", criteria);
+
+        SwitchRulesDeleteRequest data = new SwitchRulesDeleteRequest(switchId, null, criteria);
         CommandMessage request = new CommandWithReplyToMessage(data, System.currentTimeMillis(), correlationId,
                 Destination.CONTROLLER, northboundTopic);
         messageProducer.send(floodlightTopic, request);
