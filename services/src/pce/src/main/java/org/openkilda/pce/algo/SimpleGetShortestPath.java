@@ -191,6 +191,14 @@ public class SimpleGetShortestPath {
         return mirrorIsls;
     }
 
+    /**
+     * @param other called from confirmIsls .. ensure we don't return null for dst switch
+     * @return other if it exists, Empty Set otherwise.
+     */
+    private static final Set<SimpleIsl> safeSet(Set<SimpleIsl> other) {
+        return other == null ? Collections.EMPTY_SET : other;
+    }
+
     /** This helper function is used with getPath(hint) to confirm the hint path exists */
     private SearchNode confirmIsls(List<SimpleIsl> srcIsls) {
         int totalCost = 0;
@@ -199,13 +207,21 @@ public class SimpleGetShortestPath {
         boolean validPath = true;
         for (SimpleIsl i : srcIsls) {
             boolean foundThisOne = false;
-            for (SimpleIsl orig : network.getSimpleSwitch(i.src_dpid).outbound.get(i.dst_dpid)) {
-                if (i.equals(orig)) {
-                    foundThisOne = true;
-                    confirmedIsls.add(orig);
-                    totalCost += orig.cost;
-                    break; // stop looking, we found the isl
+            SimpleSwitch srcSwitch =  network.getSimpleSwitch(i.src_dpid);
+            if (srcSwitch != null) {
+                Set<SimpleIsl> pathsToDst = safeSet(srcSwitch.outbound.get(i.dst_dpid));
+                if (pathsToDst.equals(Collections.EMPTY_SET))
+                    logger.debug("No ISLS from {} to {}", i.src_dpid, i.dst_dpid);
+                for (SimpleIsl orig : pathsToDst) {
+                    if (i.equals(orig)) {
+                        foundThisOne = true;
+                        confirmedIsls.add(orig);
+                        totalCost += orig.cost;
+                        break; // stop looking, we found the isl
+                    }
                 }
+            } else {
+                logger.warn("confirmIsls: Found a null switch during getPath(hint): {}", i.src_dpid);
             }
             if (!foundThisOne) {
                 validPath = false;

@@ -34,6 +34,11 @@ public class SimpleSwitch implements Comparable<SimpleSwitch> {
      */
     public Map<String, Set<SimpleIsl>> outbound;
 
+    /** The default contructor is private to prevent null dpid / outboud scenarios */
+    private SimpleSwitch() {
+        this("");
+    }
+
     public SimpleSwitch(String dpid) {
         this.dpid = dpid;
         this.outbound = new HashMap<>();
