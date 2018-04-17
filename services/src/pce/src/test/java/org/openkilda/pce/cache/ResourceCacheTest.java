@@ -65,22 +65,22 @@ public class ResourceCacheTest {
         resourceCache.allocateCookie(4);
 
         int first = resourceCache.allocateCookie();
-        assertEquals(1, first);
+        assertEquals(5, first);
 
         int second = resourceCache.allocateCookie();
-        assertEquals(2, second);
+        assertEquals(6, second);
 
         int third = resourceCache.allocateCookie();
-        assertEquals(3, third);
+        assertEquals(7, third);
 
         resourceCache.deallocateCookie(second);
         int fourth = resourceCache.allocateCookie();
-        assertEquals(5, fourth);
+        assertEquals(8, fourth);
 
         assertEquals(4, resourceCache.getAllCookies().size());
 
         int fifth = resourceCache.allocateCookie();
-        assertEquals(6, fifth);
+        assertEquals(9, fifth);
     }
 
     @Test
@@ -88,22 +88,22 @@ public class ResourceCacheTest {
         resourceCache.allocateVlanId(5);
 
         int first = resourceCache.allocateVlanId();
-        assertEquals(2, first);
+        assertEquals(6, first);
 
         int second = resourceCache.allocateVlanId();
-        assertEquals(3, second);
+        assertEquals(7, second);
 
         int third = resourceCache.allocateVlanId();
-        assertEquals(4, third);
+        assertEquals(8, third);
 
         resourceCache.deallocateVlanId(second);
         int fourth = resourceCache.allocateVlanId();
-        assertEquals(6, fourth);
+        assertEquals(9, fourth);
 
         assertEquals(4, resourceCache.getAllVlanIds().size());
 
         int fifth = resourceCache.allocateVlanId();
-        assertEquals(7, fifth);
+        assertEquals(10, fifth);
     }
 
     @Test
