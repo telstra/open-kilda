@@ -110,7 +110,9 @@ public class NeoDriver implements PathComputer {
                 SimpleGetShortestPath reverse = new SimpleGetShortestPath(network, flow.getDestinationSwitch(), flow.getSourceSwitch(), 35);
 
                 LinkedList<SimpleIsl> fPath = forward.getPath();
-                LinkedList<SimpleIsl> rPath = reverse.getPath(fPath);
+                //(crimi - 2018.04.17 - next line has a bug .. will troubleshoot
+                //LinkedList<SimpleIsl> rPath = reverse.getPath(fPath);
+                LinkedList<SimpleIsl> rPath = reverse.getPath();
                 Pair<LinkedList<SimpleIsl>,LinkedList<SimpleIsl>> biPath = Pair.of(fPath,rPath);
                 return biPath;
         }
