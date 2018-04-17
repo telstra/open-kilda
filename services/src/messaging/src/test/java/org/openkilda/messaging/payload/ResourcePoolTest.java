@@ -20,7 +20,7 @@ import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 
 public class ResourcePoolTest {
-    private static final ResourcePool pool = new ResourcePool(1, 10);
+    private static final ResourcePool pool = new ResourcePool(1, 5);
 
     @Test
     public void resourcePoolTest() {
@@ -34,11 +34,33 @@ public class ResourcePoolTest {
         assertEquals(3, third);
 
         pool.deallocate(second);
-        int fourth = pool.allocate();
-        assertEquals(2, fourth);
 
-        assertEquals(3, pool.dumpPool().size());
+        int fourth = pool.allocate();
+        assertEquals(4, fourth);
+
+        int fifth = pool.allocate();
+        assertEquals(5, fifth);
+
+        int sixth = pool.allocate();
+        assertEquals(2, sixth);
+
+        assertEquals(5, pool.dumpPool().size());
     }
+
+
+    @Test
+    public void testRollover() {
+        ResourcePool mypool = new ResourcePool(1, 5);
+
+        int first = mypool.allocate(5);
+        assertEquals(5, first);
+
+        int second = mypool.allocate();
+        assertEquals(1, second);
+
+        assertEquals(2, mypool.dumpPool().size());
+    }
+
 
     @Test(expected = ArrayIndexOutOfBoundsException.class)
     public void resourcePoolFullTest() {

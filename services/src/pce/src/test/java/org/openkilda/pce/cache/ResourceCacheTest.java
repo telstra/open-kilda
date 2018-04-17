@@ -75,12 +75,12 @@ public class ResourceCacheTest {
 
         resourceCache.deallocateCookie(second);
         int fourth = resourceCache.allocateCookie();
-        assertEquals(2, fourth);
+        assertEquals(5, fourth);
 
         assertEquals(4, resourceCache.getAllCookies().size());
 
         int fifth = resourceCache.allocateCookie();
-        assertEquals(5, fifth);
+        assertEquals(6, fifth);
     }
 
     @Test
@@ -98,12 +98,12 @@ public class ResourceCacheTest {
 
         resourceCache.deallocateVlanId(second);
         int fourth = resourceCache.allocateVlanId();
-        assertEquals(3, fourth);
+        assertEquals(6, fourth);
 
         assertEquals(4, resourceCache.getAllVlanIds().size());
 
         int fifth = resourceCache.allocateVlanId();
-        assertEquals(6, fifth);
+        assertEquals(7, fifth);
     }
 
     @Test
@@ -122,12 +122,12 @@ public class ResourceCacheTest {
 
         resourceCache.deallocateMeterId(SWITCH_ID, second);
         int fourth = resourceCache.allocateMeterId(SWITCH_ID);
-        assertEquals(m1+1, fourth);
+        assertEquals(m1+3, fourth);
 
         assertEquals(4, resourceCache.getAllMeterIds(SWITCH_ID).size());
 
         int fifth = resourceCache.allocateMeterId(SWITCH_ID);
-        assertEquals(m1+3, fifth);
+        assertEquals(m1+4, fifth);
 
         assertEquals(5, resourceCache.deallocateMeterId(SWITCH_ID).size());
         assertEquals(0, resourceCache.getAllMeterIds(SWITCH_ID).size());
@@ -271,7 +271,7 @@ public class ResourceCacheTest {
         resourceCache.deallocateMeterId(SWITCH_ID,m1);
         resourceCache.deallocateMeterId(SWITCH_ID,m1-1);
         first = resourceCache.allocateMeterId(SWITCH_ID);
-        assertEquals(m1, first);
+        assertEquals(m1+1, first);
     }
 
 
