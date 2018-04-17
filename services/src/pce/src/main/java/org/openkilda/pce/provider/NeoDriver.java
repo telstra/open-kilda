@@ -248,7 +248,7 @@ public class NeoDriver implements PathComputer {
     public AvailableNetwork getAvailableNetwork(boolean ignore_bandwidth, int available_bandwidth) {
 
         String q = "MATCH (src:switch)-[isl:isl]->(dst:switch)" +
-                " WHERE src.state = 'active' AND dst.state = 'active' AND isl.status = 'active' " +
+                " WHERE src.state = 'active' AND dst.state = 'active' AND isl.actual = 'active' " +
                 "   AND src.name IS NOT NULL AND dst.name IS NOT NULL";
         if (!ignore_bandwidth)
                 q += "   AND isl.available_bandwidth >= " + available_bandwidth;
