@@ -204,6 +204,14 @@ input:focus {
 	height: 18px;
 }
 
+.sidebar ul li a i.icon-isl {
+	background: url(../images/icon-isl.png) no-repeat 0 0;
+	background-size: 18px auto;
+	display: inline-block;
+	width: 18px;
+	height: 18px;
+}
+
 .sidebar ul li a i.icon-switch {
 	background: url(../images/icon-switch.png) no-repeat 0 0;
 	background-size: 18px auto;
@@ -768,7 +776,7 @@ footer {
 	padding: 0;
 }
 
-.kilda_select .selectbox_menulist {
+.kilda_select .selectbox_menulist,.kilda_select .selectbox_list {
 	width: 100%;
 	border: none;
 	height: 100%;
@@ -972,6 +980,7 @@ footer {
 	padding: 30px 15px;
 	font-family: "Telstra-Regular", Arial, Helvetica, sans-serif;
 	font-size: 13px;
+	height:470px;
 	z-index: 1;
 }
 
@@ -1293,6 +1302,10 @@ table#flowTable.dataTable thead th .heading_search_box {
 	margin-left:3px;
 }
 
+
+.home-isl {
+	margin-left:3px;
+}
 .fa-search {
 	cursor : pointer;
 }
@@ -1963,4 +1976,64 @@ td.highlight {
   [data-balloon][data-balloon-length='fit']:after {
     white-space: normal;
     width: 100%; }
+    /* css for context menu */
     
+ .contextmenu{
+ 	display: none;
+    position: absolute;
+    width: 150px;
+    background: #fff;
+    margin-top: 10px;
+}
+
+.contextmenu ul{
+ list-style: none;
+}
+
+.contextmenu ul li{
+	padding: 8px 10px;
+    color: white;
+    background-color: #262d37;
+    font-size: 13px;
+ 	cursor: pointer;
+}
+.auto_refresh_interval select{
+	position: relative;
+    z-index: 3;
+    padding: 0 7px;
+    color: #333;
+    right: 0;
+    border: 1px solid #ccc;
+    width: 45%;
+    border-radius: 3px;
+    height: 30px;
+    margin: 5px 0;
+}
+.kilda_btn {
+	background:#262d37;
+	color:#FFF;
+}
+.btn.kilda_btn:hover {
+    color: #000;
+    text-decoration: none;
+    background: #b0b0b0;
+}
+.kilda_btn:focus{
+    color: #000;
+    text-decoration: none;
+    background: #b0b0b0;
+}
+.on-off-switch-thumb-color.on-off-switch-thumb-off,.on-off-switch-thumb-color.on-off-switch-thumb-on {
+    background: #262d37;
+}
+.reroute_flow_btn{
+    margin: -20px 10px;
+    float: right;
+}
+pre#validate_json{
+	display: block;
+    font-family: monospace;
+    white-space: pre;
+    margin: 1em 0px;
+    max-height: 340px;	
+}

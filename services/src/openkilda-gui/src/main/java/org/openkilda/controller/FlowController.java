@@ -1,17 +1,5 @@
 package org.openkilda.controller;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.ResponseBody;
-import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.servlet.ModelAndView;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -24,6 +12,17 @@ import org.openkilda.model.FlowCount;
 import org.openkilda.model.FlowInfo;
 import org.openkilda.model.FlowPath;
 import org.openkilda.service.FlowService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.servlet.ModelAndView;
 
 /**
  * The Class FlowController.
@@ -83,6 +82,7 @@ public class FlowController extends BaseController {
 
     /**
      * Returns all flows exists in the system.
+     * 
      * @return all flows exists in the system.
      */
     @RequestMapping(value = "/list", method = RequestMethod.GET)
@@ -94,13 +94,53 @@ public class FlowController extends BaseController {
 
     /**
      * Returns flow path with all nodes/switches exists in provided flow.
+     * 
      * @param flowId id of flow path requested.
      * @return flow path with all nodes/switches exists in provided flow
      */
-    @RequestMapping(value = "/path/{flowid}", method = RequestMethod.GET)
+    @RequestMapping(value = "/path/{flowId}", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
-    public @ResponseBody FlowPath getFlowPath(@PathVariable final String flowid) {
-        LOGGER.info("[getFlows] - start. Flow id: " + flowid);
-        return flowService.getFlowPath(flowid);
+    public @ResponseBody FlowPath getFlowPath(@PathVariable final String flowId) {
+        LOGGER.info("[getFlowPath] - start. Flow id: " + flowId);
+        return flowService.getFlowPath(flowId);
+    }
+
+    /**
+     * Re route the flow and returns flow path with all nodes/switches exists in provided flow.
+     * 
+     * @param flowId id of reroute requested.
+     * @return reroute flow of new flow path with all nodes/switches exist
+     */
+    @RequestMapping(value = "/{flowId}/reroute", method = RequestMethod.GET)
+    @ResponseStatus(HttpStatus.OK)
+    public @ResponseBody FlowPath rerouteFlow(@PathVariable final String flowId) {
+        LOGGER.info("[rerouteFlow] - start. Flow id: " + flowId);
+        return flowService.rerouteFlow(flowId);
+    }
+
+    /**
+     * Validate the flow
+     * 
+     * @param flowId id of validate flow requested.
+     * @return validate flow
+     */
+    @RequestMapping(value = "/{flowId}/validate", method = RequestMethod.GET)
+    @ResponseStatus(HttpStatus.OK)
+    public @ResponseBody String validateFlow(@PathVariable final String flowId) {
+        LOGGER.info("[validateFlow] - start. Flow id: " + flowId);
+        return flowService.validateFlow(flowId);
+    }
+
+    /**
+     * Get flow by Id
+     * 
+     * @param flowId id of flow requested.
+     * @return flow
+     */
+    @RequestMapping(value = "/{flowId}", method = RequestMethod.GET)
+    @ResponseStatus(HttpStatus.OK)
+    public @ResponseBody Flow getFlowById(@PathVariable final String flowId) {
+        LOGGER.info("[getFlowById] - start. Flow id: " + flowId);
+        return flowService.getFlowById(flowId);
     }
 }

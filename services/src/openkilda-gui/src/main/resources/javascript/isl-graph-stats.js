@@ -25,6 +25,11 @@ $(function() {
 	$("#datetimepicker7ISL,#datetimepicker8ISL,#downsamplingISL,#autoreloadISL").on("change",function() {
 		getGraphData();
 	});
+	$('#selectedGraph').on('change',function(e){
+		if($(this).val() == 'isl'){
+			getGraphData(true);
+		}
+	})
 });
 /**
 * Execute this function when page is loaded
@@ -38,8 +43,8 @@ $(document).ready(function() {
 	yesterday.setDate(date.getDate() - 1);
 	var YesterDayDate = moment(yesterday).format("YYYY/MM/DD HH:mm:ss");
     var EndDate = moment(date).format("YYYY/MM/DD HH:mm:ss");
-	var convertedStartDate = moment(YesterDayDate).format("YYYY-MM-DD-HH:mm:ss");
-	var convertedEndDate = moment(EndDate).format("YYYY-MM-DD-HH:mm:ss");
+	var convertedStartDate = moment(yesterday).format("YYYY-MM-DD-HH:mm:ss");
+	var convertedEndDate = moment(date).format("YYYY-MM-DD-HH:mm:ss");
 	var downsampling = "10m";
 	$("#downsamplingISL").val(downsampling)
 	$("#datetimepicker7ISL").val(YesterDayDate);
@@ -52,7 +57,7 @@ $(document).ready(function() {
 	});
 	$('#datetimepicker_dark').datetimepicker({theme:'dark'})
 		
-	loadGraph.loadGraphData("/stats/isl/"+source+"/"+sourcePort+"/"+target+"/"+targetPort+"/"+convertedStartDate+"/"+convertedEndDate+"/1s/"+selMetric,"GET",selMetric).then(function(response) {
+	loadGraph.loadGraphData("/stats/isl/"+source+"/"+sourcePort+"/"+target+"/"+targetPort+"/"+convertedStartDate+"/"+convertedEndDate+"/10m/"+selMetric,"GET",selMetric).then(function(response) {
 		$("#wait1").css("display", "none");
 		$('body').css('pointer-events', 'all');
 		showStatsGraph.showStatsData(response,selMetric); 
@@ -64,8 +69,7 @@ $(document).ready(function() {
 * Execute this function to  show stats data whenever user filters data in the
 * html page.
 */
-function getGraphData() {
-
+function getGraphData(changeFlag) {
 	var regex = new RegExp("^\\d+(s|h|m){1}$");
 	var currentDate = new Date();
 	var startDate = new Date($("#datetimepicker7ISL").val());
@@ -123,8 +127,12 @@ if(test) {
 	
   	$("#DownsampleID").removeClass("has-error")
 	$(".downsample-error-message").html("");
-  	
-	loadGraph.loadGraphData("/stats/isl/"+source+"/"+sourcePort+"/"+target+"/"+targetPort+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric,"GET",selMetric).then(function(response) {
+  	if(typeof(changeFlag)!='undefined' &&  changeFlag){
+  		var loadUrl ="/stats/isl/"+source+"/"+sourcePort+"/"+target+"/"+targetPort+"/"+convertedStartDate+"/"+convertedEndDate+"/"+"10m"+"/"+selMetric;
+  	}else{
+  		var loadUrl ="/stats/isl/"+source+"/"+sourcePort+"/"+target+"/"+targetPort+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric;
+  	}
+	loadGraph.loadGraphData(loadUrl,"GET",selMetric).then(function(response) {
 		
 		$("#wait1").css("display", "none");
 		$('body').css('pointer-events', 'all');
@@ -146,14 +154,13 @@ if(test) {
 }
 		
 function callIntervalData(){
-	
 	var currentDate = new Date();
 	var startDate = new Date($("#datetimepicker7ISL").val());
 	var convertedStartDate = moment(startDate).format("YYYY-MM-DD-HH:mm:ss");	
 	var endDate = new Date()
 	var convertedEndDate = moment(endDate).format("YYYY-MM-DD-HH:mm:ss");	
 	var downsampling =$("#downsamplingISL").val()	
-	
+	$('#wait1').show();
 	loadGraph.loadGraphData("/stats/isl/"+source+"/"+sourcePort+"/"+target+"/"+targetPort+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric,"GET",selMetric).then(function(response) {
 		$("#wait1").css("display", "none");
 		$('body').css('pointer-events', 'all');

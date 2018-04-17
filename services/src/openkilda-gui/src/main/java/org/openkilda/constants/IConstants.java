@@ -31,6 +31,7 @@ public abstract class IConstants {
         public static final String REDIRECT_LOGIN = "redirect:/login";
         public static final String SWITCH = "switchdetails";
         public static final String ISL = "isl";
+        public static final String ISL_LIST = "isllist";
         public static final String FLOW_LIST = "flows";
         public static final String FLOW_DETAILS = "flowdetails";
         public static final String PORT_DETAILS = "portdetails";
