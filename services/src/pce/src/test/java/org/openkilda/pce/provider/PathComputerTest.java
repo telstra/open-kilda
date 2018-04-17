@@ -95,10 +95,11 @@ public class PathComputerTest {
         n.setProperty("state", "active");
         return n;
     }
-    private Relationship addRel (Node n1, Node n2, String status, int cost, int bw, int port){
+    private Relationship addRel (Node n1, Node n2, String status, String actual, int cost, int bw, int port){
         Relationship rel;
         rel = n1.createRelationshipTo(n2, RelationshipType.withName("isl"));
         rel.setProperty("status",status);
+        rel.setProperty("actual",actual);
         if (cost >= 0) {rel.setProperty("cost", cost);}
         rel.setProperty("available_bandwidth", bw);
         rel.setProperty("latency", 5);
@@ -108,10 +109,11 @@ public class PathComputerTest {
         rel.setProperty("dst_switch", n2.getProperty("name"));
         return rel;
     }
-    private Relationship addRelAsString (Node n1, Node n2, String status, String cost, int bw, int port){
+    private Relationship addRelAsString (Node n1, Node n2, String status, String actual, String cost, int bw, int port){
         Relationship rel;
         rel = n1.createRelationshipTo(n2, RelationshipType.withName("isl"));
         rel.setProperty("status",status);
+        rel.setProperty("actual",actual);
         if (cost != null && !cost.isEmpty()) {rel.setProperty("cost", cost);}
         rel.setProperty("available_bandwidth", bw);
         rel.setProperty("latency", 5);
@@ -140,14 +142,15 @@ public class PathComputerTest {
             nodeB = createNode(switchStart + String.format("%02X", index++));
             nodeC = createNode(switchStart + String.format("%02X", index++));
             nodeD = createNode(switchStart + String.format("%02X", index++));
-            addRelAsString(nodeA, nodeB, pathBstatus, pathBcost, 1000, 5);
-            addRelAsString(nodeA, nodeC, pathCstatus, pathCcost, 1000, 6);
-            addRelAsString(nodeB, nodeD, pathBstatus, pathBcost, 1000, 6);
-            addRelAsString(nodeC, nodeD, pathCstatus, pathCcost, 1000, 5);
-            addRelAsString(nodeB, nodeA, pathBstatus, pathBcost, 1000, 5);
-            addRelAsString(nodeC, nodeA, pathCstatus, pathCcost, 1000, 6);
-            addRelAsString(nodeD, nodeB, pathBstatus, pathBcost, 1000, 6);
-            addRelAsString(nodeD, nodeC, pathCstatus, pathCcost, 1000, 5);
+            String actual = (pathBstatus.equals("active") && pathCstatus.equals("active")) ? "active" : "inactive";
+            addRelAsString(nodeA, nodeB, pathBstatus, actual, pathBcost, 1000, 5);
+            addRelAsString(nodeA, nodeC, pathCstatus, actual, pathCcost, 1000, 6);
+            addRelAsString(nodeB, nodeD, pathBstatus, actual, pathBcost, 1000, 6);
+            addRelAsString(nodeC, nodeD, pathCstatus, actual, pathCcost, 1000, 5);
+            addRelAsString(nodeB, nodeA, pathBstatus, actual, pathBcost, 1000, 5);
+            addRelAsString(nodeC, nodeA, pathCstatus, actual, pathCcost, 1000, 6);
+            addRelAsString(nodeD, nodeB, pathBstatus, actual, pathBcost, 1000, 6);
+            addRelAsString(nodeD, nodeC, pathCstatus, actual, pathCcost, 1000, 5);
             tx.success();
         }
     }
@@ -162,14 +165,15 @@ public class PathComputerTest {
             nodeB = createNode(switchStart + String.format("%02X", index++));
             nodeC = createNode(switchStart + String.format("%02X", index++));
             nodeD = createNode(switchStart + String.format("%02X", index++));
-            addRel(nodeA, nodeB, pathBstatus, pathBcost, 1000, 5);
-            addRel(nodeA, nodeC, pathCstatus, pathCcost, 1000, 6);
-            addRel(nodeB, nodeD, pathBstatus, pathBcost, 1000, 6);
-            addRel(nodeC, nodeD, pathCstatus, pathCcost, 1000, 5);
-            addRel(nodeB, nodeA, pathBstatus, pathBcost, 1000, 5);
-            addRel(nodeC, nodeA, pathCstatus, pathCcost, 1000, 6);
-            addRel(nodeD, nodeB, pathBstatus, pathBcost, 1000, 6);
-            addRel(nodeD, nodeC, pathCstatus, pathCcost, 1000, 5);
+            String actual = (pathBstatus.equals("active") && pathCstatus.equals("active")) ? "active" : "inactive";
+            addRel(nodeA, nodeB, pathBstatus, actual, pathBcost, 1000, 5);
+            addRel(nodeA, nodeC, pathCstatus, actual, pathCcost, 1000, 6);
+            addRel(nodeB, nodeD, pathBstatus, actual, pathBcost, 1000, 6);
+            addRel(nodeC, nodeD, pathCstatus, actual, pathCcost, 1000, 5);
+            addRel(nodeB, nodeA, pathBstatus, actual, pathBcost, 1000, 5);
+            addRel(nodeC, nodeA, pathCstatus, actual, pathCcost, 1000, 6);
+            addRel(nodeD, nodeB, pathBstatus, actual, pathBcost, 1000, 6);
+            addRel(nodeD, nodeC, pathCstatus, actual, pathCcost, 1000, 5);
             tx.success();
         }
     }
@@ -180,8 +184,8 @@ public class PathComputerTest {
             //   + C +
             Node nodeA = graphDb.findNode(Label.label("switch"),"name", aName);
             Node nodeB = graphDb.findNode(Label.label("switch"),"name", bName);
-            addRel(nodeA, nodeB, status, cost, 1000, port);
-            addRel(nodeB, nodeA, status, cost, 1000, port);
+            addRel(nodeA, nodeB, status, status, cost, 1000, port);
+            addRel(nodeB, nodeA, status, status, cost, 1000, port);
             tx.success();
         }
     }
@@ -202,12 +206,12 @@ public class PathComputerTest {
             nodeB = createNode(switchStart + String.format("%02X", index++));
             nodeC = createNode(switchStart + String.format("%02X", index++));
 
-            addRel(nodeA, nodeB, pathABstatus, pathABcost, 1000, 5);
-            addRel(nodeB, nodeA, pathABstatus, pathABcost, 1000, 5);
-            addRel(nodeA, nodeC, "active", pathCcost, 1000, 6);
-            addRel(nodeC, nodeA, "active", pathCcost, 1000, 6);
-            addRel(nodeC, nodeB,  "active", pathCcost, 1000, 7);
-            addRel(nodeB, nodeC,  "active", pathCcost, 1000, 7);
+            addRel(nodeA, nodeB, pathABstatus, pathABstatus, pathABcost, 1000, 5);
+            addRel(nodeB, nodeA, pathABstatus, pathABstatus, pathABcost, 1000, 5);
+            addRel(nodeA, nodeC, "active", "active", pathCcost, 1000, 6);
+            addRel(nodeC, nodeA, "active", "active", pathCcost, 1000, 6);
+            addRel(nodeC, nodeB,  "active", "active", pathCcost, 1000, 7);
+            addRel(nodeB, nodeC,  "active", "active", pathCcost, 1000, 7);
             tx.success();
         }
     }
@@ -248,10 +252,10 @@ public class PathComputerTest {
     }
 
 
-    @Test
+    @Test(expected = UnroutablePathException.class)
     public void testGetPathByCostInactive() throws UnroutablePathException, RecoverableException {
         /*
-         * simple happy path test .. but lowest path is inactive
+         * verifies that iSL in both directions needs to be active
          */
         createDiamond("inactive", "active", 10, 20, "01:", 1);
         Flow f = new Flow();
@@ -259,11 +263,7 @@ public class PathComputerTest {
         f.setDestinationSwitch("01:04");
         f.setBandwidth(100);
         ImmutablePair<PathInfoData, PathInfoData> path = nd.getPath(f, PathComputer.Strategy.COST);
-        // System.out.println("path = " + path);
-        Assert.assertNotNull(path);
-        Assert.assertEquals(4, path.left.getPath().size());
-        // ====> only difference is it should now have C as first hop .. since B is inactive
-        Assert.assertEquals("01:03", path.left.getPath().get(1).getSwitchId()); // chooses path B
+        Assert.assertTrue(false);  // no exception thrown.
     }
 
     @Test

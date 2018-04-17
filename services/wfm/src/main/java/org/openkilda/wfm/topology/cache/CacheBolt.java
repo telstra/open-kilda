@@ -266,9 +266,16 @@ public class CacheBolt
                     networkCache.updateSwitch(sw);
                 }
 
-                affectedFlows = flowCache.getActiveFlowsWithAffectedPath(sw.getSwitchId());
-                String reason = String.format("switch %s is %s", sw.getSwitchId(), sw.getState());
-                emitRerouteCommands(affectedFlows, tuple, UUID.randomUUID().toString(), FlowOperation.UPDATE, reason);
+                // (crimi - 2018.04.17) - eliminating taking action on Switch down events ..
+                // primarily because floodlight can regularly drop a connection to the switch (or
+                // vice versa) and a new connection is made almost immediately. Essentially, a flap.
+                // Rather than reroute here .. what to see if an ISL goes down.  This introduces a
+                // longer delay .. but a necessary dampening affect.  The better solution
+                // is to kick of an immediate probe if we get such an event .. and the probe
+                // should confirm what is really happening.
+//                affectedFlows = flowCache.getActiveFlowsWithAffectedPath(sw.getSwitchId());
+//                String reason = String.format("switch %s is %s", sw.getSwitchId(), sw.getState());
+//                emitRerouteCommands(affectedFlows, tuple, UUID.randomUUID().toString(), FlowOperation.UPDATE, reason);
                 break;
 
             case CACHED:
