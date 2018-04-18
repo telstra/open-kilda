@@ -252,7 +252,7 @@ public class PathComputerTest {
     }
 
 
-    @Test(expected = UnroutablePathException.class)
+    @Test()
     public void testGetPathByCostInactive() throws UnroutablePathException, RecoverableException {
         /*
          * verifies that iSL in both directions needs to be active
@@ -262,8 +262,26 @@ public class PathComputerTest {
         f.setSourceSwitch("01:01");
         f.setDestinationSwitch("01:04");
         f.setBandwidth(100);
-        ImmutablePair<PathInfoData, PathInfoData> path = nd.getPath(f, PathComputer.Strategy.COST);
-        Assert.assertTrue(false);  // no exception thrown.
+
+        boolean caughtException = false;
+        ImmutablePair<PathInfoData, PathInfoData> path = null;
+        try {
+            path = nd.getPath(f, PathComputer.Strategy.COST);
+        } catch (UnroutablePathException e) {
+            caughtException = true;
+        }
+
+        boolean usingActualProperty = false;
+        if (usingActualProperty)
+            // if we use actual in query, we'll get this exception
+            Assert.assertTrue(caughtException);
+        else {
+            // otherwise we'll find the asymmetrical path
+            Assert.assertNotNull(path);
+            Assert.assertEquals(4, path.left.getPath().size());
+            // ====> only difference is it should now have C as first hop .. since B is inactive
+            Assert.assertEquals("01:03", path.left.getPath().get(1).getSwitchId()); // chooses path B
+        }
     }
 
     @Test

@@ -110,9 +110,10 @@ public class NeoDriver implements PathComputer {
                 SimpleGetShortestPath reverse = new SimpleGetShortestPath(network, flow.getDestinationSwitch(), flow.getSourceSwitch(), 35);
 
                 LinkedList<SimpleIsl> fPath = forward.getPath();
-                //(crimi - 2018.04.17 - next line has a bug .. will troubleshoot
-                //LinkedList<SimpleIsl> rPath = reverse.getPath(fPath);
-                LinkedList<SimpleIsl> rPath = reverse.getPath();
+                LinkedList<SimpleIsl> rPath = reverse.getPath(fPath);
+                //(crimi) - getPath with hint works .. you can use the next line to troubleshoot if
+                // concerned about how hit is working
+                //LinkedList<SimpleIsl> rPath = reverse.getPath();
                 Pair<LinkedList<SimpleIsl>,LinkedList<SimpleIsl>> biPath = Pair.of(fPath,rPath);
                 return biPath;
         }
@@ -250,7 +251,7 @@ public class NeoDriver implements PathComputer {
     public AvailableNetwork getAvailableNetwork(boolean ignore_bandwidth, int available_bandwidth) {
 
         String q = "MATCH (src:switch)-[isl:isl]->(dst:switch)" +
-                " WHERE src.state = 'active' AND dst.state = 'active' AND isl.actual = 'active' " +
+                " WHERE src.state = 'active' AND dst.state = 'active' AND isl.status = 'active' " +
                 "   AND src.name IS NOT NULL AND dst.name IS NOT NULL";
         if (!ignore_bandwidth)
                 q += "   AND isl.available_bandwidth >= " + available_bandwidth;

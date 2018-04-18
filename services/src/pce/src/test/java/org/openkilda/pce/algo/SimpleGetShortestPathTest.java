@@ -44,7 +44,8 @@ public class SimpleGetShortestPathTest {
         LinkedList<SimpleIsl> fpath = forward.getPath();
         System.out.println("forward.getPath() = " + fpath);
         SimpleGetShortestPath reverse = new SimpleGetShortestPath(network, "00:00:b0:d2:f5:00:5a:b8", "00:00:70:72:cf:d2:47:a6", 35);
-        System.out.println("reverse.getPath() = " + reverse.getPath(fpath));
+        LinkedList<SimpleIsl> rpath = reverse.getPath(fpath);
+        System.out.println("reverse.getPath() = " + rpath);
 
 
 
