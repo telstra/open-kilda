@@ -165,9 +165,10 @@ public class SwitchIntegrationService {
      * @throws IntegrationException
      */
     public List<PortInfo> getSwitchPorts(final String switchId) throws IntegrationException {
-        try {
-            HttpResponse response = restClientManager.invoke(applicationProperties.getSwitchPorts(),
-                    HttpMethod.GET, "", "", "");
+    	HttpResponse response = null;
+    	try {
+//            HttpResponse response = restClientManager.invoke(applicationProperties.getSwitchPorts(),
+//                    HttpMethod.GET, "", "", "");
             if (RestClientManager.isValidResponse(response)) {
                 String responseEntity = IoUtil.toString(response.getEntity().getContent());
                 JSONObject jsonObject = JsonUtil.toObject(responseEntity, JSONObject.class);
