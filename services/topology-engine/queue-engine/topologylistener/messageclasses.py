@@ -22,7 +22,8 @@ import threading
 from py2neo import Node
 from topologylistener import model
 
-import config
+from topologylistener import config
+from topologylistener import db
 import flow_utils
 import message_utils
 
@@ -343,6 +344,7 @@ class MessageItem(object):
             flow_utils.precreate_isls(tx, isl)
             self.deactivate_isl(tx, isl.source.dpid, isl.source.port)
             self.isl_update_status(tx, isl)
+            self.isl_set_cost(tx, isl, config.ISL_COST_WHEN_DOWN)
 
     def deactivate_isl(self, tx, src_switch, src_port):
         """
@@ -537,6 +539,35 @@ class MessageItem(object):
             logger.error(
                 'ISL update status query stats:\n%s',
                 json.dumps(stats, indent=2))
+
+    def isl_set_cost(self, tx, isl, cost):
+        set_cost_query = textwrap.dedent("""
+            MATCH
+              (:switch {{name:"{source.dpid}"}})
+              -
+              [self:isl {{
+                src_switch: "{source.dpid}",
+                src_port: {source.port},
+                dst_switch: "{dest.dpid}",
+                dst_port: {dest.port}
+              }}]
+              ->
+              (:switch {{name:"{dest.dpid}"}})
+            WITH self, self.cost as original_cost
+            SET self.cost = {cost}
+            RETURN original_cost""").format(
+                source=isl.source, dest=isl.dest,
+                cost=cost)
+
+        logger.debug('ISL set cost query:\n%s', set_cost_query)
+        cursor = tx.run(set_cost_query)
+
+        original_cost = db.fetch_scalar(cursor)
+
+        if original_cost != cost:
+            logger.warning(
+                    'ISL %s cost have been changed from %s to %s',
+                    isl, original_cost, cost)
 
     def handle_topology_change(self):
         if self.get_message_type() != MT_ISL:
