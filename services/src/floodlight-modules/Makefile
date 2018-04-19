@@ -1,10 +1,8 @@
 # Makefile to build the openkilda floodlight modules
 
-default: install
+pre-docker: run-deps/floodlight.jar
 
-build-modules:
-	mvn package
-	
-install: 
-	mkdir -p ../../services/openkilda/app/floodlight-modules
-	cp -rv * ../../services/openkilda/app/floodlight-modules
+run-deps/floodlight.jar: $(SHARE)/build-artifact/floodlight.jar
+	cp $< $@
+
+.PHONY: pre-docker
