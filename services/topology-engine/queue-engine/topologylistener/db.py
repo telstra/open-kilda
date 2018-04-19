@@ -29,6 +29,25 @@ def create_p2n_driver():
     return graph
 
 
+# FIXME(surabujin): use custom exception types
+def fetch_scalar(cursor):
+    extra = result_set = None
+    try:
+        result_set = next(cursor)
+        extra = next(cursor)
+    except StopIteration:
+        if result_set is None:
+            raise ValueError('There is no data in cursor')
+
+    if extra is not None:
+        raise ValueError('Cursor contain more than 1 result set')
+
+    if len(result_set) != 1:
+        raise ValueError(
+                'Invalid size of result set ({})'.format(len(result_set)))
+    return result_set.values()[0]
+
+
 # neo4j monkey patching staff
 
 dummy = object()
