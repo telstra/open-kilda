@@ -45,6 +45,7 @@ import org.openkilda.messaging.command.flow.FlowsGetRequest;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.command.flow.SynchronizeCacheAction;
+import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.ctrl.CtrlRequest;
 import org.openkilda.messaging.ctrl.CtrlResponse;
 import org.openkilda.messaging.ctrl.DumpStateResponseData;
@@ -1212,7 +1213,8 @@ public class FlowTopologyTest extends AbstractStormTest {
 
     private RemoveFlow removeFlowCommand(final String flowId) throws IOException {
         System.out.println("TOPOLOGY: Remove flow");
-        RemoveFlow commandData = new RemoveFlow(0L, flowId, COOKIE, "switch-id", 0L);
+        RemoveFlow commandData = new RemoveFlow(0L, flowId, COOKIE, "switch-id", 0L,
+                DeleteRulesCriteria.builder().cookie(COOKIE).build());
         CommandMessage commandMessage = new CommandMessage(commandData, 0, "remove-flow", Destination.WFM);
 //        sendTopologyEngineMessage(commandMessage);
         sendFlowMessage(commandMessage);

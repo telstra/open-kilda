@@ -187,17 +187,6 @@ public interface ISwitchManager extends IFloodlightService {
                                               final long meterId) throws SwitchOperationException;
 
     /**
-     * Deletes the flow from the switch
-     *
-     * @param dpid   datapath ID of the switch
-     * @param flowId flow id
-     * @return transaction id
-     * @throws SwitchOperationException Switch not found
-     */
-    long deleteFlow(final DatapathId dpid, final String flowId, final Long cookie)
-            throws SwitchOperationException;
-
-    /**
      * Deletes the meter from the switch OF_13.
      *
      * @param dpid    datapath ID of the switch

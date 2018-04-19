@@ -15,17 +15,16 @@
 
 package org.openkilda.messaging.command.switches;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
-import static org.openkilda.messaging.Utils.TIMESTAMP;
-
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Value;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandData;
 
 import java.util.Objects;
 
+@Value
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class SwitchRulesDeleteRequest extends CommandData {
 
@@ -46,6 +45,7 @@ public class SwitchRulesDeleteRequest extends CommandData {
      *
      * @param switchId switch id to delete rules from.
      * @param deleteRulesAction defines what to do about the default rules
+     * @param criteria criteria to delete a specific rule.
      */
     @JsonCreator
     public SwitchRulesDeleteRequest(
@@ -60,30 +60,6 @@ public class SwitchRulesDeleteRequest extends CommandData {
 
         this.deleteRulesAction = deleteRulesAction;
         // NB: criteria is only needed if deleteRulesAction is not provided
-        if (deleteRulesAction == null) {
-            this.criteria = Objects.requireNonNull(criteria);
-        }
-    }
-
-    public String getSwitchId() {
-        return switchId;
-    }
-
-    public DeleteRulesAction getDeleteRulesAction() {
-        return deleteRulesAction;
-    }
-
-    public DeleteRulesCriteria getCriteria() {
-        return criteria;
-    }
-
-    @Override
-    public String toString() {
-        return toStringHelper(this)
-                .add(TIMESTAMP, timestamp)
-                .add("switch_id", switchId)
-                .add("delete_rules", deleteRulesAction)
-                .add("criteria", criteria)
-                .toString();
+        this.criteria = deleteRulesAction == null ? Objects.requireNonNull(criteria) : criteria;
     }
 }

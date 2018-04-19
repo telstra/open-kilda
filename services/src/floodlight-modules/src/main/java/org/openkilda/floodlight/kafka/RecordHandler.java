@@ -59,6 +59,7 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 class RecordHandler implements Runnable {
@@ -339,7 +340,14 @@ class RecordHandler implements Runnable {
         DatapathId dpid = DatapathId.of(command.getSwitchId());
         ISwitchManager switchManager = context.getSwitchManager();
         try {
-            switchManager.deleteFlow(dpid, command.getId(), command.getCookie());
+            logger.info("Deleting flow {} from switch {}", command.getId(), dpid);
+
+            DeleteRulesCriteria criteria = Optional.ofNullable(command.getCriteria())
+                    .orElseGet(()-> DeleteRulesCriteria.builder().cookie(command.getCookie()).build());
+            List<Long> cookiesOfRemovedRules = switchManager.deleteRulesByCriteria(dpid, criteria);
+            if(cookiesOfRemovedRules.isEmpty()) {
+                logger.warn("No rules were removed by criteria {} for flow {} from switch {}", criteria, command.getId(), dpid);
+            }
 
             // FIXME(surabujin): QUICK FIX - try to drop meterPool completely
             Long meterId = command.getMeterId();
