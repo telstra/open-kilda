@@ -9,6 +9,7 @@ import org.openkilda.floodlight.converter.IOFSwitchConverter;
 import org.openkilda.floodlight.converter.OFFlowStatsConverter;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.floodlight.switchmanager.MeterPool;
+import org.openkilda.floodlight.switchmanager.SwitchEventCollector;
 import org.openkilda.floodlight.switchmanager.SwitchOperationException;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Topic;
@@ -18,7 +19,9 @@ import org.openkilda.messaging.command.CommandWithReplyToMessage;
 import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
 import org.openkilda.messaging.command.discovery.DiscoverPathCommandData;
 import org.openkilda.messaging.command.discovery.NetworkCommandData;
+import org.openkilda.messaging.command.discovery.PortsCommandData;
 import org.openkilda.messaging.command.flow.BaseInstallFlow;
+import org.openkilda.messaging.command.flow.BatchInstallRequest;
 import org.openkilda.messaging.command.flow.InstallEgressFlow;
 import org.openkilda.messaging.command.flow.InstallIngressFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
@@ -29,9 +32,8 @@ import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.command.switches.DumpRulesRequest;
 import org.openkilda.messaging.command.switches.InstallRulesAction;
-import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
-import org.openkilda.messaging.command.flow.BatchInstallRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
+import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
@@ -44,10 +46,11 @@ import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
+import org.openkilda.messaging.info.stats.PortStatus;
+import org.openkilda.messaging.info.stats.SwitchPortStatusData;
 import org.openkilda.messaging.info.switches.ConnectModeResponse;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
-
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.DatapathId;
@@ -56,9 +59,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 class RecordHandler implements Runnable {
@@ -66,6 +71,7 @@ class RecordHandler implements Runnable {
     private static final String OUTPUT_FLOW_TOPIC = Topic.FLOW;
     private static final String OUTPUT_DISCO_TOPIC = Topic.TOPO_DISCO;
     private static final String TOPO_ENG_TOPIC = Topic.TOPO_ENG;
+    private static final String TOPO_STATS = Topic.STATS;
 
     private final ConsumerContext context;
     private final ConsumerRecord<String, String> record;
@@ -129,6 +135,8 @@ class RecordHandler implements Runnable {
             doDumpRulesRequest(message, replyToTopic);
         } else if (data instanceof BatchInstallRequest) {
             doBatchInstall(message);
+        } else if (data instanceof PortsCommandData) {
+            doPortsCommandDataRequest(message);
         } else {
             logger.error("unknown data type: {}", data.toString());
         }
@@ -572,6 +580,45 @@ class RecordHandler implements Runnable {
             } catch (SwitchOperationException e) {
                 logger.error("Error during flow installation", e);
             }
+        }
+    }
+
+    private void doPortsCommandDataRequest(CommandMessage message) {
+        try {
+            PortsCommandData request = (PortsCommandData) message.getData();
+            Map<DatapathId, IOFSwitch>  allSwitchMap = context.getSwitchManager().getAllSwitchMap();
+            for(Map.Entry<DatapathId, IOFSwitch> entry : allSwitchMap.entrySet()) {
+                String switchId = entry.getKey().toString();
+                try {
+                    IOFSwitch sw = entry.getValue();
+                    Collection<OFPort> enabledPortNumbers = sw.getEnabledPortNumbers();
+
+                    Set<PortStatus> portsStatus = sw.getPorts().stream()
+                            .filter(port -> SwitchEventCollector.isPhysicalPort(port.getPortNo()))
+                            .map(port -> PortStatus.builder()
+                                    .id(port.getPortNo().getPortNumber())
+                                    .status(enabledPortNumbers.contains(port.getPortNo())
+                                            ? PortChangeType.UP : PortChangeType.DOWN)
+                                    .build()
+                            ).collect(Collectors.toSet());
+                    SwitchPortStatusData response = SwitchPortStatusData.builder()
+                            .switchId(switchId)
+                            .ports(portsStatus)
+                            .requester(request.getRequester())
+                            .build();
+
+                    InfoMessage infoMessage = new InfoMessage(response, message.getTimestamp(),
+                            message.getCorrelationId());
+                    context.getKafkaProducer().postMessage(TOPO_STATS, infoMessage);
+                }
+                catch (Exception e)
+                {
+                    logger.error("Could not get port stats data for switch {} with error {}",
+                            switchId, e.getMessage());
+                }
+            }
+        } catch (Exception e) {
+            logger.error("Could not get port data for stats {}", e.getMessage());
         }
     }
 

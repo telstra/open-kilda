@@ -6,7 +6,6 @@ import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseRichBolt;
-import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.Datapoint;
@@ -73,7 +72,7 @@ public class ParsePortInfoBolt extends BaseRichBolt {
         Map<String, String> tag = tagsTable.get(data.getSwitchId(), data.getPortNo());
         if (tag == null) {
             tag = new HashMap<>();
-            tag.put("switchid", data.getSwitchId());
+            tag.put("switchid", data.getSwitchId().replaceAll(":", ""));
             tag.put("port", String.valueOf(data.getPortNo()));
             tagsTable.put(data.getSwitchId(), data.getPortNo(), tag);
         }
