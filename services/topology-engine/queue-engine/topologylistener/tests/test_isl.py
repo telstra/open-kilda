@@ -31,32 +31,92 @@ neo4j_connect = flow_utils.graph
 
 
 def clean_neo4j_test_data(tx):
-    drop_test_isls(tx)
-    drop_test_switches(tx)
+    drop_db_isls(tx)
+    drop_db_switches(tx)
+    drop_db_link_props(tx)
 
 
-def drop_test_isls(tx):
-    q = 'MATCH (:switch)-[self:isl]->() RETURN self'
+def inject_db_link_props(tx, source, dest, payload):
+    match = {
+        'src_switch': source.dpid,
+        'src_port': source.port,
+        'dst_switch': dest.dpid,
+        'dst_port': dest.port,
+    }
+    p = match.copy()
+    p['link_props'] = match.copy()
+    p['link_props'].update(payload)
+
+    q = (
+        'MERGE (subject:link_props {\n'
+        '  src_switch: $src_switch,'
+        '  src_port: $src_port,'
+        '  dst_switch: $dst_switch,'
+        '  dst_port: $dst_port})\n'
+        'SET subject = $link_props')
+    tx.run(q, p)
+
+
+def drop_db_isls(tx):
+    q = 'MATCH (:switch)-[self:isl|:link_props]->() RETURN self'
     for data_set in tx.run(q):
-        isl = data_set['self']
-        if not is_test_dpid(isl['src_switch']):
+        rel = data_set['self']
+        if not is_test_dpid(rel['src_switch']):
             continue
-        if not is_test_dpid(isl['dst_switch']):
+        if not is_test_dpid(rel['dst_switch']):
             continue
 
-        tx.separate(isl)
+        tx.separate(rel)
 
 
-def drop_test_switches(tx):
+def drop_db_switches(tx):
     selector = py2neo.NodeSelector(tx)
-    for sw in selector.select('switch'):
-        if not is_test_dpid(sw['name']):
+    for node in selector.select('switch'):
+        if not is_test_dpid(node['name']):
             continue
-        tx.delete(sw)
+        tx.delete(node)
 
 
-def make_isl_pair(tx, source, dest):
-    template = {
+def drop_db_link_props(tx):
+    selector = py2neo.NodeSelector(tx)
+    for node in selector.select('link_props'):
+        match = [is_test_dpid(node[rel]) for rel in 'src_switch', 'dst_switch']
+        if not all(match):
+            continue
+        tx.delete(node)
+
+
+def make_switch(endpoint):
+    payload = {
+        'clazz': messageclasses.MT_SWITCH,
+        'state': 'ADDED',
+        'switch_id': endpoint.dpid,
+        'address': '172.16.0.64',
+        'hostname': 'test-sw-{}'.format(endpoint.dpid.replace(':', '')),
+        'description': 'test switch',
+        'controller': '172.16.0.1'}
+    command = make_command(payload)
+    messageclasses.MessageItem(**command).handle()
+
+
+def make_port_down(endpoint):
+    payload = {
+        'clazz': messageclasses.MT_PORT,
+        'state': 'DOWN',
+        'switch_id': endpoint.dpid,
+        'port_no': endpoint.port}
+    command = make_command(payload)
+
+    return messageclasses.MessageItem(**command).handle()
+
+
+def make_isl_pair(source, dest):
+    make_isl_discovery(source, dest)
+    make_isl_discovery(dest, source)
+
+
+def make_isl_discovery(source, dest):
+    command = make_command({
         'clazz': messageclasses.MT_ISL,
         'state': 'DISCOVERED',
         'latency_ns': 20,
@@ -64,22 +124,12 @@ def make_isl_pair(tx, source, dest):
         'available_bandwidth': 1000,
         'path': [
             {
-                'switch_id': make_datapath_id(1),
-                'port_no': 2},
+                'switch_id': source.dpid,
+                'port_no': source.port},
             {
-                'switch_id': make_datapath_id(2),
-                'port_no': 4}]}
-
-    for nodes in (
-            (source, dest),
-            (dest, source)):
-        payload = template.copy()
-        payload['path'] = [
-            {'switch_id': x.dpid, 'port_no': x.port} for x in nodes]
-
-        command = make_command(payload)
-
-        messageclasses.MessageItem(**command).handle()
+                'switch_id': dest.dpid,
+                'port_no': dest.port}]})
+    return messageclasses.MessageItem(**command).handle()
 
 
 def make_command(payload):
@@ -131,41 +181,80 @@ class TestIsl(unittest.TestCase):
         with neo4j_connect.begin() as tx:
             clean_neo4j_test_data(tx)
 
-            make_isl_pair(tx, *self.switch_nodes[:2])
-
     def tearDown(self):
         with neo4j_connect.begin() as tx:
             clean_neo4j_test_data(tx)
 
-    def test_isl_set_cost(self):
-        for isl in self.enumerate_isl(*self.switch_nodes[:2]):
-            self.assertFalse('cost' in isl)
+    def test_isl_raise_cost_on_isl_down_without_link_props(self):
+        src_endpoint, dst_endpoint = self.switch_nodes[:2]
 
-        sw = self.switch_nodes[0]
-        payload = {
-            'clazz': messageclasses.MT_PORT,
-            'state': 'DOWN',
-            'switch_id': sw.dpid,
-            'port_no': sw.port}
-        command = make_command(payload)
+        make_switch(src_endpoint)
+        make_switch(dst_endpoint)
+        make_isl_pair(src_endpoint, dst_endpoint)
 
-        result = messageclasses.MessageItem(**command).handle()
-        self.assertTrue(result, 'Port DOWN command have failed')
+        self.ensure_isl_costs(
+                (src_endpoint, None),
+                (dst_endpoint, None))
 
-        for idx, isl in enumerate(self.enumerate_isl(*self.switch_nodes[:2])):
-            if not idx:
-                self.assertTrue(
-                        'cost' in isl,
-                        'There is no "cost" property in ISL {!r}'.format(isl))
-                self.assertEqual(
-                        isl['cost'], 10000,
-                        'Bad "cost" value {!r} in isl {!r}'.format(
-                                isl['cost'], isl))
-            else:
-                self.assertTrue(
-                        'cost' not in isl,
-                        'Extra/peer record receive "cost" update during port '
-                        'DOWN')
+        self.assertTrue(
+                make_port_down(src_endpoint), 'Port DOWN command have failed')
+
+        self.ensure_isl_costs(
+                (src_endpoint, 10000),
+                (dst_endpoint, None))
+
+        self.assertTrue(
+                make_isl_discovery(src_endpoint, dst_endpoint),
+                'ISL discovery command have failed')
+
+        self.ensure_isl_costs(
+                (src_endpoint, 10000),
+                (dst_endpoint, None))
+
+    def test_isl_raise_cost_on_isl_down(self):
+        src_endpoint, dst_endpoint = self.switch_nodes[:2]
+
+        make_switch(src_endpoint)
+        make_switch(dst_endpoint)
+
+        with neo4j_connect.begin() as tx:
+            payload = {'cost': 1}
+            inject_db_link_props(tx, src_endpoint, dst_endpoint, payload)
+            inject_db_link_props(tx, dst_endpoint, src_endpoint, payload)
+
+        make_isl_pair(src_endpoint, dst_endpoint)
+
+        self.ensure_isl_costs(
+                (src_endpoint, 1),
+                (dst_endpoint, 1))
+
+        self.assertTrue(
+                make_port_down(src_endpoint), 'Port DOWN command have failed')
+
+        self.ensure_isl_costs(
+                (src_endpoint, 10000),
+                (dst_endpoint, 1))
+
+        self.assertTrue(
+                make_isl_discovery(src_endpoint, dst_endpoint),
+                'ISL discovery command have failed')
+
+        self.ensure_isl_costs(
+                (src_endpoint, 10000),
+                (dst_endpoint, 1))
+
+    def ensure_isl_costs(self, *endpoint_cost_pairs):
+        endpoints = []
+        costs = []
+        for pair in endpoint_cost_pairs:
+            endpoints.append(pair[0])
+            costs.append(pair[1])
+
+        for isl, expect in zip(self.enumerate_isl(*endpoints), costs):
+            self.assertEqual(
+                    expect, isl['cost'],
+                    'Bad "cost" value {!r} (expect {!r}) in isl {!r}'.format(
+                            isl['cost'], expect, isl))
 
     def enumerate_isl(self, *endpoints):
         with neo4j_connect.begin() as tx:

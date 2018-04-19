@@ -23,7 +23,8 @@ from py2neo import Node
 from topologylistener import model
 
 from topologylistener import config
-from topologylistener import db
+from topologylistener import exc
+from topologylistener import isl_utils
 import flow_utils
 import message_utils
 
@@ -541,29 +542,13 @@ class MessageItem(object):
                 json.dumps(stats, indent=2))
 
     def isl_set_cost(self, tx, isl, cost):
-        set_cost_query = textwrap.dedent("""
-            MATCH
-              (:switch {{name:"{source.dpid}"}})
-              -
-              [self:isl {{
-                src_switch: "{source.dpid}",
-                src_port: {source.port},
-                dst_switch: "{dest.dpid}",
-                dst_port: {dest.port}
-              }}]
-              ->
-              (:switch {{name:"{dest.dpid}"}})
-            WITH self, self.cost as original_cost
-            SET self.cost = {cost}
-            RETURN original_cost""").format(
-                source=isl.source, dest=isl.dest,
-                cost=cost)
+        props = {'cost': cost}
+        try:
+            changed = isl_utils.set_link_props(tx, isl, props)
+        except exc.DBRecordNotFound:
+            changed = isl_utils.set_props(tx, isl, props)
 
-        logger.debug('ISL set cost query:\n%s', set_cost_query)
-        cursor = tx.run(set_cost_query)
-
-        original_cost = db.fetch_scalar(cursor)
-
+        original_cost = changed.get('cost')
         if original_cost != cost:
             logger.warning(
                     'ISL %s cost have been changed from %s to %s',
