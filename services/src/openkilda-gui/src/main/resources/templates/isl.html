@@ -16,6 +16,7 @@
 	<div th:include="fragments/importResources:: statsImports"></div>
 	<div th:include="fragments/importResources:: toggleSwitch"></div>
 	<div class="content">
+	
 		<div class="row">
 			<div class="navigation-bar container-fluid">
 				<ul class="col-lg-12">
@@ -29,7 +30,15 @@
 
 
 		<div class="container-fluid">
-
+			
+			<div id="loading" class="bg_load">
+				<div class="loader"></div>
+				<span class="load-text">Loading ISL
+						<span class="loader__dot">.</span>
+  			  			<span class="loader__dot">.</span>
+  			 			<span class="loader__dot">.</span>
+  			 	</span>  
+			</div>
 			<!--  ===========================ISL========================== -->
 
 			<!-- ISL SOURCE Details -->
@@ -99,8 +108,21 @@
 						</div>
 						
 						<div class='form-group row isl_sbl_details'>
-							<label class='col-sm-4 col-form-label'>Cost:</label>
-							<p class='col-sm-8 isl_div_cost'></p>
+							<label  id="isl_cost_lbl" class='col-sm-4 col-form-label'>Cost:</label>
+							<div class="col-sm-8 text_cost_details" id="text_cost_details">
+								<p><span class="isl_div_cost"></span><span class="ml-1 cursor-pointer" id="edit_isl_cost"><i class="icon icon-edit"></i></span></p>
+								
+							</div>
+							<div class="update_isl_cost col-sm-8" style="display:none;" id="isl_cost_update">
+							<div class="row col-sm-2">
+							<input class="form-control" type="text" id="isl_cost" />
+									<input id="isl_cost_obj" type="hidden" />
+									</div>
+									
+									<span class="btn kilda_btn ml-1" data-toggle="modal" data-target="#myIslConfirm"><i class="icon icon-ok-sign"></i></span>
+									<span id="cancel_isl_cost_update" class="btn kilda_btn ml-0.5"><i class="icon icon-remove-sign"></i></span>
+							</div>
+							
 						</div>
 
 						<!-- ISL Avaliable Bandwidth Details -->
@@ -120,33 +142,32 @@
 					<div id="stats_div" class="topology-graph">
 						<div class="col-xs-8">
 							<div id="isl_latency_graph" >
-								<div id="wait1" class="bg-data-loader" style="bottom:1px;">
+								<div id="wait1" class="bg-data-loader" >
 										<div class="loader"></div>
 									</div>
 									
 								<h2 class="isl-header text-center">ISL Latency Graph</h2>	
 								<div id="graphdiv"></div>
 							</div>
-							
-							<div class="row" id="graphrowDiv" style="display: none;">
-								<div class="col-xs-8" id="sourceGraphDiv" style="display:none;">
-								 <div id="waitisl1" class="bg-data-loader" style="display:none;">
+						</div>	
+							<div class="col-xs-8" id="sourceGraphDiv" style="display:none;">
+							 <div id="waitisl1" class="bg-data-loader" style="display:none;">
+								<div class="loader"></div>
+							</div>
+							<h2 class="source-header text-center">Source Graph</h2>
+							 
+								<div id="source-graph_div"></div>
+							</div>
+							<div class="col-xs-8" id="targetGraphDiv" style="display:none;">
+								<div id="waitisl2" class="bg-data-loader" style="display:none;">
 									<div class="loader"></div>
 								</div>
-								<h2 class="source-header text-center">Source Graph</h2>
-								 
-									<div id="source-graph_div"></div>
-								</div>
-								<div class="col-xs-8" id="targetGraphDiv" style="display:none;">
-									<div id="waitisl2" class="bg-data-loader" style="display:none;">
-										<div class="loader"></div>
-									</div>
-									
-									<h2 class="target-header text-center">Destination Graph</h2> 
-									<div id="dest-graph_div"></div>
-								</div>
+								
+								<h2 class="target-header text-center">Destination Graph</h2> 
+								<div id="dest-graph_div"></div>
 							</div>
-						</div>
+						
+						
 
 
 						<div class="col-xs-4 filter">
@@ -289,5 +310,25 @@
 			});
 		});
 	</script>
+	<!-- Modal -->
+		<div class="modal confirm_modal fade" id="myIslConfirm" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+		<div class="modal-dialog" role="document">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal"
+						aria-label="Close">
+						<span aria-hidden="true">&times;</span>
+					</button>
+					<h4 class="modal-title" id="myModalLabel">Confirmation</h4>
+				</div>
+				<div class="modal-body">Are you sure you want to change the
+					cost?</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-default" id="cancel_isl_cost" data-dismiss="modal">No</button>
+					<button type="button" class="btn kilda_btn" id="update_isl_cost">Yes</button>
+				</div>
+			</div>
+		</div>
+	</div>
 </body>
 </html>

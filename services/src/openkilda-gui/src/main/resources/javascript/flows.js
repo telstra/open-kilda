@@ -1,25 +1,37 @@
 /*<![CDATA[*/
 
-
+var storage = new LocalStorageHandler();
+	
 $(document).ready(function(){
-		
-	common.getData("/flows/list","GET").then(function(response) {
-		$("#wait1").css("display", "none");
-		$('body').css('pointer-events','all'); 
-		showflowData(response); 
-	},
-	function(error){
-		response=[];
-		$("#wait1").css("display", "none");
-		$('body').css('pointer-events','all'); 
-		showflowData(response);
-	})
+	$(document).on("click","#flow-list",function(e){
+		var FLOWS_LIST = storage.get('FLOWS_LIST');
+		if(FLOWS_LIST){
+			showflowData(FLOWS_LIST);
+		}else{
+			flows();
+		}
+	});
+	
+	$(document).on("click","#refresh_list",function(e){
+		$('input').each(function(index){  
+	        var input = $(this);
+	        input.val("");
+	    });
+		window.location.hash = "";
+		storage.remove('FLOWS_LIST');
+		flows();
+	});
 	
 	$(document).on("click",".flowDataRow",function(e){
 		setFlowData(this);
 	})
-	
-	localStorage.clear();
+	var hash = window.location.hash;
+	if (hash.indexOf('|') > -1){
+		//hash && $('ul.nav a[href="' + hash + '"]').tab('show');
+		$('ul.nav a[href="#2a"]').tab('show');
+		$("#flow-list").trigger("click");
+	}  
+	//localStorage.clear();
 })
 
 var event;
@@ -29,6 +41,37 @@ $( 'input').on( 'click', function () {
 	}
 });
 
+function flows(){
+	$("#loading").css("display", "block");
+	common.getData("/flows/list","GET").then(function(response) {
+		$("#loading").css("display", "none");
+		$('body').css('pointer-events','all'); 
+		showflowData(response);
+		storage.set("FLOWS_LIST",response);
+	},
+	function(error){
+		response=[];
+		$("#loading").css("display", "none");
+		$('body').css('pointer-events','all'); 
+		showflowData(response);
+	});
+}
+function validateFlowForm(){
+	var flowid=$('#flowid').val();
+    if(flowid.length == 0){
+    	$("#flowid").addClass("has-error");	
+		$(".flowid-error-message").html("Please enter flow id.");
+		$("#searchbtn").css("top","-6px");
+		return false;
+    }
+    else {
+    	$("#flowid").removeClass("has-error");
+    	$(".flowid-error-message").html("");
+    	$("#searchbtn").css("top","0px");
+    }
+	window.location.href= APP_CONTEXT + "/flows/details#"+flowid;
+}
+
 function showflowData(response){
 	
 	if(!response || response.length==0) {
@@ -36,16 +79,16 @@ function showflowData(response){
 		common.infoMessage('No Flow Available','info');
 	}
 	
-	var flowDetailsData = localStorage.getItem("flowDetailsData");
-	var obj = JSON.parse(flowDetailsData)
+	//var flowDetailsData = localStorage.getItem("flowDetailsData");
+	//var obj = JSON.parse(flowDetailsData)
 	
 	 for(var i = 0; i < response.length; i++) {
 		 var tableRow = "<tr id='div_"+(i+1)+"' class='flowDataRow'>"
 		 			    +"<td class='divTableCell' title ='"+((response[i].flowid === "" || response[i].flowid == undefined)?"-":response[i].flowid)+"'>"+((response[i].flowid === "" || response[i].flowid == undefined)?"-":response[i].flowid)+"</td>"
-		 			    +"<td class='divTableCell' title ='"+((response[i].source_switch === "" || response[i].source_switch == undefined)?"-":response[i].source_switch)+"'>"+((response[i].source_switch === "" || response[i].source_switch == undefined)?"-":response[i].source_switch)+"</td>"
+		 			    +"<td class='divTableCell' title ='"+((response[i].source_switch_name === "" || response[i].source_switch_name == undefined)?"-":response[i].source_switch_name)+"'>"+((response[i].source_switch_name === "" || response[i].source_switch_name == undefined)?"-":response[i].source_switch_name)+"</td>"
 		 			    +"<td class='divTableCell' title ='"+((response[i].src_port === "" || response[i].src_port == undefined)?"-":response[i].src_port)+"'>"+((response[i].src_port === "" || response[i].src_port == undefined)?"-":response[i].src_port)+"</td>"
 		 			    +"<td class='divTableCell' title ='"+((response[i].src_vlan === "" || response[i].src_vlan === undefined)?"-":response[i].src_vlan)+"'>"+ ((response[i].src_vlan === "" || response[i].src_vlan == undefined)?"-":response[i].src_vlan)+"</td>"
-		 			    +"<td class='divTableCell' title ='"+((response[i].target_switch === "" || response[i].target_switch == undefined)?"-":response[i].target_switch)+"'>"+((response[i].target_switch === "" || response[i].target_switch == undefined)?"-":response[i].target_switch)+"</td>"
+		 			    +"<td class='divTableCell' title ='"+((response[i].target_switch_name === "" || response[i].target_switch_name == undefined)?"-":response[i].target_switch_name)+"'>"+((response[i].target_switch_name === "" || response[i].target_switch_name == undefined)?"-":response[i].target_switch_name)+"</td>"
 		 			    +"<td class='divTableCell' title ='"+((response[i].dst_port === "" || response[i].dst_port == undefined)?"-":response[i].dst_port)+"'>"+((response[i].dst_port === "" || response[i].dst_port == undefined)?"-":response[i].dst_port)+"</td>"
 		 			    +"<td class='divTableCell' title ='"+((response[i].dst_vlan === "" || response[i].dst_vlan == undefined)?"-":response[i].dst_vlan)+"'>"+((response[i].dst_vlan === "" || response[i].dst_vlan == undefined)?"-":response[i].dst_vlan)+"</td>"
 		 			    +"<td class='divTableCell' title ='"+((response[i].maximum_bandwidth === "" || response[i].maximum_bandwidth == undefined)?"-":response[i].maximum_bandwidth/1000 +" Mbps")+"'> "+ ((response[i].maximum_bandwidth === "" || response[i].maximum_bandwidth == undefined)?"-":response[i].maximum_bandwidth/1000 + " Mbps")+"</td>"
@@ -67,6 +110,7 @@ function showflowData(response){
 		  "responsive": true,
 		  "bSortCellsTop": true,
 		  "autoWidth": false,
+		  destroy: true,
 		  language: {searchPlaceholder: "Search"},
 		  "aoColumns": [
 		                { sWidth: '10%' },
@@ -99,11 +143,11 @@ function showflowData(response){
 		 var switchInfo = (window.location.hash.substr(1)).split("|");		 
 		 $('#sourceIcon').trigger('click');
 		 var input = $("#source-switch");
-		 input.val(switchInfo[0]).trigger($.Event("keyup", { keyCode: 13 }));
+		 input.val(decodeURIComponent(switchInfo[0])).trigger($.Event("keyup", { keyCode: 13 }));
 		 
 		 $('#targetIcon').trigger('click');
 		 var input = $("#target-switch");
-		 input.val(switchInfo[1]).trigger($.Event("keyup", { keyCode: 13 }));
+		 input.val(decodeURIComponent(switchInfo[1])).trigger($.Event("keyup", { keyCode: 13 }));
 	 }
 }
 
@@ -142,7 +186,7 @@ function setFlowData(domObj){
 	if($(domObj).find('td:nth-child(10)')){
 		flowData.description = $(domObj).find('td:nth-child(10)').html();
 	}
-	localStorage.setItem('flowDetails',JSON.stringify(flowData));
+	
 	url = "flows/details#" + flowData.flow_id;
 	window.location = url;
 }

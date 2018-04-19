@@ -18,8 +18,8 @@ $(document).ready(function(){
 	$(document).on("click",".flowDataRow",function(e){
 		setFlowData(this);
 	})
-	
-	localStorage.clear();
+	$("#isl-menu-id").addClass("active");
+	//localStorage.clear();
 })
 
 var event;

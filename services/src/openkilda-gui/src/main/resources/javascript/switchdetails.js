@@ -8,14 +8,13 @@ $(document).ready(function(){
 		
 	var switchData = localStorage.getItem("switchDetailsJSON");
 	var switchname=window.location.href.split("#")[1]	
-	
 	if(switchname.includes("id")) {
 		
 		if(!switchData || switchData ==""){
 			window.location = APP_CONTEXT+ "/switch";
 		}
 		var switchname=window.location.href.split("#")[2];
-		var tmp_anchor = '<a href="/openkilda/switch">' + "Switch" + '</a>';
+		var tmp_anchor = '<a href="/openkilda/switch">' + "Switches" + '</a>';
 		$("#kilda-nav-label").parent().append(tmp_anchor)
 		$("#topology-menu-id").removeClass("active");
 		$("#switch-menu-id").addClass("active");

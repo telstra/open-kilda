@@ -1,5 +1,17 @@
 package org.openkilda.integration.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpMethod;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+import org.springframework.web.util.UriComponentsBuilder;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
@@ -26,13 +38,6 @@ import org.openkilda.utility.ApplicationProperties;
 import org.openkilda.utility.CollectionUtil;
 import org.openkilda.utility.IoUtil;
 import org.openkilda.utility.JsonUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpMethod;
-import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
-import org.springframework.web.util.UriComponentsBuilder;
 
 /**
  * The Class SwitchIntegrationService.
@@ -55,6 +60,9 @@ public class SwitchIntegrationService {
 
     @Autowired
     private IslLinkConverter islLinkConverter;
+
+    @Autowired
+    ObjectMapper objectMapper;
 
     /**
      * Gets the switches.
@@ -165,8 +173,8 @@ public class SwitchIntegrationService {
      * @throws IntegrationException
      */
     public List<PortInfo> getSwitchPorts(final String switchId) throws IntegrationException {
-    	HttpResponse response = null;
-    	try {
+        HttpResponse response = null;
+        try {
 //            HttpResponse response = restClientManager.invoke(applicationProperties.getSwitchPorts(),
 //                    HttpMethod.GET, "", "", "");
             if (RestClientManager.isValidResponse(response)) {
@@ -215,24 +223,18 @@ public class SwitchIntegrationService {
      * 
      * @param keys
      * @return link props
+     * @throws JsonProcessingException
      */
-    public LinkProps updateIslLinkProps(LinkProps keys) {
-        UriComponentsBuilder builder =
-                UriComponentsBuilder.fromHttpUrl(applicationProperties.getLinkProps());
-        builder = setLinkProps(keys, builder);
-        String fullUri = builder.build().toUriString();
-        HttpResponse response = restClientManager.invoke(fullUri, HttpMethod.PUT, "", "",
-                applicationService.getAuthHeader());
-        if (RestClientManager.isValidResponse(response)) {
-            List<LinkProps> linkPropsResponse =
-                    restClientManager.getResponseList(response, LinkProps.class);
-            if (CollectionUtil.isEmpty(linkPropsResponse)) {
-                throw new ContentNotFoundException();
-            } else {
-                return linkPropsResponse.get(0);
-            }
+    public String updateIslLinkProps(List<LinkProps> keys) {
+        try {
+            HttpResponse response = restClientManager.invoke(applicationProperties.getLinkProps(),
+                    HttpMethod.PUT, objectMapper.writeValueAsString(keys), "application/json",
+                    applicationService.getAuthHeader());
+            return IoUtil.toString(response.getEntity().getContent());
+        } catch (Exception e) {
+            LOGGER.error("Inside updateIslLinkProps  Exception :", e);
+            throw new IntegrationException(e);
         }
-        return null;
     }
 
     /**
