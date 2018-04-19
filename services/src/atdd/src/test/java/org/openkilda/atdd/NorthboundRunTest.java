@@ -98,17 +98,51 @@ public class NorthboundRunTest {
         assertEquals(flowState, payload.getStatus());
     }
 
-    @Then("^delete all non-default rules on ([\\w:]+) switch$")
-    public void deleteAllNonDefaultRules(String switchId) {
-        List<Long> cookies = SwitchesUtils.deleteSwitchRules(switchId, DeleteRulesAction.IGNORE);
+    @Then("^delete all non-default rules request on ([\\w:]+) switch is successful with (\\d+) rules deleted$")
+    public void deleteAllNonDefaultRules(String switchId, int deletedFlowsCount) {
+        List<Long> cookies = SwitchesUtils.deleteSwitchRules(switchId, DeleteRulesAction.IGNORE_DEFAULTS);
         assertNotNull(cookies);
+        assertEquals(deletedFlowsCount, cookies.size());
         cookies.forEach(cookie -> System.out.println(cookie));
     }
 
-    @Then("^delete all rules on (.*) switch$")
-    public void deleteAllDefaultRules(String switchId) {
-        List<Long> cookies = SwitchesUtils.deleteSwitchRules(switchId, DeleteRulesAction.DROP);
+    @Then("^delete all rules request on (.*) switch is successful with (\\d+) rules deleted$")
+    public void deleteAllDefaultRules(String switchId, int deletedFlowsCount) {
+        List<Long> cookies = SwitchesUtils.deleteSwitchRules(switchId, DeleteRulesAction.DROP_ALL);
         assertNotNull(cookies);
+        assertEquals(deletedFlowsCount, cookies.size());
+        cookies.forEach(cookie -> System.out.println(cookie));
+    }
+
+    @Then("^delete rules request by (\\d+) in-port on (.*) switch is successful with (\\d+) rules deleted$")
+    public void deleteRulesByInPort(int inPort, String switchId, int deletedFlowsCount) {
+        List<Long> cookies = SwitchesUtils.deleteSwitchRules(switchId, inPort, null);
+        assertNotNull(cookies);
+        assertEquals(deletedFlowsCount, cookies.size());
+        cookies.forEach(cookie -> System.out.println(cookie));
+    }
+
+    @Then("^delete rules request by (\\d+) in-port and (\\d+) in-vlan on (.*) switch is successful with (\\d+) rules deleted$")
+    public void deleteRulesByInPortVlan(int inPort, int inVlan, String switchId, int deletedFlowsCount) {
+        List<Long> cookies = SwitchesUtils.deleteSwitchRules(switchId, inPort, inVlan);
+        assertNotNull(cookies);
+        assertEquals(deletedFlowsCount, cookies.size());
+        cookies.forEach(cookie -> System.out.println(cookie));
+    }
+
+    @Then("^delete rules request by (\\d+) in-vlan on (.*) switch is successful with (\\d+) rules deleted$")
+    public void deleteRulesByInVlan(int inVlan, String switchId, int deletedFlowsCount) {
+        List<Long> cookies = SwitchesUtils.deleteSwitchRules(switchId, null, inVlan);
+        assertNotNull(cookies);
+        assertEquals(deletedFlowsCount, cookies.size());
+        cookies.forEach(cookie -> System.out.println(cookie));
+    }
+
+    @Then("^delete rules request by (\\d+) out-port on (.*) switch is successful with (\\d+) rules deleted$")
+    public void deleteRulesByOutPort(int outPort, String switchId, int deletedFlowsCount) {
+        List<Long> cookies = SwitchesUtils.deleteSwitchRules(switchId, outPort);
+        assertNotNull(cookies);
+        assertEquals(deletedFlowsCount, cookies.size());
         cookies.forEach(cookie -> System.out.println(cookie));
     }
 

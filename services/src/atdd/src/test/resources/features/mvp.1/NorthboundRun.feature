@@ -76,7 +76,7 @@ Feature: Northbound tests
     And flow nbdnr in UP state
     And traffic through de:ad:be:ef:00:00:00:02 1 106 and de:ad:be:ef:00:00:00:03 2 106 and 1000 is pingable
 
-    Then delete all non-default rules on de:ad:be:ef:00:00:00:03 switch
+    Then delete all non-default rules request on de:ad:be:ef:00:00:00:03 switch is successful with 2 rules deleted
     And traffic through de:ad:be:ef:00:00:00:02 1 106 and de:ad:be:ef:00:00:00:03 2 106 and 1000 is not pingable
     And 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:03 switch
 
@@ -91,9 +91,99 @@ Feature: Northbound tests
     And flow nbdar in UP state
     And traffic through de:ad:be:ef:00:00:00:02 1 107 and de:ad:be:ef:00:00:00:03 2 107 and 1000 is pingable
 
-    Then delete all rules on de:ad:be:ef:00:00:00:03 switch
+    Then delete all rules request on de:ad:be:ef:00:00:00:03 switch is successful with 5 rules deleted
     And traffic through de:ad:be:ef:00:00:00:02 1 107 and de:ad:be:ef:00:00:00:03 2 107 and 1000 is not pingable
     And No rules installed on de:ad:be:ef:00:00:00:03 switch
+
+  @MVP1
+  Scenario: Delete rules by in-port from a switch
+
+  This scenario setups a flow through a switch, deletes the specific rule by in-port from the switch and checks that the traffic is not pingable
+
+    Given 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:02 switch
+
+    When flow nbdrip creation request with de:ad:be:ef:00:00:00:02 1 116 and de:ad:be:ef:00:00:00:03 2 116 and 1000 is successful
+    And flow nbdrip in UP state
+    And traffic through de:ad:be:ef:00:00:00:02 1 116 and de:ad:be:ef:00:00:00:03 2 116 and 1000 is pingable
+
+    Then delete rules request by 1 in-port on de:ad:be:ef:00:00:00:02 switch is successful with 1 rules deleted
+    And traffic through de:ad:be:ef:00:00:00:02 1 116 and de:ad:be:ef:00:00:00:03 2 116 and 1000 is not pingable
+    And 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:02 switch
+
+  @MVP1
+  Scenario: Delete rules by in-port from a switch (negative case)
+
+  This scenario setups a flow through a switch, tries to delete by wrong in-port from the switch and checks that the traffic is not pingable
+
+    Given 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:02 switch
+
+    When flow nbdripn creation request with de:ad:be:ef:00:00:00:02 1 121 and de:ad:be:ef:00:00:00:03 2 121 and 1000 is successful
+    And flow nbdripn in UP state
+    And traffic through de:ad:be:ef:00:00:00:02 1 121 and de:ad:be:ef:00:00:00:03 2 121 and 1000 is pingable
+
+    Then delete rules request by 10 in-port on de:ad:be:ef:00:00:00:02 switch is successful with 0 rules deleted
+    And traffic through de:ad:be:ef:00:00:00:02 1 121 and de:ad:be:ef:00:00:00:03 2 121 and 1000 is pingable
+    And 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:02 switch
+
+  @MVP1
+  Scenario: Delete rules by in-port and vlan from a switch
+
+  This scenario setups a flow through a switch, deletes the specific rule by in-port and vlan from the switch and checks that the traffic is not pingable
+
+    Given 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:02 switch
+
+    When flow nbdripv creation request with de:ad:be:ef:00:00:00:02 1 117 and de:ad:be:ef:00:00:00:03 2 117 and 1000 is successful
+    And flow nbdripv in UP state
+    And traffic through de:ad:be:ef:00:00:00:02 1 117 and de:ad:be:ef:00:00:00:03 2 117 and 1000 is pingable
+
+    Then delete rules request by 1 in-port and 117 in-vlan on de:ad:be:ef:00:00:00:02 switch is successful with 1 rules deleted
+    And traffic through de:ad:be:ef:00:00:00:02 1 117 and de:ad:be:ef:00:00:00:03 2 117 and 1000 is not pingable
+    And 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:02 switch
+
+  @MVP1
+  Scenario: Delete rules by in-port and vlan from a switch (negative case)
+
+  This scenario setups a flow through a switch, deletes the specific rule by in-port and wrong vlan from the switch and checks that the traffic is not pingable
+
+    Given 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:02 switch
+
+    When flow nbdripvn creation request with de:ad:be:ef:00:00:00:02 1 122 and de:ad:be:ef:00:00:00:03 2 122 and 1000 is successful
+    And flow nbdripvn in UP state
+    And traffic through de:ad:be:ef:00:00:00:02 1 122 and de:ad:be:ef:00:00:00:03 2 122 and 1000 is pingable
+
+    Then delete rules request by 1 in-port and 200 in-vlan on de:ad:be:ef:00:00:00:02 switch is successful with 0 rules deleted
+    And traffic through de:ad:be:ef:00:00:00:02 1 122 and de:ad:be:ef:00:00:00:03 2 122 and 1000 is pingable
+    And 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:02 switch
+
+  @MVP1
+  Scenario: Delete rules by in-vlan from a switch
+
+  This scenario setups a flow through a switch, deletes the specific rule by in-port from the switch and checks that the traffic is not pingable
+
+    Given 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:02 switch
+
+    When flow nbdriv creation request with de:ad:be:ef:00:00:00:02 1 119 and de:ad:be:ef:00:00:00:03 2 119 and 1000 is successful
+    And flow nbdriv in UP state
+    And traffic through de:ad:be:ef:00:00:00:02 1 119 and de:ad:be:ef:00:00:00:03 2 119 and 1000 is pingable
+
+    Then delete rules request by 119 in-vlan on de:ad:be:ef:00:00:00:02 switch is successful with 1 rules deleted
+    And traffic through de:ad:be:ef:00:00:00:02 1 119 and de:ad:be:ef:00:00:00:03 2 119 and 1000 is not pingable
+    And 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:02 switch
+
+  @MVP1
+  Scenario: Delete rules by out-port from a switch
+
+  This scenario setups a flow through a switch, deletes the specific rule by in-port from the switch and checks that the traffic is not pingable
+
+    Given 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:03 switch
+
+    When flow nbdrop creation request with de:ad:be:ef:00:00:00:02 1 118 and de:ad:be:ef:00:00:00:03 2 118 and 1000 is successful
+    And flow nbdrop in UP state
+    And traffic through de:ad:be:ef:00:00:00:02 1 118 and de:ad:be:ef:00:00:00:03 2 118 and 1000 is pingable
+
+    Then delete rules request by 2 out-port on de:ad:be:ef:00:00:00:03 switch is successful with 1 rules deleted
+    And traffic through de:ad:be:ef:00:00:00:02 1 118 and de:ad:be:ef:00:00:00:03 2 118 and 1000 is not pingable
+    And 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:03 switch
 
   @MVP1
   Scenario: Synchronize Flow Cache
@@ -138,7 +228,7 @@ Feature: Northbound tests
     And flow vfr in UP state
     And validation of flow vfr is successful with no discrepancies
 
-    When delete all non-default rules on de:ad:be:ef:00:00:00:03 switch
+    When delete all non-default rules request on de:ad:be:ef:00:00:00:03 switch is successful with 2 rules deleted
 
     Then validation of flow vfr has passed and discrepancies are found
 
@@ -152,7 +242,7 @@ Feature: Northbound tests
     And flow vsmr in UP state
     And validation of rules on de:ad:be:ef:00:00:00:03 switch is successful with no discrepancies
 
-    When delete all non-default rules on de:ad:be:ef:00:00:00:03 switch
+    When delete all non-default rules request on de:ad:be:ef:00:00:00:03 switch is successful with 2 rules deleted
 
     Then validation of rules on de:ad:be:ef:00:00:00:03 switch has passed and 2 rules are missing
 
@@ -166,7 +256,7 @@ Feature: Northbound tests
     And flow ssr in UP state
     And validation of rules on de:ad:be:ef:00:00:00:03 switch is successful with no discrepancies
 
-    When delete all non-default rules on de:ad:be:ef:00:00:00:03 switch
+    When delete all non-default rules request on de:ad:be:ef:00:00:00:03 switch is successful with 2 rules deleted
 
     Then synchronization of rules on de:ad:be:ef:00:00:00:03 switch is successful with 2 rules installed
     And validation of rules on de:ad:be:ef:00:00:00:03 switch is successful with no discrepancies

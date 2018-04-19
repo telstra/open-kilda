@@ -20,19 +20,16 @@ package org.openkilda.messaging.command.switches;
  */
 public enum DeleteRulesAction {
     // Drop all rules
-    DROP,
+    DROP_ALL,
 
     // Drop all rules, add back in the base default rules
-    DROP_ADD,
+    DROP_ALL_ADD_DEFAULTS,
 
     // Don't drop the default rules, but do drop everything else
-    IGNORE,
+    IGNORE_DEFAULTS,
 
     // Drop all non-base rules (ie IGNORE), and add base rules back (eg overwrite)
-    OVERWRITE,
-
-    // Drop a single rule
-    ONE,
+    OVERWRITE_DEFAULTS,
 
     // Drop just the default / base drop rule
     REMOVE_DROP,
@@ -47,6 +44,6 @@ public enum DeleteRulesAction {
     REMOVE_DEFAULTS,
 
     // Drop the default, add them back .. presumably a good way to ensure the defaults are there
-    REMOVE_ADD
+    REMOVE_ADD_DEFAULTS
 }
 
