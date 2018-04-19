@@ -32,7 +32,6 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -70,12 +69,10 @@ public class OpenTSDBFilterBolt extends BaseRichBolt {
     public void execute(Tuple tuple) {
         
         if (isTickTuple(tuple)) {
-            Set<DatapointKey> keys = storage.keySet();
             // opentsdb using current epoch time (date +%s) in seconds
             long now  = System.currentTimeMillis();
-            for (DatapointKey key: keys) {
-                storage.compute(key, (k, v) -> now - v.getTime() > MUTE_IF_NO_UPDATES_MILLIS ? null: v);
-            }
+            storage.entrySet().removeIf(entry ->  now - entry.getValue().getTime() > MUTE_IF_NO_UPDATES_MILLIS);
+
             collector.ack(tuple);
             return;
         }

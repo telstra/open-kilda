@@ -1,6 +1,8 @@
 package org.openkilda.wfm.topology.opentsdb.bolt;
 
 import static java.util.Collections.singletonMap;
+import static org.apache.storm.Constants.SYSTEM_COMPONENT_ID;
+import static org.apache.storm.Constants.SYSTEM_TICK_STREAM_ID;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
@@ -9,6 +11,7 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -24,10 +27,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
-import org.openkilda.messaging.Utils;
-import org.openkilda.messaging.info.InfoData;
-import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.Datapoint;
+import org.openkilda.messaging.info.InfoData;
 import org.openkilda.wfm.topology.opentsdb.bolts.OpenTSDBFilterBolt;
 
 import java.util.Collections;
@@ -121,12 +122,14 @@ public class OpenTSDBFilterBoltTest {
 
     @Test
     public void shouldEmitBothMessagesIfHashcodeConflicts() throws Exception {
+        // given
         target.prepare(Collections.emptyMap(), null, outputCollector);
 
         Datapoint infoData1 = new Datapoint("1", TIMESTAMP, singletonMap("key",  "a"), VALUE);
         Datapoint infoData2 = new Datapoint("2", TIMESTAMP, singletonMap("key",  "\u0040"), VALUE);
         assertEquals(infoData1.simpleHashCode(), infoData2.simpleHashCode());
 
+        // when
         when(tuple.contains(eq("datapoint"))).thenReturn(true);
         when(tuple.getValueByField(eq("datapoint"))).thenReturn(infoData1);
         target.execute(tuple);
@@ -134,8 +137,42 @@ public class OpenTSDBFilterBoltTest {
         when(tuple.getValueByField(eq("datapoint"))).thenReturn(infoData2);
         target.execute(tuple);
 
+        // then
         verify(outputCollector, times(2)).emit(argumentCaptor.capture());
         verify(outputCollector, times(2)).ack(any(Tuple.class));
+    }
+
+    @Test
+    public void shouldEmitAfterTickCleanup() throws Exception {
+        // given
+        target.prepare(Collections.emptyMap(), null, outputCollector);
+
+        when(tuple.contains(eq("datapoint"))).thenReturn(true);
+
+        final long now = System.currentTimeMillis();
+        final long timestamp = now - TimeUnit.MINUTES.toMillis(10) - 1;
+
+        // when
+        Datapoint infoData1 = new Datapoint("1", timestamp, singletonMap("key", "a"), VALUE);
+        when(tuple.getValueByField(eq("datapoint"))).thenReturn(infoData1);
+        target.execute(tuple);
+
+        Datapoint infoData2 = new Datapoint("2", timestamp, singletonMap("key", "b"), VALUE);
+        when(tuple.getValueByField(eq("datapoint"))).thenReturn(infoData2);
+        target.execute(tuple);
+
+        Tuple tickTuple = mock(Tuple.class);
+        when(tickTuple.getSourceComponent()).thenReturn(SYSTEM_COMPONENT_ID);
+        when(tickTuple.getSourceStreamId()).thenReturn(SYSTEM_TICK_STREAM_ID);
+        target.execute(tickTuple);
+
+        Datapoint infoData3 = new Datapoint("1", now, singletonMap("key", "a"), VALUE);
+        when(tuple.getValueByField(eq("datapoint"))).thenReturn(infoData3);
+        target.execute(tuple);
+
+        // then
+        verify(outputCollector, times(3)).emit(argumentCaptor.capture());
+        verify(outputCollector, times(4)).ack(any(Tuple.class));
     }
 
     private void mockTuple(long timestamp) throws Exception {
