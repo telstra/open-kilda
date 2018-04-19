@@ -70,7 +70,7 @@ public class SwitchService {
      * @param keys
      * @return
      */
-    public LinkProps updateLinkProps(LinkProps keys) {
+    public String updateLinkProps(List<LinkProps> keys) {
         return switchIntegrationService.updateIslLinkProps(keys);
     }
 }

@@ -42,8 +42,7 @@ public class FlowPathConverter {
      */
     private List<PathNode> setPath(FlowPathInfoData flowPathInfoData) {
         List<PathNode> pathNodes = new ArrayList<PathNode>();
-        PathInfoData flowpath =
-                flowPathInfoData.getFlowpath();
+        PathInfoData flowpath = flowPathInfoData.getFlowpath();
         List<PathNode> paths = flowpath.getPath();
         Set<PathNode> sortedPathSet = new TreeSet<>(paths);
         Integer inport = null;
@@ -58,29 +57,32 @@ public class FlowPathConverter {
                     String switchName = switchIntegrationService.customSwitchName(csNames,
                             flowPathInfoData.getSrcSwitch());
                     pathNodes.add(new PathNode(seq_id, flowPathInfoData.getSrcPort(),
-                            path.getPortNo(), switchName));
+                            path.getPortNo(), flowPathInfoData.getSrcSwitch(), switchName));
                     seq_id++;
                 } else {
-                    if(path.getSwitchId().equalsIgnoreCase(switchId)){
+                    if (path.getSwitchId().equalsIgnoreCase(switchId)) {
                         String switchName = switchIntegrationService.customSwitchName(csNames,
                                 path.getSwitchId());
-                        pathNodes.add(new PathNode(seq_id, inport, path.getPortNo(), switchName));
+                        pathNodes.add(new PathNode(seq_id, inport, path.getPortNo(),
+                                path.getSwitchId(), switchName));
                         seq_id++;
-                    }else{
-                       switchId = path.getSwitchId();
-                       inport = path.getPortNo();
+                    } else {
+                        switchId = path.getSwitchId();
+                        inport = path.getPortNo();
                     }
                 }
             }
-            String switchName =
-                    switchIntegrationService.customSwitchName(csNames, flowPathInfoData.getDstSwitch());
-            pathNodes.add(new PathNode(seq_id, inport, flowPathInfoData.getDstPort(), switchName));
-        }else{
+            String switchName = switchIntegrationService.customSwitchName(csNames,
+                    flowPathInfoData.getDstSwitch());
+            pathNodes.add(new PathNode(seq_id, inport, flowPathInfoData.getDstPort(),
+                    flowPathInfoData.getDstSwitch(), switchName));
+        } else {
             String switchName = switchIntegrationService.customSwitchName(csNames,
                     flowPathInfoData.getSrcSwitch());
-            pathNodes.add(new PathNode(seq_id, flowPathInfoData.getSrcPort(), flowPathInfoData.getDstPort(), switchName));
+            pathNodes.add(new PathNode(seq_id, flowPathInfoData.getSrcPort(),
+                    flowPathInfoData.getDstPort(), flowPathInfoData.getSrcSwitch(), switchName));
         }
-        
+
         return pathNodes;
     }
 }

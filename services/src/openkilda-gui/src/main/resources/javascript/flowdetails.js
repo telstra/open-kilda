@@ -4,27 +4,28 @@ $(document).ready(function() {
 
 	var flowid = window.location.href.split("#")[1]
 	var tmp_anchor = '<a href="flowdetails#' + flowid + '">' + flowid + '</a>';
-	$("#flow-id-name").parent().append(flowid)
-	var flowData = localStorage.getItem("flowDetails");
+	$("#flow-id-name").parent().append(flowid);
 	
-	if(!flowData) {
-		window.location = APP_CONTEXT+ "/flows";
-	}
 	
-	var obj = JSON.parse(flowData)
-	showFlowData(obj);
+	$("#loading").css("display", "block");
+	common.getData("/flows/"+flowid,"GET").then(function(response) {
+		$("#loading").css("display", "none");
+		$('body').css('pointer-events','all'); 
+		showFlowData(response);
+	},
+	function(error){
+		common.infoMessage('Flow does not exists, please try with new flow id','info');
+		
+		setTimeout(function(){ 
+			window.location = APP_CONTEXT+ "/flows"; 
+		}, 6000);
+		response=[];
+		$("#loading").css("display", "none");
+		$('body').css('pointer-events','all');
+	});
+	
 	getMetricDetails.getFlowMetricData();
 	$('body').css('pointer-events','all');
-	$('#reroute_flow').click(function(e){
-		e.preventDefault();
-		callReRoute(obj.flow_id);
-		
-	})
-	
-	$('#validate_flow_btn').click(function(e){
-		e.preventDefault();
-		callValidateFlow(obj.flow_id);
-	})
 })
 
 function callValidateFlow(flow_id){
@@ -38,16 +39,17 @@ function callValidateFlow(flow_id){
 }
 function showFlowData(obj) {
 
-	$(".flow_div_flow_id").html(obj.flow_id);
-	$(".flow_div_source_switch").html(obj.source_switch);
-	$(".flow_div_source_port").html(obj.src_port);
-	$(".flow_div_source_switch_name").html(obj.source_switch_name);
-	$(".flow_div_destination_switch_name").html(obj.target_switch_name);
-	$(".flow_div_source_vlan").html(obj.src_vlan);
-	$(".flow_div_destination_switch").html(obj.target_switch);
-	$(".flow_div_destination_port").html(obj.dst_port);
-	$(".flow_div_destination_vlan").html(obj.dst_vlan);
-	$(".flow_div_maximum_bandwidth").html(obj.maximum_bandwidth);
+	$(".flow_div_flow_id").html(obj.flowid);
+	$(".flow_div_source_switch").html(obj.source["switch-id"]);
+	$(".flow_div_source_port").html(obj.source["port-id"]);
+	$(".flow_div_source_switch_name").html(obj.source["switch-id"]);
+	$(".flow_div_source_vlan").html(obj.source["vlan-id"]);
+	
+	$(".flow_div_destination_switch").html(obj.destination["switch-id"]);
+	$(".flow_div_destination_port").html(obj.destination["port-id"]);
+	$(".flow_div_destination_switch_name").html(obj.destination["switch-id"]);
+	$(".flow_div_destination_vlan").html(obj.destination["vlan-id"]);
+	$(".flow_div_maximum_bandwidth").html(obj["maximum-bandwidth"]);
 	$(".flow_div_Status").html(obj.status);
 
 	if (!obj.description == "") {
@@ -55,7 +57,19 @@ function showFlowData(obj) {
 	} else {
 		$(".flow_div_desc").html("-");
 	}
-	callFlowPath(obj.flow_id);
+	callFlowPath(obj.flowid);
+	
+	$('#reroute_flow').click(function(e){
+		e.preventDefault();
+		callReRoute(obj.flowid);
+		
+	})
+	
+	$('#validate_flow_btn').click(function(e){
+		e.preventDefault();
+		callValidateFlow(obj.flowid);
+	});
+	
 }
 
 /** dev: Neeraj
@@ -71,6 +85,11 @@ function callReRoute(flow_id){
 		} else {
 			common.infoMessage('Flow : '+flow_id+" already on best route!","info");
 		}
+		common.getData("/flows/"+flow_id+"/status","GET").then(function(response){
+			if(response && typeof(response.status)!=='undefined'){
+				$(".flow_div_Status").html(response.status);
+			}
+		})
 		common.getData("/flows/path/" + flow_id,"GET").then(function(response) { //calling flow path api again
 			showFlowPathData(response,true);
 		})
@@ -83,7 +102,18 @@ function callFlowPath(flow_id) {
 		showFlowPathData(response);
 	})
 }
-
+function openswitchDetail(switch_id){
+	console.log('switch_id',switch_id)
+	common.getData("/switch/list","GET").then(function(response){
+		console.log('response',response)
+		var switchData= response.filter(function(f){
+				return f.switch_id == switch_id;
+		})
+		//localStorage.setItem('switchDetailsJSON',JSON.stringify(switchData));
+		//window.location.href="/openkilda/switch/details#id#"+switch_id;
+	})
+	
+}
 function showFlowPathData(response ,isloader) {
 
 	var tmp_length = 0;
@@ -127,18 +157,20 @@ function showFlowPathData(response ,isloader) {
 			
 			
 			if(obj.length <= 5) {
+				var switchId = "'"+obj[i].switch_id+"'";
 				var path_html = '<div class="path"><div class="number" data-balloon="' 
 					+ obj[i].switch_id + '" data-balloon-pos="up" id="port-number-a">'
-					+ obj[i].in_port_no + '</div><div class="line"></div><div class="text" id ="switch-name">' 
+					+ obj[i].in_port_no + '</div><div class="line"></div><div class="text cursor-pointer" id ="switch-name" onclick="openswitchDetail('+switchId+')">' 
 					+ obj[i].switch_id + '</div><div class="line"></div><div class="number" data-balloon="' 
 					+ obj[i].switch_id + '" data-balloon-pos="up" id="port-number-a">'
 					+ obj[i].out_port_no + '</div><div class="line"></div></div>';
 
 				$('#ForwardRow').append(path_html);		
 			} else {
+				var switchId = "'"+obj[i].switch_id+"'";
 				var path_html = '<div class="path"><div class="number" data-balloon="' 
 					+ obj[i].switch_id + '" data-balloon-pos="up" id="port-number-a">'
-					+ obj[i].in_port_no + '</div><div class="line"></div><div class="text" id ="switch-name">' 
+					+ obj[i].in_port_no + '</div><div class="line"></div><div class="text cursor-pointer" id ="switch-name" onclick="openswitchDetail('+switchId+')">' 
 					+ obj[i].switch_id + '</div><div class="line"></div><div class="number" data-balloon="' 
 					+ obj[i].switch_id + '" data-balloon-pos="up" id="port-number-a">'
 					+ obj[i].out_port_no + '</div><div class="line"></div><div class="vertical-line"></div><div class="horizontal-line"></div><div class="vertical-line-2"></div></div>';

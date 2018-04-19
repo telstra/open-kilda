@@ -100,7 +100,7 @@ public class RestClientManager {
                         + httpEntityEnclosingRequest + " : payload : " + payload);
                 // Setting POST/PUT related headers
                 httpEntityEnclosingRequest.setHeader(HttpHeaders.CONTENT_TYPE, contentType);
-                httpEntityEnclosingRequest.setHeader(IAuthConstants.Header.BASIC_AUTH, basicAuth);
+                httpEntityEnclosingRequest.setHeader(IAuthConstants.Header.AUTHORIZATION, basicAuth);
                 // Setting request payload
                 httpEntityEnclosingRequest.setEntity(new StringEntity(payload));
                 httpResponse = client.execute(httpEntityEnclosingRequest);

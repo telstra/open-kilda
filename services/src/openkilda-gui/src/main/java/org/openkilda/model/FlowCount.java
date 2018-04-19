@@ -19,7 +19,12 @@ public class FlowCount {
     @JsonProperty("target_switch")
     private String dstSwitch;
 
-    
+    @JsonProperty("source_switch_name")
+    private String srcSwitchName;
+
+    @JsonProperty("target_switch_name")
+    private String dstSwitchName;
+
     @JsonProperty("flow_count")
     private Integer flowCount;
 
@@ -59,6 +64,22 @@ public class FlowCount {
         this.dstSwitch = dstSwitch;
     }
 
+    public String getSrcSwitchName() {
+        return srcSwitchName;
+    }
+
+    public void setSrcSwitchName(String srcSwitchName) {
+        this.srcSwitchName = srcSwitchName;
+    }
+
+    public String getDstSwitchName() {
+        return dstSwitchName;
+    }
+
+    public void setDstSwitchName(String dstSwitchName) {
+        this.dstSwitchName = dstSwitchName;
+    }
+
     /**
      * Gets the flow count.
      *
@@ -88,12 +109,12 @@ public class FlowCount {
 
     @Override
     public boolean equals(final Object obj) {
-        if(obj instanceof FlowCount) {
+        if (obj instanceof FlowCount) {
             FlowCount flowsCount = (FlowCount) obj;
-            return (flowsCount.srcSwitch.equalsIgnoreCase(srcSwitch) &&
-                    flowsCount.dstSwitch.equalsIgnoreCase(dstSwitch)) ||
-                    (flowsCount.srcSwitch.equalsIgnoreCase(dstSwitch) &&
-                    flowsCount.dstSwitch.equalsIgnoreCase(srcSwitch));
+            return (flowsCount.srcSwitch.equalsIgnoreCase(srcSwitch)
+                    && flowsCount.dstSwitch.equalsIgnoreCase(dstSwitch))
+                    || (flowsCount.srcSwitch.equalsIgnoreCase(dstSwitch)
+                            && flowsCount.dstSwitch.equalsIgnoreCase(srcSwitch));
         }
         return false;
     }

@@ -16,11 +16,9 @@
 
 </head>
 <body>
-
-	<div th:replace="fragments/header :: header" ></div>
-
-	<div th:replace="fragments/menu :: menu" ></div>
 	<div th:include="fragments/importResources:: commonPathImports"></div>
+	<div th:replace="fragments/header :: header" ></div>
+	<div th:replace="fragments/menu :: menu" ></div>
 	<div class="content">
 		<div class="row">
 			<div class="navigation-bar container-fluid">
