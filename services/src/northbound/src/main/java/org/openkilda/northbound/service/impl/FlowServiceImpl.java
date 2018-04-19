@@ -39,7 +39,9 @@ import org.openkilda.messaging.info.flow.FlowStatusResponse;
 import org.openkilda.messaging.info.flow.FlowsResponse;
 import org.openkilda.messaging.info.flow.FlowCacheSyncResponse;
 import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.rule.FlowApplyActions;
 import org.openkilda.messaging.info.rule.FlowEntry;
+import org.openkilda.messaging.info.rule.FlowSetFieldAction;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
@@ -58,6 +60,7 @@ import org.openkilda.northbound.service.FlowService;
 import org.openkilda.northbound.service.SwitchService;
 import org.openkilda.northbound.utils.Converter;
 
+import org.apache.commons.lang3.math.NumberUtils;
 import org.openkilda.pce.provider.Auth;
 import org.openkilda.pce.provider.AuthNeo4j;
 import org.openkilda.pce.provider.PathComputer;
@@ -461,14 +464,15 @@ public class FlowServiceImpl implements FlowService {
     }
 
     private static final class SimpleSwitchRule {
-        public String switchId; // so we don't get lost
-        public String cookie;
-        public String inPort;
-        public String outPort;
-        public String inVlan;
-        public String outVlan;
-        public long pktCount;   // only set from switch rules, not flow rules
-        public long byteCount;  // only set from switch rules, not flow rules
+        private String switchId; // so we don't get lost
+        private long cookie;
+        private int inPort;
+        private int outPort;
+        private int inVlan;
+        private int outVlan;
+        private int meterId;
+        private long pktCount;   // only set from switch rules, not flow rules
+        private long byteCount;  // only set from switch rules, not flow rules
 
         @Override
         public String toString() {
@@ -489,19 +493,20 @@ public class FlowServiceImpl implements FlowService {
              */
             SimpleSwitchRule rule = new SimpleSwitchRule();
             rule.switchId = flow.getSourceSwitch();
-            rule.cookie = ""+flow.getCookie();
-            rule.inPort = ""+flow.getSourcePort();
-            rule.inVlan = ""+flow.getSourceVlan();
+            rule.cookie = flow.getCookie();
+            rule.inPort = flow.getSourcePort();
+            rule.inVlan = flow.getSourceVlan();
+            rule.meterId = flow.getMeterId();
             List<PathNode> path = flow.getFlowPath().getPath();
             // TODO: ensure path is sorted by sequence
             if (path.size() == 0){
                 // single switch rule.
-                rule.outPort = ""+flow.getDestinationPort();
-                rule.outVlan = ""+flow.getDestinationVlan();
+                rule.outPort = flow.getDestinationPort();
+                rule.outVlan = flow.getDestinationVlan();
             } else {
                 // flows with two switches or more will have at least 2 in getPath()
-                rule.outPort = ""+path.get(0).getPortNo();
-                rule.outVlan = ""+flow.getTransitVlan();
+                rule.outPort = path.get(0).getPortNo();
+                rule.outVlan = flow.getTransitVlan();
                 // OPTIONAL - for sanity check, we should confirm switch ID and cookie match.
             }
             result.add(rule);
@@ -520,13 +525,13 @@ public class FlowServiceImpl implements FlowService {
 
                     rule = new SimpleSwitchRule();
                     rule.switchId = inNode.getSwitchId();
-                    rule.inPort = ""+inNode.getPortNo();
-                    rule.cookie = ""+inNode.getCookie();
-                    if (rule.cookie == null || rule.cookie.length() == 0 || rule.cookie.equals("null"))
-                        rule.cookie = ""+flow.getCookie();
-                    rule.inVlan = ""+flow.getTransitVlan();
-                    rule.outVlan = ""+flow.getTransitVlan();
-                    rule.outPort = ""+outNode.getPortNo();
+                    rule.inPort = inNode.getPortNo();
+                    rule.cookie = Optional.ofNullable(inNode.getCookie())
+                            .filter(cookie -> !cookie.equals(NumberUtils.LONG_ZERO))
+                            .orElse(flow.getCookie());
+                    rule.inVlan = flow.getTransitVlan();
+                    rule.outVlan = flow.getTransitVlan();
+                    rule.outPort = outNode.getPortNo();
                     result.add(rule);
                 }
             }
@@ -534,16 +539,16 @@ public class FlowServiceImpl implements FlowService {
             /*
              * Now Egress .. only if we have a path. Otherwise it is one switch.
              */
-            if (path.size() > 0){
+            if (path.size() > 0) {
                 rule = new SimpleSwitchRule();
                 rule.switchId = flow.getDestinationSwitch();
-                rule.outPort = ""+flow.getDestinationPort();
-                rule.outVlan = ""+flow.getDestinationVlan();
-                rule.inVlan = ""+flow.getTransitVlan();
-                rule.inPort = ""+path.get(path.size()-1).getPortNo();
-                rule.cookie = ""+path.get(path.size()-1).getCookie();
-                if (rule.cookie == null || rule.cookie.length() == 0 || rule.cookie.equals("null"))
-                    rule.cookie = ""+flow.getCookie();
+                rule.outPort = flow.getDestinationPort();
+                rule.outVlan = flow.getDestinationVlan();
+                rule.inVlan = flow.getTransitVlan();
+                rule.inPort = path.get(path.size() - 1).getPortNo();
+                rule.cookie = Optional.ofNullable(path.get(path.size() - 1).getCookie())
+                        .filter(cookie -> !cookie.equals(NumberUtils.LONG_ZERO))
+                        .orElse(flow.getCookie());
                 result.add(rule);
             }
             return result;
@@ -561,20 +566,28 @@ public class FlowServiceImpl implements FlowService {
                 logger.debug("FlowEntry: {}", switchRule);
                 SimpleSwitchRule rule = new SimpleSwitchRule();
                 rule.switchId = rules.getSwitchId();
-                rule.cookie = ""+switchRule.getCookie();
-                rule.inPort = switchRule.getMatch().getInPort();
-                rule.inVlan = switchRule.getMatch().getVlanVid();
-                if (switchRule.getInstructions() != null){
+                rule.cookie = switchRule.getCookie();
+                rule.inPort = NumberUtils.toInt(switchRule.getMatch().getInPort());
+                rule.inVlan = NumberUtils.toInt(switchRule.getMatch().getVlanVid());
+                if (switchRule.getInstructions() != null) {
                     // TODO: What is the right way to get OUT VLAN and OUT PORT?  How does it vary?
                     if (switchRule.getInstructions().getApplyActions() != null) {
                         // The outVlan could be empty. If it is, then pop is?
-                        rule.outVlan = switchRule.getInstructions().getApplyActions().getPushVlan();
-                        if (rule.outVlan != null && rule.outVlan.equals("0x8100")){
-                            rule.outVlan = switchRule.getInstructions().getApplyActions().getFieldAction().getFieldValue();
+                        FlowApplyActions applyActions = switchRule.getInstructions().getApplyActions();
+                        rule.outVlan = NumberUtils.toInt(applyActions.getPushVlan());
+                        if (rule.outVlan == 0 || rule.outVlan != 0x8100) {
+                            rule.outVlan = Optional.ofNullable(applyActions.getFieldAction())
+                                    .filter(action -> "vlan_vid".equals(action.getFieldName()))
+                                    .map(FlowSetFieldAction::getFieldValue)
+                                    .map(NumberUtils::toInt)
+                                    .orElse(NumberUtils.INTEGER_ZERO);
                         }
-                        // Is getFlowOutput() the right method?
-                        rule.outPort = switchRule.getInstructions().getApplyActions().getFlowOutput();
+                        rule.outPort = NumberUtils.toInt(applyActions.getFlowOutput());
                     }
+
+                    rule.meterId = Optional.ofNullable(switchRule.getInstructions().getGoToMeter())
+                            .map(Long::intValue)
+                            .orElse(NumberUtils.INTEGER_ZERO);
                 }
                 rule.pktCount = switchRule.getPacketCount();
                 rule.byteCount = switchRule.getByteCount();
@@ -595,67 +608,60 @@ public class FlowServiceImpl implements FlowService {
             /*
              * Start with trying to match on the cookie.
              */
-            SimpleSwitchRule matched = null;
-            for (SimpleSwitchRule sr : possibleActual) {
-                if (sr.cookie != null && sr.cookie.equals(expected.cookie)) {
-                    matched = sr;
-                    break;
-                }
-            }
+            SimpleSwitchRule matched = possibleActual.stream()
+                    .filter(rule -> rule.cookie != 0 && rule.cookie == expected.cookie)
+                    .findFirst()
+                    .orElse(null);
             /*
              * If no cookie match, then try inport and invlan
              */
             if (matched == null) {
-                for (SimpleSwitchRule sr : possibleActual) {
-
-                    if (sr.inPort != null && sr.inPort.equals(expected.inPort) &&
-                            sr.inVlan != null && sr.inVlan.equals(expected.inVlan)) {
-                        matched = sr;
-                        break;
-                    }
+                matched = possibleActual.stream()
+                        .filter(rule -> rule.inPort == expected.inPort && rule.inVlan == expected.inVlan)
+                        .findFirst()
+                        .orElse(null);
                 }
-            }
             /*
              * Lastly, if cookie doesn't match, and inport / invlan doesn't, try outport/outvlan
              */
             if (matched == null) {
-                for (SimpleSwitchRule sr : possibleActual) {
-                    if (sr.outPort != null && sr.outPort.equals(expected.outPort) &&
-                            sr.outVlan != null && sr.outVlan.equals(expected.outVlan)) {
-                        matched = sr;
-                        break;
-                    }
-                }
+                matched = possibleActual.stream()
+                        .filter(rule -> rule.outPort == expected.outPort && rule.outVlan == expected.outVlan)
+                        .findFirst()
+                        .orElse(null);
             }
 
             /*
              * If we haven't matched anything .. then file discrepancy for each field used in match.
              */
             if (matched == null) {
-                result.add( new PathDiscrepancyDto(""+expected, "all", ""+expected, "") );
+                result.add(new PathDiscrepancyDto(String.valueOf(expected), "all", String.valueOf(expected), ""));
                 pktCounts.add(-1L);
                 byteCounts.add(-1L);
             } else {
-                if (matched.cookie != null && !matched.cookie.equals(expected.cookie))
-                    result.add(new PathDiscrepancyDto("" + expected, "cookie", expected.cookie, matched.cookie));
-                if (matched.inPort != null && !matched.inPort.equals(expected.inPort))
-                    result.add(new PathDiscrepancyDto("" + expected, "inPort", expected.inPort, matched.inPort));
-                if (matched.inVlan != null && matched.inVlan.length() > 0) {
-                    if (!matched.inVlan.equals(expected.inVlan))
-                        result.add(new PathDiscrepancyDto("" + expected, "inVlan", expected.inVlan, matched.inVlan));
-                } else {
-                    /* If match is empty, but expected isn't, then we have a discrepancy */
-                    if (expected.inVlan != null && expected.inVlan.length() > 0 && !expected.inVlan.equals("0")) {
-                        result.add(new PathDiscrepancyDto("" + expected, "inVlan", expected.inVlan, matched.inVlan));
-                    }
+                if (matched.cookie != expected.cookie) {
+                    result.add(new PathDiscrepancyDto(expected.toString(), "cookie",
+                            String.valueOf(expected.cookie), String.valueOf(matched.cookie)));
                 }
-                if (matched.outPort != null && matched.outPort.length() > 0) {
-                    if (!matched.outPort.equals(expected.outPort))
-                        result.add(new PathDiscrepancyDto("" + expected, "outPort", expected.outPort, matched.outPort));
+                if (matched.inPort != expected.inPort) {
+                    result.add(new PathDiscrepancyDto(expected.toString(), "inPort",
+                            String.valueOf(expected.inPort), String.valueOf(matched.inPort)));
                 }
-                if (matched.outVlan != null && matched.outVlan.length() > 0) {
-                    if (!matched.outVlan.equals(expected.outVlan))
-                        result.add(new PathDiscrepancyDto("" + expected, "outVlan", expected.outVlan, matched.outVlan));
+                if (matched.inVlan != expected.inVlan) {
+                    result.add(new PathDiscrepancyDto(expected.toString(), "inVlan",
+                            String.valueOf(expected.inVlan), String.valueOf(matched.inVlan)));
+                }
+                if (matched.outPort != expected.outPort) {
+                    result.add(new PathDiscrepancyDto(expected.toString(), "outPort",
+                            String.valueOf(expected.outPort), String.valueOf(matched.outPort)));
+                }
+                if (matched.outVlan != expected.outVlan) {
+                    result.add(new PathDiscrepancyDto(expected.toString(), "outVlan",
+                            String.valueOf(expected.outVlan), String.valueOf(matched.outVlan)));
+                }
+                if (matched.meterId != expected.meterId) {
+                    result.add(new PathDiscrepancyDto(expected.toString(), "meterId",
+                            String.valueOf(expected.meterId), String.valueOf(matched.meterId)));
                 }
                 pktCounts.add(matched.pktCount);
                 byteCounts.add(matched.byteCount);
