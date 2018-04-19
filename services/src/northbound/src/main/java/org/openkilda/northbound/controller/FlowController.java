@@ -163,7 +163,7 @@ public class FlowController {
      *
      * @return list of flow
      */
-    @ApiOperation(value = "Dumps all flows", response = FlowPayload.class)
+    @ApiOperation(value = "Dumps all flows", response = FlowPayload.class, responseContainer = "List")
     @ApiResponse(code = 200, response = FlowPayload.class, responseContainer = "List", message = "Operation is successful")
     @RequestMapping(
             value = "/flows",
@@ -180,7 +180,7 @@ public class FlowController {
      *
      * @return list of flows that have been deleted
      */
-    @ApiOperation(value = "Delete all flows. Requires special authorization", response = FlowPayload.class)
+    @ApiOperation(value = "Delete all flows. Requires special authorization", response = FlowPayload.class, responseContainer = "List")
     @ApiResponse(code = 200, response = FlowPayload.class, responseContainer = "List", message = "Operation is successful")
     @RequestMapping(
             value = "/flows",
@@ -261,7 +261,7 @@ public class FlowController {
             @RequestParam("propagate") Optional<Boolean> propagate,
             @ApiParam(value = "default: false. If true, will wait until poll timeout for validation.",
                     required = false)
-            @RequestParam("propagate") Optional<Boolean> verify) {
+            @RequestParam("verify") Optional<Boolean> verify) {
 
         Boolean defaultPropagate = false;
         Boolean defaultVerify = false;
@@ -289,7 +289,7 @@ public class FlowController {
             @RequestParam("propagate") Optional<Boolean> propagate,
             @ApiParam(value = "default: false. If true, will wait until poll timeout for validation.",
                     required = false)
-            @RequestParam("propagate") Optional<Boolean> verify) {
+            @RequestParam("verify") Optional<Boolean> verify) {
         Boolean defaultPropagate = false;
         Boolean defaultVerify = false;
         return flowService.unpushFlows(externalFlows, propagate.orElse(defaultPropagate), verify.orElse(defaultVerify));
@@ -323,7 +323,7 @@ public class FlowController {
     @ApiOperation(value = "Validate flow, comparing the DB to each switch", response = FlowValidationDto.class,
             responseContainer = "List")
     @ApiResponses(value = {
-            @ApiResponse(code = 200, response = FlowValidationDto.class, message = "Operation is successful")})
+            @ApiResponse(code = 200, response = FlowValidationDto.class, responseContainer = "List", message = "Operation is successful")})
     @RequestMapping(path = "/flows/{flow_id}/validate",
             method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
