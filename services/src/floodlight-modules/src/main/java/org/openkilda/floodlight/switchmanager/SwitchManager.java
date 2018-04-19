@@ -742,7 +742,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .collect(Collectors.toSet());
         flowStatsAfter.forEach(entry -> {
             long cookie = entry.getCookie().getValue();
-            logger.warn("Cookie {} has been removed from switch {}.", cookie, dpid);
+            logger.info("Cookie {} has been removed from switch {}.", cookie, dpid);
             cookies.remove(cookie);
         });
         return new ArrayList<>(cookies);
