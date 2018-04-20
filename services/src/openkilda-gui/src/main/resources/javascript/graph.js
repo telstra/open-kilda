@@ -358,6 +358,7 @@ graph = {
 			    d3.select(".isldetails_div_latency").html("<span>" + d.latency + "</span>");
 			    d3.select(".isldetails_div_bandwidth").html("<span>" + d.available_bandwidth/1000 + " Mbps</span>");
 			    d3.select(".isldetails_div_unidirectional").html("<span>" + d.unidirectional + "</span>"); 
+			    d3.select(".isldetails_div_cost").html("<span>" + d.cost + "</span>"); 
 			    
 	        }
 	    }).on("mouseout", function(d, index) {
