@@ -7,7 +7,7 @@
  * and parse it
  */
 $(document).ready(function() {
-
+	$("#isl-menu-id").addClass("active");
 	var linkData = localStorage.getItem("linkData");
 	if(!linkData){
 		window.location = APP_CONTEXT+ "/topology";

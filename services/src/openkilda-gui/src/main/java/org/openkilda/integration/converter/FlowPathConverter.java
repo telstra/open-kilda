@@ -29,8 +29,9 @@ public class FlowPathConverter {
      * @return the flow path
      */
     public FlowPath getFlowPath(final String flowId, final FlowPayload flowPayload) {
-        PathInfoData pathInfo = new PathInfoData(setPath(flowPayload.getForward()),
-                setPath(flowPayload.getReverse()));
+        Map<String, String> csNames = switchIntegrationService.getCustomSwitchNameFromFile();
+        PathInfoData pathInfo = new PathInfoData(setPath(flowPayload.getForward(), csNames),
+                setPath(flowPayload.getReverse(), csNames));
         return new FlowPath(flowId, pathInfo);
     }
 
@@ -40,7 +41,7 @@ public class FlowPathConverter {
      * @param FlowPathInfoData the flow path info data
      * @return the {@link PathNode} list
      */
-    private List<PathNode> setPath(FlowPathInfoData flowPathInfoData) {
+    private List<PathNode> setPath(FlowPathInfoData flowPathInfoData, Map<String, String> csNames) {
         List<PathNode> pathNodes = new ArrayList<PathNode>();
         PathInfoData flowpath = flowPathInfoData.getFlowpath();
         List<PathNode> paths = flowpath.getPath();
@@ -48,7 +49,6 @@ public class FlowPathConverter {
         Integer inport = null;
         String switchId = "";
         Integer seq_id = 0;
-        Map<String, String> csNames = switchIntegrationService.getCustomSwitchNameFromFile();
 
         if (paths != null && !paths.isEmpty()) {
             for (PathNode path : sortedPathSet) {

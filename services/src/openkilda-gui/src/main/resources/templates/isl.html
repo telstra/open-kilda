@@ -9,14 +9,13 @@
 <link th:href="@{../css/on-off-switch.css}" rel="stylesheet" type="text/css" />
 </head>
 <body>
-
-	<div th:replace="fragments/header :: header" ></div>
-	<div th:replace="fragments/menu :: menu" ></div>
 	<div th:include="fragments/importResources:: commonPathImports"></div>
 	<div th:include="fragments/importResources:: statsImports"></div>
 	<div th:include="fragments/importResources:: toggleSwitch"></div>
-	<div class="content">
 	
+	<div th:replace="fragments/header :: header" ></div>
+	<div th:replace="fragments/menu :: menu" ></div>
+	<div class="content">
 		<div class="row">
 			<div class="navigation-bar container-fluid">
 				<ul class="col-lg-12">

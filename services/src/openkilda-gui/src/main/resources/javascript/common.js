@@ -356,7 +356,10 @@ var graphAutoReload = {
 				    	metric2 = "R";		    	
 				    } else {
 				    	 for(i in getValue) {
-						    	
+
+                              if(getValue[i]<0){
+                              	getValue[i] = 0;
+                              }              
 						      var temparr = [];
 						      temparr[0] = new Date(Number(i*1000));
 						      if(metricVal == "megabytes"){
