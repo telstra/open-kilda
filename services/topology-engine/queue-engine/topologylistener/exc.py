@@ -12,3 +12,25 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 #
+
+import sys
+
+
+class Error(Exception):
+    pass
+
+
+class DBRecordNotFound(Error):
+    @property
+    def query(self):
+        return self.args[0]
+
+    @property
+    def params(self):
+        return self.args[1]
+
+    def __init__(self, query, params):
+        super(DBRecordNotFound, self).__init__(query, params)
+
+    def __str__(self):
+        return 'DB record not found'

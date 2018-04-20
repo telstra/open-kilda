@@ -27,6 +27,7 @@ import java.util.List;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.Entity;
+import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
@@ -136,23 +137,48 @@ public final class SwitchesUtils {
         return result.getStatus() == 200;
     }
 
+    public static List<Long> deleteSwitchRules(String switchId, DeleteRulesAction deleteAction) {
+        return deleteSwitchRules(switchId, deleteAction, null, null, null);
+    }
+
+    public static List<Long> deleteSwitchRules(String switchId, Integer inPort, Integer inVlan) {
+        return deleteSwitchRules(switchId, null, inPort, inVlan, null);
+    }
+
+    public static List<Long> deleteSwitchRules(String switchId, Integer outPort) {
+        return deleteSwitchRules(switchId, null, null, null, outPort);
+    }
 
     /**
      * Delete switch rules through Northbound service.
      */
-    public static List<Long> deleteSwitchRules(String switchId, DeleteRulesAction deleteAction) {
+    public static List<Long> deleteSwitchRules(String switchId, DeleteRulesAction deleteAction,
+            Integer inPort, Integer inVlan, Integer outPort) {
         System.out.println("\n==> Northbound Delete Switch Rules");
 
         Client client = ClientBuilder.newClient(new ClientConfig());
 
-        Response response = client
+        WebTarget requestBuilder = client
                 .target(northboundEndpoint)
                 .path("/api/v1/switches/")
                 .path("{switch-id}")
                 .path("rules")
-                .queryParam("delete-action", deleteAction)
-                .resolveTemplate("switch-id", switchId)
+                .resolveTemplate("switch-id", switchId);
 
+        if(deleteAction != null) {
+            requestBuilder = requestBuilder.queryParam("delete-action", deleteAction);
+        }
+        if(inPort != null) {
+            requestBuilder = requestBuilder.queryParam("in-port", inPort);
+        }
+        if(inVlan != null) {
+            requestBuilder = requestBuilder.queryParam("in-vlan", inVlan);
+        }
+        if(outPort != null) {
+            requestBuilder = requestBuilder.queryParam("out-port", outPort);
+        }
+
+        Response response = requestBuilder
                 .request(MediaType.APPLICATION_JSON)
                 .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
                 .header(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()))

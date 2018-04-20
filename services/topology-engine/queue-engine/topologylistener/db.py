@@ -16,17 +16,59 @@
 import os
 import socket
 
-from py2neo import Graph
+import py2neo
 
 import config
 
 
 def create_p2n_driver():
-    graph = Graph("http://{}:{}@{}:7474/db/data/".format(
+    graph = py2neo.Graph("http://{}:{}@{}:7474/db/data/".format(
         os.environ.get('neo4juser') or config.get('neo4j', 'user'),
         os.environ.get('neo4jpass') or config.get('neo4j', 'pass'),
         os.environ.get('neo4jhost') or config.get('neo4j', 'host')))
     return graph
+
+
+def format_set_fields(payload, field_prefix=''):
+    return format_fields(payload, 'SET ', field_prefix=field_prefix)
+
+
+def format_fields(payload, prefix, field_prefix=''):
+    if not payload:
+        return ''
+
+    separator = ',\n' + (' ' * len(prefix)) + field_prefix
+    fields = [' = '.join(field) for field in payload]
+    return prefix + field_prefix + separator.join(fields)
+
+
+def escape_fields(payload, raw_values=False):
+    result = []
+    for field, value in payload.items():
+        if not raw_values:
+            value = py2neo.cypher_repr(value)
+        result.append(
+                (py2neo.cypher_escape(field), value))
+    return result
+
+
+# FIXME(surabujin): use custom exception types
+def fetch_scalar(cursor):
+    extra = result_set = None
+    try:
+        result_set = next(cursor)
+        extra = next(cursor)
+    except StopIteration:
+        if result_set is None:
+            raise ValueError('There is no data in cursor')
+
+    if extra is not None:
+        raise ValueError('Cursor contain more than 1 result set')
+
+    if len(result_set) != 1:
+        raise ValueError(
+                'Invalid size of result set ({})'.format(len(result_set)))
+    return result_set.values()[0]
 
 
 # neo4j monkey patching staff

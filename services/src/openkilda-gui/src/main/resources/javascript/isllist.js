@@ -16,13 +16,14 @@ $(document).ready(function(){
 	})
 	
 	$(document).on("click",".flowDataRow",function(e){
-		setFlowData(this);
+		 var data = tableVar.row( this ).data();
+		 setFlowData(data);
 	})
-	
-	localStorage.clear();
+	$("#isl-menu-id").addClass("active");
+	//localStorage.clear();
 })
 
-var event;
+var event,tableVar;
 $( 'input').on( 'click', function () {
 	if(event != "undefined"){
 		event.stopPropagation();
@@ -41,15 +42,17 @@ function showflowData(response){
 	
 	 for(var i = 0; i < response.length; i++) {
 		 var tableRow = "<tr id='div_"+(i+1)+"' class='flowDataRow'>"
-		 			    +"<td class='divTableCell' title ='"+((response[i].source_switch === "" || response[i].source_switch == undefined)?"-":response[i].source_switch)+"'>"+((response[i].source_switch === "" || response[i].source_switch == undefined)?"-":response[i].source_switch)+"</td>"
+		 				+"<td class='divTableCell' title ='"+((response[i].source_switch_name === "" || response[i].source_switch_name == undefined)?"-":response[i].source_switch_name)+"'>"+((response[i].source_switch_name === "" || response[i].source_switch_name == undefined)?"-":response[i].source_switch_name)+"</td>"
+		    			+"<td class='divTableCell' title ='"+((response[i].source_switch === "" || response[i].source_switch == undefined)?"-":response[i].source_switch)+"'>"+((response[i].source_switch === "" || response[i].source_switch == undefined)?"-":response[i].source_switch)+"</td>"
 		 			    +"<td class='divTableCell' title ='"+((response[i].src_port === "" || response[i].src_port == undefined)?"-":response[i].src_port)+"'>"+((response[i].src_port === "" || response[i].src_port == undefined)?"-":response[i].src_port)+"</td>"
-		 			    +"<td class='divTableCell' title ='"+((response[i].source_switch_name === "" || response[i].source_switch_name == undefined)?"-":response[i].source_switch_name)+"'>"+((response[i].source_switch_name === "" || response[i].source_switch_name == undefined)?"-":response[i].source_switch_name)+"</td>"
+		 			    +"<td class='divTableCell' title ='"+((response[i].target_switch_name === "" || response[i].target_switch_name == undefined)?"-":response[i].target_switch_name)+"'>"+((response[i].target_switch_name === "" || response[i].target_switch_name == undefined)?"-":response[i].target_switch_name)+"</td>"
 		 			    +"<td class='divTableCell' title ='"+((response[i].target_switch === "" || response[i].target_switch == undefined)?"-":response[i].target_switch)+"'>"+((response[i].target_switch === "" || response[i].target_switch == undefined)?"-":response[i].target_switch)+"</td>"
 		 			    +"<td class='divTableCell' title ='"+((response[i].dst_port === "" || response[i].dst_port == undefined)?"-":response[i].dst_port)+"'>"+((response[i].dst_port === "" || response[i].dst_port == undefined)?"-":response[i].dst_port)+"</td>"
-		 			    +"<td class='divTableCell' title ='"+((response[i].target_switch_name === "" || response[i].target_switch_name == undefined)?"-":response[i].target_switch_name)+"'>"+((response[i].target_switch_name === "" || response[i].target_switch_name == undefined)?"-":response[i].target_switch_name)+"</td>"
-		 			    +"<td class='divTableCell' title ='"+((response[i].available_bandwidth === "" || response[i].available_bandwidth == undefined)?"-":response[i].available_bandwidth/1000 +" Mbps")+"'> "+ ((response[i].available_bandwidth === "" || response[i].available_bandwidth == undefined)?"-":response[i].available_bandwidth/1000 + " Mbps")+"</td>"
+		 			    +"<td class='divTableCell' title ='"+((response[i].cost === "" || response[i].cost == undefined)?"-":response[i].cost)+"'>"+((response[i].cost === "" || response[i].cost == undefined)?"-":response[i].cost)+"</td>"
 		 			    +"<td class='divTableCell' title ='"+((response[i].state === "" || response[i].state == undefined)?"-":response[i].state)+"'>"+((response[i].state === "" || response[i].state == undefined)?"-":response[i].state)+"</td>"
-		 			    +"<td class='divTableCell' title ='"+((response[i].speed === "" || response[i].speed == undefined)?"-":response[i].speed/1000 +" Mbps")+"'> "+ ((response[i].speed === "" || response[i].speed == undefined)?"-":response[i].speed/1000 + " Mbps")+"</td>"+"<td class='divTableCell' title ='"+((response[i].latency === "" || response[i].latency == undefined)?"-":response[i].latency)+"'>"+((response[i].latency === "" || response[i].latency == undefined)?"-":response[i].latency)+"</td>"
+		 			    +"<td class='divTableCell' title ='"+((response[i].speed === "" || response[i].speed == undefined)?"-":response[i].speed/1000 +" Mbps")+"'> "+ ((response[i].speed === "" || response[i].speed == undefined)?"-":response[i].speed/1000 + " Mbps")+"</td>"
+		 			    +"<td class='divTableCell' title ='"+((response[i].available_bandwidth === "" || response[i].available_bandwidth == undefined)?"-":response[i].available_bandwidth/1000 +" Mbps")+"'> "+ ((response[i].available_bandwidth === "" || response[i].available_bandwidth == undefined)?"-":response[i].available_bandwidth/1000 + " Mbps")+"</td>"
+		 			    +"<td class='divTableCell' title ='"+((response[i].latency === "" || response[i].latency == undefined)?"-":response[i].latency)+"'>"+((response[i].latency === "" || response[i].latency == undefined)?"-":response[i].latency)+"</td>"
 		 			    +"<td class='divTableCell' title ='"+((response[i].unidirectional === "" || response[i].unidirectional == undefined)?"-":response[i].unidirectional)+"'>"+((response[i].unidirectional === "" || response[i].unidirectional == undefined)?"-":response[i].unidirectional)+"</td>"
 		 			    +"</tr>";
 		 
@@ -62,7 +65,7 @@ function showflowData(response){
 	          }
 	 }
 	 
-	 var tableVar  =  $('#flowTable').DataTable( {
+	 tableVar  =  $('#flowTable').DataTable( {
 		 "iDisplayLength": 10,
 		 "aLengthMenu": [[10, 20, 35, 50, -1], [10, 20, 35, 50, "All"]],
 		  "responsive": true,
@@ -72,15 +75,29 @@ function showflowData(response){
 		  "aoColumns": [
 		                { sWidth: '14%' },
 		                { sWidth:  '8%' },
-		                { sWidth: '12%' },
+		                { sWidth: '8%' },
 		                { sWidth: '14%' },
 		                { sWidth: '8%' },
-		                { sWidth: '12%' },
+		                { sWidth: '8%' },
+		                { sWidth: '7%' },
 		                { sWidth: '12%' },
 		                { sWidth: '12%' },
 		                { sWidth: '12%' },
 		                { sWidth: '8%' },
-		                { sWidth: '8%' }]
+		                { sWidth: '8%' }
+		        ],
+	        "columnDefs": [
+               {
+                   "targets": [ 1 ],
+                   "visible": false,
+                   "searchable": true
+               },
+               {
+                   "targets": [ 4 ],
+                   "visible": false,
+                   "searchable": true
+               }
+           ]      
 	 });
 	 
 	 tableVar.columns().every( function () {
@@ -110,43 +127,23 @@ function showflowData(response){
 }
 
 
-function setFlowData(domObj){
+function setFlowData(data){
+	var flowData = {'source_switch':"",'src_port':"",'source_switch_name':"",'target_switch':"",'dst_port':"",'target_switch_name':"",'available_bandwidth':"",'speed':"",'state':"",'latency':"",'unidirectional':"",'cost':0};
 	
-	$(domObj).html()
-	var flowData = {'source_switch':"",'src_port':"",'source_switch_name':"",'target_switch':"",'dst_port':"",'target_switch_name':"",'available_bandwidth':"",'speed':"",'state':"",'latency':"",'unidirectional':""};
-	if($(domObj).find('td:nth-child(1)')){
-		flowData.source_switch = $(domObj).find('td:nth-child(1)').html();
-	}	
-	if($(domObj).find('td:nth-child(2)')){
-		flowData.src_port = $(domObj).find('td:nth-child(2)').html();
-	}	
-	if($(domObj).find('td:nth-child(3)')){
-		flowData.source_switch_name = $(domObj).find('td:nth-child(3)').html();
-	}	
-	if($(domObj).find('td:nth-child(4)')){
-		flowData.target_switch = $(domObj).find('td:nth-child(4)').html();
-	}	
-	if($(domObj).find('td:nth-child(5)')){
-		flowData.dst_port = $(domObj).find('td:nth-child(5)').html();
-	}	
-	if($(domObj).find('td:nth-child(6)')){
-		flowData.target_switch_name = $(domObj).find('td:nth-child(6)').html();
-	}	
-	if($(domObj).find('td:nth-child(7)')){
-		flowData.available_bandwidth = $(domObj).find('td:nth-child(7)').html();
-	}	
-	if($(domObj).find('td:nth-child(8)')){
-		flowData.state = $(domObj).find('td:nth-child(8)').html();
-	}
-	if($(domObj).find('td:nth-child(9)')){
-		flowData.speed = $(domObj).find('td:nth-child(9)').html();
-	}
-	if($(domObj).find('td:nth-child(10)')){
-		flowData.latency = $(domObj).find('td:nth-child(10)').html();
-	}
-	if($(domObj).find('td:nth-child(11)')){
-		flowData.unidirectional = $(domObj).find('td:nth-child(11)').html();
-	}
+	flowData.source_switch_name = data[0];
+	flowData.source_switch = data[1];
+	
+	flowData.src_port = data[2];
+	flowData.target_switch_name = data[3];
+	flowData.target_switch = data[4];
+	flowData.dst_port = data[5];
+	flowData.cost = data[6];
+	flowData.state = data[7];
+	flowData.speed = data[8];
+	flowData.available_bandwidth = data[9];
+	flowData.latency = data[10];
+	flowData.unidirectional = data[11];
+	
 	localStorage.setItem("linkData", JSON.stringify(flowData));
 	url = 'isl';
 	window.location = url;

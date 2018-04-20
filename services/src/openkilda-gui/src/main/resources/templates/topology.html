@@ -6,7 +6,8 @@
 <meta charset="utf-8"></meta>
 <title>OPEN KILDA</title>
 <!-- CSS Style Sheets -->
-
+<link th:href="@{css/jquery.dataTables.min.css}" rel="stylesheet"
+	type="text/css" />
 <link th:href="@{images/kilda.png}" rel="shortcut icon" type="image/png"></link>
 </head>
 <body>
@@ -109,6 +110,10 @@
 					<p class="col-sm-6 isldetails_div_destination_port"></p>
 				</div>
 				<div class="form-group row">
+					<label class="col-sm-5 col-form-label" style='font-weight: bold;'>Cost:</label>
+					<p class="col-sm-6 isldetails_div_cost"></p>
+				</div>
+					<div class="form-group row">
 					<label class="col-sm-5 col-form-label" style='font-weight: bold;'>State:</label>
 					<p class="col-sm-6 isldetails_div_state"></p>
 				</div>
@@ -143,6 +148,7 @@
 					Switch<br/>
 					<input type="checkbox" name="logical" class="isl_flow" value="logical" id="logical"/>Show Flow<br/>
 					<input type="checkbox" name="logical" class="isl_flow" value="physical" id="physical"/>Show ISL<br/>
+									
 				</div>
 				<div class="check-connections">
 					<div class="lconnection c-block">
@@ -151,6 +157,7 @@
 					<div class="pconnection c-block">
 						<span></span>Physical Connections
 					</div>
+					<span class="btn kilda_btn ml-1" data-toggle="modal" id="viewISL" data-target="#viewISLList">Affected ISL</span>
 					<div class="checkbox-btns">
 <!-- 					<button id="zoom_in" onclick="zoomClick('zoom_in')" class="ui-button ui-widget ui-corner-all">+</button>
 					<button id="zoom_out" onclick="zoomClick('zoom_out')" class="ui-button ui-widget ui-corner-all">-</button>
@@ -177,7 +184,8 @@
 		<div class="popup" id="popupDiv">
 			<span class="popuptext" id="linkDiv"></span>
 		</div>
-
+		<script th:inline="javascript" src="javascript/jquery.dataTables.min.js"></script>
+	
 		<script th:inline="javascript" src="javascript/common.js"
 		th:src="@{javascript/common.js}"></script>
 		<div th:include="fragments/importResources:: graphImports"></div>
@@ -186,8 +194,90 @@
 	</div>
 
 	<div th:replace="fragments/footer :: footer"></div>
-
-	<div id="myModal" class="modal fade" tabindex="-1" role="dialog">
+	<!-- Modal -->
+	<div class="modal confirm_modal fade" id="viewISLList" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+		<div class="modal-dialog modal-dialog-isl" role="document">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal"
+						aria-label="Close">
+						<span aria-hidden="true">&times;</span>
+					</button>
+					<h4 class="modal-title" id="myModalLabel">ISL List</h4>
+				</div>
+				<div class="modal-body col-lg-12 tab-wrapper">
+					<ul class="nav nav-pills">
+						<li class="active"><a href="#1a" data-toggle="tab">Failed</a></li>
+						<li><a href="#2a" data-toggle="tab" id="flow-list">Unidirectional</a></li>
+					</ul>
+					
+					<div class="tab-content clearfix">
+						<div class="tab-pane active" id="1a">
+							<table id="failed-isl-table" class="isl-table-popup" cellspacing="0" width="100%">
+								<thead>
+									<tr class="tableHeading">
+										<th><span title="Source Switch">Src Switch	</span>	
+										</th>
+										<th><span title="Source Port">Src Port </span>
+										</th>
+										<th><span title="Source Switch Name">Src Switch Name </span>
+										</th>
+										<th><span title="Destination Switch">Dst Switch</span>
+										</th>
+										<th><span title="Destination Port">Dst Port </span>
+										</th>
+										<th><span title="Destination Switch Name">Dst Switch Name </span>
+										</th>
+										<th><span title="Available Bandwidth">Available Bandwidth </span>
+										</th>
+				 						<th><span title="Speed">Speed</span> 
+										</th>
+										<th><span title="Latency">Latency</span> 
+										</th>
+									</tr>
+								</thead>
+								<tbody>
+								</tbody>
+							</table>
+						</div>
+						<div class="tab-pane" id="2a">
+							<table id="unidirectional-isl-table" class="isl-table-popup" cellspacing="0" width="100%">
+								<thead>
+									<tr class="tableHeading">
+										<th><span title="Source Switch">Src Switch	</span>	
+										</th>
+										<th><span title="Source Port">Src Port </span>
+										</th>
+										<th><span title="Source Switch Name">Src Switch Name </span>
+										</th>
+										<th><span title="Destination Switch">Dst Switch</span>
+										</th>
+										<th><span title="Destination Port">Dst Port </span>
+										</th>
+										<th><span title="Destination Switch Name">Dst Switch Name </span>
+										</th>
+										<th><span title="Available Bandwidth">Available Bandwidth </span>
+										</th>
+				 						<th><span title="Speed">Speed</span> 
+										</th>
+										<th><span title="Latency">Latency</span> 
+										</th>
+									</tr>
+								</thead>
+				
+								<tbody>
+								</tbody>
+							</table>
+						</div>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-default" id="cancel_isl_list_modal" data-dismiss="modal">Close</button>
+				</div>
+			</div>
+		</div>
+	</div>
+	<!-- <div id="myModal" class="modal fade" tabindex="-1" role="dialog">
 		<div class="modal-dialog link-details" role="document">
 			<div class="modal-content">
 				<div class="modal-header">
@@ -200,7 +290,7 @@
 				<div class="modal-body"></div>
 			</div>
 		</div>
-	</div>
+	</div> -->
 	
 </body>
 </html>

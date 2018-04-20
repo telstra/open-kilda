@@ -12,10 +12,12 @@
 
 /** ajax call to switch api to get switch details */
 
+var storage = new LocalStorageHandler();
+	
 var responseData = {
-	switch:{data:[],reload:false},
-	isl:{data:[],reload:false},
-	flow:{data:[],reload:false}
+	switch:{data:[]},
+	isl:{data:[]},
+	flow:{data:[]}
 };
   
 
@@ -54,11 +56,11 @@ var api = {
 				else
 				{
 					$("#wait").css("display", "none");
-					common.infoMessage('No Switch Avaliable','info');
+					common.infoMessage('No Switch Available','info');
 				}
 			},
 			error : function(errResponse) {
-				common.infoMessage('No Switch Avaliable','info');
+				common.infoMessage('No Switch Available','info');
 				$("#wait").css("display", "none");
 			},
 			dataType : "json"
@@ -305,7 +307,7 @@ graph = {
 		 
 		resize();
 		//window.focus();
-		d3.select(window).on("resize", resize);
+		//d3.select(window).on("resize", resize);
 		link = link.data(links)
 		.enter().append("path")
 		.attr("class", function(d, index) {
@@ -356,6 +358,7 @@ graph = {
 			    d3.select(".isldetails_div_latency").html("<span>" + d.latency + "</span>");
 			    d3.select(".isldetails_div_bandwidth").html("<span>" + d.available_bandwidth/1000 + " Mbps</span>");
 			    d3.select(".isldetails_div_unidirectional").html("<span>" + d.unidirectional + "</span>"); 
+			    d3.select(".isldetails_div_cost").html("<span>" + d.cost + "</span>"); 
 			    
 	        }
 	    }).on("mouseout", function(d, index) {
@@ -519,11 +522,10 @@ graph = {
 				zoomFit(0.95, 500);
 			}
 			
-			/*
+			
 			try{
-				positions = cookie.get('NODES_COORDINATES');
+				positions = storage.get('NODES_COORDINATES');
 				if(positions){
-					positions = JSON.parse(positions);
 					// control the coordinates here
 				    d3.selectAll("g.node").attr("transform", function(d){
 				    	try{
@@ -539,7 +541,7 @@ graph = {
 				}
 			}catch(e){
 				console.log(e);
-			} */
+			} 
 		});
 		
 		force.on("tick", tick);
@@ -791,7 +793,7 @@ function reset() {
     });
 	force.resume();
 	panzoom.reset();
-	cookie.delete("NODES_COORDINATES");
+	storage.remove("NODES_COORDINATES");
 }
 
 function zoomClick(id) {
@@ -811,7 +813,7 @@ function dblclick(d,index) {
     element.setAttribute("class", classes);
     doubleClickTime = new Date();
     d3.select(this).classed("fixed", d.fixed = false);
-    force.resume();
+    //force.resume();
 }
 function dragstart(d) {
 	force.stop()
@@ -867,7 +869,8 @@ function updateCoordinates(){
 	nodes.forEach(function(d){
 		coordinates[d.switch_id] = [Math.round(d.x * 100) / 100, Math.round(d.y * 100) / 100];
 	})
-	cookie.set('NODES_COORDINATES', JSON.stringify(coordinates));
+	
+	storage.set('NODES_COORDINATES', coordinates);
 }
 
 function resize() {
@@ -882,7 +885,7 @@ function resize() {
 
 function showFlowDetails(d) {
 
-	url = 'flows#'+d.source_switch+'|'+d.target_switch;
+	url = 'flows#'+encodeURIComponent(d.source_switch_name)+'|'+encodeURIComponent(d.target_switch_name);
 	window.location = url;
 }
 
@@ -906,7 +909,7 @@ var options = {
 }
 
 var panzoom = $("svg").svgPanZoom(options);
-localStorage.clear();
+//localStorage.clear();
 var parentRect;
 var childRect;
 function HorizontallyBound(parentDiv, childDiv) {
@@ -989,6 +992,78 @@ $('#auto_refresh').click(function(e){
 		REFRESH_TYPE : $("#m_s_dropdown").val()
 	});
 });
+
+$('#viewISL').click(function(e){
+	try{
+		var isl = responseData.isl.data;
+		var unidirectional = [];
+		var failed = [];
+		for(var i=0,len=isl.length;i<len;i++){
+			if (isl[i].unidirectional){
+				unidirectional.push(isl[i]);
+	        } 
+			if(isl[i].state && isl[i].state.toLowerCase()== "failed"){
+				failed.push(isl[i]);
+			}
+		}
+		setISLData(failed, "failed-isl-table");
+		setISLData(unidirectional, "unidirectional-isl-table");
+	}catch(e){
+		console.log(e);
+	}
+});
+
+function setISLData(response,id){
+	
+	for(var i = 0; i < response.length; i++) {
+		 var tableRow = "<tr id='div_"+(i+1)+"' class='flowDataRow'>"
+		 			    +"<td class='divTableCell' title ='"+((response[i].source_switch === "" || response[i].source_switch == undefined)?"-":response[i].source_switch)+"'>"+((response[i].source_switch === "" || response[i].source_switch == undefined)?"-":response[i].source_switch)+"</td>"
+		 			    +"<td class='divTableCell' title ='"+((response[i].src_port === "" || response[i].src_port == undefined)?"-":response[i].src_port)+"'>"+((response[i].src_port === "" || response[i].src_port == undefined)?"-":response[i].src_port)+"</td>"
+		 			    +"<td class='divTableCell' title ='"+((response[i].source_switch_name === "" || response[i].source_switch_name == undefined)?"-":response[i].source_switch_name)+"'>"+((response[i].source_switch_name === "" || response[i].source_switch_name == undefined)?"-":response[i].source_switch_name)+"</td>"
+		 			    +"<td class='divTableCell' title ='"+((response[i].target_switch === "" || response[i].target_switch == undefined)?"-":response[i].target_switch)+"'>"+((response[i].target_switch === "" || response[i].target_switch == undefined)?"-":response[i].target_switch)+"</td>"
+		 			    +"<td class='divTableCell' title ='"+((response[i].dst_port === "" || response[i].dst_port == undefined)?"-":response[i].dst_port)+"'>"+((response[i].dst_port === "" || response[i].dst_port == undefined)?"-":response[i].dst_port)+"</td>"
+		 			    +"<td class='divTableCell' title ='"+((response[i].target_switch_name === "" || response[i].target_switch_name == undefined)?"-":response[i].target_switch_name)+"'>"+((response[i].target_switch_name === "" || response[i].target_switch_name == undefined)?"-":response[i].target_switch_name)+"</td>"
+		 			    +"<td class='divTableCell' title ='"+((response[i].available_bandwidth === "" || response[i].available_bandwidth == undefined)?"-":response[i].available_bandwidth/1000 +" Mbps")+"'> "+ ((response[i].available_bandwidth === "" || response[i].available_bandwidth == undefined)?"-":response[i].available_bandwidth/1000 + " Mbps")+"</td>"
+		 			    +"<td class='divTableCell' title ='"+((response[i].speed === "" || response[i].speed == undefined)?"-":response[i].speed/1000 +" Mbps")+"'> "+ ((response[i].speed === "" || response[i].speed == undefined)?"-":response[i].speed/1000 + " Mbps")+"</td>"+"<td class='divTableCell' title ='"+((response[i].latency === "" || response[i].latency == undefined)?"-":response[i].latency)+"'>"+((response[i].latency === "" || response[i].latency == undefined)?"-":response[i].latency)+"</td>"
+		 			    +"</tr>";
+		 
+		 	 $('#'+id).append(tableRow);
+ 	 }
+	 
+	 var tableVar  =  $('#'+id).DataTable( {
+		 "iDisplayLength": 8,
+		 "aLengthMenu": false,
+		 "bInfo":false,    
+		  "responsive": true,
+		  "bSortCellsTop": true,
+		  "autoWidth": false,
+		  destroy:true,
+		  language: {searchPlaceholder: "Search"},
+		  "aoColumns": [
+		                { sWidth: '14%' },
+		                { sWidth:  '8%' },
+		                { sWidth: '10%' },
+		                { sWidth: '14%' },
+		                { sWidth: '8%' },
+		                { sWidth: '10%' },
+		                { sWidth: '12%' },
+		                { sWidth: '8%' },
+		                { sWidth: '8%' }]
+	 });
+	 
+	 tableVar.columns().every( function () {
+
+		 
+	 var that = this;
+	 $( 'input', this.header() ).on( 'keyup change', function () {
+	      if ( that.search() !== this.value ) {
+	             that.search(this.value).draw();
+	         }
+	     } );
+	 } );
+	 $('#'+id).show();
+}
+
 
 $('.isl_flow').click(function(e){
 	var id = $(this).attr("id");

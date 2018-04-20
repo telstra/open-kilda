@@ -1,9 +1,10 @@
 package org.openkilda.floodlight.kafka;
 
-import static org.openkilda.messaging.Utils.MAPPER;
 import static java.util.Arrays.asList;
+import static org.openkilda.messaging.Utils.MAPPER;
 
-
+import net.floodlightcontroller.core.IOFSwitch;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.openkilda.floodlight.converter.IOFSwitchConverter;
 import org.openkilda.floodlight.converter.OFFlowStatsConverter;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
@@ -25,6 +26,7 @@ import org.openkilda.messaging.command.flow.InstallTransitFlow;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
+import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.command.switches.DumpRulesRequest;
 import org.openkilda.messaging.command.switches.InstallRulesAction;
 import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
@@ -46,16 +48,17 @@ import org.openkilda.messaging.info.switches.ConnectModeResponse;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
 
-import net.floodlightcontroller.core.IOFSwitch;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
-import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.util.*;
+
+import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 class RecordHandler implements Runnable {
@@ -440,55 +443,55 @@ class RecordHandler implements Runnable {
 
     private void doDeleteSwitchRules(final CommandMessage message, String replyToTopic, Destination replyDestination) {
         SwitchRulesDeleteRequest request = (SwitchRulesDeleteRequest) message.getData();
-        logger.debug("Deleting rules from '{}' switch: action={}", request.getSwitchId(), request.getDeleteRulesAction());
+        logger.debug("Deleting rules from '{}' switch: action={}, criteria={}", request.getSwitchId(),
+                request.getDeleteRulesAction(), request.getCriteria());
 
         DatapathId dpid = DatapathId.of(request.getSwitchId());
-        ISwitchManager switchManager = context.getSwitchManager();
         DeleteRulesAction deleteAction = request.getDeleteRulesAction();
-        List<Long> removedRules = new ArrayList<>();
+
+        ISwitchManager switchManager = context.getSwitchManager();
+
         try {
-            /*
-             * This first part .. we are either deleting one rule, or all non-default rules (the else)
-             */
-            List<Long> toRemove = new ArrayList<>();
-            if (deleteAction == DeleteRulesAction.ONE ) {
-                toRemove.add(request.getOneCookie());
-            } else if (deleteAction == DeleteRulesAction.REMOVE_DROP) {
-                toRemove.add(ISwitchManager.DROP_RULE_COOKIE);
-            } else if (deleteAction == DeleteRulesAction.REMOVE_BROADCAST) {
-                toRemove.add(ISwitchManager.VERIFICATION_BROADCAST_RULE_COOKIE);
-            } else if (deleteAction == DeleteRulesAction.REMOVE_UNICAST) {
-                toRemove.add(ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE);
-            } else if (deleteAction == DeleteRulesAction.REMOVE_DEFAULTS
-                    || deleteAction == DeleteRulesAction.REMOVE_ADD) {
-                toRemove.add(ISwitchManager.DROP_RULE_COOKIE);
-                toRemove.add(ISwitchManager.VERIFICATION_BROADCAST_RULE_COOKIE);
-                toRemove.add(ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE);
+            List<Long> removedRules = new ArrayList<>();
+
+            // The case when we either delete by criteria or a specific default rule.
+            DeleteRulesCriteria criteria = request.getCriteria();
+            if(deleteAction != null) {
+                switch (deleteAction) {
+                    case REMOVE_DROP:
+                        criteria = DeleteRulesCriteria.builder()
+                                .cookie(ISwitchManager.DROP_RULE_COOKIE).build();
+                        break;
+                    case REMOVE_BROADCAST:
+                        criteria = DeleteRulesCriteria.builder()
+                                .cookie(ISwitchManager.VERIFICATION_BROADCAST_RULE_COOKIE).build();
+                        break;
+                    case REMOVE_UNICAST:
+                        criteria = DeleteRulesCriteria.builder()
+                                .cookie(ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE).build();
+                        break;
+                }
+            }
+            if (criteria != null) {
+                removedRules.addAll(switchManager.deleteRulesByCriteria(dpid, criteria));
             }
 
-            // toRemove is > 0 only if we are trying to delete base rule(s).
-            if (toRemove.size() > 0) {
-                removedRules.addAll(switchManager.deleteRuleWithCookie(dpid, toRemove));
-                if (deleteAction == DeleteRulesAction.REMOVE_ADD) {
-                    switchManager.installDefaultRules(dpid);
-                }
-            } else {
+            // The cases when we delete the default rules.
+            if (EnumSet.of(DeleteRulesAction.DROP_ALL, DeleteRulesAction.DROP_ALL_ADD_DEFAULTS,
+                    DeleteRulesAction.REMOVE_DEFAULTS, DeleteRulesAction.REMOVE_ADD_DEFAULTS).contains(deleteAction)) {
+                removedRules.addAll(switchManager.deleteDefaultRules(dpid));
+            }
+
+            // The cases when we delete all non-default rules.
+            if (EnumSet.of(DeleteRulesAction.DROP_ALL, DeleteRulesAction.DROP_ALL_ADD_DEFAULTS,
+                    DeleteRulesAction.IGNORE_DEFAULTS, DeleteRulesAction.OVERWRITE_DEFAULTS).contains(deleteAction)) {
                 removedRules.addAll(switchManager.deleteAllNonDefaultRules(dpid));
-                /*
-                 * The Second part - only for a subset of actions.
-                 */
-                if (deleteAction == DeleteRulesAction.DROP) {
-                    List<Long> removedDefaultRules = switchManager.deleteDefaultRules(dpid);
-                    // Return removedDefaultRules as a part of the result list.
-                    removedRules.addAll(removedDefaultRules);
+            }
 
-                } else if (deleteAction == DeleteRulesAction.DROP_ADD) {
-                    switchManager.deleteDefaultRules(dpid);
-                    switchManager.installDefaultRules(dpid);
-
-                } else if (deleteAction == DeleteRulesAction.OVERWRITE) {
-                    switchManager.installDefaultRules(dpid);
-                }
+            // The case when we (re)install the default rules.
+            if (EnumSet.of(DeleteRulesAction.DROP_ALL_ADD_DEFAULTS, DeleteRulesAction.REMOVE_ADD_DEFAULTS,
+                    DeleteRulesAction.OVERWRITE_DEFAULTS).contains(deleteAction)) {
+                switchManager.installDefaultRules(dpid);
             }
 
             SwitchRulesResponse response = new SwitchRulesResponse(removedRules);

@@ -1,5 +1,17 @@
 package org.openkilda.integration.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpMethod;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+import org.springframework.web.util.UriComponentsBuilder;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
@@ -26,13 +38,6 @@ import org.openkilda.utility.ApplicationProperties;
 import org.openkilda.utility.CollectionUtil;
 import org.openkilda.utility.IoUtil;
 import org.openkilda.utility.JsonUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpMethod;
-import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
-import org.springframework.web.util.UriComponentsBuilder;
 
 /**
  * The Class SwitchIntegrationService.
@@ -55,6 +60,9 @@ public class SwitchIntegrationService {
 
     @Autowired
     private IslLinkConverter islLinkConverter;
+
+    @Autowired
+    ObjectMapper objectMapper;
 
     /**
      * Gets the switches.
@@ -129,17 +137,32 @@ public class SwitchIntegrationService {
             if (CollectionUtil.isEmpty(links)) {
                 throw new ContentNotFoundException();
             }
-            return islLinkConverter.toIslLinksInfo(links);
+           
+            return islLinkConverter.toIslLinksInfo(links,islCostMap());
         }
         return null;
     }
+    
+   private Map<String,String> islCostMap(){
+    List<LinkProps> linkProps = getIslLinkProps(null);
+    Map<String,String> islCostMap = new HashMap<>();
+    linkProps.forEach(linkProp -> {
+        String key = linkProp.getSrc_switch()+"-"+ linkProp.getSrc_port()+"-"+linkProp.getDst_switch()+"-"+linkProp.getDst_port();
+        String value = linkProp.getProperty("cost");
+        islCostMap.put(key, value);
+    });
+    
+    return islCostMap;
+    
+    }
+    
 
     /**
      * Gets the isl link cost.
      *
      * @return the isl link cost
      */
-    public LinkProps getIslLinkProps(LinkProps keys) {
+    public List<LinkProps> getIslLinkProps(LinkProps keys) {
         UriComponentsBuilder builder =
                 UriComponentsBuilder.fromHttpUrl(applicationProperties.getLinkProps());
         builder = setLinkProps(keys, builder);
@@ -147,12 +170,12 @@ public class SwitchIntegrationService {
         HttpResponse response = restClientManager.invoke(fullUri, HttpMethod.GET, "", "",
                 applicationService.getAuthHeader());
         if (RestClientManager.isValidResponse(response)) {
-            List<LinkProps> linkPropsResponse =
+            List<LinkProps> linkPropsResponses =
                     restClientManager.getResponseList(response, LinkProps.class);
-            if (CollectionUtil.isEmpty(linkPropsResponse)) {
+            if (CollectionUtil.isEmpty(linkPropsResponses)) {
                 throw new ContentNotFoundException();
             } else {
-                return linkPropsResponse.get(0);
+                return linkPropsResponses;
             }
         }
         return null;
@@ -165,9 +188,10 @@ public class SwitchIntegrationService {
      * @throws IntegrationException
      */
     public List<PortInfo> getSwitchPorts(final String switchId) throws IntegrationException {
+        HttpResponse response = null;
         try {
-            HttpResponse response = restClientManager.invoke(applicationProperties.getSwitchPorts(),
-                    HttpMethod.GET, "", "", "");
+//            HttpResponse response = restClientManager.invoke(applicationProperties.getSwitchPorts(),
+//                    HttpMethod.GET, "", "", "");
             if (RestClientManager.isValidResponse(response)) {
                 String responseEntity = IoUtil.toString(response.getEntity().getContent());
                 JSONObject jsonObject = JsonUtil.toObject(responseEntity, JSONObject.class);
@@ -214,24 +238,18 @@ public class SwitchIntegrationService {
      * 
      * @param keys
      * @return link props
+     * @throws JsonProcessingException
      */
-    public LinkProps updateIslLinkProps(LinkProps keys) {
-        UriComponentsBuilder builder =
-                UriComponentsBuilder.fromHttpUrl(applicationProperties.getLinkProps());
-        builder = setLinkProps(keys, builder);
-        String fullUri = builder.build().toUriString();
-        HttpResponse response = restClientManager.invoke(fullUri, HttpMethod.PUT, "", "",
-                applicationService.getAuthHeader());
-        if (RestClientManager.isValidResponse(response)) {
-            List<LinkProps> linkPropsResponse =
-                    restClientManager.getResponseList(response, LinkProps.class);
-            if (CollectionUtil.isEmpty(linkPropsResponse)) {
-                throw new ContentNotFoundException();
-            } else {
-                return linkPropsResponse.get(0);
-            }
+    public String updateIslLinkProps(List<LinkProps> keys) {
+        try {
+            HttpResponse response = restClientManager.invoke(applicationProperties.getLinkProps(),
+                    HttpMethod.PUT, objectMapper.writeValueAsString(keys), "application/json",
+                    applicationService.getAuthHeader());
+            return IoUtil.toString(response.getEntity().getContent());
+        } catch (Exception e) {
+            LOGGER.error("Inside updateIslLinkProps  Exception :", e);
+            throw new IntegrationException(e);
         }
-        return null;
     }
 
     /**

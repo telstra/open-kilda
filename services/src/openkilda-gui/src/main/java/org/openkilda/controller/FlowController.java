@@ -8,6 +8,7 @@ import javax.servlet.http.HttpServletRequest;
 
 import org.openkilda.constants.IConstants;
 import org.openkilda.integration.model.Flow;
+import org.openkilda.integration.model.FlowStatus;
 import org.openkilda.model.FlowCount;
 import org.openkilda.model.FlowInfo;
 import org.openkilda.model.FlowPath;
@@ -142,5 +143,18 @@ public class FlowController extends BaseController {
     public @ResponseBody Flow getFlowById(@PathVariable final String flowId) {
         LOGGER.info("[getFlowById] - start. Flow id: " + flowId);
         return flowService.getFlowById(flowId);
+    }
+
+    /**
+     * Get flow Status by Id
+     * 
+     * @param flowId id of flow requested.
+     * @return flow
+     */
+    @RequestMapping(value = "/{flowId}/status", method = RequestMethod.GET)
+    @ResponseStatus(HttpStatus.OK)
+    public @ResponseBody FlowStatus getFlowStatusById(@PathVariable final String flowId) {
+        LOGGER.info("[getFlowStatusById] - start. Flow id: " + flowId);
+        return flowService.getFlowStatusById(flowId);
     }
 }

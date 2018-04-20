@@ -67,20 +67,18 @@ public class FlowsIntegrationService {
 
 
     /**
-     * Gets the flow status.
+     * Gets the flow status by Id.
      *
      * @param flowId the flow id
      * @return the flow status
      * @throws IntegrationException
      */
-    public String getFlowStatus(final String flowId) throws IntegrationException {
-        FlowStatus flowStatus = null;
+    public FlowStatus getFlowStatusById(final String flowId) throws IntegrationException {
         HttpResponse response =
                 restClientManager.invoke(applicationProperties.getFlowStatus() + flowId,
                         HttpMethod.GET, "", "", applicationService.getAuthHeader());
         if (RestClientManager.isValidResponse(response)) {
-            flowStatus = restClientManager.getResponse(response, FlowStatus.class);
-            return flowStatus.getStatus();
+            return restClientManager.getResponse(response, FlowStatus.class);
         }
         return null;
     }

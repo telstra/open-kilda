@@ -18,6 +18,7 @@ package org.openkilda.floodlight.switchmanager;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
+import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFMeterConfigStatsReply;
@@ -216,7 +217,7 @@ public interface ISwitchManager extends IFloodlightService {
      * @return the list of cookies for removed rules
      * @throws SwitchOperationException Switch not found
      */
-    List<Long> deleteAllNonDefaultRules(final DatapathId dpid) throws SwitchOperationException;
+    List<Long> deleteAllNonDefaultRules(DatapathId dpid) throws SwitchOperationException;
 
     /**
      * Deletes the default rules (drop + verification) from the switch
@@ -225,17 +226,17 @@ public interface ISwitchManager extends IFloodlightService {
      * @return the list of cookies for removed rules
      * @throws SwitchOperationException Switch not found
      */
-    List<Long> deleteDefaultRules(final DatapathId dpid) throws SwitchOperationException;
+    List<Long> deleteDefaultRules(DatapathId dpid) throws SwitchOperationException;
 
     /**
-     * Delete rules that match the list of cookies
+     * Delete rules that match the criteria
      *
      * @param dpid datapath ID of the switch
-     * @param cookiesToRemove the list of cookies (rules) to remove
-     * @return the list of cookies for removed rules
+     * @param criteria the list of delete criteria
+     * @return the list of removed cookies
      * @throws SwitchOperationException Switch not found
      */
-    List<Long> deleteRuleWithCookie(final DatapathId dpid, final List<Long> cookiesToRemove) throws SwitchOperationException;
+    List<Long> deleteRulesByCriteria(DatapathId dpid, DeleteRulesCriteria... criteria) throws SwitchOperationException;
 
     /**
      * Safely install default rules - ie monitor traffic.

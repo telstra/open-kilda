@@ -36,10 +36,10 @@ public class SwitchRulesDeleteRequest extends CommandData {
     private DeleteRulesAction deleteRulesAction;
 
     /**
-     * Used for deleting one switch rule .. doesn't have to be a default rule.
+     * Used for deleting specific switch rule .. doesn't have to be a default rule.
      */
-    @JsonProperty("one_cookie")
-    private Long oneCookie;
+    @JsonProperty("criteria")
+    private DeleteRulesCriteria criteria;
 
     /**
      * Constructs a delete switch rules request.
@@ -51,17 +51,17 @@ public class SwitchRulesDeleteRequest extends CommandData {
     public SwitchRulesDeleteRequest(
             @JsonProperty("switch_id") String switchId,
             @JsonProperty("delete_rules") DeleteRulesAction deleteRulesAction,
-            @JsonProperty("one_cookie") Long oneCookie
+            @JsonProperty("criteria") DeleteRulesCriteria criteria
     ) {
         this.switchId = Objects.requireNonNull(switchId, "switch_id must not be null");
         if (!Utils.validateSwitchId(switchId)) {
             throw new IllegalArgumentException("switch_id has invalid value");
         }
 
-        this.deleteRulesAction = Objects.requireNonNull(deleteRulesAction);
-        // NB: oneCookie is only needed if DeleteRulesAction.ONE
-        if (this.deleteRulesAction == DeleteRulesAction.ONE) {
-            this.oneCookie = Objects.requireNonNull(oneCookie);
+        this.deleteRulesAction = deleteRulesAction;
+        // NB: criteria is only needed if deleteRulesAction is not provided
+        if (deleteRulesAction == null) {
+            this.criteria = Objects.requireNonNull(criteria);
         }
     }
 
@@ -73,8 +73,8 @@ public class SwitchRulesDeleteRequest extends CommandData {
         return deleteRulesAction;
     }
 
-    public Long getOneCookie() {
-        return oneCookie;
+    public DeleteRulesCriteria getCriteria() {
+        return criteria;
     }
 
     @Override
@@ -83,7 +83,7 @@ public class SwitchRulesDeleteRequest extends CommandData {
                 .add(TIMESTAMP, timestamp)
                 .add("switch_id", switchId)
                 .add("delete_rules", deleteRulesAction)
-                .add("one_cookie", oneCookie)
+                .add("criteria", criteria)
                 .toString();
     }
 }
