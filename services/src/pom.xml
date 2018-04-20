@@ -18,6 +18,7 @@
 
         <apache.kafka.version>0.10.2.1</apache.kafka.version>
         <checkstyle.version>7.7</checkstyle.version>
+        <commons.cli.version>1.4</commons.cli.version>
         <commons.codec.version>1.10</commons.codec.version>
         <cucumber.version>1.2.5</cucumber.version>
         <easymock.version>3.4</easymock.version>
