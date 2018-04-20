@@ -345,7 +345,8 @@ class MessageItem(object):
             flow_utils.precreate_isls(tx, isl)
             self.deactivate_isl(tx, isl.source.dpid, isl.source.port)
             self.isl_update_status(tx, isl)
-            self.isl_set_cost(tx, isl, config.ISL_COST_WHEN_DOWN)
+            # TODO: (crimi) Reinstate set_cost once default action is determined .. should be policy / toggle based
+            # self.isl_set_cost(tx, isl, config.ISL_COST_WHEN_DOWN)
 
     def deactivate_isl(self, tx, src_switch, src_port):
         """
