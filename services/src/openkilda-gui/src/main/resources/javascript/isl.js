@@ -119,6 +119,13 @@ function showLinkDetails(linkData,costData) {
 		$('#isl_cost_obj').val(JSON.stringify(costData));
 	}else{
 		$(".isl_div_cost").html("-")
+		var noCostData ={"src_switch":linkData.source_switch,
+			"src_port":linkData.src_port,
+			"dst_switch":linkData.target_switch,
+			"dst_port":linkData.dst_port,
+			"props":{"cost":""}
+	}
+		$('#isl_cost_obj').val(JSON.stringify(noCostData));
 	}
 	
 }
