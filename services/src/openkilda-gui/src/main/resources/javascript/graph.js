@@ -230,17 +230,17 @@ graph = {
 					
 					if(row.length>1){
 						for(var j=0,len1=row.length;j<len1;j++){
-							if(row[j].state.toLowerCase()=="failed"){
+							if(row[j].unidirectional && row[j].state.toLowerCase()=="discovered"){
+								row[0].unidirectionalObj.count++;
+								row[0].unidirectionalObj.isl.push(row[j]);
+							}
+							else if(row[j].state.toLowerCase()=="failed"){
 								row[0].failedObj.count++;
 								row[0].failedObj.isl.push(row[j]);
 							}
-							if(row[j].state.toLowerCase()=="discovered"){
+							else if(row[j].state.toLowerCase()=="discovered"){
 								row[0].discoveredObj.count++;
 								row[0].discoveredObj.isl.push(row[j]);
-							}
-							if(row[j].unidirectional){
-								row[0].unidirectionalObj.count++;
-								row[0].unidirectionalObj.isl.push(row[j]);
 							}
 						}
 					}
@@ -314,7 +314,7 @@ graph = {
 	        if (d.hasOwnProperty("flow_count")) {
 	            return "link logical";
 	        } else {
-	            if (d.unidirectional || d.state && d.state.toLowerCase()== "failed"){
+	            if (d.unidirectional && d.state && d.state.toLowerCase()== "discovered" || d.state && d.state.toLowerCase()== "failed"){
                     return "link physical down";
                 }else{
                     return "link physical";
@@ -330,7 +330,7 @@ graph = {
 	        if (d.hasOwnProperty("flow_count")) {
 	        	element.setAttribute("class", "link logical overlay");
 	        } else {
-	            if (d.unidirectional || d.state && d.state.toLowerCase()== "failed"){
+	            if (d.unidirectional && d.state && d.state.toLowerCase()== "discovered" || d.state && d.state.toLowerCase()== "failed"){
                     element.setAttribute("class","link physical pathoverlay");
                 }else{
                 	element.setAttribute("class","link physical overlay");
@@ -349,24 +349,24 @@ graph = {
 	            })
 	            var rec = element.getBoundingClientRect();
 			    $('#topology-hover-txt, #isl_hover').css('display', 'block');
-			    d3.select(".isldetails_div_source_port").html("<span>" + d.src_port + "</span>");
-			    d3.select(".isldetails_div_destination_port").html("<span>" + d.dst_port + "</span>");
-			    d3.select(".isldetails_div_source_switch").html("<span>" + d.source_switch_name + "</span>");
-			    d3.select(".isldetails_div_destination_switch").html("<span>" + d.target_switch_name + "</span>");
-			    d3.select(".isldetails_div_speed").html("<span>" + d.speed/1000 + " Mbps</span>");
-			    d3.select(".isldetails_div_state").html("<span>" + d.state + "</span>");
-			    d3.select(".isldetails_div_latency").html("<span>" + d.latency + "</span>");
-			    d3.select(".isldetails_div_bandwidth").html("<span>" + d.available_bandwidth/1000 + " Mbps</span>");
-			    d3.select(".isldetails_div_unidirectional").html("<span>" + d.unidirectional + "</span>"); 
-			    d3.select(".isldetails_div_cost").html("<span>" + d.cost + "</span>"); 
-			    
+			    d3.select(".isldetails_div_source_port").html("<span>" + ((d.src_port=="" || d.src_port == undefined)? "-":d.src_port) + "</span>");
+			    d3.select(".isldetails_div_destination_port").html("<span>" + ((d.dst_port=="" || d.dst_port == undefined)? "-":d.dst_port) + "</span>");
+			    d3.select(".isldetails_div_source_switch").html("<span>" + ((d.source_switch_name=="" || d.source_switch_name == undefined)? "-":d.source_switch_name) + "</span>");
+			    d3.select(".isldetails_div_destination_switch").html("<span>" +  ((d.target_switch_name=="" || d.target_switch_name == undefined)? "-":d.target_switch_name)+ "</span>");
+			    d3.select(".isldetails_div_speed").html("<span>" + ((d.speed=="" || d.speed == undefined)? "-":d.speed/1000) + " Mbps</span>");
+			    d3.select(".isldetails_div_state").html("<span>" + ((d.state=="" || d.state == undefined)? "-":d.state) + "</span>");
+			    d3.select(".isldetails_div_latency").html("<span>" + ((d.latency=="" || d.latency == undefined)? "-":d.latency) + "</span>");
+			    d3.select(".isldetails_div_bandwidth").html("<span>" + ((d.available_bandwidth=="" || d.available_bandwidth == undefined)? "-":d.available_bandwidth/1000) + " Mbps</span>");
+			    d3.select(".isldetails_div_unidirectional").html("<span>" + ((d.unidirectional=="" || d.unidirectional == undefined)? "-":d.unidirectional) + "</span>"); 
+			    d3.select(".isldetails_div_cost").html("<span>" + ((d.cost=="" || d.cost == undefined)? "-":d.cost) + "</span>"); 
+			      
 	        }
 	    }).on("mouseout", function(d, index) {
 	        var element = $("#link" + index)[0];
 	        if (d.hasOwnProperty("flow_count")) {
 	        	element.setAttribute("class", "link logical");
 	        } else {
-	            if (d.unidirectional || d.state && d.state.toLowerCase()== "failed"){
+	            if (d.unidirectional && d.state && d.state.toLowerCase()== "discovered" || d.state && d.state.toLowerCase()== "failed"){
 	                element.setAttribute("class","link physical down");
 	            }else{
 	                element.setAttribute("class","link physical");
@@ -383,7 +383,7 @@ graph = {
 	        	showFlowDetails(d);
 	        } else {
 	            
-	            if (d.unidirectional || d.state && d.state.toLowerCase()== "failed"){
+	            if (d.unidirectional && d.state && d.state.toLowerCase()== "discovered" || d.state && d.state.toLowerCase()== "failed"){
                     element.setAttribute("class","link physical pathoverlay");
                 }else{
                     element.setAttribute("class","link physical overlay");
@@ -394,7 +394,7 @@ graph = {
 	        if (d.hasOwnProperty("flow_count")) {
 	            return "#228B22";
 	        } else {
-	            if (d.unidirectional){
+	            if (d.unidirectional && d.state && d.state.toLowerCase()== "discovered"){
                     return ISL.UNIDIR;
                 } else if(d.state && d.state.toLowerCase()== "discovered"){
                     return ISL.DISCOVERED;
@@ -999,10 +999,10 @@ $('#viewISL').click(function(e){
 		var unidirectional = [];
 		var failed = [];
 		for(var i=0,len=isl.length;i<len;i++){
-			if (isl[i].unidirectional){
+			if (isl[i].unidirectional && isl[i].state && isl[i].state.toLowerCase()== "discovered"){
 				unidirectional.push(isl[i]);
 	        } 
-			if(isl[i].state && isl[i].state.toLowerCase()== "failed"){
+			else if(isl[i].state && isl[i].state.toLowerCase()== "failed"){
 				failed.push(isl[i]);
 			}
 		}
@@ -1284,7 +1284,7 @@ var interval = {
 							    
 							    var stroke = ISL.FAILED;
 							    
-							    if (d.unidirectional){
+							    if (d.unidirectional && d.state && d.state.toLowerCase()== "discovered"){
 				                    stroke = ISL.UNIDIR;
 				                } else if(d.state && d.state.toLowerCase()== "discovered"){
 				                	stroke = ISL.DISCOVERED;
