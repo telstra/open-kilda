@@ -1,7 +1,7 @@
 package org.openkilda.wfm.isl;
 
 import org.openkilda.messaging.model.DiscoveryNode;
-import org.openkilda.wfm.topology.stats.StatsTopology;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,7 +29,7 @@ import java.util.ListIterator;
  *          and want to send discovery again, is there a clean way to do this?
  */
 public class DiscoveryManager {
-    private final Logger logger = LoggerFactory.getLogger(StatsTopology.class);
+    private final Logger logger = LoggerFactory.getLogger(DiscoveryManager.class);
 
     private final IIslFilter filter;
     /** the frequency with which we should check if the ISL is healthy or existant */
