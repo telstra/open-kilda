@@ -44,9 +44,8 @@ ADD config/hosts /etc/ansible/hosts
 ################################
 #Install Java8 in base container
 ################################
-RUN add-apt-repository "deb http://ppa.launchpad.net/webupd8team/java/ubuntu yakkety main"
-RUN apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys EEA14886
-RUN apt-get update
+RUN add-apt-repository ppa:webupd8team/java \
+    && apt-get update
 RUN echo oracle-java8-installer shared/accepted-oracle-license-v1-1 select true | /usr/bin/debconf-set-selections
 RUN apt-get install -y oracle-java8-installer
 ENV JAVA_VER 8
