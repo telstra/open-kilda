@@ -38,10 +38,19 @@ public class ParsePortInfoBolt extends BaseRichBolt {
         try {
             if (tuple.getValueByField(TopoDiscoParseBolt.FIELD_NAME) instanceof PortInfoData) {
                 try {
-                    List<Object> result = makeTsdbDatapoint(
-                            (PortInfoData) tuple.getValueByField(TopoDiscoParseBolt.FIELD_NAME));
-                    logger.debug("Emitting: {}", result);
-                    collector.emit(result);
+                    PortInfoData port = (PortInfoData) tuple
+                            .getValueByField(TopoDiscoParseBolt.FIELD_NAME);
+
+                    if (getStateAsInt(port) >= 0) {
+                        List<Object> result = makeTsdbDatapoint(port);
+                        logger.debug("Emitting: {}", result);
+                        collector.emit(result);
+                    }
+                    else if(logger.isDebugEnabled()) {
+                        List<Object> result = makeTsdbDatapoint(port);
+                        logger.debug("Skip: {}", result);
+                    }
+
                 } catch (IOException e) {
                     logger.error("Error creating tsdbDatapoint for: {}", tuple.toString(), e);
                 }
@@ -59,7 +68,18 @@ public class ParsePortInfoBolt extends BaseRichBolt {
     }
 
     private int getStateAsInt(PortInfoData data) {
-        return data.getState() == PortChangeType.UP ? 1 : 0;
+
+        PortChangeType state = data.getState();
+
+        if (state.equals(PortChangeType.UP) || state.equals(PortChangeType.ADD)) {
+            return 1;
+        }
+
+        if (state.equals(PortChangeType.DOWN) || state.equals(PortChangeType.DELETE)) {
+            return 0;
+        }
+
+        return -1; // We skip others state here
     }
 
     private static List<Object> tsdbTuple(String metric, long timestamp, Number value, Map<String, String> tag)
