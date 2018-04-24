@@ -20,8 +20,69 @@ import py2neo
 
 from topologylistener import db
 from topologylistener import exc
+from topologylistener import model
 
 logger = logging.getLogger(__name__)
+
+
+def fetch(tx, isl):
+    match = _make_match(isl)
+    q = textwrap.dedent("""
+        MATCH
+          (:switch {name: $src_switch})
+          -
+          [target:isl {
+            src_switch: $src_switch,
+            src_port: $src_port,
+            dst_switch: $dst_switch,
+            dst_port: $dst_port
+          }]
+          ->
+          (:switch {name: $dst_switch})
+        RETURN target""")
+
+    logger.debug('link_props lookup query:\n%s', q)
+    cursor = tx.run(q, match)
+
+    try:
+        target = db.fetch_one(cursor)['target']
+    except exc.DBEmptyResponse:
+        raise exc.DBRecordNotFound(q, match)
+
+    return target
+
+
+def fetch_by_endpoint(tx, endpoint):
+    q = (
+        'MATCH (src:switch)-[link:isl]->(dst:switch)\n'
+        'WHERE src.name=$src_dpid AND link.src_port=$src_port\n'
+        'RETURN src, link, dst')
+    p = {
+        'src_dpid': endpoint.dpid,
+        'src_port': endpoint.port}
+    cursor = tx.run(q, p)
+
+    try:
+        result_set = db.fetch_one(cursor)
+    except exc.DBEmptyResponse:
+        raise exc.DBRecordNotFound(q, p)
+
+    src_sw, isl, dst_sw = result_set['src'], result_set['link'], result_set['dst']
+    return model.InterSwitchLink.new_from_db(src_sw, dst_sw, isl)
+
+
+def set_cost(tx, isl, cost):
+    props = {'cost': cost}
+    try:
+        changed = set_link_props(tx, isl, props)
+    except exc.DBRecordNotFound:
+        changed = set_props(tx, isl, props)
+
+    original_cost = changed.get('cost')
+    if original_cost != cost:
+        logger.warning(
+            'ISL %s cost have been changed from %s to %s',
+            isl, original_cost, cost)
 
 
 def set_props(tx, isl, props):
@@ -44,9 +105,8 @@ def set_props(tx, isl, props):
     cursor = tx.run(q, match)
 
     try:
-        target = db.fetch_scalar(cursor)
-    except ValueError:
-        # there is no link props node
+        target = db.fetch_one(cursor)['target']
+    except exc.DBEmptyResponse:
         raise exc.DBRecordNotFound(q, match)
 
     origin, update = _locate_changes(target, props)
@@ -77,9 +137,8 @@ def set_link_props(tx, isl, props):
     cursor = tx.run(q, match)
 
     try:
-        target = db.fetch_scalar(cursor)
-    except ValueError:
-        # there is no link props node
+        target = db.fetch_one(cursor)['target']
+    except exc.DBEmptyResponse:
         raise exc.DBRecordNotFound(q, match)
 
     origin, update = _locate_changes(target, props)

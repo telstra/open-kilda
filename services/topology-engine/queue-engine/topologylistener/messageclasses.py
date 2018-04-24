@@ -317,36 +317,18 @@ class MessageItem(object):
 
         return True
 
+    # FIXME(surabujin): split/remove
     def isl_fetch_and_deactivate(self, tx, dpid, port):
         flow_utils.precreate_switches(tx, dpid)
-        q = (
-            'MATCH (src:switch)-[link:isl]->(dst:switch)\n'
-            'WHERE src.name="{src_name}" AND link.src_port={port}\n'
-            'RETURN src, link, dst').format(src_name=dpid, port=port)
-        results = tx.run(q)
+        isl = isl_utils.fetch_by_endpoint(tx, model.NetworkEndpoint(dpid, port))
 
-        if not results:
-            logger.info('There is no ISL %s_%s', dpid, port)
+        logger.info('ISL found on %s_%s, deactivating', dpid, port)
 
-        idx = 0
-        for record in results:
-            if 0 < idx:
-                # FIXME(surabujin): use own exception
-                raise ValueError(
-                    'More than 1 ISL starts on %s_%s', dpid, port)
+        flow_utils.precreate_isls(tx, isl)
+        self.deactivate_isl(tx, isl.source.dpid, isl.source.port)
+        self.isl_update_status(tx, isl)
 
-            idx += 1
-
-            logger.info(
-                'ISL found on %s_%s, deactivating', dpid, port)
-            isl = model.InterSwitchLink.new_from_db(
-                record['src'], record['dst'], record['link'])
-
-            flow_utils.precreate_isls(tx, isl)
-            self.deactivate_isl(tx, isl.source.dpid, isl.source.port)
-            self.isl_update_status(tx, isl)
-            # TODO: (crimi) Reinstate set_cost once default action is determined .. should be policy / toggle based
-            # self.isl_set_cost(tx, isl, config.ISL_COST_WHEN_DOWN)
+        return isl
 
     def deactivate_isl(self, tx, src_switch, src_port):
         """
@@ -396,7 +378,10 @@ class MessageItem(object):
                     switch_id, port_id, self.timestamp)
 
         with graph.begin() as tx:
-            self.isl_fetch_and_deactivate(tx, switch_id, port_id)
+            isl = self.isl_fetch_and_deactivate(tx, switch_id, port_id)
+            # TODO(crimi): should be policy / toggle based
+            isl_utils.set_cost(tx, isl, config.ISL_COST_WHEN_PORT_DOWN)
+            isl_utils.set_cost(tx, isl.reversed(), config.ISL_COST_WHEN_PORT_DOWN)
 
         return True
 
@@ -541,19 +526,6 @@ class MessageItem(object):
             logger.error(
                 'ISL update status query stats:\n%s',
                 json.dumps(stats, indent=2))
-
-    def isl_set_cost(self, tx, isl, cost):
-        props = {'cost': cost}
-        try:
-            changed = isl_utils.set_link_props(tx, isl, props)
-        except exc.DBRecordNotFound:
-            changed = isl_utils.set_props(tx, isl, props)
-
-        original_cost = changed.get('cost')
-        if original_cost != cost:
-            logger.warning(
-                    'ISL %s cost have been changed from %s to %s',
-                    isl, original_cost, cost)
 
     def handle_topology_change(self):
         if self.get_message_type() != MT_ISL:

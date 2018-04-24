@@ -20,6 +20,20 @@ class Error(Exception):
     pass
 
 
+class DBInvalidResponse(Error):
+    pass
+
+
+class DBEmptyResponse(DBInvalidResponse):
+    def __str__(self):
+        return 'There is no record fetched from DB cursor'
+
+
+class DBMultipleResponse(DBInvalidResponse):
+    def __str__(self):
+        return 'DB cursor contain too many result records'
+
+
 class DBRecordNotFound(Error):
     @property
     def query(self):
