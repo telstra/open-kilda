@@ -16,13 +16,12 @@ package org.openkilda.pce.janitor;
 
 import org.apache.commons.cli.*;
 import org.neo4j.driver.v1.*;
-import com.sun.jersey.api.client.Client;
-import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.api.client.WebResource;
 import sun.misc.BASE64Encoder;
-import sun.net.www.http.HttpClient;
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
+import javax.ws.rs.client.*;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -107,7 +106,8 @@ public class FlowJanitor {
     public static final void updateFlows(FlowJanitor.Config config, List<String> flowsToUpdate) {
         String authString = config.nb_user + ":" + config.nb_pswd;
         String authStringEnc = new BASE64Encoder().encode(authString.getBytes());
-        Client client = Client.create();
+
+        Client client = ClientBuilder.newClient();
 
         for (String flowid : flowsToUpdate){
             /*
@@ -119,20 +119,19 @@ public class FlowJanitor {
 
             System.out.println("RUNNING: flowid = " + flowid);
 
-            WebResource webResource = client
-                    .resource(config.nb_url + "/api/v1/flows" + "/" + flowid);
+            WebTarget webTarget = client.target(config.nb_url + "/api/v1/flows").path(flowid);
+            Invocation.Builder invocationBuilder =
+                    webTarget.request(MediaType.APPLICATION_JSON)
+                    .header("Authorization", "Basic " + authStringEnc);
 
-            ClientResponse response = webResource
-                    .accept("application/json")
-                    .header("Authorization", "Basic " + authStringEnc)
-                    .get(ClientResponse.class);
+            Response response = invocationBuilder.get(Response.class);
 
             if (response.getStatus() != 200) {
                 throw new RuntimeException("Failed : HTTP error code : "
                         + response.getStatus());
             }
 
-            String output = response.getEntity(String.class);
+            String output = response.readEntity(String.class);
 
             /*
              * Call update Flow .. add to description
@@ -143,12 +142,7 @@ public class FlowJanitor {
 
 
             // LOOP
-            webResource = client.resource(config.nb_url + "/api/v1/flows" + "/" + flowid);
-
-            response = webResource
-                    .type("application/json")
-                    .header("Authorization", "Basic " + authStringEnc)
-                    .put(ClientResponse.class, output);
+            response = invocationBuilder.put(Entity.entity(output,MediaType.APPLICATION_JSON));
 
             if (response.getStatus() != 200) {
                 System.out.println("FAILURE: flowid = " + flowid + "; response = " + response.getStatus());
@@ -217,7 +211,7 @@ public class FlowJanitor {
 
                 String authString = config.nb_user + ":" + config.nb_pswd;
                 String authStringEnc = new BASE64Encoder().encode(authString.getBytes());
-                Client client = Client.create();
+                Client client = ClientBuilder.newClient();
 
                 for (String flowid : flowsToUpdate.keySet()){
                     /*
@@ -229,20 +223,19 @@ public class FlowJanitor {
 
                     System.out.println("RUNNING: flowid = " + flowid);
 
-                    WebResource webResource = client
-                            .resource(config.nb_url + "/api/v1/flows" + "/" + flowid);
+                    WebTarget webTarget = client.target(config.nb_url + "flows").path(flowid);
+                    Invocation.Builder invocationBuilder =
+                            webTarget.request(MediaType.APPLICATION_JSON)
+                                    .header("Authorization", "Basic " + authStringEnc);
 
-                    ClientResponse response = webResource
-                            .accept("application/json")
-                            .header("Authorization", "Basic " + authStringEnc)
-                            .get(ClientResponse.class);
+                    Response response = invocationBuilder.get(Response.class);
 
                     if (response.getStatus() != 200) {
                         throw new RuntimeException("Failed : HTTP error code : "
                                 + response.getStatus());
                     }
 
-                    String output = response.getEntity(String.class);
+                    String output = response.readEntity(String.class);
                     System.out.println("output = " + output);
                     System.exit(0);
                     

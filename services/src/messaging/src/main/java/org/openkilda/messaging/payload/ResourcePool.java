@@ -64,8 +64,15 @@ public class ResourcePool {
             for (int i = 0; i < range; i++) {
                 if (nextId > upper)
                     nextId = lower;
-                if (resources.add(nextId++)) {
-                    return nextId-1;
+                int next;
+
+                // ensure only one thread executes the post-incremen
+                synchronized (nextId) {
+                    next = nextId++;
+                }
+
+                if (resources.add(next)) {
+                    return next;
                 }
             }
         }
