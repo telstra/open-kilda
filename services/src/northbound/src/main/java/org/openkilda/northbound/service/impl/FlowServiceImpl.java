@@ -574,14 +574,11 @@ public class FlowServiceImpl implements FlowService {
                     if (switchRule.getInstructions().getApplyActions() != null) {
                         // The outVlan could be empty. If it is, then pop is?
                         FlowApplyActions applyActions = switchRule.getInstructions().getApplyActions();
-                        rule.outVlan = NumberUtils.toInt(applyActions.getPushVlan());
-                        if (rule.outVlan == 0 || rule.outVlan != 0x8100) {
-                            rule.outVlan = Optional.ofNullable(applyActions.getFieldAction())
-                                    .filter(action -> "vlan_vid".equals(action.getFieldName()))
-                                    .map(FlowSetFieldAction::getFieldValue)
-                                    .map(NumberUtils::toInt)
-                                    .orElse(NumberUtils.INTEGER_ZERO);
-                        }
+                        rule.outVlan = Optional.ofNullable(applyActions.getFieldAction())
+                                .filter(action -> "vlan_vid".equals(action.getFieldName()))
+                                .map(FlowSetFieldAction::getFieldValue)
+                                .map(NumberUtils::toInt)
+                                .orElse(NumberUtils.INTEGER_ZERO);
                         rule.outPort = NumberUtils.toInt(applyActions.getFlowOutput());
                     }
 
