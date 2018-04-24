@@ -30,11 +30,14 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.openkilda.flow.FlowUtils;
+import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.topo.TopologyHelp;
 
@@ -368,6 +371,23 @@ public class FlowCrudBasicRunTest {
     public void checkFlowCount(int expectedFlowsCount) throws Exception {
         int actualFlowCount = getFlowCount(expectedFlowsCount * 2);
         assertEquals(expectedFlowsCount * 2, actualFlowCount);
+    }
+
+    @When("^flow (.*) push request for (.*) is successful$")
+    public void successfulPushFlowFromResource(String flowId, String flowResource) throws Exception {
+        FlowInfoData flowInfoData = new ObjectMapper()
+                .readValue(getClass().getResourceAsStream(flowResource), FlowInfoData.class);
+
+        // Overwrite the flow ID.
+        String flowName = FlowUtils.getFlowName(flowId);
+        flowInfoData.setFlowId(flowName);
+        flowInfoData.getPayload().getLeft().setFlowId(flowName);
+        flowInfoData.getPayload().getRight().setFlowId(flowName);
+
+        BatchResults result = FlowUtils.pushFlow(flowInfoData, true);
+        assertNotNull(result);
+        assertEquals(0, result.getFailures());
+        assertEquals(2, result.getSuccesses()); // 2 separate requests into TE and Flow Topology
     }
 
     /**

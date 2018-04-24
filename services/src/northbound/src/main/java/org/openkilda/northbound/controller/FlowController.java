@@ -32,7 +32,7 @@ import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
-import org.openkilda.northbound.service.BatchResults;
+import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.service.FlowService;
 import org.openkilda.northbound.utils.ExtraAuthRequired;
 import org.slf4j.Logger;

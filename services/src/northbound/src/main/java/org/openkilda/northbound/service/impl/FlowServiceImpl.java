@@ -53,7 +53,7 @@ import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.flows.PathDiscrepancyDto;
 import org.openkilda.northbound.messaging.MessageConsumer;
 import org.openkilda.northbound.messaging.MessageProducer;
-import org.openkilda.northbound.service.BatchResults;
+import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.service.FlowService;
 import org.openkilda.northbound.service.SwitchService;
 import org.openkilda.northbound.utils.Converter;
