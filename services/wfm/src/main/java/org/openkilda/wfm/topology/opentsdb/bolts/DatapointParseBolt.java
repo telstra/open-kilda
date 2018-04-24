@@ -1,5 +1,7 @@
 package org.openkilda.wfm.topology.opentsdb.bolts;
 
+import static org.openkilda.messaging.Utils.MAPPER;
+
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -14,8 +16,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import static org.openkilda.messaging.Utils.MAPPER;
 
 public class DatapointParseBolt extends BaseRichBolt {
     private static final Logger LOGGER = LoggerFactory.getLogger(DatapointParseBolt.class);
@@ -32,7 +32,7 @@ public class DatapointParseBolt extends BaseRichBolt {
         LOGGER.debug("Processing datapoint: " + data);
         try {
             Datapoint datapoint = MAPPER.readValue(data, Datapoint.class);
-            List<Object> stream = Stream.of(datapoint.hashCode(), datapoint)
+            List<Object> stream = Stream.of(datapoint.simpleHashCode(), datapoint)
                     .collect(Collectors.toList());
             collector.emit(stream);
         } catch (Exception e) {
