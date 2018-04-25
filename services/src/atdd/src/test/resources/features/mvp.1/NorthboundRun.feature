@@ -219,18 +219,88 @@ Feature: Northbound tests
     And flows dump contains 2 flows
 
   @MVP1
-  Scenario: Validate flow rules
+  Scenario: Validate flow rules with missing rules on intermediate switch
 
   This scenario setups a flow through NB, then deletes rules from an intermediate switch and performs flow validation check
 
     Given a clean flow topology
-    And flow vfr creation request with de:ad:be:ef:00:00:00:01 1 110 and de:ad:be:ef:00:00:00:04 2 110 and 1000 is successful
-    And flow vfr in UP state
-    And validation of flow vfr is successful with no discrepancies
+    And flow vfris creation request with de:ad:be:ef:00:00:00:01 1 110 and de:ad:be:ef:00:00:00:04 2 110 and 1000 is successful
+    And flow vfris in UP state
+    And validation of flow vfris is successful with no discrepancies
 
     When delete all non-default rules request on de:ad:be:ef:00:00:00:03 switch is successful with 2 rules deleted
 
-    Then validation of flow vfr has passed and discrepancies are found
+    Then validation of flow vfris has completed with 2 discrepancies on de:ad:be:ef:00:00:00:03 switches found
+
+  @MVP1
+  Scenario: Validate flow rules with missing rules on ingress switch
+
+  This scenario setups a flow through NB, then deletes rules from an ingress switch and performs flow validation check
+
+    Given a clean flow topology
+    And flow vfrins creation request with de:ad:be:ef:00:00:00:01 1 110 and de:ad:be:ef:00:00:00:04 2 110 and 1000 is successful
+    And flow vfrins in UP state
+    And validation of flow vfrins is successful with no discrepancies
+
+    When delete all non-default rules request on de:ad:be:ef:00:00:00:01 switch is successful with 2 rules deleted
+
+    Then validation of flow vfrins has completed with 2 discrepancies on de:ad:be:ef:00:00:00:01 switches found
+
+  @MVP1
+  Scenario: Validate flow rules with missing rules on egress switch
+
+  This scenario setups a flow through NB, then deletes rules from an egress switch and performs flow validation check
+
+    Given a clean flow topology
+    And flow vfres creation request with de:ad:be:ef:00:00:00:01 1 110 and de:ad:be:ef:00:00:00:04 2 110 and 1000 is successful
+    And flow vfres in UP state
+    And validation of flow vfres is successful with no discrepancies
+
+    When delete all non-default rules request on de:ad:be:ef:00:00:00:04 switch is successful with 2 rules deleted
+
+    Then validation of flow vfres has completed with 2 discrepancies on de:ad:be:ef:00:00:00:04 switches found
+
+  @MVP1
+  Scenario: Validate flow rules with missing non-standard cookies on intermediate switch
+
+  This scenario pushes a flow with non-standard cookies through NB, then deletes rules from an intermediate switch and performs flow validation check
+
+    Given a clean flow topology
+    And flow vfrnscis push request for /flows/non-standard-cookies-flow.json is successful
+    And flow vfrnscis in UP state
+    And validation of flow vfrnscis is successful with no discrepancies
+
+    When delete all non-default rules request on de:ad:be:ef:00:00:00:02 switch is successful with 2 rules deleted
+
+    Then validation of flow vfrnscis has completed with 2 discrepancies on de:ad:be:ef:00:00:00:02 switches found
+
+  @MVP1
+  Scenario: Validate flow rules with missing non-standard cookies on ingress switch
+
+  This scenario pushes a flow with non-standard cookies through NB, then deletes rules from an ingress switch and performs flow validation check
+
+    Given a clean flow topology
+    And flow vfrnscins push request for /flows/non-standard-cookies-flow.json is successful
+    And flow vfrnscins in UP state
+    And validation of flow vfrnscins is successful with no discrepancies
+
+    When delete all non-default rules request on de:ad:be:ef:00:00:00:01 switch is successful with 2 rules deleted
+
+    Then validation of flow vfrnscins has completed with 2 discrepancies on de:ad:be:ef:00:00:00:01 switches found
+
+  @MVP1
+  Scenario: Validate flow rules with missing non-standard cookies on egress switch
+
+  This scenario pushes a flow with non-standard cookies through NB, then deletes rules from an egress switch and performs flow validation check
+
+    Given a clean flow topology
+    And flow vfrnsces push request for /flows/non-standard-cookies-flow.json is successful
+    And flow vfrnsces in UP state
+    And validation of flow vfrnsces is successful with no discrepancies
+
+    When delete all non-default rules request on de:ad:be:ef:00:00:00:03 switch is successful with 2 rules deleted
+
+    Then validation of flow vfrnsces has completed with 2 discrepancies on de:ad:be:ef:00:00:00:03 switches found
 
   @MVP1
   Scenario: Validate intermediate switch with missing rules
