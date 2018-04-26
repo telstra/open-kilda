@@ -73,6 +73,10 @@ public class OpenTSDBFilterBolt extends BaseRichBolt {
             long now  = System.currentTimeMillis();
             storage.entrySet().removeIf(entry ->  now - entry.getValue().getTime() > MUTE_IF_NO_UPDATES_MILLIS);
 
+            if (LOGGER.isTraceEnabled()) {
+                LOGGER.trace("storage after clean tulpe: {}", storage.toString());
+            }
+
             collector.ack(tuple);
             return;
         }
@@ -107,13 +111,24 @@ public class OpenTSDBFilterBolt extends BaseRichBolt {
         LOGGER.debug("adding datapoint: {}", datapoint);
         LOGGER.debug("storage.size: {}", storage.size());
         storage.put(new DatapointKey(datapoint.getMetric(), datapoint.getTags()), datapoint);
+        if (LOGGER.isTraceEnabled()) {
+            LOGGER.trace("addDatapoint storage: {}", storage.toString());
+        }
     }
 
     private boolean isUpdateRequired(Datapoint datapoint) {
         boolean update = true;
         Datapoint prevDatapoint = storage.get(new DatapointKey(datapoint.getMetric(), datapoint.getTags()));
-        if (prevDatapoint != null) {
 
+        if (prevDatapoint != null) {
+            if (LOGGER.isTraceEnabled()) {
+                LOGGER.trace("prev: {} cur: {} equals: {} time_delta: {}",
+                        prevDatapoint,
+                        datapoint,
+                        prevDatapoint.getValue().equals(datapoint.getValue()),
+                        datapoint.getTime() - prevDatapoint.getTime()
+                        );
+            }
             update = !prevDatapoint.getValue().equals(datapoint.getValue()) ||
                     datapoint.getTime() - prevDatapoint.getTime() >= MUTE_IF_NO_UPDATES_MILLIS;
         }
