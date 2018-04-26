@@ -365,7 +365,10 @@ var graphAutoReload = {
                             	  getVal[i] = 0;
                               }
 						      var temparr = [];
-						      temparr[0] = new Date(Number(i*1000));
+						      var mapDate= new Date(Number(i*1000));
+						      var offset  = mapDate.getTimezoneOffset() * 60 * 1000;
+						      var usedDate = new Date(mapDate.getTime() + offset);
+						      temparr[0] =usedDate;// new Date(Number(i*1000));
 						      if(metricVal == "bytes"){
 						    	  temparr[1] = getValue[i] * 1024;
 						      }
@@ -544,7 +547,10 @@ var showIslSwitchStats = {
 	                              }
 	                              
 							      var temparr = [];
-							      temparr[0] = new Date(Number(i*1000));
+							      var mapDate= new Date(Number(i*1000));
+							      var offset  = mapDate.getTimezoneOffset() * 60 * 1000;
+							      var usedDate = new Date(mapDate.getTime() + offset);
+							      temparr[0] = usedDate;//new Date(Number(i*1000));
 							      if(metricVal == "bytes"){
 							    	  temparr[1] = getValue[i] * 1024;
 							      }
