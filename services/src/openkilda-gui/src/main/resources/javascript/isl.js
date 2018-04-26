@@ -123,7 +123,7 @@ function showLinkDetails(linkData,costData) {
 			"src_port":linkData.src_port,
 			"dst_switch":linkData.target_switch,
 			"dst_port":linkData.dst_port,
-			"props":{"cost":""}
+			"props":{"cost":"-"}
 	}
 		$('#isl_cost_obj').val(JSON.stringify(noCostData));
 	}

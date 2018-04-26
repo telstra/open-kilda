@@ -58,9 +58,23 @@ $(document).ready(function() {
 	$('#datetimepicker_dark').datetimepicker({theme:'dark'})
 		
 	loadGraph.loadGraphData("/stats/isl/"+source+"/"+sourcePort+"/"+target+"/"+targetPort+"/"+convertedStartDate+"/"+convertedEndDate+"/10m/"+selMetric,"GET",selMetric).then(function(response) {
-		$("#wait1").css("display", "none");
-		$('body').css('pointer-events', 'all');
-		showStatsGraph.showStatsData(response,selMetric); 
+		 
+		if(response && response.length && typeof(response[0].tags)!=='undefined' ){
+			response[0].tags.direction ="F"; // setting direction to forward
+		}
+		// calling reverse isl detail
+		var reverseUrl = "/stats/isl/"+target+"/"+targetPort+"/"+source+"/"+sourcePort+"/"+convertedStartDate+"/"+convertedEndDate+"/10m/"+selMetric
+		loadGraph.loadGraphData(reverseUrl,"GET",selMetric).then(function(responseReverse) {
+			$("#wait1").css("display", "none");
+			$('body').css('pointer-events', 'all');
+			if(responseReverse && responseReverse.length && typeof(responseReverse[0].tags)!=='undefined' ){
+				responseReverse[0].tags.direction ="R"; // setting direction to reverse
+			}
+			var responseData =response;
+			responseData.push(responseReverse[0]);
+			showStatsGraph.showStatsData(responseData,selMetric);
+		})	
+		
 	})
 })
 
@@ -133,10 +147,25 @@ if(test) {
   		var loadUrl ="/stats/isl/"+source+"/"+sourcePort+"/"+target+"/"+targetPort+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric;
   	}
 	loadGraph.loadGraphData(loadUrl,"GET",selMetric).then(function(response) {
+		if(response && response.length && typeof(response[0].tags)!=='undefined' ){
+			response[0].tags.direction ="F";
+		}
+		if(typeof(changeFlag)!='undefined' &&  changeFlag){
+	  		var reverseLoadUrl ="/stats/isl/"+target+"/"+targetPort+"/"+source+"/"+sourcePort+"/"+convertedStartDate+"/"+convertedEndDate+"/"+"10m"+"/"+selMetric;
+	  	}else{
+	  		var reverseLoadUrl ="/stats/isl/"+target+"/"+targetPort+"/"+source+"/"+sourcePort+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric;
+	  	}
+		loadGraph.loadGraphData(reverseLoadUrl,"GET",selMetric).then(function(responseReverse) {
+			if(responseReverse && responseReverse.length && typeof(responseReverse[0].tags)!=='undefined' ){
+				responseReverse[0].tags.direction ="R";
+			}
+			var responseData =response;
+			responseData.push(responseReverse[0]);
+			$("#wait1").css("display", "none");
+			$('body').css('pointer-events', 'all');
+			showStatsGraph.showStatsData(responseData,selMetric); 
+		})
 		
-		$("#wait1").css("display", "none");
-		$('body').css('pointer-events', 'all');
-		showStatsGraph.showStatsData(response,selMetric); 
 })
 	
 			try {
