@@ -70,7 +70,7 @@ public class FeatureTogglesServiceImpl implements FeatureTogglesService {
                 correlationId, Destination.TOPOLOGY_ENGINE);
         messageProducer.send(topoEngTopic, requestMessage);
 
-        Message result = messageConsumer.poll(requestMessage.getCorrelationId());
+        Message result = messageConsumer.poll(correlationId);
         FeatureTogglesResponse response =
                 (FeatureTogglesResponse) validateInfoMessage(requestMessage, result, correlationId);
 

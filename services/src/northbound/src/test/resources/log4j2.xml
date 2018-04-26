@@ -1,16 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Configuration monitorInterval="30">
+<Configuration status="WARN" monitorInterval="30">
     <Appenders>
         <Console name="STDOUT" target="SYSTEM_OUT">
-            <PatternLayout pattern="%d{ISO8601} | %-5.5p | %-32.32t | %-32.32c{1} | @project.name@ - @project.version@ | %m%n"/>
+            <PatternLayout pattern="%d{ISO8601} %-5p %c{1.}:%L - [%X] %m%n"/>
         </Console>
     </Appenders>
     <Loggers>
-        <Logger name="org.openkilda.northbound" level="DEBUG" />
-        <Root level="DEBUG">
+        <Logger name="org.openkilda" level="DEBUG"/>
+        <Root level="INFO">
             <AppenderRef ref="STDOUT"/>
-            <AppenderRef ref="LOGSTASH"/>
-            <AppenderRef ref="ROLLINGFILE"/>
         </Root>
     </Loggers>
 </Configuration>
