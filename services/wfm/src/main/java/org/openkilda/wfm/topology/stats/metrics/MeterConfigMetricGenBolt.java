@@ -26,6 +26,7 @@ import org.openkilda.messaging.info.stats.MeterConfigReply;
 import org.openkilda.messaging.info.stats.MeterConfigStatsData;
 import org.openkilda.wfm.topology.stats.StatsComponentType;
 import org.openkilda.wfm.topology.stats.StatsStreamType;
+import org.openkilda.wfm.topology.utils.StatsUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,7 +52,7 @@ public class MeterConfigMetricGenBolt extends MetricGenBolt {
         long timestamp = message.getTimestamp();
 
         try {
-            String switchId = data.getSwitchId().replaceAll(":", "");
+            String switchId = StatsUtil.formatSwitchId(data.getSwitchId());
             for (MeterConfigReply reply : data.getStats()) {
                 for (Long meterId : reply.getMeterIds()) {
                     emit(timestamp, meterId, switchId);
