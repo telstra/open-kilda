@@ -20,12 +20,16 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Value;
 
+import java.io.Serializable;
+
 /**
  * Describes criteria for delete rules action.
  */
 @Value
 @Builder
-public class DeleteRulesCriteria {
+public class DeleteRulesCriteria implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     @JsonProperty("cookie")
     Long cookie;
@@ -38,7 +42,7 @@ public class DeleteRulesCriteria {
     @JsonProperty("priority")
     Integer priority;
 
-    @JsonProperty("out_vlan")
+    @JsonProperty("out_port")
     Integer outPort;
 
     @JsonCreator
@@ -47,7 +51,7 @@ public class DeleteRulesCriteria {
             @JsonProperty("in_port") Integer inPort,
             @JsonProperty("in_vlan") Integer inVlan,
             @JsonProperty("priority") Integer priority,
-            @JsonProperty("out_vlan") Integer outPort) {
+            @JsonProperty("out_port") Integer outPort) {
         if ((cookie == null || cookie == 0)
                 && (inPort == null || inPort == 0)
                 && (inVlan == null || inVlan == 0)

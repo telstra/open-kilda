@@ -186,7 +186,7 @@ def build_one_switch_flow_from_db(switch, stored_flow, output_action):
     return flow
 
 
-def build_delete_flow(switch, flow_id, cookie, meter_id):
+def build_delete_flow(switch, flow_id, cookie, meter_id, in_port, in_vlan, out_port):
     flow = Flow()
     flow.clazz = "org.openkilda.messaging.command.flow.RemoveFlow"
     flow.transaction_id = 0
@@ -194,6 +194,7 @@ def build_delete_flow(switch, flow_id, cookie, meter_id):
     flow.cookie = cookie
     flow.switch_id = switch
     flow.meter_id = meter_id
+    flow.criteria = {'cookie': cookie, 'in_port': in_port, 'in_vlan': in_vlan, 'out_port': out_port}
 
     return flow
 
@@ -323,7 +324,9 @@ def send_delete_commands(nodes, correlation_id):
 
     logger.debug('Send Delete Commands: node count=%d', len(nodes))
     for node in nodes:
-        data = build_delete_flow(str(node['switch_id']), str(node['flow_id']), node['cookie'], node['meter_id'])
+        data = build_delete_flow(str(node['switch_id']), str(node['flow_id']), node['cookie'],
+                                 node['meter_id'], node['in_port'], node['in_vlan'],
+                                 node['out_port'] )
         # TODO: Whereas this is part of the current workflow .. feels like we should have the workflow manager work
         #       as a hub and spoke ... ie: send delete to FL, get confirmation. Then send delete to DB, get confirmation.
         #       Then send a message to a FLOW_EVENT topic that says "FLOW DELETED"

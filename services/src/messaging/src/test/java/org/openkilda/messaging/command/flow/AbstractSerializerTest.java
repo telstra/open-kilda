@@ -24,6 +24,7 @@ import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.discovery.HealthCheckCommandData;
+import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
@@ -519,7 +520,8 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
 
     @Test
     public void removeCommandTest() throws IOException, ClassNotFoundException {
-        RemoveFlow data = new RemoveFlow(TIMESTAMP, FLOW_NAME, COOKIE, SWITCH_ID, METER_ID);
+        RemoveFlow data = new RemoveFlow(TIMESTAMP, FLOW_NAME, COOKIE, SWITCH_ID, METER_ID,
+                DeleteRulesCriteria.builder().cookie(COOKIE).build());
         System.out.println(data);
 
         CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
