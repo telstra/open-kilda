@@ -31,7 +31,7 @@ __all__ = ['graph']
 graph = db.create_p2n_driver()
 logger = logging.getLogger(__name__)
 
-ignored_rules = ['0x8000000000000001', '0x8000000000000002',
+default_rules = ['0x8000000000000001', '0x8000000000000002',
                  '0x8000000000000003']
 
 
@@ -111,13 +111,20 @@ def get_rules(src_switch, src_port, src_vlan, dst_switch, dst_port, dst_vlan,
             logger.error(msg)
             raise ValueError(msg)
 
+        segment_cookie = src.get('cookie', cookie)
+
         flows.append(message_utils.build_intermediate_flows(
             src['switch_id'], src['port_no'], dst['port_no'], transit_vlan, flowid,
-            cookie))
+            segment_cookie))
+
+    # Egress flow has cookie of the last segment.
+    egress_flow_cookie = cookie
+    if nodes:
+        egress_flow_cookie = nodes[-1].get('cookie', cookie)
 
     flows.append(message_utils.build_egress_flow(
         nodes, dst_switch, dst_port, dst_vlan,
-        transit_vlan, flowid, output_action, cookie))
+        transit_vlan, flowid, output_action, egress_flow_cookie))
 
     return flows
 
@@ -454,25 +461,26 @@ def precreate_isls(tx, *links):
         logger.debug('ISL precreate query:\n%s', q)
         tx.run(q)
 
-def get_flow_segment_pairs_for_switch(switch_id):
-    query = "MATCH p = (sw:switch)-[segment:flow_segment]-() " \
+
+def get_flow_segments_by_dst_switch(switch_id):
+    query = "MATCH p = (:switch)-[fs:flow_segment]->(sw:switch) " \
             "WHERE sw.name='{}' " \
-            "RETURN segment"
+            "RETURN fs"
     result = graph.run(query.format(switch_id)).data()
 
     # group flow_segments by parent cookie, it is helpful for building
     # transit switch rules
-    segment_pairs = collections.defaultdict(list)
+    segments = []
     for relationship in result:
-        flow_segment = relationship['segment']
-        segment_pairs[flow_segment['parent_cookie']].append(flow_segment)
+        segments.append(relationship['fs'])
 
-    logger.debug('Found segments for switch %s: %s', switch_id, segment_pairs)
+    logger.debug('Found segments for switch %s: %s', switch_id, segments)
 
-    return segment_pairs.values()
+    return segments
 
-def get_one_switch_flows(switch_id):
-    query = "MATCH (sw:switch)-[r:flow]->(sw:switch) " \
+
+def get_flows_by_src_switch(switch_id):
+    query = "MATCH (sw:switch)-[r:flow]->(:switch) " \
             "WHERE sw.name='{}' RETURN r"
     result = graph.run(query.format(switch_id)).data()
 
@@ -480,58 +488,54 @@ def get_one_switch_flows(switch_id):
     for item in result:
         flows.append(hydrate_flow(item))
 
-    logger.debug('Found one-switch flows for switch %s: %s', switch_id, flows)
+    logger.debug('Found flows for switch %s: %s', switch_id, flows)
 
     return flows
+
 
 def validate_switch_rules(switch_id, switch_rules):
     """
     Perform validation of provided rules against the switch flows.
     """
 
-    cookies = [x['cookie'] for x in switch_rules]
+    switch_cookies = [x['cookie'] for x in switch_rules]
 
-    # define three types of rules with cookies
+    # define three types of result rules
     missing_rules = set()
     excess_rules = set()
     proper_rules = set()
 
-    # check whether the switch has all necessary cookies
-    segment_pairs = get_flow_segment_pairs_for_switch(switch_id)
-    for pair in segment_pairs:
-        cookie = pair[0]['parent_cookie']
-        cookie_hex = cookie_to_hex(cookie)
+    # check whether the switch has segments' cookies
+    flow_segments = get_flow_segments_by_dst_switch(switch_id)
+    for segment in flow_segments:
+        cookie = segment.get('cookie', segment['parent_cookie'])
 
-        if cookie not in cookies:
-            logger.warn('Rule %s is not found on switch %s', cookie_hex, switch_id)
-            missing_rules.add(cookie_hex)
+        if cookie not in switch_cookies:
+            logger.warn('Rule %s is not found on switch %s', cookie, switch_id)
+            missing_rules.add(cookie)
         else:
-            proper_rules.add(cookie_hex)
+            proper_rules.add(cookie)
 
-    # check whether the switch has one-switch flows.
-    # since one-switch flows don't have flow_segments we have to validate
-    # such flows separately
-    flows = get_one_switch_flows(switch_id)
-    for flow in flows:
+    # check whether the switch has ingress flows (as well as one-switch flows).
+    ingress_flows = get_flows_by_src_switch(switch_id)
+    for flow in ingress_flows:
         cookie = flow['cookie']
-        cookie_hex = cookie_to_hex(cookie)
 
-        if cookie not in cookies:
-            logger.warn("Found missed one-switch flow %s for switch %s", cookie_hex, switch_id)
-            missing_rules.add(cookie_hex)
+        if cookie not in switch_cookies:
+            logger.warn("Ingress or one-switch flow %s is missing on switch %s", cookie, switch_id)
+            missing_rules.add(cookie)
         else:
-            proper_rules.add(cookie_hex)
+            proper_rules.add(cookie)
 
-    # check whether the switch has redundant rules
-    for flow in switch_rules:
-        hex_cookie = cookie_to_hex(flow['cookie'])
-        if hex_cookie not in proper_rules and \
-            hex_cookie not in ignored_rules:
-            logger.error('Rule %s is excessive on the switch %s', hex_cookie, switch_id)
-            excess_rules.add(hex_cookie)
+    # check whether the switch has redundant rules, skipping the default rules.
+    for cookie in switch_cookies:
+        if cookie not in proper_rules and cookie_to_hex(cookie) not in default_rules:
+            logger.warn('Rule %s is excessive on the switch %s', cookie, switch_id)
+            excess_rules.add(cookie)
 
     return {"missing_rules": missing_rules, "excess_rules": excess_rules,
             "proper_rules": proper_rules}
+
 
 def build_commands_to_sync_rules(switch_id, switch_rules):
     """
@@ -541,69 +545,98 @@ def build_commands_to_sync_rules(switch_id, switch_rules):
     installed_rules = set()
     commands = []
 
-    segment_pairs = get_flow_segment_pairs_for_switch(switch_id)
-    for pair in segment_pairs:
-        cookie = pair[0]['parent_cookie']
-        cookie_hex = cookie_to_hex(cookie)
+    flow_segments = get_flow_segments_by_dst_switch(switch_id)
+    for segment in flow_segments:
+        cookie = segment.get('cookie', segment['parent_cookie'])
 
-        if cookie_hex in switch_rules:
-            logger.warn('Rule %s is to be (re)installed on switch %s', cookie_hex, switch_id)
-            installed_rules.add(cookie_hex)
-            commands.extend(command_from_segment(pair, switch_id))
+        if cookie in switch_rules:
+            logger.info('Rule %s is to be (re)installed on switch %s', cookie, switch_id)
+            installed_rules.add(cookie)
+            commands.extend(build_install_command_from_segment(segment))
 
-    flows = get_one_switch_flows(switch_id)
-    for flow in flows:
+    ingress_flows = get_flows_by_src_switch(switch_id)
+    for flow in ingress_flows:
         cookie = flow['cookie']
-        cookie_hex = cookie_to_hex(cookie)
 
-        if cookie_hex in switch_rules:
-            logger.warn("One-switch flow %s is to be (re)installed on switch %s", cookie_hex, switch_id)
-            installed_rules.add(cookie_hex)
+        if cookie in switch_rules:
+            installed_rules.add(cookie)
 
             output_action = choose_output_action(flow['src_vlan'], flow['dst_vlan'])
-            commands.append(message_utils.build_one_switch_flow_from_db(switch_id, flow, output_action))
+
+            # check if the flow is one-switch flow
+            if flow['src_switch'] == flow['dst_switch']:
+                logger.info("One-switch flow %s is to be (re)installed on switch %s", cookie, switch_id)
+                commands.append(message_utils.build_one_switch_flow_from_db(switch_id, flow, output_action))
+            else:
+                logger.info("Ingress flow %s is to be (re)installed on switch %s", cookie, switch_id)
+                commands.append(message_utils.build_ingress_flow_from_db(flow, output_action))
 
     return {"commands": commands, "installed_rules": installed_rules}
 
-def command_from_segment(segment_pair, switch_id):
-    left_segment = segment_pair[0]
-    query = "match ()-[r:flow]->() where r.flowid='{}' " \
-            "and r.cookie={} return r"
-    result = graph.run(query.format(left_segment['flowid'],
-                                    left_segment['parent_cookie'])).data()
 
-    if not result:
-        logger.error("Flow with id %s was not found",
-                     left_segment['flowid'])
-        return
-
-    flow = hydrate_flow(result[0])
-    output_action = choose_output_action(flow['src_vlan'],
-                                                    flow['dst_vlan'])
+def build_install_command_from_segment(segment):
+    """
+    Build a command to install required rules for the segment destination.
+    """
 
     # check if the flow is one-switch flow
-    if left_segment['src_switch'] == left_segment['dst_switch']:
-        yield message_utils.build_one_switch_flow_from_db(switch_id, flow,
-                                                          output_action)
-    # check if the switch is not source and not destination of the flow
-    if flow['src_switch'] != switch_id \
-        and flow['dst_switch'] != switch_id:
-        right_segment = segment_pair[1]
-        # define in_port and out_port for transit switch
-        if left_segment['dst_switch'] == switch_id and \
-            left_segment['src_switch'] == switch_id:
-            in_port = left_segment['dst_port']
-            out_port = right_segment['src_port']
-        else:
-            in_port = right_segment['dst_port']
-            out_port = left_segment['src_port']
+    if segment['src_switch'] == segment['dst_switch']:
+        msg = 'One-switch flow segment {} is provided.'.format(segment)
+        logger.error(msg)
+        raise ValueError(msg)
+
+    parent_cookie = segment['parent_cookie']
+    flow_id = segment['flowid']
+    flow = get_flow_by_id_and_cookie(flow_id, parent_cookie)
+    if flow is None:
+        logger.error("Flow with id %s was not found, cookie %s",
+                     flow_id, parent_cookie)
+        return
+
+    output_action = choose_output_action(flow['src_vlan'], flow['dst_vlan'])
+    switch_id = segment['dst_switch']
+    segment_cookie = segment['cookie']
+
+    # check if the switch is the destination of the flow
+    if switch_id == flow['dst_switch']:
+        yield message_utils.build_egress_flow_from_db(flow, output_action, segment_cookie)
+    else:
+        in_port = segment['dst_port']
+
+        paired_segment = get_flow_segment_by_src_switch_and_cookie(switch_id, parent_cookie)
+        if paired_segment is None:
+            msg = 'Paired segment for switch {} and cookie {} has not been found.'.format(switch_id, parent_cookie)
+            logger.error(msg)
+            raise ValueError(msg)
+
+        out_port = paired_segment['src_port']
 
         yield message_utils.build_intermediate_flows(
             switch_id, in_port, out_port, flow['transit_vlan'],
-            flow['flowid'], left_segment['parent_cookie'])
+            flow['flowid'], segment_cookie)
 
-    elif left_segment['src_switch'] == switch_id:
-        yield message_utils.build_ingress_flow_from_db(flow, output_action)
-    else:
-        yield message_utils.build_egress_flow_from_db(flow, output_action)
+
+def get_flow_by_id_and_cookie(flow_id, cookie):
+    query = "MATCH ()-[r:flow]->() WHERE r.flowid='{}' " \
+            "and r.cookie={} RETURN r"
+    result = graph.run(query.format(flow_id, cookie)).data()
+    if not result:
+        return
+
+    flow = hydrate_flow(result[0])
+    logger.debug('Found flow for id %s and cookie %s: %s', flow_id, cookie, flow)
+    return flow
+
+
+def get_flow_segment_by_src_switch_and_cookie(switch_id, parent_cookie):
+    query = "MATCH p = (sw:switch)-[fs:flow_segment]->(:switch) " \
+            "WHERE sw.name='{}' AND fs.parent_cookie={} " \
+            "RETURN fs"
+    result = graph.run(query.format(switch_id, parent_cookie)).data()
+    if not result:
+        return
+
+    segment = result[0]['fs']
+    logger.debug('Found segment for switch %s and parent_cookie %s: %s', switch_id, parent_cookie, segment)
+    return segment
 

@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2017 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,28 +13,30 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.dto.switches;
+package org.openkilda.messaging.info.stats;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Builder;
 import lombok.Value;
+import org.openkilda.messaging.info.event.PortChangeType;
 
-import java.util.List;
+import java.io.Serializable;
 
 @Value
-public class RulesSyncResult extends RulesValidationResult {
+@Builder
+public class PortStatus implements Serializable {
 
-    @JsonProperty("installed_rules")
-    private List<Long> installedRules;
+    @JsonProperty("id")
+    private Integer id;
+
+    @JsonProperty("status")
+    private PortChangeType status;
 
     @JsonCreator
-    public RulesSyncResult(
-            @JsonProperty("missing_rules") List<Long> missingRules,
-            @JsonProperty("proper_rules") List<Long> properRules,
-            @JsonProperty("excess_rules") List<Long> excessRules,
-            @JsonProperty("installed_rules") List<Long> installedRules) {
-        super(missingRules, properRules, excessRules);
-
-        this.installedRules = installedRules;
+    public PortStatus(@JsonProperty("id") Integer id,
+            @JsonProperty("status") PortChangeType status) {
+        this.id = id;
+        this.status = status;
     }
 }

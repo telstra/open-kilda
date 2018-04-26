@@ -17,7 +17,6 @@ package org.openkilda.pce.provider;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.neo4j.driver.v1.*;
-import org.neo4j.driver.v1.types.Type;
 import org.openkilda.messaging.info.event.*;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
@@ -28,7 +27,6 @@ import org.openkilda.pce.model.AvailableNetwork;
 import org.openkilda.pce.model.SimpleIsl;
 
 import org.neo4j.driver.v1.exceptions.ClientException;
-import org.neo4j.driver.v1.exceptions.NoSuchRecordException;
 import org.neo4j.driver.v1.exceptions.TransientException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

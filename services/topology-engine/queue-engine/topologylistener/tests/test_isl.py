@@ -20,6 +20,7 @@ import uuid
 import py2neo
 
 from topologylistener import flow_utils
+from topologylistener import isl_utils
 from topologylistener import messageclasses
 from topologylistener import message_utils
 from topologylistener import model
@@ -132,6 +133,20 @@ def make_isl_discovery(source, dest):
     return messageclasses.MessageItem(**command).handle()
 
 
+def make_isl_failed(source):
+    command = make_command({
+        'clazz': messageclasses.MT_ISL,
+        'state': 'FAILED',
+        'latency_ns': 20,
+        'speed': 1000,
+        'available_bandwidth': 1000,
+        'path': [
+            {
+                'switch_id': source.dpid,
+                'port_no': source.port}]})
+    return messageclasses.MessageItem(**command).handle()
+
+
 def make_command(payload):
     return {
         'payload': payload,
@@ -172,9 +187,8 @@ def unpack_dpid(dpid_str):
 
 
 class TestIsl(unittest.TestCase):
-    switch_nodes = [
-        model.NetworkEndpoint(make_datapath_id(1), 2),
-        model.NetworkEndpoint(make_datapath_id(2), 4)]
+    src_endpoint = model.NetworkEndpoint(make_datapath_id(1), 2)
+    dst_endpoint = model.NetworkEndpoint(make_datapath_id(2), 4)
 
     def setUp(self):
         logging.basicConfig(level=logging.INFO)
@@ -185,54 +199,105 @@ class TestIsl(unittest.TestCase):
         with neo4j_connect.begin() as tx:
             clean_neo4j_test_data(tx)
 
-    def test_isl_raise_cost_on_isl_down_without_link_props(self):
-        src_endpoint, dst_endpoint = self.switch_nodes[:2]
-
-        make_switch(src_endpoint)
-        make_switch(dst_endpoint)
-        make_isl_pair(src_endpoint, dst_endpoint)
-
-        self.ensure_isl_costs(
-                (src_endpoint, None),
-                (dst_endpoint, None))
-
-        self.assertTrue(
-                make_port_down(src_endpoint), 'Port DOWN command have failed')
-
-        self.ensure_isl_costs(
-                (src_endpoint, 10000),
-                (dst_endpoint, None))
-
-        self.assertTrue(
-                make_isl_discovery(src_endpoint, dst_endpoint),
-                'ISL discovery command have failed')
-
-        self.ensure_isl_costs(
-                (src_endpoint, 10000),
-                (dst_endpoint, None))
-
-    def test_isl_raise_cost_on_isl_down(self):
-        src_endpoint, dst_endpoint = self.switch_nodes[:2]
+    def test_isl_status(self):
+        src_endpoint, dst_endpoint = self.src_endpoint, self.dst_endpoint
 
         make_switch(src_endpoint)
         make_switch(dst_endpoint)
 
-        with neo4j_connect.begin() as tx:
-            payload = {'cost': 1}
-            inject_db_link_props(tx, src_endpoint, dst_endpoint, payload)
-            inject_db_link_props(tx, dst_endpoint, src_endpoint, payload)
+        ACTIVE = 'active'
+        INACTIVE = 'inactive'
 
-        make_isl_pair(src_endpoint, dst_endpoint)
+        status_down = {'actual': INACTIVE, 'status': INACTIVE}
+        status_half_up = {'actual': ACTIVE, 'status': INACTIVE}
+        status_up = {'actual': ACTIVE, 'status': ACTIVE}
+
+        # 0 0
+        self.assertTrue(make_isl_discovery(src_endpoint, dst_endpoint))
+
+        # 1 0
+        self.ensure_isl_props(neo4j_connect, src_endpoint, dst_endpoint, status_half_up)
+        # self.ensure_isl_props(neo4j_connect, dst_endpoint, src_endpoint, status_down)
+        self.assertTrue(make_isl_discovery(dst_endpoint, src_endpoint))
+
+        # 1 1
+        self.ensure_isl_props(neo4j_connect, src_endpoint, dst_endpoint, status_up)
+        self.ensure_isl_props(neo4j_connect, dst_endpoint, src_endpoint, status_up)
+        self.assertTrue(make_isl_failed(src_endpoint))
+
+        # 0 1
+        self.ensure_isl_props(neo4j_connect, src_endpoint, dst_endpoint, status_down)
+        self.ensure_isl_props(neo4j_connect, dst_endpoint, src_endpoint, status_half_up)
+        self.assertTrue(make_isl_discovery(src_endpoint, dst_endpoint))
+
+        # 1 1
+        self.ensure_isl_props(neo4j_connect, src_endpoint, dst_endpoint, status_up)
+        self.ensure_isl_props(neo4j_connect, dst_endpoint, src_endpoint, status_up)
+        self.assertTrue(make_isl_failed(dst_endpoint))
+
+        # 1 0
+        self.ensure_isl_props(neo4j_connect, src_endpoint, dst_endpoint, status_half_up)
+        self.ensure_isl_props(neo4j_connect, dst_endpoint, src_endpoint, status_down)
+        self.assertTrue(make_isl_discovery(dst_endpoint, src_endpoint))
+
+        # 1 1
+        self.ensure_isl_props(neo4j_connect, src_endpoint, dst_endpoint, status_up)
+        self.ensure_isl_props(neo4j_connect, dst_endpoint, src_endpoint, status_up)
+        self.assertTrue(make_isl_failed(src_endpoint))
+
+        # 0 1
+        self.ensure_isl_props(neo4j_connect, src_endpoint, dst_endpoint, status_down)
+        self.ensure_isl_props(neo4j_connect, dst_endpoint, src_endpoint, status_half_up)
+        self.assertTrue(make_isl_failed(dst_endpoint))
+
+        # 0 0
+        self.ensure_isl_props(neo4j_connect, src_endpoint, dst_endpoint, status_down)
+        self.ensure_isl_props(neo4j_connect, dst_endpoint, src_endpoint, status_down)
+
+    def test_cost_raise_on_port_down(self):
+        self.setup_initial_data()
+        self._cost_raise_on_port_down(1, 10000, 10000)
+
+    def test_cost_raise_on_port_down_without_link_props(self):
+        self.setup_initial_data(make_link_props=False)
+        self._cost_raise_on_port_down(None, 10000, 10000)
+
+    def _cost_raise_on_port_down(self, initial, down, recover):
+        src_endpoint, dst_endpoint = self.src_endpoint, self.dst_endpoint
+
+        self.ensure_isl_costs(
+            (src_endpoint, initial),
+            (dst_endpoint, initial))
+
+        self.assertTrue(
+            make_port_down(src_endpoint), 'Port DOWN command have failed')
+
+        self.ensure_isl_costs(
+            (src_endpoint, down),
+            (dst_endpoint, down))
+
+        self.assertTrue(
+            make_isl_discovery(src_endpoint, dst_endpoint),
+            'ISL discovery command have failed')
+
+        self.ensure_isl_costs(
+            (src_endpoint, recover),
+            (dst_endpoint, recover))
+
+    def test_no_cost_raise_on_isl_down(self):
+        self.setup_initial_data()
+
+        src_endpoint, dst_endpoint = self.src_endpoint, self.dst_endpoint
 
         self.ensure_isl_costs(
                 (src_endpoint, 1),
                 (dst_endpoint, 1))
 
         self.assertTrue(
-                make_port_down(src_endpoint), 'Port DOWN command have failed')
+                make_isl_failed(src_endpoint), 'Port DOWN command have failed')
 
         self.ensure_isl_costs(
-                (src_endpoint, 10000),
+                (src_endpoint, 1),
                 (dst_endpoint, 1))
 
         self.assertTrue(
@@ -240,8 +305,14 @@ class TestIsl(unittest.TestCase):
                 'ISL discovery command have failed')
 
         self.ensure_isl_costs(
-                (src_endpoint, 10000),
+                (src_endpoint, 1),
                 (dst_endpoint, 1))
+
+    def ensure_isl_props(self, tx, source, dest, props):
+        isl_record = isl_utils.fetch(tx, model.InterSwitchLink(source, dest, None))
+        neo4j_connect.pull(isl_record)
+        for name in props:
+            self.assertEqual(props[name], isl_record[name], "Invalid ISL's {!r} value ({!r})".format(name, isl_record))
 
     def ensure_isl_costs(self, *endpoint_cost_pairs):
         endpoints = []
@@ -261,10 +332,24 @@ class TestIsl(unittest.TestCase):
             for node in endpoints:
                 q = (
                     'MATCH (a:switch)-[self:isl]->(:switch)\n'
-                    'WHERE a.name={dpid}\n'
+                    'WHERE a.name=$dpid\n'
                     'RETURN self')
 
                 for data_set in tx.run(q, dpid=node.dpid):
                     node = data_set['self']
                     neo4j_connect.pull(node)
                     yield node
+
+    def setup_initial_data(self, make_link_props=True):
+        src_endpoint, dst_endpoint = self.src_endpoint, self.dst_endpoint
+
+        make_switch(src_endpoint)
+        make_switch(dst_endpoint)
+
+        if make_link_props:
+            with neo4j_connect.begin() as tx:
+                payload = {'cost': 1}
+                inject_db_link_props(tx, src_endpoint, dst_endpoint, payload)
+                inject_db_link_props(tx, dst_endpoint, src_endpoint, payload)
+
+        make_isl_pair(src_endpoint, dst_endpoint)

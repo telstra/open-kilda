@@ -51,6 +51,17 @@ public class IslLinkInfo implements Serializable {
     private String state;
 
     private boolean isUnidirectional;
+    
+    private String cost;
+    
+
+    public String getCost() {
+        return cost;
+    }
+
+    public void setCost(String cost) {
+        this.cost = cost;
+    }
 
     /**
      * Gets the src port.

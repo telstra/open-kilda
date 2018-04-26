@@ -61,7 +61,7 @@ public class SwitchService {
      * @return
      */
     public LinkProps getLinkProps(LinkProps keys) {
-        return switchIntegrationService.getIslLinkProps(keys);
+        return switchIntegrationService.getIslLinkProps(keys).get(0);
     }
 
     /**

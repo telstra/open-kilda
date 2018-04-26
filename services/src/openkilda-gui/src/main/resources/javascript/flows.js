@@ -113,14 +113,14 @@ function showflowData(response){
 		  destroy: true,
 		  language: {searchPlaceholder: "Search"},
 		  "aoColumns": [
+		                { sWidth: '15%' },
+		                { sWidth:  '13%' },
+		                { sWidth: '8%' },
+		                { sWidth: '9%' },
+		                { sWidth: '13%' },
+		                { sWidth: '8%' },
+		                { sWidth: '9%' },
 		                { sWidth: '10%' },
-		                { sWidth:  '15%' },
-		                { sWidth: '8%' },
-		                { sWidth: '8%' },
-		                { sWidth: '14%' },
-		                { sWidth: '9%' },
-		                { sWidth: '9%' },
-		                { sWidth: '9%' },
 		                { sWidth: '8%' },
 		                { sWidth: '10%' } ]
 	 });

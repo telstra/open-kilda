@@ -35,10 +35,35 @@
 						<li><i class="fa icon-double-angle-right"></i>Topology</li>
 					</ul>					
 				</div>
+				
 				<div class="col-sm-4 text-right">
-					
+					<div class="isl_flow_switch">
+						<input type="hidden" id="auto_refresh"/>
+						<input type="hidden" id="auto_refresh_interval"/>
+						<input type="hidden" id="m_s_dropdown"/>
+						<input type="hidden" id="switch" />
+						<span class="btn btn-xs kilda_btn" data-toggle="modal" id="viewISL" data-target="#viewISLList">Affected ISL</span>
+						<span  data-balloon-pos="down" data-balloon="Show Switch" class="switch_icon" id="switch_icon"><i class="icon-switch" aria-hidden="true"></i></span>
+						<span  data-balloon-pos="down" data-balloon="Show ISL"  class="isl_switch_icon" id="logical"><i class="icon-isl" aria-hidden="true"></i></span>
+						<span  data-balloon-pos="down" data-balloon="Show Flows" class="isl_switch_icon" id="physical" style="display:none"><i class="icon-flows" aria-hidden="true"></i></span>
+						<span data-balloon-pos="down" data-balloon="Refresh" class="refresh_toggle" onclick="toggleRefresh()"><i class="icon-refresh-kilda"></i></span>
+						<ul class="refresh_list" style="display:none;">
+						<li class="stop_refresh active" onclick="stopAutoRefresh()"><i class="icon icon-ok"></i>STOP</li>
+						<li id="10s" class="refresh_option" onclick="setAutoRefresh(10,'s')"><i class="icon icon-ok"></i>10 SECONDS</li>
+						<li id="15s" class="refresh_option" onclick="setAutoRefresh(15,'s')"><i class="icon icon-ok"></i>15 SECONDS</li>
+						<li id="30s" class="refresh_option" onclick="setAutoRefresh(30,'s')"><i class="icon icon-ok"></i>30 SECONDS</li>
+						<li id="1m" class="refresh_option" onclick="setAutoRefresh(1,'m')"><i class="icon icon-ok"></i>1 MINUTE</li>
+						<li id="2m" class="refresh_option" onclick="setAutoRefresh(2,'m')"><i class="icon icon-ok"></i>2 MINUTE</li>
+						<li id="3m" class="refresh_option" onclick="setAutoRefresh(3,'m')"><i class="icon icon-ok"></i>3 MINUTE</li>
+						<li id="5m" class="refresh_option" onclick="setAutoRefresh(5,'m')"><i class="icon icon-ok"></i>5 MINUTE</li>
+						<li id="10m" class="refresh_option" onclick="setAutoRefresh(10,'m')"><i class="icon icon-ok"></i>10 MINUTE</li>
+						<li id="15m" class="refresh_option" onclick="setAutoRefresh(15,'m')"><i class="icon icon-ok"></i>15 MINUTE</li>
+						<li id="30m" class="refresh_option" onclick="setAutoRefresh(30,'m')"><i class="icon icon-ok"></i>30 MINUTE</li>		
+						</ul>
+						<i class="icon-info-sign t-logy-icon" aria-hidden="true"></i>
+					</div>
 					<!-- <i class="fa fa-info-circle t-logy-icon" aria-hidden="true"></i> -->
-					<i class="icon-info-sign t-logy-icon" aria-hidden="true"></i>
+					
 					<div class="topology-txt" id="topology-txt" style="display: none;">
 						<p>
 						<h1 align="center">Information</h1>
@@ -67,6 +92,7 @@
 		</div>
 		
 		<div id="topology-hover-txt" style="">
+		
 			<div class="form-wrapper" id="switch_hover" style="display:none">
 
 				<div class="form-group row">
@@ -110,6 +136,10 @@
 					<p class="col-sm-6 isldetails_div_destination_port"></p>
 				</div>
 				<div class="form-group row">
+					<label class="col-sm-5 col-form-label" style='font-weight: bold;'>Cost:</label>
+					<p class="col-sm-6 isldetails_div_cost"></p>
+				</div>
+					<div class="form-group row">
 					<label class="col-sm-5 col-form-label" style='font-weight: bold;'>State:</label>
 					<p class="col-sm-6 isldetails_div_state"></p>
 				</div>
@@ -125,56 +155,26 @@
 			
 		</div>
 		<div class="container-fluid">
+		<div id="switchesgraph" class="hide"></div>
 		<div class="row">
 					<div class="col-sm-3 checkbox-wrapper pull-right">	
-				<div class="check">
-					<input type="checkbox" name="auto_refresh" class="isl_flow" value="auto_refresh" id="auto_refresh"/>Auto Refresh<br/>
-					<span class="auto_refresh_interval hide">
-						<span id="refresh_dropdown">
-							
-						</span>
-						<span id="m_s_dropdown_span">
-							<select id="m_s_dropdown">
-								<option value="m">Min.</option>
-								<option value="s">Sec</option>
-							</select>
-						</span>
-					</span>
-					<input type="checkbox" name="switch" value="switch" id="switch"/>Show
-					Switch<br/>
-					<input type="checkbox" name="logical" class="isl_flow" value="logical" id="logical"/>Show Flow<br/>
-					<input type="checkbox" name="logical" class="isl_flow" value="physical" id="physical"/>Show ISL<br/>
-									
-				</div>
-				<div class="check-connections">
-					<div class="lconnection c-block">
-						<span></span>Logical Connections
-					</div>
-					<div class="pconnection c-block">
-						<span></span>Physical Connections
-					</div>
-					<span class="btn kilda_btn ml-1" data-toggle="modal" id="viewISL" data-target="#viewISLList">Affected ISL</span>
-					<div class="checkbox-btns">
-<!-- 					<button id="zoom_in" onclick="zoomClick('zoom_in')" class="ui-button ui-widget ui-corner-all">+</button>
-					<button id="zoom_out" onclick="zoomClick('zoom_out')" class="ui-button ui-widget ui-corner-all">-</button>
-					<button id="reset" onclick="reset()" class="ui-button ui-widget ui-corner-all">Reset</button> -->
-								
+					<div class="check-connections">
+					
+					<div class="checkbox-btns">								
 						<div id="ui-container" class="ui-widget">
-						   <input id="search" autofocus="autofocus" placeholder="Search"/>   <!-- onclick ="searchNode()" -->
-						    <!-- <button type="button" placeholder="Search Switch" class="btn btn-search">Search</button> -->
+						   <input id="search" autofocus="autofocus" placeholder="Search"/>   
 						    <i id="searchbox" class="icon-search" title="Search"></i>	
 						</div>	
- 						<!-- <i id="zoom_in" onclick="zoomClick('zoom_in')" class="icon-zoom-in"></i>
-						<i id="zoom_out" onclick="zoomClick('zoom_out')" class="icon-zoom-out"></i> -->
-						<i id="zoom_in" onclick="zoomClick('zoom_in')" title="Zoom In">+</i>
+ 						<i id="zoom_in" onclick="zoomClick('zoom_in')" title="Zoom In">+</i>
 						<i id="zoom_out" onclick="zoomClick('zoom_out')" title="Zoom Out">-</i>
 						<i id="reset" onclick="reset()" class="icon-undo" title="Reset"></i>
 					</div>
 					
 				</div>
 			</div>
+					
 		</div>		
-			<div id="switchesgraph" class="draggable hide"></div>
+			
 		</div>
 
 		<div class="popup" id="popupDiv">
@@ -199,7 +199,7 @@
 						aria-label="Close">
 						<span aria-hidden="true">&times;</span>
 					</button>
-					<h4 class="modal-title" id="myModalLabel">ISL List</h4>
+					<h4 class="modal-title" id="myModalLabel">AFFECTED ISL's</h4>
 				</div>
 				<div class="modal-body col-lg-12 tab-wrapper">
 					<ul class="nav nav-pills">
@@ -212,23 +212,60 @@
 							<table id="failed-isl-table" class="isl-table-popup" cellspacing="0" width="100%">
 								<thead>
 									<tr class="tableHeading">
-										<th><span title="Source Switch">Src Switch	</span>	
+										<th><span title="Source Switch">Src Switch </span>
+										<i class="icon-search" onclick="showSearch('source-switch-name',event)" style=""></i> 
+										<input  id="source-switch-name" class="heading_search_box" type="search" style="display: none;" placeholder="Search" />
+										
 										</th>
-										<th><span title="Source Port">Src Port </span>
+										
+										<th><span title="Source Switch">Src Switch	</span>					
+										<i class="icon-search" id="sourceIcon" onclick="showSearch('source-switch',event)" style=""></i> 
+										<input id="source-switch" class="heading_search_box" type="search" style="display: none;" placeholder="Search" />
+										
 										</th>
-										<th><span title="Source Switch Name">Src Switch Name </span>
+										<th><span title="Source Port">Port </span>
+										<i class="icon-search" onclick="showSearch('source-port',event)" style=""></i> 
+										<input id="source-port" class="heading_search_box" type="search" style="display: none;" placeholder="Search" />
+										
 										</th>
+										<th><span title="Destination Switch">Dst Switch </span>
+										<i class="icon-search" onclick="showSearch('destination-switch-name',event)" style=""></i> 
+										<input id="destination-switch-name" class="heading_search_box" type="search" style="display: none;" placeholder="Search" />
+										
+										</th>
+										
 										<th><span title="Destination Switch">Dst Switch</span>
+										<i class="icon-search" id="targetIcon" onclick="showSearch('target-switch',event)" style=""></i> 
+										<input id="target-switch" class="heading_search_box" type="search" style="display: none;" placeholder="Search" />
+										
 										</th>
-										<th><span title="Destination Port">Dst Port </span>
+										<th><span title="Destination Port">Port </span>
+										<i class="icon-search" onclick="showSearch('destination-port',event)" style=""></i> 
+										<input id="destination-port" class="heading_search_box" type="search" style="display: none;" placeholder="Search" />
+										
 										</th>
-										<th><span title="Destination Switch Name">Dst Switch Name </span>
+										<th><span title="Cost">Cost </span>
+										<i class="icon-search" onclick="showSearch('cost',event)" style=""></i> 
+										<input id="cost" class="heading_search_box" type="search" style="display: none;" placeholder="Search" />
+										
+										</th>
+											<th><span title="State">State </span>
+										<i class="icon-search" onclick="showSearch('state',event)" style=""></i> 
+										<input id="state" class="heading_search_box" type="search" style="display: none;" placeholder="Search" /> 
+										
+										</th> 
+										<th><span title="Speed">Speed</span> 
+										<i class="icon-search" onclick="showSearch('speed',event)" style=""></i> 
+										<input id="speed"  class="heading_search_box" type="search" style="display: none;" placeholder="Search" />
 										</th>
 										<th><span title="Available Bandwidth">Available Bandwidth </span>
-										</th>
-				 						<th><span title="Speed">Speed</span> 
+										<i class="icon-search" onclick="showSearch('max-band',event)" style=""></i> 
+										<input id="max-band" class="heading_search_box" type="search" style="display: none;" placeholder="Search" />
+										
 										</th>
 										<th><span title="Latency">Latency</span> 
+										<i class="icon-search" onclick="showSearch('latency',event)" style=""></i> 
+										<input id="latency"  class="heading_search_box" type="search" style="display: none;" placeholder="Search" />
 										</th>
 									</tr>
 								</thead>
@@ -240,27 +277,63 @@
 							<table id="unidirectional-isl-table" class="isl-table-popup" cellspacing="0" width="100%">
 								<thead>
 									<tr class="tableHeading">
-										<th><span title="Source Switch">Src Switch	</span>	
+										<th><span title="Source Switch">Src Switch </span>
+										<i class="icon-search" onclick="showSearch('source-switch-name',event)" style=""></i> 
+										<input  id="source-switch-name" class="heading_search_box" type="search" style="display: none;" placeholder="Search" />
+										
 										</th>
-										<th><span title="Source Port">Src Port </span>
+										
+										<th><span title="Source Switch">Src Switch	</span>					
+										<i class="icon-search" id="sourceIcon" onclick="showSearch('source-switch',event)" style=""></i> 
+										<input id="source-switch" class="heading_search_box" type="search" style="display: none;" placeholder="Search" />
+										
 										</th>
-										<th><span title="Source Switch Name">Src Switch Name </span>
+										<th><span title="Source Port">Port </span>
+										<i class="icon-search" onclick="showSearch('source-port',event)" style=""></i> 
+										<input id="source-port" class="heading_search_box" type="search" style="display: none;" placeholder="Search" />
+										
 										</th>
+										<th><span title="Destination Switch Name">Dst Switch </span>
+										<i class="icon-search" onclick="showSearch('destination-switch-name',event)" style=""></i> 
+										<input id="destination-switch-name" class="heading_search_box" type="search" style="display: none;" placeholder="Search" />
+										
+										</th>
+										
 										<th><span title="Destination Switch">Dst Switch</span>
+										<i class="icon-search" id="targetIcon" onclick="showSearch('target-switch',event)" style=""></i> 
+										<input id="target-switch" class="heading_search_box" type="search" style="display: none;" placeholder="Search" />
+										
 										</th>
-										<th><span title="Destination Port">Dst Port </span>
+										<th><span title="Destination Port">Port </span>
+										<i class="icon-search" onclick="showSearch('destination-port',event)" style=""></i> 
+										<input id="destination-port" class="heading_search_box" type="search" style="display: none;" placeholder="Search" />
+										
 										</th>
-										<th><span title="Destination Switch Name">Dst Switch Name </span>
+										<th><span title="Cost">Cost </span>
+										<i class="icon-search" onclick="showSearch('cost',event)" style=""></i> 
+										<input id="cost" class="heading_search_box" type="search" style="display: none;" placeholder="Search" />
+										
+										</th>
+											<th><span title="State">State </span>
+										<i class="icon-search" onclick="showSearch('state',event)" style=""></i> 
+										<input id="state" class="heading_search_box" type="search" style="display: none;" placeholder="Search" /> 
+										
+										</th> 
+										<th><span title="Speed">Speed</span> 
+										<i class="icon-search" onclick="showSearch('speed',event)" style=""></i> 
+										<input id="speed"  class="heading_search_box" type="search" style="display: none;" placeholder="Search" />
 										</th>
 										<th><span title="Available Bandwidth">Available Bandwidth </span>
-										</th>
-				 						<th><span title="Speed">Speed</span> 
+										<i class="icon-search" onclick="showSearch('max-band',event)" style=""></i> 
+										<input id="max-band" class="heading_search_box" type="search" style="display: none;" placeholder="Search" />
+										
 										</th>
 										<th><span title="Latency">Latency</span> 
+										<i class="icon-search" onclick="showSearch('latency',event)" style=""></i> 
+										<input id="latency"  class="heading_search_box" type="search" style="display: none;" placeholder="Search" />
 										</th>
 									</tr>
 								</thead>
-				
 								<tbody>
 								</tbody>
 							</table>

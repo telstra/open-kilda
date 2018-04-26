@@ -137,17 +137,32 @@ public class SwitchIntegrationService {
             if (CollectionUtil.isEmpty(links)) {
                 throw new ContentNotFoundException();
             }
-            return islLinkConverter.toIslLinksInfo(links);
+           
+            return islLinkConverter.toIslLinksInfo(links,islCostMap());
         }
         return null;
     }
+    
+   private Map<String,String> islCostMap(){
+    List<LinkProps> linkProps = getIslLinkProps(null);
+    Map<String,String> islCostMap = new HashMap<>();
+    linkProps.forEach(linkProp -> {
+        String key = linkProp.getSrc_switch()+"-"+ linkProp.getSrc_port()+"-"+linkProp.getDst_switch()+"-"+linkProp.getDst_port();
+        String value = linkProp.getProperty("cost");
+        islCostMap.put(key, value);
+    });
+    
+    return islCostMap;
+    
+    }
+    
 
     /**
      * Gets the isl link cost.
      *
      * @return the isl link cost
      */
-    public LinkProps getIslLinkProps(LinkProps keys) {
+    public List<LinkProps> getIslLinkProps(LinkProps keys) {
         UriComponentsBuilder builder =
                 UriComponentsBuilder.fromHttpUrl(applicationProperties.getLinkProps());
         builder = setLinkProps(keys, builder);
@@ -155,12 +170,12 @@ public class SwitchIntegrationService {
         HttpResponse response = restClientManager.invoke(fullUri, HttpMethod.GET, "", "",
                 applicationService.getAuthHeader());
         if (RestClientManager.isValidResponse(response)) {
-            List<LinkProps> linkPropsResponse =
+            List<LinkProps> linkPropsResponses =
                     restClientManager.getResponseList(response, LinkProps.class);
-            if (CollectionUtil.isEmpty(linkPropsResponse)) {
+            if (CollectionUtil.isEmpty(linkPropsResponses)) {
                 throw new ContentNotFoundException();
             } else {
-                return linkPropsResponse.get(0);
+                return linkPropsResponses;
             }
         }
         return null;

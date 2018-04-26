@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2017 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,28 +13,37 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.dto.switches;
+package org.openkilda.messaging.info.stats;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Builder;
 import lombok.Value;
+import org.openkilda.messaging.info.InfoData;
 
-import java.util.List;
+import java.util.Set;
 
 @Value
-public class RulesSyncResult extends RulesValidationResult {
+@Builder
+public class SwitchPortStatusData extends InfoData {
 
-    @JsonProperty("installed_rules")
-    private List<Long> installedRules;
+    @JsonProperty("switch_id")
+    private String switchId;
+
+    @JsonProperty("ports")
+    private Set<PortStatus> ports;
+
+    @JsonProperty("requester")
+    private String requester;
+
 
     @JsonCreator
-    public RulesSyncResult(
-            @JsonProperty("missing_rules") List<Long> missingRules,
-            @JsonProperty("proper_rules") List<Long> properRules,
-            @JsonProperty("excess_rules") List<Long> excessRules,
-            @JsonProperty("installed_rules") List<Long> installedRules) {
-        super(missingRules, properRules, excessRules);
-
-        this.installedRules = installedRules;
+    public SwitchPortStatusData(
+            @JsonProperty("switch_id") String switchId,
+            @JsonProperty("ports") Set<PortStatus> ports,
+            @JsonProperty("requester") String requester) {
+        this.switchId = switchId;
+        this.ports = ports;
+        this.requester = requester;
     }
 }

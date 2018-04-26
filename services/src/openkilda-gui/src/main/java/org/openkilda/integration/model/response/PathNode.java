@@ -62,6 +62,7 @@ public class PathNode implements Serializable, Comparable<PathNode> {
         setInPortNo(inPortNo);
         setOutPortNo(outPortNo);
         setSwitchId(switchId);
+        setSwitchName(switchName);
     }
 
     /** The Constant serialVersionUID. */

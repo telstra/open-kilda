@@ -148,7 +148,7 @@ var margin = {top: -5, right: -5, bottom: -5, left: -5},
 	width = window.innerWidth,
 	height = window.innerHeight,
 	radius = 35,
-	zoom, force, drag, svg,  link, node, text, flow_count;
+	zoom, force, drag, svg,  link, node, text, flow_count,linksSourceArr;
 var size = d3.scale.pow().exponent(1)
 .domain([1, 100])
 .range([8, 24]);
@@ -205,9 +205,11 @@ graph = {
 		nodes = responseData.switch.data;
 		links = responseData.isl.data;
 		flows = responseData.flow.data;
-		
+		linksSourceArr= [];
 		var linksArr = [];
-		if (links.length>0 && flows.length>0) {
+		
+		if (links.length>0) {
+			
 			try{
 				var result = common.groupBy(links, function(item)
 				{
@@ -215,43 +217,46 @@ graph = {
 				});
 				for(var i=0,len=result.length;i<len;i++){
 					var row = result[i];
-					row[0].failedObj = {
-						count: 0,
-						isl: []
-					};
-					row[0].discoveredObj = {
-						count: 0,
-						isl: []
-					};
-					row[0].unidirectionalObj = {
-						count: 0,
-						isl: []
-					};
 					
-					if(row.length>1){
+					if(row.length>=1){
 						for(var j=0,len1=row.length;j<len1;j++){
-							if(row[j].state.toLowerCase()=="failed"){
-								row[0].failedObj.count++;
-								row[0].failedObj.isl.push(row[j]);
+							var key= row[j].source_switch+"_"+row[j].target_switch;
+							if(row[j].unidirectional && row[j].state.toLowerCase()=="discovered"){
+								if(typeof(linksSourceArr[key])!=='undefined'){
+									linksSourceArr[key].push(row[j]);
+								}else{
+									linksSourceArr[key] = []
+									linksSourceArr[key].push(row[j]);
+								}
 							}
-							if(row[j].state.toLowerCase()=="discovered"){
-								row[0].discoveredObj.count++;
-								row[0].discoveredObj.isl.push(row[j]);
+							else if(row[j].state.toLowerCase()=="failed"){
+								if(typeof(linksSourceArr[key])!=='undefined'){
+									linksSourceArr[key].push(row[j]);
+								}else{
+									linksSourceArr[key] = []
+									linksSourceArr[key].push(row[j]);
+								}
 							}
-							if(row[j].unidirectional){
-								row[0].unidirectionalObj.count++;
-								row[0].unidirectionalObj.isl.push(row[j]);
+							else if(row[j].state.toLowerCase()=="discovered"){
+								if(typeof(linksSourceArr[key])!=='undefined'){
+									linksSourceArr[key].push(row[j]);
+								}else{
+									linksSourceArr[key] = []
+									linksSourceArr[key].push(row[j]);
+								}
 							}
 						}
 					}
-					linksArr.push(row[0]);
 				}
 			}catch(e){
-				links = links.concat(flows);
+			
 			}
-			links = linksArr.concat(flows);
+			
 		}
 		
+		if(flows.length>0){
+			links = links.concat(flows);
+		}
 		optArray = optArray.sort();
 		
 		// calculating nodes
@@ -296,7 +301,19 @@ graph = {
         .nodes(nodes)
         .links(links)
         .charge(-1000)
-       	.linkDistance(200)
+       	//.linkDistance(200)
+        .linkDistance(function(d) { 
+ 		var distance = 150;
+ 		try{
+		if(!d.flow_count){
+			if(d.speed == "40000000"){
+				distance = 100;
+			}else {
+				distance = 300;
+			}
+ 		}
+ 		}catch(e){}
+ 		return distance;  })
        	.size([width, height])
         .start();
 		
@@ -314,7 +331,7 @@ graph = {
 	        if (d.hasOwnProperty("flow_count")) {
 	            return "link logical";
 	        } else {
-	            if (d.unidirectional || d.state && d.state.toLowerCase()== "failed"){
+	            if (d.unidirectional && d.state && d.state.toLowerCase()== "discovered" || d.state && d.state.toLowerCase()== "failed"){
                     return "link physical down";
                 }else{
                     return "link physical";
@@ -330,7 +347,7 @@ graph = {
 	        if (d.hasOwnProperty("flow_count")) {
 	        	element.setAttribute("class", "link logical overlay");
 	        } else {
-	            if (d.unidirectional || d.state && d.state.toLowerCase()== "failed"){
+	            if (d.unidirectional && d.state && d.state.toLowerCase()== "discovered" || d.state && d.state.toLowerCase()== "failed"){
                     element.setAttribute("class","link physical pathoverlay");
                 }else{
                 	element.setAttribute("class","link physical overlay");
@@ -349,23 +366,24 @@ graph = {
 	            })
 	            var rec = element.getBoundingClientRect();
 			    $('#topology-hover-txt, #isl_hover').css('display', 'block');
-			    d3.select(".isldetails_div_source_port").html("<span>" + d.src_port + "</span>");
-			    d3.select(".isldetails_div_destination_port").html("<span>" + d.dst_port + "</span>");
-			    d3.select(".isldetails_div_source_switch").html("<span>" + d.source_switch_name + "</span>");
-			    d3.select(".isldetails_div_destination_switch").html("<span>" + d.target_switch_name + "</span>");
-			    d3.select(".isldetails_div_speed").html("<span>" + d.speed/1000 + " Mbps</span>");
-			    d3.select(".isldetails_div_state").html("<span>" + d.state + "</span>");
-			    d3.select(".isldetails_div_latency").html("<span>" + d.latency + "</span>");
-			    d3.select(".isldetails_div_bandwidth").html("<span>" + d.available_bandwidth/1000 + " Mbps</span>");
-			    d3.select(".isldetails_div_unidirectional").html("<span>" + d.unidirectional + "</span>"); 
-			    
+			    d3.select(".isldetails_div_source_port").html("<span>" + ((d.src_port=="" || d.src_port == undefined)? "-":d.src_port) + "</span>");
+			    d3.select(".isldetails_div_destination_port").html("<span>" + ((d.dst_port=="" || d.dst_port == undefined)? "-":d.dst_port) + "</span>");
+			    d3.select(".isldetails_div_source_switch").html("<span>" + ((d.source_switch_name=="" || d.source_switch_name == undefined)? "-":d.source_switch_name) + "</span>");
+			    d3.select(".isldetails_div_destination_switch").html("<span>" +  ((d.target_switch_name=="" || d.target_switch_name == undefined)? "-":d.target_switch_name)+ "</span>");
+			    d3.select(".isldetails_div_speed").html("<span>" + ((d.speed=="" || d.speed == undefined)? "-":d.speed/1000) + " Mbps</span>");
+			    d3.select(".isldetails_div_state").html("<span>" + ((d.state=="" || d.state == undefined)? "-":d.state) + "</span>");
+			    d3.select(".isldetails_div_latency").html("<span>" + ((d.latency=="" || d.latency == undefined)? "-":d.latency) + "</span>");
+			    d3.select(".isldetails_div_bandwidth").html("<span>" + ((d.available_bandwidth=="" || d.available_bandwidth == undefined)? "-":d.available_bandwidth/1000) + " Mbps</span>");
+			    d3.select(".isldetails_div_unidirectional").html("<span>" + ((d.unidirectional=="" || d.unidirectional == undefined)? "-":d.unidirectional) + "</span>"); 
+			    d3.select(".isldetails_div_cost").html("<span>" + ((d.cost=="" || d.cost == undefined)? "-":d.cost) + "</span>"); 
+			      
 	        }
 	    }).on("mouseout", function(d, index) {
 	        var element = $("#link" + index)[0];
 	        if (d.hasOwnProperty("flow_count")) {
 	        	element.setAttribute("class", "link logical");
 	        } else {
-	            if (d.unidirectional || d.state && d.state.toLowerCase()== "failed"){
+	            if (d.unidirectional && d.state && d.state.toLowerCase()== "discovered" || d.state && d.state.toLowerCase()== "failed"){
 	                element.setAttribute("class","link physical down");
 	            }else{
 	                element.setAttribute("class","link physical");
@@ -382,7 +400,7 @@ graph = {
 	        	showFlowDetails(d);
 	        } else {
 	            
-	            if (d.unidirectional || d.state && d.state.toLowerCase()== "failed"){
+	            if (d.unidirectional && d.state && d.state.toLowerCase()== "discovered" || d.state && d.state.toLowerCase()== "failed"){
                     element.setAttribute("class","link physical pathoverlay");
                 }else{
                     element.setAttribute("class","link physical overlay");
@@ -393,7 +411,7 @@ graph = {
 	        if (d.hasOwnProperty("flow_count")) {
 	            return "#228B22";
 	        } else {
-	            if (d.unidirectional){
+	            if (d.unidirectional && d.state && d.state.toLowerCase()== "discovered"){
                     return ISL.UNIDIR;
                 } else if(d.state && d.state.toLowerCase()== "discovered"){
                     return ISL.DISCOVERED;
@@ -536,6 +554,7 @@ graph = {
 				    	
 				        return "translate("+d.x+","+d.y+")";
 				    });
+				    
 					tick();
 				}
 			}catch(e){
@@ -558,8 +577,16 @@ graph = {
 		}
 	},
 	circle : function(){
+		var filteredLinks = [];
+		links.map(function(l,i){
+			if(l && l.hasOwnProperty('flow_count')){
+				var obj = l;
+				obj.index=i;
+				filteredLinks.push(obj);
+			};
+		})
 		flow_count = svg.selectAll(".flow_count")
-	    	.data(links)
+	    	.data(filteredLinks)
 	    	.enter().append("g").attr("class","flow-circle");
 	
 		flow_count.append("circle")
@@ -567,7 +594,7 @@ graph = {
 	    	.style("font-size", nominal_text_size + "px")
 	
 		    .attr("r", function(d, index) {
-		        var element = $("#link" + index)[0];
+		    	var element = $("#link" + d.index)[0];
 		        var f = d.flow_count;
 		        if (element.getAttribute("stroke") == "#228B22" || element.getAttribute("stroke") == "green") {
 		        	if(f<10){
@@ -672,10 +699,41 @@ function setLinkIndexAndNum() {
 		}
 	}
 }		
+function isObjEquivalent(a, b) {
+    // Create arrays of property names
+    var aProps = Object.getOwnPropertyNames(a);
+    var bProps = Object.getOwnPropertyNames(b);
+    if (aProps.length != bProps.length) {
+        return false;
+    }
+
+    for (var i = 0; i < aProps.length; i++) {
+        var propName = aProps[i];
+        if (a[propName] !== b[propName]) {
+            return false;
+        }
+    }
+
+     return true;
+}
 function tick() {
 
 	var lookup = {};
 	link.attr("d", function(d) {
+		var islCount = 0;
+		var matchedIndex = 1;
+		var key = d.source_switch+"_"+d.target_switch;
+		if(linksSourceArr && typeof(linksSourceArr[key])!=='undefined'){
+			islCount = linksSourceArr[key].length;
+		}
+		if(islCount > 1){
+			linksSourceArr[key].map(function(o,i){
+				if(isObjEquivalent(o,d)){
+					matchedIndex = i +1;
+					return;
+				}
+			})
+		}
 		var x1 = d.source.x,
         y1 = d.source.y,
         x2 = d.target.x,
@@ -706,10 +764,24 @@ function tick() {
 		keysof = Object.keys(d);
 		lookup[d.key] = d.flow_count;
 		if (lookup[d.Key] == undefined) {
-			return "M" + d.source.x + "," + d.source.y + "A" + dr +
-				"," + dr + " 0 0 1," + d.target.x + "," +
-				d.target.y + "A" + dr + "," + dr + " 0 0 0," +
-				d.source.x + "," + d.source.y;
+			if(islCount ==1){
+				return "M" + d.source.x + "," + d.source.y + "L" + d.target.x + "," + d.target.y;
+			}else{
+				if(islCount %2 !=0 && matchedIndex ==1){
+					return "M" + d.source.x + "," + d.source.y + "L" + d.target.x + "," + d.target.y;
+				}else if(matchedIndex % 2 ==0){
+					return  "M" + d.source.x + "," + d.source.y + "A" + dr +
+					"," + dr + " 0 0 1," + d.target.x + "," +
+					d.target.y + "A" + dr + "," + dr + " 0 0 0," +
+					d.source.x + "," + d.source.y; 
+				}else{
+					return  "M" + d.source.x + "," + d.source.y + "A" + dr +
+					"," + dr + " 0 0 0," + d.target.x + "," +
+					d.target.y + "A" + dr + "," + dr + " 0 0 1," +
+					d.source.x + "," + d.source.y; 
+				}
+				
+			}
 		} else {
 			if(d.source_switch == d.target_switch){
 				  // Self edge.
@@ -744,7 +816,7 @@ function tick() {
 	node.attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
 	
 	flow_count.attr("transform", function(d, index) {
-	    var xvalue = (d.source.y + d.target.y) / 2;
+		var xvalue = (d.source.y + d.target.y) / 2;
 	    var yvalue = (d.source.x + d.target.x) / 2;
 	    if(d.source_switch == d.target_switch){
 	    	return "translate(" + (yvalue+70) + "," + (xvalue-70) + ")";
@@ -812,7 +884,7 @@ function dblclick(d,index) {
     element.setAttribute("class", classes);
     doubleClickTime = new Date();
     d3.select(this).classed("fixed", d.fixed = false);
-    //force.resume();
+    force.resume();
 }
 function dragstart(d) {
 	force.stop()
@@ -835,10 +907,15 @@ function dragend(d, i) {
     updateCoordinates();
 }
 
-$("#switch").on("click", function(){
-	checked = $('input[name="switch"]:checked').length; 
-	updateRightPanel({SWITCH_CHECKED : checked});
-});
+
+$('#switch_icon').on('click',function(){
+	if(RIGHT_CHECKBOXES.SWITCH_CHECKED){
+		updateRightPanel({SWITCH_CHECKED : 0});
+	}else{
+		updateRightPanel({SWITCH_CHECKED : 1});
+	}
+	
+})
 
 function zoomFit(paddingPercent, transitionDuration) {
 	var bounds = svg.node().getBBox();
@@ -884,7 +961,7 @@ function resize() {
 
 function showFlowDetails(d) {
 
-	url = 'flows#'+encodeURIComponent(d.source_switch_name)+'|'+encodeURIComponent(d.target_switch_name);
+	url = 'flows#'+d.source_switch+'|'+d.target_switch;
 	window.location = url;
 }
 
@@ -896,7 +973,7 @@ function showSwitchDetails(d) {
 }
 
 function showLinkDetails(d) {
-
+	console.log('d',d);
 	localStorage.setItem("linkData", JSON.stringify(d));
 	url = 'switch/isl';
 	window.location = url;
@@ -983,14 +1060,14 @@ function searchNode(value) {
     }
 }
 
-$('#auto_refresh').click(function(e){
+/*$('#auto_refresh').click(function(e){
 	var isRefreshChecked = $('#auto_refresh:checked').length;
 	updateRightPanel({
 		REFRESH_CHECKED : isRefreshChecked, 
 		REFRESH_INTERVAL : $("#auto_refresh_interval").val(),
 		REFRESH_TYPE : $("#m_s_dropdown").val()
 	});
-});
+});*/
 
 $('#viewISL').click(function(e){
 	try{
@@ -998,10 +1075,10 @@ $('#viewISL').click(function(e){
 		var unidirectional = [];
 		var failed = [];
 		for(var i=0,len=isl.length;i<len;i++){
-			if (isl[i].unidirectional){
+			if (isl[i].unidirectional && isl[i].state && isl[i].state.toLowerCase()== "discovered"){
 				unidirectional.push(isl[i]);
 	        } 
-			if(isl[i].state && isl[i].state.toLowerCase()== "failed"){
+			else if(isl[i].state && isl[i].state.toLowerCase()== "failed"){
 				failed.push(isl[i]);
 			}
 		}
@@ -1016,15 +1093,18 @@ function setISLData(response,id){
 	
 	for(var i = 0; i < response.length; i++) {
 		 var tableRow = "<tr id='div_"+(i+1)+"' class='flowDataRow'>"
-		 			    +"<td class='divTableCell' title ='"+((response[i].source_switch === "" || response[i].source_switch == undefined)?"-":response[i].source_switch)+"'>"+((response[i].source_switch === "" || response[i].source_switch == undefined)?"-":response[i].source_switch)+"</td>"
-		 			    +"<td class='divTableCell' title ='"+((response[i].src_port === "" || response[i].src_port == undefined)?"-":response[i].src_port)+"'>"+((response[i].src_port === "" || response[i].src_port == undefined)?"-":response[i].src_port)+"</td>"
-		 			    +"<td class='divTableCell' title ='"+((response[i].source_switch_name === "" || response[i].source_switch_name == undefined)?"-":response[i].source_switch_name)+"'>"+((response[i].source_switch_name === "" || response[i].source_switch_name == undefined)?"-":response[i].source_switch_name)+"</td>"
-		 			    +"<td class='divTableCell' title ='"+((response[i].target_switch === "" || response[i].target_switch == undefined)?"-":response[i].target_switch)+"'>"+((response[i].target_switch === "" || response[i].target_switch == undefined)?"-":response[i].target_switch)+"</td>"
-		 			    +"<td class='divTableCell' title ='"+((response[i].dst_port === "" || response[i].dst_port == undefined)?"-":response[i].dst_port)+"'>"+((response[i].dst_port === "" || response[i].dst_port == undefined)?"-":response[i].dst_port)+"</td>"
-		 			    +"<td class='divTableCell' title ='"+((response[i].target_switch_name === "" || response[i].target_switch_name == undefined)?"-":response[i].target_switch_name)+"'>"+((response[i].target_switch_name === "" || response[i].target_switch_name == undefined)?"-":response[i].target_switch_name)+"</td>"
-		 			    +"<td class='divTableCell' title ='"+((response[i].available_bandwidth === "" || response[i].available_bandwidth == undefined)?"-":response[i].available_bandwidth/1000 +" Mbps")+"'> "+ ((response[i].available_bandwidth === "" || response[i].available_bandwidth == undefined)?"-":response[i].available_bandwidth/1000 + " Mbps")+"</td>"
-		 			    +"<td class='divTableCell' title ='"+((response[i].speed === "" || response[i].speed == undefined)?"-":response[i].speed/1000 +" Mbps")+"'> "+ ((response[i].speed === "" || response[i].speed == undefined)?"-":response[i].speed/1000 + " Mbps")+"</td>"+"<td class='divTableCell' title ='"+((response[i].latency === "" || response[i].latency == undefined)?"-":response[i].latency)+"'>"+((response[i].latency === "" || response[i].latency == undefined)?"-":response[i].latency)+"</td>"
-		 			    +"</tr>";
+						 	+"<td class='divTableCell' title ='"+((response[i].source_switch_name === "" || response[i].source_switch_name == undefined)?"-":response[i].source_switch_name)+"'>"+((response[i].source_switch_name === "" || response[i].source_switch_name == undefined)?"-":response[i].source_switch_name)+"</td>"
+							+"<td class='divTableCell' title ='"+((response[i].source_switch === "" || response[i].source_switch == undefined)?"-":response[i].source_switch)+"'>"+((response[i].source_switch === "" || response[i].source_switch == undefined)?"-":response[i].source_switch)+"</td>"
+						    +"<td class='divTableCell' title ='"+((response[i].src_port === "" || response[i].src_port == undefined)?"-":response[i].src_port)+"'>"+((response[i].src_port === "" || response[i].src_port == undefined)?"-":response[i].src_port)+"</td>"
+						    +"<td class='divTableCell' title ='"+((response[i].target_switch_name === "" || response[i].target_switch_name == undefined)?"-":response[i].target_switch_name)+"'>"+((response[i].target_switch_name === "" || response[i].target_switch_name == undefined)?"-":response[i].target_switch_name)+"</td>"
+						    +"<td class='divTableCell' title ='"+((response[i].target_switch === "" || response[i].target_switch == undefined)?"-":response[i].target_switch)+"'>"+((response[i].target_switch === "" || response[i].target_switch == undefined)?"-":response[i].target_switch)+"</td>"
+						    +"<td class='divTableCell' title ='"+((response[i].dst_port === "" || response[i].dst_port == undefined)?"-":response[i].dst_port)+"'>"+((response[i].dst_port === "" || response[i].dst_port == undefined)?"-":response[i].dst_port)+"</td>"
+						    +"<td class='divTableCell' title ='"+((response[i].cost === "" || response[i].cost == undefined)?"-":response[i].cost)+"'>"+((response[i].cost === "" || response[i].cost == undefined)?"-":response[i].cost)+"</td>"
+						    +"<td class='divTableCell' title ='"+((response[i].state === "" || response[i].state == undefined)?"-":response[i].state)+"'>"+((response[i].state === "" || response[i].state == undefined)?"-":response[i].state)+"</td>"
+						    +"<td class='divTableCell' title ='"+((response[i].speed === "" || response[i].speed == undefined)?"-":response[i].speed/1000 +" Mbps")+"'> "+ ((response[i].speed === "" || response[i].speed == undefined)?"-":response[i].speed/1000 + " Mbps")+"</td>"
+						    +"<td class='divTableCell' title ='"+((response[i].available_bandwidth === "" || response[i].available_bandwidth == undefined)?"-":response[i].available_bandwidth/1000 +" Mbps")+"'> "+ ((response[i].available_bandwidth === "" || response[i].available_bandwidth == undefined)?"-":response[i].available_bandwidth/1000 + " Mbps")+"</td>"
+						    +"<td class='divTableCell' title ='"+((response[i].latency === "" || response[i].latency == undefined)?"-":response[i].latency)+"'>"+((response[i].latency === "" || response[i].latency == undefined)?"-":response[i].latency)+"</td>"
+						    +"</tr>";
 		 
 		 	 $('#'+id).append(tableRow);
  	 }
@@ -1039,15 +1119,30 @@ function setISLData(response,id){
 		  destroy:true,
 		  language: {searchPlaceholder: "Search"},
 		  "aoColumns": [
-		                { sWidth: '14%' },
-		                { sWidth:  '8%' },
-		                { sWidth: '10%' },
-		                { sWidth: '14%' },
-		                { sWidth: '8%' },
-		                { sWidth: '10%' },
-		                { sWidth: '12%' },
-		                { sWidth: '8%' },
-		                { sWidth: '8%' }]
+				  { sWidth: '14%' },
+	              { sWidth:  '8%' },
+	              { sWidth: '8%' },
+	              { sWidth: '14%' },
+	              { sWidth: '8%' },
+	              { sWidth: '8%' },
+	              { sWidth: '7%' },
+	              { sWidth: '12%' },
+	              { sWidth: '12%' },
+	              { sWidth: '12%' },
+	              { sWidth: '8%' }
+		    ],
+	      "columnDefs": [
+	            {
+	                "targets": [ 1 ],
+	                "visible": false,
+	                "searchable": true
+	            },
+	            {
+	                "targets": [ 4 ],
+	                "visible": false,
+	                "searchable": true
+	            }
+	        ] 
 	 });
 	 
 	 tableVar.columns().every( function () {
@@ -1062,30 +1157,41 @@ function setISLData(response,id){
 	 } );
 	 $('#'+id).show();
 }
-
-
-$('.isl_flow').click(function(e){
+$('.isl_switch_icon').click(function(e){
 	var id = $(this).attr("id");
-	var isLogicalChecked = $('#logical:checked').length; 
-	var isPhysicalChecked = $('#physical:checked').length; 
 	if(id == "logical"){
-		updateRightPanel({FLOW_CHECKED : isLogicalChecked});
-		if(isLogicalChecked){
-			if(responseData.flow.data.length == 0){
-				location.reload();
-			}
-		}
+		updateRightPanel({FLOW_CHECKED : false,ISL_CHECKED : true});
 	}
 	if(id == "physical"){
-		updateRightPanel({ISL_CHECKED : isPhysicalChecked});
+		updateRightPanel({ISL_CHECKED : false,FLOW_CHECKED : true});
+		if(responseData.flow.data.length == 0){
+			location.reload();
+		}
 	}
+
 	
 });
 
+function showSearch(idname,$event) {
+	$event.stopPropagation();
+	if($('#'+idname+'.heading_search_box').is(":visible")){
+		$('#'+idname+'.heading_search_box').css('display', 'none');
+	}else{
+		$('#'+idname+'.heading_search_box').css('display', 'inline-block');
+	}
+}
 $(document).ready(function() {
-	$('body').on("click", function() { 
+	$('body').on("click", function(e) { 
 		$('#topology-hover-txt').css('display', 'none');
-    });
+		var container = $('.refresh_toggle');
+		if (!container.is(e.target) && container.has(e.target).length === 0) 
+	    {
+			var cssBlock = $('.refresh_list').css('display');	
+			if(cssBlock == 'block'){
+				$('.refresh_list').slideToggle();
+			}
+	    }
+	});
 	$('body').css('pointer-events', 'all');
 });
 
@@ -1130,17 +1236,21 @@ function updateRightPanel(obj){
 	var duration = 500;
 	if(obj.hasOwnProperty("SWITCH_CHECKED")){
 		RIGHT_CHECKBOXES.SWITCH_CHECKED = obj.SWITCH_CHECKED;
-		$("#switch").attr("checked", !!obj.SWITCH_CHECKED);
 		var element = $(".switchname");
 		if(obj.SWITCH_CHECKED){
+			$('#switch_icon i').addClass('icon-switch').removeClass('inactive-icon-switch');
 			element.addClass("show").removeClass("hide");
 		}else{
+			$('#switch_icon i').removeClass('icon-switch').addClass('inactive-icon-switch');
 			element.removeClass("show").addClass("hide");
 		}
 	}
 	if(obj.hasOwnProperty("ISL_CHECKED")){
 		RIGHT_CHECKBOXES.ISL_CHECKED = obj.ISL_CHECKED;
-		$("#physical").attr("checked", !!obj.ISL_CHECKED);
+		if(obj.ISL_CHECKED){
+			$("#physical").show();
+			$("#logical").hide();
+		}
 		if(obj.ISL_CHECKED){
 			d3.selectAll(".physical").transition()
 	            .duration(duration)
@@ -1151,9 +1261,12 @@ function updateRightPanel(obj){
 	            .style("opacity", 0);
 		}
 	}
-	if(obj.hasOwnProperty("FLOW_CHECKED")){
+	if(obj.hasOwnProperty("FLOW_CHECKED")){ 
 		RIGHT_CHECKBOXES.FLOW_CHECKED = obj.FLOW_CHECKED;
-		$("#logical").attr("checked", !!obj.FLOW_CHECKED);
+		if(obj.FLOW_CHECKED){
+			$("#physical").hide();
+			$("#logical").show();
+		}
 		if(obj.FLOW_CHECKED){
 			d3.selectAll(".logical,.flow-circle").transition()
 	            .duration(duration)
@@ -1168,15 +1281,17 @@ function updateRightPanel(obj){
 	if(obj.hasOwnProperty("REFRESH_CHECKED")){
 		RIGHT_CHECKBOXES.REFRESH_CHECKED = obj.REFRESH_CHECKED;
 		$("#auto_refresh").attr("checked", !!obj.REFRESH_CHECKED);
+		$("#auto_refresh").val(!!obj.REFRESH_CHECKED);
 		if(obj.REFRESH_CHECKED){
-			$(".auto_refresh_interval").removeClass("hide");
-			refreshDropdown();
-			$("#auto_refresh_interval").val(1);
-			$("#m_s_dropdown").val("m");
+			$('.stop_refresh').removeClass('active');
+			$('.refresh_option').removeClass('active');
+			$('.refresh_toggle i.icon-refresh-kilda').addClass('active')
+			$('#'+obj.REFRESH_INTERVAL+obj.REFRESH_TYPE).addClass('active');
+		
 		}else{
-			$("#auto_refresh_interval").val(1);
-			$("#m_s_dropdown").val("m");
-			$(".auto_refresh_interval").addClass("hide");
+			$('.stop_refresh').addClass('active');
+			$('.refresh_option').removeClass('active');
+			$('.refresh_toggle i.icon-refresh-kilda').removeClass('active')
 			interval.clearSwitch();
 			interval.clearISL();
 		}
@@ -1283,7 +1398,7 @@ var interval = {
 							    
 							    var stroke = ISL.FAILED;
 							    
-							    if (d.unidirectional){
+							    if (d.unidirectional && d.state && d.state.toLowerCase()== "discovered"){
 				                    stroke = ISL.UNIDIR;
 				                } else if(d.state && d.state.toLowerCase()== "discovered"){
 				                	stroke = ISL.DISCOVERED;
@@ -1306,13 +1421,42 @@ var interval = {
 		});
 	}
 }
+
 $(document).on('change', '#auto_refresh_interval, #m_s_dropdown', function () {
 	updateRightPanel({
 		REFRESH_INTERVAL : $("#auto_refresh_interval").val(),
 		REFRESH_TYPE : $("#m_s_dropdown").val()
 	});
 })
-
+function stopAutoRefresh(){
+	$("#auto_refresh_interval").val('');
+	$('#auto_refresh').val(false);
+	$("#m_s_dropdown").val('')
+	$('.refresh_option').removeClass('active');
+	$('.stop_refresh').addClass('active');
+	 updateRightPanel({
+			REFRESH_CHECKED : false, 
+			REFRESH_INTERVAL : 5,
+			REFRESH_TYPE : 's'
+		});
+}
+function toggleRefresh(){
+	$('.refresh_list').slideToggle();	 
+}
+// set refresh value
+function setAutoRefresh(interval,type){
+	 $("#auto_refresh_interval").val(interval);
+	 $("#m_s_dropdown").val(type)
+	 $('#auto_refresh').val(true);
+	 $('.stop_refresh').removeClass('active');
+	 $('.refresh_option').removeClass('active');
+	 $(this).addClass('active')
+	 updateRightPanel({
+			REFRESH_CHECKED : true, 
+			REFRESH_INTERVAL : interval,
+			REFRESH_TYPE : type
+		});
+}
 function refreshDropdown(){
 	var minutes = document.createElement('select');
 	minutes.setAttribute('id', 'auto_refresh_interval');
