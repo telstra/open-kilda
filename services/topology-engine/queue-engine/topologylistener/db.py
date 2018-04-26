@@ -18,7 +18,8 @@ import socket
 
 import py2neo
 
-import config
+from topologylistener import config
+from topologylistener import exc
 
 
 def create_p2n_driver():
@@ -52,23 +53,19 @@ def escape_fields(payload, raw_values=False):
     return result
 
 
-# FIXME(surabujin): use custom exception types
-def fetch_scalar(cursor):
+def fetch_one(cursor):
     extra = result_set = None
     try:
         result_set = next(cursor)
         extra = next(cursor)
     except StopIteration:
         if result_set is None:
-            raise ValueError('There is no data in cursor')
+            raise exc.DBEmptyResponse
 
     if extra is not None:
-        raise ValueError('Cursor contain more than 1 result set')
+        raise exc.DBMultipleResponse
 
-    if len(result_set) != 1:
-        raise ValueError(
-                'Invalid size of result set ({})'.format(len(result_set)))
-    return result_set.values()[0]
+    return result_set
 
 
 # neo4j monkey patching staff

@@ -69,5 +69,5 @@ ZOOKEEPER_HOSTS = config.get('zookeeper', 'hosts')
 NEO4J_SOCKET_TIMEOUT = read_option(
         'neo4j', 'socket.timeout', conv=float, default=30.0)
 
-ISL_COST_WHEN_DOWN = read_option(
-        'isl', 'cost_when_down', conv=int, default=10000)
+ISL_COST_WHEN_PORT_DOWN = read_option(
+        'isl', 'cost_when_port_down', conv=int, default=10000)
