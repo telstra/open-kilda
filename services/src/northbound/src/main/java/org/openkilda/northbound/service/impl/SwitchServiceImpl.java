@@ -250,7 +250,7 @@ public class SwitchServiceImpl implements SwitchService {
     @Override
     public RulesSyncResult syncRules(String switchId) {
         RulesValidationResult validationResult = validateRules(switchId);
-        List<String> missingRules = validationResult.getMissingRules();
+        List<Long> missingRules = validationResult.getMissingRules();
 
         if (CollectionUtils.isEmpty(missingRules)) {
             return switchMapper.toRulesSyncResult(validationResult, emptyList());

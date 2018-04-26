@@ -1,4 +1,4 @@
-package org.openkilda.northbound.service;
+package org.openkilda.northbound.dto;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 

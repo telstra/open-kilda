@@ -17,6 +17,7 @@ package org.openkilda.flow;
 
 import static java.lang.String.format;
 import static java.util.Base64.getEncoder;
+import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
 import static org.openkilda.DefaultParameters.northboundEndpoint;
 import static org.openkilda.DefaultParameters.pathComputer;
@@ -24,10 +25,12 @@ import static org.openkilda.DefaultParameters.topologyEndpoint;
 import static org.openkilda.DefaultParameters.topologyPassword;
 import static org.openkilda.DefaultParameters.topologyUsername;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.glassfish.jersey.client.HttpUrlConnectorProvider;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.info.event.PathInfoData;
+import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.HealthCheck;
 import org.openkilda.messaging.model.ImmutablePair;
@@ -37,6 +40,7 @@ import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.pce.RecoverableException;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.pce.provider.PathComputer;
@@ -753,4 +757,48 @@ public class FlowUtils {
         }
     }
 
+    /**
+     * Push a flow through Northbound service.
+     *
+     * @param flowInfo the flow definition
+     * @param propagate whether propagate data to switches or not
+     * @return the result of the push operation
+     */
+    public static BatchResults pushFlow(FlowInfoData flowInfo, boolean propagate)
+            throws JsonProcessingException {
+        System.out.println("\n==> Northbound Push Flow");
+
+        long current = System.currentTimeMillis();
+        Client client = clientFactory();
+
+        String correlationId = String.valueOf(current);
+        flowInfo.setCorrelationId(correlationId);
+
+        String requestJson = new ObjectMapper().writerFor(new TypeReference<List<FlowInfoData>>() { })
+                .writeValueAsString(singletonList(flowInfo));
+
+        Response response = client
+                .target(northboundEndpoint)
+                .path("/api/v1/push/flows")
+                .queryParam("propagate", propagate)
+                .request(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
+                .header(Utils.CORRELATION_ID, correlationId)
+                .put(Entity.json(requestJson));
+
+        System.out.println(format("===> Request Payload = %s", requestJson));
+        System.out.println(format("===> Response = %s", response.toString()));
+        System.out.println(format("===> Northbound Push Flow Time: %,.3f", getTimeDuration(current)));
+
+        int responseCode = response.getStatus();
+        if (responseCode == 200) {
+            BatchResults result = response.readEntity(BatchResults.class);
+            System.out.println(format("====> Northbound Push Flow = %s", result));
+            return result;
+        } else {
+            System.out.println(format("====> Error: Northbound Push Flow = %s",
+                    response.readEntity(MessageError.class)));
+            return null;
+        }
+    }
 }

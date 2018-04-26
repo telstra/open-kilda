@@ -204,7 +204,7 @@ Feature: Northbound tests
   @MVP1
   Scenario: Invalidate Flow Cache
 
-  This scenario setups flows through NB, then delete a flow from DB and perform invalidation of the flow cache
+  This scenario setups flows through NB, then deletes a flow from DB and performs invalidation of the flow cache
 
     Given a clean flow topology
     And flow ifc1 creation request with de:ad:be:ef:00:00:00:03 1 109 and de:ad:be:ef:00:00:00:05 2 109 and 10000 is successful
@@ -219,27 +219,167 @@ Feature: Northbound tests
     And flows dump contains 2 flows
 
   @MVP1
-  Scenario: Validate flow rules
+  Scenario: Validate flow rules with missing rules on intermediate switch
 
-  This scenario setups a flow through NB, then delete rules from an intermediate switch and perform flow validation check
+  This scenario setups a flow through NB, then deletes rules from an intermediate switch and performs flow validation check
 
     Given a clean flow topology
-    And flow vfr creation request with de:ad:be:ef:00:00:00:01 1 110 and de:ad:be:ef:00:00:00:04 2 110 and 1000 is successful
-    And flow vfr in UP state
-    And validation of flow vfr is successful with no discrepancies
+    And flow vfris creation request with de:ad:be:ef:00:00:00:01 1 110 and de:ad:be:ef:00:00:00:04 2 110 and 1000 is successful
+    And flow vfris in UP state
+    And validation of flow vfris is successful with no discrepancies
 
     When delete all non-default rules request on de:ad:be:ef:00:00:00:03 switch is successful with 2 rules deleted
 
-    Then validation of flow vfr has passed and discrepancies are found
+    Then validation of flow vfris has completed with 2 discrepancies on de:ad:be:ef:00:00:00:03 switches found
 
   @MVP1
-  Scenario: Validate switch with missing rules
+  Scenario: Validate flow rules with missing rules on ingress switch
 
-  This scenario setups a flow through NB, then delete rules from an intermediate switch and perform switch validation check
+  This scenario setups a flow through NB, then deletes rules from an ingress switch and performs flow validation check
 
     Given a clean flow topology
-    And flow vsmr creation request with de:ad:be:ef:00:00:00:01 1 111 and de:ad:be:ef:00:00:00:04 2 111 and 1000 is successful
-    And flow vsmr in UP state
+    And flow vfrins creation request with de:ad:be:ef:00:00:00:01 1 110 and de:ad:be:ef:00:00:00:04 2 110 and 1000 is successful
+    And flow vfrins in UP state
+    And validation of flow vfrins is successful with no discrepancies
+
+    When delete all non-default rules request on de:ad:be:ef:00:00:00:01 switch is successful with 2 rules deleted
+
+    Then validation of flow vfrins has completed with 2 discrepancies on de:ad:be:ef:00:00:00:01 switches found
+
+  @MVP1
+  Scenario: Validate flow rules with missing rules on egress switch
+
+  This scenario setups a flow through NB, then deletes rules from an egress switch and performs flow validation check
+
+    Given a clean flow topology
+    And flow vfres creation request with de:ad:be:ef:00:00:00:01 1 110 and de:ad:be:ef:00:00:00:04 2 110 and 1000 is successful
+    And flow vfres in UP state
+    And validation of flow vfres is successful with no discrepancies
+
+    When delete all non-default rules request on de:ad:be:ef:00:00:00:04 switch is successful with 2 rules deleted
+
+    Then validation of flow vfres has completed with 2 discrepancies on de:ad:be:ef:00:00:00:04 switches found
+
+  @MVP1
+  Scenario: Validate flow rules with missing non-standard cookies on intermediate switch
+
+  This scenario pushes a flow with non-standard cookies through NB, then deletes rules from an intermediate switch and performs flow validation check
+
+    Given a clean flow topology
+    And flow vfrnscis push request for /flows/non-standard-cookies-flow.json is successful
+    And flow vfrnscis in UP state
+    And validation of flow vfrnscis is successful with no discrepancies
+
+    When delete all non-default rules request on de:ad:be:ef:00:00:00:02 switch is successful with 2 rules deleted
+
+    Then validation of flow vfrnscis has completed with 2 discrepancies on de:ad:be:ef:00:00:00:02 switches found
+
+  @MVP1
+  Scenario: Validate flow rules with missing non-standard cookies on ingress switch
+
+  This scenario pushes a flow with non-standard cookies through NB, then deletes rules from an ingress switch and performs flow validation check
+
+    Given a clean flow topology
+    And flow vfrnscins push request for /flows/non-standard-cookies-flow.json is successful
+    And flow vfrnscins in UP state
+    And validation of flow vfrnscins is successful with no discrepancies
+
+    When delete all non-default rules request on de:ad:be:ef:00:00:00:01 switch is successful with 2 rules deleted
+
+    Then validation of flow vfrnscins has completed with 2 discrepancies on de:ad:be:ef:00:00:00:01 switches found
+
+  @MVP1
+  Scenario: Validate flow rules with missing non-standard cookies on egress switch
+
+  This scenario pushes a flow with non-standard cookies through NB, then deletes rules from an egress switch and performs flow validation check
+
+    Given a clean flow topology
+    And flow vfrnsces push request for /flows/non-standard-cookies-flow.json is successful
+    And flow vfrnsces in UP state
+    And validation of flow vfrnsces is successful with no discrepancies
+
+    When delete all non-default rules request on de:ad:be:ef:00:00:00:03 switch is successful with 2 rules deleted
+
+    Then validation of flow vfrnsces has completed with 2 discrepancies on de:ad:be:ef:00:00:00:03 switches found
+
+  @MVP1
+  Scenario: Validate intermediate switch with missing rules
+
+  This scenario setups a flow through NB, then deletes rules from an intermediate switch and performs switch validation check
+
+    Given a clean flow topology
+    And flow vismr creation request with de:ad:be:ef:00:00:00:01 1 111 and de:ad:be:ef:00:00:00:04 2 111 and 1000 is successful
+    And flow vismr in UP state
+    And validation of rules on de:ad:be:ef:00:00:00:03 switch is successful with no discrepancies
+
+    When delete all non-default rules request on de:ad:be:ef:00:00:00:03 switch is successful with 2 rules deleted
+
+    Then validation of rules on de:ad:be:ef:00:00:00:03 switch has passed and 2 rules are missing
+
+  @MVP1
+  Scenario: Validate ingress switch with missing rules
+
+  This scenario setups a flow through NB, then deletes rules from an ingress switch and performs switch validation check
+
+    Given a clean flow topology
+    And flow vinsmr creation request with de:ad:be:ef:00:00:00:01 1 123 and de:ad:be:ef:00:00:00:04 2 123 and 1000 is successful
+    And flow vinsmr in UP state
+    And validation of rules on de:ad:be:ef:00:00:00:01 switch is successful with no discrepancies
+
+    When delete all non-default rules request on de:ad:be:ef:00:00:00:01 switch is successful with 2 rules deleted
+
+    Then validation of rules on de:ad:be:ef:00:00:00:01 switch has passed and 2 rules are missing
+
+  @MVP1
+  Scenario: Validate egress switch with missing rules
+
+  This scenario setups a flow through NB, then deletes rules from an egress switch and performs switch validation check
+
+    Given a clean flow topology
+    And flow vesmr creation request with de:ad:be:ef:00:00:00:01 1 124 and de:ad:be:ef:00:00:00:04 2 124 and 1000 is successful
+    And flow vesmr in UP state
+    And validation of rules on de:ad:be:ef:00:00:00:04 switch is successful with no discrepancies
+
+    When delete all non-default rules request on de:ad:be:ef:00:00:00:04 switch is successful with 2 rules deleted
+
+    Then validation of rules on de:ad:be:ef:00:00:00:04 switch has passed and 2 rules are missing
+
+  @MVP1
+  Scenario: Validate intermediate switch with non-standard cookies
+
+  This scenario pushes a flow with non-standard cookies through NB, then deletes rules from an intermediate switch and performs switch validation check
+
+    Given a clean flow topology
+    And flow visnsc push request for /flows/non-standard-cookies-flow.json is successful
+    And flow visnsc in UP state
+    And validation of rules on de:ad:be:ef:00:00:00:02 switch is successful with no discrepancies
+
+    When delete all non-default rules request on de:ad:be:ef:00:00:00:02 switch is successful with 2 rules deleted
+
+    Then validation of rules on de:ad:be:ef:00:00:00:02 switch has passed and 2 rules are missing
+
+  @MVP1
+  Scenario: Validate ingress switch with non-standard cookies
+
+  This scenario pushes a flow with non-standard cookies through NB, then deletes rules from an ingress switch and performs switch validation check
+
+    Given a clean flow topology
+    And flow vinsnsc push request for /flows/non-standard-cookies-flow.json is successful
+    And flow vinsnsc in UP state
+    And validation of rules on de:ad:be:ef:00:00:00:01 switch is successful with no discrepancies
+
+    When delete all non-default rules request on de:ad:be:ef:00:00:00:01 switch is successful with 2 rules deleted
+
+    Then validation of rules on de:ad:be:ef:00:00:00:01 switch has passed and 2 rules are missing
+
+  @MVP1
+  Scenario: Validate egress switch with non-standard cookies
+
+  This scenario pushes a flow with non-standard cookies through NB, then deletes rules from an egress switch and performs switch validation check
+
+    Given a clean flow topology
+    And flow vesnsc push request for /flows/non-standard-cookies-flow.json is successful
+    And flow vesnsc in UP state
     And validation of rules on de:ad:be:ef:00:00:00:03 switch is successful with no discrepancies
 
     When delete all non-default rules request on de:ad:be:ef:00:00:00:03 switch is successful with 2 rules deleted
@@ -249,11 +389,27 @@ Feature: Northbound tests
   @MVP1
   Scenario: Synchronize switch rules
 
-  This scenario setups a flow through NB, then delete rules from an intermediate switch and perform switch synchronization
+  This scenario setups a flow through NB, then deletes rules from an intermediate switch and performs switch synchronization
 
     Given a clean flow topology
     And flow ssr creation request with de:ad:be:ef:00:00:00:01 1 113 and de:ad:be:ef:00:00:00:04 2 113 and 1000 is successful
     And flow ssr in UP state
+    And validation of rules on de:ad:be:ef:00:00:00:03 switch is successful with no discrepancies
+
+    When delete all non-default rules request on de:ad:be:ef:00:00:00:03 switch is successful with 2 rules deleted
+
+    Then synchronization of rules on de:ad:be:ef:00:00:00:03 switch is successful with 2 rules installed
+    And validation of rules on de:ad:be:ef:00:00:00:03 switch is successful with no discrepancies
+
+  @MVP1
+  Scenario: Synchronize switch rules with non-standard cookies
+
+  This scenario pushes a flow with non-standard cookies through NB, then deletes rules from an intermediate switch aand performs switch synchronization
+
+    Given a clean flow topology
+
+    And flow ssnsc push request for /flows/non-standard-cookies-flow.json is successful
+    And flow ssnsc in UP state
     And validation of rules on de:ad:be:ef:00:00:00:03 switch is successful with no discrepancies
 
     When delete all non-default rules request on de:ad:be:ef:00:00:00:03 switch is successful with 2 rules deleted

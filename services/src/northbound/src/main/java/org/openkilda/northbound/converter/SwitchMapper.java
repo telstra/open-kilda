@@ -19,7 +19,7 @@ public interface SwitchMapper {
                 response.getExcessRules(), response.getInstalledRules());
     }
 
-    default RulesSyncResult toRulesSyncResult(RulesValidationResult validationResult, List<String> installedRules) {
+    default RulesSyncResult toRulesSyncResult(RulesValidationResult validationResult, List<Long> installedRules) {
         return new RulesSyncResult(validationResult.getMissingRules(), validationResult.getProperRules(),
                 validationResult.getExcessRules(), installedRules);
     }

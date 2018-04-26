@@ -25,14 +25,14 @@ import java.util.List;
 public class RulesSyncResult extends RulesValidationResult {
 
     @JsonProperty("installed_rules")
-    private List<String> installedRules;
+    private List<Long> installedRules;
 
     @JsonCreator
     public RulesSyncResult(
-            @JsonProperty("missing_rules") List<String> missingRules,
-            @JsonProperty("proper_rules") List<String> properRules,
-            @JsonProperty("excess_rules") List<String> excessRules,
-            @JsonProperty("installed_rules") List<String> installedRules) {
+            @JsonProperty("missing_rules") List<Long> missingRules,
+            @JsonProperty("proper_rules") List<Long> properRules,
+            @JsonProperty("excess_rules") List<Long> excessRules,
+            @JsonProperty("installed_rules") List<Long> installedRules) {
         super(missingRules, properRules, excessRules);
 
         this.installedRules = installedRules;
