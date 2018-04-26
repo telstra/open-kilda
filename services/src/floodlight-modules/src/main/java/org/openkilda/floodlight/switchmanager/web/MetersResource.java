@@ -15,11 +15,11 @@
 
 package org.openkilda.floodlight.switchmanager.web;
 
-import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 import static org.openkilda.messaging.Utils.MAPPER;
 
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.floodlight.switchmanager.SwitchOperationException;
+import org.openkilda.floodlight.utils.CorrelationContext;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageError;
 
@@ -59,7 +59,7 @@ public class MetersResource extends ServerResource {
         } catch (IllegalArgumentException|SwitchOperationException exception) {
             String messageString = "No such switch";
             logger.error("{}: {}", messageString, switchId, exception);
-            MessageError responseMessage = new MessageError(DEFAULT_CORRELATION_ID, System.currentTimeMillis(),
+            MessageError responseMessage = new MessageError(CorrelationContext.getId(), System.currentTimeMillis(),
                     ErrorType.PARAMETERS_INVALID.toString(), messageString, exception.getMessage());
             response.putAll(MAPPER.convertValue(responseMessage, Map.class));
         }
