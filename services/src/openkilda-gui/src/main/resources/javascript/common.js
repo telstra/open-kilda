@@ -303,6 +303,7 @@ var graphAutoReload = {
 		var direction2 = "";
 		var data = response;
 		var jsonResponse = response.responseJSON;
+		
 		var graphData = [];
 		 if(data){
 			 if(data.length == 0){
@@ -335,7 +336,7 @@ var graphAutoReload = {
 			 } 
 		 }
 		 
-		if(!jsonResponse) {
+		if(!jsonResponse) { 
 		    	var getValue = data[0].dps;	    	
 		    	 metric1 = data[0].metric;	
 		    	 
@@ -359,19 +360,22 @@ var graphAutoReload = {
 
                               if(getValue[i]<0){
                               	getValue[i] = 0;
-                              }              
+                              }    
+                              if(getVal[i]<0){
+                            	  getVal[i] = 0;
+                              }
 						      var temparr = [];
 						      temparr[0] = new Date(Number(i*1000));
-						      if(metricVal == "megabytes"){
-						    	  temparr[1] = getValue[i] / 1048576;
+						      if(metricVal == "bytes"){
+						    	  temparr[1] = getValue[i] * 1024;
 						      }
 						      else{
 						    	  temparr[1] = getValue[i]
 						      }
 						      
 						      if(data.length == 2) {
-						    	  if(metricVal == "megabytes"){
-						    	  	temparr[2] = getVal[i] / 1048576;
+						    	  if(metricVal == "bytes"){
+						    	  	temparr[2] = getVal[i] * 1024;
 						    	  }
 						    	  else{
 						    			temparr[2] = getVal[i];
@@ -531,19 +535,26 @@ var showIslSwitchStats = {
 					    	metric2 = "R";		    	
 					    } else {
 					    	 for(i in getValue) {
-							    	
+							    
+					    		 if(getValue[i]<0){
+	                              	getValue[i] = 0;
+	                              }    
+	                              if(getVal[i]<0){
+	                            	  getVal[i] = 0;
+	                              }
+	                              
 							      var temparr = [];
 							      temparr[0] = new Date(Number(i*1000));
-							      if(metricVal == "megabytes"){
-							    	  temparr[1] = getValue[i] / 1048576;
+							      if(metricVal == "bytes"){
+							    	  temparr[1] = getValue[i] * 1024;
 							      }
 							      else{
 							    	  temparr[1] = getValue[i]
 							      }
 							      
 							      if(data.length == 2) {
-							    	  if(metricVal == "megabytes"){
-							    	  	temparr[2] = getVal[i] / 1048576;
+							    	  if(metricVal == "bytes"){
+							    	  	temparr[2] = getVal[i] * 1024;
 							    	  }
 							    	  else{
 							    			temparr[2] = getVal[i];
@@ -891,11 +902,6 @@ if(test) {
 			$('body').css('pointer-events', 'all');
 			showIslSwitchStats.showIslSwitchStatsData(response,selMetric,graphDivCode,""); 
 		}
-//		if(graphDivCode ==2) { 
-//			$("#waitisl1").css("display", "none");
-//			$("#waitisl2").css("display", "none");
-//			showIslSwitchStats.showIslSwitchStatsData(response,selMetric,graphDivCode,""); 
-//		}
 		
 })
 	

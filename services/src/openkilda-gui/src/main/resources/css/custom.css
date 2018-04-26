@@ -507,7 +507,7 @@ svg {
 
 .btn#viewISL {
 	vertical-align: bottom;
-	margin-right: 5px;
+	margin-right: 15px;
 	position: relative;
 	z-index: 3;
 }
@@ -1142,11 +1142,9 @@ footer {
 }
 
 .t-logy-icon {
-	font-size: 20px;
+	font-size: 23px;
     margin-right: 20px;
-    margin-top: -4px;
     cursor: pointer;
-    bottom: -2px;
     color: #1b1f26;
     position: relative;
 }
@@ -2143,6 +2141,130 @@ pre#validate_json{
 }
 .mt-2{
 	margin-top: 10px;
+}
+
+.isl_switch_icon .icon-isl {
+    background: url(../images/icon-isl-small.png) no-repeat 0 0;
+    background-size: 18px auto;
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+}
+.isl_switch_icon .icon-flows {
+    background: url(../images/icon-flows-small.png) no-repeat 0 0;
+    background-size: 18px auto;
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+}
+.refresh_toggle .icon-refresh-kilda{
+	background: url(../images/icon-refresh-small-grey.png) no-repeat 0 0;
+     background-size: 18px auto;
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+}
+.refresh_toggle .icon-refresh-kilda.active{
+	background: url(../images/icon-refresh-small.png) no-repeat 0 0;
+     background-size: 18px auto;
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+}
+.switch_icon .icon-switch{
+    background: url(../images/icon-switch-small.png) no-repeat 0 0;
+    background-size: 18px auto;
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+}
+.switch_icon .inactive-icon-switch{
+    background: url(../images/icon-switch-small-grey.png) no-repeat 0 0;
+    background-size: 18px auto;
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+}
+.isl_switch_icon,.refresh_toggle,.switch_icon{
+    font-size: 20px;
+   	margin-right: 20px;
+    margin-top: -4px;
+    cursor: pointer;
+    bottom: -2px;
+    color: #1b1f26;
+    position: relative;
+}
+
+
+.isl_flow_switch{
+	    margin-bottom: -10px;
+}
+
+.isl_flow_switch ul.refresh_list{
+	width: 130px;
+    background: #fff;
+    float: left;
+    border: 1px solid #ddd;
+    right: 26px;
+    position: absolute;
+    margin-top: 2px;
+    z-index: 9;
+    box-shadow: 0 2px 10px rgba(0,0,0,.2);
+}
+
+.isl_flow_switch ul.refresh_list:before{
+    border-color: rgba(204, 204, 204, 0);
+    border-bottom-color: #ccc;
+    border-width: 10px;
+    margin-left: -10px;
+    z-index:9;
+}
+
+.isl_flow_switch ul.refresh_list:after, .isl_flow_switch ul.refresh_list:before {
+    bottom: 100%;
+    left: calc(100% - 27px);
+    border: solid transparent;
+    content: " ";
+    height: 0;
+    width: 0;
+    position: absolute;
+    pointer-events: none;
+}
+
+.isl_flow_switch ul.refresh_list li{
+    display: block;
+    float: none;
+    background: #ddd;
+    padding: 10px;
+    margin-top: 2px;
+    margin-right: 0;
+    text-align: center;
+    cursor:pointer;
+}
+
+.isl_flow_switch ul.refresh_list li i.icon-ok{
+    display: none;   
+}
+
+.isl_flow_switch ul.refresh_list li.stop_refresh{
+margin-top:0;
+}
+
+.isl_flow_switch ul.refresh_list li.active, .isl_flow_switch ul.refresh_list li:hover{
+background: #1b1f26!important;
+color:#fff;
+}
+.isl_flow_switch ul.refresh_list li.active i.icon-ok{
+color:#fff;
+display: inline-block; 
+}
+
+
+.connection-info{
+	float: right;
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
 }
 
 
