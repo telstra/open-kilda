@@ -37,6 +37,7 @@ import org.openkilda.wfm.topology.stats.CacheFlowEntry;
 import org.openkilda.wfm.topology.stats.StatsComponentType;
 import org.openkilda.wfm.topology.stats.bolts.CacheFilterBolt.Commands;
 import org.openkilda.wfm.topology.stats.bolts.CacheFilterBolt.FieldsNames;
+import org.openkilda.wfm.topology.utils.StatsUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -83,7 +84,7 @@ public class CacheBolt extends BaseRichBolt {
             PathComputer pathComputer = pathComputerAuth.connect();
             pathComputer.getAllFlows().forEach(
                     flow -> cookieToFlow.put(flow.getCookie(), new CacheFlowEntry(flow.getFlowId(),
-                            flow.getDestinationSwitch()))
+                            StatsUtil.formatSwitchId(flow.getDestinationSwitch())))
             );
             logger.info("initFlowCache: {}", cookieToFlow);
         } catch (Exception ex) {
@@ -115,7 +116,8 @@ public class CacheBolt extends BaseRichBolt {
 
                 Long cookie = tuple.getLongByField(FieldsNames.COOKIE.name());
                 String flow = tuple.getStringByField(FieldsNames.FLOW.name());
-                String sw = tuple.getStringByField(FieldsNames.SWITCH.name());
+                String sw = StatsUtil.formatSwitchId(
+                        tuple.getStringByField(FieldsNames.SWITCH.name()));
 
                 if (cookieToFlow.containsKey(cookie)) {
                     cookieToFlow.remove(cookie);

@@ -32,6 +32,7 @@ import org.openkilda.wfm.topology.stats.FlowDirectionHelper;
 import org.openkilda.wfm.topology.stats.StatsComponentType;
 import org.openkilda.wfm.topology.stats.StatsStreamType;
 import org.openkilda.wfm.topology.stats.CacheFlowEntry;
+import org.openkilda.wfm.topology.utils.StatsUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,7 +72,7 @@ public class FlowMetricGenBolt extends MetricGenBolt {
                 CORRELATION_ID, message.getCorrelationId(), componentId, StatsStreamType.valueOf(input.getSourceStreamId()));
         FlowStatsData data = (FlowStatsData) message.getData();
         long timestamp = message.getTimestamp();
-        String switchId = data.getSwitchId().replaceAll(":", "");
+        String switchId = StatsUtil.formatSwitchId(data.getSwitchId());
 
         try {
             for (FlowStatsReply reply : data.getStats()) {
@@ -127,10 +128,15 @@ public class FlowMetricGenBolt extends MetricGenBolt {
             collector.emit(tuple("pen.flow.bytes", timestamp, entry.getByteCount(), tags));
             collector.emit(tuple("pen.flow.bits", timestamp, entry.getByteCount() * 8, tags));
         }
+        else if (LOGGER.isDebugEnabled())
+        {
+            LOGGER.debug("FlowStatsEntry with cookie {} and flow {} is not engress bc switch {} "
+                    + "and dst switch {}", entry.getCookie(), flowId, switchId, dstSwitchId);
+        }
     }
 
     private boolean isEngressFlow(String switchId, @Nullable String dstSwitchId) {
         return dstSwitchId != null &&
-                switchId.equals(dstSwitchId.replaceAll(":", ""));
+                switchId.equals(dstSwitchId);
     }
 }

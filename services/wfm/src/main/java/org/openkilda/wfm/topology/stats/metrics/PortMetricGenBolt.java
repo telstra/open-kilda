@@ -27,6 +27,7 @@ import org.openkilda.messaging.info.stats.PortStatsEntry;
 import org.openkilda.messaging.info.stats.PortStatsReply;
 import org.openkilda.wfm.topology.stats.StatsComponentType;
 import org.openkilda.wfm.topology.stats.StatsStreamType;
+import org.openkilda.wfm.topology.utils.StatsUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,7 +58,7 @@ public class PortMetricGenBolt extends MetricGenBolt {
         try {
             String switchId = switchNameCache.get(data.getSwitchId());
             if (switchId == null) {
-                switchId = "SW" + data.getSwitchId().replaceAll(":", "").toUpperCase();
+                switchId = StatsUtil.formatSwitchId(data.getSwitchId());
                 switchNameCache.put(data.getSwitchId(), switchId);
             }
 
