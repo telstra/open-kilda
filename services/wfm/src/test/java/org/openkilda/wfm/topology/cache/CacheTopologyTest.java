@@ -105,7 +105,7 @@ public class CacheTopologyTest extends AbstractStormTest {
 
         Properties configOverlay = new Properties();
 
-        fakeNeo4jDb = new Neo4jFixture(rootDir.toPath(), NEO4J_LISTEN_ADDRESS);
+        fakeNeo4jDb = new Neo4jFixture(fsData.getRoot().toPath(), NEO4J_LISTEN_ADDRESS);
         fakeNeo4jDb.start();
         configOverlay.setProperty("neo4j.hosts", fakeNeo4jDb.getListenAddress());
 
