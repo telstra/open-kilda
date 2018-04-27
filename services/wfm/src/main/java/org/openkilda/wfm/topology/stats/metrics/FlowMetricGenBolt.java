@@ -128,6 +128,11 @@ public class FlowMetricGenBolt extends MetricGenBolt {
             collector.emit(tuple("pen.flow.bytes", timestamp, entry.getByteCount(), tags));
             collector.emit(tuple("pen.flow.bits", timestamp, entry.getByteCount() * 8, tags));
         }
+        else if (LOGGER.isDebugEnabled())
+        {
+            LOGGER.debug("FlowStatsEntry with cookie {} and flow {} is not engress bc switch {} "
+                    + "and dst switch {}", entry.getCookie(), flowId, switchId, dstSwitchId);
+        }
     }
 
     private boolean isEngressFlow(String switchId, @Nullable String dstSwitchId) {

@@ -88,7 +88,7 @@ public class StatsTopology extends AbstractTopology {
         builder.setSpout(STATS_KILDA_SPEAKER_SPOUT.name(), kafkaSpeakerSpout, parallelism);
 
         // CacheFilterBolt catch data from kilda.speaker spout and tried to find InstallEgressFlow
-        // and throw tuple to CacheBolt
+        // or InstallOneSwitchFlow and throw tuple to CacheBolt
         builder.setBolt(STATS_CACHE_FILTER_BOLT.name(), new CacheFilterBolt(),
                 parallelism)
                 .shuffleGrouping(STATS_KILDA_SPEAKER_SPOUT.name());
