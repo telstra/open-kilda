@@ -13,7 +13,7 @@
 #   limitations under the License.
 #
 
-FROM kilda/base-floodlight
+FROM kilda/base-ubuntu
 
 ADD target/northbound.jar /app/
 WORKDIR /app
