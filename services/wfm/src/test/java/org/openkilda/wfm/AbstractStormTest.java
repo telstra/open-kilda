@@ -50,8 +50,6 @@ public class AbstractStormTest {
     protected static CompleteTopologyParam completeTopologyParam;
     static TestUtils.KafkaTestFixture server;
 
-    protected static final File rootDir = Files.createTempDir();
-
     @ClassRule
     public static TemporaryFolder fsData = new TemporaryFolder();
 
