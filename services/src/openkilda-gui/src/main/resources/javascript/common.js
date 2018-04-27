@@ -6,7 +6,7 @@ var metricVarList = ["bits:Bits/sec","megabytes:MegaBytes/sec","packets:Packets/
 
 var href = window.location.href;
 var lastslashindex = href.lastIndexOf('/');
-var page = $.trim(href.substring(lastslashindex  + 1));
+var page = $.trim(href.substring(lastslashindex  + 1)).split("#")[0];
 
 if(page == "isl") {
 	var linkData = localStorage.getItem("linkData");
@@ -20,9 +20,107 @@ if(page == "isl") {
 var graphIntervalISL;
 var graphIntervalISLName;
 
+
+var LocalStorageHandler = function() {
+
+    /**
+     * @property _ls
+     * @private
+     * @type Object
+     */
+    var _ls = window.localStorage;
+
+    /**
+     * @property length
+     * @type Number
+     */
+    this.length = _ls.length;
+
+    /**
+     * @method get
+     * @param key {String} Item key
+     * @return {String|Object|Null}
+     */
+    this.get = function(key) {
+        try {
+            return JSON.parse(_ls.getItem(key));
+        } catch(e) {
+            return _ls.getItem(key);
+        }
+    };
+
+    /**
+     * @method set
+     * @param key {String} Item key
+     * @param val {String|Object} Item value
+     * @return {String|Object} The value of the item just set
+     */
+    this.set = function(key, val) {
+        _ls.setItem(key,JSON.stringify(val));
+        return this.get(key);
+    };
+
+    /**
+     * @method key
+     * @param index {Number} Item index
+     * @return {String|Null} The item key if found, null if not
+     */
+    this.key = function(index) {
+        if (typeof index === 'number') {
+            return _ls.key(index);
+        }
+    };
+
+    /**
+     * @method data
+     * @return {Array|Null} An array containing all items in localStorage through key{string}-value{String|Object} pairs
+     */
+    this.data = function() {
+        var i       = 0;
+        var data    = [];
+
+        while (_ls.key(i)) {
+            data[i] = [_ls.key(i), this.get(_ls.key(i))];
+            i++;
+        }
+
+        return data.length ? data : null;
+    };
+
+    /**
+     * @method remove
+     * @param keyOrIndex {String|Number} Item key or index (which will be converted to key anyway)
+     * @return {Boolean} True if the key was found before deletion, false if not
+     */
+    this.remove = function(keyOrIndex) {
+        var result = false;
+        var key = (typeof keyOrIndex === 'number') ? this.key(keyOrIndex) : keyOrIndex;
+
+        if (key in _ls) {
+            result = true;
+            _ls.removeItem(key);
+        }
+
+        return result;
+    };
+
+    /**
+     * @method clear
+     * @return {Number} The total of items removed
+     */
+    this.clear = function() {
+        var len = _ls.length;
+        _ls.clear();
+        return len;
+    };
+}
+
 var common = {	
 		getData:function(apiUrl,requestType){	
 			return $.ajax({url : APP_CONTEXT+apiUrl,type : requestType,dataType : "json"});							
+		},
+		updateData:function(apiUrl,requestType,data){
+			return $.ajax({url : APP_CONTEXT+apiUrl,contentType:'application/json',dataType : "json",type : requestType,data:JSON.stringify(data)});	
 		},
 		infoMessage:function(msz,type){
 			$.toast({heading:(type =='info'?'Information':type), text: msz, showHideTransition: 'fade',position: 'top-right', icon: type, hideAfter : 6000})
@@ -31,12 +129,13 @@ var common = {
 			var prefix = "SW";
 			var switchPrefix = switchid.substring(0,2);
 			if (prefix == switchPrefix){
-				return this.addCharacter(switchid,2).join(':').substring(3);
+				return this.addCharacter(switchid,2).join(':').substring(3).toLowerCase();
 			}else{
-				return prefix+switchid.replace(/:/g , "");
+				return prefix+switchid.replace(/:/g , "").toUpperCase();
 			}
 			
 		},
+		
 		addCharacter: function(str, n) {
 		    var ret = [];
 		    
@@ -73,6 +172,7 @@ var common = {
 		  })
 		}
 }
+var storage = new LocalStorageHandler();
 
 /** sub menu related code start **/
 var urlString = window.location.href;
@@ -81,15 +181,23 @@ $("#menubar-tbn li").each(function(){
 })
 
 if(page == "home"){
-	$("#home-menu-id").addClass("active")
+	$("#home-menu-id").addClass("active");
+	storage.remove("FLOWS_LIST");
+	storage.remove("SWITCHES_LIST");
 }else if(page == "topology"){
-	$("#topology-menu-id").addClass("active")
+	$("#topology-menu-id").addClass("active");
+	storage.remove("FLOWS_LIST");
+	storage.remove("SWITCHES_LIST");
 }else if(page == "flows" || page == "flowdetails" || (page.indexOf('details')!==-1 && href.indexOf('flows')!==-1)){
-	$("#flows-menu-id").addClass("active")
+	$("#flows-menu-id").addClass("active");
+	storage.remove("SWITCHES_LIST");
 }else if(page == "isllist" || page == "isl"){
-	$("#isl-menu-id").addClass("active")
+	$("#isl-menu-id").addClass("active");
+	storage.remove("FLOWS_LIST");
+	storage.remove("SWITCHES_LIST");
 }else if(page == "switch" || (page.indexOf('details')!==-1 && href.indexOf('switch')!==-1)){ 
-	$("#switch-menu-id").addClass("active")
+	$("#switch-menu-id").addClass("active");
+	storage.remove("FLOWS_LIST");
 }
 /** sub menu related code End **/
 
@@ -106,6 +214,13 @@ $('#topology-txt').click(function(e){
 $(document).click(function(){
     $('#topology-txt').slideUp();
 });
+
+$("#logout").click(function(){
+	storage.remove("FLOWS_LIST");
+	storage.remove("SWITCHES_LIST");
+	storage.remove("switchDetailsJSON");
+});
+
 
 var requests = null;
 var loadGraph = {	
@@ -188,6 +303,7 @@ var graphAutoReload = {
 		var direction2 = "";
 		var data = response;
 		var jsonResponse = response.responseJSON;
+		
 		var graphData = [];
 		 if(data){
 			 if(data.length == 0){
@@ -220,7 +336,7 @@ var graphAutoReload = {
 			 } 
 		 }
 		 
-		if(!jsonResponse) {
+		if(!jsonResponse) { 
 		    	var getValue = data[0].dps;	    	
 		    	 metric1 = data[0].metric;	
 		    	 
@@ -241,19 +357,28 @@ var graphAutoReload = {
 				    	metric2 = "R";		    	
 				    } else {
 				    	 for(i in getValue) {
-						    	
+
+                              if(getValue[i]<0){
+                              	getValue[i] = 0;
+                              }    
+                              if(getVal[i]<0){
+                            	  getVal[i] = 0;
+                              }
 						      var temparr = [];
-						      temparr[0] = new Date(Number(i*1000));
-						      if(metricVal == "megabytes"){
-						    	  temparr[1] = getValue[i] / 1048576;
+						      var mapDate= new Date(Number(i*1000));
+						      var offset  = mapDate.getTimezoneOffset() * 60 * 1000;
+						      var usedDate = new Date(mapDate.getTime() + offset);
+						      temparr[0] =usedDate;// new Date(Number(i*1000));
+						      if(metricVal == "bytes"){
+						    	  temparr[1] = getValue[i] * 1024;
 						      }
 						      else{
 						    	  temparr[1] = getValue[i]
 						      }
 						      
 						      if(data.length == 2) {
-						    	  if(metricVal == "megabytes"){
-						    	  	temparr[2] = getVal[i] / 1048576;
+						    	  if(metricVal == "bytes"){
+						    	  	temparr[2] = getVal[i] * 1024;
 						    	  }
 						    	  else{
 						    			temparr[2] = getVal[i];
@@ -413,19 +538,29 @@ var showIslSwitchStats = {
 					    	metric2 = "R";		    	
 					    } else {
 					    	 for(i in getValue) {
-							    	
+							    
+					    		 if(getValue[i]<0){
+	                              	getValue[i] = 0;
+	                              }    
+	                              if(getVal[i]<0){
+	                            	  getVal[i] = 0;
+	                              }
+	                              
 							      var temparr = [];
-							      temparr[0] = new Date(Number(i*1000));
-							      if(metricVal == "megabytes"){
-							    	  temparr[1] = getValue[i] / 1048576;
+							      var mapDate= new Date(Number(i*1000));
+							      var offset  = mapDate.getTimezoneOffset() * 60 * 1000;
+							      var usedDate = new Date(mapDate.getTime() + offset);
+							      temparr[0] = usedDate;//new Date(Number(i*1000));
+							      if(metricVal == "bytes"){
+							    	  temparr[1] = getValue[i] * 1024;
 							      }
 							      else{
 							    	  temparr[1] = getValue[i]
 							      }
 							      
 							      if(data.length == 2) {
-							    	  if(metricVal == "megabytes"){
-							    	  	temparr[2] = getVal[i] / 1048576;
+							    	  if(metricVal == "bytes"){
+							    	  	temparr[2] = getVal[i] * 1024;
 							    	  }
 							    	  else{
 							    			temparr[2] = getVal[i];
@@ -657,25 +792,27 @@ var islDetails = {
 			}
 			if(selectedgraph == 'source' || selectedgraph == 'target'){
 				$("#islMetric").show();
-				$("#graphrowDiv").show();
+				//$("#graphrowDiv").show();
 				$('#isl_latency_graph').hide();
 				if(selectedgraph == 'source'){ 
 					$('#sourceGraphDiv').show();
 					$('#targetGraphDiv').hide();
 			    	$("#source-graph_div").show();
 			    	$("#dest-graph_div").hide();
-					getISLGraphData(srcSwitch,srcPort,selectedgraph);
+			    	getISLGraphData(common.toggleSwitchID(srcSwitch),srcPort,selectedgraph);
 				}else if(selectedgraph == 'target'){ 
 					$('#sourceGraphDiv').hide();
 					$('#targetGraphDiv').show();
 					$("#source-graph_div").hide();
 			    	$("#dest-graph_div").show();
-				    getISLGraphData(targetSwitch,targetPort,selectedgraph);
+			    	getISLGraphData(common.toggleSwitchID(targetSwitch),targetPort,selectedgraph);
 				}
 			}
 			if(selectedgraph == 'isl'){
 				$("#islMetric").hide();
-				$("#graphrowDiv").hide();
+				//$("#graphrowDiv").hide();
+				$('#sourceGraphDiv').hide();
+				$('#targetGraphDiv').hide();
 				$('#isl_latency_graph').show();
 			}
 		}
@@ -757,8 +894,8 @@ if(test) {
 	
   	$("#DownsampleID").removeClass("has-error")
 	$(".downsample-error-message").html("");
-	
-  	   var url = "/stats/switchid/"+switchId+"/port/"+portId+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric;
+	   var switch_id = switchId.replace(/:/g, "");
+  	   var url = "/stats/switchid/"+switch_id+"/port/"+portId+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric;
   	   	   
 	   loadGraph.loadGraphData(url,"GET",selMetric,domId).then(function(response) {	   
 		if(graphDivCode ==0){
@@ -771,11 +908,6 @@ if(test) {
 			$('body').css('pointer-events', 'all');
 			showIslSwitchStats.showIslSwitchStatsData(response,selMetric,graphDivCode,""); 
 		}
-//		if(graphDivCode ==2) { 
-//			$("#waitisl1").css("display", "none");
-//			$("#waitisl2").css("display", "none");
-//			showIslSwitchStats.showIslSwitchStatsData(response,selMetric,graphDivCode,""); 
-//		}
 		
 })
 	
@@ -805,10 +937,10 @@ $(function() {
 	$("#datetimepicker7ISL,#datetimepicker8ISL,#downsamplingISL,#menulistISL,#autoreloadISL").on("change",function(event) {
 
 		if($("#selectedGraph").val() =='source') {
-				  getISLGraphData(srcSwitch,srcPort);	
+			getISLGraphData(common.toggleSwitchID(srcSwitch),srcPort);	
 		}
 		if($("#selectedGraph").val() =='target'){
-		    getISLGraphData(targetSwitch,targetPort);
+			getISLGraphData(common.toggleSwitchID(targetSwitch),targetPort);
 		}
 	});
 });
@@ -823,8 +955,8 @@ function callIslSwitchIntervalData(switchId,portId){
 	var convertedEndDate = moment(endDate).format("YYYY-MM-DD-HH:mm:ss");	
 	var downsampling =$("#downsamplingISL").val()
 	
-	
-	var url = "/stats/switchid/"+switchId+"/port/"+portId+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric;
+	var switch_id = switchId.replace(/:/g, "");
+	var url = "/stats/switchid/"+switch_id+"/port/"+portId+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric;
 	loadGraph.loadGraphData(url,"GET",selMetric).then(function(response) {
 		
 	if($("#selectedGraph").val() =='source'){

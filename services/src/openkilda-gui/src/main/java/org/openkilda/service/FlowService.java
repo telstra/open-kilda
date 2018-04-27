@@ -8,7 +8,9 @@ import java.util.Map;
 import org.apache.log4j.Logger;
 import org.openkilda.integration.exception.IntegrationException;
 import org.openkilda.integration.model.Flow;
+import org.openkilda.integration.model.FlowStatus;
 import org.openkilda.integration.service.FlowsIntegrationService;
+import org.openkilda.integration.service.SwitchIntegrationService;
 import org.openkilda.model.FlowCount;
 import org.openkilda.model.FlowInfo;
 import org.openkilda.model.FlowPath;
@@ -28,6 +30,8 @@ public class FlowService {
 
     @Autowired
     private FlowsIntegrationService flowsIntegrationService;
+    @Autowired
+    private SwitchIntegrationService switchIntegrationService;
 
 
     /**
@@ -50,14 +54,23 @@ public class FlowService {
     public Collection<FlowCount> getFlowsCount(final List<Flow> flows) {
         LOGGER.info("Inside ServiceFlowImpl method getFlowsCount");
         Map<FlowCount, FlowCount> infoByFlowInfo = new HashMap<>();
+        Map<String, String> csNames = switchIntegrationService.getCustomSwitchNameFromFile();
 
         if (!CollectionUtil.isEmpty(flows)) {
             flows.forEach((flow) -> {
                 FlowCount flowInfo = new FlowCount();
-                if (flow.getSource() != null)
+                if (flow.getSource() != null) {
                     flowInfo.setSrcSwitch(flow.getSource().getSwitchId());
-                if (flow.getDestination() != null)
+                    String srcSwitchName = switchIntegrationService.customSwitchName(csNames,
+                            flow.getSource().getSwitchId());
+                    flowInfo.setSrcSwitchName(srcSwitchName);
+                }
+                if (flow.getDestination() != null) {
                     flowInfo.setDstSwitch(flow.getDestination().getSwitchId());
+                    String dstSwitchName = switchIntegrationService.customSwitchName(csNames,
+                            flow.getDestination().getSwitchId());
+                    flowInfo.setDstSwitchName(dstSwitchName);
+                }
                 flowInfo.setFlowCount(1);
 
                 if (infoByFlowInfo.containsKey(flowInfo)) {
@@ -120,5 +133,10 @@ public class FlowService {
      */
     public Flow getFlowById(String flowId) {
         return flowsIntegrationService.getFlowById(flowId);
+    }
+
+
+    public FlowStatus getFlowStatusById(String flowId) {
+        return flowsIntegrationService.getFlowStatusById(flowId);
     }
 }

@@ -172,6 +172,7 @@ public class NorthboundRunTest {
     public void validateSwitchRules(String switchId) {
         RulesValidationResult validateResult = SwitchesUtils.validateSwitchRules(switchId);
 
+        assertNotNull(validateResult);
         assertThat("The switch has excessive rules.", validateResult.getExcessRules(), empty());
         assertThat("The switch has missing rules.", validateResult.getMissingRules(), empty());
     }
@@ -180,6 +181,7 @@ public class NorthboundRunTest {
     public void validateSwitchWithMissingRules(String switchId, int missingRulesCount) {
         RulesValidationResult validateResult = SwitchesUtils.validateSwitchRules(switchId);
 
+        assertNotNull(validateResult);
         assertEquals("Switch doesn't have expected missing rules.", missingRulesCount,
                 validateResult.getMissingRules().size());
         assertThat("The switch has excessive rules.", validateResult.getExcessRules(), empty());
@@ -189,6 +191,7 @@ public class NorthboundRunTest {
     public void validateSwitchWithExcessiveRules(String switchId, int excessiveRulesCount) {
         RulesValidationResult validateResult = SwitchesUtils.validateSwitchRules(switchId);
 
+        assertNotNull(validateResult);
         assertEquals("Switch doesn't have expected excessive rules.", excessiveRulesCount,
                 validateResult.getExcessRules().size());
         assertThat("The switch has missing rules.", validateResult.getMissingRules(), empty());
@@ -198,6 +201,7 @@ public class NorthboundRunTest {
     public void synchronizeSwitchWithInstalledRules(String switchId, int installedRulesCount) {
         RulesSyncResult validateResult = SwitchesUtils.synchronizeSwitchRules(switchId);
 
+        assertNotNull(validateResult);
         assertEquals("Switch doesn't have expected installed rules.", installedRulesCount,
                 validateResult.getInstalledRules().size());
     }
@@ -216,6 +220,7 @@ public class NorthboundRunTest {
     @Then("No rules installed on ([\\w:]+) switch$")
     public void checkThatNoRulesAreInstalled(String switchId) {
         List<FlowEntry> actualRules = SwitchesUtils.dumpSwitchRules(switchId);
+
         assertNotNull(actualRules);
         assertTrue("Switch contains rules, but expect to have none.", actualRules.isEmpty());
     }

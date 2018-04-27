@@ -1,7 +1,7 @@
 @FREINSTALL
 Feature: Flow re-reinstalling after switch comes back up.
 
-  @MVP1
+  @MVP2
   Scenario: Re-installing Ingress and Egress flows.
 
   This scenario creates the simple network(switch1 linked with switch2) and ingress/egress flows. Next this scenario
@@ -20,7 +20,7 @@ Feature: Flow re-reinstalling after switch comes back up.
     When switch switch1 is turned on
     Then flow pcet in UP state
 
-  @MVP1
+  @MVP2
   Scenario: Re-installing transit flow when no other path is available.
 
   This scenario creates linear topology of three switches(00000001, 00000002, 00000003), links between them
@@ -40,7 +40,7 @@ Feature: Flow re-reinstalling after switch comes back up.
     When switch 00000002 is turned on
     Then flow pcet in UP state
 
-  @MVP1
+  @MVP2
   Scenario: Re-installing transit flow when no other path is available and reflow feature is turned off.
 
   This scenario creates linear topology of three switches(00000001, 00000002, 00000003), and create from from switch
@@ -63,7 +63,7 @@ Feature: Flow re-reinstalling after switch comes back up.
     And topology contains 8 links
     Then flow disableReflowTest in DOWN state
 
-  @MVP1
+  @MVP2
   Scenario: Re-installing transit flow after changing path.
 
   This scenario creates topology with two paths for flow and creates flow through the switch, which will be turned off.

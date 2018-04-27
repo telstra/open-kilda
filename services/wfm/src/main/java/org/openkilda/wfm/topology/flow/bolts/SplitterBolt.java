@@ -48,7 +48,6 @@ import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-import java.io.IOException;
 import java.util.Map;
 
 /**
@@ -113,9 +112,11 @@ public class SplitterBolt extends BaseRichBolt {
 
                     values = new Values(message, flowId);
                     logger.info("Flow {} message: operation={} values={}", flowId, fid.getOperation(), values);
-                    if (fid.getOperation() == FlowOperation.PUSH) {
+                    if (fid.getOperation() == FlowOperation.PUSH
+                            || fid.getOperation() == FlowOperation.PUSH_PROPAGATE) {
                         outputCollector.emit(StreamType.PUSH.toString(), tuple, values);
-                    } else if (fid.getOperation() == FlowOperation.UNPUSH) {
+                    } else if (fid.getOperation() == FlowOperation.UNPUSH
+                            || fid.getOperation() == FlowOperation.UNPUSH_PROPAGATE) {
                         outputCollector.emit(StreamType.UNPUSH.toString(), tuple, values);
                     } else {
                         logger.warn("Skip undefined FlowInfoData Operation {}: {}={}",

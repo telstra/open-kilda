@@ -45,7 +45,6 @@ import static org.openkilda.floodlight.message.command.encapsulation.PushSchemeO
 import static org.openkilda.floodlight.switchmanager.ISwitchManager.DROP_RULE_COOKIE;
 import static org.openkilda.floodlight.switchmanager.ISwitchManager.VERIFICATION_BROADCAST_RULE_COOKIE;
 import static org.openkilda.floodlight.switchmanager.ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE;
-import static org.openkilda.floodlight.switchmanager.SwitchManager.NON_SYSTEM_MASK;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import net.floodlightcontroller.core.IOFSwitch;
@@ -293,16 +292,6 @@ public class SwitchManagerTest {
         replay(switchDescription);
 
         switchManager.installMeter(dpid, bandwidth, burstSize, meterId);
-    }
-
-    @Test
-    public void deleteFlow() throws Exception {
-        Capture<OFFlowMod> capture = prepareForInstallTest();
-        switchManager.deleteFlow(dpid, cookieHex, cookie);
-        final OFFlowMod actual = capture.getValue();
-        assertEquals(OFFlowModCommand.DELETE, actual.getCommand());
-        assertEquals(Long.valueOf(cookieHex, 16).longValue(), actual.getCookie().getValue());
-        assertEquals(NON_SYSTEM_MASK, actual.getCookieMask());
     }
 
     @Test

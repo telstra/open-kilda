@@ -1,26 +1,43 @@
 /*<![CDATA[*/
 
-
+var storage = new LocalStorageHandler();
 $(document).ready(function(){
-		common.getData("/switch/list","GET").then(function(response) {
-		$("#wait1").css("display", "none");
-		$('body').css('pointer-events','all'); 
-		showSwitchData(response);
-	},function(error){
-		response=[]
-		$("#wait1").css("display", "none");
-		$('body').css('pointer-events','all'); 
-		showSwitchData(response);
-	})
+	
+	var SWITCHES_LIST = storage.get('SWITCHES_LIST');
+	if(SWITCHES_LIST){
+		$("#loading").css("display", "none");
+		showSwitchData(SWITCHES_LIST);
+	}else{
+		switches();
+	}
+	
+	$(document).on("click","#refresh_list",function(e){
+		storage.remove('SWITCHES_LIST');
+		switches();
+	});
 	
 	$(document).on("click",".flowDataRow",function(e){
 		setFlowData(this);
 	})
 	
-	localStorage.clear();
+	//localStorage.clear();
 	
 })
 
+function switches(){
+	$("#loading").css("display", "block");
+	common.getData("/switch/list","GET").then(function(response) {
+		$("#loading").css("display", "none");
+		$('body').css('pointer-events','all'); 
+		showSwitchData(response);
+		storage.set("SWITCHES_LIST",response);
+	},function(error){
+		response=[]
+		$("#loading").css("display", "none");
+		$('body').css('pointer-events','all'); 
+		showSwitchData(response);
+	})
+}
 var event;
 $( 'input').on( 'click', function () {
 	if(event != "undefined"){
@@ -61,6 +78,7 @@ function showSwitchData(response){
 		  "bSortCellsTop": true,
 		   language: {searchPlaceholder: "Search"},
 		  "autoWidth": false,
+		  destroy: true,
 		  "aoColumns": [
 		                { sWidth: '15%' },
 		                { sWidth: '15%' },

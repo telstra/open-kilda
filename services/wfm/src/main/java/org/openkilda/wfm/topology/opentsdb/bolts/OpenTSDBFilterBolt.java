@@ -32,7 +32,6 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -70,12 +69,14 @@ public class OpenTSDBFilterBolt extends BaseRichBolt {
     public void execute(Tuple tuple) {
         
         if (isTickTuple(tuple)) {
-            Set<DatapointKey> keys = storage.keySet();
             // opentsdb using current epoch time (date +%s) in seconds
             long now  = System.currentTimeMillis();
-            for (DatapointKey key: keys) {
-                storage.compute(key, (k, v) -> now - v.getTime() > MUTE_IF_NO_UPDATES_MILLIS ? null: v);
+            storage.entrySet().removeIf(entry ->  now - entry.getValue().getTime() > MUTE_IF_NO_UPDATES_MILLIS);
+
+            if (LOGGER.isTraceEnabled()) {
+                LOGGER.trace("storage after clean tulpe: {}", storage.toString());
             }
+
             collector.ack(tuple);
             return;
         }
@@ -110,13 +111,24 @@ public class OpenTSDBFilterBolt extends BaseRichBolt {
         LOGGER.debug("adding datapoint: {}", datapoint);
         LOGGER.debug("storage.size: {}", storage.size());
         storage.put(new DatapointKey(datapoint.getMetric(), datapoint.getTags()), datapoint);
+        if (LOGGER.isTraceEnabled()) {
+            LOGGER.trace("addDatapoint storage: {}", storage.toString());
+        }
     }
 
     private boolean isUpdateRequired(Datapoint datapoint) {
         boolean update = true;
         Datapoint prevDatapoint = storage.get(new DatapointKey(datapoint.getMetric(), datapoint.getTags()));
-        if (prevDatapoint != null) {
 
+        if (prevDatapoint != null) {
+            if (LOGGER.isTraceEnabled()) {
+                LOGGER.trace("prev: {} cur: {} equals: {} time_delta: {}",
+                        prevDatapoint,
+                        datapoint,
+                        prevDatapoint.getValue().equals(datapoint.getValue()),
+                        datapoint.getTime() - prevDatapoint.getTime()
+                        );
+            }
             update = !prevDatapoint.getValue().equals(datapoint.getValue()) ||
                     datapoint.getTime() - prevDatapoint.getTime() >= MUTE_IF_NO_UPDATES_MILLIS;
         }

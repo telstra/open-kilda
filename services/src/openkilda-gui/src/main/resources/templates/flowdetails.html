@@ -31,7 +31,14 @@
 
 		<div class="container-fluid">
 
-
+			<div id="loading" class="bg_load" style="display:none;">
+				<div class="loader"></div>
+				<span class="load-text">Loading Flow
+						<span class="loader__dot">.</span>
+  			  			<span class="loader__dot">.</span>
+  			 			<span class="loader__dot">.</span>
+  			 	</span>  
+			</div>
 			<div class='form-group  col-lg-12 text-center flow_details'>
 				<label class='col-form-label' style='display: inline-block;'>Flow
 					id:</label>
@@ -56,6 +63,10 @@
 							</div>
 						</div>
 						<div class='form-group row'>
+							<label class='col-sm-4 col-form-label'>Name:</label>
+							<p class='col-sm-8 flow_div_source_switch_name'></p>
+						</div>
+						<div class='form-group row'>
 							<label class='col-sm-4 col-form-label'>Vlan:</label>
 							<p class='col-sm-8 flow_div_source_vlan'></p>
 						</div>
@@ -78,6 +89,10 @@
 							<div class='col-sm-4'>	
 								<input type="hidden" id="on-off-switch-dest" name="dest_switch" value="0"/>
 							</div>
+						</div>
+						<div class='form-group row'>
+							<label class='col-sm-4 col-form-label'>Name:</label>
+							<p class='col-sm-8 flow_div_destination_switch_name'></p>
 						</div>
 						<div class='form-group row'>
 							<label class='col-sm-4 col-form-label'>Vlan:</label>

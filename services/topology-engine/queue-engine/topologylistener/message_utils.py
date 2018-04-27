@@ -55,8 +55,8 @@ def build_ingress_flow(path_nodes, src_switch, src_port, src_vlan,
         raise ValueError('Output port was not found for ingress flow rule',
                          "path={}".format(path_nodes))
 
-    logger.debug('build_ingress_flow: flow_id=%s, cookie=%s, src_switch=%s, src_port=%s, src_vlan=%s, transit_vlan=%s, output_port=%s, output_action=%s',
-                flow_id, cookie, src_switch, src_port, src_vlan, transit_vlan, output_port, output_action)
+    logger.debug('build_ingress_flow: flow_id=%s, cookie=%s, src_switch=%s, src_port=%s, src_vlan=%s, transit_vlan=%s, output_port=%s, output_action=%s, bandwidth=%s, meter_id=%s',
+                flow_id, cookie, src_switch, src_port, src_vlan, transit_vlan, output_port, output_action, bandwidth, meter_id)
 
     flow = Flow()
     flow.clazz = "org.openkilda.messaging.command.flow.InstallIngressFlow"
@@ -115,14 +115,14 @@ def build_egress_flow(path_nodes, dst_switch, dst_port, dst_vlan,
     return flow
 
 
-def build_egress_flow_from_db(stored_flow, output_action):
+def build_egress_flow_from_db(stored_flow, output_action, cookie):
     print stored_flow
     return build_egress_flow(stored_flow['flowpath']['path'],
                              stored_flow['dst_switch'], stored_flow['dst_port'],
                              stored_flow['dst_vlan'],
                              stored_flow['transit_vlan'],
                              stored_flow['flowid'], output_action,
-                             stored_flow['cookie'])
+                             cookie)
 
 
 def build_intermediate_flows(switch, match, action, vlan, flow_id, cookie):
@@ -147,6 +147,10 @@ def build_intermediate_flows(switch, match, action, vlan, flow_id, cookie):
 def build_one_switch_flow(switch, src_port, src_vlan, dst_port, dst_vlan,
                           bandwidth, flow_id, output_action, cookie,
                           meter_id):
+    logger.debug('build_one_switch_flow: flow_id=%s, cookie=%s, switch=%s, input_port=%s, output_port=%s, input_vlan_id=%s, output_vlan_id=%s, output_vlan_type=%s, bandwidth=%s, meter_id=%s',
+        flow_id, cookie, switch, src_port, dst_port, src_vlan, dst_vlan,
+        output_action, bandwidth, meter_id)
+
     flow = Flow()
     flow.clazz = "org.openkilda.messaging.command.flow.InstallOneSwitchFlow"
     flow.transaction_id = 0
@@ -182,7 +186,7 @@ def build_one_switch_flow_from_db(switch, stored_flow, output_action):
     return flow
 
 
-def build_delete_flow(switch, flow_id, cookie, meter_id):
+def build_delete_flow(switch, flow_id, cookie, meter_id, in_port, in_vlan, out_port):
     flow = Flow()
     flow.clazz = "org.openkilda.messaging.command.flow.RemoveFlow"
     flow.transaction_id = 0
@@ -190,6 +194,7 @@ def build_delete_flow(switch, flow_id, cookie, meter_id):
     flow.cookie = cookie
     flow.switch_id = switch
     flow.meter_id = meter_id
+    flow.criteria = {'cookie': cookie, 'in_port': in_port, 'in_vlan': in_vlan, 'out_port': out_port}
 
     return flow
 
@@ -319,7 +324,9 @@ def send_delete_commands(nodes, correlation_id):
 
     logger.debug('Send Delete Commands: node count=%d', len(nodes))
     for node in nodes:
-        data = build_delete_flow(str(node['switch_id']), str(node['flow_id']), node['cookie'], node['meter_id'])
+        data = build_delete_flow(str(node['switch_id']), str(node['flow_id']), node['cookie'],
+                                 node['meter_id'], node['in_port'], node['in_vlan'],
+                                 node['out_port'] )
         # TODO: Whereas this is part of the current workflow .. feels like we should have the workflow manager work
         #       as a hub and spoke ... ie: send delete to FL, get confirmation. Then send delete to DB, get confirmation.
         #       Then send a message to a FLOW_EVENT topic that says "FLOW DELETED"

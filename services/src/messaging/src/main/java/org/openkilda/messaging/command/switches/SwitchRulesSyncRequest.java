@@ -28,11 +28,11 @@ public class SwitchRulesSyncRequest extends CommandData {
     private String switchId;
 
     @JsonProperty("rules")
-    private List<String> rules;
+    private List<Long> rules;
 
     public SwitchRulesSyncRequest(
         @JsonProperty("switch_id") String switchId,
-        @JsonProperty("rules") List<String> rules) {
+        @JsonProperty("rules") List<Long> rules) {
        this.switchId = switchId;
        this.rules = rules;
     }

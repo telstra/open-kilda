@@ -14,9 +14,30 @@
 #
 
 import ConfigParser
+import os
+
+
+_root = os.path.dirname(__file__)
 
 config = ConfigParser.RawConfigParser()
-config.read('topology_engine.properties')
+path = os.path.join(_root, os.pardir, 'topology_engine.properties')
+config.read(path)
+
+_dummy = object()
+
+
+def read_option(section, name, conv=None, default=_dummy):
+    try:
+        value = config.get(section, name)
+    except ConfigParser.NoOptionError:
+        if default is _dummy:
+            raise ValueError('Option [{}]{} - not found'.format(section, name))
+        value = default
+
+    if conv is not None:
+        value = conv(value)
+
+    return value
 
 
 def get(section, option):
@@ -45,11 +66,8 @@ KAFKA_NORTHBOUND_TOPIC = config.get('kafka', 'northbound.topic')
 
 ZOOKEEPER_HOSTS = config.get('zookeeper', 'hosts')
 
-try:
-    value = config.getfloat('neo4j', 'socket.timeout')
-except ConfigParser.NoOptionError:
-    value = 30.0
+NEO4J_SOCKET_TIMEOUT = read_option(
+        'neo4j', 'socket.timeout', conv=float, default=30.0)
 
-NEO4J_SOCKET_TIMEOUT = value
-
-del value
+ISL_COST_WHEN_PORT_DOWN = read_option(
+        'isl', 'cost_when_port_down', conv=int, default=10000)

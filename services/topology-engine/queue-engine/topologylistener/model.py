@@ -63,3 +63,7 @@ class InterSwitchLink(
         if ends_count != 2:
             raise ValueError(
                 'ISL path not define %s/2 ends'.format(ends_count))
+
+    def reversed(self):
+        cls = type(self)
+        return cls(self.dest, self.source, self.state)

@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -144,7 +145,7 @@ public class SwitchController extends BaseController {
     public @ResponseBody LinkProps getLinkProps(LinkProps keys) {
         return serviceSwitch.getLinkProps(keys);
     }
-    
+
     /**
      * Get Link Props.
      * 
@@ -153,7 +154,7 @@ public class SwitchController extends BaseController {
      */
     @RequestMapping(path = "/link/props", method = RequestMethod.PUT)
     @ResponseStatus(HttpStatus.OK)
-    public @ResponseBody LinkProps updateLinkProps(LinkProps keys) {
+    public @ResponseBody String updateLinkProps(@RequestBody List<LinkProps> keys) {
         return serviceSwitch.updateLinkProps(keys);
     }
 }

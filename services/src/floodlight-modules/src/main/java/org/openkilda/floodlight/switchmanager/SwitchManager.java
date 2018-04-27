@@ -589,24 +589,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * {@inheritDoc}
      */
     @Override
-    public long deleteFlow(final DatapathId dpid, final String flowId, final Long cookie)
-            throws SwitchOperationException {
-        logger.info("deleting flows {} from switch {}", flowId, dpid);
-
-        IOFSwitch sw = lookupSwitch(dpid);
-        OFFactory ofFactory = sw.getOFFactory();
-        OFFlowDelete flowDelete = ofFactory.buildFlowDelete()
-                .setCookie(U64.of(cookie))
-                .setCookieMask(NON_SYSTEM_MASK)
-                .build();
-
-        return pushFlow(sw, "--DeleteFlow--", flowDelete);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public long deleteMeter(final DatapathId dpid, final long meterId)
             throws SwitchOperationException {
         if (meterId == 0) {
@@ -665,13 +647,13 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
     @Override
     public List<Long> deleteAllNonDefaultRules(final DatapathId dpid) throws SwitchOperationException {
-        List<OFFlowStatsEntry> flowStats = dumpFlowTable(dpid);
+        List<OFFlowStatsEntry> flowStatsBefore = dumpFlowTable(dpid);
         IOFSwitch sw = lookupSwitch(dpid);
         OFFactory ofFactory = sw.getOFFactory();
 
         Set<Long> removedRules = new HashSet<>();
 
-        for (OFFlowStatsEntry flowStatsEntry : flowStats) {
+        for (OFFlowStatsEntry flowStatsEntry : flowStatsBefore) {
             long flowCookie = flowStatsEntry.getCookie().getValue();
             if (flowCookie != DROP_RULE_COOKIE
                     && flowCookie != VERIFICATION_BROADCAST_RULE_COOKIE
@@ -682,7 +664,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                         .build();
                 pushFlow(sw, "--DeleteFlow--", flowDelete);
 
-                logger.info("Cookie {} is to be removed from switch {}.", flowCookie, dpid);
+                logger.info("Rule with cookie {} is to be removed from switch {}.", flowCookie, dpid);
 
                 removedRules.add(flowCookie);
             }
@@ -696,19 +678,21 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .map(entry -> entry.getCookie().getValue())
                 .collect(Collectors.toSet());
 
-        flowStats.stream()
+        flowStatsBefore.stream()
                 .map(entry -> entry.getCookie().getValue())
                 .filter(cookie -> !cookiesAfter.contains(cookie))
                 .filter(cookie -> !removedRules.contains(cookie))
                 .forEach(cookie -> {
-                    logger.warn("Cookie {} has been removed although not requested. Switch {}.", cookie, dpid);
+                    logger.warn("Rule with cookie {} has been removed although not requested. Switch {}.", cookie,
+                            dpid);
                     removedRules.add(cookie);
                 });
 
         cookiesAfter.stream()
                 .filter(removedRules::contains)
                 .forEach(cookie -> {
-                    logger.warn("Cookie {} was requested to be removed, but it still remains. Switch {}.", cookie, dpid);
+                    logger.warn("Rule with cookie {} was requested to be removed, but it still remains. Switch {}.",
+                            cookie, dpid);
                     removedRules.remove(cookie);
                 });
 
@@ -736,16 +720,15 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         sendBarrierRequest(sw);
 
         List<OFFlowStatsEntry> flowStatsAfter = dumpFlowTable(dpid);
-
-        Set<Long> cookies = flowStatsBefore.stream()
+        Set<Long> cookiesAfter = flowStatsAfter.stream()
                 .map(entry -> entry.getCookie().getValue())
                 .collect(Collectors.toSet());
-        flowStatsAfter.forEach(entry -> {
-            long cookie = entry.getCookie().getValue();
-            logger.info("Cookie {} has been removed from switch {}.", cookie, dpid);
-            cookies.remove(cookie);
-        });
-        return new ArrayList<>(cookies);
+
+        return flowStatsBefore.stream()
+                .map(entry -> entry.getCookie().getValue())
+                .filter(cookie -> !cookiesAfter.contains(cookie))
+                .peek(cookie -> logger.info("Rule with cookie {} has been removed from switch {}.", cookie, dpid))
+                .collect(Collectors.toList());
     }
 
     private OFFlowDelete buildFlowDeleteByCriteria(OFFactory ofFactory, DeleteRulesCriteria criteria) {
@@ -1050,6 +1033,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         return builder.build();
     }
 
+  
+  
     /**
      * Create an action to send packet to the controller.
      *

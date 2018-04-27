@@ -22,7 +22,9 @@ import threading
 from py2neo import Node
 from topologylistener import model
 
-import config
+from topologylistener import config
+from topologylistener import exc
+from topologylistener import isl_utils
 import flow_utils
 import message_utils
 
@@ -315,34 +317,18 @@ class MessageItem(object):
 
         return True
 
+    # FIXME(surabujin): split/remove
     def isl_fetch_and_deactivate(self, tx, dpid, port):
         flow_utils.precreate_switches(tx, dpid)
-        q = (
-            'MATCH (src:switch)-[link:isl]->(dst:switch)\n'
-            'WHERE src.name="{src_name}" AND link.src_port={port}\n'
-            'RETURN src, link, dst').format(src_name=dpid, port=port)
-        results = tx.run(q)
+        isl = isl_utils.fetch_by_endpoint(tx, model.NetworkEndpoint(dpid, port))
 
-        if not results:
-            logger.info('There is no ISL %s_%s', dpid, port)
+        logger.info('ISL found on %s_%s, deactivating', dpid, port)
 
-        idx = 0
-        for record in results:
-            if 0 < idx:
-                # FIXME(surabujin): use own exception
-                raise ValueError(
-                    'More than 1 ISL starts on %s_%s', dpid, port)
+        flow_utils.precreate_isls(tx, isl)
+        self.deactivate_isl(tx, isl.source.dpid, isl.source.port)
+        self.isl_update_status(tx, isl)
 
-            idx += 1
-
-            logger.info(
-                'ISL found on %s_%s, deactivating', dpid, port)
-            isl = model.InterSwitchLink.new_from_db(
-                record['src'], record['dst'], record['link'])
-
-            flow_utils.precreate_isls(tx, isl)
-            self.deactivate_isl(tx, isl.source.dpid, isl.source.port)
-            self.isl_update_status(tx, isl)
+        return isl
 
     def deactivate_isl(self, tx, src_switch, src_port):
         """
@@ -392,7 +378,10 @@ class MessageItem(object):
                     switch_id, port_id, self.timestamp)
 
         with graph.begin() as tx:
-            self.isl_fetch_and_deactivate(tx, switch_id, port_id)
+            isl = self.isl_fetch_and_deactivate(tx, switch_id, port_id)
+            # TODO(crimi): should be policy / toggle based
+            isl_utils.set_cost(tx, isl, config.ISL_COST_WHEN_PORT_DOWN)
+            isl_utils.set_cost(tx, isl.reversed(), config.ISL_COST_WHEN_PORT_DOWN)
 
         return True
 
@@ -628,15 +617,24 @@ class MessageItem(object):
             # we'll have a delete per segment based on the destination. Consequently, the "single switch flow" is
             # automatically addressed using this algorithm.
             flow_cookie = int(flow['cookie'])
-            nodes = [
-                {'switch_id': flow['src_switch'], 'flow_id': flow_id, 'cookie': flow_cookie, 'meter_id': flow['meter_id']}]
+            transit_vlan = int(flow['transit_vlan'])
+
+            current_node = {'switch_id': flow['src_switch'], 'flow_id': flow_id, 'cookie': flow_cookie,
+                       'meter_id': flow['meter_id'], 'in_port': flow['src_port'], 'in_vlan': flow['src_vlan']}
+            nodes = [current_node]
+
             segments = flow_utils.fetch_flow_segments(flow_id, flow_cookie)
             for segment in segments:
+                current_node['out_port'] = segment['src_port']
+
                 # every segment should have a cookie field, based on merge_segment; but just in case..
                 segment_cookie = segment.get('cookie', flow_cookie)
-                nodes.append({
-                    'switch_id': segment['dst_switch'], 'flow_id': flow_id, 'cookie': segment_cookie,
-                    'meter_id': None})
+                current_node = {'switch_id': segment['dst_switch'], 'flow_id': flow_id, 'cookie': segment_cookie,
+                    'meter_id': None, 'in_port': segment['dst_port'], 'in_vlan': transit_vlan,
+                    'out_port': segment['dst_port']}
+                nodes.append(current_node)
+
+            current_node['out_port'] = flow['dst_port']
 
             if propagate:
                 logger.info('Flow rules remove start: correlation_id=%s, flow_id=%s, path=%s', correlation_id, flow_id,

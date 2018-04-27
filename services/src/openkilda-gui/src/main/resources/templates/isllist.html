@@ -16,11 +16,9 @@
 
 </head>
 <body>
-
-	<div th:replace="fragments/header :: header" ></div>
-
-	<div th:replace="fragments/menu :: menu" ></div>
 	<div th:include="fragments/importResources:: commonPathImports"></div>
+	<div th:replace="fragments/header :: header" ></div>
+	<div th:replace="fragments/menu :: menu" ></div>
 	<div class="content">
 		<div class="row">
 			<div class="navigation-bar container-fluid">
@@ -46,6 +44,12 @@
 			<table id="flowTable" class="display" cellspacing="0" width="100%" style="display:none;">
 				<thead>
 					<tr class="tableHeading">
+						<th><span title="Source Switch Name">Src Switch </span>
+						<i class="icon-search" onclick="showSearch('source-switch-name',event)" style=""></i> 
+						<input  id="source-switch-name" class="heading_search_box" type="search" style="display: none;" placeholder="Search" />
+						
+						</th>
+						
 						<th><span title="Source Switch">Src Switch	</span>					
 						<i class="icon-search" id="sourceIcon" onclick="showSearch('source-switch',event)" style=""></i> 
 						<input id="source-switch" class="heading_search_box" type="search" style="display: none;" placeholder="Search" />
@@ -56,11 +60,12 @@
 						<input id="source-port" class="heading_search_box" type="search" style="display: none;" placeholder="Search" />
 						
 						</th>
-						<th><span title="Source Switch Name">Src Switch Name </span>
-						<i class="icon-search" onclick="showSearch('source-vlan',event)" style=""></i> 
-						<input  id="source-switch-name" class="heading_search_box" type="search" style="display: none;" placeholder="Search" />
+						<th><span title="Destination Switch Name">Dst Switch </span>
+						<i class="icon-search" onclick="showSearch('destination-switch-name',event)" style=""></i> 
+						<input id="destination-switch-name" class="heading_search_box" type="search" style="display: none;" placeholder="Search" />
 						
 						</th>
+						
 						<th><span title="Destination Switch">Dst Switch</span>
 						<i class="icon-search" id="targetIcon" onclick="showSearch('target-switch',event)" style=""></i> 
 						<input id="target-switch" class="heading_search_box" type="search" style="display: none;" placeholder="Search" />
@@ -71,14 +76,9 @@
 						<input id="destination-port" class="heading_search_box" type="search" style="display: none;" placeholder="Search" />
 						
 						</th>
-						<th><span title="Destination Switch Name">Dst Switch Name </span>
-						<i class="icon-search" onclick="showSearch('destination-vlan',event)" style=""></i> 
-						<input id="destination-switch-name" class="heading_search_box" type="search" style="display: none;" placeholder="Search" />
-						
-						</th>
-						<th><span title="Available Bandwidth">Available Bandwidth </span>
-						<i class="icon-search" onclick="showSearch('max-band',event)" style=""></i> 
-						<input id="max-band" class="heading_search_box" type="search" style="display: none;" placeholder="Search" />
+						<th><span title="Cost">Cost </span>
+						<i class="icon-search" onclick="showSearch('cost',event)" style=""></i> 
+						<input id="cost" class="heading_search_box" type="search" style="display: none;" placeholder="Search" />
 						
 						</th>
  						<th><span title="State">State </span>
@@ -89,6 +89,11 @@
 						<th><span title="Speed">Speed</span> 
 						<i class="icon-search" onclick="showSearch('speed',event)" style=""></i> 
 						<input id="speed"  class="heading_search_box" type="search" style="display: none;" placeholder="Search" />
+						</th>
+						<th><span title="Available Bandwidth">Available Bandwidth </span>
+						<i class="icon-search" onclick="showSearch('max-band',event)" style=""></i> 
+						<input id="max-band" class="heading_search_box" type="search" style="display: none;" placeholder="Search" />
+						
 						</th>
 						<th><span title="Latency">Latency</span> 
 						<i class="icon-search" onclick="showSearch('latency',event)" style=""></i> 
