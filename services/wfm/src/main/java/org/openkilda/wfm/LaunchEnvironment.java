@@ -30,6 +30,14 @@ public class LaunchEnvironment {
         return new PropertiesReader(getProperties(), CLI_OVERLAY, ownSection, defaults, "");
     }
 
+    public void setupOverlay(Properties overlay) {
+        Properties newLayer = new Properties(getProperties());
+        for (String name : overlay.stringPropertyNames()) {
+            newLayer.setProperty(name, overlay.getProperty(name));
+        }
+        properties = newLayer;
+    }
+
     private Properties makeCliOverlay() {
         Properties overlay = new Properties(getProperties());
 

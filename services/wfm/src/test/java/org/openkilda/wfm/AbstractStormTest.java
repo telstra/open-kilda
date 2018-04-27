@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm;
 
+import com.google.common.io.Files;
 import org.apache.storm.testing.CompleteTopologyParam;
 import org.apache.storm.testing.MkClusterParam;
 import org.kohsuke.args4j.CmdLineException;
@@ -28,6 +29,7 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.rules.TemporaryFolder;
+
 import org.openkilda.wfm.topology.TopologyConfig;
 
 import java.io.File;
@@ -40,12 +42,15 @@ import java.util.Properties;
  */
 public class AbstractStormTest {
     protected static String CONFIG_NAME = "class-level-overlay.properties";
+    protected static String NEO4J_LISTEN_ADDRESS = "localhost:27600";
 
     protected static TestKafkaProducer kProducer;
     protected static LocalCluster cluster;
     protected static MkClusterParam clusterParam;
     protected static CompleteTopologyParam completeTopologyParam;
     static TestUtils.KafkaTestFixture server;
+
+    protected static final File rootDir = Files.createTempDir();
 
     @ClassRule
     public static TemporaryFolder fsData = new TemporaryFolder();

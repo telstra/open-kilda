@@ -59,6 +59,8 @@ import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.wfm.AbstractStormTest;
+import org.openkilda.wfm.LaunchEnvironment;
+import org.openkilda.wfm.Neo4jFixture;
 import org.openkilda.wfm.topology.TestKafkaConsumer;
 
 import java.io.IOException;
@@ -66,6 +68,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Properties;
 import java.util.Set;
 import java.util.UUID;
 
@@ -94,15 +97,26 @@ public class CacheTopologyTest extends AbstractStormTest {
     private static TestKafkaConsumer flowConsumer;
     private static TestKafkaConsumer ctrlConsumer;
 
+    private static Neo4jFixture fakeNeo4jDb;
+
     @BeforeClass
     public static void setupOnce() throws Exception {
         AbstractStormTest.setupOnce();
 
+        Properties configOverlay = new Properties();
+
+        fakeNeo4jDb = new Neo4jFixture(rootDir.toPath(), NEO4J_LISTEN_ADDRESS);
+        fakeNeo4jDb.start();
+        configOverlay.setProperty("neo4j.hosts", fakeNeo4jDb.getListenAddress());
+
         flows.add(firstFlow);
         flows.add(secondFlow);
 
-        topology = new CacheTopology(makeLaunchEnvironment());
+        LaunchEnvironment launchEnvironment = makeLaunchEnvironment();
+        launchEnvironment.setupOverlay(configOverlay);
+        topology = new CacheTopology(launchEnvironment);
         StormTopology stormTopology = topology.createTopology();
+
         Config config = stormConfig();
         cluster.submitTopology(CacheTopologyTest.class.getSimpleName(), config, stormTopology);
 
@@ -133,8 +147,6 @@ public class CacheTopologyTest extends AbstractStormTest {
         ctrlConsumer.clear();
 
         sendClearState();
-        String correlationId = waitDumpRequest();
-        sendNetworkDump(dump, correlationId);
     }
 
     @AfterClass
@@ -146,6 +158,9 @@ public class CacheTopologyTest extends AbstractStormTest {
         teConsumer.join();
         ctrlConsumer.wakeup();
         ctrlConsumer.join();
+
+        fakeNeo4jDb.stop();
+
         AbstractStormTest.teardownOnce();
     }
 
@@ -193,6 +208,7 @@ public class CacheTopologyTest extends AbstractStormTest {
     }
 
     @Test
+    @Ignore("test removed LCM particular qualities")
     public void cacheReceivesInfoDataBeforeNetworkDump() throws Exception {
         System.out.println("Cache receives InfoData before NetworkDump Test");
 
