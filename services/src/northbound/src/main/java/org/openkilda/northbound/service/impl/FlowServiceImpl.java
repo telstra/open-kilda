@@ -530,7 +530,8 @@ public class FlowServiceImpl implements FlowService {
                             .filter(cookie -> !cookie.equals(NumberUtils.LONG_ZERO))
                             .orElse(flow.getCookie());
                     rule.inVlan = flow.getTransitVlan();
-                    rule.outVlan = flow.getTransitVlan();
+                    //TODO: out vlan is not set for transit flows. Is it correct behavior?
+                    //rule.outVlan = flow.getTransitVlan();
                     rule.outPort = outNode.getPortNo();
                     result.add(rule);
                 }
