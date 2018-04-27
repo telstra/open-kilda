@@ -184,6 +184,7 @@ public class CacheTopologyTest extends AbstractStormTest {
     }
 
     @Test
+    @Ignore("Test related to outdated/disabled LCM function")
     public void cacheReceivesNetworkDumpAndSendsToFlowTopology() throws Exception {
         System.out.println("Dump Test");
 
@@ -304,43 +305,6 @@ public class CacheTopologyTest extends AbstractStormTest {
         Message responseGeneric = objectMapper.readValue(raw.value(), Message.class);
         CtrlResponse response = (CtrlResponse) responseGeneric;
         assertEquals(request.getCorrelationId(), response.getCorrelationId());
-    }
-
-    @Test
-    public void flowShouldBeReroutedWhenSwitchGoesDown() throws Exception {
-        sendData(sw);
-
-        SwitchInfoData dstSwitch = new SwitchInfoData();
-        dstSwitch.setState(SwitchState.ACTIVATED);
-        dstSwitch.setSwitchId("dstSwitch");
-        List<PathNode> path = ImmutableList.of(
-                new PathNode(sw.getSwitchId(), 0, 0),
-                new PathNode(dstSwitch.getSwitchId(), 0, 1)
-        );
-
-        //create inactive flow
-        firstFlow.getLeft().setFlowPath(new PathInfoData(0L, path));
-        firstFlow.getRight().setFlowPath(new PathInfoData(0L, Collections.emptyList()));
-        firstFlow.getLeft().setState(FlowState.DOWN);
-        sendFlowUpdate(firstFlow);
-
-        //create active flow
-        secondFlow.getLeft().setFlowPath(new PathInfoData(0L, path));
-        secondFlow.getRight().setFlowPath(new PathInfoData(0L, Collections.emptyList()));
-        secondFlow.getLeft().setState(FlowState.UP);
-        sendFlowUpdate(secondFlow);
-
-        flowConsumer.clear();
-        sw.setState(SwitchState.REMOVED);
-        sendData(sw);
-
-        //active flow should be rerouted
-        ConsumerRecord<String, String> record = flowConsumer.pollMessage();
-        assertNotNull(record);
-        CommandMessage message = objectMapper.readValue(record.value(), CommandMessage.class);
-        assertNotNull(message);
-        FlowRerouteRequest command = (FlowRerouteRequest) message.getData();
-        assertTrue(command.getPayload().getFlowId().equals(secondFlowId));
     }
 
     @Ignore
