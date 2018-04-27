@@ -464,14 +464,13 @@ class RecordHandler implements Runnable {
 
         DatapathId dpid = DatapathId.of(request.getSwitchId());
         DeleteRulesAction deleteAction = request.getDeleteRulesAction();
+        DeleteRulesCriteria criteria = request.getCriteria();
 
         ISwitchManager switchManager = context.getSwitchManager();
 
         try {
             List<Long> removedRules = new ArrayList<>();
 
-            // The case when we either delete by criteria or a specific default rule.
-            DeleteRulesCriteria criteria = request.getCriteria();
             if(deleteAction != null) {
                 switch (deleteAction) {
                     case REMOVE_DROP:
@@ -487,26 +486,25 @@ class RecordHandler implements Runnable {
                                 .cookie(ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE).build();
                         break;
                 }
+
+                // The cases when we delete all non-default rules.
+                if (deleteAction.nonDefaultRulesToBeRemoved()) {
+                    removedRules.addAll(switchManager.deleteAllNonDefaultRules(dpid));
+                }
+
+                // The cases when we delete the default rules.
+                if (deleteAction.defaultRulesToBeRemoved()) {
+                    removedRules.addAll(switchManager.deleteDefaultRules(dpid));
+                }
             }
+
+            // The case when we either delete by criteria or a specific default rule.
             if (criteria != null) {
                 removedRules.addAll(switchManager.deleteRulesByCriteria(dpid, criteria));
             }
 
-            // The cases when we delete the default rules.
-            if (EnumSet.of(DeleteRulesAction.DROP_ALL, DeleteRulesAction.DROP_ALL_ADD_DEFAULTS,
-                    DeleteRulesAction.REMOVE_DEFAULTS, DeleteRulesAction.REMOVE_ADD_DEFAULTS).contains(deleteAction)) {
-                removedRules.addAll(switchManager.deleteDefaultRules(dpid));
-            }
-
-            // The cases when we delete all non-default rules.
-            if (EnumSet.of(DeleteRulesAction.DROP_ALL, DeleteRulesAction.DROP_ALL_ADD_DEFAULTS,
-                    DeleteRulesAction.IGNORE_DEFAULTS, DeleteRulesAction.OVERWRITE_DEFAULTS).contains(deleteAction)) {
-                removedRules.addAll(switchManager.deleteAllNonDefaultRules(dpid));
-            }
-
-            // The case when we (re)install the default rules.
-            if (EnumSet.of(DeleteRulesAction.DROP_ALL_ADD_DEFAULTS, DeleteRulesAction.REMOVE_ADD_DEFAULTS,
-                    DeleteRulesAction.OVERWRITE_DEFAULTS).contains(deleteAction)) {
+            // The cases when we (re)install the default rules.
+            if (deleteAction != null && deleteAction.defaultRulesToBeInstalled()) {
                 switchManager.installDefaultRules(dpid);
             }
 

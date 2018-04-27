@@ -44,6 +44,20 @@ public enum DeleteRulesAction {
     REMOVE_DEFAULTS,
 
     // Drop the default, add them back .. presumably a good way to ensure the defaults are there
-    REMOVE_ADD_DEFAULTS
+    REMOVE_ADD_DEFAULTS;
+
+    public boolean defaultRulesToBeRemoved() {
+        return this == DROP_ALL || this == DROP_ALL_ADD_DEFAULTS || this == REMOVE_DEFAULTS
+                || this == REMOVE_ADD_DEFAULTS;
+    }
+
+    public boolean nonDefaultRulesToBeRemoved() {
+        return this == DROP_ALL || this == DROP_ALL_ADD_DEFAULTS || this == IGNORE_DEFAULTS
+                || this == OVERWRITE_DEFAULTS;
+    }
+
+    public boolean defaultRulesToBeInstalled() {
+        return this == DROP_ALL_ADD_DEFAULTS || this == REMOVE_ADD_DEFAULTS || this == OVERWRITE_DEFAULTS;
+    }
 }
 
