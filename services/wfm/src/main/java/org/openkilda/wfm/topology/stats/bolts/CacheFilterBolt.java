@@ -32,7 +32,6 @@ import org.openkilda.messaging.command.flow.BaseFlow;
 import org.openkilda.messaging.command.flow.InstallEgressFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.openkilda.messaging.command.flow.RemoveFlow;
-import org.openkilda.wfm.topology.utils.StatsUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -123,7 +122,7 @@ public class CacheFilterBolt extends BaseRichBolt {
         Values values = new Values(
                 remove,
                 command.getId(),
-                StatsUtil.formatSwitchId(command.getSwitchId()),
+                command.getSwitchId(),
                 command.getCookie());
         outputCollector.emit(CACHE_UPDATE.name(), tuple, values);
     }

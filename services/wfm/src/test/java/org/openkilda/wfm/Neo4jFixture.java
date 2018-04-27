@@ -1,13 +1,12 @@
 package org.openkilda.wfm;
 
 import org.neo4j.graphdb.GraphDatabaseService;
-
-import java.io.File;
-import java.nio.file.Path;
-
 import org.neo4j.graphdb.factory.GraphDatabaseBuilder;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.kernel.configuration.BoltConnector;
+
+import java.io.File;
+import java.nio.file.Path;
 
 public class Neo4jFixture {
     private final String DIRECTORY_NAME = "neo4j";
@@ -41,5 +40,10 @@ public class Neo4jFixture {
 
     public String getListenAddress() {
         return listenAddress;
+    }
+
+    public GraphDatabaseService getGraphDatabaseService()
+    {
+        return db;
     }
 }
