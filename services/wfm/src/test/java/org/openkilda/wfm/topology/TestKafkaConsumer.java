@@ -17,15 +17,12 @@ package org.openkilda.wfm.topology;
 
 import static org.openkilda.messaging.Utils.MAPPER;
 
-import org.openkilda.messaging.Destination;
-import org.openkilda.messaging.Message;
-import org.openkilda.messaging.info.InfoData;
-
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.errors.WakeupException;
-import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.Destination;
+import org.openkilda.messaging.Message;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -37,7 +34,7 @@ import java.util.concurrent.TimeUnit;
 
 public class TestKafkaConsumer extends Thread {
     private static final long CONSUMER_QUEUE_OFFER_TIMEOUT = 1000;
-    private static final long KAFKA_MESSAGE_POLL_TIMEOUT = 10000;
+    private static final long KAFKA_MESSAGE_POLL_TIMEOUT = 30000;
     private static final long KAFKA_CONSUMER_POLL_TIMEOUT = 100;
     private final KafkaConsumer<String, String> consumer;
     private final String topic;

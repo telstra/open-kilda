@@ -29,9 +29,16 @@ import org.apache.storm.testing.FixedTuple;
 import org.apache.storm.testing.MockedSources;
 import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Values;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Label;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.RelationshipType;
+import org.neo4j.graphdb.Transaction;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.Datapoint;
@@ -44,8 +51,11 @@ import org.openkilda.messaging.info.stats.MeterConfigStatsData;
 import org.openkilda.messaging.info.stats.PortStatsData;
 import org.openkilda.messaging.info.stats.PortStatsEntry;
 import org.openkilda.messaging.info.stats.PortStatsReply;
+import org.openkilda.wfm.LaunchEnvironment;
+import org.openkilda.wfm.Neo4jFixture;
 import org.openkilda.wfm.StableAbstractStormTest;
 import org.openkilda.wfm.topology.TestingKafkaBolt;
+import org.openkilda.wfm.topology.utils.StatsUtil;
 
 import java.io.File;
 import java.io.IOException;
@@ -54,6 +64,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.stream.IntStream;
 
 public class StatsTopologyTest extends StableAbstractStormTest {
@@ -65,6 +76,28 @@ public class StatsTopologyTest extends StableAbstractStormTest {
     private final String switchId = "00:00:00:00:00:00:00:01";
     private final long cookie = 0x4000000000000001L;
     private final String flowId = "f253423454343";
+
+    private static Neo4jFixture fakeNeo4jDb;
+
+    private static LaunchEnvironment launchEnvironment;
+
+    @BeforeClass
+    public static void setupOnce() throws Exception {
+        StableAbstractStormTest.setupOnce();
+        fakeNeo4jDb = new Neo4jFixture(fsData.getRoot().toPath(), NEO4J_LISTEN_ADDRESS);
+        fakeNeo4jDb.start();
+        launchEnvironment = makeLaunchEnvironment();
+        Properties configOverlay = new Properties();
+        configOverlay.setProperty("neo4j.hosts", fakeNeo4jDb.getListenAddress());
+
+        launchEnvironment.setupOverlay(configOverlay);
+    }
+
+
+    @AfterClass
+    public static void teardownOnce() throws Exception {
+        fakeNeo4jDb.stop();
+    }
 
     @Ignore
     @Test
@@ -88,7 +121,7 @@ public class StatsTopologyTest extends StableAbstractStormTest {
 
         //execute topology
         Testing.withTrackedCluster(clusterParam, (cluster) ->  {
-            StatsTopology topology = new TestingTargetTopology(new TestingKafkaBolt());
+            StatsTopology topology = new TestingTargetTopology(launchEnvironment, new TestingKafkaBolt());
             StormTopology stormTopology = topology.createTopology();
 
             //verify results
@@ -117,11 +150,15 @@ public class StatsTopologyTest extends StableAbstractStormTest {
         MockedSources sources = new MockedSources();
         sources.addMockData(StatsComponentType.STATS_OFS_KAFKA_SPOUT.toString(),
                 new Values(MAPPER.writeValueAsString(message)));
+        sources.addMockData(StatsComponentType.STATS_KILDA_SPEAKER_SPOUT.name(),
+                new Values(MAPPER.writeValueAsString(message))
+        );
+
         completeTopologyParam.setMockedSources(sources);
 
         //execute topology
         Testing.withTrackedCluster(clusterParam, (cluster) ->  {
-            StatsTopology topology = new TestingTargetTopology(new TestingKafkaBolt());
+            StatsTopology topology = new TestingTargetTopology(launchEnvironment, new TestingKafkaBolt());
             StormTopology stormTopology = topology.createTopology();
 
             //verify results
@@ -132,7 +169,7 @@ public class StatsTopologyTest extends StableAbstractStormTest {
             tuples.stream()
                     .map(this::readFromJson)
                     .forEach(datapoint -> {
-                        assertThat(datapoint.getTags().get("switchid"), is(switchId.replaceAll(":", "")));
+                        assertThat(datapoint.getTags().get("switchid"), is(StatsUtil.formatSwitchId(switchId)));
                         assertThat(datapoint.getTime(), is(timestamp));
                         assertThat(datapoint.getMetric(), is("pen.switch.meters"));
                     });
@@ -141,20 +178,51 @@ public class StatsTopologyTest extends StableAbstractStormTest {
 
     @Test
     public void flowStatsTest() throws Exception {
-        List<FlowStatsEntry> entries = Collections.singletonList(new FlowStatsEntry((short) 1, cookie, 1500L, 3000L));
+        //mock kafka spout
+        MockedSources sources = new MockedSources();
+
+        GraphDatabaseService graphDatabaseService = fakeNeo4jDb.getGraphDatabaseService();
+
+        try ( Transaction tx = graphDatabaseService.beginTx() ) {
+            Node node1 = graphDatabaseService.createNode(Label.label("switch"));
+            node1.setProperty("name", switchId);
+            Relationship rel1 = node1.createRelationshipTo(node1, RelationshipType.withName("flow"));
+            rel1.setProperty("flowid",flowId);
+            rel1.setProperty("cookie", cookie);
+            rel1.setProperty("meter_id", 2);
+            rel1.setProperty("transit_vlan", 1);
+            rel1.setProperty("src_switch", switchId);
+            rel1.setProperty("dst_switch", switchId);
+            rel1.setProperty("src_port",1);
+            rel1.setProperty("dst_port",2);
+            rel1.setProperty("src_vlan",5);
+            rel1.setProperty("dst_vlan",5);
+            rel1.setProperty("path","\"{\"path\": [], \"latency_ns\": 0, \"timestamp\": 1522528031909}\"");
+            rel1.setProperty("bandwidth",200);
+            rel1.setProperty("ignore_bandwidth", true);
+            rel1.setProperty("description","description");
+            rel1.setProperty("last_updated","last_updated");
+            tx.success();
+        }
+
+        List<FlowStatsEntry> entries = Collections.singletonList(
+                new FlowStatsEntry((short) 1, cookie, 1500L, 3000L));
         final List<FlowStatsReply> stats = Collections.singletonList(new FlowStatsReply(3, entries));
         InfoMessage message = new InfoMessage(new FlowStatsData(switchId, stats),
                 timestamp, CORRELATION_ID, Destination.WFM_STATS);
 
-        //mock kafka spout
-        MockedSources sources = new MockedSources();
         sources.addMockData(StatsComponentType.STATS_OFS_KAFKA_SPOUT.toString(),
                 new Values(MAPPER.writeValueAsString(message)));
+
+        sources.addMockData(StatsComponentType.STATS_KILDA_SPEAKER_SPOUT.name(),
+                new Values("")
+        );
+
         completeTopologyParam.setMockedSources(sources);
 
         //execute topology
         Testing.withTrackedCluster(clusterParam, (cluster) ->  {
-            StatsTopology topology = new TestingTargetTopology(new TestingKafkaBolt());
+            StatsTopology topology = new TestingTargetTopology(launchEnvironment, new TestingKafkaBolt());
             StormTopology stormTopology = topology.createTopology();
 
             Map result = Testing.completeTopology(cluster, stormTopology, completeTopologyParam);
@@ -191,9 +259,9 @@ public class StatsTopologyTest extends StableAbstractStormTest {
 
         private KafkaBolt kafkaBolt;
 
-        TestingTargetTopology(KafkaBolt kafkaBolt) throws Exception {
-            super(makeLaunchEnvironment());
-
+        TestingTargetTopology(LaunchEnvironment launchEnvironment, KafkaBolt kafkaBolt)
+                throws Exception {
+            super(launchEnvironment);
             this.kafkaBolt = kafkaBolt;
         }
 

@@ -20,6 +20,7 @@ import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.PortInfoData;
+import org.openkilda.wfm.topology.utils.StatsUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,13 +28,15 @@ import java.util.List;
 import java.util.Map;
 
 public class IslStatsBoltTest {
-    private String SWITCH1_ID = "SW0000B0D2F5B00934";
+    private String SWITCH1_ID = "0000b0d2f5b00934";
+    private String SWITCH1_ID_OTSD_FORMAT = StatsUtil.formatSwitchId(SWITCH1_ID);
     private int SWITCH1_PORT = 1;
     private int PATH1_SEQID = 1;
     private long PATH1_LATENCY = 10;
     private PathNode NODE1 = new PathNode(SWITCH1_ID, SWITCH1_PORT, PATH1_SEQID, PATH1_LATENCY);
 
-    private String SWITCH2_ID = "SW0000B0D2F5005E18";
+    private String SWITCH2_ID = "0000b0d2f5005e18";
+    private String SWITCH2_ID_OTSD_FORMAT = StatsUtil.formatSwitchId(SWITCH2_ID);
     private int SWITCH2_PORT = 5;
     private int PATH2_SEQID = 2;
     private long PATH2_LATENCY = 15;
@@ -78,8 +81,8 @@ public class IslStatsBoltTest {
         assertEquals(LATENCY, datapoint.getValue());
 
         Map<String, String> pathNode = datapoint.getTags();
-        assertEquals(SWITCH1_ID, pathNode.get("src_switch"));
-        assertEquals(SWITCH2_ID, pathNode.get("dst_switch"));
+        assertEquals(SWITCH1_ID_OTSD_FORMAT, pathNode.get("src_switch"));
+        assertEquals(SWITCH2_ID_OTSD_FORMAT, pathNode.get("dst_switch"));
         assertEquals(SWITCH1_PORT, Integer.parseInt(pathNode.get("src_port")));
         assertEquals(SWITCH2_PORT, Integer.parseInt(pathNode.get("dst_port")));
     }
