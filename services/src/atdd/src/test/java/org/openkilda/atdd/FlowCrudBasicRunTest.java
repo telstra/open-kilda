@@ -18,7 +18,7 @@ package org.openkilda.atdd;
 import static java.lang.String.format;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
-import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.hasItems;
 import static org.openkilda.DefaultParameters.trafficEndpoint;
 import static org.openkilda.DefaultParameters.mininetEndpoint;
 import static org.openkilda.flow.FlowUtils.getTimeDuration;
@@ -30,12 +30,18 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.hamcrest.Matcher;
+import org.hamcrest.Matchers;
 import org.openkilda.flow.FlowUtils;
+import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
+import org.openkilda.northbound.dto.flows.PathDiscrepancyDto;
 import org.openkilda.topo.TopologyHelp;
 
 import cucumber.api.java.en.Given;
@@ -45,8 +51,10 @@ import org.glassfish.jersey.client.ClientConfig;
 
 import java.io.File;
 import java.nio.file.Files;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.core.Response;
@@ -169,28 +177,45 @@ public class FlowCrudBasicRunTest {
         assertEquals(expectedFlowCount, actualFlowCount);
     }
 
-    @Then("^rules for flow (.*) are installed with no discrepancies$")
+    @Then("^validation of flow (.*) is successful with no discrepancies$")
     public void checkRulesInstalled(final String flowName) {
         String flowId = FlowUtils.getFlowName(flowName);
         List<FlowValidationDto> flowValidationResult = FlowUtils.validateFlow(flowId);
 
-        flowValidationResult.forEach(flowValidation -> {
-            assertEquals(flowId, flowValidation.getFlowId());
-            assertTrue(format("The flow %s didn't pass validation.", flowId), flowValidation.getAsExpected());
-            assertThat("The flow has discrepancies.", flowValidation.getDiscrepancies(), empty());
-        });
+        List<String> discrepancies = flowValidationResult.stream()
+                .peek(flowValidation -> {
+                    assertEquals(flowId, flowValidation.getFlowId());
+                })
+                .flatMap(item -> item.getDiscrepancies().stream())
+                //TODO: We have to skip discrepancies in meters because don't install them in Mininet.
+                .filter(item -> !item.getField().equals("meterId"))
+                .map(PathDiscrepancyDto::toString)
+                .collect(Collectors.toList());
+
+        assertThat("The flow has discrepancies.", discrepancies, empty());
+
+        //flowValidationResult.forEach(flowValidation ->
+        //        assertTrue(format("The flow %s didn't pass validation.", flowId), flowValidation.getAsExpected())
+        //);
     }
 
-    @Then("^rules for flow (.*) have discrepancies$")
-    public void checkRulesHaveDiscrepancies(final String flowName) {
+    @Then("^validation of flow (.*) has completed with (\\d+) discrepancies on ([\\w:,]+) switches found$")
+    public void checkRulesHaveDiscrepancies(final String flowName, int discrepancyCount, String switches) {
         String flowId = FlowUtils.getFlowName(flowName);
-        List<FlowValidationDto> flowValidationResult = FlowUtils.validateFlow(flowId);
+        List<FlowValidationDto> flowValidationResults = FlowUtils.validateFlow(flowId);
 
-        flowValidationResult.forEach(flowValidation -> {
-            assertEquals(flowId, flowValidation.getFlowId());
-            assertFalse(format("The flow %s pass validation.", flowId), flowValidation.getAsExpected());
-            assertThat("The flow has no discrepancies.", flowValidation.getDiscrepancies(), not(empty()));
-        });
+        List<String> discrepancies = flowValidationResults.stream()
+                .flatMap(item -> item.getDiscrepancies().stream())
+                .map(PathDiscrepancyDto::getRule)
+                .collect(Collectors.toList());
+
+        assertEquals(discrepancyCount, discrepancies.size());
+
+        @SuppressWarnings("unchecked")
+        Matcher<String>[] expectedSwitches = Arrays.stream(switches.split(","))
+                .map(Matchers::containsString)
+                .toArray(Matcher[]::new);
+        assertThat("The discrepancies doesn't contain expected switches.", discrepancies, hasItems(expectedSwitches));
     }
 
     @Then("^rules with (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) are installed$")
@@ -368,6 +393,23 @@ public class FlowCrudBasicRunTest {
     public void checkFlowCount(int expectedFlowsCount) throws Exception {
         int actualFlowCount = getFlowCount(expectedFlowsCount * 2);
         assertEquals(expectedFlowsCount * 2, actualFlowCount);
+    }
+
+    @When("^flow (.*) push request for (.*) is successful$")
+    public void successfulPushFlowFromResource(String flowId, String flowResource) throws Exception {
+        FlowInfoData flowInfoData = new ObjectMapper()
+                .readValue(getClass().getResourceAsStream(flowResource), FlowInfoData.class);
+
+        // Overwrite the flow ID.
+        String flowName = FlowUtils.getFlowName(flowId);
+        flowInfoData.setFlowId(flowName);
+        flowInfoData.getPayload().getLeft().setFlowId(flowName);
+        flowInfoData.getPayload().getRight().setFlowId(flowName);
+
+        BatchResults result = FlowUtils.pushFlow(flowInfoData, true);
+        assertNotNull(result);
+        assertEquals(0, result.getFailures());
+        assertEquals(2, result.getSuccesses()); // 2 separate requests into TE and Flow Topology
     }
 
     /**

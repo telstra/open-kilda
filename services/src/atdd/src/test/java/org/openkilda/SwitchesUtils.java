@@ -16,6 +16,10 @@ import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.info.rule.FlowEntry;
+import org.openkilda.messaging.info.rule.SwitchFlowEntries;
+import org.openkilda.northbound.dto.switches.RulesSyncResult;
+import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.topo.exceptions.TopologyProcessingException;
 
 import java.io.IOException;
@@ -23,6 +27,7 @@ import java.util.List;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.Entity;
+import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
@@ -132,23 +137,48 @@ public final class SwitchesUtils {
         return result.getStatus() == 200;
     }
 
+    public static List<Long> deleteSwitchRules(String switchId, DeleteRulesAction deleteAction) {
+        return deleteSwitchRules(switchId, deleteAction, null, null, null);
+    }
+
+    public static List<Long> deleteSwitchRules(String switchId, Integer inPort, Integer inVlan) {
+        return deleteSwitchRules(switchId, null, inPort, inVlan, null);
+    }
+
+    public static List<Long> deleteSwitchRules(String switchId, Integer outPort) {
+        return deleteSwitchRules(switchId, null, null, null, outPort);
+    }
 
     /**
      * Delete switch rules through Northbound service.
      */
-    public static List<Long> deleteSwitchRules(String switchId, DeleteRulesAction defaultRules) {
+    public static List<Long> deleteSwitchRules(String switchId, DeleteRulesAction deleteAction,
+            Integer inPort, Integer inVlan, Integer outPort) {
         System.out.println("\n==> Northbound Delete Switch Rules");
 
         Client client = ClientBuilder.newClient(new ClientConfig());
 
-        Response response = client
+        WebTarget requestBuilder = client
                 .target(northboundEndpoint)
                 .path("/api/v1/switches/")
                 .path("{switch-id}")
                 .path("rules")
-                .queryParam("defaultRules", defaultRules)
-                .resolveTemplate("switch-id", switchId)
+                .resolveTemplate("switch-id", switchId);
 
+        if(deleteAction != null) {
+            requestBuilder = requestBuilder.queryParam("delete-action", deleteAction);
+        }
+        if(inPort != null) {
+            requestBuilder = requestBuilder.queryParam("in-port", inPort);
+        }
+        if(inVlan != null) {
+            requestBuilder = requestBuilder.queryParam("in-vlan", inVlan);
+        }
+        if(outPort != null) {
+            requestBuilder = requestBuilder.queryParam("out-port", outPort);
+        }
+
+        Response response = requestBuilder
                 .request(MediaType.APPLICATION_JSON)
                 .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
                 .header(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()))
@@ -164,6 +194,102 @@ public final class SwitchesUtils {
             return cookies;
         } else {
             System.out.println(format("====> Error: Northbound Delete Switch Rules = %s",
+                    response.readEntity(MessageError.class)));
+            return null;
+        }
+    }
+
+    /**
+     * Returns rules of a switch (via Northbound service).
+     */
+    public static List<FlowEntry> dumpSwitchRules(String switchId) {
+        System.out.println("\n==> Northbound Dump Switch Rules");
+
+        Client client = ClientBuilder.newClient(new ClientConfig());
+
+        Response response = client
+                .target(northboundEndpoint)
+                .path("/api/v1/switches/{switch-id}/rules")
+                .resolveTemplate("switch-id", switchId)
+
+                .request(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
+                .header(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()))
+                .get();
+
+        System.out.println(format("===> Response = %s", response.toString()));
+
+        int responseCode = response.getStatus();
+        if (responseCode == 200) {
+            SwitchFlowEntries rules = response.readEntity(SwitchFlowEntries.class);
+            System.out.println(format("====> Northbound Dump Switch Rules = %s", rules.getFlowEntries()));
+            return rules.getFlowEntries();
+        } else {
+            System.out.println(format("====> Error: Northbound Dump Switch Rules = %s",
+                    response.readEntity(MessageError.class)));
+            return null;
+        }
+    }
+
+    /**
+     * Validate rules of a switch against the flows in Neo4J (via Northbound service).
+     */
+    public static RulesValidationResult validateSwitchRules(String switchId) {
+        System.out.println("\n==> Northbound Validate Switch Rules");
+
+        Client client = ClientBuilder.newClient(new ClientConfig());
+
+        Response response = client
+                .target(northboundEndpoint)
+                .path("/api/v1/switches/{switch-id}/rules/validate")
+                .resolveTemplate("switch-id", switchId)
+
+                .request(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
+                .header(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()))
+                .get();
+
+        System.out.println(format("===> Response = %s", response.toString()));
+
+        int responseCode = response.getStatus();
+        if (responseCode == 200) {
+            RulesValidationResult rules = response.readEntity(RulesValidationResult.class);
+            System.out.println(format("====> Northbound Validate Switch Rules = %s", rules));
+            return rules;
+        } else {
+            System.out.println(format("====> Error: Northbound Validate Switch Rules = %s",
+                    response.readEntity(MessageError.class)));
+            return null;
+        }
+    }
+
+    /**
+     * Synchronize rules of a switch with the flows in Neo4J (via Northbound service).
+     */
+    public static RulesSyncResult synchronizeSwitchRules(String switchId) {
+        System.out.println("\n==> Northbound Synchronize Switch Rules");
+
+        Client client = ClientBuilder.newClient(new ClientConfig());
+
+        Response response = client
+                .target(northboundEndpoint)
+                .path("/api/v1/switches/{switch-id}/rules/synchronize")
+                .resolveTemplate("switch-id", switchId)
+
+                .request(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
+                .header(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()))
+                .get();
+
+        System.out.println(format("===> Response = %s", response.toString()));
+
+        int responseCode = response.getStatus();
+        if (responseCode == 200) {
+            RulesSyncResult rules = response.readEntity(RulesSyncResult.class);
+            System.out.println(format("====> Northbound Synchronize Switch Rules = %s", rules));
+            return rules;
+        } else {
+            System.out.println(format("====> Error: Northbound Synchronize Switch Rules = %s",
                     response.readEntity(MessageError.class)));
             return null;
         }

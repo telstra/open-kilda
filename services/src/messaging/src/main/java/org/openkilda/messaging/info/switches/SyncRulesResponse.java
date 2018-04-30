@@ -17,32 +17,35 @@ package org.openkilda.messaging.info.switches;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Builder;
 import lombok.Value;
 import org.openkilda.messaging.info.InfoData;
 
 import java.util.List;
 
 @Value
-@Builder
 public class SyncRulesResponse extends InfoData {
 
-    @JsonProperty("added_rules")
-    private List<String> addedRules;
+    @JsonProperty("missing_rules")
+    private List<Long> missingRules;
 
     @JsonProperty("proper_rules")
-    private List<String> properRules;
+    private List<Long> properRules;
 
-    @JsonProperty("not_deleted")
-    private List<String> notDeleted;
+    @JsonProperty("excess_rules")
+    private List<Long> excessRules;
+
+    @JsonProperty("installed_rules")
+    private List<Long> installedRules;
 
     @JsonCreator
     public SyncRulesResponse(
-            @JsonProperty("added_rules") List<String> addedRules,
-            @JsonProperty("proper_rules") List<String> properRules,
-            @JsonProperty("not_deleted") List<String> notDeleted) {
-        this.addedRules = addedRules;
+            @JsonProperty("missing_rules") List<Long> missingRules,
+            @JsonProperty("proper_rules") List<Long> properRules,
+            @JsonProperty("excess_rules") List<Long> excessRules,
+            @JsonProperty("installed_rules") List<Long> installedRules) {
+        this.missingRules = missingRules;
         this.properRules = properRules;
-        this.notDeleted = notDeleted;
+        this.excessRules = excessRules;
+        this.installedRules = installedRules;
     }
 }

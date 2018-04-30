@@ -1,11 +1,13 @@
 package org.openkilda.northbound.service;
 
-import org.openkilda.northbound.dto.switches.SyncRulesOutput;
+import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
+import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.command.switches.InstallRulesAction;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.northbound.dto.SwitchDto;
+import org.openkilda.northbound.dto.switches.RulesValidationResult;
 
 import java.util.List;
 
@@ -33,14 +35,22 @@ public interface SwitchService extends BasicService {
     SwitchFlowEntries getRules(String switchId, Long cookie, String correlationId);
 
     /**
-     * Deletes all rules from the switch. The flag (@code deleteAction) defines what to do about the default rules.
+     * Deletes rules from the switch. The flag (@code deleteAction) defines which rules to delete.
      *
      * @param switchId switch id
-     * @param deleteAction defines what to do about the default rules
-     * @param cookie if defaultRules is ONE, then the cookie
-     * @return the list of cookies for removed rules
+     * @param deleteAction defines which rules to delete.
+     * @return the list of cookies of removed rules.
      */
-    List<Long> deleteRules(String switchId, DeleteRulesAction deleteAction, Long cookie);
+    List<Long> deleteRules(String switchId, DeleteRulesAction deleteAction);
+
+    /**
+     * Deletes rules from the switch.
+     *
+     * @param switchId switch id
+     * @param criteria defines criteria for rules to delete.
+     * @return the list of cookies of removed rules.
+     */
+    List<Long> deleteRules(String switchId, DeleteRulesCriteria criteria);
 
     /**
      * Install default rules on the switch. The flag (@code installAction) defines what to do about the default rules.
@@ -62,9 +72,18 @@ public interface SwitchService extends BasicService {
     ConnectModeRequest.Mode connectMode(ConnectModeRequest.Mode mode);
 
     /**
-     * Install missed flows, that should be on switch but exist only in neo4j.
-     * @param switchId switchId id of switch.
-     * @return the result of that operation with the list of rules that were updated/deleted.
+     * Validate the rules installed on the switch against the flows in Neo4J.
+     *
+     * @param switchId switch to validate rules on.
+     * @return the validation details.
      */
-    SyncRulesOutput syncRules(String switchId);
+    RulesValidationResult validateRules(String switchId);
+
+    /**
+     * Synchronize (install) missing flows that should be on the switch but exist only in Neo4J.
+     *
+     * @param switchId switch to synchronize rules on.
+     * @return the synchronization result.
+     */
+    RulesSyncResult syncRules(String switchId);
 }

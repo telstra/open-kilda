@@ -1,7 +1,6 @@
 package org.openkilda.integration.model.response;
 
 import java.io.Serializable;
-import java.util.Objects;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -17,7 +16,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonPropertyOrder({"port_no", "segment_latency", "seq_id", "switch_id"})
-public class PathNode implements Serializable , Comparable<PathNode>{
+public class PathNode implements Serializable, Comparable<PathNode> {
 
     /** The port no. */
     @JsonProperty("port_no")
@@ -35,6 +34,10 @@ public class PathNode implements Serializable , Comparable<PathNode>{
     @JsonProperty("switch_id")
     private String switchId;
 
+    /** The switch id. */
+    @JsonProperty("switch_name")
+    private String switchName;
+
     /** The in port no. */
     @JsonProperty("in_port_no")
     private Integer inPortNo;
@@ -43,19 +46,25 @@ public class PathNode implements Serializable , Comparable<PathNode>{
     @JsonProperty("out_port_no")
     private Integer outPortNo;
 
-    
+
     @JsonCreator
-    public PathNode(){
-  	
+    public PathNode() {
+
     }
-  
-	@JsonCreator
-	public PathNode(@JsonProperty("seq_id") Integer seqId, @JsonProperty("in_port_no") Integer inPortNo, @JsonProperty("out_port_no") Integer outPortNo,  @JsonProperty("switch_id") String switchId){
-	  setSeqId(seqId);
-	  setInPortNo(inPortNo);
-	  setOutPortNo(outPortNo);
-	  setSwitchId(switchId);
-	}
+
+    @JsonCreator
+    public PathNode(@JsonProperty("seq_id") Integer seqId,
+            @JsonProperty("in_port_no") Integer inPortNo,
+            @JsonProperty("out_port_no") Integer outPortNo,
+            @JsonProperty("switch_id") String switchId,
+            @JsonProperty("switch_name") String switchName) {
+        setSeqId(seqId);
+        setInPortNo(inPortNo);
+        setOutPortNo(outPortNo);
+        setSwitchId(switchId);
+        setSwitchName(switchName);
+    }
+
     /** The Constant serialVersionUID. */
     private final static long serialVersionUID = -4515006227265225751L;
 
@@ -166,17 +175,21 @@ public class PathNode implements Serializable , Comparable<PathNode>{
     public void setOutPortNo(final Integer outPortNo) {
         this.outPortNo = outPortNo;
     }
-    
-    
-    
+
+    public String getSwitchName() {
+        return switchName;
+    }
+
+    public void setSwitchName(String switchName) {
+        this.switchName = switchName;
+    }
 
     @Override
-	public String toString() {
-		return "PathNode [portNo=" + portNo + ", segmentLatency="
-				+ segmentLatency + ", seqId=" + seqId + ", switchId="
-				+ switchId + ", inPortNo=" + inPortNo + ", outPortNo="
-				+ outPortNo + "]";
-	}
+    public String toString() {
+        return "PathNode [portNo=" + portNo + ", segmentLatency=" + segmentLatency + ", seqId="
+                + seqId + ", switchId=" + switchId + ", switchName=" + switchName + ", inPortNo="
+                + inPortNo + ", outPortNo=" + outPortNo + "]";
+    }
 
     @Override
     public int hashCode() {
@@ -210,7 +223,7 @@ public class PathNode implements Serializable , Comparable<PathNode>{
         final int after = 1;
         return this.equals(obj) ? equal : this.seqId < obj.seqId ? before : after;
     }
-    
-    
+
+
 
 }

@@ -1,90 +1,56 @@
+FLOODLIGHT_DIR = floodlight
+LOXIGEN_DIR = loxigen
+
+PROJECTFLOODLIGHT_MAVEN := ~/.m2/repository/org/projectfloodlight
+FLOODLIGHT_MAVEN := $(PROJECTFLOODLIGHT_MAVEN)/floodlight
+FLOODLIGHT_JAR := $(FLOODLIGHT_MAVEN)/1.2-SNAPSHOT/floodlight-1.2-kilda-2.jar
+OPENFLOWJ_MAVEN := $(PROJECTFLOODLIGHT_MAVEN)/openflowj
 #
-# NB: when changing this variables, ensure to update:
+# NB: when changing this output, ensure to update:
 # --> services/src/pom.xml
 # --> services/wfm/pom.xml
-OPENFLOWJ_VERSION := 3.2.0-kilda-2
-FLOODLIGHT_VERSION := 1.2-kilda-2
+#
+OPENFLOWJ_JAR := $(OPENFLOWJ_MAVEN)/3.2.0-SNAPSHOT/openflowj-3.2.0-kilda-2.jar
 
-GIT_HEAD := .git/refs/heads/STABLE
+GENERATE_OPENFLOWJ = $(LOXIGEN_DIR)/loxi_output/openflowj
+GENERATE_WIRESHARK = $(LOXIGEN_DIR)/loxi_output/wireshark
 
-FLOODLIGHT_REPO_URL := https://github.com/kilda/floodlight.git
-FLOODLIGHT_DIR := floodlight
-FLOODLIGHT_SOURCES := $(FLOODLIGHT_DIR)/$(GIT_HEAD)
-FLOODLIGHT_JAR := $(FLOODLIGHT_DIR)/target/floodlight-1.2-kilda-2.jar
-FLOODLIGHT_JAR += $(FLOODLIGHT_DIR)/target/floodlight.jar
+default: $(OPENFLOWJ_JAR) $(FLOODLIGHT_JAR)
 
-LOXIGEN_REPO_URL := https://github.com/kilda/loxigen.git
-LOXIGEN_DIR := loxigen
-LOXIGEN_SOURCES := $(LOXIGEN_DIR)/$(GIT_HEAD)
-OPENFLOWJ_DIR := $(LOXIGEN_DIR)/loxi_output/openflowj
-OPENFLOWJ_JAR := $(OPENFLOWJ_DIR)/target/openflowj-$(OPENFLOWJ_VERSION).jar
-GENERATE_WIRESHARK := $(LOXIGEN_DIR)/loxi_output/wireshark
+$(LOXIGEN_DIR):
+	git clone -b STABLE --single-branch https://github.com/kilda/loxigen.git $(LOXIGEN_DIR)
 
-sync-and-install-all: git-validate-repo git-pull install-all
-
-install-all: install-floodlight install-openflowj
-
-# in case you have applied some patches on loxigen or floodlight sources
-# and whant to rebuild corresponding packages
-force-install-all:
-	touch $(FLOODLIGHT_SOURCES)
-	touch $(LOXIGEN_SOURCES)
-	$(MAKE) install-all
-
-floodlight_install_deps := install-openflowj $(FLOODLIGHT_JAR)
-ifdef SHARE
-floodlight_install_deps += $(SHARE)/build-artifact/floodlight.jar
-endif
-
-install-floodlight: $(floodlight_install_deps)
-	mvn -B -f $(FLOODLIGHT_DIR)/pom.xml jar:jar install:install
-
-install-openflowj: $(OPENFLOWJ_JAR)
-	mvn -B -f $(OPENFLOWJ_DIR)/pom.xml jar:jar install:install
-
-clean: clean-loxigen clean-floodlight
-
-$(LOXIGEN_SOURCES):
-	git clone -b STABLE --single-branch $(LOXIGEN_REPO_URL) $(LOXIGEN_DIR)
-
-$(OPENFLOWJ_DIR)/pom.xml: $(LOXIGEN_SOURCES)
+$(GENERATE_OPENFLOWJ): git-pull $(LOXIGEN_DIR)/.git/HEAD
 	$(MAKE) -C $(LOXIGEN_DIR) java
-	touch $@
 
-$(OPENFLOWJ_JAR): $(OPENFLOWJ_DIR)/pom.xml
-	mvn -B -f $(OPENFLOWJ_DIR)/pom.xml clean package
-
-openflow.lua: $(LOXIGEN_SOURCES)
+openflow.lua: $(LOXIGEN_DIR)
 	$(MAKE) -C $(LOXIGEN_DIR) wireshark
 	sed 's/"eth"/"eth_withoutfcs"/' $(GENERATE_WIRESHARK)/$@ > $@
 
+$(OPENFLOWJ_JAR): $(GENERATE_OPENFLOWJ)
+	mvn -B -f $(GENERATE_OPENFLOWJ)/pom.xml clean install
+
 clean-loxigen:
+	rm -rf $(OPENFLOWJ_MAVEN)
 	rm -f openflow.lua
-	if [ -d "$(LOXIGEN_DIR)" ]; then $(MAKE) -C $(LOXIGEN_DIR) clean; fi
+	$(MAKE) -C $(LOXIGEN_DIR) clean
 
-$(FLOODLIGHT_SOURCES):
-	git clone -b STABLE --single-branch $(FLOODLIGHT_REPO_URL) $(FLOODLIGHT_DIR)
+$(FLOODLIGHT_DIR):
+	git clone -b STABLE --single-branch https://github.com/kilda/floodlight.git $(FLOODLIGHT_DIR)
 
-$(FLOODLIGHT_JAR): $(FLOODLIGHT_SOURCES)
-	mvn -B -f $(FLOODLIGHT_DIR)/pom.xml clean package -DskipTests
+$(FLOODLIGHT_JAR): git-pull
+	mvn -B -f $(FLOODLIGHT_DIR)/pom.xml clean install -DskipTests
+	#mkdir /var/lib/floodlight
+	#chmod 777 /var/lib/floodlight
 
-ifdef SHARE
-$(SHARE)/build-artifact/floodlight.jar: $(FLOODLIGHT_JAR)
-	cp $(FLOODLIGHT_DIR)/target/floodlight.jar $(SHARE)/build-artifact/floodlight.jar
-endif
+git-pull: $(LOXIGEN_DIR) $(FLOODLIGHT_DIR)
+	(cd "$(LOXIGEN_DIR)"; git fetch origin; git checkout STABLE; git pull -r)
+	(cd "$(FLOODLIGHT_DIR)"; git fetch origin; git checkout STABLE; git pull -r)
 
 clean-floodlight:
-	if [ -d "$(FLOODLIGHT_DIR)" ]; then  mvn -f $(FLOODLIGHT_DIR)/pom.xml clean; fi
+	rm -rf $(FLOODLIGHT_MAVEN)
+	mvn -f $(FLOODLIGHT_DIR)/pom.xml clean
 
-git-pull: $(LOXIGEN_SOURCES) $(FLOODLIGHT_SOURCES)
-	cd "$(LOXIGEN_DIR)" && git fetch origin && git checkout STABLE && git pull -r
-	cd "$(FLOODLIGHT_DIR)" && git fetch origin && git checkout STABLE && git pull -r
+clean: clean-loxigen clean-floodlight
 
-git-validate-repo: $(LOXIGEN_SOURCES) $(FLOODLIGHT_SOURCES)
-	[ "$$(cd $(LOXIGEN_DIR) && git remote get-url origin)" = "$(LOXIGEN_REPO_URL)" ]
-	[ "$$(cd $(FLOODLIGHT_DIR) && git remote get-url origin)" = "$(FLOODLIGHT_REPO_URL)" ]
-
-.PHONY: sync-and-install-all install-all force-install-all
-.PHONY: install-floodlight install-openflowj
-.PHONY: clean clean-loxigen clean-floodlight
-.PHONY: git-validate-repo
+.PHONY: default clean clean-loxigen clean-floodlight git-pull

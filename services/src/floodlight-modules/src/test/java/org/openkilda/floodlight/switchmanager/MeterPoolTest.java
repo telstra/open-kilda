@@ -77,6 +77,6 @@ public class MeterPoolTest {
         assertEquals(expected, meterPool.getMetersBySwitch(SWITCH_1_ID));
         expected.clear();
 
-        assertEquals(m1, m5);
+        assertEquals(m1+2, m5);
     }
 }

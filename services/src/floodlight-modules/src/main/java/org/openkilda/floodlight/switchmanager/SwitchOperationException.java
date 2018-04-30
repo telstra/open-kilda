@@ -9,8 +9,8 @@ public class SwitchOperationException extends Exception {
         this(dpId, "Switch manipulation has failed");
     }
 
-    public SwitchOperationException(DatapathId dpId, String s) {
-        super(s);
+    public SwitchOperationException(DatapathId dpId, String message) {
+        super(message);
         this.dpId = dpId;
     }
 

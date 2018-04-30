@@ -7,10 +7,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.web.util.UriComponentsBuilder;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.URL;
+import java.net.URLEncoder;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +30,7 @@ import org.openkilda.integration.exception.ContentNotFoundException;
 import org.openkilda.integration.exception.IntegrationException;
 import org.openkilda.integration.model.response.IslLink;
 import org.openkilda.model.IslLinkInfo;
+import org.openkilda.model.LinkProps;
 import org.openkilda.model.PortInfo;
 import org.openkilda.model.SwitchInfo;
 import org.openkilda.service.ApplicationService;
@@ -50,9 +57,12 @@ public class SwitchIntegrationService {
 
     @Autowired
     private ApplicationService applicationService;
-    
+
     @Autowired
     private IslLinkConverter islLinkConverter;
+
+    @Autowired
+    ObjectMapper objectMapper;
 
     /**
      * Gets the switches.
@@ -96,7 +106,7 @@ public class SwitchIntegrationService {
      * 
      * @param csNames
      * @param switchId
-     * @return
+     * @return switch name
      */
     public String customSwitchName(Map<String, String> csNames, String switchId) {
         if (csNames != null && !StringUtils.isEmpty(csNames) && csNames.size() > 0) {
@@ -127,7 +137,46 @@ public class SwitchIntegrationService {
             if (CollectionUtil.isEmpty(links)) {
                 throw new ContentNotFoundException();
             }
-            return islLinkConverter.toIslLinksInfo(links);
+           
+            return islLinkConverter.toIslLinksInfo(links,islCostMap());
+        }
+        return null;
+    }
+    
+   private Map<String,String> islCostMap(){
+    List<LinkProps> linkProps = getIslLinkProps(null);
+    Map<String,String> islCostMap = new HashMap<>();
+    linkProps.forEach(linkProp -> {
+        String key = linkProp.getSrc_switch()+"-"+ linkProp.getSrc_port()+"-"+linkProp.getDst_switch()+"-"+linkProp.getDst_port();
+        String value = linkProp.getProperty("cost");
+        islCostMap.put(key, value);
+    });
+    
+    return islCostMap;
+    
+    }
+    
+
+    /**
+     * Gets the isl link cost.
+     *
+     * @return the isl link cost
+     */
+    public List<LinkProps> getIslLinkProps(LinkProps keys) {
+        UriComponentsBuilder builder =
+                UriComponentsBuilder.fromHttpUrl(applicationProperties.getLinkProps());
+        builder = setLinkProps(keys, builder);
+        String fullUri = builder.build().toUriString();
+        HttpResponse response = restClientManager.invoke(fullUri, HttpMethod.GET, "", "",
+                applicationService.getAuthHeader());
+        if (RestClientManager.isValidResponse(response)) {
+            List<LinkProps> linkPropsResponses =
+                    restClientManager.getResponseList(response, LinkProps.class);
+            if (CollectionUtil.isEmpty(linkPropsResponses)) {
+                throw new ContentNotFoundException();
+            } else {
+                return linkPropsResponses;
+            }
         }
         return null;
     }
@@ -139,9 +188,10 @@ public class SwitchIntegrationService {
      * @throws IntegrationException
      */
     public List<PortInfo> getSwitchPorts(final String switchId) throws IntegrationException {
+        HttpResponse response = null;
         try {
-            HttpResponse response = restClientManager.invoke(applicationProperties.getSwitchPorts(),
-                    HttpMethod.GET, "", "", "");
+//            HttpResponse response = restClientManager.invoke(applicationProperties.getSwitchPorts(),
+//                    HttpMethod.GET, "", "", "");
             if (RestClientManager.isValidResponse(response)) {
                 String responseEntity = IoUtil.toString(response.getEntity().getContent());
                 JSONObject jsonObject = JsonUtil.toObject(responseEntity, JSONObject.class);
@@ -154,6 +204,11 @@ public class SwitchIntegrationService {
         return null;
     }
 
+    /**
+     * Get custom switch name from file.
+     * 
+     * @return
+     */
     @SuppressWarnings("unchecked")
     public Map<String, String> getCustomSwitchNameFromFile() {
         Map<String, String> csNames = new HashMap<String, String>();
@@ -170,10 +225,57 @@ public class SwitchIntegrationService {
                 }
             }
         } catch (Exception ex) {
-            LOGGER.error("Inside getCustomSwitchNameFromFile unable to find switch file path Exception :",
+            LOGGER.error(
+                    "Inside getCustomSwitchNameFromFile unable to find switch file path Exception :",
                     ex);
         }
         return csNames;
 
+    }
+
+    /**
+     * Update isl link props.
+     * 
+     * @param keys
+     * @return link props
+     * @throws JsonProcessingException
+     */
+    public String updateIslLinkProps(List<LinkProps> keys) {
+        try {
+            HttpResponse response = restClientManager.invoke(applicationProperties.getLinkProps(),
+                    HttpMethod.PUT, objectMapper.writeValueAsString(keys), "application/json",
+                    applicationService.getAuthHeader());
+            return IoUtil.toString(response.getEntity().getContent());
+        } catch (Exception e) {
+            LOGGER.error("Inside updateIslLinkProps  Exception :", e);
+            throw new IntegrationException(e);
+        }
+    }
+
+    /**
+     * This Method is used to set link props.
+     * 
+     * @param keys
+     * @param builder
+     * @return UriComponentsBuilder
+     */
+    private UriComponentsBuilder setLinkProps(LinkProps keys, UriComponentsBuilder builder) {
+        try {
+            if (keys != null) {
+                if (!keys.getSrc_switch().isEmpty())
+                    builder.queryParam("src_switch",
+                            URLEncoder.encode(keys.getSrc_switch(), "UTF-8"));
+                if (!keys.getSrc_port().isEmpty())
+                    builder.queryParam("src_port", URLEncoder.encode(keys.getSrc_port(), "UTF-8"));
+                if (!keys.getDst_switch().isEmpty())
+                    builder.queryParam("dst_switch",
+                            URLEncoder.encode(keys.getDst_switch(), "UTF-8"));
+                if (!keys.getDst_port().isEmpty())
+                    builder.queryParam("dst_port", URLEncoder.encode(keys.getDst_port(), "UTF-8"));
+            }
+        } catch (UnsupportedEncodingException e) {
+            throw new ContentNotFoundException();
+        }
+        return builder;
     }
 }

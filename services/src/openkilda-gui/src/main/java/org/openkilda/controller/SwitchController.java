@@ -1,24 +1,25 @@
 package org.openkilda.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.ResponseBody;
-import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.servlet.ModelAndView;
-
 import java.util.List;
 
 import javax.servlet.http.HttpServletRequest;
 
 import org.openkilda.constants.IConstants;
 import org.openkilda.model.IslLinkInfo;
+import org.openkilda.model.LinkProps;
 import org.openkilda.model.PortInfo;
 import org.openkilda.model.SwitchInfo;
 import org.openkilda.service.SwitchService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.servlet.ModelAndView;
 
 /**
  * The Class SwitchController.
@@ -74,6 +75,18 @@ public class SwitchController extends BaseController {
 
 
     /**
+     * Isl List.
+     *
+     * @param model the model
+     * @param request the request
+     * @return the model and view
+     */
+    @RequestMapping(value = "/isllist", method = RequestMethod.GET)
+    public ModelAndView islList(final HttpServletRequest request) {
+        return validateAndRedirect(request, IConstants.View.ISL_LIST);
+    }
+
+    /**
      * Isl details.
      *
      * @param model the model
@@ -119,5 +132,29 @@ public class SwitchController extends BaseController {
     @ResponseStatus(HttpStatus.OK)
     public @ResponseBody List<IslLinkInfo> getLinksDetail() {
         return serviceSwitch.getIslLinks();
+    }
+
+    /**
+     * Get Link Props.
+     * 
+     * @param keys
+     * @return
+     */
+    @RequestMapping(path = "/link/props", method = RequestMethod.GET)
+    @ResponseStatus(HttpStatus.OK)
+    public @ResponseBody LinkProps getLinkProps(LinkProps keys) {
+        return serviceSwitch.getLinkProps(keys);
+    }
+
+    /**
+     * Get Link Props.
+     * 
+     * @param keys
+     * @return
+     */
+    @RequestMapping(path = "/link/props", method = RequestMethod.PUT)
+    @ResponseStatus(HttpStatus.OK)
+    public @ResponseBody String updateLinkProps(@RequestBody List<LinkProps> keys) {
+        return serviceSwitch.updateLinkProps(keys);
     }
 }

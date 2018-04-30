@@ -15,22 +15,27 @@
 
 package org.openkilda.northbound.controller;
 
-import org.openkilda.northbound.dto.switches.SyncRulesOutput;
-import org.openkilda.messaging.command.switches.ConnectModeRequest;
-import org.openkilda.messaging.command.switches.DeleteRulesAction;
-import org.openkilda.messaging.command.switches.InstallRulesAction;
-import org.openkilda.messaging.error.MessageError;
-import org.openkilda.messaging.info.rule.SwitchFlowEntries;
-import org.openkilda.messaging.payload.flow.FlowPayload;
-import org.openkilda.northbound.dto.SwitchDto;
-import org.openkilda.northbound.service.SwitchService;
-import org.openkilda.northbound.utils.ExtraAuthRequired;
+import static org.openkilda.messaging.error.ErrorType.PARAMETERS_INVALID;
 
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
+import org.openkilda.messaging.command.switches.ConnectModeRequest;
+import org.openkilda.messaging.command.switches.DeleteRulesAction;
+import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
+import org.openkilda.messaging.command.switches.DeleteRulesCriteria.DeleteRulesCriteriaBuilder;
+import org.openkilda.messaging.command.switches.InstallRulesAction;
+import org.openkilda.messaging.error.MessageError;
+import org.openkilda.messaging.error.MessageException;
+import org.openkilda.messaging.info.rule.SwitchFlowEntries;
+import org.openkilda.northbound.dto.SwitchDto;
+import org.openkilda.northbound.dto.switches.RulesSyncResult;
+import org.openkilda.northbound.dto.switches.RulesValidationResult;
+import org.openkilda.northbound.service.SwitchService;
+import org.openkilda.northbound.utils.ExtraAuthRequired;
+import org.openkilda.northbound.utils.RequestCorrelationId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,8 +59,9 @@ import java.util.Optional;
  */
 @RestController
 @PropertySource("classpath:northbound.properties")
-@Api(value = "switches")
+@Api
 @ApiResponses(value = {
+        @ApiResponse(code = 200, message = "Operation is successful"),
         @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
         @ApiResponse(code = 401, response = MessageError.class, message = "Unauthorized"),
         @ApiResponse(code = 403, response = MessageError.class, message = "Forbidden"),
@@ -88,9 +94,7 @@ public class SwitchController {
      * @param cookie filter the response based on this cookie
      * @return list of the cookies of the rules that have been deleted
      */
-    @ApiOperation(value = "Get switch rules from the switch",
-            response = SwitchFlowEntries.class)
-    @ApiResponse(code = 200, response = SwitchFlowEntries.class, message = "Operation is successful" )
+    @ApiOperation(value = "Get switch rules from the switch", response = SwitchFlowEntries.class)
     @GetMapping(value = "/switches/{switch-id}/rules",
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     @ResponseStatus(HttpStatus.OK)
@@ -109,7 +113,10 @@ public class SwitchController {
      *
      * @param switchId switch id to delete rules from
      * @param deleteAction defines what to do about the default rules
-     * @param oneCookie the cookie to use if deleting one rule (could be any rule)
+     * @param cookie the cookie to use if deleting a rule (could be any rule)
+     * @param inPort the in port to use if deleting a rule
+     * @param inVlan the in vlan to use if deleting a rule
+     * @param outPort the out port to use if deleting a rule
      * @return list of the cookies of the rules that have been deleted
      */
     @ApiOperation(value = "Delete switch rules. Requires special authorization",
@@ -120,15 +127,43 @@ public class SwitchController {
     @ExtraAuthRequired
     public ResponseEntity<List<Long>> deleteSwitchRules(
             @PathVariable("switch-id") String switchId,
-            @ApiParam(value = "default: IGNORE. Can be one of DeleteRulesAction: " +
-                    " DROP,DROP_ADD,IGNORE,OVERWRITE,ONE,REMOVE_DROP,REMOVE_BROADCAST," +
-                    "REMOVE_UNICAST,REMOVE_DEFAULTS,REMOVE_ADD",
+            @ApiParam(value = "default: IGNORE_DEFAULTS. Can be one of DeleteRulesAction: " +
+                    "DROP_ALL,DROP_ALL_ADD_DEFAULTS,IGNORE_DEFAULTS,OVERWRITE_DEFAULTS," +
+                    "REMOVE_DROP,REMOVE_BROADCAST,REMOVE_UNICAST,REMOVE_DEFAULTS,REMOVE_ADD_DEFAULTS",
                     required = false)
             @RequestParam("delete-action") Optional<DeleteRulesAction> deleteAction,
-            @RequestParam("one-cookie") Optional<Long> oneCookie) {
-        List<Long> response = switchService.deleteRules(switchId, deleteAction.orElse(DeleteRulesAction.IGNORE),
-                oneCookie.orElse(0L));
-        return ResponseEntity.ok(response);
+            @RequestParam("cookie") Optional<Long> cookie,
+            @RequestParam("in-port") Optional<Integer> inPort,
+            @RequestParam("in-vlan") Optional<Integer> inVlan,
+            @RequestParam("priority") Optional<Integer> priority,
+            @RequestParam("out-port") Optional<Integer> outPort) {
+
+        List<Long> result;
+
+        //TODO: "priority" can't be used as a standalone criterion - because currently it's ignored in OFFlowDelete.
+        if (cookie.isPresent() || inPort.isPresent() || inVlan.isPresent() /*|| priority.isPresent()*/
+                || outPort.isPresent()) {
+            if (deleteAction.isPresent()) {
+                throw new MessageException(RequestCorrelationId.getId(), System.currentTimeMillis(),
+                        PARAMETERS_INVALID, "Criteria parameters and delete-action are both provided.",
+                        "Either criteria parameters or delete-action should be provided.");
+
+            }
+
+            DeleteRulesCriteriaBuilder builder = DeleteRulesCriteria.builder();
+            cookie.ifPresent(builder::cookie);
+            inPort.ifPresent(builder::inPort);
+            inVlan.ifPresent(builder::inVlan);
+            priority.ifPresent(builder::priority);
+            outPort.ifPresent(builder::outPort);
+
+            result = switchService.deleteRules(switchId, builder.build());
+        } else {
+            DeleteRulesAction deleteRulesAction = deleteAction.orElse(DeleteRulesAction.IGNORE_DEFAULTS);
+
+            result = switchService.deleteRules(switchId, deleteRulesAction);
+        }
+        return ResponseEntity.ok(result);
     }
 
     /**
@@ -140,7 +175,7 @@ public class SwitchController {
      */
     @ApiOperation(value = "Install switch rules. Requires special authorization",
             response = Long.class, responseContainer = "List")
-    @ApiResponse(code = 200, response = Long.class, responseContainer = "List" , message = "Operation is successful")    
+    @ApiResponse(code = 200, response = Long.class, responseContainer = "List" , message = "Operation is successful")
     @PutMapping(value = "/switches/{switch-id}/rules",
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     @ExtraAuthRequired
@@ -177,18 +212,27 @@ public class SwitchController {
         return ResponseEntity.ok(response);
     }
 
-
     /**
+     * Validate the rules installed on the switch against the flows in Neo4J.
      *
-     * @param switchId
-     * @return the list of rules on switch, specified what actions were applied.
+     * @return the validation details.
      */
-    @ApiOperation(value = "Sync rules on the switch", response = SyncRulesOutput.class)
-    @ApiResponse(code = 200, response = SyncRulesOutput.class, message = "Operation is successful")
-    @GetMapping(path = "/switches/{switch_id}/sync_rules")
+    @ApiOperation(value = "Validate the rules installed on the switch", response = RulesValidationResult.class)
+    @GetMapping(path = "/switches/{switch_id}/rules/validate")
     @ResponseStatus(HttpStatus.OK)
-    public SyncRulesOutput syncRules(@PathVariable(name = "switch_id") String switchId) {
-        return switchService.syncRules(switchId);
+    public RulesValidationResult validateRules(@PathVariable(name = "switch_id") String switchId) {
+        return switchService.validateRules(switchId);
     }
 
+    /**
+     * Synchronize (install) missing flows that should be on the switch but exist only in neo4j.
+     *
+     * @return the synchronization result.
+     */
+    @ApiOperation(value = "Synchronize rules on the switch", response = RulesSyncResult.class)
+    @GetMapping(path = "/switches/{switch_id}/rules/synchronize")
+    @ResponseStatus(HttpStatus.OK)
+    public RulesSyncResult syncRules(@PathVariable(name = "switch_id") String switchId) {
+        return switchService.syncRules(switchId);
+    }
 }

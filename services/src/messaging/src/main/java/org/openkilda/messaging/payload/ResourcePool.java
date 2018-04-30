@@ -16,27 +16,27 @@
 package org.openkilda.messaging.payload;
 
 import com.google.common.base.MoreObjects;
-import com.google.common.collect.ContiguousSet;
-import com.google.common.collect.DiscreteDomain;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Range;
 
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Class represents resource allocator/deallocator.
+ *
+ * TODO: (crimi - 2019.04.17) - why is this class in this package?
+ *
+ * (crimi - 2019.04.17) - Changing the underlying mechanism here to leverage "max" as the starting
+ * point for where to look next.  If the counter is at max, then start at zero.
  */
 public class ResourcePool {
     /**
      * Resource values pool.
      */
     private final Set<Integer> resources = ConcurrentHashMap.newKeySet();
-
-    /**
-     * Resource range of values.
-     */
-    private final Range<Integer> range;
+    private Integer nextId;
+    private Integer lower;
+    private Integer upper;
 
     /**
      * Instance constructor.
@@ -45,7 +45,9 @@ public class ResourcePool {
      * @param maxValue maximum resource id value
      */
     public ResourcePool(final Integer minValue, final Integer maxValue) {
-        this.range = Range.closed(minValue, maxValue);
+        this.nextId = minValue;
+        this.lower = minValue;
+        this.upper = maxValue;
     }
 
     /**
@@ -54,9 +56,24 @@ public class ResourcePool {
      * @return allocated resource id
      */
     public Integer allocate() {
-        for (Integer id : ContiguousSet.create(range, DiscreteDomain.integers())) {
-            if (resources.add(id)) {
-                return id;
+        int range = upper - lower;
+        if (resources.size() <= range) {
+            // We are just going to loop through everything until we find a free one. Generally
+            // speaking this could be inefficient .. but we use "nextId" as a start, and that should
+            // have the greatest chance of being available.
+            for (int i = 0; i < range; i++) {
+                if (nextId > upper)
+                    nextId = lower;
+                int next;
+
+                // ensure only one thread executes the post-incremen
+                synchronized (nextId) {
+                    next = nextId++;
+                }
+
+                if (resources.add(next)) {
+                    return next;
+                }
             }
         }
         throw new ArrayIndexOutOfBoundsException("Could not allocate resource: pool is full");
@@ -69,6 +86,11 @@ public class ResourcePool {
      * @return allocated resource id
      */
     public Integer allocate(Integer id) {
+        // This is added to ensure that if we are adding one or many IDs, we set nextId to the
+        // largest of the set. This only affects the next call to allocate() without id, and all
+        // it'll do is cause the search to start at this point.
+        if (id > nextId)
+            nextId = id+1;
         return resources.add(id) ? id : null;
     }
 
@@ -97,8 +119,10 @@ public class ResourcePool {
     @Override
     public String toString() {
         return MoreObjects.toStringHelper(this)
-                .add("range", range)
                 .add("resources", resources)
+                .add("nextId", nextId)
+                .add("lower", lower)
+                .add("upper", upper)
                 .toString();
     }
 }

@@ -20,6 +20,7 @@ import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpEntityEnclosingRequestBase;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPatch;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpPut;
 import org.apache.http.client.methods.HttpUriRequest;
@@ -79,7 +80,9 @@ public class RestClientManager {
                 httpEntityEnclosingRequest = new HttpPut(apiUrl);
             } else if (HttpMethod.DELETE.equals(httpMethod)) {
                 httpUriRequest = new HttpDelete(apiUrl);
-            } else {
+            } else if (HttpMethod.PATCH.equals(httpMethod)) {
+                httpUriRequest = new HttpPatch(apiUrl);
+            }else {
                 httpUriRequest = new HttpGet(apiUrl);
             }
 
@@ -97,17 +100,13 @@ public class RestClientManager {
                         + httpEntityEnclosingRequest + " : payload : " + payload);
                 // Setting POST/PUT related headers
                 httpEntityEnclosingRequest.setHeader(HttpHeaders.CONTENT_TYPE, contentType);
-
-                httpEntityEnclosingRequest.setHeader(IAuthConstants.Header.BASIC_AUTH, basicAuth);
-
+                httpEntityEnclosingRequest.setHeader(IAuthConstants.Header.AUTHORIZATION, basicAuth);
                 // Setting request payload
                 httpEntityEnclosingRequest.setEntity(new StringEntity(payload));
-
                 httpResponse = client.execute(httpEntityEnclosingRequest);
                 LOGGER.debug("[invoke] Call executed successfully");
-            } else if (HttpMethod.DELETE.equals(httpMethod) || HttpMethod.GET.equals(httpMethod)) {
-                LOGGER.info("[invoke] Executing DELETE/ GET request : httpUriRequest : "
-                        + httpUriRequest);
+            } else {
+                LOGGER.info("[invoke] Executing : httpUriRequest : " + httpUriRequest);
                 httpResponse = client.execute(httpUriRequest);
                 LOGGER.info("[invoke] Call executed successfully");
             }

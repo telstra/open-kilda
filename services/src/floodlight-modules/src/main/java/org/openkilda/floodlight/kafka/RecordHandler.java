@@ -1,13 +1,15 @@
 package org.openkilda.floodlight.kafka;
 
-import static org.openkilda.messaging.Utils.MAPPER;
 import static java.util.Arrays.asList;
+import static org.openkilda.messaging.Utils.MAPPER;
 
-
+import net.floodlightcontroller.core.IOFSwitch;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.openkilda.floodlight.converter.IOFSwitchConverter;
 import org.openkilda.floodlight.converter.OFFlowStatsConverter;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.floodlight.switchmanager.MeterPool;
+import org.openkilda.floodlight.switchmanager.SwitchEventCollector;
 import org.openkilda.floodlight.switchmanager.SwitchOperationException;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Topic;
@@ -17,7 +19,9 @@ import org.openkilda.messaging.command.CommandWithReplyToMessage;
 import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
 import org.openkilda.messaging.command.discovery.DiscoverPathCommandData;
 import org.openkilda.messaging.command.discovery.NetworkCommandData;
+import org.openkilda.messaging.command.discovery.PortsCommandData;
 import org.openkilda.messaging.command.flow.BaseInstallFlow;
+import org.openkilda.messaging.command.flow.BatchInstallRequest;
 import org.openkilda.messaging.command.flow.InstallEgressFlow;
 import org.openkilda.messaging.command.flow.InstallIngressFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
@@ -25,34 +29,42 @@ import org.openkilda.messaging.command.flow.InstallTransitFlow;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
+import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.command.switches.DumpRulesRequest;
 import org.openkilda.messaging.command.switches.InstallRulesAction;
-import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
-import org.openkilda.messaging.command.switches.InstallMissedFlowsRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
+import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.discovery.NetworkInfoData;
+import org.openkilda.messaging.info.discovery.NetworkSyncBeginMarker;
+import org.openkilda.messaging.info.discovery.NetworkSyncEndMarker;
 import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
+import org.openkilda.messaging.info.stats.PortStatus;
+import org.openkilda.messaging.info.stats.SwitchPortStatusData;
 import org.openkilda.messaging.info.switches.ConnectModeResponse;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
-
-import net.floodlightcontroller.core.IOFSwitch;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
+import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
+import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.util.*;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 class RecordHandler implements Runnable {
@@ -60,6 +72,7 @@ class RecordHandler implements Runnable {
     private static final String OUTPUT_FLOW_TOPIC = Topic.FLOW;
     private static final String OUTPUT_DISCO_TOPIC = Topic.TOPO_DISCO;
     private static final String TOPO_ENG_TOPIC = Topic.TOPO_ENG;
+    private static final String TOPO_STATS = Topic.STATS;
 
     private final ConsumerContext context;
     private final ConsumerRecord<String, String> record;
@@ -121,8 +134,10 @@ class RecordHandler implements Runnable {
             doConnectMode(message, replyToTopic, replyDestination);
         } else if (data instanceof DumpRulesRequest) {
             doDumpRulesRequest(message, replyToTopic);
-        } else if (data instanceof InstallMissedFlowsRequest) {
-            doSyncRulesRequest(message);
+        } else if (data instanceof BatchInstallRequest) {
+            doBatchInstall(message);
+        } else if (data instanceof PortsCommandData) {
+            doPortsCommandDataRequest(message);
         } else {
             logger.error("unknown data type: {}", data.toString());
         }
@@ -333,7 +348,14 @@ class RecordHandler implements Runnable {
         DatapathId dpid = DatapathId.of(command.getSwitchId());
         ISwitchManager switchManager = context.getSwitchManager();
         try {
-            switchManager.deleteFlow(dpid, command.getId(), command.getCookie());
+            logger.info("Deleting flow {} from switch {}", command.getId(), dpid);
+
+            DeleteRulesCriteria criteria = Optional.ofNullable(command.getCriteria())
+                    .orElseGet(()-> DeleteRulesCriteria.builder().cookie(command.getCookie()).build());
+            List<Long> cookiesOfRemovedRules = switchManager.deleteRulesByCriteria(dpid, criteria);
+            if(cookiesOfRemovedRules.isEmpty()) {
+                logger.warn("No rules were removed by criteria {} for flow {} from switch {}", criteria, command.getId(), dpid);
+            }
 
             // FIXME(surabujin): QUICK FIX - try to drop meterPool completely
             Long meterId = command.getMeterId();
@@ -354,35 +376,45 @@ class RecordHandler implements Runnable {
      * @param message NetworkCommandData
      */
     private void doNetworkDump(final CommandMessage message) {
-        logger.info("Create network dump");
-        NetworkCommandData command = (NetworkCommandData) message.getData();
 
-        Map<DatapathId, IOFSwitch> allSwitchMap = context.getSwitchManager().getAllSwitchMap();
+        String correlationId = message.getCorrelationId();
+        KafkaMessageProducer kafkaProducer = context.getKafkaProducer();
 
-        Set<SwitchInfoData> switchesInfoData = allSwitchMap.values().stream().map(
-                this::buildSwitchInfoData).collect(Collectors.toSet());
+        logger.debug("Processing request from WFM to dump switches. {}", correlationId);
 
-        Set<PortInfoData> portsInfoData = allSwitchMap.values().stream().flatMap(sw ->
-                sw.getEnabledPorts().stream().map( port ->
-                        new PortInfoData(sw.getId().toString(), port.getPortNo().getPortNumber(), null,
-                        PortChangeType.UP)
-                    ).collect(Collectors.toSet()).stream())
-                .collect(Collectors.toSet());
+        kafkaProducer.getProducer().enableGuaranteedOrder(OUTPUT_DISCO_TOPIC);
+        try {
 
-        NetworkInfoData dump = new NetworkInfoData(
-                command.getRequester(),
-                switchesInfoData,
-                portsInfoData,
-                Collections.emptySet(),
-                Collections.emptySet(),
-                null);
+            kafkaProducer.postMessage(OUTPUT_DISCO_TOPIC,
+                    new InfoMessage(new NetworkSyncBeginMarker(), System.currentTimeMillis(), correlationId));
 
-        InfoMessage infoMessage = new InfoMessage(dump, System.currentTimeMillis(),
-                message.getCorrelationId());
+            Map<DatapathId, IOFSwitch> allSwitchMap = context.getSwitchManager().getAllSwitchMap();
 
-        context.getKafkaProducer().postMessage(OUTPUT_DISCO_TOPIC, infoMessage);
+            allSwitchMap.values().stream()
+                    .map(this::buildSwitchInfoData)
+                    .forEach(sw ->
+                            kafkaProducer.postMessage(OUTPUT_DISCO_TOPIC,
+                                    new InfoMessage(sw, System.currentTimeMillis(), correlationId)));
+
+            allSwitchMap.values().stream()
+                    .flatMap(sw ->
+                            sw.getEnabledPorts().stream()
+                                    .map(port -> buildPort(sw, port))
+                                    .collect(Collectors.toSet())
+                                    .stream())
+                    .forEach(port ->
+                            kafkaProducer.postMessage(OUTPUT_DISCO_TOPIC,
+                                    new InfoMessage(port, System.currentTimeMillis(), correlationId)));
+
+            kafkaProducer.postMessage(
+                    OUTPUT_DISCO_TOPIC,
+                    new InfoMessage(
+                            new NetworkSyncEndMarker(), System.currentTimeMillis(),
+                            correlationId));
+        } finally {
+            kafkaProducer.getProducer().disableGuaranteedOrder(OUTPUT_DISCO_TOPIC);
+        }
     }
-
 
     private void doInstallSwitchRules(final CommandMessage message, String replyToTopic, Destination replyDestination) {
         SwitchRulesInstallRequest request = (SwitchRulesInstallRequest) message.getData();
@@ -427,55 +459,53 @@ class RecordHandler implements Runnable {
 
     private void doDeleteSwitchRules(final CommandMessage message, String replyToTopic, Destination replyDestination) {
         SwitchRulesDeleteRequest request = (SwitchRulesDeleteRequest) message.getData();
-        logger.debug("Deleting rules from '{}' switch: action={}", request.getSwitchId(), request.getDeleteRulesAction());
+        logger.debug("Deleting rules from '{}' switch: action={}, criteria={}", request.getSwitchId(),
+                request.getDeleteRulesAction(), request.getCriteria());
 
         DatapathId dpid = DatapathId.of(request.getSwitchId());
-        ISwitchManager switchManager = context.getSwitchManager();
         DeleteRulesAction deleteAction = request.getDeleteRulesAction();
-        List<Long> removedRules = new ArrayList<>();
+        DeleteRulesCriteria criteria = request.getCriteria();
+
+        ISwitchManager switchManager = context.getSwitchManager();
+
         try {
-            /*
-             * This first part .. we are either deleting one rule, or all non-default rules (the else)
-             */
-            List<Long> toRemove = new ArrayList<>();
-            if (deleteAction == DeleteRulesAction.ONE ) {
-                toRemove.add(request.getOneCookie());
-            } else if (deleteAction == DeleteRulesAction.REMOVE_DROP) {
-                toRemove.add(ISwitchManager.DROP_RULE_COOKIE);
-            } else if (deleteAction == DeleteRulesAction.REMOVE_BROADCAST) {
-                toRemove.add(ISwitchManager.VERIFICATION_BROADCAST_RULE_COOKIE);
-            } else if (deleteAction == DeleteRulesAction.REMOVE_UNICAST) {
-                toRemove.add(ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE);
-            } else if (deleteAction == DeleteRulesAction.REMOVE_DEFAULTS
-                    || deleteAction == DeleteRulesAction.REMOVE_ADD) {
-                toRemove.add(ISwitchManager.DROP_RULE_COOKIE);
-                toRemove.add(ISwitchManager.VERIFICATION_BROADCAST_RULE_COOKIE);
-                toRemove.add(ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE);
+            List<Long> removedRules = new ArrayList<>();
+
+            if(deleteAction != null) {
+                switch (deleteAction) {
+                    case REMOVE_DROP:
+                        criteria = DeleteRulesCriteria.builder()
+                                .cookie(ISwitchManager.DROP_RULE_COOKIE).build();
+                        break;
+                    case REMOVE_BROADCAST:
+                        criteria = DeleteRulesCriteria.builder()
+                                .cookie(ISwitchManager.VERIFICATION_BROADCAST_RULE_COOKIE).build();
+                        break;
+                    case REMOVE_UNICAST:
+                        criteria = DeleteRulesCriteria.builder()
+                                .cookie(ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE).build();
+                        break;
+                }
+
+                // The cases when we delete all non-default rules.
+                if (deleteAction.nonDefaultRulesToBeRemoved()) {
+                    removedRules.addAll(switchManager.deleteAllNonDefaultRules(dpid));
+                }
+
+                // The cases when we delete the default rules.
+                if (deleteAction.defaultRulesToBeRemoved()) {
+                    removedRules.addAll(switchManager.deleteDefaultRules(dpid));
+                }
             }
 
-            // toRemove is > 0 only if we are trying to delete base rule(s).
-            if (toRemove.size() > 0) {
-                removedRules.addAll(switchManager.deleteRuleWithCookie(dpid, toRemove));
-                if (deleteAction == DeleteRulesAction.REMOVE_ADD) {
-                    switchManager.installDefaultRules(dpid);
-                }
-            } else {
-                removedRules.addAll(switchManager.deleteAllNonDefaultRules(dpid));
-                /*
-                 * The Second part - only for a subset of actions.
-                 */
-                if (deleteAction == DeleteRulesAction.DROP) {
-                    List<Long> removedDefaultRules = switchManager.deleteDefaultRules(dpid);
-                    // Return removedDefaultRules as a part of the result list.
-                    removedRules.addAll(removedDefaultRules);
+            // The case when we either delete by criteria or a specific default rule.
+            if (criteria != null) {
+                removedRules.addAll(switchManager.deleteRulesByCriteria(dpid, criteria));
+            }
 
-                } else if (deleteAction == DeleteRulesAction.DROP_ADD) {
-                    switchManager.deleteDefaultRules(dpid);
-                    switchManager.installDefaultRules(dpid);
-
-                } else if (deleteAction == DeleteRulesAction.OVERWRITE) {
-                    switchManager.installDefaultRules(dpid);
-                }
+            // The cases when we (re)install the default rules.
+            if (deleteAction != null && deleteAction.defaultRulesToBeInstalled()) {
+                switchManager.installDefaultRules(dpid);
             }
 
             SwitchRulesResponse response = new SwitchRulesResponse(removedRules);
@@ -514,8 +544,8 @@ class RecordHandler implements Runnable {
         final String switchId = request.getSwitchId();
         logger.debug("Loading installed rules for switch {}", switchId);
 
-        OFFlowStatsReply reply = context.getSwitchManager().dumpFlowTable(DatapathId.of(switchId));
-        List<FlowEntry> flows = reply.getEntries().stream()
+        List<OFFlowStatsEntry> flowEntries = context.getSwitchManager().dumpFlowTable(DatapathId.of(switchId));
+        List<FlowEntry> flows = flowEntries.stream()
                 .map(OFFlowStatsConverter::toFlowEntry)
                 .collect(Collectors.toList());
 
@@ -529,13 +559,14 @@ class RecordHandler implements Runnable {
     }
 
     /**
-     * Installs missed flows on the switch.
+     * Batch install of flows on the switch.
+     *
      * @param message with list of flows.
      */
-    private void doSyncRulesRequest(final CommandMessage message) {
-        InstallMissedFlowsRequest request = (InstallMissedFlowsRequest) message.getData();
+    private void doBatchInstall(final CommandMessage message) throws FlowCommandException {
+        BatchInstallRequest request = (BatchInstallRequest) message.getData();
         final String switchId = request.getSwitchId();
-        logger.debug("Processing rules to be updated for switch {}", switchId);
+        logger.debug("Processing flow commands for switch {}", switchId);
 
         for (BaseInstallFlow command : request.getFlowCommands()) {
             logger.debug("Processing command for switch {} {}", switchId, command);
@@ -548,10 +579,52 @@ class RecordHandler implements Runnable {
                     installTransitFlow((InstallTransitFlow) command);
                 } else if (command instanceof InstallOneSwitchFlow) {
                     installOneSwitchFlow((InstallOneSwitchFlow) command);
+                } else {
+                    throw new FlowCommandException(command.getId(), ErrorType.REQUEST_INVALID,
+                            "Unsupported command for batch install." );
                 }
             } catch (SwitchOperationException e) {
                 logger.error("Error during flow installation", e);
             }
+        }
+    }
+
+    private void doPortsCommandDataRequest(CommandMessage message) {
+        try {
+            PortsCommandData request = (PortsCommandData) message.getData();
+            Map<DatapathId, IOFSwitch>  allSwitchMap = context.getSwitchManager().getAllSwitchMap();
+            for(Map.Entry<DatapathId, IOFSwitch> entry : allSwitchMap.entrySet()) {
+                String switchId = entry.getKey().toString();
+                try {
+                    IOFSwitch sw = entry.getValue();
+                    Collection<OFPort> enabledPortNumbers = sw.getEnabledPortNumbers();
+
+                    Set<PortStatus> portsStatus = sw.getPorts().stream()
+                            .filter(port -> SwitchEventCollector.isPhysicalPort(port.getPortNo()))
+                            .map(port -> PortStatus.builder()
+                                    .id(port.getPortNo().getPortNumber())
+                                    .status(enabledPortNumbers.contains(port.getPortNo())
+                                            ? PortChangeType.UP : PortChangeType.DOWN)
+                                    .build()
+                            ).collect(Collectors.toSet());
+                    SwitchPortStatusData response = SwitchPortStatusData.builder()
+                            .switchId(switchId)
+                            .ports(portsStatus)
+                            .requester(request.getRequester())
+                            .build();
+
+                    InfoMessage infoMessage = new InfoMessage(response, message.getTimestamp(),
+                            message.getCorrelationId());
+                    context.getKafkaProducer().postMessage(TOPO_STATS, infoMessage);
+                }
+                catch (Exception e)
+                {
+                    logger.error("Could not get port stats data for switch {} with error {}",
+                            switchId, e.getMessage());
+                }
+            }
+        } catch (Exception e) {
+            logger.error("Could not get port data for stats {}", e.getMessage());
         }
     }
 
@@ -591,6 +664,11 @@ class RecordHandler implements Runnable {
         // I don't know is that correct
         SwitchState state = sw.isActive() ? SwitchState.ACTIVATED : SwitchState.ADDED;
         return IOFSwitchConverter.buildSwitchInfoData(sw, state);
+    }
+
+    private PortInfoData buildPort(IOFSwitch sw, OFPortDesc port) {
+        return new PortInfoData(sw.getId().toString(), port.getPortNo().getPortNumber(), null,
+                PortChangeType.UP);
     }
 
     public static class Factory {

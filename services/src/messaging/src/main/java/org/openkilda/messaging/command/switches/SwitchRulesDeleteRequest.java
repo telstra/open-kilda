@@ -15,17 +15,16 @@
 
 package org.openkilda.messaging.command.switches;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
-import static org.openkilda.messaging.Utils.TIMESTAMP;
-
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Value;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandData;
 
 import java.util.Objects;
 
+@Value
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class SwitchRulesDeleteRequest extends CommandData {
 
@@ -36,54 +35,31 @@ public class SwitchRulesDeleteRequest extends CommandData {
     private DeleteRulesAction deleteRulesAction;
 
     /**
-     * Used for deleting one switch rule .. doesn't have to be a default rule.
+     * Used for deleting specific switch rule .. doesn't have to be a default rule.
      */
-    @JsonProperty("one_cookie")
-    private Long oneCookie;
+    @JsonProperty("criteria")
+    private DeleteRulesCriteria criteria;
 
     /**
      * Constructs a delete switch rules request.
      *
      * @param switchId switch id to delete rules from.
      * @param deleteRulesAction defines what to do about the default rules
+     * @param criteria criteria to delete a specific rule.
      */
     @JsonCreator
     public SwitchRulesDeleteRequest(
             @JsonProperty("switch_id") String switchId,
             @JsonProperty("delete_rules") DeleteRulesAction deleteRulesAction,
-            @JsonProperty("one_cookie") Long oneCookie
+            @JsonProperty("criteria") DeleteRulesCriteria criteria
     ) {
         this.switchId = Objects.requireNonNull(switchId, "switch_id must not be null");
         if (!Utils.validateSwitchId(switchId)) {
             throw new IllegalArgumentException("switch_id has invalid value");
         }
 
-        this.deleteRulesAction = Objects.requireNonNull(deleteRulesAction);
-        // NB: oneCookie is only needed if DeleteRulesAction.ONE
-        if (this.deleteRulesAction == DeleteRulesAction.ONE) {
-            this.oneCookie = Objects.requireNonNull(oneCookie);
-        }
-    }
-
-    public String getSwitchId() {
-        return switchId;
-    }
-
-    public DeleteRulesAction getDeleteRulesAction() {
-        return deleteRulesAction;
-    }
-
-    public Long getOneCookie() {
-        return oneCookie;
-    }
-
-    @Override
-    public String toString() {
-        return toStringHelper(this)
-                .add(TIMESTAMP, timestamp)
-                .add("switch_id", switchId)
-                .add("delete_rules", deleteRulesAction)
-                .add("one_cookie", oneCookie)
-                .toString();
+        this.deleteRulesAction = deleteRulesAction;
+        // NB: criteria is only needed if deleteRulesAction is not provided
+        this.criteria = deleteRulesAction == null ? Objects.requireNonNull(criteria) : criteria;
     }
 }

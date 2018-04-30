@@ -42,8 +42,8 @@ $(document).ready(function() {
 	yesterday.setDate(date.getDate() - 1);
 	var YesterDayDate = moment(yesterday).format("YYYY/MM/DD HH:mm:ss");
 	var EndDate = moment(date).format("YYYY/MM/DD HH:mm:ss");
-	var convertedStartDate = moment(YesterDayDate).format("YYYY-MM-DD-HH:mm:ss");
-	var convertedEndDate = moment(EndDate).format("YYYY-MM-DD-HH:mm:ss");	
+	var convertedStartDate = moment(yesterday).format("YYYY-MM-DD-HH:mm:ss");
+	var convertedEndDate = moment(date).format("YYYY-MM-DD-HH:mm:ss");	
 	var downsampling = "10m";
 
 	$("#downsampling").val(downsampling)
@@ -58,7 +58,6 @@ $(document).ready(function() {
 	$('#datetimepicker_dark').datetimepicker({theme:'dark'})
 	var selMetric="packets";
 	var url ="/stats/flowid/"+flowid+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric;
-	
 	loadGraph.loadGraphData(url,"GET",selMetric).then(function(response) {
 		
 		$("#wait1").css("display", "none");

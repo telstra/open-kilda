@@ -103,7 +103,7 @@ public class SimulatorCommandBolt extends BaseRichBolt {
                     emit(doCommand(tuple));
                     break;
                 default:
-                    logger.error("received command from unknown source: {}", tupleSource);
+                    logger.error("received command from UNKNOWN source: {}", tupleSource);
             }
         } catch (Exception e) {
             logger.error(e.toString());

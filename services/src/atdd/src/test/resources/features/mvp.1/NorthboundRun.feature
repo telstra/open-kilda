@@ -70,24 +70,120 @@ Feature: Northbound tests
 
   This scenario setups a flow through a switch, deletes non-default rules from the switch and checks that the traffic is not pingable
 
-    Then flow nbdnr creation request with de:ad:be:ef:00:00:00:02 1 106 and de:ad:be:ef:00:00:00:03 2 106 and 1000 is successful
+    Given 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:03 switch
+
+    When flow nbdnr creation request with de:ad:be:ef:00:00:00:02 1 106 and de:ad:be:ef:00:00:00:03 2 106 and 1000 is successful
     And flow nbdnr in UP state
     And traffic through de:ad:be:ef:00:00:00:02 1 106 and de:ad:be:ef:00:00:00:03 2 106 and 1000 is pingable
 
-    Then delete all non-default rules on de:ad:be:ef:00:00:00:03 switch
+    Then delete all non-default rules request on de:ad:be:ef:00:00:00:03 switch is successful with 2 rules deleted
     And traffic through de:ad:be:ef:00:00:00:02 1 106 and de:ad:be:ef:00:00:00:03 2 106 and 1000 is not pingable
+    And 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:03 switch
 
   @MVP1
   Scenario: Delete all rules from a switch
 
   This scenario setups a flow through a switch, deletes all rules from the switch and checks that the traffic is not pingable
 
-    Then flow nbdar creation request with de:ad:be:ef:00:00:00:02 1 107 and de:ad:be:ef:00:00:00:03 2 107 and 1000 is successful
+    Given 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:03 switch
+
+    When flow nbdar creation request with de:ad:be:ef:00:00:00:02 1 107 and de:ad:be:ef:00:00:00:03 2 107 and 1000 is successful
     And flow nbdar in UP state
     And traffic through de:ad:be:ef:00:00:00:02 1 107 and de:ad:be:ef:00:00:00:03 2 107 and 1000 is pingable
 
-    Then delete all rules on de:ad:be:ef:00:00:00:03 switch
+    Then delete all rules request on de:ad:be:ef:00:00:00:03 switch is successful with 5 rules deleted
     And traffic through de:ad:be:ef:00:00:00:02 1 107 and de:ad:be:ef:00:00:00:03 2 107 and 1000 is not pingable
+    And No rules installed on de:ad:be:ef:00:00:00:03 switch
+
+  @MVP1
+  Scenario: Delete rules by in-port from a switch
+
+  This scenario setups a flow through a switch, deletes the specific rule by in-port from the switch and checks that the traffic is not pingable
+
+    Given 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:02 switch
+
+    When flow nbdrip creation request with de:ad:be:ef:00:00:00:02 1 116 and de:ad:be:ef:00:00:00:03 2 116 and 1000 is successful
+    And flow nbdrip in UP state
+    And traffic through de:ad:be:ef:00:00:00:02 1 116 and de:ad:be:ef:00:00:00:03 2 116 and 1000 is pingable
+
+    Then delete rules request by 1 in-port on de:ad:be:ef:00:00:00:02 switch is successful with 1 rules deleted
+    And traffic through de:ad:be:ef:00:00:00:02 1 116 and de:ad:be:ef:00:00:00:03 2 116 and 1000 is not pingable
+    And 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:02 switch
+
+  @MVP1
+  Scenario: Delete rules by in-port from a switch (negative case)
+
+  This scenario setups a flow through a switch, tries to delete by wrong in-port from the switch and checks that the traffic is not pingable
+
+    Given 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:02 switch
+
+    When flow nbdripn creation request with de:ad:be:ef:00:00:00:02 1 121 and de:ad:be:ef:00:00:00:03 2 121 and 1000 is successful
+    And flow nbdripn in UP state
+    And traffic through de:ad:be:ef:00:00:00:02 1 121 and de:ad:be:ef:00:00:00:03 2 121 and 1000 is pingable
+
+    Then delete rules request by 10 in-port on de:ad:be:ef:00:00:00:02 switch is successful with 0 rules deleted
+    And traffic through de:ad:be:ef:00:00:00:02 1 121 and de:ad:be:ef:00:00:00:03 2 121 and 1000 is pingable
+    And 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:02 switch
+
+  @MVP1
+  Scenario: Delete rules by in-port and vlan from a switch
+
+  This scenario setups a flow through a switch, deletes the specific rule by in-port and vlan from the switch and checks that the traffic is not pingable
+
+    Given 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:02 switch
+
+    When flow nbdripv creation request with de:ad:be:ef:00:00:00:02 1 117 and de:ad:be:ef:00:00:00:03 2 117 and 1000 is successful
+    And flow nbdripv in UP state
+    And traffic through de:ad:be:ef:00:00:00:02 1 117 and de:ad:be:ef:00:00:00:03 2 117 and 1000 is pingable
+
+    Then delete rules request by 1 in-port and 117 in-vlan on de:ad:be:ef:00:00:00:02 switch is successful with 1 rules deleted
+    And traffic through de:ad:be:ef:00:00:00:02 1 117 and de:ad:be:ef:00:00:00:03 2 117 and 1000 is not pingable
+    And 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:02 switch
+
+  @MVP1
+  Scenario: Delete rules by in-port and vlan from a switch (negative case)
+
+  This scenario setups a flow through a switch, deletes the specific rule by in-port and wrong vlan from the switch and checks that the traffic is not pingable
+
+    Given 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:02 switch
+
+    When flow nbdripvn creation request with de:ad:be:ef:00:00:00:02 1 122 and de:ad:be:ef:00:00:00:03 2 122 and 1000 is successful
+    And flow nbdripvn in UP state
+    And traffic through de:ad:be:ef:00:00:00:02 1 122 and de:ad:be:ef:00:00:00:03 2 122 and 1000 is pingable
+
+    Then delete rules request by 1 in-port and 200 in-vlan on de:ad:be:ef:00:00:00:02 switch is successful with 0 rules deleted
+    And traffic through de:ad:be:ef:00:00:00:02 1 122 and de:ad:be:ef:00:00:00:03 2 122 and 1000 is pingable
+    And 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:02 switch
+
+  @MVP1
+  Scenario: Delete rules by in-vlan from a switch
+
+  This scenario setups a flow through a switch, deletes the specific rule by in-port from the switch and checks that the traffic is not pingable
+
+    Given 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:02 switch
+
+    When flow nbdriv creation request with de:ad:be:ef:00:00:00:02 1 119 and de:ad:be:ef:00:00:00:03 2 119 and 1000 is successful
+    And flow nbdriv in UP state
+    And traffic through de:ad:be:ef:00:00:00:02 1 119 and de:ad:be:ef:00:00:00:03 2 119 and 1000 is pingable
+
+    Then delete rules request by 119 in-vlan on de:ad:be:ef:00:00:00:02 switch is successful with 1 rules deleted
+    And traffic through de:ad:be:ef:00:00:00:02 1 119 and de:ad:be:ef:00:00:00:03 2 119 and 1000 is not pingable
+    And 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:02 switch
+
+  @MVP1
+  Scenario: Delete rules by out-port from a switch
+
+  This scenario setups a flow through a switch, deletes the specific rule by in-port from the switch and checks that the traffic is not pingable
+
+    Given 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:03 switch
+
+    When flow nbdrop creation request with de:ad:be:ef:00:00:00:02 1 118 and de:ad:be:ef:00:00:00:03 2 118 and 1000 is successful
+    And flow nbdrop in UP state
+    And traffic through de:ad:be:ef:00:00:00:02 1 118 and de:ad:be:ef:00:00:00:03 2 118 and 1000 is pingable
+
+    Then delete rules request by 2 out-port on de:ad:be:ef:00:00:00:03 switch is successful with 1 rules deleted
+    And traffic through de:ad:be:ef:00:00:00:02 1 118 and de:ad:be:ef:00:00:00:03 2 118 and 1000 is not pingable
+    And 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:03 switch
 
   @MVP1
   Scenario: Synchronize Flow Cache
@@ -108,7 +204,7 @@ Feature: Northbound tests
   @MVP1
   Scenario: Invalidate Flow Cache
 
-  This scenario setups flows through NB, then delete a flow from DB and perform invalidation of the flow cache
+  This scenario setups flows through NB, then deletes a flow from DB and performs invalidation of the flow cache
 
     Given a clean flow topology
     And flow ifc1 creation request with de:ad:be:ef:00:00:00:03 1 109 and de:ad:be:ef:00:00:00:05 2 109 and 10000 is successful
@@ -123,15 +219,200 @@ Feature: Northbound tests
     And flows dump contains 2 flows
 
   @MVP1
-  Scenario: Validate flow rules
+  Scenario: Validate flow rules with missing rules on intermediate switch
 
-  This scenario setups a flow through NB, then delete rules from an intermediate switch and perform flow validation check
+  This scenario setups a flow through NB, then deletes rules from an intermediate switch and performs flow validation check
 
     Given a clean flow topology
-    And flow vfr creation request with de:ad:be:ef:00:00:00:01 1 110 and de:ad:be:ef:00:00:00:04 2 110 and 1000 is successful
-    And flow vfr in UP state
-    And rules for flow vfr are installed with no discrepancies
+    And flow vfris creation request with de:ad:be:ef:00:00:00:01 1 110 and de:ad:be:ef:00:00:00:04 2 110 and 1000 is successful
+    And flow vfris in UP state
+    And validation of flow vfris is successful with no discrepancies
 
-    When delete all non-default rules on de:ad:be:ef:00:00:00:03 switch
+    When delete all non-default rules request on de:ad:be:ef:00:00:00:03 switch is successful with 2 rules deleted
 
-    Then rules for flow vfr have discrepancies
+    Then validation of flow vfris has completed with 2 discrepancies on de:ad:be:ef:00:00:00:03 switches found
+
+  @MVP1
+  Scenario: Validate flow rules with missing rules on ingress switch
+
+  This scenario setups a flow through NB, then deletes rules from an ingress switch and performs flow validation check
+
+    Given a clean flow topology
+    And flow vfrins creation request with de:ad:be:ef:00:00:00:01 1 110 and de:ad:be:ef:00:00:00:04 2 110 and 1000 is successful
+    And flow vfrins in UP state
+    And validation of flow vfrins is successful with no discrepancies
+
+    When delete all non-default rules request on de:ad:be:ef:00:00:00:01 switch is successful with 2 rules deleted
+
+    Then validation of flow vfrins has completed with 2 discrepancies on de:ad:be:ef:00:00:00:01 switches found
+
+  @MVP1
+  Scenario: Validate flow rules with missing rules on egress switch
+
+  This scenario setups a flow through NB, then deletes rules from an egress switch and performs flow validation check
+
+    Given a clean flow topology
+    And flow vfres creation request with de:ad:be:ef:00:00:00:01 1 110 and de:ad:be:ef:00:00:00:04 2 110 and 1000 is successful
+    And flow vfres in UP state
+    And validation of flow vfres is successful with no discrepancies
+
+    When delete all non-default rules request on de:ad:be:ef:00:00:00:04 switch is successful with 2 rules deleted
+
+    Then validation of flow vfres has completed with 2 discrepancies on de:ad:be:ef:00:00:00:04 switches found
+
+  @MVP1
+  Scenario: Validate flow rules with missing non-standard cookies on intermediate switch
+
+  This scenario pushes a flow with non-standard cookies through NB, then deletes rules from an intermediate switch and performs flow validation check
+
+    Given a clean flow topology
+    And flow vfrnscis push request for /flows/non-standard-cookies-flow.json is successful
+    And flow vfrnscis in UP state
+    And validation of flow vfrnscis is successful with no discrepancies
+
+    When delete all non-default rules request on de:ad:be:ef:00:00:00:02 switch is successful with 2 rules deleted
+
+    Then validation of flow vfrnscis has completed with 2 discrepancies on de:ad:be:ef:00:00:00:02 switches found
+
+  @MVP1
+  Scenario: Validate flow rules with missing non-standard cookies on ingress switch
+
+  This scenario pushes a flow with non-standard cookies through NB, then deletes rules from an ingress switch and performs flow validation check
+
+    Given a clean flow topology
+    And flow vfrnscins push request for /flows/non-standard-cookies-flow.json is successful
+    And flow vfrnscins in UP state
+    And validation of flow vfrnscins is successful with no discrepancies
+
+    When delete all non-default rules request on de:ad:be:ef:00:00:00:01 switch is successful with 2 rules deleted
+
+    Then validation of flow vfrnscins has completed with 2 discrepancies on de:ad:be:ef:00:00:00:01 switches found
+
+  @MVP1
+  Scenario: Validate flow rules with missing non-standard cookies on egress switch
+
+  This scenario pushes a flow with non-standard cookies through NB, then deletes rules from an egress switch and performs flow validation check
+
+    Given a clean flow topology
+    And flow vfrnsces push request for /flows/non-standard-cookies-flow.json is successful
+    And flow vfrnsces in UP state
+    And validation of flow vfrnsces is successful with no discrepancies
+
+    When delete all non-default rules request on de:ad:be:ef:00:00:00:03 switch is successful with 2 rules deleted
+
+    Then validation of flow vfrnsces has completed with 2 discrepancies on de:ad:be:ef:00:00:00:03 switches found
+
+  @MVP1
+  Scenario: Validate intermediate switch with missing rules
+
+  This scenario setups a flow through NB, then deletes rules from an intermediate switch and performs switch validation check
+
+    Given a clean flow topology
+    And flow vismr creation request with de:ad:be:ef:00:00:00:01 1 111 and de:ad:be:ef:00:00:00:04 2 111 and 1000 is successful
+    And flow vismr in UP state
+    And validation of rules on de:ad:be:ef:00:00:00:03 switch is successful with no discrepancies
+
+    When delete all non-default rules request on de:ad:be:ef:00:00:00:03 switch is successful with 2 rules deleted
+
+    Then validation of rules on de:ad:be:ef:00:00:00:03 switch has passed and 2 rules are missing
+
+  @MVP1
+  Scenario: Validate ingress switch with missing rules
+
+  This scenario setups a flow through NB, then deletes rules from an ingress switch and performs switch validation check
+
+    Given a clean flow topology
+    And flow vinsmr creation request with de:ad:be:ef:00:00:00:01 1 123 and de:ad:be:ef:00:00:00:04 2 123 and 1000 is successful
+    And flow vinsmr in UP state
+    And validation of rules on de:ad:be:ef:00:00:00:01 switch is successful with no discrepancies
+
+    When delete all non-default rules request on de:ad:be:ef:00:00:00:01 switch is successful with 2 rules deleted
+
+    Then validation of rules on de:ad:be:ef:00:00:00:01 switch has passed and 2 rules are missing
+
+  @MVP1
+  Scenario: Validate egress switch with missing rules
+
+  This scenario setups a flow through NB, then deletes rules from an egress switch and performs switch validation check
+
+    Given a clean flow topology
+    And flow vesmr creation request with de:ad:be:ef:00:00:00:01 1 124 and de:ad:be:ef:00:00:00:04 2 124 and 1000 is successful
+    And flow vesmr in UP state
+    And validation of rules on de:ad:be:ef:00:00:00:04 switch is successful with no discrepancies
+
+    When delete all non-default rules request on de:ad:be:ef:00:00:00:04 switch is successful with 2 rules deleted
+
+    Then validation of rules on de:ad:be:ef:00:00:00:04 switch has passed and 2 rules are missing
+
+  @MVP1
+  Scenario: Validate intermediate switch with non-standard cookies
+
+  This scenario pushes a flow with non-standard cookies through NB, then deletes rules from an intermediate switch and performs switch validation check
+
+    Given a clean flow topology
+    And flow visnsc push request for /flows/non-standard-cookies-flow.json is successful
+    And flow visnsc in UP state
+    And validation of rules on de:ad:be:ef:00:00:00:02 switch is successful with no discrepancies
+
+    When delete all non-default rules request on de:ad:be:ef:00:00:00:02 switch is successful with 2 rules deleted
+
+    Then validation of rules on de:ad:be:ef:00:00:00:02 switch has passed and 2 rules are missing
+
+  @MVP1
+  Scenario: Validate ingress switch with non-standard cookies
+
+  This scenario pushes a flow with non-standard cookies through NB, then deletes rules from an ingress switch and performs switch validation check
+
+    Given a clean flow topology
+    And flow vinsnsc push request for /flows/non-standard-cookies-flow.json is successful
+    And flow vinsnsc in UP state
+    And validation of rules on de:ad:be:ef:00:00:00:01 switch is successful with no discrepancies
+
+    When delete all non-default rules request on de:ad:be:ef:00:00:00:01 switch is successful with 2 rules deleted
+
+    Then validation of rules on de:ad:be:ef:00:00:00:01 switch has passed and 2 rules are missing
+
+  @MVP1
+  Scenario: Validate egress switch with non-standard cookies
+
+  This scenario pushes a flow with non-standard cookies through NB, then deletes rules from an egress switch and performs switch validation check
+
+    Given a clean flow topology
+    And flow vesnsc push request for /flows/non-standard-cookies-flow.json is successful
+    And flow vesnsc in UP state
+    And validation of rules on de:ad:be:ef:00:00:00:03 switch is successful with no discrepancies
+
+    When delete all non-default rules request on de:ad:be:ef:00:00:00:03 switch is successful with 2 rules deleted
+
+    Then validation of rules on de:ad:be:ef:00:00:00:03 switch has passed and 2 rules are missing
+
+  @MVP1
+  Scenario: Synchronize switch rules
+
+  This scenario setups a flow through NB, then deletes rules from an intermediate switch and performs switch synchronization
+
+    Given a clean flow topology
+    And flow ssr creation request with de:ad:be:ef:00:00:00:01 1 113 and de:ad:be:ef:00:00:00:04 2 113 and 1000 is successful
+    And flow ssr in UP state
+    And validation of rules on de:ad:be:ef:00:00:00:03 switch is successful with no discrepancies
+
+    When delete all non-default rules request on de:ad:be:ef:00:00:00:03 switch is successful with 2 rules deleted
+
+    Then synchronization of rules on de:ad:be:ef:00:00:00:03 switch is successful with 2 rules installed
+    And validation of rules on de:ad:be:ef:00:00:00:03 switch is successful with no discrepancies
+
+  @MVP1
+  Scenario: Synchronize switch rules with non-standard cookies
+
+  This scenario pushes a flow with non-standard cookies through NB, then deletes rules from an intermediate switch aand performs switch synchronization
+
+    Given a clean flow topology
+
+    And flow ssnsc push request for /flows/non-standard-cookies-flow.json is successful
+    And flow ssnsc in UP state
+    And validation of rules on de:ad:be:ef:00:00:00:03 switch is successful with no discrepancies
+
+    When delete all non-default rules request on de:ad:be:ef:00:00:00:03 switch is successful with 2 rules deleted
+
+    Then synchronization of rules on de:ad:be:ef:00:00:00:03 switch is successful with 2 rules installed
+    And validation of rules on de:ad:be:ef:00:00:00:03 switch is successful with no discrepancies

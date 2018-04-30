@@ -17,13 +17,14 @@ public class IslLinkConverter {
     @Autowired
     private SwitchIntegrationService switchIntegrationService;
 
-    public List<IslLinkInfo> toIslLinksInfo(final List<IslLink> islLinks) {
+    public List<IslLinkInfo> toIslLinksInfo(final List<IslLink> islLinks, Map<String,String> islCostMap) {
         if (islLinks != null) {
             final List<IslLinkInfo> islLinkInfos = new ArrayList<>();
-            final Map<String, String> csNames = switchIntegrationService.getCustomSwitchNameFromFile();
+            final Map<String, String> csNames =
+                    switchIntegrationService.getCustomSwitchNameFromFile();
             islLinks.forEach(islLink -> {
 
-                IslLinkInfo islLinkInfo = toIslLinkInfo(islLink,csNames);
+                IslLinkInfo islLinkInfo = toIslLinkInfo(islLink, csNames, islCostMap);
 
                 if (islLinkInfos.contains(islLinkInfo)) {
                     islLinkInfos.get(islLinkInfos.indexOf(islLinkInfo)).setUnidirectional(false);
@@ -60,7 +61,7 @@ public class IslLinkConverter {
         return null;
     }
 
-    private IslLinkInfo toIslLinkInfo(final IslLink islLink,final Map<String,String> csNames) {
+    private IslLinkInfo toIslLinkInfo(final IslLink islLink, final Map<String, String> csNames, Map<String,String> islCostMap) {
         IslLinkInfo islLinkInfo = new IslLinkInfo();
         islLinkInfo.setUnidirectional(true);
         islLinkInfo.setAvailableBandwidth(islLink.getAvailableBandwidth());
@@ -87,6 +88,15 @@ public class IslLinkConverter {
                 }
             }
         }
+        // set isl cost
+        String key1 = islLinkInfo.getSrcSwitch()+ "-"+ islLinkInfo.getSrcPort()+"-"+islLinkInfo.getDstSwitch() + "-" + islLinkInfo.getDstPort();
+        String key2 = islLinkInfo.getDstSwitch()+ "-"+ islLinkInfo.getDstPort()+"-"+islLinkInfo.getSrcSwitch() + "-" + islLinkInfo.getSrcPort();
+        if(islCostMap.containsKey(key1)) {
+            islLinkInfo.setCost(islCostMap.get(key1));
+        } else if (islCostMap.containsKey(key2)) {
+            islLinkInfo.setCost(islCostMap.get(key2));
+        }
         return islLinkInfo;
     }
 }
+

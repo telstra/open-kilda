@@ -25,7 +25,9 @@
 					<li class="" id="flows-menu-id" th:if="${session.sessionObject.role=='ROLE_ADMIN'}"><a th:href="@{/flows}"> <i
 							class="icon-flows" aria-hidden="true"></i><span class="home-flows">Flows</span>
 					</a></li>
-					
+					<li class="" id="isl-menu-id" th:if="${session.sessionObject.role=='ROLE_ADMIN'}"><a th:href="@{/switch/isllist}"> <i
+							class="icon-isl" aria-hidden="true"></i><span class="home-isl">ISL</span>
+					</a></li>
 					<li class="" id="switch-menu-id" th:if="${session.sessionObject.role=='ROLE_ADMIN'}"><a th:href="@{/switch}"> <i
 							class="icon-switch" aria-hidden="true"></i><span class="home-flows">Switches</span>
 					</a></li>

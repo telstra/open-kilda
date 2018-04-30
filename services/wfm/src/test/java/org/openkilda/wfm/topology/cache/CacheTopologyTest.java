@@ -59,6 +59,8 @@ import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.wfm.AbstractStormTest;
+import org.openkilda.wfm.LaunchEnvironment;
+import org.openkilda.wfm.Neo4jFixture;
 import org.openkilda.wfm.topology.TestKafkaConsumer;
 
 import java.io.IOException;
@@ -66,6 +68,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Properties;
 import java.util.Set;
 import java.util.UUID;
 
@@ -88,21 +91,32 @@ public class CacheTopologyTest extends AbstractStormTest {
             new Flow(thirdFlowId, 10000, false, "", "test-switch", 1, 2, "test-switch", 1, 2));
     private static final Set<ImmutablePair<Flow, Flow>> flows = new HashSet<>();
     private static final NetworkInfoData dump = new NetworkInfoData(
-            "test", Collections.singleton(sw), Collections.emptySet(), Collections.emptySet(), flows, null);
+            "test", Collections.singleton(sw), Collections.emptySet(), Collections.emptySet(), flows);
 
     private static TestKafkaConsumer teConsumer;
     private static TestKafkaConsumer flowConsumer;
     private static TestKafkaConsumer ctrlConsumer;
 
+    private static Neo4jFixture fakeNeo4jDb;
+
     @BeforeClass
     public static void setupOnce() throws Exception {
         AbstractStormTest.setupOnce();
 
+        Properties configOverlay = new Properties();
+
+        fakeNeo4jDb = new Neo4jFixture(fsData.getRoot().toPath(), NEO4J_LISTEN_ADDRESS);
+        fakeNeo4jDb.start();
+        configOverlay.setProperty("neo4j.hosts", fakeNeo4jDb.getListenAddress());
+
         flows.add(firstFlow);
         flows.add(secondFlow);
 
-        topology = new CacheTopology(makeLaunchEnvironment());
+        LaunchEnvironment launchEnvironment = makeLaunchEnvironment();
+        launchEnvironment.setupOverlay(configOverlay);
+        topology = new CacheTopology(launchEnvironment);
         StormTopology stormTopology = topology.createTopology();
+
         Config config = stormConfig();
         cluster.submitTopology(CacheTopologyTest.class.getSimpleName(), config, stormTopology);
 
@@ -133,8 +147,6 @@ public class CacheTopologyTest extends AbstractStormTest {
         ctrlConsumer.clear();
 
         sendClearState();
-        String correlationId = waitDumpRequest();
-        sendNetworkDump(dump, correlationId);
     }
 
     @AfterClass
@@ -146,6 +158,9 @@ public class CacheTopologyTest extends AbstractStormTest {
         teConsumer.join();
         ctrlConsumer.wakeup();
         ctrlConsumer.join();
+
+        fakeNeo4jDb.stop();
+
         AbstractStormTest.teardownOnce();
     }
 
@@ -169,6 +184,7 @@ public class CacheTopologyTest extends AbstractStormTest {
     }
 
     @Test
+    @Ignore("Test related to outdated/disabled LCM function")
     public void cacheReceivesNetworkDumpAndSendsToFlowTopology() throws Exception {
         System.out.println("Dump Test");
 
@@ -193,6 +209,7 @@ public class CacheTopologyTest extends AbstractStormTest {
     }
 
     @Test
+    @Ignore("test removed LCM particular qualities")
     public void cacheReceivesInfoDataBeforeNetworkDump() throws Exception {
         System.out.println("Cache receives InfoData before NetworkDump Test");
 
@@ -288,43 +305,6 @@ public class CacheTopologyTest extends AbstractStormTest {
         Message responseGeneric = objectMapper.readValue(raw.value(), Message.class);
         CtrlResponse response = (CtrlResponse) responseGeneric;
         assertEquals(request.getCorrelationId(), response.getCorrelationId());
-    }
-
-    @Test
-    public void flowShouldBeReroutedWhenSwitchGoesDown() throws Exception {
-        sendData(sw);
-
-        SwitchInfoData dstSwitch = new SwitchInfoData();
-        dstSwitch.setState(SwitchState.ACTIVATED);
-        dstSwitch.setSwitchId("dstSwitch");
-        List<PathNode> path = ImmutableList.of(
-                new PathNode(sw.getSwitchId(), 0, 0),
-                new PathNode(dstSwitch.getSwitchId(), 0, 1)
-        );
-
-        //create inactive flow
-        firstFlow.getLeft().setFlowPath(new PathInfoData(0L, path));
-        firstFlow.getRight().setFlowPath(new PathInfoData(0L, Collections.emptyList()));
-        firstFlow.getLeft().setState(FlowState.DOWN);
-        sendFlowUpdate(firstFlow);
-
-        //create active flow
-        secondFlow.getLeft().setFlowPath(new PathInfoData(0L, path));
-        secondFlow.getRight().setFlowPath(new PathInfoData(0L, Collections.emptyList()));
-        secondFlow.getLeft().setState(FlowState.UP);
-        sendFlowUpdate(secondFlow);
-
-        flowConsumer.clear();
-        sw.setState(SwitchState.REMOVED);
-        sendData(sw);
-
-        //active flow should be rerouted
-        ConsumerRecord<String, String> record = flowConsumer.pollMessage();
-        assertNotNull(record);
-        CommandMessage message = objectMapper.readValue(record.value(), CommandMessage.class);
-        assertNotNull(message);
-        FlowRerouteRequest command = (FlowRerouteRequest) message.getData();
-        assertTrue(command.getPayload().getFlowId().equals(secondFlowId));
     }
 
     @Ignore

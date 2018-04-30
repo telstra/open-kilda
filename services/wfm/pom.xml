@@ -26,6 +26,7 @@
         <provided.scope>provided</provided.scope>
         <neo4j.version>3.3.3</neo4j.version>
         <neo4j.java.driver.version>1.5.1</neo4j.java.driver.version>
+        <lombok.version>1.16.20</lombok.version>
     </properties>
 
     <profiles>
@@ -62,6 +63,14 @@
                 <exclusion>
                     <groupId>org.slf4j</groupId>
                     <artifactId>slf4j-log4j12</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.glassfish.jersey.core</groupId>
+                    <artifactId>jersey-client</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>javax.ws.rs</groupId>
+                    <artifactId>javax.ws.rs-api</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
@@ -260,6 +269,12 @@
             <artifactId>netty-all</artifactId>
             <version>4.1.13.Final</version>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>${lombok.version}</version>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
 

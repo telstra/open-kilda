@@ -9,10 +9,14 @@
 <link th:href="@{../css/jquery.dataTables.min.css}" rel="stylesheet" type="text/css" />
 <link th:href="@{../images/kilda.png}" rel="shortcut icon" type="image/png"></link>
 
+<link th:href="@{../css/on-off-switch.css}" rel="stylesheet" type="text/css" />
+
 </head>
 <body>
-	<div th:include="fragments/importResources:: commonPathImports"></div>
+
+<div th:include="fragments/importResources:: commonPathImports"></div>
 	<div th:replace="fragments/header :: header"></div>
+	<div th:include="fragments/importResources:: toggleSwitch"></div>
 	<div th:replace="fragments/menu :: menu"></div>
 
 	<div class="content">
@@ -34,12 +38,17 @@
 		
 				<div class='form-wrapper'>
 					<div class='form-group row'>
-						<label class='col-sm-4 col-form-label'>Switch ID:</label>
-						<p class='col-sm-8 switchdetails_div_switch_id'></p>
-					</div>
-					<div class='form-group row'>
 						<label class='col-sm-4 col-form-label'>Name:</label>
 						<p class='col-sm-8 switchdetails_div_name'></p>
+					</div>
+					<div class='form-group row'>
+						<label class='col-sm-4 col-form-label'>Switch ID:</label>
+						<div class='col-sm-2'>
+							<span class="switchdetails_div_switch_id copy_to_clipBoard"></span>	
+						</div>
+						<div class='col-sm-6'>
+							<input type="hidden" class="on-off-switch" value="0"/>					
+						</div>
 					</div>
 					<div class='form-group row'>
 						<label class='col-sm-4 col-form-label'>Hostname:</label>
@@ -99,8 +108,18 @@
 	<script th:inline="javascript" src="../javascript/common.js"></script>
 	
 <script>
-		$(document).ready(function() {
-			$('body').css('pointer-events','all');
+ 
+ 	$(document).ready(function() {
+ 			$('body').css('pointer-events','all');
+			new DG.OnOffSwitch({
+			    el: '.on-off-switch',
+			    textOn: 'Legacy',
+			    textOff: 'Kilda',
+			    listener:function(name, checked){
+			       $('.switchdetails_div_switch_id').html(common.toggleSwitchID($('.switchdetails_div_switch_id').html()));
+			    }
+			});
+
 		});
 </script>
 </body>

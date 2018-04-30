@@ -7,13 +7,13 @@
 <title>OPEN KILDA</title>
 
 <link th:href="@{../images/kilda.png}" rel="shortcut icon" type="image/png"></link>
-
+<link th:href="@{../css/on-off-switch.css}" rel="stylesheet" type="text/css" />
 </head>
 <body>
 <div th:include="fragments/importResources:: commonPathImports"></div>
 <div th:include="fragments/importResources:: statsImports"></div>
 	<div th:replace="fragments/header :: header" ></div>
-
+	<div th:include="fragments/importResources:: toggleSwitch"></div>
 	<div th:replace="fragments/menu :: menu" ></div>
 
 	<div class="content">
@@ -31,7 +31,14 @@
 
 		<div class="container-fluid">
 
-
+			<div id="loading" class="bg_load" style="display:none;">
+				<div class="loader"></div>
+				<span class="load-text">Loading Flow
+						<span class="loader__dot">.</span>
+  			  			<span class="loader__dot">.</span>
+  			 			<span class="loader__dot">.</span>
+  			 	</span>  
+			</div>
 			<div class='form-group  col-lg-12 text-center flow_details'>
 				<label class='col-form-label' style='display: inline-block;'>Flow
 					id:</label>
@@ -47,8 +54,17 @@
 							<p class='col-sm-8 flow_div_source_port'></p>
 						</div>
 						<div class='form-group row'>
-							<label class='col-sm-4 col-form-label'>Switch:</label>
-							<p class='col-sm-8 flow_div_source_switch'></p>
+							<label class='col-sm-4 col-form-label'>Switch Id:</label>
+							<div class='col-sm-4'>
+								<span class="flow_div_source_switch copy_to_clipBoard"></span>
+							</div>
+							<div class='col-sm-4'>	
+								<input type="hidden" id="on-off-switch-src" name="src_switch" value="0"/>
+							</div>
+						</div>
+						<div class='form-group row'>
+							<label class='col-sm-4 col-form-label'>Name:</label>
+							<p class='col-sm-8 flow_div_source_switch_name'></p>
 						</div>
 						<div class='form-group row'>
 							<label class='col-sm-4 col-form-label'>Vlan:</label>
@@ -66,8 +82,17 @@
 							<p class='col-sm-8 flow_div_destination_port'></p>
 						</div>
 						<div class='form-group row'>
-							<label class='col-sm-4 col-form-label'> Switch:</label>
-							<p class='col-sm-8 flow_div_destination_switch'></p>
+							<label class='col-sm-4 col-form-label'>Switch Id:</label>
+							<div class='col-sm-4'>
+								<span class="flow_div_destination_switch copy_to_clipBoard"></span>
+							</div>
+							<div class='col-sm-4'>	
+								<input type="hidden" id="on-off-switch-dest" name="dest_switch" value="0"/>
+							</div>
+						</div>
+						<div class='form-group row'>
+							<label class='col-sm-4 col-form-label'>Name:</label>
+							<p class='col-sm-8 flow_div_destination_switch_name'></p>
 						</div>
 						<div class='form-group row'>
 							<label class='col-sm-4 col-form-label'>Vlan:</label>
@@ -106,6 +131,7 @@
 						<ul class="nav nav-pills">
 							<li class="active"><a href="#1a" data-toggle="tab">Graph</a></li>
 							<li><a href="#2a" data-toggle="tab">Path</a></li>
+							<li><a href="#validate_flow" data-toggle="tab">Validate</a></li>
 						</ul>
 
 						<div class="tab-content clearfix">
@@ -198,7 +224,10 @@
 							</div>
 							<div class="tab-pane" id="2a">
 								<div class="row">
-
+									<div class="btn kilda_btn reroute_flow_btn" id="reroute_flow">Re-route flow</div>
+									<div id="path_reroute_loader" class="bg-data-loader" style="bottom:1px;display:none;">
+										<div class="loader"></div>
+									</div>
 									<div id="ForwardRow" class="col-xs-12">
 										<h3 class="text-center">FORWARD PATH</h3>
 									</div>
@@ -207,6 +236,21 @@
 										<h3 class="text-center">REVERSE PATH</h3>
 									</div>
 								</div>
+							</div>
+							<div class="tab-pane" id="validate_flow">
+								
+							<div class="row">
+								<div class="col-lg-12 text-right" style="padding-bottom: 10px; margin-bottom: 10px;">
+									<span class="btn kilda_btn" id="validate_flow_btn">Validate Flow</span>
+								</div>
+								<div id="validate_json_loader" class="bg-data-loader" style="bottom:1px;display:none;">
+										<div class="loader"></div>
+									</div>
+								<div class="col-md-12">
+								 <pre id="validate_json" class="copy_to_clipBoard"></pre>
+								</div>	
+									
+							</div>
 							</div>
 						</div>
 					</div>
@@ -220,6 +264,25 @@
 	<script th:inline="javascript" src="../javascript/flowdetails.js"></script>
 	<script th:inline="javascript" src="../javascript/common.js"></script>
 	<script th:inline="javascript" src="../javascript/flow-graph-stats.js"></script>
-	
+	<script>
+		$(document).ready(function() {
+			new DG.OnOffSwitch({
+			    el: '#on-off-switch-src',
+			    textOn: 'Legacy',
+			    textOff: 'Kilda',
+			    listener:function(name, checked){
+			    	$('.flow_div_source_switch').html(common.toggleSwitchID($('.flow_div_source_switch').html()));
+			    }
+			});
+			new DG.OnOffSwitch({
+			    el: '#on-off-switch-dest',
+			    textOn: 'Legacy',
+			    textOff: 'Kilda',
+			    listener:function(name, checked){
+			    	$('.flow_div_destination_switch').html(common.toggleSwitchID($('.flow_div_destination_switch').html()));
+			    }
+			});
+		});
+	</script>
 </body>
 </html>

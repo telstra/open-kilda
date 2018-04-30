@@ -78,7 +78,7 @@ public class NorthboundReplyBolt extends BaseRichBolt {
                     break;
 
                 default:
-                    logger.debug("Flow unknown response: {}={}, component={}, stream={}, message={}",
+                    logger.debug("Flow UNKNOWN response: {}={}, component={}, stream={}, message={}",
                             Utils.CORRELATION_ID, message.getCorrelationId(), componentId, streamId, message);
                     break;
             }
