@@ -253,7 +253,7 @@ public class FlowController {
             @RequestParam("propagate") Optional<Boolean> propagate,
             @ApiParam(value = "default: false. If true, will wait until poll timeout for validation.",
                     required = false)
-            @RequestParam("propagate") Optional<Boolean> verify) {
+            @RequestParam("verify") Optional<Boolean> verify) {
 
         Boolean defaultPropagate = false;
         Boolean defaultVerify = false;
@@ -280,7 +280,7 @@ public class FlowController {
             @RequestParam("propagate") Optional<Boolean> propagate,
             @ApiParam(value = "default: false. If true, will wait until poll timeout for validation.",
                     required = false)
-            @RequestParam("propagate") Optional<Boolean> verify) {
+            @RequestParam("verify") Optional<Boolean> verify) {
         Boolean defaultPropagate = false;
         Boolean defaultVerify = false;
         return flowService.unpushFlows(externalFlows, propagate.orElse(defaultPropagate), verify.orElse(defaultVerify));
