@@ -217,7 +217,7 @@ class TestIsl(unittest.TestCase):
 
         # 1 0
         self.ensure_isl_props(neo4j_connect, src_endpoint, dst_endpoint, status_half_up)
-        # self.ensure_isl_props(neo4j_connect, dst_endpoint, src_endpoint, status_down)
+        self.ensure_isl_props(neo4j_connect, dst_endpoint, src_endpoint, status_down)
         self.assertTrue(make_isl_discovery(dst_endpoint, src_endpoint))
 
         # 1 1

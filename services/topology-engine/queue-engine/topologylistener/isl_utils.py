@@ -25,6 +25,27 @@ from topologylistener import model
 logger = logging.getLogger(__name__)
 
 
+def precreate(tx, *links):
+    for isl in sorted(links):
+        q = textwrap.dedent("""
+            MATCH (src:switch {name: $src_switch})
+            MATCH (dst:switch {name: $dst_switch}) 
+            MERGE (src) - [target:isl {
+              src_switch: $src_switch,
+              src_port: $src_port,
+              dst_switch: $dst_switch,
+              dst_port: $dst_port
+            }] -> (dst)
+            ON CREATE SET target.status=$status, target.actual=$status""")
+
+        for target in (isl, isl.reversed()):
+            match = _make_match(target)
+            match['status'] = 'inactive'
+
+            logger.info('Precreate ISL: %s', target)
+            tx.run(q, match)
+
+
 def fetch(tx, isl):
     match = _make_match(isl)
     q = textwrap.dedent("""

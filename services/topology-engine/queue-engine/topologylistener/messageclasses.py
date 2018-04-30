@@ -324,7 +324,7 @@ class MessageItem(object):
 
         logger.info('ISL found on %s_%s, deactivating', dpid, port)
 
-        flow_utils.precreate_isls(tx, isl)
+        isl_utils.precreate(tx, isl)
         self.deactivate_isl(tx, isl.source.dpid, isl.source.port)
         self.isl_update_status(tx, isl)
 
@@ -410,6 +410,13 @@ class MessageItem(object):
                         a_switch, a_port, self.timestamp)
 
             with graph.begin() as tx:
+                isl = model.InterSwitchLink.new_from_isl_data(self.payload)
+                isl.ensure_path_complete()
+
+                flow_utils.precreate_switches(
+                        tx, isl.source.dpid, isl.dest.dpid)
+                isl_utils.precreate(tx, isl)
+
                 #
                 # Given that we know the the src and dst exist, the following query will either
                 # create the relationship if it doesn't exist, or update it if it does
@@ -443,9 +450,6 @@ class MessageItem(object):
                 )
                 tx.run(isl_create_or_update)
 
-                isl = model.InterSwitchLink.new_from_isl_data(self.payload)
-                isl.ensure_path_complete()
-                flow_utils.precreate_isls(tx, isl)
                 self.isl_update_status(tx, isl)
 
             #
