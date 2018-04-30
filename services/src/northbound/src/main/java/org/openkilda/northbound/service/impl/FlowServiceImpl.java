@@ -27,6 +27,7 @@ import org.openkilda.messaging.command.flow.FlowPathRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowStatusRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
+import org.openkilda.messaging.command.flow.FlowVerificationRequest;
 import org.openkilda.messaging.command.flow.FlowsGetRequest;
 import org.openkilda.messaging.command.flow.FlowCacheSyncRequest;
 import org.openkilda.messaging.command.flow.SynchronizeCacheAction;
@@ -36,6 +37,7 @@ import org.openkilda.messaging.info.flow.FlowPathResponse;
 import org.openkilda.messaging.info.flow.FlowRerouteResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowStatusResponse;
+import org.openkilda.messaging.info.flow.FlowVerificationResponse;
 import org.openkilda.messaging.info.flow.FlowsResponse;
 import org.openkilda.messaging.info.flow.FlowCacheSyncResponse;
 import org.openkilda.messaging.info.InfoMessage;
@@ -53,6 +55,8 @@ import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.flows.PathDiscrepancyDto;
+import org.openkilda.northbound.dto.flows.VerificationInput;
+import org.openkilda.northbound.dto.flows.VerificationOutput;
 import org.openkilda.northbound.messaging.MessageConsumer;
 import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.dto.BatchResults;
@@ -764,6 +768,21 @@ public class FlowServiceImpl implements FlowService {
         return results;
     }
 
+    @Override
+    public VerificationOutput verifyFlow(String flowId, VerificationInput payload) {
+        FlowVerificationRequest query = new FlowVerificationRequest(flowId, payload.getTimeoutMillis());
+
+        final String correlationId = RequestCorrelationId.getId();
+        CommandMessage request = new CommandMessage(query, System.currentTimeMillis(), correlationId, Destination.WFM);
+        messageProducer.send(topic, request);
+
+        Message message = (Message) messageConsumer.poll(correlationId);
+        FlowVerificationResponse response = (FlowVerificationResponse) validateInfoMessage(
+                request, message, correlationId);
+
+        return Converter.buildVerificationOutput(response);
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -802,5 +821,4 @@ public class FlowServiceImpl implements FlowService {
 
         return result;
     }
-
 }

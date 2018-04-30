@@ -33,16 +33,15 @@ import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.BatchResults;
+import org.openkilda.northbound.dto.flows.VerificationInput;
+import org.openkilda.northbound.dto.flows.VerificationOutput;
 import org.openkilda.northbound.service.FlowService;
 import org.openkilda.northbound.utils.ExtraAuthRequired;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.PropertySource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -349,6 +348,16 @@ public class FlowController {
             response = ResponseEntity.notFound().build();
         }
         return response;
+    }
+
+    @ApiOperation(
+            value = "Verify flow - using special network packet that is being routed in the same way as client traffic")
+    @RequestMapping(path = "/flows/{flow_id}/verify", method = RequestMethod.PUT)
+    @ResponseStatus(HttpStatus.OK)
+    public VerificationOutput verifyFlow(
+            @RequestBody VerificationInput payload,
+            @PathVariable("flow_id") String flowId) {
+        return flowService.verifyFlow(flowId, payload);
     }
 
     /**

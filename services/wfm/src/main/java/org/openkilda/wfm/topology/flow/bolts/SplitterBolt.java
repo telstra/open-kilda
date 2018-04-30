@@ -31,6 +31,7 @@ import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowRestoreRequest;
 import org.openkilda.messaging.command.flow.FlowStatusRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
+import org.openkilda.messaging.command.flow.FlowVerificationRequest;
 import org.openkilda.messaging.command.flow.FlowsGetRequest;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
@@ -208,6 +209,11 @@ public class SplitterBolt extends BaseRichBolt {
 
                 values = new Values(message, null);
                 outputCollector.emit(StreamType.CACHE_SYNC.toString(), tuple, values);
+            } else if (data instanceof FlowVerificationRequest) {
+                String flowId = ((FlowVerificationRequest) data).getFlowId();
+                logger.info("Flow {} verification request", flowId);
+
+                outputCollector.emit(StreamType.VERIFICATION.toString(), tuple, new Values(message, flowId));
 
             } else {
                 logger.debug("Skip undefined CommandMessage: {}={}", Utils.CORRELATION_ID, message.getCorrelationId());
@@ -258,6 +264,7 @@ public class SplitterBolt extends BaseRichBolt {
         outputFieldsDeclarer.declareStream(StreamType.PATH.toString(), FlowTopology.fieldsMessageFlowId);
         outputFieldsDeclarer.declareStream(StreamType.STATUS.toString(), FlowTopology.fieldsMessageFlowId);
         outputFieldsDeclarer.declareStream(StreamType.CACHE_SYNC.toString(), FlowTopology.fieldsMessageFlowId);
+        outputFieldsDeclarer.declareStream(StreamType.VERIFICATION.toString(), FlowTopology.fieldsMessageFlowId);
         outputFieldsDeclarer.declareStream(StreamType.RESTORE.toString(), FlowTopology.fieldsMessageFlowId);
         outputFieldsDeclarer.declareStream(StreamType.REROUTE.toString(), FlowTopology.fieldsMessageFlowId);
         outputFieldsDeclarer.declareStream(StreamType.ERROR.toString(), FlowTopology.fieldsMessageErrorType);

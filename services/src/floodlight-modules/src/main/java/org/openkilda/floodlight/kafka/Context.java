@@ -8,14 +8,20 @@ import java.util.Collection;
 import java.util.Map;
 
 public class Context {
+    private final FloodlightModuleContext moduleContext;
     private KafkaConfig kafkaConfig;
     private Map<String, String> moduleConfig;
 
     public static void fillDependencies(Collection<Class<? extends IFloodlightService>> dependencies) {}
 
     public Context(FloodlightModuleContext moduleContext, IFloodlightModule module) {
+        this.moduleContext = moduleContext;
         moduleConfig = moduleContext.getConfigParams(module);
         kafkaConfig = new KafkaConfig(moduleConfig);
+    }
+
+    public FloodlightModuleContext getModuleContext() {
+        return moduleContext;
     }
 
     public KafkaConfig getKafkaConfig() {

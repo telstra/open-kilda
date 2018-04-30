@@ -74,6 +74,8 @@ public enum StreamType {
      */
     CACHE_SYNC,
 
+    VERIFICATION,
+
     /**
      * Flow command response.
      */

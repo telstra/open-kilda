@@ -16,11 +16,16 @@
 package org.openkilda.northbound.utils;
 
 import org.openkilda.messaging.info.event.PathInfoData;
+import org.openkilda.messaging.info.flow.FlowVerificationErrorCode;
+import org.openkilda.messaging.info.flow.FlowVerificationResponse;
+import org.openkilda.messaging.info.flow.UniFlowVerificationResponse;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
+import org.openkilda.northbound.dto.flows.UniFlowVerificationOutput;
+import org.openkilda.northbound.dto.flows.VerificationOutput;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -103,5 +108,52 @@ public final class Converter {
      */
     public static FlowReroutePayload buildReroutePayload(String flowId, PathInfoData path, boolean rerouted) {
         return new FlowReroutePayload(flowId, path, rerouted);
+    }
+
+    public static VerificationOutput buildVerificationOutput(FlowVerificationResponse response) {
+        UniFlowVerificationResponse forward = response.getForward();
+        UniFlowVerificationOutput.UniFlowVerificationOutputBuilder forwardBuilder = UniFlowVerificationOutput.builder()
+                .pingSuccess(forward.isPingSuccess())
+                .error(convertVerificationError(forward.getError()));
+        if (forward.getMeasures() != null) {
+            forwardBuilder.latency(forward.getMeasures().getNetworkLatency());
+        }
+
+        UniFlowVerificationResponse reverse = response.getReverse();
+        UniFlowVerificationOutput.UniFlowVerificationOutputBuilder reverseBuilder = UniFlowVerificationOutput.builder()
+                        .pingSuccess(reverse.isPingSuccess())
+                .error(convertVerificationError(reverse.getError()));
+        if (reverse.getMeasures() != null) {
+            reverseBuilder.latency(reverse.getMeasures().getNetworkLatency());
+        }
+
+        return VerificationOutput.builder()
+                .flowId(response.getFlowId())
+                .forward(forwardBuilder.build())
+                .reverse(reverseBuilder.build())
+                .build();
+    }
+
+    private static String convertVerificationError(FlowVerificationErrorCode error) {
+        if (error == null) {
+            return null;
+        }
+
+        String message;
+        switch (error) {
+            case TIMEOUT:
+                message = "No ping for reasonable time";
+                break;
+            case WRITE_FAILURE:
+                message = "Can't send ping";
+                break;
+            case NOT_CAPABLE:
+                message = "Unable to perform flow verification due to unsupported switch (at least one)";
+                break;
+            default:
+                message = error.toString();
+        }
+
+        return message;
     }
 }

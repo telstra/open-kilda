@@ -41,6 +41,8 @@ import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.northbound.dto.BatchResults;
+import org.openkilda.northbound.dto.flows.VerificationInput;
+import org.openkilda.northbound.dto.flows.VerificationOutput;
 import org.openkilda.pce.RecoverableException;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.pce.provider.PathComputer;
@@ -75,6 +77,9 @@ public class FlowUtils {
     private static final String FEATURE_TIME = String.valueOf(System.currentTimeMillis());
     private static final int WAIT_ATTEMPTS = 10;
     private static final int WAIT_DELAY = 2;
+
+    private static final Client client = clientFactory();
+
 
     public static final Client clientFactory() {
         Client client = ClientBuilder.newClient(new ClientConfig()).register(JacksonFeature.class);
@@ -797,6 +802,35 @@ public class FlowUtils {
             return result;
         } else {
             System.out.println(format("====> Error: Northbound Push Flow = %s",
+                    response.readEntity(MessageError.class)));
+            return null;
+        }
+    }
+
+    public static VerificationOutput verifyFlow(String flowId, VerificationInput payload) {
+        long currentTime = System.currentTimeMillis();
+        String correlationId = String.valueOf(currentTime);
+
+        System.out.println(String.format("\n==> Northbound verify Flow request (correlationId: %s)", correlationId));
+        Response response = client
+                .target(northboundEndpoint)
+                .path("/api/v1/flows/{id}/verify")
+                .resolveTemplate("id", flowId)
+                .request(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
+                .header(Utils.CORRELATION_ID, correlationId)
+                .method("PUT", Entity.json(payload));
+
+        System.out.println(format("===> Response = %s", response.toString()));
+        System.out.println(format("===> Northbound VERIFY Flow Time: %,.3f", getTimeDuration(currentTime)));
+
+        int responseCode = response.getStatus();
+        if (responseCode == 200) {
+            VerificationOutput result = response.readEntity(VerificationOutput.class);
+            System.out.println(format("====> Northbound VERIFY Flow = %s", result));
+            return result;
+        } else {
+            System.out.println(format("====> Error: Northbound VERIFY Flow = %s",
                     response.readEntity(MessageError.class)));
             return null;
         }
