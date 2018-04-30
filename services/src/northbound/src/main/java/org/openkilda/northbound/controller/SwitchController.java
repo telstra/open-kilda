@@ -121,10 +121,11 @@ public class SwitchController {
      */
     @ApiOperation(value = "Delete switch rules. Requires special authorization",
             response = Long.class, responseContainer = "List")
+    @ApiResponse(code = 200, response = Long.class, responseContainer = "List" , message = "Operation is successful")
     @DeleteMapping(value = "/switches/{switch-id}/rules",
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     @ExtraAuthRequired
-    public ResponseEntity deleteSwitchRules(
+    public ResponseEntity<List<Long>> deleteSwitchRules(
             @PathVariable("switch-id") String switchId,
             @ApiParam(value = "default: IGNORE_DEFAULTS. Can be one of DeleteRulesAction: " +
                     "DROP_ALL,DROP_ALL_ADD_DEFAULTS,IGNORE_DEFAULTS,OVERWRITE_DEFAULTS," +
@@ -174,10 +175,11 @@ public class SwitchController {
      */
     @ApiOperation(value = "Install switch rules. Requires special authorization",
             response = Long.class, responseContainer = "List")
+    @ApiResponse(code = 200, response = Long.class, responseContainer = "List" , message = "Operation is successful")
     @PutMapping(value = "/switches/{switch-id}/rules",
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     @ExtraAuthRequired
-    public ResponseEntity installSwitchRules(
+    public ResponseEntity<List<Long>> installSwitchRules(
             @PathVariable("switch-id") String switchId,
             @ApiParam(value = "default: INSTALL_DEFAULTS. Can be one of InstallRulesAction: " +
                     " INSTALL_DROP,INSTALL_BROADCAST,INSTALL_UNICAST,INSTALL_DEFAULTS",
@@ -204,7 +206,7 @@ public class SwitchController {
             response = ConnectModeRequest.Mode.class)
     @PutMapping(value = "/switches/toggle-connect-mode",
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
-    public ResponseEntity toggleSwitchConnectMode(
+    public ResponseEntity<ConnectModeRequest.Mode> toggleSwitchConnectMode(
             @RequestParam("mode") ConnectModeRequest.Mode mode) {
         ConnectModeRequest.Mode response = switchService.connectMode(mode);
         return ResponseEntity.ok(response);
