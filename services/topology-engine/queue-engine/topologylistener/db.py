@@ -30,6 +30,10 @@ def create_p2n_driver():
     return graph
 
 
+def neo_id(db_object):
+    return py2neo.remote(db_object)._id
+
+
 def format_set_fields(payload, field_prefix=''):
     return format_fields(payload, 'SET ', field_prefix=field_prefix)
 

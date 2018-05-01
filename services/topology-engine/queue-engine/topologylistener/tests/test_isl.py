@@ -25,6 +25,9 @@ from topologylistener import messageclasses
 from topologylistener import message_utils
 from topologylistener import model
 
+ISL_STATUS_ACTIVE = 'active'
+ISL_STATUS_INACTIVE = 'inactive'
+
 dpid_test_marker = 0xfffe000000000000
 dpid_protected_bits = 0xffffff0000000000
 
@@ -87,7 +90,7 @@ def drop_db_link_props(tx):
         tx.delete(node)
 
 
-def make_switch(endpoint):
+def make_switch_add(endpoint):
     payload = {
         'clazz': messageclasses.MT_SWITCH,
         'state': 'ADDED',
@@ -97,7 +100,20 @@ def make_switch(endpoint):
         'description': 'test switch',
         'controller': '172.16.0.1'}
     command = make_command(payload)
-    messageclasses.MessageItem(**command).handle()
+    return messageclasses.MessageItem(**command).handle()
+
+
+def make_switch_remove(endpoint):
+    payload = {
+        'clazz': messageclasses.MT_SWITCH,
+        'state': 'REMOVED',
+        'switch_id': endpoint.dpid,
+        'address': '172.16.0.64',
+        'hostname': 'test-sw-{}'.format(endpoint.dpid.replace(':', '')),
+        'description': 'test switch',
+        'controller': '172.16.0.1'}
+    command = make_command(payload)
+    return messageclasses.MessageItem(**command).handle()
 
 
 def make_port_down(endpoint):
@@ -202,15 +218,12 @@ class TestIsl(unittest.TestCase):
     def test_isl_status(self):
         src_endpoint, dst_endpoint = self.src_endpoint, self.dst_endpoint
 
-        make_switch(src_endpoint)
-        make_switch(dst_endpoint)
+        make_switch_add(src_endpoint)
+        make_switch_add(dst_endpoint)
 
-        ACTIVE = 'active'
-        INACTIVE = 'inactive'
-
-        status_down = {'actual': INACTIVE, 'status': INACTIVE}
-        status_half_up = {'actual': ACTIVE, 'status': INACTIVE}
-        status_up = {'actual': ACTIVE, 'status': ACTIVE}
+        status_down = {'actual': ISL_STATUS_INACTIVE, 'status': ISL_STATUS_INACTIVE}
+        status_half_up = {'actual': ISL_STATUS_ACTIVE, 'status': ISL_STATUS_INACTIVE}
+        status_up = {'actual': ISL_STATUS_ACTIVE, 'status': ISL_STATUS_ACTIVE}
 
         # 0 0
         self.assertTrue(make_isl_discovery(src_endpoint, dst_endpoint))
@@ -253,6 +266,26 @@ class TestIsl(unittest.TestCase):
         # 0 0
         self.ensure_isl_props(neo4j_connect, src_endpoint, dst_endpoint, status_down)
         self.ensure_isl_props(neo4j_connect, dst_endpoint, src_endpoint, status_down)
+
+    def test_switch_unplug(self):
+        src_endpoint, dst_endpoint = self.src_endpoint, self.dst_endpoint
+
+        self.assertTrue(make_switch_add(src_endpoint))
+        self.assertTrue(make_switch_add(dst_endpoint))
+        self.assertTrue(make_isl_discovery(src_endpoint, dst_endpoint))
+        self.assertTrue(make_isl_discovery(dst_endpoint, src_endpoint))
+
+        status_down = {'actual': ISL_STATUS_INACTIVE, 'status': ISL_STATUS_INACTIVE}
+        status_half_up = {'actual': ISL_STATUS_ACTIVE, 'status': ISL_STATUS_INACTIVE}
+        status_up = {'actual': ISL_STATUS_ACTIVE, 'status': ISL_STATUS_ACTIVE}
+
+        self.ensure_isl_props(neo4j_connect, src_endpoint, dst_endpoint, status_up)
+        self.ensure_isl_props(neo4j_connect, dst_endpoint, src_endpoint, status_up)
+
+        self.assertTrue(make_switch_remove(src_endpoint))
+
+        self.ensure_isl_props(neo4j_connect, src_endpoint, dst_endpoint, status_down)
+        self.ensure_isl_props(neo4j_connect, dst_endpoint, src_endpoint, status_half_up)
 
     def test_cost_raise_on_port_down(self):
         self.setup_initial_data()
@@ -343,8 +376,8 @@ class TestIsl(unittest.TestCase):
     def setup_initial_data(self, make_link_props=True):
         src_endpoint, dst_endpoint = self.src_endpoint, self.dst_endpoint
 
-        make_switch(src_endpoint)
-        make_switch(dst_endpoint)
+        make_switch_add(src_endpoint)
+        make_switch_add(dst_endpoint)
 
         if make_link_props:
             with neo4j_connect.begin() as tx:
