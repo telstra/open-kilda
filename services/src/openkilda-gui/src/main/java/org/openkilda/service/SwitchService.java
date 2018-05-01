@@ -73,4 +73,14 @@ public class SwitchService {
     public String updateLinkProps(List<LinkProps> keys) {
         return switchIntegrationService.updateIslLinkProps(keys);
     }
+
+    /**
+     * Get Switch Rules.
+     * 
+     * @param switchId
+     * @return
+     */
+    public String getSwitchRules(String switchId) {
+        return switchIntegrationService.getSwitchRules(switchId);
+    }
 }

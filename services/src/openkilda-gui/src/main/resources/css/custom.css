@@ -2120,7 +2120,7 @@ td.highlight {
     margin: -20px 10px;
     float: right;
 }
-pre#validate_json{
+pre.validate_json{
 	display: block;
     font-family: monospace;
     white-space: pre;

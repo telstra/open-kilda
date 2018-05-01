@@ -278,4 +278,25 @@ public class SwitchIntegrationService {
         }
         return builder;
     }
+    
+    /**
+     * This Method is used to get switch rules.
+     * 
+     * @param switchId
+     * @return
+     */
+    public String getSwitchRules(String switchId) {
+
+        try {
+            HttpResponse response =
+                    restClientManager
+                            .invoke(applicationProperties.getSwitchRules().replace("{switch_id}",
+                                    switchId), HttpMethod.GET, "", "",
+                                    applicationService.getAuthHeader());
+            return IoUtil.toString(response.getEntity().getContent());
+        } catch (Exception e) {
+            LOGGER.error("Inside updateIslLinkProps  Exception :", e);
+            throw new IntegrationException(e);
+        }
+    }
 }
