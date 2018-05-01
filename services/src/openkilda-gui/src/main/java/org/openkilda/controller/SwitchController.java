@@ -157,4 +157,16 @@ public class SwitchController extends BaseController {
     public @ResponseBody String updateLinkProps(@RequestBody List<LinkProps> keys) {
         return serviceSwitch.updateLinkProps(keys);
     }
+
+    /**
+     * Get Switch Rules.
+     * 
+     * @param switchId
+     * @return
+     */
+    @RequestMapping(path = "/{switchId}/rules", method = RequestMethod.GET)
+    @ResponseStatus(HttpStatus.OK)
+    public @ResponseBody String getSwitchRules(@PathVariable final String switchId) {
+        return serviceSwitch.getSwitchRules(switchId);
+    }
 }

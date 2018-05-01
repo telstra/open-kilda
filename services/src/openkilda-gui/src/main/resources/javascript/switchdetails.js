@@ -4,6 +4,7 @@
 
 /** show switch details when page is loaded or
  *  when user is redirected to this page*/
+ var obj = {};
 $(document).ready(function(){
 		
 	var switchData = localStorage.getItem("switchDetailsJSON");
@@ -30,7 +31,7 @@ $(document).ready(function(){
 	}
 	
 	$("#kilda-switch-name").parent().append(switchname)	
-	var obj = JSON.parse(switchData);
+	obj = JSON.parse(switchData);
 	
 	showSwitchData(obj); 
 	callPortDetailsAPI(switchname);
@@ -156,4 +157,19 @@ function showSearch(idname,$event) {
 	}
 }
 
+function callSwitchRules(switch_id){
+	$('#switch_rules_loader').show();
+	$('#rules_json').html("")
+		common.getData("/switch/" + switch_id+"/rules","GET").then(function(response) { // calling re-route api
+				var responseData = JSON.stringify(response,null,2);
+				$('#rules_json').html(responseData)
+				$('#switch_rules_loader').hide();
+		})
+}
+
+
+$('#switch_rules_btn').click(function(e){
+		e.preventDefault();
+		callSwitchRules(obj.switch_id);
+	});
 /* ]]> */
