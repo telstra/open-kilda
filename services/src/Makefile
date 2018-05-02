@@ -1,12 +1,15 @@
 #
-KILDA_MAVEN := ~/.m2/repository/org/bitbucket/openkilda
+
+SHARE := share
 
 default: build
 
 projectfloodlight:
-	$(MAKE) -C projectfloodlight
+	$(MAKE) -C projectfloodlight SHARE=../$(SHARE)
 
 build: projectfloodlight
+	$(MAKE) -C floodlight-modules pre-docker SHARE=../$(SHARE)
+	# FIXME(surabujin): I believe there must not be "clean" phase.
 	mvn -B clean install
 
 build-pce:
@@ -24,6 +27,5 @@ build-messaging:
 clean:
 	mvn clean
 	$(MAKE) -C projectfloodlight clean
-	rm -rf $(KILDA_MAVEN)
 
 .PHONY: default projectfloodlight build clean
