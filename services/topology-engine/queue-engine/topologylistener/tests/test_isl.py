@@ -19,6 +19,7 @@ import uuid
 
 import py2neo
 
+from topologylistener import exc
 from topologylistener import flow_utils
 from topologylistener import isl_utils
 from topologylistener import messageclasses
@@ -27,6 +28,12 @@ from topologylistener import model
 
 ISL_STATUS_ACTIVE = 'active'
 ISL_STATUS_INACTIVE = 'inactive'
+
+ISL_STATUS_PROPS_DOWN = {
+    'actual': ISL_STATUS_INACTIVE, 'status': ISL_STATUS_INACTIVE}
+ISL_STATUS_PROPS_HALF_UP = {
+    'actual': ISL_STATUS_ACTIVE, 'status': ISL_STATUS_INACTIVE}
+ISL_STATUS_PROPS_UP = {'actual': ISL_STATUS_ACTIVE, 'status': ISL_STATUS_ACTIVE}
 
 dpid_test_marker = 0xfffe000000000000
 dpid_protected_bits = 0xffffff0000000000
@@ -84,32 +91,33 @@ def drop_db_switches(tx):
 def drop_db_link_props(tx):
     selector = py2neo.NodeSelector(tx)
     for node in selector.select('link_props'):
-        match = [is_test_dpid(node[rel]) for rel in 'src_switch', 'dst_switch']
+        match = [
+            is_test_dpid(node[rel]) for rel in ('src_switch', 'dst_switch')]
         if not all(match):
             continue
         tx.delete(node)
 
 
-def make_switch_add(endpoint):
+def make_switch_add(dpid):
     payload = {
         'clazz': messageclasses.MT_SWITCH,
         'state': 'ADDED',
-        'switch_id': endpoint.dpid,
+        'switch_id': dpid,
         'address': '172.16.0.64',
-        'hostname': 'test-sw-{}'.format(endpoint.dpid.replace(':', '')),
+        'hostname': 'test-sw-{}'.format(dpid.replace(':', '')),
         'description': 'test switch',
         'controller': '172.16.0.1'}
     command = make_command(payload)
     return messageclasses.MessageItem(**command).handle()
 
 
-def make_switch_remove(endpoint):
+def make_switch_remove(dpid):
     payload = {
         'clazz': messageclasses.MT_SWITCH,
         'state': 'REMOVED',
-        'switch_id': endpoint.dpid,
+        'switch_id': dpid,
         'address': '172.16.0.64',
-        'hostname': 'test-sw-{}'.format(endpoint.dpid.replace(':', '')),
+        'hostname': 'test-sw-{}'.format(dpid.replace(':', '')),
         'description': 'test switch',
         'controller': '172.16.0.1'}
     command = make_command(payload)
@@ -128,11 +136,12 @@ def make_port_down(endpoint):
 
 
 def make_isl_pair(source, dest):
-    make_isl_discovery(source, dest)
-    make_isl_discovery(dest, source)
+    forward = model.InterSwitchLink(source, dest, None)
+    make_isl_discovery(forward)
+    make_isl_discovery(forward.reversed())
 
 
-def make_isl_discovery(source, dest):
+def make_isl_discovery(isl):
     command = make_command({
         'clazz': messageclasses.MT_ISL,
         'state': 'DISCOVERED',
@@ -141,11 +150,11 @@ def make_isl_discovery(source, dest):
         'available_bandwidth': 1000,
         'path': [
             {
-                'switch_id': source.dpid,
-                'port_no': source.port},
+                'switch_id': isl.source.dpid,
+                'port_no': isl.source.port},
             {
-                'switch_id': dest.dpid,
-                'port_no': dest.port}]})
+                'switch_id': isl.dest.dpid,
+                'port_no': isl.dest.port}]})
     return messageclasses.MessageItem(**command).handle()
 
 
@@ -207,7 +216,7 @@ class TestIsl(unittest.TestCase):
     dst_endpoint = model.NetworkEndpoint(make_datapath_id(2), 4)
 
     def setUp(self):
-        logging.basicConfig(level=logging.INFO)
+        logging.basicConfig(level=logging.DEBUG)
         with neo4j_connect.begin() as tx:
             clean_neo4j_test_data(tx)
 
@@ -217,75 +226,155 @@ class TestIsl(unittest.TestCase):
 
     def test_isl_status(self):
         src_endpoint, dst_endpoint = self.src_endpoint, self.dst_endpoint
+        forward = model.InterSwitchLink(src_endpoint, dst_endpoint, None)
+        reverse = forward.reversed()
 
-        make_switch_add(src_endpoint)
-        make_switch_add(dst_endpoint)
+        make_switch_add(src_endpoint.dpid)
+        make_switch_add(dst_endpoint.dpid)
 
         status_down = {'actual': ISL_STATUS_INACTIVE, 'status': ISL_STATUS_INACTIVE}
         status_half_up = {'actual': ISL_STATUS_ACTIVE, 'status': ISL_STATUS_INACTIVE}
         status_up = {'actual': ISL_STATUS_ACTIVE, 'status': ISL_STATUS_ACTIVE}
 
         # 0 0
-        self.assertTrue(make_isl_discovery(src_endpoint, dst_endpoint))
+        self.assertTrue(make_isl_discovery(forward))
 
         # 1 0
-        self.ensure_isl_props(neo4j_connect, src_endpoint, dst_endpoint, status_half_up)
-        self.ensure_isl_props(neo4j_connect, dst_endpoint, src_endpoint, status_down)
-        self.assertTrue(make_isl_discovery(dst_endpoint, src_endpoint))
+        self.ensure_isl_props(neo4j_connect, forward, status_half_up)
+        self.ensure_isl_props(neo4j_connect, reverse, status_down)
+        self.assertTrue(make_isl_discovery(reverse))
 
         # 1 1
-        self.ensure_isl_props(neo4j_connect, src_endpoint, dst_endpoint, status_up)
-        self.ensure_isl_props(neo4j_connect, dst_endpoint, src_endpoint, status_up)
+        self.ensure_isl_props(neo4j_connect, forward, status_up)
+        self.ensure_isl_props(neo4j_connect, reverse, status_up)
         self.assertTrue(make_isl_failed(src_endpoint))
 
         # 0 1
-        self.ensure_isl_props(neo4j_connect, src_endpoint, dst_endpoint, status_down)
-        self.ensure_isl_props(neo4j_connect, dst_endpoint, src_endpoint, status_half_up)
-        self.assertTrue(make_isl_discovery(src_endpoint, dst_endpoint))
+        self.ensure_isl_props(neo4j_connect, forward, status_down)
+        self.ensure_isl_props(neo4j_connect, reverse, status_half_up)
+        self.assertTrue(make_isl_discovery(forward))
 
         # 1 1
-        self.ensure_isl_props(neo4j_connect, src_endpoint, dst_endpoint, status_up)
-        self.ensure_isl_props(neo4j_connect, dst_endpoint, src_endpoint, status_up)
+        self.ensure_isl_props(neo4j_connect, forward, status_up)
+        self.ensure_isl_props(neo4j_connect, reverse, status_up)
         self.assertTrue(make_isl_failed(dst_endpoint))
 
         # 1 0
-        self.ensure_isl_props(neo4j_connect, src_endpoint, dst_endpoint, status_half_up)
-        self.ensure_isl_props(neo4j_connect, dst_endpoint, src_endpoint, status_down)
-        self.assertTrue(make_isl_discovery(dst_endpoint, src_endpoint))
+        self.ensure_isl_props(neo4j_connect, forward, status_half_up)
+        self.ensure_isl_props(neo4j_connect, reverse, status_down)
+        self.assertTrue(make_isl_discovery(reverse))
 
         # 1 1
-        self.ensure_isl_props(neo4j_connect, src_endpoint, dst_endpoint, status_up)
-        self.ensure_isl_props(neo4j_connect, dst_endpoint, src_endpoint, status_up)
+        self.ensure_isl_props(neo4j_connect, forward, status_up)
+        self.ensure_isl_props(neo4j_connect, reverse, status_up)
         self.assertTrue(make_isl_failed(src_endpoint))
 
         # 0 1
-        self.ensure_isl_props(neo4j_connect, src_endpoint, dst_endpoint, status_down)
-        self.ensure_isl_props(neo4j_connect, dst_endpoint, src_endpoint, status_half_up)
+        self.ensure_isl_props(neo4j_connect, forward, status_down)
+        self.ensure_isl_props(neo4j_connect, reverse, status_half_up)
         self.assertTrue(make_isl_failed(dst_endpoint))
 
         # 0 0
-        self.ensure_isl_props(neo4j_connect, src_endpoint, dst_endpoint, status_down)
-        self.ensure_isl_props(neo4j_connect, dst_endpoint, src_endpoint, status_down)
+        self.ensure_isl_props(neo4j_connect, forward, status_down)
+        self.ensure_isl_props(neo4j_connect, reverse, status_down)
+
+    def test_isl_replug(self):
+        sw_alpha = make_datapath_id(1)
+        sw_beta = make_datapath_id(2)
+        sw_gamma = make_datapath_id(3)
+        sw_delta = make_datapath_id(4)
+
+        isl_alpha_beta = model.InterSwitchLink(
+                model.NetworkEndpoint(sw_alpha, 2),
+                model.NetworkEndpoint(sw_beta, 2), None)
+        isl_beta_alpha = isl_alpha_beta.reversed()
+        isl_beta_gamma = model.InterSwitchLink(
+                model.NetworkEndpoint(sw_beta, 2),
+                model.NetworkEndpoint(sw_gamma, 3), None)
+        isl_gamma_beta = isl_beta_gamma.reversed()
+        isl_gamma_delta = model.InterSwitchLink(
+                model.NetworkEndpoint(sw_gamma, 3),
+                model.NetworkEndpoint(sw_delta, 3), None)
+        isl_delta_gamma = isl_gamma_delta.reversed()
+
+        for dpid in sw_alpha, sw_beta, sw_gamma:
+            self.assertTrue(make_switch_add(dpid))
+
+        self.assertTrue(make_isl_discovery(isl_alpha_beta))
+        self.assertTrue(make_isl_discovery(isl_beta_alpha))
+        self.assertTrue(make_isl_discovery(isl_gamma_delta))
+        self.assertTrue(make_isl_discovery(isl_delta_gamma))
+
+        self.ensure_isl_props(
+                neo4j_connect, isl_alpha_beta, ISL_STATUS_PROPS_UP)
+        self.ensure_isl_props(
+                neo4j_connect, isl_beta_alpha, ISL_STATUS_PROPS_UP)
+        self.ensure_isl_props(
+                neo4j_connect, isl_gamma_delta, ISL_STATUS_PROPS_UP)
+        self.ensure_isl_props(
+                neo4j_connect, isl_delta_gamma, ISL_STATUS_PROPS_UP)
+
+        self.assertRaises(
+                exc.DBRecordNotFound, isl_utils.fetch,
+                neo4j_connect, isl_beta_gamma)
+        self.assertRaises(
+                exc.DBRecordNotFound, isl_utils.fetch,
+                neo4j_connect, isl_gamma_beta)
+
+        # replug
+        self.assertTrue(
+                make_isl_discovery(isl_beta_gamma))
+        # alpha <-> beta is down
+        self.ensure_isl_props(
+                neo4j_connect, isl_alpha_beta, ISL_STATUS_PROPS_HALF_UP)
+        self.ensure_isl_props(
+                neo4j_connect, isl_beta_alpha, ISL_STATUS_PROPS_DOWN)
+        # gamma -> delta is down
+        self.ensure_isl_props(
+                neo4j_connect, isl_gamma_delta, ISL_STATUS_PROPS_DOWN)
+        self.ensure_isl_props(
+                neo4j_connect, isl_delta_gamma, ISL_STATUS_PROPS_HALF_UP)
+        # beta <-> gamma is half up
+        self.ensure_isl_props(
+                neo4j_connect, isl_beta_gamma, ISL_STATUS_PROPS_HALF_UP)
+        self.ensure_isl_props(
+                neo4j_connect, isl_gamma_beta, ISL_STATUS_PROPS_DOWN)
+
+        self.assertTrue(
+                make_isl_discovery(isl_gamma_beta))
+        # alpha <-> beta is down
+        self.ensure_isl_props(
+                neo4j_connect, isl_alpha_beta, ISL_STATUS_PROPS_HALF_UP)
+        self.ensure_isl_props(
+                neo4j_connect, isl_beta_alpha, ISL_STATUS_PROPS_DOWN)
+        # gamma -> delta is down
+        self.ensure_isl_props(
+                neo4j_connect, isl_gamma_delta, ISL_STATUS_PROPS_DOWN)
+        self.ensure_isl_props(
+                neo4j_connect, isl_delta_gamma, ISL_STATUS_PROPS_HALF_UP)
+        # beta <-> gamma is up
+        self.ensure_isl_props(
+                neo4j_connect, isl_beta_gamma, ISL_STATUS_PROPS_UP)
+        self.ensure_isl_props(
+                neo4j_connect, isl_gamma_beta, ISL_STATUS_PROPS_UP)
 
     def test_switch_unplug(self):
         src_endpoint, dst_endpoint = self.src_endpoint, self.dst_endpoint
+        forward = model.InterSwitchLink(src_endpoint, dst_endpoint, None)
+        reverse = forward.reversed()
 
-        self.assertTrue(make_switch_add(src_endpoint))
-        self.assertTrue(make_switch_add(dst_endpoint))
-        self.assertTrue(make_isl_discovery(src_endpoint, dst_endpoint))
-        self.assertTrue(make_isl_discovery(dst_endpoint, src_endpoint))
+        self.assertTrue(make_switch_add(src_endpoint.dpid))
+        self.assertTrue(make_switch_add(dst_endpoint.dpid))
+        self.assertTrue(make_isl_discovery(forward))
+        self.assertTrue(make_isl_discovery(reverse))
 
-        status_down = {'actual': ISL_STATUS_INACTIVE, 'status': ISL_STATUS_INACTIVE}
-        status_half_up = {'actual': ISL_STATUS_ACTIVE, 'status': ISL_STATUS_INACTIVE}
-        status_up = {'actual': ISL_STATUS_ACTIVE, 'status': ISL_STATUS_ACTIVE}
+        self.ensure_isl_props(neo4j_connect, forward, ISL_STATUS_PROPS_UP)
+        self.ensure_isl_props(neo4j_connect, reverse, ISL_STATUS_PROPS_UP)
 
-        self.ensure_isl_props(neo4j_connect, src_endpoint, dst_endpoint, status_up)
-        self.ensure_isl_props(neo4j_connect, dst_endpoint, src_endpoint, status_up)
+        self.assertTrue(make_switch_remove(src_endpoint.dpid))
 
-        self.assertTrue(make_switch_remove(src_endpoint))
-
-        self.ensure_isl_props(neo4j_connect, src_endpoint, dst_endpoint, status_down)
-        self.ensure_isl_props(neo4j_connect, dst_endpoint, src_endpoint, status_half_up)
+        self.ensure_isl_props(neo4j_connect, forward, ISL_STATUS_PROPS_DOWN)
+        self.ensure_isl_props(neo4j_connect, reverse, ISL_STATUS_PROPS_HALF_UP)
 
     def test_cost_raise_on_port_down(self):
         self.setup_initial_data()
@@ -297,6 +386,7 @@ class TestIsl(unittest.TestCase):
 
     def _cost_raise_on_port_down(self, initial, down, recover):
         src_endpoint, dst_endpoint = self.src_endpoint, self.dst_endpoint
+        isl = model.InterSwitchLink(src_endpoint, dst_endpoint, None)
 
         self.ensure_isl_costs(
             (src_endpoint, initial),
@@ -310,7 +400,7 @@ class TestIsl(unittest.TestCase):
             (dst_endpoint, down))
 
         self.assertTrue(
-            make_isl_discovery(src_endpoint, dst_endpoint),
+            make_isl_discovery(isl),
             'ISL discovery command have failed')
 
         self.ensure_isl_costs(
@@ -321,6 +411,7 @@ class TestIsl(unittest.TestCase):
         self.setup_initial_data()
 
         src_endpoint, dst_endpoint = self.src_endpoint, self.dst_endpoint
+        isl = model.InterSwitchLink(src_endpoint, dst_endpoint, None)
 
         self.ensure_isl_costs(
                 (src_endpoint, 1),
@@ -334,18 +425,19 @@ class TestIsl(unittest.TestCase):
                 (dst_endpoint, 1))
 
         self.assertTrue(
-                make_isl_discovery(src_endpoint, dst_endpoint),
-                'ISL discovery command have failed')
+                make_isl_discovery(isl), 'ISL discovery command have failed')
 
         self.ensure_isl_costs(
                 (src_endpoint, 1),
                 (dst_endpoint, 1))
 
-    def ensure_isl_props(self, tx, source, dest, props):
-        isl_record = isl_utils.fetch(tx, model.InterSwitchLink(source, dest, None))
+    def ensure_isl_props(self, tx, isl, props):
+        isl_record = isl_utils.fetch(tx, isl)
         neo4j_connect.pull(isl_record)
         for name in props:
-            self.assertEqual(props[name], isl_record[name], "Invalid ISL's {!r} value ({!r})".format(name, isl_record))
+            self.assertEqual(
+                    props[name], isl_record[name],
+                    "Invalid ISL's {!r} value ({!r})".format(name, isl_record))
 
     def ensure_isl_costs(self, *endpoint_cost_pairs):
         endpoints = []
@@ -376,8 +468,8 @@ class TestIsl(unittest.TestCase):
     def setup_initial_data(self, make_link_props=True):
         src_endpoint, dst_endpoint = self.src_endpoint, self.dst_endpoint
 
-        make_switch_add(src_endpoint)
-        make_switch_add(dst_endpoint)
+        make_switch_add(src_endpoint.dpid)
+        make_switch_add(dst_endpoint.dpid)
 
         if make_link_props:
             with neo4j_connect.begin() as tx:

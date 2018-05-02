@@ -261,7 +261,9 @@ class MessageItem(object):
     # FIXME(surabujin): split/remove
     def isl_fetch_and_deactivate(self, tx, dpid, port):
         flow_utils.precreate_switches(tx, dpid)
-        isl = isl_utils.fetch_by_endpoint(tx, model.NetworkEndpoint(dpid, port))
+        db_record = isl_utils.fetch_one_by_endpoint(
+                tx, model.NetworkEndpoint(dpid, port))
+        isl = model.InterSwitchLink.new_from_db(db_record)
 
         logger.info('ISL found on %s_%s, deactivating', dpid, port)
 
@@ -392,6 +394,7 @@ class MessageItem(object):
                 tx.run(isl_create_or_update)
 
                 isl_utils.update_status(tx, isl)
+                isl_utils.resolve_conflicts(tx, isl)
 
             #
             # Now handle the second part .. pull properties from link_props if they exist
