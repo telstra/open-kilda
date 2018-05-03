@@ -30,6 +30,7 @@ $( 'input').on( 'click', function () {
 	}
 });
 
+
 function showflowData(response){
 	
 	if(!response || response.length==0) {
@@ -50,8 +51,8 @@ function showflowData(response){
 		 			    +"<td class='divTableCell' title ='"+((response[i].dst_port === "" || response[i].dst_port == undefined)?"-":response[i].dst_port)+"'>"+((response[i].dst_port === "" || response[i].dst_port == undefined)?"-":response[i].dst_port)+"</td>"
 		 			    +"<td class='divTableCell' title ='"+((response[i].cost === "" || response[i].cost == undefined)?"-":response[i].cost)+"'>"+((response[i].cost === "" || response[i].cost == undefined)?"-":response[i].cost)+"</td>"
 		 			    +"<td class='divTableCell' title ='"+((response[i].state === "" || response[i].state == undefined)?"-":response[i].state)+"'>"+((response[i].state === "" || response[i].state == undefined)?"-":response[i].state)+"</td>"
-		 			    +"<td class='divTableCell' title ='"+((response[i].speed === "" || response[i].speed == undefined)?"-":response[i].speed/1000 +" Mbps")+"'> "+ ((response[i].speed === "" || response[i].speed == undefined)?"-":response[i].speed/1000 + " Mbps")+"</td>"
-		 			    +"<td class='divTableCell' title ='"+((response[i].available_bandwidth === "" || response[i].available_bandwidth == undefined)?"-":response[i].available_bandwidth/1000 +" Mbps")+"'> "+ ((response[i].available_bandwidth === "" || response[i].available_bandwidth == undefined)?"-":response[i].available_bandwidth/1000 + " Mbps")+"</td>"
+		 			    +"<td class='divTableCell' title ='"+((response[i].speed === "" || response[i].speed == undefined)?"-":response[i].speed/1000)+"'> "+ ((response[i].speed === "" || response[i].speed == undefined)?"-":response[i].speed/1000)+"</td>"
+		 			    +"<td class='divTableCell' title ='"+((response[i].available_bandwidth === "" || response[i].available_bandwidth == undefined)?"-":response[i].available_bandwidth/1000)+"'> "+ ((response[i].available_bandwidth === "" || response[i].available_bandwidth == undefined)?"-":response[i].available_bandwidth/1000)+"</td>"
 		 			    +"<td class='divTableCell' title ='"+((response[i].latency === "" || response[i].latency == undefined)?"-":response[i].latency)+"'>"+((response[i].latency === "" || response[i].latency == undefined)?"-":response[i].latency)+"</td>"
 		 			    +"<td class='divTableCell' title ='"+((response[i].unidirectional === "" || response[i].unidirectional == undefined)?"-":response[i].unidirectional)+"'>"+((response[i].unidirectional === "" || response[i].unidirectional == undefined)?"-":response[i].unidirectional)+"</td>"
 		 			    +"</tr>";
@@ -64,7 +65,7 @@ function showflowData(response){
 	        	$("#div_"+(i+1)).addClass('up-state');
 	          }
 	 }
-	 
+	 common.customDataTableSorting();
 	 tableVar  =  $('#flowTable').DataTable( {
 		 "iDisplayLength": 10,
 		 "aLengthMenu": [[10, 20, 35, 50, -1], [10, 20, 35, 50, "All"]],
@@ -72,10 +73,11 @@ function showflowData(response){
 		  "bSortCellsTop": true,
 		  "autoWidth": false,
 		  language: {searchPlaceholder: "Search"},
+		  "aaSorting": [[0, "asc"]],
 		  "aoColumns": [
-		                { sWidth: '14%' },
+		                { sWidth: '14%',"sType": "name","bSortable": true },
 		                { sWidth:  '8%' },
-		                { sWidth: '8%' },
+		                { sWidth: '8%', "sType": "name","bSortable": true },
 		                { sWidth: '14%' },
 		                { sWidth: '8%' },
 		                { sWidth: '8%' },
@@ -96,14 +98,20 @@ function showflowData(response){
                    "targets": [ 4 ],
                    "visible": false,
                    "searchable": true
+               },
+               {
+                   "targets":  [9],
+                   "type": "num-fmt" 
                }
            ]      
 	 });
+
 	 
 	 tableVar.columns().every( function () {
 
 		 
 	 var that = this;
+	 
 	 $( 'input', this.header() ).on( 'keyup change', function () {
 	      if ( that.search() !== this.value ) {
 	             that.search(this.value).draw();
