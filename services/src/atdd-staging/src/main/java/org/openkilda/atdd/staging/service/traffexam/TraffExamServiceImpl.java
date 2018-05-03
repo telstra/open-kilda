@@ -2,6 +2,8 @@ package org.openkilda.atdd.staging.service.traffexam;
 
 import static java.util.Collections.unmodifiableMap;
 
+import net.jodah.failsafe.Failsafe;
+import net.jodah.failsafe.RetryPolicy;
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition.TraffGen;
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition.TraffGenConfig;
@@ -68,6 +70,10 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
     private Map<UUID, HostResource> suppliedEndpoints = new HashMap<>();
     private List<HostResource> failedToRelease = new LinkedList<>();
 
+    private final RetryPolicy retryPolicy = new RetryPolicy()
+            .withDelay(1, TimeUnit.SECONDS)
+            .withMaxRetries(30);
+
     @PostConstruct
     void initializePools() {
         hostsPool = new HashMap<>();
@@ -132,16 +138,14 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
         }
 
         if (target == null) {
-            throw new NoResultsFoundException(
-                    String.format("There is no host with name \"%s\"", name));
+            throw new NoResultsFoundException(String.format("There is no host with name \"%s\"", name));
         }
 
         return target;
     }
 
     @Override
-    public Exam startExam(Exam exam)
-            throws NoResultsFoundException, OperationalException {
+    public ExamResources startExam(Exam exam) throws NoResultsFoundException, OperationalException {
         checkHostPresence(exam.getSource());
         checkHostPresence(exam.getDest());
 
@@ -149,28 +153,21 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
         try {
             subnet = addressPool.allocate();
         } catch (Inet4ValueException e) {
-            throw new OperationalException(
-                    "Unable to allocate subnet for exam. There is no more " +
-                    "addresses available.");
+            throw new OperationalException("Unable to allocate subnet for exam. There is no more addresses available.");
         }
 
         ExamResources resources = null;
         List<HostResource> supplied = new ArrayList<>(4);
         try {
-            Address sourceAddress = new Address(
-                    subnet.address(1), subnet.getPrefix());
-            sourceAddress.setVlan(exam.getSourceVlan());
+            Address sourceAddress = new Address(subnet.address(1), subnet.getPrefix(), exam.getSourceVlan());
             sourceAddress = assignAddress(exam.getSource(), sourceAddress);
             supplied.add(sourceAddress);
 
-            Address destAddress = new Address(
-                    subnet.address(2), subnet.getPrefix());
-            destAddress.setVlan(exam.getDestVlan());
+            Address destAddress = new Address(subnet.address(2), subnet.getPrefix(), exam.getDestVlan());
             destAddress = assignAddress(exam.getDest(), destAddress);
             supplied.add(destAddress);
 
-            ConsumerEndpoint consumer = (ConsumerEndpoint) assignEndpoint(
-                    exam.getDest(), new ConsumerEndpoint(destAddress.getId()));
+            ConsumerEndpoint consumer = assignEndpoint(exam.getDest(), new ConsumerEndpoint(destAddress.getId()));
             supplied.add(consumer);
 
             ProducerEndpoint producer = new ProducerEndpoint(
@@ -178,12 +175,13 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
                     new EndpointAddress(destAddress.getAddress(), consumer.getBindPort()));
             if (exam.getBandwidthLimit() != null) {
                 producer.setBandwidth(exam.getBandwidthLimit());
+                producer.setBurstPkt(exam.getBurstPkt());
             }
             if (exam.getTimeLimitSeconds() != null) {
                 producer.setTime(exam.getTimeLimitSeconds());
             }
 
-            producer = (ProducerEndpoint) assignEndpoint(exam.getSource(), producer);
+            producer = assignEndpoint(exam.getSource(), producer);
             supplied.add(producer);
 
             resources = new ExamResources(subnet, producer, consumer);
@@ -202,38 +200,25 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
             }
         }
 
-        exam.setResources(resources);
-        return exam;
-    }
-
-    public List<ExamReport> waitExam(List<Exam> exams) {
-        return this.waitExam(exams, true);
+        return resources;
     }
 
     @Override
-    public List<ExamReport> waitExam(List<Exam> exams, boolean cleanup) {
-        List<ExamReport> results = new ArrayList<>(exams.size());
+    public ExamReport waitExam(Exam exam) {
+        return this.waitExam(exam, true);
+    }
 
-        for (Exam current : exams) {
-            // current backend implementation do not allow infinite
-            // execution, so we can have infinite loop here
-            while (true) try {
-                try {
-                    results.add(fetchReport(current));
-                    break;
-                } catch (ExamNotFinishedException e) {
-                    TimeUnit.SECONDS.sleep(1);
-                }
-            } catch (InterruptedException e) {
-                // ignore interrupt exceptions
-            }
+    @Override
+    public ExamReport waitExam(Exam exam, boolean cleanup) {
+        ExamReport result = Failsafe.with(retryPolicy
+                .retryIf((t, u) -> u instanceof ExamNotFinishedException))
+                .get(() -> fetchReport(exam));
 
-            if (cleanup) {
-                stopExam(current);
-            }
+        if (result != null && cleanup) {
+            stopExam(exam);
         }
 
-        return results;
+        return result;
     }
 
     @Override
@@ -329,12 +314,13 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
         subject.setHost(null);
     }
 
-    private Endpoint assignEndpoint(Host host, Endpoint payload) {
+    private <T extends Endpoint> T assignEndpoint(Host host, T payload) {
         EndpointResponse response = restTemplate.postForObject(
                 makeHostUri(host).path("endpoint").build(),
                 payload, EndpointResponse.class);
 
-        Endpoint endpoint = response.endpoint;
+        @SuppressWarnings("unchecked")
+        T endpoint = (T) response.endpoint;
         endpoint.setHost(host);
         suppliedEndpoints.put(endpoint.getId(), endpoint);
 
@@ -351,7 +337,8 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
         suppliedEndpoints.remove(endpoint.getId());
     }
 
-    private EndpointReport fetchEndpointReport(Endpoint endpoint) throws NoResultsFoundException, ExamNotFinishedException {
+    private EndpointReport fetchEndpointReport(Endpoint endpoint)
+            throws NoResultsFoundException, ExamNotFinishedException {
         checkHostRelation(endpoint, suppliedEndpoints);
 
         ReportResponse report = restTemplate.getForObject(

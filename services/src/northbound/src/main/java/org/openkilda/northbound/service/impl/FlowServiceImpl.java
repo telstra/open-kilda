@@ -473,6 +473,7 @@ public class FlowServiceImpl implements FlowService {
         private int meterId;
         private long pktCount;   // only set from switch rules, not flow rules
         private long byteCount;  // only set from switch rules, not flow rules
+        private String version;
 
         @Override
         public String toString() {
@@ -589,6 +590,7 @@ public class FlowServiceImpl implements FlowService {
                 }
                 rule.pktCount = switchRule.getPacketCount();
                 rule.byteCount = switchRule.getByteCount();
+                rule.version = switchRule.getVersion();
                 result.add(rule);
             }
             return result;
@@ -657,7 +659,10 @@ public class FlowServiceImpl implements FlowService {
                     result.add(new PathDiscrepancyDto(expected.toString(), "outVlan",
                             String.valueOf(expected.outVlan), String.valueOf(matched.outVlan)));
                 }
-                if (matched.meterId != expected.meterId) {
+
+                //TODO: dumping of meters on OF_12 switches (and earlier) is not implemented yet, so skip them.
+                if ((matched.version == null || matched.version.compareTo("OF_12") > 0)
+                        && matched.meterId != expected.meterId) {
                     result.add(new PathDiscrepancyDto(expected.toString(), "meterId",
                             String.valueOf(expected.meterId), String.valueOf(matched.meterId)));
                 }
