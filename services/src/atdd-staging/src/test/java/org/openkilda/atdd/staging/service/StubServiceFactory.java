@@ -39,6 +39,7 @@ import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowPayloadToFlowConverter;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
+import org.openkilda.northbound.dto.switches.RulesValidationResult;
 
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -216,6 +217,7 @@ public class StubServiceFactory {
                 .thenAnswer(invocation -> {
                     FlowPayload result = SerializationUtils.clone(((FlowPayload) invocation.getArguments()[0]));
                     result.setLastUpdated(LocalTime.now().toString());
+                    result.setStatus(FlowState.ALLOCATED.toString());
                     putFlow(result.getId(), result);
                     return result;
                 });
@@ -238,6 +240,9 @@ public class StubServiceFactory {
 
         when(serviceMock.synchronizeSwitchRules(any()))
                 .thenReturn(new RulesSyncResult(emptyList(), emptyList(), emptyList(), emptyList()));
+
+        when(serviceMock.validateSwitchRules(any()))
+                .thenReturn(new RulesValidationResult(emptyList(), emptyList(), emptyList()));
 
         return serviceMock;
     }
