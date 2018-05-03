@@ -6,7 +6,7 @@ This is a wrapper above iperf that add REST API to this tool.
 System requirements
 ===================
 
-On target system you need iperf3.
+On target system you need iperf3 (>=3.2).
 
 Setup instructions (ubuntu 16.04)
 =================================

@@ -15,9 +15,9 @@
 
 import errno
 import json
-import time
-import threading
 import subprocess
+import threading
+import time
 
 from kilda.traffexam import context as context_module
 from kilda.traffexam import exc
@@ -159,8 +159,10 @@ class EndpointService(Abstract):
             with open(str(path), 'rt') as stream:
                 out.append(stream.read())
 
-        report, error = out
-        report = json.loads(report)
+        if not filter(bool, out):
+            return None
+
+        report, error = self.unpack_output(out)
         return report, error
 
     def _create(self, subject):
@@ -239,6 +241,23 @@ class EndpointService(Abstract):
 
     def make_error_file_name(self, subject):
         return self.context.path('{}.err'.format(subject.idnr))
+
+    @staticmethod
+    def unpack_output(out):
+        stdout, stderr = out
+        if not stdout:
+            return {}, stderr
+
+        try:
+            report = json.loads(stdout)
+        except (ValueError, TypeError) as e:
+            report = {}
+            if stderr:
+                stderr += '-+' * 30 + '-\n'
+            stderr += 'Can\'t decode iperf3 output: {}\n'.format(e)
+            stderr += 'Raw iperf3 output stats on next line\n'
+            stderr += stdout
+        return report, stderr
 
 
 class Adapter(object):
