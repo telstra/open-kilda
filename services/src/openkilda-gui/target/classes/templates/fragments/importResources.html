@@ -1,0 +1,87 @@
+<!DOCTYPE html >
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+	<!-- Common js/scripts needs to mention here, so that any page can directly include this fragment -->
+	<th:block th:fragment="commonImports">
+		<!-- javascriptServerTags is a file where all server side tag names need to mention, which need to use in js  -->
+		<div
+			th:include="fragments/javascriptServerTags:: javascriptServerTags"></div>
+
+		<!-- jquery js -->
+		<script th:inline="javascript" src="javascript/jquery-3.2.1.min.js" th:src="@{javascript/jquery-3.2.1.min.js}"></script>
+		<!-- bootstrap js -->
+		<script th:inline="javascript" src="javascript/bootstrap.min.js" th:src="@{javascript/bootstrap.min.js}"></script>
+		<script th:inline="javascript" src="javascript/jquery.toast.min.js" th:src="@{javascript/jquery.toast.min.js}"></script>
+
+		
+		<!--  CSS Style Sheets -->
+		<link th:href="@{css/bootstrap.min.css}" rel="stylesheet"
+			type="text/css" />
+		<link th:href="@{css/roboto.css}" rel="stylesheet" type="text/css" />
+		<link th:href="@{css/font-awesome.min.css}" rel="stylesheet"
+			type="text/css" />
+		<!-- Custom CSS Style Sheets -->
+		<link th:href="@{css/custom.css}" rel="stylesheet" type="text/css" />
+		<link th:href="@{css/jquery.toast.min.css}" rel="stylesheet" type="text/css" />
+	
+	</th:block>
+
+	<th:block th:fragment="graphImports">
+		<!-- 	Bounded force directed graph  -->
+		<script th:inline="javascript" src="javascript/d3.v3.min.js" th:src="@{javascript/d3.v3.min.js}"></script>
+		<script th:inline="javascript" src="javascript/jquery.graph.pan.zoom.js" th:src="@{javascript/jquery.graph.pan.zoom.js}"></script>
+		<!-- 			custom graph -->
+		<script th:inline="javascript" src="javascript/graph.js" th:src="@{javascript/graph.js}"></script>
+		
+		<script th:inline="javascript" src="javascript/graph.js" th:src="@{javascript/jquery-ui.min.js}"></script>
+		<link th:href="@{css/jquery-ui.min.css}" rel="stylesheet"
+			type="text/css" />
+		
+		
+			
+	</th:block>
+
+	<th:block th:fragment="commonPathImports">
+		<div
+			th:include="../templates/fragments/javascriptServerTags:: javascriptServerTags"></div>
+		<script th:inline="javascript" src="../javascript/jquery-3.2.1.min.js"
+			th:src="@{../javascript/jquery-3.2.1.min.js}"></script>
+		<script th:inline="javascript" src="../javascript/bootstrap.min.js"
+			th:src="@{../javascript/bootstrap.min.js}"></script>
+		<script th:inline="javascript" src="../javascript/moment.js"></script>
+		<script th:inline="javascript" src="../javascript/jquery.toast.min.js"></script>
+		<script th:inline="javascript" src="../javascript/common.js"></script>
+		
+		
+		<!-- CSS Style Sheets -->
+		<link th:href="@{../css/jquery.toast.min.css}" rel="stylesheet"
+			type="text/css" />
+		<link th:href="@{../css/bootstrap.min.css}" rel="stylesheet"
+			type="text/css" />
+
+		<link th:href="@{../css/roboto.css}" rel="stylesheet" type="text/css" />
+		<link th:href="@{../css/font-awesome.min.css}" rel="stylesheet"
+			type="text/css" />
+
+		<!-- Custom CSS Style Sheets -->
+		<link th:href="@{../css/custom.css}" rel="stylesheet" type="text/css" />
+
+	</th:block>
+
+
+	<th:block th:fragment="statsImports">
+	
+		<script th:inline="javascript"
+			src="../javascript/jquery.datetimepicker.full.js"></script>
+		<script th:inline="javascript" src="../javascript/dygraph.js"></script>
+				<link th:href="@{../css/jquery.datetimepicker.css}" rel="stylesheet"
+			type="text/css" />
+
+	</th:block>
+	
+	<th:block th:fragment="toggleSwitch">
+		<script th:inline="javascript" src="../javascript/on-off-switch.js"></script>
+		<script th:inline="javascript" src="../javascript/on-off-switch-onload.js"></script>
+	</th:block>
+</body>
+</html>

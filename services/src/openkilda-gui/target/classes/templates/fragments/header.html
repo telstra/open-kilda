@@ -1,0 +1,47 @@
+<!doctype html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3">
+<head>
+<meta charset="utf-8"></meta>
+<title>OPEN KILDA</title>
+	<!-- CSS Style Sheets -->
+</head>
+
+<body>
+<!-- Start Header -->
+<th:block th:fragment="header">
+<header class="main-header">
+	<a href="javascript:;" class="logo">
+      <span class="logo-lg">OPEN KILDA</span>
+    </a>
+    <nav class="navbar navbar-static-top">
+      <!-- Sidebar toggle button-->
+      <!--<a href="javascript:;" class="sidebar-toggle toggle-sidebar-left">
+      	<i class="fa fa-align-justify" aria-hidden="true"></i>
+      </a>-->
+    
+      <div class="navbar-custom-menu pull-right">
+        <ul class="nav navbar-nav">
+          <!-- User Account: style can be found in dropdown.less -->
+          <li class="dropdown user user-menu">
+            <a href="#" class="dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
+              <img class="user-image rounded-circle"></img>
+              <div class="pull-right"><span class="user-name"><span th:text="${session.sessionObject.name}"></span></span>
+              <i class="fa icon-angle-down" aria-hidden="true"></i>
+              </div>
+            </a>
+            <ul class="dropdown-menu scale-up">
+              <li>
+                  <a th:href="@{/logout}" id="logout"><i class="icon-signout" aria-hidden="true"></i> Logout</a>
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+    </nav>
+</header>
+<!-- /End Header -->
+</th:block>
+</body>
+</html>
