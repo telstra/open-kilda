@@ -446,22 +446,6 @@ def precreate_switches(tx, *nodes):
         tx.run(q)
 
 
-def precreate_isls(tx, *links):
-    for isl in sorted(links):
-        q = (
-            'MERGE (:switch {{name: "{source.dpid}"}})-[link:isl {{\n'
-            '  src_switch: "{source.dpid}",\n'
-            '  src_port: {source.port},\n'
-            '  dst_switch: "{dest.dpid}",\n'
-            '  dst_port: {dest.port}\n'
-            '}}]->(:switch {{name: "{dest.dpid}"}})\n'
-            'ON CREATE SET link.status="{status}"').format(
-                source=isl.source, dest=isl.dest, status='inactive')
-
-        logger.debug('ISL precreate query:\n%s', q)
-        tx.run(q)
-
-
 def get_flow_segments_by_dst_switch(switch_id):
     query = "MATCH p = (:switch)-[fs:flow_segment]->(sw:switch) " \
             "WHERE sw.name='{}' " \
