@@ -15,6 +15,7 @@
 package org.openkilda.atdd.staging.tests;
 
 import static java.lang.String.format;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.contains;
@@ -27,6 +28,9 @@ import org.mockito.stubbing.Answer;
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition.Switch;
 import org.openkilda.atdd.staging.service.floodlight.FloodlightService;
+import org.openkilda.atdd.staging.service.floodlight.model.MeterBand;
+import org.openkilda.atdd.staging.service.floodlight.model.MeterEntry;
+import org.openkilda.atdd.staging.service.floodlight.model.MetersEntriesMap;
 import org.openkilda.atdd.staging.service.northbound.NorthboundService;
 import org.openkilda.atdd.staging.service.topology.TopologyEngineService;
 import org.openkilda.atdd.staging.service.traffexam.TraffExamService;
@@ -37,6 +41,7 @@ import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.LocalTime;
@@ -64,7 +69,7 @@ public abstract class AbstractFlowBasedHook {
 
     protected final Set<String> removedFlows = new HashSet<>();
 
-    protected void mockFlowInTE(String srcSwitchName, int srcPort, String destSwitchName, int destPort, int vlan) {
+    protected void mockFlowInTE(String srcSwitchName, int srcPort, String destSwitchName, int destPort, int vlan, int meterId) {
         List<Switch> switchDefs = topologyDefinition.getActiveSwitches();
         Switch srcSwitch = switchDefs.stream()
                 .filter(sw -> sw.getName().equals(srcSwitchName))
@@ -87,18 +92,47 @@ public abstract class AbstractFlowBasedHook {
                                 new Flow(flowId,
                                         10000, false, 0, flowDesc, null,
                                         srcSwitch.getDpId(), destSwitch.getDpId(), srcPort, destPort,
-                                        vlan, vlan, 0, 0, null, null),
+                                        vlan, vlan, meterId, 0, null, null),
                                 new Flow(flowId,
                                         10000, false, 0, flowDesc, null,
                                         destSwitch.getDpId(), srcSwitch.getDpId(), destPort, srcPort,
-                                        vlan, vlan, 0, 0, null, null)
+                                        vlan, vlan, meterId, 0, null, null)
                         );
                     }
                     return null;
                 });
+
+    }
+
+    protected void mockMetersInFL(String switchName, int bandwidth, int... meterIds) {
+        List<Switch> switchDefs = topologyDefinition.getActiveSwitches();
+        String switchId = switchDefs.stream()
+                .filter(sw -> sw.getName().equals(switchName))
+                .findFirst()
+                .map(Switch::getDpId).get();
+
+        MetersEntriesMap meterEntries = new MetersEntriesMap();
+        for(int meterId : meterIds) {
+            MeterEntry entry = new MeterEntry(emptyList(), meterId,
+                    singletonList(new MeterBand(bandwidth, 0, "", 1)), "");
+            meterEntries.put(meterId, entry);
+        }
+
+        when(floodlightService.getMeters(eq(switchId)))
+                .then((Answer<MetersEntriesMap>) invocation -> meterEntries);
     }
 
     protected void mockFlowCrudInNorthbound() {
+        when(northboundService.getAllFlows())
+                .then((Answer<List<FlowPayload>>) invocation ->
+                        emptyList()
+                );
+
+        when(northboundService.synchronizeSwitchRules(any()))
+                .then((Answer<RulesSyncResult>) invocation ->
+                        new RulesSyncResult(emptyList(), emptyList(), emptyList(), emptyList())
+                );
+
         when(northboundService.addFlow(any()))
                 .then((Answer<FlowPayload>) invocation -> {
                     FlowPayload result = SerializationUtils.clone(((FlowPayload) invocation.getArguments()[0]));

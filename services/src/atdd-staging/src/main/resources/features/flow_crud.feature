@@ -6,6 +6,7 @@ Feature: Flow CRUD
     Given the reference topology
     And all defined switches are discovered
     And all defined links are detected
+    And a clean topology with no flows and no discrepancies
 
   @CRUD
   Scenario: Create, read, update and delete flows across the entire set of defined switches
@@ -20,11 +21,13 @@ Feature: Flow CRUD
     And each flow is in UP state
     And each flow can be read from Northbound
     And each flow has rules installed
+    And each flow has meters installed with 10000 max bandwidth
     And each flow has traffic going with bandwidth not less than 10000
 
     Then each flow can be updated with 5000 max bandwidth
     And each flow is in UP state
-    And each flow has rules installed with 5000 max bandwidth
+    And each flow has rules installed
+    And each flow has meters installed with 5000 max bandwidth
     And each flow has traffic going with bandwidth not less than 5000
 
     Then each flow can be deleted

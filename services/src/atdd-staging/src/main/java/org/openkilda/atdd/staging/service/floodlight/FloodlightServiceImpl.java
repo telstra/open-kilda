@@ -16,6 +16,7 @@
 package org.openkilda.atdd.staging.service.floodlight;
 
 import org.openkilda.atdd.staging.service.floodlight.model.FlowEntriesMap;
+import org.openkilda.atdd.staging.service.floodlight.model.MetersEntriesMap;
 import org.openkilda.atdd.staging.service.floodlight.model.SwitchEntry;
 import org.openkilda.atdd.utils.controller.CoreFlowEntry;
 import org.openkilda.atdd.utils.controller.DpIdEntriesList;
@@ -41,7 +42,7 @@ public class FloodlightServiceImpl implements FloodlightService {
 
     @Override
     public String addStaticFlow(StaticFlowEntry flow) {
-        return restTemplate.postForObject("/wm/staticentrypusher/jso", flow, String.class);
+        return restTemplate.postForObject("/wm/staticentrypusher/json", flow, String.class);
     }
 
     @Override
@@ -71,5 +72,10 @@ public class FloodlightServiceImpl implements FloodlightService {
     @Override
     public FlowEntriesMap getFlows(String dpid) {
         return restTemplate.getForObject("/wm/kilda/flows/switch_id/{switch_id}", FlowEntriesMap.class, dpid);
+    }
+
+    @Override
+    public MetersEntriesMap getMeters(String dpid) {
+        return restTemplate.getForObject("/wm/kilda/meters/switch_id/{switch_id}", MetersEntriesMap.class, dpid);
     }
 }

@@ -48,9 +48,9 @@ public class MonkeySuiteCheckTrafficTest {
         public void prepareMocks() throws IOException {
             setup3TraffGensTopology();
 
-            mockFlowInTE("sw1", 10, "sw2", 10, 1);
-            mockFlowInTE("sw1", 10, "sw3", 10, 2);
-            mockFlowInTE("sw2", 10, "sw3", 10, 3);
+            mockFlowInTE("sw1", 10, "sw2", 10, 1, 1);
+            mockFlowInTE("sw1", 10, "sw3", 10, 2, 1);
+            mockFlowInTE("sw2", 10, "sw3", 10, 3, 1);
 
             mockFlowCrudInNorthbound();
 

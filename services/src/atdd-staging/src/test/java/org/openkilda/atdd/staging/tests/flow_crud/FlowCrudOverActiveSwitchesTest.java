@@ -28,6 +28,7 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import cucumber.api.CucumberOptions;
 import cucumber.api.java.After;
 import cucumber.api.java.Before;
+import org.junit.Ignore;
 import org.junit.runner.RunWith;
 import org.openkilda.atdd.staging.cucumber.CucumberWithSpringProfile;
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
@@ -45,6 +46,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 
+@Ignore
 @RunWith(CucumberWithSpringProfile.class)
 @CucumberOptions(features = {"classpath:features/flow_crud.feature"},
         glue = {"org.openkilda.atdd.staging.tests.flow_crud", "org.openkilda.atdd.staging.steps"})
@@ -57,8 +59,12 @@ public class FlowCrudOverActiveSwitchesTest {
         public void prepareMocks() throws IOException {
             setup5SwitchTopology();
 
-            mockFlowInTE("sw1", 10, "sw2", 10, 1);
-            mockFlowInTE("sw1", 10, "sw3", 10, 2);
+            mockFlowInTE("sw1", 10, "sw2", 10, 1, 1);
+            mockFlowInTE("sw1", 10, "sw3", 10, 2, 2);
+
+            mockMetersInFL("sw1", 10000, 1, 2);
+            mockMetersInFL("sw2", 10000, 1);
+            mockMetersInFL("sw3", 10000, 2);
 
             mockFlowCrudInNorthbound();
 

@@ -20,6 +20,7 @@ import org.openkilda.messaging.model.HealthCheck;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -110,6 +111,12 @@ public class NorthboundServiceImpl implements NorthboundService {
         FlowPayload[] flows = restTemplate.exchange("/api/v1/flows", HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), FlowPayload[].class).getBody();
         return Arrays.asList(flows);
+    }
+
+    @Override
+    public RulesSyncResult synchronizeSwitchRules(String switchId) {
+        return restTemplate.exchange("/api/v1/switches/{switch_id}/rules/synchronize", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), RulesSyncResult.class, switchId).getBody();
     }
 
     private HttpHeaders buildHeadersWithCorrelationId() {

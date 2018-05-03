@@ -18,8 +18,10 @@ import static com.nitorcreations.Matchers.reflectEquals;
 import static java.lang.String.format;
 import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toList;
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
@@ -40,6 +42,8 @@ import net.jodah.failsafe.RetryPolicy;
 import org.apache.logging.log4j.util.Strings;
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
 import org.openkilda.atdd.staging.service.floodlight.FloodlightService;
+import org.openkilda.atdd.staging.service.floodlight.model.MeterEntry;
+import org.openkilda.atdd.staging.service.floodlight.model.MetersEntriesMap;
 import org.openkilda.atdd.staging.service.northbound.NorthboundService;
 import org.openkilda.atdd.staging.service.topology.TopologyEngineService;
 import org.openkilda.atdd.staging.service.traffexam.FlowNotApplicableException;
@@ -350,9 +354,23 @@ public class FlowCrudSteps implements En {
                 flows.stream().map(flow -> equalTo(flow.getId())).collect(toList())));
     }
 
-    @And("^each flow has rules installed with (\\d+) max bandwidth$")
-    public void eachFlowHasRulesInstalledWithBandwidth(int bandwidth) {
-        //TODO: implement the check
+    @And("^each flow has meters installed with (\\d+) max bandwidth$")
+    public void eachFlowHasRulesInstalledWithBandwidth(long bandwidth) {
+        for (FlowPayload flow : flows) {
+            ImmutablePair<Flow, Flow> flowPair = topologyEngineService.getFlow(flow.getId());
+
+            MetersEntriesMap srcSwitchMeters = floodlightService.getMeters(flowPair.getLeft().getSourceSwitch());
+            int forwardMeterId = flowPair.getLeft().getMeterId();
+            assertThat(srcSwitchMeters, hasKey(forwardMeterId));
+            MeterEntry forwardMeter = srcSwitchMeters.get(forwardMeterId);
+            assertThat(forwardMeter.getEntries(), contains(hasProperty("rate", equalTo(bandwidth))));
+
+            MetersEntriesMap dstSwitchMeters = floodlightService.getMeters(flowPair.getRight().getSourceSwitch());
+            int reverseMeterId = flowPair.getRight().getMeterId();
+            assertThat(dstSwitchMeters, hasKey(reverseMeterId));
+            MeterEntry reverseMeter = dstSwitchMeters.get(reverseMeterId);
+            assertThat(reverseMeter.getEntries(), contains(hasProperty("rate", equalTo(bandwidth))));
+        }
     }
 
     @Then("^each flow can be deleted$")
