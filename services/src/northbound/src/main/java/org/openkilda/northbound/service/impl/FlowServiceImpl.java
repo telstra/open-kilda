@@ -58,7 +58,7 @@ import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.service.FlowService;
 import org.openkilda.northbound.service.SwitchService;
-import org.openkilda.northbound.utils.Converter;
+import org.openkilda.messaging.payload.flow.FlowPayloadToFlowConverter;
 
 import org.apache.commons.lang3.math.NumberUtils;
 import org.openkilda.pce.provider.Auth;
@@ -169,13 +169,13 @@ public class FlowServiceImpl implements FlowService {
     public FlowPayload createFlow(final FlowPayload flow) {
         final String correlationId = RequestCorrelationId.getId();
         LOGGER.debug("Create flow: {}={}", CORRELATION_ID, correlationId);
-        FlowCreateRequest data = new FlowCreateRequest(Converter.buildFlowByFlowPayload(flow));
+        FlowCreateRequest data = new FlowCreateRequest(FlowPayloadToFlowConverter.buildFlowByFlowPayload(flow));
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
         messageConsumer.clear();
         messageProducer.send(topic, request);
         Message message = (Message) messageConsumer.poll(correlationId);
         FlowResponse response = (FlowResponse) validateInfoMessage(request, message, correlationId);
-        return Converter.buildFlowPayloadByFlow(response.getPayload());
+        return FlowPayloadToFlowConverter.buildFlowPayloadByFlow(response.getPayload());
     }
 
     /**
@@ -210,7 +210,7 @@ public class FlowServiceImpl implements FlowService {
     private FlowPayload _deleteFlowRespone(final String correlationId, CommandMessage request) {
         Message message = (Message) messageConsumer.poll(correlationId);
         FlowResponse response = (FlowResponse) validateInfoMessage(request, message, correlationId);
-        return Converter.buildFlowPayloadByFlow(response.getPayload());
+        return FlowPayloadToFlowConverter.buildFlowPayloadByFlow(response.getPayload());
     }
 
 
@@ -227,7 +227,7 @@ public class FlowServiceImpl implements FlowService {
         messageProducer.send(topic, request);
         Message message = (Message) messageConsumer.poll(correlationId);
         FlowResponse response = (FlowResponse) validateInfoMessage(request, message, correlationId);
-        return Converter.buildFlowPayloadByFlow(response.getPayload());
+        return FlowPayloadToFlowConverter.buildFlowPayloadByFlow(response.getPayload());
     }
 
 
@@ -238,13 +238,13 @@ public class FlowServiceImpl implements FlowService {
     public FlowPayload updateFlow(final FlowPayload flow) {
         final String correlationId = RequestCorrelationId.getId();
         LOGGER.debug("Update flow: {}={}", CORRELATION_ID, correlationId);
-        FlowUpdateRequest data = new FlowUpdateRequest(Converter.buildFlowByFlowPayload(flow));
+        FlowUpdateRequest data = new FlowUpdateRequest(FlowPayloadToFlowConverter.buildFlowByFlowPayload(flow));
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
         messageConsumer.clear();
         messageProducer.send(topic, request);
         Message message = (Message) messageConsumer.poll(correlationId);
         FlowResponse response = (FlowResponse) validateInfoMessage(request, message, correlationId);
-        return Converter.buildFlowPayloadByFlow(response.getPayload());
+        return FlowPayloadToFlowConverter.buildFlowPayloadByFlow(response.getPayload());
     }
 
     /**
@@ -325,7 +325,7 @@ public class FlowServiceImpl implements FlowService {
         messageProducer.send(topic, request);
         Message message = (Message) messageConsumer.poll(correlationId);
         FlowPathResponse response = (FlowPathResponse) validateInfoMessage(request, message, correlationId);
-        return Converter.buildFlowPathPayloadByFlowPath(id, response.getPayload());
+        return FlowPayloadToFlowConverter.buildFlowPathPayloadByFlowPath(id, response.getPayload());
     }
 
     /**
@@ -444,7 +444,7 @@ public class FlowServiceImpl implements FlowService {
         Message message = (Message) messageConsumer.poll(correlationId);
         logger.debug("Got response {}", message);
         FlowRerouteResponse response = (FlowRerouteResponse) validateInfoMessage(command, message, correlationId);
-        return Converter.buildReroutePayload(flowId, response.getPayload(), response.isRerouted());
+        return FlowPayloadToFlowConverter.buildReroutePayload(flowId, response.getPayload(), response.isRerouted());
     }
 
     @Override
@@ -460,7 +460,7 @@ public class FlowServiceImpl implements FlowService {
         Message message = (Message) messageConsumer.poll(correlationId);
         logger.debug("Got response {}", message);
         FlowRerouteResponse response = (FlowRerouteResponse) validateInfoMessage(command, message, correlationId);
-        return Converter.buildReroutePayload(flowId, response.getPayload(), response.isRerouted());
+        return FlowPayloadToFlowConverter.buildReroutePayload(flowId, response.getPayload(), response.isRerouted());
     }
 
     private static final class SimpleSwitchRule {
@@ -797,7 +797,7 @@ public class FlowServiceImpl implements FlowService {
         for (CommandMessage request : requests) {
             Message message = (Message) messageConsumer.poll(request.getCorrelationId());
             FlowResponse response = (FlowResponse) validateInfoMessage(request, message, correlationId);
-            result.add(Converter.buildFlowPayloadByFlow(response.getPayload()));
+            result.add(FlowPayloadToFlowConverter.buildFlowPayloadByFlow(response.getPayload()));
         }
 
         return result;

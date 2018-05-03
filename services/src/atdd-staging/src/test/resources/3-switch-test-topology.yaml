@@ -1,0 +1,69 @@
+switches:
+    - name: sw1
+      dp_id: 00:00:00:00:00:01
+      of_version: OF_13
+      status: active
+      out_ports:
+        - port: 10
+          vlan_range: 1..10
+
+    - name: sw2
+      dp_id: 00:00:00:00:00:02
+      of_version: OF_13
+      status: active
+      out_ports:
+        - port: 10
+          vlan_range: 1..10
+
+    - name: sw3
+      dp_id: 00:00:00:00:00:03
+      of_version: OF_13
+      status: active
+      out_ports:
+        - port: 10
+          vlan_range: 1..10
+
+isls:
+    - src_switch: sw1
+      src_port: 1
+      dst_switch: sw3
+      dst_port: 1
+      max_bandwidth: 10000
+
+    - src_switch: sw1
+      src_port: 2
+      dst_switch: sw2
+      dst_port: 2
+      max_bandwidth: 10000
+
+    - src_switch: sw2
+      src_port: 3
+      dst_switch: sw3
+      dst_port: 3
+      max_bandwidth: 10000
+
+traffgens:
+    - name: tg1
+      iface: eth0
+      control_endpoint: http://192.168.0.1:80/
+      switch: sw1
+      switch_port: 10
+      status: active
+
+    - name: tg2
+      iface: eth0
+      control_endpoint: http://192.168.0.2:80/
+      switch: sw2
+      switch_port: 10
+      status: active
+
+    - name: tg3
+      iface: eth0
+      control_endpoint: http://192.168.0.3:80/
+      switch: sw3
+      switch_port: 10
+      status: active
+
+traffgen_config:
+    address_pool_base: 172.16.80.0
+    address_pool_prefix_len: 20

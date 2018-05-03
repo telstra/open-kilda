@@ -355,20 +355,20 @@ public class FlowCrudSteps implements En {
     }
 
     @And("^each flow has meters installed with (\\d+) max bandwidth$")
-    public void eachFlowHasRulesInstalledWithBandwidth(long bandwidth) {
+    public void eachFlowHasMetersInstalledWithBandwidth(long bandwidth) {
         for (FlowPayload flow : flows) {
             ImmutablePair<Flow, Flow> flowPair = topologyEngineService.getFlow(flow.getId());
 
-            MetersEntriesMap srcSwitchMeters = floodlightService.getMeters(flowPair.getLeft().getSourceSwitch());
+            MetersEntriesMap forwardSwitchMeters = floodlightService.getMeters(flowPair.getLeft().getSourceSwitch());
             int forwardMeterId = flowPair.getLeft().getMeterId();
-            assertThat(srcSwitchMeters, hasKey(forwardMeterId));
-            MeterEntry forwardMeter = srcSwitchMeters.get(forwardMeterId);
+            assertThat(forwardSwitchMeters, hasKey(forwardMeterId));
+            MeterEntry forwardMeter = forwardSwitchMeters.get(forwardMeterId);
             assertThat(forwardMeter.getEntries(), contains(hasProperty("rate", equalTo(bandwidth))));
 
-            MetersEntriesMap dstSwitchMeters = floodlightService.getMeters(flowPair.getRight().getSourceSwitch());
+            MetersEntriesMap reverseSwitchMeters = floodlightService.getMeters(flowPair.getRight().getSourceSwitch());
             int reverseMeterId = flowPair.getRight().getMeterId();
-            assertThat(dstSwitchMeters, hasKey(reverseMeterId));
-            MeterEntry reverseMeter = dstSwitchMeters.get(reverseMeterId);
+            assertThat(reverseSwitchMeters, hasKey(reverseMeterId));
+            MeterEntry reverseMeter = reverseSwitchMeters.get(reverseMeterId);
             assertThat(reverseMeter.getEntries(), contains(hasProperty("rate", equalTo(bandwidth))));
         }
     }
