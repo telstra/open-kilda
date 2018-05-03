@@ -88,7 +88,7 @@ public class FlowMetricGenBolt extends MetricGenBolt {
                     }
                     else
                     {
-                        LOGGER.warn("missed cache for cookie {}", entry.getCookie());
+                        LOGGER.warn("missed cache for sw {} cookie {}", switchId, entry.getCookie());
                     }
                     emit(entry, timestamp, switchId, flow, dstSwitch);
                 }
