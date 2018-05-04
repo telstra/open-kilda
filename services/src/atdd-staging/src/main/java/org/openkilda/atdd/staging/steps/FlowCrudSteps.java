@@ -170,7 +170,7 @@ public class FlowCrudSteps implements En {
             FlowPayload result = northboundService.addFlow(flow);
 
             assertThat(format("A flow creation request for '%s' failed.", flow.getId()), result,
-                    reflectEquals(flow, "lastUpdated"));
+                    reflectEquals(flow, "lastUpdated", "status"));
             assertThat(format("The flow '%s' has wrong lastUpdated returned by Northbound.", flow.getId()), result,
                     hasProperty("lastUpdated", notNullValue()));
         }
