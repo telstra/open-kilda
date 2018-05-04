@@ -39,6 +39,8 @@ import cucumber.api.java.en.When;
 import cucumber.api.java8.En;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
+import org.apache.commons.collections4.ListValuedMap;
+import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 import org.apache.logging.log4j.util.Strings;
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
 import org.openkilda.atdd.staging.service.floodlight.FloodlightService;
@@ -371,6 +373,31 @@ public class FlowCrudSteps implements En {
             MeterEntry reverseMeter = reverseSwitchMeters.get(reverseMeterId);
             assertThat(reverseMeter.getEntries(), contains(hasProperty("rate", equalTo(bandwidth))));
         }
+    }
+
+    @And("^all active switches have no excessive meters installed$")
+    public void noExcessiveMetersInstalledOnActiveSwitches() {
+        ListValuedMap<String, Integer> switchMeters = new ArrayListValuedHashMap<>();
+        for (FlowPayload flow : flows) {
+            ImmutablePair<Flow, Flow> flowPair = topologyEngineService.getFlow(flow.getId());
+            if (flowPair != null) {
+                switchMeters.put(flowPair.getLeft().getSourceSwitch(), flowPair.getLeft().getMeterId());
+                switchMeters.put(flowPair.getRight().getSourceSwitch(), flowPair.getRight().getMeterId());
+            }
+        }
+
+        List<TopologyDefinition.Switch> switches = topologyDefinition.getActiveSwitches();
+        switches.forEach(sw -> {
+            List<Integer> expectedMeters = switchMeters.get(sw.getDpId());
+            List<Integer> actualMeters = floodlightService.getMeters(sw.getDpId()).values().stream()
+                    .map(MeterEntry::getMeterId)
+                    .collect(toList());
+
+            if (!expectedMeters.isEmpty() || !actualMeters.isEmpty()) {
+                assertThat(format("Meters of switch %s don't match expected.", sw), actualMeters,
+                        containsInAnyOrder(expectedMeters));
+            }
+        });
     }
 
     @Then("^each flow can be deleted$")

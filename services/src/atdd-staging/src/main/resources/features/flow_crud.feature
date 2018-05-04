@@ -34,4 +34,5 @@ Feature: Flow CRUD
     And each flow can not be read from Northbound
     And each flow can not be read from TopologyEngine
     And each flow has no rules installed
+    And all active switches have no excessive meters installed
     And each flow has no traffic
