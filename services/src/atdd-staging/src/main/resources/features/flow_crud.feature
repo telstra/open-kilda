@@ -6,7 +6,7 @@ Feature: Flow CRUD
     Given the reference topology
     And all defined switches are discovered
     And all defined links are detected
-    And a clean topology with no flows and no discrepancies
+#    And a clean topology with no flows and no discrepancies
 
   @CRUD
   Scenario: Create, read, update and delete flows across the entire set of defined switches
@@ -33,5 +33,6 @@ Feature: Flow CRUD
     Then each flow can be deleted
     And each flow can not be read from Northbound
     And each flow can not be read from TopologyEngine
+    And all active switches have correct rules installed per Northbound validation
     And each flow has no rules installed
     And each flow has no traffic
