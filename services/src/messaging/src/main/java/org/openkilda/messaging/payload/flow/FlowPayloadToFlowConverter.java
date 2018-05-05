@@ -13,14 +13,10 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.utils;
+package org.openkilda.messaging.payload.flow;
 
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
-import org.openkilda.messaging.payload.flow.FlowPathPayload;
-import org.openkilda.messaging.payload.flow.FlowPayload;
-import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -28,7 +24,7 @@ import java.util.stream.Collectors;
 /**
  * Northbound utility methods.
  */
-public final class Converter {
+public final class FlowPayloadToFlowConverter {
     /**
      * Builds {@link Flow} instance by {@link FlowPayload} instance.
      *
@@ -80,7 +76,7 @@ public final class Converter {
      * @return list of {@link FlowPayload} instance
      */
     public static List<FlowPayload> buildFlowsPayloadByFlows(List<Flow> flows) {
-        return flows.stream().map(Converter::buildFlowPayloadByFlow).collect(Collectors.toList());
+        return flows.stream().map(FlowPayloadToFlowConverter::buildFlowPayloadByFlow).collect(Collectors.toList());
     }
 
     /**
@@ -103,5 +99,8 @@ public final class Converter {
      */
     public static FlowReroutePayload buildReroutePayload(String flowId, PathInfoData path, boolean rerouted) {
         return new FlowReroutePayload(flowId, path, rerouted);
+    }
+
+    private FlowPayloadToFlowConverter() {
     }
 }

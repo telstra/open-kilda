@@ -231,15 +231,15 @@ public class FlowCrudStepsTest {
         final Set<FlowPayload> flows = flowCrudSteps.flows;
         assertEquals(1, flows.size());
         assertThat(flows, hasItem(allOf(
-                        hasProperty("source", allOf(
-                                hasProperty("switchDpId", equalTo("00:00:00:00:00:01")),
-                                hasProperty("portId", equalTo(10)),
-                                hasProperty("vlanId", equalTo(1)))),
-                        hasProperty("destination", allOf(
-                                hasProperty("switchDpId", equalTo("00:00:00:00:00:02")),
-                                hasProperty("portId", equalTo(10)),
-                                hasProperty("vlanId", equalTo(1))))
-                )));
+                hasProperty("source", allOf(
+                        hasProperty("switchDpId", equalTo("00:00:00:00:00:01")),
+                        hasProperty("portId", equalTo(10)),
+                        hasProperty("vlanId", equalTo(1)))),
+                hasProperty("destination", allOf(
+                        hasProperty("switchDpId", equalTo("00:00:00:00:00:02")),
+                        hasProperty("portId", equalTo(10)),
+                        hasProperty("vlanId", equalTo(1))))
+        )));
     }
 
     @Test

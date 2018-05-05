@@ -18,8 +18,10 @@ import static com.nitorcreations.Matchers.reflectEquals;
 import static java.lang.String.format;
 import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toList;
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
@@ -37,9 +39,13 @@ import cucumber.api.java.en.When;
 import cucumber.api.java8.En;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
+import org.apache.commons.collections4.ListValuedMap;
+import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 import org.apache.logging.log4j.util.Strings;
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
 import org.openkilda.atdd.staging.service.floodlight.FloodlightService;
+import org.openkilda.atdd.staging.service.floodlight.model.MeterEntry;
+import org.openkilda.atdd.staging.service.floodlight.model.MetersEntriesMap;
 import org.openkilda.atdd.staging.service.northbound.NorthboundService;
 import org.openkilda.atdd.staging.service.topology.TopologyEngineService;
 import org.openkilda.atdd.staging.service.traffexam.FlowNotApplicableException;
@@ -166,7 +172,7 @@ public class FlowCrudSteps implements En {
             FlowPayload result = northboundService.addFlow(flow);
 
             assertThat(format("A flow creation request for '%s' failed.", flow.getId()), result,
-                    reflectEquals(flow, "lastUpdated"));
+                    reflectEquals(flow, "lastUpdated", "status"));
             assertThat(format("The flow '%s' has wrong lastUpdated returned by Northbound.", flow.getId()), result,
                     hasProperty("lastUpdated", notNullValue()));
         }
@@ -350,9 +356,48 @@ public class FlowCrudSteps implements En {
                 flows.stream().map(flow -> equalTo(flow.getId())).collect(toList())));
     }
 
-    @And("^each flow has rules installed with (\\d+) max bandwidth$")
-    public void eachFlowHasRulesInstalledWithBandwidth(int bandwidth) {
-        //TODO: implement the check
+    @And("^each flow has meters installed with (\\d+) max bandwidth$")
+    public void eachFlowHasMetersInstalledWithBandwidth(long bandwidth) {
+        for (FlowPayload flow : flows) {
+            ImmutablePair<Flow, Flow> flowPair = topologyEngineService.getFlow(flow.getId());
+
+            MetersEntriesMap forwardSwitchMeters = floodlightService.getMeters(flowPair.getLeft().getSourceSwitch());
+            int forwardMeterId = flowPair.getLeft().getMeterId();
+            assertThat(forwardSwitchMeters, hasKey(forwardMeterId));
+            MeterEntry forwardMeter = forwardSwitchMeters.get(forwardMeterId);
+            assertThat(forwardMeter.getEntries(), contains(hasProperty("rate", equalTo(bandwidth))));
+
+            MetersEntriesMap reverseSwitchMeters = floodlightService.getMeters(flowPair.getRight().getSourceSwitch());
+            int reverseMeterId = flowPair.getRight().getMeterId();
+            assertThat(reverseSwitchMeters, hasKey(reverseMeterId));
+            MeterEntry reverseMeter = reverseSwitchMeters.get(reverseMeterId);
+            assertThat(reverseMeter.getEntries(), contains(hasProperty("rate", equalTo(bandwidth))));
+        }
+    }
+
+    @And("^all active switches have no excessive meters installed$")
+    public void noExcessiveMetersInstalledOnActiveSwitches() {
+        ListValuedMap<String, Integer> switchMeters = new ArrayListValuedHashMap<>();
+        for (FlowPayload flow : flows) {
+            ImmutablePair<Flow, Flow> flowPair = topologyEngineService.getFlow(flow.getId());
+            if (flowPair != null) {
+                switchMeters.put(flowPair.getLeft().getSourceSwitch(), flowPair.getLeft().getMeterId());
+                switchMeters.put(flowPair.getRight().getSourceSwitch(), flowPair.getRight().getMeterId());
+            }
+        }
+
+        List<TopologyDefinition.Switch> switches = topologyDefinition.getActiveSwitches();
+        switches.forEach(sw -> {
+            List<Integer> expectedMeters = switchMeters.get(sw.getDpId());
+            List<Integer> actualMeters = floodlightService.getMeters(sw.getDpId()).values().stream()
+                    .map(MeterEntry::getMeterId)
+                    .collect(toList());
+
+            if (!expectedMeters.isEmpty() || !actualMeters.isEmpty()) {
+                assertThat(format("Meters of switch %s don't match expected.", sw), actualMeters,
+                        containsInAnyOrder(expectedMeters));
+            }
+        });
     }
 
     @Then("^each flow can be deleted$")

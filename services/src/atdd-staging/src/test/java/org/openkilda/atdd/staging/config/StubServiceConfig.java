@@ -15,9 +15,9 @@
 
 package org.openkilda.atdd.staging.config;
 
-import static org.mockito.Mockito.mock;
-
 import net.jodah.failsafe.RetryPolicy;
+import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
+import org.openkilda.atdd.staging.service.StubServiceFactory;
 import org.openkilda.atdd.staging.service.floodlight.FloodlightService;
 import org.openkilda.atdd.staging.service.northbound.NorthboundService;
 import org.openkilda.atdd.staging.service.topology.TopologyEngineService;
@@ -30,21 +30,26 @@ import java.util.concurrent.TimeUnit;
 
 @Configuration
 @Profile("mock")
-public class MockedServiceConfig {
+public class StubServiceConfig {
 
     @Bean
-    public FloodlightService floodlightService() {
-        return mock(FloodlightService.class);
+    public StubServiceFactory stubServiceFactory(TopologyDefinition topologyDefinition) {
+        return new StubServiceFactory(topologyDefinition);
     }
 
     @Bean
-    public NorthboundService northboundService() {
-        return mock(NorthboundService.class);
+    public FloodlightService floodlightService(StubServiceFactory factory) {
+        return factory.getFloodlightStub();
     }
 
     @Bean
-    public TopologyEngineService topologyEngineService() {
-        return mock(TopologyEngineService.class);
+    public NorthboundService northboundService(StubServiceFactory factory) {
+        return factory.getNorthboundStub();
+    }
+
+    @Bean
+    public TopologyEngineService topologyEngineService(StubServiceFactory factory) {
+        return factory.getTopologyEngineStub();
     }
 
     // The retrier is used for repeating operations which depend on the system state and may change the result after delays.
@@ -56,7 +61,7 @@ public class MockedServiceConfig {
     }
 
     @Bean
-    public TraffExamService traffExamService() {
-        return mock(TraffExamService.class);
+    public TraffExamService traffExamService(StubServiceFactory factory) {
+        return factory.getTraffExamStub();
     }
 }
