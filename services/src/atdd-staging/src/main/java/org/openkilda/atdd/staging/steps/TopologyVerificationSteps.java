@@ -14,10 +14,12 @@
  */
 package org.openkilda.atdd.staging.steps;
 
+import static java.lang.String.format;
 import static java.util.stream.Collectors.toList;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 
 import cucumber.api.Scenario;
 import cucumber.api.java.Before;
@@ -26,11 +28,13 @@ import cucumber.api.java.en.Given;
 import cucumber.api.java8.En;
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition.Isl;
+import org.openkilda.atdd.staging.service.northbound.NorthboundService;
 import org.openkilda.atdd.staging.service.topology.TopologyEngineService;
 import org.openkilda.atdd.staging.steps.helpers.TopologyChecker.IslMatcher;
 import org.openkilda.atdd.staging.steps.helpers.TopologyChecker.SwitchMatcher;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
@@ -45,6 +49,9 @@ public class TopologyVerificationSteps implements En {
 
     @Autowired
     private TopologyDefinition topologyDefinition;
+
+    @Autowired
+    private NorthboundService northboundService;
 
     private List<TopologyDefinition.Switch> referenceSwitches;
     private List<TopologyDefinition.Isl> referenceLinks;
@@ -103,5 +110,17 @@ public class TopologyVerificationSteps implements En {
                         })
                         .map(IslMatcher::new)
                         .collect(toList())));
+    }
+
+    @And("^all active switches have correct rules installed per Northbound validation")
+    public void validateSwitchRules() {
+        actualSwitches.forEach(sw -> {
+            String switchId = sw.getSwitchId();
+            RulesValidationResult validationResult = northboundService.validateSwitchRules(switchId);
+            assertTrue(format("The switch '%s' is missing rules: %s", switchId, validationResult.getMissingRules()),
+                    validationResult.getMissingRules().isEmpty());
+            assertTrue(format("The switch '%s' has excess rules: %s", switchId, validationResult.getExcessRules()),
+                    validationResult.getExcessRules().isEmpty());
+        });
     }
 }

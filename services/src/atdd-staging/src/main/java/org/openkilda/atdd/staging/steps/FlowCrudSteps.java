@@ -14,22 +14,12 @@
  */
 package org.openkilda.atdd.staging.steps;
 
-import static com.nitorcreations.Matchers.reflectEquals;
 import static java.lang.String.format;
 import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toList;
-import static org.hamcrest.Matchers.contains;
-import static org.hamcrest.Matchers.containsInAnyOrder;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.hasKey;
-import static org.hamcrest.Matchers.hasProperty;
-import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.notNullValue;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.*;
+import static org.junit.Assert.*;
 
 import com.google.common.annotations.VisibleForTesting;
 import cucumber.api.java.en.And;
@@ -62,6 +52,7 @@ import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -166,14 +157,13 @@ public class FlowCrudSteps implements En {
         flows.forEach(flow -> flow.setMaximumBandwidth(bandwidth));
     }
 
-    @When("^creation request for each flow is successful$")
+    @When("^initialize creation of given flows$")
     public void creationRequestForEachFlowIsSuccessful() {
         for (FlowPayload flow : flows) {
             FlowPayload result = northboundService.addFlow(flow);
-
-            assertThat(format("A flow creation request for '%s' failed.", flow.getId()), result,
-                    reflectEquals(flow, "lastUpdated", "status"));
-            assertThat(format("The flow '%s' has wrong lastUpdated returned by Northbound.", flow.getId()), result,
+            assertThat(format("Flow status for '%s' was not set to '%s'", flow.getId(), FlowState.ALLOCATED),
+                    result.getStatus(), equalTo(FlowState.ALLOCATED.toString()));
+            assertThat(format("The flow '%s' is missing lastUpdated field", flow.getId()), result,
                     hasProperty("lastUpdated", notNullValue()));
         }
     }
@@ -209,7 +199,8 @@ public class FlowCrudSteps implements En {
     public void eachFlowIsInUpState() {
         for (FlowPayload flow : flows) {
             FlowIdStatusPayload status = Failsafe.with(retryPolicy
-                    .retryIf(p -> p == null || ((FlowIdStatusPayload) p).getStatus() != FlowState.UP))
+                    .retryIf(p -> !(p instanceof FlowIdStatusPayload)
+                            || ((FlowIdStatusPayload) p).getStatus() != FlowState.UP))
                     .get(() -> northboundService.getFlowStatus(flow.getId()));
 
             assertNotNull(format("The flow status for '%s' can't be retrived from Northbound.", flow.getId()), status);
@@ -231,9 +222,18 @@ public class FlowCrudSteps implements En {
         }
     }
 
-    @And("^each flow has rules installed$")
-    public void eachFlowHasRulesInstalled() {
-        //TODO: implement the check
+    @And("^each flow is valid per Northbound validation$")
+    public void eachFlowIsValid() {
+        flows.forEach(flow -> {
+            List<FlowValidationDto> validations = northboundService.validateFlow(flow.getId());
+            validations.forEach(flowValidation -> {
+                assertEquals(flow.getId(), flowValidation.getFlowId());
+                assertTrue(format("The flow '%s' has discrepancies: %s", flow.getId(), flowValidation.getDiscrepancies()),
+                        flowValidation.getDiscrepancies().isEmpty());
+                assertTrue(format("The flow '%s' didn't pass validation.", flow.getId()), flowValidation.getAsExpected());
+            });
+
+        });
     }
 
     @And("^each flow has traffic going with bandwidth not less than (\\d+)$")
@@ -448,4 +448,14 @@ public class FlowCrudSteps implements En {
     public void eachFlowHasNoTraffic() {
         //TODO: implement the check
     }
+
+//    @After({"@CRUD"})
+//    public void cleanup() {
+//        //delete any left flows
+//        List<String> existingFlowIds = northboundService.getAllFlows().stream()
+//                .map(FlowPayload::getId).collect(toList());
+//        flows.stream()
+//                .filter(f -> existingFlowIds.contains(f.getId()))
+//                .forEach(f -> northboundService.deleteFlow(f.getId()));
+//    }
 }

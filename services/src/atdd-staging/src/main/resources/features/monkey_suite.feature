@@ -9,7 +9,7 @@ Feature: Monkey Suite
   @Prepare
   Scenario: Create flows for monkeys
 
-    When creation request for each flow is successful
+    When initialize creation of given flows
 
   @CheckFlows
   Scenario: Check the flows
@@ -17,7 +17,6 @@ Feature: Monkey Suite
     Then each flow is created and stored in TopologyEngine
     And each flow is in UP state
     And each flow can be read from Northbound
-    And each flow has rules installed
 
   @CheckTraffic
   Scenario: Check the traffic
