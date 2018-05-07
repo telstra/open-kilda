@@ -41,7 +41,7 @@ public class CleanupSteps implements En {
     @Autowired
     private RetryPolicy retryPolicy;
 
-    @Given("^a clean topology with no flows and no discrepancies switch rules")
+    @Given("^a clean topology with no flows and no discrepancies in switch rules")
     public void cleanupFlowsAndSwitches() {
         northboundService.deleteAllFlows();
         assertTrue(northboundService.getAllFlows().isEmpty());
