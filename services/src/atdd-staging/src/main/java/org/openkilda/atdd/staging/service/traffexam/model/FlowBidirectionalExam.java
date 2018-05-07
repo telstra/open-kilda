@@ -14,14 +14,19 @@ public class FlowBidirectionalExam {
     public FlowBidirectionalExam(FlowPayload flow, Host source, Host dest, int bandwidth) {
         this.flow = flow;
 
+        // burst value is hardcoded into floddlight-modules as 1000 kbit/sec, so to overcome this burst we need at least
+        // 1024 * 1024 / 8 / 1500 = 87.3...
+
         forward = new Exam(source, dest)
                 .withSourceVlan(new Vlan(flow.getSource().getVlanId()))
                 .withDestVlan(new Vlan(flow.getDestination().getVlanId()))
-                .withBandwidthLimit(new Bandwidth(bandwidth));
+                .withBandwidthLimit(new Bandwidth(bandwidth))
+                .withBurstPkt(100);
         reverse = new Exam(dest, source)
                 .withSourceVlan(new Vlan(flow.getDestination().getVlanId()))
                 .withDestVlan(new Vlan(flow.getSource().getVlanId()))
-                .withBandwidthLimit(new Bandwidth(bandwidth));
+                .withBandwidthLimit(new Bandwidth(bandwidth))
+                .withBurstPkt(100);
     }
 
     public FlowPayload getFlow() {

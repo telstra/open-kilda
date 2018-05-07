@@ -8,6 +8,7 @@ public class Exam {
     private Vlan sourceVlan;
     private Vlan destVlan;
     private Bandwidth bandwidthLimit;
+    private int burstPkt = 0;
     private TimeLimit timeLimitSeconds;
 
     private ExamResources resources;
@@ -52,6 +53,15 @@ public class Exam {
     public Exam withBandwidthLimit(Bandwidth bandwidthLimit) {
         fieldRewriteCheck(this.bandwidthLimit);
         this.bandwidthLimit = bandwidthLimit;
+        return this;
+    }
+
+    public int getBurstPkt() {
+        return burstPkt;
+    }
+
+    public Exam withBurstPkt(int burstPkt) {
+        this.burstPkt = burstPkt;
         return this;
     }
 

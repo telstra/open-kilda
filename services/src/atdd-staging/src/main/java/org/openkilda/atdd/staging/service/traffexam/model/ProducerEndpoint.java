@@ -12,6 +12,9 @@ public class ProducerEndpoint extends Endpoint {
     @JsonSerialize(using = BandwidthJsonSerializer.class)
     private Bandwidth bandwidth = null;
 
+    @JsonProperty("burst_pkt")
+    private int burstPkt = 0;
+
     @JsonDeserialize(using = TimeLimitJsonDeserializer.class)
     @JsonSerialize(using = TimeLimitJsonSerializer.class)
     private TimeLimit time = null;
@@ -42,6 +45,14 @@ public class ProducerEndpoint extends Endpoint {
 
     public void setBandwidth(Bandwidth bandwidth) {
         this.bandwidth = bandwidth;
+    }
+
+    public int getBurstPkt() {
+        return burstPkt;
+    }
+
+    public void setBurstPkt(int burstPkt) {
+        this.burstPkt = burstPkt;
     }
 
     public TimeLimit getTime() {
