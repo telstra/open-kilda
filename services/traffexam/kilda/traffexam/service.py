@@ -210,11 +210,15 @@ class EndpointService(Abstract):
         self.run_iperf(subject, cmd)
 
     def _create_producer(self, subject):
+        bandwidth = subject.bandwidth * 1024
+        if subject.burst_pkt:
+            bandwidth = '{}/{}'.format(bandwidth, subject.burst_pkt)
+
         cmd = self.make_cmd_common_part(subject)
         cmd += [
             '--client={}'.format(subject.remote_address.address),
             '--port={}'.format(subject.remote_address.port),
-            '--bandwidth={}'.format(subject.bandwidth * 1024),
+            '--bandwidth={}'.format(bandwidth),
             '--time={}'.format(subject.time),
             '--interval=1',
             '--udp']
