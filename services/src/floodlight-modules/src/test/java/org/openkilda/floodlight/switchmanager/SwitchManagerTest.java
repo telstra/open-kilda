@@ -46,6 +46,7 @@ import static org.openkilda.floodlight.switchmanager.ISwitchManager.DROP_RULE_CO
 import static org.openkilda.floodlight.switchmanager.ISwitchManager.VERIFICATION_BROADCAST_RULE_COOKIE;
 import static org.openkilda.floodlight.switchmanager.ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE;
 
+import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.SwitchDescription;
@@ -286,6 +287,8 @@ public class SwitchManagerTest {
         expect(switchDescription.getManufacturerDescription()).andStubReturn("");
 
         expect(iofSwitch.write(scheme.installMeter(bandwidth, burstSize, meterId))).andReturn(true);
+        expect(iofSwitch.writeRequest(anyObject(OFBarrierRequest.class)))
+                .andReturn(Futures.immediateFuture(createMock(OFBarrierReply.class)));
 
         replay(ofSwitchService);
         replay(iofSwitch);
