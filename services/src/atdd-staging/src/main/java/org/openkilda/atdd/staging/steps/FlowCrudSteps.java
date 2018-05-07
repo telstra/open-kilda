@@ -236,15 +236,21 @@ public class FlowCrudSteps implements En {
         });
     }
 
-    @And("^each flow has traffic going with bandwidth not less than (\\d+)$")
-    public void eachFlowHasTrafficGoingWithBandwidthNotLessThan(int bandwidth) {
+    @And("^each flow has traffic going with bandwidth not less than (\\d+) and not greater than (\\d+)$")
+    public void eachFlowHasTrafficGoingWithBandwidthNotLessThan(int minBandwidth, int maxBandwidth) {
+        int expectedBandwidthLowLimit = (int) Math.round(minBandwidth * .95);
+        int expectedBandwidthHighLimit = (int) Math.round(maxBandwidth * 1.05);
+
         FlowTrafficExamBuilder examBuilder = new FlowTrafficExamBuilder(topologyDefinition, traffExam);
         List<Exam> singleExams = new LinkedList<>();
         List<FlowBidirectionalExam> examsInProgress = new LinkedList<>();
 
         for (FlowPayload flow : flows) {
             try {
-                FlowBidirectionalExam flowExam = examBuilder.makeBidirectionalExam(flow);
+                // Instruct TraffGen to produce 25% more traffic than the flow should pass, then verify if the actual is within the limits.
+                int bandwidthToExam = (int) Math.round(flow.getMaximumBandwidth() * 1.25);
+
+                FlowBidirectionalExam flowExam = examBuilder.makeBidirectionalExam(flow, bandwidthToExam);
 
                 List<Exam> createdExams = new ArrayList<>(2);
                 try {
@@ -262,12 +268,11 @@ public class FlowCrudSteps implements En {
             }
         }
 
-        LOGGER.info(String.format(
-                "%d of %d flow's traffic examination have been started", examsInProgress.size(),
-                flows.size()));
+        LOGGER.info("{} of {} flow's traffic examination have been started", examsInProgress.size(),
+                flows.size());
 
         if (0 < singleExams.size()) {
-            LOGGER.warn(String.format("Kill %d incomplete(one direction) flow traffic exams.", singleExams.size()));
+            LOGGER.warn("Kill {} incomplete(one direction) flow traffic exams.", singleExams.size());
             for (Exam current : singleExams) {
                 traffExam.stopExam(current);
             }
@@ -295,8 +300,8 @@ public class FlowCrudSteps implements En {
                 isTraffic.add(report.isTraffic());
                 isTrafficLose.add(report.isTrafficLose());
 
-                Double bandwidthLimit = bandwidth * .95;
-                isBandwidthMatch.add(report.getBandwidth().getKbps() < bandwidthLimit);
+                isBandwidthMatch.add(report.getBandwidth().getKbps() >= expectedBandwidthLowLimit
+                        && report.getBandwidth().getKbps() <= expectedBandwidthHighLimit);
             }
 
             if (isError.stream().anyMatch(value -> value)) {
@@ -314,24 +319,24 @@ public class FlowCrudSteps implements En {
                             ).collect(toList()));
                 }
 
-                LOGGER.error(String.format(
-                        "Flow's %s traffic exam ends with error\n%s",
+                LOGGER.error(
+                        "Flow's {} traffic exam ends with error\n{}",
                         flow.getId(),
-                        Strings.join(errors, '\n')));
+                        Strings.join(errors, '\n'));
                 issues = true;
             }
 
             if (!isTraffic.stream().allMatch(value -> value)) {
-                LOGGER.error(String.format("Flow's %s traffic is missing", flow.getId()));
+                LOGGER.error("Flow's {} traffic is missing", flow.getId());
                 issues = true;
             }
 
             if (isTrafficLose.stream().anyMatch(value -> value)) {
-                LOGGER.warn(String.format("Flow %s is loosing packages", flow.getId()));
+                LOGGER.warn("Flow {} is loosing packages", flow.getId());
             }
 
             if (!isBandwidthMatch.stream().allMatch(value -> value)) {
-                LOGGER.error("Flow %s does not provide requested bandwidth", flow.getId());
+                LOGGER.error("Flow {} does not provide requested bandwidth", flow.getId());
                 issues = true;
             }
         }

@@ -4,7 +4,7 @@ Feature: Monkey Suite
   Background:
     Given flows defined over active traffgens in the reference topology
     And each flow has flow_id with monkey prefix
-    And each flow has max bandwidth set to 10000
+    And each flow has max bandwidth set to 1000
 
   @Prepare
   Scenario: Create flows for monkeys
@@ -21,7 +21,7 @@ Feature: Monkey Suite
   @CheckTraffic
   Scenario: Check the traffic
 
-    Then each flow has traffic going with bandwidth not less than 10000
+    Then each flow has traffic going with bandwidth not less than 1000 and not greater than 1000
 
   @Cleanup
   Scenario: Delete the flows

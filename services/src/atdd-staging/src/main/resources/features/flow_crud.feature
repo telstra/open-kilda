@@ -13,7 +13,7 @@ Feature: Flow CRUD
 
     Given flows defined over active switches in the reference topology
     And each flow has unique flow_id
-    And each flow has max bandwidth set to 10000
+    And each flow has max bandwidth set to 1000
 
     When initialize creation of given flows
 
@@ -22,13 +22,13 @@ Feature: Flow CRUD
     And each flow can be read from Northbound
     And each flow is valid per Northbound validation
     And all active switches have correct rules installed per Northbound validation
-    And each flow has meters installed with 10000 max bandwidth
-    And each flow has traffic going with bandwidth not less than 10000
+    And each flow has meters installed with 1000 max bandwidth
+    And each flow has traffic going with bandwidth not less than 1000 and not greater than 1000
 
     Then each flow can be updated with 5000 max bandwidth
     And each flow is in UP state
     And each flow has meters installed with 5000 max bandwidth
-    And each flow has traffic going with bandwidth not less than 5000
+    And each flow has traffic going with bandwidth not less than 5000 and not greater than 5000
 
     Then each flow can be deleted
     And each flow can not be read from Northbound

@@ -21,7 +21,8 @@ public class ExamReport {
     }
 
     public Bandwidth getBandwidth() {
-        return new Bandwidth(producerReport.getBitsPerSecond().intValue());
+        final int kbps = producerReport.getBitsPerSecond().intValue() / 1024;
+        return new Bandwidth(kbps);
     }
 
     public List<String> getErrors() {
