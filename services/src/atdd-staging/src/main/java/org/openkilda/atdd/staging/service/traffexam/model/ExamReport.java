@@ -42,7 +42,7 @@ public class ExamReport {
     }
 
     public boolean isTraffic() {
-        return 0 < producerReport.getPackets() && 0 < consumerReport.getPackets();
+        return 0 < producerReport.getBytes();
     }
 
     public boolean isTrafficLose() {

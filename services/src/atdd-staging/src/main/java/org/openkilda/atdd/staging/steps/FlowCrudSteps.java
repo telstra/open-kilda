@@ -242,7 +242,7 @@ public class FlowCrudSteps implements En {
     @And("^each flow has traffic going with bandwidth not less than (\\d+) and not greater than (\\d+)$")
     public void eachFlowHasTrafficGoingWithBandwidthNotLessThan(int minBandwidth, int maxBandwidth) {
         int expectedBandwidthLowLimit = (int) Math.round(minBandwidth * .95);
-        int expectedBandwidthHighLimit = (int) Math.round(maxBandwidth * 1.05);
+        int expectedBandwidthHighLimit = (int) Math.round(maxBandwidth * 1.10);
 
         FlowTrafficExamBuilder examBuilder = new FlowTrafficExamBuilder(topologyDefinition, traffExam);
         List<Exam> singleExams = new LinkedList<>();
@@ -285,7 +285,6 @@ public class FlowCrudSteps implements En {
         for (FlowBidirectionalExam current : examsInProgress) {
             List<Boolean> isError = new ArrayList<>(2);
             List<Boolean> isTraffic = new ArrayList<>(2);
-            List<Boolean> isTrafficLose = new ArrayList<>(2);
             List<Boolean> isBandwidthMatch = new ArrayList<>(2);
 
             FlowPayload flow = current.getFlow();
@@ -301,7 +300,6 @@ public class FlowCrudSteps implements En {
 
                 isError.add(report.isError());
                 isTraffic.add(report.isTraffic());
-                isTrafficLose.add(report.isTrafficLose());
 
                 isBandwidthMatch.add(report.getBandwidth().getKbps() >= expectedBandwidthLowLimit
                         && report.getBandwidth().getKbps() <= expectedBandwidthHighLimit);
@@ -332,10 +330,6 @@ public class FlowCrudSteps implements En {
             if (!isTraffic.stream().allMatch(value -> value)) {
                 LOGGER.error("Flow's {} traffic is missing", flow.getId());
                 issues = true;
-            }
-
-            if (isTrafficLose.stream().anyMatch(value -> value)) {
-                LOGGER.warn("Flow {} is loosing packages", flow.getId());
             }
 
             if (!isBandwidthMatch.stream().allMatch(value -> value)) {
