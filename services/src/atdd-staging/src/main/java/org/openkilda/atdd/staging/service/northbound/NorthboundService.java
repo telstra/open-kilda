@@ -37,6 +37,8 @@ public interface NorthboundService {
 
     FlowPayload deleteFlow(String flowId);
 
+    List<FlowPayload> deleteAllFlows();
+
     FlowPathPayload getFlowPath(String flowId);
 
     FlowIdStatusPayload getFlowStatus(String flowId);
