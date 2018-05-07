@@ -14,6 +14,7 @@
  */
 package org.openkilda.atdd.staging.steps;
 
+import static java.lang.String.format;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
 import static org.junit.Assert.assertEquals;
@@ -21,8 +22,8 @@ import static org.junit.Assert.assertTrue;
 
 import cucumber.api.java.en.Given;
 import cucumber.api.java8.En;
-import net.jodah.failsafe.RetryPolicy;
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
+import org.openkilda.atdd.staging.service.floodlight.FloodlightService;
 import org.openkilda.atdd.staging.service.northbound.NorthboundService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,9 +40,9 @@ public class CleanupSteps implements En {
     private TopologyDefinition topologyDefinition;
 
     @Autowired
-    private RetryPolicy retryPolicy;
+    private FloodlightService floodlightService;
 
-    @Given("^a clean topology with no flows and no discrepancies in switch rules")
+    @Given("^a clean topology with no flows and no discrepancies in switch rules and meters")
     public void cleanupFlowsAndSwitches() {
         northboundService.deleteAllFlows();
         assertTrue(northboundService.getAllFlows().isEmpty());
@@ -54,5 +55,11 @@ public class CleanupSteps implements En {
                     assertEquals(0,
                             rulesSyncResult.getMissingRules().size() - rulesSyncResult.getInstalledRules().size());
                 });
+
+        topologyDefinition.getActiveSwitches()
+                .forEach(sw ->
+                        assertThat(format("Switch %s has unexpected meters installed", sw),
+                                floodlightService.getMeters(sw.getDpId()).values(), empty())
+                );
     }
 }
