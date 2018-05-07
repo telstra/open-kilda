@@ -178,6 +178,7 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
                     new EndpointAddress(destAddress.getAddress(), consumer.getBindPort()));
             if (exam.getBandwidthLimit() != null) {
                 producer.setBandwidth(exam.getBandwidthLimit());
+                producer.setBurstPkt(exam.getBurstPkt());
             }
             if (exam.getTimeLimitSeconds() != null) {
                 producer.setTime(exam.getTimeLimitSeconds());

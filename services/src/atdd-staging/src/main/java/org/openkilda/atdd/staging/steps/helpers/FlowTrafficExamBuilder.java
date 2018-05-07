@@ -29,7 +29,7 @@ public class FlowTrafficExamBuilder {
         }
     }
 
-    public FlowBidirectionalExam makeBidirectionalExam(FlowPayload flow) throws FlowNotApplicableException {
+    public FlowBidirectionalExam makeBidirectionalExam(FlowPayload flow, int bandwidth) throws FlowNotApplicableException {
         Optional<TraffGen> source = Optional.ofNullable(
                 endpointToTraffGen.get(makeComparableEndpoint(flow.getSource())));
         Optional<TraffGen> dest = Optional.ofNullable(
@@ -42,7 +42,7 @@ public class FlowTrafficExamBuilder {
         //noinspection ConstantConditions
         Host destHost = traffExam.hostByName(dest.get().getName());
 
-        return new FlowBidirectionalExam(flow, sourceHost, destHost);
+        return new FlowBidirectionalExam(flow, sourceHost, destHost, bandwidth);
     }
 
     private void checkIsFlowApplicable(FlowPayload flow, boolean sourceApplicable, boolean destApplicable)

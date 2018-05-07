@@ -21,7 +21,8 @@ public class ExamReport {
     }
 
     public Bandwidth getBandwidth() {
-        return new Bandwidth(producerReport.getBitsPerSecond().intValue());
+        final int kbps = producerReport.getBitsPerSecond().intValue() / 1024;
+        return new Bandwidth(kbps);
     }
 
     public List<String> getErrors() {
@@ -41,7 +42,7 @@ public class ExamReport {
     }
 
     public boolean isTraffic() {
-        return 0 < producerReport.getPackets() && 0 < consumerReport.getPackets();
+        return 0 < producerReport.getBytes();
     }
 
     public boolean isTrafficLose() {
