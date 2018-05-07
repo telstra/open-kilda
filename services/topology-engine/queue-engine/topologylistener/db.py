@@ -12,7 +12,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 #
-
+import collections
 import os
 import socket
 
@@ -70,6 +70,29 @@ def fetch_one(cursor):
         raise exc.DBMultipleResponse
 
     return result_set
+
+
+class ResponseIterator(collections.Iterator):
+    is_first = True
+
+    def __init__(self, cursor, q, p):
+        self.cursor = cursor
+        self.exc_empty = exc.DBRecordNotFound(q, p)
+
+    def next(self):
+        try:
+            value = next(self.cursor)
+        except StopIteration:
+            if self.is_first:
+                raise self.exc_empty
+            raise StopIteration
+        finally:
+            self.is_first = False
+
+        return value
+
+    def __iter__(self):
+        return self
 
 
 # neo4j monkey patching staff

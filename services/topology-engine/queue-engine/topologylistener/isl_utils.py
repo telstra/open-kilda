@@ -21,6 +21,7 @@ import py2neo
 
 from topologylistener import db
 from topologylistener import exc
+from topologylistener import flow_utils
 from topologylistener import model
 
 logger = logging.getLogger(__name__)
@@ -76,23 +77,20 @@ def fetch(tx, isl):
     return target
 
 
+def fetch_one_by_endpoint(tx, endpoint):
+    return db.fetch_one(fetch_by_endpoint(tx, endpoint))
+
+
 def fetch_by_endpoint(tx, endpoint):
-    q = (
-        'MATCH (src:switch)-[link:isl]->(dst:switch)\n'
-        'WHERE src.name=$src_dpid AND link.src_port=$src_port\n'
-        'RETURN src, link, dst')
+    q = textwrap.dedent("""
+        MATCH (src:switch)-[target:isl]->(:switch)
+        WHERE src.name=$src_switch AND target.src_port=$src_port
+        RETURN target""")
     p = {
-        'src_dpid': endpoint.dpid,
+        'src_switch': endpoint.dpid,
         'src_port': endpoint.port}
     cursor = tx.run(q, p)
-
-    try:
-        result_set = db.fetch_one(cursor)
-    except exc.DBEmptyResponse:
-        raise exc.DBRecordNotFound(q, p)
-
-    src_sw, isl, dst_sw = result_set['src'], result_set['link'], result_set['dst']
-    return model.InterSwitchLink.new_from_db(src_sw, dst_sw, isl)
+    return db.ResponseIterator((x['target'] for x in cursor), q, p)
 
 
 def fetch_by_datapath(tx, dpid):
@@ -105,13 +103,37 @@ def fetch_by_datapath(tx, dpid):
     return (x['target'] for x in cursor)
 
 
+def resolve_conflicts(tx, isl):
+    logger.info('Check for ISL conflicts with %s', isl)
+
+    involved = [
+        fetch(tx, isl), fetch(tx, isl.reversed())]
+    keep_dbid = {db.neo_id(x) for x in involved}
+
+    involved.extend(fetch_by_endpoint(tx, isl.source))
+    involved.extend(fetch_by_endpoint(tx, isl.dest))
+
+    affected_switches = set()
+    for link in involved:
+        affected_switches.add(link['src_switch'])
+        affected_switches.add(link['dst_switch'])
+
+    # acquire lock on all involved switches
+    flow_utils.precreate_switches(tx, *affected_switches)
+
+    for link in involved:
+        link_dbid = db.neo_id(link)
+        if link_dbid in keep_dbid:
+            continue
+
+        link_isl = model.InterSwitchLink.new_from_db(link)
+        logger.warning('Deactivate ISL %s due conflict with %s', link_isl, isl)
+        set_active_field(tx, link_dbid, 'inactive')
+        update_status(tx, link_isl)
+
+
 def switch_unplug(tx, dpid):
     logging.info("Deactivate all ISL to/from %s", dpid)
-
-    q = textwrap.dedent("""
-        MATCH (:switch) - [target:isl] -> ()
-        WHERE id(target) = $id
-        SET target.actual = 'inactive'""")
 
     for db_link in fetch_by_datapath(tx, dpid):
         source = model.NetworkEndpoint(
@@ -120,8 +142,7 @@ def switch_unplug(tx, dpid):
         isl = model.InterSwitchLink(source, dest, db_link['actual'])
         logging.debug("Found ISL: %s", isl)
 
-        tx.run(q, {'id': db.neo_id(db_link)})
-
+        set_active_field(tx, db.neo_id(db_link), 'inactive')
         update_status(tx, isl)
 
 
@@ -177,6 +198,17 @@ def update_status(tx, isl):
         logger.error(
             'ISL update status query stats:\n%s',
             json.dumps(stats, indent=2))
+
+
+def set_active_field(tx, neo_id, status):
+    q = textwrap.dedent("""
+        MATCH (:switch) - [target:isl] -> ()
+        WHERE id(target) = $id
+        SET target.actual = $status""")
+    p = {
+        'status': status,
+        'id': neo_id}
+    tx.run(q, p)
 
 
 def set_cost(tx, isl, cost):
