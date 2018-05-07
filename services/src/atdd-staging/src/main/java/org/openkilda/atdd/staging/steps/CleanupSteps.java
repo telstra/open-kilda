@@ -48,7 +48,7 @@ public class CleanupSteps implements En {
     @Autowired
     private RetryPolicy retryPolicy;
 
-    @Given("^a clean topology with no flows and no discrepancies")
+    @Given("^a clean topology with no flows and no discrepancies switch rules")
     public void cleanupFlowsAndSwitches() {
         List<String> flows = northboundService.getAllFlows().stream()
                 .map(FlowPayload::getId)
@@ -64,6 +64,7 @@ public class CleanupSteps implements En {
         });
 
         topologyDefinition.getActiveSwitches().stream()
+                .peek(sw -> northboundService.deleteSwitchRules(sw.getDpId()))
                 .map(sw -> northboundService.synchronizeSwitchRules(sw.getDpId()))
                 .forEach(rulesSyncResult -> {
                     assertThat(rulesSyncResult.getExcessRules(), empty());

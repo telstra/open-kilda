@@ -43,6 +43,8 @@ public interface NorthboundService {
 
     List<FlowPayload> getAllFlows();
 
+    List<Long> deleteSwitchRules(String switchId);
+
     RulesSyncResult synchronizeSwitchRules(String switchId);
 
     List<FlowValidationDto> validateFlow(String flowId);

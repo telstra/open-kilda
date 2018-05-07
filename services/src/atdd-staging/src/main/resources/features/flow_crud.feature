@@ -6,7 +6,7 @@ Feature: Flow CRUD
     Given the reference topology
     And all defined switches are discovered
     And all defined links are detected
-#    And a clean topology with no flows and no discrepancies
+    And a clean topology with no flows and no discrepancies switch rules
 
   @CRUD
   Scenario: Create, read, update and delete flows across the entire set of defined switches
