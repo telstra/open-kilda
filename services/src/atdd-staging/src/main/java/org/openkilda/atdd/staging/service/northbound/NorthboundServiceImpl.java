@@ -97,6 +97,15 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
+    public List<FlowPayload> deleteAllFlows() {
+        HttpHeaders httpHeaders = buildHeadersWithCorrelationId();
+        httpHeaders.set(Utils.EXTRA_AUTH, String.valueOf(System.currentTimeMillis()));
+        FlowPayload[] deletedFlows = restTemplate.exchange("/api/v1/flows", HttpMethod.DELETE,
+                new HttpEntity(httpHeaders), FlowPayload[].class).getBody();
+        return Arrays.asList(deletedFlows);
+    }
+
+    @Override
     public FlowPathPayload getFlowPath(String flowId) {
         return restTemplate.exchange("/api/v1/flows/path/{flow_id}", HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), FlowPathPayload.class, flowId).getBody();
@@ -148,7 +157,7 @@ public class NorthboundServiceImpl implements NorthboundService {
 
     @Override
     public RulesValidationResult validateSwitchRules(String switchId) {
-            return restTemplate.exchange("/api/v1/switches/{switch_id}/rules/validate", HttpMethod.GET,
+        return restTemplate.exchange("/api/v1/switches/{switch_id}/rules/validate", HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), RulesValidationResult.class, switchId).getBody();
     }
 

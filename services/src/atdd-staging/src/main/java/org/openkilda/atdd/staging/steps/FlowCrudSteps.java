@@ -14,6 +14,7 @@
  */
 package org.openkilda.atdd.staging.steps;
 
+import static com.nitorcreations.Matchers.reflectEquals;
 import static java.lang.String.format;
 import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toList;
@@ -161,7 +162,10 @@ public class FlowCrudSteps implements En {
     public void creationRequestForEachFlowIsSuccessful() {
         for (FlowPayload flow : flows) {
             FlowPayload result = northboundService.addFlow(flow);
-            assertThat(format("Flow status for '%s' was not set to '%s'", flow.getId(), FlowState.ALLOCATED),
+            assertThat(format("A flow creation request for '%s' failed.", flow.getId()), result,
+                    reflectEquals(flow, "lastUpdated", "status"));
+            assertThat(format("Flow status for '%s' was not set to '%s'. Received status: '%s'",
+                    flow.getId(), FlowState.ALLOCATED, result.getStatus()),
                     result.getStatus(), equalTo(FlowState.ALLOCATED.toString()));
             assertThat(format("The flow '%s' is missing lastUpdated field", flow.getId()), result,
                     hasProperty("lastUpdated", notNullValue()));
@@ -199,8 +203,7 @@ public class FlowCrudSteps implements En {
     public void eachFlowIsInUpState() {
         for (FlowPayload flow : flows) {
             FlowIdStatusPayload status = Failsafe.with(retryPolicy
-                    .retryIf(p -> !(p instanceof FlowIdStatusPayload)
-                            || ((FlowIdStatusPayload) p).getStatus() != FlowState.UP))
+                    .retryIf(p -> p ==null || ((FlowIdStatusPayload) p).getStatus() != FlowState.UP))
                     .get(() -> northboundService.getFlowStatus(flow.getId()));
 
             assertNotNull(format("The flow status for '%s' can't be retrived from Northbound.", flow.getId()), status);
@@ -453,14 +456,4 @@ public class FlowCrudSteps implements En {
     public void eachFlowHasNoTraffic() {
         //TODO: implement the check
     }
-
-//    @After({"@CRUD"})
-//    public void cleanup() {
-//        //delete any left flows
-//        List<String> existingFlowIds = northboundService.getAllFlows().stream()
-//                .map(FlowPayload::getId).collect(toList());
-//        flows.stream()
-//                .filter(f -> existingFlowIds.contains(f.getId()))
-//                .forEach(f -> northboundService.deleteFlow(f.getId()));
-//    }
 }
