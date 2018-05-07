@@ -297,7 +297,7 @@ class TestIsl(unittest.TestCase):
                 model.NetworkEndpoint(sw_delta, 3), None)
         isl_delta_gamma = isl_gamma_delta.reversed()
 
-        for dpid in sw_alpha, sw_beta, sw_gamma:
+        for dpid in sw_alpha, sw_beta, sw_gamma, sw_delta:
             self.assertTrue(make_switch_add(dpid))
 
         self.assertTrue(make_isl_discovery(isl_alpha_beta))
@@ -375,6 +375,38 @@ class TestIsl(unittest.TestCase):
 
         self.ensure_isl_props(neo4j_connect, forward, ISL_STATUS_PROPS_DOWN)
         self.ensure_isl_props(neo4j_connect, reverse, ISL_STATUS_PROPS_HALF_UP)
+
+    def test_multi_isl_port_down(self):
+        sw_alpha = make_datapath_id(1)
+        sw_beta = make_datapath_id(2)
+        sw_gamma = make_datapath_id(3)
+
+        isl_alpha_beta = model.InterSwitchLink(
+            model.NetworkEndpoint(sw_alpha, 2),
+            model.NetworkEndpoint(sw_beta, 2), None)
+        isl_beta_alpha = isl_alpha_beta.reversed()
+        isl_beta_gamma = model.InterSwitchLink(
+            model.NetworkEndpoint(sw_beta, 2),
+            model.NetworkEndpoint(sw_gamma, 3), None)
+        isl_gamma_beta = isl_beta_gamma.reversed()
+
+        for dpid in sw_alpha, sw_beta, sw_gamma:
+            self.assertTrue(make_switch_add(dpid))
+
+        self.assertTrue(make_isl_discovery(isl_alpha_beta))
+        self.assertTrue(make_isl_discovery(isl_beta_alpha))
+        self.assertTrue(make_isl_discovery(isl_beta_gamma))
+        self.assertTrue(make_isl_discovery(isl_gamma_beta))
+
+        self.assertTrue(make_port_down(isl_alpha_beta.dest))
+        self.ensure_isl_props(
+            neo4j_connect, isl_alpha_beta, ISL_STATUS_PROPS_HALF_UP)
+        self.ensure_isl_props(
+            neo4j_connect, isl_beta_alpha, ISL_STATUS_PROPS_DOWN)
+        self.ensure_isl_props(
+            neo4j_connect, isl_beta_gamma, ISL_STATUS_PROPS_DOWN)
+        self.ensure_isl_props(
+            neo4j_connect, isl_gamma_beta, ISL_STATUS_PROPS_HALF_UP)
 
     def test_cost_raise_on_port_down(self):
         self.setup_initial_data()

@@ -77,10 +77,6 @@ def fetch(tx, isl):
     return target
 
 
-def fetch_one_by_endpoint(tx, endpoint):
-    return db.fetch_one(fetch_by_endpoint(tx, endpoint))
-
-
 def fetch_by_endpoint(tx, endpoint):
     q = textwrap.dedent("""
         MATCH (src:switch)-[target:isl]->(:switch)
@@ -144,6 +140,30 @@ def switch_unplug(tx, dpid):
 
         set_active_field(tx, db.neo_id(db_link), 'inactive')
         update_status(tx, isl)
+
+
+def disable_by_endpoint(tx, endpoint):
+    logging.debug('Locate all ISL starts on %s', endpoint)
+
+    involved = list(fetch_by_endpoint(tx, endpoint))
+    switches = set()
+    for link in involved:
+        switches.add(link['src_switch'])
+        switches.add(link['dst_switch'])
+
+    flow_utils.precreate_switches(tx, *switches)
+
+    updated = []
+    for link in involved:
+        isl = model.InterSwitchLink.new_from_db(link)
+        logger.info('Deactivate ISL %s', isl)
+
+        set_active_field(tx, db.neo_id(link), 'inactive')
+        update_status(tx, isl)
+
+        updated.append(isl)
+
+    return updated
 
 
 def update_status(tx, isl):
