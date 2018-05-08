@@ -308,8 +308,11 @@ class MessageItem(object):
         logger.info('Isl failure: %s_%d -- apply policy %s: timestamp=%s',
                     switch_id, port, effective_policy, self.timestamp)
 
-        with graph.begin() as tx:
-            self.isl_fetch_and_deactivate(tx, switch_id, port)
+        try:
+            with graph.begin() as tx:
+                self.isl_fetch_and_deactivate(tx, switch_id, port)
+        except exc.DBRecordNotFound:
+            logger.error('There is no ISL on %s_%s', switch_id, port)
 
         return True
 
@@ -319,12 +322,14 @@ class MessageItem(object):
 
         logger.info('Port %s_%d deletion request: timestamp=%s',
                     switch_id, port_id, self.timestamp)
-
-        with graph.begin() as tx:
-            isl = self.isl_fetch_and_deactivate(tx, switch_id, port_id)
-            # TODO(crimi): should be policy / toggle based
-            isl_utils.set_cost(tx, isl, config.ISL_COST_WHEN_PORT_DOWN)
-            isl_utils.set_cost(tx, isl.reversed(), config.ISL_COST_WHEN_PORT_DOWN)
+        try:
+            with graph.begin() as tx:
+                isl = self.isl_fetch_and_deactivate(tx, switch_id, port_id)
+                # TODO(crimi): should be policy / toggle based
+                isl_utils.set_cost(tx, isl, config.ISL_COST_WHEN_PORT_DOWN)
+                isl_utils.set_cost(tx, isl.reversed(), config.ISL_COST_WHEN_PORT_DOWN)
+        except exc.DBRecordNotFound:
+            logger.info("There is no ISL on %s_%s", switch_id, port_id)
 
         return True
 

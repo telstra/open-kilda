@@ -376,6 +376,42 @@ class TestIsl(unittest.TestCase):
         self.ensure_isl_props(neo4j_connect, forward, ISL_STATUS_PROPS_DOWN)
         self.ensure_isl_props(neo4j_connect, reverse, ISL_STATUS_PROPS_HALF_UP)
 
+    def test_isl_down_without_isl(self):
+        sw_alpha = make_datapath_id(1)
+        sw_beta = make_datapath_id(2)
+        isl_alpha_beta = model.InterSwitchLink(
+                model.NetworkEndpoint(sw_alpha, 2),
+                model.NetworkEndpoint(sw_beta, 2), None)
+        isl_beta_alpha = isl_alpha_beta.reversed()
+
+        self.assertTrue(make_switch_add(sw_alpha))
+        self.assertTrue(make_isl_failed(isl_alpha_beta.source))
+
+        self.assertRaises(
+                exc.DBRecordNotFound, isl_utils.fetch,
+                neo4j_connect, isl_alpha_beta)
+        self.assertRaises(
+                exc.DBRecordNotFound, isl_utils.fetch,
+                neo4j_connect, isl_beta_alpha)
+
+    def test_port_down_without_isl(self):
+        sw_alpha = make_datapath_id(1)
+        sw_beta = make_datapath_id(2)
+        isl_alpha_beta = model.InterSwitchLink(
+                model.NetworkEndpoint(sw_alpha, 2),
+                model.NetworkEndpoint(sw_beta, 2), None)
+        isl_beta_alpha = isl_alpha_beta.reversed()
+
+        self.assertTrue(make_switch_add(sw_alpha))
+        self.assertTrue(make_port_down(isl_alpha_beta.source))
+
+        self.assertRaises(
+                exc.DBRecordNotFound, isl_utils.fetch,
+                neo4j_connect, isl_alpha_beta)
+        self.assertRaises(
+                exc.DBRecordNotFound, isl_utils.fetch,
+                neo4j_connect, isl_beta_alpha)
+
     def test_cost_raise_on_port_down(self):
         self.setup_initial_data()
         self._cost_raise_on_port_down(1, 10000, 10000)
