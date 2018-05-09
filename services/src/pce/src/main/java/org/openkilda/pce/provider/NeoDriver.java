@@ -138,8 +138,8 @@ public class NeoDriver implements PathComputer {
                     .setFlowId(record.get("flow_id").asString())
                     .setSrcSwitchId(record.get("src_switch").asString())
                     .setCookie(record.get("cookie").asLong())
-                    .setMeterId(record.get("meter_id").asInt())
-                    .setTransitVlanId(record.get("transit_vlan").asInt())
+                    .setMeterId(safeAsInt(record.get("meter_id")))
+                    .setTransitVlanId(safeAsInt(record.get("transit_vlan")))
             );
         }
         return flows;
@@ -265,25 +265,32 @@ public class NeoDriver implements PathComputer {
         Session session = driver.session();
         StatementResult queryResults = session.run(q);
         for (Record record : queryResults.list()) {
-            /*
-             * The cost may be a string or integer ... so, regarding cost, get the object.toString
-             * so that we know it is always a string and then parse as Int.
-             */
-            int cost = 0;
-            Value vCost = record.get("cost");
-            if (!vCost.isNull()){
-                cost = Integer.parseInt(vCost.asObject().toString());
-            }
             network.initOneEntry(
                     record.get("src_name").asString(),
                     record.get("dst_name").asString(),
-                    record.get("src_port").asInt(),
-                    record.get("dst_port").asInt(),
-                    cost,
-                    record.get("latency").asInt()
+                    safeAsInt(record.get("src_port")),
+                    safeAsInt(record.get("dst_port")),
+                    safeAsInt(record.get("cost")),
+                    safeAsInt(record.get("latency"))
                     );
         }
         return network;
+    }
+
+    /**
+     * @param val the value to parse
+     * @return 0 if val is null or not parseable, the int otherwise
+     */
+    private final int safeAsInt(Value val){
+        int asInt = 0;
+        if (!val.isNull()){
+            try {
+                asInt = Integer.parseInt(val.asObject().toString());
+            } catch (Exception e) {
+                logger.info("Exception trying to get an Integer; the String isn't parseable. Value: {}", val);
+            }
+        }
+        return asInt;
     }
 
 
@@ -313,24 +320,24 @@ public class NeoDriver implements PathComputer {
             List<PathNode> pathNodes = new ArrayList<>();
             PathNode src = new PathNode();
             src.setSwitchId(record.get("src_switch").asString());
-            src.setPortNo(record.get("src_port").asInt());
-            src.setSegLatency(record.get("latency").asInt());
+            src.setPortNo(safeAsInt(record.get("src_port")));
+            src.setSegLatency(safeAsInt(record.get("latency")));
             pathNodes.add(src);
             PathNode dst = new PathNode();
             dst.setSwitchId(record.get("dst_switch").asString());
-            dst.setPortNo(record.get("dst_port").asInt());
-            dst.setSegLatency(record.get("latency").asInt());
+            dst.setPortNo(safeAsInt(record.get("dst_port")));
+            dst.setSegLatency(safeAsInt(record.get("latency")));
             pathNodes.add(dst);
 
             String status = record.get("status").asString();
             IslChangeType state = ("active".equals(status)) ? IslChangeType.DISCOVERED : IslChangeType.FAILED;
 
             IslInfoData isl = new IslInfoData(
-                    record.get("latency").asInt(),
+                    safeAsInt(record.get("latency")),
                     pathNodes,
-                    record.get("speed").asInt(),
+                    safeAsInt(record.get("speed")),
                     state,
-                    record.get("available_bandwidth").asInt()
+                    safeAsInt(record.get("available_bandwidth"))
             );
             isl.setTimestamp(System.currentTimeMillis());
 
