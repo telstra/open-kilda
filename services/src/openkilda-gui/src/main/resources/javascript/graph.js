@@ -884,7 +884,8 @@ function dblclick(d,index) {
     element.setAttribute("class", classes);
     doubleClickTime = new Date();
     d3.select(this).classed("fixed", d.fixed = false);
-    force.resume();
+    showSwitchDetails(d);
+    //force.resume();
 }
 function dragstart(d) {
 	force.stop()
@@ -1108,7 +1109,7 @@ function setISLData(response,id){
 		 
 		 	 $('#'+id).append(tableRow);
  	 }
-	 
+	common.customDataTableSorting();
 	 var tableVar  =  $('#'+id).DataTable( {
 		 "iDisplayLength": 8,
 		 "aLengthMenu": false,
@@ -1118,10 +1119,11 @@ function setISLData(response,id){
 		  "autoWidth": false,
 		  destroy:true,
 		  language: {searchPlaceholder: "Search"},
+		  "aaSorting": [[0, "asc"]],
 		  "aoColumns": [
-				  { sWidth: '14%' },
+				  { sWidth: '14%',"sType": "name","bSortable": true },
 	              { sWidth:  '8%' },
-	              { sWidth: '8%' },
+	              { sWidth: '8%',"sType": "name","bSortable": true },
 	              { sWidth: '14%' },
 	              { sWidth: '8%' },
 	              { sWidth: '8%' },
