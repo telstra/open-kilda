@@ -583,6 +583,7 @@ def api_v1_topology_links():
 
         links = []
         for link in result:
+            neo4j_connect.pull(link['r'])
             links.append(format_isl(link['r']))
 
         application.logger.info('links found %d', len(result))
@@ -604,6 +605,7 @@ def api_v1_topology_switches():
 
         switches = []
         for sw in result:
+            neo4j_connect.pull(sw['n'])
             switches.append(format_switch(sw['n']))
 
         application.logger.info('switches found %d', len(result))
