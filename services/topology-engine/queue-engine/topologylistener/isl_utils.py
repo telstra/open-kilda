@@ -13,6 +13,7 @@
 #   limitations under the License.
 #
 
+import json
 import logging
 import textwrap
 
@@ -20,9 +21,33 @@ import py2neo
 
 from topologylistener import db
 from topologylistener import exc
+from topologylistener import flow_utils
 from topologylistener import model
 
 logger = logging.getLogger(__name__)
+
+
+def create_if_missing(tx, *links):
+    q = textwrap.dedent("""
+        MATCH (src:switch {name: $src_switch})
+        MATCH (dst:switch {name: $dst_switch})
+        MERGE (src) - [target:isl {
+          src_switch: $src_switch,
+          src_port: $src_port,
+          dst_switch: $dst_switch,
+          dst_port: $dst_port
+        }] -> (dst)
+        ON CREATE SET 
+          target.status=$status, target.actual=$status,
+          target.latency=0""")
+
+    for isl in sorted(links):
+        for target in (isl, isl.reversed()):
+            match = _make_match(target)
+            match['status'] = 'inactive'
+
+            logger.info('Ensure ISL exist: %s', target)
+            tx.run(q, match)
 
 
 def fetch(tx, isl):
@@ -52,23 +77,138 @@ def fetch(tx, isl):
     return target
 
 
+def fetch_one_by_endpoint(tx, endpoint):
+    return db.fetch_one(fetch_by_endpoint(tx, endpoint))
+
+
 def fetch_by_endpoint(tx, endpoint):
-    q = (
-        'MATCH (src:switch)-[link:isl]->(dst:switch)\n'
-        'WHERE src.name=$src_dpid AND link.src_port=$src_port\n'
-        'RETURN src, link, dst')
+    q = textwrap.dedent("""
+        MATCH (src:switch)-[target:isl]->(:switch)
+        WHERE src.name=$src_switch AND target.src_port=$src_port
+        RETURN target""")
     p = {
-        'src_dpid': endpoint.dpid,
+        'src_switch': endpoint.dpid,
         'src_port': endpoint.port}
     cursor = tx.run(q, p)
+    return db.ResponseIterator((x['target'] for x in cursor), q, p)
 
-    try:
-        result_set = db.fetch_one(cursor)
-    except exc.DBEmptyResponse:
-        raise exc.DBRecordNotFound(q, p)
 
-    src_sw, isl, dst_sw = result_set['src'], result_set['link'], result_set['dst']
-    return model.InterSwitchLink.new_from_db(src_sw, dst_sw, isl)
+def fetch_by_datapath(tx, dpid):
+    q = textwrap.dedent("""
+        MATCH (sw:switch {name: $src_switch})
+        - [target:isl {src_switch: $src_switch}] -> ()
+        RETURN target""")
+    p = {'src_switch': dpid}
+    cursor = tx.run(q, p)
+    return (x['target'] for x in cursor)
+
+
+def resolve_conflicts(tx, isl):
+    logger.info('Check for ISL conflicts with %s', isl)
+
+    involved = [
+        fetch(tx, isl), fetch(tx, isl.reversed())]
+    keep_dbid = {db.neo_id(x) for x in involved}
+
+    involved.extend(fetch_by_endpoint(tx, isl.source))
+    involved.extend(fetch_by_endpoint(tx, isl.dest))
+
+    affected_switches = set()
+    for link in involved:
+        affected_switches.add(link['src_switch'])
+        affected_switches.add(link['dst_switch'])
+
+    # acquire lock on all involved switches
+    flow_utils.precreate_switches(tx, *affected_switches)
+
+    for link in involved:
+        link_dbid = db.neo_id(link)
+        if link_dbid in keep_dbid:
+            continue
+
+        link_isl = model.InterSwitchLink.new_from_db(link)
+        logger.warning('Deactivate ISL %s due conflict with %s', link_isl, isl)
+        set_active_field(tx, link_dbid, 'inactive')
+        update_status(tx, link_isl)
+
+
+def switch_unplug(tx, dpid):
+    logging.info("Deactivate all ISL to/from %s", dpid)
+
+    for db_link in fetch_by_datapath(tx, dpid):
+        source = model.NetworkEndpoint(
+                db_link['src_switch'], db_link['src_port'])
+        dest = model.NetworkEndpoint(db_link['dst_switch'], db_link['dst_port'])
+        isl = model.InterSwitchLink(source, dest, db_link['actual'])
+        logging.debug("Found ISL: %s", isl)
+
+        set_active_field(tx, db.neo_id(db_link), 'inactive')
+        update_status(tx, isl)
+
+
+def update_status(tx, isl):
+    logging.info("Sync status both sides of ISL %s to each other", isl)
+
+    q = textwrap.dedent("""
+        MATCH
+          (:switch {name: $src_switch})
+          -
+          [self:isl {
+            src_switch: $src_switch,
+            src_port: $src_port,
+            dst_switch: $dst_switch,
+            dst_port: $dst_port
+          }]
+          ->
+          (:switch {name: $dst_switch})
+        MATCH
+          (:switch {name: $peer_src_switch})
+          -
+          [peer:isl {
+            src_switch: $peer_src_switch,
+            src_port: $peer_src_port,
+            dst_switch: $peer_dst_switch,
+            dst_port: $peer_dst_port
+          }]
+          ->
+          (:switch {name: $peer_dst_switch})
+
+        WITH self, peer,
+          CASE WHEN self.actual = $status_up AND peer.actual = $status_up
+               THEN $status_up ELSE $status_down END AS isl_status
+
+        SET self.status=isl_status
+        SET peer.status=isl_status""")
+
+    p = {
+        'status_up': 'active',
+        'status_down': 'inactive'}
+    p.update(_make_match(isl))
+    p.update({'peer_' + k: v for k, v in _make_match(isl.reversed()).items()})
+
+    logger.debug('ISL update status query:\n%s', q)
+    cursor = tx.run(q, p)
+
+    stats = cursor.stats()
+    if stats['properties_set'] != 2:
+        logger.error(
+            'ISL update status query do not update one or both edges '
+            'of ISL.')
+        logger.error('ISL update status query:\n%s', q)
+        logger.error(
+            'ISL update status query stats:\n%s',
+            json.dumps(stats, indent=2))
+
+
+def set_active_field(tx, neo_id, status):
+    q = textwrap.dedent("""
+        MATCH (:switch) - [target:isl] -> ()
+        WHERE id(target) = $id
+        SET target.actual = $status""")
+    p = {
+        'status': status,
+        'id': neo_id}
+    tx.run(q, p)
 
 
 def set_cost(tx, isl, cost):
@@ -118,7 +258,7 @@ def set_props(tx, isl, props):
                 db.escape_fields(update), field_prefix='target.')
 
         logger.debug('Push ISL properties: %r', update)
-        tx.run(q, {'target_id': py2neo.remote(target)._id})
+        tx.run(q, {'target_id': db.neo_id(target)})
 
     return origin
 

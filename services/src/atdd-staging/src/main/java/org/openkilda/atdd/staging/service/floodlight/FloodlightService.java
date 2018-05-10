@@ -16,6 +16,7 @@
 package org.openkilda.atdd.staging.service.floodlight;
 
 import org.openkilda.atdd.staging.service.floodlight.model.FlowEntriesMap;
+import org.openkilda.atdd.staging.service.floodlight.model.MetersEntriesMap;
 import org.openkilda.atdd.staging.service.floodlight.model.SwitchEntry;
 import org.openkilda.atdd.utils.controller.CoreFlowEntry;
 import org.openkilda.atdd.utils.controller.DpIdEntriesList;
@@ -36,4 +37,6 @@ public interface FloodlightService {
     List<SwitchEntry> getSwitches();
 
     FlowEntriesMap getFlows(String dpid);
+
+    MetersEntriesMap getMeters(String dpid);
 }

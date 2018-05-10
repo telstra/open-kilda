@@ -519,11 +519,18 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             return 0L;
         }
 
+        long meterCommandXid;
+
         if (sw.getOFFactory().getVersion().compareTo(OF_12) <= 0) {
-            return installLegacyMeter(sw, dpid, bandwidth, burstSize, meterId);
+            meterCommandXid = installLegacyMeter(sw, dpid, bandwidth, burstSize, meterId);
         } else {
-            return installMeter(sw, dpid, bandwidth, burstSize, meterId);
+            meterCommandXid = installMeter(sw, dpid, bandwidth, burstSize, meterId);
         }
+
+        // All cases when we're installing meters require that we wait until the command is processed and the meter is installed.
+        sendBarrierRequest(sw);
+
+        return meterCommandXid;
     }
 
     @Override
@@ -773,7 +780,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             ListenableFuture<OFBarrierReply> future = sw.writeRequest(barrierRequest);
             result = future.get(10, TimeUnit.SECONDS);
         } catch (ExecutionException | InterruptedException | TimeoutException e) {
-            logger.error("Could not get flow stats: {}", e.getMessage());
+            logger.error("Could not get a barrier reply: {}", e.getMessage());
         }
         return result;
     }

@@ -25,6 +25,7 @@ import static org.junit.Assert.assertEquals;
 import static org.openkilda.floodlight.message.command.encapsulation.PushSchemeOutputCommands.ofFactory;
 import static org.openkilda.messaging.Utils.MAPPER;
 
+import com.google.common.util.concurrent.Futures;
 import org.openkilda.floodlight.message.command.encapsulation.OutputCommands;
 import org.openkilda.floodlight.message.command.encapsulation.ReplaceSchemeOutputCommands;
 import org.openkilda.floodlight.pathverification.IPathVerificationService;
@@ -54,6 +55,8 @@ import org.easymock.Capture;
 import org.easymock.CaptureType;
 import org.junit.Before;
 import org.junit.Test;
+import org.projectfloodlight.openflow.protocol.OFBarrierReply;
+import org.projectfloodlight.openflow.protocol.OFBarrierRequest;
 import org.projectfloodlight.openflow.protocol.OFFlowAdd;
 import org.projectfloodlight.openflow.protocol.OFMeterMod;
 import org.projectfloodlight.openflow.types.DatapathId;
@@ -295,6 +298,8 @@ public class ReplaceInstallFlowTest {
 
         if (meterAddCapture != null) {
             expect(iofSwitch.write(capture(meterAddCapture))).andReturn(true);
+            expect(iofSwitch.writeRequest(anyObject(OFBarrierRequest.class)))
+                    .andReturn(Futures.immediateFuture(createMock(OFBarrierReply.class)));
             if (flowAddCapture != null) {
                 expect(iofSwitch.write(capture(flowAddCapture))).andReturn(true);
             }

@@ -15,19 +15,29 @@
 
 package org.openkilda.atdd.staging.config;
 
-import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
 
+import com.fasterxml.jackson.databind.MapperFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 
+import java.io.IOException;
+
 @Configuration
 @Profile("mock")
-public class MockedTopologyConfig {
+public class TestTopologyConfig {
 
     @Bean
-    public TopologyDefinition topologyDefinition() {
-        return mock(TopologyDefinition.class);
+    public TopologyDefinition topologyDefinition() throws IOException {
+        ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+        mapper.enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS);
+        TopologyDefinition topology = mapper.readValue(
+                getClass().getResourceAsStream("/3-switch-test-topology.yaml"), TopologyDefinition.class);
+
+        return spy(topology);
     }
 }

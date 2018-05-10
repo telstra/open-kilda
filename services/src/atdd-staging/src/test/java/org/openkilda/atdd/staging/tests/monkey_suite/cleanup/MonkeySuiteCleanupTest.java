@@ -17,24 +17,17 @@ package org.openkilda.atdd.staging.tests.monkey_suite.cleanup;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
-import com.fasterxml.jackson.databind.MapperFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import cucumber.api.CucumberOptions;
 import cucumber.api.java.After;
-import cucumber.api.java.Before;
+import org.junit.Ignore;
 import org.junit.runner.RunWith;
 import org.openkilda.atdd.staging.cucumber.CucumberWithSpringProfile;
-import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
-import org.openkilda.atdd.staging.service.traffexam.OperationalException;
-import org.openkilda.atdd.staging.tests.AbstractFlowBasedHook;
+import org.openkilda.atdd.staging.service.northbound.NorthboundService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.ActiveProfiles;
 
-import java.io.IOException;
-
-
+@Ignore
 @RunWith(CucumberWithSpringProfile.class)
 @CucumberOptions(features = {"classpath:features/monkey_suite.feature"},
         glue = {"org.openkilda.atdd.staging.tests.monkey_suite.cleanup", "org.openkilda.atdd.staging.steps"},
@@ -42,35 +35,13 @@ import java.io.IOException;
 @ActiveProfiles("mock")
 public class MonkeySuiteCleanupTest {
 
-    public static class MonkeySuiteCleanupHook extends AbstractFlowBasedHook {
+    public static class MonkeySuiteCleanupHook {
 
-        @Before
-        public void prepareMocks() throws IOException {
-            setup3TraffGensTopology();
-
-            mockFlowInTE("sw1", 10, "sw2", 10, 1);
-            mockFlowInTE("sw1", 10, "sw3", 10, 2);
-            mockFlowInTE("sw2", 10, "sw3", 10, 3);
-
-            mockFlowCrudInNorthbound();
-
-            mockTraffExam();
-
-            removedFlows.clear();
-        }
-
-        private void setup3TraffGensTopology() throws IOException {
-            ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
-            mapper.enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS);
-            TopologyDefinition topology = mapper.readValue(
-                    getClass().getResourceAsStream("/5-switch-test-topology.yaml"), TopologyDefinition.class);
-
-            when(topologyDefinition.getActiveSwitches()).thenReturn(topology.getActiveSwitches());
-            when(topologyDefinition.getActiveTraffGens()).thenReturn(topology.getActiveTraffGens());
-        }
+        @Autowired
+        private NorthboundService northboundService;
 
         @After
-        public void assertsAndVerifyMocks() throws OperationalException {
+        public void assertsAndVerifyMocks() {
             verify(northboundService, times(3)).deleteFlow(any());
         }
     }

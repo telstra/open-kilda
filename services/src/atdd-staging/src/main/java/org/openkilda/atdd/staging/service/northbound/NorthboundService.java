@@ -19,6 +19,7 @@ import org.openkilda.messaging.model.HealthCheck;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.northbound.dto.switches.RulesSyncResult;
 
 import java.util.List;
 
@@ -39,4 +40,6 @@ public interface NorthboundService {
     FlowIdStatusPayload getFlowStatus(String flowId);
 
     List<FlowPayload> getAllFlows();
+
+    RulesSyncResult synchronizeSwitchRules(String switchId);
 }

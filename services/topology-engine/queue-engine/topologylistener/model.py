@@ -53,9 +53,9 @@ class InterSwitchLink(
         return cls(source, dest, isl_data['state'])
 
     @classmethod
-    def new_from_db(cls, src, dst, link):
-        source = NetworkEndpoint(src['name'], link['src_port'])
-        dest = NetworkEndpoint(dst['name'], link['dst_port'])
+    def new_from_db(cls, link):
+        source = NetworkEndpoint(link['src_switch'], link['src_port'])
+        dest = NetworkEndpoint(link['dst_switch'], link['dst_port'])
         return cls(source, dest, link['status'])
 
     def ensure_path_complete(self):
