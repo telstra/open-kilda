@@ -156,9 +156,9 @@ class MessageItem(object):
 
             elif self.get_message_type() == MT_PORT:
                 if self.payload['state'] == "DOWN":
-                    event_handled = self.port_down()
-                else:
-                    event_handled = True
+                    self.port_down()
+                event_handled = True
+
             # Cache topology expects to receive OFE events
             if event_handled:
                 message_utils.send_cache_message(self.payload,
@@ -200,9 +200,6 @@ class MessageItem(object):
         except Exception as e:
             logger.exception("Exception during handling message")
             return False
-
-#        finally:
-#            return True
 
     def activate_switch(self):
         switch_id = self.payload['switch_id']
@@ -258,44 +255,6 @@ class MessageItem(object):
 
             isl_utils.switch_unplug(tx, switch_id)
 
-    # FIXME(surabujin): split/remove
-    def isl_fetch_and_deactivate(self, tx, dpid, port):
-        flow_utils.precreate_switches(tx, dpid)
-        db_record = isl_utils.fetch_one_by_endpoint(
-                tx, model.NetworkEndpoint(dpid, port))
-        isl = model.InterSwitchLink.new_from_db(db_record)
-
-        logger.info('ISL found on %s_%s, deactivating', dpid, port)
-
-        isl_utils.create_if_missing(tx, isl)
-        self.deactivate_isl(tx, isl.source.dpid, isl.source.port)
-        isl_utils.update_status(tx, isl)
-
-        return isl
-
-    def deactivate_isl(self, tx, src_switch, src_port):
-        """
-        Update the ISL, if it exists, to a state of inactive
-
-        Ideally, the result of this function is whether the relationship is gone (true if it is)
-
-        :return: True always, unless an exception occurs
-        """
-        logger.info('Deactivating ISL: src_switch=%s, src_port=%s',
-                    src_switch, src_port)
-
-        if src_port:
-            query = ("MATCH (a:switch)-[r:isl {{"
-                     "src_switch: '{}', "
-                     "src_port: {}}}]->(b:switch) SET r.actual = 'inactive'")
-            tx.run(query.format(src_switch, src_port)).data()
-        else:
-            query = ("MATCH (a:switch)-[r:isl {{"
-                     "src_switch: '{}'}}]->(b:switch) SET r.actual = 'inactive'")
-            tx.run(query.format(src_switch)).data()
-
-        return True
-
     def isl_discovery_failed(self):
         """
         :return: Ideally, this should return true IFF discovery is deleted or deactivated.
@@ -308,8 +267,11 @@ class MessageItem(object):
         logger.info('Isl failure: %s_%d -- apply policy %s: timestamp=%s',
                     switch_id, port, effective_policy, self.timestamp)
 
-        with graph.begin() as tx:
-            self.isl_fetch_and_deactivate(tx, switch_id, port)
+        try:
+            with graph.begin() as tx:
+                isl_utils.disable_by_endpoint(tx, model.NetworkEndpoint(switch_id, port))
+        except exc.DBRecordNotFound:
+            logger.error('There is no ISL on %s_%s', switch_id, port)
 
         return True
 
@@ -320,13 +282,17 @@ class MessageItem(object):
         logger.info('Port %s_%d deletion request: timestamp=%s',
                     switch_id, port_id, self.timestamp)
 
-        with graph.begin() as tx:
-            isl = self.isl_fetch_and_deactivate(tx, switch_id, port_id)
-            # TODO(crimi): should be policy / toggle based
-            isl_utils.set_cost(tx, isl, config.ISL_COST_WHEN_PORT_DOWN)
-            isl_utils.set_cost(tx, isl.reversed(), config.ISL_COST_WHEN_PORT_DOWN)
-
-        return True
+        try:
+            with graph.begin() as tx:
+                for isl in isl_utils.disable_by_endpoint(
+                        tx, model.NetworkEndpoint(switch_id, port_id)):
+                    # TODO(crimi): should be policy / toggle based
+                    isl_utils.set_cost(
+                        tx, isl, config.ISL_COST_WHEN_PORT_DOWN)
+                    isl_utils.set_cost(
+                        tx, isl.reversed(), config.ISL_COST_WHEN_PORT_DOWN)
+        except exc.DBRecordNotFound:
+            logger.info("There is no ISL on %s_%s", switch_id, port_id)
 
     def create_isl(self):
         """
