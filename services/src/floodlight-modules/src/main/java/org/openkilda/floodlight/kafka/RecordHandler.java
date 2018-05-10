@@ -111,7 +111,7 @@ class RecordHandler implements Runnable {
     private void handleCommand(CommandMessage message, CommandData data, String replyToTopic,
             Destination replyDestination) throws FlowCommandException {
         if (data instanceof DiscoverIslCommandData) {
-            doDiscoverIslCommand(data);
+            doDiscoverIslCommand((DiscoverIslCommandData)data);
         } else if (data instanceof DiscoverPathCommandData) {
             doDiscoverPathCommand(data);
         } else if (data instanceof InstallIngressFlow) {
@@ -153,19 +153,12 @@ class RecordHandler implements Runnable {
         }
     }
 
-    private void doDiscoverIslCommand(CommandData data) {
-        DiscoverIslCommandData command = (DiscoverIslCommandData) data;
-        logger.debug("sending discover ISL to {}", command);
+    private void doDiscoverIslCommand(DiscoverIslCommandData command) {
+        logger.debug("Processing send ISL discovery command {}", command);
 
         String switchId = command.getSwitchId();
-        boolean result = context.getPathVerificationService().sendDiscoveryMessage(
+        context.getPathVerificationService().sendDiscoveryMessage(
                 DatapathId.of(switchId), OFPort.of(command.getPortNo()));
-
-        if (result) {
-            logger.debug("packet_out was sent to {}", switchId);
-        } else {
-            logger.warn("packet_out was not sent to {}-{}", switchId, command.getPortNo());
-        }
     }
 
     private void doDiscoverPathCommand(CommandData data) {

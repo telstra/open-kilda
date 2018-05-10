@@ -10,6 +10,7 @@
   <logger name="io" level="ERROR"></logger> <!-- Netty logging -->
   <logger name="LogService" level="ERROR"/> <!-- Restlet access logging -->
   <logger name="net.floodlightcontroller" level="INFO"/>
+  <logger name="org.openkilda.floodlight.pathverification.PathVerificationService.ISL" level="INFO"/>
   <logger name="org.sdnplatform" level="ERROR"/>
   <logger name="org.openkilda" level="DEBUG"/>
 </configuration>
