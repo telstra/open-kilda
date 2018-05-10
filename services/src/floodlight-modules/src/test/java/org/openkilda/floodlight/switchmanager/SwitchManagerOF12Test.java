@@ -5,19 +5,18 @@ import static org.easymock.EasyMock.capture;
 import static org.easymock.EasyMock.createMock;
 import static org.easymock.EasyMock.expect;
 import static org.junit.Assert.assertEquals;
-
-import org.openkilda.floodlight.OFFactoryVer12Mock;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.DEFAULT_RULE_PRIORITY;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
-import net.floodlightcontroller.util.FlowModUtils;
 import org.easymock.Capture;
 import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.openkilda.floodlight.OFFactoryVer12Mock;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
@@ -63,7 +62,7 @@ public class SwitchManagerOF12Test {
         OFFactory referenceOfFactory = new OFFactoryVer12Mock();
         OFFlowMod expected = referenceOfFactory.buildFlowAdd()
                 .setCookie(U64.of(commonFlowCookie).applyMask(U64.of(SwitchManager.FLOW_COOKIE_MASK)))
-                .setPriority(FlowModUtils.PRIORITY_VERY_HIGH)
+                .setPriority(DEFAULT_RULE_PRIORITY)
                 .setMatch(referenceOfFactory.buildMatch()
                         .setExact(MatchField.IN_PORT, OFPort.of(inputPort))
                         .setMasked(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(transitVlanId), OFVlanVidMatch.ofRawVid(
