@@ -142,8 +142,9 @@ public class TransactionBolt
                                     // All transactions have been removed .. the Flow
                                     // can now be considered "UP"
                                     //
-                                    logger.info("Set status {}: switch-id={}, {}={}, {}={}", FlowState.UP,
-                                            switchId, Utils.FLOW_ID, flowId, Utils.TRANSACTION_ID, transactionId);
+                                    logger.info(
+                                            "Flow transaction completed for one switch " +
+                                            "(switch: {}, flow: {}, stream: {})", switchId, flowId, streamId);
 
                                     values = new Values(flowId, FlowState.UP);
                                     outputCollector.emit(StreamType.STATUS.toString(), tuple, values);
