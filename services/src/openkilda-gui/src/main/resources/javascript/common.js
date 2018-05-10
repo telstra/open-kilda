@@ -117,7 +117,7 @@ var LocalStorageHandler = function() {
 
 var common = {	
 		getData:function(apiUrl,requestType){	
-			return $.ajax({url : APP_CONTEXT+apiUrl,type : requestType,dataType : "json"});							
+			return $.ajax({url : APP_CONTEXT+apiUrl+"?_=" + new Date().getTime(),type : requestType,dataType : "json"});							
 		},
 		
 		updateData:function(apiUrl,requestType,data){
