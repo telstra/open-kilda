@@ -633,12 +633,9 @@ def api_v1_routes_between_nodes(src_switch, dst_switch):
     query = (
         "MATCH p=(src:switch{{name:'{src_switch}'}})-[:isl*..{depth}]->"
         "(dst:switch{{name:'{dst_switch}'}}) "
+        "WHERE ALL(x IN NODES(p) WHERE SINGLE(y IN NODES(p) WHERE y = x)) "
         "WITH RELATIONSHIPS(p) as links "
-        "WHERE ALL(isl1 IN links "
-        "   WHERE SIZE(FILTER("
-        "       isl2 IN links WHERE isl1.src_switch = isl2.src_switch OR "
-        "           isl1.dst_switch = isl2.dst_switch"
-        "   )) = 1 AND isl1.status = 'active') "
+        "WHERE ALL(l IN links WHERE l.status = 'active') "
         "RETURN links"
     ).format(src_switch=src_switch, depth=depth, dst_switch=dst_switch)
 
