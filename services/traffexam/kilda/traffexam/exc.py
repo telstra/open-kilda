@@ -118,6 +118,16 @@ class ServiceDeleteError(ServiceError):
             *self.args)
 
 
+class ServiceCreateCollisionError(ServiceCreateError):
+    def __init__(self, pool, subject, collision, *extra):
+        super().__init__(pool, subject, collision, *extra)
+
+    def __str__(self):
+        return (
+            'Can\'t add item {args[1]} into {args[0]!r} due to collision '
+            'with existing object {args[2]}').format(args=self.args)
+
+
 class RegistryLookupError(AbstractError):
     def __init__(self, context, klass, *extra):
         super().__init__(context, klass, *extra)
