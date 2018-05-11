@@ -158,8 +158,8 @@ public class OFEMessageUtils {
         return root;
     }
 
-    public static String createIslFail(String switchId, String portId) throws IOException {
-        PathNode node = new PathNode(switchId, Integer.parseInt(portId), 0, 0L);
+    public static String createIslFail(String switchId, int portId) throws IOException {
+        PathNode node = new PathNode(switchId, portId, 0, 0L);
         InfoData data = new IslInfoData(0L, Collections.singletonList(node), 0L, IslChangeType.FAILED, 0L);
         InfoMessage message = new InfoMessage(data, System.currentTimeMillis(), UUID.randomUUID().toString());
         return MAPPER.writeValueAsString(message);
@@ -172,9 +172,9 @@ public class OFEMessageUtils {
     /**
      * @return a JSON string that can be used to for link event
      */
-    public static String createIslDiscovery(String switchID, String portID) throws IOException {
+    public static String createIslDiscovery(String switchId, int portId) throws IOException {
         CommandMessage message = new CommandMessage(
-                new DiscoverIslCommandData(switchID, Integer.valueOf(portID)), // Payload
+                new DiscoverIslCommandData(switchId, portId), // Payload
                 System.currentTimeMillis(),
                 "", Destination.CONTROLLER
         );

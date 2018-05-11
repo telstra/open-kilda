@@ -25,9 +25,14 @@ import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.discovery.DiscoveryFilterEntity;
 import org.openkilda.messaging.command.discovery.DiscoveryFilterPopulateData;
 import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.messaging.info.event.PortChangeType;
+import org.openkilda.messaging.info.event.PortInfoData;
+import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.OutputCollectorMock;
 import org.openkilda.wfm.topology.TopologyConfig;
@@ -212,27 +217,35 @@ public class OFEventWfmTest extends AbstractStormTest {
         linkBolt.initState(state);
 
         ArrayList<DiscoveryFilterEntity> skipNodes = new ArrayList<>(1);
-        skipNodes.add(new DiscoveryFilterEntity("sw1", "1"));
+        skipNodes.add(new DiscoveryFilterEntity("sw1", 1));
         CommandMessage islFilterSetup = new CommandMessage(
                 new DiscoveryFilterPopulateData(skipNodes), 1, "discovery-test", Destination.WFM_OF_DISCOVERY);
         String json = MAPPER.writeValueAsString(islFilterSetup);
         tuple = new TupleImpl(topologyContext, Collections.singletonList(json), 4, "message");
         linkBolt.execute(tuple);
 
-        tuple = new TupleImpl(topologyContext, Arrays.asList("sw1", OFEMessageUtils.SWITCH_UP),
-                0, topo_input_topic);
+        InfoMessage switch1Up = new InfoMessage(new SwitchInfoData("sw1", SwitchState.ACTIVATED, null, null,
+                null, null), 1, "discovery-test", Destination.WFM_OF_DISCOVERY);
+        json = MAPPER.writeValueAsString(switch1Up);
+        tuple = new TupleImpl(topologyContext, Collections.singletonList(json),0, topo_input_topic);
         linkBolt.execute(tuple);
 
-        tuple = new TupleImpl(topologyContext, Arrays.asList("sw2", OFEMessageUtils.SWITCH_UP),
-                0, topo_input_topic);
+        InfoMessage switch2Up = new InfoMessage(new SwitchInfoData("sw2", SwitchState.ACTIVATED, null, null,
+                null, null), 1, "discovery-test", Destination.WFM_OF_DISCOVERY);
+        json = MAPPER.writeValueAsString(switch2Up);
+        tuple = new TupleImpl(topologyContext, Collections.singletonList(json), 0, topo_input_topic);
         linkBolt.execute(tuple);
 
-        tuple = new TupleImpl(topologyContext, Arrays.asList("sw1", "1", OFEMessageUtils.PORT_UP),
-                1, topo_input_topic);
+        InfoMessage port1Up = new InfoMessage(new PortInfoData("sw2", 1, PortChangeType.UP), 1,
+                "discovery-test", Destination.WFM_OF_DISCOVERY);
+        json = MAPPER.writeValueAsString(port1Up);
+        tuple = new TupleImpl(topologyContext, Collections.singletonList(json),1, topo_input_topic);
         linkBolt.execute(tuple);
 
-        tuple = new TupleImpl(topologyContext, Arrays.asList("sw1", "2", OFEMessageUtils.PORT_UP),
-                1, topo_input_topic);
+        InfoMessage port2Up = new InfoMessage(new PortInfoData("sw1", 2, PortChangeType.UP), 1,
+                "discovery-test", Destination.WFM_OF_DISCOVERY);
+        json = MAPPER.writeValueAsString(port2Up);
+        tuple = new TupleImpl(topologyContext, Collections.singletonList(json),1, topo_input_topic);
         linkBolt.execute(tuple);
 
         Tuple tickTuple = new TupleImpl(topologyContext, Collections.emptyList(), 2, Constants.SYSTEM_TICK_STREAM_ID);

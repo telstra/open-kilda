@@ -47,7 +47,7 @@ import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
-import org.openkilda.messaging.model.DiscoveryNode;
+import org.openkilda.messaging.model.DiscoveryLink;
 import org.openkilda.wfm.OFEMessageUtils;
 import org.openkilda.wfm.WatchDog;
 import org.openkilda.wfm.ctrl.CtrlAction;
@@ -104,7 +104,7 @@ public class OFELinkBolt
 
     private DummyIIslFilter islFilter;
     private DiscoveryManager discovery;
-    private LinkedList<DiscoveryNode> discoveryQueue;
+    private LinkedList<DiscoveryLink> discoveryQueue;
 
     private String dumpRequestCorrelationId = null;
     private float dumpRequestTimeout;
@@ -148,7 +148,7 @@ public class OFELinkBolt
             payload = discoveryQueue = new LinkedList<>();
             state.put(islDiscoveryTopic, payload);
         } else {
-            discoveryQueue = (LinkedList<DiscoveryNode>) payload;
+            discoveryQueue = (LinkedList<DiscoveryLink>) payload;
         }
 
         discovery = new DiscoveryManager(
@@ -386,7 +386,7 @@ public class OFELinkBolt
 
     private void handleSwitchEvent(Tuple tuple, SwitchInfoData switchData) {
         String switchID = switchData.getSwitchId();
-        String state = "" + switchData.getState();
+        String state = switchData.getState().toString();
         logger.info("DISCO: Switch Event: switch={} state={}", switchID, state);
 
         if (SwitchState.DEACTIVATED.getType().equals(state)) {
@@ -415,15 +415,15 @@ public class OFELinkBolt
     }
 
     private void handlePortEvent(Tuple tuple, PortInfoData portData) {
-        String switchID = portData.getSwitchId();
-        String portID = "" + portData.getPortNo();
-        String updown = "" + portData.getState();
-        logger.info("DISCO: Port Event: switch={} port={} state={}", switchID, portID, updown);
+        final String switchId = portData.getSwitchId();
+        final int portId = portData.getPortNo();
+        String updown = portData.getState().toString();
+        logger.info("DISCO: Port Event: switch={} port={} state={}", switchId, portId, updown);
 
         if (isPortUpOrCached(updown)) {
-            discovery.handlePortUp(switchID, portID);
+            discovery.handlePortUp(switchId, portId);
         } else if (updown.equals(OFEMessageUtils.PORT_DOWN)) {
-            discovery.handlePortDown(switchID, portID);
+            discovery.handlePortDown(switchId, portId);
         } else {
             // TODO: Should this be a warning? Evaluate whether any other state needs to be handled
             logger.warn("PORT Event: ignoring state: {}", updown);
@@ -431,9 +431,14 @@ public class OFELinkBolt
     }
 
     private void handleIslEvent(Tuple tuple, IslInfoData discoveredIsl) {
-        PathNode node = discoveredIsl.getPath().get(0);
-        String switchID = node.getSwitchId();
-        String portID = "" + node.getPortNo();
+        PathNode srcNode = discoveredIsl.getPath().get(0);
+        final String srcSwitch = srcNode.getSwitchId();
+        final int srcPort = srcNode.getPortNo();
+
+        PathNode dstNode = discoveredIsl.getPath().get(1);
+        final String dstSwitch = dstNode.getSwitchId();
+        final int dstPort = dstNode.getPortNo();
+
         IslChangeType state = discoveredIsl.getState();
         boolean stateChanged = false;
 
@@ -443,22 +448,20 @@ public class OFELinkBolt
          *  one place.
          */
         if (IslChangeType.DISCOVERED.equals(state)) {
-            stateChanged = discovery.handleDiscovered(switchID, portID);
+            stateChanged = discovery.handleDiscovered(srcSwitch, srcPort, dstSwitch, dstPort);
             // If the state has changed, and since we've discovered one end of an ISL, let's make
             // sure we can test the other side as well.
             if (stateChanged && discoveredIsl.getPath().size() > 1) {
-                String dstSwitch = discoveredIsl.getPath().get(0).getSwitchId();
-                String dstPort = ""+discoveredIsl.getPath().get(0).getPortNo();
-                if (!discovery.checkForIsl(dstSwitch,dstPort)){
+                if (!discovery.checkForIsl(dstSwitch, dstPort)) {
                     // Only call PortUp if we aren't checking for ISL. Otherwise, we could end up in an
                     // infinite cycle of always sending a Port UP when one side is discovered.
-                    discovery.handlePortUp(dstSwitch,dstPort);
+                    discovery.handlePortUp(dstSwitch, dstPort);
                 }
 
             }
 
         } else if (IslChangeType.FAILED.equals(state)) {
-            stateChanged = discovery.handleFailed(switchID, portID);
+            stateChanged = discovery.handleFailed(srcSwitch, srcPort);
         } else {
             // TODO: Should this be a warning? Evaluate whether any other state needs to be handled
             logger.warn("ISL Event: ignoring state: {}", state);
@@ -466,7 +469,7 @@ public class OFELinkBolt
 
         if (stateChanged) {
             // If the state changed, notify the TE.
-            logger.info("DISCO: ISL Event: switch={} port={} state={}", switchID, portID, state);
+            logger.info("DISCO: ISL Event: switch={} port={} state={}", srcSwitch, srcPort, state);
             passToTopologyEngine(tuple);
         }
     }
@@ -480,7 +483,7 @@ public class OFELinkBolt
     //          - services/src/topology .. service/impl/IslServiceImpl .. service/IslService
     //          - services/src/topology .. messaging/kafka/KafkaMessageConsumer
     //          - services/src/pce .. NetworkCache .. FlowCache ..
-    private void sendDiscoveryFailed(String switchId, String portId, Tuple tuple) throws IOException {
+    private void sendDiscoveryFailed(String switchId, int portId, Tuple tuple) throws IOException {
         String discoFail = OFEMessageUtils.createIslFail(switchId, portId);
 //        Values dataVal = new Values(PAYLOAD, discoFail, switchId, portId, OFEMessageUtils.LINK_DOWN);
 //        collector.emit(topoEngTopic, tuple, dataVal);
@@ -520,12 +523,12 @@ public class OFELinkBolt
     @Override
     public AbstractDumpState dumpStateBySwitchId(String switchId) {
 
-        List<DiscoveryNode> filteredDiscoveryQueue =  discoveryQueue.stream().
-                filter(node -> node.getSwitchId().equals(switchId)).
+        List<DiscoveryLink> filteredDiscoveryQueue =  discoveryQueue.stream().
+                filter(node -> node.getSrcSwitch().equals(switchId)).
                 collect(Collectors.toList());
 
-        Set<DiscoveryNode> filterdIslFilter = islFilter.getMatchSet().stream().
-                filter(node -> node.getSwitchId().equals(switchId)).
+        Set<DiscoveryLink> filterdIslFilter = islFilter.getMatchSet().stream().
+                filter(node -> node.getSrcSwitch().equals(switchId)).
                 collect(Collectors.toSet());
 
 
@@ -543,7 +546,7 @@ public class OFELinkBolt
     }
 
     @VisibleForTesting
-    List<DiscoveryNode> getDiscoveryQueue()
+    List<DiscoveryLink> getDiscoveryQueue()
     {
         return this.discoveryQueue;
     }

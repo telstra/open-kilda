@@ -1,7 +1,7 @@
 package org.openkilda.wfm.isl;
 
-import org.openkilda.messaging.model.DiscoveryNode;
-
+import org.apache.commons.lang3.StringUtils;
+import org.openkilda.messaging.model.DiscoveryLink;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,7 +36,7 @@ public class DiscoveryManager {
     private final Integer islHealthCheckInterval;
     private final Integer islConsecutiveFailureLimit;
     private final Integer forlornLimit;
-    private final LinkedList<DiscoveryNode> pollQueue;
+    private final LinkedList<DiscoveryLink> pollQueue;
 
     /**
      * @param filter - a list of nodes we should not do discovery on, if any.
@@ -45,7 +45,7 @@ public class DiscoveryManager {
      * @param islConsecutiveFailureLimit - the threshold for sending ISL down, if it is an ISL
      * @param forlornLimit - the threshold for stopping all checks.
      */
-    public DiscoveryManager(IIslFilter filter, LinkedList<DiscoveryNode> persistentQueue,
+    public DiscoveryManager(IIslFilter filter, LinkedList<DiscoveryLink> persistentQueue,
                             Integer islHealthCheckInterval, Integer islConsecutiveFailureLimit,
                             Integer forlornLimit) {
         this.filter = filter;
@@ -71,9 +71,9 @@ public class DiscoveryManager {
     public Plan makeDiscoveryPlan() {
         Plan result = new Plan();
 
-        for (DiscoveryNode subject : pollQueue) {
+        for (DiscoveryLink link : pollQueue) {
 
-            if (!checkForIsl(subject)){
+            if (!checkForIsl(link)){
                 continue;
             }
 
@@ -83,18 +83,18 @@ public class DiscoveryManager {
              *
              * Further, consecutivefailures = attempts - failure limit (we wait until attempt limit before increasing)
              */
-            Node node = new Node(subject.getSwitchId(), subject.getPortId());
-            if (subject.maxAttempts(islConsecutiveFailureLimit)) {
+            Node node = new Node(link.getSrcSwitch(), link.getSrcPort());
+            if (link.maxAttempts(islConsecutiveFailureLimit)) {
                 // We've attempted to get the health multiple times, with no response.
                 // Time to mark it as a failure and send a failure notice ** if ** it was an ISL.
-                if (subject.isFoundIsl() && subject.getConsecutiveFailure() == 0) {
+                if (link.isDiscovered() && link.getConsecutiveFailure() == 0) {
                     // It is a discovery failure if it was previously a success.
                     // NB:
                     result.discoveryFailure.add(node);
-                    logger.info("ISL IS DOWN (NO RESPONSE): {}", subject);
+                    logger.info("ISL IS DOWN (NO RESPONSE): {}", link);
                 }
                 // Increment Failure = 1 after maxAttempts failure, then increases every attempt.
-                subject.incConsecutiveFailure();
+                link.incConsecutiveFailure();
                 // NB: this node can be in both discoveryFailure and needDiscovery
             }
 
@@ -105,12 +105,12 @@ public class DiscoveryManager {
              *  - it is either time to send discovery or not
              *  - NB: we'll keep trying to send discovery, even if we don't get a response.
              */
-            if (subject.timeToCheck()) {
-                subject.incAttempts();
-                subject.resetTickCounter();
+            if (link.timeToCheck()) {
+                link.incAttempts();
+                link.resetTickCounter();
                 result.needDiscovery.add(node);
             } else {
-                subject.incTick();
+                link.incTick();
             }
 
         }
@@ -122,34 +122,31 @@ public class DiscoveryManager {
      * ISL Discovery Event
      * @return true if this is a new event (ie first time discovered or prior failure)
      */
-    public boolean handleDiscovered(String switchId, String portId) {
+    public boolean handleDiscovered(String srcSwitch, int srcPort, String dstSwitch, int dstPort) {
         boolean stateChanged = false;
-        Node node = new Node(switchId, portId);
-        List<DiscoveryNode> subjectList = filterQueue(node);
+        Node node = new Node(srcSwitch, srcPort);
+        List<DiscoveryLink> subjectList = findBySwitch(node);
 
         if (subjectList.size() == 0) {
             logger.warn("Ignore \"AVAIL\" request for {}: node not found", node);
         } else {
-            DiscoveryNode subject = subjectList.get(0);
-            if (!subject.isFoundIsl()){
-                // "forever" mark this port as part of an ISL
-                // "forever" changes if we get another Switch UP message - this is documented
-                //      elsewhere .. in short, be conservative - maybe ports changed, or TE state
-                //      has been deleted.
-                //  TODO: is marking foundIsl false the right way to do this? All we want is "resend to TE if it is an ISL"
-                subject.setFoundIsl(true);
+            DiscoveryLink link = subjectList.get(0);
+            if (!link.isDiscovered() || link.isDestinationChanged(dstSwitch, dstPort)) {
+                // we've found newly discovered or moved/replugged isl
+                link.setDstSwitch(dstSwitch);
+                link.setDstPort(dstPort);
                 stateChanged = true;
-                logger.info("FOUND ISL: {}", subject);
-            } else if (subject.getConsecutiveFailure()>0){
+                logger.info("FOUND ISL: {}", link);
+            } else if (link.getConsecutiveFailure() > 0){
                 // We've found failures, but now we've had success, so that is a state change.
                 // To repeat, current model for state change is just 1 failure. If we change this
                 // policy, then change the test above.
                 stateChanged = true;
-                logger.info("ISL IS UP: {}", subject);
+                logger.info("ISL IS UP: {}", link);
             }
-            subject.renew();
-            subject.incConsecutiveSuccess();
-            subject.clearConsecutiveFailure();
+            link.renew();
+            link.incConsecutiveSuccess();
+            link.clearConsecutiveFailure();
             // If one of the logs above wasn't reachd, don't log anything .. ISL was up and is still up
         }
 
@@ -167,24 +164,25 @@ public class DiscoveryManager {
      * ISL Failure Event
      * @return true if this is new .. ie this isn't a consecutive failure.
      */
-    public boolean handleFailed(String switchId, String portId) {
+    public boolean handleFailed(String switchId, int portId) {
         boolean stateChanged = false;
         Node node = new Node(switchId, portId);
-        List<DiscoveryNode> subjectList = filterQueue(node);
+        List<DiscoveryLink> subjectList = findBySwitch(node);
 
         if (subjectList.size() == 0) {
             logger.warn("Ignoring \"FAILED\" request for {}: node not found", node);
         } else {
-            DiscoveryNode subject = subjectList.get(0);
-            if (subject.isFoundIsl() && subject.getConsecutiveFailure() == 0){
+            DiscoveryLink link = subjectList.get(0);
+            if (link.isDiscovered() && link.getConsecutiveFailure() == 0){
                 // This is the first failure for an ISL. That is a state change.
                 // IF this isn't an ISL and we receive a failure, that isn't a state change.
                 stateChanged = true;
-                logger.info("ISL IS DOWN (GOT RESPONSE): {}", subject);
+                logger.info("ISL IS DOWN (GOT RESPONSE): {}", link);
             }
-            subject.renew();
-            subject.incConsecutiveFailure();
-            subject.clearConsecutiveSuccess();
+            link.renew();
+            link.incConsecutiveFailure();
+            link.clearConsecutiveSuccess();
+            link.resetDestination();
         }
         return stateChanged;
     }
@@ -199,32 +197,32 @@ public class DiscoveryManager {
          * If a switch comes up, clear any "isFoundIsl" flags, in case something has changed,
          * and/or if the TE has cleared it's state .. this will pass along the ISL.
          */
-        Node node = new Node(switchId, null);
-        List<DiscoveryNode> subjectList = filterQueue(node, false);
+        Node node = new Node(switchId, 0);
+        List<DiscoveryLink> subjectList = findBySwitch(node, false);
 
         if (subjectList.size() > 0) {
             logger.info("Received SWITCH UP (id:{}) with EXISTING NODES.  Clearing isFoundISL flags", switchId);
-            for (DiscoveryNode subject : subjectList) {
-                subject.setFoundIsl(false);
+            for (DiscoveryLink subject : subjectList) {
+                subject.resetDestination();
                 subject.clearConsecutiveFailure(); // ensure we bypass forlorn
             }
         }
     }
 
     public void handleSwitchDown(String switchId) {
-        Node node = new Node(switchId, null);
-        List<DiscoveryNode> subjectList = filterQueue(node, true);
+        Node node = new Node(switchId, 0);
+        List<DiscoveryLink> subjectList = findBySwitch(node, true);
 
         logger.info("Deregister switch {} from ISL discovery manager", switchId);
-        for (DiscoveryNode subject : subjectList) {
+        for (DiscoveryLink subject : subjectList) {
             logger.info("Del {}", subject);
         }
     }
 
-    public void handlePortUp(String switchId, String portId) {
-        DiscoveryNode subject;
+    public void handlePortUp(String switchId, int portId) {
+        DiscoveryLink subject;
         Node node = new Node(switchId, portId);
-        List<DiscoveryNode> subjectList = filterQueue(node);
+        List<DiscoveryLink> subjectList = findBySwitch(node);
 
         if (subjectList.size() != 0) {
             // Similar to SwitchUp, if we have a PortUp on an existing port, either we are receiving
@@ -234,24 +232,20 @@ public class DiscoveryManager {
             //          this function just to get the "do discovery" functionality.
             subject = subjectList.get(0);
             logger.info("Port UP on existing node {};  clear failures and ISLFound", subject);
-            subject.setFoundIsl(false);
+            subject.resetDestination();
             subject.clearConsecutiveFailure(); // ensure we bypass forlorn
             return;
         }
 
-        subject = new DiscoveryNode(
-                node.switchId, node.portId,
-                this.islHealthCheckInterval,
-                this.forlornLimit
-        );
+        subject = new DiscoveryLink(node.switchId, node.portId, this.islHealthCheckInterval, this.forlornLimit);
         pollQueue.add(subject);
         logger.info("New {}", subject);
     }
 
-    public void handlePortDown(String switchId, String portId) {
-        DiscoveryNode subject;
+    public void handlePortDown(String switchId, int portId) {
+        DiscoveryLink subject;
         Node node = new Node(switchId, portId);
-        List<DiscoveryNode> subjectList = filterQueue(node, true);
+        List<DiscoveryLink> subjectList = findBySwitch(node, true);
 
         if (subjectList.size() == 0) {
             logger.warn("Can't update discovery {} -> node not found", node);
@@ -268,15 +262,19 @@ public class DiscoveryManager {
      * @param subject The switch (if port is null), or switch and port, to match
      * @return a list of any matched nodes.
      */
-    public List<DiscoveryNode> filterQueue(Node subject) {
-        return filterQueue(subject, false);
+    public List<DiscoveryLink> findBySwitch(Node subject) {
+        return findBySwitch(subject, false);
     }
 
-    private List<DiscoveryNode> filterQueue(Node subject, boolean extract) {
-        List<DiscoveryNode> result = new LinkedList<>();
-        for (ListIterator<DiscoveryNode> it = pollQueue.listIterator(); it.hasNext(); ) {
-            DiscoveryNode node = it.next();
-            if (!subject.matchDiscoveryNode(node)) {
+    public List<DiscoveryLink> findBySwitch(String switchId) {
+        return findBySwitch(new Node(switchId, 0));
+    }
+
+    private List<DiscoveryLink> findBySwitch(Node subject, boolean extract) {
+        List<DiscoveryLink> result = new LinkedList<>();
+        for (ListIterator<DiscoveryLink> it = pollQueue.listIterator(); it.hasNext(); ) {
+            DiscoveryLink node = it.next();
+            if (!subject.matchDiscoveryLink(node)) {
                 continue;
             }
 
@@ -296,8 +294,8 @@ public class DiscoveryManager {
      *
      * @return true if not an ISL or is forlorned
      */
-    public boolean checkForIsl(String switchId, String portId) {
-        List<DiscoveryNode> subjectList = filterQueue(new Node(switchId, portId));
+    public boolean checkForIsl(String switchId, int portId) {
+        List<DiscoveryLink> subjectList = findBySwitch(new Node(switchId, portId));
 
         if (subjectList.size() != 0) {
             return checkForIsl(subjectList.get(0));
@@ -306,16 +304,16 @@ public class DiscoveryManager {
         return false;
     }
 
-    public boolean checkForIsl(DiscoveryNode subject) {
-        if (filter.isMatch(subject)) {
+    public boolean checkForIsl(DiscoveryLink link) {
+        if (filter.isMatch(link)) {
             // skip checks on what is in the Filter:
             // TODO: what is in the FILTER? Is this the external filter (ie known ISL's?) Still want health check in this scenario..
-            logger.debug("Skip {} due to ISL filter match", subject);
-            subject.renew();
-            subject.resetTickCounter();
+            logger.debug("Skip {} due to ISL filter match", link);
+            link.renew();
+            link.resetTickCounter();
             return false;
         }
-        return !subject.forlorn();
+        return !link.forlorn();
     }
 
 
@@ -331,26 +329,21 @@ public class DiscoveryManager {
 
     public static class Node {
         public final String switchId;
-        public final String portId;
+        public final int portId;
 
-        public Node(String switchId, String portId) {
+        public Node(String switchId, int portId) {
             this.switchId = switchId;
             this.portId = portId;
         }
 
-        public Node(DiscoveryNode node) {
-            this.switchId = node.getSwitchId();
-            this.portId = node.getPortId();
+        public Node(DiscoveryLink node) {
+            this.switchId = node.getSrcSwitch();
+            this.portId = node.getSrcPort();
         }
 
-        boolean matchDiscoveryNode(DiscoveryNode target) {
-            if (! switchId.equals(target.getSwitchId())) {
-                return false;
-            }
-            if (portId == null) {
-                return true;
-            }
-            return portId.equals(target.getPortId());
+        boolean matchDiscoveryLink(DiscoveryLink target) {
+            return StringUtils.equals(switchId, target.getSrcSwitch()) &&
+                    (portId == 0 || portId == target.getSrcPort());
         }
 
         @Override

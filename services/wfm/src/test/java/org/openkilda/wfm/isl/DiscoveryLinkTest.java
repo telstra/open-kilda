@@ -2,36 +2,36 @@ package org.openkilda.wfm.isl;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.openkilda.messaging.model.DiscoveryNode;
+import org.openkilda.messaging.model.DiscoveryLink;
 
 import static org.junit.Assert.*;
 
-public class DiscoveryNodeTest {
+public class DiscoveryLinkTest {
 
     /** Will be created before each test */
-    private DiscoveryNode dn;
+    private DiscoveryLink dn;
     private static final String switchName = "sw1";
-    private static final String portName = "1";
+    private static final int portNumber = 1;
 
     @Before
     public void setUp() throws Exception {
-        dn = new DiscoveryNode(switchName, portName, 1, 10);
+        dn = new DiscoveryLink(switchName, portNumber, 1, 10);
     }
 
     /**
      * Test the setup of a DiscoveryNode - ie initial state of foundIsl; and get/set function.
      */
     @Test
-    public void setFoundIsl() {
+    public void testDefaultLinkDiscovered() {
         // initial state should be false
-        assertEquals(false, dn.isFoundIsl());
+        assertEquals(false, dn.isDiscovered());
     }
 
     @Test
-    public void isFoundIsl() {
-        // assert that getter/setter is working
-        dn.setFoundIsl(true);
-        assertEquals(true, dn.isFoundIsl());
+    public void shouldLinkBeDiscoveredWhenDestinationIsSet() {
+        dn.setDstSwitch("sw2");
+        dn.setDstPort(2);
+        assertEquals(true, dn.isDiscovered());
     }
 
     /**
@@ -40,7 +40,7 @@ public class DiscoveryNodeTest {
     @Test
     public void forlorn() {
         int threshhold = 2;
-        dn = new DiscoveryNode("sw1", "s2", 0, threshhold);
+        dn = new DiscoveryLink("sw1", 2, 0, threshhold);
         assertEquals("A DN starts out as not forlorn", false, dn.forlorn());
         dn.incConsecutiveFailure();
         dn.incConsecutiveFailure();
@@ -109,15 +109,5 @@ public class DiscoveryNodeTest {
         dn.resetTickCounter();
         assertEquals(0, dn.getTicks());
 
-    }
-
-    @Test
-    public void getSwitchId() {
-        assertEquals(switchName, dn.getSwitchId());
-    }
-
-    @Test
-    public void getPortId() {
-        assertEquals(portName, dn.getPortId());
     }
 }
