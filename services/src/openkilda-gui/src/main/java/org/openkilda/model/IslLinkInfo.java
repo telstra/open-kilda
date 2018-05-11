@@ -266,21 +266,11 @@ public class IslLinkInfo implements Serializable {
         if (getClass() != obj.getClass())
             return false;
         IslLinkInfo other = (IslLinkInfo) obj;
-        if (dstPort != other.dstPort && dstPort != other.srcPort)
-            return false;
-        if (dstSwitch == null) {
-            if (other.dstSwitch != null && other.srcSwitch != null)
-                return false;
-        } else if (!dstSwitch.equals(other.dstSwitch) && !dstSwitch.equals(other.srcSwitch))
-            return false;
-        if (srcPort != other.srcPort && srcPort != other.dstPort)
-            return false;
-        if (srcSwitch == null) {
-            if (other.srcSwitch != null && other.dstSwitch != null)
-                return false;
-        } else if (!srcSwitch.equals(other.srcSwitch) && !srcSwitch.equals(other.dstSwitch))
-            return false;
-        return true;
+        if ( dstSwitch.equals(other.srcSwitch) &&  srcPort == other.dstPort && srcSwitch.equals(other.dstSwitch) &&  dstPort == other.srcPort) {
+            return true;
+      }else {
+          return false;
+      }
     }
 
 }
