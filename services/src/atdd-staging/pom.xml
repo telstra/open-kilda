@@ -41,8 +41,6 @@
         <commons-lang3.version>3.7</commons-lang3.version>
         <jackson.version>2.9.4</jackson.version>
         <failsafe.version>1.0.5</failsafe.version>
-
-        <lombok.version>1.16.20</lombok.version>
     </properties>
 
     <!-- Dependencies -->

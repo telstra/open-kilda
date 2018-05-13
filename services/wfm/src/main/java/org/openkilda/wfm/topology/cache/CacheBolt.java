@@ -29,7 +29,6 @@ import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseStatefulBolt;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
-import org.neo4j.cypher.InvalidArgumentException;
 import org.openkilda.messaging.BaseMessage;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
@@ -52,6 +51,7 @@ import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.info.flow.FlowOperation;
+import org.openkilda.messaging.model.BidirectionalFlow;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.messaging.payload.flow.FlowState;
@@ -63,14 +63,13 @@ import org.openkilda.pce.provider.Auth;
 import org.openkilda.pce.provider.PathComputer;
 import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
+import org.openkilda.wfm.share.utils.PathComputerFlowFetcher;
 import org.openkilda.wfm.topology.AbstractTopology;
-import org.openkilda.wfm.topology.flow.utils.BidirectionalFlow;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -129,8 +128,6 @@ public class CacheBolt
 
     private TopologyContext context;
     private OutputCollector outputCollector;
-
-    private final static int DUMP_INTERVAL = 60000;
 
     CacheBolt(Auth pathComputerAuth) {
         this.pathComputerAuth = pathComputerAuth;
@@ -615,32 +612,12 @@ public class CacheBolt
 
     private void initFlowCache() {
         logger.info("Flow Cache: Initializing");
-        Map<String, BidirectionalFlow> flowPairsMap = new HashMap<>();
-        List<Flow> flows = pathComputer.getAllFlows();
-        logger.info("Flow Cache: Initializing - {} flows (size)", flows.size());
+        PathComputerFlowFetcher flowFetcher = new PathComputerFlowFetcher(pathComputerAuth.connect());
 
-        for (Flow flow : flows) {
-            if (!flowPairsMap.containsKey(flow.getFlowId())) {
-                flowPairsMap.put(flow.getFlowId(), new BidirectionalFlow());
-            }
-
-            BidirectionalFlow pair = flowPairsMap.get(flow.getFlowId());
-            try {
-                pair.add(flow);
-            } catch (IllegalArgumentException e) {
-                logger.error("Invalid half-flow {}: {}", flow.getFlowId(), e.toString());
-            }
-        }
-
-        for (BidirectionalFlow bidirectionalFlow : flowPairsMap.values()) {
-            try {
-                flowCache.pushFlow(bidirectionalFlow.makeFlowPair());
-            } catch (InvalidArgumentException e) {
-                logger.error(
-                        "Invalid flow pairing {}: {}",
-                        bidirectionalFlow.anyDefined().getFlowId(),
-                        e.toString());
-            }
+        for (BidirectionalFlow bidirectionalFlow : flowFetcher.getFlows()) {
+            ImmutablePair<Flow, Flow> flowPair = new ImmutablePair<>(
+                    bidirectionalFlow.getForward(), bidirectionalFlow.getReverse());
+            flowCache.pushFlow(flowPair);
         }
         logger.info("Flow Cache: Initialized");
     }
