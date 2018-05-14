@@ -3,13 +3,14 @@ package org.openkilda.wfm.topology;
 import org.openkilda.wfm.ConfigurationException;
 import org.openkilda.wfm.PropertiesReader;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.Value;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.event.Level;
 
+@Value
+@Slf4j
 public class TopologyConfig {
-    private static final Logger logger = LoggerFactory.getLogger(TopologyConfig.class);
-    private Boolean isLocal;
+    private Boolean useLocalCluster;
     private Integer localExecutionTime;
 
     private Integer parallelism;
@@ -67,7 +68,7 @@ public class TopologyConfig {
 
     public TopologyConfig(PropertiesReader config) throws ConfigurationException {
         this.config = config;
-        isLocal = config.getBoolean("cli.local");
+        useLocalCluster = config.getBoolean("cli.local");
         localExecutionTime = (int)(config.getFloat("local.execution.time") * 1000);
 
         parallelism = config.getInteger("parallelism");
@@ -119,192 +120,17 @@ public class TopologyConfig {
         topologyEngineRestEndpoint = config.getString("topology.engine.rest.endpoint");
     }
 
-    public Boolean getLocal() {
-        return isLocal;
-    }
-
-    public Integer getLocalExecutionTime() {
-        return localExecutionTime;
-    }
-
-    public Integer getParallelism() {
-        return parallelism;
-    }
-
     public Integer getWorkers() {
         return workers;
     }
 
     public Integer getWorkers(String name) {
+        int value = workers;
         try {
-            workers = config.getInteger(name + ".workers");
+            value = config.getInteger(name + ".workers");
         } catch (ConfigurationException e) {
-            logger.warn("could not find {}.workers so using global default", name);
+            log.warn("could not find {}.workers so using global default", name);
         }
-        return workers;
-    }
-
-    public Integer getDiscoveryInterval() {
-        return discoveryInterval;
-    }
-
-    public float getDiscoverySpeakerFailureTimeout() {
-        return discoverySpeakerFailureTimeout;
-    }
-
-    public Integer getDiscoveryTimeout() {
-        return discoveryTimeout;
-    }
-
-    public Integer getDiscoveryLimit() {
-        return discoveryLimit;
-    }
-
-    public String getFilterDirectory() {
-        return filterDirectory;
-    }
-
-    public float getDiscoveryDumpRequestTimeout() {
-        return discoveryDumpRequestTimeout;
-    }
-
-    public Level getLoggerLevel() {
-        return loggerLevel;
-    }
-
-    public String getLoggerWatermark() {
-        return loggerWatermark;
-    }
-
-    public String getZookeeperHosts() {
-        return zookeeperHosts;
-    }
-
-    public Integer getZookeeperSessionTimeout() {
-        return zookeeperSessionTimeout;
-    }
-
-    public Integer getZookeeperConnectTimeout() {
-        return zookeeperConnectTimeout;
-    }
-
-    public String getKafkaHosts() {
-        return kafkaHosts;
-    }
-
-    public Integer getKafkaPartitionsDefault() {
-        return kafkaPartitionsDefault;
-    }
-
-    public Integer getKafkaReplicationDefault() {
-        return kafkaReplicationDefault;
-    }
-
-    // --- kafka topics
-
-    public String getKafkaCtrlTopic() {
-        return kafkaCtrlTopic;
-    }
-
-    public String getKafkaFlowTopic() {
-        return kafkaFlowTopic;
-    }
-
-    public String getKafkaHealthCheckTopic() {
-        return kafkaHealthCheckTopic;
-    }
-
-    public String getKafkaNorthboundTopic() {
-        return kafkaNorthboundTopic;
-    }
-
-    public String getKafkaOtsdbTopic() {
-        return kafkaOtsdbTopic;
-    }
-
-    public String getKafkaSimulatorTopic() {
-        return kafkaSimulatorTopic;
-    }
-
-    public String getKafkaSpeakerTopic() {
-        return kafkaSpeakerTopic;
-    }
-
-    public String getKafkaStatsTopic() {
-        return kafkaStatsTopic;
-    }
-
-    public String getKafkaTopoCacheTopic() {
-        return kafkaTopoCacheTopic;
-    }
-
-    public String getKafkaTopoDiscoTopic() {
-        return kafkaTopoDiscoTopic;
-    }
-
-    public String getKafkaTopoEngTopic() {
-        return kafkaTopoEngTopic;
-    }
-
-    // ---
-
-    public String getOpenTsDBHosts() {
-        return openTsDBHosts;
-    }
-
-    public Integer getOpenTsdbTimeout() {
-        return openTsdbTimeout;
-    }
-
-    public boolean isOpenTsdbClientChunkedRequestsEnabled() {
-        return openTsdbClientChunkedRequestsEnabled;
-    }
-
-    public Integer getOpenTsdbNumSpouts() {
-        return openTsdbNumSpouts;
-    }
-
-    public Integer getOpenTsdbFilterBoltExecutors() {
-        return openTsdbFilterBoltExecutors;
-    }
-
-    public Integer getGetDatapointParseBoltExecutors() {
-        return getDatapointParseBoltExecutors;
-    }
-
-    public Integer getGetDatapointParseBoltWorkers() {
-        return getDatapointParseBoltWorkers;
-    }
-
-    public Integer getOpenTsdbBoltExecutors() {
-        return openTsdbBoltExecutors;
-    }
-
-    public Integer getOpenTsdbBatchSize() {
-        return openTsdbBatchSize;
-    }
-
-    public Integer getOpenTsdbFlushInterval() {
-        return openTsdbFlushInterval;
-    }
-
-    public Integer getOpenTsdbBoltWorkers() {
-        return openTsdbBoltWorkers;
-    }
-
-    public String getNeo4jHost() {
-        return neo4jHost;
-    }
-
-    public String getNeo4jLogin() {
-        return neo4jLogin;
-    }
-
-    public String getNeo4jPassword() {
-        return neo4jPassword;
-    }
-
-    public String getTopologyEngineRestEndpoint() {
-        return topologyEngineRestEndpoint;
+        return value;
     }
 }

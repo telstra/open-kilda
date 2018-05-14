@@ -84,7 +84,7 @@ public abstract class AbstractTopology implements Topology {
     }
 
     protected void setup() throws TException, NameCollisionException {
-        if (config.getLocal()) {
+        if (config.getUseLocalCluster()) {
             setupLocal();
         } else {
             setupRemote();
@@ -153,7 +153,7 @@ public abstract class AbstractTopology implements Topology {
         Config stormConfig = new Config();
 
         stormConfig.setNumWorkers(config.getWorkers(topologyName));
-        if (config.getLocal()) {
+        if (config.getUseLocalCluster()) {
             stormConfig.setMaxTaskParallelism(config.getParallelism());
         }
 
