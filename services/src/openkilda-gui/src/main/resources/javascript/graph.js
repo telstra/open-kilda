@@ -134,9 +134,9 @@ var max_text_size = 24;
 var nominal_stroke = 1.5;
 var max_stroke = 4.5;
 var max_base_node_size = 36;
-var min_zoom = 0.5;
+var min_zoom = 0.15;
 var max_zoom = 3;
-
+var isDragMove = false;
 var scale = 1.0;
 var optArray = [];
 
@@ -149,41 +149,51 @@ var margin = {top: -5, right: -5, bottom: -5, left: -5},
 	height = window.innerHeight,
 	radius = 35,
 	zoom, force, drag, svg,  link, node, text, flow_count,linksSourceArr;
+
+
 var size = d3.scale.pow().exponent(1)
-.domain([1, 100])
-.range([8, 24]);
-zoom = d3.behavior.zoom()
-	.scale(scale)
-	.scaleExtent([min_zoom, max_zoom])
-	//.on("zoom", redraw);
-//create force layout
-/*force = d3.layout.force()
-    .charge(-1000)
-    .linkDistance(200)
-	.size([width, height])
-	.on("tick", tick);
+.domain([1,100])
+.range([8,24]);
+	
+var force = d3.layout.force()
+.linkDistance(function(d) { 
+ 		var distance = 150;
+ 		try{
+		if(!d.flow_count){
+			if(d.speed == "40000000"){
+				distance = 100;
+			}else {
+				distance = 300;
+			}
+ 		}
+ 		}catch(e){}
+ 		return distance;  })
+.charge(-1000)
+.size([width,height]);
 
-
-drag = force.drag()
-	.on("dragstart", dragstart)
-	.on("dragend", dragend);
-*/
-svg = d3.select("#switchesgraph").append("svg")
-	.attr("width", width)
-	.attr("height", height)
-	.append("g")
-	.attr("class", "svg_g")
-	.call(zoom)
-	.on("dblclick.zoom", null)
-	//.style("cursor", "move");
-
-svg.append("rect")
-.attr("class", "graphoverlay")
-.attr("width", width)
-.attr("height", height);
-
-link = svg.selectAll(".link"),
-node = svg.selectAll(".node");
+var svg = d3.select("#switchesgraph").append("svg");
+var zoom = d3.behavior.zoom().scaleExtent([min_zoom,max_zoom])
+var g = svg.append("g");
+svg.style("cursor","move");
+function zoomEventCall(){
+	zoom.on("zoom", function() {
+		var stroke = nominal_stroke;
+		if (nominal_stroke*zoom.scale()>max_stroke) stroke = max_stroke/zoom.scale();
+		link.style("stroke-width",stroke);
+		circle.style("stroke-width",stroke);
+		var base_radius = nominal_base_node_size;
+		if (nominal_base_node_size*zoom.scale()>max_base_node_size) base_radius = max_base_node_size/zoom.scale();
+		    circle.attr("d", d3.svg.symbol()
+		    .size(function(d) { return Math.PI*Math.pow(size(d.size)*base_radius/nominal_base_node_size||base_radius,2); })
+		    .type(function(d) { return d.type; }))
+		if (!text_center) text.attr("dx", function(d) { return (size(d.size)*base_radius/nominal_base_node_size||base_radius); });
+		
+		var text_size = nominal_text_size;
+		if (nominal_text_size*zoom.scale()>max_text_size) text_size = max_text_size/zoom.scale();
+			text.style("font-size",text_size + "px");
+			g.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
+});
+}
 
 
 graph = {
@@ -207,7 +217,10 @@ graph = {
 		flows = responseData.flow.data;
 		linksSourceArr= [];
 		var linksArr = [];
-		
+		if(nodes.length < 50){
+			min_zoom = 0.5;
+			zoom.scaleExtent([min_zoom,max_zoom])
+		}
 		if (links.length>0) {
 			
 			try{
@@ -296,36 +309,18 @@ graph = {
 	        }
 			linkedByIndex[d.source + "," + d.target] = true;
 		});
-		
-		force = self.force = d3.layout.force()
-        .nodes(nodes)
-        .links(links)
-        .charge(-1000)
-       	//.linkDistance(200)
-        .linkDistance(function(d) { 
- 		var distance = 150;
- 		try{
-		if(!d.flow_count){
-			if(d.speed == "40000000"){
-				distance = 100;
-			}else {
-				distance = 300;
-			}
- 		}
- 		}catch(e){}
- 		return distance;  })
-       	.size([width, height])
-        .start();
+
+		force
+	    .nodes(nodes)
+	    .links(links)
+	    .start();
 		
 		drag = d3.behavior.drag()
 	        .on("dragstart", dragstart)
 	        .on("drag", dragmove)
 	        .on("dragend", dragend);
-		 
-		resize();
-		//window.focus();
-		//d3.select(window).on("resize", resize);
-		link = link.data(links)
+		
+		link = g.selectAll(".link").data(links)
 		.enter().append("path")
 		.attr("class", function(d, index) {
 	        if (d.hasOwnProperty("flow_count")) {
@@ -421,7 +416,7 @@ graph = {
 	        }
 	        
         });
-		node = node.data(nodes)
+		node = g.selectAll(".node").data(nodes)
 			.enter().append("g")
 			.attr("class", "node")
 			.on("dblclick", dblclick)
@@ -468,20 +463,43 @@ graph = {
 		}).attr("height", 58).attr("width", 58).attr("id", function(d, index) {
 		    return "image_" + index;
 		}).attr("cursor", "pointer").on("click", function(d, index) {
-		    if (d3.event.defaultPrevented)
-		        return;
-		    flagHover = true;
-		    var t0 = new Date();
-		    if (t0 - doubleClickTime > threshold) {
-		        setTimeout(function() {
-		            if (t0 - doubleClickTime > threshold) {
-		                showSwitchDetails(d);
-		            }
-		        }, threshold);
-		    }
-		
-		}).on("mouseover", function(d, index) {
+			$('#topology-hover-txt').css('display', 'none');
 			
+		    var cName = document.getElementById("circle_" + d.switch_id).className;
+		    circleClass = cName.baseVal;
+		
+		    var element = document.getElementById("circle_" + d.switch_id);
+		    
+		    var classes = "circle blue hover";
+			if(d.state && d.state.toLowerCase() == "deactivated"){
+				classes = "circle red hover";
+			}
+		    element.setAttribute("class", classes);
+		    var rec = element.getBoundingClientRect();
+		    if(!isDragMove){
+		    	 $('#topology-click-txt, #switch_click').css('display', 'block');
+				    $('#topology-click-txt').css('top', rec.y + 'px');
+				    $('#topology-click-txt').css('left', rec.x + 'px');
+				
+				    d3.select(".switchdetails_div_click_switch_name").html("<span>" + d.name + "</span>");
+				    d3.select(".switchdetails_div_click_controller").html("<span>" + d.switch_id + "</span>");
+				    d3.select(".switchdetails_div_click_state").html("<span>" + d.state + "</span>");
+				    d3.select(".switchdetails_div_click_address").html("<span>" + d.address + "</span>");
+				    d3.select(".switchdetails_div_click_name").html("<span>" + d.switch_id + "</span>");
+				    d3.select(".switchdetails_div_click_desc").html("<span>" + d.description + "</span>");
+				    var bound = HorizontallyBound(document.getElementById("switchesgraph"), document.getElementById("topology-click-txt"));
+				    if(bound){
+				    	$("#topology-click-txt").removeClass("left");
+				    }else{
+				    	var left = rec.x - (300 + 100); // subtract width of tooltip box + circle radius
+				    	$('#topology-click-txt').css('left', left + 'px');
+				    	$("#topology-click-txt").addClass("left");
+				    }
+		    }else{
+		    	isDragMove = false;
+		    }
+		   
+		}).on("mouseover", function(d, index) {
 			$('#isl_hover').css('display', 'none');
 			
 		    var cName = document.getElementById("circle_" + d.switch_id).className;
@@ -532,12 +550,13 @@ graph = {
 		
 		
 		graph.circle();
+		zoomEventCall();
+		svg.call(zoom);  
+		svg.on("dblclick.zoom", null);
+	    resize();
 		force.on('end', function() {
 			$("#wait").css("display", "none");
 			$("#switchesgraph").removeClass("hide");
-			if(zoomFitCall){
-				zoomFit(0.95, 500);
-			}
 			
 			
 			try{
@@ -560,6 +579,9 @@ graph = {
 			}catch(e){
 				console.log(e);
 			} 
+			if(zoomFitCall){
+				zoomFit(min_zoom, 500);
+			}
 		});
 		
 		force.on("tick", tick);
@@ -585,7 +607,7 @@ graph = {
 				filteredLinks.push(obj);
 			};
 		})
-		flow_count = svg.selectAll(".flow_count")
+		flow_count = g.selectAll(".flow_count")
 	    	.data(filteredLinks)
 	    	.enter().append("g").attr("class","flow-circle");
 	
@@ -636,7 +658,7 @@ graph = {
 		    })
 		    .attr("fill", function(d) {
 		        return "#d3d3d3";
-		    }).call(force.drag)
+		    });//.call(force.drag)
 		    
 		    flow_count.append("text")
 		    .attr("dx", function(d) {
@@ -825,14 +847,73 @@ function tick() {
 	    }
 	});
 }
-function redraw() {
-	svg.attr("transform", "translate(" + d3.event.translate + ")" +
-		" scale(" + d3.event.scale + ")");
+
+function reset() {
+	storage.remove("NODES_COORDINATES");
+	d3.selectAll('g.node')
+    .each(function(d) {
+    	var element = document.getElementById("circle_" + d.switch_id);
+    	var classes = "circle blue";
+		if(d.state && d.state.toLowerCase() == "deactivated"){
+			classes = "circle red";
+		}
+		element.setAttribute("class", classes);
+    	d3.select(this).classed("fixed", d.fixed = false);
+    });
+	force.charge(-1000).resume();
+	zoom.scale(min_zoom);
+	zoomFit(min_zoom,500);
+	//g.attr("transform", "translate(" + zoom.translate() + ")scale(" + zoom.scale() + ")");
+	//	panzoom.reset();
+	//storage.remove("NODES_COORDINATES");
 }
 
+function zoomClick(id) {
+	
+//	if(id === 'zoom_in'){
+//		zoom.scale(zoom.scale() * 2);
+//		g.attr("transform","translate(" + zoom.translate() + ") scale(" +zoom.scale() + ")");
+////		panzoom.zoomIn()
+//	}else{
+//		zoom.scale(zoom.scale() / 2);
+//		g.attr("transform", "translate(" + zoom.translate() + ") scale(" +zoom.scale() + ")");
+////		panzoom.zoomOut();
+//	}
+	//console.log(d3)
+	//var clicked = d3.event.target,
+	var bounds = g.node().getBBox();
+	var parent = g.node().parentElement;
+	var fullWidth = $(parent).width(),
+		fullHeight = $(parent).height() - 200
+	var width = bounds.width,
+		height = bounds.height;
+	var midX = bounds.x + width / 2,
+		midY = bounds.y + height / 2;
+	if (width == 0 || height == 0) return; // nothing to fit
+	//var scale = (paddingPercent || 0.75) / Math.max(width / fullWidth, height / fullHeight);
+	//var translate = [fullWidth / 2 - scale * midX, fullHeight / 2 - scale * midY];
+   var direction = 1,
+    factor = 0.2,
+    target_zoom = 1,
+    center = [fullWidth / 2 - min_zoom * midX, fullHeight / 2 - min_zoom * midY],//[width / 2, height / 2],
+    extent = zoom.scaleExtent(),
+    translate = zoom.translate(),
+    translate0 = [],
+    l = [],
+    view = {x: translate[0], y: translate[1], k: zoom.scale()};
+   	direction = (id === 'zoom_in') ? 1 : -1;
+	target_zoom = zoom.scale() * (1 + factor * direction);
+	if (target_zoom < extent[0] || target_zoom > extent[1]) { return false; }
+	translate0 = [(center[0] - view.x) / view.k, (center[1] - view.y) / view.k];
+	view.k = target_zoom;
+	l = [translate0[0] * view.k + view.x, translate0[1] * view.k + view.y];
+	view.x += center[0] - l[0];
+	view.y += center[1] - l[1];
+	interpolateZoom([view.x, view.y], view.k);
+}
 function zoomed() {
 	
-	svg.attr("transform",
+	g.attr("transform",
         "translate(" + zoom.translate() + ")" +
         "scale(" + zoom.scale() + ")"
     );
@@ -851,29 +932,6 @@ function interpolateZoom (translate, scale) {
         };
     });
 }
-function reset() {
-	d3.selectAll('g.node')
-    .each(function(d) {
-    	var element = document.getElementById("circle_" + d.switch_id);
-    	var classes = "circle blue";
-		if(d.state && d.state.toLowerCase() == "deactivated"){
-			classes = "circle red";
-		}
-		element.setAttribute("class", classes);
-    	d3.select(this).classed("fixed", d.fixed = false);
-    });
-	force.resume();
-	panzoom.reset();
-	storage.remove("NODES_COORDINATES");
-}
-
-function zoomClick(id) {
-	if(id === 'zoom_in'){
-		panzoom.zoomIn()
-	}else{
-		panzoom.zoomOut();
-	}
-}
 
 function dblclick(d,index) {
 	var element = document.getElementById("circle_" + d.switch_id);
@@ -884,7 +942,8 @@ function dblclick(d,index) {
     element.setAttribute("class", classes);
     doubleClickTime = new Date();
     d3.select(this).classed("fixed", d.fixed = false);
-    force.resume();
+    showSwitchDetails(d);
+    //force.resume();
 }
 function dragstart(d) {
 	force.stop()
@@ -892,7 +951,7 @@ function dragstart(d) {
 	//d3.select(this).classed("fixed", d.fixed = true);
 }
 function dragmove(d, i) {
-    d.px += d3.event.dx;
+	isDragMove = true;
     d.py += d3.event.dy;
     d.x += d3.event.dx;
     d.y += d3.event.dy; 
@@ -918,8 +977,8 @@ $('#switch_icon').on('click',function(){
 })
 
 function zoomFit(paddingPercent, transitionDuration) {
-	var bounds = svg.node().getBBox();
-	var parent = svg.node().parentElement;
+	var bounds = g.node().getBBox();
+	var parent = g.node().parentElement;
 	var fullWidth = $(parent).width(),
 		fullHeight = $(parent).height();
 	var width = bounds.width,
@@ -927,15 +986,11 @@ function zoomFit(paddingPercent, transitionDuration) {
 	var midX = bounds.x + width / 2,
 		midY = bounds.y + height / 2;
 	if (width == 0 || height == 0) return; // nothing to fit
-	var scale = (paddingPercent || 0.75) / Math.max(width / fullWidth, height / fullHeight);
-	var translate = [fullWidth / 2 - scale * midX, fullHeight / 2 - scale * midY];
-	
-	
-	zoom.scale(scale).translate(translate);
-	
-	svg.transition().duration(transitionDuration || 0) // milliseconds
-	.attr("transform", "translate(" + translate + ")scale(" + scale + ")");
-
+	//var scale = (paddingPercent || 0.75) / Math.max(width / fullWidth, height / fullHeight);
+	var translate = [fullWidth / 2 - min_zoom * midX, fullHeight / 2 - min_zoom * midY];
+	zoom.scale(min_zoom).translate(translate)
+	g.transition().duration(transitionDuration || 0) // milliseconds
+	.attr("transform", "translate(" + zoom.translate() + ")scale(" + zoom.scale() + ")");
 	zoomFitCall = false;
 	
 }
@@ -984,7 +1039,7 @@ var options = {
 	      }
 }
 
-var panzoom = $("svg").svgPanZoom(options);
+//var panzoom = $("svg").svgPanZoom(options);
 //localStorage.clear();
 var parentRect;
 var childRect;
@@ -1046,28 +1101,11 @@ function searchNode(value) {
 	        d3.selectAll(".node, .link, .flow-circle").transition()
 	            .duration(5000)
 	            .style("opacity", 1);
-        	/*unmatched.selectAll("circle")
-    		.attr("class", function(d,index){
-    			var element = document.getElementById("circle_" + d.switch_id);
-    			var classes = "circle blue";
-				if(d.state && d.state.toLowerCase() == "deactivated"){
-					classes = "circle red";
-				}
-				element.setAttribute("class", classes);
-			});*/
-	       
+       	       
 	    }
     }
 }
 
-/*$('#auto_refresh').click(function(e){
-	var isRefreshChecked = $('#auto_refresh:checked').length;
-	updateRightPanel({
-		REFRESH_CHECKED : isRefreshChecked, 
-		REFRESH_INTERVAL : $("#auto_refresh_interval").val(),
-		REFRESH_TYPE : $("#m_s_dropdown").val()
-	});
-});*/
 
 $('#viewISL').click(function(e){
 	try{
@@ -1108,7 +1146,7 @@ function setISLData(response,id){
 		 
 		 	 $('#'+id).append(tableRow);
  	 }
-	 
+	common.customDataTableSorting();
 	 var tableVar  =  $('#'+id).DataTable( {
 		 "iDisplayLength": 8,
 		 "aLengthMenu": false,
@@ -1118,10 +1156,11 @@ function setISLData(response,id){
 		  "autoWidth": false,
 		  destroy:true,
 		  language: {searchPlaceholder: "Search"},
+		  "aaSorting": [[0, "asc"]],
 		  "aoColumns": [
-				  { sWidth: '14%' },
+				  { sWidth: '14%',"sType": "name","bSortable": true },
 	              { sWidth:  '8%' },
-	              { sWidth: '8%' },
+	              { sWidth: '8%',"sType": "name","bSortable": true },
 	              { sWidth: '14%' },
 	              { sWidth: '8%' },
 	              { sWidth: '8%' },
@@ -1181,6 +1220,9 @@ function showSearch(idname,$event) {
 	}
 }
 $(document).ready(function() {
+	$('#close_switch_detail').click(function(){
+		$('#topology-click-txt').css('display', 'none');
+	})
 	$('body').on("click", function(e) { 
 		$('#topology-hover-txt').css('display', 'none');
 		var container = $('.refresh_toggle');
@@ -1356,12 +1398,12 @@ var interval = {
 					nodes.forEach(function(d){
 						for(var i=0,len=response.length;i<len;i++){
 							if(d.switch_id == response[i].switch_id){
+								d.state = response[i].state;
 								var classes = "circle blue";
 								if(d.state && d.state.toLowerCase() == "deactivated"){
 									classes = "circle red";
 								}
-								d.state = response[i].state;
-							    var element = document.getElementById("circle_" + d.switch_id);
+								var element = document.getElementById("circle_" + d.switch_id);
 							    element.setAttribute("class", classes);
 							    break;
 							}
@@ -1387,13 +1429,14 @@ var interval = {
 				{
 					links.forEach(function(d,index){
 						for(var i=0,len=response.length;i<len;i++){
-							if(d.source_switch == response[i].source_switch && d.target_switch == response[i].target_switch){
+							if(d.source_switch == response[i].source_switch && d.target_switch == response[i].target_switch && d.src_port ==  response[i].src_port && d.dst_port == response[i].dst_port){
+								d.state = response[i].state;
+								d.unidirectional = response[i].unidirectional;
 								if (d.unidirectional || d.state && d.state.toLowerCase()== "failed"){
 									classes = "link physical down";
 				                }else{
 				                	classes = "link physical";
 				                }
-								d.state = response[i].state;
 							    var element = document.getElementById("link" + index);
 							    
 							    var stroke = ISL.FAILED;

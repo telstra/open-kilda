@@ -186,7 +186,10 @@ function callIntervalData(){
 	var currentDate = new Date();
 	var startDate = new Date($("#datetimepicker7ISL").val());
 	var convertedStartDate = moment(startDate).format("YYYY-MM-DD-HH:mm:ss");	
-	var endDate = new Date()
+	var savedEnddate = new Date($('#savedEnddate').val());
+	savedEnddate = new Date(savedEnddate.getTime() + (autoreload * 1000));
+	$('#savedEnddate').val(savedEnddate);
+	var endDate =savedEnddate ;// new Date() ||
 	var convertedEndDate = moment(endDate).format("YYYY-MM-DD-HH:mm:ss");	
 	var downsampling =$("#downsamplingISL").val()	
 	$('#wait1').show();
