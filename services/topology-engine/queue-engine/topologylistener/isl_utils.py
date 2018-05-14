@@ -46,7 +46,7 @@ def create_if_missing(tx, *links):
             match = _make_match(target)
             match['status'] = 'inactive'
 
-            logger.info('Ensure ISL exist: %s', target)
+            logger.info('Ensure ISL %s exists', target)
             tx.run(q, match)
 
 
@@ -100,7 +100,7 @@ def fetch_by_datapath(tx, dpid):
 
 
 def resolve_conflicts(tx, isl):
-    logger.info('Check for ISL conflicts with %s', isl)
+    logger.info('Check ISL %s for conflicts', isl)
 
     involved = [
         fetch(tx, isl), fetch(tx, isl.reversed())]
