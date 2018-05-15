@@ -89,7 +89,7 @@ import java.util.Properties;
 public class PathVerificationService implements IFloodlightModule, IOFMessageListener, IPathVerificationService {
     private static final Logger logger = LoggerFactory.getLogger(PathVerificationService.class);
     private static final Logger logIsl = LoggerFactory.getLogger(
-            String.format("%s.ISL", PathVerificationService.class));
+            String.format("%s.ISL", PathVerificationService.class.getName()));
 
     public static final String VERIFICATION_BCAST_PACKET_DST = "08:ED:02:E3:FF:FF";
     public static final int VERIFICATION_PACKET_UDP_PORT = 61231;
