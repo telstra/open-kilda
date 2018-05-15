@@ -1,7 +1,8 @@
 package org.openkilda.wfm.topology;
 
-import org.openkilda.wfm.ConfigurationException;
+import org.openkilda.pce.provider.AuthNeo4j;
 import org.openkilda.wfm.PropertiesReader;
+import org.openkilda.wfm.error.ConfigurationException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

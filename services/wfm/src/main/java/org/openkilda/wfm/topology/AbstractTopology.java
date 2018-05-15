@@ -16,12 +16,12 @@
 package org.openkilda.wfm.topology;
 
 import org.openkilda.messaging.Topic;
-import org.openkilda.wfm.ConfigurationException;
 import org.openkilda.wfm.CtrlBoltRef;
 import org.openkilda.wfm.LaunchEnvironment;
-import org.openkilda.wfm.NameCollisionException;
+import org.openkilda.wfm.error.ConfigurationException;
+import org.openkilda.wfm.error.NameCollisionException;
 import org.openkilda.wfm.PropertiesReader;
-import org.openkilda.wfm.StreamNameCollisionException;
+import org.openkilda.wfm.error.StreamNameCollisionException;
 import org.openkilda.wfm.ctrl.RouteBolt;
 import org.openkilda.wfm.kafka.CustomNamedSubscription;
 import org.openkilda.wfm.topology.utils.HealthCheckBolt;

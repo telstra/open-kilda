@@ -20,10 +20,10 @@ import org.openkilda.messaging.ServiceType;
 import org.openkilda.messaging.Utils;
 import org.openkilda.pce.provider.Auth;
 import org.openkilda.pce.provider.AuthNeo4j;
-import org.openkilda.wfm.ConfigurationException;
 import org.openkilda.wfm.CtrlBoltRef;
 import org.openkilda.wfm.LaunchEnvironment;
-import org.openkilda.wfm.StreamNameCollisionException;
+import org.openkilda.wfm.error.ConfigurationException;
+import org.openkilda.wfm.error.NameCollisionException;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.flow.bolts.CrudBolt;
 import org.openkilda.wfm.topology.flow.bolts.ErrorBolt;
@@ -88,7 +88,7 @@ public class FlowTopology extends AbstractTopology {
     }
 
     @Override
-    public StormTopology createTopology() throws StreamNameCollisionException {
+    public StormTopology createTopology() throws NameCollisionException {
         logger.info("Creating Topology: {}", topologyName);
 
         TopologyBuilder builder = new TopologyBuilder();

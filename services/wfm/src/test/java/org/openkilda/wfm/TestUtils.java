@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm;
 
+import org.openkilda.wfm.error.ConfigurationException;
 import org.openkilda.wfm.topology.TopologyConfig;
 
 import com.google.common.io.Files;
