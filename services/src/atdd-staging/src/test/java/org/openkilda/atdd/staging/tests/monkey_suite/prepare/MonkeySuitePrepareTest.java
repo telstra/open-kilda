@@ -30,7 +30,8 @@ import org.springframework.test.context.ActiveProfiles;
 @RunWith(CucumberWithSpringProfile.class)
 @CucumberOptions(features = {"classpath:features/monkey_suite.feature"},
         glue = {"org.openkilda.atdd.staging.tests.monkey_suite.prepare", "org.openkilda.atdd.staging.steps"},
-        tags = {"@Prepare"})
+        tags = {"@Prepare"},
+        plugin = {"json:target/cucumber-reports/monkey_suite_prepare_report.json"})
 @ActiveProfiles("mock")
 public class MonkeySuitePrepareTest {
 

@@ -30,7 +30,8 @@ import org.springframework.test.context.ActiveProfiles;
 
 @RunWith(CucumberWithSpringProfile.class)
 @CucumberOptions(features = {"classpath:features/discovery_mechanism.feature"},
-        glue = {"org.openkilda.atdd.staging.tests.discovery_mechanism", "org.openkilda.atdd.staging.steps"})
+        glue = {"org.openkilda.atdd.staging.tests.discovery_mechanism", "org.openkilda.atdd.staging.steps"},
+        plugin = {"json:target/cucumber-reports/discovery_mechanism_report.json"})
 @ActiveProfiles("mock")
 public class DiscoveryMechanismTest {
 

@@ -31,7 +31,8 @@ import org.springframework.test.context.ActiveProfiles;
 
 @RunWith(CucumberWithSpringProfile.class)
 @CucumberOptions(features = {"classpath:features/flow_crud.feature"},
-        glue = {"org.openkilda.atdd.staging.tests.flow_crud", "org.openkilda.atdd.staging.steps"})
+        glue = {"org.openkilda.atdd.staging.tests.flow_crud", "org.openkilda.atdd.staging.steps"},
+        plugin = {"json:target/cucumber-reports/flow_crud_report.json"})
 @ActiveProfiles("mock")
 public class FlowCrudOverActiveSwitchesTest {
 
