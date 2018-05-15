@@ -38,6 +38,7 @@ import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.switches.ConnectModeResponse;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.info.switches.SyncRulesResponse;
+import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
 import org.openkilda.northbound.converter.SwitchMapper;
 import org.openkilda.northbound.dto.SwitchDto;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
@@ -46,21 +47,18 @@ import org.openkilda.northbound.messaging.MessageConsumer;
 import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.service.SwitchService;
 import org.openkilda.northbound.utils.RequestCorrelationId;
+import org.openkilda.northbound.utils.ResponseCollector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
-import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import javax.annotation.PostConstruct;
@@ -89,6 +87,9 @@ public class SwitchServiceImpl implements SwitchService {
     private MessageConsumer<Message> messageConsumer;
 
     @Autowired
+    private ResponseCollector<SwitchInfoData> switchesCollector;
+
+    @Autowired
     private SwitchMapper switchMapper;
 
     @Autowired
@@ -99,6 +100,9 @@ public class SwitchServiceImpl implements SwitchService {
 
     @Value("${kafka.northbound.topic}")
     private String northboundTopic;
+
+    @Value("${kafka.nbworker.topic}")
+    private String nbworkerTopic;
 
     @PostConstruct
     void init() {
@@ -117,19 +121,14 @@ public class SwitchServiceImpl implements SwitchService {
      */
     @Override
     public List<SwitchDto> getSwitches() {
+        final String correlationId = RequestCorrelationId.getId();
         LOGGER.debug("Get switch request received");
+        CommandMessage request = new CommandMessage(new GetSwitchesRequest(), System.currentTimeMillis(),
+                correlationId);
+        messageProducer.send(nbworkerTopic, request);
 
-        SwitchInfoData[] switches;
-        try {
-            switches = restTemplate.exchange(switchesUrl, HttpMethod.GET, new HttpEntity<>(headers),
-                    SwitchInfoData[].class).getBody();
-            LOGGER.debug("Returned {} links", switches.length);
-        } catch (RestClientException e) {
-            LOGGER.error("Exception during getting switches from TPE", e);
-            throw e;
-        }
-
-        return Arrays.stream(switches)
+        List<SwitchInfoData> switches = switchesCollector.getResult(correlationId);
+        return switches.stream()
                 .map(switchMapper::toSwitchDto)
                 .collect(Collectors.toList());
     }
