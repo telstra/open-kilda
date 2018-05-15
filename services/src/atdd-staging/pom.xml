@@ -250,10 +250,11 @@
                             <projectName>${project.name}</projectName>
                             <outputDirectory>${project.build.directory}</outputDirectory>
                             <cucumberOutput>${project.build.directory}/cucumber-reports</cucumberOutput>
+                            <checkBuildResult>!${skipTests}</checkBuildResult>
                         </configuration>
                     </execution>
                 </executions>
             </plugin>
         </plugins>
-    </build>
+</build>
 </project>

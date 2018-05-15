@@ -30,6 +30,8 @@
         <aspectj.version>1.8.13</aspectj.version>
 
         <aspectj-maven-plugin.version>1.11</aspectj-maven-plugin.version>
+        <maven-checkstyle-plugin.version>3.0.0</maven-checkstyle-plugin.version>
+        <puppycrawl-tools-checkstyle.version>8.8</puppycrawl-tools-checkstyle.version>
     </properties>
 
     <profiles>
@@ -300,29 +302,32 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-checkstyle-plugin</artifactId>
-                    <version>2.17</version>
-                    <configuration>
-                        <configLocation>${project.basedir}/checkstyle.xml</configLocation>
-                        <consoleOutput>false</consoleOutput>
-                        <failsOnError>false</failsOnError>
-                        <linkXRef>false</linkXRef>
-                    </configuration>
+                    <version>${maven-checkstyle-plugin.version}</version>
                     <dependencies>
                         <dependency>
                             <groupId>com.puppycrawl.tools</groupId>
                             <artifactId>checkstyle</artifactId>
-                            <version>7.6.1</version>
+                            <version>${puppycrawl-tools-checkstyle.version}</version>
                         </dependency>
                     </dependencies>
                     <executions>
                         <execution>
-                            <id>validate</id>
+                            <id>checkstyle-validation</id>
                             <phase>validate</phase>
                             <goals>
-                                <goal>checkstyle</goal>
+                                <goal>check</goal>
                             </goals>
                         </execution>
                     </executions>
+                    <configuration>
+                        <consoleOutput>true</consoleOutput>
+                        <configLocation>src/checkstyle/checkstyle.xml</configLocation>
+                        <headerLocation>src/checkstyle/checkstyle-header.txt</headerLocation>
+                        <suppressionsLocation>src/checkstyle/checkstyle-suppress-known-issues.xml</suppressionsLocation>
+                        <failOnViolation>true</failOnViolation>
+                        <violationSeverity>warning</violationSeverity>
+                        <includeTestSourceDirectory>true</includeTestSourceDirectory>
+                    </configuration>
                 </plugin>
             </plugins>
         </pluginManagement>
