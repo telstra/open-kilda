@@ -13,8 +13,8 @@
 #   limitations under the License.
 #
 
-import json
 import logging
+import pprint
 import textwrap
 
 import py2neo
@@ -206,18 +206,15 @@ def update_status(tx, isl):
     p.update(_make_match(isl))
     p.update({'peer_' + k: v for k, v in _make_match(isl.reversed()).items()})
 
-    logger.debug('ISL update status query:\n%s', q)
+    logger.debug(
+            'ISL update status query:\n%s\nparams:%s', q, pprint.pformat(p))
     cursor = tx.run(q, p)
 
     stats = cursor.stats()
     if stats['properties_set'] != 2:
         logger.error(
-            'ISL update status query do not update one or both edges '
-            'of ISL.')
-        logger.error('ISL update status query:\n%s', q)
-        logger.error(
-            'ISL update status query stats:\n%s',
-            json.dumps(stats, indent=2))
+                'Failed to sync ISL\'s %s records statuses. Looks like it is '
+                'unidirectional.', isl)
 
 
 def set_active_field(tx, neo_id, status):
