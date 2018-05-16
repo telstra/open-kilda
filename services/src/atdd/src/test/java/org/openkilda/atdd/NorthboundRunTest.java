@@ -88,7 +88,7 @@ public class NorthboundRunTest {
         assertEquals(200, getHealthCheck());
     }
 
-    @Then("^flow (\\w+) in (\\w+) state$")
+    @Then("^flow (.*) in (\\w+) state$")
     public void flowState(String flowId, String state) throws Throwable {
         String flowName = FlowUtils.getFlowName(flowId);
         FlowState flowState = FlowState.valueOf(state);

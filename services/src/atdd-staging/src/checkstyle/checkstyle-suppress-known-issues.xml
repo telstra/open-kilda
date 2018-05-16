@@ -153,15 +153,15 @@
     <suppress files="src/main/java/org/openkilda/atdd/staging/steps/FlowCrudSteps.java" lines="46" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/atdd/staging/steps/FlowCrudSteps.java" lines="67" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/atdd/staging/steps/FlowCrudSteps.java" lines="105" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/atdd/staging/steps/FlowCrudSteps.java" lines="110" checks="LineLength"/>
+    <suppress files="src/main/java/org/openkilda/atdd/staging/steps/FlowCrudSteps.java" lines="106" checks="LineLength"/>
     <suppress files="src/main/java/org/openkilda/atdd/staging/steps/FlowCrudSteps.java" lines="133" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/atdd/staging/steps/FlowCrudSteps.java" lines="171" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/atdd/staging/steps/FlowCrudSteps.java" lines="185" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/atdd/staging/steps/FlowCrudSteps.java" lines="212" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/atdd/staging/steps/FlowCrudSteps.java" lines="227" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/atdd/staging/steps/FlowCrudSteps.java" lines="238" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/atdd/staging/steps/FlowCrudSteps.java" lines="244" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/atdd/staging/steps/FlowCrudSteps.java" lines="246" checks="LineLength"/>
+    <suppress files="src/main/java/org/openkilda/atdd/staging/steps/FlowCrudSteps.java" lines="240" checks="LineLength"/>
+    <suppress files="src/main/java/org/openkilda/atdd/staging/steps/FlowCrudSteps.java" lines="242" checks="LineLength"/>
     <suppress files="src/main/java/org/openkilda/atdd/staging/steps/FlowCrudSteps.java" lines="252" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/atdd/staging/steps/FlowCrudSteps.java" lines="278" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/atdd/staging/steps/FlowCrudSteps.java" lines="319" checks="JavadocMethod"/>
