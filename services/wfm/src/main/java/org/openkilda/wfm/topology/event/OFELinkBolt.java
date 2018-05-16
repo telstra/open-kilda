@@ -20,6 +20,7 @@ import static org.openkilda.messaging.Utils.PAYLOAD;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Lists;
 import org.apache.storm.kafka.spout.internal.Timer;
 import org.apache.storm.state.KeyValueState;
 import org.apache.storm.task.OutputCollector;
@@ -48,6 +49,7 @@ import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.messaging.model.DiscoveryLink;
+import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.wfm.OFEMessageUtils;
 import org.openkilda.wfm.WatchDog;
 import org.openkilda.wfm.ctrl.CtrlAction;
@@ -192,16 +194,16 @@ public class OFELinkBolt
             case MAIN:
                 DiscoveryManager.Plan discoveryPlan = discovery.makeDiscoveryPlan();
                 try {
-                    for (DiscoveryManager.Node node : discoveryPlan.needDiscovery) {
+                    for (NetworkEndpoint node : discoveryPlan.needDiscovery) {
                         sendDiscoveryMessage(tuple, node);
                     }
 
-                    for (DiscoveryManager.Node node : discoveryPlan.discoveryFailure) {
+                    for (NetworkEndpoint node : discoveryPlan.discoveryFailure) {
                         // this is somewhat incongruous - we send failure to TE, but we send
                         // discovery to FL ..
                         // Reality is that the handleDiscovery/handleFailure below does the work
                         //
-                        sendDiscoveryFailed(node.switchId, node.portId, tuple);
+                        sendDiscoveryFailed(node.getSwitchDpId(), node.getPortId(), tuple);
                     }
                 } catch (IOException e) {
                     logger.error("Unable to encode message: {}", e);
@@ -239,8 +241,8 @@ public class OFELinkBolt
     /**
      * Helper method for sending an ISL Discovery Message
      */
-    private void sendDiscoveryMessage(Tuple tuple, DiscoveryManager.Node node) throws IOException {
-        String json = OFEMessageUtils.createIslDiscovery(node.switchId, node.portId);
+    private void sendDiscoveryMessage(Tuple tuple, NetworkEndpoint node) throws IOException {
+        String json = OFEMessageUtils.createIslDiscovery(node.getSwitchDpId(), node.getPortId());
         logger.debug("LINK: Send ISL discovery command: {}", json);
         collector.emit(islDiscoveryTopic, tuple, new Values(PAYLOAD, json));
     }
@@ -414,6 +416,15 @@ public class OFELinkBolt
         collector.emit(topoEngTopic, tuple, new Values(PAYLOAD, json));
     }
 
+    private void passToTopologyEngine(Tuple tuple, InfoMessage message) {
+        try {
+            String json = Utils.MAPPER.writeValueAsString(message);
+            collector.emit(topoEngTopic, tuple, new Values(PAYLOAD, json));
+        } catch (JsonProcessingException e) {
+            logger.error("Error during json processing", e);
+        }
+    }
+
     private void handlePortEvent(Tuple tuple, PortInfoData portData) {
         final String switchId = portData.getSwitchId();
         final int portId = portData.getPortNo();
@@ -448,6 +459,9 @@ public class OFELinkBolt
          *  one place.
          */
         if (IslChangeType.DISCOVERED.equals(state)) {
+            if (discovery.isIslMoved(srcSwitch, srcPort, dstSwitch, dstPort)) {
+                handleMovedIsl(tuple, srcSwitch, srcPort, dstSwitch, dstPort);
+            }
             stateChanged = discovery.handleDiscovered(srcSwitch, srcPort, dstSwitch, dstPort);
             // If the state has changed, and since we've discovered one end of an ISL, let's make
             // sure we can test the other side as well.
@@ -502,6 +516,18 @@ public class OFELinkBolt
         dumpRequestTimer = new Timer(expireDelay, expireDelay, TimeUnit.MILLISECONDS);
     }
 
+    private void handleMovedIsl(Tuple tuple, String srcSwitch, int srcPort, String dstSwitch, int dstPort) {
+        NetworkEndpoint dstEndpoint = discovery.getLinkDestination(srcSwitch, srcPort);
+        logger.info("Link is moved from {}_{} - {}_{} to endpoint {}_{}", srcSwitch, srcPort,
+                dstEndpoint.getSwitchDpId(), dstEndpoint.getPortId(), dstSwitch, dstPort);
+
+        PathNode srcNode = new PathNode(srcSwitch, srcPort, 0);
+        PathNode dstNode = new PathNode(dstEndpoint.getSwitchDpId(), dstEndpoint.getPortId(), 1);
+        IslInfoData infoData = new IslInfoData(Lists.newArrayList(srcNode, dstNode), IslChangeType.MOVED);
+        InfoMessage message = new InfoMessage(infoData, System.currentTimeMillis(), UUID.randomUUID().toString());
+        passToTopologyEngine(tuple, message);
+    }
+
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         declarer.declareStream(islDiscoveryTopic, new Fields("key", "message"));
@@ -524,11 +550,11 @@ public class OFELinkBolt
     public AbstractDumpState dumpStateBySwitchId(String switchId) {
 
         List<DiscoveryLink> filteredDiscoveryQueue =  discoveryQueue.stream().
-                filter(node -> node.getSrcSwitch().equals(switchId)).
+                filter(node -> node.getSrcEndpoint().getSwitchDpId().equals(switchId)).
                 collect(Collectors.toList());
 
         Set<DiscoveryLink> filterdIslFilter = islFilter.getMatchSet().stream().
-                filter(node -> node.getSrcSwitch().equals(switchId)).
+                filter(node -> node.getSrcEndpoint().getSwitchDpId().equals(switchId)).
                 collect(Collectors.toSet());
 
 

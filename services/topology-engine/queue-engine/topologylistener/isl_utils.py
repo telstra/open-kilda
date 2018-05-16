@@ -343,6 +343,28 @@ def sync_with_link_props(tx, isl, *fields):
     tx.run(q, _make_match(isl))
 
 
+def update_moved_isl(tx, isl):
+    match = _make_match(isl)
+    q = textwrap.dedent("""
+        MATCH
+          (:switch {name: $src_switch})
+          -
+          [target:isl {
+            src_switch: $src_switch,
+            src_port: $src_port,
+            dst_switch: $dst_switch,
+            dst_port: $dst_port
+          }]
+          ->
+          (:switch {name: $dst_switch})
+        SET target.status='moved'  
+        SET target.actual='inactive'  
+        RETURN target""")
+
+    logger.debug('ISL moving query:\n%s', q)
+    tx.run(q, match)
+
+
 def _locate_changes(target, props):
     origin = {}
     update = {}

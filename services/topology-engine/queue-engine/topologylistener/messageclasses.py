@@ -153,6 +153,8 @@ class MessageItem(object):
                     event_handled = self.create_isl()
                 elif self.payload['state'] == "FAILED":
                     event_handled = self.isl_discovery_failed()
+                elif self.payload['state'] == "MOVED":
+                    event_handled = self.handle_moved_isl()
 
             elif self.get_message_type() == MT_PORT:
                 if self.payload['state'] == "DOWN":
@@ -272,6 +274,27 @@ class MessageItem(object):
                 isl_utils.disable_by_endpoint(tx, model.NetworkEndpoint(switch_id, port))
         except exc.DBRecordNotFound:
             logger.error('There is no ISL on %s_%s', switch_id, port)
+
+        return True
+
+    def handle_moved_isl(self):
+        path = self.payload['path']
+        a_switch = path[0]['switch_id']
+        a_port = int(path[0]['port_no'])
+        b_switch = path[1]['switch_id']
+        b_port = int(path[1]['port_no'])
+
+        logger.info('Handling moved isl between %s_%d - %s_%d', a_switch,
+                    a_port, b_switch, b_port)
+        isl = model.InterSwitchLink.new_from_isl_data(self.payload)
+        isl.ensure_path_complete()
+
+        try:
+            with graph.begin() as tx:
+                isl_utils.update_moved_isl(tx, isl)
+        except exc.DBRecordNotFound:
+            logger.error('There is no ISL between %s_%d - %s_%d', a_switch,
+                         a_port, b_switch, b_port)
 
         return True
 

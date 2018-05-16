@@ -39,6 +39,11 @@ public enum IslChangeType {
     FAILED("FAILED"),
 
     /**
+     * Isl was moved (currently it is inactive, new ISL has been replaced this one).
+     */
+    MOVED("MOVED"),
+
+    /**
      * Isl was created via pre-population.
      */
     CACHED("CACHED"),

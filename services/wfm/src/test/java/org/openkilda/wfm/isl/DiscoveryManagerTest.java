@@ -3,6 +3,7 @@ package org.openkilda.wfm.isl;
 import org.junit.Before;
 import org.junit.Test;
 import org.openkilda.messaging.model.DiscoveryLink;
+import org.openkilda.messaging.model.NetworkEndpoint;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -21,13 +22,19 @@ import static org.junit.Assert.*;
  */
 public class DiscoveryManagerTest {
 
-    DiscoveryManager dm;
-    DiscoveryLink link1;
-    DiscoveryLink link2;
-    DiscoveryLink link3;
-    int islHealthCheckInterval;
-    int islHealthFailureLimit;
-    int forlornLimit;
+    private DiscoveryManager dm;
+    private DiscoveryLink link1;
+    private DiscoveryLink link2;
+    private DiscoveryLink link3;
+    private NetworkEndpoint srcNode1;
+    private NetworkEndpoint dstNode1;
+    private NetworkEndpoint srcNode2;
+    private NetworkEndpoint dstNode2;
+    private NetworkEndpoint srcNode3;
+    private NetworkEndpoint dstNode3;
+    private int islHealthCheckInterval;
+    private int islHealthFailureLimit;
+    private int forlornLimit;
 
     @Before
     public void setUp() throws Exception {
@@ -46,9 +53,16 @@ public class DiscoveryManagerTest {
         link1 = new DiscoveryLink("sw1", 1, "sw3", 1, islHealthCheckInterval, forlornLimit);
         link2 = new DiscoveryLink("sw1", 2, "sw3", 2, islHealthCheckInterval, forlornLimit);
         link3 = new DiscoveryLink("sw2", 1, "sw3", 3, islHealthCheckInterval, forlornLimit);
-        dm.handlePortUp(link1.getSrcSwitch(), link1.getSrcPort());
-        dm.handlePortUp(link2.getSrcSwitch(), link2.getSrcPort());
-        dm.handlePortUp(link3.getSrcSwitch(), link3.getSrcPort());
+        
+        srcNode1 = link1.getSrcEndpoint();
+        dstNode1 = link1.getDstEndpoint();
+        srcNode2 = link2.getSrcEndpoint();
+        dstNode2 = link2.getDstEndpoint();
+        srcNode3 = link3.getSrcEndpoint();
+        dstNode3 = link3.getDstEndpoint();
+        dm.handlePortUp(srcNode1.getSwitchDpId(), srcNode1.getPortId());
+        dm.handlePortUp(srcNode2.getSwitchDpId(), srcNode2.getPortId());
+        dm.handlePortUp(srcNode3.getSwitchDpId(), srcNode3.getPortId());
     }
 
 
@@ -71,30 +85,38 @@ public class DiscoveryManagerTest {
         assertEquals(0, discoveryPlan.discoveryFailure.size());
 
         // In order for one of them to be in failure plan, it has to have been a success beforehand
-        dm.handleDiscovered(link1.getSrcSwitch(), link1.getSrcPort(), link1.getDstSwitch(), link1.getDstPort()); // clear attempts
-        dm.handleDiscovered(link2.getSrcSwitch(), link2.getSrcPort(), link2.getDstSwitch(), link2.getDstPort()); // clear attempts
-        dm.handleDiscovered(link3.getSrcSwitch(), link3.getSrcPort(), link3.getDstSwitch(), link3.getDstPort()); // clear attempts
+        dm.handleDiscovered(srcNode1.getSwitchDpId(), srcNode1.getPortId(),
+                dstNode1.getSwitchDpId(), dstNode1.getPortId()); // clear attempts
+        dm.handleDiscovered(srcNode2.getSwitchDpId(), srcNode2.getPortId(),
+                dstNode2.getSwitchDpId(), dstNode2.getPortId()); // clear attempts
+        dm.handleDiscovered(srcNode3.getSwitchDpId(), srcNode3.getPortId(),
+                dstNode3.getSwitchDpId(), dstNode3.getPortId()); // clear attempts
         dm.makeDiscoveryPlan();                                      // increase attempts of all to 1
-        dm.handleDiscovered(link1.getSrcSwitch(), link1.getSrcPort(), link1.getDstSwitch(), link1.getDstPort()); // clear attempts
-        dm.handleDiscovered(link2.getSrcSwitch(), link2.getSrcPort(), link2.getDstSwitch(), link2.getDstPort()); // clear attempts
+        dm.handleDiscovered(srcNode1.getSwitchDpId(), srcNode1.getPortId(),
+                dstNode1.getSwitchDpId(), dstNode1.getPortId()); // clear attempts
+        dm.handleDiscovered(srcNode2.getSwitchDpId(), srcNode2.getPortId(),
+                dstNode2.getSwitchDpId(), dstNode2.getPortId()); // clear attempts
         dm.makeDiscoveryPlan();                                      // attempts: link1&2 @ 1, link3 @ 2
         discoveryPlan = dm.makeDiscoveryPlan();                      // the attempts test is based on the 1 & 2 count
         assertEquals(3, discoveryPlan.needDiscovery.size());
         assertEquals(1, discoveryPlan.discoveryFailure.size());
-        assertEquals(link3.getSrcSwitch(),discoveryPlan.discoveryFailure.get(0).switchId);
-        assertEquals(link3.getSrcPort(),discoveryPlan.discoveryFailure.get(0).portId);
+        assertEquals(srcNode3.getSwitchDpId(),discoveryPlan.discoveryFailure.get(0).getSwitchDpId());
+        assertEquals(srcNode3.getPortId(),discoveryPlan.discoveryFailure.get(0).getPortId());
 
         // Now verify it doesn't re-send the failure
-        dm.handleDiscovered(link1.getSrcSwitch(), link1.getSrcPort(), null, 0); // clear attempts
-        dm.handleDiscovered(link2.getSrcSwitch(), link2.getSrcPort(), null, 0); // clear attempts
+        dm.handleDiscovered(srcNode1.getSwitchDpId(), srcNode1.getPortId(),
+                dstNode1.getSwitchDpId(), dstNode1.getPortId()); // clear attempts
+        dm.handleDiscovered(srcNode2.getSwitchDpId(), srcNode2.getPortId(),
+                dstNode2.getSwitchDpId(), dstNode2.getPortId()); // clear attempts
         discoveryPlan = dm.makeDiscoveryPlan();                      // the attempts test is based on the 0 & 3 count
         assertEquals(3, discoveryPlan.needDiscovery.size());
         assertEquals(0, discoveryPlan.discoveryFailure.size());
 
         // Now test forlorn
         dm.makeDiscoveryPlan();                                       // the attempts test is based on the 1 & 4 count
-        dm.handleDiscovered(link1.getSrcSwitch(), link1.getSrcPort(), null, 0); // clear attempts
-        dm.handleDiscovered(link2.getSrcSwitch(), link2.getSrcPort(), null, 0); // clear attempts
+        dm.handleDiscovered(srcNode1.getSwitchDpId(), srcNode1.getPortId(), 
+                dstNode1.getSwitchDpId(), dstNode1.getPortId()); // clear attempts
+        dm.handleDiscovered(srcNode2.getSwitchDpId(), srcNode2.getPortId(), dstNode2.getSwitchDpId(), 0); // clear attempts
         discoveryPlan = dm.makeDiscoveryPlan();                       // now consecutive failure at 3 for link3
         assertEquals(2, discoveryPlan.needDiscovery.size());
         assertEquals(0, discoveryPlan.discoveryFailure.size());
@@ -140,20 +162,21 @@ public class DiscoveryManagerTest {
         // - state information .. consecutive failures is zero, tick/attempts is zero, success++
 
         setupThreeLinks();
+        NetworkEndpoint dstNode = dstNode2;
 
         // An initial success is state change
-        assertEquals(true, dm.handleDiscovered(link2.getSrcSwitch(), link2.getSrcPort(),
-                link2.getDstSwitch(), link2.getDstPort()));
+        assertEquals(true, dm.handleDiscovered(srcNode2.getSwitchDpId(), srcNode2.getPortId(),
+                dstNode.getSwitchDpId(), dstNode.getPortId()));
         // A repeated success is not
-        assertEquals(false, dm.handleDiscovered(link2.getSrcSwitch(), link2.getSrcPort(),
-                link2.getDstSwitch(), link2.getDstPort()));
+        assertEquals(false, dm.handleDiscovered(srcNode2.getSwitchDpId(), srcNode2.getPortId(),
+                dstNode.getSwitchDpId(), dstNode.getPortId()));
 
         // Let it fail, then succeed .. both are state changes
-        assertEquals(true, dm.handleFailed(link2.getSrcSwitch(), link2.getSrcPort()));
-        assertEquals(true, dm.handleDiscovered(link2.getSrcSwitch(), link2.getSrcPort(),
-                link2.getDstSwitch(), link2.getDstPort()));
-        assertEquals(false, dm.handleDiscovered(link2.getSrcSwitch(), link2.getSrcPort(),
-                link2.getDstSwitch(), link2.getDstPort()));
+        assertEquals(true, dm.handleFailed(srcNode2.getSwitchDpId(), srcNode2.getPortId()));
+        assertEquals(true, dm.handleDiscovered(srcNode2.getSwitchDpId(), srcNode2.getPortId(),
+                dstNode.getSwitchDpId(), dstNode.getPortId()));
+        assertEquals(false, dm.handleDiscovered(srcNode2.getSwitchDpId(), srcNode2.getPortId(),
+                dstNode.getSwitchDpId(), dstNode.getPortId()));
     }
 
     @Test
@@ -165,14 +188,14 @@ public class DiscoveryManagerTest {
         setupThreeLinks();
 
         // After a PortUP, a failure isn't a state change, the default is to assume it isn't an ISL
-        assertEquals(false, dm.handleFailed(link2.getSrcSwitch(), link2.getSrcPort()));
+        assertEquals(false, dm.handleFailed(srcNode2.getSwitchDpId(), srcNode2.getPortId()));
         // A success after a failure is state change
-        assertEquals(true, dm.handleDiscovered(link2.getSrcSwitch(), link2.getSrcPort(),
-                link2.getDstSwitch(), link2.getDstPort()));
+        assertEquals(true, dm.handleDiscovered(srcNode2.getSwitchDpId(), srcNode2.getPortId(),
+                dstNode2.getSwitchDpId(), dstNode2.getPortId()));
         // A failure after a success is state change
-        assertEquals(true, dm.handleFailed(link2.getSrcSwitch(), link2.getSrcPort()));
+        assertEquals(true, dm.handleFailed(srcNode2.getSwitchDpId(), srcNode2.getPortId()));
         // Repeated failures isn't a state change.
-        assertEquals(false, dm.handleFailed(link2.getSrcSwitch(), link2.getSrcPort()));
+        assertEquals(false, dm.handleFailed(srcNode2.getSwitchDpId(), srcNode2.getPortId()));
     }
 
     @Test
@@ -187,30 +210,35 @@ public class DiscoveryManagerTest {
         setupThreeLinks();
 
         // discover them and confirm all discovered
-        dm.handleDiscovered(link1.getSrcSwitch(), link1.getSrcPort(), link1.getDstSwitch(), link1.getDstPort());
-        dm.handleDiscovered(link2.getSrcSwitch(), link2.getSrcPort(), link2.getDstSwitch(), link2.getDstPort());
-        dm.handleDiscovered(link3.getSrcSwitch(), link3.getSrcPort(), link3.getDstSwitch(), link3.getDstPort());
-        nodes = dm.findBySwitch(new DiscoveryManager.Node(link1.getSrcSwitch(), 0));
+        dm.handleDiscovered(srcNode1.getSwitchDpId(), srcNode1.getPortId(),
+                dstNode1.getSwitchDpId(), dstNode1.getPortId());
+        dm.handleDiscovered(srcNode2.getSwitchDpId(), srcNode2.getPortId(),
+                dstNode2.getSwitchDpId(), dstNode2.getPortId());
+        dm.handleDiscovered(srcNode3.getSwitchDpId(), srcNode3.getPortId(),
+                dstNode3.getSwitchDpId(), dstNode3.getPortId());
+        nodes = dm.findBySwitch(new NetworkEndpoint(srcNode1.getSwitchDpId(), 0));
         assertEquals(true, nodes.get(0).isDiscovered());
         assertEquals(true, nodes.get(1).isDiscovered());
-        nodes = dm.findBySwitch(new DiscoveryManager.Node(link3.getSrcSwitch(), 0));
+        nodes = dm.findBySwitch(new NetworkEndpoint(srcNode3.getSwitchDpId(), 0));
         assertEquals(true, nodes.get(0).isDiscovered());
 
         // now send SwitchUp and confirm sw1 all go back to not found, sw2 unchanged
-        dm.handleSwitchUp(link1.getSrcSwitch());
-        nodes = dm.findBySwitch(new DiscoveryManager.Node(link1.getSrcSwitch(), 0));
+        dm.handleSwitchUp(srcNode1.getSwitchDpId());
+        nodes = dm.findBySwitch(new NetworkEndpoint(srcNode1.getSwitchDpId(), 0));
         assertEquals(false, nodes.get(0).isDiscovered());
         assertEquals(false , nodes.get(1).isDiscovered());
-        nodes = dm.findBySwitch(new DiscoveryManager.Node(link3.getSrcSwitch(), 0));
+        nodes = dm.findBySwitch(new NetworkEndpoint(srcNode3.getSwitchDpId(), 0));
         assertEquals(true, nodes.get(0).isDiscovered());
 
         // now confirm they go back to found upon next Discovery.
-        dm.handleDiscovered(link1.getSrcSwitch(), link1.getSrcPort(), link1.getDstSwitch(), link1.getDstPort());
-        dm.handleDiscovered(link2.getSrcSwitch(), link2.getSrcPort(), link2.getDstSwitch(), link2.getDstPort());
-        nodes = dm.findBySwitch(new DiscoveryManager.Node(link1.getSrcSwitch(), 0));
+        dm.handleDiscovered(srcNode1.getSwitchDpId(), srcNode1.getPortId(),
+                dstNode1.getSwitchDpId(), dstNode1.getPortId());
+        dm.handleDiscovered(srcNode2.getSwitchDpId(), srcNode2.getPortId(),
+                dstNode2.getSwitchDpId(), dstNode2.getPortId());
+        nodes = dm.findBySwitch(new NetworkEndpoint(srcNode1.getSwitchDpId(), 0));
         assertEquals(true, nodes.get(0).isDiscovered());
         assertEquals(true, nodes.get(1).isDiscovered());
-        nodes = dm.findBySwitch(new DiscoveryManager.Node(link3.getSrcSwitch(), 0));
+        nodes = dm.findBySwitch(new NetworkEndpoint(srcNode3.getSwitchDpId(), 0));
         assertEquals(true, nodes.get(0).isDiscovered());
     }
 
@@ -221,16 +249,16 @@ public class DiscoveryManagerTest {
         setupThreeLinks();
 
         // 3 nodes - 2 in sw1, one in sw2; verify dropping sw1 drops 2 nodes (1 remaining)
-        nodes = dm.findBySwitch(link1.getSrcSwitch());
+        nodes = dm.findBySwitch(srcNode1.getSwitchDpId());
         assertEquals(2, nodes.size());
-        nodes = dm.findBySwitch(link3.getSrcSwitch());
+        nodes = dm.findBySwitch(srcNode3.getSwitchDpId());
         assertEquals(1, nodes.size());
 
         // Drop the switch, and then the same 4 lines of code, except 0 size for sw1 nodes.
-        dm.handleSwitchDown(link1.getSrcSwitch());
-        nodes = dm.findBySwitch(link1.getSrcSwitch());
+        dm.handleSwitchDown(srcNode1.getSwitchDpId());
+        nodes = dm.findBySwitch(srcNode1.getSwitchDpId());
         assertEquals(0, nodes.size());
-        nodes = dm.findBySwitch((link3.getSrcSwitch()));
+        nodes = dm.findBySwitch((srcNode3.getSwitchDpId()));
         assertEquals(1, nodes.size());
     }
 
@@ -238,20 +266,21 @@ public class DiscoveryManagerTest {
     public void handlePortUp() {
         // verify the switch/port is added
         // verify that adding an existing one doesn't crash it.
-        List<DiscoveryLink> nodes;
+        List<DiscoveryLink> links;
 
         // Put in 1 node and verify it is there.
-        DiscoveryLink node = new DiscoveryLink("sw1", 1, islHealthCheckInterval, islHealthFailureLimit);
-        dm.handlePortUp(node.getSrcSwitch(), node.getSrcPort());
-        nodes = dm.findBySwitch(new DiscoveryManager.Node(node.getSrcSwitch(), node.getSrcPort()));
-        assertEquals(1, nodes.size());
-        assertEquals(node, nodes.get(0));
+        DiscoveryLink link = new DiscoveryLink("sw1", 1, islHealthCheckInterval, islHealthFailureLimit);
+        NetworkEndpoint srcNode = link.getSrcEndpoint();
+        dm.handlePortUp(srcNode.getSwitchDpId(), srcNode.getPortId());
+        links = dm.findBySwitch(new NetworkEndpoint(srcNode.getSwitchDpId(), srcNode.getPortId()));
+        assertEquals(1, links.size());
+        assertEquals(link, links.get(0));
 
         // try to add it back in .. should still only be 1
-        dm.handlePortUp(node.getSrcSwitch(), node.getSrcPort());
-        nodes = dm.findBySwitch(new DiscoveryManager.Node(node.getSrcSwitch(), node.getSrcPort()));
-        assertEquals(1, nodes.size());
-        assertEquals(node,nodes.get(0));
+        dm.handlePortUp(srcNode.getSwitchDpId(), srcNode.getPortId());
+        links = dm.findBySwitch(new NetworkEndpoint(srcNode.getSwitchDpId(), srcNode.getPortId()));
+        assertEquals(1, links.size());
+        assertEquals(link, links.get(0));
     }
 
     @Test
@@ -261,15 +290,16 @@ public class DiscoveryManagerTest {
         List<DiscoveryLink> nodes;
 
         // Put in 1 node and then remove it. The handlePortUp test ensures the Port Up works.
-        DiscoveryLink node = new DiscoveryLink("sw1", 1, islHealthCheckInterval, islHealthFailureLimit);
-        dm.handlePortUp(node.getSrcSwitch(), node.getSrcPort());
-        dm.handlePortDown(node.getSrcSwitch(), node.getSrcPort());
-        nodes = dm.findBySwitch(new DiscoveryManager.Node(node.getSrcSwitch(), node.getSrcPort()));
+        DiscoveryLink link = new DiscoveryLink("sw1", 1, islHealthCheckInterval, islHealthFailureLimit);
+        NetworkEndpoint srcNode = link.getSrcEndpoint();
+        dm.handlePortUp(srcNode.getSwitchDpId(), srcNode.getPortId());
+        dm.handlePortDown(srcNode.getSwitchDpId(), srcNode.getPortId());
+        nodes = dm.findBySwitch(new NetworkEndpoint(srcNode.getSwitchDpId(), srcNode.getPortId()));
         assertEquals(0, nodes.size());
 
         // call PortDown again .. verify nothing bad happens.
-        dm.handlePortDown(node.getSrcSwitch(), node.getSrcPort());
-        nodes = dm.findBySwitch(new DiscoveryManager.Node(node.getSrcSwitch(), node.getSrcPort()));
+        dm.handlePortDown(srcNode.getSwitchDpId(), srcNode.getPortId());
+        nodes = dm.findBySwitch(new NetworkEndpoint(srcNode.getSwitchDpId(), srcNode.getPortId()));
         assertEquals(0, nodes.size());
     }
 
@@ -293,28 +323,37 @@ public class DiscoveryManagerTest {
         assertEquals(0, discoveryPlan.discoveryFailure.size());
 
         // push one of them to be forlorned..
-        dm.handleDiscovered(link1.getSrcSwitch(), link1.getSrcPort(), link1.getDstSwitch(), link1.getDstPort()); // clear attempts
-        dm.handleDiscovered(link2.getSrcSwitch(), link2.getSrcPort(), link2.getDstSwitch(), link2.getDstPort()); // clear attempts
+        dm.handleDiscovered(srcNode1.getSwitchDpId(), srcNode1.getPortId(),
+                dstNode1.getSwitchDpId(), dstNode1.getPortId()); // clear attempts
+        dm.handleDiscovered(srcNode2.getSwitchDpId(), srcNode2.getPortId(),
+                dstNode2.getSwitchDpId(), dstNode2.getPortId()); // clear attempts
         dm.makeDiscoveryPlan();                                      // 1 & 2 after
         dm.makeDiscoveryPlan();                                      // 2 & 3 after
-        dm.handleDiscovered(link1.getSrcSwitch(), link1.getSrcPort(), link1.getDstSwitch(), link1.getDstPort()); // clear attempts
-        dm.handleDiscovered(link2.getSrcSwitch(), link2.getSrcPort(), link2.getDstSwitch(), link2.getDstPort()); // clear attempts
+
+        dm.handleDiscovered(srcNode1.getSwitchDpId(), srcNode1.getPortId(),
+                dstNode1.getSwitchDpId(), dstNode1.getPortId()); // clear attempts
+        dm.handleDiscovered(srcNode2.getSwitchDpId(), srcNode2.getPortId(),
+                dstNode2.getSwitchDpId(), dstNode2.getPortId()); // clear attempts
         dm.makeDiscoveryPlan();                                      // 1 & 4 after
         dm.makeDiscoveryPlan();                                      // n3 @5 attempts, 3 cons.fails
-        dm.handleDiscovered(link1.getSrcSwitch(), link1.getSrcPort(), link1.getDstSwitch(), link1.getDstPort()); // clear attempts
-        dm.handleDiscovered(link2.getSrcSwitch(), link2.getSrcPort(), link2.getDstSwitch(), link2.getDstPort()); // clear attempts
+
+        dm.handleDiscovered(srcNode1.getSwitchDpId(), srcNode1.getPortId(),
+                dstNode1.getSwitchDpId(), dstNode1.getPortId()); // clear attempts
+        dm.handleDiscovered(srcNode2.getSwitchDpId(), srcNode2.getPortId(),
+                dstNode2.getSwitchDpId(), dstNode2.getPortId()); // clear attempts
         discoveryPlan = dm.makeDiscoveryPlan();                      // link3 forlorned..
         assertEquals(2, discoveryPlan.needDiscovery.size());
         assertEquals(0, discoveryPlan.discoveryFailure.size());
 
         // Now link3 is forlorned .. let's get it back into the discovery;
         // Let's act like link1 is connected to link3, and link1 was just discovered..
-        dm.handleDiscovered(link1.getSrcSwitch(), link1.getSrcPort(), link1.getDstSwitch(), link1.getDstPort()); // clear attempts
+        dm.handleDiscovered(srcNode1.getSwitchDpId(), srcNode1.getPortId(),
+                dstNode1.getSwitchDpId(), dstNode1.getPortId()); // clear attempts
         // This part mirrors what happens in OFELinkBolt *if* there was a state change on src.
-        if (!dm.checkForIsl(link3.getSrcSwitch(), link3.getSrcPort())){
+        if (!dm.checkForIsl(srcNode3.getSwitchDpId(), srcNode3.getPortId())){
             // Only call PortUp if we aren't checking for ISL. Otherwise, we could end up in an
             // infinite cycle of always sending a Port UP when one side is discovered.
-            dm.handlePortUp(link3.getSrcSwitch(), link3.getSrcPort());
+            dm.handlePortUp(srcNode3.getSwitchDpId(), srcNode3.getPortId());
         }
         discoveryPlan = dm.makeDiscoveryPlan();                      // link3 not forlorned
         assertEquals(3, discoveryPlan.needDiscovery.size());
@@ -326,16 +365,16 @@ public class DiscoveryManagerTest {
     public void shouldWorksCorrectlyWhenIslUpdating() {
         setupThreeLinks();
 
-        boolean stateChanged = dm.handleDiscovered(link1.getSrcSwitch(), link1.getSrcPort(),
-                link1.getDstSwitch(), link1.getDstPort());
+        boolean stateChanged = dm.handleDiscovered(srcNode1.getSwitchDpId(), srcNode1.getPortId(),
+                dstNode1.getSwitchDpId(), dstNode1.getPortId());
         assertTrue(stateChanged);
 
-        stateChanged = dm.handleDiscovered(link1.getSrcSwitch(), link1.getSrcPort(),
-                link1.getDstSwitch(), link1.getDstPort());
+        stateChanged = dm.handleDiscovered(srcNode1.getSwitchDpId(), srcNode1.getPortId(),
+                dstNode1.getSwitchDpId(), dstNode1.getPortId());
         assertFalse(stateChanged);
 
-        stateChanged = dm.handleDiscovered(link1.getSrcSwitch(), link1.getSrcPort(),
-                link2.getDstSwitch(), link2.getDstPort());
+        stateChanged = dm.handleDiscovered(srcNode1.getSwitchDpId(), srcNode1.getPortId(),
+                dstNode2.getSwitchDpId(), dstNode2.getPortId());
         assertTrue(stateChanged);
     }
 

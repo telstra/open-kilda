@@ -3,6 +3,7 @@ package org.openkilda.wfm.isl;
 import org.junit.Before;
 import org.junit.Test;
 import org.openkilda.messaging.model.DiscoveryLink;
+import org.openkilda.messaging.model.NetworkEndpoint;
 
 import static org.junit.Assert.*;
 
@@ -29,8 +30,7 @@ public class DiscoveryLinkTest {
 
     @Test
     public void shouldLinkBeDiscoveredWhenDestinationIsSet() {
-        dn.setDstSwitch("sw2");
-        dn.setDstPort(2);
+        dn.setDstEndpoint(new NetworkEndpoint("sw2", 2));
         assertEquals(true, dn.isDiscovered());
     }
 
@@ -41,11 +41,11 @@ public class DiscoveryLinkTest {
     public void forlorn() {
         int threshhold = 2;
         dn = new DiscoveryLink("sw1", 2, 0, threshhold);
-        assertEquals("A DN starts out as not forlorn", false, dn.forlorn());
+        assertEquals("A DN starts out as not excluded", false, dn.isExcludedFromDiscovery());
         dn.incConsecutiveFailure();
         dn.incConsecutiveFailure();
         dn.incConsecutiveFailure();
-        assertEquals("The DN should now be forlorn", true, dn.forlorn());
+        assertEquals("The DN should now be excluded", true, dn.isExcludedFromDiscovery());
     }
 
     /**
@@ -95,11 +95,11 @@ public class DiscoveryLinkTest {
         dn.incAttempts();
         dn.incTick();
         assertEquals(1, dn.getAttempts());
-        assertEquals(1, dn.getTicks());
+        assertEquals(1, dn.getTimeCounter());
         // renew clears both attempts and ticks
         dn.renew();
         assertEquals(0, dn.getAttempts());
-        assertEquals(0, dn.getTicks());
+        assertEquals(0, dn.getTimeCounter());
     }
 
     @Test
@@ -107,7 +107,7 @@ public class DiscoveryLinkTest {
         dn.incTick();
         dn.timeToCheck();
         dn.resetTickCounter();
-        assertEquals(0, dn.getTicks());
+        assertEquals(0, dn.getTimeCounter());
 
     }
 }

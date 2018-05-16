@@ -13,7 +13,7 @@ public class DummyIIslFilter implements IIslFilter {
     }
 
     public void add(String switchId, int portId) {
-        DiscoveryLink match = new DiscoveryLink(switchId, portId, 1, DiscoveryLink.FORLORN_NEVER);
+        DiscoveryLink match = new DiscoveryLink(switchId, portId, 1, DiscoveryLink.ENDLESS_ATTEMPTS);
         matchSet.add(match);
     }
 
