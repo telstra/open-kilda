@@ -6,7 +6,7 @@ import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.PortInfoData;
-import org.openkilda.wfm.topology.MessageException;
+import org.openkilda.wfm.error.MessageException;
 import org.openkilda.wfm.topology.portstate.PortStateTopology;
 import org.openkilda.wfm.topology.utils.AbstractKafkaParserBolt;
 import org.slf4j.Logger;

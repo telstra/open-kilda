@@ -25,6 +25,8 @@ import org.openkilda.atdd.staging.service.floodlight.model.SwitchEntry;
 import org.openkilda.atdd.staging.service.northbound.NorthboundService;
 import org.openkilda.atdd.staging.service.topology.TopologyEngineService;
 import org.openkilda.atdd.staging.service.traffexam.TraffExamService;
+import org.openkilda.atdd.staging.service.traffexam.model.Exam;
+import org.openkilda.atdd.staging.service.traffexam.model.ExamReport;
 import org.openkilda.atdd.staging.service.traffexam.model.Host;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
@@ -39,6 +41,7 @@ import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowPayloadToFlowConverter;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
+import org.openkilda.northbound.dto.switches.RulesValidationResult;
 
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -216,6 +219,7 @@ public class StubServiceFactory {
                 .thenAnswer(invocation -> {
                     FlowPayload result = SerializationUtils.clone(((FlowPayload) invocation.getArguments()[0]));
                     result.setLastUpdated(LocalTime.now().toString());
+                    result.setStatus(FlowState.ALLOCATED.toString());
                     putFlow(result.getId(), result);
                     return result;
                 });
@@ -238,6 +242,9 @@ public class StubServiceFactory {
 
         when(serviceMock.synchronizeSwitchRules(any()))
                 .thenReturn(new RulesSyncResult(emptyList(), emptyList(), emptyList(), emptyList()));
+
+        when(serviceMock.validateSwitchRules(any()))
+                .thenReturn(new RulesValidationResult(emptyList(), emptyList(), emptyList()));
 
         return serviceMock;
     }
@@ -271,6 +278,16 @@ public class StubServiceFactory {
                     Host host = mock(Host.class);
                     when(host.getName()).thenReturn(hostName);
                     return host;
+                });
+
+        when(serviceMock.waitExam(any()))
+                .thenAnswer(invocation -> {
+                    Exam exam = (Exam) invocation.getArguments()[0];
+                    ExamReport report = mock(ExamReport.class);
+                    when(report.hasError()).thenReturn(false);
+                    when(report.hasTraffic()).thenReturn(flows.containsKey(exam.getFlow().getId()));
+                    when(report.getBandwidth()).thenReturn(exam.getBandwidthLimit());
+                    return report;
                 });
 
         return serviceMock;

@@ -15,6 +15,8 @@
 
 package org.openkilda.atdd.staging.service.floodlight;
 
+import static java.lang.String.format;
+
 import org.openkilda.atdd.staging.service.floodlight.model.FlowEntriesMap;
 import org.openkilda.atdd.staging.service.floodlight.model.MetersEntriesMap;
 import org.openkilda.atdd.staging.service.floodlight.model.SwitchEntry;
@@ -25,7 +27,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Arrays;
@@ -76,6 +80,14 @@ public class FloodlightServiceImpl implements FloodlightService {
 
     @Override
     public MetersEntriesMap getMeters(String dpid) {
-        return restTemplate.getForObject("/wm/kilda/meters/switch_id/{switch_id}", MetersEntriesMap.class, dpid);
+        try {
+            return restTemplate.getForObject("/wm/kilda/meters/switch_id/{switch_id}", MetersEntriesMap.class, dpid);
+        } catch (HttpServerErrorException ex) {
+            if (ex.getStatusCode() == HttpStatus.NOT_IMPLEMENTED) {
+                throw new UnsupportedOperationException(format("Switch %s doesn't support dumping of meters.", dpid), ex);
+            }
+
+            throw ex;
+        }
     }
 }

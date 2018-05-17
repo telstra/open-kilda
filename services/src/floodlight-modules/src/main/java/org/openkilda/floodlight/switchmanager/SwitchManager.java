@@ -15,6 +15,7 @@
 
 package org.openkilda.floodlight.switchmanager;
 
+import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
@@ -458,7 +459,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         List<OFFlowStatsEntry> entries = new ArrayList<>();
         IOFSwitch sw = ofSwitchService.getSwitch(dpid);
         if (sw == null) {
-            throw new IllegalArgumentException(String.format("Switch %s was not found", dpid));
+            throw new IllegalArgumentException(format("Switch %s was not found", dpid));
         }
 
         OFFactory ofFactory = sw.getOFFactory();
@@ -491,10 +492,15 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         OFMeterConfigStatsReply values = null;
         IOFSwitch sw = lookupSwitch(dpid);
         if (sw == null) {
-            throw new IllegalArgumentException(String.format("Switch %s was not found", dpid));
+            throw new IllegalArgumentException(format("Switch %s was not found", dpid));
         }
 
         OFFactory ofFactory = sw.getOFFactory();
+        if (ofFactory.getVersion().compareTo(OF_13) < 0) {
+            throw new UnsupportedSwitchOperationException(dpid,
+                    format("Dumping of meters is not supported on the requested switch %s.", dpid));
+        }
+
         OFMeterConfigStatsRequest meterRequest = ofFactory.buildMeterConfigStatsRequest()
                 .setMeterId(0xffffffff)
                 .build();
@@ -1201,7 +1207,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     private IOFSwitch lookupSwitch(DatapathId dpId) throws SwitchOperationException {
         IOFSwitch swInfo = ofSwitchService.getSwitch(dpId);
         if (swInfo == null) {
-            throw new SwitchOperationException(dpId, String.format("Switch %s was not found", dpId));
+            throw new SwitchOperationException(dpId, format("Switch %s was not found", dpId));
         }
         return swInfo;
     }

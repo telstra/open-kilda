@@ -1,6 +1,7 @@
 package org.openkilda.wfm;
 
 import org.kohsuke.args4j.CmdLineException;
+import org.openkilda.wfm.error.ConfigurationException;
 import org.openkilda.wfm.topology.Topology;
 
 import java.util.Properties;

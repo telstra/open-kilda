@@ -7,8 +7,8 @@ import org.openkilda.messaging.command.discovery.DiscoveryFilterEntity;
 import org.openkilda.messaging.command.discovery.DiscoveryFilterPopulateData;
 import org.openkilda.wfm.AbstractAction;
 import org.openkilda.wfm.IKildaBolt;
-import org.openkilda.wfm.MessageFormatException;
-import org.openkilda.wfm.UnsupportedActionException;
+import org.openkilda.wfm.error.MessageFormatException;
+import org.openkilda.wfm.error.UnsupportedActionException;
 import org.openkilda.wfm.isl.DummyIIslFilter;
 import org.openkilda.wfm.protocol.KafkaMessage;
 

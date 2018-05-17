@@ -15,7 +15,6 @@
 
 package org.openkilda.atdd.staging.config;
 
-import com.google.common.io.CharStreams;
 import net.jodah.failsafe.RetryPolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,11 +29,11 @@ import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.http.client.support.BasicAuthorizationInterceptor;
 import org.springframework.web.client.DefaultResponseErrorHandler;
 import org.springframework.web.client.ResponseErrorHandler;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.DefaultUriBuilderFactory;
 
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.concurrent.TimeUnit;
 
 @Configuration
@@ -77,7 +76,9 @@ public class ServiceConfig {
 
     @Bean(name = "traffExamRestTemplate")
     public RestTemplate traffExamRestTemplate() {
-        return new RestTemplate();
+        RestTemplate restTemplate = new RestTemplate();
+        restTemplate.setErrorHandler(buildErrorHandler());
+        return restTemplate;
     }
 
     private RestTemplate buildRestTemplateWithAuth(String endpoint, String username, String password) {
@@ -94,11 +95,15 @@ public class ServiceConfig {
 
             @Override
             public void handleError(ClientHttpResponse clientHttpResponse) throws IOException {
-                if (clientHttpResponse.getStatusCode() != HttpStatus.NOT_FOUND) {
-                    LOGGER.error("HTTP response with status {} and body '{}'", clientHttpResponse.getStatusCode(),
-                            CharStreams.toString(new InputStreamReader(clientHttpResponse.getBody())));
+                try {
+                    super.handleError(clientHttpResponse);
+                } catch(RestClientResponseException e) {
+                    if (e.getRawStatusCode() != HttpStatus.NOT_FOUND.value()) {
+                        LOGGER.error("HTTP response with status {} and body '{}'", e.getRawStatusCode(),
+                                e.getResponseBodyAsString());
+                    }
+                    throw e;
                 }
-                super.handleError(clientHttpResponse);
             }
         };
     }
