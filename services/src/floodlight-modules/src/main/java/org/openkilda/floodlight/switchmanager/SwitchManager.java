@@ -15,11 +15,11 @@
 
 package org.openkilda.floodlight.switchmanager;
 
+import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.VERIFICATION_BCAST_PACKET_DST;
-import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 import static org.openkilda.messaging.Utils.ETH_TYPE;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_12;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_13;
@@ -40,6 +40,8 @@ import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.util.FlowModUtils;
 import org.openkilda.floodlight.kafka.KafkaMessageProducer;
 import org.openkilda.floodlight.switchmanager.web.SwitchManagerWebRoutable;
+import org.openkilda.floodlight.utils.CorrelationContext;
+import org.openkilda.floodlight.utils.NewCorrelationContextRequired;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Topic;
@@ -229,13 +231,14 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * {@inheritDoc}
      */
     @Override
+    @NewCorrelationContextRequired
     public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
         logger.debug("OF_ERROR: {}", msg);
         // TODO: track xid for flow id
         if (OFType.ERROR.equals(msg.getType())) {
             ErrorMessage error = new ErrorMessage(
                     new ErrorData(ErrorType.INTERNAL_ERROR, ((OFErrorMsg) msg).getErrType().toString(), null),
-                    System.currentTimeMillis(), DEFAULT_CORRELATION_ID, Destination.WFM_TRANSACTION);
+                    System.currentTimeMillis(), CorrelationContext.getId(), Destination.WFM_TRANSACTION);
             // TODO: Most/all commands are flow related, but not all. 'kilda.flow' might
             // not be the best place to send a generic error.
             kafkaProducer.postMessage("kilda.flow", error);
@@ -456,7 +459,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         List<OFFlowStatsEntry> entries = new ArrayList<>();
         IOFSwitch sw = ofSwitchService.getSwitch(dpid);
         if (sw == null) {
-            throw new IllegalArgumentException(String.format("Switch %s was not found", dpid));
+            throw new IllegalArgumentException(format("Switch %s was not found", dpid));
         }
 
         OFFactory ofFactory = sw.getOFFactory();
@@ -489,10 +492,15 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         OFMeterConfigStatsReply values = null;
         IOFSwitch sw = lookupSwitch(dpid);
         if (sw == null) {
-            throw new IllegalArgumentException(String.format("Switch %s was not found", dpid));
+            throw new IllegalArgumentException(format("Switch %s was not found", dpid));
         }
 
         OFFactory ofFactory = sw.getOFFactory();
+        if (ofFactory.getVersion().compareTo(OF_13) < 0) {
+            throw new UnsupportedSwitchOperationException(dpid,
+                    format("Dumping of meters is not supported on the requested switch %s.", dpid));
+        }
+
         OFMeterConfigStatsRequest meterRequest = ofFactory.buildMeterConfigStatsRequest()
                 .setMeterId(0xffffffff)
                 .build();
@@ -1199,7 +1207,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     private IOFSwitch lookupSwitch(DatapathId dpId) throws SwitchOperationException {
         IOFSwitch swInfo = ofSwitchService.getSwitch(dpId);
         if (swInfo == null) {
-            throw new SwitchOperationException(dpId, String.format("Switch %s was not found", dpId));
+            throw new SwitchOperationException(dpId, format("Switch %s was not found", dpId));
         }
         return swInfo;
     }

@@ -48,7 +48,7 @@ from app import login
 from app import topology
 from app import models
 from app import flows
-from app import network_dump
+
 
 if __name__ == "__main__":
     try:

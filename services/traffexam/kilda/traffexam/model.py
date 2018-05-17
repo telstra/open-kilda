@@ -283,7 +283,9 @@ class ConsumerEndpoint(_Endpoint):
 
 class ProducerEndpoint(_Endpoint):
     bandwidth = Default(1024)
+    burst_pkt = Default(0)
     time = Default(10)
+    use_udp = Default(False)
 
     def __init__(self, remote_address, **fields):
         super().__init__(**fields)

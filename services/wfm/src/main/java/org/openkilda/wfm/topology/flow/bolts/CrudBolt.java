@@ -95,7 +95,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.Nullable;
@@ -276,7 +275,8 @@ public class CrudBolt
 
                     switch (streamId) {
                         case STATUS:
-                            handleStateRequest(flowId, newStatus, tuple);
+                            //TODO: SpeakerBolt & TransactionBolt don't supply a tuple with correlationId
+                            handleStateRequest(flowId, newStatus, tuple, correlationId);
                             break;
                         default:
                             logger.debug("Unexpected stream: component={}, stream={}", componentId, streamId);
@@ -802,14 +802,12 @@ public class CrudBolt
      * It is currently called from 2 places - a failed update (set flow to DOWN), and a STATUS
      * update from the TransactionBolt.
      */
-    private void handleStateRequest(String flowId, FlowState state, Tuple tuple) throws IOException {
+    private void handleStateRequest(String flowId, FlowState state, Tuple tuple, String correlationId) throws IOException {
         ImmutablePair<Flow, Flow> flow = flowCache.getFlow(flowId);
         logger.info("State flow: {}={}", flowId, state);
         flow.getLeft().setState(state);
         flow.getRight().setState(state);
 
-        //FIXME: looks like we have to use received correlationId, don't generate new one.
-        final String correlationId = UUID.randomUUID().toString();
         FlowInfoData data = new FlowInfoData(flowId, flow, FlowOperation.STATE, correlationId);
         InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), correlationId);
 
@@ -830,7 +828,7 @@ public class CrudBolt
                 break;
 
             case UPDATE_FAILURE:
-                handleStateRequest(flowId, FlowState.DOWN, tuple);
+                handleStateRequest(flowId, FlowState.DOWN, tuple, message.getCorrelationId());
                 break;
 
             case DELETION_FAILURE:

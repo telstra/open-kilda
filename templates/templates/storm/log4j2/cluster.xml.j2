@@ -18,7 +18,7 @@
 
 <configuration monitorInterval="60" shutdownHook="disable">
 <properties>
-    <property name="pattern">%d{yyyy-MM-dd HH:mm:ss.SSS} %c{1.} %t [%p] %msg%n</property>
+    <property name="pattern">%d{yyyy-MM-dd HH:mm:ss.SSS} %c{1.} %t [%p] - [%X] %m%n</property>
 </properties>
 <appenders>
     <RollingFile name="A1" immediateFlush="false"
@@ -67,7 +67,7 @@
     </RollingFile>
 
     <Socket name="LOGSTASH" host="{{ logging.logstash_host }}" port="{{ logging.port.storm }}">
-        <JsonLayout compact="true" eventEol="true" />
+        <JsonLayout compact="true" eventEol="true" properties="true" />
     </Socket>
 
     <Syslog name="syslog" format="RFC5424" charset="UTF-8" host="localhost" port="514"
