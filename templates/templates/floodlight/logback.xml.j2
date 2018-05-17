@@ -2,7 +2,7 @@
 <configuration scan="true" debug="true" scanPeriod="5 seconds">
   <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
     <encoder>
-      <pattern>%date{yyyy-MM-dd HH:mm:ss.S} %-5level [%logger{15}] %msg%n</pattern>
+      <pattern>%date{ISO8601} %-5level %logger{15} - [%X] %msg%n</pattern>
     </encoder>
   </appender>
 {% if logging.json_file %}

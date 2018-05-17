@@ -25,6 +25,8 @@ import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import org.openkilda.floodlight.converter.IOFSwitchConverter;
 import org.openkilda.floodlight.kafka.KafkaMessageProducer;
+import org.openkilda.floodlight.utils.CorrelationContext;
+import org.openkilda.floodlight.utils.NewCorrelationContextRequired;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Topic;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
@@ -75,6 +77,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
      * {@inheritDoc}
      */
     @Override
+    @NewCorrelationContextRequired
     public void switchAdded(final DatapathId switchId) {
         Message message = buildSwitchMessage(switchService.getSwitch(switchId), SwitchState.ADDED);
         kafkaProducer.postMessage(TOPO_EVENT_TOPIC, message);
@@ -84,6 +87,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
      * {@inheritDoc}
      */
     @Override
+    @NewCorrelationContextRequired
     public void switchRemoved(final DatapathId switchId) {
         switchManager.stopSafeMode(switchId);
         Message message = buildSwitchMessage(switchId, SwitchState.REMOVED);
@@ -94,6 +98,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
      * {@inheritDoc}
      */
     @Override
+    @NewCorrelationContextRequired
     public void switchActivated(final DatapathId switchId) {
         final IOFSwitch sw = switchService.getSwitch(switchId);
         logger.info("ACTIVATING SWITCH: {}", switchId);
@@ -140,6 +145,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
      * {@inheritDoc}
      */
     @Override
+    @NewCorrelationContextRequired
     public void switchPortChanged(final DatapathId switchId, final OFPortDesc port, final PortChangeType type) {
         if (isPhysicalPort(port.getPortNo())) {
             Message message = buildPortMessage(switchId, port, type);
@@ -151,6 +157,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
      * {@inheritDoc}
      */
     @Override
+    @NewCorrelationContextRequired
     public void switchChanged(final DatapathId switchId) {
         Message message = buildSwitchMessage(switchService.getSwitch(switchId), SwitchState.CHANGED);
         kafkaProducer.postMessage(TOPO_EVENT_TOPIC, message);
@@ -164,6 +171,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
      * {@inheritDoc}
      */
     @Override
+    @NewCorrelationContextRequired
     public void switchDeactivated(final DatapathId switchId) {
         switchManager.stopSafeMode(switchId);
         Message message = buildSwitchMessage(switchId, SwitchState.DEACTIVATED);
@@ -271,7 +279,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
      * @return Message
      */
     public static Message buildMessage(final InfoData data) {
-        return new InfoMessage(data, System.currentTimeMillis(), "system", null);
+        return new InfoMessage(data, System.currentTimeMillis(), CorrelationContext.getId(), null);
     }
 
     /**

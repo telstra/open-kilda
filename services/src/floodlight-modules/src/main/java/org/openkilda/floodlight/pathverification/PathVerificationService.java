@@ -46,6 +46,8 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.openkilda.floodlight.pathverification.type.PathType;
 import org.openkilda.floodlight.pathverification.web.PathVerificationServiceWebRoutable;
+import org.openkilda.floodlight.utils.CorrelationContext;
+import org.openkilda.floodlight.utils.NewCorrelationContextRequired;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Topic;
 import org.openkilda.messaging.info.InfoMessage;
@@ -206,6 +208,7 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
     }
 
     @Override
+    @NewCorrelationContextRequired
     public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext context) {
         logger.debug("PathVerificationService received new message of type {}: {}", msg.getType(), msg.toString());
         switch (msg.getType()) {
@@ -538,7 +541,7 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
             IslInfoData path = new IslInfoData(latency.getValue(), nodes, speed, IslChangeType.DISCOVERED,
                     getAvailableBandwidth(speed));
 
-            Message message = new InfoMessage(path, System.currentTimeMillis(), "system", null);
+            Message message = new InfoMessage(path, System.currentTimeMillis(), CorrelationContext.getId(), null);
 
             final String json = MAPPER.writeValueAsString(message);
             logger.debug("about to send {}", json);
