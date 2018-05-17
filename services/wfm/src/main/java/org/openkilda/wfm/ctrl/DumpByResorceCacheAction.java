@@ -4,8 +4,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.storm.task.TopologyContext;
 import org.openkilda.messaging.ctrl.AbstractDumpState;
 import org.openkilda.messaging.ctrl.DumpStateResponseData;
-import org.openkilda.wfm.MessageFormatException;
-import org.openkilda.wfm.UnsupportedActionException;
+import org.openkilda.wfm.error.MessageFormatException;
+import org.openkilda.wfm.error.UnsupportedActionException;
 
 import java.util.Optional;
 

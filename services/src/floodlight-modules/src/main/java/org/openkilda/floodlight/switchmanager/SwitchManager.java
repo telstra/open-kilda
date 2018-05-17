@@ -125,6 +125,10 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
     static final U64 NON_SYSTEM_MASK = U64.of(0x80000000FFFFFFFFL);
 
+    public static final int VERIFICATION_RULE_PRIORITY = FlowModUtils.PRIORITY_MAX - 1000;
+    public static final int DEFAULT_RULE_PRIORITY = FlowModUtils.PRIORITY_HIGH;
+
+
     // This is invalid VID mask - it cut of highest bit that indicate presence of VLAN tag on package. But valid mask
     // 0x1FFF lead to rule reject during install attempt on accton based switches.
     private static short OF10_VLAN_MASK = 0x0FFF;
@@ -284,7 +288,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      */
     @Override
     public void installDefaultRules(final DatapathId dpid) throws SwitchOperationException {
+
         installDropFlow(dpid);
+        cleanupInvalidVerificationRule(dpid);
         installVerificationRule(dpid, true);
         installVerificationRule(dpid, false);
     }
@@ -328,7 +334,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         // build FLOW_MOD command with meter
         OFFlowMod flowMod = buildFlowMod(ofFactory, match, meter, actions,
-                cookie & FLOW_COOKIE_MASK, FlowModUtils.PRIORITY_VERY_HIGH);
+                cookie & FLOW_COOKIE_MASK, DEFAULT_RULE_PRIORITY);
 
         return pushFlow(sw, "--InstallIngressFlow--", flowMod);
     }
@@ -360,7 +366,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         // build FLOW_MOD command, no meter
         OFFlowMod flowMod = buildFlowMod(ofFactory, match, null, actions,
-                cookie & FLOW_COOKIE_MASK, FlowModUtils.PRIORITY_VERY_HIGH);
+                cookie & FLOW_COOKIE_MASK, DEFAULT_RULE_PRIORITY);
 
         return pushFlow(sw, "--InstallEgressFlow--", flowMod);
     }
@@ -388,7 +394,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         // build FLOW_MOD command, no meter
         OFFlowMod flowMod = buildFlowMod(ofFactory, match, null, actions,
-                cookie & FLOW_COOKIE_MASK, FlowModUtils.PRIORITY_VERY_HIGH);
+                cookie & FLOW_COOKIE_MASK, DEFAULT_RULE_PRIORITY);
 
         return pushFlow(sw, flowId, flowMod);
     }
@@ -436,7 +442,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         // build FLOW_MOD command with meter
         OFFlowMod flowMod = buildFlowMod(ofFactory, match, meter, actions,
-                cookie & FLOW_COOKIE_MASK, FlowModUtils.PRIORITY_VERY_HIGH);
+                cookie & FLOW_COOKIE_MASK, DEFAULT_RULE_PRIORITY);
 
         pushFlow(sw, flowId, flowMod);
 
@@ -1103,7 +1109,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .applyActions(actionList).createBuilder().build();
         final long cookie = isBroadcast ? VERIFICATION_BROADCAST_RULE_COOKIE : VERIFICATION_UNICAST_RULE_COOKIE;
         OFFlowMod flowMod = buildFlowMod(ofFactory, match, null, instructionApplyActions,
-                cookie, FlowModUtils.PRIORITY_VERY_HIGH);
+                cookie, VERIFICATION_RULE_PRIORITY);
         String flowname = (isBroadcast) ? "Broadcast" : "Unicast";
         flowname += "--VerificationFlow--" + dpid.toString();
         pushFlow(sw, flowname, flowMod);
@@ -1202,6 +1208,24 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             throw new SwitchOperationException(dpId, format("Switch %s was not found", dpId));
         }
         return swInfo;
+    }
+
+
+    private void cleanupInvalidVerificationRule(DatapathId dpid) throws SwitchOperationException
+    {
+        for (OFFlowStatsEntry entry: dumpFlowTable(dpid)) {
+            long cookie = entry.getCookie().getValue();
+            if (cookie == ISwitchManager.VERIFICATION_BROADCAST_RULE_COOKIE ||
+                    cookie == ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE)
+            {
+                if (entry.getPriority() != VERIFICATION_RULE_PRIORITY)
+                {
+                    DeleteRulesCriteria criteria = DeleteRulesCriteria.builder().cookie(cookie)
+                            .build();
+                    deleteRulesByCriteria(dpid, criteria);
+                }
+            }
+        }
     }
 
     /**

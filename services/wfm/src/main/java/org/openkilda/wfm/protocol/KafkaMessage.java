@@ -3,7 +3,7 @@ package org.openkilda.wfm.protocol;
 import org.apache.storm.tuple.Tuple;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
-import org.openkilda.wfm.MessageFormatException;
+import org.openkilda.wfm.error.MessageFormatException;
 
 import java.io.IOException;
 

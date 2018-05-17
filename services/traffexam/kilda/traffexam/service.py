@@ -35,6 +35,8 @@ class Abstract(system.NSIPDBMixin, context_module.ContextConsumer):
         with self._lock:
             try:
                 item = self._create(subject)
+            except exc.ServiceError:
+                raise
             except Exception as e:
                 raise exc.ServiceCreateError(self, subject) from e
             self._pool[self.key(item)] = item
@@ -62,6 +64,8 @@ class Abstract(system.NSIPDBMixin, context_module.ContextConsumer):
 
             try:
                 self._delete(subject)
+            except exc.ServiceError:
+                raise
             except Exception as e:
                 self._pool[key] = subject
                 raise exc.ServiceDeleteError(self, key, subject) from e
@@ -114,6 +118,7 @@ class IpAddressService(Abstract):
         return subject.idnr
 
     def _create(self, subject):
+        self._check_collision(subject)
         if subject.iface is None:
             subject.iface = model.NetworkIface(self.get_gw_iface())
 
@@ -126,6 +131,14 @@ class IpAddressService(Abstract):
         name = subject.iface.get_ipdb_key()
         with self.get_ipdb().interfaces[name] as iface:
             iface.del_ip(subject.address, mask=subject.prefix)
+
+    def _check_collision(self, subject):
+        network = subject.network
+        for address in self._pool.values():
+            if not address.network.overlaps(network):
+                continue
+
+            raise exc.ServiceCreateCollisionError(self, subject, address)
 
 
 class EndpointService(Abstract):

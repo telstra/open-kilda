@@ -485,6 +485,7 @@ div.container p {
 
 svg {
 	width: 100% !important;
+	height:100% !important;
 	position: absolute;
 	z-index: 2;
 	left: 0;
@@ -703,9 +704,9 @@ h1.modal-title {
 	bottom: 0;
 }
 
-body{
+/* body{
     pointer-events:none;
-}
+} */
 .loader {
 	position: absolute;
 	border: 10px solid #f3f3f3;
@@ -998,7 +999,7 @@ footer {
 	padding: 30px 15px;
 	font-family: "Telstra-Regular", Arial, Helvetica, sans-serif;
 	font-size: 13px;
-	height:500px;
+	min-height: 500px;
 	z-index: 1;
 }
 
@@ -1423,7 +1424,7 @@ table#flowTable.dataTable .divTableCell {
     padding: 10px 20px 10px 18px;
     overflow: hidden;
 }
-#topology-hover-txt {
+#topology-hover-txt,#topology-click-txt {
 	width: 300px;
 	position: fixed;
 	z-index: 10;
@@ -1432,7 +1433,7 @@ table#flowTable.dataTable .divTableCell {
     margin: 0 0 0 85px;
     display: none;
 }
-#topology-hover-txt:after, #topology-hover-txt:before {
+#topology-hover-txt:after, #topology-hover-txt:before ,#topology-click-txt:after,#topology-click-txt:before{
 	right: 100%;
 	top: 35px;
 	border: solid transparent;
@@ -1443,22 +1444,22 @@ table#flowTable.dataTable .divTableCell {
 	pointer-events: none;
 }
 
-#topology-hover-txt:after {
+#topology-hover-txt:after,#topology-click-txt:after {
 	border-color: rgba(255, 255, 255, 0);
 	border-right-color: #fff;
 	border-width: 10px;
 	margin-top: -10px;
 }
-#topology-hover-txt:before {
+#topology-hover-txt:before,#topology-click-txt:before {
 	border-color: rgba(204, 204, 204, 0);
 	border-right-color: #ccc;
 	border-width: 11px;
 	margin-top: -11px;
 }
-#topology-hover-txt .form-wrapper {
+#topology-hover-txt .form-wrapper ,#topology-click-txt .form-wrapper{
 	border: none;
 }
-#topology-hover-txt.left:after, #topology-hover-txt.left:before {
+#topology-hover-txt.left:after, #topology-hover-txt.left:before ,#topology-click-txt.left:after,#topology-click-txt.left:before{
 	left: 100%;
 	top: 35px;
 	border: solid transparent;
@@ -1469,19 +1470,19 @@ table#flowTable.dataTable .divTableCell {
 	pointer-events: none;
 }
 
-#topology-hover-txt.left:after {
+#topology-hover-txt.left:after,#topology-click-txt.after {
 	border-color: rgba(255, 255, 255, 0);
 	border-left-color: #fff;
 	border-width: 10px;
 	margin-top: -10px;
 }
-#topology-hover-txt.left:before {
+#topology-hover-txt.left:before ,#topology-click-txt.left:before{
 	border-color: rgba(204, 204, 204, 0);
 	border-left-color: #ccc;
 	border-width: 11px;
 	margin-top: -11px;
 }
-#topology-hover-txt .form-wrapper {
+#topology-hover-txt .form-wrapper ,#topology-click-txt .form-wrapper{
 	border: none;
 }
 

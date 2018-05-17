@@ -11,7 +11,6 @@
 
 var flowid = window.location.href.split("#")[1];
 var graphInterval;
-
 $(function() {
 				
 		var count = 0;
@@ -62,7 +61,7 @@ $(document).ready(function() {
 		
 		$("#wait1").css("display", "none");
 		$('body').css('pointer-events', 'all');
-		showStatsGraph.showStatsData(response,selMetric); 
+		showStatsGraph.showStatsData(response,selMetric,null,null,yesterday,EndDate); 
 	})
 })
 
@@ -138,12 +137,12 @@ function getGraphData() {
 		if(megaBytes == "megabytes"){
 			selMetric = "bytes";		
 		}
-    	
+		
 		loadGraph.loadGraphData("/stats/flowid/"+flowid+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric,"GET",selMetric).then(function(response) {
     			
     			$("#wait1").css("display", "none");
     			$('body').css('pointer-events', 'all');
-    			showStatsGraph.showStatsData(response,selMetric); 
+    			showStatsGraph.showStatsData(response,selMetric,null,null,startDate,endDate); 
     	})
     		
     				try {
@@ -165,15 +164,18 @@ function callIntervalData() {
 	var currentDate = new Date();
 	var startDate = new Date($("#datetimepicker7").val());
 	var convertedStartDate = moment(startDate).format("YYYY-MM-DD-HH:mm:ss");
-	var endDate = new Date()
+	var autoreload = $("#autoreload").val();
+	var savedEnddate = new Date($('#savedEnddate').val());
+	savedEnddate = new Date(savedEnddate.getTime() + (autoreload * 1000));
+	$('#savedEnddate').val(savedEnddate);
+	var endDate =savedEnddate ;// new Date() ||
 	var convertedEndDate = moment(endDate).format("YYYY-MM-DD-HH:mm:ss");	
 	var selMetric=$("select.selectbox_menulist").val();
 	var downsampling = $("#downsampling").val();
-	
 	loadGraph.loadGraphData("/stats/flowid/"+flowid+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric,"GET",selMetric).then(function(response) {
 		$("#wait1").css("display", "none");
 		$('body').css('pointer-events', 'all');
-		showStatsGraph.showStatsData(response,selMetric); 
+		showStatsGraph.showStatsData(response,selMetric,null,null,startDate,endDate); 
 	})
 }
 

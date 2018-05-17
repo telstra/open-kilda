@@ -1,5 +1,7 @@
 package org.openkilda.wfm;
 
+import org.openkilda.wfm.error.ConfigurationException;
+
 import java.util.Properties;
 
 public class PropertiesReader {

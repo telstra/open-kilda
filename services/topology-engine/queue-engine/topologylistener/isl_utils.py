@@ -13,8 +13,8 @@
 #   limitations under the License.
 #
 
-import json
 import logging
+import pprint
 import textwrap
 
 import py2neo
@@ -46,7 +46,7 @@ def create_if_missing(tx, *links):
             match = _make_match(target)
             match['status'] = 'inactive'
 
-            logger.info('Ensure ISL exist: %s', target)
+            logger.info('Ensure ISL %s exists', target)
             tx.run(q, match)
 
 
@@ -77,10 +77,6 @@ def fetch(tx, isl):
     return target
 
 
-def fetch_one_by_endpoint(tx, endpoint):
-    return db.fetch_one(fetch_by_endpoint(tx, endpoint))
-
-
 def fetch_by_endpoint(tx, endpoint):
     q = textwrap.dedent("""
         MATCH (src:switch)-[target:isl]->(:switch)
@@ -104,7 +100,7 @@ def fetch_by_datapath(tx, dpid):
 
 
 def resolve_conflicts(tx, isl):
-    logger.info('Check for ISL conflicts with %s', isl)
+    logger.info('Check ISL %s for conflicts', isl)
 
     involved = [
         fetch(tx, isl), fetch(tx, isl.reversed())]
@@ -144,6 +140,30 @@ def switch_unplug(tx, dpid):
 
         set_active_field(tx, db.neo_id(db_link), 'inactive')
         update_status(tx, isl)
+
+
+def disable_by_endpoint(tx, endpoint):
+    logging.debug('Locate all ISL starts on %s', endpoint)
+
+    involved = list(fetch_by_endpoint(tx, endpoint))
+    switches = set()
+    for link in involved:
+        switches.add(link['src_switch'])
+        switches.add(link['dst_switch'])
+
+    flow_utils.precreate_switches(tx, *switches)
+
+    updated = []
+    for link in involved:
+        isl = model.InterSwitchLink.new_from_db(link)
+        logger.info('Deactivate ISL %s', isl)
+
+        set_active_field(tx, db.neo_id(link), 'inactive')
+        update_status(tx, isl)
+
+        updated.append(isl)
+
+    return updated
 
 
 def update_status(tx, isl):
@@ -186,18 +206,15 @@ def update_status(tx, isl):
     p.update(_make_match(isl))
     p.update({'peer_' + k: v for k, v in _make_match(isl.reversed()).items()})
 
-    logger.debug('ISL update status query:\n%s', q)
+    logger.debug(
+            'ISL update status query:\n%s\nparams:%s', q, pprint.pformat(p))
     cursor = tx.run(q, p)
 
     stats = cursor.stats()
     if stats['properties_set'] != 2:
         logger.error(
-            'ISL update status query do not update one or both edges '
-            'of ISL.')
-        logger.error('ISL update status query:\n%s', q)
-        logger.error(
-            'ISL update status query stats:\n%s',
-            json.dumps(stats, indent=2))
+                'Failed to sync ISL\'s %s records statuses. Looks like it is '
+                'unidirectional.', isl)
 
 
 def set_active_field(tx, neo_id, status):

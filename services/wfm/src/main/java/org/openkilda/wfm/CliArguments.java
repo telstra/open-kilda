@@ -5,6 +5,7 @@ import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.Option;
+import org.openkilda.wfm.error.ConfigurationException;
 import org.openkilda.wfm.topology.Topology;
 
 import java.io.File;
