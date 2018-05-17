@@ -44,8 +44,8 @@
         <openflowj.version>3.2.0-kilda-2</openflowj.version>
         <slf4j.version>1.7.25</slf4j.version>
         <snakeyaml.version>1.18</snakeyaml.version>
+        <lombok.version>1.16.20</lombok.version>
         <aspectj.version>1.8.13</aspectj.version>
-
         <aspectj-maven-plugin.version>1.11</aspectj-maven-plugin.version>
     </properties>
 

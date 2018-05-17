@@ -130,4 +130,8 @@ public class TopologyConfig {
         }
         return value;
     }
+
+    public AuthNeo4j getPathComputerAuth() {
+        return new AuthNeo4j(neo4jHost, neo4jLogin, neo4jPassword);
+    }
 }

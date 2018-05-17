@@ -30,7 +30,6 @@ import org.apache.storm.topology.base.BaseStatefulBolt;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 import org.apache.commons.lang.StringUtils;
-import org.neo4j.cypher.InvalidArgumentException;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
@@ -61,6 +60,7 @@ import org.openkilda.messaging.info.flow.FlowRerouteResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowStatusResponse;
 import org.openkilda.messaging.info.flow.FlowsResponse;
+import org.openkilda.messaging.model.BidirectionalFlow;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
@@ -76,11 +76,12 @@ import org.openkilda.pce.provider.PathComputer.Strategy;
 import org.openkilda.pce.provider.UnroutablePathException;
 import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
+import org.openkilda.wfm.share.utils.FlowCollector;
+import org.openkilda.wfm.share.utils.PathComputerFlowFetcher;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.flow.ComponentType;
 import org.openkilda.wfm.topology.flow.FlowTopology;
 import org.openkilda.wfm.topology.flow.StreamType;
-import org.openkilda.wfm.topology.flow.utils.BidirectionalFlow;
 import org.openkilda.wfm.topology.flow.validation.FlowValidationException;
 import org.openkilda.wfm.topology.flow.validation.FlowValidator;
 import org.slf4j.Logger;
@@ -457,12 +458,14 @@ public class CrudBolt
                 .map(pathComputer::getFlows)
                 .filter(flows -> !flows.isEmpty())
                 .map(flows -> {
-                    BidirectionalFlow flowPair = new BidirectionalFlow();
+                    FlowCollector flowPair = new FlowCollector();
                     flows.forEach(flowPair::add);
                     return flowPair;
                 })
                 .forEach(flowPair -> {
-                    final ImmutablePair<Flow, Flow> flow = flowPair.makeFlowPair();
+                    final BidirectionalFlow bidirectionalFlow = flowPair.make();
+                    final ImmutablePair<Flow, Flow> flow = new ImmutablePair<>(
+                            bidirectionalFlow.getForward(), bidirectionalFlow.getReverse());
                     final String flowId = flow.getLeft().getFlowId();
                     logger.debug("Refresh the flow: {}", flowId);
 
@@ -872,29 +875,12 @@ public class CrudBolt
     }
 
     private void initFlowCache() {
-        Map<String, BidirectionalFlow> flowPairsMap = new HashMap<>();
-        for (Flow flow : pathComputer.getAllFlows()) {
-            if (!flowPairsMap.containsKey(flow.getFlowId())) {
-                flowPairsMap.put(flow.getFlowId(), new BidirectionalFlow());
-            }
+        PathComputerFlowFetcher flowFetcher = new PathComputerFlowFetcher(pathComputer);
 
-            BidirectionalFlow pair = flowPairsMap.get(flow.getFlowId());
-            try {
-                pair.add(flow);
-            } catch (IllegalArgumentException e) {
-                logger.error("Invalid half-flow {}: {}", flow.getFlowId(), e.toString());
-            }
-        }
-
-        for (BidirectionalFlow bidirectionalFlow : flowPairsMap.values()) {
-            try {
-                flowCache.pushFlow(bidirectionalFlow.makeFlowPair());
-            } catch (InvalidArgumentException e) {
-                logger.error(
-                        "Invalid flow pairing {}: {}",
-                        bidirectionalFlow.anyDefined().getFlowId(),
-                        e.toString());
-            }
+        for (BidirectionalFlow bidirectionalFlow : flowFetcher.getFlows()) {
+            ImmutablePair<Flow, Flow> flowPair = new ImmutablePair<>(
+                    bidirectionalFlow.getForward(), bidirectionalFlow.getReverse());
+            flowCache.pushFlow(flowPair);
         }
     }
 

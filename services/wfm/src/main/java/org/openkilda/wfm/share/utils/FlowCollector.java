@@ -1,13 +1,28 @@
-package org.openkilda.wfm.topology.flow.utils;
+/*
+ * Copyright 2018 Telstra Open Source
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
+package org.openkilda.wfm.share.utils;
+
+import org.openkilda.messaging.model.BidirectionalFlow;
 import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.ImmutablePair;
 
-import javax.naming.directory.InvalidAttributesException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class BidirectionalFlow {
+public class FlowCollector {
     private String flowId;
     private Flow forward = null;
     private Flow reverse = null;
@@ -49,7 +64,7 @@ public class BidirectionalFlow {
         throw new IllegalArgumentException("No one half-flow pieces defined");
     }
 
-    public ImmutablePair<Flow, Flow> makeFlowPair() {
+    public BidirectionalFlow make() {
         List<String> missing = new ArrayList<>(2);
         if (forward == null) {
             missing.add("FORWARD is missing");
@@ -65,6 +80,6 @@ public class BidirectionalFlow {
             );
         }
 
-        return new ImmutablePair<>(forward, reverse);
+        return new BidirectionalFlow(forward, reverse);
     }
 }

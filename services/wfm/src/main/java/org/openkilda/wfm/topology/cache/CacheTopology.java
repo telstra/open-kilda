@@ -18,7 +18,6 @@ package org.openkilda.wfm.topology.cache;
 import org.apache.storm.generated.ComponentObject;
 import org.openkilda.messaging.ServiceType;
 import org.openkilda.pce.provider.Auth;
-import org.openkilda.pce.provider.AuthNeo4j;
 import org.openkilda.wfm.CtrlBoltRef;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.error.ConfigurationException;
@@ -50,8 +49,7 @@ public class CacheTopology extends AbstractTopology {
 
     public CacheTopology(LaunchEnvironment env) throws ConfigurationException {
         super(env);
-        pathComputerAuth = new AuthNeo4j(config.getNeo4jHost(), config.getNeo4jLogin(), config.getNeo4jPassword());
-
+        pathComputerAuth = config.getPathComputerAuth();
 
         logger.debug("Topology built {}: zookeeper={}, kafka={}, parallelism={}, workers={}",
                 getTopologyName(), config.getZookeeperHosts(), config.getKafkaHosts(), config.getParallelism(),

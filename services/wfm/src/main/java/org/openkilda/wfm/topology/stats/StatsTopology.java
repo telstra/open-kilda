@@ -44,12 +44,9 @@ import org.slf4j.LoggerFactory;
 public class StatsTopology extends AbstractTopology {
 
     private static final Logger logger = LoggerFactory.getLogger(StatsTopology.class);
-    private final AuthNeo4j pathComputerAuth;
 
     public StatsTopology(LaunchEnvironment env) throws ConfigurationException {
         super(env);
-        pathComputerAuth = new AuthNeo4j(config.getNeo4jHost(), config.getNeo4jLogin(),
-                config.getNeo4jPassword());
         logger.debug("Topology built {}: zookeeper={}, kafka={}, parallelism={}, workers={}",
                 getTopologyName(), config.getZookeeperHosts(), config.getKafkaHosts(),
                 config.getParallelism(),
@@ -94,6 +91,7 @@ public class StatsTopology extends AbstractTopology {
                 .shuffleGrouping(STATS_KILDA_SPEAKER_SPOUT.name());
 
         // Cache bolt get data from NEO4J on start
+        AuthNeo4j pathComputerAuth = config.getPathComputerAuth();
         builder.setBolt(STATS_CACHE_BOLT.name(), new CacheBolt(pathComputerAuth), parallelism)
                 .allGrouping(STATS_CACHE_FILTER_BOLT.name(), CACHE_UPDATE.name())
                 .fieldsGrouping(statsOfsBolt, StatsStreamType.FLOW_STATS.toString(), fieldMessage);
@@ -122,5 +120,4 @@ public class StatsTopology extends AbstractTopology {
 
         return builder.createTopology();
     }
-
 }
