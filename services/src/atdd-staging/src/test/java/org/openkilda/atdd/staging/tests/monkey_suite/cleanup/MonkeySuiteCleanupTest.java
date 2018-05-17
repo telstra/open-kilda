@@ -31,7 +31,8 @@ import org.springframework.test.context.ActiveProfiles;
 @RunWith(CucumberWithSpringProfile.class)
 @CucumberOptions(features = {"classpath:features/monkey_suite.feature"},
         glue = {"org.openkilda.atdd.staging.tests.monkey_suite.cleanup", "org.openkilda.atdd.staging.steps"},
-        tags = {"@Cleanup"})
+        tags = {"@Cleanup"},
+        plugin = {"json:target/cucumber-reports/monkey_suite_cleanup_report.json"})
 @ActiveProfiles("mock")
 public class MonkeySuiteCleanupTest {
 

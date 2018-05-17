@@ -32,7 +32,8 @@ import org.springframework.test.context.ActiveProfiles;
 @RunWith(CucumberWithSpringProfile.class)
 @CucumberOptions(features = {"classpath:features/monkey_suite.feature"},
         glue = {"org.openkilda.atdd.staging.tests.monkey_suite.check_traffic", "org.openkilda.atdd.staging.steps"},
-        tags = {"@CheckTraffic"})
+        tags = {"@CheckTraffic"},
+        plugin = {"json:target/cucumber-reports/monkey_suite_check_traffic_report.json"})
 @ActiveProfiles("mock")
 public class MonkeySuiteCheckTrafficTest {
 
