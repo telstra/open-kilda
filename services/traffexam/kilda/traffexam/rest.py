@@ -14,7 +14,6 @@
 #
 
 import collections
-import enum
 import functools
 import json
 import multiprocessing.pool
@@ -26,21 +25,9 @@ import bottle
 from kilda.traffexam import exc
 from kilda.traffexam import model
 
-
-class JSONEncoder(json.JSONEncoder):
-    def default(self, o):
-        if isinstance(o, model.Abstract):
-            value = o.pack()
-        elif isinstance(o, uuid.UUID):
-            value = str(o)
-        else:
-            value = super().default(o)
-        return value
-
-
 app = bottle.Bottle(autojson=False)
 app.install(bottle.JSONPlugin(
-        json_dumps=functools.partial(json.dumps, cls=JSONEncoder)))
+        json_dumps=functools.partial(json.dumps, cls=model.JSONEncoder)))
 config_key = 'traffexam.{}'.format
 
 
@@ -75,7 +62,10 @@ def address_create():
     except TypeError as e:
         return bottle.HTTPError(400, str(e))
 
-    context.service.address.create(entity)
+    try:
+        context.service.address.create(entity)
+    except exc.ServiceCreateCollisionError as e:
+        return bottle.HTTPError(400, str(e))
 
     bottle.response.status = 201
     return address_response(entity)
