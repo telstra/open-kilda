@@ -17,7 +17,6 @@
         <maven.compiler.target>1.8</maven.compiler.target>
 
         <apache.kafka.version>0.10.2.1</apache.kafka.version>
-        <checkstyle.version>7.7</checkstyle.version>
         <commons.cli.version>1.4</commons.cli.version>
         <commons.codec.version>1.10</commons.codec.version>
         <cucumber.version>1.2.5</cucumber.version>
@@ -31,7 +30,8 @@
         <jaxrs.version>2.1</jaxrs.version>
         <jersey.version>2.25.1</jersey.version>
         <junit.version>4.12</junit.version>
-        <maven.checkstyle.version>2.17</maven.checkstyle.version>
+        <maven-checkstyle-plugin.version>3.0.0</maven-checkstyle-plugin.version>
+        <puppycrawl-tools-checkstyle.version>8.8</puppycrawl-tools-checkstyle.version>
         <maven.compiler.version>3.6.1</maven.compiler.version>
         <maven.jacoco.version>0.7.9</maven.jacoco.version>
         <maven.jar.version>3.0.2</maven.jar.version>
@@ -211,29 +211,32 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-checkstyle-plugin</artifactId>
-                    <version>${maven.checkstyle.version}</version>
-                    <configuration>
-                        <configLocation>${project.parent.basedir}/checkstyle.xml</configLocation>
-                        <consoleOutput>true</consoleOutput>
-                        <failsOnError>true</failsOnError>
-                        <linkXRef>false</linkXRef>
-                    </configuration>
+                    <version>${maven-checkstyle-plugin.version}</version>
                     <dependencies>
                         <dependency>
                             <groupId>com.puppycrawl.tools</groupId>
                             <artifactId>checkstyle</artifactId>
-                            <version>${checkstyle.version}</version>
+                            <version>${puppycrawl-tools-checkstyle.version}</version>
                         </dependency>
                     </dependencies>
                     <executions>
                         <execution>
-                            <id>validate</id>
+                            <id>checkstyle-validation</id>
                             <phase>validate</phase>
                             <goals>
-                                <goal>checkstyle</goal>
+                                <goal>check</goal>
                             </goals>
                         </execution>
                     </executions>
+                    <configuration>
+                        <consoleOutput>true</consoleOutput>
+                        <configLocation>${project.parent.basedir}/checkstyle/checkstyle.xml</configLocation>
+                        <headerLocation>${project.parent.basedir}/checkstyle/checkstyle-header.txt</headerLocation>
+                        <suppressionsLocation>src/checkstyle/checkstyle-suppress-known-issues.xml</suppressionsLocation>
+                        <failOnViolation>true</failOnViolation>
+                        <violationSeverity>warning</violationSeverity>
+                        <includeTestSourceDirectory>true</includeTestSourceDirectory>
+                    </configuration>
                 </plugin>
 
                 <plugin>
