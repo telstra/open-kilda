@@ -15,9 +15,9 @@
 
 import errno
 import json
-import time
-import threading
 import subprocess
+import threading
+import time
 
 from kilda.traffexam import context as context_module
 from kilda.traffexam import exc
@@ -159,8 +159,10 @@ class EndpointService(Abstract):
             with open(str(path), 'rt') as stream:
                 out.append(stream.read())
 
-        report, error = out
-        report = json.loads(report)
+        if not filter(bool, out):
+            return None
+
+        report, error = self.unpack_output(out)
         return report, error
 
     def _create(self, subject):
@@ -209,11 +211,15 @@ class EndpointService(Abstract):
         self.run_iperf(subject, cmd)
 
     def _create_producer(self, subject):
+        bandwidth = subject.bandwidth * 1024
+        if subject.burst_pkt:
+            bandwidth = '{}/{}'.format(bandwidth, subject.burst_pkt)
+
         cmd = self.make_cmd_common_part(subject)
         cmd += [
             '--client={}'.format(subject.remote_address.address),
             '--port={}'.format(subject.remote_address.port),
-            '--bandwidth={}'.format(subject.bandwidth * 1024),
+            '--bandwidth={}'.format(bandwidth),
             '--time={}'.format(subject.time),
             '--interval=1']
         if subject.use_udp:
@@ -241,6 +247,23 @@ class EndpointService(Abstract):
 
     def make_error_file_name(self, subject):
         return self.context.path('{}.err'.format(subject.idnr))
+
+    @staticmethod
+    def unpack_output(out):
+        stdout, stderr = out
+        if not stdout:
+            return {}, stderr
+
+        try:
+            report = json.loads(stdout)
+        except (ValueError, TypeError) as e:
+            report = {}
+            if stderr:
+                stderr += '-+' * 30 + '-\n'
+            stderr += 'Can\'t decode iperf3 output: {}\n'.format(e)
+            stderr += 'Raw iperf3 output stats on next line\n'
+            stderr += stdout
+        return report, stderr
 
 
 class Adapter(object):
