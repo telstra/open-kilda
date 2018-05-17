@@ -61,7 +61,7 @@ public class MetersResource extends ServerResource {
         } catch (UnsupportedSwitchOperationException ex) {
             String messageString = "Not supported";
             logger.error("{}: {}", messageString, switchId, ex);
-            MessageError responseMessage = new MessageError(DEFAULT_CORRELATION_ID, System.currentTimeMillis(),
+            MessageError responseMessage = new MessageError(CorrelationContext.getId(), System.currentTimeMillis(),
                     ErrorType.PARAMETERS_INVALID.toString(), messageString, ex.getMessage());
             response.putAll(MAPPER.convertValue(responseMessage, Map.class));
 
