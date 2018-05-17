@@ -79,7 +79,7 @@ public class FlowControllerTest extends NorthboundBaseTest {
     @Before
     public void setUp() throws Exception {
         this.mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).apply(springSecurity()).build();
-        RequestCorrelationId.setId(DEFAULT_CORRELATION_ID);
+        RequestCorrelationId.create(DEFAULT_CORRELATION_ID);
     }
 
     @Test
