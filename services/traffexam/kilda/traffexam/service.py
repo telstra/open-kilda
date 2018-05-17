@@ -204,6 +204,7 @@ class EndpointService(Abstract):
         cmd += [
             '--server',
             '--one-off',
+            '--bind={}'.format(subject.bind_address.address),
             '--port={}'.format(subject.bind_port)]
         self.run_iperf(subject, cmd)
 
@@ -214,8 +215,9 @@ class EndpointService(Abstract):
             '--port={}'.format(subject.remote_address.port),
             '--bandwidth={}'.format(subject.bandwidth * 1024),
             '--time={}'.format(subject.time),
-            '--interval=1',
-            '--udp']
+            '--interval=1']
+        if subject.use_udp:
+            cmd.append('--udp')
         self.run_iperf(subject, cmd)
 
     def make_cmd_common_part(self, subject):

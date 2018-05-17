@@ -49,10 +49,9 @@ public class FlowCrudOverActiveSwitchesTest {
             verify(northboundService, times(3)).updateFlow(any(), any());
             verify(northboundService, times(3)).deleteFlow(any());
 
-            // 3 flows * 2 directions * (on create + on update) = 12 times
-            verify(traffExamService, times(12)).startExam(any());
-            // 3 flows * (on create + on update) = 6 times
-            verify(traffExamService, times(6)).waitExam(any());
+            // 3 flows * (on create + on update + after delete) = 9 times
+            verify(traffExamService, times(9)).startExam(any());
+            verify(traffExamService, times(9)).waitExam(any());
         }
     }
 }
