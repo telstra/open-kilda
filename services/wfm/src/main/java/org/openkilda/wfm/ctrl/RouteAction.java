@@ -4,10 +4,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.base.Strings;
 import org.apache.storm.tuple.Tuple;
 import org.openkilda.messaging.ctrl.CtrlRequest;
-import org.openkilda.messaging.ctrl.RequestData;
 import org.openkilda.wfm.AbstractAction;
 import org.openkilda.wfm.IKildaBolt;
-import org.openkilda.wfm.MessageFormatException;
+import org.openkilda.wfm.error.MessageFormatException;
 import org.openkilda.messaging.Message;
 import org.openkilda.wfm.protocol.KafkaMessage;
 

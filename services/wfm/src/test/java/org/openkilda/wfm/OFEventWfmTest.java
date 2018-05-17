@@ -18,8 +18,6 @@ package org.openkilda.wfm;
 import static org.openkilda.messaging.Utils.MAPPER;
 import static org.mockito.Mockito.when;
 
-import clojure.lang.ArraySeq;
-import org.kohsuke.args4j.CmdLineException;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.discovery.DiscoveryFilterEntity;
@@ -51,9 +49,7 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
 
 import java.io.File;
 import java.io.IOException;
@@ -189,7 +185,7 @@ public class OFEventWfmTest extends AbstractStormTest {
      */
     @Test
     @Ignore
-    public void basicLinkDiscoveryTest() throws IOException, ConfigurationException, CmdLineException {
+    public void basicLinkDiscoveryTest() throws Exception {
         System.out.println("==> Starting BasicLinkDiscoveryTest");
         OFEventWFMTopology manager = new OFEventWFMTopology(makeLaunchEnvironment());
         TopologyConfig config = manager.getConfig();

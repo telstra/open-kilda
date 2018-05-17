@@ -1,4 +1,4 @@
-package org.openkilda.wfm;
+package org.openkilda.wfm.error;
 
 public class StreamNameCollisionException extends NameCollisionException {
     public StreamNameCollisionException() {
