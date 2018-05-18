@@ -18,7 +18,6 @@
 
     <properties>
         <commons-lang3.version>3.7</commons-lang3.version>
-        <lombok.version>1.16.20</lombok.version>
     </properties>
 
     <dependencies>

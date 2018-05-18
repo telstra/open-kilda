@@ -16,6 +16,7 @@
 package org.openkilda.northbound.utils;
 
 import static org.openkilda.messaging.Utils.CORRELATION_ID;
+import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 import static org.openkilda.messaging.Utils.MAPPER;
 
 import org.openkilda.messaging.error.ErrorType;
@@ -28,6 +29,7 @@ import org.springframework.security.web.authentication.www.BasicAuthenticationEn
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.util.Optional;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -59,7 +61,9 @@ public class NorthboundBasicAuthenticationEntryPoint extends BasicAuthentication
         response.addHeader(HttpHeaders.WWW_AUTHENTICATE, realm);
         response.setContentType(MediaType.APPLICATION_JSON_UTF8_VALUE);
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        MessageError error = new MessageError(request.getHeader(CORRELATION_ID), System.currentTimeMillis(),
+
+        String correlationId = Optional.ofNullable(request.getHeader(CORRELATION_ID)).orElse(DEFAULT_CORRELATION_ID);
+        MessageError error = new MessageError(correlationId, System.currentTimeMillis(),
                 ErrorType.AUTH_FAILED.toString(), DEFAULT_REALM, exception.getClass().getSimpleName());
         response.getWriter().print(MAPPER.writeValueAsString(error));
     }

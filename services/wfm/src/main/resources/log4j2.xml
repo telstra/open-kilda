@@ -1,18 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Configuration status="trace">
+<Configuration status="WARN">
     <Appenders>
         <Console name="STDOUT" target="SYSTEM_OUT">
-            <PatternLayout pattern="%d{HH:mm:ss} [%t] %-5level %logger{36} - %msg%n"/>
+            <PatternLayout pattern="%d{ISO8601} %-5p [%t] %c{1.} - [%X] %m%n"/>
         </Console>
         <Socket name="LOGSTASH" host="logstash" port="5001">
-            <JsonLayout properties="true"/>
+            <JsonLayout compact="true" eventEol="true" properties="true"/>
         </Socket>
     </Appenders>
     <Loggers>
-        <Logger name="org.openkilda.wfm.simulator" level="warn" additivity="false">
-            <AppenderRef ref="STDOUT"/>
-            <AppenderRef ref="LOGSTASH"/>
-        </Logger>
+        <Logger name="org.openkilda.wfm.simulator" level="WARN"/>
+        <Logger name="org.openkilda" level="DEBUG"/>
         <Root level="DEBUG">
             <AppenderRef ref="STDOUT"/>
             <AppenderRef ref="LOGSTASH"/>

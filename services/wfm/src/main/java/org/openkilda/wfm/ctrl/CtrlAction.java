@@ -3,8 +3,8 @@ package org.openkilda.wfm.ctrl;
 import org.apache.storm.tuple.Tuple;
 import org.openkilda.messaging.ctrl.RequestData;
 import org.openkilda.wfm.AbstractAction;
-import org.openkilda.wfm.MessageFormatException;
-import org.openkilda.wfm.UnsupportedActionException;
+import org.openkilda.wfm.error.MessageFormatException;
+import org.openkilda.wfm.error.UnsupportedActionException;
 import org.openkilda.wfm.topology.AbstractTopology;
 
 public class CtrlAction extends AbstractAction {

@@ -5,7 +5,7 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.ctrl.RequestData;
-import org.openkilda.wfm.MessageFormatException;
+import org.openkilda.wfm.error.MessageFormatException;
 import org.openkilda.wfm.protocol.BoltToBoltMessage;
 
 import java.io.IOException;

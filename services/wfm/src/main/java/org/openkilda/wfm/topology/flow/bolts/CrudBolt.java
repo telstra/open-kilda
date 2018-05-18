@@ -30,7 +30,6 @@ import org.apache.storm.topology.base.BaseStatefulBolt;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 import org.apache.commons.lang.StringUtils;
-import org.neo4j.cypher.InvalidArgumentException;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
@@ -61,6 +60,7 @@ import org.openkilda.messaging.info.flow.FlowRerouteResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowStatusResponse;
 import org.openkilda.messaging.info.flow.FlowsResponse;
+import org.openkilda.messaging.model.BidirectionalFlow;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
@@ -76,11 +76,12 @@ import org.openkilda.pce.provider.PathComputer.Strategy;
 import org.openkilda.pce.provider.UnroutablePathException;
 import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
+import org.openkilda.wfm.share.utils.FlowCollector;
+import org.openkilda.wfm.share.utils.PathComputerFlowFetcher;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.flow.ComponentType;
 import org.openkilda.wfm.topology.flow.FlowTopology;
 import org.openkilda.wfm.topology.flow.StreamType;
-import org.openkilda.wfm.topology.flow.utils.BidirectionalFlow;
 import org.openkilda.wfm.topology.flow.validation.FlowValidationException;
 import org.openkilda.wfm.topology.flow.validation.FlowValidator;
 import org.slf4j.Logger;
@@ -94,7 +95,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.Nullable;
@@ -275,7 +275,8 @@ public class CrudBolt
 
                     switch (streamId) {
                         case STATUS:
-                            handleStateRequest(flowId, newStatus, tuple);
+                            //TODO: SpeakerBolt & TransactionBolt don't supply a tuple with correlationId
+                            handleStateRequest(flowId, newStatus, tuple, correlationId);
                             break;
                         default:
                             logger.debug("Unexpected stream: component={}, stream={}", componentId, streamId);
@@ -457,12 +458,14 @@ public class CrudBolt
                 .map(pathComputer::getFlows)
                 .filter(flows -> !flows.isEmpty())
                 .map(flows -> {
-                    BidirectionalFlow flowPair = new BidirectionalFlow();
+                    FlowCollector flowPair = new FlowCollector();
                     flows.forEach(flowPair::add);
                     return flowPair;
                 })
                 .forEach(flowPair -> {
-                    final ImmutablePair<Flow, Flow> flow = flowPair.makeFlowPair();
+                    final BidirectionalFlow bidirectionalFlow = flowPair.make();
+                    final ImmutablePair<Flow, Flow> flow = new ImmutablePair<>(
+                            bidirectionalFlow.getForward(), bidirectionalFlow.getReverse());
                     final String flowId = flow.getLeft().getFlowId();
                     logger.debug("Refresh the flow: {}", flowId);
 
@@ -799,14 +802,12 @@ public class CrudBolt
      * It is currently called from 2 places - a failed update (set flow to DOWN), and a STATUS
      * update from the TransactionBolt.
      */
-    private void handleStateRequest(String flowId, FlowState state, Tuple tuple) throws IOException {
+    private void handleStateRequest(String flowId, FlowState state, Tuple tuple, String correlationId) throws IOException {
         ImmutablePair<Flow, Flow> flow = flowCache.getFlow(flowId);
         logger.info("State flow: {}={}", flowId, state);
         flow.getLeft().setState(state);
         flow.getRight().setState(state);
 
-        //FIXME: looks like we have to use received correlationId, don't generate new one.
-        final String correlationId = UUID.randomUUID().toString();
         FlowInfoData data = new FlowInfoData(flowId, flow, FlowOperation.STATE, correlationId);
         InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), correlationId);
 
@@ -827,7 +828,7 @@ public class CrudBolt
                 break;
 
             case UPDATE_FAILURE:
-                handleStateRequest(flowId, FlowState.DOWN, tuple);
+                handleStateRequest(flowId, FlowState.DOWN, tuple, message.getCorrelationId());
                 break;
 
             case DELETION_FAILURE:
@@ -874,29 +875,12 @@ public class CrudBolt
     }
 
     private void initFlowCache() {
-        Map<String, BidirectionalFlow> flowPairsMap = new HashMap<>();
-        for (Flow flow : pathComputer.getAllFlows()) {
-            if (!flowPairsMap.containsKey(flow.getFlowId())) {
-                flowPairsMap.put(flow.getFlowId(), new BidirectionalFlow());
-            }
+        PathComputerFlowFetcher flowFetcher = new PathComputerFlowFetcher(pathComputer);
 
-            BidirectionalFlow pair = flowPairsMap.get(flow.getFlowId());
-            try {
-                pair.add(flow);
-            } catch (IllegalArgumentException e) {
-                logger.error("Invalid half-flow {}: {}", flow.getFlowId(), e.toString());
-            }
-        }
-
-        for (BidirectionalFlow bidirectionalFlow : flowPairsMap.values()) {
-            try {
-                flowCache.pushFlow(bidirectionalFlow.makeFlowPair());
-            } catch (InvalidArgumentException e) {
-                logger.error(
-                        "Invalid flow pairing {}: {}",
-                        bidirectionalFlow.anyDefined().getFlowId(),
-                        e.toString());
-            }
+        for (BidirectionalFlow bidirectionalFlow : flowFetcher.getFlows()) {
+            ImmutablePair<Flow, Flow> flowPair = new ImmutablePair<>(
+                    bidirectionalFlow.getForward(), bidirectionalFlow.getReverse());
+            flowCache.pushFlow(flowPair);
         }
     }
 

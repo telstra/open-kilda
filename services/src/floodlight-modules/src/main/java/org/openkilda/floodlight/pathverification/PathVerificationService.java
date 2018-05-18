@@ -46,6 +46,8 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.openkilda.floodlight.pathverification.type.PathType;
 import org.openkilda.floodlight.pathverification.web.PathVerificationServiceWebRoutable;
+import org.openkilda.floodlight.utils.CorrelationContext;
+import org.openkilda.floodlight.utils.NewCorrelationContextRequired;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Topic;
 import org.openkilda.messaging.info.InfoMessage;
@@ -89,7 +91,7 @@ import java.util.Properties;
 public class PathVerificationService implements IFloodlightModule, IOFMessageListener, IPathVerificationService {
     private static final Logger logger = LoggerFactory.getLogger(PathVerificationService.class);
     private static final Logger logIsl = LoggerFactory.getLogger(
-            String.format("%s.ISL", PathVerificationService.class));
+            String.format("%s.ISL", PathVerificationService.class.getName()));
 
     public static final String VERIFICATION_BCAST_PACKET_DST = "08:ED:02:E3:FF:FF";
     public static final int VERIFICATION_PACKET_UDP_PORT = 61231;
@@ -206,6 +208,7 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
     }
 
     @Override
+    @NewCorrelationContextRequired
     public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext context) {
         logger.debug("PathVerificationService received new message of type {}: {}", msg.getType(), msg.toString());
         switch (msg.getType()) {
@@ -538,7 +541,7 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
             IslInfoData path = new IslInfoData(latency.getValue(), nodes, speed, IslChangeType.DISCOVERED,
                     getAvailableBandwidth(speed));
 
-            Message message = new InfoMessage(path, System.currentTimeMillis(), "system", null);
+            Message message = new InfoMessage(path, System.currentTimeMillis(), CorrelationContext.getId(), null);
 
             final String json = MAPPER.writeValueAsString(message);
             logger.debug("about to send {}", json);

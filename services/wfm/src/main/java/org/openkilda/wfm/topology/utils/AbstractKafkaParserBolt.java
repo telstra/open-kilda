@@ -8,7 +8,7 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.wfm.topology.MessageException;
+import org.openkilda.wfm.error.MessageException;
 
 import java.io.IOException;
 import java.util.Map;

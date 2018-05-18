@@ -1,4 +1,4 @@
-package org.openkilda.wfm.topology;
+package org.openkilda.wfm.topology.stats;
 
 public class FlowCookieException extends Exception {
     public FlowCookieException() {
