@@ -34,10 +34,12 @@ import org.openkilda.messaging.info.stats.FlowStatsReply;
 import org.openkilda.pce.provider.Auth;
 import org.openkilda.pce.provider.PathComputer;
 import org.openkilda.wfm.topology.stats.CacheFlowEntry;
+import org.openkilda.wfm.topology.stats.MeasurePoint;
 import org.openkilda.wfm.topology.stats.StatsComponentType;
 import org.openkilda.wfm.topology.stats.bolts.CacheFilterBolt.Commands;
 import org.openkilda.wfm.topology.stats.bolts.CacheFilterBolt.FieldsNames;
 import org.openkilda.wfm.topology.utils.StatsUtil;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -83,7 +85,9 @@ public class CacheBolt extends BaseRichBolt {
         try {
             PathComputer pathComputer = pathComputerAuth.connect();
             pathComputer.getAllFlows().forEach(
-                    flow -> cookieToFlow.put(flow.getCookie(), new CacheFlowEntry(flow.getFlowId(),
+                    flow -> cookieToFlow.put(flow.getCookie(), new CacheFlowEntry(
+                            flow.getFlowId(),
+                            StatsUtil.formatSwitchId(flow.getSourceSwitch()),
                             StatsUtil.formatSwitchId(flow.getDestinationSwitch())))
             );
             logger.info("initFlowCache: {}", cookieToFlow);
@@ -119,18 +123,15 @@ public class CacheBolt extends BaseRichBolt {
                 String sw = StatsUtil.formatSwitchId(
                         tuple.getStringByField(FieldsNames.SWITCH.name()));
 
-                if (cookieToFlow.containsKey(cookie)) {
-                    cookieToFlow.remove(cookie);
-                }
-
                 Commands command = (Commands)tuple.getValueByField(FieldsNames.COMMAND.name());
+                MeasurePoint measurePoint = (MeasurePoint) tuple.getValueByField(FieldsNames.MEASURE_POINT.name());
 
                 switch (command) {
                     case UPDATE:
-                        cookieToFlow.put(cookie, new CacheFlowEntry(flow, sw));
+                        updateCacheEntry(cookie, flow, sw, measurePoint);
                         break;
                     case REMOVE:
-                        // already deleted
+                        cookieToFlow.remove(cookie);
                         break;
                     default:
                         logger.error("invalid command");
@@ -170,4 +171,14 @@ public class CacheBolt extends BaseRichBolt {
                 fieldsMessageFlowStats);
     }
 
+    private void updateCacheEntry(Long cookie, String flowId, String sw, MeasurePoint measurePoint) {
+        CacheFlowEntry current = cookieToFlow.get(cookie);
+        CacheFlowEntry replacement;
+        if (current != null) {
+            replacement = current.replace(sw, measurePoint);
+        } else {
+            replacement = new CacheFlowEntry(flowId).replace(sw, measurePoint);
+        }
+        cookieToFlow.put(cookie, replacement);
+    }
 }
