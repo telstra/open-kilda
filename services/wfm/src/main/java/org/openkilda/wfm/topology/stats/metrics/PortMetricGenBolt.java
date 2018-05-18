@@ -25,6 +25,7 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.PortStatsData;
 import org.openkilda.messaging.info.stats.PortStatsEntry;
 import org.openkilda.messaging.info.stats.PortStatsReply;
+import org.openkilda.wfm.error.JsonEncodeException;
 import org.openkilda.wfm.topology.stats.StatsComponentType;
 import org.openkilda.wfm.topology.stats.StatsStreamType;
 import org.openkilda.wfm.topology.utils.StatsUtil;
@@ -93,7 +94,7 @@ public class PortMetricGenBolt extends MetricGenBolt {
             collector.emit(tuple("pen.switch.rx-over-error", timestamp, entry.getRxOverErr(), tags));
             collector.emit(tuple("pen.switch.rx-crc-error", timestamp, entry.getRxCrcErr(), tags));
             collector.emit(tuple("pen.switch.collisions", timestamp, entry.getCollisions(), tags));
-        } catch (IOException e) {
+        } catch (JsonEncodeException e) {
             LOGGER.error("Error during serialization of datapoint", e);
         }
     }
