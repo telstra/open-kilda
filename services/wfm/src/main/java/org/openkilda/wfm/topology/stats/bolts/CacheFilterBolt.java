@@ -30,8 +30,11 @@ import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.BaseFlow;
 import org.openkilda.messaging.command.flow.InstallEgressFlow;
+import org.openkilda.messaging.command.flow.InstallIngressFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.openkilda.messaging.command.flow.RemoveFlow;
+import org.openkilda.wfm.topology.stats.MeasurePoint;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,7 +47,8 @@ public class CacheFilterBolt extends BaseRichBolt {
         COMMAND,
         SWITCH,
         FLOW,
-        COOKIE
+        COOKIE,
+        MEASURE_POINT
     }
 
     public enum Commands {
@@ -57,7 +61,8 @@ public class CacheFilterBolt extends BaseRichBolt {
                     FieldsNames.COMMAND.name(),
                     FieldsNames.FLOW.name(),
                     FieldsNames.SWITCH.name(),
-                    FieldsNames.COOKIE.name());
+                    FieldsNames.COOKIE.name(),
+                    FieldsNames.MEASURE_POINT.name());
 
 
     private static final Logger logger = LoggerFactory.getLogger(CacheFilterBolt.class);
@@ -88,24 +93,27 @@ public class CacheFilterBolt extends BaseRichBolt {
             if (bm instanceof CommandMessage) {
                 CommandMessage message = (CommandMessage) bm;
                 CommandData data = message.getData();
-                if (data instanceof InstallEgressFlow) {
+                if (data instanceof InstallIngressFlow) {
+                    InstallIngressFlow command = (InstallIngressFlow) data;
+                    logMatchedRecord(command);
+                    emit(tuple, Commands.UPDATE, command, MeasurePoint.INGRESS);
+                }
+                else if (data instanceof InstallEgressFlow)
+                {
                     InstallEgressFlow command = (InstallEgressFlow) data;
-                    logger.debug("Catch InstallEgressFlow install flow_id={} sw={} cookie={}",
-                            command.getId(), command.getSwitchId(), command.getCookie());
-                    emit(tuple, Commands.UPDATE, command);
+                    logMatchedRecord(command);
+                    emit(tuple, Commands.UPDATE, command, MeasurePoint.EGRESS);
                 }
                 else if (data instanceof InstallOneSwitchFlow)
                 {
                     InstallOneSwitchFlow command = (InstallOneSwitchFlow) data;
-                    logger.debug("Catch InstallOneSwitchFlow install flow_id={} sw={} cookie={}",
-                            command.getId(), command.getSwitchId(), command.getCookie());
+                    logMatchedRecord(command);
                     emit(tuple, Commands.UPDATE, command);
                 }
                 else if (data instanceof RemoveFlow)
                 {
                     RemoveFlow command = (RemoveFlow) data;
-                    logger.debug("Catch RemoveFlow install flow_id={} sw={} cookie={}",
-                            command.getId(), command.getSwitchId(), command.getCookie());
+                    logMatchedRecord(command);
                     emit(tuple, Commands.REMOVE, command);
                 }
             }
@@ -118,12 +126,17 @@ public class CacheFilterBolt extends BaseRichBolt {
         }
     }
 
-    public void emit(Tuple tuple, Commands remove, BaseFlow command) {
+    private void emit(Tuple tuple, Commands action, BaseFlow command) {
+        emit(tuple, action, command, null);
+    }
+
+    private void emit(Tuple tuple, Commands action, BaseFlow command, MeasurePoint point) {
         Values values = new Values(
-                remove,
+                action,
                 command.getId(),
                 command.getSwitchId(),
-                command.getCookie());
+                command.getCookie(),
+                point);
         outputCollector.emit(CACHE_UPDATE.name(), tuple, values);
     }
 
@@ -133,5 +146,11 @@ public class CacheFilterBolt extends BaseRichBolt {
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
         outputFieldsDeclarer.declareStream(CACHE_UPDATE.name(), fieldsMessageUpdateCache);
+    }
+
+    private void logMatchedRecord(BaseFlow flowCommand) {
+        logger.debug("Catch {} command flow_id={} sw={} cookie={}",
+                flowCommand.getClass().getCanonicalName(),
+                flowCommand.getId(), flowCommand.getSwitchId(), flowCommand.getCookie());
     }
 }

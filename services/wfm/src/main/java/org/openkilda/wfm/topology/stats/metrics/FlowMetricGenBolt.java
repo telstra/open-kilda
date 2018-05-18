@@ -28,6 +28,8 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.FlowStatsData;
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
 import org.openkilda.messaging.info.stats.FlowStatsReply;
+import org.openkilda.wfm.error.JsonEncodeException;
+import org.openkilda.wfm.topology.FlowCookieException;
 import org.openkilda.wfm.topology.stats.FlowDirectionHelper;
 import org.openkilda.wfm.topology.stats.StatsComponentType;
 import org.openkilda.wfm.topology.stats.StatsStreamType;
@@ -38,6 +40,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 /**
@@ -77,20 +80,8 @@ public class FlowMetricGenBolt extends MetricGenBolt {
         try {
             for (FlowStatsReply reply : data.getStats()) {
                 for (FlowStatsEntry entry : reply.getEntries()) {
-
-                    String flow = "unknown";
-                    String dstSwitch = null;
-                    if (dataCache.containsKey(entry.getCookie()))
-                    {
-                        CacheFlowEntry cacheFlowEntry = dataCache.get(entry.getCookie());
-                        flow = cacheFlowEntry.getFlowId();
-                        dstSwitch = cacheFlowEntry.getDestinationSwitch();
-                    }
-                    else
-                    {
-                        LOGGER.warn("missed cache for sw {} cookie {}", switchId, entry.getCookie());
-                    }
-                    emit(entry, timestamp, switchId, flow, dstSwitch);
+                    @Nullable  CacheFlowEntry flowEntry = dataCache.get(entry.getCookie());
+                    emit(entry, timestamp, switchId, flowEntry);
                 }
             }
             collector.ack(input);
@@ -103,8 +94,34 @@ public class FlowMetricGenBolt extends MetricGenBolt {
         }
     }
 
-    private void emit(FlowStatsEntry entry, long timestamp, String switchId, String flowId,
-            @Nullable String dstSwitchId) throws Exception {
+    private void emit(FlowStatsEntry entry, long timestamp, @Nonnull String switchId,
+            @Nullable CacheFlowEntry flowEntry) throws Exception {
+        String flowId = "unknown";
+        if (flowEntry != null) {
+            flowId = flowEntry.getFlowId();
+        } else {
+            LOGGER.warn("missed cache for sw {} cookie {}", switchId, entry.getCookie());
+        }
+
+        emitAnySwitchMetrics(entry, timestamp, switchId, flowId);
+
+        if (flowEntry != null) {
+            Map<String, String> flowTags = makeFlowTags(entry, flowEntry.getFlowId());
+
+            if (switchId.equals(flowEntry.getIngressSwitch())) {
+                emitIngressMetrics(entry, timestamp, flowTags);
+            } else if (switchId.equals(flowEntry.getEgressSwitch())) {
+                emitEgressMetrics(entry, timestamp, flowTags);
+            } else if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("FlowStatsEntry with cookie {} and flow {} is not ingress not egress bc switch {} "
+                        + "is not any of {}, {}", entry.getCookie(), flowId, switchId,
+                        flowEntry.getIngressSwitch(), flowEntry.getEgressSwitch());
+            }
+        }
+    }
+
+    private void emitAnySwitchMetrics(FlowStatsEntry entry, long timestamp, String switchId, String flowId)
+            throws JsonEncodeException {
         Map<String, String> tags = new HashMap<>();
         tags.put("switchid", switchId);
         tags.put("cookie", String.valueOf(entry.getCookie()));
@@ -114,29 +131,27 @@ public class FlowMetricGenBolt extends MetricGenBolt {
         collector.emit(tuple("pen.flow.raw.packets", timestamp, entry.getPacketCount(), tags));
         collector.emit(tuple("pen.flow.raw.bytes", timestamp, entry.getByteCount(), tags));
         collector.emit(tuple("pen.flow.raw.bits", timestamp, entry.getByteCount() * 8, tags));
-
-        /**
-         * If this is the destination switch for the flow, then add to TSDB for pen.flow.* stats.  This is needed
-         * as there is needed to provide simple lookup of flow stats
-         **/
-        if (isEngressFlow(switchId, dstSwitchId)) {
-            tags.remove("cookie");  //Doing this to prevent creation of yet another object
-            tags.remove("tableid");
-            tags.remove("switchid");
-            tags.put("direction", FlowDirectionHelper.findDirection(entry.getCookie()).name().toLowerCase());
-            collector.emit(tuple("pen.flow.packets", timestamp, entry.getPacketCount(), tags));
-            collector.emit(tuple("pen.flow.bytes", timestamp, entry.getByteCount(), tags));
-            collector.emit(tuple("pen.flow.bits", timestamp, entry.getByteCount() * 8, tags));
-        }
-        else if (LOGGER.isDebugEnabled())
-        {
-            LOGGER.debug("FlowStatsEntry with cookie {} and flow {} is not engress bc switch {} "
-                    + "and dst switch {}", entry.getCookie(), flowId, switchId, dstSwitchId);
-        }
     }
 
-    private boolean isEngressFlow(String switchId, @Nullable String dstSwitchId) {
-        return dstSwitchId != null &&
-                switchId.equals(dstSwitchId);
+    private void emitIngressMetrics(FlowStatsEntry entry, long timestamp, Map<String, String> tags)
+            throws JsonEncodeException {
+        collector.emit(tuple("pen.flow.ingress.packets", timestamp, entry.getPacketCount(), tags));
+        collector.emit(tuple("pen.flow.ingress.bytes", timestamp, entry.getByteCount(), tags));
+        collector.emit(tuple("pen.flow.ingress.bits", timestamp, entry.getByteCount() * 8, tags));
+    }
+
+    private void emitEgressMetrics(FlowStatsEntry entry, long timestamp, Map<String, String> tags)
+            throws JsonEncodeException {
+        collector.emit(tuple("pen.flow.packets", timestamp, entry.getPacketCount(), tags));
+        collector.emit(tuple("pen.flow.bytes", timestamp, entry.getByteCount(), tags));
+        collector.emit(tuple("pen.flow.bits", timestamp, entry.getByteCount() * 8, tags));
+    }
+
+    private Map<String, String> makeFlowTags(FlowStatsEntry entry, String flowId) throws FlowCookieException {
+        Map<String, String> tags = new HashMap<>();
+        tags.put("flow", flowId);
+        tags.put("direction", FlowDirectionHelper.findDirection(entry.getCookie()).name().toLowerCase());
+
+        return tags;
     }
 }
