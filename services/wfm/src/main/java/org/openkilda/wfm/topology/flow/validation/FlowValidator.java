@@ -20,6 +20,8 @@ import static java.lang.String.format;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.pce.cache.FlowCache;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import java.util.Optional;
 import java.util.Set;
 
@@ -35,12 +37,34 @@ public class FlowValidator {
     }
 
     /**
+     * Validates the specified flow.
+     *
+     * @param flow a flow to be validated.
+     * @throws FlowValidationException is thrown if a violation is found.
+     */
+    public void validate(Flow flow) throws FlowValidationException {
+        checkBandwidth(flow);
+        checkFlowForEndpointConflicts(flow);
+    }
+
+    @VisibleForTesting
+    void checkBandwidth(Flow flow) throws FlowValidationException {
+        if (flow.getBandwidth() < 0) {
+            throw new FlowValidationException(
+                    format("The flow '%s' has invalid bandwidth %d provided.",
+                            flow.getFlowId(),
+                            flow.getBandwidth()));
+        }
+    }
+
+    /**
      * Checks a flow for endpoints' conflicts.
      *
-     * @param requestedFlow a flow to check
+     * @param requestedFlow a flow to be validated.
      * @throws FlowValidationException is thrown in a case when flow endpoints conflict with existing flows.
      */
-    public void checkFlowForEndpointConflicts(Flow requestedFlow) throws FlowValidationException {
+    @VisibleForTesting
+    void checkFlowForEndpointConflicts(Flow requestedFlow) throws FlowValidationException {
         // Check the source
         Set<Flow> conflictsOnSource;
         if (requestedFlow.getSourceVlan() == 0) {
