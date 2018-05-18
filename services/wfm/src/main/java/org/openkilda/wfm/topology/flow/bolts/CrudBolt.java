@@ -197,8 +197,9 @@ public class CrudBolt
     @Override
     public void execute(Tuple tuple) {
 
-        if (CtrlAction.boltHandlerEntrance(this, tuple))
+        if (CtrlAction.boltHandlerEntrance(this, tuple)) {
             return;
+        }
 
         ComponentType componentId = ComponentType.valueOf(tuple.getSourceComponent());
         String correlationId = Utils.DEFAULT_CORRELATION_ID;
@@ -318,7 +319,8 @@ public class CrudBolt
             }
         } catch (RecoverableException e) {
             // FIXME(surabujin): implement retry limit
-            logger.error("Recoverable error (do not try to recoverable it until retry limit will be implemented): {}", e);
+            logger.error(
+                    "Recoverable error (do not try to recoverable it until retry limit will be implemented): {}", e);
             // isRecoverable = true;
 
         } catch (CacheException exception) {
@@ -355,8 +357,6 @@ public class CrudBolt
     private void handleCacheSyncRequest(CommandMessage message, Tuple tuple) {
         logger.debug("CACHE SYNCE: {}", message);
 
-        FlowCacheSyncRequest request = (FlowCacheSyncRequest) message.getData();
-
         // NB: This is going to be a "bulky" operation - get all flows from DB, and synchronize with the cache.
 
         List<String> droppedFlows = new ArrayList<>();
@@ -383,7 +383,7 @@ public class CrudBolt
                 // Need to compare both sides
                 ImmutablePair<Flow, Flow> fc = flowCache.getFlow(flowid);
 
-                int count = modifiedFlowChanges.size();
+                final int count = modifiedFlowChanges.size();
                 if (fi.getCookie() != fc.left.getCookie() && fi.getCookie() != fc.right.getCookie()) {
                     modifiedFlowChanges
                             .add("cookie: " + flowid + ":" + fi.getCookie() + ":" + fc.left.getCookie() + ":" + fc.right
@@ -433,6 +433,7 @@ public class CrudBolt
             }
         }
 
+        FlowCacheSyncRequest request = (FlowCacheSyncRequest) message.getData();
         if (request.getSynchronizeCache() == SynchronizeCacheAction.SYNCHRONIZE_CACHE) {
             synchronizeCache(addedFlows, modifiedFlowIds, droppedFlows, tuple, message.getCorrelationId());
         } else if (request.getSynchronizeCache() == SynchronizeCacheAction.INVALIDATE_CACHE) {
@@ -532,7 +533,7 @@ public class CrudBolt
     private void handlePushRequest(String flowId, InfoMessage message, Tuple tuple) throws IOException {
         logger.info("PUSH flow: {} :: {}", flowId, message);
         FlowInfoData fid = (FlowInfoData) message.getData();
-        ImmutablePair<Flow,Flow> flow = fid.getPayload();
+        ImmutablePair<Flow, Flow> flow = fid.getPayload();
 
         flowCache.pushFlow(flow);
 
@@ -543,8 +544,9 @@ public class CrudBolt
         Values topology = new Values(MAPPER.writeValueAsString(infoMessage));
         outputCollector.emit(StreamType.CREATE.toString(), tuple, topology);
 
-        Values northbound = new Values(new InfoMessage(new FlowStatusResponse(new FlowIdStatusPayload(flowId, FlowState.UP)),
-                message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
+        Values northbound = new Values(new InfoMessage(new FlowStatusResponse(
+                new FlowIdStatusPayload(flowId, FlowState.UP)), message.getTimestamp(),
+                message.getCorrelationId(), Destination.NORTHBOUND));
         outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
     }
 
@@ -562,7 +564,8 @@ public class CrudBolt
         outputCollector.emit(StreamType.DELETE.toString(), tuple, topology);
 
 
-        Values northbound = new Values(new InfoMessage(new FlowStatusResponse(new FlowIdStatusPayload(flowId, FlowState.DOWN)),
+        Values northbound = new Values(new InfoMessage(new FlowStatusResponse(
+                new FlowIdStatusPayload(flowId, FlowState.DOWN)),
                 message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
         outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
     }
@@ -701,7 +704,8 @@ public class CrudBolt
         ImmutablePair<Flow, Flow> requestedFlow = ((FlowRestoreRequest) message.getData()).getPayload();
 
         try {
-            ImmutablePair<PathInfoData, PathInfoData> path = pathComputer.getPath(requestedFlow.getLeft(), Strategy.COST);
+            ImmutablePair<PathInfoData, PathInfoData> path =
+                    pathComputer.getPath(requestedFlow.getLeft(), Strategy.COST);
             logger.info("Restored flow path: {}", path);
 
             ImmutablePair<Flow, Flow> flow;
@@ -802,11 +806,11 @@ public class CrudBolt
     /**
      * This method changes the state of the Flow. It sets the state of both left and right to the
      * same state.
-     *
      * It is currently called from 2 places - a failed update (set flow to DOWN), and a STATUS
      * update from the TransactionBolt.
      */
-    private void handleStateRequest(String flowId, FlowState state, Tuple tuple, String correlationId) throws IOException {
+    private void handleStateRequest(String flowId, FlowState state, Tuple tuple, String correlationId)
+            throws IOException {
         ImmutablePair<Flow, Flow> flow = flowCache.getFlow(flowId);
         logger.info("State flow: {}={}", flowId, state);
         flow.getLeft().setState(state);
@@ -924,8 +928,7 @@ public class CrudBolt
     }
 
     @Override
-    public Optional<AbstractDumpState> dumpResorceCacheState()
-    {
+    public Optional<AbstractDumpState> dumpResorceCacheState() {
         return Optional.of(new ResorceCacheBoltState(
                 flowCache.getAllocatedMeters(),
                 flowCache.getAllocatedVlans(),

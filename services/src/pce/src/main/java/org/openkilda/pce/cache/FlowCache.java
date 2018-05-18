@@ -120,22 +120,6 @@ public class FlowCache extends Cache {
     }
 
     /**
-     * Gets flows with specified switch in the path.
-     *
-     * @param switchId switch id
-     * @return set of flows
-     */
-    public Set<ImmutablePair<Flow, Flow>> getFlowsWithAffectedPath(String switchId) {
-        return flowPool.values().stream().filter(flow ->
-                flow.getLeft().getFlowPath().getPath().stream()
-                        .anyMatch(node -> node.getSwitchId().equals(switchId))
-                        || flow.getRight().getFlowPath().getPath().stream()
-                        .anyMatch(node -> node.getSwitchId().equals(switchId))
-                        || isOneSwitchFlow(flow) && flow.getLeft().getSourceSwitch().equals(switchId))
-                .collect(Collectors.toSet());
-    }
-
-    /**
      * Gets active or cached flows with specified switch in the path.
      *
      * @param switchId switch id
@@ -149,19 +133,6 @@ public class FlowCache extends Cache {
                         .anyMatch(node -> node.getSwitchId().equals(switchId))
                         || isOneSwitchFlow(flow) && flow.getLeft().getSourceSwitch().equals(switchId))
                 .filter(flow -> flow.getLeft().getState().isActiveOrCached())
-                .collect(Collectors.toSet());
-    }
-
-    /**
-     * Gets flows with specified isl in the path.
-     *
-     * @param islData isl
-     * @return set of flows
-     */
-    public Set<ImmutablePair<Flow, Flow>> getFlowsWithAffectedPath(IslInfoData islData) {
-        return flowPool.values().stream()
-                .filter(flow -> flow.getLeft().getFlowPath().getPath().contains(islData.getPath().get(0))
-                        || flow.getRight().getFlowPath().getPath().contains(islData.getPath().get(0)))
                 .collect(Collectors.toSet());
     }
 
@@ -185,11 +156,41 @@ public class FlowCache extends Cache {
      * @param portData port
      * @return set of flows
      */
-    public Set<ImmutablePair<Flow, Flow>> getFlowsWithAffectedPath(PortInfoData portData) {
+    public Set<ImmutablePair<Flow, Flow>> getActiveFlowsWithAffectedPath(PortInfoData portData) {
         PathNode node = new PathNode(portData.getSwitchId(), portData.getPortNo(), 0);
-        return flowPool.values().stream().filter(flow ->
-                flow.getLeft().getFlowPath().getPath().contains(node)
+        return flowPool.values().stream()
+                .filter(flow -> flow.getLeft().getFlowPath().getPath().contains(node)
                         || flow.getRight().getFlowPath().getPath().contains(node))
+                .filter(flow -> flow.getLeft().getState().isActiveOrCached())
+                .collect(Collectors.toSet());
+    }
+
+    /**
+     * Gets flows with specified switch in the path.
+     *
+     * @param switchId switch id
+     * @return set of flows
+     */
+    public Set<ImmutablePair<Flow, Flow>> getFlowsWithAffectedPath(String switchId) {
+        return flowPool.values().stream().filter(flow ->
+                flow.getLeft().getFlowPath().getPath().stream()
+                        .anyMatch(node -> node.getSwitchId().equals(switchId))
+                        || flow.getRight().getFlowPath().getPath().stream()
+                        .anyMatch(node -> node.getSwitchId().equals(switchId))
+                        || isOneSwitchFlow(flow) && flow.getLeft().getSourceSwitch().equals(switchId))
+                .collect(Collectors.toSet());
+    }
+
+    /**
+     * Gets flows with specified isl in the path.
+     *
+     * @param islData isl
+     * @return set of flows
+     */
+    public Set<ImmutablePair<Flow, Flow>> getFlowsWithAffectedPath(IslInfoData islData) {
+        return flowPool.values().stream()
+                .filter(flow -> flow.getLeft().getFlowPath().getPath().contains(islData.getPath().get(0))
+                        || flow.getRight().getFlowPath().getPath().contains(islData.getPath().get(0)))
                 .collect(Collectors.toSet());
     }
 
@@ -199,12 +200,11 @@ public class FlowCache extends Cache {
      * @param portData port
      * @return set of flows
      */
-    public Set<ImmutablePair<Flow, Flow>> getActiveFlowsWithAffectedPath(PortInfoData portData) {
+    public Set<ImmutablePair<Flow, Flow>> getFlowsWithAffectedPath(PortInfoData portData) {
         PathNode node = new PathNode(portData.getSwitchId(), portData.getPortNo(), 0);
-        return flowPool.values().stream()
-                .filter(flow -> flow.getLeft().getFlowPath().getPath().contains(node)
+        return flowPool.values().stream().filter(flow ->
+                flow.getLeft().getFlowPath().getPath().contains(node)
                         || flow.getRight().getFlowPath().getPath().contains(node))
-                .filter(flow -> flow.getLeft().getState().isActiveOrCached())
                 .collect(Collectors.toSet());
     }
 
@@ -499,20 +499,6 @@ public class FlowCache extends Cache {
         return new ImmutablePair<>(forward, reverse);
     }
 
-    private void setBandwidthAndMeter(Flow.FlowBuilder builder, int bandwidth, boolean isIgnoreBandwidth,
-                                                  Supplier<Integer> meterIdSupplier) {
-        builder.bandwidth(bandwidth);
-
-        if(bandwidth > 0) {
-            builder.ignoreBandwidth(isIgnoreBandwidth);
-            builder.meterId(meterIdSupplier.get());
-        } else {
-            // When the flow is unmetered.
-            builder.ignoreBandwidth(true);
-            builder.meterId(0);
-        }
-    }
-
     /**
      * Builds new forward and reverse flow pair.
      *
@@ -576,13 +562,30 @@ public class FlowCache extends Cache {
         return new ImmutablePair<>(forward, reverse);
     }
 
+    private void setBandwidthAndMeter(Flow.FlowBuilder builder, int bandwidth, boolean isIgnoreBandwidth,
+                                      Supplier<Integer> meterIdSupplier) {
+        builder.bandwidth(bandwidth);
+
+        if (bandwidth > 0) {
+            builder.ignoreBandwidth(isIgnoreBandwidth);
+            builder.meterId(meterIdSupplier.get());
+        } else {
+            // When the flow is unmetered.
+            builder.ignoreBandwidth(true);
+            builder.meterId(0);
+        }
+    }
+
     /**
      * Checks if flow is through single switch.
      *
+     * <p>
+     * FIXME(surabujin): looks extremely over engineered. Can be replaces with
+     * org.openkilda.messaging.model.Flow#isOneSwitchFlow()
+     * </p>
+     *
      * @param flow flow
      * @return true if source and destination switches are same for specified flow, otherwise false
-     *
-     * FIXME(surabujin): looks extremely over engineered. Can be replaces with org.openkilda.messaging.model.Flow#isOneSwitchFlow()
      */
     public boolean isOneSwitchFlow(ImmutablePair<Flow, Flow> flow) {
         return flow.getLeft().getSourceSwitch().equals(flow.getLeft().getDestinationSwitch())
@@ -627,7 +630,9 @@ public class FlowCache extends Cache {
     /**
      * Gets flows with specified switch, port and vlan.
      *
+     * <p>
      * NOTE: The result set also includes flows that match switch, port and with no VLAN (vlan = 0) defined.
+     * </p>
      *
      * @param switchId the switch ID
      * @param port the port
@@ -645,6 +650,9 @@ public class FlowCache extends Cache {
     }
 
 
+    /**
+     * Gets flow pairs which have source or destination is on the switch.
+     */
     public Set<ImmutablePair<Flow, Flow>> getIngressAndEgressFlows(String switchId) {
         return flowPool.values().stream()
                 .filter(flowPair -> Objects.nonNull(getFlowLinkedEndpoint(flowPair, switchId)))
@@ -652,18 +660,15 @@ public class FlowCache extends Cache {
     }
 
 
-    public Set<Integer> getAllocatedVlans()
-    {
+    public Set<Integer> getAllocatedVlans() {
         return resourceCache.getAllVlanIds();
     }
 
-    public Set<Integer> getAllocatedCookies()
-    {
+    public Set<Integer> getAllocatedCookies() {
         return resourceCache.getAllCookies();
     }
 
-    public Map<String, Set<Integer>> getAllocatedMeters()
-    {
+    public Map<String, Set<Integer>> getAllocatedMeters() {
         return resourceCache.getAllMeterIds();
     }
 

@@ -15,14 +15,15 @@
 
 package org.openkilda.wfm.topology.flow.validation;
 
-import com.google.common.annotations.VisibleForTesting;
+import static java.lang.String.format;
+
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.pce.cache.FlowCache;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import java.util.Optional;
 import java.util.Set;
-
-import static java.lang.String.format;
 
 /**
  * {@code FlowValidator} performs checks against the flow validation rules.
