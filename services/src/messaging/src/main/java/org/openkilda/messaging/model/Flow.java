@@ -17,6 +17,7 @@ package org.openkilda.messaging.model;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 
+import lombok.Builder;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.payload.flow.FlowState;
@@ -189,6 +190,7 @@ public class Flow implements Serializable {
      * @param state             flow state
      */
     @JsonCreator
+    @Builder
     public Flow(@JsonProperty(Utils.FLOW_ID) final String flowId,
                 @JsonProperty("bandwidth") final int bandwidth,
                 @JsonProperty("ignore_bandwidth") Boolean ignoreBandwidth,

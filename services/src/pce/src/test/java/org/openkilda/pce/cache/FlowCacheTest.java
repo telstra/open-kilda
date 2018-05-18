@@ -47,11 +47,13 @@ public class FlowCacheTest {
     private final FlowCache flowCache = new FlowCache();
     private final PathComputer.Strategy defaultStrategy = PathComputer.Strategy.COST;
 
-    private final Flow firstFlow = new Flow("first-flow", 0, false, "first-flow", "sw1", 11, 100, "sw3", 11, 200);
-    private final Flow secondFlow = new Flow("second-flow", 0, false, "second-flow", "sw5", 12, 100, "sw3", 12, 200);
-    private final Flow thirdFlow = new Flow("third-flow", 0, false, "third-flow", "sw3", 21, 100, "sw3", 22, 200);
-    private final Flow fourthFlow = new Flow("fourth-flow", 0, false, "fourth-flow", "sw4", 21, 100, "sw4", 22, 200);
-    private final Flow fifthFlow = new Flow("fifth-flow", 0, false, "fifth-flow", "sw5", 21, 100, "sw5", 22, 200);
+    private final Flow firstFlow = new Flow("first-flow", 1, false, "first-flow", "sw1", 11, 100, "sw3", 11, 200);
+    private final Flow secondFlow = new Flow("second-flow", 1, false, "second-flow", "sw5", 12, 100, "sw3", 12, 200);
+    private final Flow thirdFlow = new Flow("third-flow", 1, false, "third-flow", "sw3", 21, 100, "sw3", 22, 200);
+    private final Flow fourthFlow = new Flow("fourth-flow", 1, false, "fourth-flow", "sw4", 21, 100, "sw4", 22, 200);
+    private final Flow fifthFlow = new Flow("fifth-flow", 1, false, "fifth-flow", "sw5", 21, 100, "sw5", 22, 200);
+
+    private final Flow noBandwidthFlow = new Flow("no-bandwidth-flow", 0, true, "no-bandwidth-flow", "sw1", 11, 100, "sw3", 11, 200);
 
     @Before
     public void setUp() {
@@ -96,6 +98,25 @@ public class FlowCacheTest {
         assertEquals(1, flowCache.dumpFlows().size());
     }
 
+    @Test
+    public void createNoBandwidthFlow() throws Exception {
+        ImmutablePair<PathInfoData, PathInfoData> path = computer.getPath(noBandwidthFlow, defaultStrategy);
+        ImmutablePair<Flow, Flow> newFlow = flowCache.createFlow(noBandwidthFlow, path);
+
+        Flow forward = newFlow.left;
+        assertEquals(1 | ResourceCache.FORWARD_FLOW_COOKIE_MASK, forward.getCookie());
+        assertEquals(2, forward.getTransitVlan());
+        assertEquals(0, forward.getMeterId());
+        assertEquals(path.getLeft(), forward.getFlowPath());
+
+        Flow reverse = newFlow.right;
+        assertEquals(1 | ResourceCache.REVERSE_FLOW_COOKIE_MASK, reverse.getCookie());
+        assertEquals(3, reverse.getTransitVlan());
+        assertEquals(0, reverse.getMeterId());
+        assertEquals(path.getRight(), reverse.getFlowPath());
+
+        assertEquals(1, flowCache.dumpFlows().size());
+    }
 
     @Test
     public void createSingleSwitchFlows() throws Exception {
@@ -164,6 +185,24 @@ public class FlowCacheTest {
         // assertNotEquals(newFlow.hashCode(), oldFlow.hashCode());
         assertEquals(newFlow.hashCode(), oldFlow.hashCode());
         assertEquals(oldFlow, newFlow);
+    }
+
+    @Test
+    public void updateNoBandwidthFlow() throws Exception {
+        ImmutablePair<PathInfoData, PathInfoData> path = computer.getPath(firstFlow, defaultStrategy);
+
+        ImmutablePair<Flow, Flow> oldFlow = flowCache.createFlow(firstFlow, path);
+
+        assertEquals(ResourceCache.MIN_METER_ID, oldFlow.left.getMeterId());
+        assertEquals(ResourceCache.MIN_METER_ID, oldFlow.right.getMeterId());
+
+        firstFlow.setBandwidth(0);
+        fifthFlow.setIgnoreBandwidth(true);
+
+        ImmutablePair<Flow, Flow> newFlow = flowCache.updateFlow(firstFlow, path);
+
+        assertEquals(0, newFlow.left.getMeterId());
+        assertEquals(0, newFlow.right.getMeterId());
     }
 
     @Test

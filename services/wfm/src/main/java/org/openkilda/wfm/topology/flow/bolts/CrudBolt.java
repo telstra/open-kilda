@@ -134,6 +134,8 @@ public class CrudBolt
      */
     private FlowCache flowCache;
 
+    private FlowValidator flowValidator;
+
     /**
      * Instance constructor.
      *
@@ -158,6 +160,8 @@ public class CrudBolt
             this.caches.put(FLOW_CACHE, flowCache);
         }
         initFlowCache();
+
+        flowValidator = new FlowValidator(flowCache);
     }
 
     /**
@@ -584,7 +588,7 @@ public class CrudBolt
 
         ImmutablePair<PathInfoData, PathInfoData> path;
         try {
-            new FlowValidator(flowCache).checkFlowForEndpointConflicts(requestedFlow);
+            flowValidator.validate(requestedFlow);
 
             path = pathComputer.getPath(requestedFlow, Strategy.COST);
             logger.info("Creating flow {}. Found path: {}, correlationId: {}", requestedFlow.getFlowId(), path,
@@ -724,7 +728,7 @@ public class CrudBolt
 
         ImmutablePair<PathInfoData, PathInfoData> path;
         try {
-            new FlowValidator(flowCache).checkFlowForEndpointConflicts(requestedFlow);
+            flowValidator.validate(requestedFlow);
 
             path = pathComputer.getPath(requestedFlow, Strategy.COST);
             logger.info("Updated flow path: {}, correlationId {}", path, correlationId);

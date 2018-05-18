@@ -62,7 +62,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -194,12 +193,18 @@ class RecordHandler implements Runnable {
     private void installIngressFlow(final InstallIngressFlow command) throws SwitchOperationException {
         logger.debug("Creating an ingress flow: {}", command);
 
-        Long meterId = allocateMeterId(
-                command.getMeterId(), command.getSwitchId(), command.getId(), command.getCookie());
+        long meterId = 0;
+        if (command.getMeterId() != null && command.getMeterId() > 0) {
+            meterId = allocateMeterId(
+                    command.getMeterId(), command.getSwitchId(), command.getId(), command.getCookie());
 
-        context.getSwitchManager().installMeter(
-                DatapathId.of(command.getSwitchId()),
-                command.getBandwidth(), 1024, meterId);
+            context.getSwitchManager().installMeter(
+                    DatapathId.of(command.getSwitchId()),
+                    command.getBandwidth(), 1024, meterId);
+        } else {
+            logger.debug("Installing unmetered ingress flow. Switch: {}, cookie: {}",
+                    command.getSwitchId(), command.getCookie());
+        }
 
         context.getSwitchManager().installIngressFlow(
                 DatapathId.of(command.getSwitchId()),
@@ -310,12 +315,18 @@ class RecordHandler implements Runnable {
      * @param command command message for flow installation
      */
     private void installOneSwitchFlow(InstallOneSwitchFlow command) throws SwitchOperationException {
-        Long meterId = allocateMeterId(
-                command.getMeterId(), command.getSwitchId(), command.getId(), command.getCookie());
+        long meterId = 0;
+        if (command.getMeterId() != null && command.getMeterId() > 0) {
+            meterId = allocateMeterId(
+                    command.getMeterId(), command.getSwitchId(), command.getId(), command.getCookie());
 
-        context.getSwitchManager().installMeter(
-                DatapathId.of(command.getSwitchId()),
-                command.getBandwidth(), 1024, meterId);
+            context.getSwitchManager().installMeter(
+                    DatapathId.of(command.getSwitchId()),
+                    command.getBandwidth(), 1024, meterId);
+        } else {
+            logger.debug("Installing unmetered one switch flow. Switch: {}, cookie: {}",
+                    command.getSwitchId(), command.getCookie());
+        }
 
         OutputVlanType directOutputVlanType = command.getOutputVlanType();
         context.getSwitchManager().installOneSwitchFlow(
