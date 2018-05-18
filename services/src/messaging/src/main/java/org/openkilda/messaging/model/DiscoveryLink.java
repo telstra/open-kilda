@@ -1,3 +1,18 @@
+/* Copyright 2017 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.openkilda.messaging.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -5,6 +20,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
+import lombok.ToString;
 
 import java.io.Serializable;
 import java.util.Objects;
@@ -12,10 +28,13 @@ import java.util.Objects;
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Getter
+@ToString
 public class DiscoveryLink implements Serializable {
 
-    /** Never stop checking for an ISL */
-    public final static int ENDLESS_ATTEMPTS = -1;
+    /**
+     * Means to never stop to check even failed ISL.
+     */
+    public static final int ENDLESS_ATTEMPTS = -1;
 
     @JsonProperty("src_switch")
     private NetworkEndpoint srcEndpoint;
@@ -33,7 +52,9 @@ public class DiscoveryLink implements Serializable {
     @JsonProperty("check_interval")
     private int checkInterval;
 
-    /** Only increases if we get a response **/
+    /**
+     * Only increases if we get a response.
+     */
     @JsonProperty("consecutive_failure")
     private int consecutiveFailure;
 
@@ -42,6 +63,9 @@ public class DiscoveryLink implements Serializable {
 
     @JsonProperty("max_attempts")
     private int maxAttempts;
+
+    @JsonProperty("active")
+    private boolean active;
 
     /**
      * TODO: forlornThreshold is understandable (ie point at which to stop checking), but regarding
@@ -58,8 +82,11 @@ public class DiscoveryLink implements Serializable {
         this.consecutiveSuccess = 0;
     }
 
+    /**
+     * Constructor.
+     */
     public DiscoveryLink(String srcSwitch, int srcPort, String dstSwitch, int dstPort,
-            int checkInterval, int maxAttempts) {
+            int checkInterval, int maxAttempts, boolean active) {
         this.srcEndpoint = new NetworkEndpoint(srcSwitch, srcPort);
         this.dstEndpoint = new NetworkEndpoint(dstSwitch, dstPort);
         this.timeCounter = 0;
@@ -67,8 +94,12 @@ public class DiscoveryLink implements Serializable {
         this.maxAttempts = maxAttempts;
         this.consecutiveFailure = 0;
         this.consecutiveSuccess = 0;
+        this.active = active;
     }
 
+    /**
+     * Main constructor using for deserialization by jackson.
+     */
     @JsonCreator
     public DiscoveryLink(@JsonProperty("src_switch") final String srcSwitch,
             @JsonProperty("src_port") final int srcPort,
@@ -79,7 +110,8 @@ public class DiscoveryLink implements Serializable {
             @JsonProperty("check_interval") final int checkInterval,
             @JsonProperty("consecutive_failure") final int consecutiveFailure,
             @JsonProperty("consecutive_success") final int consecutiveSuccess,
-            @JsonProperty("forlorn_еhreshold") final int maxAttempts) {
+            @JsonProperty("forlorn_еhreshold") final int maxAttempts,
+            @JsonProperty("active") final boolean active) {
         this.srcEndpoint = new NetworkEndpoint(srcSwitch, srcPort);
         this.dstEndpoint = new NetworkEndpoint(dstSwitch, dstPort);
         this.attempts = attempts;
@@ -88,10 +120,24 @@ public class DiscoveryLink implements Serializable {
         this.maxAttempts = maxAttempts;
         this.consecutiveFailure = consecutiveFailure;
         this.consecutiveSuccess = consecutiveSuccess;
+        this.active = active;
     }
 
-    public void setDstEndpoint(NetworkEndpoint dstEndpoint) {
+    /**
+     * Is being used when ISL is discovered and we know what the destination of the link.
+     */
+    public void activate(NetworkEndpoint dstEndpoint) {
         this.dstEndpoint = dstEndpoint;
+        this.active = true;
+    }
+
+    /**
+     * Deactivating of an ISL. We do not remove the destination of the ISL, because such data helps us to define
+     * whether ISL is moved or not.
+     */
+    public void deactivate() {
+        this.active = false;
+        this.consecutiveFailure = 0;
     }
 
     /**
@@ -105,6 +151,7 @@ public class DiscoveryLink implements Serializable {
     }
 
     /**
+     * Checks if ISL should be excluded from discovery.
      * @return true if link should be excluded from discovery plan and discovery packets should not be sent.
      */
     public boolean isExcludedFromDiscovery() {
@@ -139,6 +186,7 @@ public class DiscoveryLink implements Serializable {
     }
 
     /**
+     * Check if we should stop to verify ISL.
      * @return true if attempts is greater than attemptLimit.
      */
     public boolean maxAttempts(Integer attemptLimit) {
@@ -153,10 +201,12 @@ public class DiscoveryLink implements Serializable {
         return timeCounter >= checkInterval;
     }
 
-    public boolean isDiscovered() {
-        return dstEndpoint != null;
-    }
-
+    /**
+     * Checks whether destination switch/port of that link differs.
+     * @param dstSwitch destination switch.
+     * @param dstPort destination port.
+     * @return true if destination changed.
+     */
     public boolean isDestinationChanged(String dstSwitch, int dstPort) {
         // check if the link was previously not discovered
         if (this.dstEndpoint == null) {
@@ -164,10 +214,6 @@ public class DiscoveryLink implements Serializable {
         }
 
         return !Objects.equals(this.dstEndpoint, new NetworkEndpoint(dstSwitch, dstPort));
-    }
-
-    public void resetDestination() {
-        dstEndpoint = null;
     }
 
     @Override
@@ -179,8 +225,8 @@ public class DiscoveryLink implements Serializable {
             return false;
         }
         DiscoveryLink that = (DiscoveryLink) o;
-        return Objects.equals(getSrcEndpoint(), that.getSrcEndpoint()) &&
-                Objects.equals(getDstEndpoint(), that.getDstEndpoint());
+        return Objects.equals(getSrcEndpoint(), that.getSrcEndpoint())
+                && Objects.equals(getDstEndpoint(), that.getDstEndpoint());
     }
 
     @Override
@@ -188,15 +234,4 @@ public class DiscoveryLink implements Serializable {
         return Objects.hash(getSrcEndpoint(), getDstEndpoint());
     }
 
-    @Override
-    public String toString() {
-        return "DiscoveryLink{" +
-                "srcEndpoint=" + srcEndpoint +
-                ", dstEndpoint=" + dstEndpoint +
-                ", attempts=" + attempts +
-                ", checkInterval=" + checkInterval +
-                ", consecutiveFailure=" + consecutiveFailure +
-                ", consecutiveSuccess=" + consecutiveSuccess +
-                '}';
-    }
 }

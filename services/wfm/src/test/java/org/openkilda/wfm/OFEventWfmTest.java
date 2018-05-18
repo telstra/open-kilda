@@ -49,8 +49,9 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.TupleImpl;
 import org.apache.storm.utils.Utils;
-import org.junit.Assert;
+
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -65,7 +66,7 @@ import java.util.List;
 import java.util.Properties;
 
 /**
- * OFEventWfmTest tests the critical aspects of OFEventWFMTopology
+ * OFEventWfmTest tests the critical aspects of OFEventWFMTopology.
  */
 //@RunWith(MockitoJUnitRunner.class)
 public class OFEventWfmTest extends AbstractStormTest {
@@ -79,6 +80,9 @@ public class OFEventWfmTest extends AbstractStormTest {
     private OutputCollectorMock outputCollectorMock = new OutputCollectorMock();
     private OutputCollector outputCollector = new OutputCollector(outputCollectorMock);
 
+    /**
+     * Creates storm topology.
+     */
     @BeforeClass
     public static void setupOnce() throws Exception {
         AbstractStormTest.setupOnce();
@@ -98,6 +102,9 @@ public class OFEventWfmTest extends AbstractStormTest {
         ////////
     }
 
+    /**
+     * Clear up everything.
+     */
     @AfterClass
     public static void teardownOnce() throws Exception {
         cluster.killTopology("utils-1");
@@ -109,40 +116,38 @@ public class OFEventWfmTest extends AbstractStormTest {
 
     @Test
     @Ignore
-    public void BasicSwitchPortEventsTest() throws Exception {
+    public void basicSwitchPortEventsTest() throws Exception {
         System.out.println("==> Starting BasicSwitchEventTest");
 
         // TOOD: Is this test still valide, without the deprecated Switch/Port bolts?
         OFEventWFMTopology manager = new OFEventWFMTopology(makeLaunchEnvironment());
         TopologyConfig config = manager.getConfig();
 
-        String sw1_up = OFEMessageUtils.createSwitchDataMessage(
+        String sw1Up = OFEMessageUtils.createSwitchDataMessage(
                 OFEMessageUtils.SWITCH_UP, "sw1");
-        String sw2_up = OFEMessageUtils.createSwitchDataMessage(
+        String sw2Up = OFEMessageUtils.createSwitchDataMessage(
                 OFEMessageUtils.SWITCH_UP, "sw2");
-        String sw1p1_up = OFEMessageUtils.createPortDataMessage(
+        String sw1P1Up = OFEMessageUtils.createPortDataMessage(
                 OFEMessageUtils.PORT_UP, "sw1", "1");
-        String sw2p2_up = OFEMessageUtils.createPortDataMessage(
-                OFEMessageUtils.PORT_UP, "sw2", "2");
-        String sw2p2_down = OFEMessageUtils.createPortDataMessage(
-                OFEMessageUtils.PORT_DOWN, "sw2", "2");
-        String switch_topic = config.getKafkaTopoDiscoTopic();
-        String port_topic = config.getKafkaTopoDiscoTopic();
+        String switchTopic = config.getKafkaTopoDiscoTopic();
+        String portTopic = config.getKafkaTopoDiscoTopic();
 
         // send sw1 and sw2 up
-        kProducer.pushMessage(switch_topic, sw1_up);
-        kProducer.pushMessage(switch_topic, sw2_up);
+        kProducer.pushMessage(switchTopic, sw1Up);
+        kProducer.pushMessage(switchTopic, sw2Up);
 
+        String sw2P2Up = OFEMessageUtils.createPortDataMessage(
+                OFEMessageUtils.PORT_UP, "sw2", "2");
         // sent sw1/port1 up ... sw2/port2 up
-        kProducer.pushMessage(port_topic, sw1p1_up);
-        kProducer.pushMessage(port_topic, sw2p2_up);
+        kProducer.pushMessage(portTopic, sw1P1Up);
+        kProducer.pushMessage(portTopic, sw2P2Up);
 
         // send duplicates ... NB: at present, dupes aren't detected until we do FieldGrouping
         // probably should send duplicates in another test
-        kProducer.pushMessage(switch_topic, sw1_up);
-        kProducer.pushMessage(switch_topic, sw2_up);
-        kProducer.pushMessage(port_topic, sw1p1_up);
-        kProducer.pushMessage(port_topic, sw2p2_up);
+        kProducer.pushMessage(switchTopic, sw1Up);
+        kProducer.pushMessage(switchTopic, sw2Up);
+        kProducer.pushMessage(portTopic, sw1P1Up);
+        kProducer.pushMessage(portTopic, sw2P2Up);
 
         Utils.sleep(4 * 1000);
 
@@ -152,8 +157,9 @@ public class OFEventWfmTest extends AbstractStormTest {
 
         Utils.sleep(1 * 1000);
 
+        String sw2P2Down = OFEMessageUtils.createPortDataMessage(OFEMessageUtils.PORT_DOWN, "sw2", "2");
         // sending this now just for fun .. we'll more formally test that the ISL state is correct.
-        kProducer.pushMessage(port_topic, sw2p2_down);
+        kProducer.pushMessage(portTopic, sw2P2Down);
 
         Utils.sleep(2 * 1000);
 
@@ -194,18 +200,10 @@ public class OFEventWfmTest extends AbstractStormTest {
         System.out.println("==> Starting BasicLinkDiscoveryTest");
         OFEventWFMTopology manager = new OFEventWFMTopology(makeLaunchEnvironment());
         TopologyConfig config = manager.getConfig();
-        String topo_input_topic = config.getKafkaTopoDiscoTopic();
+        String topoInputTopic = config.getKafkaTopoDiscoTopic();
 
-        Tuple tuple;
         KeyValueState<String, Object> state = new InMemoryKeyValueState<>();
-        initMocks(topo_input_topic);
-
-
-        List<PathNode> nodes = Arrays.asList(
-                new PathNode("sw1", 1, 0, 10L),
-                new PathNode("sw2", 2, 1, 10L));
-        InfoData data = new IslInfoData(10L, nodes, 10000L, IslChangeType.DISCOVERED, 9000L);
-        String isl_discovered = MAPPER.writeValueAsString(data);
+        initMocks(topoInputTopic);
 
         OFELinkBolt linkBolt = new OFELinkBolt(config);
 
@@ -217,38 +215,42 @@ public class OFEventWfmTest extends AbstractStormTest {
         CommandMessage islFilterSetup = new CommandMessage(
                 new DiscoveryFilterPopulateData(skipNodes), 1, "discovery-test", Destination.WFM_OF_DISCOVERY);
         String json = MAPPER.writeValueAsString(islFilterSetup);
-        tuple = new TupleImpl(topologyContext, Collections.singletonList(json), 4, "message");
+        Tuple tuple = new TupleImpl(topologyContext, Collections.singletonList(json), 4, "message");
         linkBolt.execute(tuple);
 
         InfoMessage switch1Up = new InfoMessage(new SwitchInfoData("sw1", SwitchState.ACTIVATED, null, null,
                 null, null), 1, "discovery-test", Destination.WFM_OF_DISCOVERY);
         json = MAPPER.writeValueAsString(switch1Up);
-        tuple = new TupleImpl(topologyContext, Collections.singletonList(json),0, topo_input_topic);
+        tuple = new TupleImpl(topologyContext, Collections.singletonList(json), 0, topoInputTopic);
         linkBolt.execute(tuple);
 
         InfoMessage switch2Up = new InfoMessage(new SwitchInfoData("sw2", SwitchState.ACTIVATED, null, null,
                 null, null), 1, "discovery-test", Destination.WFM_OF_DISCOVERY);
         json = MAPPER.writeValueAsString(switch2Up);
-        tuple = new TupleImpl(topologyContext, Collections.singletonList(json), 0, topo_input_topic);
+        tuple = new TupleImpl(topologyContext, Collections.singletonList(json), 0, topoInputTopic);
         linkBolt.execute(tuple);
 
         InfoMessage port1Up = new InfoMessage(new PortInfoData("sw2", 1, PortChangeType.UP), 1,
                 "discovery-test", Destination.WFM_OF_DISCOVERY);
         json = MAPPER.writeValueAsString(port1Up);
-        tuple = new TupleImpl(topologyContext, Collections.singletonList(json),1, topo_input_topic);
+        tuple = new TupleImpl(topologyContext, Collections.singletonList(json), 1, topoInputTopic);
         linkBolt.execute(tuple);
 
         InfoMessage port2Up = new InfoMessage(new PortInfoData("sw1", 2, PortChangeType.UP), 1,
                 "discovery-test", Destination.WFM_OF_DISCOVERY);
         json = MAPPER.writeValueAsString(port2Up);
-        tuple = new TupleImpl(topologyContext, Collections.singletonList(json),1, topo_input_topic);
+        tuple = new TupleImpl(topologyContext, Collections.singletonList(json), 1, topoInputTopic);
         linkBolt.execute(tuple);
 
         Tuple tickTuple = new TupleImpl(topologyContext, Collections.emptyList(), 2, Constants.SYSTEM_TICK_STREAM_ID);
         linkBolt.execute(tickTuple);
 
-        tuple = new TupleImpl(topologyContext, Collections.singletonList(isl_discovered),
-                3, topo_input_topic);
+        List<PathNode> nodes = Arrays.asList(
+                new PathNode("sw1", 1, 0, 10L),
+                new PathNode("sw2", 2, 1, 10L));
+        InfoData data = new IslInfoData(10L, nodes, 10000L, IslChangeType.DISCOVERED, 9000L);
+        String islDiscovered = MAPPER.writeValueAsString(data);
+        tuple = new TupleImpl(topologyContext, Collections.singletonList(islDiscovered), 3, topoInputTopic);
         linkBolt.execute(tuple);
 
         linkBolt.execute(tickTuple);
@@ -257,52 +259,52 @@ public class OFEventWfmTest extends AbstractStormTest {
         // 1 isls, 3 seconds interval, 9 seconds test duration == 3 discovery commands
         // there is only 1 isl each cycle because of isl filter
         //messagesExpected = 3 ;
-        messagesExpected = 7 ;  // TODO: (crimi) validate is 7 due to merged topics
+        messagesExpected = 7;  // TODO: (crimi) validate is 7 due to merged topics
         messagesReceived = outputCollectorMock.getMessagesCount(config.getKafkaTopoDiscoTopic());
         Assert.assertEquals(messagesExpected, messagesReceived);
 
         // "isl discovered" x1
         //messagesExpected = 1;
-        messagesExpected = 7 ;  // TODO: (crimi) validate is 7 due to merged topics
+        messagesExpected = 7;  // TODO: (crimi) validate is 7 due to merged topics
         messagesReceived = outputCollectorMock.getMessagesCount(config.getKafkaTopoDiscoTopic());
         Assert.assertEquals(messagesExpected, messagesReceived);
 
         linkBolt.execute(tickTuple);
 
         // no new discovery commands
-//        messagesExpected = 3;
+        //messagesExpected = 3;
         messagesExpected = 7;  // TODO .. increased from 3 to 7 due to topic changes .. confirm it
         messagesReceived = outputCollectorMock.getMessagesCount(config.getKafkaTopoDiscoTopic());
         Assert.assertEquals(messagesExpected, messagesReceived);
 
         // +1 discovery fails
-//        messagesExpected = 2;
+        //messagesExpected = 2;
         messagesExpected = 7;  // TODO .. there should be more or we aren't looking in right place
         messagesReceived = outputCollectorMock.getMessagesCount(config.getKafkaTopoDiscoTopic());
         Assert.assertEquals(messagesExpected, messagesReceived);
     }
 
-    private void initMocks(String topo_input_topic) {
+    private void initMocks(String topoInputTopic) {
         Fields switchSchema = new Fields(OFEMessageUtils.FIELD_SWITCH_ID, OFEMessageUtils.FIELD_STATE);
-        when(topologyContext.getComponentId(0)).thenReturn(topo_input_topic);
-        when(topologyContext.getComponentOutputFields(topo_input_topic,
-                topo_input_topic)).thenReturn(switchSchema);
+        when(topologyContext.getComponentId(0)).thenReturn(topoInputTopic);
+        when(topologyContext.getComponentOutputFields(topoInputTopic,
+                topoInputTopic)).thenReturn(switchSchema);
 
         Fields portSchema = new Fields(OFEMessageUtils.FIELD_SWITCH_ID,
                 OFEMessageUtils.FIELD_PORT_ID, OFEMessageUtils.FIELD_STATE);
-        when(topologyContext.getComponentId(1)).thenReturn(topo_input_topic);
-        when(topologyContext.getComponentOutputFields(topo_input_topic,
-                topo_input_topic)).thenReturn(portSchema);
+        when(topologyContext.getComponentId(1)).thenReturn(topoInputTopic);
+        when(topologyContext.getComponentOutputFields(topoInputTopic,
+                topoInputTopic)).thenReturn(portSchema);
 
         Fields tickSchema = new Fields();
         when(topologyContext.getComponentId(2)).thenReturn(Constants.SYSTEM_COMPONENT_ID);
         when(topologyContext.getComponentOutputFields(Constants.SYSTEM_COMPONENT_ID, Constants.SYSTEM_TICK_STREAM_ID))
                 .thenReturn(tickSchema);
 
-        Fields islSchema = new Fields(topo_input_topic);
-        when(topologyContext.getComponentId(3)).thenReturn(topo_input_topic);
-        when(topologyContext.getComponentOutputFields(topo_input_topic,
-                topo_input_topic)).thenReturn(islSchema);
+        Fields islSchema = new Fields(topoInputTopic);
+        when(topologyContext.getComponentId(3)).thenReturn(topoInputTopic);
+        when(topologyContext.getComponentOutputFields(topoInputTopic,
+                topoInputTopic)).thenReturn(islSchema);
 
         when(topologyContext.getComponentId(4)).thenReturn(OFEventWFMTopology.SPOUT_ID_INPUT);
         when(topologyContext.getComponentOutputFields(

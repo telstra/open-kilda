@@ -89,6 +89,18 @@ def fetch_by_endpoint(tx, endpoint):
     return db.ResponseIterator((x['target'] for x in cursor), q, p)
 
 
+def fetch_active_by_endpoint(tx, endpoint):
+    q = textwrap.dedent("""
+        MATCH (src:switch)-[target:isl{status:'active'}]->(:switch)
+        WHERE src.name=$src_switch AND target.src_port=$src_port
+        RETURN target""")
+    p = {
+        'src_switch': endpoint.dpid,
+        'src_port': endpoint.port}
+    cursor = tx.run(q, p)
+    return db.ResponseIterator((x['target'] for x in cursor), q, p)
+
+
 def fetch_by_datapath(tx, dpid):
     q = textwrap.dedent("""
         MATCH (sw:switch {name: $src_switch})
@@ -122,6 +134,11 @@ def resolve_conflicts(tx, isl):
         if link_dbid in keep_dbid:
             continue
 
+        # we should skip links with the moved status,
+        # there is no need to mark them as inactive
+        if link['status'] == 'moved':
+            continue
+
         link_isl = model.InterSwitchLink.new_from_db(link)
         logger.warning('Deactivate ISL %s due conflict with %s', link_isl, isl)
         set_active_field(tx, link_dbid, 'inactive')
@@ -145,7 +162,7 @@ def switch_unplug(tx, dpid):
 def disable_by_endpoint(tx, endpoint):
     logging.debug('Locate all ISL starts on %s', endpoint)
 
-    involved = list(fetch_by_endpoint(tx, endpoint))
+    involved = list(fetch_active_by_endpoint(tx, endpoint))
     switches = set()
     for link in involved:
         switches.add(link['src_switch'])

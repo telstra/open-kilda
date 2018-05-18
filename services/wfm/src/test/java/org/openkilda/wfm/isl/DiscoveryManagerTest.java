@@ -1,24 +1,26 @@
 package org.openkilda.wfm.isl;
 
-import org.junit.Before;
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import org.openkilda.messaging.model.DiscoveryLink;
 import org.openkilda.messaging.model.NetworkEndpoint;
+
+import org.junit.Before;
+import org.junit.Test;
 
 import java.util.LinkedList;
 import java.util.List;
 
-import static org.junit.Assert.*;
 
 /**
  * The DiscoveryManager is the main class that governs ISL discovery. It develops a list of
  * switch/ports to send discovery/health checks on, and a list of failures to notify others about.
  *
- * OFELinkBolt is the primary user of this class, leveraging DiscoveryManager.Plan
+ * <p>OFELinkBolt is the primary user of this class, leveraging DiscoveryManager.Plan
  *
- * The primary test scenarios that are of interest..
- *
- *
+ * <p>The primary test scenarios that are of interest..
  */
 public class DiscoveryManagerTest {
 
@@ -36,6 +38,9 @@ public class DiscoveryManagerTest {
     private int islHealthFailureLimit;
     private int forlornLimit;
 
+    /**
+     * Init method.
+     */
     @Before
     public void setUp() throws Exception {
         islHealthCheckInterval = 0; // means check ever tick
@@ -48,11 +53,13 @@ public class DiscoveryManagerTest {
         );
     }
 
-    /** several tests start with creating/adding 3 ports */
-    public void setupThreeLinks(){
-        link1 = new DiscoveryLink("sw1", 1, "sw3", 1, islHealthCheckInterval, forlornLimit);
-        link2 = new DiscoveryLink("sw1", 2, "sw3", 2, islHealthCheckInterval, forlornLimit);
-        link3 = new DiscoveryLink("sw2", 1, "sw3", 3, islHealthCheckInterval, forlornLimit);
+    /**
+     * Several tests start with creating/adding 3 ports.
+     * */
+    void setupThreeLinks() {
+        link1 = new DiscoveryLink("sw1", 1, "sw3", 1, islHealthCheckInterval, forlornLimit, true);
+        link2 = new DiscoveryLink("sw1", 2, "sw3", 2, islHealthCheckInterval, forlornLimit, true);
+        link3 = new DiscoveryLink("sw2", 1, "sw3", 3, islHealthCheckInterval, forlornLimit, true);
         
         srcNode1 = link1.getSrcEndpoint();
         dstNode1 = link1.getDstEndpoint();
@@ -100,8 +107,8 @@ public class DiscoveryManagerTest {
         discoveryPlan = dm.makeDiscoveryPlan();                      // the attempts test is based on the 1 & 2 count
         assertEquals(3, discoveryPlan.needDiscovery.size());
         assertEquals(1, discoveryPlan.discoveryFailure.size());
-        assertEquals(srcNode3.getSwitchDpId(),discoveryPlan.discoveryFailure.get(0).getSwitchDpId());
-        assertEquals(srcNode3.getPortId(),discoveryPlan.discoveryFailure.get(0).getPortId());
+        assertEquals(srcNode3.getSwitchDpId(), discoveryPlan.discoveryFailure.get(0).getSwitchDpId());
+        assertEquals(srcNode3.getPortId(), discoveryPlan.discoveryFailure.get(0).getPortId());
 
         // Now verify it doesn't re-send the failure
         dm.handleDiscovered(srcNode1.getSwitchDpId(), srcNode1.getPortId(),
@@ -116,7 +123,8 @@ public class DiscoveryManagerTest {
         dm.makeDiscoveryPlan();                                       // the attempts test is based on the 1 & 4 count
         dm.handleDiscovered(srcNode1.getSwitchDpId(), srcNode1.getPortId(), 
                 dstNode1.getSwitchDpId(), dstNode1.getPortId()); // clear attempts
-        dm.handleDiscovered(srcNode2.getSwitchDpId(), srcNode2.getPortId(), dstNode2.getSwitchDpId(), 0); // clear attempts
+        dm.handleDiscovered(srcNode2.getSwitchDpId(),
+                srcNode2.getPortId(), dstNode2.getSwitchDpId(), 0); // clear attempts
         discoveryPlan = dm.makeDiscoveryPlan();                       // now consecutive failure at 3 for link3
         assertEquals(2, discoveryPlan.needDiscovery.size());
         assertEquals(0, discoveryPlan.discoveryFailure.size());
@@ -206,7 +214,6 @@ public class DiscoveryManagerTest {
         // in PortUp.  However, this one area, when pre-existing ISLs are already in the DM, should
         // be tested. We need to create some ISLs, then send the SwitchUp, and confirm isFoundIsl
         // is cleared.
-        List<DiscoveryLink> nodes;
         setupThreeLinks();
 
         // discover them and confirm all discovered
@@ -216,19 +223,21 @@ public class DiscoveryManagerTest {
                 dstNode2.getSwitchDpId(), dstNode2.getPortId());
         dm.handleDiscovered(srcNode3.getSwitchDpId(), srcNode3.getPortId(),
                 dstNode3.getSwitchDpId(), dstNode3.getPortId());
+
+        List<DiscoveryLink> nodes;
         nodes = dm.findBySwitch(new NetworkEndpoint(srcNode1.getSwitchDpId(), 0));
-        assertEquals(true, nodes.get(0).isDiscovered());
-        assertEquals(true, nodes.get(1).isDiscovered());
+        assertEquals(true, nodes.get(0).isActive());
+        assertEquals(true, nodes.get(1).isActive());
         nodes = dm.findBySwitch(new NetworkEndpoint(srcNode3.getSwitchDpId(), 0));
-        assertEquals(true, nodes.get(0).isDiscovered());
+        assertEquals(true, nodes.get(0).isActive());
 
         // now send SwitchUp and confirm sw1 all go back to not found, sw2 unchanged
         dm.handleSwitchUp(srcNode1.getSwitchDpId());
         nodes = dm.findBySwitch(new NetworkEndpoint(srcNode1.getSwitchDpId(), 0));
-        assertEquals(false, nodes.get(0).isDiscovered());
-        assertEquals(false , nodes.get(1).isDiscovered());
+        assertEquals(false, nodes.get(0).isActive());
+        assertEquals(false, nodes.get(1).isActive());
         nodes = dm.findBySwitch(new NetworkEndpoint(srcNode3.getSwitchDpId(), 0));
-        assertEquals(true, nodes.get(0).isDiscovered());
+        assertEquals(true, nodes.get(0).isActive());
 
         // now confirm they go back to found upon next Discovery.
         dm.handleDiscovered(srcNode1.getSwitchDpId(), srcNode1.getPortId(),
@@ -236,10 +245,10 @@ public class DiscoveryManagerTest {
         dm.handleDiscovered(srcNode2.getSwitchDpId(), srcNode2.getPortId(),
                 dstNode2.getSwitchDpId(), dstNode2.getPortId());
         nodes = dm.findBySwitch(new NetworkEndpoint(srcNode1.getSwitchDpId(), 0));
-        assertEquals(true, nodes.get(0).isDiscovered());
-        assertEquals(true, nodes.get(1).isDiscovered());
+        assertEquals(true, nodes.get(0).isActive());
+        assertEquals(true, nodes.get(1).isActive());
         nodes = dm.findBySwitch(new NetworkEndpoint(srcNode3.getSwitchDpId(), 0));
-        assertEquals(true, nodes.get(0).isDiscovered());
+        assertEquals(true, nodes.get(0).isActive());
     }
 
     @Test
@@ -350,7 +359,7 @@ public class DiscoveryManagerTest {
         dm.handleDiscovered(srcNode1.getSwitchDpId(), srcNode1.getPortId(),
                 dstNode1.getSwitchDpId(), dstNode1.getPortId()); // clear attempts
         // This part mirrors what happens in OFELinkBolt *if* there was a state change on src.
-        if (!dm.checkForIsl(srcNode3.getSwitchDpId(), srcNode3.getPortId())){
+        if (!dm.checkForIsl(srcNode3.getSwitchDpId(), srcNode3.getPortId())) {
             // Only call PortUp if we aren't checking for ISL. Otherwise, we could end up in an
             // infinite cycle of always sending a Port UP when one side is discovered.
             dm.handlePortUp(srcNode3.getSwitchDpId(), srcNode3.getPortId());

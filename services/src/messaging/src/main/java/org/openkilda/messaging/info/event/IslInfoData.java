@@ -113,6 +113,11 @@ public class IslInfoData extends PathInfoData {
         this.id = String.format("%s_%s", path.get(0).getSwitchId(), String.valueOf(path.get(0).getPortNo()));
     }
 
+    /**
+     * Simple constructor for an ISL with only path and state.
+     * @param path path of ISL.
+     * @param state current state.
+     */
     public IslInfoData(@JsonProperty("path") List<PathNode> path,
                        @JsonProperty("state") IslChangeType state) {
         this.path = path;

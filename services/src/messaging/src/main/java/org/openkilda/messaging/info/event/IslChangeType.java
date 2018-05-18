@@ -86,6 +86,11 @@ public enum IslChangeType {
         return type;
     }
 
+    /**
+     * Find corresponding value for string representation of status.
+     * @param state ISL state.
+     * @return {@link IslChangeType} value.
+     */
     public static IslChangeType from(String state) {
         return Arrays.stream(IslChangeType.values())
                 .filter(item -> item.type.equalsIgnoreCase(state))

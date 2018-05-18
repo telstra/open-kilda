@@ -8,7 +8,6 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.openkilda.messaging.ctrl.AbstractDumpState;
 import org.openkilda.messaging.ctrl.state.visitor.DumpStateVisitor;
 import org.openkilda.messaging.model.DiscoveryLink;
-import org.openkilda.messaging.model.DiscoveryNode;
 
 import java.util.List;
 import java.util.Set;
@@ -17,6 +16,7 @@ import java.util.Set;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class OFELinkBoltState extends AbstractDumpState {
+
     @JsonProperty("discovery")
     private final List<DiscoveryLink> discovery;
 
