@@ -103,7 +103,7 @@ public final class CorrelationContext {
             JsonElement json = jsonParser.parse(jsonStr);
             if (json.isJsonObject()) {
                 JsonPrimitive corrIdObj = ((JsonObject) json).getAsJsonPrimitive(CORRELATION_ID);
-                if (corrIdObj.isString()) {
+                if (corrIdObj != null && corrIdObj.isString()) {
                     return corrIdObj.getAsString();
                 }
             }

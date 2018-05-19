@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.utils;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -69,5 +70,21 @@ public class CorrelationContextTest {
 
         //then
         assertEquals(correlationId, result.get().getId());
+    }
+
+    @Test
+    public void shouldNotFailParsingJsonWithoutCorrId() throws JsonProcessingException {
+        // given
+        Tuple tuple = mock(Tuple.class);
+        when(tuple.getFields()).thenReturn(new Fields("message"));
+
+        String correlationId = String.format("test-%s", UUID.randomUUID());
+        when(tuple.getValueByField(eq("message"))).thenReturn("{fake:\"value\"}");
+
+        // when
+        Optional<CorrelationContext> result = CorrelationContext.extractFrom(tuple);
+
+        //then
+        assertFalse(result.isPresent());
     }
 }
