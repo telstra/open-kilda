@@ -260,7 +260,7 @@ public class Flow implements Serializable {
     }
 
     /**
-     * Set the ignoreBandwidth.
+     * Sets the ignoreBandwidth.
      *
      * @param ignoreBandwidth ignore bandwidth flag
      */
@@ -272,7 +272,7 @@ public class Flow implements Serializable {
     }
 
     /**
-     * Return whether this is a single switch flow.
+     * Returns whether this is a single switch flow.
      */
     @JsonIgnore
     public boolean isOneSwitchFlow() {
@@ -289,7 +289,9 @@ public class Flow implements Serializable {
     }
 
     /**
-     * Return whether this is a forward flow.
+     * Returns whether this represents a forward flow.
+     * The result is based on the cookie value,
+     * see {@link Flow#cookieMarkedAsFroward} and {@link Flow#cookieMarkedAsReversed()}.
      */
     @JsonIgnore
     public boolean isForward() {
