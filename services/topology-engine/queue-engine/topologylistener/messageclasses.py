@@ -151,7 +151,7 @@ class MessageItem(object):
             elif self.get_message_type() == MT_ISL:
                 if self.payload['state'] == "DISCOVERED":
                     event_handled = self.create_isl()
-                elif self.payload['state'] == "FAILED":
+                elif self.payload['state'] in ("FAILED", "MOVED"):
                     event_handled = self.isl_discovery_failed()
 
             elif self.get_message_type() == MT_PORT:
@@ -267,9 +267,11 @@ class MessageItem(object):
         logger.info('Isl failure: %s_%d -- apply policy %s: timestamp=%s',
                     switch_id, port, effective_policy, self.timestamp)
 
+        is_moved = self.payload['state'] == 'MOVED'
         try:
             with graph.begin() as tx:
-                isl_utils.disable_by_endpoint(tx, model.NetworkEndpoint(switch_id, port))
+                isl_utils.disable_by_endpoint(
+                    tx, model.NetworkEndpoint(switch_id, port), is_moved)
         except exc.DBRecordNotFound:
             logger.error('There is no ISL on %s_%s', switch_id, port)
 

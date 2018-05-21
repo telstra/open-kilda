@@ -123,9 +123,12 @@ def resolve_conflicts(tx, isl):
             continue
 
         link_isl = model.InterSwitchLink.new_from_db(link)
-        logger.warning('Deactivate ISL %s due conflict with %s', link_isl, isl)
-        set_active_field(tx, link_dbid, 'inactive')
-        update_status(tx, link_isl)
+        if is_active_status(link['actual']):
+            logger.error('Detected ISL %s conflict with %s. Please contact dev team', link_isl, isl)
+            # set_active_field(tx, link_dbid, 'inactive')
+            # update_status(tx, link_isl)
+        else:
+            logger.debug("Skip conflict ISL %s deactivation due to its current status - %s", link_isl, link['actual'])
 
 
 def switch_unplug(tx, dpid):
@@ -142,7 +145,7 @@ def switch_unplug(tx, dpid):
         update_status(tx, isl)
 
 
-def disable_by_endpoint(tx, endpoint):
+def disable_by_endpoint(tx, endpoint, is_moved=False):
     logging.debug('Locate all ISL starts on %s', endpoint)
 
     involved = list(fetch_by_endpoint(tx, endpoint))
@@ -158,7 +161,8 @@ def disable_by_endpoint(tx, endpoint):
         isl = model.InterSwitchLink.new_from_db(link)
         logger.info('Deactivate ISL %s', isl)
 
-        set_active_field(tx, db.neo_id(link), 'inactive')
+        status = 'moved' if is_moved else 'inactive'
+        set_active_field(tx, db.neo_id(link), status)
         update_status(tx, isl)
 
         updated.append(isl)
@@ -193,15 +197,20 @@ def update_status(tx, isl):
           ->
           (:switch {name: $peer_dst_switch})
 
-        WITH self, peer,
-          CASE WHEN self.actual = $status_up AND peer.actual = $status_up
-               THEN $status_up ELSE $status_down END AS isl_status
+        WITH self, peer, CASE 
+          WHEN self.actual = $status_up AND peer.actual = $status_up
+            THEN $status_up 
+          WHEN self.actual = $status_moved OR peer.actual = $status_moved
+            THEN $status_moved
+          ELSE $status_down 
+        END AS isl_status  
 
         SET self.status=isl_status
         SET peer.status=isl_status""")
 
     p = {
         'status_up': 'active',
+        'status_moved': 'moved',
         'status_down': 'inactive'}
     p.update(_make_match(isl))
     p.update({'peer_' + k: v for k, v in _make_match(isl.reversed()).items()})
@@ -340,6 +349,28 @@ def sync_with_link_props(tx, isl, *fields):
     tx.run(q, _make_match(isl))
 
 
+def update_moved_isl(tx, isl):
+    match = _make_match(isl)
+    q = textwrap.dedent("""
+        MATCH
+          (:switch {name: $src_switch})
+          -
+          [target:isl {
+            src_switch: $src_switch,
+            src_port: $src_port,
+            dst_switch: $dst_switch,
+            dst_port: $dst_port
+          }]
+          ->
+          (:switch {name: $dst_switch})
+        SET target.status='moved'  
+        SET target.actual='inactive'  
+        RETURN target""")
+
+    logger.debug('ISL moving query:\n%s', q)
+    tx.run(q, match)
+
+
 def _locate_changes(target, props):
     origin = {}
     update = {}
@@ -362,3 +393,7 @@ def _make_match(isl):
         'src_port': isl.source.port,
         'dst_switch': isl.dest.dpid,
         'dst_port': isl.dest.port}
+
+
+def is_active_status(status):
+    return status == 'active'

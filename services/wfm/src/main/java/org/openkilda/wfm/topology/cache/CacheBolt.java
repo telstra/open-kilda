@@ -76,7 +76,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -174,10 +173,10 @@ public class CacheBolt
      * {@inheritDoc}
      */
     @Override
-    public void execute (Tuple tuple){
-        if (CtrlAction.boltHandlerEntrance(this, tuple))
+    public void execute(Tuple tuple) {
+        if (CtrlAction.boltHandlerEntrance(this, tuple)) {
             return;
-
+        }
         logger.trace("State before: {}", state);
 
         String json = tuple.getString(0);
@@ -214,7 +213,7 @@ public class CacheBolt
                     logger.debug("Switch flows reroute request");
 
                     NetworkTopologyChange topologyChange = (NetworkTopologyChange) data;
-                    handleNetworkTopologyChangeEvent(topologyChange, tuple, message.getCorrelationId());
+                    handleNetworkTopologyChange(topologyChange, tuple, message.getCorrelationId());
                 } else {
                     logger.warn("Skip undefined info data type {}", json);
                 }
@@ -271,9 +270,9 @@ public class CacheBolt
                 // longer delay .. but a necessary dampening affect.  The better solution
                 // is to kick of an immediate probe if we get such an event .. and the probe
                 // should confirm what is really happening.
-//                affectedFlows = flowCache.getActiveFlowsWithAffectedPath(sw.getSwitchId());
-//                String reason = String.format("switch %s is %s", sw.getSwitchId(), sw.getState());
-//                emitRerouteCommands(affectedFlows, tuple, correlationId, FlowOperation.UPDATE, reason);
+                //affectedFlows = flowCache.getActiveFlowsWithAffectedPath(sw.getSwitchId());
+                //String reason = String.format("switch %s is %s", sw.getSwitchId(), sw.getState());
+                //emitRerouteCommands(affectedFlows, tuple, correlationId, FlowOperation.UPDATE, reason);
                 break;
 
             case CACHED:
@@ -301,6 +300,7 @@ public class CacheBolt
                 break;
 
             case FAILED:
+            case MOVED:
                 try {
                     networkCache.deleteIsl(isl.getId());
                 } catch (CacheException exception) {
@@ -333,7 +333,8 @@ public class CacheBolt
             case DOWN:
             case DELETE:
                 Set<ImmutablePair<Flow, Flow>> affectedFlows = flowCache.getActiveFlowsWithAffectedPath(port);
-                String reason = String.format("port %s_%s is %s", port.getSwitchId(), port.getPortNo(), port.getState());
+                String reason = String.format("port %s_%s is %s",
+                        port.getSwitchId(), port.getPortNo(), port.getState());
                 emitRerouteCommands(affectedFlows, tuple, correlationId, FlowOperation.UPDATE, reason);
                 break;
 
@@ -351,7 +352,7 @@ public class CacheBolt
         }
     }
 
-    private void handleNetworkTopologyChangeEvent(NetworkTopologyChange topologyChange, Tuple tuple, String correlationId) {
+    private void handleNetworkTopologyChange(NetworkTopologyChange topologyChange, Tuple tuple, String correlationId) {
         Set<ImmutablePair<Flow, Flow>> affectedFlows;
 
         switch (topologyChange.getType()) {
@@ -504,7 +505,7 @@ public class CacheBolt
 
             case CACHE:
                 logger.debug("Sync flow cache message received: {}, correlationId: {}", flowData, correlationId);
-                if(flowData.getPayload() != null) {
+                if (flowData.getPayload() != null) {
                     flowCache.putFlow(flowData.getPayload());
                 } else {
                     flowCache.removeFlow(flowData.getFlowId());
@@ -668,8 +669,7 @@ public class CacheBolt
     }
 
     @Override
-    public Optional<AbstractDumpState> dumpResorceCacheState()
-    {
+    public Optional<AbstractDumpState> dumpResorceCacheState() {
         return Optional.of(new ResorceCacheBoltState(
                 flowCache.getAllocatedMeters(),
                 flowCache.getAllocatedVlans(),

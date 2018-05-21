@@ -28,12 +28,15 @@ from topologylistener import model
 
 ISL_STATUS_ACTIVE = 'active'
 ISL_STATUS_INACTIVE = 'inactive'
+ISL_STATUS_MOVED = 'moved'
 
 ISL_STATUS_PROPS_DOWN = {
     'actual': ISL_STATUS_INACTIVE, 'status': ISL_STATUS_INACTIVE}
 ISL_STATUS_PROPS_HALF_UP = {
     'actual': ISL_STATUS_ACTIVE, 'status': ISL_STATUS_INACTIVE}
 ISL_STATUS_PROPS_UP = {'actual': ISL_STATUS_ACTIVE, 'status': ISL_STATUS_ACTIVE}
+ISL_STATUS_PROPS_MOVED = {
+    'actual': ISL_STATUS_MOVED, 'status': ISL_STATUS_MOVED}
 
 dpid_test_marker = 0xfffe000000000000
 dpid_protected_bits = 0xffffff0000000000
@@ -169,6 +172,27 @@ def make_isl_failed(source):
             {
                 'switch_id': source.dpid,
                 'port_no': source.port}]})
+    return messageclasses.MessageItem(**command).handle()
+
+
+def make_isl_moved(isl):
+    command = make_command({
+        'clazz': messageclasses.MT_ISL,
+        'state': 'MOVED',
+        'latency_ns': 20,
+        'speed': 1000,
+        'available_bandwidth': 1000,
+        'path': [
+            {
+                'switch_id': isl.source.dpid,
+                'port_no': isl.source.port
+            },
+            {
+                'switch_id': isl.dest.dpid,
+                'port_no': isl.dest.port
+            }
+        ]
+    })
     return messageclasses.MessageItem(**command).handle()
 
 
@@ -498,6 +522,14 @@ class TestIsl(unittest.TestCase):
         self.ensure_isl_costs(
                 (src_endpoint, 1),
                 (dst_endpoint, 1))
+
+    def test_moved_isl_should_be_marked(self):
+        self.setup_initial_data()
+        src_endpoint, dst_endpoint = self.src_endpoint, self.dst_endpoint
+        forward = model.InterSwitchLink(src_endpoint, dst_endpoint, None)
+
+        make_isl_moved(forward)
+        self.ensure_isl_props(neo4j_connect, forward, ISL_STATUS_PROPS_MOVED)
 
     def ensure_isl_props(self, tx, isl, props):
         isl_record = isl_utils.fetch(tx, isl)
