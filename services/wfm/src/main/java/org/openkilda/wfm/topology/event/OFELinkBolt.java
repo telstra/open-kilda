@@ -203,26 +203,7 @@ public class OFELinkBolt
                 break;
 
             case MAIN:
-                DiscoveryManager.Plan discoveryPlan = discovery.makeDiscoveryPlan();
-                try {
-                    for (NetworkEndpoint node : discoveryPlan.needDiscovery) {
-                        String msgCorrelationId = format("%s-%s:%s", correlationId,
-                                node.getSwitchDpId(), node.getPortId());
-                        sendDiscoveryMessage(tuple, node, msgCorrelationId);
-                    }
-
-                    for (NetworkEndpoint node : discoveryPlan.discoveryFailure) {
-                        String msgCorrelationId = format("%s-%s:%s-fail", correlationId,
-                                node.getSwitchDpId(), node.getPortId());
-                        // this is somewhat incongruous - we send failure to TE, but we send
-                        // discovery to FL ..
-                        // Reality is that the handleDiscovery/handleFailure below does the work
-                        //
-                        sendDiscoveryFailed(node.getSwitchDpId(), node.getPortId(), tuple, msgCorrelationId);
-                    }
-                } catch (IOException e) {
-                    logger.error("Unable to encode message: {}", e);
-                }
+                processDiscoveryPlan(tuple, correlationId);
                 break;
             default:
                 logger.error("Illegal state of OFELinkBolt: {}", state);
@@ -249,6 +230,29 @@ public class OFELinkBolt
         }
 
         return correlationId;
+    }
+
+    private void processDiscoveryPlan(Tuple tuple, String correlationId) {
+        DiscoveryManager.Plan discoveryPlan = discovery.makeDiscoveryPlan();
+        try {
+            for (NetworkEndpoint node : discoveryPlan.needDiscovery) {
+                String msgCorrelationId = format("%s-%s:%s", correlationId,
+                        node.getSwitchDpId(), node.getPortId());
+                sendDiscoveryMessage(tuple, node, msgCorrelationId);
+            }
+
+            for (NetworkEndpoint node : discoveryPlan.discoveryFailure) {
+                String msgCorrelationId = format("%s-%s:%s-fail", correlationId,
+                        node.getSwitchDpId(), node.getPortId());
+                // this is somewhat incongruous - we send failure to TE, but we send
+                // discovery to FL ..
+                // Reality is that the handleDiscovery/handleFailure below does the work
+                //
+                sendDiscoveryFailed(node.getSwitchDpId(), node.getPortId(), tuple, msgCorrelationId);
+            }
+        } catch (IOException e) {
+            logger.error("Unable to encode message: {}", e);
+        }
     }
 
     /**
@@ -377,7 +381,7 @@ public class OFELinkBolt
             handlePortEvent(tuple, (PortInfoData) data);
             passToTopologyEngine(tuple);
         } else if (data instanceof IslInfoData) {
-            handleIslEvent(tuple, (IslInfoData) data);
+            handleIslEvent(tuple, (IslInfoData) data, infoMessage.getCorrelationId());
         } else {
             reportInvalidEvent(data);
         }
@@ -455,7 +459,7 @@ public class OFELinkBolt
         }
     }
 
-    private void handleIslEvent(Tuple tuple, IslInfoData discoveredIsl) {
+    private void handleIslEvent(Tuple tuple, IslInfoData discoveredIsl, String correlationId) {
         PathNode srcNode = discoveredIsl.getPath().get(0);
         final String srcSwitch = srcNode.getSwitchId();
         final int srcPort = srcNode.getPortNo();
@@ -474,7 +478,7 @@ public class OFELinkBolt
          */
         if (IslChangeType.DISCOVERED.equals(state)) {
             if (discovery.isIslMoved(srcSwitch, srcPort, dstSwitch, dstPort)) {
-                handleMovedIsl(tuple, srcSwitch, srcPort, dstSwitch, dstPort);
+                handleMovedIsl(tuple, srcSwitch, srcPort, dstSwitch, dstPort, correlationId);
             }
             stateChanged = discovery.handleDiscovered(srcSwitch, srcPort, dstSwitch, dstPort);
             // If the state has changed, and since we've discovered one end of an ISL, let's make
@@ -531,22 +535,25 @@ public class OFELinkBolt
         dumpRequestTimer = new Timer(expireDelay, expireDelay, TimeUnit.MILLISECONDS);
     }
 
-    private void handleMovedIsl(Tuple tuple, String srcSwitch, int srcPort, String dstSwitch, int dstPort) {
+    private void handleMovedIsl(Tuple tuple, String srcSwitch, int srcPort, String dstSwitch, int dstPort,
+            String correlationId) {
         NetworkEndpoint dstEndpoint = discovery.getLinkDestination(srcSwitch, srcPort);
         logger.info("Link is moved from {}_{} - {}_{} to endpoint {}_{}", srcSwitch, srcPort,
                 dstEndpoint.getSwitchDpId(), dstEndpoint.getPortId(), dstSwitch, dstPort);
+        // deactivate reverse link
+        discovery.deactivateLinkFromEndpoint(dstEndpoint);
 
         PathNode srcNode = new PathNode(srcSwitch, srcPort, 0);
         PathNode dstNode = new PathNode(dstEndpoint.getSwitchDpId(), dstEndpoint.getPortId(), 1);
         IslInfoData infoData = new IslInfoData(Lists.newArrayList(srcNode, dstNode), IslChangeType.MOVED);
-        InfoMessage message = new InfoMessage(infoData, System.currentTimeMillis(), UUID.randomUUID().toString());
+        InfoMessage message = new InfoMessage(infoData, System.currentTimeMillis(), correlationId);
         passToTopologyEngine(tuple, message);
 
         // we should send reverse link as well to modify status in TE
         srcNode = new PathNode(dstEndpoint.getSwitchDpId(), dstEndpoint.getPortId(), 0);
         dstNode = new PathNode(srcSwitch, srcPort, 1);
         IslInfoData reverseLink = new IslInfoData(Lists.newArrayList(srcNode, dstNode), IslChangeType.MOVED);
-        message = new InfoMessage(reverseLink, System.currentTimeMillis(), UUID.randomUUID().toString());
+        message = new InfoMessage(reverseLink, System.currentTimeMillis(), correlationId);
         passToTopologyEngine(tuple, message);
     }
 
@@ -572,11 +579,11 @@ public class OFELinkBolt
     public AbstractDumpState dumpStateBySwitchId(String switchId) {
 
         List<DiscoveryLink> filteredDiscoveryQueue =  discoveryQueue.stream()
-                .filter(node -> node.getSrcEndpoint().getSwitchDpId().equals(switchId))
+                .filter(node -> node.getSource().getSwitchDpId().equals(switchId))
                 .collect(Collectors.toList());
 
         Set<DiscoveryLink> filterdIslFilter = islFilter.getMatchSet().stream()
-                .filter(node -> node.getSrcEndpoint().getSwitchDpId().equals(switchId))
+                .filter(node -> node.getSource().getSwitchDpId().equals(switchId))
                 .collect(Collectors.toSet());
 
 

@@ -88,8 +88,8 @@ public class DiscoveryManager {
              *
              * Further, consecutivefailures = attempts - failure limit (we wait until attempt limit before increasing)
              */
-            NetworkEndpoint node = link.getSrcEndpoint();
-            if (link.maxAttempts(islConsecutiveFailureLimit)) {
+            NetworkEndpoint node = link.getSource();
+            if (link.isAttemptsLimitExceeded(islConsecutiveFailureLimit)) {
                 // We've attempted to get the health multiple times, with no response.
                 // Time to mark it as a failure and send a failure notice ** if ** it was an ISL.
                 if (link.isActive() && link.getConsecutiveFailure() == 0) {
@@ -98,8 +98,8 @@ public class DiscoveryManager {
                     result.discoveryFailure.add(node);
                     logger.info("ISL IS DOWN (NO RESPONSE): {}", link);
                 }
-                // Increment Failure = 1 after maxAttempts failure, then increases every attempt.
-                link.incConsecutiveFailure();
+                // Increment Failure = 1 after isAttemptsLimitExceeded failure, then increases every attempt.
+                link.fail();
                 // NB: this node can be in both discoveryFailure and needDiscovery
             }
 
@@ -115,7 +115,7 @@ public class DiscoveryManager {
                 link.resetTickCounter();
                 result.needDiscovery.add(node);
             } else {
-                link.incTick();
+                link.tick();
             }
 
         }
@@ -130,7 +130,7 @@ public class DiscoveryManager {
     public boolean handleDiscovered(String srcSwitch, int srcPort, String dstSwitch, int dstPort) {
         boolean stateChanged = false;
         NetworkEndpoint node = new NetworkEndpoint(srcSwitch, srcPort);
-        List<DiscoveryLink> subjectList = findBySwitch(node);
+        List<DiscoveryLink> subjectList = findBySourceSwitch(node);
 
         if (subjectList.size() == 0) {
             logger.warn("Ignore \"AVAIL\" request for {}: node not found", node);
@@ -139,6 +139,7 @@ public class DiscoveryManager {
             if (!link.isActive() || link.isDestinationChanged(dstSwitch, dstPort)) {
                 // we've found newly discovered or moved/replugged isl
                 link.activate(new NetworkEndpoint(dstSwitch, dstPort));
+
                 stateChanged = true;
                 logger.info("FOUND ISL: {}", link);
             } else if (link.getConsecutiveFailure() > 0) {
@@ -149,7 +150,7 @@ public class DiscoveryManager {
                 logger.info("ISL IS UP: {}", link);
             }
             link.renew();
-            link.incConsecutiveSuccess();
+            link.success();
             link.clearConsecutiveFailure();
             // If one of the logs above wasn't reachd, don't log anything .. ISL was up and is still up
         }
@@ -171,7 +172,7 @@ public class DiscoveryManager {
     public boolean handleFailed(String switchId, int portId) {
         boolean stateChanged = false;
         NetworkEndpoint node = new NetworkEndpoint(switchId, portId);
-        List<DiscoveryLink> subjectList = findBySwitch(node);
+        List<DiscoveryLink> subjectList = findBySourceSwitch(node);
 
         if (subjectList.size() == 0) {
             logger.warn("Ignoring \"FAILED\" request for {}: node not found", node);
@@ -184,7 +185,7 @@ public class DiscoveryManager {
                 logger.info("ISL IS DOWN (GOT RESPONSE): {}", link);
             }
             link.renew();
-            link.incConsecutiveFailure();
+            link.fail();
             link.deactivate();
         }
         return stateChanged;
@@ -205,7 +206,7 @@ public class DiscoveryManager {
          * and/or if the TE has cleared it's state .. this will pass along the ISL.
          */
         NetworkEndpoint node = new NetworkEndpoint(switchId, 0);
-        List<DiscoveryLink> subjectList = findBySwitch(node, false);
+        List<DiscoveryLink> subjectList = findBySourceSwitch(node, false);
 
         if (subjectList.size() > 0) {
             logger.info("Received SWITCH UP (id:{}) with EXISTING NODES.  Clearing isFoundISL flags", switchId);
@@ -221,7 +222,7 @@ public class DiscoveryManager {
      */
     public void handleSwitchDown(String switchId) {
         NetworkEndpoint node = new NetworkEndpoint(switchId, 0);
-        List<DiscoveryLink> subjectList = findBySwitch(node, true);
+        List<DiscoveryLink> subjectList = findBySourceSwitch(node, true);
 
         logger.info("Deregister switch {} from ISL discovery manager", switchId);
         for (DiscoveryLink subject : subjectList) {
@@ -235,7 +236,7 @@ public class DiscoveryManager {
     public void handlePortUp(String switchId, int portId) {
         DiscoveryLink link;
         NetworkEndpoint node = new NetworkEndpoint(switchId, portId);
-        List<DiscoveryLink> subjectList = findBySwitch(node);
+        List<DiscoveryLink> subjectList = findBySourceSwitch(node);
 
         if (subjectList.size() != 0) {
             // Similar to SwitchUp, if we have a PortUp on an existing port, either we are receiving
@@ -260,7 +261,7 @@ public class DiscoveryManager {
     public void handlePortDown(String switchId, int portId) {
         DiscoveryLink subject;
         NetworkEndpoint node = new NetworkEndpoint(switchId, portId);
-        List<DiscoveryLink> subjectList = findBySwitch(node, true);
+        List<DiscoveryLink> subjectList = findBySourceSwitch(node, true);
 
         if (subjectList.size() == 0) {
             logger.warn("Can't update discovery {} -> node not found", node);
@@ -277,23 +278,23 @@ public class DiscoveryManager {
      * @param subject The switch (if port is null), or switch and port, to match
      * @return a list of any matched nodes.
      */
-    public List<DiscoveryLink> findBySwitch(NetworkEndpoint subject) {
-        return findBySwitch(subject, false);
+    public List<DiscoveryLink> findBySourceSwitch(NetworkEndpoint subject) {
+        return findBySourceSwitch(subject, false);
     }
 
     /**
      * Find all discovery links from all ports in the particular switch.
      */
-    public List<DiscoveryLink> findBySwitch(String switchId) {
-        return findBySwitch(new NetworkEndpoint(switchId, 0));
+    public List<DiscoveryLink> findBySourceSwitch(String switchId) {
+        return findBySourceSwitch(new NetworkEndpoint(switchId, 0));
     }
 
-    private List<DiscoveryLink> findBySwitch(NetworkEndpoint subject, boolean extract) {
+    private List<DiscoveryLink> findBySourceSwitch(NetworkEndpoint subject, boolean extract) {
         List<DiscoveryLink> result = new LinkedList<>();
         for (ListIterator<DiscoveryLink> it = pollQueue.listIterator(); it.hasNext(); ) {
             DiscoveryLink node = it.next();
 
-            if (isMatchedEndpoint(subject, node.getSrcEndpoint())) {
+            if (isMatchedEndpoint(subject, node.getSource())) {
                 if (extract) {
                     it.remove();
                 }
@@ -321,7 +322,7 @@ public class DiscoveryManager {
     public boolean isIslMoved(String srcSwitch, int srcPort, String dstSwitch, int dstPort) {
         boolean isMoved = false;
         NetworkEndpoint node = new NetworkEndpoint(srcSwitch, srcPort);
-        List<DiscoveryLink> subjectList = findBySwitch(node);
+        List<DiscoveryLink> subjectList = findBySourceSwitch(node);
         if (!subjectList.isEmpty()) {
             if (subjectList.size() > 1) {
                 logger.warn("There more than one link on {}_{} in discovery manager", srcSwitch, srcPort);
@@ -339,12 +340,24 @@ public class DiscoveryManager {
      * Returns the endpoint of the link.
      */
     public NetworkEndpoint getLinkDestination(String srcSwitch, int srcPort) {
-        List<DiscoveryLink> links = findBySwitch(new NetworkEndpoint(srcSwitch, srcPort));
+        List<DiscoveryLink> links = findBySourceSwitch(new NetworkEndpoint(srcSwitch, srcPort));
         if (links.isEmpty()) {
             throw new IllegalStateException(String.format("There is no link on the switch %s_%s", srcSwitch, srcPort));
         }
 
-        return links.get(0).getDstEndpoint();
+        return links.get(0).getDestination();
+    }
+
+    /**
+     * Deactivate link from switch/port and mark it as inactive.
+     */
+    public void deactivateLinkFromEndpoint(NetworkEndpoint endpoint) {
+        List<DiscoveryLink> links = findBySourceSwitch(endpoint);
+        if (links.isEmpty()) {
+            throw new IllegalStateException(String.format("There is no link from %s", endpoint));
+        }
+
+        links.get(0).deactivate();
     }
 
     /**
@@ -355,7 +368,7 @@ public class DiscoveryManager {
      * @return true if not an ISL or is forlorned
      */
     public boolean checkForIsl(String switchId, int portId) {
-        List<DiscoveryLink> subjectList = findBySwitch(new NetworkEndpoint(switchId, portId));
+        List<DiscoveryLink> subjectList = findBySourceSwitch(new NetworkEndpoint(switchId, portId));
 
         if (subjectList.size() != 0) {
             return checkForIsl(subjectList.get(0));
@@ -374,7 +387,7 @@ public class DiscoveryManager {
             link.resetTickCounter();
             return false;
         }
-        return !link.isExcludedFromDiscovery();
+        return !link.isDiscoverySuspended();
     }
 
 

@@ -56,11 +56,11 @@ public class DiscoveryLinkTest {
     public void forlorn() {
         int threshhold = 2;
         dn = new DiscoveryLink("sw1", 2, 0, threshhold);
-        assertEquals("A DN starts out as not excluded", false, dn.isExcludedFromDiscovery());
-        dn.incConsecutiveFailure();
-        dn.incConsecutiveFailure();
-        dn.incConsecutiveFailure();
-        assertEquals("The DN should now be excluded", true, dn.isExcludedFromDiscovery());
+        assertEquals("A DN starts out as not excluded", false, dn.isDiscoverySuspended());
+        dn.fail();
+        dn.fail();
+        dn.fail();
+        assertEquals("The DN should now be excluded", true, dn.isDiscoverySuspended());
     }
 
     /**
@@ -69,7 +69,7 @@ public class DiscoveryLinkTest {
     @Test
     public void failure() {
         assertEquals(0, dn.getConsecutiveFailure());
-        dn.incConsecutiveFailure();
+        dn.fail();
         assertEquals(1, dn.getConsecutiveFailure());
         dn.clearConsecutiveFailure();
         assertEquals(0, dn.getConsecutiveFailure());
@@ -81,14 +81,14 @@ public class DiscoveryLinkTest {
     @Test
     public void getConsecutiveSuccess() {
         assertEquals(0, dn.getConsecutiveSuccess());
-        dn.incConsecutiveSuccess();
+        dn.success();
         assertEquals(1, dn.getConsecutiveSuccess());
         dn.clearConsecutiveSuccess();
         assertEquals(0, dn.getConsecutiveSuccess());
     }
 
     /**
-     * maxAttempts tests if the passed-in limit is less than the number of attempts.
+     * isAttemptsLimitExceeded tests if the passed-in limit is less than the number of attempts.
      */
     @Test
     public void incAttempts() {
@@ -96,19 +96,19 @@ public class DiscoveryLinkTest {
         dn.incAttempts();
         int attemptLimit = 2;
         assertEquals(1, dn.getAttempts());
-        assertEquals(false, dn.maxAttempts(attemptLimit));
+        assertEquals(false, dn.isAttemptsLimitExceeded(attemptLimit));
         dn.incAttempts();
         assertEquals(2, dn.getAttempts());
-        assertEquals(false, dn.maxAttempts(attemptLimit));
+        assertEquals(false, dn.isAttemptsLimitExceeded(attemptLimit));
         dn.incAttempts();
         assertEquals(3, dn.getAttempts());
-        assertEquals(true, dn.maxAttempts(attemptLimit));
+        assertEquals(true, dn.isAttemptsLimitExceeded(attemptLimit));
     }
 
     @Test
     public void renew() {
         dn.incAttempts();
-        dn.incTick();
+        dn.tick();
         assertEquals(1, dn.getAttempts());
         assertEquals(1, dn.getTimeCounter());
         // renew clears both attempts and ticks
@@ -119,7 +119,7 @@ public class DiscoveryLinkTest {
 
     @Test
     public void logTick() {
-        dn.incTick();
+        dn.tick();
         dn.timeToCheck();
         dn.resetTickCounter();
         assertEquals(0, dn.getTimeCounter());

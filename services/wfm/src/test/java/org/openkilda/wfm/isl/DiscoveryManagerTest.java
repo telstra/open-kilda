@@ -61,12 +61,12 @@ public class DiscoveryManagerTest {
         link2 = new DiscoveryLink("sw1", 2, "sw3", 2, islHealthCheckInterval, forlornLimit, true);
         link3 = new DiscoveryLink("sw2", 1, "sw3", 3, islHealthCheckInterval, forlornLimit, true);
         
-        srcNode1 = link1.getSrcEndpoint();
-        dstNode1 = link1.getDstEndpoint();
-        srcNode2 = link2.getSrcEndpoint();
-        dstNode2 = link2.getDstEndpoint();
-        srcNode3 = link3.getSrcEndpoint();
-        dstNode3 = link3.getDstEndpoint();
+        srcNode1 = link1.getSource();
+        dstNode1 = link1.getDestination();
+        srcNode2 = link2.getSource();
+        dstNode2 = link2.getDestination();
+        srcNode3 = link3.getSource();
+        dstNode3 = link3.getDestination();
         dm.handlePortUp(srcNode1.getSwitchDpId(), srcNode1.getPortId());
         dm.handlePortUp(srcNode2.getSwitchDpId(), srcNode2.getPortId());
         dm.handlePortUp(srcNode3.getSwitchDpId(), srcNode3.getPortId());
@@ -225,18 +225,18 @@ public class DiscoveryManagerTest {
                 dstNode3.getSwitchDpId(), dstNode3.getPortId());
 
         List<DiscoveryLink> nodes;
-        nodes = dm.findBySwitch(new NetworkEndpoint(srcNode1.getSwitchDpId(), 0));
+        nodes = dm.findBySourceSwitch(new NetworkEndpoint(srcNode1.getSwitchDpId(), 0));
         assertEquals(true, nodes.get(0).isActive());
         assertEquals(true, nodes.get(1).isActive());
-        nodes = dm.findBySwitch(new NetworkEndpoint(srcNode3.getSwitchDpId(), 0));
+        nodes = dm.findBySourceSwitch(new NetworkEndpoint(srcNode3.getSwitchDpId(), 0));
         assertEquals(true, nodes.get(0).isActive());
 
         // now send SwitchUp and confirm sw1 all go back to not found, sw2 unchanged
         dm.handleSwitchUp(srcNode1.getSwitchDpId());
-        nodes = dm.findBySwitch(new NetworkEndpoint(srcNode1.getSwitchDpId(), 0));
+        nodes = dm.findBySourceSwitch(new NetworkEndpoint(srcNode1.getSwitchDpId(), 0));
         assertEquals(false, nodes.get(0).isActive());
         assertEquals(false, nodes.get(1).isActive());
-        nodes = dm.findBySwitch(new NetworkEndpoint(srcNode3.getSwitchDpId(), 0));
+        nodes = dm.findBySourceSwitch(new NetworkEndpoint(srcNode3.getSwitchDpId(), 0));
         assertEquals(true, nodes.get(0).isActive());
 
         // now confirm they go back to found upon next Discovery.
@@ -244,10 +244,10 @@ public class DiscoveryManagerTest {
                 dstNode1.getSwitchDpId(), dstNode1.getPortId());
         dm.handleDiscovered(srcNode2.getSwitchDpId(), srcNode2.getPortId(),
                 dstNode2.getSwitchDpId(), dstNode2.getPortId());
-        nodes = dm.findBySwitch(new NetworkEndpoint(srcNode1.getSwitchDpId(), 0));
+        nodes = dm.findBySourceSwitch(new NetworkEndpoint(srcNode1.getSwitchDpId(), 0));
         assertEquals(true, nodes.get(0).isActive());
         assertEquals(true, nodes.get(1).isActive());
-        nodes = dm.findBySwitch(new NetworkEndpoint(srcNode3.getSwitchDpId(), 0));
+        nodes = dm.findBySourceSwitch(new NetworkEndpoint(srcNode3.getSwitchDpId(), 0));
         assertEquals(true, nodes.get(0).isActive());
     }
 
@@ -258,16 +258,16 @@ public class DiscoveryManagerTest {
         setupThreeLinks();
 
         // 3 nodes - 2 in sw1, one in sw2; verify dropping sw1 drops 2 nodes (1 remaining)
-        nodes = dm.findBySwitch(srcNode1.getSwitchDpId());
+        nodes = dm.findBySourceSwitch(srcNode1.getSwitchDpId());
         assertEquals(2, nodes.size());
-        nodes = dm.findBySwitch(srcNode3.getSwitchDpId());
+        nodes = dm.findBySourceSwitch(srcNode3.getSwitchDpId());
         assertEquals(1, nodes.size());
 
         // Drop the switch, and then the same 4 lines of code, except 0 size for sw1 nodes.
         dm.handleSwitchDown(srcNode1.getSwitchDpId());
-        nodes = dm.findBySwitch(srcNode1.getSwitchDpId());
+        nodes = dm.findBySourceSwitch(srcNode1.getSwitchDpId());
         assertEquals(0, nodes.size());
-        nodes = dm.findBySwitch((srcNode3.getSwitchDpId()));
+        nodes = dm.findBySourceSwitch((srcNode3.getSwitchDpId()));
         assertEquals(1, nodes.size());
     }
 
@@ -279,15 +279,15 @@ public class DiscoveryManagerTest {
 
         // Put in 1 node and verify it is there.
         DiscoveryLink link = new DiscoveryLink("sw1", 1, islHealthCheckInterval, islHealthFailureLimit);
-        NetworkEndpoint srcNode = link.getSrcEndpoint();
+        NetworkEndpoint srcNode = link.getSource();
         dm.handlePortUp(srcNode.getSwitchDpId(), srcNode.getPortId());
-        links = dm.findBySwitch(new NetworkEndpoint(srcNode.getSwitchDpId(), srcNode.getPortId()));
+        links = dm.findBySourceSwitch(new NetworkEndpoint(srcNode.getSwitchDpId(), srcNode.getPortId()));
         assertEquals(1, links.size());
         assertEquals(link, links.get(0));
 
         // try to add it back in .. should still only be 1
         dm.handlePortUp(srcNode.getSwitchDpId(), srcNode.getPortId());
-        links = dm.findBySwitch(new NetworkEndpoint(srcNode.getSwitchDpId(), srcNode.getPortId()));
+        links = dm.findBySourceSwitch(new NetworkEndpoint(srcNode.getSwitchDpId(), srcNode.getPortId()));
         assertEquals(1, links.size());
         assertEquals(link, links.get(0));
     }
@@ -300,15 +300,15 @@ public class DiscoveryManagerTest {
 
         // Put in 1 node and then remove it. The handlePortUp test ensures the Port Up works.
         DiscoveryLink link = new DiscoveryLink("sw1", 1, islHealthCheckInterval, islHealthFailureLimit);
-        NetworkEndpoint srcNode = link.getSrcEndpoint();
+        NetworkEndpoint srcNode = link.getSource();
         dm.handlePortUp(srcNode.getSwitchDpId(), srcNode.getPortId());
         dm.handlePortDown(srcNode.getSwitchDpId(), srcNode.getPortId());
-        nodes = dm.findBySwitch(new NetworkEndpoint(srcNode.getSwitchDpId(), srcNode.getPortId()));
+        nodes = dm.findBySourceSwitch(new NetworkEndpoint(srcNode.getSwitchDpId(), srcNode.getPortId()));
         assertEquals(0, nodes.size());
 
         // call PortDown again .. verify nothing bad happens.
         dm.handlePortDown(srcNode.getSwitchDpId(), srcNode.getPortId());
-        nodes = dm.findBySwitch(new NetworkEndpoint(srcNode.getSwitchDpId(), srcNode.getPortId()));
+        nodes = dm.findBySourceSwitch(new NetworkEndpoint(srcNode.getSwitchDpId(), srcNode.getPortId()));
         assertEquals(0, nodes.size());
     }
 

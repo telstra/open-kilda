@@ -36,7 +36,7 @@ ISL_STATUS_PROPS_HALF_UP = {
     'actual': ISL_STATUS_ACTIVE, 'status': ISL_STATUS_INACTIVE}
 ISL_STATUS_PROPS_UP = {'actual': ISL_STATUS_ACTIVE, 'status': ISL_STATUS_ACTIVE}
 ISL_STATUS_PROPS_MOVED = {
-    'actual': ISL_STATUS_INACTIVE, 'status': ISL_STATUS_MOVED}
+    'actual': ISL_STATUS_MOVED, 'status': ISL_STATUS_MOVED}
 
 dpid_test_marker = 0xfffe000000000000
 dpid_protected_bits = 0xffffff0000000000

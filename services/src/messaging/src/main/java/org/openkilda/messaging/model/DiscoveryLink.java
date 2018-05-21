@@ -36,11 +36,11 @@ public class DiscoveryLink implements Serializable {
      */
     public static final int ENDLESS_ATTEMPTS = -1;
 
-    @JsonProperty("src_switch")
-    private NetworkEndpoint srcEndpoint;
+    @JsonProperty("source")
+    private NetworkEndpoint source;
 
-    @JsonProperty("dst_switch")
-    private NetworkEndpoint dstEndpoint;
+    @JsonProperty("destination")
+    private NetworkEndpoint destination;
 
     /** How many attempts have we made .. will fail after X attempts and no response */
     @JsonProperty("attempts")
@@ -53,7 +53,7 @@ public class DiscoveryLink implements Serializable {
     private int checkInterval;
 
     /**
-     * Only increases if we get a response.
+     * Only increases if we do not get a response.
      */
     @JsonProperty("consecutive_failure")
     private int consecutiveFailure;
@@ -61,73 +61,69 @@ public class DiscoveryLink implements Serializable {
     @JsonProperty("consecutive_success")
     private int consecutiveSuccess;
 
-    @JsonProperty("max_attempts")
-    private int maxAttempts;
+    @JsonProperty("consecutive_failure_limit")
+    private int consecutiveFailureLimit;
 
     @JsonProperty("active")
     private boolean active;
 
     /**
-     * TODO: forlornThreshold is understandable (ie point at which to stop checking), but regarding
-     * method signatures, it is very similar to DiscoverManager, which uses consecutive failure
-     * limit, which is a different concept compared to forlorn.
+     * Constructor with non-defined destination of the ISL.
      */
-    public DiscoveryLink(String srcSwitch, int srcPort, int checkInterval, int maxAttempts) {
-        this.srcEndpoint = new NetworkEndpoint(srcSwitch, srcPort);
-        this.dstEndpoint = null;
+    public DiscoveryLink(String srcSwitch, int srcPort, int checkInterval, int consecutiveFailureLimit) {
+        this.source = new NetworkEndpoint(srcSwitch, srcPort);
+        this.destination = null;
         this.timeCounter = 0;
         this.checkInterval = checkInterval;
-        this.maxAttempts = maxAttempts;
+        this.consecutiveFailureLimit = consecutiveFailureLimit;
         this.consecutiveFailure = 0;
         this.consecutiveSuccess = 0;
     }
 
     /**
-     * Constructor.
+     * Constructor with defined destination of the ISL.
      */
     public DiscoveryLink(String srcSwitch, int srcPort, String dstSwitch, int dstPort,
-            int checkInterval, int maxAttempts, boolean active) {
-        this.srcEndpoint = new NetworkEndpoint(srcSwitch, srcPort);
-        this.dstEndpoint = new NetworkEndpoint(dstSwitch, dstPort);
+            int checkInterval, int consecutiveFailureLimit, boolean active) {
+        this.source = new NetworkEndpoint(srcSwitch, srcPort);
+        this.destination = new NetworkEndpoint(dstSwitch, dstPort);
         this.timeCounter = 0;
         this.checkInterval = checkInterval;
-        this.maxAttempts = maxAttempts;
+        this.consecutiveFailureLimit = consecutiveFailureLimit;
         this.consecutiveFailure = 0;
         this.consecutiveSuccess = 0;
         this.active = active;
     }
 
     /**
-     * Main constructor using for deserialization by jackson.
+     * Main constructor for deserialization by jackson.
      */
     @JsonCreator
-    public DiscoveryLink(@JsonProperty("src_switch") final String srcSwitch,
-            @JsonProperty("src_port") final int srcPort,
-            @JsonProperty("dst_switch") final String dstSwitch,
-            @JsonProperty("dst_port") final int dstPort,
+    public DiscoveryLink(@JsonProperty("source") final NetworkEndpoint source,
+            @JsonProperty("destination") final NetworkEndpoint destination,
             @JsonProperty("attempts") final int attempts,
             @JsonProperty("time_counter") final int timeCounter,
             @JsonProperty("check_interval") final int checkInterval,
             @JsonProperty("consecutive_failure") final int consecutiveFailure,
             @JsonProperty("consecutive_success") final int consecutiveSuccess,
-            @JsonProperty("forlorn_еhreshold") final int maxAttempts,
+            @JsonProperty("consecutive_failure_limit") final int consecutiveFailureLimit,
             @JsonProperty("active") final boolean active) {
-        this.srcEndpoint = new NetworkEndpoint(srcSwitch, srcPort);
-        this.dstEndpoint = new NetworkEndpoint(dstSwitch, dstPort);
+        this.source = source;
+        this.destination = destination;
         this.attempts = attempts;
         this.timeCounter = timeCounter;
         this.checkInterval = checkInterval;
-        this.maxAttempts = maxAttempts;
+        this.consecutiveFailureLimit = consecutiveFailureLimit;
         this.consecutiveFailure = consecutiveFailure;
         this.consecutiveSuccess = consecutiveSuccess;
         this.active = active;
     }
 
     /**
-     * Is being used when ISL is discovered and we know what the destination of the link.
+     * Activate the ISL.
      */
-    public void activate(NetworkEndpoint dstEndpoint) {
-        this.dstEndpoint = dstEndpoint;
+    public void activate(NetworkEndpoint destination) {
+        this.destination = destination;
         this.active = true;
     }
 
@@ -151,14 +147,14 @@ public class DiscoveryLink implements Serializable {
     }
 
     /**
-     * Checks if ISL should be excluded from discovery.
+     * Checks if discovery should be suspended for that link.
      * @return true if link should be excluded from discovery plan and discovery packets should not be sent.
      */
-    public boolean isExcludedFromDiscovery() {
-        if (maxAttempts == ENDLESS_ATTEMPTS) { // never gonna give a link up.
+    public boolean isDiscoverySuspended() {
+        if (consecutiveFailureLimit == ENDLESS_ATTEMPTS) { // never gonna give a link up.
             return false;
         }
-        return consecutiveFailure > maxAttempts;
+        return consecutiveFailure > consecutiveFailureLimit;
     }
 
     public void clearConsecutiveFailure() {
@@ -169,15 +165,15 @@ public class DiscoveryLink implements Serializable {
         consecutiveSuccess = 0;
     }
 
-    public void incConsecutiveFailure() {
+    public void fail() {
         consecutiveFailure++;
     }
 
-    public void incConsecutiveSuccess() {
+    public void success() {
         consecutiveSuccess++;
     }
 
-    public void incTick() {
+    public void tick() {
         timeCounter++;
     }
 
@@ -189,8 +185,8 @@ public class DiscoveryLink implements Serializable {
      * Check if we should stop to verify ISL.
      * @return true if attempts is greater than attemptLimit.
      */
-    public boolean maxAttempts(Integer attemptLimit) {
-        return attemptLimit < attempts;
+    public boolean isAttemptsLimitExceeded(Integer attemptsLimit) {
+        return attempts > attemptsLimit;
     }
 
     public void incAttempts() {
@@ -209,11 +205,11 @@ public class DiscoveryLink implements Serializable {
      */
     public boolean isDestinationChanged(String dstSwitch, int dstPort) {
         // check if the link was previously not discovered
-        if (this.dstEndpoint == null) {
+        if (this.destination == null) {
             return false;
         }
 
-        return !Objects.equals(this.dstEndpoint, new NetworkEndpoint(dstSwitch, dstPort));
+        return !Objects.equals(this.destination, new NetworkEndpoint(dstSwitch, dstPort));
     }
 
     @Override
@@ -225,13 +221,13 @@ public class DiscoveryLink implements Serializable {
             return false;
         }
         DiscoveryLink that = (DiscoveryLink) o;
-        return Objects.equals(getSrcEndpoint(), that.getSrcEndpoint())
-                && Objects.equals(getDstEndpoint(), that.getDstEndpoint());
+        return Objects.equals(getSource(), that.getSource())
+                && Objects.equals(getDestination(), that.getDestination());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(getSrcEndpoint(), getDstEndpoint());
+        return Objects.hash(getSource(), getDestination());
     }
 
 }
