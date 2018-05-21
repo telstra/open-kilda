@@ -532,7 +532,7 @@ def format_isl(link):
                   'seq_id': 1,
                   'segment_latency': 0}],
         'speed': link['speed'],
-        'state': 'DISCOVERED' if link['status'] == 'active' else 'FAILED',
+        'state': get_isl_state(link),
         'available_bandwidth': link['available_bandwidth']
     }
 
@@ -543,6 +543,15 @@ def format_isl(link):
             isl[k] = v
 
     return isl
+
+
+def get_isl_state(link):
+    if link['status'] == 'active':
+        return 'DISCOVERED'
+    elif link['status'] == 'moved':
+        return 'MOVED'
+    else:
+        return 'FAILED'
 
 
 def format_switch(switch):

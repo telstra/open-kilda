@@ -39,6 +39,11 @@ public enum IslChangeType {
     FAILED("FAILED"),
 
     /**
+     * Isl was moved (currently it is inactive, new ISL has been replaced this one).
+     */
+    MOVED("MOVED"),
+
+    /**
      * Isl was created via pre-population.
      */
     CACHED("CACHED"),
@@ -81,6 +86,11 @@ public enum IslChangeType {
         return type;
     }
 
+    /**
+     * Find corresponding value for string representation of status.
+     * @param state ISL state.
+     * @return {@link IslChangeType} value.
+     */
     public static IslChangeType from(String state) {
         return Arrays.stream(IslChangeType.values())
                 .filter(item -> item.type.equalsIgnoreCase(state))

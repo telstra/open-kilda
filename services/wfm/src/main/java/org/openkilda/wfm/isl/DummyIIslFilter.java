@@ -1,19 +1,19 @@
 package org.openkilda.wfm.isl;
 
-import org.openkilda.messaging.model.DiscoveryNode;
+import org.openkilda.messaging.model.DiscoveryLink;
 
 import java.util.HashSet;
 import java.util.Set;
 
 public class DummyIIslFilter implements IIslFilter {
-    private final Set<DiscoveryNode> matchSet;
+    private final Set<DiscoveryLink> matchSet;
 
     public DummyIIslFilter() {
         this.matchSet = new HashSet<>();
     }
 
-    public void add(String switchId, String portId) {
-        DiscoveryNode match = new DiscoveryNode(switchId, portId, 1, DiscoveryNode.FORLORN_NEVER);
+    public void add(String switchId, int portId) {
+        DiscoveryLink match = new DiscoveryLink(switchId, portId, 1, DiscoveryLink.ENDLESS_ATTEMPTS);
         matchSet.add(match);
     }
 
@@ -22,11 +22,11 @@ public class DummyIIslFilter implements IIslFilter {
     }
 
     @Override
-    public boolean isMatch(DiscoveryNode subject) {
+    public boolean isMatch(DiscoveryLink subject) {
         return matchSet.contains(subject);
     }
 
-    public Set<DiscoveryNode> getMatchSet() {
+    public Set<DiscoveryLink> getMatchSet() {
         return matchSet;
     }
 }

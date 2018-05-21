@@ -424,8 +424,8 @@
     <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFELinkBolt.java" lines="87" checks="AbbreviationAsWordInName"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFELinkBolt.java" lines="93" checks="AbbreviationAsWordInName"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFELinkBolt.java" lines="93" checks="MemberName"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFELinkBolt.java" lines="94" checks="AbbreviationAsWordInName"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFELinkBolt.java" lines="94" checks="MemberName"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFELinkBolt.java" lines="95" checks="AbbreviationAsWordInName"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFELinkBolt.java" lines="160" checks="SummaryJavadoc"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFELinkBolt.java" lines="173" checks="MissingSwitchDefault"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFELinkBolt.java" lines="205" checks="Indentation"/>
@@ -1031,7 +1031,7 @@
     <suppress files="src/test/java/org/openkilda/wfm/OFEventWfmTest.java" lines="19" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/wfm/OFEventWfmTest.java" lines="48" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/wfm/OFEventWfmTest.java" lines="62" checks="SummaryJavadoc"/>
-    <suppress files="src/test/java/org/openkilda/wfm/OFEventWfmTest.java" lines="66" checks="AbbreviationAsWordInName"/>
+    <suppress files="src/test/java/org/openkilda/wfm/OFEventWfmTest.java" lines="72" checks="AbbreviationAsWordInName"/>
     <suppress files="src/test/java/org/openkilda/wfm/OFEventWfmTest.java" lines="77" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/wfm/OFEventWfmTest.java" lines="96" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/wfm/OFEventWfmTest.java" lines="107" checks="MethodName"/>
