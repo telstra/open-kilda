@@ -65,7 +65,7 @@
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/RecordHandler.java" lines="423" checks="ParenPad"/>
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/RecordHandler.java" lines="469" checks="WhitespaceAfter"/>
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/RecordHandler.java" lines="469" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/RecordHandler.java" lines="470" checks="MissingSwitchDefault"/>
+    <suppress files="src/main/java/org/openkilda/floodlight/kafka/RecordHandler.java" lines="483" checks="MissingSwitchDefault"/>
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/RecordHandler.java" lines="521" checks="NeedBraces"/>
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/RecordHandler.java" lines="523" checks="NeedBraces"/>
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/RecordHandler.java" lines="579" checks="ParenPad"/>

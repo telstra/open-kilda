@@ -67,7 +67,7 @@ public class KafkaHealthCheckMessageConsumer implements HealthCheckMessageConsum
         Message message;
 
         try {
-            logger.trace("message received");
+            logger.trace("message received: {}", record);
             message = MAPPER.readValue(record, Message.class);
         } catch (IOException exception) {
             logger.error("Could not deserialize message: {}", record, exception);
@@ -76,7 +76,7 @@ public class KafkaHealthCheckMessageConsumer implements HealthCheckMessageConsum
 
         try (MDCCloseable closable = MDC.putCloseable(CORRELATION_ID, message.getCorrelationId())) {
             if (Destination.NORTHBOUND.equals(message.getDestination())) {
-                logger.debug("message received: {}", record);
+                logger.debug("message received: {}", message);
                 InfoMessage info = (InfoMessage) message;
                 HealthCheckInfoData healthCheck = (HealthCheckInfoData) info.getData();
                 messages.put(healthCheck.getId(), healthCheck);
