@@ -15,7 +15,6 @@
 
 package org.openkilda.floodlight.switchmanager;
 
-import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
@@ -25,19 +24,6 @@ import static org.projectfloodlight.openflow.protocol.OFVersion.OF_12;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_13;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_15;
 
-import com.google.common.util.concurrent.ListenableFuture;
-import net.floodlightcontroller.core.FloodlightContext;
-import net.floodlightcontroller.core.IFloodlightProviderService;
-import net.floodlightcontroller.core.IOFMessageListener;
-import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.PortChangeType;
-import net.floodlightcontroller.core.internal.IOFSwitchService;
-import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.core.module.FloodlightModuleException;
-import net.floodlightcontroller.core.module.IFloodlightModule;
-import net.floodlightcontroller.core.module.IFloodlightService;
-import net.floodlightcontroller.restserver.IRestApiService;
-import net.floodlightcontroller.util.FlowModUtils;
 import org.openkilda.floodlight.kafka.KafkaMessageProducer;
 import org.openkilda.floodlight.switchmanager.web.SwitchManagerWebRoutable;
 import org.openkilda.floodlight.utils.CorrelationContext;
@@ -52,6 +38,20 @@ import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
+
+import com.google.common.util.concurrent.ListenableFuture;
+import net.floodlightcontroller.core.FloodlightContext;
+import net.floodlightcontroller.core.IFloodlightProviderService;
+import net.floodlightcontroller.core.IOFMessageListener;
+import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.PortChangeType;
+import net.floodlightcontroller.core.internal.IOFSwitchService;
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.core.module.FloodlightModuleException;
+import net.floodlightcontroller.core.module.IFloodlightModule;
+import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.restserver.IRestApiService;
+import net.floodlightcontroller.util.FlowModUtils;
 import org.projectfloodlight.openflow.protocol.OFBarrierReply;
 import org.projectfloodlight.openflow.protocol.OFBarrierRequest;
 import org.projectfloodlight.openflow.protocol.OFErrorMsg;
@@ -72,7 +72,6 @@ import org.projectfloodlight.openflow.protocol.OFMeterFlags;
 import org.projectfloodlight.openflow.protocol.OFMeterMod;
 import org.projectfloodlight.openflow.protocol.OFMeterModCommand;
 import org.projectfloodlight.openflow.protocol.OFType;
-import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActions;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
@@ -109,6 +108,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
 
 /**
  * Created by jonv on 29/3/17.
@@ -308,8 +308,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         IOFSwitch sw = lookupSwitch(dpid);
         OFFactory ofFactory = sw.getOFFactory();
 
-        // build match by input port and input vlan id
-        Match match = matchFlow(ofFactory, inputPort, inputVlanId);
 
         // build meter instruction
         OFInstructionMeter meter = null;
@@ -324,13 +322,16 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         }
 
         // output action based on encap scheme
-        actionList.addAll(inputVlanTypeToOFActionList(ofFactory, transitVlanId, outputVlanType));
+        actionList.addAll(inputVlanTypeToOfActionList(ofFactory, transitVlanId, outputVlanType));
 
         // transmit packet from outgoing port
         actionList.add(actionSetOutputPort(ofFactory, outputPort));
 
         // build instruction with action list
         OFInstructionApplyActions actions = buildInstructionApplyActions(ofFactory, actionList);
+
+        // build match by input port and input vlan id
+        Match match = matchFlow(ofFactory, inputPort, inputVlanId);
 
         // build FLOW_MOD command with meter
         OFFlowMod flowMod = buildFlowMod(ofFactory, match, meter, actions,
@@ -356,7 +357,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         Match match = matchFlow(ofFactory, inputPort, transitVlanId);
 
         // output action based on encap scheme
-        actionList.addAll(outputVlanTypeToOFActionList(ofFactory, outputVlanId, outputVlanType));
+        actionList.addAll(outputVlanTypeToOfActionList(ofFactory, outputVlanId, outputVlanType));
 
         // transmit packet from outgoing port
         actionList.add(actionSetOutputPort(ofFactory, outputPort));
@@ -417,8 +418,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         IOFSwitch sw = lookupSwitch(dpid);
         OFFactory ofFactory = sw.getOFFactory();
 
-        // build match by input port and transit vlan id
-        Match match = matchFlow(ofFactory, inputPort, inputVlanId);
 
         // build meter instruction
         OFInstructionMeter meter = null;
@@ -433,12 +432,15 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         }
 
         // output action based on encap scheme
-        actionList.addAll(pushSchemeOutputVlanTypeToOFActionList(ofFactory, outputVlanId, outputVlanType));
+        actionList.addAll(pushSchemeOutputVlanTypeToOfActionList(ofFactory, outputVlanId, outputVlanType));
         // transmit packet from outgoing port
         actionList.add(actionSetOutputPort(ofFactory, outputPort));
 
         // build instruction with action list
         OFInstructionApplyActions actions = buildInstructionApplyActions(ofFactory, actionList);
+
+        // build match by input port and transit vlan id
+        Match match = matchFlow(ofFactory, inputPort, inputVlanId);
 
         // build FLOW_MOD command with meter
         OFFlowMod flowMod = buildFlowMod(ofFactory, match, meter, actions,
@@ -457,7 +459,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         List<OFFlowStatsEntry> entries = new ArrayList<>();
         IOFSwitch sw = ofSwitchService.getSwitch(dpid);
         if (sw == null) {
-            throw new IllegalArgumentException(format("Switch %s was not found", dpid));
+            throw new IllegalArgumentException(String.format("Switch %s was not found", dpid));
         }
 
         OFFactory ofFactory = sw.getOFFactory();
@@ -490,13 +492,13 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         OFMeterConfigStatsReply values = null;
         IOFSwitch sw = lookupSwitch(dpid);
         if (sw == null) {
-            throw new IllegalArgumentException(format("Switch %s was not found", dpid));
+            throw new IllegalArgumentException(String.format("Switch %s was not found", dpid));
         }
 
         OFFactory ofFactory = sw.getOFFactory();
         if (ofFactory.getVersion().compareTo(OF_13) < 0) {
             throw new UnsupportedSwitchOperationException(dpid,
-                    format("Dumping of meters is not supported on the requested switch %s.", dpid));
+                    String.format("Dumping of meters is not supported on the requested switch %s.", dpid));
         }
 
         OFMeterConfigStatsRequest meterRequest = ofFactory.buildMeterConfigStatsRequest()
@@ -536,70 +538,19 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         if (sw.getOFFactory().getVersion().compareTo(OF_12) <= 0) {
             meterCommandXid = installLegacyMeter(sw, dpid, bandwidth, burstSize, meterId);
         } else {
-            meterCommandXid = installMeter(sw, dpid, bandwidth, burstSize, meterId);
+            meterCommandXid = buildAndinstallMeter(sw, dpid, bandwidth, burstSize, meterId);
         }
 
-        // All cases when we're installing meters require that we wait until the command is processed and the meter is installed.
+        // All cases when we're installing meters require that we wait until the command is processed and the meter is
+        // installed.
         sendBarrierRequest(sw);
 
         return meterCommandXid;
     }
 
     @Override
-    public Map<DatapathId, IOFSwitch> getAllSwitchMap()
-    {
+    public Map<DatapathId, IOFSwitch> getAllSwitchMap() {
         return ofSwitchService.getAllSwitchMap();
-    }
-
-
-    private long installMeter(final IOFSwitch sw, final DatapathId dpid, final long bandwidth,
-                                                     final long burstSize, final long meterId)
-            throws OFInstallException {
-        logger.debug("installing meter {} on switch {} width bandwidth {}", meterId, dpid, bandwidth);
-
-        Set<OFMeterFlags> flags = new HashSet<>(asList(OFMeterFlags.KBPS, OFMeterFlags.BURST));
-        OFFactory ofFactory = sw.getOFFactory();
-
-        OFMeterBandDrop.Builder bandBuilder = ofFactory.meterBands()
-                .buildDrop()
-                .setRate(bandwidth)
-                .setBurstSize(burstSize);
-
-        OFMeterMod.Builder meterModBuilder = ofFactory.buildMeterMod()
-                .setMeterId(meterId)
-                .setCommand(OFMeterModCommand.ADD)
-                .setFlags(flags);
-
-        if (sw.getOFFactory().getVersion().compareTo(OF_13) > 0) {
-            meterModBuilder.setBands(singletonList(bandBuilder.build()));
-        } else {
-            meterModBuilder.setMeters(singletonList(bandBuilder.build()));
-        }
-
-        OFMeterMod meterMod = meterModBuilder.build();
-
-        return pushFlow(sw, "--InstallMeter--", meterMod);
-    }
-
-    private long installLegacyMeter(
-            final IOFSwitch sw, final DatapathId dpid,
-            final long bandwidth, final long burstSize, final long meterId)
-            throws OFInstallException {
-        logger.debug("installing legacy meter {} on OVS switch {} width bandwidth {}", meterId, dpid, bandwidth);
-
-        Set<OFLegacyMeterFlags> flags = new HashSet<>(asList(OFLegacyMeterFlags.KBPS, OFLegacyMeterFlags.BURST));
-        OFFactory ofFactory = sw.getOFFactory();
-
-        OFLegacyMeterBandDrop.Builder bandBuilder = ofFactory.legacyMeterBandDrop(bandwidth, burstSize).createBuilder();
-
-        OFLegacyMeterMod meterMod = ofFactory.buildLegacyMeterMod()
-                .setMeterId(meterId)
-                .setCommand(OFLegacyMeterModCommand.ADD)
-                .setMeters(singletonList(bandBuilder.build()))
-                .setFlags(flags)
-                .build();
-
-        return pushFlow(sw, "--InstallMeter", meterMod);
     }
 
     // Utility Methods
@@ -624,45 +575,11 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         if (sw.getOFFactory().getVersion().compareTo(OF_12) <= 0) {
             return deleteLegacyMeter(sw, dpid, meterId);
         } else {
-            return deleteMeter(sw, dpid, meterId);
+            return buildAndDeleteMeter(sw, dpid, meterId);
         }
     }
 
-    public long deleteMeter(IOFSwitch sw, final DatapathId dpid, final long meterId)
-            throws OFInstallException {
-        logger.debug("deleting meter {} from switch {}", meterId, dpid);
 
-        OFFactory ofFactory = sw.getOFFactory();
-
-        OFMeterMod.Builder meterDeleteBuilder = ofFactory.buildMeterMod()
-                .setMeterId(meterId)
-                .setCommand(OFMeterModCommand.DELETE);
-
-        if (sw.getOFFactory().getVersion().compareTo(OF_13) > 0) {
-            meterDeleteBuilder.setBands(emptyList());
-        } else {
-            meterDeleteBuilder.setMeters(emptyList());
-        }
-
-        OFMeterMod meterDelete = meterDeleteBuilder.build();
-
-        return pushFlow(sw, "--DeleteMeter--", meterDelete);
-    }
-
-    public long deleteLegacyMeter(final IOFSwitch sw, final DatapathId dpid, final long meterId)
-            throws OFInstallException {
-        logger.debug("deleting legacy meter {} from switch {}", meterId, dpid);
-
-        OFFactory ofFactory = sw.getOFFactory();
-
-        OFLegacyMeterMod meterDelete = ofFactory.buildLegacyMeterMod()
-                .setMeterId(meterId)
-                .setMeters(emptyList())
-                .setCommand(OFLegacyMeterModCommand.DELETE)
-                .build();
-
-        return pushFlow(sw, "--DeleteMeter--", meterDelete);
-    }
 
     @Override
     public List<Long> deleteAllNonDefaultRules(final DatapathId dpid) throws SwitchOperationException {
@@ -750,6 +667,175 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .collect(Collectors.toList());
     }
 
+    @Override
+    public List<Long> deleteDefaultRules(final DatapathId dpid) throws SwitchOperationException {
+        return deleteRulesWithCookie(dpid, DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
+                VERIFICATION_UNICAST_RULE_COOKIE);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void installVerificationRule(final DatapathId dpid, final boolean isBroadcast)
+            throws SwitchOperationException {
+        IOFSwitch sw = lookupSwitch(dpid);
+        OFFactory ofFactory = sw.getOFFactory();
+
+        // Don't install the unicast for OpenFlow 1.2 doesn't work properly
+        if (!isBroadcast) {
+            if (ofFactory.getVersion().compareTo(OF_12) > 0) {
+                logger.debug("installing unicast verification match for {}", dpid);
+            } else {
+                logger.debug("not installing unicast verification match for {}", dpid);
+                return;
+            }
+        }
+
+        logger.debug("installing verification rule for {}", dpid);
+
+        Match match = matchVerification(sw, isBroadcast);
+        ArrayList<OFAction> actionList = new ArrayList<>(2);
+        actionList.add(actionSendToController(sw));
+        actionList.add(actionSetDstMac(sw, dpidToMac(sw)));
+        OFInstructionApplyActions instructionApplyActions = ofFactory.instructions()
+                .applyActions(actionList).createBuilder().build();
+        final long cookie = isBroadcast ? VERIFICATION_BROADCAST_RULE_COOKIE : VERIFICATION_UNICAST_RULE_COOKIE;
+        OFFlowMod flowMod = buildFlowMod(ofFactory, match, null, instructionApplyActions,
+                cookie, VERIFICATION_RULE_PRIORITY);
+        String flowname = (isBroadcast) ? "Broadcast" : "Unicast";
+        flowname += "--VerificationFlow--" + dpid.toString();
+        pushFlow(sw, flowname, flowMod);
+    }
+
+    /**
+     * Installs custom drop rule .. ie cookie, priority, match
+     *
+     * @param dpid datapathId of switch
+     * @param dstMac Destination Mac address to match on
+     * @param dstMask Destination Mask to match on
+     * @param cookie Cookie to use for this rule
+     * @param priority Priority of the rule
+     * @throws SwitchOperationException switch operation exception
+     */
+    @Override
+    public void installDropFlowCustom(final DatapathId dpid, String dstMac, String dstMask,
+                                      final long cookie, final int priority) throws SwitchOperationException {
+        IOFSwitch sw = lookupSwitch(dpid);
+        OFFactory ofFactory = sw.getOFFactory();
+
+        Match match = simpleDstMatch(ofFactory, dstMac, dstMask);
+        OFFlowMod flowMod = buildFlowMod(ofFactory, match, null, null, cookie, priority);
+        String flowName = "--CustomDropRule--" + dpid.toString();
+        pushFlow(sw, flowName, flowMod);
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void installDropFlow(final DatapathId dpid) throws SwitchOperationException {
+        // TODO: leverage installDropFlowCustom
+        IOFSwitch sw = lookupSwitch(dpid);
+        OFFactory ofFactory = sw.getOFFactory();
+
+        if (ofFactory.getVersion() == OF_12) {
+            logger.debug("Skip installation of drop flow for switch {}", dpid);
+        } else {
+            logger.debug("Installing drop flow for switch {}", dpid);
+            OFFlowMod flowMod = buildFlowMod(ofFactory, null, null, null, DROP_RULE_COOKIE, 1);
+            String flowName = "--DropRule--" + dpid.toString();
+            pushFlow(sw, flowName, flowMod);
+        }
+    }
+
+    private long buildAndinstallMeter(final IOFSwitch sw, final DatapathId dpid, final long bandwidth,
+                                      final long burstSize, final long meterId)
+            throws OFInstallException {
+        logger.debug("installing meter {} on switch {} width bandwidth {}", meterId, dpid, bandwidth);
+
+        Set<OFMeterFlags> flags = new HashSet<>(asList(OFMeterFlags.KBPS, OFMeterFlags.BURST));
+        OFFactory ofFactory = sw.getOFFactory();
+
+        OFMeterBandDrop.Builder bandBuilder = ofFactory.meterBands()
+                .buildDrop()
+                .setRate(bandwidth)
+                .setBurstSize(burstSize);
+
+        OFMeterMod.Builder meterModBuilder = ofFactory.buildMeterMod()
+                .setMeterId(meterId)
+                .setCommand(OFMeterModCommand.ADD)
+                .setFlags(flags);
+
+        if (sw.getOFFactory().getVersion().compareTo(OF_13) > 0) {
+            meterModBuilder.setBands(singletonList(bandBuilder.build()));
+        } else {
+            meterModBuilder.setMeters(singletonList(bandBuilder.build()));
+        }
+
+        OFMeterMod meterMod = meterModBuilder.build();
+
+        return pushFlow(sw, "--InstallMeter--", meterMod);
+    }
+
+    private long installLegacyMeter(
+            final IOFSwitch sw, final DatapathId dpid,
+            final long bandwidth, final long burstSize, final long meterId)
+            throws OFInstallException {
+        logger.debug("installing legacy meter {} on OVS switch {} width bandwidth {}", meterId, dpid, bandwidth);
+
+        Set<OFLegacyMeterFlags> flags = new HashSet<>(asList(OFLegacyMeterFlags.KBPS, OFLegacyMeterFlags.BURST));
+        OFFactory ofFactory = sw.getOFFactory();
+
+        OFLegacyMeterBandDrop.Builder bandBuilder = ofFactory.legacyMeterBandDrop(bandwidth, burstSize).createBuilder();
+
+        OFLegacyMeterMod meterMod = ofFactory.buildLegacyMeterMod()
+                .setMeterId(meterId)
+                .setCommand(OFLegacyMeterModCommand.ADD)
+                .setMeters(singletonList(bandBuilder.build()))
+                .setFlags(flags)
+                .build();
+
+        return pushFlow(sw, "--InstallMeter", meterMod);
+    }
+
+    private long buildAndDeleteMeter(IOFSwitch sw, final DatapathId dpid, final long meterId)
+            throws OFInstallException {
+        logger.debug("deleting meter {} from switch {}", meterId, dpid);
+
+        OFFactory ofFactory = sw.getOFFactory();
+
+        OFMeterMod.Builder meterDeleteBuilder = ofFactory.buildMeterMod()
+                .setMeterId(meterId)
+                .setCommand(OFMeterModCommand.DELETE);
+
+        if (sw.getOFFactory().getVersion().compareTo(OF_13) > 0) {
+            meterDeleteBuilder.setBands(emptyList());
+        } else {
+            meterDeleteBuilder.setMeters(emptyList());
+        }
+
+        OFMeterMod meterDelete = meterDeleteBuilder.build();
+
+        return pushFlow(sw, "--DeleteMeter--", meterDelete);
+    }
+
+    private long deleteLegacyMeter(final IOFSwitch sw, final DatapathId dpid, final long meterId)
+            throws OFInstallException {
+        logger.debug("deleting legacy meter {} from switch {}", meterId, dpid);
+
+        OFFactory ofFactory = sw.getOFFactory();
+
+        OFLegacyMeterMod meterDelete = ofFactory.buildLegacyMeterMod()
+                .setMeterId(meterId)
+                .setMeters(emptyList())
+                .setCommand(OFLegacyMeterModCommand.DELETE)
+                .build();
+
+        return pushFlow(sw, "--DeleteMeter--", meterDelete);
+    }
+
     private OFFlowDelete buildFlowDeleteByCriteria(OFFactory ofFactory, DeleteRulesCriteria criteria) {
         OFFlowDelete.Builder builder = ofFactory.buildFlowDelete();
         if (criteria.getCookie() != null) {
@@ -797,11 +883,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         return result;
     }
 
-    @Override
-    public List<Long> deleteDefaultRules(final DatapathId dpid) throws SwitchOperationException {
-        return deleteRulesWithCookie(dpid, DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
-                VERIFICATION_UNICAST_RULE_COOKIE);
-    }
 
     private List<Long> deleteRulesWithCookie(final DatapathId dpid, Long... cookiesToRemove)
             throws SwitchOperationException {
@@ -852,7 +933,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * @param outputVlanType type of action to apply to the outputVlanId if greater than 0
      * @return list of {@link OFAction}
      */
-    private List<OFAction> replaceSchemeOutputVlanTypeToOFActionList(OFFactory ofFactory, int outputVlanId,
+    private List<OFAction> replaceSchemeOutputVlanTypeToOfActionList(OFFactory ofFactory, int outputVlanId,
                                                                      OutputVlanType outputVlanType) {
         List<OFAction> actionList;
 
@@ -881,7 +962,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * @param outputVlanType type of action to apply to the outputVlanId if greater than 0
      * @return list of {@link OFAction}
      */
-    private List<OFAction> pushSchemeOutputVlanTypeToOFActionList(OFFactory ofFactory, int outputVlanId,
+    private List<OFAction> pushSchemeOutputVlanTypeToOfActionList(OFFactory ofFactory, int outputVlanId,
                                                                   OutputVlanType outputVlanType) {
         List<OFAction> actionList = new ArrayList<>(2);
 
@@ -914,8 +995,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * @param outputVlanType type of action to apply to the outputVlanId if greater than 0
      * @return list of {@link OFAction}
      */
-    private List<OFAction> outputVlanTypeToOFActionList(OFFactory ofFactory, int outputVlanId, OutputVlanType outputVlanType) {
-        return replaceSchemeOutputVlanTypeToOFActionList(ofFactory, outputVlanId, outputVlanType);
+    private List<OFAction> outputVlanTypeToOfActionList(OFFactory ofFactory, int outputVlanId,
+                                                        OutputVlanType outputVlanType) {
+        return replaceSchemeOutputVlanTypeToOfActionList(ofFactory, outputVlanId, outputVlanType);
     }
 
     /**
@@ -925,8 +1007,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * @param transitVlanId set vlan on packet or replace it before forwarding via outputPort; 0 means not to set
      * @return list of {@link OFAction}
      */
-    private List<OFAction> inputVlanTypeToOFActionList(OFFactory ofFactory, int transitVlanId,
-            OutputVlanType outputVlanType) {
+    private List<OFAction> inputVlanTypeToOfActionList(OFFactory ofFactory, int transitVlanId,
+                                                       OutputVlanType outputVlanType) {
         List<OFAction> actionList = new ArrayList<>(3);
         if (OutputVlanType.PUSH.equals(outputVlanType) || OutputVlanType.NONE.equals(outputVlanType)) {
             actionList.add(actionPushVlan(ofFactory, ETH_TYPE));
@@ -1013,15 +1095,18 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         fmb.setPriority(priority);
         List<OFInstruction> instructions = new ArrayList<>(2);
 
-        if (meter != null) {              // If no meter then no bandwidth limit
+        // If no meter then no bandwidth limit
+        if (meter != null) {
             instructions.add(meter);
         }
 
-        if (actions != null) {       // If no instruction then Drops packet
+        // If no instruction then Drops packet
+        if (actions != null) {
             instructions.add(actions);
         }
 
-        if (match != null) {              // If no then match everything
+        // If no then match everything
+        if (match != null) {
             fmb.setMatch(match);
         }
 
@@ -1039,7 +1124,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
     /**
-     * Create a match object for the verification packets
+     * Create a match object for the verification packets.
      *
      * @param sw          siwtch object
      * @param isBroadcast if broadcast then set a generic match; else specific to switch Id
@@ -1067,7 +1152,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
     /**
-     * Create an action to set the DstMac of a packet
+     * Create an action to set the DstMac of a packet.
      *
      * @param sw         switch object
      * @param macAddress MacAddress to set
@@ -1080,51 +1165,18 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .setField(oxms.buildEthDst().setValue(macAddress).build()).build();
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void installVerificationRule(final DatapathId dpid, final boolean isBroadcast)
-            throws SwitchOperationException {
-        IOFSwitch sw = lookupSwitch(dpid);
-        OFFactory ofFactory = sw.getOFFactory();
 
-        // Don't install the unicast for OpenFlow 1.2 doesn't work properly
-        if (!isBroadcast) {
-            if (ofFactory.getVersion().compareTo(OF_12) > 0) {
-                logger.debug("installing unicast verification match for {}", dpid);
-            } else {
-                logger.debug("not installing unicast verification match for {}", dpid);
-                return;
-            }
-        }
-
-        logger.debug("installing verification rule for {}", dpid);
-
-        Match match = matchVerification(sw, isBroadcast);
-        ArrayList<OFAction> actionList = new ArrayList<>(2);
-        actionList.add(actionSendToController(sw));
-        actionList.add(actionSetDstMac(sw, dpidToMac(sw)));
-        OFInstructionApplyActions instructionApplyActions = ofFactory.instructions()
-                .applyActions(actionList).createBuilder().build();
-        final long cookie = isBroadcast ? VERIFICATION_BROADCAST_RULE_COOKIE : VERIFICATION_UNICAST_RULE_COOKIE;
-        OFFlowMod flowMod = buildFlowMod(ofFactory, match, null, instructionApplyActions,
-                cookie, VERIFICATION_RULE_PRIORITY);
-        String flowname = (isBroadcast) ? "Broadcast" : "Unicast";
-        flowname += "--VerificationFlow--" + dpid.toString();
-        pushFlow(sw, flowname, flowMod);
-    }
 
     /**
      * A simple Match rule based on destination mac address and mask.
      * TODO: Could be generalized
      *
      * @param ofFactory OF factory for the switch
-     * @param dstMac
-     * @param dstMask
-     * @return
+     * @param dstMac Destination Mac address to match on
+     * @param dstMask Destination Mask to match on
+     * @return Match
      */
-    private Match simpleDstMatch(OFFactory ofFactory, String dstMac, String dstMask) throws SwitchOperationException {
+    private Match simpleDstMatch(OFFactory ofFactory, String dstMac, String dstMask) {
         Match match = null;
         if (dstMac != null && dstMask != null && dstMac.length() > 0 && dstMask.length() > 0) {
             Builder builder = ofFactory.buildMatch();
@@ -1134,47 +1186,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         return match;
     }
 
-    /**
-     * Installs custom drop rule .. ie cookie, priority, match
-     *
-     * @param dpid datapathId of switch
-     * @param dstMac Destination Mac address to match on
-     * @param dstMask Destination Mask to match on
-     * @param cookie Cookie to use for this rule
-     * @param priority Priority of the rule
-     * @throws SwitchOperationException
-     */
-    @Override
-    public void installDropFlowCustom(final DatapathId dpid, String dstMac, String dstMask,
-                                       final long cookie, final int priority) throws SwitchOperationException {
-        IOFSwitch sw = lookupSwitch(dpid);
-        OFFactory ofFactory = sw.getOFFactory();
 
-        Match match = simpleDstMatch(ofFactory, dstMac, dstMask);
-        OFFlowMod flowMod = buildFlowMod(ofFactory, match, null, null, cookie, priority);
-        String flowName = "--CustomDropRule--" + dpid.toString();
-        pushFlow(sw, flowName, flowMod);
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void installDropFlow(final DatapathId dpid) throws SwitchOperationException {
-        // TODO: leverage installDropFlowCustom
-        IOFSwitch sw = lookupSwitch(dpid);
-        OFFactory ofFactory = sw.getOFFactory();
-
-        if (ofFactory.getVersion() == OFVersion.OF_12) {
-            logger.debug("Skip installation of drop flow for switch {}", dpid);
-        } else {
-            logger.debug("Installing drop flow for switch {}", dpid);
-            OFFlowMod flowMod = buildFlowMod(ofFactory, null, null, null, DROP_RULE_COOKIE, 1);
-            String flowName = "--DropRule--" + dpid.toString();
-            pushFlow(sw, flowName, flowMod);
-        }
-    }
 
     /**
      * Pushes a single flow modification command to the switch with the given datapath ID.
@@ -1183,7 +1195,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * @param flowId  flow name, for logging
      * @param flowMod command to send
      * @return OF transaction Id (???)
-     * @throws OFInstallException
+     * @throws OFInstallException openflow install exception
      */
     private long pushFlow(final IOFSwitch sw, final String flowId, final OFMessage flowMod) throws OFInstallException {
         logger.info("installing {} flow: {}", flowId, flowMod);
@@ -1200,12 +1212,12 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      *
      * @param  dpId switch identifier
      * @return open flow switch descriptor
-     * @throws SwitchOperationException
+     * @throws SwitchOperationException switch operation exception
      */
     private IOFSwitch lookupSwitch(DatapathId dpId) throws SwitchOperationException {
         IOFSwitch swInfo = ofSwitchService.getSwitch(dpId);
         if (swInfo == null) {
-            throw new SwitchOperationException(dpId, format("Switch %s was not found", dpId));
+            throw new SwitchOperationException(dpId, String.format("Switch %s was not found", dpId));
         }
         return swInfo;
     }
@@ -1215,10 +1227,10 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * A struct to collect all the data necessary to manage the safe application of base rules.
      */
     private static final class SafeData {
-        /** Any switch rule with a priority less than this will be ignored */
+        // Any switch rule with a priority less than this will be ignored
         static final int PRIORITY_IGNORE_THRESHOLD = 100;
         private static final int window = 5;
-        /** Used to filter out rules with low packet counts .. only test rules with more packets than this */
+        // Used to filter out rules with low packet counts .. only test rules with more packets than this
         private static final int PACKET_COUNT_MIN = 5;
 
         DatapathId dpid;
@@ -1228,8 +1240,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
          * of data is different .. then use the captured timestamps to get an average.
          */
         List<Long> timestamps;
-        Map<Long,List<Long>> ruleByteCounts; // counter per cookie per timestamp
-        Map<Long,List<Long>> rulePktCounts;  // counter per cookie per timestamp
+        Map<Long, List<Long>> ruleByteCounts; // counter per cookie per timestamp
+        Map<Long, List<Long>> rulePktCounts;  // counter per cookie per timestamp
         // Stages - 0 = not started; 1 = applied; 2 = okay; 3 = removed (too many errors)
         int dropRuleStage;
         int broadcastRuleStage;
@@ -1239,11 +1251,12 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             timestamps.add(timestamp);
 
             for (OFFlowStatsEntry flowStatsEntry : flowEntries) {
-                if (flowStatsEntry.getPriority() <= PRIORITY_IGNORE_THRESHOLD)
+                if (flowStatsEntry.getPriority() <= PRIORITY_IGNORE_THRESHOLD) {
                     continue;
+                }
 
                 long flowCookie = flowStatsEntry.getCookie().getValue();
-                if (!ruleByteCounts.containsKey(flowCookie)){
+                if (!ruleByteCounts.containsKey(flowCookie)) {
                     ruleByteCounts.put(flowCookie, new ArrayList<>());
                     rulePktCounts.put(flowCookie, new ArrayList<>());
                 }
@@ -1252,53 +1265,59 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             }
         }
 
-        /** collect 2 windows per stage .. apply rule after first window */
+        // collect 2 windows per stage .. apply rule after first window
         boolean shouldApplyRule(int stage) {
-            return timestamps.size() == ((stage - 1)*2 + 1) * window;
+            return timestamps.size() == ((stage - 1) * 2 + 1) * window;
         }
+
         boolean shouldTestRule(int stage) {
-            return timestamps.size() == ((stage - 1)*2 + 2) * window;
+            return timestamps.size() == ((stage - 1) * 2 + 2) * window;
         }
-        /** Starting with just the effect on packet count */
+
+        // Starting with just the effect on packet count
         List<Integer> getRuleEffect(int stage) {
-            int start = (stage - 1)*2;
+            int start = (stage - 1) * 2;
             int middle = start + 1;
             int end = middle + 1;
-            int good_counts = 0;
-            int bad_counts = 0;
+            int goodCounts = 0;
+            int badCounts = 0;
 
-            for (List<Long> packets : rulePktCounts.values()){
-                long packets_before = packets.get(middle) - packets.get(start);
+            for (List<Long> packets : rulePktCounts.values()) {
+                long packetsBefore = packets.get(middle) - packets.get(start);
                 // We shouldn't start at the middle .. since we wouldn't have applied the rule yet.
                 // So, start at middle+1 .. that is the first data point after applying the rule.
-                long packets_after = packets.get(end) - packets.get(middle+1);
-                boolean rule_had_no_effect = (packets_before > PACKET_COUNT_MIN && packets_after > 0);
-                if (rule_had_no_effect)
-                    good_counts++;
-                else
-                    bad_counts++;
+                long packetsAfter = packets.get(end) - packets.get(middle + 1);
+                boolean ruleHadNoEffect = (packetsBefore > PACKET_COUNT_MIN && packetsAfter > 0);
+                if (ruleHadNoEffect) {
+                    goodCounts++;
+                } else {
+                    badCounts++;
+                }
             }
-            return asList(bad_counts,good_counts);
+            return asList(badCounts, goodCounts);
         }
+
         boolean isRuleOkay(List<Integer> ruleEffect) {
-            // Initial algorithm: if any rule was sending data and then stopped, then applied rule is not okay.
-            // The first array element has the count of "bad_counts" .. ie packet count before rule wasn't zero, but was zero after.
-            int bad_counts = ruleEffect.get(0);
-            return bad_counts == 0;
+            // Initial algorithm: if any rule was sending data and then stopped, then applied rule
+            // is not okay.
+            // The first array element has the count of "bad_counts" .. ie packet count before rule
+            // wasn't zero, but was zero after.
+            int badCounts = ruleEffect.get(0);
+            return badCounts == 0;
         }
     }
 
     private Map<DatapathId, SafeData> safeSwitches = new HashMap<>();
-    private long lastRun = 0l;
+    private long lastRun = 0L;
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public void startSafeMode(final DatapathId dpid){
+    public void startSafeMode(final DatapathId dpid) {
         // Don't create a new object if one already exists .. ie, don't restart the process of
         // installing base rules.
-        if (!safeSwitches.containsKey(dpid)){
+        if (!safeSwitches.containsKey(dpid)) {
             SafeData safeData = safeSwitches.put(dpid, new SafeData());
             safeData.dpid = dpid;
         }
@@ -1329,8 +1348,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public void safeModeTick() {
         // this may be called sporadically, so we'll need to measure the time between calls ..
         long time = System.currentTimeMillis();
-        if (time - lastRun < tick_length)
+        if (time - lastRun < tick_length) {
             return;
+        }
 
         lastRun = time;
 
@@ -1344,18 +1364,18 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 if (safeData.dropRuleStage < RULE_TESTED) {
 
                     logger.debug("SAFE MODE: Collected Data during Drop Rule Stage for '{}' ", safeData.dpid);
-                    if (safeData.shouldApplyRule(DROP_STAGE)){
+                    if (safeData.shouldApplyRule(DROP_STAGE)) {
                         logger.info("SAFE MODE: APPLY Drop Rule for '{}' ", safeData.dpid);
                         safeData.dropRuleStage = RULE_APPLIED;
                         installDropFlow(safeData.dpid);
-                    } else if (safeData.shouldTestRule(DROP_STAGE)){
+                    } else if (safeData.shouldTestRule(DROP_STAGE)) {
                         List<Integer> ruleEffect = safeData.getRuleEffect(DROP_STAGE);
-                        if (safeData.isRuleOkay(ruleEffect)){
+                        if (safeData.isRuleOkay(ruleEffect)) {
                             logger.info("SAFE MODE: Drop Rule is GOOD for '{}' ", safeData.dpid);
                             safeData.dropRuleStage = RULE_IS_GOOD;
                         } else {
-                            logger.warn("SAFE MODE: Drop Rule is BAD for '{}'. " +
-                                            "Good Packet Count: {}. Bad Packet Count: {} ",
+                            logger.warn("SAFE MODE: Drop Rule is BAD for '{}'. "
+                                            + "Good Packet Count: {}. Bad Packet Count: {} ",
                                     safeData.dpid, ruleEffect.get(0), ruleEffect.get(1));
                             safeData.dropRuleStage = RULE_NO_GOOD;
                             deleteRulesWithCookie(safeData.dpid, ISwitchManager.DROP_RULE_COOKIE);
@@ -1364,19 +1384,20 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
                 } else if (safeData.broadcastRuleStage < RULE_TESTED) {
 
-                    logger.debug("SAFE MODE: Collected Data during Broadcast Verification Rule Stage for '{}' ", safeData.dpid);
-                    if (safeData.shouldApplyRule(BROADCAST_STAGE)){
+                    logger.debug("SAFE MODE: Collected Data during Broadcast Verification Rule "
+                            + "Stage for '{}' ", safeData.dpid);
+                    if (safeData.shouldApplyRule(BROADCAST_STAGE)) {
                         logger.info("SAFE MODE: APPLY Broadcast Verification Rule for '{}' ", safeData.dpid);
                         safeData.broadcastRuleStage = RULE_APPLIED;
                         installVerificationRule(safeData.dpid, BROADCAST);
-                    } else if (safeData.shouldTestRule(BROADCAST_STAGE)){
+                    } else if (safeData.shouldTestRule(BROADCAST_STAGE)) {
                         List<Integer> ruleEffect = safeData.getRuleEffect(BROADCAST_STAGE);
-                        if (safeData.isRuleOkay(ruleEffect)){
+                        if (safeData.isRuleOkay(ruleEffect)) {
                             logger.info("SAFE MODE: Broadcast Verification Rule is GOOD for '{}' ", safeData.dpid);
                             safeData.broadcastRuleStage = RULE_IS_GOOD;
                         } else {
-                            logger.warn("SAFE MODE: Broadcast Verification Rule is BAD for '{}'. " +
-                                            "Good Packet Count: {}. Bad Packet Count: {} ",
+                            logger.warn("SAFE MODE: Broadcast Verification Rule is BAD for '{}'. "
+                                            + "Good Packet Count: {}. Bad Packet Count: {} ",
                                     safeData.dpid, ruleEffect.get(0), ruleEffect.get(1));
                             safeData.broadcastRuleStage = RULE_NO_GOOD;
                             deleteRulesWithCookie(safeData.dpid, ISwitchManager.VERIFICATION_BROADCAST_RULE_COOKIE);
@@ -1385,19 +1406,20 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 } else if (safeData.unicastRuleStage < RULE_TESTED) {
 
                     // TODO: make this smarter and advance the unicast if unicast not applied.
-                    logger.debug("SAFE MODE: Collected Data during Unicast Verification Rule Stage for '{}' ", safeData.dpid);
-                    if (safeData.shouldApplyRule(UNICAST_STAGE)){
+                    logger.debug("SAFE MODE: Collected Data during Unicast Verification Rule Stage "
+                            + "for '{}' ", safeData.dpid);
+                    if (safeData.shouldApplyRule(UNICAST_STAGE)) {
                         logger.info("SAFE MODE: APPLY Unicast Verification Rule for '{}' ", safeData.dpid);
                         safeData.unicastRuleStage = RULE_APPLIED;
                         installVerificationRule(safeData.dpid, !BROADCAST);
-                    } else if (safeData.shouldTestRule(UNICAST_STAGE)){
+                    } else if (safeData.shouldTestRule(UNICAST_STAGE)) {
                         List<Integer> ruleEffect = safeData.getRuleEffect(UNICAST_STAGE);
-                        if (safeData.isRuleOkay(ruleEffect)){
+                        if (safeData.isRuleOkay(ruleEffect)) {
                             logger.info("SAFE MODE: Unicast Verification Rule is GOOD for '{}' ", safeData.dpid);
                             safeData.unicastRuleStage = RULE_IS_GOOD;
                         } else {
-                            logger.warn("SAFE MODE: Unicast Verification Rule is BAD for '{}'. " +
-                                    "Good Packet Count: {}. Bad Packet Count: {} ",
+                            logger.warn("SAFE MODE: Unicast Verification Rule is BAD for '{}'. "
+                                            + "Good Packet Count: {}. Bad Packet Count: {} ",
                                     safeData.dpid, ruleEffect.get(0), ruleEffect.get(1));
                             safeData.unicastRuleStage = RULE_NO_GOOD;
                             deleteRulesWithCookie(safeData.dpid, ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE);
@@ -1415,8 +1437,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                     values.remove(safeData);  // will be reflected in safeSwitches
                 }
             } catch (SwitchOperationException e) {
-                logger.error("Error while switch {} was in safe mode. Removing switch from " +
-                        "safe mode and NOT SENDING ACTIVATION. \nERROR: {}", safeData.dpid, e);
+                logger.error("Error while switch {} was in safe mode. Removing switch from safe "
+                        + "mode and NOT SENDING ACTIVATION. \nERROR: {}", safeData.dpid, e);
                 values.remove(safeData);
             }
         }
@@ -1439,9 +1461,11 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public void sendPortUpEvents(final IOFSwitch sw) throws SwitchOperationException {
         if (sw.getEnabledPortNumbers() != null) {
             for (OFPort p : sw.getEnabledPortNumbers()) {
-                if (SwitchEventCollector.isPhysicalPort(p))
-                    kafkaProducer.postMessage(TOPO_EVENT_TOPIC, SwitchEventCollector.buildPortMessage(sw.getId(), p,
-                            PortChangeType.UP));
+                if (SwitchEventCollector.isPhysicalPort(p)) {
+                    kafkaProducer.postMessage(TOPO_EVENT_TOPIC,
+                            SwitchEventCollector.buildPortMessage(sw.getId(), p,
+                                    PortChangeType.UP));
+                }
             }
         }
 
