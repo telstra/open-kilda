@@ -1,11 +1,12 @@
 package org.openkilda.model;
 
-import java.io.Serializable;
-
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+
+import java.io.Serializable;
 
 /**
  * The Class Switchrelation.
@@ -49,11 +50,16 @@ public class IslLinkInfo implements Serializable {
 
     @JsonProperty("state")
     private String state;
+    
+    @JsonProperty("state1")
+    private String state1;
 
     private boolean isUnidirectional;
-    
+
     private String cost;
-    
+
+    @JsonProperty("affected")
+    private boolean affected;
 
     public String getCost() {
         return cost;
@@ -61,6 +67,15 @@ public class IslLinkInfo implements Serializable {
 
     public void setCost(String cost) {
         this.cost = cost;
+    }
+
+
+    public boolean isAffected() {
+        return affected;
+    }
+
+    public void setAffected(boolean affected) {
+        this.affected = affected;
     }
 
     /**
@@ -245,42 +260,22 @@ public class IslLinkInfo implements Serializable {
     public void setUnidirectional(boolean isUnidirectional) {
         this.isUnidirectional = isUnidirectional;
     }
-
-    @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + dstPort;
-        result = prime * result + ((dstSwitch == null) ? 0 : dstSwitch.hashCode());
-        result = prime * result + srcPort;
-        result = prime * result + ((srcSwitch == null) ? 0 : srcSwitch.hashCode());
-        return result;
+    @JsonIgnore
+    public String getForwardKey() {
+        return this.srcSwitch + "-" + this.srcPort + "-" + this.dstSwitch + "-" + this.dstPort;
+    }
+    @JsonIgnore
+    public String getReverseKey() {
+        return this.dstSwitch + "-" + this.dstPort + "-" + this.srcSwitch + "-" + this.srcPort;
     }
 
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        IslLinkInfo other = (IslLinkInfo) obj;
-        if (dstPort != other.dstPort && dstPort != other.srcPort)
-            return false;
-        if (dstSwitch == null) {
-            if (other.dstSwitch != null && other.srcSwitch != null)
-                return false;
-        } else if (!dstSwitch.equals(other.dstSwitch) && !dstSwitch.equals(other.srcSwitch))
-            return false;
-        if (srcPort != other.srcPort && srcPort != other.dstPort)
-            return false;
-        if (srcSwitch == null) {
-            if (other.srcSwitch != null && other.dstSwitch != null)
-                return false;
-        } else if (!srcSwitch.equals(other.srcSwitch) && !srcSwitch.equals(other.dstSwitch))
-            return false;
-        return true;
+    public String getState1() {
+        return state1;
     }
 
+    public void setState1(String state1) {
+        this.state1 = state1;
+    }
+    
+    
 }

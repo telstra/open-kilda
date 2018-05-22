@@ -45,11 +45,18 @@ $( 'input').on( 'click', function () {
 	}
 });
 
+
 function showSwitchData(response){
 
 	if(!response || response.length==0) {
 		response=[]
 		common.infoMessage('No Switch Available','info');
+	}else{
+
+		if ( $.fn.DataTable.isDataTable('#flowTable') ) {
+					  $('#flowTable').DataTable().destroy();
+					}
+					$('#flowTable tbody').empty();
 	}
 	
 	
@@ -79,7 +86,6 @@ function showSwitchData(response){
 		  "bSortCellsTop": true,
 		   language: {searchPlaceholder: "Search"},
 		  "autoWidth": false,
-		  destroy: true,
 		  "aaSorting": [[1, "asc"]],
 		  "aoColumns": [
 		                { sWidth: '15%' },
