@@ -230,7 +230,7 @@ public class StatsTopologyTest extends StableAbstractStormTest {
             //verify results which were sent to Kafka bolt
             ArrayList<FixedTuple> tuples =
                     (ArrayList<FixedTuple>) result.get(StatsComponentType.FLOW_STATS_METRIC_GEN.name());
-            assertThat(tuples.size(), is(6));
+            assertThat(tuples.size(), is(9));
             tuples.stream()
                     .map(this::readFromJson)
                     .forEach(datapoint -> {
