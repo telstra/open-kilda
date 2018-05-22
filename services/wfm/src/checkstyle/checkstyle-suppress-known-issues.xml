@@ -1323,29 +1323,28 @@
     <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="40" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="41" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="42" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="60" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="61" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="62" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="63" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="64" checks="CustomImportOrder"/>
+    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="43" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="65" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="66" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="67" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="68" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="84" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="145" checks="LineLength"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="186" checks="ParenPad"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="186" checks="ParenPad"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="190" checks="WhitespaceAfter"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="196" checks="WhitespaceAfter"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="197" checks="WhitespaceAfter"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="198" checks="WhitespaceAfter"/>
+    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="69" checks="CustomImportOrder"/>
+    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="70" checks="CustomImportOrder"/>
+    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="71" checks="CustomImportOrder"/>
+    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="72" checks="CustomImportOrder"/>
+    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="73" checks="CustomImportOrder"/>
+    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="87" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="148" checks="LineLength"/>
+    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="189" checks="ParenPad"/>
+    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="193" checks="WhitespaceAfter"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="199" checks="WhitespaceAfter"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="200" checks="WhitespaceAfter"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="201" checks="WhitespaceAfter"/>
+    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="202" checks="WhitespaceAfter"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="203" checks="WhitespaceAfter"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="204" checks="WhitespaceAfter"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="255" checks="SummaryJavadoc"/>
+    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="206" checks="WhitespaceAfter"/>
+    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="207" checks="WhitespaceAfter"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/TestKafkaConsumer.java" lines="20" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/TestKafkaConsumer.java" lines="21" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/TestKafkaConsumer.java" lines="22" checks="CustomImportOrder"/>
