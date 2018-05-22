@@ -49,7 +49,7 @@ public class Producer {
 
         KafkaTopicOrderDescriptor orderDescriptor = getOrderDescriptor(topic);
         if (orderDescriptor.isEnabled()) {
-            logger.debug("Topic %s forces predictable message ordering", topic);
+            logger.debug("Topic {} forces predictable message ordering", topic);
             record = new ProducerRecord<>(topic, orderDescriptor.getPartition(), null, jsonPayload);
         } else {
             record = new ProducerRecord<>(topic, jsonPayload);
