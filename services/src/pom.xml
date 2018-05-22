@@ -17,7 +17,6 @@
         <maven.compiler.target>1.8</maven.compiler.target>
 
         <apache.kafka.version>0.10.2.1</apache.kafka.version>
-        <checkstyle.version>7.7</checkstyle.version>
         <commons.cli.version>1.4</commons.cli.version>
         <commons.codec.version>1.10</commons.codec.version>
         <cucumber.version>1.2.5</cucumber.version>
@@ -31,7 +30,8 @@
         <jaxrs.version>2.1</jaxrs.version>
         <jersey.version>2.25.1</jersey.version>
         <junit.version>4.12</junit.version>
-        <maven.checkstyle.version>2.17</maven.checkstyle.version>
+        <maven-checkstyle-plugin.version>3.0.0</maven-checkstyle-plugin.version>
+        <puppycrawl-tools-checkstyle.version>8.8</puppycrawl-tools-checkstyle.version>
         <maven.compiler.version>3.6.1</maven.compiler.version>
         <maven.jacoco.version>0.7.9</maven.jacoco.version>
         <maven.jar.version>3.0.2</maven.jar.version>
@@ -44,6 +44,9 @@
         <openflowj.version>3.2.0-kilda-2</openflowj.version>
         <slf4j.version>1.7.25</slf4j.version>
         <snakeyaml.version>1.18</snakeyaml.version>
+        <lombok.version>1.16.20</lombok.version>
+        <aspectj.version>1.8.13</aspectj.version>
+        <aspectj-maven-plugin.version>1.11</aspectj-maven-plugin.version>
     </properties>
 
     <modules>
@@ -157,6 +160,11 @@
                 <artifactId>snakeyaml</artifactId>
                 <version>${snakeyaml.version}</version>
             </dependency>
+            <dependency>
+                <groupId>org.aspectj</groupId>
+                <artifactId>aspectjrt</artifactId>
+                <version>${aspectj.version}</version>
+            </dependency>
 
             <dependency>
                 <groupId>junit</groupId>
@@ -203,29 +211,32 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-checkstyle-plugin</artifactId>
-                    <version>${maven.checkstyle.version}</version>
-                    <configuration>
-                        <configLocation>${project.parent.basedir}/checkstyle.xml</configLocation>
-                        <consoleOutput>true</consoleOutput>
-                        <failsOnError>true</failsOnError>
-                        <linkXRef>false</linkXRef>
-                    </configuration>
+                    <version>${maven-checkstyle-plugin.version}</version>
                     <dependencies>
                         <dependency>
                             <groupId>com.puppycrawl.tools</groupId>
                             <artifactId>checkstyle</artifactId>
-                            <version>${checkstyle.version}</version>
+                            <version>${puppycrawl-tools-checkstyle.version}</version>
                         </dependency>
                     </dependencies>
                     <executions>
                         <execution>
-                            <id>validate</id>
+                            <id>checkstyle-validation</id>
                             <phase>validate</phase>
                             <goals>
-                                <goal>checkstyle</goal>
+                                <goal>check</goal>
                             </goals>
                         </execution>
                     </executions>
+                    <configuration>
+                        <consoleOutput>true</consoleOutput>
+                        <configLocation>${project.parent.basedir}/checkstyle/checkstyle.xml</configLocation>
+                        <headerLocation>${project.parent.basedir}/checkstyle/checkstyle-header.txt</headerLocation>
+                        <suppressionsLocation>src/checkstyle/checkstyle-suppress-known-issues.xml</suppressionsLocation>
+                        <failOnViolation>true</failOnViolation>
+                        <violationSeverity>warning</violationSeverity>
+                        <includeTestSourceDirectory>true</includeTestSourceDirectory>
+                    </configuration>
                 </plugin>
 
                 <plugin>
@@ -312,6 +323,26 @@
                         <source>1.8</source>
                         <target>1.8</target>
                     </configuration>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>aspectj-maven-plugin</artifactId>
+                    <version>${aspectj-maven-plugin.version}</version>
+                    <configuration>
+                        <complianceLevel>1.8</complianceLevel>
+                        <source>1.8</source>
+                        <target>1.8</target>
+                        <showWeaveInfo>true</showWeaveInfo>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <goals>
+                                <goal>compile</goal>
+                                <goal>test-compile</goal>
+                            </goals>
+                        </execution>
+                    </executions>
                 </plugin>
             </plugins>
         </pluginManagement>

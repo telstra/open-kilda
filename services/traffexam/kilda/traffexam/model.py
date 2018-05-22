@@ -15,7 +15,9 @@
 
 import collections
 import enum
+import ipaddress
 import itertools
+import json
 import socket
 import uuid
 import weakref
@@ -152,6 +154,11 @@ class Abstract(object):
             raise TypeError('{!r} got unknown arguments: "{}"'.format(
                 self, '", "'.join(sorted(extra))))
 
+    def __str__(self):
+        return '<{}:{}>'.format(
+                type(self).__name__,
+                json.dumps(self.pack(), sort_keys=True, cls=JSONEncoder))
+
     def pack(self):
         payload = vars(self).copy()
 
@@ -219,11 +226,13 @@ class IpAddress(IdMixin, Abstract):
             self.address, self.prefix = self.unpack_cidr(address)
         else:
             self.address = address
-
+        self.network = ipaddress.IPv4Network(
+                '{}/{}'.format(self.address, self.prefix), strict=False)
         self._ports = PortQueue(6000, 7000)
 
     def pack(self):
         payload = super().pack()
+        payload.pop('network')
         payload['vlan'] = self.iface.vlan_tag
         return payload
 
@@ -274,7 +283,9 @@ class ConsumerEndpoint(_Endpoint):
 
 class ProducerEndpoint(_Endpoint):
     bandwidth = Default(1024)
+    burst_pkt = Default(0)
     time = Default(10)
+    use_udp = Default(False)
 
     def __init__(self, remote_address, **fields):
         super().__init__(**fields)
@@ -322,3 +333,14 @@ class PortQueue(collections.Iterator):
         if not self.lower <= item < self.upper:
             raise ValueError
         self.released.add(item)
+
+
+class JSONEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, Abstract):
+            value = o.pack()
+        elif isinstance(o, uuid.UUID):
+            value = str(o)
+        else:
+            value = super().default(o)
+        return value

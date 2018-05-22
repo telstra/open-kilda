@@ -15,7 +15,7 @@
 
 package org.openkilda.wfm.topology.utils;
 
-import org.openkilda.wfm.ConfigurationException;
+import org.openkilda.wfm.error.ConfigurationException;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.LaunchEnvironment;
 

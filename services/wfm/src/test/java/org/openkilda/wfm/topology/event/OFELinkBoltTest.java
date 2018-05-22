@@ -1,7 +1,7 @@
 package org.openkilda.wfm.topology.event;
 
 import org.openkilda.wfm.AbstractStormTest;
-import org.openkilda.wfm.ConfigurationException;
+import org.openkilda.wfm.error.ConfigurationException;
 import org.openkilda.wfm.protocol.KafkaMessage;
 import org.openkilda.wfm.topology.OutputCollectorMock;
 import org.openkilda.wfm.topology.TopologyConfig;

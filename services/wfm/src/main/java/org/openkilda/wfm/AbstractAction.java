@@ -3,6 +3,8 @@ package org.openkilda.wfm;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.tuple.Tuple;
+import org.openkilda.wfm.error.MessageFormatException;
+import org.openkilda.wfm.error.UnsupportedActionException;
 import org.openkilda.wfm.topology.stats.StatsTopology;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

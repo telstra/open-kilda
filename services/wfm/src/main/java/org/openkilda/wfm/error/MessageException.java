@@ -1,4 +1,4 @@
-package org.openkilda.wfm.topology;
+package org.openkilda.wfm.error;
 
 public class MessageException extends Exception {
     public MessageException() {

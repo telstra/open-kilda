@@ -15,15 +15,16 @@
 
 package org.openkilda.wfm.topology.stats.metrics;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseRichBolt;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.Datapoint;
+import org.openkilda.wfm.error.JsonEncodeException;
 import org.openkilda.wfm.topology.AbstractTopology;
 
-import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -33,9 +34,15 @@ public abstract class MetricGenBolt extends BaseRichBolt {
     protected OutputCollector collector;
 
     protected static List<Object> tuple(String metric, long timestamp, Number value, Map<String, String> tag)
-            throws IOException {
+            throws JsonEncodeException {
         Datapoint datapoint = new Datapoint(metric, timestamp, tag, value);
-        return Collections.singletonList(Utils.MAPPER.writeValueAsString(datapoint));
+        String json;
+        try {
+            json = Utils.MAPPER.writeValueAsString(datapoint);
+        } catch (JsonProcessingException e) {
+            throw new JsonEncodeException(datapoint, e);
+        }
+        return Collections.singletonList(json);
     }
 
     @Override

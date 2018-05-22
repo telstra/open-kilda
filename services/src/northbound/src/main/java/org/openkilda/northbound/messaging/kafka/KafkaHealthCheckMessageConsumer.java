@@ -29,6 +29,8 @@ import org.openkilda.northbound.messaging.HealthCheckMessageConsumer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
+import org.slf4j.MDC.MDCCloseable;
 import org.springframework.kafka.annotation.KafkaListener;
 
 import java.io.IOException;
@@ -62,19 +64,25 @@ public class KafkaHealthCheckMessageConsumer implements HealthCheckMessageConsum
      */
     @KafkaListener(id = "northbound-listener-health-check", topics = Topic.HEALTH_CHECK)
     public void receive(final String record) {
+        Message message;
+
         try {
-            logger.trace("message received");
-            Message message = MAPPER.readValue(record, Message.class);
+            logger.trace("message received: {}", record);
+            message = MAPPER.readValue(record, Message.class);
+        } catch (IOException exception) {
+            logger.error("Could not deserialize message: {}", record, exception);
+            return;
+        }
+
+        try (MDCCloseable closable = MDC.putCloseable(CORRELATION_ID, message.getCorrelationId())) {
             if (Destination.NORTHBOUND.equals(message.getDestination())) {
-                logger.debug("message received: {}", record);
+                logger.debug("message received: {}", message);
                 InfoMessage info = (InfoMessage) message;
                 HealthCheckInfoData healthCheck = (HealthCheckInfoData) info.getData();
                 messages.put(healthCheck.getId(), healthCheck);
             } else {
                 logger.trace("Skip message: {}", message);
             }
-        } catch (IOException exception) {
-            logger.error("Could not deserialize message: {}", record, exception);
         }
     }
 

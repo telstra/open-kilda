@@ -16,10 +16,6 @@
     <description>Acceptance tests</description>
     <url>https://bitbucket.org/openkilda/controller/wiki/Home</url>
 
-    <properties>
-        <lombok.version>1.16.20</lombok.version>
-    </properties>
-
     <dependencies>
         <dependency>
             <groupId>org.openkilda</groupId>
@@ -124,6 +120,10 @@
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-checkstyle-plugin</artifactId>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>

@@ -3,8 +3,8 @@ package org.openkilda.wfm.ctrl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.storm.task.TopologyContext;
 import org.openkilda.messaging.ctrl.ResponseData;
-import org.openkilda.wfm.MessageFormatException;
-import org.openkilda.wfm.UnsupportedActionException;
+import org.openkilda.wfm.error.MessageFormatException;
+import org.openkilda.wfm.error.UnsupportedActionException;
 
 public class ListAction extends CtrlEmbeddedAction {
 

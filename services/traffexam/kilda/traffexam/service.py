@@ -15,11 +15,9 @@
 
 import errno
 import json
-import time
-import threading
 import subprocess
-
-import pyroute2
+import threading
+import time
 
 from kilda.traffexam import context as context_module
 from kilda.traffexam import exc
@@ -37,6 +35,8 @@ class Abstract(system.NSIPDBMixin, context_module.ContextConsumer):
         with self._lock:
             try:
                 item = self._create(subject)
+            except exc.ServiceError:
+                raise
             except Exception as e:
                 raise exc.ServiceCreateError(self, subject) from e
             self._pool[self.key(item)] = item
@@ -64,6 +64,8 @@ class Abstract(system.NSIPDBMixin, context_module.ContextConsumer):
 
             try:
                 self._delete(subject)
+            except exc.ServiceError:
+                raise
             except Exception as e:
                 self._pool[key] = subject
                 raise exc.ServiceDeleteError(self, key, subject) from e
@@ -116,6 +118,7 @@ class IpAddressService(Abstract):
         return subject.idnr
 
     def _create(self, subject):
+        self._check_collision(subject)
         if subject.iface is None:
             subject.iface = model.NetworkIface(self.get_gw_iface())
 
@@ -128,6 +131,14 @@ class IpAddressService(Abstract):
         name = subject.iface.get_ipdb_key()
         with self.get_ipdb().interfaces[name] as iface:
             iface.del_ip(subject.address, mask=subject.prefix)
+
+    def _check_collision(self, subject):
+        network = subject.network
+        for address in self._pool.values():
+            if not address.network.overlaps(network):
+                continue
+
+            raise exc.ServiceCreateCollisionError(self, subject, address)
 
 
 class EndpointService(Abstract):
@@ -148,8 +159,10 @@ class EndpointService(Abstract):
             with open(str(path), 'rt') as stream:
                 out.append(stream.read())
 
-        report, error = out
-        report = json.loads(report)
+        if not filter(bool, out):
+            return None
+
+        report, error = self.unpack_output(out)
         return report, error
 
     def _create(self, subject):
@@ -193,18 +206,24 @@ class EndpointService(Abstract):
         cmd += [
             '--server',
             '--one-off',
+            '--bind={}'.format(subject.bind_address.address),
             '--port={}'.format(subject.bind_port)]
         self.run_iperf(subject, cmd)
 
     def _create_producer(self, subject):
+        bandwidth = subject.bandwidth * 1024
+        if subject.burst_pkt:
+            bandwidth = '{}/{}'.format(bandwidth, subject.burst_pkt)
+
         cmd = self.make_cmd_common_part(subject)
         cmd += [
             '--client={}'.format(subject.remote_address.address),
             '--port={}'.format(subject.remote_address.port),
-            '--bandwidth={}'.format(subject.bandwidth * 1024),
+            '--bandwidth={}'.format(bandwidth),
             '--time={}'.format(subject.time),
-            '--interval=1',
-            '--udp']
+            '--interval=1']
+        if subject.use_udp:
+            cmd.append('--udp')
         self.run_iperf(subject, cmd)
 
     def make_cmd_common_part(self, subject):
@@ -228,6 +247,23 @@ class EndpointService(Abstract):
 
     def make_error_file_name(self, subject):
         return self.context.path('{}.err'.format(subject.idnr))
+
+    @staticmethod
+    def unpack_output(out):
+        stdout, stderr = out
+        if not stdout:
+            return {}, stderr
+
+        try:
+            report = json.loads(stdout)
+        except (ValueError, TypeError) as e:
+            report = {}
+            if stderr:
+                stderr += '-+' * 30 + '-\n'
+            stderr += 'Can\'t decode iperf3 output: {}\n'.format(e)
+            stderr += 'Raw iperf3 output stats on next line\n'
+            stderr += stdout
+        return report, stderr
 
 
 class Adapter(object):

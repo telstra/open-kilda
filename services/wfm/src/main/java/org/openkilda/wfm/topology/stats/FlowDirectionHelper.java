@@ -1,7 +1,5 @@
 package org.openkilda.wfm.topology.stats;
 
-import org.openkilda.wfm.topology.FlowCookieException;
-
 public class FlowDirectionHelper {
 
 

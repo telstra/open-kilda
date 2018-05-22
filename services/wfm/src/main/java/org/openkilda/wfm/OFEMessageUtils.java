@@ -32,7 +32,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Map;
-import java.util.UUID;
 
 /**
  * OFEMessageUtils - A utility class that will help with the messages on kilda.speaker and
@@ -158,10 +157,10 @@ public class OFEMessageUtils {
         return root;
     }
 
-    public static String createIslFail(String switchId, String portId) throws IOException {
+    public static String createIslFail(String switchId, String portId, String correlationId) throws IOException {
         PathNode node = new PathNode(switchId, Integer.parseInt(portId), 0, 0L);
         InfoData data = new IslInfoData(0L, Collections.singletonList(node), 0L, IslChangeType.FAILED, 0L);
-        InfoMessage message = new InfoMessage(data, System.currentTimeMillis(), UUID.randomUUID().toString());
+        InfoMessage message = new InfoMessage(data, System.currentTimeMillis(), correlationId);
         return MAPPER.writeValueAsString(message);
     }
 
@@ -172,11 +171,11 @@ public class OFEMessageUtils {
     /**
      * @return a JSON string that can be used to for link event
      */
-    public static String createIslDiscovery(String switchID, String portID) throws IOException {
+    public static String createIslDiscovery(String switchID, String portID, String correlationId) throws IOException {
         CommandMessage message = new CommandMessage(
                 new DiscoverIslCommandData(switchID, Integer.valueOf(portID)), // Payload
                 System.currentTimeMillis(),
-                "", Destination.CONTROLLER
+                correlationId, Destination.CONTROLLER
         );
         return MAPPER.writeValueAsString(message);
     }

@@ -31,7 +31,8 @@ import org.springframework.test.context.ActiveProfiles;
 
 @RunWith(CucumberWithSpringProfile.class)
 @CucumberOptions(features = {"classpath:features/flow_crud.feature"},
-        glue = {"org.openkilda.atdd.staging.tests.flow_crud", "org.openkilda.atdd.staging.steps"})
+        glue = {"org.openkilda.atdd.staging.tests.flow_crud", "org.openkilda.atdd.staging.steps"},
+        plugin = {"json:target/cucumber-reports/flow_crud_report.json"})
 @ActiveProfiles("mock")
 public class FlowCrudOverActiveSwitchesTest {
 
@@ -49,10 +50,9 @@ public class FlowCrudOverActiveSwitchesTest {
             verify(northboundService, times(3)).updateFlow(any(), any());
             verify(northboundService, times(3)).deleteFlow(any());
 
-            // 3 flows * 2 directions * (on create + on update) = 12 times
-            verify(traffExamService, times(12)).startExam(any());
-            // 3 flows * (on create + on update) = 6 times
-            verify(traffExamService, times(6)).waitExam(any());
+            // 3 flows * (on create + on update + after delete) = 9 times
+            verify(traffExamService, times(9)).startExam(any());
+            verify(traffExamService, times(9)).waitExam(any());
         }
     }
 }
