@@ -37,6 +37,7 @@ public class DiscoveryManagerTest {
     private int islHealthCheckInterval;
     private int islHealthFailureLimit;
     private int forlornLimit;
+    private int minutesKeepRemovedIsl;
 
     /**
      * Init method.
@@ -46,11 +47,12 @@ public class DiscoveryManagerTest {
         islHealthCheckInterval = 0; // means check ever tick
         islHealthFailureLimit  = 1; // for testing, failure after 1 tick;
         forlornLimit = 2;
+        forlornLimit = 2;
+        minutesKeepRemovedIsl = 10;
 
         dm = new DiscoveryManager(
                 new DummyIIslFilter(), new LinkedList<>(), islHealthCheckInterval,
-                islHealthFailureLimit, forlornLimit
-        );
+                islHealthFailureLimit, forlornLimit, minutesKeepRemovedIsl);
     }
 
     /**
@@ -137,8 +139,7 @@ public class DiscoveryManagerTest {
 
         dm = new DiscoveryManager(
                 new DummyIIslFilter(), new LinkedList<>(), islHealthCheckInterval,
-                islHealthFailureLimit, forlornLimit
-        );
+                islHealthFailureLimit, forlornLimit, minutesKeepRemovedIsl);
         setupThreeLinks();
         // Initially, given 2 tick interval, nothing should be in the lists
         discoveryPlan = dm.makeDiscoveryPlan();
