@@ -290,9 +290,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      */
     @Override
     public void installDefaultRules(final DatapathId dpid) throws SwitchOperationException {
-
         installDropFlow(dpid);
-        cleanupInvalidVerificationRule(dpid);
         installVerificationRule(dpid, true);
         installVerificationRule(dpid, false);
     }
@@ -1212,23 +1210,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         return swInfo;
     }
 
-
-    private void cleanupInvalidVerificationRule(DatapathId dpid) throws SwitchOperationException
-    {
-        for (OFFlowStatsEntry entry: dumpFlowTable(dpid)) {
-            long cookie = entry.getCookie().getValue();
-            if (cookie == ISwitchManager.VERIFICATION_BROADCAST_RULE_COOKIE ||
-                    cookie == ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE)
-            {
-                if (entry.getPriority() != VERIFICATION_RULE_PRIORITY)
-                {
-                    DeleteRulesCriteria criteria = DeleteRulesCriteria.builder().cookie(cookie)
-                            .build();
-                    deleteRulesByCriteria(dpid, criteria);
-                }
-            }
-        }
-    }
 
     /**
      * A struct to collect all the data necessary to manage the safe application of base rules.
