@@ -14,12 +14,12 @@ public class DiscoveryFilterEntity implements Serializable {
     public final String switchId;
 
     @JsonProperty("port")
-    public final String portId;
+    public final int portId;
 
     @JsonCreator
     public DiscoveryFilterEntity(
             @JsonProperty("switch") String switchId,
-            @JsonProperty("port") String portId) {
+            @JsonProperty("port") int portId) {
         this.switchId = switchId;
         this.portId = portId;
     }
