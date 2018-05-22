@@ -114,7 +114,8 @@ read_config()
 class MessageItem(object):
     def __init__(self, **kwargs):
         self.type = kwargs.get("clazz")
-        self.timestamp = str(kwargs.get("timestamp"))
+        self.timestamp = model.TimeProperty.new_from_java_timestamp(
+                kwargs.get("timestamp"))
         self.payload = kwargs.get("payload", {})
         self.destination = kwargs.get("destination","")
         self.correlation_id = kwargs.get("correlation_id", "admin-request")
@@ -150,9 +151,10 @@ class MessageItem(object):
 
             elif self.get_message_type() == MT_ISL:
                 if self.payload['state'] == "DISCOVERED":
-                    event_handled = self.create_isl()
+                    self.create_isl()
                 elif self.payload['state'] in ("FAILED", "MOVED"):
-                    event_handled = self.isl_discovery_failed()
+                    self.isl_discovery_failed()
+                event_handled = True
 
             elif self.get_message_type() == MT_PORT:
                 if self.payload['state'] == "DOWN":
@@ -241,9 +243,7 @@ class MessageItem(object):
 
     def switch_unplug(self):
         switch_id = self.payload['switch_id']
-
-        logger.info('Switch %s deactivation request: timestamp=%s, ',
-                    switch_id, self.timestamp)
+        logger.info('Deactivating switch: %s', switch_id)
 
         with graph.begin() as tx:
             logger.info('Deactivating switch: %s', switch_id)
@@ -270,12 +270,18 @@ class MessageItem(object):
         is_moved = self.payload['state'] == 'MOVED'
         try:
             with graph.begin() as tx:
-                isl_utils.disable_by_endpoint(
-                    tx, model.NetworkEndpoint(switch_id, port), is_moved)
+                updated = isl_utils.disable_by_endpoint(
+                        tx, model.NetworkEndpoint(switch_id, port), is_moved)
+                updated.sort(key=lambda x: (x.source, x.dest))
+                for isl in updated:
+                    # we can get multiple records for one port
+                    # but will use lifecycle data from first one
+                    life_cycle = isl_utils.get_life_cycle_fields(tx, isl)
+                    self.update_payload_lifecycle(life_cycle)
+                    break
+
         except exc.DBRecordNotFound:
             logger.error('There is no ISL on %s_%s', switch_id, port)
-
-        return True
 
     def port_down(self):
         switch_id = self.payload['switch_id']
@@ -323,43 +329,18 @@ class MessageItem(object):
         with graph.begin() as tx:
             flow_utils.precreate_switches(
                 tx, isl.source.dpid, isl.dest.dpid)
-            isl_utils.create_if_missing(tx, isl)
+            isl_utils.create_if_missing(tx, self.timestamp, isl)
+            isl_utils.set_props(tx, isl, {
+                'latency': latency,
+                'speed': speed,
+                'max_bandwidth': available_bandwidth,
+                'actual': 'active'})
 
-            #
-            # Given that we know the the src and dst exist, the following query will either
-            # create the relationship if it doesn't exist, or update it if it does
-            #
-            isl_create_or_update = (
-                "MERGE "
-                "(src:switch {{name:'{}'}}) "
-                "ON CREATE SET src.state = 'inactive' "
-                "MERGE "
-                "(dst:switch {{name:'{}'}}) "
-                "ON CREATE SET dst.state = 'inactive' "
-                "MERGE "
-                "(src)-[i:isl {{"
-                "src_switch: '{}', src_port: {}, "
-                "dst_switch: '{}', dst_port: {} "
-                "}}]->(dst) "
-                "SET "
-                "i.latency = {}, "
-                "i.speed = {}, "
-                "i.max_bandwidth = {}, "
-                "i.actual = 'active', "
-                "i.status = 'inactive'"
-            ).format(
-                a_switch,
-                b_switch,
-                a_switch, a_port,
-                b_switch, b_port,
-                latency,
-                speed,
-                available_bandwidth
-            )
-            tx.run(isl_create_or_update)
-
-            isl_utils.update_status(tx, isl)
+            isl_utils.update_status(tx, isl, mtime=self.timestamp)
             isl_utils.resolve_conflicts(tx, isl)
+
+            life_cycle = isl_utils.get_life_cycle_fields(tx, isl)
+            self.update_payload_lifecycle(life_cycle)
 
         #
         # Now handle the second part .. pull properties from link_props if they exist
@@ -781,3 +762,11 @@ class MessageItem(object):
         message_utils.send_dump_rules_request(self.payload['switch_id'],
                                               self.correlation_id)
         return True
+
+    def update_payload_lifecycle(self, life_cycle):
+        for key, value in (
+                ('time_create', life_cycle.ctime),
+                ('time_modify', life_cycle.mtime)):
+            if not value:
+                continue
+            self.payload[key] = value.as_java_timestamp()
