@@ -231,7 +231,8 @@
             <property name="allowMissingThrowsTags" value="true"/>
             <property name="allowMissingReturnTag" value="true"/>
             <property name="minLineCount" value="2"/>
-            <property name="allowedAnnotations" value="Override, Test, Given, When, Then, And"/>
+            <property name="allowedAnnotations"
+                      value="Override, Bean, Test, Given, When, Then, And, Before, After, BeforeClass, AfterClass"/>
             <property name="allowThrowsTagsForSubclasses" value="true"/>
             <property name="tokens" value="METHOD_DEF,ANNOTATION_FIELD_DEF"/>
         </module>
