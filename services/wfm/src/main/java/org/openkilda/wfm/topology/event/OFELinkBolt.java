@@ -106,6 +106,7 @@ public class OFELinkBolt
     private final int islHealthCheckInterval;
     private final int islHealthCheckTimeout;
     private final int islHealthFailureLimit;
+    private final int islKeepRemovedTimeout;
     private final float watchDogInterval;
     private WatchDog watchDog;
     private TopologyContext context;
@@ -129,6 +130,7 @@ public class OFELinkBolt
         this.islHealthCheckInterval = config.getDiscoveryInterval();
         this.islHealthCheckTimeout = config.getDiscoveryTimeout();
         this.islHealthFailureLimit = config.getDiscoveryLimit();
+        this.islKeepRemovedTimeout = config.getKeepRemovedIslTimeout();
 
         watchDogInterval = config.getDiscoverySpeakerFailureTimeout();
         dumpRequestTimeout = config.getDiscoveryDumpRequestTimeout();
@@ -160,9 +162,8 @@ public class OFELinkBolt
             discoveryQueue = (LinkedList<DiscoveryLink>) payload;
         }
 
-        discovery = new DiscoveryManager(
-                islFilter, discoveryQueue, islHealthCheckInterval, islHealthCheckTimeout, islHealthFailureLimit
-        );
+        discovery = new DiscoveryManager(islFilter, discoveryQueue, islHealthCheckInterval, islHealthCheckTimeout,
+                islHealthFailureLimit, islKeepRemovedTimeout);
     }
 
     /**
