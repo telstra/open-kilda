@@ -16,13 +16,13 @@
 
 import json
 import logging
-import textwrap
 import threading
 
 from py2neo import Node
 from topologylistener import model
 
 from topologylistener import config
+from topologylistener import db
 from topologylistener import exc
 from topologylistener import isl_utils
 import flow_utils
@@ -53,7 +53,6 @@ MT_NETWORK_TOPOLOGY_CHANGE = (
     "org.openkilda.messaging.info.event.NetworkTopologyChange")
 CD_NETWORK = "org.openkilda.messaging.command.discovery.NetworkCommandData"
 CD_FLOWS_SYNC_REQUEST = 'org.openkilda.messaging.command.FlowsSyncRequest'
-
 
 FEATURE_SYNC_OFRULES = 'sync_rules_on_activation'
 FEATURE_REROUTE_ON_ISL_DISCOVERY = 'flows_reroute_on_isl_discovery'
@@ -94,19 +93,33 @@ neo4j_update_lock = threading.RLock()
 
 
 def update_config():
-    config_node = Node('config', name='config')
-    graph.merge(config_node)
-    for feature, name in features_status_app_to_transport_map.items():
-        config_node[name] = features_status[feature]
-    config_node.push()
-    return True
+    q = 'MERGE (target:config {name: "config"})\n'
+    q += db.format_set_fields(db.escape_fields(
+            {x: '$' + x for x in features_status_app_to_transport_map.values()},
+            raw_values=True), field_prefix='target.')
+    p = {
+        y: features_status[x]
+        for x, y in features_status_app_to_transport_map.items()}
+
+    with graph.begin() as tx:
+        db.log_query('CONFIG update', q, p)
+        tx.run(q, p)
 
 
 def read_config():
-    config_node = graph.find_one('config')
-    if config_node is not None:
-        for feature, name in features_status_app_to_transport_map.items():
-            features_status[feature] = config_node[name]
+    q = 'MATCH (target:config {name: "config"}) RETURN target LIMIT 2'
+    db.log_query('CONFIG read', q, None)
+    with graph.begin() as tx:
+        cursor = tx.run(q)
+        try:
+            config_node = db.fetch_one(cursor)['target']
+            for feature, name in features_status_app_to_transport_map.items():
+                features_status[feature] = config_node[name]
+        except exc.DBEmptyResponse:
+            logger.info(
+                    'There is no persistent config in DB, fallback to'
+                    ' builtin defaults')
+
 
 read_config()
 
@@ -142,12 +155,12 @@ class MessageItem(object):
 
             if self.get_message_type() == MT_SWITCH:
                 if self.payload['state'] == "ADDED":
-                    event_handled = self.create_switch()
+                    self.create_switch()
                 elif self.payload['state'] == "ACTIVATED":
-                    event_handled = self.activate_switch()
+                    self.activate_switch()
                 elif self.payload['state'] in ("DEACTIVATED", "REMOVED"):
                     self.switch_unplug()
-                    event_handled = True
+                event_handled = True
 
             elif self.get_message_type() == MT_ISL:
                 if self.payload['state'] == "DISCOVERED":
@@ -209,16 +222,13 @@ class MessageItem(object):
         logger.info('Switch %s activation request: timestamp=%s',
                     switch_id, self.timestamp)
 
-        # FIXME(surabujin): avoid usage of graph.find_* functions - due to lack of transaction support
-        switch = graph.find_one('switch',
-                                property_key='name',
-                                property_value='{}'.format(switch_id))
-        if switch:
-            graph.merge(switch)
-            switch['state'] = "active"
-            switch.push()
-            logger.info('Activating switch: %s', switch_id)
-        return True
+        with graph.begin() as tx:
+            flow_utils.precreate_switches(tx, switch_id)
+
+            q = 'MATCH (target:switch {name: $dpid}) SET target.state="active"'
+            p = {'dpid': switch_id}
+            db.log_query('SWITCH activate', q, p)
+            tx.run(q, p)
 
     def create_switch(self):
         switch_id = self.payload['switch_id']
@@ -226,27 +236,29 @@ class MessageItem(object):
         logger.info('Switch %s creation request: timestamp=%s',
                     switch_id, self.timestamp)
 
-        # ensure it exists
-        switch = Node("switch",name=switch_id)
-        graph.merge(switch)
+        with graph.begin() as tx:
+            flow_utils.precreate_switches(tx, switch_id)
 
-        # now update it
-        switch['address'] = self.payload['address']
-        switch['hostname'] = self.payload['hostname']
-        switch['description'] = self.payload['description']
-        switch['controller'] = self.payload['controller']
-        switch['state'] = 'active'
-        switch.push()
+            p = {
+                'address': self.payload['address'],
+                'hostname': self.payload['hostname'],
+                'description': self.payload['description'],
+                'controller': self.payload['controller'],
+                'state': 'active'}
+            q = 'MATCH (target:switch {name: $dpid})\n' + db.format_set_fields(
+                    db.escape_fields(
+                            {x: '$' + x for x in p}, raw_values=True),
+                    field_prefix='target.')
+            p['dpid'] = switch_id
 
-        logger.info("Successfully created switch %s", switch_id)
-        return True
+            db.log_query('SWITCH create', q, p)
+            tx.run(q, p)
 
     def switch_unplug(self):
         switch_id = self.payload['switch_id']
-        logger.info('Deactivating switch: %s', switch_id)
+        logger.info('Switch %s deactivation request', switch_id)
 
         with graph.begin() as tx:
-            logger.info('Deactivating switch: %s', switch_id)
             flow_utils.precreate_switches(tx, switch_id)
 
             q = ('MATCH (target:switch {name: $dpid}) '

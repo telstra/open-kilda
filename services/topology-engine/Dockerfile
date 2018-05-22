@@ -17,8 +17,8 @@ FROM kilda/base-ubuntu
 RUN apt-get update && \
       apt-get install -y python-pip supervisor vim && \
       pip install --upgrade pip && \
-      pip install kafka py2neo 'gevent<=1.3.1' python-logstash
+      pip install kafka py2neo 'gevent<=1.3.1' python-logstash pytz
 
-ADD queue-engine/ /queue-engine
-ADD supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 ADD entrypoint.sh /entrypoint.sh
+ADD supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+ADD queue-engine/ /queue-engine
