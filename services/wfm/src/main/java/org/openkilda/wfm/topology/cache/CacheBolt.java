@@ -295,7 +295,11 @@ public class CacheBolt
                 if (networkCache.cacheContainsIsl(isl.getId())) {
                     networkCache.updateIsl(isl);
                 } else {
-                    networkCache.createIsl(isl);
+                    if (networkCache.isSelfLoopedIsl(isl)) {
+                        logger.warn("Skipped self-looped ISL: {}", isl);
+                    } else {
+                        networkCache.createIsl(isl);
+                    }
                 }
                 break;
 
@@ -607,7 +611,11 @@ public class CacheBolt
 
         for (IslInfoData isl : links) {
             try {
-                networkCache.createOrUpdateIsl(isl);
+                if (networkCache.isSelfLoopedIsl(isl)) {
+                    logger.warn("Skipped self-looped ISL: {}", isl);
+                } else {
+                    networkCache.createOrUpdateIsl(isl);
+                }
             } catch (Exception e) {
                 logger.error("CacheBolt :: initNetwork :: add ISL caused error --> isl = {} ; Exception = {}", isl, e);
             }
