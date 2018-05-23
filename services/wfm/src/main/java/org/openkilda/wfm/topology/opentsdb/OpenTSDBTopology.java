@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.opentsdb;
 
 import org.apache.storm.kafka.spout.KafkaSpout;
+import org.apache.storm.kafka.spout.KafkaSpoutConfig;
 import org.apache.storm.tuple.Fields;
 import org.openkilda.wfm.topology.opentsdb.bolts.DatapointParseBolt;
 import org.slf4j.LoggerFactory;
@@ -53,10 +54,7 @@ public class OpenTSDBTopology extends AbstractTopology {
         LOGGER.info("Creating OpenTSDB topology");
         TopologyBuilder tb = new TopologyBuilder();
 
-        checkAndCreateTopic(topic);
-
-        KafkaSpout kafkaSpout = createKafkaSpout(topic, spoutId);
-        tb.setSpout(spoutId, kafkaSpout, config.getOpenTsdbNumSpouts());
+        attachInput(tb);
 
         tb.setBolt(parseBoltId, new DatapointParseBolt(), config.getGetDatapointParseBoltExecutors())
                 .setNumTasks(config.getGetDatapointParseBoltWorkers())
@@ -82,6 +80,16 @@ public class OpenTSDBTopology extends AbstractTopology {
                 .shuffleGrouping(boltId);
 
         return tb.createTopology();
+    }
+
+    private void attachInput(TopologyBuilder topology) {
+        checkAndCreateTopic(topic);
+
+        KafkaSpoutConfig<String, String> spoutConfig = makeKafkaSpoutConfigBuilder(spoutId, topic)
+                .setFirstPollOffsetStrategy(KafkaSpoutConfig.FirstPollOffsetStrategy.UNCOMMITTED_EARLIEST)
+                .build();
+        KafkaSpout kafkaSpout = new KafkaSpout<>(spoutConfig);
+        topology.setSpout(spoutId, kafkaSpout, config.getOpenTsdbNumSpouts());
     }
 
     public static void main(String[] args) {
