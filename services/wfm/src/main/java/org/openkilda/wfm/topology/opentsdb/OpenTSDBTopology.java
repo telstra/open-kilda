@@ -15,21 +15,22 @@
 
 package org.openkilda.wfm.topology.opentsdb;
 
+import org.openkilda.wfm.LaunchEnvironment;
+import org.openkilda.wfm.error.ConfigurationException;
+import org.openkilda.wfm.topology.AbstractTopology;
+import org.openkilda.wfm.topology.opentsdb.bolts.DatapointParseBolt;
+import org.openkilda.wfm.topology.opentsdb.bolts.OpenTSDBFilterBolt;
+
+import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.spout.KafkaSpout;
 import org.apache.storm.kafka.spout.KafkaSpoutConfig;
-import org.apache.storm.tuple.Fields;
-import org.openkilda.wfm.topology.opentsdb.bolts.DatapointParseBolt;
-import org.slf4j.LoggerFactory;
-import org.slf4j.Logger;
-import org.apache.storm.generated.StormTopology;
 import org.apache.storm.opentsdb.bolt.OpenTsdbBolt;
 import org.apache.storm.opentsdb.bolt.TupleOpenTsdbDatapointMapper;
 import org.apache.storm.opentsdb.client.OpenTsdbClient;
 import org.apache.storm.topology.TopologyBuilder;
-import org.openkilda.wfm.error.ConfigurationException;
-import org.openkilda.wfm.LaunchEnvironment;
-import org.openkilda.wfm.topology.AbstractTopology;
-import org.openkilda.wfm.topology.opentsdb.bolts.OpenTSDBFilterBolt;
+import org.apache.storm.tuple.Fields;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 
@@ -65,16 +66,16 @@ public class OpenTSDBTopology extends AbstractTopology {
 
         OpenTsdbClient.Builder tsdbBuilder = OpenTsdbClient
                 .newBuilder(config.getOpenTsDBHosts())
-//                .sync(config.getOpenTsdbTimeout())
+                // .sync(config.getOpenTsdbTimeout())
                 .returnDetails();
-        if(config.isOpenTsdbClientChunkedRequestsEnabled()) {
+        if (config.isOpenTsdbClientChunkedRequestsEnabled()) {
             tsdbBuilder.enableChunkedEncoding();
         }
 
         OpenTsdbBolt openTsdbBolt = new OpenTsdbBolt(tsdbBuilder,
                 Collections.singletonList(TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER));
         openTsdbBolt.withBatchSize(config.getOpenTsdbBatchSize()).withFlushInterval(config.getOpenTsdbFlushInterval());
-//                .failTupleForFailedMetrics();
+        //        .failTupleForFailedMetrics();
         tb.setBolt("opentsdb", openTsdbBolt, config.getOpenTsdbBoltExecutors())
                 .setNumTasks(config.getOpenTsdbBoltWorkers())
                 .shuffleGrouping(boltId);
@@ -92,6 +93,9 @@ public class OpenTSDBTopology extends AbstractTopology {
         topology.setSpout(spoutId, kafkaSpout, config.getOpenTsdbNumSpouts());
     }
 
+    /**
+     * main.
+     */
     public static void main(String[] args) {
         try {
             LaunchEnvironment env = new LaunchEnvironment(args);

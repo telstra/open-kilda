@@ -654,23 +654,7 @@
     <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/bolts/OpenTSDBFilterBolt.java" lines="130" checks="Indentation"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/bolts/OpenTSDBFilterBolt.java" lines="132" checks="OperatorWrap"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/bolts/OpenTSDBFilterBolt.java" lines="142" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/OpenTSDBTopology.java" lines="20" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/OpenTSDBTopology.java" lines="22" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/OpenTSDBTopology.java" lines="23" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/OpenTSDBTopology.java" lines="24" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/OpenTSDBTopology.java" lines="25" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/OpenTSDBTopology.java" lines="26" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/OpenTSDBTopology.java" lines="27" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/OpenTSDBTopology.java" lines="28" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/OpenTSDBTopology.java" lines="29" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/OpenTSDBTopology.java" lines="30" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/OpenTSDBTopology.java" lines="31" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/OpenTSDBTopology.java" lines="38" checks="AbbreviationAsWordInName"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/OpenTSDBTopology.java" lines="70" checks="CommentsIndentation"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/OpenTSDBTopology.java" lines="72" checks="WhitespaceAfter"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/OpenTSDBTopology.java" lines="72" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/OpenTSDBTopology.java" lines="79" checks="CommentsIndentation"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/OpenTSDBTopology.java" lines="87" checks="JavadocMethod"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/OpenTSDBTopology.java" lines="40" checks="AbbreviationAsWordInName"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/portstate/bolt/CacheBolt.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/portstate/bolt/ParsePortInfoBolt.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/portstate/bolt/ParsePortInfoBolt.java" lines="10" checks="CustomImportOrder"/>
