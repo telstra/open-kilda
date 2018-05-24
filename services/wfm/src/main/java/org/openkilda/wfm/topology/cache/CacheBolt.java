@@ -36,7 +36,6 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
-import org.openkilda.messaging.command.flow.FlowRestoreRequest;
 import org.openkilda.messaging.ctrl.AbstractDumpState;
 import org.openkilda.messaging.ctrl.state.CacheBoltState;
 import org.openkilda.messaging.ctrl.state.FlowDump;
@@ -59,7 +58,6 @@ import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.pce.cache.Cache;
 import org.openkilda.pce.cache.FlowCache;
 import org.openkilda.pce.cache.NetworkCache;
-import org.openkilda.pce.cache.ResourceCache;
 import org.openkilda.pce.provider.Auth;
 import org.openkilda.pce.provider.PathComputer;
 import org.openkilda.wfm.ctrl.CtrlAction;
@@ -387,35 +385,6 @@ public class CacheBolt
                 correlationId, Destination.WFM);
         outputCollector.emit(StreamType.WFM_DUMP.toString(), tuple, new Values(MAPPER.writeValueAsString(message)));
         logger.debug("Flow command message sent");
-    }
-
-    // FIXME(surabujin): deprecated and should be droppped
-    private void emitRestoreCommands(Set<ImmutablePair<Flow, Flow>> flows, Tuple tuple, String correlationId) {
-        if (flows != null) {
-
-            ResourceCache resourceCache = new ResourceCache();
-            for (ImmutablePair<Flow, Flow> flow : flows) {
-                resourceCache.allocateFlow(flow);
-            }
-
-            for (ImmutablePair<Flow, Flow> flow : flows) {
-                try {
-                    FlowRestoreRequest request = new FlowRestoreRequest(
-                            flowCache.buildFlow(flow.getLeft(), new ImmutablePair<>(null, null), resourceCache));
-                    resourceCache.deallocateFlow(flow);
-
-                    String msgCorrelationId = format("%s-%s", correlationId, flow.getLeft().getFlowId());
-
-                    Values values = new Values(Utils.MAPPER.writeValueAsString(new CommandMessage(
-                            request, System.currentTimeMillis(), msgCorrelationId, Destination.WFM)));
-                    outputCollector.emit(StreamType.WFM_DUMP.toString(), tuple, values);
-
-                    logger.info("Flow {} restore command message sent", flow.getLeft().getFlowId());
-                } catch (JsonProcessingException exception) {
-                    logger.error("Could not format flow restore request by flow={}", flow, exception);
-                }
-            }
-        }
     }
 
     private void emitRerouteCommands(Set<ImmutablePair<Flow, Flow>> flows, Tuple tuple,

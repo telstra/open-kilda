@@ -37,7 +37,6 @@ import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.FlowCacheSyncRequest;
 import org.openkilda.messaging.command.flow.FlowCreateRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
-import org.openkilda.messaging.command.flow.FlowRestoreRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.openkilda.messaging.command.flow.SynchronizeCacheAction;
 import org.openkilda.messaging.ctrl.AbstractDumpState;
@@ -244,9 +243,6 @@ public class CrudBolt
                             break;
                         case PATH:
                             handlePathRequest(flowId, cmsg, tuple);
-                            break;
-                        case RESTORE:
-                            handleRestoreRequest(cmsg, tuple);
                             break;
                         case REROUTE:
                             handleRerouteRequest(cmsg, tuple);
@@ -697,32 +693,6 @@ public class CrudBolt
             default:
                 logger.warn("Flow {} undefined reroute operation", request.getOperation());
                 break;
-        }
-    }
-
-    private void handleRestoreRequest(CommandMessage message, Tuple tuple) throws IOException, RecoverableException {
-        ImmutablePair<Flow, Flow> requestedFlow = ((FlowRestoreRequest) message.getData()).getPayload();
-
-        try {
-            ImmutablePair<PathInfoData, PathInfoData> path =
-                    pathComputer.getPath(requestedFlow.getLeft(), Strategy.COST);
-            logger.info("Restored flow path: {}", path);
-
-            ImmutablePair<Flow, Flow> flow;
-            if (flowCache.cacheContainsFlow(requestedFlow.getLeft().getFlowId())) {
-                flow = flowCache.updateFlow(requestedFlow, path);
-            } else {
-                flow = flowCache.createFlow(requestedFlow, path);
-            }
-            logger.info("Restored flow: {}", flow);
-
-            Values topology = new Values(Utils.MAPPER.writeValueAsString(
-                    new FlowInfoData(requestedFlow.getLeft().getFlowId(), flow,
-                            UPDATE, message.getCorrelationId())));
-            outputCollector.emit(StreamType.UPDATE.toString(), tuple, topology);
-        } catch (UnroutablePathException e) {
-            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
-                    ErrorType.CREATION_FAILURE, "Could not restore flow", "Path was not found");
         }
     }
 

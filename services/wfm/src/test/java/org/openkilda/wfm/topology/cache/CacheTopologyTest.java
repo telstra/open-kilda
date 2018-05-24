@@ -36,7 +36,6 @@ import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
-import org.openkilda.messaging.command.flow.FlowRestoreRequest;
 import org.openkilda.messaging.ctrl.CtrlRequest;
 import org.openkilda.messaging.ctrl.CtrlResponse;
 import org.openkilda.messaging.ctrl.DumpStateResponseData;
@@ -181,73 +180,6 @@ public class CacheTopologyTest extends AbstractStormTest {
         assertNotNull(infoData);
 
         assertEquals(thirdFlow, infoData.getPayload());
-    }
-
-    @Test
-    @Ignore("Test related to outdated/disabled LCM function")
-    public void cacheReceivesNetworkDumpAndSendsToFlowTopology() throws Exception {
-        System.out.println("Dump Test");
-
-        ConsumerRecord<String, String> firstRecord = flowConsumer.pollMessage();
-        assertNotNull(firstRecord);
-        assertNotNull(firstRecord.value());
-
-        Set<String> flowIds = new HashSet<>(Arrays.asList(firstFlowId, secondFlowId));
-        CommandMessage commandMessage = objectMapper.readValue(firstRecord.value(), CommandMessage.class);
-        FlowRestoreRequest commandData = (FlowRestoreRequest) commandMessage.getData();
-        assertNotNull(commandData);
-        assertTrue(flowIds.contains(commandData.getPayload().getLeft().getFlowId()));
-
-        ConsumerRecord<String, String> secondRecord = flowConsumer.pollMessage();
-        assertNotNull(secondRecord);
-        assertNotNull(secondRecord.value());
-
-        commandMessage = objectMapper.readValue(secondRecord.value(), CommandMessage.class);
-        commandData = (FlowRestoreRequest) commandMessage.getData();
-        assertNotNull(commandData);
-        assertTrue(flowIds.contains(commandData.getPayload().getLeft().getFlowId()));
-    }
-
-    @Test
-    @Ignore("test removed LCM particular qualities")
-    public void cacheReceivesInfoDataBeforeNetworkDump() throws Exception {
-        System.out.println("Cache receives InfoData before NetworkDump Test");
-
-        sendClearState();
-        String correlationId = waitDumpRequest();
-
-        // Send switchUpdate info to not initialized bolt
-        sendData(sw);
-
-        // Bolt must fail that tuple
-        sendNetworkDumpRequest();
-        NetworkDump networkDump = getNetworkDump(ctrlConsumer.pollMessage());
-        assertTrue(CollectionUtils.isEmpty(networkDump.getSwitches()));
-
-        // Init bolt with dump from TE
-        sendNetworkDump(dump, correlationId);
-
-        // Check if SwitchInfoData is ok
-        sendNetworkDumpRequest();
-        networkDump = getNetworkDump(ctrlConsumer.pollMessage());
-        assertFalse(CollectionUtils.isEmpty(networkDump.getSwitches()));
-
-        Set<String> flowIds = new HashSet<>(Arrays.asList(firstFlowId, secondFlowId));
-        ConsumerRecord<String, String> firstRecord = flowConsumer.pollMessage();
-        assertNotNull(firstRecord);
-        assertNotNull(firstRecord.value());
-        CommandMessage commandMessage = objectMapper.readValue(firstRecord.value(), CommandMessage.class);
-        FlowRestoreRequest commandData = (FlowRestoreRequest) commandMessage.getData();
-        assertNotNull(commandData);
-        assertTrue(flowIds.contains(commandData.getPayload().getLeft().getFlowId()));
-
-        ConsumerRecord<String, String> secondRecord = flowConsumer.pollMessage();
-        assertNotNull(secondRecord);
-        assertNotNull(secondRecord.value());
-        commandMessage = objectMapper.readValue(secondRecord.value(), CommandMessage.class);
-        commandData = (FlowRestoreRequest) commandMessage.getData();
-        assertNotNull(commandData);
-        assertTrue(flowIds.contains(commandData.getPayload().getLeft().getFlowId()));
     }
 
     @Test
