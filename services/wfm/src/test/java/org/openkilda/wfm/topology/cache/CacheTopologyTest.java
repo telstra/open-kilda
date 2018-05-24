@@ -15,23 +15,6 @@
 
 package org.openkilda.wfm.topology.cache;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.collect.ImmutableList;
-import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.lang.StringUtils;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.storm.Config;
-import org.apache.storm.generated.StormTopology;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Ignore;
-import org.junit.Test;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
@@ -62,8 +45,20 @@ import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.Neo4jFixture;
 import org.openkilda.wfm.topology.TestKafkaConsumer;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.ImmutableList;
+import org.apache.commons.lang.StringUtils;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.storm.Config;
+import org.apache.storm.generated.StormTopology;
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Ignore;
+import org.junit.Test;
+
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -172,14 +167,14 @@ public class CacheTopologyTest extends AbstractStormTest {
 
         ConsumerRecord<String, String> flow = teConsumer.pollMessage();
 
-        assertNotNull(flow);
-        assertNotNull(flow.value());
+        Assert.assertNotNull(flow);
+        Assert.assertNotNull(flow.value());
 
         InfoMessage infoMessage = objectMapper.readValue(flow.value(), InfoMessage.class);
         FlowInfoData infoData = (FlowInfoData) infoMessage.getData();
-        assertNotNull(infoData);
+        Assert.assertNotNull(infoData);
 
-        assertEquals(thirdFlow, infoData.getPayload());
+        Assert.assertEquals(thirdFlow, infoData.getPayload());
     }
 
     @Test
@@ -191,15 +186,15 @@ public class CacheTopologyTest extends AbstractStormTest {
 
         ConsumerRecord<String, String> raw = ctrlConsumer.pollMessage();
 
-        assertNotNull(raw);  // TODO: FAILED
-        assertNotNull(raw.value());
+        Assert.assertNotNull(raw);  // TODO: FAILED
+        Assert.assertNotNull(raw.value());
 
         Message responseGeneric = objectMapper.readValue(raw.value(), Message.class);
         CtrlResponse response = (CtrlResponse) responseGeneric;
         ResponseData payload = response.getData();
 
-        assertEquals(request.getCorrelationId(), response.getCorrelationId());
-        assertEquals(CacheTopology.BOLT_ID_CACHE, payload.getComponent());
+        Assert.assertEquals(request.getCorrelationId(), response.getCorrelationId());
+        Assert.assertEquals(CacheTopology.BOLT_ID_CACHE, payload.getComponent());
     }
 
     @Test
@@ -211,16 +206,16 @@ public class CacheTopologyTest extends AbstractStormTest {
 
         ConsumerRecord<String, String> raw = ctrlConsumer.pollMessage();
 
-        assertNotNull(raw);   // TODO: FAILED
-        assertNotNull(raw.value());
+        Assert.assertNotNull(raw);   // TODO: FAILED
+        Assert.assertNotNull(raw.value());
 
         Message responseGeneric = objectMapper.readValue(raw.value(), Message.class);
         CtrlResponse response = (CtrlResponse) responseGeneric;
         ResponseData payload = response.getData();
 
-        assertEquals(request.getCorrelationId(), response.getCorrelationId());
-        assertEquals(CacheTopology.BOLT_ID_CACHE, payload.getComponent());
-        assertTrue(payload instanceof DumpStateResponseData);
+        Assert.assertEquals(request.getCorrelationId(), response.getCorrelationId());
+        Assert.assertEquals(CacheTopology.BOLT_ID_CACHE, payload.getComponent());
+        Assert.assertTrue(payload instanceof DumpStateResponseData);
     }
 
     @Test
@@ -231,12 +226,12 @@ public class CacheTopologyTest extends AbstractStormTest {
 
         ConsumerRecord<String, String> raw = ctrlConsumer.pollMessage();
 
-        assertNotNull(raw);   // TODO: FAILED
-        assertNotNull(raw.value());
+        Assert.assertNotNull(raw);   // TODO: FAILED
+        Assert.assertNotNull(raw.value());
 
         Message responseGeneric = objectMapper.readValue(raw.value(), Message.class);
         CtrlResponse response = (CtrlResponse) responseGeneric;
-        assertEquals(request.getCorrelationId(), response.getCorrelationId());
+        Assert.assertEquals(request.getCorrelationId(), response.getCorrelationId());
     }
 
     @Ignore
@@ -267,11 +262,11 @@ public class CacheTopologyTest extends AbstractStormTest {
 
         //we are expecting that flow should be rerouted
         ConsumerRecord<String, String> record = flowConsumer.pollMessage();
-        assertNotNull(record);
+        Assert.assertNotNull(record);
         CommandMessage message = objectMapper.readValue(record.value(), CommandMessage.class);
-        assertNotNull(message);
+        Assert.assertNotNull(message);
         FlowRerouteRequest command = (FlowRerouteRequest) message.getData();
-        assertTrue(command.getPayload().getFlowId().equals(flowId));
+        Assert.assertTrue(command.getPayload().getFlowId().equals(flowId));
     }
 
     private static <T extends Message> void sendMessage(T message, String topic) throws IOException {
@@ -308,10 +303,10 @@ public class CacheTopologyTest extends AbstractStormTest {
         sendMessage(request, topology.getConfig().getKafkaCtrlTopic());
 
         ConsumerRecord<String, String> raw = ctrlConsumer.pollMessage();
-//        assertNotNull(raw);
-        if (raw != null){
+        // assertNotNull(raw);
+        if (raw != null) {
             CtrlResponse response = (CtrlResponse) objectMapper.readValue(raw.value(), Message.class);
-            assertEquals(request.getCorrelationId(), response.getCorrelationId());
+            Assert.assertEquals(request.getCorrelationId(), response.getCorrelationId());
         }
     }
 
@@ -345,10 +340,9 @@ public class CacheTopologyTest extends AbstractStormTest {
     private static String waitDumpRequest() throws InterruptedException, IOException {
         ConsumerRecord<String, String> raw;
         int sec = 0;
-        while ((raw = teConsumer.pollMessage(1000)) == null)
-        {
+        while ((raw = teConsumer.pollMessage(1000)) == null) {
             System.out.println("Waiting For Dump Request");
-            assertTrue("Waiting For Dump Request failed", ++sec < 20);
+            Assert.assertTrue("Waiting For Dump Request failed", ++sec < 20);
         }
         System.out.println("Waiting For Dump Request");
 

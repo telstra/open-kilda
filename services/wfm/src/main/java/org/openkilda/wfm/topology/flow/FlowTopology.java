@@ -15,7 +15,6 @@
 
 package org.openkilda.wfm.topology.flow;
 
-import org.apache.storm.Config;
 import org.openkilda.messaging.ServiceType;
 import org.openkilda.messaging.Utils;
 import org.openkilda.pce.provider.Auth;
@@ -26,13 +25,11 @@ import org.openkilda.wfm.error.NameCollisionException;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.flow.bolts.CrudBolt;
 import org.openkilda.wfm.topology.flow.bolts.ErrorBolt;
-import org.openkilda.wfm.topology.flow.bolts.LcmFlowCacheSyncBolt;
 import org.openkilda.wfm.topology.flow.bolts.NorthboundReplyBolt;
 import org.openkilda.wfm.topology.flow.bolts.SpeakerBolt;
 import org.openkilda.wfm.topology.flow.bolts.SplitterBolt;
 import org.openkilda.wfm.topology.flow.bolts.TopologyEngineBolt;
 import org.openkilda.wfm.topology.flow.bolts.TransactionBolt;
-import org.openkilda.wfm.topology.utils.LcmKafkaSpout;
 
 import org.apache.storm.generated.ComponentObject;
 import org.apache.storm.generated.StormTopology;
@@ -90,22 +87,21 @@ public class FlowTopology extends AbstractTopology {
         logger.info("Creating Topology: {}", topologyName);
 
         TopologyBuilder builder = new TopologyBuilder();
-        List<CtrlBoltRef> ctrlTargets = new ArrayList<>();
-        BoltDeclarer boltSetup;
+        final List<CtrlBoltRef> ctrlTargets = new ArrayList<>();
         Integer parallelism = config.getParallelism();
 
         KafkaSpoutConfig<String, String> kafkaSpoutConfig;
         KafkaSpout<String, String> kafkaSpout;
 
-//        builder.setSpout(
-//                ComponentType.LCM_SPOUT.toString(),
-//                createKafkaSpout(config.getKafkaFlowTopic(), ComponentType.LCM_SPOUT.toString()), 1);
-//        builder.setBolt(
-//                ComponentType.LCM_FLOW_SYNC_BOLT.toString(),
-//                new LcmFlowCacheSyncBolt(ComponentType.NORTHBOUND_KAFKA_SPOUT.toString()),
-//                1)
-//                .shuffleGrouping(ComponentType.NORTHBOUND_KAFKA_SPOUT.toString(), LcmKafkaSpout.STREAM_ID_LCM)
-//                .shuffleGrouping(ComponentType.LCM_SPOUT.toString());
+        // builder.setSpout(
+        //         ComponentType.LCM_SPOUT.toString(),
+        //         createKafkaSpout(config.getKafkaFlowTopic(), ComponentType.LCM_SPOUT.toString()), 1);
+        // builder.setBolt(
+        //         ComponentType.LCM_FLOW_SYNC_BOLT.toString(),
+        //         new LcmFlowCacheSyncBolt(ComponentType.NORTHBOUND_KAFKA_SPOUT.toString()),
+        //         1)
+        //         .shuffleGrouping(ComponentType.NORTHBOUND_KAFKA_SPOUT.toString(), LcmKafkaSpout.STREAM_ID_LCM)
+        //         .shuffleGrouping(ComponentType.LCM_SPOUT.toString());
 
         /*
          * Spout receives all Northbound requests.
@@ -132,6 +128,7 @@ public class FlowTopology extends AbstractTopology {
         CrudBolt crudBolt = new CrudBolt(pathComputerAuth);
         ComponentObject.serialized_java(org.apache.storm.utils.Utils.javaSerialize(pathComputerAuth));
 
+        BoltDeclarer boltSetup;
         boltSetup = builder.setBolt(ComponentType.CRUD_BOLT.toString(), crudBolt, parallelism)
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.CREATE.toString(), fieldFlowId)
                 // TODO: this READ is used for single and for all flows. But all flows shouldn't be fieldsGrouping.
@@ -143,13 +140,15 @@ public class FlowTopology extends AbstractTopology {
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.PATH.toString(), fieldFlowId)
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.REROUTE.toString(), fieldFlowId)
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.STATUS.toString(), fieldFlowId)
-                // TODO: this CACHE_SYNC shouldn't be fields-grouping - there is no field - it should be all - but tackle during multi instance testing
+                // TODO: this CACHE_SYNC shouldn't be fields-grouping - there is no field - it should be all - but
+                // tackle during multi instance testing
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.CACHE_SYNC.toString(), fieldFlowId)
                 .fieldsGrouping(ComponentType.TRANSACTION_BOLT.toString(), StreamType.STATUS.toString(), fieldFlowId)
                 .fieldsGrouping(ComponentType.SPEAKER_BOLT.toString(), StreamType.STATUS.toString(), fieldFlowId)
-                .fieldsGrouping(ComponentType.TOPOLOGY_ENGINE_BOLT.toString(), StreamType.STATUS.toString(), fieldFlowId);
-//                .shuffleGrouping(
-//                        ComponentType.LCM_FLOW_SYNC_BOLT.toString(), LcmFlowCacheSyncBolt.STREAM_ID_SYNC_FLOW_CACHE);
+                .fieldsGrouping(
+                        ComponentType.TOPOLOGY_ENGINE_BOLT.toString(), StreamType.STATUS.toString(), fieldFlowId);
+        //        .shuffleGrouping(
+        //                ComponentType.LCM_FLOW_SYNC_BOLT.toString(), LcmFlowCacheSyncBolt.STREAM_ID_SYNC_FLOW_CACHE);
         ctrlTargets.add(new CtrlBoltRef(ComponentType.CRUD_BOLT.toString(), crudBolt, boltSetup));
 
         /*
@@ -204,12 +203,10 @@ public class FlowTopology extends AbstractTopology {
          */
         TransactionBolt transactionBolt = new TransactionBolt();
         boltSetup = builder.setBolt(ComponentType.TRANSACTION_BOLT.toString(), transactionBolt, parallelism)
-                .fieldsGrouping(ComponentType.TOPOLOGY_ENGINE_BOLT.toString(), StreamType.CREATE.toString(), fieldSwitchId)
-                .fieldsGrouping(ComponentType.TOPOLOGY_ENGINE_BOLT.toString(), StreamType.DELETE.toString(), fieldSwitchId)
-// (crimi) - whereas this doesn't belong here per se (Response from TE), it looks as though
-// nobody receives this message
-//                .fieldsGrouping(ComponentType.TOPOLOGY_ENGINE_BOLT.toString(), StreamType.RESPONSE.toString(), fieldSwitchId)
-//
+                .fieldsGrouping(
+                        ComponentType.TOPOLOGY_ENGINE_BOLT.toString(), StreamType.CREATE.toString(), fieldSwitchId)
+                .fieldsGrouping(
+                        ComponentType.TOPOLOGY_ENGINE_BOLT.toString(), StreamType.DELETE.toString(), fieldSwitchId)
                 .fieldsGrouping(ComponentType.SPEAKER_BOLT.toString(), StreamType.CREATE.toString(), fieldSwitchId)
                 .fieldsGrouping(ComponentType.SPEAKER_BOLT.toString(), StreamType.DELETE.toString(), fieldSwitchId);
         ctrlTargets.add(new CtrlBoltRef(ComponentType.TRANSACTION_BOLT.toString(), transactionBolt, boltSetup));
@@ -240,13 +237,16 @@ public class FlowTopology extends AbstractTopology {
         createCtrlBranch(builder, ctrlTargets);
         createHealthCheckHandler(builder, ServiceType.FLOW_TOPOLOGY.getId());
 
-//        builder.setBolt(
-//                ComponentType.TOPOLOGY_ENGINE_OUTPUT.toString(), createKafkaBolt(config.getKafkaTopoEngTopic()), 1)
-//                .shuffleGrouping(ComponentType.LCM_FLOW_SYNC_BOLT.toString(), LcmFlowCacheSyncBolt.STREAM_ID_TPE);
+        // builder.setBolt(
+        //         ComponentType.TOPOLOGY_ENGINE_OUTPUT.toString(), createKafkaBolt(config.getKafkaTopoEngTopic()), 1)
+        //         .shuffleGrouping(ComponentType.LCM_FLOW_SYNC_BOLT.toString(), LcmFlowCacheSyncBolt.STREAM_ID_TPE);
 
         return builder.createTopology();
     }
 
+    /**
+     * Topology entry point.
+     */
     public static void main(String[] args) {
         try {
             LaunchEnvironment env = new LaunchEnvironment(args);
