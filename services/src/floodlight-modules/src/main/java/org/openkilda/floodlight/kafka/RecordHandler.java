@@ -422,6 +422,7 @@ class RecordHandler implements Runnable {
             allSwitchMap.values().stream()
                     .flatMap(sw ->
                             sw.getEnabledPorts().stream()
+                                    .filter(port -> SwitchEventCollector.isPhysicalPort(port.getPortNo()))
                                     .map(port -> buildPort(sw, port))
                                     .collect(Collectors.toSet())
                                     .stream())

@@ -18,6 +18,8 @@ package org.openkilda.floodlight.kafka;
 import static org.easymock.EasyMock.anyObject;
 import static org.easymock.EasyMock.eq;
 import static org.easymock.EasyMock.expect;
+import static org.easymock.EasyMock.expectLastCall;
+import static org.easymock.EasyMock.verify;
 
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
@@ -103,11 +105,15 @@ public class RecordHandlerTest extends EasyMockSupport {
         OFPortDesc ofPortDesc2 = mock(OFPortDesc.class);
         OFPortDesc ofPortDesc3 = mock(OFPortDesc.class);
         OFPortDesc ofPortDesc4 = mock(OFPortDesc.class);
+        OFPortDesc ofPortDesc5 = mock(OFPortDesc.class);
 
-        expect(ofPortDesc1.getPortNo()).andReturn(OFPort.ofInt(1));
-        expect(ofPortDesc2.getPortNo()).andReturn(OFPort.ofInt(2));
-        expect(ofPortDesc3.getPortNo()).andReturn(OFPort.ofInt(3));
-        expect(ofPortDesc4.getPortNo()).andReturn(OFPort.ofInt(4));
+        expect(ofPortDesc1.getPortNo()).andReturn(OFPort.ofInt(1)).times(2);
+        expect(ofPortDesc2.getPortNo()).andReturn(OFPort.ofInt(2)).times(2);
+        expect(ofPortDesc3.getPortNo()).andReturn(OFPort.ofInt(3)).times(2);
+        expect(ofPortDesc4.getPortNo()).andReturn(OFPort.ofInt(4)).times(2);
+        // we don't want disco on -2 port
+        expect(ofPortDesc5.getPortNo()).andReturn(OFPort.ofInt(-2)).times(2);
+
 
         expect(iofSwitch1.getEnabledPorts()).andReturn(ImmutableList.of(
                 ofPortDesc1,
@@ -115,7 +121,8 @@ public class RecordHandlerTest extends EasyMockSupport {
         ));
         expect(iofSwitch2.getEnabledPorts()).andReturn(ImmutableList.of(
                 ofPortDesc3,
-                ofPortDesc4
+                ofPortDesc4,
+                ofPortDesc5
         ));
 
         // Logic in SwitchEventCollector.buildSwitchInfoData is too complicated and requires a lot
@@ -129,6 +136,12 @@ public class RecordHandlerTest extends EasyMockSupport {
 
         // setup hook for verify that we create new message for producer
         producer.postMessage(eq(OUTPUT_DISCO_TOPIC), anyObject(InfoMessage.class));
+        expectLastCall().times(8);
+
+        Producer kafkaProducer = createMock(Producer.class);
+        expect(producer.getProducer()).andReturn(kafkaProducer).times(2);
+        kafkaProducer.enableGuaranteedOrder(eq(OUTPUT_DISCO_TOPIC));
+        kafkaProducer.disableGuaranteedOrder(eq(OUTPUT_DISCO_TOPIC));
 
         replayAll();
 
@@ -138,17 +151,14 @@ public class RecordHandlerTest extends EasyMockSupport {
                 Destination.CONTROLLER);
 
 
-        // (crimi - 2018.04.12 - this fails unit test, and we've had commits that change dumpNetwork.
-        // TODO - triage why this failed ... and fix
-
         // KafkaMessageCollector contains a complicated run logic with couple nested private
         // classes, threading and that is very painful for writing clear looking test code so I
         // created the simple method in KafkaMessageCollector for simplifying test logic.
-        // handler.handleMessage(command);
-        //
-        // verify(producer);
-        // TODO: verify content of InfoMessage in producer.postMessage
+        handler.handleMessage(command);
 
+        verify(producer);
+
+        // TODO: verify content of InfoMessage in producer.postMessage
     }
 
     //    @Test
