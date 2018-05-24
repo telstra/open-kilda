@@ -16,6 +16,7 @@
 package org.openkilda.northbound.service.impl;
 
 import static java.util.Base64.getEncoder;
+import static org.openkilda.messaging.Utils.CORRELATION_ID;
 
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.info.event.IslInfoData;
@@ -23,12 +24,12 @@ import org.openkilda.messaging.nbtopology.request.GetLinksRequest;
 import org.openkilda.northbound.converter.LinkMapper;
 import org.openkilda.northbound.dto.LinkPropsDto;
 import org.openkilda.northbound.dto.LinksDto;
-import org.openkilda.northbound.messaging.MessageConsumer;
 import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.service.LinkPropsResult;
 import org.openkilda.northbound.service.LinkService;
 import org.openkilda.northbound.utils.RequestCorrelationId;
 import org.openkilda.northbound.utils.ResponseCollector;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -59,7 +60,6 @@ public class LinkServiceImpl implements LinkService {
     /** The URL to hit the Links Properties table .. ie :link_props in Neo4J */
     private String linkPropsUrlBase;
     private UriComponentsBuilder linkPropsBuilder;
-    private HttpHeaders headers;
 
     @Value("${topology.engine.rest.endpoint}")
     private String topologyEngineRest;
@@ -93,15 +93,13 @@ public class LinkServiceImpl implements LinkService {
                 .pathSegment("api", "v1", "topology", "link", "props");
         linkPropsUrlBase = UriComponentsBuilder.fromHttpUrl(topologyEngineRest)
                 .pathSegment("api", "v1", "topology", "link", "props").build().toUriString();
-        headers = new HttpHeaders();
-        headers.add(HttpHeaders.AUTHORIZATION, authHeaderValue);
     }
 
     @Override
     public List<LinksDto> getLinks() {
         final String correlationId = RequestCorrelationId.getId();
         LOGGER.debug("Get links request received");
-        CommandMessage request = new CommandMessage(new GetLinksRequest(), System.currentTimeMillis(), correlationId);
+       CommandMessage request = new CommandMessage(new GetLinksRequest(), System.currentTimeMillis(), correlationId);
         messageProducer.send(nbworkerTopic, request);
         List<IslInfoData> links = linksCollector.getResult(correlationId);
 
@@ -128,7 +126,7 @@ public class LinkServiceImpl implements LinkService {
         String fullUri = builder.build().toUriString();
 
         ResponseEntity<LinkPropsDto[]> response = restTemplate.exchange(fullUri,
-                HttpMethod.GET, new HttpEntity<>(headers), LinkPropsDto[].class);
+                HttpMethod.GET, new HttpEntity<>(buildHttpHeaders()), LinkPropsDto[].class);
         LinkPropsDto[] linkProps = response.getBody();
         LOGGER.debug("Returned {} links (with properties)", linkProps.length);
         return Arrays.asList(linkProps);
@@ -147,11 +145,18 @@ public class LinkServiceImpl implements LinkService {
     protected LinkPropsResult doLinkProps(HttpMethod verb, List<LinkPropsDto> linkPropsList) {
         LOGGER.debug("{} link properties request received", verb);
         LOGGER.debug("Size of list: {}", linkPropsList.size());
-        HttpEntity<List<LinkPropsDto>> entity = new HttpEntity<>(linkPropsList,headers);
+        HttpEntity<List<LinkPropsDto>> entity = new HttpEntity<>(linkPropsList, buildHttpHeaders());
         ResponseEntity<LinkPropsResult> response = restTemplate.exchange(linkPropsUrlBase,
                 verb, entity, LinkPropsResult.class);
         LinkPropsResult result = response.getBody();
         LOGGER.debug("Returned: ", result);
         return result;
+    }
+
+    private HttpHeaders buildHttpHeaders() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.AUTHORIZATION, authHeaderValue);
+        headers.add(CORRELATION_ID, RequestCorrelationId.getId());
+        return headers;
     }
 }

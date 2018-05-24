@@ -7,7 +7,7 @@ import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Tuple;
 import org.openkilda.wfm.IKildaBolt;
 import org.openkilda.wfm.protocol.KafkaMessage;
-import org.openkilda.wfm.StreamNameCollisionException;
+import org.openkilda.wfm.error.StreamNameCollisionException;
 
 import java.util.HashMap;
 import java.util.Map;

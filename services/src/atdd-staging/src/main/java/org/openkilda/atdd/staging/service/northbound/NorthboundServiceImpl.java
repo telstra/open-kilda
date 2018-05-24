@@ -20,6 +20,8 @@ import org.openkilda.messaging.model.HealthCheck;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.northbound.dto.flows.FlowValidationDto;
+import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -95,6 +97,15 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
+    public List<FlowPayload> deleteAllFlows() {
+        HttpHeaders httpHeaders = buildHeadersWithCorrelationId();
+        httpHeaders.set(Utils.EXTRA_AUTH, String.valueOf(System.currentTimeMillis()));
+        FlowPayload[] deletedFlows = restTemplate.exchange("/api/v1/flows", HttpMethod.DELETE,
+                new HttpEntity(httpHeaders), FlowPayload[].class).getBody();
+        return Arrays.asList(deletedFlows);
+    }
+
+    @Override
     public FlowPathPayload getFlowPath(String flowId) {
         return restTemplate.exchange("/api/v1/flows/path/{flow_id}", HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), FlowPathPayload.class, flowId).getBody();
@@ -122,9 +133,32 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
+    public List<Long> deleteSwitchRules(String switchId) {
+        HttpHeaders httpHeaders = buildHeadersWithCorrelationId();
+        httpHeaders.set(Utils.EXTRA_AUTH, String.valueOf(System.currentTimeMillis()));
+
+        Long[] deletedRules = restTemplate.exchange("/api/v1/switches/{switch_id}/rules?delete-action=IGNORE_DEFAULTS", HttpMethod.DELETE,
+                new HttpEntity(httpHeaders), Long[].class, switchId).getBody();
+        return Arrays.asList(deletedRules);
+    }
+
+    @Override
     public RulesSyncResult synchronizeSwitchRules(String switchId) {
         return restTemplate.exchange("/api/v1/switches/{switch_id}/rules/synchronize", HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), RulesSyncResult.class, switchId).getBody();
+    }
+
+    @Override
+    public List<FlowValidationDto> validateFlow(String flowId) {
+        FlowValidationDto[] flowValidations = restTemplate.exchange("/api/v1/flows/{flow_id}/validate", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), FlowValidationDto[].class, flowId).getBody();
+        return Arrays.asList(flowValidations);
+    }
+
+    @Override
+    public RulesValidationResult validateSwitchRules(String switchId) {
+        return restTemplate.exchange("/api/v1/switches/{switch_id}/rules/validate", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), RulesValidationResult.class, switchId).getBody();
     }
 
     private HttpHeaders buildHeadersWithCorrelationId() {

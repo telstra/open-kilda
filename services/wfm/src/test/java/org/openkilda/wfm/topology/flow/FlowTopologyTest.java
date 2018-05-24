@@ -1069,6 +1069,7 @@ public class FlowTopologyTest extends AbstractStormTest {
 
         createFlow(flowId);
 
+        cacheConsumer.pollMessage();
         cacheConsumer.clear();
 
         FlowCacheSyncRequest commandData = new FlowCacheSyncRequest(SynchronizeCacheAction.SYNCHRONIZE_CACHE);
@@ -1098,6 +1099,7 @@ public class FlowTopologyTest extends AbstractStormTest {
 
         createFlow(flowId);
 
+        cacheConsumer.pollMessage();
         cacheConsumer.clear();
 
         FlowCacheSyncRequest commandData = new FlowCacheSyncRequest(SynchronizeCacheAction.INVALIDATE_CACHE);

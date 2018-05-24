@@ -1,4 +1,4 @@
-package org.openkilda.wfm;
+package org.openkilda.wfm.error;
 
 import org.apache.storm.tuple.Tuple;
 

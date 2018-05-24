@@ -17,6 +17,7 @@ package org.openkilda.northbound.utils;
 
 import static java.lang.String.format;
 import static org.openkilda.messaging.Utils.CORRELATION_ID;
+import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageError;
@@ -29,6 +30,8 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
+
+import java.util.Optional;
 
 /**
  * Common exception handler for controllers.
@@ -81,7 +84,8 @@ public class NorthboundExceptionHandler extends ResponseEntityExceptionHandler {
     @Override
     protected ResponseEntity<Object> handleExceptionInternal(Exception exception, Object body, HttpHeaders headers,
                                                              HttpStatus status, WebRequest request) {
-        MessageError error = new MessageError(request.getHeader(CORRELATION_ID), System.currentTimeMillis(),
+        String correlationId = Optional.ofNullable(request.getHeader(CORRELATION_ID)).orElse(DEFAULT_CORRELATION_ID);
+        MessageError error = new MessageError(correlationId, System.currentTimeMillis(),
                 ErrorType.REQUEST_INVALID.toString(), exception.getMessage(), exception.getClass().getSimpleName());
 
         logger.error(format("Unknown error %s caught.", error), exception);

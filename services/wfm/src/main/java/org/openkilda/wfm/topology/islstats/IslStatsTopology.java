@@ -16,7 +16,7 @@
 package org.openkilda.wfm.topology.islstats;
 
 import org.apache.storm.kafka.bolt.KafkaBolt;
-import org.openkilda.wfm.ConfigurationException;
+import org.openkilda.wfm.error.ConfigurationException;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.topology.islstats.bolts.IslStatsBolt;

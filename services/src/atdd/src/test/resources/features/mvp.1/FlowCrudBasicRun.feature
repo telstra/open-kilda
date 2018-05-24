@@ -211,3 +211,33 @@ Feature: Basic Flow CRUD
       | vs2swap1 | de:ad:be:ef:00:00:00:03 |      1      |     100     | de:ad:be:ef:00:00:00:04 |         2        |       200        |   10000   |
       | vs2swap2 | de:ad:be:ef:00:00:00:03 |      1      |     200     | de:ad:be:ef:00:00:00:04 |         2        |       100        |   10000   |
       | vs2swap3 | de:ad:be:ef:00:00:00:03 |      1      |     200     | de:ad:be:ef:00:00:00:04 |         2        |       200        |   10000   |
+
+  @MVP1 @CRUD_CREATE
+  Scenario Outline: Flow Creation - unmetered flows with transit vlans and intermediate switches
+
+  This scenario setups unmetered flows across the entire set of switches and checks that these flows were stored in database
+
+    Given a clean controller
+    And a nonrandom linear topology of 7 switches
+    And topology contains 12 links
+    And a clean flow topology
+    When flow <flow_id> creation request with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is successful
+    Then flow <flow_id> with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> could be created
+    And flow <flow_id> in UP state
+    And validation of flow <flow_id> is successful with no discrepancies
+    And rules with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> are installed
+    # TEST the READ
+    And flow <flow_id> with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> could be read
+    # TEST the CONNECTION
+    And traffic through <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is pingable
+    # TEST the DELETE
+    Then flow <flow_id> with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> could be deleted
+    And rules with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> are deleted
+    And traffic through <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is not pingable
+
+    Examples:
+      | flow_id |      source_switch      | source_port | source_vlan |   destination_switch    | destination_port | destination_vlan | bandwidth |
+      | uf3none | de:ad:be:ef:00:00:00:03 |      1      |      0      | de:ad:be:ef:00:00:00:05 |         2        |        0         |     0     |
+      | uf3push | de:ad:be:ef:00:00:00:03 |      1      |      0      | de:ad:be:ef:00:00:00:05 |         2        |       100        |     0     |
+      | uf3pop  | de:ad:be:ef:00:00:00:03 |      1      |     100     | de:ad:be:ef:00:00:00:05 |         2        |        0         |     0     |
+      | uf3swap | de:ad:be:ef:00:00:00:03 |      1      |     100     | de:ad:be:ef:00:00:00:05 |         2        |       200        |     0     |

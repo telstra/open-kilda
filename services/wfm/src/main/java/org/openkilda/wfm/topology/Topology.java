@@ -16,7 +16,7 @@
 package org.openkilda.wfm.topology;
 
 import org.apache.storm.generated.StormTopology;
-import org.openkilda.wfm.NameCollisionException;
+import org.openkilda.wfm.error.NameCollisionException;
 
 /**
  * Represents topology interface.
