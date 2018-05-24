@@ -50,13 +50,12 @@ import javax.annotation.PostConstruct;
 @Service
 public class LinkServiceImpl implements LinkService {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(LinkServiceImpl.class);
+
     //todo: refactor to use interceptor or custom rest template
     private static final String auth = "kilda:kilda";
     private static final String authHeaderValue = "Basic " + getEncoder().encodeToString(auth.getBytes());
 
-    private final Logger LOGGER = LoggerFactory.getLogger(LinkServiceImpl.class);
-
-    private String linksUrl;
     /** The URL to hit the Links Properties table .. ie :link_props in Neo4J */
     private String linkPropsUrlBase;
     private UriComponentsBuilder linkPropsBuilder;
@@ -71,7 +70,7 @@ public class LinkServiceImpl implements LinkService {
     private RestTemplate restTemplate;
 
     /**
-     * The kafka topic for the nb topology
+     * The kafka topic for the nb topology.
      */
     @Value("${kafka.nbworker.topic}")
     private String nbworkerTopic;
@@ -87,8 +86,6 @@ public class LinkServiceImpl implements LinkService {
 
     @PostConstruct
     void init() {
-        linksUrl = UriComponentsBuilder.fromHttpUrl(topologyEngineRest)
-                .pathSegment("api", "v1", "topology", "links").build().toUriString();
         linkPropsBuilder = UriComponentsBuilder.fromHttpUrl(topologyEngineRest)
                 .pathSegment("api", "v1", "topology", "link", "props");
         linkPropsUrlBase = UriComponentsBuilder.fromHttpUrl(topologyEngineRest)
@@ -99,7 +96,7 @@ public class LinkServiceImpl implements LinkService {
     public List<LinksDto> getLinks() {
         final String correlationId = RequestCorrelationId.getId();
         LOGGER.debug("Get links request received");
-       CommandMessage request = new CommandMessage(new GetLinksRequest(), System.currentTimeMillis(), correlationId);
+        CommandMessage request = new CommandMessage(new GetLinksRequest(), System.currentTimeMillis(), correlationId);
         messageProducer.send(nbworkerTopic, request);
         List<IslInfoData> links = linksCollector.getResult(correlationId);
 
@@ -113,15 +110,19 @@ public class LinkServiceImpl implements LinkService {
         LOGGER.debug("Get link properties request received");
         UriComponentsBuilder builder = linkPropsBuilder.cloneBuilder();
         // TODO: pull out the URI builder .. to facilitate unit testing
-        if (keys != null){
-            if (!keys.getSrc_switch().isEmpty())
+        if (keys != null) {
+            if (!keys.getSrc_switch().isEmpty()) {
                 builder.queryParam("src_switch", keys.getSrc_switch());
-            if (!keys.getSrc_port().isEmpty())
+            }
+            if (!keys.getSrc_port().isEmpty()) {
                 builder.queryParam("src_port", keys.getSrc_port());
-            if (!keys.getDst_switch().isEmpty())
+            }
+            if (!keys.getDst_switch().isEmpty()) {
                 builder.queryParam("dst_switch", keys.getDst_switch());
-            if (!keys.getDst_port().isEmpty())
+            }
+            if (!keys.getDst_port().isEmpty()) {
                 builder.queryParam("dst_port", keys.getDst_port());
+            }
         }
         String fullUri = builder.build().toUriString();
 

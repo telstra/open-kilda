@@ -19,16 +19,14 @@ import static org.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.openkilda.messaging.Utils.PAYLOAD;
 import static org.openkilda.messaging.Utils.TIMESTAMP;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Getter;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Getter;
+
 @Getter
 public class ChunkedInfoMessage extends InfoMessage {
-
-    @JsonProperty("total_items")
-    private int totalItems;
 
     @JsonProperty("next_request_id")
     private String nextRequestId;
@@ -36,10 +34,8 @@ public class ChunkedInfoMessage extends InfoMessage {
     public ChunkedInfoMessage(@JsonProperty(PAYLOAD) final InfoData data,
                               @JsonProperty(TIMESTAMP) final long timestamp,
                               @JsonProperty(CORRELATION_ID) final String correlationId,
-                              @JsonProperty("total_items") int totalItems,
                               @JsonProperty("next_request_id") String nextRequestId) {
         super(data, timestamp, correlationId);
-        this.totalItems = totalItems;
         this.nextRequestId = nextRequestId;
     }
 }

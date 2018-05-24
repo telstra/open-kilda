@@ -116,10 +116,6 @@ public class CacheBolt
      */
     private InMemoryKeyValueState<String, Cache> state;
 
-    /**
-     * Path computer for getting all flows.
-     */
-    private PathComputer pathComputer;
     private final Auth pathComputerAuth;
 
     /**
@@ -157,8 +153,10 @@ public class CacheBolt
         reroutedFlows.clear();
 
         logger.info("Request initial network state");
-        initFlowCache();
-        initNetwork();
+
+        final PathComputer pathComputer = new NeoDriver(pathComputerAuth.getDriver());
+        initFlowCache(pathComputer);
+        initNetwork(pathComputer);
     }
 
     /**
@@ -168,7 +166,6 @@ public class CacheBolt
     public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
         this.context = topologyContext;
         this.outputCollector = outputCollector;
-        pathComputer = new NeoDriver(pathComputerAuth.getDriver());
     }
 
     /**
@@ -591,7 +588,7 @@ public class CacheBolt
         }
     }
 
-    private void initNetwork() {
+    private void initNetwork(PathComputer pathComputer) {
         logger.info("Network Cache: Initializing");
         Set<SwitchInfoData> switches = new HashSet<>(pathComputer.getSwitches());
         Set<IslInfoData> links = new HashSet<>(pathComputer.getIsls());
@@ -618,7 +615,7 @@ public class CacheBolt
         logger.info("Network Cache: Initialized");
     }
 
-    private void initFlowCache() {
+    private void initFlowCache(PathComputer pathComputer) {
         logger.info("Flow Cache: Initializing");
         PathComputerFlowFetcher flowFetcher = new PathComputerFlowFetcher(pathComputer);
 

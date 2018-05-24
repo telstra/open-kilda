@@ -15,10 +15,15 @@
 
 package org.openkilda.messaging.nbtopology.request;
 
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.nbtopology.annotations.ReadRequest;
 
-@JsonSerialize
-public class BaseRequest extends CommandData {
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
+public abstract class BaseRequest extends CommandData {
+
+    public boolean isReadRequest() {
+        return this instanceof ReadRequest;
+    }
 }

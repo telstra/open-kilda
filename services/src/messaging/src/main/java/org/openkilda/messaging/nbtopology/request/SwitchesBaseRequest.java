@@ -13,10 +13,8 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.nbworker;
+package org.openkilda.messaging.nbtopology.request;
 
-public enum StreamType {
-    SWITCH,
-    ISL,
-    FLOW
+public abstract class SwitchesBaseRequest extends BaseRequest {
+
 }

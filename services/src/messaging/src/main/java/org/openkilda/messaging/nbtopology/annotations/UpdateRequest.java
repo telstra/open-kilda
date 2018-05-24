@@ -13,10 +13,11 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.nbworker;
+package org.openkilda.messaging.nbtopology.annotations;
 
-public enum StreamType {
-    SWITCH,
-    ISL,
-    FLOW
+/**
+ * Requests marked with annotation will update records in DB.
+ */
+public @interface UpdateRequest {
+
 }

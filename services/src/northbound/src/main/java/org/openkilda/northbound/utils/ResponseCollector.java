@@ -18,6 +18,8 @@ package org.openkilda.northbound.utils;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.nbtopology.response.ChunkedInfoMessage;
 import org.openkilda.northbound.messaging.MessageConsumer;
+
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -33,22 +35,26 @@ public class ResponseCollector<T extends InfoData> {
     public ResponseCollector() {
     }
 
+    /**
+     * Receives chunked responses. This method expects to get messages one by one,
+     * associated one with the following by nextRequestId.
+     * If nextRequestId is null it means this message is the last one in the list.
+     * @param requestId correlationId of the requst.
+     * @return List of messages.
+     */
     public List<T> getResult(String requestId) {
-        List<T> result = null;
+        List<T> result = new ArrayList<>();
         ChunkedInfoMessage message;
         String nextRequest = requestId;
         do {
             message = messageConsumer.poll(nextRequest);
             nextRequest = message.getNextRequestId();
-            if (result == null) {
-                result = new ArrayList<>(message.getTotalItems());
-            }
 
             T response = (T) message.getData();
             if (response != null) {
                 result.add(response);
             }
-        } while (result.size() < message.getTotalItems());
+        } while (StringUtils.isNoneBlank(message.getNextRequestId()));
 
         return result;
     }

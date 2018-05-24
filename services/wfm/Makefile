@@ -80,7 +80,7 @@ kill-portstate:
 
 deploy-nbworker:
 	storm jar target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar \
-		org.openkilda.wfm.topology.nbworker.NBWorkerTopology \
+		org.openkilda.wfm.topology.nbworker.NbWorkerTopology \
 		--name=nbworker ${config}
 
 kill-nbworker:

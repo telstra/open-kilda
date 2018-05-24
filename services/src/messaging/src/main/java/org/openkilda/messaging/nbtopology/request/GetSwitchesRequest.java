@@ -15,6 +15,9 @@
 
 package org.openkilda.messaging.nbtopology.request;
 
-public class GetSwitchesRequest extends ReadDataRequest {
+import org.openkilda.messaging.nbtopology.annotations.ReadRequest;
+
+@ReadRequest
+public class GetSwitchesRequest extends SwitchesBaseRequest {
 
 }

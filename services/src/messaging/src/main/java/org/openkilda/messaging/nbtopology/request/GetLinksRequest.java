@@ -15,6 +15,9 @@
 
 package org.openkilda.messaging.nbtopology.request;
 
-public class GetLinksRequest extends ReadDataRequest {
+import org.openkilda.messaging.nbtopology.annotations.ReadRequest;
+
+@ReadRequest
+public class GetLinksRequest extends LinksBaseRequest {
 
 }

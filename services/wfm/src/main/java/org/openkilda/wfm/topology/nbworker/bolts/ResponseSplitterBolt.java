@@ -15,59 +15,44 @@
 
 package org.openkilda.wfm.topology.nbworker.bolts;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import org.apache.storm.task.OutputCollector;
-import org.apache.storm.task.TopologyContext;
-import org.apache.storm.topology.OutputFieldsDeclarer;
-import org.apache.storm.topology.base.BaseRichBolt;
-import org.apache.storm.tuple.Tuple;
-import org.apache.storm.tuple.Values;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.nbtopology.response.ChunkedInfoMessage;
+import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.topology.AbstractTopology;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.storm.topology.OutputFieldsDeclarer;
+import org.apache.storm.tuple.Tuple;
+import org.apache.storm.tuple.Values;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
-public class ResponseSplitterBolt extends BaseRichBolt {
+public class ResponseSplitterBolt extends AbstractBolt {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ResponseSplitterBolt.class);
 
-    private OutputCollector collector;
-
     @Override
-    public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
-        this.collector = collector;
-    }
+    protected void handleInput(Tuple input) {
+        List<InfoData> responses = (List<InfoData>) input.getValueByField("response");
+        String correlationId = input.getStringByField("correlationId");
+        LOGGER.debug("Received response correlationId {}", correlationId);
 
-    @Override
-    public void execute(Tuple input) {
-        try {
-            List<InfoData> responses = (List<InfoData>) input.getValue(0);
-            String correlationId = input.getString(1);
-            LOGGER.debug("Received response correlationId {}", correlationId);
-
-            sendChunkedResponse(responses, input, correlationId);
-        } catch (Exception e) {
-            LOGGER.error("Unexpected error during response processing", e);
-        } finally {
-            collector.ack(input);
-        }
+        sendChunkedResponse(responses, input, correlationId);
     }
 
     private void sendChunkedResponse(List<InfoData> responses, Tuple input, String requestId) {
         List<Message> messages = new ArrayList<>();
-        if (responses.isEmpty()) {
-            LOGGER.debug("No records found. CorrelationId: {}", requestId);
-            Message message = new ChunkedInfoMessage(null, System.currentTimeMillis(), requestId,
-                    responses.size(), null);
+        if (CollectionUtils.isEmpty(responses)) {
+            LOGGER.debug("No records found in the database");
+            Message message = new ChunkedInfoMessage(null, System.currentTimeMillis(), requestId, null);
             messages.add(message);
         } else {
             String currentRequestId = requestId;
@@ -83,19 +68,18 @@ public class ResponseSplitterBolt extends BaseRichBolt {
                 }
 
                 Message message = new ChunkedInfoMessage(infoData, System.currentTimeMillis(), currentRequestId,
-                        responses.size(), nextRequestId);
+                        nextRequestId);
                 messages.add(message);
-
                 currentRequestId = nextRequestId;
             }
 
-            LOGGER.debug("Response chunked into {} items. CorrelationId", messages.size(), requestId);
+            LOGGER.debug("Response is divided into {} messages", messages.size());
         }
 
         // emit all found messages
         for (Message message : messages) {
             try {
-                collector.emit(input, new Values(Utils.MAPPER.writeValueAsString(message)));
+                getOutput().emit(input, new Values(Utils.MAPPER.writeValueAsString(message)));
             } catch (JsonProcessingException e) {
                 LOGGER.error("Error during writing response as json", e);
             }

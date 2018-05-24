@@ -15,6 +15,6 @@
 
 package org.openkilda.messaging.nbtopology.request;
 
-public class ReadDataRequest extends BaseRequest {
+public abstract class LinksBaseRequest extends BaseRequest {
 
 }

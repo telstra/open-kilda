@@ -15,74 +15,73 @@
 
 package org.openkilda.wfm.topology.nbworker.bolts;
 
-import com.google.common.collect.Lists;
-import org.apache.storm.task.OutputCollector;
-import org.apache.storm.task.TopologyContext;
-import org.apache.storm.topology.OutputFieldsDeclarer;
-import org.apache.storm.topology.base.BaseRichBolt;
-import org.apache.storm.tuple.Fields;
-import org.apache.storm.tuple.Tuple;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
-import org.openkilda.messaging.nbtopology.request.ReadDataRequest;
+import org.openkilda.messaging.nbtopology.request.FlowsBaseRequest;
+import org.openkilda.messaging.nbtopology.request.LinksBaseRequest;
+import org.openkilda.messaging.nbtopology.request.SwitchesBaseRequest;
+import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.topology.nbworker.StreamType;
+
+import org.apache.storm.topology.OutputFieldsDeclarer;
+import org.apache.storm.tuple.Fields;
+import org.apache.storm.tuple.Tuple;
+import org.apache.storm.tuple.Values;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Map;
+import java.io.IOException;
 
-public class RouterBolt extends BaseRichBolt {
+public class RouterBolt extends AbstractBolt {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RouterBolt.class);
 
-    private OutputCollector outputCollector;
-
     @Override
-    public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
-        this.outputCollector = collector;
-    }
-
-    @Override
-    public void execute(Tuple input) {
+    protected void handleInput(Tuple input) {
         String request = input.getString(0);
 
+        Message message;
         try {
-            Message message = Utils.MAPPER.readValue(request, Message.class);
-            if (message instanceof CommandMessage) {
-                LOGGER.debug("Received command message {}", message);
-                CommandMessage command = (CommandMessage) message;
-                CommandData data = command.getData();
+            message = Utils.MAPPER.readValue(request, Message.class);
+        } catch (IOException e) {
+            LOGGER.error("Error during parsing request for NBWorker topology", e);
+            return;
+        }
 
-                if (data instanceof BaseRequest) {
-                    LOGGER.debug("Processing request with correlationId {}", message.getCorrelationId());
+        if (message instanceof CommandMessage) {
+            LOGGER.debug("Received command message {}", message);
+            CommandMessage command = (CommandMessage) message;
+            CommandData data = command.getData();
 
-                    BaseRequest baseRequest = (BaseRequest) data;
-                    processRequest(baseRequest, message.getCorrelationId());
-                }
-            } else {
-                LOGGER.debug("Received unexpected message with correlationId: {}", message.getCorrelationId());
+            if (data instanceof BaseRequest) {
+                BaseRequest baseRequest = (BaseRequest) data;
+                processRequest(input, baseRequest, message.getCorrelationId());
             }
-
-        } catch (Exception e) {
-            LOGGER.error("Error during processing request", e);
-        } finally {
-            outputCollector.ack(input);
+        } else {
+            unhandledInput(input);
         }
     }
 
-    private void processRequest(BaseRequest request, String correlationId) {
-        if (request instanceof ReadDataRequest) {
-            outputCollector.emit(StreamType.READ.toString(), Lists.newArrayList(request, correlationId));
+    private void processRequest(Tuple input, BaseRequest request, String correlationId) {
+        if (request instanceof SwitchesBaseRequest) {
+            getOutput().emit(StreamType.SWITCH.toString(), input, new Values(request, correlationId));
+        } else if (request instanceof LinksBaseRequest) {
+            getOutput().emit(StreamType.ISL.toString(), input, new Values(request, correlationId));
+        } else if (request instanceof FlowsBaseRequest) {
+            getOutput().emit(StreamType.FLOW.toString(), input, new Values(request, correlationId));
         } else {
-            LOGGER.warn("Received unsupported request type. CorrelationId: {}", correlationId);
+            unhandledInput(input);
         }
     }
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declareStream(StreamType.READ.toString(), new Fields("request", "correlationId"));
+        declarer.declareStream(StreamType.SWITCH.toString(), new Fields("request", "correlationId"));
+        declarer.declareStream(StreamType.ISL.toString(), new Fields("request", "correlationId"));
+        declarer.declareStream(StreamType.FLOW.toString(), new Fields("request", "correlationId"));
     }
 }

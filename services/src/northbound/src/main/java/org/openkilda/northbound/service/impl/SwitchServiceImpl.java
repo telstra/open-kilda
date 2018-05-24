@@ -16,17 +16,15 @@
 package org.openkilda.northbound.service.impl;
 
 import static java.lang.String.format;
-import static java.util.Base64.getEncoder;
 import static java.util.Collections.emptyList;
-import static org.openkilda.messaging.Utils.CORRELATION_ID;
 
-import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.CommandWithReplyToMessage;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
+import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.command.switches.DumpRulesRequest;
 import org.openkilda.messaging.command.switches.InstallRulesAction;
 import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
@@ -49,33 +47,22 @@ import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.service.SwitchService;
 import org.openkilda.northbound.utils.RequestCorrelationId;
 import org.openkilda.northbound.utils.ResponseCollector;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
-import org.springframework.web.client.RestTemplate;
-import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
-import javax.annotation.PostConstruct;
 
 @Service
 public class SwitchServiceImpl implements SwitchService {
 
-    private final Logger LOGGER = LoggerFactory.getLogger(SwitchServiceImpl.class);
-    //todo: refactor to use interceptor or custom rest template
-    private static final String auth = "kilda:kilda";
-    private static final String authHeaderValue = "Basic " + getEncoder().encodeToString(auth.getBytes());
-
-    private String switchesUrl;
-
-    @Value("${topology.engine.rest.endpoint}")
-    private String topologyEngineRest;
+    private static final Logger LOGGER = LoggerFactory.getLogger(SwitchServiceImpl.class);
 
     @Value("${kafka.topo.eng.topic}")
     private String topoEngTopic;
@@ -92,9 +79,6 @@ public class SwitchServiceImpl implements SwitchService {
     @Autowired
     private SwitchMapper switchMapper;
 
-    @Autowired
-    private RestTemplate restTemplate;
-
     @Value("${kafka.speaker.topic}")
     private String floodlightTopic;
 
@@ -103,15 +87,6 @@ public class SwitchServiceImpl implements SwitchService {
 
     @Value("${kafka.nbworker.topic}")
     private String nbworkerTopic;
-
-    @PostConstruct
-    void init() {
-        switchesUrl = UriComponentsBuilder
-                .fromHttpUrl(topologyEngineRest)
-                .pathSegment("api", "v1", "topology", "switches")
-                .build()
-                .toUriString();
-    }
 
     /**
      * {@inheritDoc}
@@ -268,10 +243,4 @@ public class SwitchServiceImpl implements SwitchService {
         return switchMapper.toRulesSyncResult(validationResult, syncResponse.getInstalledRules());
     }
 
-    private HttpHeaders buildHttpHeaders() {
-        HttpHeaders headers = new HttpHeaders();
-        headers.add(HttpHeaders.AUTHORIZATION, authHeaderValue);
-        headers.add(CORRELATION_ID, RequestCorrelationId.getId());
-        return headers;
-    }
 }
