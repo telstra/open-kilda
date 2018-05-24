@@ -15,10 +15,10 @@
 
 package org.openkilda.wfm;
 
-import com.google.common.io.Files;
 import org.apache.storm.testing.CompleteTopologyParam;
 import org.apache.storm.testing.MkClusterParam;
 import org.kohsuke.args4j.CmdLineException;
+import org.openkilda.wfm.error.ConfigurationException;
 import org.openkilda.wfm.topology.TestKafkaProducer;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;

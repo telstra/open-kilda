@@ -1,10 +1,10 @@
 package org.openkilda.wfm;
 
-import org.codehaus.plexus.util.PropertyUtils;
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.Option;
+import org.openkilda.wfm.error.ConfigurationException;
 import org.openkilda.wfm.topology.Topology;
 
 import java.io.File;
@@ -64,7 +64,12 @@ public class CliArguments {
     }
 
     private void loadExtraConfig() throws ConfigurationException {
-        properties = PropertyUtils.loadProperties(this.getClass().getResource(Topology.TOPOLOGY_PROPERTIES));
+        properties = new Properties();
+        try {
+            properties.load(this.getClass().getResourceAsStream(Topology.TOPOLOGY_PROPERTIES));
+        } catch (IOException e) {
+            throw new ConfigurationException("Unable to load default properties.", e);
+        }
 
         for (File path : extraConfiguration) {
             Properties override = new Properties(properties);

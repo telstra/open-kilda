@@ -20,14 +20,16 @@ import static org.openkilda.messaging.Utils.MAPPER;
 import static org.openkilda.messaging.error.ErrorType.INTERNAL_ERROR;
 import static org.openkilda.messaging.error.ErrorType.OPERATION_TIMED_OUT;
 
-import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Topic;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.northbound.messaging.MessageConsumer;
 
+import org.apache.commons.collections4.map.PassiveExpiringMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
+import org.slf4j.MDC.MDCCloseable;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -38,7 +40,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.PostConstruct;
-import org.apache.commons.collections4.map.PassiveExpiringMap;
 
 /**
  * Kafka message consumer.
@@ -81,12 +82,19 @@ public class KafkaMessageConsumer implements MessageConsumer<Message> {
      */
     @KafkaListener(id = "northbound-listener", topics = Topic.NORTHBOUND)
     public void receive(final String record) {
+        Message message;
+
         try {
-            logger.debug("message received: {}", record);
-            Message message = MAPPER.readValue(record, Message.class);
-            messages.put(message.getCorrelationId(), message);
+            logger.trace("message received: {}", record);
+            message = MAPPER.readValue(record, Message.class);
         } catch (IOException exception) {
             logger.error("Could not deserialize message: {}", record, exception);
+            return;
+        }
+
+        try (MDCCloseable closable = MDC.putCloseable(CORRELATION_ID, message.getCorrelationId())) {
+            logger.debug("message received: {}", message);
+            messages.put(message.getCorrelationId(), message);
         }
     }
 
@@ -113,7 +121,7 @@ public class KafkaMessageConsumer implements MessageConsumer<Message> {
     }
 
     //todo(Nikita C): rewrite current poll method using async way.
-/*
+    /*
     @Async
     public CompletableFuture<Message> asyncPoll(final String correlationId) {
         try {
@@ -134,7 +142,7 @@ public class KafkaMessageConsumer implements MessageConsumer<Message> {
         throw new MessageException(correlationId, System.currentTimeMillis(),
                 OPERATION_TIMED_OUT, TIMEOUT_ERROR_MESSAGE, Topic.NORTHBOUND);
     }
-*/
+    */
 
     /**
      * {@inheritDoc}

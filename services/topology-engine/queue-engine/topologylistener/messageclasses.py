@@ -151,7 +151,7 @@ class MessageItem(object):
             elif self.get_message_type() == MT_ISL:
                 if self.payload['state'] == "DISCOVERED":
                     event_handled = self.create_isl()
-                elif self.payload['state'] == "FAILED":
+                elif self.payload['state'] in ("FAILED", "MOVED"):
                     event_handled = self.isl_discovery_failed()
 
             elif self.get_message_type() == MT_PORT:
@@ -267,9 +267,11 @@ class MessageItem(object):
         logger.info('Isl failure: %s_%d -- apply policy %s: timestamp=%s',
                     switch_id, port, effective_policy, self.timestamp)
 
+        is_moved = self.payload['state'] == 'MOVED'
         try:
             with graph.begin() as tx:
-                isl_utils.disable_by_endpoint(tx, model.NetworkEndpoint(switch_id, port))
+                isl_utils.disable_by_endpoint(
+                    tx, model.NetworkEndpoint(switch_id, port), is_moved)
         except exc.DBRecordNotFound:
             logger.error('There is no ISL on %s_%s', switch_id, port)
 
@@ -314,83 +316,75 @@ class MessageItem(object):
         speed = int(self.payload['speed'])
         available_bandwidth = int(self.payload['available_bandwidth'])
 
-        try:
-            logger.info('ISL %s_%d create or update request: timestamp=%s',
-                        a_switch, a_port, self.timestamp)
+        isl = model.InterSwitchLink.new_from_isl_data(self.payload)
+        isl.ensure_path_complete()
 
-            with graph.begin() as tx:
-                isl = model.InterSwitchLink.new_from_isl_data(self.payload)
-                isl.ensure_path_complete()
-
-                flow_utils.precreate_switches(
-                        tx, isl.source.dpid, isl.dest.dpid)
-                isl_utils.create_if_missing(tx, isl)
-
-                #
-                # Given that we know the the src and dst exist, the following query will either
-                # create the relationship if it doesn't exist, or update it if it does
-                #
-                isl_create_or_update = (
-                    "MERGE "
-                    "(src:switch {{name:'{}'}}) "
-                    "ON CREATE SET src.state = 'inactive' "
-                    "MERGE "
-                    "(dst:switch {{name:'{}'}}) "
-                    "ON CREATE SET dst.state = 'inactive' "
-                    "MERGE "
-                    "(src)-[i:isl {{"
-                    "src_switch: '{}', src_port: {}, "
-                    "dst_switch: '{}', dst_port: {} "
-                    "}}]->(dst) "
-                    "SET "
-                    "i.latency = {}, "
-                    "i.speed = {}, "
-                    "i.max_bandwidth = {}, "
-                    "i.actual = 'active', "
-                    "i.status = 'inactive'"
-                ).format(
-                    a_switch,
-                    b_switch,
-                    a_switch, a_port,
-                    b_switch, b_port,
-                    latency,
-                    speed,
-                    available_bandwidth
-                )
-                tx.run(isl_create_or_update)
-
-                isl_utils.update_status(tx, isl)
-                isl_utils.resolve_conflicts(tx, isl)
+        logger.info('ISL %s create request', isl)
+        with graph.begin() as tx:
+            flow_utils.precreate_switches(
+                tx, isl.source.dpid, isl.dest.dpid)
+            isl_utils.create_if_missing(tx, isl)
 
             #
-            # Now handle the second part .. pull properties from link_props if they exist
+            # Given that we know the the src and dst exist, the following query will either
+            # create the relationship if it doesn't exist, or update it if it does
             #
+            isl_create_or_update = (
+                "MERGE "
+                "(src:switch {{name:'{}'}}) "
+                "ON CREATE SET src.state = 'inactive' "
+                "MERGE "
+                "(dst:switch {{name:'{}'}}) "
+                "ON CREATE SET dst.state = 'inactive' "
+                "MERGE "
+                "(src)-[i:isl {{"
+                "src_switch: '{}', src_port: {}, "
+                "dst_switch: '{}', dst_port: {} "
+                "}}]->(dst) "
+                "SET "
+                "i.latency = {}, "
+                "i.speed = {}, "
+                "i.max_bandwidth = {}, "
+                "i.actual = 'active', "
+                "i.status = 'inactive'"
+            ).format(
+                a_switch,
+                b_switch,
+                a_switch, a_port,
+                b_switch, b_port,
+                latency,
+                speed,
+                available_bandwidth
+            )
+            tx.run(isl_create_or_update)
 
-            src_sw, src_pt, dst_sw, dst_pt = a_switch, a_port, b_switch, b_port # use same names as TER code
-            query = 'MATCH (src:switch)-[i:isl]->(dst:switch) '
-            query += ' WHERE i.src_switch = "%s" ' \
-                     ' AND i.src_port = %s ' \
-                     ' AND i.dst_switch = "%s" ' \
-                     ' AND i.dst_port = %s ' % (src_sw, src_pt, dst_sw, dst_pt)
-            query += ' MATCH (lp:link_props) '
-            query += ' WHERE lp.src_switch = "%s" ' \
-                     ' AND lp.src_port = %s ' \
-                     ' AND lp.dst_switch = "%s" ' \
-                     ' AND lp.dst_port = %s ' % (src_sw, src_pt, dst_sw, dst_pt)
-            query += ' SET i += lp '
-            graph.run(query)
+            isl_utils.update_status(tx, isl)
+            isl_utils.resolve_conflicts(tx, isl)
 
-            #
-            # Finally, update the available_bandwidth..
-            #
-            flow_utils.update_isl_bandwidth(src_sw, src_pt, dst_sw, dst_pt)
+        #
+        # Now handle the second part .. pull properties from link_props if they exist
+        #
 
-            logger.info('ISL between %s and %s updated', a_switch, b_switch)
+        src_sw, src_pt, dst_sw, dst_pt = a_switch, a_port, b_switch, b_port  # use same names as TER code
+        query = 'MATCH (src:switch)-[i:isl]->(dst:switch) '
+        query += ' WHERE i.src_switch = "%s" ' \
+                 ' AND i.src_port = %s ' \
+                 ' AND i.dst_switch = "%s" ' \
+                 ' AND i.dst_port = %s ' % (src_sw, src_pt, dst_sw, dst_pt)
+        query += ' MATCH (lp:link_props) '
+        query += ' WHERE lp.src_switch = "%s" ' \
+                 ' AND lp.src_port = %s ' \
+                 ' AND lp.dst_switch = "%s" ' \
+                 ' AND lp.dst_port = %s ' % (src_sw, src_pt, dst_sw, dst_pt)
+        query += ' SET i += lp '
+        graph.run(query)
 
-        except Exception as e:
-            logger.exception('ISL between %s and %s creation error: %s',
-                             a_switch, b_switch, e.message)
-            return False
+        #
+        # Finally, update the available_bandwidth..
+        #
+        flow_utils.update_isl_bandwidth(src_sw, src_pt, dst_sw, dst_pt)
+
+        logger.info('ISL %s have been created/updated', isl)
 
         return True
 

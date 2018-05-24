@@ -16,10 +16,6 @@
     <name>Api</name>
     <description>Client messages</description>
 
-    <properties>
-        <lombok.version>1.16.20</lombok.version>
-    </properties>
-
     <dependencies>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>

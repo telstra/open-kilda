@@ -2,8 +2,6 @@ package org.openkilda.wfm.topology.cache.service;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.tuple.MutablePair;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.flow.FlowCreateRequest;
 import org.openkilda.messaging.info.event.IslInfoData;
@@ -15,6 +13,8 @@ import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.pce.cache.FlowCache;
 import org.openkilda.pce.cache.NetworkCache;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 
 public class CacheWarmingService {
 
-    private static final Logger LOGGER = LogManager.getLogger(CacheWarmingService.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(CacheWarmingService.class);
     private final List<MutablePair<Flow, CachedFlowState>> predefinedFlows = new ArrayList<>();
 
     private NetworkCache networkCache;

@@ -24,13 +24,13 @@ import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.MeterConfigReply;
 import org.openkilda.messaging.info.stats.MeterConfigStatsData;
+import org.openkilda.wfm.error.JsonEncodeException;
 import org.openkilda.wfm.topology.stats.StatsComponentType;
 import org.openkilda.wfm.topology.stats.StatsStreamType;
 import org.openkilda.wfm.topology.utils.StatsUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.Map;
 
 public class MeterConfigMetricGenBolt extends MetricGenBolt {
@@ -70,7 +70,7 @@ public class MeterConfigMetricGenBolt extends MetricGenBolt {
                     "meterId", meterId.toString()
             );
             collector.emit(tuple("pen.switch.meters", timestamp, meterId, tags));
-        } catch (IOException e) {
+        } catch (JsonEncodeException e) {
             LOGGER.error("Error during serialization of datapoint", e);
         }
     }
