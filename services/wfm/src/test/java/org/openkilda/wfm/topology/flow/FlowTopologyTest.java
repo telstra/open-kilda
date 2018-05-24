@@ -79,10 +79,9 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 
 public class FlowTopologyTest extends AbstractStormTest {
+
     private static final long COOKIE = 0x1FFFFFFFFL;
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private static TestKafkaConsumer nbConsumer;
@@ -97,7 +96,7 @@ public class FlowTopologyTest extends AbstractStormTest {
     public static void setupOnce() throws Exception {
         AbstractStormTest.setupOnce();
 
-        flowTopology = new FlowTopology(makeLaunchEnvironment(), new PathComputerAuth());
+        flowTopology = new FlowTopology(makeLaunchEnvironment(), new MockedPathComputerAuth());
         topologyConfig = flowTopology.getConfig();
 
         StormTopology stormTopology = flowTopology.createTopology();
@@ -118,7 +117,7 @@ public class FlowTopologyTest extends AbstractStormTest {
                 kafkaProperties(UUID.nameUUIDFromBytes(Destination.TOPOLOGY_ENGINE.toString().getBytes()).toString()));
         cacheConsumer.start();
 
-//        teResponseConsumer = new TestKafkaConsumer(topologyConfig.getKafkaTopoEngTopic(),
+        //teResponseConsumer = new TestKafkaConsumer(topologyConfig.getKafkaTopoEngTopic(),
         teResponseConsumer = new TestKafkaConsumer(topologyConfig.getKafkaFlowTopic(),
                 Destination.WFM,
                 kafkaProperties(UUID.nameUUIDFromBytes(Destination.WFM.toString().getBytes()).toString()));
@@ -141,6 +140,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         cacheConsumer.join();
         teResponseConsumer.wakeup();
         teResponseConsumer.join();
+
         AbstractStormTest.teardownOnce();
     }
 

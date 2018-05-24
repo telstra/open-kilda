@@ -598,18 +598,18 @@
     <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="35" checks="UnusedImports"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="70" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="79" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="93" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="94" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="108" checks="CommentsIndentation"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="147" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="151" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="153" checks="CommentsIndentation"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="90" checks="VariableDeclarationUsageDistance"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="91" checks="VariableDeclarationUsageDistance"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="105" checks="CommentsIndentation"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="144" checks="LineLength"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="148" checks="LineLength"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="150" checks="CommentsIndentation"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="208" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="209" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="212" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="213" checks="CommentsIndentation"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="246" checks="CommentsIndentation"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="251" checks="JavadocMethod"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="205" checks="LineLength"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="211" checks="LineLength"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="212" checks="CommentsIndentation"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="245" checks="CommentsIndentation"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="250" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/islstats/bolts/IslStatsBolt.java" lines="23" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/islstats/bolts/IslStatsBolt.java" lines="24" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/islstats/bolts/IslStatsBolt.java" lines="25" checks="CustomImportOrder"/>
@@ -640,6 +640,7 @@
     <suppress files="src/main/java/org/openkilda/wfm/topology/islstats/IslStatsTopology.java" lines="30" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/islstats/IslStatsTopology.java" lines="39" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/islstats/IslStatsTopology.java" lines="67" checks="JavadocMethod"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/nbworker/NbWorkerTopology.java" lines="103" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/bolts/DatapointParseBolt.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/bolts/DatapointParseBolt.java" lines="5" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/bolts/DatapointParseBolt.java" lines="6" checks="CustomImportOrder"/>
@@ -795,7 +796,8 @@
     <suppress files="src/main/java/org/openkilda/wfm/topology/stats/StatsTopology.java" lines="56" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/Topology.java" lines="19" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/TopologyConfig.java" lines="1" checks="RegexpHeader"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/TopologyConfig.java" lines="49" checks="AbbreviationAsWordInName"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/TopologyConfig.java" lines="48" checks="AbbreviationAsWordInName"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/TopologyConfig.java" lines="50" checks="AbbreviationAsWordInName"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/TopologyConfig.java" lines="68" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/TopologyConfig.java" lines="71" checks="WhitespaceAfter"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/TopologyConfig.java" lines="85" checks="WhitespaceAfter"/>
@@ -1145,9 +1147,9 @@
     <suppress files="src/test/java/org/openkilda/wfm/topology/flow/FlowTopologyTest.java" lines="82" checks="UnusedImports"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/flow/FlowTopologyTest.java" lines="83" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/flow/FlowTopologyTest.java" lines="83" checks="UnusedImports"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/flow/FlowTopologyTest.java" lines="96" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/wfm/topology/flow/FlowTopologyTest.java" lines="95" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/flow/FlowTopologyTest.java" lines="121" checks="CommentsIndentation"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/flow/FlowTopologyTest.java" lines="134" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/wfm/topology/flow/FlowTopologyTest.java" lines="133" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/flow/FlowTopologyTest.java" lines="147" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/flow/FlowTopologyTest.java" lines="155" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/flow/FlowTopologyTest.java" lines="231" checks="WhitespaceAround"/>

@@ -91,7 +91,7 @@ public class StatsTopology extends AbstractTopology {
                 .shuffleGrouping(STATS_KILDA_SPEAKER_SPOUT.name());
 
         // Cache bolt get data from NEO4J on start
-        AuthNeo4j pathComputerAuth = config.getPathComputerAuth();
+        AuthNeo4j pathComputerAuth = config.getNeo4jAuth();
         builder.setBolt(STATS_CACHE_BOLT.name(), new CacheBolt(pathComputerAuth), parallelism)
                 .allGrouping(STATS_CACHE_FILTER_BOLT.name(), CACHE_UPDATE.name())
                 .fieldsGrouping(statsOfsBolt, StatsStreamType.FLOW_STATS.toString(), fieldMessage);

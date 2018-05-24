@@ -910,22 +910,22 @@
     <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="29" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="30" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="45" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="71" checks="HideUtilityClassConstructor"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="84" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="301" checks="JavadocParagraph"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="459" checks="ParameterName"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="459" checks="ParameterName"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="489" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="542" checks="LocalVariableName"/>
+    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="72" checks="HideUtilityClassConstructor"/>
+    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="85" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="302" checks="JavadocParagraph"/>
+    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="460" checks="ParameterName"/>
+    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="460" checks="ParameterName"/>
+    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="490" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="543" checks="LocalVariableName"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="559" checks="CommentsIndentation"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="593" checks="OverloadMethodsDeclarationOrder"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="599" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="605" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="663" checks="LineLength"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="691" checks="LineLength"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="702" checks="AbbreviationAsWordInName"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="750" checks="LineLength"/>
+    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="544" checks="LocalVariableName"/>
+    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="560" checks="CommentsIndentation"/>
+    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="594" checks="OverloadMethodsDeclarationOrder"/>
+    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="601" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="607" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="664" checks="LineLength"/>
+    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="694" checks="LineLength"/>
+    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="705" checks="AbbreviationAsWordInName"/>
+    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="752" checks="LineLength"/>
     <suppress files="src/test/java/org/openkilda/LinksUtils.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/test/java/org/openkilda/LinksUtils.java" lines="12" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/LinksUtils.java" lines="13" checks="CustomImportOrder"/>

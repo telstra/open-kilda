@@ -61,11 +61,13 @@ import org.openkilda.pce.cache.FlowCache;
 import org.openkilda.pce.cache.NetworkCache;
 import org.openkilda.pce.cache.ResourceCache;
 import org.openkilda.pce.provider.Auth;
+import org.openkilda.pce.provider.NeoDriver;
 import org.openkilda.pce.provider.PathComputer;
 import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
 import org.openkilda.wfm.share.utils.PathComputerFlowFetcher;
 import org.openkilda.wfm.topology.AbstractTopology;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -166,7 +168,7 @@ public class CacheBolt
     public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
         this.context = topologyContext;
         this.outputCollector = outputCollector;
-        pathComputer = pathComputerAuth.connect();
+        pathComputer = new NeoDriver(pathComputerAuth.getDriver());
     }
 
     /**
@@ -618,7 +620,7 @@ public class CacheBolt
 
     private void initFlowCache() {
         logger.info("Flow Cache: Initializing");
-        PathComputerFlowFetcher flowFetcher = new PathComputerFlowFetcher(pathComputerAuth.connect());
+        PathComputerFlowFetcher flowFetcher = new PathComputerFlowFetcher(pathComputer);
 
         for (BidirectionalFlow bidirectionalFlow : flowFetcher.getFlows()) {
             ImmutablePair<Flow, Flow> flowPair = new ImmutablePair<>(
