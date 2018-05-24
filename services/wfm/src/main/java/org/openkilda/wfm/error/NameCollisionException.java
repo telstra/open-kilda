@@ -1,6 +1,6 @@
 package org.openkilda.wfm.error;
 
-public class NameCollisionException extends Exception {
+public class NameCollisionException extends AbstractException {
     public NameCollisionException() {
         this("Topology component's ID collision");
     }

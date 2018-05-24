@@ -28,6 +28,7 @@
         <neo4j.java.driver.version>1.5.1</neo4j.java.driver.version>
         <lombok.version>1.16.20</lombok.version>
         <aspectj.version>1.8.13</aspectj.version>
+        <commons.collection.version>4.1</commons.collection.version>
 
         <aspectj-maven-plugin.version>1.11</aspectj-maven-plugin.version>
         <maven-checkstyle-plugin.version>3.0.0</maven-checkstyle-plugin.version>
@@ -142,6 +143,11 @@
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
             <version>3.7</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-collections4</artifactId>
+            <version>${commons.collection.version}</version>
         </dependency>
 
         <dependency>

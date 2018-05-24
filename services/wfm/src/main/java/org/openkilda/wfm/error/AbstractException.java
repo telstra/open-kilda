@@ -15,18 +15,12 @@
 
 package org.openkilda.wfm.error;
 
-import lombok.Getter;
-
-public class JsonEncodeException extends AbstractException {
-    @Getter
-    private final Object subject;
-
-    public JsonEncodeException(Object subject, Throwable throwable) {
-        super(formatMessage(subject, throwable), throwable);
-        this.subject = subject;
+public abstract class AbstractException extends Exception {
+    public AbstractException(String s) {
+        super(s);
     }
 
-    private static String formatMessage(Object subject, Throwable cause) {
-        return String.format("Can't encode %s object into json: %s", subject.getClass().getName(), cause);
+    public AbstractException(String s, Throwable throwable) {
+        super(s, throwable);
     }
 }

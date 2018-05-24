@@ -19,6 +19,7 @@ public class TopologyConfig {
     private Integer discoveryInterval;
     private Integer discoveryTimeout;
     private Integer discoveryLimit;
+    private Integer keepRemovedIslTimeout;
     private final float discoverySpeakerFailureTimeout;
     private final float discoveryDumpRequestTimeout;
     private String filterDirectory;
@@ -46,7 +47,6 @@ public class TopologyConfig {
     private String kafkaTopoCacheTopic;
     private String kafkaTopoNBTopic;
 
-
     private String openTsDBHosts;
     private Integer openTsdbTimeout;
     private boolean openTsdbClientChunkedRequestsEnabled;
@@ -66,10 +66,13 @@ public class TopologyConfig {
 
     private PropertiesReader config;
 
+    /**
+     * Constructs {@link TopologyConfig} from properties file.
+     */
     public TopologyConfig(PropertiesReader config) throws ConfigurationException {
         this.config = config;
         useLocalCluster = config.getBoolean("cli.local");
-        localExecutionTime = (int)(config.getFloat("local.execution.time") * 1000);
+        localExecutionTime = (int) (config.getFloat("local.execution.time") * 1000);
 
         parallelism = config.getInteger("parallelism");
         workers = config.getInteger("workers");
@@ -77,14 +80,15 @@ public class TopologyConfig {
         discoveryTimeout = config.getInteger("discovery.timeout");
         discoveryLimit = config.getInteger("discovery.limit");
         discoverySpeakerFailureTimeout = config.getFloat("discovery.speaker-failure-timeout");
+        keepRemovedIslTimeout = config.getInteger("discovery.keep.removed.isl");
         filterDirectory = config.getString("filter.directory");
         loggerLevel = Level.valueOf(config.getString("logger.level"));
         loggerWatermark = config.getString("logger.watermark");
         discoveryDumpRequestTimeout = config.getFloat("discovery.dump-request-timeout-seconds");
 
         zookeeperHosts = config.getString("zookeeper.hosts");
-        zookeeperSessionTimeout = (int)(config.getFloat("zookeeper.session.timeout") * 1000);
-        zookeeperConnectTimeout = (int)(config.getFloat("zookeeper.connect.timeout") * 1000);
+        zookeeperSessionTimeout = (int) (config.getFloat("zookeeper.session.timeout") * 1000);
+        zookeeperConnectTimeout = (int) (config.getFloat("zookeeper.connect.timeout") * 1000);
         kafkaHosts = config.getString("kafka.hosts");
         kafkaPartitionsDefault = config.getInteger("kafka.partitions.default");
         kafkaReplicationDefault = config.getInteger("kafka.replication.default");
@@ -103,7 +107,7 @@ public class TopologyConfig {
         kafkaTopoNBTopic = config.getString("kafka.topic.topo.nbworker");
 
         openTsDBHosts = config.getString("opentsdb.hosts");
-        openTsdbTimeout = (int)(config.getFloat("opentsdb.timeout") * 1000);
+        openTsdbTimeout = (int) (config.getFloat("opentsdb.timeout") * 1000);
         openTsdbClientChunkedRequestsEnabled = config.getBoolean("opentsdb.client.chunked-requests.enabled");
         openTsdbNumSpouts = config.getInteger("opentsdb.num.spouts");
         openTsdbFilterBoltExecutors = config.getInteger("opentsdb.num.opentsdbfilterbolt");
@@ -123,6 +127,9 @@ public class TopologyConfig {
         return workers;
     }
 
+    /**
+     * Returns amount of workers for specified topology.
+     */
     public Integer getWorkers(String name) {
         int value = workers;
         try {

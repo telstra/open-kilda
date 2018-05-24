@@ -51,11 +51,14 @@ logger.watermark =
 # - discovery.limit = at what point do we stop sending? -1 means never ..
 # - discovery.speaker-failure-timeout - after this amount of seconds without a
 #   message from speaker it will be marked as unavailable
+# - discovery.keep.removed.isl - how long should we store/remember in minutes isl endpoints.
+#   it is mainly used for defining whether isl is moved or not
 discovery.interval = {{ discovery_interval }}
 discovery.timeout = {{ discovery_timeout }}
 discovery.limit = {{ discovery_limit }}
 discovery.speaker-failure-timeout = 5
 discovery.dump-request-timeout-seconds=60
+discovery.keep.removed.isl = {{ discovery_keep_removed_isl }}
 
 local = no
 local.execution.time = 10

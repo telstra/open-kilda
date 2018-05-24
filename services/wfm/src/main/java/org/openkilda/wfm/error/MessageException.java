@@ -1,6 +1,6 @@
 package org.openkilda.wfm.error;
 
-public class MessageException extends Exception {
+public class MessageException extends AbstractException {
     public MessageException() {
         super("Exception raised parsing message");
     }
