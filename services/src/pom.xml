@@ -45,6 +45,7 @@
         <slf4j.version>1.7.25</slf4j.version>
         <snakeyaml.version>1.18</snakeyaml.version>
         <lombok.version>1.16.20</lombok.version>
+        <failsafe.version>1.0.5</failsafe.version>
         <commons.io.version>1.3.2</commons.io.version>
         <aspectj.version>1.8.13</aspectj.version>
         <aspectj-maven-plugin.version>1.11</aspectj-maven-plugin.version>
@@ -170,6 +171,11 @@
                 <groupId>org.aspectj</groupId>
                 <artifactId>aspectjrt</artifactId>
                 <version>${aspectj.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>net.jodah</groupId>
+                <artifactId>failsafe</artifactId>
+                <version>${failsafe.version}</version>
             </dependency>
 
             <dependency>

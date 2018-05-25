@@ -15,6 +15,9 @@
 
 package org.openkilda.atdd;
 
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasItems;
+import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
@@ -23,8 +26,8 @@ import static org.junit.Assert.assertTrue;
 import org.openkilda.LinksUtils;
 import org.openkilda.SwitchesUtils;
 import org.openkilda.messaging.info.event.SwitchState;
-import org.openkilda.northbound.dto.links.LinkStatus;
 import org.openkilda.northbound.dto.links.LinkDto;
+import org.openkilda.northbound.dto.links.LinkStatus;
 import org.openkilda.northbound.dto.links.PathDto;
 import org.openkilda.northbound.dto.switches.SwitchDto;
 import org.openkilda.topo.builders.TestTopologyBuilder;
@@ -32,8 +35,11 @@ import org.openkilda.topo.builders.TestTopologyBuilder;
 import cucumber.api.PendingException;
 import cucumber.api.java.en.Then;
 import cucumber.api.java.en.When;
+import net.jodah.failsafe.Failsafe;
+import net.jodah.failsafe.RetryPolicy;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
+import org.junit.Before;
 
 import java.util.Comparator;
 import java.util.List;
@@ -47,8 +53,15 @@ import java.util.stream.IntStream;
  */
 public class TopologyEventsBasicTest {
 
+    private LinkDto manipulatedLink;
+
+    @Before
+    public void setUp() {
+        manipulatedLink = null;
+    }
+
     @When("^multiple links exist between all switches$")
-    public void multiple_links_exist_between_all_switches() throws Exception {
+    public void multipleLinksExistBetweenAllSwitches() throws Exception {
         List<String> switchIds = IntStream.range(1, 6)
                 .mapToObj(TestTopologyBuilder::intToSwitchId)
                 .collect(Collectors.toList());
@@ -65,11 +78,11 @@ public class TopologyEventsBasicTest {
     }
 
     @When("^a link is dropped in the middle$")
-    public void a_link_is_dropped_in_the_middle() throws Exception {
+    public void linkIsDroppedInTheMiddle() throws Exception {
         List<LinkDto> links = LinksUtils.dumpLinks();
-        LinkDto middleLink = getMiddleLink(links);
+        manipulatedLink = getMiddleLink(links);
 
-        PathDto node = middleLink.getPath().get(0);
+        PathDto node = manipulatedLink.getPath().get(0);
         assertTrue(LinksUtils.islFail(getSwitchName(node.getSwitchId()), String.valueOf(node.getPortNo())));
     }
 
@@ -84,14 +97,24 @@ public class TopologyEventsBasicTest {
         assertThat("Only one link should be cut", cutLinks.size(), is(1));
     }
 
-    @Then("^the link disappears from the topology engine\\.$")
-    public void the_link_disappears_from_the_topology_engine() throws Exception {
-        List<LinkDto> links = LinksUtils.dumpLinks();
+    @Then("^the link disappears from the topology engine in (\\d+) seconds\\.$")
+    public void theLinkDisappearsFromTheTopologyEngine(int timeout) throws Exception {
+        List<LinkDto> cutLinks = Failsafe.with(new RetryPolicy()
+                .withDelay(2, TimeUnit.SECONDS)
+                .withMaxDuration(timeout, TimeUnit.SECONDS)
+                .retryIf(links -> links instanceof List && ((List) links).isEmpty()))
+                .get(() -> LinksUtils.dumpLinks().stream()
+                        .filter(isl -> isl.getState() != LinkStatus.DISCOVERED)
+                        .collect(Collectors.toList())
+                );
 
+        assertFalse("Link should be cut", cutLinks.isEmpty());
+        assertThat("Only one link should be cut", cutLinks,
+                hasItems(hasProperty("path", equalTo(manipulatedLink.getPath()))));
     }
 
     @When("^a link is added in the middle$")
-    public void a_link_is_added_in_the_middle() throws Exception {
+    public void linkIsAddedInTheMiddle() throws Exception {
         List<LinkDto> links = LinksUtils.dumpLinks();
         LinkDto middleLink = getMiddleLink(links);
 
@@ -108,13 +131,13 @@ public class TopologyEventsBasicTest {
     }
 
     @Then("^the link appears in the topology engine\\.$")
-    public void the_link_appears_in_the_topology_engine() throws Exception {
+    public void theLinkAppearsInTheTopologyEngine() throws Exception {
         List<LinkDto> links = LinksUtils.dumpLinks();
         assertThat("Amount of links should be 18 (initial 16 and 2 newly created)", links.size(), is(18));
     }
 
     @When("^a switch is dropped in the middle$")
-    public void a_switch_is_dropped_in_the_middle() throws Exception {
+    public void switchIsDroppedInTheMiddle() throws Exception {
         List<SwitchDto> switches = SwitchesUtils.dumpSwitches();
         SwitchDto middleSwitch = getMiddleSwitch(switches);
         assertTrue("Should successfully knockout switch",
@@ -129,14 +152,15 @@ public class TopologyEventsBasicTest {
     }
 
     @Then("^all links through the dropped switch will have no health checks$")
-    public void all_links_through_the_dropped_switch_will_have_no_health_checks() throws Exception {
+    public void allLinksThroughTheDroppedSwitchWillHaveNoHealthChecks() throws Exception {
         // Write code here that turns the phrase above into concrete actions
         throw new PendingException();
     }
 
     @Then("^the links disappear from the topology engine\\.$")
-    public void the_links_disappear_from_the_topology_engine() throws Exception {
-        //todo check whether we need to wait until links will disappear or we might delete them instantly when switch goes down
+    public void theLinksDisappearFromTheTopologyEngine() throws Exception {
+        //todo check whether we need to wait until links will disappear or
+        // we might delete them instantly when switch goes down
         TimeUnit.SECONDS.sleep(15);
         final SwitchDto middleSwitch = getMiddleSwitch(SwitchesUtils.dumpSwitches());
         final List<LinkDto> links = LinksUtils.dumpLinks();
@@ -149,7 +173,7 @@ public class TopologyEventsBasicTest {
     }
 
     @Then("^the switch disappears from the topology engine\\.$")
-    public void the_switch_disappears_from_the_topology_engine() throws Exception {
+    public void theSwitchDisappearsFromTheTopologyEngine() throws Exception {
         List<SwitchDto> switches = SwitchesUtils.dumpSwitches();
         SwitchDto middleSwitch = getMiddleSwitch(switches);
 
@@ -158,14 +182,14 @@ public class TopologyEventsBasicTest {
     }
 
     @When("^a switch is added at the edge$")
-    public void a_switch_is_added_at_the_edge() throws Exception {
+    public void switchIsAddedAtTheEdge() throws Exception {
         assertTrue("Should add switch to mininet topology",
                 SwitchesUtils.addSwitch("01010001", "DEADBEEF01010001"));
         TimeUnit.SECONDS.sleep(1);
     }
 
     @When("^links are added between the new switch and its neighbor$")
-    public void links_are_added_between_the_new_switch_and_its_neighbor() throws Exception {
+    public void linksAreAddedBetweenTheNewSwitchAndItsNeighbor() throws Exception {
         List<LinkDto> links = LinksUtils.dumpLinks();
         List<SwitchDto> switches = SwitchesUtils.dumpSwitches();
 
@@ -187,13 +211,13 @@ public class TopologyEventsBasicTest {
     }
 
     @Then("^all links through the added switch will have health checks$")
-    public void all_links_through_the_added_switch_will_have_health_checks() throws Exception {
+    public void allLinksThroughTheAddedSwitchWillHaveHealthChecks() throws Exception {
         // Write code here that turns the phrase above into concrete actions
         throw new PendingException();
     }
 
     @Then("^now amount of switches is (\\d+)\\.$")
-    public void the_switch_appears_in_the_topology_engine(int switches) throws Exception {
+    public void theSwitchAppearsInTheTopologyEngine(int switches) throws Exception {
         List<SwitchDto> switchList = SwitchesUtils.dumpSwitches();
         List<SwitchDto> activeSwitches = switchList.stream()
                 .filter(sw -> SwitchState.ACTIVATED.getType().equals(sw.getState()))

@@ -40,7 +40,6 @@
         <commons-collections.version>4.1</commons-collections.version>
         <commons-lang3.version>3.7</commons-lang3.version>
         <jackson.version>2.9.4</jackson.version>
-        <failsafe.version>1.0.5</failsafe.version>
     </properties>
 
     <!-- Dependencies -->
@@ -177,7 +176,6 @@
         <dependency>
             <groupId>net.jodah</groupId>
             <artifactId>failsafe</artifactId>
-            <version>${failsafe.version}</version>
         </dependency>
 
         <dependency>
