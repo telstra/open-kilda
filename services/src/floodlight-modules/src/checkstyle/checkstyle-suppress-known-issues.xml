@@ -48,31 +48,6 @@
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/Producer.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/Producer.java" lines="32" checks="LineLength"/>
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/Producer.java" lines="36" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/RecordHandler.java" lines="1" checks="RegexpHeader"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/RecordHandler.java" lines="6" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/RecordHandler.java" lines="7" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/RecordHandler.java" lines="8" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/RecordHandler.java" lines="56" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/RecordHandler.java" lines="65" checks="UnusedImports"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/RecordHandler.java" lines="116" checks="WhitespaceAfter"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/RecordHandler.java" lines="331" checks="Indentation"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/RecordHandler.java" lines="349" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/RecordHandler.java" lines="351" checks="WhitespaceAfter"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/RecordHandler.java" lines="351" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/RecordHandler.java" lines="352" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/RecordHandler.java" lines="368" checks="SummaryJavadoc"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/RecordHandler.java" lines="416" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/RecordHandler.java" lines="423" checks="ParenPad"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/RecordHandler.java" lines="469" checks="WhitespaceAfter"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/RecordHandler.java" lines="469" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/RecordHandler.java" lines="483" checks="MissingSwitchDefault"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/RecordHandler.java" lines="521" checks="NeedBraces"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/RecordHandler.java" lines="523" checks="NeedBraces"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/RecordHandler.java" lines="579" checks="ParenPad"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/RecordHandler.java" lines="591" checks="WhitespaceAfter"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/RecordHandler.java" lines="591" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/RecordHandler.java" lines="614" checks="RightCurly"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/RecordHandler.java" lines="616" checks="LeftCurly"/>
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/TestAwareConsumer.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/TestAwareConsumer.java" lines="6" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/TestAwareConsumer.java" lines="22" checks="JavadocMethod"/>
@@ -251,22 +226,6 @@
     <suppress files="src/main/java/org/openkilda/floodlight/utils/RequestCorrelationFilter.java" lines="21" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/floodlight/utils/RequestCorrelationFilter.java" lines="31" checks="LineLength"/>
     <suppress files="src/test/java/org/openkilda/floodlight/Constants.java" lines="20" checks="HideUtilityClassConstructor"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/kafka/RecordHandlerMock.java" lines="1" checks="RegexpHeader"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/kafka/RecordHandlerTest.java" lines="1" checks="RegexpHeader"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/kafka/RecordHandlerTest.java" lines="7" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/kafka/RecordHandlerTest.java" lines="8" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/kafka/RecordHandlerTest.java" lines="9" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/kafka/RecordHandlerTest.java" lines="10" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/kafka/RecordHandlerTest.java" lines="11" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/kafka/RecordHandlerTest.java" lines="12" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/kafka/RecordHandlerTest.java" lines="13" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/kafka/RecordHandlerTest.java" lines="14" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/kafka/RecordHandlerTest.java" lines="15" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/kafka/RecordHandlerTest.java" lines="25" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/kafka/RecordHandlerTest.java" lines="40" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/kafka/RecordHandlerTest.java" lines="133" checks="CommentsIndentation"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/kafka/RecordHandlerTest.java" lines="169" checks="LineLength"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/kafka/RecordHandlerTest.java" lines="190" checks="CommentsIndentation"/>
     <suppress files="src/test/java/org/openkilda/floodlight/kafka/ReplaceInstallFlowTest.java" lines="28" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/floodlight/kafka/ReplaceInstallFlowTest.java" lines="29" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/floodlight/kafka/ReplaceInstallFlowTest.java" lines="89" checks="JavadocMethod"/>
