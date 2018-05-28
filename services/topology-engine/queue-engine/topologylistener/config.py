@@ -20,7 +20,7 @@ import os
 _root = os.path.dirname(__file__)
 
 config = ConfigParser.RawConfigParser()
-path = os.path.join(_root, os.pardir, 'topology_engine.properties')
+path = os.path.join(_root, os.pardir, 'topology_engine.ini')
 config.read(path)
 
 _dummy = object()

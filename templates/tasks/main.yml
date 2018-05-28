@@ -9,4 +9,4 @@
     src: "{{ item.tmpl }}"
     dest: "{{ item.dest }}"
   with_items:
-    - "{{ path  }}"
+    - "{{ path }}"
