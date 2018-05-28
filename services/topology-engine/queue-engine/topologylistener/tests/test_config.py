@@ -13,8 +13,6 @@
 #   limitations under the License.
 #
 
-import unittest
-
 from topologylistener import db
 from topologylistener import messageclasses
 from topologylistener.tests import share
@@ -32,8 +30,9 @@ def clean_neo4j_test_data(tx):
     tx.run('MATCH (c:config) DETACH DELETE c')
 
 
-class TestConfig(unittest.TestCase):
+class TestConfig(share.AbstractTest):
     def setUp(self):
+        super(TestConfig, self).setUp()
         with share.env.neo4j_connect.begin() as tx:
             clean_neo4j_test_data(tx)
         messageclasses.read_config()
