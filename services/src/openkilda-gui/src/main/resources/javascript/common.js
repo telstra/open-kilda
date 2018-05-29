@@ -117,7 +117,14 @@ var LocalStorageHandler = function() {
 
 var common = {	
 		getData:function(apiUrl,requestType){	
-			return $.ajax({url : APP_CONTEXT+apiUrl+"?_=" + new Date().getTime(),type : requestType,dataType : "json"});							
+			var hasQueryParams = apiUrl.split("?");
+			if(hasQueryParams.length > 1){
+				return $.ajax({url : APP_CONTEXT+apiUrl+"&_=" + new Date().getTime(),type : requestType,dataType : "json"});							
+				
+			}else{
+				return $.ajax({url : APP_CONTEXT+apiUrl+"?_=" + new Date().getTime(),type : requestType,dataType : "json"});							
+				
+			}							
 		},
 		
 		updateData:function(apiUrl,requestType,data){
