@@ -78,7 +78,7 @@ public class SwitchOperationsBolt extends NeoOperationsBolt {
 
             results.add(sw);
         }
-        LOGGER.info("Result: {}", results.size());
+        LOGGER.debug("Found switches: {}", results.size());
 
         return results;
     }

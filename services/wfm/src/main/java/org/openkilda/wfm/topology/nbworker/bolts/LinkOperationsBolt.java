@@ -101,6 +101,7 @@ public class LinkOperationsBolt extends NeoOperationsBolt {
 
             results.add(isl);
         }
+        LOGGER.debug("Found links: {}", results.size());
         return results;
     }
 
@@ -133,7 +134,7 @@ public class LinkOperationsBolt extends NeoOperationsBolt {
         switch (status) {
             case "active":
                 return IslChangeType.DISCOVERED;
-            case "failed":
+            case "inactive":
                 return IslChangeType.FAILED;
             case "moved":
                 return IslChangeType.MOVED;
