@@ -53,5 +53,5 @@ auth.success.message=Authorized Successfully.
 switch.data.file.path={{ production_fileserver }}/openkilda/switchdata.json
 
 #Mail Server
-spring.mail.host=127.0.0.1
-spring.mail.port=10
+spring.mail.host={{ kilda_smtp_host }}
+spring.mail.port={{ kilda_smtp_port }}
