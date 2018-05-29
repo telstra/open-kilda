@@ -17,8 +17,8 @@
 package org.openkilda.floodlight.command.flow;
 
 import org.openkilda.floodlight.SwitchUtils;
-import org.openkilda.floodlight.model.flow.VerificationData;
 import org.openkilda.floodlight.command.CommandContext;
+import org.openkilda.floodlight.model.flow.VerificationData;
 import org.openkilda.floodlight.pathverification.PathVerificationService;
 import org.openkilda.floodlight.service.FlowVerificationService;
 import org.openkilda.floodlight.service.batch.OFBatchService;

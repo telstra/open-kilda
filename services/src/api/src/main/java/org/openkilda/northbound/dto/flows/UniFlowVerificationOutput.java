@@ -20,9 +20,9 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.Builder;
-import lombok.Value;
+import lombok.Data;
 
-@Value
+@Data
 @JsonSerialize
 public class UniFlowVerificationOutput {
 
@@ -35,8 +35,11 @@ public class UniFlowVerificationOutput {
     @JsonProperty("latency")
     private long latency;
 
-    @JsonCreator
+    // To satisfy mapstruct
+    public UniFlowVerificationOutput() { }
+
     @Builder
+    @JsonCreator
     public UniFlowVerificationOutput(
             @JsonProperty("ping_success") boolean pingSuccess,
             @JsonProperty("error") String error,

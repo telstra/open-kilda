@@ -26,7 +26,7 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.flow.FlowVerificationErrorCode;
 import org.openkilda.messaging.info.flow.FlowVerificationResponse;
 import org.openkilda.messaging.info.flow.UniFlowVerificationResponse;
-import org.openkilda.messaging.model.BiFlow;
+import org.openkilda.messaging.model.BidirectionalFlow;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.flow.model.VerificationWaitRecord;
@@ -61,8 +61,8 @@ public class VerificationJointBolt extends AbstractBolt {
         logger.debug("Verification joint - dispatching");
         Object unclassified = input.getValueByField(VerificationBolt.FIELD_ID_OUTPUT);
 
-        if (unclassified instanceof BiFlow) {
-            handleRequest(input, (BiFlow) unclassified);
+        if (unclassified instanceof BidirectionalFlow) {
+            handleRequest(input, (BidirectionalFlow) unclassified);
         } else if (unclassified instanceof UniFlowVerificationResponse) {
             handleResponse(input, (UniFlowVerificationResponse) unclassified);
         } else {
@@ -72,7 +72,7 @@ public class VerificationJointBolt extends AbstractBolt {
         }
     }
 
-    private void handleRequest(Tuple input, BiFlow biFlow) {
+    private void handleRequest(Tuple input, BidirectionalFlow biFlow) {
         logger.debug("Handling VERIFICATION request");
 
         CommandMessage message = fetchInputMessage(input);

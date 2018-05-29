@@ -54,6 +54,7 @@ import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowPayloadToFlowConverter;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.northbound.converter.FlowMapper;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.flows.PathDiscrepancyDto;
@@ -127,6 +128,9 @@ public class FlowServiceImpl implements FlowService {
 
     @Value("${neo4j.pswd}")
     private String neoPswd;
+
+    @Autowired
+    private FlowMapper flowMapper;
 
     /**
      * Used to get switch rules.
@@ -799,7 +803,7 @@ public class FlowServiceImpl implements FlowService {
         FlowVerificationResponse response = (FlowVerificationResponse) validateInfoMessage(
                 request, message, correlationId);
 
-        return Converter.buildVerificationOutput(response);
+        return flowMapper.toVerificationOutput(response);
     }
 
     /**

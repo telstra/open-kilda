@@ -26,19 +26,18 @@ import org.openkilda.northbound.converter.FeatureTogglesMapper;
 import org.openkilda.northbound.messaging.MessageConsumer;
 import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.service.FeatureTogglesService;
-
 import org.openkilda.northbound.utils.RequestCorrelationId;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-
 @Service
 public class FeatureTogglesServiceImpl implements FeatureTogglesService {
 
-    private final Logger LOGGER = LoggerFactory.getLogger(FeatureTogglesServiceImpl.class);
+    private final Logger logger = LoggerFactory.getLogger(FeatureTogglesServiceImpl.class);
 
     @Value("${kafka.topo.eng.topic}")
     private String topoEngTopic;
@@ -55,7 +54,7 @@ public class FeatureTogglesServiceImpl implements FeatureTogglesService {
     @Override
     public void toggleFeatures(FeatureTogglePayload dto) {
         String correlationId = RequestCorrelationId.getId();
-        LOGGER.debug("Processing request to toggle features, new properties are {}", dto);
+        logger.debug("Processing request to toggle features, new properties are {}", dto);
         FeatureToggleRequest request = mapper.toRequest(dto);
         CommandMessage message = new CommandMessage(request, System.currentTimeMillis(), correlationId,
                 Destination.TOPOLOGY_ENGINE);
@@ -76,5 +75,4 @@ public class FeatureTogglesServiceImpl implements FeatureTogglesService {
 
         return mapper.toDto(response);
     }
-
 }

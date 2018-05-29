@@ -19,8 +19,8 @@ package org.openkilda.floodlight.command.flow;
 import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.replay;
 
-import org.openkilda.floodlight.kafka.KafkaMessageProducer;
 import org.openkilda.floodlight.command.CommandContext;
+import org.openkilda.floodlight.kafka.KafkaMessageProducer;
 import org.openkilda.floodlight.service.FlowVerificationService;
 import org.openkilda.floodlight.service.batch.OFBatchService;
 import org.openkilda.messaging.command.flow.FlowDirection;

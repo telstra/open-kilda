@@ -56,7 +56,7 @@ public class VerificationDispatchCommandTest extends AbstractVerificationCommand
         List<Optional<Command>> subCommands = subject.produceSubCommands();
         verify(destSwitch);
 
-        Assert.assertEquals("Produced sub operations list is not empty",0, subCommands.size());
+        Assert.assertEquals("Produced sub operations list is not empty", 0, subCommands.size());
 
         Message message = captureMessage.getValue();
         Assert.assertTrue(message instanceof InfoMessage);

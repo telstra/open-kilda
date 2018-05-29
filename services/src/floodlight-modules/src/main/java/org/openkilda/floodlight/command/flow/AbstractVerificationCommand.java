@@ -16,9 +16,9 @@
 
 package org.openkilda.floodlight.command.flow;
 
-import org.openkilda.floodlight.kafka.KafkaMessageProducer;
 import org.openkilda.floodlight.command.Command;
 import org.openkilda.floodlight.command.CommandContext;
+import org.openkilda.floodlight.kafka.KafkaMessageProducer;
 import org.openkilda.messaging.Topic;
 import org.openkilda.messaging.command.flow.UniFlowVerificationRequest;
 import org.openkilda.messaging.info.InfoMessage;

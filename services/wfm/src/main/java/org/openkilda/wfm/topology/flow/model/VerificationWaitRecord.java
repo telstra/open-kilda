@@ -22,7 +22,7 @@ import org.openkilda.messaging.command.flow.UniFlowVerificationRequest;
 import org.openkilda.messaging.info.flow.FlowVerificationErrorCode;
 import org.openkilda.messaging.info.flow.FlowVerificationResponse;
 import org.openkilda.messaging.info.flow.UniFlowVerificationResponse;
-import org.openkilda.messaging.model.BiFlow;
+import org.openkilda.messaging.model.BidirectionalFlow;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.wfm.topology.flow.Constants;
 
@@ -40,7 +40,7 @@ public class VerificationWaitRecord {
 
     private final HashMap<UUID, PendingRecord> pendingRequests = new HashMap<>();
 
-    public VerificationWaitRecord(FlowVerificationRequest request, BiFlow biFlow, String correlationId) {
+    public VerificationWaitRecord(FlowVerificationRequest request, BidirectionalFlow biFlow, String correlationId) {
         this.createTime = System.currentTimeMillis();
         this.correlationId = correlationId;
 

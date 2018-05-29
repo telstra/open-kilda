@@ -17,9 +17,9 @@
 package org.openkilda.floodlight.command.flow;
 
 import org.openkilda.floodlight.SwitchUtils;
-import org.openkilda.floodlight.exc.InsufficientCapabilitiesException;
-import org.openkilda.floodlight.model.flow.VerificationData;
 import org.openkilda.floodlight.command.CommandContext;
+import org.openkilda.floodlight.error.InsufficientCapabilitiesException;
+import org.openkilda.floodlight.model.flow.VerificationData;
 import org.openkilda.floodlight.service.FlowVerificationService;
 import org.openkilda.messaging.command.flow.UniFlowVerificationRequest;
 import org.openkilda.messaging.info.flow.FlowVerificationErrorCode;
