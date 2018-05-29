@@ -113,6 +113,7 @@ function showLinkDetails(linkData,costData) {
 	$(".isl_div_speed").html(speed);
 	$(".isl_div_latency").html(linkData.latency);
 	$(".isl_div_avaliable_bandwidth").html(available_bandwidth);
+	$(".isl_div_state").html(linkData.state);
 	if(costData && costData.props && costData.props.cost){
 		$(".isl_div_cost").html(costData.props.cost)
 		$('#isl_cost').val(costData.props.cost);

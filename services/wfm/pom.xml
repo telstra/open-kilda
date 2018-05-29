@@ -32,7 +32,7 @@
 
         <aspectj-maven-plugin.version>1.11</aspectj-maven-plugin.version>
         <maven-checkstyle-plugin.version>3.0.0</maven-checkstyle-plugin.version>
-        <puppycrawl-tools-checkstyle.version>8.8</puppycrawl-tools-checkstyle.version>
+        <puppycrawl-tools-checkstyle.version>8.10</puppycrawl-tools-checkstyle.version>
     </properties>
 
     <profiles>
