@@ -529,21 +529,21 @@
     <suppress files="src/test/java/org/openkilda/atdd/TopologyEventsBasicTest.java" lines="39" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/atdd/TopologyEventsBasicTest.java" lines="40" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/atdd/TopologyEventsBasicTest.java" lines="41" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/atdd/TopologyEventsBasicTest.java" lines="49" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/atdd/TopologyEventsBasicTest.java" lines="66" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/atdd/TopologyEventsBasicTest.java" lines="67" checks="MethodName"/>
-    <suppress files="src/test/java/org/openkilda/atdd/TopologyEventsBasicTest.java" lines="75" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/atdd/TopologyEventsBasicTest.java" lines="92" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/atdd/TopologyEventsBasicTest.java" lines="93" checks="MethodName"/>
-    <suppress files="src/test/java/org/openkilda/atdd/TopologyEventsBasicTest.java" lines="115" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/atdd/TopologyEventsBasicTest.java" lines="116" checks="MethodName"/>
-    <suppress files="src/test/java/org/openkilda/atdd/TopologyEventsBasicTest.java" lines="136" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/atdd/TopologyEventsBasicTest.java" lines="138" checks="LineLength"/>
-    <suppress files="src/test/java/org/openkilda/atdd/TopologyEventsBasicTest.java" lines="150" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/atdd/TopologyEventsBasicTest.java" lines="159" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/atdd/TopologyEventsBasicTest.java" lines="160" checks="MethodName"/>
-    <suppress files="src/test/java/org/openkilda/atdd/TopologyEventsBasicTest.java" lines="166" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/atdd/TopologyEventsBasicTest.java" lines="194" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/atdd/TopologyEventsBasicTest.java" lines="50" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/atdd/TopologyEventsBasicTest.java" lines="67" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/atdd/TopologyEventsBasicTest.java" lines="68" checks="MethodName"/>
+    <suppress files="src/test/java/org/openkilda/atdd/TopologyEventsBasicTest.java" lines="76" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/atdd/TopologyEventsBasicTest.java" lines="93" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/atdd/TopologyEventsBasicTest.java" lines="94" checks="MethodName"/>
+    <suppress files="src/test/java/org/openkilda/atdd/TopologyEventsBasicTest.java" lines="116" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/atdd/TopologyEventsBasicTest.java" lines="117" checks="MethodName"/>
+    <suppress files="src/test/java/org/openkilda/atdd/TopologyEventsBasicTest.java" lines="137" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/atdd/TopologyEventsBasicTest.java" lines="139" checks="LineLength"/>
+    <suppress files="src/test/java/org/openkilda/atdd/TopologyEventsBasicTest.java" lines="151" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/atdd/TopologyEventsBasicTest.java" lines="160" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/atdd/TopologyEventsBasicTest.java" lines="161" checks="MethodName"/>
+    <suppress files="src/test/java/org/openkilda/atdd/TopologyEventsBasicTest.java" lines="167" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/atdd/TopologyEventsBasicTest.java" lines="195" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/atdd/Common.java" lines="19" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/atdd/Common.java" lines="20" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/atdd/Common.java" lines="21" checks="CustomImportOrder"/>
