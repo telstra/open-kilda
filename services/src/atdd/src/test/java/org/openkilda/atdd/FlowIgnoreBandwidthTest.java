@@ -6,14 +6,14 @@ import static org.junit.Assert.assertNotNull;
 import org.openkilda.LinksUtils;
 import org.openkilda.flow.FlowOperationException;
 import org.openkilda.flow.FlowUtils;
-import org.openkilda.messaging.info.event.IslInfoData;
-import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.northbound.dto.links.LinkDto;
+import org.openkilda.northbound.dto.links.PathDto;
 import org.openkilda.topo.TopologyHelp;
 
 import cucumber.api.java.en.Then;
@@ -33,16 +33,16 @@ public class FlowIgnoreBandwidthTest {
 
     @Then("^available ISL's bandwidths between ([0-9a-f]{2}(?::[0-9a-f]{2}){7}) and ([0-9a-f]{2}(?::[0-9a-f]{2}){7}) is (\\d+)$")
     public void availableISLBandwidthsBetweenSwitches(String source, String dest, long expected) {
-        List<IslInfoData> islLinks = LinksUtils.dumpLinks();
+        List<LinkDto> islLinks = LinksUtils.dumpLinks();
 
         Long actual = null;
-        for (IslInfoData link : islLinks) {
+        for (LinkDto link : islLinks) {
             if (link.getPath().size() != 2) {
                 throw new RuntimeException(
                         String.format("ISL's link path contain %d records, expect 2", link.getPath().size()));
             }
-            PathNode left = link.getPath().get(0);
-            PathNode right = link.getPath().get(1);
+            PathDto left = link.getPath().get(0);
+            PathDto right = link.getPath().get(1);
 
             if (! source.equals(left.getSwitchId())) {
                 continue;
