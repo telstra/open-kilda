@@ -5,12 +5,11 @@ server.contextPath=/openkilda
 #Derby database configuration (In Memory)
 spring.jpa.database=default
 spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.DerbyTenSevenDialect
-spring.datasource.url=jdbc:derby:memory:openkilda;create=true
+spring.datasource.url=jdbc:derby:/home/doc/kilda_db/openkilda;create=true
 spring.datasource.driver-class-name=org.apache.derby.jdbc.EmbeddedDriver
-spring.datasource.data=classpath:import-script.sql
+spring.jpa.hibernate.ddl-auto=update
 spring.jpa.hibernate.naming.physical-strategy=org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
 spring.jpa.hibernate.enable_lazy_load_no_trans=true
-
 # Keep the connection alive if idle for a long time (needed in production)
 spring.datasource.testOnBorrow: true
 spring.datasource.validationQuery: SELECT 1
@@ -52,3 +51,7 @@ auth.success.message=Authorized Successfully.
 
 #Switches.Json File Path
 switch.data.file.path={{ production_fileserver }}/openkilda/switchdata.json
+
+#Mail Server
+spring.mail.host=127.0.0.1
+spring.mail.port=10
