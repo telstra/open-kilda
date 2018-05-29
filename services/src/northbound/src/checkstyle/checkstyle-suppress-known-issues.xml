@@ -11,21 +11,6 @@
     <suppress files="src/main/java/org/openkilda/northbound/controller/FeatureTogglesController.java" lines="21" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/controller/FeatureTogglesController.java" lines="22" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/controller/FeatureTogglesController.java" lines="24" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/controller/FlowController.java" lines="21" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/controller/FlowController.java" lines="22" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/controller/FlowController.java" lines="23" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/controller/FlowController.java" lines="24" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/controller/FlowController.java" lines="25" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/controller/FlowController.java" lines="26" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/controller/FlowController.java" lines="35" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/controller/FlowController.java" lines="38" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/controller/FlowController.java" lines="189" checks="ParameterName"/>
-    <suppress files="src/main/java/org/openkilda/northbound/controller/FlowController.java" lines="190" checks="LocalVariableName"/>
-    <suppress files="src/main/java/org/openkilda/northbound/controller/FlowController.java" lines="191" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/northbound/controller/FlowController.java" lines="191" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/northbound/controller/FlowController.java" lines="191" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/northbound/controller/FlowController.java" lines="191" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/northbound/controller/FlowController.java" lines="240" checks="LineLength"/>
     <suppress files="src/main/java/org/openkilda/northbound/controller/HealthCheckController.java" lines="22" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/controller/HealthCheckController.java" lines="23" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/controller/HealthCheckController.java" lines="24" checks="CustomImportOrder"/>
@@ -138,76 +123,9 @@
     <suppress files="src/main/java/org/openkilda/northbound/messaging/kafka/KafkaMessageProducer.java" lines="23" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/messaging/kafka/KafkaMessageProducer.java" lines="26" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/service/BasicService.java" lines="27" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/FlowService.java" lines="97" checks="SummaryJavadoc"/>
     <suppress files="src/main/java/org/openkilda/northbound/service/impl/FeatureTogglesServiceImpl.java" lines="31" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/service/impl/FeatureTogglesServiceImpl.java" lines="41" checks="AbbreviationAsWordInName"/>
     <suppress files="src/main/java/org/openkilda/northbound/service/impl/FeatureTogglesServiceImpl.java" lines="41" checks="MemberName"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="31" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="40" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="41" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="51" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="58" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="61" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="64" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="65" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="66" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="67" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="77" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="78" checks="AvoidStarImport"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="78" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="90" checks="SummaryJavadoc"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="98" checks="SummaryJavadoc"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="104" checks="SummaryJavadoc"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="120" checks="SummaryJavadoc"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="138" checks="SummaryJavadoc"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="143" checks="SummaryJavadoc"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="149" checks="SummaryJavadoc"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="197" checks="MethodName"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="210" checks="MethodName"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="363" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="367" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="371" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="376" checks="LocalVariableName"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="377" checks="LocalVariableName"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="378" checks="LocalVariableName"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="379" checks="LocalVariableName"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="386" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="389" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="394" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="395" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="406" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="411" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="412" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="480" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="481" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="482" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="483" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="490" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="491" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="503" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="521" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="522" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="522" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="522" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="522" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="522" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="522" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="525" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="525" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="525" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="562" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="564" checks="NeedBraces"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="567" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="599" checks="SummaryJavadoc"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="623" checks="Indentation"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="691" checks="NeedBraces"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="732" checks="LocalVariableName"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="733" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="734" checks="LocalVariableName"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="734" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="734" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="734" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="734" checks="WhitespaceAround"/>
     <suppress files="src/main/java/org/openkilda/northbound/service/impl/HealthCheckImpl.java" lines="29" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/service/impl/LinkServiceImpl.java" lines="28" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/service/impl/LinkServiceImpl.java" lines="53" checks="AbbreviationAsWordInName"/>

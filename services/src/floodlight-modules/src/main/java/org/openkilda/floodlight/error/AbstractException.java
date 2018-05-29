@@ -13,20 +13,14 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.dto.flows;
+package org.openkilda.floodlight.error;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Value;
+abstract class AbstractException extends Exception {
+    public AbstractException(String s) {
+        super(s);
+    }
 
-@Value
-public class VerificationInput {
-    @JsonProperty("timeout")
-    private int timeoutMillis;
-
-    @JsonCreator
-    public VerificationInput(
-            @JsonProperty("timeout") int timeoutMillis) {
-        this.timeoutMillis = timeoutMillis;
+    public AbstractException(String s, Throwable throwable) {
+        super(s, throwable);
     }
 }

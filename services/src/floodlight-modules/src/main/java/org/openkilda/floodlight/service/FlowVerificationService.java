@@ -1,27 +1,26 @@
-/*
- * Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
  */
 
 package org.openkilda.floodlight.service;
 
 import org.openkilda.floodlight.SwitchUtils;
-import org.openkilda.floodlight.exc.CorruptedNetworkDataException;
-import org.openkilda.floodlight.exc.InvalidSignatureConfigurationException;
-import org.openkilda.floodlight.model.flow.VerificationData;
 import org.openkilda.floodlight.command.flow.VerificationListenCommand;
 import org.openkilda.floodlight.command.flow.VerificationSendCommand;
+import org.openkilda.floodlight.error.CorruptedNetworkDataException;
+import org.openkilda.floodlight.error.InvalidSignatureConfigurationException;
+import org.openkilda.floodlight.model.flow.VerificationData;
 import org.openkilda.floodlight.pathverification.PathVerificationService;
 import org.openkilda.floodlight.utils.DataSignature;
 
@@ -53,18 +52,28 @@ public class FlowVerificationService extends AbstractOfHandler implements IFlood
     private DataSignature signature = null;
     private SwitchUtils switchUtils = null;
 
+    /**
+     * subscribe handler.
+     */
     public void subscribe(VerificationListenCommand handler) {
         synchronized (pendingRecipients) {
             pendingRecipients.add(handler);
         }
     }
 
+    /**
+     * unsubscribe handler.
+     */
     public void unsubscribe(VerificationListenCommand handler) {
         synchronized (pendingRecipients) {
             pendingRecipients.remove(handler);
         }
     }
 
+    /**
+     * Initialize internal data structures. Called by module that own this service. Called after all dependencies have
+     * been loaded.
+     */
     public void init(FloodlightModuleContext moduleContext) throws FloodlightModuleException {
         // FIXME(surabujin): avoid usage foreign module configuration
         Map<String, String> config = moduleContext.getConfigParams(PathVerificationService.class);

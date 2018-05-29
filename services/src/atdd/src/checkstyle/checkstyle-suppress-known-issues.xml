@@ -906,26 +906,6 @@
     <suppress files="src/test/java/org/openkilda/perf/MininetPerfTest.java" lines="20" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/flow/FlowOperationException.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/test/java/org/openkilda/flow/FlowOperationException.java" lines="8" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="28" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="29" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="30" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="45" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="72" checks="HideUtilityClassConstructor"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="85" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="302" checks="JavadocParagraph"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="460" checks="ParameterName"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="460" checks="ParameterName"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="490" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="543" checks="LocalVariableName"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="544" checks="LocalVariableName"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="560" checks="CommentsIndentation"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="594" checks="OverloadMethodsDeclarationOrder"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="601" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="607" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="664" checks="LineLength"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="694" checks="LineLength"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="705" checks="AbbreviationAsWordInName"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="752" checks="LineLength"/>
     <suppress files="src/test/java/org/openkilda/LinksUtils.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/test/java/org/openkilda/LinksUtils.java" lines="12" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/LinksUtils.java" lines="13" checks="CustomImportOrder"/>

@@ -1,17 +1,16 @@
-/*
- * Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
  */
 
 package org.openkilda.floodlight.command.flow;
@@ -21,8 +20,8 @@ import org.openkilda.floodlight.command.CommandContext;
 import org.openkilda.floodlight.model.flow.VerificationData;
 import org.openkilda.floodlight.pathverification.PathVerificationService;
 import org.openkilda.floodlight.service.FlowVerificationService;
-import org.openkilda.floodlight.service.batch.OFBatchService;
-import org.openkilda.floodlight.service.batch.OFPendingMessage;
+import org.openkilda.floodlight.service.batch.OfBatchService;
+import org.openkilda.floodlight.service.batch.OfPendingMessage;
 import org.openkilda.floodlight.switchmanager.OFInstallException;
 import org.openkilda.floodlight.utils.DataSignature;
 import org.openkilda.messaging.command.flow.UniFlowVerificationRequest;
@@ -54,7 +53,7 @@ import java.util.List;
 public class VerificationSendCommand extends AbstractVerificationCommand {
     private static final String NET_L3_ADDRESS = "127.0.0.2";
 
-    private final OFBatchService ioService;
+    private final OfBatchService ioService;
     private final SwitchUtils switchUtils;
     private final DataSignature signature;
 
@@ -62,7 +61,7 @@ public class VerificationSendCommand extends AbstractVerificationCommand {
         super(context, verificationRequest);
 
         FloodlightModuleContext moduleContext = getContext().getModuleContext();
-        this.ioService = moduleContext.getServiceImpl(OFBatchService.class);
+        this.ioService = moduleContext.getServiceImpl(OfBatchService.class);
         this.switchUtils = new SwitchUtils(moduleContext.getServiceImpl(IOFSwitchService.class));
         this.signature = moduleContext.getServiceImpl(FlowVerificationService.class).getSignature();
     }
@@ -80,14 +79,14 @@ public class VerificationSendCommand extends AbstractVerificationCommand {
         OFMessage message = makePacketOut(sw, netPacket.serialize());
 
         try {
-            ioService.push(this, ImmutableList.of(new OFPendingMessage(sourceDpId, message)));
+            ioService.push(this, ImmutableList.of(new OfPendingMessage(sourceDpId, message)));
         } catch (OFInstallException e) {
             sendErrorResponse(FlowVerificationErrorCode.WRITE_FAILURE);
         }
     }
 
     @Override
-    public void ioComplete(List<OFPendingMessage> payload, boolean isError) {
+    public void ioComplete(List<OfPendingMessage> payload, boolean isError) {
         if (!isError) {
             return;
         }
@@ -96,7 +95,7 @@ public class VerificationSendCommand extends AbstractVerificationCommand {
     }
 
     private Ethernet wrapData(VerificationData data) {
-        Data l7 = new Data(signature.sign(data.toJWT(JWT.create())));
+        Data l7 = new Data(signature.sign(data.toJwt(JWT.create())));
 
         UDP l4 = new UDP();
         l4.setPayload(l7);
@@ -122,6 +121,10 @@ public class VerificationSendCommand extends AbstractVerificationCommand {
         return l2;
     }
 
+    /**
+     * Unpack network package. Verify all particular qualities used during verification package creation time.
+     * Return packet payload.
+     */
     public static byte[] unwrapData(MacAddress targetL2Address, Ethernet packet) {
         if (!packet.getDestinationMACAddress().equals(targetL2Address)) {
             return null;

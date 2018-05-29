@@ -97,7 +97,7 @@ public interface FlowService extends BasicService {
     FlowPathPayload pathFlow(final String id);
 
     /**
-     * Use this to push flows that may not be in the database / caches but they should be
+     * Use this to push flows that may not be in the database / caches but they should be.
      *
      * @param externalFlows   the list of flows to push.
      * @param propagate if true, the path/rules will be propagated to the switch

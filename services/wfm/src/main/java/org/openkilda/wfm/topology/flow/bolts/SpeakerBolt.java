@@ -17,7 +17,6 @@ package org.openkilda.wfm.topology.flow.bolts;
 
 import static org.openkilda.messaging.Utils.MAPPER;
 
-import org.apache.storm.tuple.Fields;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
@@ -33,14 +32,15 @@ import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.wfm.topology.flow.FlowTopology;
 import org.openkilda.wfm.topology.flow.StreamType;
 
-import org.slf4j.LoggerFactory;
-import org.slf4j.Logger;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseRichBolt;
+import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Map;
@@ -172,8 +172,10 @@ public class SpeakerBolt extends BaseRichBolt {
      */
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
-        outputFieldsDeclarer.declareStream(StreamType.CREATE.toString(), FlowTopology.fieldsMessageSwitchIdFlowIdTransactionId);
-        outputFieldsDeclarer.declareStream(StreamType.DELETE.toString(), FlowTopology.fieldsMessageSwitchIdFlowIdTransactionId);
+        outputFieldsDeclarer.declareStream(
+                StreamType.CREATE.toString(), FlowTopology.fieldsMessageSwitchIdFlowIdTransactionId);
+        outputFieldsDeclarer.declareStream(
+                StreamType.DELETE.toString(), FlowTopology.fieldsMessageSwitchIdFlowIdTransactionId);
         outputFieldsDeclarer.declareStream(StreamType.STATUS.toString(), FlowTopology.fieldsFlowIdStatus);
         outputFieldsDeclarer.declareStream(STREAM_VERIFICATION_ID, STREAM_VERIFICATION_FIELDS);
     }

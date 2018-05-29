@@ -1,22 +1,21 @@
-/*
- * Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
  */
 
 package org.openkilda.floodlight.model.flow;
 
-import org.openkilda.floodlight.exc.CorruptedNetworkDataException;
+import org.openkilda.floodlight.error.CorruptedNetworkDataException;
 import org.openkilda.messaging.command.flow.UniFlowVerificationRequest;
 import org.openkilda.messaging.info.flow.VerificationMeasures;
 
@@ -39,6 +38,9 @@ public class VerificationData {
     private final DatapathId dest;
     private final UUID packetId;
 
+    /**
+     * Build {@link VerificationData} from {@link DecodedJWT} token.
+     */
     public static VerificationData of(DecodedJWT token) throws CorruptedNetworkDataException {
         long recvTime = System.currentTimeMillis();
 
@@ -60,6 +62,9 @@ public class VerificationData {
         return data;
     }
 
+    /**
+     * Build {@link VerificationData} from {@link UniFlowVerificationRequest} instance.
+     */
     public static VerificationData of(UniFlowVerificationRequest verificationRequest) {
         DatapathId source = DatapathId.of(verificationRequest.getSourceSwitchId());
         DatapathId dest = DatapathId.of(verificationRequest.getDestSwitchId());
@@ -72,7 +77,10 @@ public class VerificationData {
         this.packetId = packetId;
     }
 
-    public JWTCreator.Builder toJWT(JWTCreator.Builder token) {
+    /**
+     * Populate data into JWT builder.
+     */
+    public JWTCreator.Builder toJwt(JWTCreator.Builder token) {
         token.withClaim(makeJwtKey("source"), source.getLong());
         token.withClaim(makeJwtKey("dest"), dest.getLong());
         token.withClaim(makeJwtKey("id"), packetId.toString());
@@ -84,6 +92,9 @@ public class VerificationData {
         return token;
     }
 
+    /**
+     * Calculate flow's latency.
+     */
     public VerificationMeasures produceMeasurements(long recipientLatency) {
         long latency = getRecvTime() - getSendTime() - getSenderLatency() - recipientLatency;
         if (latency < 0) {
@@ -130,9 +141,12 @@ public class VerificationData {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
 
         VerificationData that = (VerificationData) o;
 

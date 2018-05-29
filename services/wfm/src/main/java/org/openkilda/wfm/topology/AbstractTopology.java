@@ -18,11 +18,11 @@ package org.openkilda.wfm.topology;
 import org.openkilda.messaging.Topic;
 import org.openkilda.wfm.CtrlBoltRef;
 import org.openkilda.wfm.LaunchEnvironment;
+import org.openkilda.wfm.PropertiesReader;
+import org.openkilda.wfm.ctrl.RouteBolt;
 import org.openkilda.wfm.error.ConfigurationException;
 import org.openkilda.wfm.error.NameCollisionException;
-import org.openkilda.wfm.PropertiesReader;
 import org.openkilda.wfm.error.StreamNameCollisionException;
-import org.openkilda.wfm.ctrl.RouteBolt;
 import org.openkilda.wfm.kafka.CustomNamedSubscription;
 import org.openkilda.wfm.topology.utils.HealthCheckBolt;
 import org.openkilda.wfm.topology.utils.KafkaRecordTranslator;
@@ -140,8 +140,10 @@ public abstract class AbstractTopology implements Topology {
     private Properties makeKafkaProperties() {
         Properties kafka = new Properties();
 
-        kafka.setProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
-        kafka.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
+        kafka.setProperty(
+                ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
+        kafka.setProperty(
+                ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
         kafka.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, config.getKafkaHosts());
         kafka.setProperty(ConsumerConfig.GROUP_ID_CONFIG, getTopologyName());
         kafka.setProperty("request.required.acks", "1");

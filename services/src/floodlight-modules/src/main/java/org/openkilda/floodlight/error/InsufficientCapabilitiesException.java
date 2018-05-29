@@ -13,20 +13,14 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.dto.flows;
+package org.openkilda.floodlight.error;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Value;
+public class InsufficientCapabilitiesException extends AbstractException {
+    public InsufficientCapabilitiesException() {
+        this("Insufficient capabilities error");
+    }
 
-@Value
-public class VerificationInput {
-    @JsonProperty("timeout")
-    private int timeoutMillis;
-
-    @JsonCreator
-    public VerificationInput(
-            @JsonProperty("timeout") int timeoutMillis) {
-        this.timeoutMillis = timeoutMillis;
+    public InsufficientCapabilitiesException(String s) {
+        super(s);
     }
 }

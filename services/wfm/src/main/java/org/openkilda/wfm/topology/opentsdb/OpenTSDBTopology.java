@@ -65,7 +65,7 @@ public class OpenTSDBTopology extends AbstractTopology {
                 .fieldsGrouping(parseBoltId, new Fields("hash"));
 
         OpenTsdbClient.Builder tsdbBuilder = OpenTsdbClient
-                .newBuilder(config.getOpenTsDBHosts())
+                .newBuilder(config.getOpenTsdbHosts())
                 // .sync(config.getOpenTsdbTimeout())
                 .returnDetails();
         if (config.isOpenTsdbClientChunkedRequestsEnabled()) {

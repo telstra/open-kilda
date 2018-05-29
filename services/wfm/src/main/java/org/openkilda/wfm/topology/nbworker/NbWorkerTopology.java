@@ -54,7 +54,7 @@ public class NbWorkerTopology extends AbstractTopology {
     private static final String FLOWS_BOLT_NAME = "flows-operations-bolt";
     private static final String SPLITTER_BOLT_NAME = "response-splitter-bolt";
     private static final String NB_KAFKA_BOLT_NAME = "nb-kafka-bolt";
-    private final String topicName = config.getKafkaTopoNBTopic();
+    private final String topicName = config.getKafkaTopoNbTopic();
     private final String spoutId = topicName + "-spout";
 
     public NbWorkerTopology(LaunchEnvironment env) throws ConfigurationException {

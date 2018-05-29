@@ -1,3 +1,18 @@
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.openkilda.wfm.topology;
 
 import org.openkilda.pce.provider.AuthNeo4j;
@@ -45,9 +60,9 @@ public class TopologyConfig {
     private String kafkaTopoEngTopic;
     private String kafkaTopoDiscoTopic;
     private String kafkaTopoCacheTopic;
-    private String kafkaTopoNBTopic;
+    private String kafkaTopoNbTopic;
 
-    private String openTsDBHosts;
+    private String openTsdbHosts;
     private Integer openTsdbTimeout;
     private boolean openTsdbClientChunkedRequestsEnabled;
 
@@ -104,9 +119,9 @@ public class TopologyConfig {
         kafkaTopoCacheTopic = config.getString("kafka.topic.topo.cache");
         kafkaTopoDiscoTopic = config.getString("kafka.topic.topo.disco");
         kafkaTopoEngTopic = config.getString("kafka.topic.topo.eng");
-        kafkaTopoNBTopic = config.getString("kafka.topic.topo.nbworker");
+        kafkaTopoNbTopic = config.getString("kafka.topic.topo.nbworker");
 
-        openTsDBHosts = config.getString("opentsdb.hosts");
+        openTsdbHosts = config.getString("opentsdb.hosts");
         openTsdbTimeout = (int) (config.getFloat("opentsdb.timeout") * 1000);
         openTsdbClientChunkedRequestsEnabled = config.getBoolean("opentsdb.client.chunked-requests.enabled");
         openTsdbNumSpouts = config.getInteger("opentsdb.num.spouts");
@@ -121,10 +136,6 @@ public class TopologyConfig {
         neo4jHost = config.getString("neo4j.hosts");
         neo4jLogin = config.getString("neo4j.user");
         neo4jPassword = config.getString("neo4j.pswd");
-    }
-
-    public Integer getWorkers() {
-        return workers;
     }
 
     /**

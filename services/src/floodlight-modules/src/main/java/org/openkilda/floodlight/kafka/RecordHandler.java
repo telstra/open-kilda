@@ -18,10 +18,10 @@ package org.openkilda.floodlight.kafka;
 import static java.util.Arrays.asList;
 import static org.openkilda.messaging.Utils.MAPPER;
 
-import org.openkilda.floodlight.converter.IOFSwitchConverter;
-import org.openkilda.floodlight.converter.OFFlowStatsConverter;
 import org.openkilda.floodlight.command.CommandContext;
 import org.openkilda.floodlight.command.flow.VerificationDispatchCommand;
+import org.openkilda.floodlight.converter.IOFSwitchConverter;
+import org.openkilda.floodlight.converter.OFFlowStatsConverter;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.floodlight.switchmanager.MeterPool;
 import org.openkilda.floodlight.switchmanager.SwitchEventCollector;

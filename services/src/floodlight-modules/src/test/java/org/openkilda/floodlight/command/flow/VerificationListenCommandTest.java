@@ -1,17 +1,16 @@
-/*
- * Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
  */
 
 package org.openkilda.floodlight.command.flow;
@@ -26,7 +25,7 @@ import static org.easymock.EasyMock.replay;
 import static org.easymock.EasyMock.reset;
 import static org.easymock.EasyMock.verify;
 
-import org.openkilda.floodlight.exc.InsufficientCapabilitiesException;
+import org.openkilda.floodlight.error.InsufficientCapabilitiesException;
 import org.openkilda.floodlight.model.flow.VerificationData;
 import org.openkilda.messaging.Topic;
 import org.openkilda.messaging.command.flow.UniFlowVerificationRequest;
@@ -95,18 +94,17 @@ public class VerificationListenCommandTest extends AbstractVerificationCommandTe
     @Test
     public void packetIn() throws Exception {
         UniFlowVerificationRequest request = makeVerificationRequest();
-        VerificationData shouldSkip = VerificationData.of(makeVerificationRequest());
-        VerificationData shouldMatch = VerificationData.of(request);
-
         VerificationListenCommand subject = new VerificationListenCommand(context, request);
 
         replay(sourceSwitch);
+        VerificationData shouldSkip = VerificationData.of(makeVerificationRequest());
         Assert.assertFalse("False positive VerificationData match", subject.packetIn(destSwitch, shouldSkip));
 
         kafkaProducerService.postMessage(eq(Topic.FLOW), anyObject());
         expectLastCall().once();
         replay(kafkaProducerService);
 
+        VerificationData shouldMatch = VerificationData.of(request);
         Assert.assertTrue("False negative VerificationData match", subject.packetIn(destSwitch, shouldMatch));
 
         verify(kafkaProducerService);
@@ -116,9 +114,6 @@ public class VerificationListenCommandTest extends AbstractVerificationCommandTe
     public void timeout() throws Exception {
         UniFlowVerificationRequest request = makeVerificationRequest();
         VerificationListenCommand subject = new VerificationListenCommand(context, request);
-
-        VerificationListenCommand.TimeoutNotification timeout = new VerificationListenCommand.TimeoutNotification(
-                subject);
 
         flowVerificationService.unsubscribe(eq(subject));
         expectLastCall().once();
@@ -130,6 +125,8 @@ public class VerificationListenCommandTest extends AbstractVerificationCommandTe
         expectLastCall().once();
         replay(kafkaProducerService);
 
+        VerificationListenCommand.TimeoutNotification timeout = new VerificationListenCommand.TimeoutNotification(
+                subject);
         timeout.run();
 
         verify(destSwitch, flowVerificationService, kafkaProducerService);

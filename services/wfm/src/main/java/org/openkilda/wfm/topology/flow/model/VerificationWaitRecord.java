@@ -1,17 +1,16 @@
-/*
- * Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
  */
 
 package org.openkilda.wfm.topology.flow.model;
@@ -51,6 +50,9 @@ public class VerificationWaitRecord {
         addPending(request, biFlow.getReverse(), FlowDirection.REVERSE);
     }
 
+    /**
+     * Save response for one currently pending request.
+     */
     public boolean consumeResponse(UniFlowVerificationResponse payload) {
         PendingRecord pending = pendingRequests.remove(payload.getPacketId());
         if (pending == null) {
@@ -65,6 +67,9 @@ public class VerificationWaitRecord {
         return response.build();
     }
 
+    /**
+     * Mark remaining pending request as failed.
+     */
     public void fillPendingWithError(FlowVerificationErrorCode errorCode) {
         UniFlowVerificationResponse errorResponse;
         for (UUID packetId : pendingRequests.keySet()) {
@@ -80,6 +85,9 @@ public class VerificationWaitRecord {
         return pendingRequests.size() == 0;
     }
 
+    /**
+     * Check is record become obsolete.
+     */
     public boolean isOutdated(long currentTime) {
         long outdatedLimit = currentTime - constants.getVerificationRequestTimeoutMillis();
         if (outdatedLimit < 0) {
@@ -89,6 +97,9 @@ public class VerificationWaitRecord {
         return createTime < outdatedLimit;
     }
 
+    /**
+     * List pending requests.
+     */
     public List<UniFlowVerificationRequest> getPendingRequests() {
         return pendingRequests.values().stream()
                 .map(pending -> pending.request)

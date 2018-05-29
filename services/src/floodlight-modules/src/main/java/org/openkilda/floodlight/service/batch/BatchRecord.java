@@ -1,17 +1,16 @@
-/*
- * Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
  */
 
 package org.openkilda.floodlight.service.batch;
@@ -36,12 +35,12 @@ class BatchRecord {
 
     private final SwitchUtils switchUtils;
 
-    private final List<OFPendingMessage> batch;
-    private final LinkedList<OFPendingMessage> barriers;
+    private final List<OfPendingMessage> batch;
+    private final LinkedList<OfPendingMessage> barriers;
     private boolean errors = false;
     private boolean complete = false;
 
-    BatchRecord(SwitchUtils switchUtils, List<OFPendingMessage> batch) {
+    BatchRecord(SwitchUtils switchUtils, List<OfPendingMessage> batch) {
         this.switchUtils = switchUtils;
         this.batch = batch;
         this.barriers = new LinkedList<>();
@@ -77,7 +76,7 @@ class BatchRecord {
     private Map<DatapathId, IOFSwitch> writePayload() throws OFInstallException {
         HashMap<DatapathId, IOFSwitch> affectedSwitches = new HashMap<>();
 
-        for (OFPendingMessage record : batch) {
+        for (OfPendingMessage record : batch) {
             DatapathId dpId = record.getDpId();
             IOFSwitch sw = affectedSwitches.get(dpId);
             if (sw == null) {
@@ -98,7 +97,7 @@ class BatchRecord {
             DatapathId dpId = keyValue.getKey();
             IOFSwitch sw = keyValue.getValue();
 
-            OFPendingMessage barrierRecord = new OFPendingMessage(dpId, sw.getOFFactory().barrierRequest());
+            OfPendingMessage barrierRecord = new OfPendingMessage(dpId, sw.getOFFactory().barrierRequest());
             if (!sw.write(barrierRecord.getRequest())) {
                 throw new OFInstallException(dpId, barrierRecord.getRequest());
             }
@@ -106,9 +105,9 @@ class BatchRecord {
         }
     }
 
-    private boolean recordResponse(List<OFPendingMessage> pending, OFMessage response) {
+    private boolean recordResponse(List<OfPendingMessage> pending, OFMessage response) {
         long xid = response.getXid();
-        for (OFPendingMessage record : pending) {
+        for (OfPendingMessage record : pending) {
             if (record.getXid() != xid) {
                 continue;
             }
@@ -124,7 +123,7 @@ class BatchRecord {
     private void updateBarriers() {
         boolean allDone = true;
 
-        for (OFPendingMessage record : barriers) {
+        for (OfPendingMessage record : barriers) {
             if (record.isPending()) {
                 allDone = false;
                 break;
@@ -138,7 +137,7 @@ class BatchRecord {
     }
 
     private void removePendingState() {
-        for (OFPendingMessage record : batch) {
+        for (OfPendingMessage record : batch) {
             if (record.isPending()) {
                 record.setResponse(null);
             }
@@ -153,7 +152,7 @@ class BatchRecord {
         return errors;
     }
 
-    List<OFPendingMessage> getBatch() {
+    List<OfPendingMessage> getBatch() {
         return batch;
     }
 }
