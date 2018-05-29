@@ -348,30 +348,6 @@
     <suppress files="src/main/java/org/openkilda/wfm/topology/AbstractTopology.java" lines="25" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/AbstractTopology.java" lines="143" checks="LineLength"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/AbstractTopology.java" lines="144" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/cache/CacheBolt.java" lines="21" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/cache/CacheBolt.java" lines="22" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/cache/CacheBolt.java" lines="23" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/cache/CacheBolt.java" lines="24" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/cache/CacheBolt.java" lines="25" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/cache/CacheBolt.java" lines="26" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/cache/CacheBolt.java" lines="27" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/cache/CacheBolt.java" lines="28" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/cache/CacheBolt.java" lines="29" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/cache/CacheBolt.java" lines="30" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/cache/CacheBolt.java" lines="31" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/cache/CacheBolt.java" lines="32" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/cache/CacheBolt.java" lines="33" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/cache/CacheBolt.java" lines="69" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/cache/CacheBolt.java" lines="79" checks="UnusedImports"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/cache/CacheBolt.java" lines="177" checks="MethodParamPad"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/cache/CacheBolt.java" lines="177" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/cache/CacheBolt.java" lines="178" checks="NeedBraces"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/cache/CacheBolt.java" lines="276" checks="CommentsIndentation"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/cache/CacheBolt.java" lines="336" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/cache/CacheBolt.java" lines="354" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/cache/CacheBolt.java" lines="507" checks="WhitespaceAfter"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/cache/CacheBolt.java" lines="507" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/cache/CacheBolt.java" lines="672" checks="LeftCurly"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/cache/CacheTopology.java" lines="19" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/cache/CacheTopology.java" lines="20" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/cache/CacheTopology.java" lines="21" checks="CustomImportOrder"/>
@@ -424,8 +400,8 @@
     <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFELinkBolt.java" lines="87" checks="AbbreviationAsWordInName"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFELinkBolt.java" lines="93" checks="AbbreviationAsWordInName"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFELinkBolt.java" lines="93" checks="MemberName"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFELinkBolt.java" lines="94" checks="AbbreviationAsWordInName"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFELinkBolt.java" lines="94" checks="MemberName"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFELinkBolt.java" lines="95" checks="AbbreviationAsWordInName"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFELinkBolt.java" lines="160" checks="SummaryJavadoc"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFELinkBolt.java" lines="173" checks="MissingSwitchDefault"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFELinkBolt.java" lines="205" checks="Indentation"/>
@@ -487,29 +463,6 @@
     <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFEventWFMTopology.java" lines="90" checks="VariableDeclarationUsageDistance"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFEventWFMTopology.java" lines="130" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/event/PopulateIslFilterAction.java" lines="1" checks="RegexpHeader"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/CrudBolt.java" lines="23" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/CrudBolt.java" lines="24" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/CrudBolt.java" lines="25" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/CrudBolt.java" lines="26" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/CrudBolt.java" lines="27" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/CrudBolt.java" lines="28" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/CrudBolt.java" lines="29" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/CrudBolt.java" lines="30" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/CrudBolt.java" lines="31" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/CrudBolt.java" lines="32" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/CrudBolt.java" lines="33" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/CrudBolt.java" lines="87" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/CrudBolt.java" lines="196" checks="NeedBraces"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/CrudBolt.java" lines="317" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/CrudBolt.java" lines="354" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/CrudBolt.java" lines="382" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/CrudBolt.java" lines="531" checks="WhitespaceAfter"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/CrudBolt.java" lines="542" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/CrudBolt.java" lines="561" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/CrudBolt.java" lines="700" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/CrudBolt.java" lines="801" checks="JavadocParagraph"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/CrudBolt.java" lines="805" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/CrudBolt.java" lines="924" checks="LeftCurly"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/ErrorBolt.java" lines="27" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/ErrorBolt.java" lines="28" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/ErrorBolt.java" lines="29" checks="CustomImportOrder"/>
@@ -539,18 +492,6 @@
     <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/SpeakerBolt.java" lines="39" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/SpeakerBolt.java" lines="149" checks="LineLength"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/SpeakerBolt.java" lines="150" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/SplitterBolt.java" lines="43" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/SplitterBolt.java" lines="44" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/SplitterBolt.java" lines="45" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/SplitterBolt.java" lines="46" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/SplitterBolt.java" lines="47" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/SplitterBolt.java" lines="48" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/SplitterBolt.java" lines="49" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/SplitterBolt.java" lines="67" checks="SummaryJavadoc"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/SplitterBolt.java" lines="73" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/SplitterBolt.java" lines="77" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/SplitterBolt.java" lines="96" checks="Indentation"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/SplitterBolt.java" lines="234" checks="CommentsIndentation"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/TopologyEngineBolt.java" lines="33" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/TopologyEngineBolt.java" lines="34" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/TopologyEngineBolt.java" lines="35" checks="CustomImportOrder"/>
@@ -576,40 +517,6 @@
     <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/TransactionBolt.java" lines="65" checks="JavadocParagraph"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/TransactionBolt.java" lines="76" checks="NeedBraces"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/TransactionBolt.java" lines="146" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="18" checks="UnusedImports"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="19" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="20" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="21" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="22" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="23" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="24" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="25" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="26" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="27" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="28" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="29" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="29" checks="UnusedImports"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="30" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="31" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="32" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="33" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="34" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="35" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="35" checks="UnusedImports"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="70" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="79" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="93" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="94" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="108" checks="CommentsIndentation"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="147" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="151" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="153" checks="CommentsIndentation"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="208" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="209" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="212" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="213" checks="CommentsIndentation"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="246" checks="CommentsIndentation"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/flow/FlowTopology.java" lines="251" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/islstats/bolts/IslStatsBolt.java" lines="23" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/islstats/bolts/IslStatsBolt.java" lines="24" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/islstats/bolts/IslStatsBolt.java" lines="25" checks="CustomImportOrder"/>
@@ -654,23 +561,7 @@
     <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/bolts/OpenTSDBFilterBolt.java" lines="130" checks="Indentation"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/bolts/OpenTSDBFilterBolt.java" lines="132" checks="OperatorWrap"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/bolts/OpenTSDBFilterBolt.java" lines="142" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/OpenTSDBTopology.java" lines="20" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/OpenTSDBTopology.java" lines="22" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/OpenTSDBTopology.java" lines="23" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/OpenTSDBTopology.java" lines="24" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/OpenTSDBTopology.java" lines="25" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/OpenTSDBTopology.java" lines="26" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/OpenTSDBTopology.java" lines="27" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/OpenTSDBTopology.java" lines="28" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/OpenTSDBTopology.java" lines="29" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/OpenTSDBTopology.java" lines="30" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/OpenTSDBTopology.java" lines="31" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/OpenTSDBTopology.java" lines="38" checks="AbbreviationAsWordInName"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/OpenTSDBTopology.java" lines="70" checks="CommentsIndentation"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/OpenTSDBTopology.java" lines="72" checks="WhitespaceAfter"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/OpenTSDBTopology.java" lines="72" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/OpenTSDBTopology.java" lines="79" checks="CommentsIndentation"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/OpenTSDBTopology.java" lines="87" checks="JavadocMethod"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/OpenTSDBTopology.java" lines="40" checks="AbbreviationAsWordInName"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/portstate/bolt/CacheBolt.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/portstate/bolt/ParsePortInfoBolt.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/portstate/bolt/ParsePortInfoBolt.java" lines="10" checks="CustomImportOrder"/>
@@ -739,8 +630,7 @@
     <suppress files="src/main/java/org/openkilda/wfm/topology/stats/bolts/CacheBolt.java" lines="28" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/stats/bolts/CacheBolt.java" lines="29" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/stats/bolts/CacheBolt.java" lines="30" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/stats/bolts/CacheBolt.java" lines="41" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/stats/bolts/CacheBolt.java" lines="68" checks="SummaryJavadoc"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/stats/bolts/CacheBolt.java" lines="70" checks="SummaryJavadoc"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/stats/bolts/CacheBolt.java" lines="126" checks="WhitespaceAfter"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/stats/bolts/CacheFilterBolt.java" lines="21" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/stats/bolts/CacheFilterBolt.java" lines="22" checks="CustomImportOrder"/>
@@ -750,13 +640,10 @@
     <suppress files="src/main/java/org/openkilda/wfm/topology/stats/bolts/CacheFilterBolt.java" lines="26" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/stats/bolts/CacheFilterBolt.java" lines="27" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/stats/bolts/CacheFilterBolt.java" lines="28" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/stats/bolts/CacheFilterBolt.java" lines="35" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/stats/bolts/CacheFilterBolt.java" lines="96" checks="RightCurly"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/stats/bolts/CacheFilterBolt.java" lines="98" checks="LeftCurly"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/stats/bolts/CacheFilterBolt.java" lines="103" checks="RightCurly"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/stats/bolts/CacheFilterBolt.java" lines="105" checks="LeftCurly"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/stats/bolts/CacheFilterBolt.java" lines="121" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/stats/CacheFlowEntry.java" lines="1" checks="RegexpHeader"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/stats/bolts/CacheFilterBolt.java" lines="104" checks="RightCurly"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/stats/bolts/CacheFilterBolt.java" lines="106" checks="LeftCurly"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/stats/bolts/CacheFilterBolt.java" lines="110" checks="RightCurly"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/stats/bolts/CacheFilterBolt.java" lines="112" checks="LeftCurly"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/stats/CypherExecutor.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/stats/CypherExecutor.java" lines="3" checks="AvoidStarImport"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/stats/CypherExecutor.java" lines="60" checks="NonEmptyAtclauseDescription"/>
@@ -781,29 +668,27 @@
     <suppress files="src/main/java/org/openkilda/wfm/topology/stats/metrics/FlowMetricGenBolt.java" lines="24" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/stats/metrics/FlowMetricGenBolt.java" lines="25" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/stats/metrics/FlowMetricGenBolt.java" lines="26" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/stats/metrics/FlowMetricGenBolt.java" lines="34" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/stats/metrics/FlowMetricGenBolt.java" lines="36" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/stats/metrics/FlowMetricGenBolt.java" lines="72" checks="LineLength"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/stats/metrics/FlowMetricGenBolt.java" lines="38" checks="CustomImportOrder"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/stats/metrics/FlowMetricGenBolt.java" lines="75" checks="LineLength"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/stats/metrics/FlowMetricGenBolt.java" lines="84" checks="LeftCurly"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/stats/metrics/FlowMetricGenBolt.java" lines="88" checks="RightCurly"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/stats/metrics/FlowMetricGenBolt.java" lines="90" checks="LeftCurly"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/stats/metrics/FlowMetricGenBolt.java" lines="99" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/stats/metrics/FlowMetricGenBolt.java" lines="100" checks="CommentsIndentation"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/stats/metrics/FlowMetricGenBolt.java" lines="130" checks="RightCurly"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/stats/metrics/FlowMetricGenBolt.java" lines="132" checks="LeftCurly"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/stats/metrics/FlowMetricGenBolt.java" lines="139" checks="OperatorWrap"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/stats/metrics/FlowMetricGenBolt.java" lines="90" checks="LineLength"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/stats/metrics/FlowMetricGenBolt.java" lines="91" checks="CommentsIndentation"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/stats/metrics/MeterConfigMetricGenBolt.java" lines="21" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/stats/metrics/MeterConfigMetricGenBolt.java" lines="22" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/stats/metrics/MeterConfigMetricGenBolt.java" lines="23" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/stats/metrics/MeterConfigMetricGenBolt.java" lines="30" checks="CustomImportOrder"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/stats/metrics/MeterConfigMetricGenBolt.java" lines="31" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/stats/metrics/MeterConfigMetricGenBolt.java" lines="50" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/stats/metrics/MetricGenBolt.java" lines="22" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/stats/metrics/MetricGenBolt.java" lines="23" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/stats/metrics/MetricGenBolt.java" lines="24" checks="CustomImportOrder"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/stats/metrics/MetricGenBolt.java" lines="25" checks="CustomImportOrder"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/stats/metrics/MetricGenBolt.java" lines="26" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/stats/metrics/PortMetricGenBolt.java" lines="21" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/stats/metrics/PortMetricGenBolt.java" lines="22" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/stats/metrics/PortMetricGenBolt.java" lines="23" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/stats/metrics/PortMetricGenBolt.java" lines="31" checks="CustomImportOrder"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/stats/metrics/PortMetricGenBolt.java" lines="32" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/stats/metrics/PortMetricGenBolt.java" lines="85" checks="WhitespaceAround"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/stats/metrics/PortMetricGenBolt.java" lines="85" checks="WhitespaceAround"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/stats/metrics/PortMetricGenBolt.java" lines="87" checks="WhitespaceAround"/>
@@ -1037,7 +922,7 @@
     <suppress files="src/test/java/org/openkilda/wfm/OFEventWfmTest.java" lines="19" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/wfm/OFEventWfmTest.java" lines="48" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/wfm/OFEventWfmTest.java" lines="62" checks="SummaryJavadoc"/>
-    <suppress files="src/test/java/org/openkilda/wfm/OFEventWfmTest.java" lines="66" checks="AbbreviationAsWordInName"/>
+    <suppress files="src/test/java/org/openkilda/wfm/OFEventWfmTest.java" lines="72" checks="AbbreviationAsWordInName"/>
     <suppress files="src/test/java/org/openkilda/wfm/OFEventWfmTest.java" lines="77" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/wfm/OFEventWfmTest.java" lines="96" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/wfm/OFEventWfmTest.java" lines="107" checks="MethodName"/>
@@ -1095,35 +980,6 @@
     <suppress files="src/test/java/org/openkilda/wfm/TestUtils.java" lines="81" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/wfm/TickBoltTest.java" lines="54" checks="WhitespaceAround"/>
     <suppress files="src/test/java/org/openkilda/wfm/TickBoltTest.java" lines="78" checks="MethodName"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/cache/CacheTopologyTest.java" lines="23" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/cache/CacheTopologyTest.java" lines="24" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/cache/CacheTopologyTest.java" lines="25" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/cache/CacheTopologyTest.java" lines="26" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/cache/CacheTopologyTest.java" lines="27" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/cache/CacheTopologyTest.java" lines="28" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/cache/CacheTopologyTest.java" lines="29" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/cache/CacheTopologyTest.java" lines="30" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/cache/CacheTopologyTest.java" lines="31" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/cache/CacheTopologyTest.java" lines="32" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/cache/CacheTopologyTest.java" lines="33" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/cache/CacheTopologyTest.java" lines="34" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/cache/CacheTopologyTest.java" lines="35" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/cache/CacheTopologyTest.java" lines="66" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/cache/CacheTopologyTest.java" lines="67" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/cache/CacheTopologyTest.java" lines="68" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/cache/CacheTopologyTest.java" lines="69" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/cache/CacheTopologyTest.java" lines="70" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/cache/CacheTopologyTest.java" lines="71" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/cache/CacheTopologyTest.java" lines="72" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/cache/CacheTopologyTest.java" lines="73" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/cache/CacheTopologyTest.java" lines="102" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/cache/CacheTopologyTest.java" lines="142" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/cache/CacheTopologyTest.java" lines="152" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/cache/CacheTopologyTest.java" lines="217" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/cache/CacheTopologyTest.java" lines="235" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/cache/CacheTopologyTest.java" lines="379" checks="CommentsIndentation"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/cache/CacheTopologyTest.java" lines="380" checks="WhitespaceAround"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/cache/CacheTopologyTest.java" lines="417" checks="LeftCurly"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/event/OFELinkBoltFloodTest.java" lines="19" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/event/OFELinkBoltFloodTest.java" lines="22" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/event/OFELinkBoltFloodTest.java" lines="23" checks="CustomImportOrder"/>
@@ -1329,29 +1185,28 @@
     <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="40" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="41" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="42" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="60" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="61" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="62" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="63" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="64" checks="CustomImportOrder"/>
+    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="43" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="65" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="66" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="67" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="68" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="84" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="145" checks="LineLength"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="186" checks="ParenPad"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="186" checks="ParenPad"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="190" checks="WhitespaceAfter"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="196" checks="WhitespaceAfter"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="197" checks="WhitespaceAfter"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="198" checks="WhitespaceAfter"/>
+    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="69" checks="CustomImportOrder"/>
+    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="70" checks="CustomImportOrder"/>
+    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="71" checks="CustomImportOrder"/>
+    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="72" checks="CustomImportOrder"/>
+    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="73" checks="CustomImportOrder"/>
+    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="87" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="148" checks="LineLength"/>
+    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="189" checks="ParenPad"/>
+    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="193" checks="WhitespaceAfter"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="199" checks="WhitespaceAfter"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="200" checks="WhitespaceAfter"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="201" checks="WhitespaceAfter"/>
+    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="202" checks="WhitespaceAfter"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="203" checks="WhitespaceAfter"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="204" checks="WhitespaceAfter"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="255" checks="SummaryJavadoc"/>
+    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="206" checks="WhitespaceAfter"/>
+    <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="207" checks="WhitespaceAfter"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/TestKafkaConsumer.java" lines="20" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/TestKafkaConsumer.java" lines="21" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/TestKafkaConsumer.java" lines="22" checks="CustomImportOrder"/>

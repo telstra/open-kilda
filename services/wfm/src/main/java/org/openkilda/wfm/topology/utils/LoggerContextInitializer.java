@@ -15,6 +15,9 @@
 
 package org.openkilda.wfm.topology.utils;
 
+import static org.openkilda.messaging.Utils.CORRELATION_ID;
+import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
+
 import org.apache.storm.tuple.Tuple;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -22,9 +25,6 @@ import org.aspectj.lang.annotation.Aspect;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
-
-import static org.openkilda.messaging.Utils.CORRELATION_ID;
-import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 
 /**
  * An aspect for IRichBolt / IStatefulBolt which decorates processing of a tuple with the logger context.
@@ -39,7 +39,7 @@ public class LoggerContextInitializer {
         String correlationId = CorrelationContext.extractFrom(input)
                 .map(CorrelationContext::getId)
                 .orElseGet(() -> {
-                    LOGGER.warn("CorrelationId was not sent or can't be extracted for tuple {}", input);
+                    LOGGER.debug("CorrelationId was not sent or can't be extracted for tuple {}", input);
                     return DEFAULT_CORRELATION_ID;
                 });
 

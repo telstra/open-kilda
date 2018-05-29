@@ -18,25 +18,12 @@ package org.openkilda.wfm.topology.cache;
 import static java.lang.String.format;
 import static org.openkilda.messaging.Utils.MAPPER;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.Sets;
-import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.lang.StringUtils;
-import org.apache.storm.state.InMemoryKeyValueState;
-import org.apache.storm.task.OutputCollector;
-import org.apache.storm.task.TopologyContext;
-import org.apache.storm.topology.OutputFieldsDeclarer;
-import org.apache.storm.topology.base.BaseStatefulBolt;
-import org.apache.storm.tuple.Tuple;
-import org.apache.storm.tuple.Values;
 import org.openkilda.messaging.BaseMessage;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
-import org.openkilda.messaging.command.flow.FlowRestoreRequest;
 import org.openkilda.messaging.ctrl.AbstractDumpState;
 import org.openkilda.messaging.ctrl.state.CacheBoltState;
 import org.openkilda.messaging.ctrl.state.FlowDump;
@@ -59,13 +46,25 @@ import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.pce.cache.Cache;
 import org.openkilda.pce.cache.FlowCache;
 import org.openkilda.pce.cache.NetworkCache;
-import org.openkilda.pce.cache.ResourceCache;
 import org.openkilda.pce.provider.Auth;
 import org.openkilda.pce.provider.PathComputer;
 import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
 import org.openkilda.wfm.share.utils.PathComputerFlowFetcher;
 import org.openkilda.wfm.topology.AbstractTopology;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Sets;
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang.StringUtils;
+import org.apache.storm.state.InMemoryKeyValueState;
+import org.apache.storm.task.OutputCollector;
+import org.apache.storm.task.TopologyContext;
+import org.apache.storm.topology.OutputFieldsDeclarer;
+import org.apache.storm.topology.base.BaseStatefulBolt;
+import org.apache.storm.tuple.Tuple;
+import org.apache.storm.tuple.Values;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,7 +75,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -174,10 +172,10 @@ public class CacheBolt
      * {@inheritDoc}
      */
     @Override
-    public void execute (Tuple tuple){
-        if (CtrlAction.boltHandlerEntrance(this, tuple))
+    public void execute(Tuple tuple) {
+        if (CtrlAction.boltHandlerEntrance(this, tuple)) {
             return;
-
+        }
         logger.trace("State before: {}", state);
 
         String json = tuple.getString(0);
@@ -214,7 +212,7 @@ public class CacheBolt
                     logger.debug("Switch flows reroute request");
 
                     NetworkTopologyChange topologyChange = (NetworkTopologyChange) data;
-                    handleNetworkTopologyChangeEvent(topologyChange, tuple, message.getCorrelationId());
+                    handleNetworkTopologyChange(topologyChange, tuple, message.getCorrelationId());
                 } else {
                     logger.warn("Skip undefined info data type {}", json);
                 }
@@ -271,9 +269,9 @@ public class CacheBolt
                 // longer delay .. but a necessary dampening affect.  The better solution
                 // is to kick of an immediate probe if we get such an event .. and the probe
                 // should confirm what is really happening.
-//                affectedFlows = flowCache.getActiveFlowsWithAffectedPath(sw.getSwitchId());
-//                String reason = String.format("switch %s is %s", sw.getSwitchId(), sw.getState());
-//                emitRerouteCommands(affectedFlows, tuple, correlationId, FlowOperation.UPDATE, reason);
+                //affectedFlows = flowCache.getActiveFlowsWithAffectedPath(sw.getSwitchId());
+                //String reason = String.format("switch %s is %s", sw.getSwitchId(), sw.getState());
+                //emitRerouteCommands(affectedFlows, tuple, correlationId, FlowOperation.UPDATE, reason);
                 break;
 
             case CACHED:
@@ -301,6 +299,7 @@ public class CacheBolt
                 break;
 
             case FAILED:
+            case MOVED:
                 try {
                     networkCache.deleteIsl(isl.getId());
                 } catch (CacheException exception) {
@@ -333,7 +332,8 @@ public class CacheBolt
             case DOWN:
             case DELETE:
                 Set<ImmutablePair<Flow, Flow>> affectedFlows = flowCache.getActiveFlowsWithAffectedPath(port);
-                String reason = String.format("port %s_%s is %s", port.getSwitchId(), port.getPortNo(), port.getState());
+                String reason = String.format("port %s_%s is %s",
+                        port.getSwitchId(), port.getPortNo(), port.getState());
                 emitRerouteCommands(affectedFlows, tuple, correlationId, FlowOperation.UPDATE, reason);
                 break;
 
@@ -351,7 +351,7 @@ public class CacheBolt
         }
     }
 
-    private void handleNetworkTopologyChangeEvent(NetworkTopologyChange topologyChange, Tuple tuple, String correlationId) {
+    private void handleNetworkTopologyChange(NetworkTopologyChange topologyChange, Tuple tuple, String correlationId) {
         Set<ImmutablePair<Flow, Flow>> affectedFlows;
 
         switch (topologyChange.getType()) {
@@ -386,35 +386,6 @@ public class CacheBolt
                 correlationId, Destination.WFM);
         outputCollector.emit(StreamType.WFM_DUMP.toString(), tuple, new Values(MAPPER.writeValueAsString(message)));
         logger.debug("Flow command message sent");
-    }
-
-    // FIXME(surabujin): deprecated and should be droppped
-    private void emitRestoreCommands(Set<ImmutablePair<Flow, Flow>> flows, Tuple tuple, String correlationId) {
-        if (flows != null) {
-
-            ResourceCache resourceCache = new ResourceCache();
-            for (ImmutablePair<Flow, Flow> flow : flows) {
-                resourceCache.allocateFlow(flow);
-            }
-
-            for (ImmutablePair<Flow, Flow> flow : flows) {
-                try {
-                    FlowRestoreRequest request = new FlowRestoreRequest(
-                            flowCache.buildFlow(flow.getLeft(), new ImmutablePair<>(null, null), resourceCache));
-                    resourceCache.deallocateFlow(flow);
-
-                    String msgCorrelationId = format("%s-%s", correlationId, flow.getLeft().getFlowId());
-
-                    Values values = new Values(Utils.MAPPER.writeValueAsString(new CommandMessage(
-                            request, System.currentTimeMillis(), msgCorrelationId, Destination.WFM)));
-                    outputCollector.emit(StreamType.WFM_DUMP.toString(), tuple, values);
-
-                    logger.info("Flow {} restore command message sent", flow.getLeft().getFlowId());
-                } catch (JsonProcessingException exception) {
-                    logger.error("Could not format flow restore request by flow={}", flow, exception);
-                }
-            }
-        }
     }
 
     private void emitRerouteCommands(Set<ImmutablePair<Flow, Flow>> flows, Tuple tuple,
@@ -504,7 +475,7 @@ public class CacheBolt
 
             case CACHE:
                 logger.debug("Sync flow cache message received: {}, correlationId: {}", flowData, correlationId);
-                if(flowData.getPayload() != null) {
+                if (flowData.getPayload() != null) {
                     flowCache.putFlow(flowData.getPayload());
                 } else {
                     flowCache.removeFlow(flowData.getFlowId());
@@ -668,8 +639,7 @@ public class CacheBolt
     }
 
     @Override
-    public Optional<AbstractDumpState> dumpResorceCacheState()
-    {
+    public Optional<AbstractDumpState> dumpResorceCacheState() {
         return Optional.of(new ResorceCacheBoltState(
                 flowCache.getAllocatedMeters(),
                 flowCache.getAllocatedVlans(),

@@ -30,6 +30,7 @@ import org.apache.storm.testing.MockedSources;
 import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Values;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -41,6 +42,8 @@ import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.graphdb.Transaction;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Utils;
+import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.openkilda.messaging.info.Datapoint;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.FlowStatsData;
@@ -51,17 +54,19 @@ import org.openkilda.messaging.info.stats.MeterConfigStatsData;
 import org.openkilda.messaging.info.stats.PortStatsData;
 import org.openkilda.messaging.info.stats.PortStatsEntry;
 import org.openkilda.messaging.info.stats.PortStatsReply;
+import org.openkilda.messaging.payload.flow.OutputVlanType;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.Neo4jFixture;
 import org.openkilda.wfm.StableAbstractStormTest;
 import org.openkilda.wfm.topology.TestingKafkaBolt;
+import org.openkilda.wfm.topology.stats.bolts.CacheFilterBolt;
 import org.openkilda.wfm.topology.utils.StatsUtil;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -70,8 +75,6 @@ import java.util.stream.IntStream;
 public class StatsTopologyTest extends StableAbstractStormTest {
 
     private static final long timestamp = System.currentTimeMillis();
-    private static GraphDatabaseService graphDb;
-    private static File dbFile;
 
     private final String switchId = "00:00:00:00:00:00:00:01";
     private final long cookie = 0x4000000000000001L;
@@ -230,7 +233,7 @@ public class StatsTopologyTest extends StableAbstractStormTest {
             //verify results which were sent to Kafka bolt
             ArrayList<FixedTuple> tuples =
                     (ArrayList<FixedTuple>) result.get(StatsComponentType.FLOW_STATS_METRIC_GEN.name());
-            assertThat(tuples.size(), is(6));
+            assertThat(tuples.size(), is(9));
             tuples.stream()
                     .map(this::readFromJson)
                     .forEach(datapoint -> {
@@ -240,6 +243,48 @@ public class StatsTopologyTest extends StableAbstractStormTest {
                         assertThat(datapoint.getTags().get("flowid"), is(flowId));
                         assertThat(datapoint.getTime(), is(timestamp));
                     });
+        });
+    }
+
+    @Test
+    public void cacheSyncSingleSwitchFlowAdd() throws Exception {
+        final String switchId = "00:00:00:00:00:00:00:01";
+        final String flowId = "sync-test-add-ssf";
+        final InstallOneSwitchFlow payload = new InstallOneSwitchFlow(
+                0L, flowId, 0xFFFF000000000001L, switchId, 8, 9, 127, 127, OutputVlanType.PUSH, 1000L, 0L);
+        final CommandMessage message = new CommandMessage(payload, timestamp, flowId, Destination.WFM_STATS);
+        final String json = MAPPER.writeValueAsString(message);
+
+        MockedSources sources = new MockedSources();
+        sources.addMockData(StatsComponentType.STATS_OFS_KAFKA_SPOUT.name());
+        sources.addMockData(StatsComponentType.STATS_KILDA_SPEAKER_SPOUT.name(), new Values(json));
+        completeTopologyParam.setMockedSources(sources);
+
+        Testing.withTrackedCluster(clusterParam, (cluster) -> {
+            StatsTopology topologyManager = new TestingTargetTopology(launchEnvironment, new TestingKafkaBolt());
+            StormTopology topology = topologyManager.createTopology();
+
+            Map result = Testing.completeTopology(cluster, topology, completeTopologyParam);
+            List<FixedTuple> cacheSyncStream = (List<FixedTuple>) result.get(
+                    StatsComponentType.STATS_CACHE_FILTER_BOLT.name());
+
+            final HashSet<MeasurePoint> expectedEvents = new HashSet<>();
+            expectedEvents.add(MeasurePoint.INGRESS);
+            expectedEvents.add(MeasurePoint.EGRESS);
+
+            final HashSet<MeasurePoint> seenEvents = new HashSet<>();
+            cacheSyncStream.stream()
+                    .filter(item -> StatsStreamType.CACHE_UPDATE == StatsStreamType.valueOf(item.stream))
+                    .forEach(item -> {
+                        Assert.assertEquals(CacheFilterBolt.Commands.UPDATE, item.values.get(0));
+                        Assert.assertEquals(flowId, item.values.get(1));
+                        Assert.assertEquals(switchId, item.values.get(2));
+                        MeasurePoint affectedPoint = (MeasurePoint) item.values.get(4);
+
+                        seenEvents.add(affectedPoint);
+                    });
+
+            Assert.assertEquals(expectedEvents, seenEvents);
         });
     }
 
@@ -253,7 +298,7 @@ public class StatsTopologyTest extends StableAbstractStormTest {
     }
 
     /**
-     * We should create child with these overridden methods because we don't want to use real kafka instance,
+     * We should create child with these overridden methods because we don't want to use real kafka instance.
      */
     private class TestingTargetTopology extends StatsTopology {
 

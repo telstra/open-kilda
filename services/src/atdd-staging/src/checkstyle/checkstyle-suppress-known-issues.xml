@@ -137,8 +137,8 @@
     <suppress files="src/main/java/org/openkilda/atdd/staging/steps/DiscoveryMechanismSteps.java" lines="25" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/atdd/staging/steps/DiscoveryMechanismSteps.java" lines="26" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/atdd/staging/steps/DiscoveryMechanismSteps.java" lines="32" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/atdd/staging/steps/DiscoveryMechanismSteps.java" lines="52" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/atdd/staging/steps/DiscoveryMechanismSteps.java" lines="61" checks="JavadocMethod"/>
+    <suppress files="src/main/java/org/openkilda/atdd/staging/steps/DiscoveryMechanismSteps.java" lines="54" checks="JavadocMethod"/>
+    <suppress files="src/main/java/org/openkilda/atdd/staging/steps/DiscoveryMechanismSteps.java" lines="63" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/atdd/staging/steps/FlowCrudSteps.java" lines="15" checks="EmptyLineSeparator"/>
     <suppress files="src/main/java/org/openkilda/atdd/staging/steps/FlowCrudSteps.java" lines="36" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/atdd/staging/steps/FlowCrudSteps.java" lines="37" checks="CustomImportOrder"/>

@@ -1,7 +1,7 @@
 package org.openkilda.wfm.isl;
 
-import org.openkilda.messaging.model.DiscoveryNode;
+import org.openkilda.messaging.model.DiscoveryLink;
 
 public interface IIslFilter {
-    boolean isMatch(DiscoveryNode subject);
+    boolean isMatch(DiscoveryLink subject);
 }
