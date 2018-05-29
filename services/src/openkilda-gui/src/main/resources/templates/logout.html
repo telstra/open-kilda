@@ -5,6 +5,18 @@
 <meta http-equiv="Content-Type" content="text/html; charset=US-ASCII"/>
 <title th:text="#{label.pages.home.title}">OPEN KILDA</title>
 <link th:href="@{images/kilda.png}" rel="shortcut icon" type="image/png"></link>
+	<script>
+		
+		$(document).ready(function() { 
+			 var error = getErrorFromUrl();
+			 if(typeof(error)!=='undefined'){
+				 $('.login_error').html(error);	 
+			 }
+			 
+			
+			 
+		});		
+	</script>	
 </head>
 
 <body>

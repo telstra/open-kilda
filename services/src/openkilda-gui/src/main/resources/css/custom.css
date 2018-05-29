@@ -276,8 +276,18 @@ input:focus {
 	right: 0;
 	bottom: 0;
 	margin: auto;
-	height: 480px;
+	height: 480px;	
+	font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+	line-height: normal;
 	box-shadow: 0 0 20px rgba(0, 0, 0, 0.35);
+}
+
+.login-wrapper.twofa-wrapper .login {
+	height: auto;
+    margin: 80px auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+    max-width: 75%;
 }
 
 .login-wrapper .login .col-lg-12 {
@@ -291,13 +301,52 @@ input:focus {
 	vertical-align: middle;
 }
 
-.login-wrapper .login h1 {
-	color: #43464a;
+.login-wrapper .login p.icons-phone {
+	background: url(../images/icon-phone.png) no-repeat 0 0;
+	display: inline-block;
+	padding-left: 30px;	
 	font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+	font-size: 14px;
+}
+
+.login-wrapper .login h1, .login-wrapper .login h2 {
+	color: #43464a;
 	font-size: 48px;
 	font-weight: 600;
 	margin: 0 0 50px;
 	text-transform: uppercase;
+}
+
+.login-wrapper .login h2 {
+	font-size: 30px;
+    line-height: normal;
+    margin-bottom: 20px;
+    font-weight: normal;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 10px;
+    text-transform: inherit;
+}
+
+.login-wrapper .login label {
+	margin-bottom: 8px;
+}
+
+.login-wrapper .login .otp-box {
+	margin-bottom: 5px;
+}
+
+.login-wrapper .login .otp-box input {
+	width: 40px;
+    display: inline-block;
+    margin: 0 7px;
+    font-size: 30px;
+    padding: 5px 10px;
+    height: auto;
+    line-height: normal;
+}
+
+.login-wrapper .login .otp-box input:first-child {
+	margin-left: 0;
 }
 
 .login-wrapper .login .form-group {
@@ -320,7 +369,7 @@ input:focus {
 	color: #fff;
 }
 
-.login-wrapper .login .btn-submit {
+.login-wrapper .btn-submit {
 	border-radius: 0;
 	background: #262d37;
 	border: none;
@@ -1176,7 +1225,7 @@ footer {
     font-weight:bold;
 }
 
-table#flowTable.dataTable.no-footer {
+table.dataTable.no-footer {
     border: 1px solid #ccc;
     font-size: 13px;
     margin: 15px 0;
@@ -1187,20 +1236,21 @@ table#flowTable.dataTable.no-footer {
 
 table.dataTable thead th {
 	background: #cecece;
+	vertical-align: baseline;
 }
 
-table#flowTable.dataTable thead th, table#flowTable.dataTable thead td {
+table.dataTable thead th, table.dataTable thead td {
     padding: 10px 18px;
     border-bottom: 1px solid #ccc;
 
 }
 
-table.dataTable.no-footer {
+/* table.dataTable.no-footer {
 	border: none;
-}
+} */
 
 
-table#flowTable.dataTable tbody tr:hover {
+table.dataTable tbody tr:hover {
     background-color: #f6f6f6!important;
 }
 
@@ -1228,19 +1278,19 @@ table#flowTable.dataTable tbody tr:hover {
 	position: relative;
 }
 
-table#flowTable.dataTable .divTableCell {
+table.dataTable .divTableCell {
 	border-left: 1px solid #bbb;
 }
 
-table#flowTable.dataTable .divTableCell:first-child {
+table.dataTable .divTableCell:first-child {
 	border-left: none;
 }
 
-table#flowTable.dataTable .flowDataRow.up-state .divTableCell:first-child, table#flowTable.dataTable .flowDataRow.down-state .divTableCell:first-child {
+table.dataTable .flowDataRow.up-state .divTableCell:first-child, table.dataTable .flowDataRow.down-state .divTableCell:first-child {
 	padding-left: 18px;
 }
 
-table#flowTable.dataTable .flowDataRow.up-state .divTableCell:first-child:before, table#flowTable.dataTable .flowDataRow.down-state .divTableCell:first-child:before {
+table.dataTable .flowDataRow.up-state .divTableCell:first-child:before, table.dataTable .flowDataRow.down-state .divTableCell:first-child:before {
     width: 8px;
     height: 8px;
     background: #19b365;
@@ -1253,20 +1303,20 @@ table#flowTable.dataTable .flowDataRow.up-state .divTableCell:first-child:before
     content: "";
 }
 
-table#flowTable.dataTable .flowDataRow.down-state .divTableCell:first-child:before {
+table.dataTable .flowDataRow.down-state .divTableCell:first-child:before {
     background: #f00;	
 }
 
-table#flowTable.dataTable.order-column tbody tr>.sorting_1, table#flowTable.dataTable.order-column tbody tr>.sorting_2, table#flowTable.dataTable.order-column tbody tr>.sorting_3, table#flowTable.dataTable.display tbody tr>.sorting_1, table#flowTable.dataTable.display tbody tr>.sorting_2, table#flowTable.dataTable.display tbody tr>.sorting_3,
-table#flowTable.dataTable.display tbody tr.odd>.sorting_1, table#flowTable.dataTable.order-column.stripe tbody tr.odd>.sorting_1 {
+table.dataTable.order-column tbody tr>.sorting_1, table.dataTable.order-column tbody tr>.sorting_2, table.dataTable.order-column tbody tr>.sorting_3, table.dataTable.display tbody tr>.sorting_1, table.dataTable.display tbody tr>.sorting_2, table.dataTable.display tbody tr>.sorting_3,
+table.dataTable.display tbody tr.odd>.sorting_1, table.dataTable.order-column.stripe tbody tr.odd>.sorting_1 {
 	background: none;
 }
 
-table#flowTable.dataTable .flowDataRow.even {
+table.dataTable .flowDataRow.even {
 	/*background: #e5e5e5;*/
 }
 
-table#flowTable.dataTable .flowDataRow.odd,table.isl-table-popup {
+table.dataTable .flowDataRow.odd,table.isl-table-popup {
     background: none;
 }
 ::placeholder { /* Chrome, Firefox, Opera, Safari 10.1+ */
@@ -1289,7 +1339,7 @@ table#flowTable.dataTable .flowDataRow.odd,table.isl-table-popup {
     display: table-header-group;
 }
 
-table#flowTable.dataTable thead th {
+table.dataTable thead th {
 	background-position: right 10px;
     padding: 10px 20px 10px 18px;
 	position: relative;
@@ -1298,14 +1348,14 @@ table#flowTable.dataTable thead th {
     white-space: nowrap;
 }
 
-table#flowTable.dataTable thead th .fa-search {
+table.dataTable thead th .fa-search {
 	position: absolute;
     right: 18px;
     top: 12px;
     width: auto;
 }
 
-table#flowTable.dataTable thead th .heading_search_box {
+table.dataTable thead th .heading_search_box {
 	float: left;
     width: 100%;
     margin-left: -2px;
@@ -1370,7 +1420,7 @@ table.isl-table-popup.dataTable.no-footer {
     table-layout: fixed;
 }
 
-table.isl-table-popup.dataTable thead th, table#flowTable.dataTable thead td {
+table.isl-table-popup.dataTable thead th, table.dataTable thead td {
     padding: 10px 18px;
     border-bottom: 1px solid #ccc;
 
@@ -1402,7 +1452,7 @@ table.isl-table-popup.dataTable .divTableCell:first-child {
 	cursor : pointer;
 }
 
-table#flowTable.dataTable thead th span {
+table.dataTable thead th span {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;	
@@ -1412,11 +1462,11 @@ table#flowTable.dataTable thead th span {
 	vertical-align: middle;
 }
 
-table#flowTable.dataTable thead th i {
+table.dataTable thead th i {
 	display: inline-block;
 }
 
-table#flowTable.dataTable .divTableCell {
+table.dataTable .divTableCell {
 	    position: relative;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -1424,6 +1474,21 @@ table#flowTable.dataTable .divTableCell {
     padding: 10px 20px 10px 18px;
     overflow: hidden;
 }
+
+
+.tab-content table.dataTable .flowDataRow.down-state .divTableCell:first-child:before {
+	display: none;
+}
+
+table.dataTable .divTableCell .fa {
+	font-size: 20px;
+    color: #262d37;
+    vertical-align: middle;
+    margin: 0 5px;
+    float:left;
+    cursor:pointer;
+}
+
 #topology-hover-txt,#topology-click-txt {
 	width: 300px;
 	position: fixed;
@@ -1566,12 +1631,12 @@ table#flowTable.dataTable .divTableCell {
     left: calc(50% - 15px);
 }
 
-table#flowTable.dataTable {	
+table.dataTable {	
     margin: 15px 0;
 }
 
 
-table#flowTable.dataTable .port_data_load td.divTableCell {
+table.dataTable .port_data_load td.divTableCell {
     padding: 25px;
     position: relative;
     border: 1px solid #ddd;
@@ -2267,9 +2332,210 @@ display: inline-block;
     bottom: 10px;
     right: 10px;
 }
+
 .dashed_path{
   stroke-dasharray: 20,29;
   stroke:#d934CF;
   stroke-width:5px!important;
 }
 
+table.dataTable thead .sorting, table.dataTable thead .sorting_asc, table.dataTable thead .sorting_desc, table.dataTable thead .sorting_asc_disabled, table.dataTable thead .sorting_desc_disabled {
+	background-position: right 8px;
+}
+
+.form-group input, .form-group select, .form-group textarea {
+	border: 1px solid rgb(169, 169, 169);
+    border-radius: 0;
+    height: auto;
+    padding: 8px 12px;
+}   
+
+.tab-content.user-management-tabs {
+	height: auto;
+}
+
+.tab-content.user-management-tabs form {
+	margin: 20px;
+}
+
+.tab-content.user-management-tabs form label {
+	margin: 10px 0 0;
+}
+
+select[multiple], select[size] {
+	width: 100%;
+}
+
+/* Custom class */
+.errorInput{
+	border: 1px solid #f00 !important;
+}
+.fa-passwd-reset {
+	float:left;
+} 
+.fa-passwd-reset > .fa-lock {
+  font-size: 0.65rem !important;
+}
+
+i.fa.fa-undo.fa-stack-2x {
+    font-size: 20px;
+    top: 4px;
+}
+
+/*.permission {
+	display: none !important;
+}
+*/
+.showPermission{
+	display: block  !important;
+}
+.hidePermission{
+	display: none !important;
+}
+.login_error {
+	color: #FF0000;
+	display:block;
+	padding-top:20px;
+}
+
+
+/*twofa css*/
+
+.twofa-wrapper{
+	padding-bottom: 70px;
+    padding-top: 70px;
+}
+
+.twofa-wrapper h2 {
+    color: #333;
+    margin-bottom: 35px;
+    font-family: 'Telstra-Light', Arial, Helvetica, sans-serif;
+    font-size: 34px;
+}
+
+.twofa-wrapper p {
+    color: #333;
+}
+
+.twofa-wrapper ul {
+    color: #333;
+    margin-top: 34px;
+}
+
+.twofa-wrapper ul li {
+    padding-left: 55px;
+    margin-bottom: 25px;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+.twofa-wrapper .two-fa-link ul {
+    list-style-type: decimal;
+    margin-left: 25px;
+}
+
+.twofa-wrapper .two-fa-link ul li {
+    padding-left: 20px;
+    background: transparent;
+    position: relative;
+}
+
+.twofa-wrapper .two-fa-link ul li:before {
+    border: 1px solid #333;
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    content: "";
+    position: absolute;
+    left: -25px;
+    z-index: -1;
+    top: -5px;
+}
+
+@-moz-document url-prefix() {
+  .twofa-wrapper .two-fa-link ul li:before {
+     top: -3px;
+  }
+}
+
+.otpContainer{
+     width: 70%;
+    height: 300px;
+    background-color: #ececec;
+    margin: 15px;
+    padding: 15px;
+}
+
+.change-password .qr_scan_img {
+	margin-top: 15px;
+}
+
+.viewLayout .viewDetail {
+	margin: 10px;
+}
+table.dataTable .wrapPermission{
+	white-space: normal;
+}
+th.sorting:last-child {
+    background-image:none !important;
+}
+.dataTables_filter 
+{
+	display:none;
+}
+
+#permissionTable .flowDataRow,#roleTable .flowDataRow,#userTable .flowDataRow{
+	cursor:default;
+}
+
+.barcode-bg .otp input{
+    border: 0;
+    outline: 0;
+    background: transparent;
+    border-bottom: 2px solid #c1c1c1;
+    width: 35px;
+    text-align: center;
+    padding: 5px;
+    margin: 10px 9px;
+    font-family: Telstra-Regular-Bold, Arial, Helvetica, sans-serif;
+    font-size: 25px;
+    color: #2aa4a2;
+    float: left;
+}
+	
+.barcode-bg .otp input:active, .barcode-bg .otp input:focus, .barcode-bg .otp input:visited {
+    color: #2aa4a2;
+	border-bottom: 2px solid #2aa4a2;
+}
+
+span.mandatory-text.text-danger {
+    color: #f00;
+    font-weight: bold;
+}
+.permissionCol{
+	white-space:normal;
+}
+.permissionCol .badge
+{
+	margin:2px 0;
+}
+#validate_flow_btn{
+	float:right;
+}
+
+.select2-container--default .select2-selection--multiple {
+	float: left;
+	width: 100%;
+	border: 1px solid rgb(169, 169, 169);
+	border-radius: 0;
+}
+
+.select2-container--default .select2-selection--multiple .select2-selection__rendered li {
+	height: auto;
+	padding: 5px;
+	margin: 5px;
+	border-radius: 0;
+}
+
+.select2-container .select2-search--inline .select2-search__field {
+	margin: 0;
+}

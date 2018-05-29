@@ -146,14 +146,19 @@ public class SwitchIntegrationService {
    private Map<String,String> islCostMap(){
     List<LinkProps> linkProps = getIslLinkProps(null);
     Map<String,String> islCostMap = new HashMap<>();
-    linkProps.forEach(linkProp -> {
-        String key = linkProp.getSrc_switch()+"-"+ linkProp.getSrc_port()+"-"+linkProp.getDst_switch()+"-"+linkProp.getDst_port();
-        String value = linkProp.getProperty("cost");
-        islCostMap.put(key, value);
-    });
-    
-    return islCostMap;
-    
+        if (linkProps != null) {
+
+            linkProps.forEach(linkProp -> {
+                String key =
+                        linkProp.getSrc_switch() + "-" + linkProp.getSrc_port() + "-"
+                                + linkProp.getDst_switch() + "-" + linkProp.getDst_port();
+                String value = linkProp.getProperty("cost");
+                islCostMap.put(key, value);
+            });
+        }
+
+        return islCostMap;
+
     }
     
 
@@ -172,9 +177,7 @@ public class SwitchIntegrationService {
         if (RestClientManager.isValidResponse(response)) {
             List<LinkProps> linkPropsResponses =
                     restClientManager.getResponseList(response, LinkProps.class);
-            if (CollectionUtil.isEmpty(linkPropsResponses)) {
-                throw new ContentNotFoundException();
-            } else {
+            if (!CollectionUtil.isEmpty(linkPropsResponses)) {
                 return linkPropsResponses;
             }
         }

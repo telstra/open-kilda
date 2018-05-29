@@ -277,4 +277,5 @@ public class IslLinkInfo implements Serializable {
         this.state1 = state1;
     }
     
+    
 }

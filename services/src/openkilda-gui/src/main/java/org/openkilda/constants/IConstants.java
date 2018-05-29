@@ -36,6 +36,9 @@ public abstract class IConstants {
         public static final String FLOW_DETAILS = "flowdetails";
         public static final String PORT_DETAILS = "portdetails";
         public static final String SWITCH_LIST = "switch";
+        public static final String USERMANAGEMENT = "usermanagement";
+        public static final String TWO_FA_GENERATOR = "userManagement/twofa";
+        public static final String OTP = "userManagement/otp";
     }
 
     public enum Metrics {
@@ -81,20 +84,20 @@ public abstract class IConstants {
         private String tag;
         private String displayTag;
 
-        private Metrics(String tag, String displayTag) {
-            this.setTag(tag);
-            this.setDisplayTag(displayTag);
+        private Metrics(final String tag, final String displayTag) {
+            setTag(tag);
+            setDisplayTag(displayTag);
         }
 
-        private void setTag(String tag) {
+        private void setTag(final String tag) {
             this.tag = tag;
         }
-        
+
         public String getTag() {
             return tag;
         }
 
-        private void setDisplayTag(String displayTag) {
+        private void setDisplayTag(final String displayTag) {
             this.displayTag = displayTag;
         }
 
@@ -116,11 +119,12 @@ public abstract class IConstants {
 
         public static List<String> switchValue(String tag) {
             List<String> list = new ArrayList<String>();
-           
-            if(tag.equalsIgnoreCase("latency"))
-            	 tag = "Isl_" + tag;
-            else
-            	 tag = "Switch_" + tag;
+
+            if(tag.equalsIgnoreCase("latency")) {
+                tag = "Isl_" + tag;
+            } else {
+                tag = "Switch_" + tag;
+            }
             for (Metrics metric : values()) {
                 if (metric.getTag().equalsIgnoreCase(tag)) {
                     list.add(metric.getDisplayTag());
@@ -146,5 +150,5 @@ public abstract class IConstants {
             return tags;
         }
     }
-    
+
 }

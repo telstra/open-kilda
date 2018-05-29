@@ -15,7 +15,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 
 import org.openkilda.constants.IConstants;
-import org.openkilda.model.UserInfo;
+import org.usermanagement.model.UserInfo;
 
 public abstract class BaseController implements ErrorController {
 
@@ -42,13 +42,9 @@ public abstract class BaseController implements ErrorController {
         if (isUserLoggedIn()) {
             UserInfo userInfo = getLoggedInUser(request);
             LOGGER.info("[validateAndRedirect] Logged in user. User name: " + userInfo.getName()
-                    + ", Roles: " + userInfo.getRole());
+                    + ", Roles: " + userInfo.getRoles());
 
-            if (userInfo.getRole().equalsIgnoreCase(IConstants.Role.USER)) {
-                modelAndView = new ModelAndView(IConstants.View.REDIRECT_HOME);
-            } else {
-                modelAndView = new ModelAndView(viewName);
-            }
+            modelAndView = new ModelAndView(viewName);
         } else {
             LOGGER.info("[validateAndRedirect] User in not logged in, redirected to login page");
             modelAndView = new ModelAndView(IConstants.View.LOGIN);

@@ -23,11 +23,13 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingPathVariableException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.ServletRequestBindingException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.context.request.async.AsyncRequestTimeoutException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
+import org.usermanagement.exception.RequestValidationException;
 
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonMappingException.Reference;
@@ -242,5 +244,20 @@ public class GlobalExceptionMapper extends ResponseEntityExceptionHandler {
         headers.set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
         return new ResponseEntity<Object>(
                 new ErrorMessage(code, message, auxilaryMessage, correlationId), headers, status);
+    }
+    
+    /**
+     * Handle entity not found.
+     *
+     * @param ex the ex
+     * @return the response entity
+     */
+    @ExceptionHandler(RequestValidationException.class)
+    protected ResponseEntity<Object> handleEntityNotFound(
+ 		   RequestValidationException ex) {
+ 	   ex.setStackTrace(new StackTraceElement[0]);
+       return response(HttpError.UNPROCESSABLE_ENTITY.getHttpStatus(),
+               HttpError.UNPROCESSABLE_ENTITY.getCode(),
+               ex.getMessage(), ex.getMessage());
     }
 }

@@ -32,6 +32,8 @@ RUN wget https://cdnjs.cloudflare.com/ajax/libs/jquery-datetimepicker/2.5.14/jqu
 RUN wget https://cdnjs.cloudflare.com/ajax/libs/jquery-toast-plugin/1.3.2/jquery.toast.min.css
 RUN wget https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.16/css/jquery.dataTables.min.css
 RUN wget https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.css
+RUN wget https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.5/css/select2.min.css
+RUN wget https://cdnjs.cloudflare.com/ajax/libs/multi-select/0.9.12/css/multi-select.css
 
 #WGET JS
 RUN wget https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js
@@ -43,6 +45,8 @@ RUN wget https://cdnjs.cloudflare.com/ajax/libs/jquery-toast-plugin/1.3.2/jquery
 RUN wget https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.16/js/jquery.dataTables.min.js
 RUN wget https://cdnjs.cloudflare.com/ajax/libs/d3/3.2.2/d3.v3.min.js
 RUN wget https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js
+RUN wget https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.5/js/select2.min.js
+RUN wget https://cdnjs.cloudflare.com/ajax/libs/multi-select/0.9.12/js/jquery.multi-select.js
 
 #MOVING FONTS
 RUN mv fontawesome-webfont.ttf src/main/resources/font/

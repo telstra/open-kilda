@@ -16,9 +16,17 @@ html, body {
 </style>
  <div th:include="fragments/importResources:: commonImports"></div>
 	<script>
-		$(document).ready(function() {
+		
+		$(document).ready(function() { 
 			$('body').css('pointer-events','all');
-		});
+			 var error = getErrorFromUrl();
+			 if(typeof(error)!=='undefined'){
+				 $('.login_error').html(error);	 
+			 }
+			 
+			
+			 
+		});		
 	</script>	
 </head>
 
@@ -30,14 +38,15 @@ html, body {
         <h1 class="text-center">OPEN KILDA</h1>
         <fieldset>
             <div class="form-group">
-                <input type="name" name="username" id="username" class="form-control input-lg" placeholder="Username"></input>
+                <input type="name" name="username" id="username" class="form-control input-lg" placeholder="Email" autofocus="true" required="true"></input>
             </div>
             <div class="form-group">
-                <input type="password" name="password" id="password" class="form-control input-lg" placeholder="Password"></input>
+                <input type="password" name="password" id="password" class="form-control input-lg" placeholder="Password" required="true"></input>
             </div>
             <span class="button-checkbox">
                 <input type="submit" class="btn btn-md btn-primary btn-submit" value="Login"></input>
             </span>
+            <span class="login_error" th:text="${error}"></span>
         </fieldset>
     </form>
     </div>

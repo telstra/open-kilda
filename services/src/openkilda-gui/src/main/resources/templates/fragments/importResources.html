@@ -12,7 +12,8 @@
 		<!-- bootstrap js -->
 		<script th:inline="javascript" src="javascript/bootstrap.min.js" th:src="@{javascript/bootstrap.min.js}"></script>
 		<script th:inline="javascript" src="javascript/jquery.toast.min.js" th:src="@{javascript/jquery.toast.min.js}"></script>
-
+		<script th:inline="javascript" src="javascript/userManagement/userPermissions.js" th:src="@{javascript/userManagement/userPermissions.js}"></script>
+		
 		
 		<!--  CSS Style Sheets -->
 		<link th:href="@{css/bootstrap.min.css}" rel="stylesheet"
@@ -29,7 +30,7 @@
 	<th:block th:fragment="graphImports">
 		<!-- 	Bounded force directed graph  -->
 		<script th:inline="javascript" src="javascript/d3.v3.min.js" th:src="@{javascript/d3.v3.min.js}"></script>
-		<script th:inline="javascript" src="javascript/jquery.graph.pan.zoom.js" th:src="@{javascript/jquery.graph.pan.zoom.js}"></script>
+		
 		<!-- 			custom graph -->
 		<script th:inline="javascript" src="javascript/graph.js" th:src="@{javascript/graph.js}"></script>
 		
@@ -51,8 +52,7 @@
 		<script th:inline="javascript" src="../javascript/moment.js"></script>
 		<script th:inline="javascript" src="../javascript/jquery.toast.min.js"></script>
 		<script th:inline="javascript" src="../javascript/common.js"></script>
-		
-		
+		<script th:inline="javascript" src="../javascript/userManagement/userPermissions.js"></script>
 		<!-- CSS Style Sheets -->
 		<link th:href="@{../css/jquery.toast.min.css}" rel="stylesheet"
 			type="text/css" />

@@ -14,22 +14,26 @@
 		<section class="sidebar">
 			<!-- sidebar menu: : style can be found in sidebar.less -->
 			<ul id="menubar-tbn" class="sidebar-menu tree" data-widget="tree">
-				<li class="" id="home-menu-id"><a th:href="@{/home}"> <i
+				<li id="home-menu-id"><a th:href="@{/home}" class=""> <i
 						class="icon-home" aria-hidden="true"></i> <span>Home</span>
 				</a></li>
 
-					<li class="" id="topology-menu-id" th:if="${session.sessionObject.role=='ROLE_ADMIN'}"><a th:href="@{/topology}"> <i
+					<li id="topology-menu-id"><a th:href="@{/topology}" class="" permission="menu_topology"> <i
 							class="icon-topology" aria-hidden="true"></i><span class="home-Topology">Topology</span>
 					</a></li>
 
-					<li class="" id="flows-menu-id" th:if="${session.sessionObject.role=='ROLE_ADMIN'}"><a th:href="@{/flows}"> <i
+					<li id="flows-menu-id"><a th:href="@{/flows}" class="" permission="menu_flows"> <i
 							class="icon-flows" aria-hidden="true"></i><span class="home-flows">Flows</span>
 					</a></li>
-					<li class="" id="isl-menu-id" th:if="${session.sessionObject.role=='ROLE_ADMIN'}"><a th:href="@{/switch/isllist}"> <i
+					<li id="isl-menu-id"><a th:href="@{/switch/isllist}" class="" permission="menu_isl"> <i
 							class="icon-isl" aria-hidden="true"></i><span class="home-isl">ISL</span>
 					</a></li>
-					<li class="" id="switch-menu-id" th:if="${session.sessionObject.role=='ROLE_ADMIN'}"><a th:href="@{/switch}"> <i
+					<li id="switch-menu-id"><a th:href="@{/switch}" class="" permission="menu_switches"> <i
 							class="icon-switch" aria-hidden="true"></i><span class="home-flows">Switches</span>
+					</a></li>
+					
+					<li id="usermanagement-menu-id"><a th:href="@{/usermanagement}" class="" permission="menu_user_management"> <i
+							class="icon-switch" aria-hidden="true"></i><span class="home-flows">User Management</span>
 					</a></li>
 			</ul>
 		</section>
