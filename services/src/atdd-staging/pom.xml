@@ -41,8 +41,6 @@
         <commons-lang3.version>3.7</commons-lang3.version>
         <jackson.version>2.9.4</jackson.version>
         <failsafe.version>1.0.5</failsafe.version>
-
-        <lombok.version>1.16.20</lombok.version>
     </properties>
 
     <!-- Dependencies -->
@@ -74,6 +72,11 @@
         <dependency>
             <groupId>org.openkilda</groupId>
             <artifactId>atdd</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openkilda</groupId>
+            <artifactId>api</artifactId>
             <version>${project.version}</version>
         </dependency>
 
@@ -231,6 +234,27 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <plugin>
+                <groupId>net.masterthought</groupId>
+                <artifactId>maven-cucumber-reporting</artifactId>
+                <version>3.16.0</version>
+                <executions>
+                    <execution>
+                        <id>execution</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <configuration>
+                            <projectName>${project.name}</projectName>
+                            <outputDirectory>${project.build.directory}</outputDirectory>
+                            <cucumberOutput>${project.build.directory}/cucumber-reports</cucumberOutput>
+                            <checkBuildResult>!${skipTests}</checkBuildResult>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
-    </build>
+</build>
 </project>

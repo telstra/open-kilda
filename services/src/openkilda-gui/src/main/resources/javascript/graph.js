@@ -134,9 +134,9 @@ var max_text_size = 24;
 var nominal_stroke = 1.5;
 var max_stroke = 4.5;
 var max_base_node_size = 36;
-var min_zoom = 0.5;
+var min_zoom = 0.15;
 var max_zoom = 3;
-
+var isDragMove = false;
 var scale = 1.0;
 var optArray = [];
 
@@ -148,42 +148,52 @@ var margin = {top: -5, right: -5, bottom: -5, left: -5},
 	width = window.innerWidth,
 	height = window.innerHeight,
 	radius = 35,
-	zoom, force, drag, svg,  link, node, text, flow_count,linksSourceArr;
+	zoom, force, drag, svg,  link, node, text, flow_count,linksSourceArr,new_nodes=false;
+
+
 var size = d3.scale.pow().exponent(1)
-.domain([1, 100])
-.range([8, 24]);
-zoom = d3.behavior.zoom()
-	.scale(scale)
-	.scaleExtent([min_zoom, max_zoom])
-	//.on("zoom", redraw);
-//create force layout
-/*force = d3.layout.force()
-    .charge(-1000)
-    .linkDistance(200)
-	.size([width, height])
-	.on("tick", tick);
+.domain([1,100])
+.range([8,24]);
+	
+var force = d3.layout.force()
+.linkDistance(function(d) { 
+ 		var distance = 150;
+ 		try{
+		if(!d.flow_count){
+			if(d.speed == "40000000"){
+				distance = 100;
+			}else {
+				distance = 300;
+			}
+ 		}
+ 		}catch(e){}
+ 		return distance;  })
+.charge(-1000)
+.size([width,height]);
 
-
-drag = force.drag()
-	.on("dragstart", dragstart)
-	.on("dragend", dragend);
-*/
-svg = d3.select("#switchesgraph").append("svg")
-	.attr("width", width)
-	.attr("height", height)
-	.append("g")
-	.attr("class", "svg_g")
-	.call(zoom)
-	.on("dblclick.zoom", null)
-	//.style("cursor", "move");
-
-svg.append("rect")
-.attr("class", "graphoverlay")
-.attr("width", width)
-.attr("height", height);
-
-link = svg.selectAll(".link"),
-node = svg.selectAll(".node");
+var svg = d3.select("#switchesgraph").append("svg");
+var zoom = d3.behavior.zoom().scaleExtent([min_zoom,max_zoom])
+var g = svg.append("g");
+svg.style("cursor","move");
+function zoomEventCall(){
+	zoom.on("zoom", function() {
+		var stroke = nominal_stroke;
+		if (nominal_stroke*zoom.scale()>max_stroke) stroke = max_stroke/zoom.scale();
+		link.style("stroke-width",stroke);
+		circle.style("stroke-width",stroke);
+		var base_radius = nominal_base_node_size;
+		if (nominal_base_node_size*zoom.scale()>max_base_node_size) base_radius = max_base_node_size/zoom.scale();
+		    circle.attr("d", d3.svg.symbol()
+		    .size(function(d) { return Math.PI*Math.pow(size(d.size)*base_radius/nominal_base_node_size||base_radius,2); })
+		    .type(function(d) { return d.type; }))
+		if (!text_center) text.attr("dx", function(d) { return (size(d.size)*base_radius/nominal_base_node_size||base_radius); });
+		
+		var text_size = nominal_text_size;
+		if (nominal_text_size*zoom.scale()>max_text_size) text_size = max_text_size/zoom.scale();
+			text.style("font-size",text_size + "px");
+			g.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
+});
+}
 
 
 graph = {
@@ -207,7 +217,10 @@ graph = {
 		flows = responseData.flow.data;
 		linksSourceArr= [];
 		var linksArr = [];
-		
+		if(nodes.length < 50){
+			min_zoom = 0.5;
+			zoom.scaleExtent([min_zoom,max_zoom])
+		}
 		if (links.length>0) {
 			
 			try{
@@ -221,30 +234,13 @@ graph = {
 					if(row.length>=1){
 						for(var j=0,len1=row.length;j<len1;j++){
 							var key= row[j].source_switch+"_"+row[j].target_switch;
-							if(row[j].unidirectional && row[j].state.toLowerCase()=="discovered"){
-								if(typeof(linksSourceArr[key])!=='undefined'){
-									linksSourceArr[key].push(row[j]);
-								}else{
-									linksSourceArr[key] = []
-									linksSourceArr[key].push(row[j]);
-								}
+							if(typeof(linksSourceArr[key])!=='undefined'){
+								linksSourceArr[key].push(row[j]);
+							}else{
+								linksSourceArr[key] = []
+								linksSourceArr[key].push(row[j]);
 							}
-							else if(row[j].state.toLowerCase()=="failed"){
-								if(typeof(linksSourceArr[key])!=='undefined'){
-									linksSourceArr[key].push(row[j]);
-								}else{
-									linksSourceArr[key] = []
-									linksSourceArr[key].push(row[j]);
-								}
-							}
-							else if(row[j].state.toLowerCase()=="discovered"){
-								if(typeof(linksSourceArr[key])!=='undefined'){
-									linksSourceArr[key].push(row[j]);
-								}else{
-									linksSourceArr[key] = []
-									linksSourceArr[key].push(row[j]);
-								}
-							}
+
 						}
 					}
 				}
@@ -296,249 +292,27 @@ graph = {
 	        }
 			linkedByIndex[d.source + "," + d.target] = true;
 		});
-		
-		force = self.force = d3.layout.force()
-        .nodes(nodes)
-        .links(links)
-        .charge(-1000)
-       	//.linkDistance(200)
-        .linkDistance(function(d) { 
- 		var distance = 150;
- 		try{
-		if(!d.flow_count){
-			if(d.speed == "40000000"){
-				distance = 100;
-			}else {
-				distance = 300;
-			}
- 		}
- 		}catch(e){}
- 		return distance;  })
-       	.size([width, height])
-        .start();
+
+		force
+	    .nodes(nodes)
+	    .links(links)
+	    .start();
 		
 		drag = d3.behavior.drag()
 	        .on("dragstart", dragstart)
 	        .on("drag", dragmove)
 	        .on("dragend", dragend);
-		 
-		resize();
-		//window.focus();
-		//d3.select(window).on("resize", resize);
-		link = link.data(links)
-		.enter().append("path")
-		.attr("class", function(d, index) {
-	        if (d.hasOwnProperty("flow_count")) {
-	            return "link logical";
-	        } else {
-	            if (d.unidirectional && d.state && d.state.toLowerCase()== "discovered" || d.state && d.state.toLowerCase()== "failed"){
-                    return "link physical down";
-                }else{
-                    return "link physical";
-                }
-	        }
-		})
-		.attr("id", function(d, index) {
-	        return "link" + index;
-	    })
-	    .on("mouseover", function(d, index) {
-	    	$('#switch_hover').css('display', 'none');
-		    var element = $("#link" + index)[0];	
-	        if (d.hasOwnProperty("flow_count")) {
-	        	element.setAttribute("class", "link logical overlay");
-	        } else {
-	            if (d.unidirectional && d.state && d.state.toLowerCase()== "discovered" || d.state && d.state.toLowerCase()== "failed"){
-                    element.setAttribute("class","link physical pathoverlay");
-                }else{
-                	element.setAttribute("class","link physical overlay");
-                }
-	            $(element).on('mousemove',function(e){
-	            	$('#topology-hover-txt').css('top', (e.pageY) + 'px');
-				    $('#topology-hover-txt').css('left', (e.pageX) + 'px');
-				    var bound = HorizontallyBound(document.getElementById("switchesgraph"), document.getElementById("topology-hover-txt"));
-				    if(bound){
-				    	$("#topology-hover-txt").removeClass("left");
-				    }else{
-				    	var left = e.pageX - (300 + 100); // subtract width of tooltip box + circle radius
-				    	$('#topology-hover-txt').css('left', left + 'px');
-				    	$("#topology-hover-txt").addClass("left");
-				    }
-	            })
-	            var rec = element.getBoundingClientRect();
-			    $('#topology-hover-txt, #isl_hover').css('display', 'block');
-			    d3.select(".isldetails_div_source_port").html("<span>" + ((d.src_port=="" || d.src_port == undefined)? "-":d.src_port) + "</span>");
-			    d3.select(".isldetails_div_destination_port").html("<span>" + ((d.dst_port=="" || d.dst_port == undefined)? "-":d.dst_port) + "</span>");
-			    d3.select(".isldetails_div_source_switch").html("<span>" + ((d.source_switch_name=="" || d.source_switch_name == undefined)? "-":d.source_switch_name) + "</span>");
-			    d3.select(".isldetails_div_destination_switch").html("<span>" +  ((d.target_switch_name=="" || d.target_switch_name == undefined)? "-":d.target_switch_name)+ "</span>");
-			    d3.select(".isldetails_div_speed").html("<span>" + ((d.speed=="" || d.speed == undefined)? "-":d.speed/1000) + " Mbps</span>");
-			    d3.select(".isldetails_div_state").html("<span>" + ((d.state=="" || d.state == undefined)? "-":d.state) + "</span>");
-			    d3.select(".isldetails_div_latency").html("<span>" + ((d.latency=="" || d.latency == undefined)? "-":d.latency) + "</span>");
-			    d3.select(".isldetails_div_bandwidth").html("<span>" + ((d.available_bandwidth=="" || d.available_bandwidth == undefined)? "-":d.available_bandwidth/1000) + " Mbps</span>");
-			    d3.select(".isldetails_div_unidirectional").html("<span>" + ((d.unidirectional=="" || d.unidirectional == undefined)? "-":d.unidirectional) + "</span>"); 
-			    d3.select(".isldetails_div_cost").html("<span>" + ((d.cost=="" || d.cost == undefined)? "-":d.cost) + "</span>"); 
-			      
-	        }
-	    }).on("mouseout", function(d, index) {
-	        var element = $("#link" + index)[0];
-	        if (d.hasOwnProperty("flow_count")) {
-	        	element.setAttribute("class", "link logical");
-	        } else {
-	            if (d.unidirectional && d.state && d.state.toLowerCase()== "discovered" || d.state && d.state.toLowerCase()== "failed"){
-	                element.setAttribute("class","link physical down");
-	            }else{
-	                element.setAttribute("class","link physical");
-	            }
-	        }
-	        
-	        if (!$('#topology-hover-txt').is(':hover')) {
-	    		$('#topology-hover-txt, #isl_hover').css('display', 'none');
-	    	}
-	    }).on("click", function(d, index) {
-            var element = $("#link" + index)[0];
-            if (d.hasOwnProperty("flow_count")) {
-	        	element.setAttribute("class", "link logical overlay");
-	        	showFlowDetails(d);
-	        } else {
-	            
-	            if (d.unidirectional && d.state && d.state.toLowerCase()== "discovered" || d.state && d.state.toLowerCase()== "failed"){
-                    element.setAttribute("class","link physical pathoverlay");
-                }else{
-                    element.setAttribute("class","link physical overlay");
-                }
-	        	showLinkDetails(d);
-	        }
-        }).attr("stroke", function(d, index) {
-	        if (d.hasOwnProperty("flow_count")) {
-	            return "#228B22";
-	        } else {
-	            if (d.unidirectional && d.state && d.state.toLowerCase()== "discovered"){
-                    return ISL.UNIDIR;
-                } else if(d.state && d.state.toLowerCase()== "discovered"){
-                    return ISL.DISCOVERED;
-                }
-	            
-	        	return ISL.FAILED;
-	        }
-	        
-        });
-		node = node.data(nodes)
-			.enter().append("g")
-			.attr("class", "node")
-			.on("dblclick", dblclick)
-			.call(drag);
-		circle = node.append("circle")
-			.attr("r", radius)
-			.attr("class",  function(d, index) {
-				var classes = "circle blue";
-				if(d.state && d.state.toLowerCase() == "deactivated"){
-					classes = "circle red";
-				}
-			    return classes;
-			})
-			.attr('id', function(d, index) {
-			    return "circle_" + d.switch_id;
-			})
-			.style("cursor", "move");
-			
-			
-		text = node.append("text")
-			.attr("dy", ".35em")
-	        .style("font-size", nominal_text_size + "px")
-			.attr("class", "switchname hide"); 
-		if (text_center) {
-		    text.text(function(d) {
-		            return d.name;
-		        })
-		        .style("text-anchor", "middle");
-		} else {
-		    text.attr("dx", function(d) {
-		            return (size(d.size) || nominal_base_node_size);
-		        })
-		        .text(function(d) {
-		            return d.name;
-		        });
-		}
 		
-		images = node.append("svg:image").attr("xlink:href", function(d) {
-		    return "images/switch.png";
-		}).attr("x", function(d) {
-		    return -29;
-		}).attr("y", function(d) {
-		    return -29;
-		}).attr("height", 58).attr("width", 58).attr("id", function(d, index) {
-		    return "image_" + index;
-		}).attr("cursor", "pointer").on("click", function(d, index) {
-		    if (d3.event.defaultPrevented)
-		        return;
-		    flagHover = true;
-		    var t0 = new Date();
-		    if (t0 - doubleClickTime > threshold) {
-		        setTimeout(function() {
-		            if (t0 - doubleClickTime > threshold) {
-		                showSwitchDetails(d);
-		            }
-		        }, threshold);
-		    }
-		
-		}).on("mouseover", function(d, index) {
-			
-			$('#isl_hover').css('display', 'none');
-			
-		    var cName = document.getElementById("circle_" + d.switch_id).className;
-		    circleClass = cName.baseVal;
-		
-		    var element = document.getElementById("circle_" + d.switch_id);
-		    
-		    var classes = "circle blue hover";
-			if(d.state && d.state.toLowerCase() == "deactivated"){
-				classes = "circle red hover";
-			}
-		    element.setAttribute("class", classes);
-		    var rec = element.getBoundingClientRect();
-		    $('#topology-hover-txt, #switch_hover').css('display', 'block');
-		    $('#topology-hover-txt').css('top', rec.y + 'px');
-		    $('#topology-hover-txt').css('left', rec.x + 'px');
-		
-		    d3.select(".switchdetails_div_switch_name").html("<span>" + d.name + "</span>");
-		    d3.select(".switchdetails_div_controller").html("<span>" + d.switch_id + "</span>");
-		    d3.select(".switchdetails_div_state").html("<span>" + d.state + "</span>");
-		    d3.select(".switchdetails_div_address").html("<span>" + d.address + "</span>");
-		    d3.select(".switchdetails_div_name").html("<span>" + d.switch_id + "</span>");
-		    d3.select(".switchdetails_div_desc").html("<span>" + d.description + "</span>");
-		    var bound = HorizontallyBound(document.getElementById("switchesgraph"), document.getElementById("topology-hover-txt"));
-		    if(bound){
-		    	$("#topology-hover-txt").removeClass("left");
-		    }else{
-		    	var left = rec.x - (300 + 100); // subtract width of tooltip box + circle radius
-		    	$('#topology-hover-txt').css('left', left + 'px');
-		    	$("#topology-hover-txt").addClass("left");
-		    }
-		}).on("mouseout", function(d, index) {
-			if (flagHover == false) {
-		        flagHover = true;
-		    }
-		    else{
-		    	var element = document.getElementById("circle_" + d.switch_id);
-			    var classes = "circle blue";
-				if(d.state && d.state.toLowerCase() == "deactivated"){
-					classes = "circle red";
-				}
-			    element.setAttribute("class", classes);
-		    }
-		    if (!$('#topology-hover-txt').is(':hover')) {
-	    		$('#topology-hover-txt, #switch_hover').css('display', 'none');
-	    	}
-		});
-		
-		
+		insertLinks(links); // creating links between nodes
+		insertNodes(nodes); // create circles on nodes
 		graph.circle();
+		zoomEventCall();
+		svg.call(zoom);  
+		svg.on("dblclick.zoom", null);
+	    resize();
 		force.on('end', function() {
 			$("#wait").css("display", "none");
 			$("#switchesgraph").removeClass("hide");
-			if(zoomFitCall){
-				zoomFit(0.95, 500);
-			}
-			
 			
 			try{
 				positions = storage.get('NODES_COORDINATES');
@@ -560,6 +334,9 @@ graph = {
 			}catch(e){
 				console.log(e);
 			} 
+			if(zoomFitCall){
+				zoomFit(min_zoom, 500);
+			}
 		});
 		
 		force.on("tick", tick);
@@ -585,7 +362,7 @@ graph = {
 				filteredLinks.push(obj);
 			};
 		})
-		flow_count = svg.selectAll(".flow_count")
+		flow_count = g.selectAll(".flow_count")
 	    	.data(filteredLinks)
 	    	.enter().append("g").attr("class","flow-circle");
 	
@@ -636,7 +413,7 @@ graph = {
 		    })
 		    .attr("fill", function(d) {
 		        return "#d3d3d3";
-		    }).call(force.drag)
+		    });//.call(force.drag)
 		    
 		    flow_count.append("text")
 		    .attr("dx", function(d) {
@@ -764,7 +541,8 @@ function tick() {
 		keysof = Object.keys(d);
 		lookup[d.key] = d.flow_count;
 		if (lookup[d.Key] == undefined) {
-			if(islCount ==1){
+			
+			if(islCount == 1){
 				return "M" + d.source.x + "," + d.source.y + "L" + d.target.x + "," + d.target.y;
 			}else{
 				if(islCount %2 !=0 && matchedIndex ==1){
@@ -825,14 +603,56 @@ function tick() {
 	    }
 	});
 }
-function redraw() {
-	svg.attr("transform", "translate(" + d3.event.translate + ")" +
-		" scale(" + d3.event.scale + ")");
+
+function reset() {
+	storage.remove("NODES_COORDINATES");
+	d3.selectAll('g.node')
+    .each(function(d) {
+    	var element = document.getElementById("circle_" + d.switch_id);
+    	var classes = "circle blue";
+		if(d.state && d.state.toLowerCase() == "deactivated"){
+			classes = "circle red";
+		}
+		element.setAttribute("class", classes);
+    	d3.select(this).classed("fixed", d.fixed = false);
+    });
+	force.charge(-1000).resume();
+	zoom.scale(min_zoom);
+	zoomFit(min_zoom,500);
 }
 
+function zoomClick(id) {
+
+	var bounds = g.node().getBBox();
+	var parent = g.node().parentElement;
+	var fullWidth = $(parent).width(),
+		fullHeight = $(parent).height() - 200
+	var width = bounds.width,
+		height = bounds.height;
+	var midX = bounds.x + width / 2,
+		midY = bounds.y + height / 2;
+	var direction = 1,
+    factor = 0.2,
+    target_zoom = 1,
+    center = [fullWidth / 2 - min_zoom * midX, fullHeight / 2 - min_zoom * midY],//[width / 2, height / 2],
+    extent = zoom.scaleExtent(),
+    translate = zoom.translate(),
+    translate0 = [],
+    l = [],
+    view = {x: translate[0], y: translate[1], k: zoom.scale()};
+   	direction = (id === 'zoom_in') ? 1 : -1;
+	target_zoom = zoom.scale() * (1 + factor * direction);
+	if (target_zoom < extent[0] || target_zoom > extent[1]) { return false; }
+	translate0 = [(center[0] - view.x) / view.k, (center[1] - view.y) / view.k];
+	view.k = target_zoom;
+	l = [translate0[0] * view.k + view.x, translate0[1] * view.k + view.y];
+	view.x += center[0] - l[0];
+	view.y += center[1] - l[1];
+	interpolateZoom([view.x, view.y], view.k);
+}
 function zoomed() {
 	
-	svg.attr("transform",
+	g.attr("transform",
         "translate(" + zoom.translate() + ")" +
         "scale(" + zoom.scale() + ")"
     );
@@ -851,29 +671,6 @@ function interpolateZoom (translate, scale) {
         };
     });
 }
-function reset() {
-	d3.selectAll('g.node')
-    .each(function(d) {
-    	var element = document.getElementById("circle_" + d.switch_id);
-    	var classes = "circle blue";
-		if(d.state && d.state.toLowerCase() == "deactivated"){
-			classes = "circle red";
-		}
-		element.setAttribute("class", classes);
-    	d3.select(this).classed("fixed", d.fixed = false);
-    });
-	force.resume();
-	panzoom.reset();
-	storage.remove("NODES_COORDINATES");
-}
-
-function zoomClick(id) {
-	if(id === 'zoom_in'){
-		panzoom.zoomIn()
-	}else{
-		panzoom.zoomOut();
-	}
-}
 
 function dblclick(d,index) {
 	var element = document.getElementById("circle_" + d.switch_id);
@@ -884,7 +681,8 @@ function dblclick(d,index) {
     element.setAttribute("class", classes);
     doubleClickTime = new Date();
     d3.select(this).classed("fixed", d.fixed = false);
-    force.resume();
+    showSwitchDetails(d);
+    //force.resume();
 }
 function dragstart(d) {
 	force.stop()
@@ -892,7 +690,7 @@ function dragstart(d) {
 	//d3.select(this).classed("fixed", d.fixed = true);
 }
 function dragmove(d, i) {
-    d.px += d3.event.dx;
+	isDragMove = true;
     d.py += d3.event.dy;
     d.x += d3.event.dx;
     d.y += d3.event.dy; 
@@ -918,8 +716,8 @@ $('#switch_icon').on('click',function(){
 })
 
 function zoomFit(paddingPercent, transitionDuration) {
-	var bounds = svg.node().getBBox();
-	var parent = svg.node().parentElement;
+	var bounds = g.node().getBBox();
+	var parent = g.node().parentElement;
 	var fullWidth = $(parent).width(),
 		fullHeight = $(parent).height();
 	var width = bounds.width,
@@ -927,15 +725,11 @@ function zoomFit(paddingPercent, transitionDuration) {
 	var midX = bounds.x + width / 2,
 		midY = bounds.y + height / 2;
 	if (width == 0 || height == 0) return; // nothing to fit
-	var scale = (paddingPercent || 0.75) / Math.max(width / fullWidth, height / fullHeight);
-	var translate = [fullWidth / 2 - scale * midX, fullHeight / 2 - scale * midY];
-	
-	
-	zoom.scale(scale).translate(translate);
-	
-	svg.transition().duration(transitionDuration || 0) // milliseconds
-	.attr("transform", "translate(" + translate + ")scale(" + scale + ")");
-
+	//var scale = (paddingPercent || 0.75) / Math.max(width / fullWidth, height / fullHeight);
+	var translate = [fullWidth / 2 - min_zoom * midX, fullHeight / 2 - min_zoom * midY];
+	zoom.scale(min_zoom).translate(translate)
+	g.transition().duration(transitionDuration || 0) // milliseconds
+	.attr("transform", "translate(" + zoom.translate() + ")scale(" + zoom.scale() + ")");
 	zoomFitCall = false;
 	
 }
@@ -984,7 +778,7 @@ var options = {
 	      }
 }
 
-var panzoom = $("svg").svgPanZoom(options);
+//var panzoom = $("svg").svgPanZoom(options);
 //localStorage.clear();
 var parentRect;
 var childRect;
@@ -1046,28 +840,11 @@ function searchNode(value) {
 	        d3.selectAll(".node, .link, .flow-circle").transition()
 	            .duration(5000)
 	            .style("opacity", 1);
-        	/*unmatched.selectAll("circle")
-    		.attr("class", function(d,index){
-    			var element = document.getElementById("circle_" + d.switch_id);
-    			var classes = "circle blue";
-				if(d.state && d.state.toLowerCase() == "deactivated"){
-					classes = "circle red";
-				}
-				element.setAttribute("class", classes);
-			});*/
-	       
+       	       
 	    }
     }
 }
 
-/*$('#auto_refresh').click(function(e){
-	var isRefreshChecked = $('#auto_refresh:checked').length;
-	updateRightPanel({
-		REFRESH_CHECKED : isRefreshChecked, 
-		REFRESH_INTERVAL : $("#auto_refresh_interval").val(),
-		REFRESH_TYPE : $("#m_s_dropdown").val()
-	});
-});*/
 
 $('#viewISL').click(function(e){
 	try{
@@ -1090,7 +867,12 @@ $('#viewISL').click(function(e){
 });
 
 function setISLData(response,id){
-	
+	if(response && response.length){
+		if ( $.fn.DataTable.isDataTable('#'+id) ) {
+					  $('#'+id).DataTable().destroy();
+					}
+					$('#'+id+' tbody').empty();
+	}
 	for(var i = 0; i < response.length; i++) {
 		 var tableRow = "<tr id='div_"+(i+1)+"' class='flowDataRow'>"
 						 	+"<td class='divTableCell' title ='"+((response[i].source_switch_name === "" || response[i].source_switch_name == undefined)?"-":response[i].source_switch_name)+"'>"+((response[i].source_switch_name === "" || response[i].source_switch_name == undefined)?"-":response[i].source_switch_name)+"</td>"
@@ -1108,7 +890,7 @@ function setISLData(response,id){
 		 
 		 	 $('#'+id).append(tableRow);
  	 }
-	 
+	common.customDataTableSorting();
 	 var tableVar  =  $('#'+id).DataTable( {
 		 "iDisplayLength": 8,
 		 "aLengthMenu": false,
@@ -1116,12 +898,12 @@ function setISLData(response,id){
 		  "responsive": true,
 		  "bSortCellsTop": true,
 		  "autoWidth": false,
-		  destroy:true,
 		  language: {searchPlaceholder: "Search"},
+		  "aaSorting": [[0, "asc"]],
 		  "aoColumns": [
-				  { sWidth: '14%' },
+				  { sWidth: '14%',"sType": "name","bSortable": true },
 	              { sWidth:  '8%' },
-	              { sWidth: '8%' },
+	              { sWidth: '8%',"sType": "name","bSortable": true },
 	              { sWidth: '14%' },
 	              { sWidth: '8%' },
 	              { sWidth: '8%' },
@@ -1181,6 +963,9 @@ function showSearch(idname,$event) {
 	}
 }
 $(document).ready(function() {
+	$('#close_switch_detail').click(function(){
+		$('#topology-click-txt').css('display', 'none');
+	})
 	$('body').on("click", function(e) { 
 		$('#topology-hover-txt').css('display', 'none');
 		var container = $('.refresh_toggle');
@@ -1315,7 +1100,437 @@ function updateRightPanel(obj){
 	}
 	cookie.set('RIGHT_CHECKBOXES', JSON.stringify(RIGHT_CHECKBOXES));
 }
+function getNewSwitch(nodes,response){
+	var nodesArr ={"added":[],"removed":[]};
+	for(var i=0;i<response.length; i++){
+		var foundFlag= false;
+		for(var j=0;j<nodes.length; j++){
+			if(nodes[j].switch_id == response[i].switch_id){
+				foundFlag =true;
+			}
+		}
+		if(!foundFlag){
+			nodesArr['added'].push(response[i]);
+		}
+	}
+	for(var i=0;i<nodes.length; i++){
+		var foundFlag= false;
+		for(var j=0;j<response.length; j++){
+			if(response[j].switch_id == nodes[i].switch_id){
+				foundFlag =true;
+			}
+		}
+		if(!foundFlag){
+			nodesArr['removed'].push(nodes[i]);
+		}
+	}
+	return nodesArr;
+}
+function getNewLinks(links,response){
+	var linksArr ={"added":[],"removed":[]};
+	for(var i = 0; i < response.length; i++){
+		var foundFlag = false;
+		for(var j = 0; j < links.length; j++){
+			if(links[j].source_switch == response[i].source_switch && links[j].target_switch == response[i].target_switch && links[j].src_port ==  response[i].src_port && links[j].dst_port == response[i].dst_port){
+				foundFlag =true;
+			}
+		}
+		if(!foundFlag){
+			linksArr['added'].push(response[i]);
+		}
+	}
+	// checking for removed links
+	for(var i = 0; i < links.length; i++){
+		var foundFlag = false;
+		for(var j = 0; j < response.length; j++){
+			if(links[i].source_switch == response[j].source_switch && links[i].target_switch == response[j].target_switch && links[i].src_port ==  response[j].src_port && links[i].dst_port == response[j].dst_port){
+				foundFlag =true;
+			}
+		}
+		if(!foundFlag){
+			linksArr['removed'].push(links[i]);
+		}
+	}
+	return linksArr;
+}
+function insertNodes(nodes){
+	node = g.selectAll(".node").data(nodes);
+	node.enter().append("g")
+	.attr("class", "node")
+	.on("dblclick", dblclick)
+	.call(drag);
+	node.exit().remove();
+circle = node.append("circle").attr("r", radius)
+	.attr("class",  function(d, index) {
+		var classes = "circle blue";
+		if(d.state && d.state.toLowerCase() == "deactivated"){
+			classes = "circle red";
+		}
+	    return classes;
+	})
+	.attr('id', function(d, index) {
+	    return "circle_" + d.switch_id;
+	})
+	.style("cursor", "move");
+	
+text = node.append("text").attr("dy", ".35em")
+    .style("font-size", nominal_text_size + "px")
+	.attr("class", "switchname hide"); 
+if (text_center) {
+    text.text(function(d) {
+            return d.name;
+        })
+        .style("text-anchor", "middle");
+} else {
+    text.attr("dx", function(d) {
+            return (size(d.size) || nominal_base_node_size);
+        })
+        .text(function(d) {
+            return d.name;
+        });
+}
+images = node.append("svg:image").attr("xlink:href", function(d) {
+    return "images/switch.png";
+}).attr("x", function(d) {
+    return -29;
+}).attr("y", function(d) {
+    return -29;
+}).attr("height", 58).attr("width", 58).attr("id", function(d, index) {
+    return "image_" + index;
+}).attr("cursor", "pointer").on("click", function(d, index) {
+	$('#topology-hover-txt').css('display', 'none');
+	
+    var cName = document.getElementById("circle_" + d.switch_id).className;
+    circleClass = cName.baseVal;
 
+    var element = document.getElementById("circle_" + d.switch_id);
+    
+    var classes = "circle blue hover";
+	if(d.state && d.state.toLowerCase() == "deactivated"){
+		classes = "circle red hover";
+	}
+    element.setAttribute("class", classes);
+    var rec = element.getBoundingClientRect();
+    if(!isDragMove){
+    	 $('#topology-click-txt, #switch_click').css('display', 'block');
+		    $('#topology-click-txt').css('top', rec.y + 'px');
+		    $('#topology-click-txt').css('left', rec.x + 'px');
+		
+		    d3.select(".switchdetails_div_click_switch_name").html("<span>" + d.name + "</span>");
+		    d3.select(".switchdetails_div_click_controller").html("<span>" + d.switch_id + "</span>");
+		    d3.select(".switchdetails_div_click_state").html("<span>" + d.state + "</span>");
+		    d3.select(".switchdetails_div_click_address").html("<span>" + d.address + "</span>");
+		    d3.select(".switchdetails_div_click_name").html("<span>" + d.switch_id + "</span>");
+		    d3.select(".switchdetails_div_click_desc").html("<span>" + d.description + "</span>");
+		    var bound = HorizontallyBound(document.getElementById("switchesgraph"), document.getElementById("topology-click-txt"));
+		    if(bound){
+		    	$("#topology-click-txt").removeClass("left");
+		    }else{
+		    	var left = rec.x - (300 + 100); // subtract width of tooltip box + circle radius
+		    	$('#topology-click-txt').css('left', left + 'px');
+		    	$("#topology-click-txt").addClass("left");
+		    }
+    }else{
+    	isDragMove = false;
+    }
+   
+}).on("mouseover", function(d, index) {
+	$('#isl_hover').css('display', 'none');
+	
+    var cName = document.getElementById("circle_" + d.switch_id).className;
+    circleClass = cName.baseVal;
+
+    var element = document.getElementById("circle_" + d.switch_id);
+    
+    var classes = "circle blue hover";
+	if(d.state && d.state.toLowerCase() == "deactivated"){
+		classes = "circle red hover";
+	}
+    element.setAttribute("class", classes);
+    var rec = element.getBoundingClientRect();
+    $('#topology-hover-txt, #switch_hover').css('display', 'block');
+    $('#topology-hover-txt').css('top', rec.y + 'px');
+    $('#topology-hover-txt').css('left', rec.x + 'px');
+
+    d3.select(".switchdetails_div_switch_name").html("<span>" + d.name + "</span>");
+    d3.select(".switchdetails_div_controller").html("<span>" + d.switch_id + "</span>");
+    d3.select(".switchdetails_div_state").html("<span>" + d.state + "</span>");
+    d3.select(".switchdetails_div_address").html("<span>" + d.address + "</span>");
+    d3.select(".switchdetails_div_name").html("<span>" + d.switch_id + "</span>");
+    d3.select(".switchdetails_div_desc").html("<span>" + d.description + "</span>");
+    var bound = HorizontallyBound(document.getElementById("switchesgraph"), document.getElementById("topology-hover-txt"));
+    if(bound){
+    	$("#topology-hover-txt").removeClass("left");
+    }else{
+    	var left = rec.x - (300 + 100); // subtract width of tooltip box + circle radius
+    	$('#topology-hover-txt').css('left', left + 'px');
+    	$("#topology-hover-txt").addClass("left");
+    }
+}).on("mouseout", function(d, index) {
+	if (flagHover == false) {
+        flagHover = true;
+    }
+    else{
+    	var element = document.getElementById("circle_" + d.switch_id);
+	    var classes = "circle blue";
+		if(d.state && d.state.toLowerCase() == "deactivated"){
+			classes = "circle red";
+		}
+	    element.setAttribute("class", classes);
+    }
+    if (!$('#topology-hover-txt').is(':hover')) {
+		$('#topology-hover-txt, #switch_hover').css('display', 'none');
+	}
+});
+}
+function insertLinks(links){
+	link = g.selectAll(".link").data(links);
+	link.enter().append("path")
+	.attr("class", function(d, index) {
+        if (d.hasOwnProperty("flow_count")) {
+            return "link logical";
+        } else {
+            if (d.unidirectional && d.state && d.state.toLowerCase()== "discovered" || d.state && d.state.toLowerCase()== "failed"){
+            	if(d.affected){
+            		return "link physical down dashed_path";
+            	}else{
+            		return "link physical down";
+            	}
+            	
+            }else{
+            	if(d.affected){
+            		return "link physical dashed_path";
+            	}else{
+            		return "link physical";
+            	}
+                
+            }
+        }
+	})
+	.attr("id", function(d, index) {
+        return "link" + index;
+    })
+    .on("mouseover", function(d, index) {
+    	$('#switch_hover').css('display', 'none');
+	    var element = $("#link" + index)[0];	
+        if (d.hasOwnProperty("flow_count")) {
+        	if(d.affected){
+        		element.setAttribute("class","link logical overlay dashed_path");
+        	}else{
+        		element.setAttribute("class","link logical overlay");
+        	}
+        	
+        } else {
+            if (d.unidirectional && d.state && d.state.toLowerCase()== "discovered" || d.state && d.state.toLowerCase()== "failed"){
+            	if(d.affected){
+            		element.setAttribute("class","link physical dashed_path pathoverlay");
+            	}else{
+            		element.setAttribute("class","link physical pathoverlay");
+            	}
+            	
+            }else{
+            	if(d.affected){
+            		element.setAttribute("class","link physical overlay dashed_path");
+            	}else{
+            		element.setAttribute("class","link physical overlay");
+            	}
+            	
+            }
+            $(element).on('mousemove',function(e){
+            	$('#topology-hover-txt').css('top', (e.pageY) + 'px');
+			    $('#topology-hover-txt').css('left', (e.pageX) + 'px');
+			    var bound = HorizontallyBound(document.getElementById("switchesgraph"), document.getElementById("topology-hover-txt"));
+			    if(bound){
+			    	$("#topology-hover-txt").removeClass("left");
+			    }else{
+			    	var left = e.pageX - (300 + 100); // subtract width of tooltip box + circle radius
+			    	$('#topology-hover-txt').css('left', left + 'px');
+			    	$("#topology-hover-txt").addClass("left");
+			    }
+            })
+            var rec = element.getBoundingClientRect();
+		    $('#topology-hover-txt, #isl_hover').css('display', 'block');
+		    d3.select(".isldetails_div_source_port").html("<span>" + ((d.src_port=="" || d.src_port == undefined)? "-":d.src_port) + "</span>");
+		    d3.select(".isldetails_div_destination_port").html("<span>" + ((d.dst_port=="" || d.dst_port == undefined)? "-":d.dst_port) + "</span>");
+		    d3.select(".isldetails_div_source_switch").html("<span>" + ((d.source_switch_name=="" || d.source_switch_name == undefined)? "-":d.source_switch_name) + "</span>");
+		    d3.select(".isldetails_div_destination_switch").html("<span>" +  ((d.target_switch_name=="" || d.target_switch_name == undefined)? "-":d.target_switch_name)+ "</span>");
+		    d3.select(".isldetails_div_speed").html("<span>" + ((d.speed=="" || d.speed == undefined)? "-":d.speed/1000) + " Mbps</span>");
+		    d3.select(".isldetails_div_state").html("<span>" + ((d.state=="" || d.state == undefined)? "-":d.state) + "</span>");
+		    d3.select(".isldetails_div_latency").html("<span>" + ((d.latency=="" || d.latency == undefined)? "-":d.latency) + "</span>");
+		    d3.select(".isldetails_div_bandwidth").html("<span>" + ((d.available_bandwidth=="" || d.available_bandwidth == undefined)? "-":d.available_bandwidth/1000) + " Mbps</span>");
+		    d3.select(".isldetails_div_unidirectional").html("<span>" + ((d.unidirectional=="" || d.unidirectional == undefined)? "-":d.unidirectional) + "</span>"); 
+		    d3.select(".isldetails_div_cost").html("<span>" + ((d.cost=="" || d.cost == undefined)? "-":d.cost) + "</span>"); 
+		      
+        }
+    }).on("mouseout", function(d, index) {
+        var element = $("#link" + index)[0];
+        if (d.hasOwnProperty("flow_count")) {
+        	if(d.affected){
+        		element.setAttribute("class", "link logical dashed_path");
+        	}else{
+        		element.setAttribute("class", "link logical");
+        	}
+        	
+        } else {
+            if (d.unidirectional && d.state && d.state.toLowerCase()== "discovered" || d.state && d.state.toLowerCase()== "failed"){
+               if(d.affected){
+            	   element.setAttribute("class","link physical down dashed_path");
+               }else{
+            	   element.setAttribute("class","link physical down");  
+               } 
+            }else{
+            	if(d.affected){
+            		element.setAttribute("class","link physical dashed_path");
+            	}else{
+            		element.setAttribute("class","link physical");
+            	}
+                
+            }
+        }
+        
+        if (!$('#topology-hover-txt').is(':hover')) {
+    		$('#topology-hover-txt, #isl_hover').css('display', 'none');
+    	}
+    }).on("click", function(d, index) {
+        var element = $("#link" + index)[0];
+        if (d.hasOwnProperty("flow_count")) {
+        	if(d.affected){
+        		element.setAttribute("class", "link logical overlay dashed_path");
+        	}else{
+        		element.setAttribute("class", "link logical overlay");
+        	}
+        	
+        	showFlowDetails(d);
+        } else {
+            
+            if (d.unidirectional && d.state && d.state.toLowerCase()== "discovered" || d.state && d.state.toLowerCase()== "failed"){
+                if(d.affected){
+                	element.setAttribute("class","link physical pathoverlay dashed_path");
+                }else{
+                	element.setAttribute("class","link physical pathoverlay");
+                }
+            }else{
+            	if(d.affected){
+            		element.setAttribute("class","link physical overlay dashed_path");
+            	}else{
+            		element.setAttribute("class","link physical overlay");
+            	}
+                
+            }
+        	showLinkDetails(d);
+        }
+    }).attr("stroke", function(d, index) {
+    	if (d.hasOwnProperty("flow_count")) {
+            return "#228B22";
+        } else {
+            if (d.unidirectional && d.state && d.state.toLowerCase()== "discovered"){
+                return ISL.UNIDIR;
+            } else if(d.state && d.state.toLowerCase()== "discovered"){
+                return ISL.DISCOVERED;
+            }
+            
+        	return ISL.FAILED;
+        }
+        
+    });
+	link.exit().remove();
+}
+
+
+function restartGraphWithNewIsl(newLinks,removedLinks){
+	try{
+		var result = common.groupBy(newLinks, function(item)
+		{
+			return [item.source_switch, item.target_switch];
+		});
+		for(var i=0,len=result.length;i<len;i++){
+			var row = result[i];
+			
+			if(row.length>=1){
+				for(var j=0,len1=row.length;j<len1;j++){
+					var key= row[j].source_switch+"_"+row[j].target_switch;
+					if(typeof(linksSourceArr[key])!=='undefined'){
+						linksSourceArr[key].push(row[j]);
+					}else{
+						linksSourceArr[key] = []
+						linksSourceArr[key].push(row[j]);
+					}
+
+				}
+			}
+		}
+	}catch(e){
+	
+	}
+	var nodelength = nodes.length;
+	var linklength = newLinks.length;
+	for (var i = 0; i < nodelength; i++) {
+		optArray.push(nodes[i].name);
+		for (var j = 0; j < linklength; j++) {
+			if(nodes[i].switch_id == newLinks[j]["source_switch"] && nodes[i].switch_id == newLinks[j]["target_switch"]){
+				newLinks[j].source = i;
+				newLinks[j].target = i;
+			}else{
+				if (nodes[i].switch_id == newLinks[j]["source_switch"]) {
+					newLinks[j].source = i;
+				} else if (nodes[i].switch_id == newLinks[j]["target_switch"]) {
+					newLinks[j].target = i;
+				}
+			}
+			
+		}
+	}
+	links = links.concat(newLinks);
+	// splice removed links 
+	if(removedLinks && removedLinks.length){
+		links = links.filter(function(d){
+			var foundFlag = false;
+			for(var i =0; i< removedLinks.length; i++){
+				if(d.source_switch == removedLinks[i].source_switch && d.target_switch == removedLinks[i].target_switch && d.src_port ==  removedLinks[i].src_port && d.dst_port == removedLinks[i].dst_port){
+					foundFlag= true;
+					 var key= d.source_switch+"_"+d.target_switch;
+					 linksSourceArr[key].splice(0,1)
+					break;
+				}	
+			}
+			return !foundFlag;
+		})
+	}
+	force.nodes(nodes).links(links);
+	if (force.alpha() == 0) {
+		$("#wait1").css("display", "block");
+		$("#switchesgraph").removeClass("show").addClass('hide');
+		force.start();
+		console.log('adding new links')
+		insertLinks(links);
+		insertNodes(nodes);
+		graph.circle();
+		force.on('end',function(){
+			$("#wait1").css("display", "none");
+			$("#switchesgraph").removeClass("hide").addClass('show');
+			try{
+				positions = storage.get('NODES_COORDINATES');
+				if(positions){
+					// control the coordinates here
+				    d3.selectAll("g.node").attr("transform", function(d){
+				    	try{
+				    		d.x = positions[d.switch_id][0];
+					    	d.y = positions[d.switch_id][1];
+				    	}catch(e){
+				    		
+				    	}
+				    	
+				        return "translate("+d.x+","+d.y+")";
+				    });
+				    
+					tick();
+				}
+			}catch(e){
+				console.log(e);
+			}
+		})
+	}
+}
 var interval = {
 	get:function(){
 		
@@ -1353,20 +1568,48 @@ var interval = {
 			success : function(response) {
 				if(response)
 				{
+					var switchArr = [];
+					if(nodes.length != response.length){
+						// new switch is added
+						switchArr = getNewSwitch(nodes,response);
+					}
+					var newNodes = switchArr['added'];
+					var removedNodes = switchArr['removed'];
 					nodes.forEach(function(d){
 						for(var i=0,len=response.length;i<len;i++){
 							if(d.switch_id == response[i].switch_id){
+								d.state = response[i].state;
 								var classes = "circle blue";
 								if(d.state && d.state.toLowerCase() == "deactivated"){
 									classes = "circle red";
 								}
-								d.state = response[i].state;
-							    var element = document.getElementById("circle_" + d.switch_id);
+								var element = document.getElementById("circle_" + d.switch_id);
 							    element.setAttribute("class", classes);
 							    break;
 							}
 						}
 					});
+					if((newNodes && newNodes.length) || (removedNodes && removedNodes.length)){
+						if((newNodes && newNodes.length)){
+							nodes = nodes.concat(newNodes);
+							new_nodes = true;
+						}
+						if(removedNodes && removedNodes.length){
+							new_nodes= true;
+							nodes =nodes.filter(function(node){
+								var foundFlag =false;
+								for(var i =0; i<removedNodes.length; i++){
+									if(removedNodes[i].switch_id == node.switch_id){
+										foundFlag = true;
+										break;
+									}
+								}
+								return !foundFlag;
+							})
+						}
+					}else{
+						new_nodes = false;
+					}
 					if(switchIntervalId){
 						interval.clearSwitch(switchIntervalId);
 						switchIntervalId = setTimeout(interval.switch, interval.get());
@@ -1384,33 +1627,64 @@ var interval = {
 			type : 'GET',
 			success : function(response) {
 				if(response)
-				{
-					links.forEach(function(d,index){
+				{ var linksArr =[];
+					// compare response to see if new ISL added or removed or nothing happend
+					if(links.length !== response.length){
+						linksArr = getNewLinks(links,response);
+					}
+					var newLinks = linksArr['added'] || [];
+					var removedLinks = linksArr['removed'] || [];
+					links.forEach(function(d,index){ 
 						for(var i=0,len=response.length;i<len;i++){
-							if(d.source_switch == response[i].source_switch && d.target_switch == response[i].target_switch){
-								if (d.unidirectional || d.state && d.state.toLowerCase()== "failed"){
-									classes = "link physical down";
-				                }else{
-				                	classes = "link physical";
-				                }
-								d.state = response[i].state;
-							    var element = document.getElementById("link" + index);
-							    
-							    var stroke = ISL.FAILED;
-							    
-							    if (d.unidirectional && d.state && d.state.toLowerCase()== "discovered"){
-				                    stroke = ISL.UNIDIR;
-				                } else if(d.state && d.state.toLowerCase()== "discovered"){
-				                	stroke = ISL.DISCOVERED;
-				                }
-							    
-							    element.setAttribute("class", classes);
-							    element.setAttribute("stroke", stroke);
-					            
-							    break;
-							}
+							if(d.source_switch == response[i].source_switch && d.target_switch == response[i].target_switch && d.src_port ==  response[i].src_port && d.dst_port == response[i].dst_port){
+									d.state = response[i].state;
+									if(response[i].affected){
+										d['affected']= response[i].affected;
+									}else{
+										d['affected']= false;
+									}
+									d.unidirectional = response[i].unidirectional;
+									if (d.unidirectional || d.state && d.state.toLowerCase()== "failed"){
+										if(d.affected){
+											classes = "link physical down dashed_path";
+									    }else{
+									    	classes = "link physical down";
+									    }
+										
+					                }else{
+					                	if(d.affected){
+					                		classes = "link physical dashed_path";
+									    }else{
+									    	classes = "link physical";
+									    }
+					                	
+					                }
+								    var element = document.getElementById("link" + index);
+								    
+								    var stroke = ISL.FAILED;
+								    
+								    if (d.unidirectional && d.state && d.state.toLowerCase()== "discovered"){
+					                    stroke = ISL.UNIDIR;
+					                } else if(d.state && d.state.toLowerCase()== "discovered"){
+					                	stroke = ISL.DISCOVERED;
+					                }
+								    
+								    if(element){
+								    	element.setAttribute("class", classes);
+									    element.setAttribute("stroke", stroke);
+								    }
+								    
+						            
+								    break;
+								}
+							
 						}
 					});
+					if((newLinks && newLinks.length) || (removedLinks && removedLinks.length) || (new_nodes)){
+						// calculating nodes
+						new_nodes = false;
+						restartGraphWithNewIsl(newLinks,removedLinks);
+					}
 					if(islIntervalId){
 						interval.clearISL(islIntervalId);
 						islIntervalId = setTimeout(interval.isl, interval.get());

@@ -38,6 +38,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -119,22 +120,6 @@ public class FlowCache extends Cache {
     }
 
     /**
-     * Gets flows with specified switch in the path.
-     *
-     * @param switchId switch id
-     * @return set of flows
-     */
-    public Set<ImmutablePair<Flow, Flow>> getFlowsWithAffectedPath(String switchId) {
-        return flowPool.values().stream().filter(flow ->
-                flow.getLeft().getFlowPath().getPath().stream()
-                        .anyMatch(node -> node.getSwitchId().equals(switchId))
-                        || flow.getRight().getFlowPath().getPath().stream()
-                        .anyMatch(node -> node.getSwitchId().equals(switchId))
-                        || isOneSwitchFlow(flow) && flow.getLeft().getSourceSwitch().equals(switchId))
-                .collect(Collectors.toSet());
-    }
-
-    /**
      * Gets active or cached flows with specified switch in the path.
      *
      * @param switchId switch id
@@ -148,19 +133,6 @@ public class FlowCache extends Cache {
                         .anyMatch(node -> node.getSwitchId().equals(switchId))
                         || isOneSwitchFlow(flow) && flow.getLeft().getSourceSwitch().equals(switchId))
                 .filter(flow -> flow.getLeft().getState().isActiveOrCached())
-                .collect(Collectors.toSet());
-    }
-
-    /**
-     * Gets flows with specified isl in the path.
-     *
-     * @param islData isl
-     * @return set of flows
-     */
-    public Set<ImmutablePair<Flow, Flow>> getFlowsWithAffectedPath(IslInfoData islData) {
-        return flowPool.values().stream()
-                .filter(flow -> flow.getLeft().getFlowPath().getPath().contains(islData.getPath().get(0))
-                        || flow.getRight().getFlowPath().getPath().contains(islData.getPath().get(0)))
                 .collect(Collectors.toSet());
     }
 
@@ -184,11 +156,41 @@ public class FlowCache extends Cache {
      * @param portData port
      * @return set of flows
      */
-    public Set<ImmutablePair<Flow, Flow>> getFlowsWithAffectedPath(PortInfoData portData) {
+    public Set<ImmutablePair<Flow, Flow>> getActiveFlowsWithAffectedPath(PortInfoData portData) {
         PathNode node = new PathNode(portData.getSwitchId(), portData.getPortNo(), 0);
-        return flowPool.values().stream().filter(flow ->
-                flow.getLeft().getFlowPath().getPath().contains(node)
+        return flowPool.values().stream()
+                .filter(flow -> flow.getLeft().getFlowPath().getPath().contains(node)
                         || flow.getRight().getFlowPath().getPath().contains(node))
+                .filter(flow -> flow.getLeft().getState().isActiveOrCached())
+                .collect(Collectors.toSet());
+    }
+
+    /**
+     * Gets flows with specified switch in the path.
+     *
+     * @param switchId switch id
+     * @return set of flows
+     */
+    public Set<ImmutablePair<Flow, Flow>> getFlowsWithAffectedPath(String switchId) {
+        return flowPool.values().stream().filter(flow ->
+                flow.getLeft().getFlowPath().getPath().stream()
+                        .anyMatch(node -> node.getSwitchId().equals(switchId))
+                        || flow.getRight().getFlowPath().getPath().stream()
+                        .anyMatch(node -> node.getSwitchId().equals(switchId))
+                        || isOneSwitchFlow(flow) && flow.getLeft().getSourceSwitch().equals(switchId))
+                .collect(Collectors.toSet());
+    }
+
+    /**
+     * Gets flows with specified isl in the path.
+     *
+     * @param islData isl
+     * @return set of flows
+     */
+    public Set<ImmutablePair<Flow, Flow>> getFlowsWithAffectedPath(IslInfoData islData) {
+        return flowPool.values().stream()
+                .filter(flow -> flow.getLeft().getFlowPath().getPath().contains(islData.getPath().get(0))
+                        || flow.getRight().getFlowPath().getPath().contains(islData.getPath().get(0)))
                 .collect(Collectors.toSet());
     }
 
@@ -198,12 +200,11 @@ public class FlowCache extends Cache {
      * @param portData port
      * @return set of flows
      */
-    public Set<ImmutablePair<Flow, Flow>> getActiveFlowsWithAffectedPath(PortInfoData portData) {
+    public Set<ImmutablePair<Flow, Flow>> getFlowsWithAffectedPath(PortInfoData portData) {
         PathNode node = new PathNode(portData.getSwitchId(), portData.getPortNo(), 0);
-        return flowPool.values().stream()
-                .filter(flow -> flow.getLeft().getFlowPath().getPath().contains(node)
+        return flowPool.values().stream().filter(flow ->
+                flow.getLeft().getFlowPath().getPath().contains(node)
                         || flow.getRight().getFlowPath().getPath().contains(node))
-                .filter(flow -> flow.getLeft().getState().isActiveOrCached())
                 .collect(Collectors.toSet());
     }
 
@@ -458,39 +459,42 @@ public class FlowCache extends Cache {
             reverseVlan = cache.allocateVlanId();
         }
 
-        Flow forward = new Flow(
-                flow.getLeft().getFlowId(),
-                flow.getLeft().getBandwidth(),
-                false, cookie | ResourceCache.FORWARD_FLOW_COOKIE_MASK,
-                flow.getLeft().getDescription(),
-                timestamp,
-                flow.getLeft().getSourceSwitch(),
-                flow.getLeft().getDestinationSwitch(),
-                flow.getLeft().getSourcePort(),
-                flow.getLeft().getDestinationPort(),
-                flow.getLeft().getSourceVlan(),
-                flow.getLeft().getDestinationVlan(),
-                cache.allocateMeterId(flow.getLeft().getSourceSwitch(), flow.getLeft().getMeterId()),
-                forwardVlan,
-                path.getLeft(),
-                FlowState.ALLOCATED);
+        Flow.FlowBuilder forwardBuilder = Flow.builder()
+                .flowId(flow.getLeft().getFlowId())
+                .cookie(cookie | ResourceCache.FORWARD_FLOW_COOKIE_MASK)
+                .description(flow.getLeft().getDescription())
+                .lastUpdated(timestamp)
+                .sourceSwitch(flow.getLeft().getSourceSwitch())
+                .destinationSwitch(flow.getLeft().getDestinationSwitch())
+                .sourcePort(flow.getLeft().getSourcePort())
+                .destinationPort(flow.getLeft().getDestinationPort())
+                .sourceVlan(flow.getLeft().getSourceVlan())
+                .destinationVlan(flow.getLeft().getDestinationVlan())
+                .transitVlan(forwardVlan)
+                .flowPath(path.getLeft())
+                .state(FlowState.ALLOCATED);
+        setBandwidthAndMeter(forwardBuilder, flow.getLeft().getBandwidth(), false,
+                () -> cache.allocateMeterId(flow.getLeft().getSourceSwitch(), flow.getLeft().getMeterId()));
+        Flow forward = forwardBuilder.build();
 
-        Flow reverse = new Flow(
-                flow.getRight().getFlowId(),
-                flow.getRight().getBandwidth(),
-                false, cookie | ResourceCache.REVERSE_FLOW_COOKIE_MASK,
-                flow.getRight().getDescription(),
-                timestamp,
-                flow.getRight().getSourceSwitch(),
-                flow.getRight().getDestinationSwitch(),
-                flow.getRight().getSourcePort(),
-                flow.getRight().getDestinationPort(),
-                flow.getRight().getSourceVlan(),
-                flow.getRight().getDestinationVlan(),
-                cache.allocateMeterId(flow.getRight().getSourceSwitch(), flow.getRight().getMeterId()),
-                reverseVlan,
-                path.getRight(),
-                FlowState.ALLOCATED);
+        Flow.FlowBuilder reverseBuilder = Flow.builder()
+                .flowId(flow.getRight().getFlowId())
+                .cookie(cookie | ResourceCache.REVERSE_FLOW_COOKIE_MASK)
+                .description(flow.getRight().getDescription())
+                .lastUpdated(timestamp)
+                .sourceSwitch(flow.getRight().getSourceSwitch())
+                .destinationSwitch(flow.getRight().getDestinationSwitch())
+                .sourcePort(flow.getRight().getSourcePort())
+                .destinationPort(flow.getRight().getDestinationPort())
+                .sourceVlan(flow.getRight().getSourceVlan())
+                .destinationVlan(flow.getRight().getDestinationVlan())
+                .transitVlan(reverseVlan)
+                .flowPath(path.getRight())
+                .state(FlowState.ALLOCATED);
+        setBandwidthAndMeter(reverseBuilder, flow.getRight().getBandwidth(), false,
+                () -> cache.allocateMeterId(flow.getRight().getSourceSwitch(), flow.getRight().getMeterId()));
+        Flow reverse = reverseBuilder.build();
+
 
         return new ImmutablePair<>(forward, reverse);
     }
@@ -519,52 +523,69 @@ public class FlowCache extends Cache {
             reverseVlan = cache.allocateVlanId();
         }
 
-        Flow forward = new Flow(
-                flow.getFlowId(),
-                flow.getBandwidth(),
-                flow.isIgnoreBandwidth(),
-                cookie | ResourceCache.FORWARD_FLOW_COOKIE_MASK,
-                flow.getDescription(),
-                timestamp,
-                flow.getSourceSwitch(),
-                flow.getDestinationSwitch(),
-                flow.getSourcePort(),
-                flow.getDestinationPort(),
-                flow.getSourceVlan(),
-                flow.getDestinationVlan(),
-                cache.allocateMeterId(flow.getSourceSwitch()),
-                forwardVlan,
-                path.getLeft(),
-                FlowState.ALLOCATED);
+        Flow.FlowBuilder forwardBuilder = Flow.builder()
+                .flowId(flow.getFlowId())
+                .cookie(cookie | ResourceCache.FORWARD_FLOW_COOKIE_MASK)
+                .description(flow.getDescription())
+                .lastUpdated(timestamp)
+                .sourceSwitch(flow.getSourceSwitch())
+                .destinationSwitch(flow.getDestinationSwitch())
+                .sourcePort(flow.getSourcePort())
+                .destinationPort(flow.getDestinationPort())
+                .sourceVlan(flow.getSourceVlan())
+                .destinationVlan(flow.getDestinationVlan())
+                .transitVlan(forwardVlan)
+                .flowPath(path.getLeft())
+                .state(FlowState.ALLOCATED);
+        setBandwidthAndMeter(forwardBuilder, flow.getBandwidth(), flow.isIgnoreBandwidth(),
+                () -> cache.allocateMeterId(flow.getSourceSwitch()));
+        Flow forward = forwardBuilder.build();
 
-        Flow reverse = new Flow(
-                flow.getFlowId(),
-                flow.getBandwidth(),
-                flow.isIgnoreBandwidth(),
-                cookie | ResourceCache.REVERSE_FLOW_COOKIE_MASK,
-                flow.getDescription(),
-                timestamp,
-                flow.getDestinationSwitch(),
-                flow.getSourceSwitch(),
-                flow.getDestinationPort(),
-                flow.getSourcePort(),
-                flow.getDestinationVlan(),
-                flow.getSourceVlan(),
-                cache.allocateMeterId(flow.getDestinationSwitch()),
-                reverseVlan,
-                path.getRight(),
-                FlowState.ALLOCATED);
+        Flow.FlowBuilder reverseBuilder = Flow.builder()
+                .flowId(flow.getFlowId())
+                .cookie(cookie | ResourceCache.REVERSE_FLOW_COOKIE_MASK)
+                .description(flow.getDescription())
+                .lastUpdated(timestamp)
+                .sourceSwitch(flow.getDestinationSwitch())
+                .destinationSwitch(flow.getSourceSwitch())
+                .sourcePort(flow.getDestinationPort())
+                .destinationPort(flow.getSourcePort())
+                .sourceVlan(flow.getDestinationVlan())
+                .destinationVlan(flow.getSourceVlan())
+                .transitVlan(reverseVlan)
+                .flowPath(path.getRight())
+                .state(FlowState.ALLOCATED);
+        setBandwidthAndMeter(reverseBuilder, flow.getBandwidth(), flow.isIgnoreBandwidth(),
+                () -> cache.allocateMeterId(flow.getDestinationSwitch()));
+        Flow reverse = reverseBuilder.build();
 
         return new ImmutablePair<>(forward, reverse);
+    }
+
+    private void setBandwidthAndMeter(Flow.FlowBuilder builder, int bandwidth, boolean isIgnoreBandwidth,
+                                      Supplier<Integer> meterIdSupplier) {
+        builder.bandwidth(bandwidth);
+
+        if (bandwidth > 0) {
+            builder.ignoreBandwidth(isIgnoreBandwidth);
+            builder.meterId(meterIdSupplier.get());
+        } else {
+            // When the flow is unmetered.
+            builder.ignoreBandwidth(true);
+            builder.meterId(0);
+        }
     }
 
     /**
      * Checks if flow is through single switch.
      *
+     * <p>
+     * FIXME(surabujin): looks extremely over engineered. Can be replaces with
+     * org.openkilda.messaging.model.Flow#isOneSwitchFlow()
+     * </p>
+     *
      * @param flow flow
      * @return true if source and destination switches are same for specified flow, otherwise false
-     *
-     * FIXME(surabujin): looks extremely over engineered. Can be replaces with org.openkilda.messaging.model.Flow#isOneSwitchFlow()
      */
     public boolean isOneSwitchFlow(ImmutablePair<Flow, Flow> flow) {
         return flow.getLeft().getSourceSwitch().equals(flow.getLeft().getDestinationSwitch())
@@ -609,7 +630,9 @@ public class FlowCache extends Cache {
     /**
      * Gets flows with specified switch, port and vlan.
      *
+     * <p>
      * NOTE: The result set also includes flows that match switch, port and with no VLAN (vlan = 0) defined.
+     * </p>
      *
      * @param switchId the switch ID
      * @param port the port
@@ -627,6 +650,9 @@ public class FlowCache extends Cache {
     }
 
 
+    /**
+     * Gets flow pairs which have source or destination is on the switch.
+     */
     public Set<ImmutablePair<Flow, Flow>> getIngressAndEgressFlows(String switchId) {
         return flowPool.values().stream()
                 .filter(flowPair -> Objects.nonNull(getFlowLinkedEndpoint(flowPair, switchId)))
@@ -634,18 +660,15 @@ public class FlowCache extends Cache {
     }
 
 
-    public Set<Integer> getAllocatedVlans()
-    {
+    public Set<Integer> getAllocatedVlans() {
         return resourceCache.getAllVlanIds();
     }
 
-    public Set<Integer> getAllocatedCookies()
-    {
+    public Set<Integer> getAllocatedCookies() {
         return resourceCache.getAllCookies();
     }
 
-    public Map<String, Set<Integer>> getAllocatedMeters()
-    {
+    public Map<String, Set<Integer>> getAllocatedMeters() {
         return resourceCache.getAllMeterIds();
     }
 

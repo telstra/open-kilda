@@ -24,11 +24,11 @@ public final class DefaultFlowsChecker {
     public static boolean validateDefaultRules(SwitchEntry sw, FlowEntriesMap map, Scenario scenario) {
         FlowEntry flow = map.get(BROADCAST_FLOW);
         boolean result = isValidDefaultFlow(BROADCAST_FLOW, flow, sw.getSwitchId(), scenario);
-        result = result & isValidDropRule(map.get(DROP_FLOW), sw.getSwitchId(), scenario);
 
         if (!VERSION_12.equals(sw.getOFVersion())) {
             result = result & isValidDefaultFlow(NON_BROADCAST_FLOW,
                     map.get(NON_BROADCAST_FLOW), sw.getSwitchId(), scenario);
+            result = result & isValidDropRule(map.get(DROP_FLOW), sw.getSwitchId(), scenario);
         }
 
         return result;

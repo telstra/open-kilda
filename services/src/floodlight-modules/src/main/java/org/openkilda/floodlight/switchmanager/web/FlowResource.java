@@ -15,10 +15,10 @@
 
 package org.openkilda.floodlight.switchmanager.web;
 
-import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 import static org.openkilda.messaging.Utils.MAPPER;
 
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
+import org.openkilda.floodlight.utils.CorrelationContext;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
@@ -53,7 +53,7 @@ public class FlowResource extends ServerResource {
         } catch (IOException exception) {
             String messageString = "Received JSON is not valid for TPN";
             logger.error("{}: {}", messageString, json, exception);
-            MessageError responseMessage = new MessageError(DEFAULT_CORRELATION_ID, now(),
+            MessageError responseMessage = new MessageError(CorrelationContext.getId(), now(),
                     ErrorType.DATA_INVALID.toString(), messageString, exception.getMessage());
             return MAPPER.writeValueAsString(responseMessage);
         }
@@ -61,7 +61,7 @@ public class FlowResource extends ServerResource {
         if (!(message instanceof CommandMessage)) {
             String messageString = "Json payload message is not an instance of CommandMessage";
             logger.error("{}: class={}, data={}", messageString, message.getClass().getCanonicalName(), json);
-            MessageError responseMessage = new MessageError(DEFAULT_CORRELATION_ID, now(),
+            MessageError responseMessage = new MessageError(CorrelationContext.getId(), now(),
                     ErrorType.DATA_INVALID.toString(), messageString, message.getClass().getCanonicalName());
             return MAPPER.writeValueAsString(responseMessage);
         }
@@ -71,7 +71,7 @@ public class FlowResource extends ServerResource {
         if (!(data instanceof BaseInstallFlow)) {
             String messageString = "Json payload data is not an instance of CommandData";
             logger.error("{}: class={}, data={}", messageString, data.getClass().getCanonicalName(), json);
-            MessageError responseMessage = new MessageError(DEFAULT_CORRELATION_ID, now(),
+            MessageError responseMessage = new MessageError(CorrelationContext.getId(), now(),
                     ErrorType.DATA_INVALID.toString(), messageString, data.getClass().getCanonicalName());
             return MAPPER.writeValueAsString(responseMessage);
         }

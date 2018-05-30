@@ -26,6 +26,13 @@
 				class="loader__dot">.</span>
 			</span>
 		</div>
+		<div id="wait1" class="bg_load" style="display:none">
+			<div class="loader"></div>
+			<span class="load-text">Re-loading Topology with new switch or ISl <span
+				class="loader__dot">.</span> <span class="loader__dot">.</span> <span
+				class="loader__dot">.</span>
+			</span>
+		</div>
 
 		<div class="row">
 			<div class="navigation-bar container-fluid">
@@ -49,9 +56,9 @@
 						<span data-balloon-pos="down" data-balloon="Refresh" class="refresh_toggle" onclick="toggleRefresh()"><i class="icon-refresh-kilda"></i></span>
 						<ul class="refresh_list" style="display:none;">
 						<li class="stop_refresh active" onclick="stopAutoRefresh()"><i class="icon icon-ok"></i>STOP</li>
-						<li id="10s" class="refresh_option" onclick="setAutoRefresh(10,'s')"><i class="icon icon-ok"></i>10 SECONDS</li>
-						<li id="15s" class="refresh_option" onclick="setAutoRefresh(15,'s')"><i class="icon icon-ok"></i>15 SECONDS</li>
+						<!-- <li id="10s" class="refresh_option" onclick="setAutoRefresh(10,'s')"><i class="icon icon-ok"></i>10 SECONDS</li> -->
 						<li id="30s" class="refresh_option" onclick="setAutoRefresh(30,'s')"><i class="icon icon-ok"></i>30 SECONDS</li>
+						<li id="45s" class="refresh_option" onclick="setAutoRefresh(45,'s')"><i class="icon icon-ok"></i>45 SECONDS</li>
 						<li id="1m" class="refresh_option" onclick="setAutoRefresh(1,'m')"><i class="icon icon-ok"></i>1 MINUTE</li>
 						<li id="2m" class="refresh_option" onclick="setAutoRefresh(2,'m')"><i class="icon icon-ok"></i>2 MINUTE</li>
 						<li id="3m" class="refresh_option" onclick="setAutoRefresh(3,'m')"><i class="icon icon-ok"></i>3 MINUTE</li>
@@ -90,7 +97,38 @@
 				</div>
 			</div>
 		</div>
-		
+		<div id="topology-click-txt" style="">
+			<button id="close_switch_detail" style="margin-right:5px;" type="button" class="close right" aria-label="Close">
+			  <span aria-hidden="true">&times;</span>
+			</button>
+			<div class="form-wrapper" id="switch_click" style="display:none">
+
+				<div class="form-group row">
+					<label class="col-sm-3 col-form-label" style='font-weight: bold;'>Name:</label>
+					<p class="col-sm-9 switchdetails_div_click_switch_name"></p>
+				</div>
+				<div class="form-group row">
+					<label class="col-sm-3 col-form-label" style='font-weight: bold;'>SwitchId:</label>
+					<p class="col-sm-9 switchdetails_div_click_name"></p>
+				</div>
+				<div class="form-group row">
+					<label class="col-sm-3 col-form-label" style='font-weight: bold;'>State:</label>
+					<p class="col-sm-9 switchdetails_div_click_state"></p>
+				</div>
+				<div class="form-group row">
+					<label class="col-sm-3 col-form-label" style='font-weight: bold;'>Address:</label>
+					<p class="col-sm-9 switchdetails_div_click_address"></p>
+				</div>
+				
+				<div class="form-group row">
+					<label class="col-sm-3 col-form-label" style='font-weight: bold;'>Description:</label>
+					<p class="col-sm-9 switchdetails_div_click_desc"></p>
+				</div>
+			</div>
+			
+			
+			
+		</div>
 		<div id="topology-hover-txt" style="">
 		
 			<div class="form-wrapper" id="switch_hover" style="display:none">

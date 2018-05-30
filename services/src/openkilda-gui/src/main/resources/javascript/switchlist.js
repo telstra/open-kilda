@@ -45,11 +45,18 @@ $( 'input').on( 'click', function () {
 	}
 });
 
+
 function showSwitchData(response){
 
 	if(!response || response.length==0) {
 		response=[]
 		common.infoMessage('No Switch Available','info');
+	}else{
+
+		if ( $.fn.DataTable.isDataTable('#flowTable') ) {
+					  $('#flowTable').DataTable().destroy();
+					}
+					$('#flowTable tbody').empty();
 	}
 	
 	
@@ -71,6 +78,7 @@ function showSwitchData(response){
         }
 	 }
 	 
+	 common.customDataTableSorting();
 	 var tableVar  =  $('#flowTable').DataTable( {
 		 "iDisplayLength": 10,
 		 "aLengthMenu": [[10, 20, 35, 50, -1], [10, 20, 35, 50, "All"]],
@@ -78,16 +86,17 @@ function showSwitchData(response){
 		  "bSortCellsTop": true,
 		   language: {searchPlaceholder: "Search"},
 		  "autoWidth": false,
-		  destroy: true,
+		  "aaSorting": [[1, "asc"]],
 		  "aoColumns": [
 		                { sWidth: '15%' },
-		                { sWidth: '15%' },
+		                { sWidth: '15%',"sType": "name","bSortable": true },
 		                { sWidth: '15%' },
 		                { sWidth: '15%' },
 		                { sWidth: '30%' },
-		                { sWidth: '10%' }]
+		                { sWidth: '10%' }],
+      
 	 });
-	 
+	
 	 tableVar.columns().every( function () {
 	 var that = this;
 	 $( 'input', this.header() ).on( 'keyup change', function () {

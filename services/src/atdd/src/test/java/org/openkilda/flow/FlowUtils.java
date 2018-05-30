@@ -20,13 +20,11 @@ import static java.util.Base64.getEncoder;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
 import static org.openkilda.DefaultParameters.northboundEndpoint;
-import static org.openkilda.DefaultParameters.pathComputer;
 import static org.openkilda.DefaultParameters.topologyEndpoint;
 import static org.openkilda.DefaultParameters.topologyPassword;
 import static org.openkilda.DefaultParameters.topologyUsername;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import org.glassfish.jersey.client.HttpUrlConnectorProvider;
+import org.openkilda.DefaultParameters;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.info.event.PathInfoData;
@@ -41,17 +39,20 @@ import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.northbound.dto.BatchResults;
+import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.flows.VerificationInput;
 import org.openkilda.northbound.dto.flows.VerificationOutput;
 import org.openkilda.pce.RecoverableException;
-import org.openkilda.northbound.dto.flows.FlowValidationDto;
+import org.openkilda.pce.provider.NeoDriver;
 import org.openkilda.pce.provider.PathComputer;
 import org.openkilda.pce.provider.UnroutablePathException;
 import org.openkilda.topo.exceptions.TopologyProcessingException;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.glassfish.jersey.client.ClientConfig;
+import org.glassfish.jersey.client.HttpUrlConnectorProvider;
 import org.glassfish.jersey.jackson.JacksonFeature;
 
 import java.io.IOException;
@@ -69,7 +70,6 @@ import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
-
 public class FlowUtils {
 
     private static final String auth = topologyUsername + ":" + topologyPassword;
@@ -79,7 +79,6 @@ public class FlowUtils {
     private static final int WAIT_DELAY = 2;
 
     private static final Client client = clientFactory();
-
 
     public static final Client clientFactory() {
         Client client = ClientBuilder.newClient(new ClientConfig()).register(JacksonFeature.class);
@@ -598,6 +597,7 @@ public class FlowUtils {
     public static ImmutablePair<PathInfoData, PathInfoData> getFlowPath(Flow flow)
             throws InterruptedException, UnroutablePathException, RecoverableException {
         Thread.sleep(1000);
+        PathComputer pathComputer = new NeoDriver(DefaultParameters.neoAuth.getDriver());
         return pathComputer.getPath(flow, PathComputer.Strategy.COST);
     }
 
@@ -665,7 +665,8 @@ public class FlowUtils {
         System.out.println(format("===> Northbound Sync Flow Cache Time: %,.3f", getTimeDuration(current)));
 
         if (response.getStatus() != 200) {
-            System.out.println(format("====> Error: Northbound Sync Flow Cache = PATCH status: %s", response.getStatus()));
+            System.out.println(format("====> Error: Northbound Sync Flow Cache = PATCH status: %s",
+                    response.getStatus()));
             return null;
         }
 
@@ -752,7 +753,8 @@ public class FlowUtils {
 
         int responseCode = response.getStatus();
         if (responseCode == 200) {
-            List<FlowValidationDto> flowDiscrepancy = response.readEntity(new GenericType<List<FlowValidationDto>>() {});
+            List<FlowValidationDto> flowDiscrepancy =
+                    response.readEntity(new GenericType<List<FlowValidationDto>>() {});
             System.out.println(format("====> Northbound Validate Flow = %s", flowDiscrepancy));
             return flowDiscrepancy;
         } else {

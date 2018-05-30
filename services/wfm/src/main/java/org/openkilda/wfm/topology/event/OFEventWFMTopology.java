@@ -17,9 +17,9 @@ package org.openkilda.wfm.topology.event;
 
 import org.openkilda.messaging.ServiceType;
 import org.openkilda.messaging.Topic;
-import org.openkilda.wfm.ConfigurationException;
 import org.openkilda.wfm.CtrlBoltRef;
-import org.openkilda.wfm.StreamNameCollisionException;
+import org.openkilda.wfm.error.ConfigurationException;
+import org.openkilda.wfm.error.StreamNameCollisionException;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.LaunchEnvironment;

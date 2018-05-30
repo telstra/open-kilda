@@ -25,7 +25,10 @@ public class ApplicationProperties {
 
     @Value("${GET_SWITCHES}")
     private String switches;
-
+    
+    @Value("${GET_SWITCH_RULES}")
+    private String switchRules;
+    
     @Value("${GET_SWITCH_PORTS}")
     private String switchPorts;
 
@@ -146,6 +149,8 @@ public class ApplicationProperties {
         return flowValidate;
     }
 
-
+    public String getSwitchRules() {
+        return switchRules;
+    }
 
 }

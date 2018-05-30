@@ -18,11 +18,10 @@ package org.openkilda.wfm.topology.cache;
 import org.apache.storm.generated.ComponentObject;
 import org.openkilda.messaging.ServiceType;
 import org.openkilda.pce.provider.Auth;
-import org.openkilda.pce.provider.AuthNeo4j;
-import org.openkilda.wfm.ConfigurationException;
 import org.openkilda.wfm.CtrlBoltRef;
 import org.openkilda.wfm.LaunchEnvironment;
-import org.openkilda.wfm.NameCollisionException;
+import org.openkilda.wfm.error.ConfigurationException;
+import org.openkilda.wfm.error.NameCollisionException;
 import org.openkilda.wfm.topology.AbstractTopology;
 
 import org.apache.storm.generated.StormTopology;
@@ -50,8 +49,7 @@ public class CacheTopology extends AbstractTopology {
 
     public CacheTopology(LaunchEnvironment env) throws ConfigurationException {
         super(env);
-        pathComputerAuth = new AuthNeo4j(config.getNeo4jHost(), config.getNeo4jLogin(), config.getNeo4jPassword());
-
+        pathComputerAuth = config.getNeo4jAuth();
 
         logger.debug("Topology built {}: zookeeper={}, kafka={}, parallelism={}, workers={}",
                 getTopologyName(), config.getZookeeperHosts(), config.getKafkaHosts(), config.getParallelism(),
@@ -108,7 +106,7 @@ public class CacheTopology extends AbstractTopology {
                 .shuffleGrouping(BOLT_ID_CACHE, StreamType.TPE.toString());
 
         /*
-         * Sends cache dump and reroute requests to WFM topology.
+         * Sends cache dump and reroute requests to `flow` topology.
          */
         kafkaBolt = createKafkaBolt(config.getKafkaFlowTopic());
         builder.setBolt(BOLT_ID_TOPOLOGY_OUTPUT, kafkaBolt, parallelism)

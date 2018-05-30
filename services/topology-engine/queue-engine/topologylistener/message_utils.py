@@ -307,8 +307,10 @@ def send_install_commands(flow_rules, correlation_id):
         #       as a hub and spoke ... ie: send delete to FL, get confirmation. Then send delete to DB, get confirmation.
         #       Then send a message to a FLOW_EVENT topic that says "FLOW CREATED"
 
-        send_to_topic(flow_rule, correlation_id, MT_COMMAND,
-                      destination="CONTROLLER", topic=config.KAFKA_SPEAKER_TOPIC)
+        # TODO: sending commands directly to FL causes duplication of operations in FL, bacause WFM sends the commands too (for transaction tracking purpose)
+        # send_to_topic(flow_rule, correlation_id, MT_COMMAND,
+        #               destination="CONTROLLER", topic=config.KAFKA_SPEAKER_TOPIC)
+
         # FIXME(surabujin): WFM reroute this message into CONTROLLER
         send_to_topic(flow_rule, correlation_id, MT_COMMAND,
                       destination="WFM", topic=config.KAFKA_FLOW_TOPIC)
@@ -330,7 +332,10 @@ def send_delete_commands(nodes, correlation_id):
         # TODO: Whereas this is part of the current workflow .. feels like we should have the workflow manager work
         #       as a hub and spoke ... ie: send delete to FL, get confirmation. Then send delete to DB, get confirmation.
         #       Then send a message to a FLOW_EVENT topic that says "FLOW DELETED"
-        send_to_topic(data, correlation_id, MT_COMMAND,
-                      destination="CONTROLLER", topic=config.KAFKA_SPEAKER_TOPIC)
+
+        # TODO: sending commands directly to FL causes duplication of operations in FL, bacause WFM sends the commands too (for transaction tracking purpose)
+        # send_to_topic(data, correlation_id, MT_COMMAND,
+        #               destination="CONTROLLER", topic=config.KAFKA_SPEAKER_TOPIC)
+
         send_to_topic(data, correlation_id, MT_COMMAND,
                       destination="WFM", topic=config.KAFKA_FLOW_TOPIC)

@@ -1,10 +1,23 @@
+/* Copyright 2017 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.openkilda.floodlight.kafka;
 
 import static java.util.Arrays.asList;
 import static org.openkilda.messaging.Utils.MAPPER;
 
-import net.floodlightcontroller.core.IOFSwitch;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.openkilda.floodlight.converter.IOFSwitchConverter;
 import org.openkilda.floodlight.converter.OFFlowStatsConverter;
 import org.openkilda.floodlight.command.CommandContext;
@@ -13,6 +26,8 @@ import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.floodlight.switchmanager.MeterPool;
 import org.openkilda.floodlight.switchmanager.SwitchEventCollector;
 import org.openkilda.floodlight.switchmanager.SwitchOperationException;
+import org.openkilda.floodlight.utils.CorrelationContext;
+import org.openkilda.floodlight.utils.CorrelationContext.CorrelationContextClosable;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Topic;
 import org.openkilda.messaging.command.CommandData;
@@ -54,6 +69,9 @@ import org.openkilda.messaging.info.stats.SwitchPortStatusData;
 import org.openkilda.messaging.info.switches.ConnectModeResponse;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
+
+import net.floodlightcontroller.core.IOFSwitch;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.DatapathId;
@@ -116,7 +134,7 @@ class RecordHandler implements Runnable {
         CommandContext context = new CommandContext(this.context.getModuleContext(), message.getCorrelationId());
 
         if (data instanceof DiscoverIslCommandData) {
-            doDiscoverIslCommand(data);
+            doDiscoverIslCommand((DiscoverIslCommandData) data);
         } else if (data instanceof DiscoverPathCommandData) {
             doDiscoverPathCommand(data);
         } else if (data instanceof InstallIngressFlow) {
@@ -160,19 +178,12 @@ class RecordHandler implements Runnable {
         }
     }
 
-    private void doDiscoverIslCommand(CommandData data) {
-        DiscoverIslCommandData command = (DiscoverIslCommandData) data;
-        logger.debug("sending discover ISL to {}", command);
+    private void doDiscoverIslCommand(DiscoverIslCommandData command) {
+        logger.debug("Processing send ISL discovery command {}", command);
 
         String switchId = command.getSwitchId();
-        boolean result = context.getPathVerificationService().sendDiscoveryMessage(
+        context.getPathVerificationService().sendDiscoveryMessage(
                 DatapathId.of(switchId), OFPort.of(command.getPortNo()));
-
-        if (result) {
-            logger.debug("packet_out was sent to {}", switchId);
-        } else {
-            logger.warn("packet_out was not sent to {}-{}", switchId, command.getPortNo());
-        }
     }
 
     private void doDiscoverPathCommand(CommandData data) {
@@ -206,12 +217,18 @@ class RecordHandler implements Runnable {
     private void installIngressFlow(final InstallIngressFlow command) throws SwitchOperationException {
         logger.debug("Creating an ingress flow: {}", command);
 
-        Long meterId = allocateMeterId(
-                command.getMeterId(), command.getSwitchId(), command.getId(), command.getCookie());
+        long meterId = 0;
+        if (command.getMeterId() != null && command.getMeterId() > 0) {
+            meterId = allocateMeterId(
+                    command.getMeterId(), command.getSwitchId(), command.getId(), command.getCookie());
 
-        context.getSwitchManager().installMeter(
-                DatapathId.of(command.getSwitchId()),
-                command.getBandwidth(), 1024, meterId);
+            context.getSwitchManager().installMeter(
+                    DatapathId.of(command.getSwitchId()),
+                    command.getBandwidth(), 1024, meterId);
+        } else {
+            logger.debug("Installing unmetered ingress flow. Switch: {}, cookie: {}",
+                    command.getSwitchId(), command.getCookie());
+        }
 
         context.getSwitchManager().installIngressFlow(
                 DatapathId.of(command.getSwitchId()),
@@ -322,12 +339,18 @@ class RecordHandler implements Runnable {
      * @param command command message for flow installation
      */
     private void installOneSwitchFlow(InstallOneSwitchFlow command) throws SwitchOperationException {
-        Long meterId = allocateMeterId(
-                command.getMeterId(), command.getSwitchId(), command.getId(), command.getCookie());
+        long meterId = 0;
+        if (command.getMeterId() != null && command.getMeterId() > 0) {
+            meterId = allocateMeterId(
+                    command.getMeterId(), command.getSwitchId(), command.getId(), command.getCookie());
 
-        context.getSwitchManager().installMeter(
-                DatapathId.of(command.getSwitchId()),
-                command.getBandwidth(), 1024, meterId);
+            context.getSwitchManager().installMeter(
+                    DatapathId.of(command.getSwitchId()),
+                    command.getBandwidth(), 1024, meterId);
+        } else {
+            logger.debug("Installing unmetered one switch flow. Switch: {}, cookie: {}",
+                    command.getSwitchId(), command.getCookie());
+        }
 
         OutputVlanType directOutputVlanType = command.getOutputVlanType();
         context.getSwitchManager().installOneSwitchFlow(
@@ -340,7 +363,7 @@ class RecordHandler implements Runnable {
                 command.getOutputVlanId(),
                 directOutputVlanType,
                 meterId);
-        }
+    }
 
     /**
      * Removes flow.
@@ -358,10 +381,11 @@ class RecordHandler implements Runnable {
             logger.info("Deleting flow {} from switch {}", command.getId(), dpid);
 
             DeleteRulesCriteria criteria = Optional.ofNullable(command.getCriteria())
-                    .orElseGet(()-> DeleteRulesCriteria.builder().cookie(command.getCookie()).build());
+                    .orElseGet(() -> DeleteRulesCriteria.builder().cookie(command.getCookie()).build());
             List<Long> cookiesOfRemovedRules = switchManager.deleteRulesByCriteria(dpid, criteria);
-            if(cookiesOfRemovedRules.isEmpty()) {
-                logger.warn("No rules were removed by criteria {} for flow {} from switch {}", criteria, command.getId(), dpid);
+            if (cookiesOfRemovedRules.isEmpty()) {
+                logger.warn("No rules were removed by criteria {} for flow {} from switch {}",
+                        criteria, command.getId(), dpid);
             }
 
             // FIXME(surabujin): QUICK FIX - try to drop meterPool completely
@@ -378,7 +402,7 @@ class RecordHandler implements Runnable {
     }
 
     /**
-     * Create network dump for OFELinkBolt
+     * Create network dump for OFELinkBolt.
      *
      * @param message NetworkCommandData
      */
@@ -406,6 +430,7 @@ class RecordHandler implements Runnable {
             allSwitchMap.values().stream()
                     .flatMap(sw ->
                             sw.getEnabledPorts().stream()
+                                    .filter(port -> SwitchEventCollector.isPhysicalPort(port.getPortNo()))
                                     .map(port -> buildPort(sw, port))
                                     .collect(Collectors.toSet())
                                     .stream())
@@ -425,14 +450,15 @@ class RecordHandler implements Runnable {
 
     private void doInstallSwitchRules(final CommandMessage message, String replyToTopic, Destination replyDestination) {
         SwitchRulesInstallRequest request = (SwitchRulesInstallRequest) message.getData();
-        logger.debug("Installing rules on '{}' switch: action={}", request.getSwitchId(), request.getInstallRulesAction());
+        logger.debug("Installing rules on '{}' switch: action={}",
+                request.getSwitchId(), request.getInstallRulesAction());
 
         DatapathId dpid = DatapathId.of(request.getSwitchId());
         ISwitchManager switchManager = context.getSwitchManager();
         InstallRulesAction installAction = request.getInstallRulesAction();
         List<Long> installedRules = new ArrayList<>();
         try {
-            if (installAction == InstallRulesAction.INSTALL_DROP ) {
+            if (installAction == InstallRulesAction.INSTALL_DROP) {
                 switchManager.installDropFlow(dpid);
                 installedRules.add(ISwitchManager.DROP_RULE_COOKIE);
             } else if (installAction == InstallRulesAction.INSTALL_BROADCAST) {
@@ -478,7 +504,7 @@ class RecordHandler implements Runnable {
         try {
             List<Long> removedRules = new ArrayList<>();
 
-            if(deleteAction != null) {
+            if (deleteAction != null) {
                 switch (deleteAction) {
                     case REMOVE_DROP:
                         criteria = DeleteRulesCriteria.builder()
@@ -492,6 +518,9 @@ class RecordHandler implements Runnable {
                         criteria = DeleteRulesCriteria.builder()
                                 .cookie(ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE).build();
                         break;
+                    default:
+                        logger.error("invalid action={}", deleteAction);
+                        throw new SwitchOperationException(dpid, "invalid DeleteRulesAction");
                 }
 
                 // The cases when we delete all non-default rules.
@@ -530,10 +559,11 @@ class RecordHandler implements Runnable {
 
     private void doConnectMode(final CommandMessage message, String replyToTopic, Destination replyDestination) {
         ConnectModeRequest request = (ConnectModeRequest) message.getData();
-        if (request.getMode() != null)
+        if (request.getMode() != null) {
             logger.debug("Setting CONNECT MODE to '{}'", request.getMode());
-        else
+        } else {
             logger.debug("Getting CONNECT MODE");
+        }
 
         ISwitchManager switchManager = context.getSwitchManager();
         ConnectModeRequest.Mode result = switchManager.connectMode(request.getMode());
@@ -588,7 +618,7 @@ class RecordHandler implements Runnable {
                     installOneSwitchFlow((InstallOneSwitchFlow) command);
                 } else {
                     throw new FlowCommandException(command.getId(), ErrorType.REQUEST_INVALID,
-                            "Unsupported command for batch install." );
+                            "Unsupported command for batch install.");
                 }
             } catch (SwitchOperationException e) {
                 logger.error("Error during flow installation", e);
@@ -600,7 +630,7 @@ class RecordHandler implements Runnable {
         try {
             PortsCommandData request = (PortsCommandData) message.getData();
             Map<DatapathId, IOFSwitch>  allSwitchMap = context.getSwitchManager().getAllSwitchMap();
-            for(Map.Entry<DatapathId, IOFSwitch> entry : allSwitchMap.entrySet()) {
+            for (Map.Entry<DatapathId, IOFSwitch> entry : allSwitchMap.entrySet()) {
                 String switchId = entry.getKey().toString();
                 try {
                     IOFSwitch sw = entry.getValue();
@@ -623,9 +653,7 @@ class RecordHandler implements Runnable {
                     InfoMessage infoMessage = new InfoMessage(response, message.getTimestamp(),
                             message.getCorrelationId());
                     context.getKafkaProducer().postMessage(TOPO_STATS, infoMessage);
-                }
-                catch (Exception e)
-                {
+                } catch (Exception e) {
                     logger.error("Could not get port stats data for switch {} with error {}",
                             switchId, e.getMessage());
                 }
@@ -654,16 +682,24 @@ class RecordHandler implements Runnable {
     }
 
     private void parseRecord(ConsumerRecord<String, String> record) {
+        CommandMessage message;
         try {
-            String value = (String) record.value();
+            String value = record.value();
             // TODO: Prior to Message changes, this MAPPER would read Message ..
             //          but, changed to BaseMessage and got an error wrt "timestamp" ..
             //          so, need to experiment with why CommandMessage can't be read as
             //          a BaseMessage
-            CommandMessage message = MAPPER.readValue(value, CommandMessage.class);
-            doControllerMsg(message);
+            message = MAPPER.readValue(value, CommandMessage.class);
         } catch (Exception exception) {
             logger.error("error parsing record={}", record.value(), exception);
+            return;
+        }
+
+        // Process the message within the message correlation context.
+        try (CorrelationContextClosable closable = CorrelationContext.create(message.getCorrelationId())) {
+            doControllerMsg(message);
+        } catch (Exception exception) {
+            logger.error("error processing message={}", message, exception);
         }
     }
 

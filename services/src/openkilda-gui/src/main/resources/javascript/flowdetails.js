@@ -85,14 +85,18 @@ function callReRoute(flow_id){
 		} else {
 			common.infoMessage('Flow : '+flow_id+" already on best route!","info");
 		}
-		common.getData("/flows/"+flow_id+"/status","GET").then(function(response){
-			if(response && typeof(response.status)!=='undefined'){
-				$(".flow_div_Status").html(response.status);
-			}
-		})
-		common.getData("/flows/path/" + flow_id,"GET").then(function(response) { //calling flow path api again
-			showFlowPathData(response,true);
-		})
+		// adding wait time of 10 sec to call path and status because re-route take some time to update in db
+		setTimeout(function(){ 
+			common.getData("/flows/"+flow_id+"/status","GET").then(function(response){
+				if(response && typeof(response.status)!=='undefined'){
+					$(".flow_div_Status").html(response.status);
+				}
+			})
+			common.getData("/flows/path/" + flow_id,"GET").then(function(response) { //calling flow path api again
+				showFlowPathData(response,true);
+			})
+		}, 10000);
+		
 	})
 	
 }

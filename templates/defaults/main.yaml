@@ -31,11 +31,13 @@ kafka_topic_stats: "kilda.stats"
 kafka_topic_topo_cache: "kilda.topo.cache"
 kafka_topic_topo_disco: "kilda.topo.disco"
 kafka_topic_topo_eng: "kilda.topo.eng"
+kafka_topic_topo_nb: "kilda.topo.nb"
 discovery_interval: 2
 discovery_timeout: "9"
 # discovery_limit of -1 is forever
 # 28000 is about a day (test every 3 seconds, 20 failures per minute, 1200 per hour ..
 discovery_limit: "-1"
+discovery_keep_removed_isl: 60
 worker_pool_size: "30000"
 production_fileserver: "http://127.0.0.1"
 opentsdb_timeout: 30

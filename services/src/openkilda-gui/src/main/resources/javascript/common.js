@@ -2,7 +2,7 @@
 
 
 /*Global Variable Constant*/
-var metricVarList = ["bits:Bits/sec","megabytes:MegaBytes/sec","packets:Packets/sec","drops:Drops/sec","errors:Errors/sec", "collisions:Collisions","frameerror:Frame Errors","overerror:Overruns","crcerror:CRC Errors"];
+var metricVarList = ["bits:Bits/sec","bytes:Bytes/sec","packets:Packets/sec","drops:Drops/sec","errors:Errors/sec", "collisions:Collisions","frameerror:Frame Errors","overerror:Overruns","crcerror:CRC Errors"];
 
 var href = window.location.href;
 var lastslashindex = href.lastIndexOf('/');
@@ -117,10 +117,39 @@ var LocalStorageHandler = function() {
 
 var common = {	
 		getData:function(apiUrl,requestType){	
-			return $.ajax({url : APP_CONTEXT+apiUrl,type : requestType,dataType : "json"});							
+			var hasQueryParams = apiUrl.split("?");
+			if(hasQueryParams.length > 1){
+				return $.ajax({url : APP_CONTEXT+apiUrl+"&_=" + new Date().getTime(),type : requestType,dataType : "json"});							
+				
+			}else{
+				return $.ajax({url : APP_CONTEXT+apiUrl+"?_=" + new Date().getTime(),type : requestType,dataType : "json"});							
+				
+			}							
 		},
+		
 		updateData:function(apiUrl,requestType,data){
 			return $.ajax({url : APP_CONTEXT+apiUrl,contentType:'application/json',dataType : "json",type : requestType,data:JSON.stringify(data)});	
+		},
+		customDataTableSorting:function(){
+			jQuery.fn.dataTableExt.oSort["name-desc"] = function (x, y) {
+				 var xArr = x.split(".");
+				 var yArr = y.split(".");
+				 
+				 var xa = xArr[xArr.length - 1];
+				  var ya = yArr[yArr.length - 1];
+				 
+				
+				   return ((xa < ya) ?  1 : ((xa > ya) ? -1 : 0));
+			        
+			};
+			jQuery.fn.dataTableExt.oSort["name-asc"] = function (x, y) {
+				var xArr = x.split(".");
+				 var yArr = y.split(".");
+				 var xa = xArr[xArr.length - 1];
+				  var ya = yArr[yArr.length - 1];
+				
+		     return ((xa < ya) ? -1 : ((xa > ya) ?  1 : 0));
+			}
 		},
 		infoMessage:function(msz,type){
 			$.toast({heading:(type =='info'?'Information':type), text: msz, showHideTransition: 'fade',position: 'top-right', icon: type, hideAfter : 6000})
@@ -260,6 +289,9 @@ var graphAutoReload = {
 			
 			if(key.includes("isl")) {				
 				$("#autoreloadISL").toggle();
+				var savedEndDate =  new Date($('#datetimepicker8ISL').val());
+				$('#savedEnddate').val(savedEndDate);
+				$("#toId").toggle();
 				var checkbox =  $("#check").prop("checked");
 				if(checkbox == false){
 										
@@ -279,8 +311,12 @@ var graphAutoReload = {
 				}
 			} else {	
 				$("#autoreload").toggle();
+				var savedEndDate =  new Date($('#datetimepicker8').val());
+				$('#savedEnddate').val(savedEndDate);
+				$("#toId").toggle();
 				var checkbox =  $("#check").prop("checked");
 				if(checkbox == false){
+					$('#savedEnddate').val('');
 					$("#autoreload").val('');
 					clearInterval(callIntervalData);
 					clearInterval(graphInterval);
@@ -292,10 +328,22 @@ var graphAutoReload = {
 	}
 }
 
+function ZoomCallBack(minX, maxX, yRanges) {
+    var startDate = moment(new Date(minX)).format("YYYY/MM/DD HH:mm:ss");
+    var endDate = moment( new Date(maxX)).format("YYYY/MM/DD HH:mm:ss");
+    if($('#datetimepicker7').length){
+   	 $('#datetimepicker7').val(startDate);
+   	 $('#datetimepicker8').val(endDate);
+    }
+    if($('#datetimepicker7ISL').length){
+   	 $('#datetimepicker7ISL').val(startDate);
+   	 $("#datetimepicker8ISL").val(endDate)
+    }
+  }
 
  var showStatsGraph = {	
 
-	showStatsData:function(response,metricVal,graphCode,domId) {
+	showStatsData:function(response,metricVal,graphCode,domId,startDate,endDate) {
 		
 		var metric1 = "";
 		var metric2 = "";
@@ -311,7 +359,8 @@ var graphAutoReload = {
 						 var g = new Dygraph(document.getElementById("source-graph_div"), [],
 							 	 {
 							 		      drawPoints: false,
-							 		      labels: "test",	 		      
+							 		      labels: "test",									 			 
+							 		      labelsUTC:true, 		      
 							 		      colors: ["#495cff","#aad200"],
 							 	  });	
 						 return;
@@ -320,7 +369,8 @@ var graphAutoReload = {
 						 var g = new Dygraph(document.getElementById("dest-graph_div"), [],
 							 	 {
 							 		      drawPoints: false,
-							 		      labels: "test",	 		      
+							 		      labels: "test",									 			 
+							 		      labelsUTC:true, 		      
 							 		      colors: ["#495cff","#aad200"],
 							 	  });	
 						 return;
@@ -329,7 +379,8 @@ var graphAutoReload = {
 			 var g = new Dygraph(document.getElementById("graphdiv"), [],
 				 	 {
 				 		      drawPoints: false,
-				 		      labels: "test",	 		      
+				 		      labels: "test",									 			 
+				 		      labelsUTC:true,
 				 		      colors: ["#495cff","#aad200"],
 				 	  });	
 			 return;
@@ -356,6 +407,15 @@ var graphAutoReload = {
 				    	metric1 = "F";
 				    	metric2 = "R";		    	
 				    } else {
+				    	if(typeof(startDate)!=='undefined'){
+							var dat = new Date(startDate);
+							var startTime = dat.getTime();
+							var usedDate = new Date();
+							startTime = startTime - usedDate.getTimezoneOffset() * 60 * 1000;
+							var arr = [new Date(startTime),null,null];
+							graphData.push(arr);
+						}
+				 
 				    	 for(i in getValue) {
 
                               if(getValue[i]<0){
@@ -365,24 +425,11 @@ var graphAutoReload = {
                             	  getVal[i] = 0;
                               }
 						      var temparr = [];
-						      var mapDate= new Date(Number(i*1000));
-						      var offset  = mapDate.getTimezoneOffset() * 60 * 1000;
-						      var usedDate = new Date(mapDate.getTime() + offset);
-						      temparr[0] =usedDate;// new Date(Number(i*1000));
-						      if(metricVal == "bytes"){
-						    	  temparr[1] = getValue[i] * 1024;
-						      }
-						      else{
-						    	  temparr[1] = getValue[i]
-						      }
-						      
+						      temparr[0] = new Date(Number(i*1000)); 
+						       temparr[1] = getValue[i]
 						      if(data.length == 2) {
-						    	  if(metricVal == "bytes"){
-						    	  	temparr[2] = getVal[i] * 1024;
-						    	  }
-						    	  else{
-						    			temparr[2] = getVal[i];
-						    	  }
+								temparr[2] = getVal[i];
+						  
 						      }
 						      graphData.push(temparr)
 						 }
@@ -400,21 +447,43 @@ var graphAutoReload = {
 	    	metric2 = "R";
 			var labels = ['Time', metric1,metric2];
 		}
+		
+		if(typeof(endDate)!=='undefined'){
+			var dat = new Date(endDate);
+			var lastTime = dat.getTime();
+			var usedDate = new Date(graphData[graphData.length-1][0]);
+			lastTime = lastTime - usedDate.getTimezoneOffset() * 60 * 1000;
+			var arr = [new Date(lastTime),null,null];
+			graphData.push(arr);
+		}
+		
+		
+		
 		if(graphCode == undefined){
 					
 			if(domId == 'source') {
 				var g = new Dygraph(document.getElementById("source-graph_div"), graphData,
 						{
 							 		      drawPoints: false,
-							 		      labels: labels,	 		      
+							 		      labels: labels,									 			 
+							 		      labelsUTC:true, 
+							 		      includeZero : true,		      
 							 		      colors: ["#495cff","#aad200"],
+							 		     zoomCallback:function(minX, maxX, yRanges){
+								 		    	ZoomCallBack(minX, maxX, yRanges)
+								 		      },
 						});
 			}else if(domId == 'target') {
 				var g = new Dygraph(document.getElementById("dest-graph_div"), graphData,
 						{
 							 		      drawPoints: false,
-							 		      labels: labels,	 		      
+							 		      labels: labels,	 								 			 
+							 		      labelsUTC:true,	
+							 		      includeZero : true,	      
 							 		      colors: ["#495cff","#aad200"],
+							 		     zoomCallback:function(minX, maxX, yRanges){
+								 		    	ZoomCallBack(minX, maxX, yRanges)
+								 		      },
 						});
 			} else {
 
@@ -422,8 +491,13 @@ var graphAutoReload = {
 				var g = new Dygraph(document.getElementById("graphdiv"), graphData,
 						{    										
 							 		      drawPoints: false,
-							 		      labels: labels,	 		      
+							 		      labels: labels,									 			 
+							 		      labelsUTC:true, 
+							 		      includeZero : true,
 							 		      colors: ["#495cff","#aad200"],
+							 		      zoomCallback:function(minX, maxX, yRanges){
+								 		    	ZoomCallBack(minX, maxX, yRanges)
+								 		      },
 						});
 			} else {
 				       if(domId == undefined) {
@@ -431,24 +505,40 @@ var graphAutoReload = {
 					        var g1 = new Dygraph(document.getElementById("graphdiv"), graphData,
 							{
 										 		      drawPoints: false,
-										 		      labels: labels,	 		      
+										 		      labels:labels,	 
+										 		      labelsUTC:true,
+										 		      includeZero : true,
+										 		     drawAxesAtZero:true,
 										 		      colors: ["#495cff","#aad200"],
+										 		      zoomCallback:function(minX, maxX, yRanges){
+										 		    	ZoomCallBack(minX, maxX, yRanges)
+										 		      },
 							});
 				       } 
 				       if(domId != undefined && graphCode == null && $('#selectedGraph').val() =='source' ) {
 					       var g1 = new Dygraph(document.getElementById("source-graph_div"), graphData,
 									  {
 										 		      drawPoints: false,
-										 		      labels: labels,	 		      
+										 		      labels: labels,								 			 
+										 		      labelsUTC:true,
+										 		      includeZero : true,
 										 		      colors: ["#495cff","#aad200"],
+										 		      zoomCallback:function(minX, maxX, yRanges){
+										 		    	ZoomCallBack(minX, maxX, yRanges)
+										 		      },
 									  });
 				       }
 				       if(domId != undefined && graphCode == null && $('#selectedGraph').val() =='target') {
 							 var g2 = new Dygraph(document.getElementById("dest-graph_div"), graphData,
 									  {
 										 		      drawPoints: false,
-										 		      labels: labels,	 		      
+										 		      labels: labels,									 			 
+										 		      labelsUTC:true, 	
+										 		      includeZero : true,	      
 										 		      colors: ["#495cff","#aad200"],
+										 		      zoomCallback:function(minX, maxX, yRanges){
+											 		    	ZoomCallBack(minX, maxX, yRanges)
+											 		      },
 									 });	
 				       }
 			     }
@@ -458,8 +548,13 @@ var graphAutoReload = {
 			   var g = new Dygraph(document.getElementById("source-graph_div"), graphData,
 				{
 					 		      drawPoints: false,
-					 		      labels: labels,	 		      
+					 		      labels: labels,	 									 			 
+					 		      labelsUTC:true,	
+					 		      includeZero : true,      
 					 		      colors: ["#495cff","#aad200"],
+					 		     zoomCallback:function(minX, maxX, yRanges){
+						 		    	ZoomCallBack(minX, maxX, yRanges)
+						 		      },
 				});	
 
 		}
@@ -468,8 +563,13 @@ var graphAutoReload = {
 			  var g = new Dygraph(document.getElementById("dest-graph_div"), graphData,
 				{
 					 		      drawPoints: false,
-					 		      labels: labels,	 		      
+					 		      labels: labels,	 								 			 
+					 		      labelsUTC:true,	
+					 		      includeZero : true,	      
 					 		      colors: ["#495cff","#aad200"],
+					 		     zoomCallback:function(minX, maxX, yRanges){
+						 		    	ZoomCallBack(minX, maxX, yRanges)
+						 		      },
 				});	
 
 			
@@ -483,7 +583,7 @@ var graphAutoReload = {
 
 var showIslSwitchStats = {	
 
-		showIslSwitchStatsData:function(response,metricVal,graphCode,domId) {
+		showIslSwitchStatsData:function(response,metricVal,graphCode,domId,startDate,endDate) {
 			
 			var metric1 = "";
 			var metric2 = "";
@@ -537,6 +637,14 @@ var showIslSwitchStats = {
 					    	metric1 = "F";
 					    	metric2 = "R";		    	
 					    } else {
+					    	if(typeof(startDate)!=='undefined'){
+								var dat = new Date(startDate);
+								var startTime = dat.getTime();
+								var usedDate = new Date();
+								startTime = startTime - usedDate.getTimezoneOffset() * 60 * 1000;
+								var arr = [new Date(startTime),null,null];
+								graphData.push(arr);
+							}
 					    	 for(i in getValue) {
 							    
 					    		 if(getValue[i]<0){
@@ -547,25 +655,12 @@ var showIslSwitchStats = {
 	                              }
 	                              
 							      var temparr = [];
-							      var mapDate= new Date(Number(i*1000));
-							      var offset  = mapDate.getTimezoneOffset() * 60 * 1000;
-							      var usedDate = new Date(mapDate.getTime() + offset);
-							      temparr[0] = usedDate;//new Date(Number(i*1000));
-							      if(metricVal == "bytes"){
-							    	  temparr[1] = getValue[i] * 1024;
-							      }
-							      else{
-							    	  temparr[1] = getValue[i]
-							      }
+							      temparr[0] = new Date(Number(i*1000));
+							      temparr[1] = getValue[i]
 							      
 							      if(data.length == 2) {
-							    	  if(metricVal == "bytes"){
-							    	  	temparr[2] = getVal[i] * 1024;
-							    	  }
-							    	  else{
-							    			temparr[2] = getVal[i];
-							    	  }
-							      }
+							   		temparr[2] = getVal[i];
+							    	}
 							      graphData.push(temparr)
 							 }
 					    }
@@ -582,37 +677,67 @@ var showIslSwitchStats = {
 		    	metric2 = "R";
 				var labels = ['Time', metric1,metric2];
 			}
+			
+			if(typeof(endDate)!=='undefined'){
+				var dat = new Date(endDate);
+				var lastTime = dat.getTime();
+				var usedDate = new Date(graphData[graphData.length-1][0]);
+				lastTime = lastTime - usedDate.getTimezoneOffset() * 60 * 1000;
+				var arr = [new Date(lastTime),null,null];
+				graphData.push(arr);	
+			}
+			
 			if(graphCode == undefined){
 						
 				if(domId=='source') {
 					var g = new Dygraph(document.getElementById("source-graph_div"), graphData,
 							{
 								 		      drawPoints: false,
-								 		      labels: labels,	 		      
+								 		      labels: labels,								 			 
+								 		      labelsUTC:true,
+								 		      includeZero : true,
 								 		      colors: ["#495cff","#aad200"],
+								 		     zoomCallback:function(minX, maxX, yRanges){
+									 		    	ZoomCallBack(minX, maxX, yRanges)
+									 		      },
 							});
 				}else if(domId == 'target') {
 					var g = new Dygraph(document.getElementById("dest-graph_div"), graphData,
 							{
 								 		      drawPoints: false,
-								 		      labels: labels,	 		      
+								 		      labels: labels,								 			 
+								 		      labelsUTC:true,
+								 		      includeZero : true,
 								 		      colors: ["#495cff","#aad200"],
+								 		     zoomCallback:function(minX, maxX, yRanges){
+									 		    	ZoomCallBack(minX, maxX, yRanges)
+									 		      },
 							});
 				} else {
 					       if(domId != undefined && graphCode == null && $('#selectedGraph').val() == 'source') {
 						       var g1 = new Dygraph(document.getElementById("source-graph_div"), graphData,
 										  {
 											 		      drawPoints: false,
-											 		      labels: labels,	 		      
+											 		      labels: labels,									 			 
+											 		      labelsUTC:true,
+											 		      includeZero : true, 		      
 											 		      colors: ["#495cff","#aad200"],
+											 		     zoomCallback:function(minX, maxX, yRanges){
+												 		    	ZoomCallBack(minX, maxX, yRanges)
+												 		      },
 										  });
 					       }
 					       if(domId != undefined && graphCode == null &&  $('#selectedGraph').val() == 'target' ) {
 								 var g2 = new Dygraph(document.getElementById("dest-graph_div"), graphData,
 										  {
 											 		      drawPoints: false,
-											 		      labels: labels,	 		      
+											 		      labels: labels,									 			 
+											 		      labelsUTC:true, 
+											 		      includeZero : true,		      
 											 		      colors: ["#495cff","#aad200"],
+											 		     zoomCallback:function(minX, maxX, yRanges){
+												 		    	ZoomCallBack(minX, maxX, yRanges)
+												 		      },
 										 });	
 					       }
 				     
@@ -622,8 +747,13 @@ var showIslSwitchStats = {
 				   var g = new Dygraph(document.getElementById("source-graph_div"), graphData,
 					{
 						 		      drawPoints: false,
-						 		      labels: labels,	 		      
+						 		      labels: labels,	 									 			 
+						 		      labelsUTC:true,	 
+						 		      includeZero : true,     
 						 		      colors: ["#495cff","#aad200"],
+						 		     zoomCallback:function(minX, maxX, yRanges){
+							 		    	ZoomCallBack(minX, maxX, yRanges)
+							 		      },
 					});	
 
 			}
@@ -632,8 +762,13 @@ var showIslSwitchStats = {
 				  var g = new Dygraph(document.getElementById("dest-graph_div"), graphData,
 					{
 						 		      drawPoints: false,
-						 		      labels: labels,	 		      
+						 		      labels: labels,	 								 			 
+						 		      labelsUTC:true,	
+						 		      includeZero : true,	      
 						 		      colors: ["#495cff","#aad200"],
+						 		     zoomCallback:function(minX, maxX, yRanges){
+							 		    	ZoomCallBack(minX, maxX, yRanges)
+							 		      },
 					});	
 
 				
@@ -651,7 +786,7 @@ var getMetricDetails = {
 			var optionHTML = "";
 			for (var i = 0; i < metricArray.length ; i++) {
 				
-				if(metricArray[i].includes("bits") || metricArray[i].includes("packets") || metricArray[i].includes("megabytes")) {
+				if(metricArray[i].includes("bits") || metricArray[i].includes("packets") || metricArray[i].includes("bytes")) {
 					optionHTML += "<option value=" + metricArray[i].split(":")[0] + ">"+ metricArray[i].split(":")[1] + "</option>";
 				}
 			}
@@ -664,7 +799,7 @@ var getMetricDetails = {
 			var optionHTML = "";
 			for (var i = 0; i < metricArray.length ; i++) {
 				
-				if(metricArray[i].includes("megabytes") || metricArray[i].includes("latency")) {
+				if(metricArray[i].includes("bytes") || metricArray[i].includes("latency")) {
 				} else{
 					optionHTML += "<option value=" + metricArray[i].split(":")[0] + ">"+ metricArray[i].split(":")[1] + "</option>";
 				}			
@@ -777,7 +912,7 @@ var islDetails = {
 
 				for (var i = 0; i < metricArray.length ; i++) {
 					
-					if( metricArray[i].includes("megabytes")) {
+					if( metricArray[i].includes("bytes")) {
 					} else {
 						optionHTML += "<option value=" + metricArray[i].split(":")[0] + ">"+ metricArray[i].split(":")[1] + "</option>";
 					}
@@ -901,12 +1036,12 @@ if(test) {
 		if(graphDivCode ==0){
 			$("#waitisl1").css("display", "none");
 			$('body').css('pointer-events', 'all');
-			showIslSwitchStats.showIslSwitchStatsData(response,selMetric,graphDivCode,""); 
+			showIslSwitchStats.showIslSwitchStatsData(response,selMetric,graphDivCode,"",startDate,endDate); 
 		}
 		if(graphDivCode ==1){
 			$("#waitisl2").css("display", "none");
 			$('body').css('pointer-events', 'all');
-			showIslSwitchStats.showIslSwitchStatsData(response,selMetric,graphDivCode,""); 
+			showIslSwitchStats.showIslSwitchStatsData(response,selMetric,graphDivCode,"",startDate,endDate); 
 		}
 		
 })
@@ -969,7 +1104,7 @@ function callIslSwitchIntervalData(switchId,portId){
 	}
 	
 	
-	showIslSwitchStats.showIslSwitchStatsData(response,selMetric,graphDivCode,""); 
+	showIslSwitchStats.showIslSwitchStatsData(response,selMetric,graphDivCode,"",startDate,endDate); 
 	})
 }
 

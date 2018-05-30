@@ -16,9 +16,11 @@
 package org.openkilda.floodlight.statistics;
 
 import static java.util.stream.Collectors.toList;
-import static org.openkilda.messaging.Utils.SYSTEM_CORRELATION_ID;
 
 import org.openkilda.floodlight.kafka.KafkaMessageProducer;
+import org.openkilda.floodlight.utils.CorrelationContext;
+import org.openkilda.floodlight.utils.CorrelationContext.CorrelationContextClosable;
+import org.openkilda.floodlight.utils.NewCorrelationContextRequired;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Topic;
 import org.openkilda.messaging.info.InfoData;
@@ -33,6 +35,7 @@ import org.openkilda.messaging.info.stats.PortStatsReply;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import net.floodlightcontroller.core.IFloodlightProviderService;
+import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
@@ -107,121 +110,143 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
         if (interval > 0) {
             threadPoolService.getScheduledExecutor().scheduleAtFixedRate(
                     () -> switchService.getAllSwitchMap().values().forEach(iofSwitch -> {
-                        OFFactory factory = iofSwitch.getOFFactory();
-                        final String switchId = iofSwitch.getId().toString();
-
-                        OFPortStatsRequest portStatsRequest = factory
-                                .buildPortStatsRequest()
-                                .setPortNo(OFPort.ANY)
-                                .build();
-
-                        OFFlowStatsRequest flowStatsRequest = factory
-                                .buildFlowStatsRequest()
-                                .setOutGroup(OFGroup.ANY)
-                                .setCookieMask(SYSTEM_MASK)
-                                .build();
-
-                        logger.trace("Getting port stats for switch={}", iofSwitch.getId());
-
-                        Futures.addCallback(iofSwitch.writeStatsRequest(portStatsRequest),
-                                new RequestCallback<>(data -> {
-                                    List<PortStatsReply> replies = data.stream().map(reply -> {
-                                        List<PortStatsEntry> entries = reply.getEntries().stream()
-                                                .map(entry -> {
-                                                    if (entry.getVersion().compareTo(OFVersion.OF_13) > 0) {
-                                                        long rxFrameErr, rxOverErr, rxCrcErr, collisions;
-                                                        rxFrameErr = rxOverErr = rxCrcErr = collisions = 0;
-
-                                                        for (OFPortStatsProp property : entry.getProperties()) {
-                                                            if (property.getType() == 0x0) {
-                                                                OFPortStatsPropEthernet etherProps =
-                                                                        (OFPortStatsPropEthernet) property;
-                                                                rxFrameErr = etherProps.getRxFrameErr().getValue();
-                                                                rxOverErr = etherProps.getRxOverErr().getValue();
-                                                                rxCrcErr = etherProps.getRxCrcErr().getValue();
-                                                                collisions = etherProps.getCollisions().getLength();
-                                                            }
-                                                        }
-
-                                                        return new PortStatsEntry(
-                                                                entry.getPortNo().getPortNumber(),
-                                                                entry.getRxPackets().getValue(),
-                                                                entry.getTxPackets().getValue(),
-                                                                entry.getRxBytes().getValue(),
-                                                                entry.getTxBytes().getValue(),
-                                                                entry.getRxDropped().getValue(),
-                                                                entry.getTxDropped().getValue(),
-                                                                entry.getRxErrors().getValue(),
-                                                                entry.getTxErrors().getValue(),
-                                                                rxFrameErr,
-                                                                rxOverErr,
-                                                                rxCrcErr,
-                                                                collisions);
-                                                    } else {
-                                                        return new PortStatsEntry(
-                                                                entry.getPortNo().getPortNumber(),
-                                                                entry.getRxPackets().getValue(),
-                                                                entry.getTxPackets().getValue(),
-                                                                entry.getRxBytes().getValue(),
-                                                                entry.getTxBytes().getValue(),
-                                                                entry.getRxDropped().getValue(),
-                                                                entry.getTxDropped().getValue(),
-                                                                entry.getRxErrors().getValue(),
-                                                                entry.getTxErrors().getValue(),
-                                                                entry.getRxFrameErr().getValue(),
-                                                                entry.getRxOverErr().getValue(),
-                                                                entry.getRxCrcErr().getValue(),
-                                                                entry.getCollisions().getValue());
-                                                    }
-                                                })
-                                                .collect(toList());
-                                        return new PortStatsReply(reply.getXid(), entries);
-                                    }).collect(toList());
-                                    return new PortStatsData(switchId, replies);
-                                }, "port"));
-
-                        if (factory.getVersion().compareTo(OFVersion.OF_15) != 0) {
-                            // skip flow stats for OF 1.5 protocol version
-                            logger.trace("Getting flow stats for switch={}", iofSwitch.getId());
-
-                            Futures.addCallback(iofSwitch.writeStatsRequest(flowStatsRequest),
-                                    new RequestCallback<>(data -> {
-                                        List<FlowStatsReply> replies = data.stream().map(reply -> {
-                                            List<FlowStatsEntry> entries = reply.getEntries().stream()
-                                                    .map(entry -> new FlowStatsEntry(
-                                                            entry.getTableId().getValue(),
-                                                            entry.getCookie().getValue(),
-                                                            entry.getPacketCount().getValue(),
-                                                            entry.getByteCount().getValue()))
-                                                    .collect(toList());
-                                            return new FlowStatsReply(reply.getXid(), entries);
-                                        }).collect(toList());
-                                        return new FlowStatsData(switchId, replies);
-                                    }, "flow"));
-                        }
+                            gatherPortStats(iofSwitch);
+                            gatherFlowStats(iofSwitch);
                     }), interval, interval, TimeUnit.SECONDS);
+        }
+    }
+
+    @NewCorrelationContextRequired
+    private void gatherPortStats(IOFSwitch iofSwitch) {
+        OFFactory factory = iofSwitch.getOFFactory();
+        final String switchId = iofSwitch.getId().toString();
+
+        OFPortStatsRequest portStatsRequest = factory
+                .buildPortStatsRequest()
+                .setPortNo(OFPort.ANY)
+                .build();
+
+        logger.trace("Getting port stats for switch={}", iofSwitch.getId());
+
+        Futures.addCallback(iofSwitch.writeStatsRequest(portStatsRequest),
+                new RequestCallback<>(data -> {
+                    List<PortStatsReply> replies = data.stream().map(reply -> {
+                        List<PortStatsEntry> entries = reply.getEntries().stream()
+                                .map(entry -> {
+                                    if (entry.getVersion().compareTo(OFVersion.OF_13) > 0) {
+                                        long rxFrameErr, rxOverErr, rxCrcErr, collisions;
+                                        rxFrameErr = rxOverErr = rxCrcErr = collisions = 0;
+
+                                        for (OFPortStatsProp property : entry.getProperties()) {
+                                            if (property.getType() == 0x0) {
+                                                OFPortStatsPropEthernet etherProps =
+                                                        (OFPortStatsPropEthernet) property;
+                                                rxFrameErr = etherProps.getRxFrameErr().getValue();
+                                                rxOverErr = etherProps.getRxOverErr().getValue();
+                                                rxCrcErr = etherProps.getRxCrcErr().getValue();
+                                                collisions = etherProps.getCollisions().getLength();
+                                            }
+                                        }
+
+                                        return new PortStatsEntry(
+                                                entry.getPortNo().getPortNumber(),
+                                                entry.getRxPackets().getValue(),
+                                                entry.getTxPackets().getValue(),
+                                                entry.getRxBytes().getValue(),
+                                                entry.getTxBytes().getValue(),
+                                                entry.getRxDropped().getValue(),
+                                                entry.getTxDropped().getValue(),
+                                                entry.getRxErrors().getValue(),
+                                                entry.getTxErrors().getValue(),
+                                                rxFrameErr,
+                                                rxOverErr,
+                                                rxCrcErr,
+                                                collisions);
+                                    } else {
+                                        return new PortStatsEntry(
+                                                entry.getPortNo().getPortNumber(),
+                                                entry.getRxPackets().getValue(),
+                                                entry.getTxPackets().getValue(),
+                                                entry.getRxBytes().getValue(),
+                                                entry.getTxBytes().getValue(),
+                                                entry.getRxDropped().getValue(),
+                                                entry.getTxDropped().getValue(),
+                                                entry.getRxErrors().getValue(),
+                                                entry.getTxErrors().getValue(),
+                                                entry.getRxFrameErr().getValue(),
+                                                entry.getRxOverErr().getValue(),
+                                                entry.getRxCrcErr().getValue(),
+                                                entry.getCollisions().getValue());
+                                    }
+                                })
+                                .collect(toList());
+                        return new PortStatsReply(reply.getXid(), entries);
+                    }).collect(toList());
+                    return new PortStatsData(switchId, replies);
+                }, "port", CorrelationContext.getId()));
+    }
+
+    @NewCorrelationContextRequired
+    private void gatherFlowStats(IOFSwitch iofSwitch) {
+        OFFactory factory = iofSwitch.getOFFactory();
+        final String switchId = iofSwitch.getId().toString();
+
+        OFFlowStatsRequest flowStatsRequest = factory
+                .buildFlowStatsRequest()
+                .setOutGroup(OFGroup.ANY)
+                .setCookieMask(SYSTEM_MASK)
+                .build();
+
+        if (factory.getVersion().compareTo(OFVersion.OF_15) != 0) {
+            // skip flow stats for OF 1.5 protocol version
+            logger.trace("Getting flow stats for switch={}", iofSwitch.getId());
+
+            Futures.addCallback(iofSwitch.writeStatsRequest(flowStatsRequest),
+                    new RequestCallback<>(data -> {
+                        List<FlowStatsReply> replies = data.stream().map(reply -> {
+                            List<FlowStatsEntry> entries = reply.getEntries().stream()
+                                    .map(entry -> new FlowStatsEntry(
+                                            entry.getTableId().getValue(),
+                                            entry.getCookie().getValue(),
+                                            entry.getPacketCount().getValue(),
+                                            entry.getByteCount().getValue()))
+                                    .collect(toList());
+                            return new FlowStatsReply(reply.getXid(), entries);
+                        }).collect(toList());
+                        return new FlowStatsData(switchId, replies);
+                    }, "flow", CorrelationContext.getId()));
         }
     }
 
     private class RequestCallback<T extends OFStatsReply> implements FutureCallback<List<T>> {
         private Function<List<T>, InfoData> transform;
         private String type;
+        private final String correlationId;
 
-        RequestCallback(Function<List<T>, InfoData> transform, String type) {
+        RequestCallback(Function<List<T>, InfoData> transform, String type, String correlationId) {
             this.transform = transform;
             this.type = type;
+            this.correlationId = correlationId;
         }
 
         @Override
         public void onSuccess(List<T> data) {
-            InfoMessage infoMessage = new InfoMessage(transform.apply(data),
-                    System.currentTimeMillis(), SYSTEM_CORRELATION_ID, Destination.WFM_STATS);
-            kafkaProducer.postMessage(STATISTICS_TOPIC, infoMessage);
+            // Restore the correlation context used for the request.
+            try (CorrelationContextClosable closable = CorrelationContext.create(correlationId)) {
+
+                InfoMessage infoMessage = new InfoMessage(transform.apply(data),
+                        System.currentTimeMillis(), correlationId, Destination.WFM_STATS);
+                kafkaProducer.postMessage(STATISTICS_TOPIC, infoMessage);
+            }
         }
 
         @Override
         public void onFailure(Throwable throwable) {
-            logger.error("Exception reading {} stats", type, throwable);
+            // Restore the correlation context used for the request.
+            try (CorrelationContextClosable closable = CorrelationContext.create(correlationId)) {
+
+                logger.error("Exception reading {} stats", type, throwable);
+            }
         }
     }
 }

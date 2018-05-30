@@ -3,8 +3,7 @@ package org.openkilda.wfm.protocol;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
-import org.openkilda.messaging.MessageData;
-import org.openkilda.wfm.MessageFormatException;
+import org.openkilda.wfm.error.MessageFormatException;
 
 abstract public class BoltToBoltMessage<T> extends JsonMessage<T> {
     public static String FIELD_ID_CORRELATION_ID = "Correlation-Id";

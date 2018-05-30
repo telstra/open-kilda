@@ -1,27 +1,23 @@
 package org.openkilda.atdd.staging.service.traffexam.model;
 
+import lombok.Value;
+import lombok.experimental.NonFinal;
 import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
 
+@Value
+@NonFinal
 public class ExamReport {
+
     private final Exam exam;
     private final EndpointReport producerReport;
     private final EndpointReport consumerReport;
 
-    public ExamReport(Exam exam, EndpointReport producerReport, EndpointReport consumerReport) {
-        this.exam = exam;
-        this.producerReport = producerReport;
-        this.consumerReport = consumerReport;
-    }
-
-    public Exam getExam() {
-        return exam;
-    }
-
     public Bandwidth getBandwidth() {
-        return new Bandwidth(producerReport.getBitsPerSecond().intValue());
+        int kbps = producerReport.getBitsPerSecond().intValue() / 1024;
+        return new Bandwidth(kbps);
     }
 
     public List<String> getErrors() {
@@ -36,12 +32,12 @@ public class ExamReport {
         return errors;
     }
 
-    public boolean isError() {
+    public boolean hasError() {
         return !StringUtils.isEmpty(producerReport.getError()) || !StringUtils.isEmpty(consumerReport.getError());
     }
 
-    public boolean isTraffic() {
-        return 0 < producerReport.getPackets() && 0 < consumerReport.getPackets();
+    public boolean hasTraffic() {
+        return 0 < producerReport.getBytes();
     }
 
     public boolean isTrafficLose() {

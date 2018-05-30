@@ -46,6 +46,8 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.openkilda.floodlight.pathverification.type.PathType;
 import org.openkilda.floodlight.pathverification.web.PathVerificationServiceWebRoutable;
+import org.openkilda.floodlight.utils.CorrelationContext;
+import org.openkilda.floodlight.utils.NewCorrelationContextRequired;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Topic;
 import org.openkilda.messaging.info.InfoMessage;
@@ -87,11 +89,14 @@ import java.util.Map;
 import java.util.Properties;
 
 public class PathVerificationService implements IFloodlightModule, IOFMessageListener, IPathVerificationService {
+    private static final Logger logger = LoggerFactory.getLogger(PathVerificationService.class);
+    private static final Logger logIsl = LoggerFactory.getLogger(
+            String.format("%s.ISL", PathVerificationService.class.getName()));
+
     public static final String VERIFICATION_BCAST_PACKET_DST = "08:ED:02:E3:FF:FF";
     public static final int VERIFICATION_PACKET_UDP_PORT = 61231;
     public static final String VERIFICATION_PACKET_IP_DST = "192.168.0.255";
     private static final String TOPIC = Topic.TOPO_DISCO;
-    private static final Logger logger = LoggerFactory.getLogger(PathVerificationService.class);
 
     private IFloodlightProviderService floodlightProvider;
     private IOFSwitchService switchService;
@@ -203,6 +208,7 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
     }
 
     @Override
+    @NewCorrelationContextRequired
     public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext context) {
         logger.debug("PathVerificationService received new message of type {}: {}", msg.getType(), msg.toString());
         switch (msg.getType()) {
@@ -243,6 +249,7 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
             if (srcSwitch != null && srcSwitch.getPort(port) != null) {
                 IOFSwitch dstSwitch = (dstSwId == null) ? null : switchService.getSwitch(dstSwId);
                 OFPacketOut ofPacketOut = generateVerificationPacket(srcSwitch, port, dstSwitch, true);
+
                 if (ofPacketOut != null) {
                     logger.debug("==> Sending verification packet out {}/{}: {}", srcSwitch.getId().toString(), port.getPortNumber(),
                             Hex.encodeHexString(ofPacketOut.getData()));
@@ -250,6 +257,14 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
                 } else {
                     logger.error("<== Received null from generateVerificationPacket, inputs where: " +
                             "srcSwitch: {}, port: {}, dstSwitch: {}", srcSwitch, port, dstSwitch);
+                }
+
+                if (result) {
+                    logIsl.info("push discovery package via: {}-{}", srcSwitch.getId(), port.getPortNumber());
+                } else {
+                    logger.error(
+                            "Failed to send PACKET_OUT(ISL discovery packet) via {}-{}",
+                            srcSwitch.getId(), port.getPortNumber());
                 }
             }
         } catch (Exception exception) {
@@ -501,7 +516,7 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
 
             U64 latency = (timestamp != 0 && (time - timestamp) > 0) ? U64.of(time - timestamp) : U64.ZERO;
 
-            logger.debug("link discovered: {}-{} ===( {} ms )===> {}-{}",
+            logIsl.info("link discovered: {}-{} ===( {} ms )===> {}-{}",
                     remoteSwitch.getId(), remotePort, latency.getValue(), sw.getId(), inPort);
 
             // this verification packet was sent from remote switch/port to received switch/port
@@ -526,7 +541,7 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
             IslInfoData path = new IslInfoData(latency.getValue(), nodes, speed, IslChangeType.DISCOVERED,
                     getAvailableBandwidth(speed));
 
-            Message message = new InfoMessage(path, System.currentTimeMillis(), "system", null);
+            Message message = new InfoMessage(path, System.currentTimeMillis(), CorrelationContext.getId(), null);
 
             final String json = MAPPER.writeValueAsString(message);
             logger.debug("about to send {}", json);

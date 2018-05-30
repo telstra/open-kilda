@@ -11,7 +11,11 @@ $(document).ready(function(){
 			flows();
 		}
 	});
-	
+		$('#flowid').keyup(function(e){
+			if(e.keyCode === 13){
+				validateFlowForm();
+			}
+		});
 	$(document).on("click","#refresh_list",function(e){
 		$('input').each(function(index){  
 	        var input = $(this);
@@ -77,6 +81,12 @@ function showflowData(response){
 	if(!response || response.length==0) {
 		response=[]
 		common.infoMessage('No Flow Available','info');
+	}else{
+
+		if ( $.fn.DataTable.isDataTable('#flowTable') ) {
+					  $('#flowTable').DataTable().destroy();
+					}
+					$('#flowTable tbody').empty();
 	}
 	
 	//var flowDetailsData = localStorage.getItem("flowDetailsData");
@@ -104,20 +114,22 @@ function showflowData(response){
 		 		        }
 	 }
 	 
+	 common.customDataTableSorting();
+	 
 	 var tableVar  =  $('#flowTable').DataTable( {
 		 "iDisplayLength": 10,
 		 "aLengthMenu": [[10, 20, 35, 50, -1], [10, 20, 35, 50, "All"]],
 		  "responsive": true,
 		  "bSortCellsTop": true,
 		  "autoWidth": false,
-		  destroy: true,
 		  language: {searchPlaceholder: "Search"},
+		  "aaSorting": [[1, "asc"]],
 		  "aoColumns": [
 		                { sWidth: '15%' },
-		                { sWidth:  '13%' },
+		                { sWidth:  '13%',"sType": "name","bSortable": true },
 		                { sWidth: '8%' },
 		                { sWidth: '9%' },
-		                { sWidth: '13%' },
+		                { sWidth: '13%',"sType": "name","bSortable": true },
 		                { sWidth: '8%' },
 		                { sWidth: '9%' },
 		                { sWidth: '10%' },

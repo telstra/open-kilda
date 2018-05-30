@@ -24,6 +24,9 @@ class NetworkEndpoint(
     def new_from_isl_data_path(cls, path_node):
         return cls(path_node['switch_id'], path_node['port_no'])
 
+    def __str__(self):
+        return '{}-{}'.format(*self)
+
 
 class InterSwitchLink(
         collections.namedtuple(
@@ -53,9 +56,9 @@ class InterSwitchLink(
         return cls(source, dest, isl_data['state'])
 
     @classmethod
-    def new_from_db(cls, src, dst, link):
-        source = NetworkEndpoint(src['name'], link['src_port'])
-        dest = NetworkEndpoint(dst['name'], link['dst_port'])
+    def new_from_db(cls, link):
+        source = NetworkEndpoint(link['src_switch'], link['src_port'])
+        dest = NetworkEndpoint(link['dst_switch'], link['dst_port'])
         return cls(source, dest, link['status'])
 
     def ensure_path_complete(self):
@@ -67,3 +70,6 @@ class InterSwitchLink(
     def reversed(self):
         cls = type(self)
         return cls(self.dest, self.source, self.state)
+
+    def __str__(self):
+        return '{} <===> {}'.format(self.source, self.dest)

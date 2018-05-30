@@ -33,6 +33,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.kohsuke.args4j.CmdLineException;
+import org.openkilda.wfm.error.ConfigurationException;
 import org.openkilda.wfm.topology.TopologyConfig;
 
 import java.util.HashMap;
