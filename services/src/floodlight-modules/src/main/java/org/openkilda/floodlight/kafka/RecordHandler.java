@@ -511,8 +511,6 @@ class RecordHandler implements Runnable {
                                 .cookie(ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE).build();
                         break;
                     default:
-                        logger.error("invalid action={}", deleteAction);
-                        throw new SwitchOperationException(dpid, "invalid DeleteRulesAction");
                 }
 
                 // The cases when we delete all non-default rules.
