@@ -45,6 +45,7 @@ public class TopologyConfig {
     private String kafkaTopoEngTopic;
     private String kafkaTopoDiscoTopic;
     private String kafkaTopoCacheTopic;
+    private String kafkaTopoNBTopic;
 
     private String openTsDBHosts;
     private Integer openTsdbTimeout;
@@ -103,6 +104,7 @@ public class TopologyConfig {
         kafkaTopoCacheTopic = config.getString("kafka.topic.topo.cache");
         kafkaTopoDiscoTopic = config.getString("kafka.topic.topo.disco");
         kafkaTopoEngTopic = config.getString("kafka.topic.topo.eng");
+        kafkaTopoNBTopic = config.getString("kafka.topic.topo.nbworker");
 
         openTsDBHosts = config.getString("opentsdb.hosts");
         openTsdbTimeout = (int) (config.getFloat("opentsdb.timeout") * 1000);
@@ -138,7 +140,7 @@ public class TopologyConfig {
         return value;
     }
 
-    public AuthNeo4j getPathComputerAuth() {
+    public AuthNeo4j getNeo4jAuth() {
         return new AuthNeo4j(neo4jHost, neo4jLogin, neo4jPassword);
     }
 }

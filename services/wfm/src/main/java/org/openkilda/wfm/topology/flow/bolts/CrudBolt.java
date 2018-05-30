@@ -62,6 +62,7 @@ import org.openkilda.pce.provider.Auth;
 import org.openkilda.pce.provider.FlowInfo;
 import org.openkilda.pce.provider.PathComputer;
 import org.openkilda.pce.provider.PathComputer.Strategy;
+import org.openkilda.pce.provider.PathComputerAuth;
 import org.openkilda.pce.provider.UnroutablePathException;
 import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
@@ -84,6 +85,7 @@ import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseStatefulBolt;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -119,7 +121,7 @@ public class CrudBolt
      * Path computation instance.
      */
     private PathComputer pathComputer;
-    private final Auth pathComputerAuth;
+    private final PathComputerAuth pathComputerAuth;
 
     /**
      * Flows state.
@@ -141,7 +143,7 @@ public class CrudBolt
      *
      * @param pathComputerAuth {@link Auth} instance
      */
-    public CrudBolt(Auth pathComputerAuth) {
+    public CrudBolt(PathComputerAuth pathComputerAuth) {
         this.pathComputerAuth = pathComputerAuth;
     }
 
@@ -188,7 +190,7 @@ public class CrudBolt
         this.context = topologyContext;
         this.outputCollector = outputCollector;
 
-        pathComputer = pathComputerAuth.connect();
+        pathComputer = pathComputerAuth.getPathComputer();
     }
 
     /**

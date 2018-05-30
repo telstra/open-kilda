@@ -49,7 +49,7 @@ public class CacheTopology extends AbstractTopology {
 
     public CacheTopology(LaunchEnvironment env) throws ConfigurationException {
         super(env);
-        pathComputerAuth = config.getPathComputerAuth();
+        pathComputerAuth = config.getNeo4jAuth();
 
         logger.debug("Topology built {}: zookeeper={}, kafka={}, parallelism={}, workers={}",
                 getTopologyName(), config.getZookeeperHosts(), config.getKafkaHosts(), config.getParallelism(),

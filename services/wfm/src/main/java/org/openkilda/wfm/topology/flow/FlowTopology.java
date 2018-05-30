@@ -17,7 +17,7 @@ package org.openkilda.wfm.topology.flow;
 
 import org.openkilda.messaging.ServiceType;
 import org.openkilda.messaging.Utils;
-import org.openkilda.pce.provider.Auth;
+import org.openkilda.pce.provider.PathComputerAuth;
 import org.openkilda.wfm.CtrlBoltRef;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.error.ConfigurationException;
@@ -62,18 +62,18 @@ public class FlowTopology extends AbstractTopology {
 
     private static final Logger logger = LoggerFactory.getLogger(FlowTopology.class);
 
-    private final Auth pathComputerAuth;
+    private final PathComputerAuth pathComputerAuth;
 
     public FlowTopology(LaunchEnvironment env) throws ConfigurationException {
         super(env);
-        pathComputerAuth = config.getPathComputerAuth();
-
+        pathComputerAuth = new PathComputerAuth(config.getNeo4jHost(), config.getNeo4jLogin(),
+                config.getNeo4jPassword());
         logger.debug("Topology built {}: zookeeper={}, kafka={}, parallelism={}, workers={}, pceAuth={}",
                 getTopologyName(), config.getZookeeperHosts(), config.getKafkaHosts(), config.getParallelism(),
                 config.getWorkers(), pathComputerAuth);
     }
 
-    public FlowTopology(LaunchEnvironment env, Auth pathComputerAuth) throws ConfigurationException {
+    public FlowTopology(LaunchEnvironment env, PathComputerAuth pathComputerAuth) throws ConfigurationException {
         super(env);
         this.pathComputerAuth = pathComputerAuth;
 
@@ -90,9 +90,6 @@ public class FlowTopology extends AbstractTopology {
         final List<CtrlBoltRef> ctrlTargets = new ArrayList<>();
         Integer parallelism = config.getParallelism();
 
-        KafkaSpoutConfig<String, String> kafkaSpoutConfig;
-        KafkaSpout<String, String> kafkaSpout;
-
         // builder.setSpout(
         //         ComponentType.LCM_SPOUT.toString(),
         //         createKafkaSpout(config.getKafkaFlowTopic(), ComponentType.LCM_SPOUT.toString()), 1);
@@ -106,6 +103,10 @@ public class FlowTopology extends AbstractTopology {
         /*
          * Spout receives all Northbound requests.
          */
+
+        KafkaSpoutConfig<String, String> kafkaSpoutConfig;
+        KafkaSpout<String, String> kafkaSpout;
+
         kafkaSpoutConfig = makeKafkaSpoutConfigBuilder(
                 ComponentType.NORTHBOUND_KAFKA_SPOUT.toString(), config.getKafkaFlowTopic()).build();
         // (crimi) - commenting out LcmKafkaSpout here due to dying worker
@@ -128,8 +129,7 @@ public class FlowTopology extends AbstractTopology {
         CrudBolt crudBolt = new CrudBolt(pathComputerAuth);
         ComponentObject.serialized_java(org.apache.storm.utils.Utils.javaSerialize(pathComputerAuth));
 
-        BoltDeclarer boltSetup;
-        boltSetup = builder.setBolt(ComponentType.CRUD_BOLT.toString(), crudBolt, parallelism)
+        BoltDeclarer boltSetup = builder.setBolt(ComponentType.CRUD_BOLT.toString(), crudBolt, parallelism)
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.CREATE.toString(), fieldFlowId)
                 // TODO: this READ is used for single and for all flows. But all flows shouldn't be fieldsGrouping.
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.READ.toString(), fieldFlowId)

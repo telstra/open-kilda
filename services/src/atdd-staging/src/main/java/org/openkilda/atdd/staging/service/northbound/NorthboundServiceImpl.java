@@ -16,13 +16,21 @@
 package org.openkilda.atdd.staging.service.northbound;
 
 import org.openkilda.messaging.Utils;
+import org.openkilda.messaging.info.event.IslChangeType;
+import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.messaging.model.HealthCheck;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
-import org.openkilda.northbound.dto.switches.RulesValidationResult;
+import org.openkilda.northbound.dto.links.LinkDto;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
+import org.openkilda.northbound.dto.switches.RulesValidationResult;
+import org.openkilda.northbound.dto.switches.SwitchDto;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,11 +45,15 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 public class NorthboundServiceImpl implements NorthboundService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(NorthboundServiceImpl.class);
+
+    private static final String KILDA_CONTROLLER = "kilda";
 
     @Autowired
     @Qualifier("northboundRestTemplate")
@@ -137,7 +149,8 @@ public class NorthboundServiceImpl implements NorthboundService {
         HttpHeaders httpHeaders = buildHeadersWithCorrelationId();
         httpHeaders.set(Utils.EXTRA_AUTH, String.valueOf(System.currentTimeMillis()));
 
-        Long[] deletedRules = restTemplate.exchange("/api/v1/switches/{switch_id}/rules?delete-action=IGNORE_DEFAULTS", HttpMethod.DELETE,
+        Long[] deletedRules = restTemplate.exchange(
+                "/api/v1/switches/{switch_id}/rules?delete-action=IGNORE_DEFAULTS", HttpMethod.DELETE,
                 new HttpEntity(httpHeaders), Long[].class, switchId).getBody();
         return Arrays.asList(deletedRules);
     }
@@ -161,9 +174,42 @@ public class NorthboundServiceImpl implements NorthboundService {
                 new HttpEntity(buildHeadersWithCorrelationId()), RulesValidationResult.class, switchId).getBody();
     }
 
+    @Override
+    public List<IslInfoData> getAllLinks() {
+        LinkDto[] links = restTemplate.exchange("/api/v1/links", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), LinkDto[].class).getBody();
+
+        return Stream.of(links)
+                .map(this::convertToIslInfoData)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<SwitchInfoData> getAllSwitches() {
+        SwitchDto[] switches = restTemplate.exchange("/api/v1/switches", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), SwitchDto[].class).getBody();
+        return Stream.of(switches)
+                .map(this::convertToSwitchInfoData)
+                .collect(Collectors.toList());
+    }
+
     private HttpHeaders buildHeadersWithCorrelationId() {
         HttpHeaders headers = new HttpHeaders();
         headers.set(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()));
         return headers;
+    }
+
+    private IslInfoData convertToIslInfoData(LinkDto dto) {
+        List<PathNode> path = dto.getPath().stream()
+                .map(pathDto -> new PathNode(pathDto.getSwitchId(), pathDto.getPortNo(), pathDto.getSeqId(),
+                        pathDto.getSegLatency()))
+                .collect(Collectors.toList());
+        return new IslInfoData(0, path, dto.getSpeed(), IslChangeType.from(dto.getState().toString()),
+                dto.getAvailableBandwidth());
+    }
+
+    private SwitchInfoData convertToSwitchInfoData(SwitchDto dto) {
+        return new SwitchInfoData(dto.getSwitchId(), SwitchState.from(dto.getState()), dto.getAddress(),
+                dto.getHostname(), dto.getDescription(), KILDA_CONTROLLER);
     }
 }

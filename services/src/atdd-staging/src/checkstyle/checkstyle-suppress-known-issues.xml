@@ -274,7 +274,7 @@
     <suppress files="src/test/java/org/openkilda/atdd/staging/tests/discovery_mechanism/DiscoveryMechanismTest.java" lines="23" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/atdd/staging/tests/discovery_mechanism/DiscoveryMechanismTest.java" lines="24" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/atdd/staging/tests/discovery_mechanism/DiscoveryMechanismTest.java" lines="27" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/atdd/staging/tests/discovery_mechanism/DiscoveryMechanismTest.java" lines="46" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/atdd/staging/tests/discovery_mechanism/DiscoveryMechanismTest.java" lines="47" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/atdd/staging/tests/flow_crud/FlowCrudOverActiveSwitchesTest.java" lines="15" checks="EmptyLineSeparator"/>
     <suppress files="src/test/java/org/openkilda/atdd/staging/tests/flow_crud/FlowCrudOverActiveSwitchesTest.java" lines="15" checks="PackageName"/>
     <suppress files="src/test/java/org/openkilda/atdd/staging/tests/flow_crud/FlowCrudOverActiveSwitchesTest.java" lines="21" checks="CustomImportOrder"/>

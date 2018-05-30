@@ -15,36 +15,16 @@
 
 package org.openkilda.atdd.staging.service.topology;
 
-import org.openkilda.messaging.info.event.IslChangeType;
-import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
-import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.topo.ITopology;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 public interface TopologyEngineService {
 
-    List<IslInfoData> getAllLinks();
-
-    default List<IslInfoData> getActiveLinks() {
-        return getAllLinks().stream()
-                .filter(sw -> sw.getState() == IslChangeType.DISCOVERED)
-                .collect(Collectors.toList());
-    }
-
     Integer getLinkBandwidth(String srcSwitch, String srcPort);
-
-    List<SwitchInfoData> getAllSwitches();
-
-    default List<SwitchInfoData> getActiveSwitches() {
-        return getAllSwitches().stream()
-                .filter(sw -> sw.getState().isActive())
-                .collect(Collectors.toList());
-    }
 
     List<Flow> getAllFlows();
 
