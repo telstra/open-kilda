@@ -80,10 +80,13 @@ public class LinkOperationsBolt extends NeoOperationsBolt {
             src.setSwitchId(record.get("src_switch").asString());
             src.setPortNo(parseIntValue(record.get("src_port")));
             src.setSegLatency(parseIntValue(record.get("latency")));
+            src.setSeqId(0);
+
             PathNode dst = new PathNode();
             dst.setSwitchId(record.get("dst_switch").asString());
             dst.setPortNo(parseIntValue(record.get("dst_port")));
             dst.setSegLatency(parseIntValue(record.get("latency")));
+            dst.setSeqId(1);
 
             List<PathNode> pathNodes = new ArrayList<>();
             pathNodes.add(src);

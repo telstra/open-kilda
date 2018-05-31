@@ -52,7 +52,8 @@ public abstract class NeoOperationsBolt extends AbstractBolt {
         final String correlationId = input.getStringByField("correlationId");
         getLogger().debug("Received operation request");
 
-        try (Session session = driver.session(request.isReadRequest() ? AccessMode.READ : AccessMode.WRITE)) {
+        // todo (Nikita C): temporary solution to make all requests in read mode.
+        try (Session session = driver.session(AccessMode.READ)) {
             List<? extends InfoData> result = processRequest(input, request, session);
             getOutput().emit(input, new Values(result, correlationId));
         }
