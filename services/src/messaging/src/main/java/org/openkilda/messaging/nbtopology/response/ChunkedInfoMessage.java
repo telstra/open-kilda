@@ -24,8 +24,10 @@ import org.openkilda.messaging.info.InfoMessage;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
+import lombok.ToString;
 
 @Getter
+@ToString(callSuper = true)
 public class ChunkedInfoMessage extends InfoMessage {
 
     @JsonProperty("next_request_id")
