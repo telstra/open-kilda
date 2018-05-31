@@ -26,16 +26,12 @@ from app import application
 from . import neo4j_tools
 
 logger = logging.getLogger(__name__)
-logger.info ("My Name Is: %s", __name__)
-
-# Adjust the logging level for NEO
-logging.getLogger('neo4j.bolt').setLevel(logging.INFO)
-
 
 config = ConfigParser.RawConfigParser()
 config.read('topology_engine_rest.ini')
 
 neo4j_connect = neo4j_tools.connect(config)
+
 
 @application.route('/api/v1/topology/network')
 @login_required
