@@ -23,11 +23,10 @@
     "propagate": true,
     "level": "DEBUG"
   },
-  "neo4j.bolt": {
-    "level": "NOTSET"
-  },
-  "neo4j.http": {
-    "level": "NOTSET"
+  "loggers": {
+    "neo4j": {
+      "level": "WARNING"
+    }
   },
   "formatters": {
     "default": {
