@@ -19,14 +19,18 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Value;
 
+import java.util.Optional;
+
 @Value
 public class VerificationInput {
+    public static final int DEFAULT_TIMEOUT = 2000;
+
     @JsonProperty("timeout")
     private int timeoutMillis;
 
     @JsonCreator
     public VerificationInput(
-            @JsonProperty("timeout") int timeoutMillis) {
-        this.timeoutMillis = timeoutMillis;
+            @JsonProperty("timeout") Integer timeoutMillis) {
+        this.timeoutMillis = Optional.ofNullable(timeoutMillis).orElse(DEFAULT_TIMEOUT);
     }
 }
