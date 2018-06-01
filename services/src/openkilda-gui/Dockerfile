@@ -61,6 +61,8 @@ RUN mv font-awesome.min.css src/main/resources/css/
 RUN mv jquery.toast.min.css src/main/resources/css/
 RUN mv jquery.dataTables.min.css src/main/resources/css/
 RUN mv jquery-ui.min.css src/main/resources/css/
+RUN mv select2.min.css src/main/resources/css/
+RUN mv multi-select.css src/main/resources/css/
 
 #MOVING JAVASCRIPT FILES
 RUN mv jquery.datetimepicker.full.js src/main/resources/javascript/
@@ -72,6 +74,8 @@ RUN mv jquery.toast.min.js src/main/resources/javascript/
 RUN mv jquery.dataTables.min.js src/main/resources/javascript/
 RUN mv d3.v3.min.js src/main/resources/javascript/
 RUN mv jquery-ui.min.js src/main/resources/javascript/
+RUN mv select2.min.js src/main/resources/javascript/
+RUN mv jquery.multi-select.js src/main/resources/javascript/
 RUN ls -la 
 RUN mvn clean install
 
