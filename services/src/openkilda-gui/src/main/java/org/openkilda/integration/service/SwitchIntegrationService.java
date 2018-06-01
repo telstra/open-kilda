@@ -195,7 +195,7 @@ public class SwitchIntegrationService {
         try {
 //            HttpResponse response = restClientManager.invoke(applicationProperties.getSwitchPorts(),
 //                    HttpMethod.GET, "", "", "");
-            if (RestClientManager.isValidResponse(response)) {
+            if (response != null && RestClientManager.isValidResponse(response)) {
                 String responseEntity = IoUtil.toString(response.getEntity().getContent());
                 JSONObject jsonObject = JsonUtil.toObject(responseEntity, JSONObject.class);
                 return PortConverter.toPortsInfo(jsonObject, switchId);
