@@ -18,25 +18,12 @@ package org.openkilda.wfm.topology.cache;
 import static java.lang.String.format;
 import static org.openkilda.messaging.Utils.MAPPER;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.Sets;
-import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.lang.StringUtils;
-import org.apache.storm.state.InMemoryKeyValueState;
-import org.apache.storm.task.OutputCollector;
-import org.apache.storm.task.TopologyContext;
-import org.apache.storm.topology.OutputFieldsDeclarer;
-import org.apache.storm.topology.base.BaseStatefulBolt;
-import org.apache.storm.tuple.Tuple;
-import org.apache.storm.tuple.Values;
 import org.openkilda.messaging.BaseMessage;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
-import org.openkilda.messaging.command.flow.FlowRestoreRequest;
 import org.openkilda.messaging.ctrl.AbstractDumpState;
 import org.openkilda.messaging.ctrl.state.CacheBoltState;
 import org.openkilda.messaging.ctrl.state.FlowDump;
@@ -59,13 +46,27 @@ import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.pce.cache.Cache;
 import org.openkilda.pce.cache.FlowCache;
 import org.openkilda.pce.cache.NetworkCache;
-import org.openkilda.pce.cache.ResourceCache;
 import org.openkilda.pce.provider.Auth;
+import org.openkilda.pce.provider.NeoDriver;
 import org.openkilda.pce.provider.PathComputer;
 import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
 import org.openkilda.wfm.share.utils.PathComputerFlowFetcher;
 import org.openkilda.wfm.topology.AbstractTopology;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Sets;
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang.StringUtils;
+import org.apache.storm.state.InMemoryKeyValueState;
+import org.apache.storm.task.OutputCollector;
+import org.apache.storm.task.TopologyContext;
+import org.apache.storm.topology.OutputFieldsDeclarer;
+import org.apache.storm.topology.base.BaseStatefulBolt;
+import org.apache.storm.tuple.Tuple;
+import org.apache.storm.tuple.Values;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -114,10 +115,6 @@ public class CacheBolt
      */
     private InMemoryKeyValueState<String, Cache> state;
 
-    /**
-     * Path computer for getting all flows.
-     */
-    private PathComputer pathComputer;
     private final Auth pathComputerAuth;
 
     /**
@@ -155,8 +152,10 @@ public class CacheBolt
         reroutedFlows.clear();
 
         logger.info("Request initial network state");
-        initFlowCache();
-        initNetwork();
+
+        final PathComputer pathComputer = new NeoDriver(pathComputerAuth.getDriver());
+        initFlowCache(pathComputer);
+        initNetwork(pathComputer);
     }
 
     /**
@@ -166,7 +165,6 @@ public class CacheBolt
     public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
         this.context = topologyContext;
         this.outputCollector = outputCollector;
-        pathComputer = pathComputerAuth.connect();
     }
 
     /**
@@ -389,35 +387,6 @@ public class CacheBolt
         logger.debug("Flow command message sent");
     }
 
-    // FIXME(surabujin): deprecated and should be droppped
-    private void emitRestoreCommands(Set<ImmutablePair<Flow, Flow>> flows, Tuple tuple, String correlationId) {
-        if (flows != null) {
-
-            ResourceCache resourceCache = new ResourceCache();
-            for (ImmutablePair<Flow, Flow> flow : flows) {
-                resourceCache.allocateFlow(flow);
-            }
-
-            for (ImmutablePair<Flow, Flow> flow : flows) {
-                try {
-                    FlowRestoreRequest request = new FlowRestoreRequest(
-                            flowCache.buildFlow(flow.getLeft(), new ImmutablePair<>(null, null), resourceCache));
-                    resourceCache.deallocateFlow(flow);
-
-                    String msgCorrelationId = format("%s-%s", correlationId, flow.getLeft().getFlowId());
-
-                    Values values = new Values(Utils.MAPPER.writeValueAsString(new CommandMessage(
-                            request, System.currentTimeMillis(), msgCorrelationId, Destination.WFM)));
-                    outputCollector.emit(StreamType.WFM_DUMP.toString(), tuple, values);
-
-                    logger.info("Flow {} restore command message sent", flow.getLeft().getFlowId());
-                } catch (JsonProcessingException exception) {
-                    logger.error("Could not format flow restore request by flow={}", flow, exception);
-                }
-            }
-        }
-    }
-
     private void emitRerouteCommands(Set<ImmutablePair<Flow, Flow>> flows, Tuple tuple,
             String correlationId, FlowOperation operation, String reason) {
         for (ImmutablePair<Flow, Flow> flow : flows) {
@@ -589,7 +558,7 @@ public class CacheBolt
         }
     }
 
-    private void initNetwork() {
+    private void initNetwork(PathComputer pathComputer) {
         logger.info("Network Cache: Initializing");
         Set<SwitchInfoData> switches = new HashSet<>(pathComputer.getSwitches());
         Set<IslInfoData> links = new HashSet<>(pathComputer.getIsls());
@@ -616,9 +585,9 @@ public class CacheBolt
         logger.info("Network Cache: Initialized");
     }
 
-    private void initFlowCache() {
+    private void initFlowCache(PathComputer pathComputer) {
         logger.info("Flow Cache: Initializing");
-        PathComputerFlowFetcher flowFetcher = new PathComputerFlowFetcher(pathComputerAuth.connect());
+        PathComputerFlowFetcher flowFetcher = new PathComputerFlowFetcher(pathComputer);
 
         for (BidirectionalFlow bidirectionalFlow : flowFetcher.getFlows()) {
             ImmutablePair<Flow, Flow> flowPair = new ImmutablePair<>(

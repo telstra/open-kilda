@@ -2267,5 +2267,9 @@ display: inline-block;
     bottom: 10px;
     right: 10px;
 }
-
+.dashed_path{
+  stroke-dasharray: 20,29;
+  stroke:#d934CF;
+  stroke-width:5px!important;
+}
 

@@ -12,6 +12,7 @@
  *   See the License for the specific language governing permissions and
  *   limitations under the License.
  */
+
 package org.openkilda.atdd.staging.steps;
 
 import static java.util.stream.Collectors.toList;
@@ -19,16 +20,17 @@ import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
-import cucumber.api.Scenario;
-import cucumber.api.java.Before;
-import cucumber.api.java.en.Then;
-import cucumber.api.java8.En;
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
 import org.openkilda.atdd.staging.service.floodlight.FloodlightService;
 import org.openkilda.atdd.staging.service.floodlight.model.FlowEntriesMap;
 import org.openkilda.atdd.staging.service.floodlight.model.SwitchEntry;
 import org.openkilda.atdd.staging.steps.helpers.DefaultFlowsChecker;
 import org.openkilda.atdd.staging.steps.helpers.TopologyChecker.SwitchEntryMatcher;
+
+import cucumber.api.Scenario;
+import cucumber.api.java.Before;
+import cucumber.api.java.en.Then;
+import cucumber.api.java8.En;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;

@@ -15,15 +15,19 @@
 
 package org.openkilda.atdd.staging.service.northbound;
 
+import org.openkilda.messaging.info.event.IslChangeType;
+import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.model.HealthCheck;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
-import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
+import org.openkilda.northbound.dto.switches.RulesValidationResult;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 public interface NorthboundService {
 
@@ -52,4 +56,27 @@ public interface NorthboundService {
     List<FlowValidationDto> validateFlow(String flowId);
 
     RulesValidationResult validateSwitchRules(String switchId);
+
+    List<IslInfoData> getAllLinks();
+
+    /**
+     *  Returns all active links.
+     */
+    default List<IslInfoData> getActiveLinks() {
+        return getAllLinks().stream()
+                .filter(sw -> sw.getState() == IslChangeType.DISCOVERED)
+                .collect(Collectors.toList());
+    }
+
+    List<SwitchInfoData> getAllSwitches();
+
+    /**
+     *  Returns all active switches.
+     */
+    default List<SwitchInfoData> getActiveSwitches() {
+        return getAllSwitches().stream()
+                .filter(sw -> sw.getState().isActive())
+                .collect(Collectors.toList());
+    }
+
 }

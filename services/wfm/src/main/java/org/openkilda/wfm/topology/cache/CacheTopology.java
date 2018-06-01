@@ -49,7 +49,7 @@ public class CacheTopology extends AbstractTopology {
 
     public CacheTopology(LaunchEnvironment env) throws ConfigurationException {
         super(env);
-        pathComputerAuth = config.getPathComputerAuth();
+        pathComputerAuth = config.getNeo4jAuth();
 
         logger.debug("Topology built {}: zookeeper={}, kafka={}, parallelism={}, workers={}",
                 getTopologyName(), config.getZookeeperHosts(), config.getKafkaHosts(), config.getParallelism(),
@@ -106,7 +106,7 @@ public class CacheTopology extends AbstractTopology {
                 .shuffleGrouping(BOLT_ID_CACHE, StreamType.TPE.toString());
 
         /*
-         * Sends cache dump and reroute requests to WFM topology.
+         * Sends cache dump and reroute requests to `flow` topology.
          */
         kafkaBolt = createKafkaBolt(config.getKafkaFlowTopic());
         builder.setBolt(BOLT_ID_TOPOLOGY_OUTPUT, kafkaBolt, parallelism)

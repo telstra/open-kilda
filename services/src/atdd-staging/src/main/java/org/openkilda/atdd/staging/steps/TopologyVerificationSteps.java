@@ -70,12 +70,12 @@ public class TopologyVerificationSteps implements En {
         Set<String> skippedSwitches = topologyDefinition.getSkippedSwitchIds();
 
         referenceSwitches = topologyDefinition.getActiveSwitches();
-        actualSwitches = topologyEngineService.getActiveSwitches().stream()
+        actualSwitches = northboundService.getActiveSwitches().stream()
                 .filter(sw -> !skippedSwitches.contains(sw.getSwitchId()))
                 .collect(toList());
 
         referenceLinks = topologyDefinition.getIslsForActiveSwitches();
-        actualLinks = topologyEngineService.getActiveLinks().stream()
+        actualLinks = northboundService.getActiveLinks().stream()
                 .filter(sw -> !skippedSwitches.contains(sw.getPath().get(0).getSwitchId()))
                 .filter(sw -> !skippedSwitches.contains(sw.getPath().get(1).getSwitchId()))
                 .collect(Collectors.toList());

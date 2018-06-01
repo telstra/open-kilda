@@ -1,10 +1,23 @@
+/* Copyright 2017 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.openkilda.floodlight.kafka;
 
 import static java.util.Arrays.asList;
 import static org.openkilda.messaging.Utils.MAPPER;
 
-import net.floodlightcontroller.core.IOFSwitch;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.openkilda.floodlight.converter.IOFSwitchConverter;
 import org.openkilda.floodlight.converter.OFFlowStatsConverter;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
@@ -53,6 +66,9 @@ import org.openkilda.messaging.info.stats.SwitchPortStatusData;
 import org.openkilda.messaging.info.switches.ConnectModeResponse;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
+
+import net.floodlightcontroller.core.IOFSwitch;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.DatapathId;
@@ -406,6 +422,7 @@ class RecordHandler implements Runnable {
             allSwitchMap.values().stream()
                     .flatMap(sw ->
                             sw.getEnabledPorts().stream()
+                                    .filter(port -> SwitchEventCollector.isPhysicalPort(port.getPortNo()))
                                     .map(port -> buildPort(sw, port))
                                     .collect(Collectors.toSet())
                                     .stream())
@@ -493,6 +510,7 @@ class RecordHandler implements Runnable {
                         criteria = DeleteRulesCriteria.builder()
                                 .cookie(ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE).build();
                         break;
+                    default:
                 }
 
                 // The cases when we delete all non-default rules.
