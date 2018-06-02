@@ -1,6 +1,7 @@
 package org.openkilda.floodlight.kafka;
 
 import org.openkilda.floodlight.kafka.RecordHandler.Factory;
+import org.openkilda.floodlight.kafka.producer.Producer;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.messaging.ctrl.KafkaBreakTrigger;
 import org.openkilda.messaging.ctrl.KafkaBreakTarget;

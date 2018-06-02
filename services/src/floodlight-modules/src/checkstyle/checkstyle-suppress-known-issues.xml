@@ -24,10 +24,6 @@
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/FlowCommandException.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/FlowCommandException.java" lines="11" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/FlowCommandException.java" lines="17" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/HeartBeat.java" lines="1" checks="RegexpHeader"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/HeartBeat.java" lines="17" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/HeartBeat.java" lines="22" checks="WhitespaceAfter"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/HeartBeat.java" lines="26" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/HeartBeatAction.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/KafkaConfig.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/KafkaConfig.java" lines="8" checks="JavadocMethod"/>
@@ -45,9 +41,6 @@
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/KafkaTopicOrderDescriptor.java" lines="56" checks="OperatorWrap"/>
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/KafkaTopicOrderDescriptor.java" lines="57" checks="OperatorWrap"/>
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/KafkaTopicOrderDescriptor.java" lines="58" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/Producer.java" lines="1" checks="RegexpHeader"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/Producer.java" lines="32" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/Producer.java" lines="36" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/TestAwareConsumer.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/TestAwareConsumer.java" lines="6" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/TestAwareConsumer.java" lines="22" checks="JavadocMethod"/>

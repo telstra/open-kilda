@@ -15,6 +15,7 @@
 
 package org.openkilda.floodlight.kafka;
 
+import org.openkilda.floodlight.kafka.producer.Producer;
 import org.openkilda.messaging.Message;
 
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -83,7 +84,7 @@ public class KafkaMessageProducer implements IFloodlightModule, IFloodlightServi
      * @param message message to pose
      */
     public void postMessage(final String topic, final Message message) {
-        producer.handle(topic, message);
+        producer.sendMessageAndTrack(topic, message);
         heartBeat.reschedule();
     }
 
@@ -105,7 +106,7 @@ public class KafkaMessageProducer implements IFloodlightModule, IFloodlightServi
                 throw new FloodlightModuleException(String.format(
                         "Invalid value for option %s: %s < 1", option, value));
             }
-            heartBeat = new HeartBeat(producer, (long)(interval * 1000));
+            heartBeat = new HeartBeat(producer, (long) (interval * 1000));
         } catch (NumberFormatException e) {
             throw new FloodlightModuleException(String.format(
                     "Invalid value for option %s=\"%s\", expect number", option, value));

@@ -1,5 +1,6 @@
 package org.openkilda.floodlight.kafka;
 
+import org.openkilda.floodlight.kafka.producer.Producer;
 import org.openkilda.messaging.Topic;
 
 import java.util.Timer;
@@ -19,7 +20,7 @@ public class HeartBeat {
         this.interval = interval;
 
         task = new HeartBeatAction(producer, topic);
-        timer = new Timer("kafka.HeartBeat",true);
+        timer = new Timer("kafka.HeartBeat", true);
         timer.scheduleAtFixedRate(task, interval, interval);
     }
 
