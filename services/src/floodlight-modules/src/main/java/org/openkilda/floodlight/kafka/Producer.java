@@ -16,23 +16,47 @@ import java.util.Map;
 public class Producer {
     private static final Logger logger = LoggerFactory.getLogger(Producer.class);
 
-    private final KafkaProducer<String, String> producer;
+    private final org.apache.kafka.clients.producer.Producer<String, String> producer;
     private Map<String, KafkaTopicOrderDescriptor> guaranteedOrder = new HashMap<>();
 
     public Producer(Context context) {
-        producer = new KafkaProducer<>(context.getKafkaConfig());
+        this(new KafkaProducer<>(context.getKafkaConfig()));
     }
 
-    public void enableGuaranteedOrder(String topic) {
+    Producer(org.apache.kafka.clients.producer.Producer<String, String> producer) {
+        this.producer = producer;
+    }
+
+    /**
+     * Enable guaranteed message order for topic.
+     */
+    public synchronized void enableGuaranteedOrder(String topic) {
         logger.debug("Enable predictable order for topic {}", topic);
         getOrderDescriptor(topic).enable();
     }
 
-    public void disableGuaranteedOrder(String topic) {
-        logger.debug("Disable predictable order for topic {} (due to fanout period some future messages will be forced to have predictable order)", topic);
+    /**
+     * Disable guaranteed message order for topic.
+     */
+    public synchronized void disableGuaranteedOrder(String topic) {
+        logger.debug(
+                "Disable predictable order for topic {} (due to effect of transition period some future messages will "
+                + "be forced to have predictable order)", topic);
         getOrderDescriptor(topic).disable();
     }
 
+    /**
+     * Disable guaranteed message order for topic, with defined transition period.
+     */
+    public synchronized void disableGuaranteedOrder(String topic, long transitionPeriod) {
+        logger.debug(
+                "Disable predictable order for topic {} (transition period {} ms)", topic, transitionPeriod);
+        getOrderDescriptor(topic).disable(transitionPeriod);
+    }
+
+    /**
+     * Send message into topic.
+     */
     public void handle(String topic, Message payload) {
         try {
             String messageString = MAPPER.writeValueAsString(payload);
