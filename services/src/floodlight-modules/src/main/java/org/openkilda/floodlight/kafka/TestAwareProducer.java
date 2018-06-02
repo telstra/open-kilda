@@ -18,8 +18,8 @@ package org.openkilda.floodlight.kafka;
 import org.openkilda.floodlight.kafka.producer.Producer;
 import org.openkilda.floodlight.kafka.producer.SendStatus;
 import org.openkilda.messaging.Message;
-import org.openkilda.messaging.ctrl.KafkaBreakTrigger;
 import org.openkilda.messaging.ctrl.KafkaBreakTarget;
+import org.openkilda.messaging.ctrl.KafkaBreakTrigger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -32,7 +32,6 @@
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/KafkaMessageCollector.java" lines="20" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/KafkaMessageCollector.java" lines="41" checks="SummaryJavadoc"/>
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/KafkaMessageCollector.java" lines="78" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/KafkaMessageProducer.java" lines="108" checks="WhitespaceAfter"/>
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/KafkaTopicOrderDescriptor.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/KafkaTopicOrderDescriptor.java" lines="12" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/KafkaTopicOrderDescriptor.java" lines="31" checks="JavadocMethod"/>
@@ -41,14 +40,6 @@
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/KafkaTopicOrderDescriptor.java" lines="56" checks="OperatorWrap"/>
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/KafkaTopicOrderDescriptor.java" lines="57" checks="OperatorWrap"/>
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/KafkaTopicOrderDescriptor.java" lines="58" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/TestAwareConsumer.java" lines="1" checks="RegexpHeader"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/TestAwareConsumer.java" lines="6" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/TestAwareConsumer.java" lines="22" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/TestAwareConsumer.java" lines="41" checks="NeedBraces"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/TestAwareConsumer.java" lines="47" checks="NeedBraces"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/TestAwareProducer.java" lines="1" checks="RegexpHeader"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/TestAwareProducer.java" lines="4" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/TestAwareProducer.java" lines="14" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="20" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="21" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="22" checks="CustomImportOrder"/>
