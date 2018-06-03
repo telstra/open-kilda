@@ -139,9 +139,8 @@
     <suppress files="src/main/java/org/openkilda/northbound/messaging/kafka/KafkaMessageProducer.java" lines="26" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/service/BasicService.java" lines="27" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/service/FlowService.java" lines="97" checks="SummaryJavadoc"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FeatureTogglesServiceImpl.java" lines="31" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FeatureTogglesServiceImpl.java" lines="41" checks="AbbreviationAsWordInName"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FeatureTogglesServiceImpl.java" lines="41" checks="MemberName"/>
+    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FeatureTogglesServiceImpl.java" lines="40" checks="AbbreviationAsWordInName"/>
+    <suppress files="src/main/java/org/openkilda/northbound/service/impl/FeatureTogglesServiceImpl.java" lines="40" checks="MemberName"/>
     <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="31" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="40" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/service/impl/FlowServiceImpl.java" lines="41" checks="CustomImportOrder"/>

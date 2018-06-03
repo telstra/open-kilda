@@ -21,11 +21,13 @@ import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.expectLastCall;
 import static org.easymock.EasyMock.verify;
 
+import org.openkilda.config.KafkaTopicsConfig;
+import org.openkilda.floodlight.config.KafkaFloodlightConfig;
+import org.openkilda.floodlight.config.provider.ConfigurationProvider;
 import org.openkilda.floodlight.kafka.producer.Producer;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
 import org.openkilda.messaging.Destination;
-import org.openkilda.messaging.Topic;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.discovery.NetworkCommandData;
@@ -48,7 +50,6 @@ import org.projectfloodlight.openflow.types.OFPort;
 import java.util.Map;
 
 public class RecordHandlerTest extends EasyMockSupport {
-    private static final String OUTPUT_DISCO_TOPIC = Topic.TOPO_DISCO;
     private static final FloodlightModuleContext context = new FloodlightModuleContext();
 
     private ISwitchManager switchManager;
@@ -69,7 +70,11 @@ public class RecordHandlerTest extends EasyMockSupport {
         context.addConfigParam(collectorModule, "bootstrap-servers", "");
         collectorModule.init(context);
 
-        consumerContext = new ConsumerContext(context, collectorModule);
+        ConfigurationProvider provider = new ConfigurationProvider(context, collectorModule);
+        KafkaFloodlightConfig kafkaConfig = provider.getConfiguration(KafkaFloodlightConfig.class);
+        KafkaTopicsConfig topicsConfig = provider.getConfiguration(KafkaTopicsConfig.class);
+
+        consumerContext = new ConsumerContext(context, kafkaConfig, topicsConfig);
 
         handler = new RecordHandlerMock(consumerContext);
     }
@@ -136,13 +141,13 @@ public class RecordHandlerTest extends EasyMockSupport {
                 new SwitchInfoData("sw2", SwitchState.ADDED, "127.0.0.1", "localhost", "test switch", "kilda"));
 
         // setup hook for verify that we create new message for producer
-        producer.postMessage(eq(OUTPUT_DISCO_TOPIC), anyObject(InfoMessage.class));
+        producer.postMessage(eq(consumerContext.getKafkaTopoDiscoTopic()), anyObject(InfoMessage.class));
         expectLastCall().times(8);
 
         Producer kafkaProducer = createMock(Producer.class);
         expect(producer.getProducer()).andReturn(kafkaProducer).times(2);
-        kafkaProducer.enableGuaranteedOrder(eq(OUTPUT_DISCO_TOPIC));
-        kafkaProducer.disableGuaranteedOrder(eq(OUTPUT_DISCO_TOPIC));
+        kafkaProducer.enableGuaranteedOrder(eq(consumerContext.getKafkaTopoDiscoTopic()));
+        kafkaProducer.disableGuaranteedOrder(eq(consumerContext.getKafkaTopoDiscoTopic()));
 
         replayAll();
 

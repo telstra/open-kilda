@@ -16,11 +16,12 @@
 package org.openkilda.wfm.topology.opentsdb;
 
 import org.openkilda.wfm.LaunchEnvironment;
-import org.openkilda.wfm.error.ConfigurationException;
 import org.openkilda.wfm.topology.AbstractTopology;
+import org.openkilda.wfm.topology.opentsdb.OpenTsdbTopologyConfig.OpenTsdbConfig;
 import org.openkilda.wfm.topology.opentsdb.bolts.DatapointParseBolt;
 import org.openkilda.wfm.topology.opentsdb.bolts.OpenTSDBFilterBolt;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.spout.KafkaSpout;
 import org.apache.storm.kafka.spout.KafkaSpoutConfig;
@@ -37,15 +38,15 @@ import java.util.Collections;
 /**
  * Apache Storm topology for sending metrics into Open TSDB.
  */
-public class OpenTSDBTopology extends AbstractTopology {
+public class OpenTSDBTopology extends AbstractTopology<OpenTsdbTopologyConfig> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OpenTSDBTopology.class);
 
-    public OpenTSDBTopology(LaunchEnvironment env) throws ConfigurationException {
-        super(env);
+    public OpenTSDBTopology(LaunchEnvironment env) {
+        super(env, OpenTsdbTopologyConfig.class);
     }
 
-    private final String topic = config.getKafkaOtsdbTopic();
+    private final String topic = topologyConfig.getKafkaOtsdbTopic();
     private final String spoutId = topic + "-spout";
     private final String boltId = topic + "-bolt";
     private final String parseBoltId = topic + "parse-bolt";
@@ -57,27 +58,29 @@ public class OpenTSDBTopology extends AbstractTopology {
 
         attachInput(tb);
 
-        tb.setBolt(parseBoltId, new DatapointParseBolt(), config.getGetDatapointParseBoltExecutors())
-                .setNumTasks(config.getGetDatapointParseBoltWorkers())
+        OpenTsdbConfig openTsdbConfig = topologyConfig.getOpenTsdbConfig();
+
+        tb.setBolt(parseBoltId, new DatapointParseBolt(), openTsdbConfig.getDatapointParseBoltExecutors())
+                .setNumTasks(openTsdbConfig.getDatapointParseBoltWorkers())
                 .shuffleGrouping(spoutId);
 
-        tb.setBolt(boltId, new OpenTSDBFilterBolt(), config.getOpenTsdbFilterBoltExecutors())
+        tb.setBolt(boltId, new OpenTSDBFilterBolt(), openTsdbConfig.getFilterBoltExecutors())
                 .fieldsGrouping(parseBoltId, new Fields("hash"));
 
         OpenTsdbClient.Builder tsdbBuilder = OpenTsdbClient
-                .newBuilder(config.getOpenTsDBHosts())
+                .newBuilder(openTsdbConfig.getHosts())
                 // .sync(config.getOpenTsdbTimeout())
                 .returnDetails();
-        if (config.isOpenTsdbClientChunkedRequestsEnabled()) {
+        if (openTsdbConfig.getClientChunkedRequestsEnabled()) {
             tsdbBuilder.enableChunkedEncoding();
         }
 
         OpenTsdbBolt openTsdbBolt = new OpenTsdbBolt(tsdbBuilder,
                 Collections.singletonList(TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER));
-        openTsdbBolt.withBatchSize(config.getOpenTsdbBatchSize()).withFlushInterval(config.getOpenTsdbFlushInterval());
+        openTsdbBolt.withBatchSize(openTsdbConfig.getBatchSize()).withFlushInterval(openTsdbConfig.getFlushInterval());
         //        .failTupleForFailedMetrics();
-        tb.setBolt("opentsdb", openTsdbBolt, config.getOpenTsdbBoltExecutors())
-                .setNumTasks(config.getOpenTsdbBoltWorkers())
+        tb.setBolt("opentsdb", openTsdbBolt, openTsdbConfig.getBoltExecutors())
+                .setNumTasks(openTsdbConfig.getBoltWorkers())
                 .shuffleGrouping(boltId);
 
         return tb.createTopology();
@@ -86,11 +89,18 @@ public class OpenTSDBTopology extends AbstractTopology {
     private void attachInput(TopologyBuilder topology) {
         checkAndCreateTopic(topic);
 
+        OpenTsdbConfig openTsdbConfig = topologyConfig.getOpenTsdbConfig();
+
         KafkaSpoutConfig<String, String> spoutConfig = makeKafkaSpoutConfigBuilder(spoutId, topic)
                 .setFirstPollOffsetStrategy(KafkaSpoutConfig.FirstPollOffsetStrategy.UNCOMMITTED_EARLIEST)
                 .build();
         KafkaSpout kafkaSpout = new KafkaSpout<>(spoutConfig);
-        topology.setSpout(spoutId, kafkaSpout, config.getOpenTsdbNumSpouts());
+        topology.setSpout(spoutId, kafkaSpout, openTsdbConfig.getNumSpouts());
+    }
+
+    @VisibleForTesting
+    public String getSpoutId() {
+        return spoutId;
     }
 
     /**

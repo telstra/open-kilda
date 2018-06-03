@@ -15,15 +15,16 @@
 
 package org.openkilda.wfm.topology.cache;
 
-import org.apache.storm.generated.ComponentObject;
 import org.openkilda.messaging.ServiceType;
 import org.openkilda.pce.provider.Auth;
+import org.openkilda.pce.provider.PathComputerAuth;
 import org.openkilda.wfm.CtrlBoltRef;
 import org.openkilda.wfm.LaunchEnvironment;
-import org.openkilda.wfm.error.ConfigurationException;
+import org.openkilda.wfm.config.Neo4jConfig;
 import org.openkilda.wfm.error.NameCollisionException;
 import org.openkilda.wfm.topology.AbstractTopology;
 
+import org.apache.storm.generated.ComponentObject;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.bolt.KafkaBolt;
 import org.apache.storm.kafka.spout.KafkaSpout;
@@ -35,7 +36,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 
-public class CacheTopology extends AbstractTopology {
+public class CacheTopology extends AbstractTopology<CacheTopologyConfig> {
     private static final Logger logger = LoggerFactory.getLogger(CacheTopology.class);
 
     private static final String BOLT_ID_COMMON_OUTPUT = "common.out";
@@ -45,15 +46,8 @@ public class CacheTopology extends AbstractTopology {
     static final String SPOUT_ID_COMMON = "generic";
 //    static final String SPOUT_ID_TOPOLOGY = "topology";
 
-    private final Auth pathComputerAuth;
-
-    public CacheTopology(LaunchEnvironment env) throws ConfigurationException {
-        super(env);
-        pathComputerAuth = config.getNeo4jAuth();
-
-        logger.debug("Topology built {}: zookeeper={}, kafka={}, parallelism={}, workers={}",
-                getTopologyName(), config.getZookeeperHosts(), config.getKafkaHosts(), config.getParallelism(),
-                config.getWorkers());
+    public CacheTopology(LaunchEnvironment env) {
+        super(env, CacheTopologyConfig.class);
     }
 
     /**
@@ -65,7 +59,7 @@ public class CacheTopology extends AbstractTopology {
 
         initKafkaTopics();
 
-        Integer parallelism = config.getParallelism();
+        int parallelism = topologyConfig.getParallelism();
 
         TopologyBuilder builder = new TopologyBuilder();
         List<CtrlBoltRef> ctrlTargets = new ArrayList<>();
@@ -75,7 +69,7 @@ public class CacheTopology extends AbstractTopology {
         /*
          * Receives cache from storage.
          */
-        kafkaSpout = createKafkaSpout(config.getKafkaTopoCacheTopic(), SPOUT_ID_COMMON);
+        kafkaSpout = createKafkaSpout(topologyConfig.getKafkaTopoCacheTopic(), SPOUT_ID_COMMON);
         builder.setSpout(SPOUT_ID_COMMON, kafkaSpout, parallelism);
 
 // (carmine) - as part of 0.8 refactor, merged inputs to one topic, so this isn't neccessary
@@ -88,6 +82,9 @@ public class CacheTopology extends AbstractTopology {
         /*
          * Stores network cache.
          */
+        Neo4jConfig neo4jConfig = configurationProvider.getConfiguration(Neo4jConfig.class);
+        Auth pathComputerAuth = new PathComputerAuth(neo4jConfig.getHost(),
+                neo4jConfig.getLogin(), neo4jConfig.getPassword());
         CacheBolt cacheBolt = new CacheBolt(pathComputerAuth);
         ComponentObject.serialized_java(org.apache.storm.utils.Utils.javaSerialize(pathComputerAuth));
         boltSetup = builder.setBolt(BOLT_ID_CACHE, cacheBolt, parallelism)
@@ -101,14 +98,14 @@ public class CacheTopology extends AbstractTopology {
         /*
          * Sends network events to storage.
          */
-        kafkaBolt = createKafkaBolt(config.getKafkaTopoEngTopic());
+        kafkaBolt = createKafkaBolt(topologyConfig.getKafkaTopoEngTopic());
         builder.setBolt(BOLT_ID_COMMON_OUTPUT, kafkaBolt, parallelism)
                 .shuffleGrouping(BOLT_ID_CACHE, StreamType.TPE.toString());
 
         /*
          * Sends cache dump and reroute requests to `flow` topology.
          */
-        kafkaBolt = createKafkaBolt(config.getKafkaFlowTopic());
+        kafkaBolt = createKafkaBolt(topologyConfig.getKafkaFlowTopic());
         builder.setBolt(BOLT_ID_TOPOLOGY_OUTPUT, kafkaBolt, parallelism)
                 .shuffleGrouping(BOLT_ID_CACHE, StreamType.WFM_DUMP.toString());
 
@@ -116,8 +113,8 @@ public class CacheTopology extends AbstractTopology {
          * Sends requests for ISL to OFE topology.
          */
         // FIXME(surabjin): 2 kafka bold with same topic (see previous bolt)
-        KafkaBolt oFEKafkaBolt = createKafkaBolt(config.getKafkaFlowTopic());
-        builder.setBolt(BOLT_ID_OFE, oFEKafkaBolt, parallelism)
+        KafkaBolt ofeKafkaBolt = createKafkaBolt(topologyConfig.getKafkaFlowTopic());
+        builder.setBolt(BOLT_ID_OFE, ofeKafkaBolt, parallelism)
                 .shuffleGrouping(BOLT_ID_CACHE, StreamType.OFE.toString());
 
         createCtrlBranch(builder, ctrlTargets);
@@ -127,9 +124,9 @@ public class CacheTopology extends AbstractTopology {
     }
 
     private void initKafkaTopics() {
-        checkAndCreateTopic(config.getKafkaFlowTopic());
-        checkAndCreateTopic(config.getKafkaTopoEngTopic());
-        checkAndCreateTopic(config.getKafkaTopoCacheTopic());
+        checkAndCreateTopic(topologyConfig.getKafkaFlowTopic());
+        checkAndCreateTopic(topologyConfig.getKafkaTopoEngTopic());
+        checkAndCreateTopic(topologyConfig.getKafkaTopoCacheTopic());
     }
 
     public static void main(String[] args) {

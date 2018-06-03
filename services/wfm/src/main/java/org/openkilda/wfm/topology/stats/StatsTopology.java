@@ -23,13 +23,11 @@ import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_CACHE_FI
 import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_KILDA_SPEAKER_SPOUT;
 import static org.openkilda.wfm.topology.stats.StatsStreamType.CACHE_UPDATE;
 
-import org.apache.storm.generated.StormTopology;
-import org.apache.storm.kafka.spout.KafkaSpout;
-import org.apache.storm.topology.TopologyBuilder;
 import org.openkilda.messaging.ServiceType;
 import org.openkilda.pce.provider.AuthNeo4j;
+import org.openkilda.pce.provider.PathComputerAuth;
 import org.openkilda.wfm.LaunchEnvironment;
-import org.openkilda.wfm.error.ConfigurationException;
+import org.openkilda.wfm.config.Neo4jConfig;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.stats.bolts.CacheBolt;
 import org.openkilda.wfm.topology.stats.bolts.CacheFilterBolt;
@@ -37,20 +35,20 @@ import org.openkilda.wfm.topology.stats.bolts.SpeakerBolt;
 import org.openkilda.wfm.topology.stats.metrics.FlowMetricGenBolt;
 import org.openkilda.wfm.topology.stats.metrics.MeterConfigMetricGenBolt;
 import org.openkilda.wfm.topology.stats.metrics.PortMetricGenBolt;
+
+import org.apache.storm.generated.StormTopology;
+import org.apache.storm.kafka.spout.KafkaSpout;
+import org.apache.storm.topology.TopologyBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
-public class StatsTopology extends AbstractTopology {
+public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
 
     private static final Logger logger = LoggerFactory.getLogger(StatsTopology.class);
 
-    public StatsTopology(LaunchEnvironment env) throws ConfigurationException {
-        super(env);
-        logger.debug("Topology built {}: zookeeper={}, kafka={}, parallelism={}, workers={}",
-                getTopologyName(), config.getZookeeperHosts(), config.getKafkaHosts(),
-                config.getParallelism(),
-                config.getWorkers());
+    public StatsTopology(LaunchEnvironment env) {
+        super(env, StatsTopologyConfig.class);
     }
 
     public static void main(String[] args) throws Exception {
@@ -66,12 +64,12 @@ public class StatsTopology extends AbstractTopology {
     public StormTopology createTopology() {
         logger.info("Creating Topology: {}", topologyName);
 
-        final Integer parallelism = config.getParallelism();
+        final Integer parallelism = topologyConfig.getParallelism();
         TopologyBuilder builder = new TopologyBuilder();
 
 
         final String kafkaSpoutId = StatsComponentType.STATS_OFS_KAFKA_SPOUT.toString();
-        KafkaSpout kafkaSpout = createKafkaSpout(config.getKafkaStatsTopic(), kafkaSpoutId);
+        KafkaSpout kafkaSpout = createKafkaSpout(topologyConfig.getKafkaStatsTopic(), kafkaSpoutId);
         builder.setSpout(kafkaSpoutId, kafkaSpout, parallelism);
 
         SpeakerBolt speakerBolt = new SpeakerBolt();
@@ -80,7 +78,7 @@ public class StatsTopology extends AbstractTopology {
                 .shuffleGrouping(kafkaSpoutId);
 
         // Spout for listening kilda.speaker topic and collect changes for cache
-        KafkaSpout kafkaSpeakerSpout = createKafkaSpout(config.getKafkaSpeakerTopic(),
+        KafkaSpout kafkaSpeakerSpout = createKafkaSpout(topologyConfig.getKafkaSpeakerTopic(),
                 STATS_KILDA_SPEAKER_SPOUT.name());
         builder.setSpout(STATS_KILDA_SPEAKER_SPOUT.name(), kafkaSpeakerSpout, parallelism);
 
@@ -91,7 +89,9 @@ public class StatsTopology extends AbstractTopology {
                 .shuffleGrouping(STATS_KILDA_SPEAKER_SPOUT.name());
 
         // Cache bolt get data from NEO4J on start
-        AuthNeo4j pathComputerAuth = config.getNeo4jAuth();
+        Neo4jConfig neo4jConfig = configurationProvider.getConfiguration(Neo4jConfig.class);
+        AuthNeo4j pathComputerAuth = new PathComputerAuth(neo4jConfig.getHost(),
+                neo4jConfig.getLogin(), neo4jConfig.getPassword());
         builder.setBolt(STATS_CACHE_BOLT.name(), new CacheBolt(pathComputerAuth), parallelism)
                 .allGrouping(STATS_CACHE_FILTER_BOLT.name(), CACHE_UPDATE.name())
                 .fieldsGrouping(statsOfsBolt, StatsStreamType.FLOW_STATS.toString(), fieldMessage);
@@ -109,7 +109,7 @@ public class StatsTopology extends AbstractTopology {
                 parallelism)
                 .fieldsGrouping(STATS_CACHE_BOLT.name(), StatsStreamType.FLOW_STATS.toString(), fieldMessage);
 
-        final String openTsdbTopic = config.getKafkaOtsdbTopic();
+        final String openTsdbTopic = topologyConfig.getKafkaOtsdbTopic();
         checkAndCreateTopic(openTsdbTopic);
         builder.setBolt("stats-opentsdb", createKafkaBolt(openTsdbTopic))
                 .shuffleGrouping(PORT_STATS_METRIC_GEN.name())

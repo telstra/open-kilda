@@ -3,6 +3,10 @@ package org.openkilda.wfm.topology.opentsdb;
 import static org.mockserver.integration.ClientAndServer.startClientAndServer;
 import static org.openkilda.messaging.Utils.MAPPER;
 
+import org.openkilda.messaging.info.Datapoint;
+import org.openkilda.wfm.StableAbstractStormTest;
+import org.openkilda.wfm.topology.TestingKafkaBolt;
+
 import org.apache.storm.Testing;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.bolt.KafkaBolt;
@@ -11,16 +15,12 @@ import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Values;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Test;
 import org.junit.Ignore;
+import org.junit.Test;
 import org.mockserver.integration.ClientAndServer;
 import org.mockserver.model.HttpRequest;
 import org.mockserver.model.HttpResponse;
 import org.mockserver.verify.VerificationTimes;
-import org.openkilda.messaging.info.Datapoint;
-import org.openkilda.messaging.Topic;
-import org.openkilda.wfm.StableAbstractStormTest;
-import org.openkilda.wfm.topology.TestingKafkaBolt;
 
 import java.util.Collections;
 import java.util.Map;
@@ -53,12 +53,14 @@ public class OpenTSDBTopologyTest extends StableAbstractStormTest {
         MockedSources sources = new MockedSources();
         // TODO: rather than use Topic.OTSDB, grab it from the TopologyConfig object (which does
         // not exist at this point in the code.
-        sources.addMockData(Topic.OTSDB+"-spout",
-                new Values(MAPPER.writeValueAsString(datapoint)));
-        completeTopologyParam.setMockedSources(sources);
 
         Testing.withTrackedCluster(clusterParam, (cluster) ->  {
             OpenTSDBTopology topology = new TestingTargetTopology(new TestingKafkaBolt());
+
+            sources.addMockData(topology.getSpoutId(),
+                    new Values(MAPPER.writeValueAsString(datapoint)));
+            completeTopologyParam.setMockedSources(sources);
+
             StormTopology stormTopology = topology.createTopology();
 
             Map result = Testing.completeTopology(cluster, stormTopology, completeTopologyParam);
@@ -75,12 +77,14 @@ public class OpenTSDBTopologyTest extends StableAbstractStormTest {
         String jsonDatapoint = MAPPER.writeValueAsString(datapoint);
 
         MockedSources sources = new MockedSources();
-        sources.addMockData(Topic.OTSDB+"-spout",
-                new Values(jsonDatapoint), new Values(jsonDatapoint));
-        completeTopologyParam.setMockedSources(sources);
 
         Testing.withTrackedCluster(clusterParam, (cluster) ->  {
             OpenTSDBTopology topology = new TestingTargetTopology(new TestingKafkaBolt());
+
+            sources.addMockData(topology.getSpoutId(),
+                    new Values(jsonDatapoint), new Values(jsonDatapoint));
+            completeTopologyParam.setMockedSources(sources);
+
             StormTopology stormTopology = topology.createTopology();
 
             Testing.completeTopology(cluster, stormTopology, completeTopologyParam);
@@ -99,12 +103,14 @@ public class OpenTSDBTopologyTest extends StableAbstractStormTest {
         String jsonDatapoint2 = MAPPER.writeValueAsString(datapoint2);
 
         MockedSources sources = new MockedSources();
-        sources.addMockData(Topic.OTSDB+"-spout",
-                new Values(jsonDatapoint1), new Values(jsonDatapoint2));
-        completeTopologyParam.setMockedSources(sources);
 
         Testing.withTrackedCluster(clusterParam, (cluster) ->  {
             OpenTSDBTopology topology = new TestingTargetTopology(new TestingKafkaBolt());
+
+            sources.addMockData(topology.getSpoutId(),
+                    new Values(jsonDatapoint1), new Values(jsonDatapoint2));
+            completeTopologyParam.setMockedSources(sources);
+
             StormTopology stormTopology = topology.createTopology();
 
             Testing.completeTopology(cluster, stormTopology, completeTopologyParam);
@@ -132,7 +138,7 @@ public class OpenTSDBTopologyTest extends StableAbstractStormTest {
         }
 
         @Override
-        public String makeTopologyName() {
+        public String getDefaultTopologyName() {
             return OpenTSDBTopology.class.getSimpleName().toLowerCase();
         }
 

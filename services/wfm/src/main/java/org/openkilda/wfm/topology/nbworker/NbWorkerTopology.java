@@ -15,8 +15,10 @@
 
 package org.openkilda.wfm.topology.nbworker;
 
+import org.openkilda.pce.provider.Auth;
+import org.openkilda.pce.provider.PathComputerAuth;
 import org.openkilda.wfm.LaunchEnvironment;
-import org.openkilda.wfm.error.ConfigurationException;
+import org.openkilda.wfm.config.Neo4jConfig;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.nbworker.bolts.FlowOperationsBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.LinkOperationsBolt;
@@ -44,7 +46,7 @@ import org.slf4j.LoggerFactory;
  *  response-splitter-bolt: split response into small chunks, because kafka has limited size of messages.
  *  nb-kafka-bolt: sends responses back to kafka to northbound topic.
  */
-public class NbWorkerTopology extends AbstractTopology {
+public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(NbWorkerTopology.class);
 
@@ -54,11 +56,11 @@ public class NbWorkerTopology extends AbstractTopology {
     private static final String FLOWS_BOLT_NAME = "flows-operations-bolt";
     private static final String SPLITTER_BOLT_NAME = "response-splitter-bolt";
     private static final String NB_KAFKA_BOLT_NAME = "nb-kafka-bolt";
-    private final String topicName = config.getKafkaTopoNBTopic();
+    private final String topicName = topologyConfig.getKafkaTopoNbTopic();
     private final String spoutId = topicName + "-spout";
 
-    public NbWorkerTopology(LaunchEnvironment env) throws ConfigurationException {
-        super(env);
+    public NbWorkerTopology(LaunchEnvironment env) {
+        super(env, NbWorkerTopologyConfig.class);
     }
 
     @Override
@@ -66,7 +68,7 @@ public class NbWorkerTopology extends AbstractTopology {
         LOGGER.info("Creating of NbWorkerTopology has been started");
         TopologyBuilder tb = new TopologyBuilder();
 
-        final Integer parallelism = config.getParallelism();
+        final Integer parallelism = topologyConfig.getParallelism();
 
         KafkaSpout kafkaSpout = createKafkaSpout(topicName, spoutId);
         tb.setSpout(spoutId, kafkaSpout, parallelism);
@@ -75,15 +77,19 @@ public class NbWorkerTopology extends AbstractTopology {
         tb.setBolt(ROUTER_BOLT_NAME, router, parallelism)
                 .shuffleGrouping(spoutId);
 
-        SwitchOperationsBolt switchesBolt = new SwitchOperationsBolt(config.getNeo4jAuth());
+        Neo4jConfig neo4jConfig = configurationProvider.getConfiguration(Neo4jConfig.class);
+        Auth pathComputerAuth = new PathComputerAuth(neo4jConfig.getHost(),
+                neo4jConfig.getLogin(), neo4jConfig.getPassword());
+
+        SwitchOperationsBolt switchesBolt = new SwitchOperationsBolt(pathComputerAuth);
         tb.setBolt(SWITCHES_BOLT_NAME, switchesBolt, parallelism)
                 .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.SWITCH.toString());
 
-        LinkOperationsBolt linksBolt = new LinkOperationsBolt(config.getNeo4jAuth());
+        LinkOperationsBolt linksBolt = new LinkOperationsBolt(pathComputerAuth);
         tb.setBolt(LINKS_BOLT_NAME, linksBolt, parallelism)
                 .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.ISL.toString());
 
-        FlowOperationsBolt flowsBolt = new FlowOperationsBolt(config.getNeo4jAuth());
+        FlowOperationsBolt flowsBolt = new FlowOperationsBolt(pathComputerAuth);
         tb.setBolt(FLOWS_BOLT_NAME, flowsBolt, parallelism)
                 .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.FLOW.toString());
 
@@ -93,7 +99,7 @@ public class NbWorkerTopology extends AbstractTopology {
                 .shuffleGrouping(LINKS_BOLT_NAME)
                 .shuffleGrouping(FLOWS_BOLT_NAME);
 
-        KafkaBolt kafkaNbBolt = createKafkaBolt(config.getKafkaNorthboundTopic());
+        KafkaBolt kafkaNbBolt = createKafkaBolt(topologyConfig.getKafkaNorthboundTopic());
         tb.setBolt(NB_KAFKA_BOLT_NAME, kafkaNbBolt, parallelism)
                 .shuffleGrouping(SPLITTER_BOLT_NAME);
 

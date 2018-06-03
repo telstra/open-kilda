@@ -19,18 +19,6 @@ import static java.lang.String.format;
 import static org.openkilda.messaging.Utils.MAPPER;
 import static org.openkilda.messaging.Utils.PAYLOAD;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.Lists;
-import org.apache.storm.kafka.spout.internal.Timer;
-import org.apache.storm.state.KeyValueState;
-import org.apache.storm.task.OutputCollector;
-import org.apache.storm.task.TopologyContext;
-import org.apache.storm.topology.OutputFieldsDeclarer;
-import org.apache.storm.tuple.Fields;
-import org.apache.storm.tuple.Tuple;
-import org.apache.storm.tuple.Values;
-
 import org.openkilda.messaging.BaseMessage;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.HeartBeat;
@@ -59,9 +47,20 @@ import org.openkilda.wfm.ctrl.ICtrlBolt;
 import org.openkilda.wfm.isl.DiscoveryManager;
 import org.openkilda.wfm.isl.DummyIIslFilter;
 import org.openkilda.wfm.topology.AbstractTopology;
-import org.openkilda.wfm.topology.TopologyConfig;
+import org.openkilda.wfm.topology.event.OFEventWfmTopologyConfig.DiscoveryConfig;
 import org.openkilda.wfm.topology.utils.AbstractTickStatefulBolt;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Lists;
+import org.apache.storm.kafka.spout.internal.Timer;
+import org.apache.storm.state.KeyValueState;
+import org.apache.storm.task.OutputCollector;
+import org.apache.storm.task.TopologyContext;
+import org.apache.storm.topology.OutputFieldsDeclarer;
+import org.apache.storm.tuple.Fields;
+import org.apache.storm.tuple.Tuple;
+import org.apache.storm.tuple.Values;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -124,16 +123,18 @@ public class OFELinkBolt
     /**
      * Default constructor .. default health check frequency
      */
-    public OFELinkBolt(TopologyConfig config) {
+    public OFELinkBolt(OFEventWfmTopologyConfig config) {
         super(BOLT_TICK_INTERVAL);
 
-        this.islHealthCheckInterval = config.getDiscoveryInterval();
-        this.islHealthCheckTimeout = config.getDiscoveryTimeout();
-        this.islHealthFailureLimit = config.getDiscoveryLimit();
-        this.islKeepRemovedTimeout = config.getKeepRemovedIslTimeout();
+        DiscoveryConfig discoveryConfig = config.getDiscoveryConfig();
 
-        watchDogInterval = config.getDiscoverySpeakerFailureTimeout();
-        dumpRequestTimeout = config.getDiscoveryDumpRequestTimeout();
+        this.islHealthCheckInterval = discoveryConfig.getDiscoveryInterval();
+        this.islHealthCheckTimeout = discoveryConfig.getDiscoveryTimeout();
+        this.islHealthFailureLimit = discoveryConfig.getDiscoveryLimit();
+        this.islKeepRemovedTimeout = discoveryConfig.getKeepRemovedIslTimeout();
+
+        watchDogInterval = discoveryConfig.getDiscoverySpeakerFailureTimeout();
+        dumpRequestTimeout = discoveryConfig.getDiscoveryDumpRequestTimeout();
 
         topoEngTopic = config.getKafkaTopoEngTopic();
         islDiscoveryTopic = config.getKafkaSpeakerTopic();

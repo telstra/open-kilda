@@ -64,7 +64,7 @@ public class SwitchServiceImpl implements SwitchService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SwitchServiceImpl.class);
 
-    @Value("${kafka.topo.eng.topic}")
+    @Value("#{kafkaTopicsConfig.getTopoEngTopic()}")
     private String topoEngTopic;
 
     @Autowired
@@ -79,13 +79,13 @@ public class SwitchServiceImpl implements SwitchService {
     @Autowired
     private SwitchMapper switchMapper;
 
-    @Value("${kafka.speaker.topic}")
+    @Value("#{kafkaTopicsConfig.getSpeakerTopic()}")
     private String floodlightTopic;
 
-    @Value("${kafka.northbound.topic}")
+    @Value("#{kafkaTopicsConfig.getNorthboundTopic()}")
     private String northboundTopic;
 
-    @Value("${kafka.nbworker.topic}")
+    @Value("#{kafkaTopicsConfig.getTopoNbTopic()}")
     private String nbworkerTopic;
 
     /**

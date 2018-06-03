@@ -105,13 +105,13 @@ public class FlowServiceImpl implements FlowService {
     /**
      * The kafka topic for the flow topology.
      */
-    @Value("${kafka.flow.topic}")
+    @Value("#{kafkaTopicsConfig.getFlowTopic()}")
     private String topic;
 
     /**
      * The kafka topic for the topology engine.
      */
-    @Value("${kafka.topo.eng.topic}")
+    @Value("#{kafkaTopicsConfig.getTopoEngTopic()}")
     private String topoEngTopic;
 
 

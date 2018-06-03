@@ -20,21 +20,19 @@ import static org.openkilda.wfm.topology.AbstractTopology.fieldMessage;
 
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
-import org.openkilda.messaging.ServiceType;
-import org.openkilda.messaging.Topic;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.HealthCheckInfoData;
 
-import org.slf4j.LoggerFactory;
-import org.slf4j.Logger;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Map;
@@ -43,11 +41,14 @@ public class HealthCheckBolt extends BaseRichBolt {
     private static final Logger logger = LoggerFactory.getLogger(HealthCheckBolt.class);
 
     private final HealthCheckInfoData healthCheck;
+    private final String healthCheckTopic;
 
     private OutputCollector collector;
 
-    public HealthCheckBolt(String service) {
+    public HealthCheckBolt(String service, String healthCheckTopic) {
         healthCheck = new HealthCheckInfoData(service, Utils.HEALTH_CHECK_OPERATIONAL_STATUS);
+
+        this.healthCheckTopic = healthCheckTopic;
     }
 
     @Override
@@ -63,7 +64,7 @@ public class HealthCheckBolt extends BaseRichBolt {
             if (message instanceof CommandMessage) {
                 Values values = new Values(Utils.MAPPER.writeValueAsString(new InfoMessage(healthCheck,
                         System.currentTimeMillis(), message.getCorrelationId(), Destination.NORTHBOUND)));
-                collector.emit(Topic.HEALTH_CHECK, input, values);
+                collector.emit(healthCheckTopic, input, values);
             }
         } catch (IOException exception) {
             logger.error("Could not deserialize message: ", request, exception);
@@ -74,6 +75,6 @@ public class HealthCheckBolt extends BaseRichBolt {
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declareStream(Topic.HEALTH_CHECK, fieldMessage);
+        declarer.declareStream(healthCheckTopic, fieldMessage);
     }
 }
