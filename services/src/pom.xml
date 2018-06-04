@@ -334,15 +334,48 @@
                         <source>1.8</source>
                         <target>1.8</target>
                         <showWeaveInfo>true</showWeaveInfo>
+                        <forceAjcCompile>true</forceAjcCompile>
+                        <sources/>
+                        <testSources/>
                     </configuration>
                     <executions>
                         <execution>
+                            <id>aspectj-classes</id>
+                            <configuration>
+                                <weaveDirectories>
+                                    <weaveDirectory>${project.build.outputDirectory}</weaveDirectory>
+                                </weaveDirectories>
+                            </configuration>
+                            <phase>process-classes</phase>
                             <goals>
                                 <goal>compile</goal>
-                                <goal>test-compile</goal>
                             </goals>
                         </execution>
+                        <execution>
+                            <id>aspectj-test-classes</id>
+                            <phase>process-test-classes</phase>
+                            <goals>
+                                <goal>test-compile</goal>
+                            </goals>
+                            <configuration>
+                                <weaveDirectories>
+                                    <weaveDirectory>${project.build.testOutputDirectory}</weaveDirectory>
+                                </weaveDirectories>
+                            </configuration>
+                        </execution>
                     </executions>
+                    <dependencies>
+                        <dependency>
+                            <groupId>org.aspectj</groupId>
+                            <artifactId>aspectjrt</artifactId>
+                            <version>${aspectj.version}</version>
+                        </dependency>
+                        <dependency>
+                            <groupId>org.aspectj</groupId>
+                            <artifactId>aspectjtools</artifactId>
+                            <version>${aspectj.version}</version>
+                        </dependency>
+                    </dependencies>
                 </plugin>
             </plugins>
         </pluginManagement>
