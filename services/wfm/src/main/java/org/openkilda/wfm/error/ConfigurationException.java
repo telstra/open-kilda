@@ -1,6 +1,6 @@
 package org.openkilda.wfm.error;
 
-public class ConfigurationException extends Exception {
+public class ConfigurationException extends AbstractException {
     public ConfigurationException(String s) {
         super(s);
     }

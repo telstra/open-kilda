@@ -18,13 +18,18 @@ package org.openkilda.northbound.service.impl;
 import static java.util.Base64.getEncoder;
 import static org.openkilda.messaging.Utils.CORRELATION_ID;
 
+import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.messaging.nbtopology.request.GetLinksRequest;
 import org.openkilda.northbound.converter.LinkMapper;
 import org.openkilda.northbound.dto.LinkPropsDto;
 import org.openkilda.northbound.dto.LinksDto;
+import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.service.LinkPropsResult;
 import org.openkilda.northbound.service.LinkService;
 import org.openkilda.northbound.utils.RequestCorrelationId;
+import org.openkilda.northbound.utils.ResponseCollector;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,19 +45,17 @@ import org.springframework.web.util.UriComponentsBuilder;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import javax.annotation.PostConstruct;
 
 @Service
 public class LinkServiceImpl implements LinkService {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(LinkServiceImpl.class);
+
     //todo: refactor to use interceptor or custom rest template
     private static final String auth = "kilda:kilda";
     private static final String authHeaderValue = "Basic " + getEncoder().encodeToString(auth.getBytes());
 
-    private final Logger LOGGER = LoggerFactory.getLogger(LinkServiceImpl.class);
-
-    private String linksUrl;
     /** The URL to hit the Links Properties table .. ie :link_props in Neo4J */
     private String linkPropsUrlBase;
     private UriComponentsBuilder linkPropsBuilder;
@@ -66,10 +69,23 @@ public class LinkServiceImpl implements LinkService {
     @Autowired
     private RestTemplate restTemplate;
 
+    /**
+     * The kafka topic for the nb topology.
+     */
+    @Value("${kafka.nbworker.topic}")
+    private String nbworkerTopic;
+
+    /**
+     * Kafka message producer.
+     */
+    @Autowired
+    private MessageProducer messageProducer;
+
+    @Autowired
+    private ResponseCollector<IslInfoData> linksCollector;
+
     @PostConstruct
     void init() {
-        linksUrl = UriComponentsBuilder.fromHttpUrl(topologyEngineRest)
-                .pathSegment("api", "v1", "topology", "links").build().toUriString();
         linkPropsBuilder = UriComponentsBuilder.fromHttpUrl(topologyEngineRest)
                 .pathSegment("api", "v1", "topology", "link", "props");
         linkPropsUrlBase = UriComponentsBuilder.fromHttpUrl(topologyEngineRest)
@@ -78,11 +94,13 @@ public class LinkServiceImpl implements LinkService {
 
     @Override
     public List<LinksDto> getLinks() {
+        final String correlationId = RequestCorrelationId.getId();
         LOGGER.debug("Get links request received");
-        IslInfoData[] links = restTemplate.exchange(linksUrl, HttpMethod.GET, new HttpEntity<>(buildHttpHeaders()),
-                IslInfoData[].class).getBody();
-        LOGGER.debug("Returned {} links", links.length);
-        return Stream.of(links)
+        CommandMessage request = new CommandMessage(new GetLinksRequest(), System.currentTimeMillis(), correlationId);
+        messageProducer.send(nbworkerTopic, request);
+        List<IslInfoData> links = linksCollector.getResult(correlationId);
+
+        return links.stream()
                 .map(linkMapper::toLinkDto)
                 .collect(Collectors.toList());
     }
@@ -92,15 +110,19 @@ public class LinkServiceImpl implements LinkService {
         LOGGER.debug("Get link properties request received");
         UriComponentsBuilder builder = linkPropsBuilder.cloneBuilder();
         // TODO: pull out the URI builder .. to facilitate unit testing
-        if (keys != null){
-            if (!keys.getSrc_switch().isEmpty())
+        if (keys != null) {
+            if (!keys.getSrc_switch().isEmpty()) {
                 builder.queryParam("src_switch", keys.getSrc_switch());
-            if (!keys.getSrc_port().isEmpty())
+            }
+            if (!keys.getSrc_port().isEmpty()) {
                 builder.queryParam("src_port", keys.getSrc_port());
-            if (!keys.getDst_switch().isEmpty())
+            }
+            if (!keys.getDst_switch().isEmpty()) {
                 builder.queryParam("dst_switch", keys.getDst_switch());
-            if (!keys.getDst_port().isEmpty())
+            }
+            if (!keys.getDst_port().isEmpty()) {
                 builder.queryParam("dst_port", keys.getDst_port());
+            }
         }
         String fullUri = builder.build().toUriString();
 

@@ -17,7 +17,8 @@ public class IslLinkConverter {
     @Autowired
     private SwitchIntegrationService switchIntegrationService;
 
-    public List<IslLinkInfo> toIslLinksInfo(final List<IslLink> islLinks, Map<String,String> islCostMap) {
+    public List<IslLinkInfo> toIslLinksInfo(final List<IslLink> islLinks,
+            Map<String, String> islCostMap) {
         if (islLinks != null) {
             final List<IslLinkInfo> islLinkInfos = new ArrayList<>();
             final Map<String, String> csNames =
@@ -26,33 +27,23 @@ public class IslLinkConverter {
 
                 IslLinkInfo islLinkInfo = toIslLinkInfo(islLink, csNames, islCostMap);
 
-                if (islLinkInfos.contains(islLinkInfo)) {
-                    islLinkInfos.get(islLinkInfos.indexOf(islLinkInfo)).setUnidirectional(false);
+                if (islLinkInfos.size() == 0) {
+                    islLinkInfos.add(islLinkInfo);
                 } else {
-
-                    boolean isSwitchRelationAdd = false;
-
-                    if (islLinkInfos.size() == 0) {
-                        islLinkInfos.add(islLinkInfo);
-                    } else {
-                        for (int i = 0; i < islLinkInfos.size(); i++) {
-                            IslLinkInfo flowInfo = islLinkInfos.get(i);
-                            if (flowInfo.getDstPort() == islLinkInfo.getSrcPort()
-                                    && flowInfo.getDstSwitch()
-                                            .equalsIgnoreCase(islLinkInfo.getSrcSwitch())
-                                    && flowInfo.getSrcPort() == islLinkInfo.getDstPort()
-                                    && flowInfo.getSrcSwitch()
-                                            .equalsIgnoreCase(islLinkInfo.getDstSwitch())) {
-                                isSwitchRelationAdd = false;
-                                break;
-                            } else {
-                                isSwitchRelationAdd = true;
-
+                    boolean isSwitchRelationAdd = true;
+                    for (IslLinkInfo flowInfo : islLinkInfos) {
+                        if (islLinkInfo.getForwardKey().equalsIgnoreCase(flowInfo.getReverseKey())) {
+                            isSwitchRelationAdd = false;
+                            flowInfo.setUnidirectional(false);
+                            flowInfo.setState1(islLinkInfo.getState());
+                            if (!flowInfo.getState().equalsIgnoreCase(islLinkInfo.getState())) {
+                                flowInfo.setAffected(true);
                             }
+                            break;
                         }
-                        if (isSwitchRelationAdd) {
-                            islLinkInfos.add(islLinkInfo);
-                        }
+                    }
+                    if (isSwitchRelationAdd) {
+                        islLinkInfos.add(islLinkInfo);
                     }
                 }
             });
@@ -61,7 +52,8 @@ public class IslLinkConverter {
         return null;
     }
 
-    private IslLinkInfo toIslLinkInfo(final IslLink islLink, final Map<String, String> csNames, Map<String,String> islCostMap) {
+    private IslLinkInfo toIslLinkInfo(final IslLink islLink, final Map<String, String> csNames,
+            Map<String, String> islCostMap) {
         IslLinkInfo islLinkInfo = new IslLinkInfo();
         islLinkInfo.setUnidirectional(true);
         islLinkInfo.setAvailableBandwidth(islLink.getAvailableBandwidth());
@@ -89,14 +81,11 @@ public class IslLinkConverter {
             }
         }
         // set isl cost
-        String key1 = islLinkInfo.getSrcSwitch()+ "-"+ islLinkInfo.getSrcPort()+"-"+islLinkInfo.getDstSwitch() + "-" + islLinkInfo.getDstPort();
-        String key2 = islLinkInfo.getDstSwitch()+ "-"+ islLinkInfo.getDstPort()+"-"+islLinkInfo.getSrcSwitch() + "-" + islLinkInfo.getSrcPort();
-        if(islCostMap.containsKey(key1)) {
-            islLinkInfo.setCost(islCostMap.get(key1));
-        } else if (islCostMap.containsKey(key2)) {
-            islLinkInfo.setCost(islCostMap.get(key2));
+        if (islCostMap.containsKey(islLinkInfo.getForwardKey())) {
+            islLinkInfo.setCost(islCostMap.get(islLinkInfo.getForwardKey()));
+        } else if (islCostMap.containsKey(islLinkInfo.getReverseKey())) {
+            islLinkInfo.setCost(islCostMap.get(islLinkInfo.getReverseKey()));
         }
         return islLinkInfo;
     }
 }
-

@@ -1,17 +1,26 @@
+/* Copyright 2017 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.openkilda.floodlight.kafka;
 
 import static org.easymock.EasyMock.anyObject;
 import static org.easymock.EasyMock.eq;
 import static org.easymock.EasyMock.expect;
+import static org.easymock.EasyMock.expectLastCall;
+import static org.easymock.EasyMock.verify;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.internal.OFSwitch;
-import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import org.easymock.EasyMockSupport;
-import org.junit.Before;
-import org.junit.Test;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
 import org.openkilda.messaging.Destination;
@@ -22,6 +31,15 @@ import org.openkilda.messaging.command.discovery.NetworkCommandData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
+
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.internal.OFSwitch;
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import org.easymock.EasyMockSupport;
+import org.junit.Before;
+import org.junit.Test;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
@@ -87,11 +105,15 @@ public class RecordHandlerTest extends EasyMockSupport {
         OFPortDesc ofPortDesc2 = mock(OFPortDesc.class);
         OFPortDesc ofPortDesc3 = mock(OFPortDesc.class);
         OFPortDesc ofPortDesc4 = mock(OFPortDesc.class);
+        OFPortDesc ofPortDesc5 = mock(OFPortDesc.class);
 
-        expect(ofPortDesc1.getPortNo()).andReturn(OFPort.ofInt(1));
-        expect(ofPortDesc2.getPortNo()).andReturn(OFPort.ofInt(2));
-        expect(ofPortDesc3.getPortNo()).andReturn(OFPort.ofInt(3));
-        expect(ofPortDesc4.getPortNo()).andReturn(OFPort.ofInt(4));
+        expect(ofPortDesc1.getPortNo()).andReturn(OFPort.ofInt(1)).times(2);
+        expect(ofPortDesc2.getPortNo()).andReturn(OFPort.ofInt(2)).times(2);
+        expect(ofPortDesc3.getPortNo()).andReturn(OFPort.ofInt(3)).times(2);
+        expect(ofPortDesc4.getPortNo()).andReturn(OFPort.ofInt(4)).times(2);
+        // we don't want disco on -2 port
+        expect(ofPortDesc5.getPortNo()).andReturn(OFPort.ofInt(-2)).times(2);
+
 
         expect(iofSwitch1.getEnabledPorts()).andReturn(ImmutableList.of(
                 ofPortDesc1,
@@ -99,7 +121,8 @@ public class RecordHandlerTest extends EasyMockSupport {
         ));
         expect(iofSwitch2.getEnabledPorts()).andReturn(ImmutableList.of(
                 ofPortDesc3,
-                ofPortDesc4
+                ofPortDesc4,
+                ofPortDesc5
         ));
 
         // Logic in SwitchEventCollector.buildSwitchInfoData is too complicated and requires a lot
@@ -113,6 +136,12 @@ public class RecordHandlerTest extends EasyMockSupport {
 
         // setup hook for verify that we create new message for producer
         producer.postMessage(eq(OUTPUT_DISCO_TOPIC), anyObject(InfoMessage.class));
+        expectLastCall().times(8);
+
+        Producer kafkaProducer = createMock(Producer.class);
+        expect(producer.getProducer()).andReturn(kafkaProducer).times(2);
+        kafkaProducer.enableGuaranteedOrder(eq(OUTPUT_DISCO_TOPIC));
+        kafkaProducer.disableGuaranteedOrder(eq(OUTPUT_DISCO_TOPIC));
 
         replayAll();
 
@@ -122,70 +151,68 @@ public class RecordHandlerTest extends EasyMockSupport {
                 Destination.CONTROLLER);
 
 
-// (crimi - 2018.04.12 - this fails unit test, and we've had commits that change dumpNetwork.
-// TODO - triage why this failed ... and fix
+        // KafkaMessageCollector contains a complicated run logic with couple nested private
+        // classes, threading and that is very painful for writing clear looking test code so I
+        // created the simple method in KafkaMessageCollector for simplifying test logic.
+        handler.handleMessage(command);
 
-//        // KafkaMessageCollector contains a complicated run logic with couple nested private
-//        // classes, threading and that is very painful for writing clear looking test code so I
-//        // created the simple method in KafkaMessageCollector for simplifying test logic.
-//        handler.handleMessage(command);
-//
-//        verify(producer);
+        verify(producer);
 
         // TODO: verify content of InfoMessage in producer.postMessage
     }
 
-//    @Test
-//    public void portDumpTest() {
-//        DatapathId dpid = DatapathId.of("de:ad:be:ef:00:00:00:00");
-//
-//        OFSwitch iofSwitch1 = mock(OFSwitch.class);
-//        Map<DatapathId, IOFSwitch> switches = ImmutableMap.of(
-//                DatapathId.of(1), iofSwitch1);
-//        expect(switchManager.getAllSwitchMap()).andReturn(switches);
-//        expect(iofSwitch1.getId()).andReturn(dpid).anyTimes();
-//
-//        OFPortDesc ofPortDesc1 = mock(OFPortDesc.class);
-//        OFPortDesc ofPortDesc2 = mock(OFPortDesc.class);
-//
-//        Set<OFPortState> portStateUp = new HashSet<>();
-//        portStateUp.add(OFPortState.LIVE);
-//
-//        expect(iofSwitch1.getPorts()).andReturn(ImmutableList.of(
-//                ofPortDesc1, ofPortDesc2));
-//        expect(ofPortDesc1.getPortNo()).andReturn(OFPort.ofInt(1));
-//        expect(ofPortDesc1.getState()).andReturn(portStateUp);
-//        expect(ofPortDesc2.getPortNo()).andReturn(OFPort.ofInt(2));
-//        expect(ofPortDesc2.getState()).andReturn(portStateUp);
-//
-//        long timestamp = System.currentTimeMillis();
-//
-//        Capture<String> capturedTopic = new Capture<>();
-//        Capture<InfoMessage> capturedMessage = new Capture<>();
-//        producer.postMessage(capture(capturedTopic), capture(capturedMessage));
-//
-//        replayAll();
-//
-//        CommandMessage command = new CommandMessage(new PortsCommandData("test-requester"), System.currentTimeMillis(),
-//                Utils.SYSTEM_CORRELATION_ID, Destination.WFM);
-//        handler.handleMessage(command);
-//        verify(producer);
-//
-//        // Ugly hack below to ensure timestamps are equal
-//        SwitchPortsData switchPortsData = new SwitchPortsData(
-//                Stream.of(1, 2)
-//                        .map(port -> new PortInfoData(dpid.toString(), port, null, PortChangeType.UP))
-//                        .collect(Collectors.toSet()),
-//                "test-requester");
-//        switchPortsData.setTimestamp(capturedMessage.getValue().getTimestamp());
-//
-//        InfoMessage expectedMessage = new InfoMessage(
-//                switchPortsData,
-//                capturedMessage.getValue().getTimestamp(),
-//                Utils.SYSTEM_CORRELATION_ID,
-//                Destination.WFM
-//        );
-//
-//        Assert.assertEquals(expectedMessage, capturedMessage.getValue());
-//    }
+    //    @Test
+    //    public void portDumpTest() {
+    //        DatapathId dpid = DatapathId.of("de:ad:be:ef:00:00:00:00");
+    //
+    //        OFSwitch iofSwitch1 = mock(OFSwitch.class);
+    //        Map<DatapathId, IOFSwitch> switches = ImmutableMap.of(
+    //                DatapathId.of(1), iofSwitch1);
+    //        expect(switchManager.getAllSwitchMap()).andReturn(switches);
+    //        expect(iofSwitch1.getId()).andReturn(dpid).anyTimes();
+    //
+    //        OFPortDesc ofPortDesc1 = mock(OFPortDesc.class);
+    //        OFPortDesc ofPortDesc2 = mock(OFPortDesc.class);
+    //
+    //        Set<OFPortState> portStateUp = new HashSet<>();
+    //        portStateUp.add(OFPortState.LIVE);
+    //
+    //        expect(iofSwitch1.getPorts()).andReturn(ImmutableList.of(
+    //                ofPortDesc1, ofPortDesc2));
+    //        expect(ofPortDesc1.getPortNo()).andReturn(OFPort.ofInt(1));
+    //        expect(ofPortDesc1.getState()).andReturn(portStateUp);
+    //        expect(ofPortDesc2.getPortNo()).andReturn(OFPort.ofInt(2));
+    //        expect(ofPortDesc2.getState()).andReturn(portStateUp);
+    //
+    //        long timestamp = System.currentTimeMillis();
+    //
+    //        Capture<String> capturedTopic = new Capture<>();
+    //        Capture<InfoMessage> capturedMessage = new Capture<>();
+    //        producer.postMessage(capture(capturedTopic), capture(capturedMessage));
+    //
+    //        replayAll();
+    //
+    //        CommandMessage command = new CommandMessage(new PortsCommandData("test-requester"),
+    // System.currentTimeMillis(),
+    //                Utils.SYSTEM_CORRELATION_ID, Destination.WFM);
+    //        handler.handleMessage(command);
+    //        verify(producer);
+    //
+    //        // Ugly hack below to ensure timestamps are equal
+    //        SwitchPortsData switchPortsData = new SwitchPortsData(
+    //                Stream.of(1, 2)
+    //                        .map(port -> new PortInfoData(dpid.toString(), port, null, PortChangeType.UP))
+    //                        .collect(Collectors.toSet()),
+    //                "test-requester");
+    //        switchPortsData.setTimestamp(capturedMessage.getValue().getTimestamp());
+    //
+    //        InfoMessage expectedMessage = new InfoMessage(
+    //                switchPortsData,
+    //                capturedMessage.getValue().getTimestamp(),
+    //                Utils.SYSTEM_CORRELATION_ID,
+    //                Destination.WFM
+    //        );
+    //
+    //        Assert.assertEquals(expectedMessage, capturedMessage.getValue());
+    //    }
 }

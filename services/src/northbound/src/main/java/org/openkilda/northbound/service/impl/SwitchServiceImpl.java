@@ -16,17 +16,15 @@
 package org.openkilda.northbound.service.impl;
 
 import static java.lang.String.format;
-import static java.util.Base64.getEncoder;
 import static java.util.Collections.emptyList;
-import static org.openkilda.messaging.Utils.CORRELATION_ID;
 
-import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.CommandWithReplyToMessage;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
+import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.command.switches.DumpRulesRequest;
 import org.openkilda.messaging.command.switches.InstallRulesAction;
 import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
@@ -39,6 +37,7 @@ import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.switches.ConnectModeResponse;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.info.switches.SyncRulesResponse;
+import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
 import org.openkilda.northbound.converter.SwitchMapper;
 import org.openkilda.northbound.dto.SwitchDto;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
@@ -47,37 +46,23 @@ import org.openkilda.northbound.messaging.MessageConsumer;
 import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.service.SwitchService;
 import org.openkilda.northbound.utils.RequestCorrelationId;
+import org.openkilda.northbound.utils.ResponseCollector;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
-import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
-import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
-import javax.annotation.PostConstruct;
 
 @Service
 public class SwitchServiceImpl implements SwitchService {
 
-    private final Logger LOGGER = LoggerFactory.getLogger(SwitchServiceImpl.class);
-    //todo: refactor to use interceptor or custom rest template
-    private static final String auth = "kilda:kilda";
-    private static final String authHeaderValue = "Basic " + getEncoder().encodeToString(auth.getBytes());
-
-    private String switchesUrl;
-
-    @Value("${topology.engine.rest.endpoint}")
-    private String topologyEngineRest;
+    private static final Logger LOGGER = LoggerFactory.getLogger(SwitchServiceImpl.class);
 
     @Value("${kafka.topo.eng.topic}")
     private String topoEngTopic;
@@ -89,10 +74,10 @@ public class SwitchServiceImpl implements SwitchService {
     private MessageConsumer<Message> messageConsumer;
 
     @Autowired
-    private SwitchMapper switchMapper;
+    private ResponseCollector<SwitchInfoData> switchesCollector;
 
     @Autowired
-    private RestTemplate restTemplate;
+    private SwitchMapper switchMapper;
 
     @Value("${kafka.speaker.topic}")
     private String floodlightTopic;
@@ -100,33 +85,22 @@ public class SwitchServiceImpl implements SwitchService {
     @Value("${kafka.northbound.topic}")
     private String northboundTopic;
 
-    @PostConstruct
-    void init() {
-        switchesUrl = UriComponentsBuilder
-                .fromHttpUrl(topologyEngineRest)
-                .pathSegment("api", "v1", "topology", "switches")
-                .build()
-                .toUriString();
-    }
+    @Value("${kafka.nbworker.topic}")
+    private String nbworkerTopic;
 
     /**
      * {@inheritDoc}
      */
     @Override
     public List<SwitchDto> getSwitches() {
+        final String correlationId = RequestCorrelationId.getId();
         LOGGER.debug("Get switch request received");
+        CommandMessage request = new CommandMessage(new GetSwitchesRequest(), System.currentTimeMillis(),
+                correlationId);
+        messageProducer.send(nbworkerTopic, request);
 
-        SwitchInfoData[] switches;
-        try {
-            switches = restTemplate.exchange(switchesUrl, HttpMethod.GET, new HttpEntity<>(buildHttpHeaders()),
-                    SwitchInfoData[].class).getBody();
-            LOGGER.debug("Returned {} links", switches.length);
-        } catch (RestClientException e) {
-            LOGGER.error("Exception during getting switches from TPE", e);
-            throw e;
-        }
-
-        return Arrays.stream(switches)
+        List<SwitchInfoData> switches = switchesCollector.getResult(correlationId);
+        return switches.stream()
                 .map(switchMapper::toSwitchDto)
                 .collect(Collectors.toList());
     }
@@ -269,10 +243,4 @@ public class SwitchServiceImpl implements SwitchService {
         return switchMapper.toRulesSyncResult(validationResult, syncResponse.getInstalledRules());
     }
 
-    private HttpHeaders buildHttpHeaders() {
-        HttpHeaders headers = new HttpHeaders();
-        headers.add(HttpHeaders.AUTHORIZATION, authHeaderValue);
-        headers.add(CORRELATION_ID, RequestCorrelationId.getId());
-        return headers;
-    }
 }

@@ -3,13 +3,17 @@ package org.openkilda.wfm.isl;
 import org.openkilda.messaging.model.DiscoveryLink;
 import org.openkilda.messaging.model.NetworkEndpoint;
 
+import org.apache.commons.collections4.map.PassiveExpiringMap;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * The DiscoveryManager holds the core logic for managing ISLs. This includes all of the
@@ -41,6 +45,7 @@ public class DiscoveryManager {
     private final Integer islConsecutiveFailureLimit;
     private final Integer maxAttempts;
     private final LinkedList<DiscoveryLink> pollQueue;
+    private final Map<NetworkEndpoint, DiscoveryLink> removedFromDiscovery;
 
     /**
      * Base constructor of discovery manager.
@@ -52,12 +57,13 @@ public class DiscoveryManager {
      */
     public DiscoveryManager(IIslFilter filter, LinkedList<DiscoveryLink> persistentQueue,
                             Integer islHealthCheckInterval, Integer islConsecutiveFailureLimit,
-                            Integer maxAttempts) {
+                            Integer maxAttempts, Integer minutesKeepRemovedIsl) {
         this.filter = filter;
         this.islHealthCheckInterval = islHealthCheckInterval;
         this.islConsecutiveFailureLimit = islConsecutiveFailureLimit;
         this.maxAttempts = maxAttempts;
         this.pollQueue = persistentQueue;
+        this.removedFromDiscovery = new PassiveExpiringMap<>(minutesKeepRemovedIsl, TimeUnit.MINUTES, new HashMap<>());
     }
 
     /**
@@ -292,14 +298,16 @@ public class DiscoveryManager {
     private List<DiscoveryLink> findBySourceSwitch(NetworkEndpoint subject, boolean extract) {
         List<DiscoveryLink> result = new LinkedList<>();
         for (ListIterator<DiscoveryLink> it = pollQueue.listIterator(); it.hasNext(); ) {
-            DiscoveryLink node = it.next();
+            DiscoveryLink link = it.next();
 
-            if (isMatchedEndpoint(subject, node.getSource())) {
+            if (isMatchedEndpoint(subject, link.getSource())) {
                 if (extract) {
+                    logger.debug("Removing Link from discovery mechanism: {}", link);
+                    removedFromDiscovery.put(subject, link);
                     it.remove();
                 }
 
-                result.add(node);
+                result.add(link);
                 // no need to continue searching if we are looking for the link from particular port
                 // looks like we don't store more than one link from one port in discovery manager
                 if (subject.getPortId() != 0) {
@@ -331,6 +339,9 @@ public class DiscoveryManager {
             DiscoveryLink link = subjectList.get(0);
 
             isMoved = link.isDestinationChanged(dstSwitch, dstPort);
+        } else if (removedFromDiscovery.containsKey(node)) {
+            DiscoveryLink link = removedFromDiscovery.get(node);
+            isMoved = link.isDestinationChanged(dstSwitch, dstPort);
         }
 
         return isMoved;
@@ -340,24 +351,33 @@ public class DiscoveryManager {
      * Returns the endpoint of the link.
      */
     public NetworkEndpoint getLinkDestination(String srcSwitch, int srcPort) {
-        List<DiscoveryLink> links = findBySourceSwitch(new NetworkEndpoint(srcSwitch, srcPort));
-        if (links.isEmpty()) {
-            throw new IllegalStateException(String.format("There is no link on the switch %s_%s", srcSwitch, srcPort));
+        NetworkEndpoint srcEndpoint = new NetworkEndpoint(srcSwitch, srcPort);
+        NetworkEndpoint dstEndpoint;
+        List<DiscoveryLink> links = findBySourceSwitch(srcEndpoint);
+        if (!links.isEmpty()) {
+            dstEndpoint = links.get(0).getDestination();
+        } else if (removedFromDiscovery.containsKey(srcEndpoint)) {
+            DiscoveryLink link = removedFromDiscovery.get(srcEndpoint);
+            dstEndpoint = link.getDestination();
+        } else {
+            throw new IllegalStateException(String.format("Not found link from %s_%s", srcSwitch, srcPort));
         }
 
-        return links.get(0).getDestination();
+        return dstEndpoint;
     }
 
     /**
-     * Deactivate link from switch/port and mark it as inactive.
+     * Deactivate link from switch/port and mark it as inactive. The link will be pulled from main discovery queue or
+     * from temporary storage where we store ISLs to be deleted.
      */
     public void deactivateLinkFromEndpoint(NetworkEndpoint endpoint) {
         List<DiscoveryLink> links = findBySourceSwitch(endpoint);
-        if (links.isEmpty()) {
-            throw new IllegalStateException(String.format("There is no link from %s", endpoint));
+        if (!links.isEmpty()) {
+            links.get(0).deactivate();
+        } else if (removedFromDiscovery.containsKey(endpoint)) {
+            DiscoveryLink link = removedFromDiscovery.get(endpoint);
+            link.deactivate();
         }
-
-        links.get(0).deactivate();
     }
 
     /**

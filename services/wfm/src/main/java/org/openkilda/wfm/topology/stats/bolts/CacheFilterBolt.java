@@ -101,15 +101,12 @@ public class CacheFilterBolt extends BaseRichBolt {
                     InstallEgressFlow command = (InstallEgressFlow) data;
                     logMatchedRecord(command);
                     emit(tuple, Commands.UPDATE, command, MeasurePoint.EGRESS);
-                }
-                else if (data instanceof InstallOneSwitchFlow)
-                {
+                } else if (data instanceof InstallOneSwitchFlow) {
                     InstallOneSwitchFlow command = (InstallOneSwitchFlow) data;
                     logMatchedRecord(command);
-                    emit(tuple, Commands.UPDATE, command);
-                }
-                else if (data instanceof RemoveFlow)
-                {
+                    emit(tuple, Commands.UPDATE, command, MeasurePoint.INGRESS);
+                    emit(tuple, Commands.UPDATE, command, MeasurePoint.EGRESS);
+                } else if (data instanceof RemoveFlow) {
                     RemoveFlow command = (RemoveFlow) data;
                     logMatchedRecord(command);
                     emit(tuple, Commands.REMOVE, command);

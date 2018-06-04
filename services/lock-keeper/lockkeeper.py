@@ -13,14 +13,27 @@ SECRET = os.environ.get("LOCK_KEEPER_SECRET")
 PORT = 22
 
 
-def execute_remote_command(command):
+def execute_remote_commands(commands):
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     client.connect(hostname=HOST, username=USER, password=SECRET, port=PORT)
-    stdin, stdout, stderr = client.exec_command(command)
-    data = stdout.read() + stderr.read()
+    data = []
+    for command in commands:
+        stdin, stdout, stderr = client.exec_command(command)
+        data.append((stdout.read() + stderr.read()).decode('utf-8'))
     client.close()
-    return data.decode('utf-8')
+    return data
+
+
+def execute_remote_command(command):
+    return execute_remote_commands([command])[0]
+
+
+def change_ports_state(ports, port_state):
+    """Common port states: up, down."""
+    commands = ["ovs-ofctl mod-port br0 {} {}".format(str(port), port_state)
+                for port in ports]
+    return execute_remote_commands(commands)
 
 
 def test_answer():
@@ -66,16 +79,28 @@ def get_flows_route():
 @app.route('/flows', methods=['POST'])
 def post_flows_route():
     payload = request.get_json()
-    execute_remote_command(
-        'ovs-ofctl add-flow br0 in_port={in_port},actions=output={out_port}'
-            .format(**payload))
+    commands = ['ovs-ofctl add-flow br0 in_port={in_port},' \
+                'actions=output={out_port}'.format(**flow) for flow in payload]
+    execute_remote_commands(commands)
     return jsonify({'status': 'ok'})
 
 
 @app.route('/flows', methods=['DELETE'])
 def delete_flows_route():
     payload = request.get_json()
-    execute_remote_command(
-        'ovs-ofctl del-flows br0 in_port={in_port}'.format(**payload))
+    commands = ['ovs-ofctl del-flows br0 in_port={in_port}'.format(**flow)
+                for flow in payload]
+    execute_remote_commands(commands)
+    return jsonify({'status': 'ok'})
 
+
+@app.route('/ports', methods=['POST'])
+def ports_up():
+    change_ports_state(request.get_json(), "up")
+    return jsonify({'status': 'ok'})
+
+
+@app.route('/ports', methods=['DELETE'])
+def ports_down():
+    change_ports_state(request.get_json(), "down")
     return jsonify({'status': 'ok'})

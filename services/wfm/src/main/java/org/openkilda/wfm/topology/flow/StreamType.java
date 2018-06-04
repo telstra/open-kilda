@@ -50,11 +50,6 @@ public enum StreamType {
     UNPUSH,
 
     /**
-     * Restore flow topology stream.
-     */
-    RESTORE,
-
-    /**
      * Reroute flow topology stream.
      */
     REROUTE,

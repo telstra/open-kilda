@@ -82,25 +82,6 @@ public class StubServiceFactory {
         when(serviceMock.getPaths(any(), any()))
                 .thenReturn(singletonList(new PathInfoData()));
 
-        when(serviceMock.getActiveSwitches())
-                .thenAnswer(invocation -> topologyDefinition.getActiveSwitches().stream()
-                        .map(sw -> new SwitchInfoData(sw.getDpId(), SwitchState.ACTIVATED, "", "", "", ""))
-                        .collect(toList()));
-
-        when(serviceMock.getActiveLinks())
-                .thenAnswer(invocation -> topologyDefinition.getIslsForActiveSwitches().stream()
-                        .flatMap(link -> Stream.of(
-                                new IslInfoData(0,
-                                        asList(new PathNode(link.getSrcSwitch().getDpId(), link.getSrcPort(), 0),
-                                                new PathNode(link.getDstSwitch().getDpId(), link.getDstPort(), 1)),
-                                        link.getMaxBandwidth(), IslChangeType.DISCOVERED, 0),
-                                new IslInfoData(0,
-                                        asList(new PathNode(link.getDstSwitch().getDpId(), link.getDstPort(), 0),
-                                                new PathNode(link.getSrcSwitch().getDpId(), link.getSrcPort(), 1)),
-                                        link.getMaxBandwidth(), IslChangeType.DISCOVERED, 0)
-                        ))
-                        .collect(toList()));
-
         return serviceMock;
     }
 
@@ -155,8 +136,8 @@ public class StubServiceFactory {
         FlowEntry flowEntry = buildFlowEntry("flow-0x8000000000000002",
                 FlowMatchField.builder().ethDst("08:ed:02:ef:ff:ff").build(),
                 FlowInstructions.builder().applyActions(
-                        FlowApplyActions.builder().
-                                flowOutput("controller").field(switchId + "->eth_dst").build()
+                        FlowApplyActions.builder()
+                                .flowOutput("controller").field(switchId + "->eth_dst").build()
                 ).build()
         );
         result.put(flowEntry.getCookie(), flowEntry);
@@ -174,9 +155,9 @@ public class StubServiceFactory {
             FlowEntry flowFor13Version = buildFlowEntry("flow-0x8000000000000003",
                     FlowMatchField.builder().ethDst(switchId).build(),
                     FlowInstructions.builder().applyActions(
-                            FlowApplyActions.builder().
-                                    flowOutput("controller").
-                                    field(switchId + "->eth_dst")
+                            FlowApplyActions.builder()
+                                    .flowOutput("controller")
+                                    .field(switchId + "->eth_dst")
                                     .build()
                     ).build()
             );
@@ -199,6 +180,25 @@ public class StubServiceFactory {
      */
     public NorthboundService getNorthboundStub() {
         NorthboundService serviceMock = mock(NorthboundService.class);
+
+        when(serviceMock.getActiveSwitches())
+                .thenAnswer(invocation -> topologyDefinition.getActiveSwitches().stream()
+                        .map(sw -> new SwitchInfoData(sw.getDpId(), SwitchState.ACTIVATED, "", "", "", ""))
+                        .collect(toList()));
+
+        when(serviceMock.getActiveLinks())
+                .thenAnswer(invocation -> topologyDefinition.getIslsForActiveSwitches().stream()
+                        .flatMap(link -> Stream.of(
+                                new IslInfoData(0,
+                                        asList(new PathNode(link.getSrcSwitch().getDpId(), link.getSrcPort(), 0),
+                                                new PathNode(link.getDstSwitch().getDpId(), link.getDstPort(), 1)),
+                                        link.getMaxBandwidth(), IslChangeType.DISCOVERED, 0),
+                                new IslInfoData(0,
+                                        asList(new PathNode(link.getDstSwitch().getDpId(), link.getDstPort(), 0),
+                                                new PathNode(link.getSrcSwitch().getDpId(), link.getSrcPort(), 1)),
+                                        link.getMaxBandwidth(), IslChangeType.DISCOVERED, 0)
+                        ))
+                        .collect(toList()));
 
         when(serviceMock.getAllFlows())
                 .thenReturn(new ArrayList<>(flowPayloads.values()));
