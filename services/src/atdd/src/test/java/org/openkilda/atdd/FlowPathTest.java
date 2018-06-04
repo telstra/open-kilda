@@ -163,7 +163,7 @@ public class FlowPathTest {
         return actualBandwidth;
     }
 
-    @Given("^topology contains (\\d+) links$")
+    @Given("^topology contains (\\d+) links?$")
     public void topologyContainsLinks(int expectedLinks) throws InterruptedException {
         // give WFM time to send discovery requests and notify TE.
         TimeUnit.SECONDS.sleep(4);

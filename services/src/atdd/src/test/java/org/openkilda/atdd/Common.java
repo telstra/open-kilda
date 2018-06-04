@@ -15,10 +15,14 @@
 
 package org.openkilda.atdd;
 
-import cucumber.api.java.en.Given;
 import org.openkilda.flow.FlowUtils;
 import org.openkilda.messaging.payload.FeatureTogglePayload;
 import org.openkilda.topo.TestUtils;
+
+import cucumber.api.java.en.And;
+import cucumber.api.java.en.Given;
+
+import java.util.concurrent.TimeUnit;
 
 /**
  * Created by carmine on 5/3/17.
@@ -43,10 +47,10 @@ public class Common {
     }
 
     /**
-     * This code will make sure there aren't any topologies
+     * This code will make sure there aren't any topologies.
      */
     @Given("^a clean controller$")
-    public void a_clean_controller() throws Throwable {
+    public void cleanController() throws Throwable {
         // Write code here that turns the phrase above into concrete actions
         setHost(System.getProperty("kilda.host", kildaHost));
 
@@ -54,14 +58,20 @@ public class Common {
     }
 
     /**
-     * This code will make sure there aren't any flows
+     * This code will make sure there aren't any flows.
      */
     @Given("^a clean flow topology$")
-    public void a_clean_flow_topology() throws Throwable {
+    public void cleanFlowTopology() throws Throwable {
         FlowUtils.cleanupFlows();
 
         FeatureTogglePayload features = new FeatureTogglePayload(true, true, true, true, true, true,
                 true);
         FlowUtils.updateFeaturesStatus(features);
+    }
+
+    @And("wait for (\\d+) seconds?.*")
+    public void delay(int seconds) throws InterruptedException {
+        System.out.println(String.format("Sleeping for %s seconds..", seconds));
+        TimeUnit.SECONDS.sleep(seconds);
     }
 }

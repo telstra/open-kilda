@@ -18,6 +18,20 @@ Feature: Validate kilda behaviour during connectivity issues with speaker
       | flow_id |      source_switch      | source_port | source_vlan |   destination_switch    | destination_port | destination_vlan | bandwidth |
       | c3none  | de:ad:be:ef:00:00:00:03 |      1      |      0      | de:ad:be:ef:00:00:00:05 |         2        |        0         |   10000   |
 
+  @ignore
+  Scenario: Speaker goes down for a long time, kilda is able to recover
+    Given a clean controller
+    And a clean flow topology
+    And created simple topology from two switches
+    And topology contains 2 links
+
+    When stop floodlight container
+    And wait for 30 seconds
+    And flow fl-restart creation request with 00:01:00:00:00:00:00:01 2 102 and 00:01:00:00:00:00:00:02 2 102 and 10000 is successful
+    And start floodlight container
+
+    Then flow fl-restart in UP state
+
   @InDev
   Scenario Outline: Switches lost between switches to speaker (idle)
     Given a clean controller

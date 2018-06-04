@@ -15,7 +15,6 @@
 
 package org.openkilda.atdd.staging.config;
 
-import net.jodah.failsafe.RetryPolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,7 +33,6 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.DefaultUriBuilderFactory;
 
 import java.io.IOException;
-import java.util.concurrent.TimeUnit;
 
 @Configuration
 @Profile("default")
@@ -66,14 +64,6 @@ public class ServiceConfig {
         return buildRestTemplateWithAuth(endpoint, username, password);
     }
 
-    // The retrier is used for repeating operations which depend on the system state and may change the result after delays.
-    @Bean(name = "topologyEngineRetryPolicy")
-    public RetryPolicy retryPolicy() {
-        return new RetryPolicy()
-                .withDelay(2, TimeUnit.SECONDS)
-                .withMaxRetries(10);
-    }
-
     @Bean(name = "traffExamRestTemplate")
     public RestTemplate traffExamRestTemplate() {
         RestTemplate restTemplate = new RestTemplate();
@@ -91,15 +81,15 @@ public class ServiceConfig {
 
     private ResponseErrorHandler buildErrorHandler() {
         return new DefaultResponseErrorHandler() {
-            private final Logger LOGGER = LoggerFactory.getLogger(ResponseErrorHandler.class);
+            private final Logger logger = LoggerFactory.getLogger(ResponseErrorHandler.class);
 
             @Override
             public void handleError(ClientHttpResponse clientHttpResponse) throws IOException {
                 try {
                     super.handleError(clientHttpResponse);
-                } catch(RestClientResponseException e) {
+                } catch (RestClientResponseException e) {
                     if (e.getRawStatusCode() != HttpStatus.NOT_FOUND.value()) {
-                        LOGGER.error("HTTP response with status {} and body '{}'", e.getRawStatusCode(),
+                        logger.error("HTTP response with status {} and body '{}'", e.getRawStatusCode(),
                                 e.getResponseBodyAsString());
                     }
                     throw e;
