@@ -45,9 +45,10 @@ if "DISABLE_LOGIN" in os.getenv("OK_TESTS","none"):
     application.config['LOGIN_DISABLED'] = True
 
 from app import login
+from app import flows
 from app import topology
 from app import models
-from app import flows
+
 
 
 if __name__ == "__main__":

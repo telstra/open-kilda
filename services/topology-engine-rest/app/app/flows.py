@@ -38,6 +38,15 @@ config.read('topology_engine_rest.ini')
 
 group = config.get('kafka', 'consumer.group')
 topic = config.get('kafka', 'kafka.topic.flow')
+
+try:
+    environment_naming_prefix = config.get('kafka',
+                                           'environment.naming.prefix')
+    group = '_'.join([environment_naming_prefix, group])
+    topic = '_'.join([environment_naming_prefix, topic])
+except ConfigParser.NoOptionError:
+    pass
+
 bootstrap_servers_property = config.get('kafka', 'bootstrap.servers')
 bootstrap_servers = [x.strip() for x in bootstrap_servers_property.split(',')]
 
