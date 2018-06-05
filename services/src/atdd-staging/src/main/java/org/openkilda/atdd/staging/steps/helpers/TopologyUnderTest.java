@@ -27,4 +27,6 @@ import java.util.Map;
 @Data
 public class TopologyUnderTest {
     Map<FlowPayload, List<TopologyDefinition.Isl>> flowIsls = new HashMap<>();
+    Map<String, Object> aliasedObjects = new HashMap<>();
+    Object response;
 }

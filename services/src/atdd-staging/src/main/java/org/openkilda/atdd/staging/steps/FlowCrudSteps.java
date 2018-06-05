@@ -83,6 +83,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 public class FlowCrudSteps implements En {
@@ -106,10 +107,6 @@ public class FlowCrudSteps implements En {
 
     @Autowired
     private FlowManager flowManager;
-
-    @Autowired
-    @Qualifier("topologyEngineRetryPolicy")
-    private RetryPolicy retryPolicy;
 
     @Autowired
     @Qualifier("topologyUnderTest")
@@ -188,7 +185,7 @@ public class FlowCrudSteps implements En {
                 .collect(toList());
 
         for (Flow expectedFlow : expextedFlows) {
-            ImmutablePair<Flow, Flow> flowPair = Failsafe.with(retryPolicy
+            ImmutablePair<Flow, Flow> flowPair = Failsafe.with(retryPolicy()
                     .retryWhen(null))
                     .get(() -> topologyEngineService.getFlow(expectedFlow.getFlowId()));
 
@@ -201,9 +198,8 @@ public class FlowCrudSteps implements En {
     @And("^(?:each )?flow is in UP state$")
     public void eachFlowIsInUpState() {
         for (FlowPayload flow : flows) {
-            FlowIdStatusPayload status = Failsafe.with(retryPolicy
-                    .retryIf(p -> !(p instanceof FlowIdStatusPayload)
-                            || ((FlowIdStatusPayload) p).getStatus() != FlowState.UP))
+            FlowIdStatusPayload status = Failsafe.with(retryPolicy()
+                    .retryIf(p -> p == null || ((FlowIdStatusPayload) p).getStatus() != FlowState.UP))
                     .get(() -> northboundService.getFlowStatus(flow.getId()));
 
             assertNotNull(format("The flow status for '%s' can't be retrived from Northbound.", flow.getId()), status);
@@ -410,7 +406,7 @@ public class FlowCrudSteps implements En {
     @And("^each flow can not be read from Northbound$")
     public void eachFlowCanNotBeReadFromNorthbound() {
         for (FlowPayload flow : flows) {
-            FlowPayload result = Failsafe.with(retryPolicy
+            FlowPayload result = Failsafe.with(retryPolicy()
                     .abortWhen(null)
                     .retryIf(Objects::nonNull))
                     .get(() -> northboundService.getFlow(flow.getId()));
@@ -422,12 +418,18 @@ public class FlowCrudSteps implements En {
     @And("^each flow can not be read from TopologyEngine$")
     public void eachFlowCanNotBeReadFromTopologyEngine() {
         for (FlowPayload flow : flows) {
-            ImmutablePair<Flow, Flow> result = Failsafe.with(retryPolicy
+            ImmutablePair<Flow, Flow> result = Failsafe.with(retryPolicy()
                     .abortWhen(null)
                     .retryIf(Objects::nonNull))
                     .get(() -> topologyEngineService.getFlow(flow.getId()));
 
             assertNull(format("The flow '%s' exists.", flow.getId()), result);
         }
+    }
+
+    private RetryPolicy retryPolicy() {
+        return new RetryPolicy()
+                .withDelay(2, TimeUnit.SECONDS)
+                .withMaxRetries(10);
     }
 }

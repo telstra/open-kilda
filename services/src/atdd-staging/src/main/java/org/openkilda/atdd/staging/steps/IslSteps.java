@@ -16,27 +16,39 @@
 package org.openkilda.atdd.staging.steps;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
+import org.openkilda.atdd.staging.model.topology.TopologyDefinition.Isl;
 import org.openkilda.atdd.staging.service.aswitch.ASwitchService;
 import org.openkilda.atdd.staging.service.aswitch.model.ASwitchFlow;
 import org.openkilda.atdd.staging.service.northbound.NorthboundService;
 import org.openkilda.atdd.staging.steps.helpers.TopologyUnderTest;
 import org.openkilda.messaging.info.event.IslChangeType;
+import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 
+import cucumber.api.java.en.Given;
 import cucumber.api.java.en.Then;
 import cucumber.api.java.en.When;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
+import org.apache.commons.collections4.CollectionUtils;
+import org.junit.Assume;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Random;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public class IslSteps {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(IslSteps.class);
 
     @Autowired
     private NorthboundService northboundService;
@@ -45,14 +57,12 @@ public class IslSteps {
     private ASwitchService aswitchService;
 
     @Autowired
-    @Qualifier("topologyUnderTest")
     private TopologyUnderTest topologyUnderTest;
 
-    List<TopologyDefinition.Isl> changedIsls = new ArrayList<>();
-
     @Autowired
-    @Qualifier("topologyEngineRetryPolicy")
-    private RetryPolicy retryPolicy;
+    private TopologyDefinition topologyDefinition;
+
+    List<TopologyDefinition.Isl> changedIsls = new ArrayList<>();
 
     /**
      * Breaks the connection of given ISL by removing rules from intermediate switch.
@@ -95,7 +105,7 @@ public class IslSteps {
     public void waitForIslStatus(String islStatus) {
         IslChangeType expectedIslState = IslChangeType.valueOf(islStatus);
         changedIsls.forEach(isl -> {
-            IslChangeType actualIslState = Failsafe.with(retryPolicy
+            IslChangeType actualIslState = Failsafe.with(retryPolicy()
                     .retryIf(state -> state != expectedIslState))
                     .get(() -> northboundService.getAllLinks().stream().filter(link -> {
                         PathNode src = link.getPath().get(0);
@@ -117,5 +127,41 @@ public class IslSteps {
             }).findFirst().get().getState();
             assertEquals(expectedIslState, actualIslState);
         });
+    }
+
+    @When("^request all available links from Northbound$")
+    public void requestAllAvailableLinksFromNorthbound() {
+        topologyUnderTest.setResponse(northboundService.getAllLinks());
+    }
+
+    @Then("^response has at least (\\d+) links?$")
+    public void responseHasAtLeastLink(int linksAmount) {
+        List<IslInfoData> response = (List<IslInfoData>) topologyUnderTest.getResponse();
+        assertTrue(response.size() >= linksAmount);
+    }
+
+    private RetryPolicy retryPolicy() {
+        return new RetryPolicy()
+                .withDelay(2, TimeUnit.SECONDS)
+                .withMaxRetries(10);
+    }
+
+    @Given("^select a random isl and alias it as '(.*)'$")
+    public void selectARandomIslAndAliasItAsIsl(String islAlias) {
+        List<Isl> isls = getUnaliasedIsls();
+        Random r = new Random();
+        Isl theIsl = isls.get(r.nextInt(isls.size()));
+        LOGGER.info("Selected random isl: {}", theIsl.toString());
+        topologyUnderTest.getAliasedObjects().put(islAlias, theIsl);
+    }
+
+    private List<Isl> getUnaliasedIsls() {
+        List<Isl> aliasedIsls = topologyUnderTest.getAliasedObjects().values().stream()
+                .filter(obj -> obj instanceof Isl)
+                .map(sw -> (Isl) sw).collect(Collectors.toList());
+        List<Isl> isls = (List<Isl>) CollectionUtils.subtract(
+                topologyDefinition.getIslsForActiveSwitches(), aliasedIsls);
+        Assume.assumeTrue("No unaliased isls left, unable to proceed", !isls.isEmpty());
+        return isls;
     }
 }
