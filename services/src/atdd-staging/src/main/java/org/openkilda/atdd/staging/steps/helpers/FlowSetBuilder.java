@@ -12,21 +12,23 @@
  *   See the License for the specific language governing permissions and
  *   limitations under the License.
  */
+
 package org.openkilda.atdd.staging.steps.helpers;
 
 import static java.lang.String.format;
 import static java.util.Collections.unmodifiableSet;
+
+import org.openkilda.atdd.staging.model.topology.TopologyDefinition.OutPort;
+import org.openkilda.atdd.staging.model.topology.TopologyDefinition.Switch;
+import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
+import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.messaging.payload.flow.FlowState;
 
 import com.google.common.collect.ContiguousSet;
 import com.google.common.collect.DiscreteDomain;
 import com.google.common.collect.Range;
 import com.google.common.collect.RangeSet;
 import com.google.common.collect.TreeRangeSet;
-import org.openkilda.atdd.staging.model.topology.TopologyDefinition.OutPort;
-import org.openkilda.atdd.staging.model.topology.TopologyDefinition.Switch;
-import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
-import org.openkilda.messaging.payload.flow.FlowPayload;
-import org.openkilda.messaging.payload.flow.FlowState;
 
 import java.util.HashSet;
 import java.util.Optional;
@@ -54,18 +56,37 @@ public class FlowSetBuilder {
         flows.add(flow.buildInUniqueVlan(srcPort, destPort));
     }
 
-    class FlowBuilder {
+    /**
+     * Creates a FlowPayload instance. Properly handles unique vlans for each new flow
+     * in current FlowSetBuilder. Uses available ports specified in config.
+     */
+    public FlowPayload buildWithAnyPortsInUniqueVlan(String flowId, Switch srcSwitch, Switch destSwitch,
+                                                     int bandwidth) {
+        FlowBuilder flowBuilder = new FlowBuilder(flowId, srcSwitch, destSwitch);
+        FlowPayload flow = flowBuilder.buildWithAnyPortsInUniqueVlan();
+        flow.setMaximumBandwidth(bandwidth);
+        return flow;
+    }
+
+    public class FlowBuilder {
 
         private String flowId;
         private Switch srcSwitch;
         private Switch destSwitch;
 
-        FlowBuilder(String flowId, Switch srcSwitch, Switch destSwitch) {
+        /**
+         * FlowBuilder instance for given parameters.
+         */
+        public FlowBuilder(String flowId, Switch srcSwitch, Switch destSwitch) {
             this.flowId = flowId;
             this.srcSwitch = srcSwitch;
             this.destSwitch = destSwitch;
         }
 
+        /**
+         * Creates a FlowPayload instance. Properly handles unique vlans for each new flow
+         * in current FlowSetBuilder. Uses available ports specified in config.
+         */
         FlowPayload buildWithAnyPortsInUniqueVlan() {
             // Take the switch vlan ranges as the base
             RangeSet<Integer> srcRangeSet = TreeRangeSet.create();
@@ -111,6 +132,13 @@ public class FlowSetBuilder {
             return buildFlowPayload(srcPort, srcVlan, destPort, destVlan);
         }
 
+        /**
+         * Creates a new FlowPayload instance. Properly handles unique vlans for each new flow
+         * in current FlowSetBuilder.
+         *
+         * @param srcPort port number on source switch
+         * @param destPort port number on destination switch
+         */
         FlowPayload buildInUniqueVlan(int srcPort, int destPort) {
             RangeSet<Integer> srcRangeSet = TreeRangeSet.create();
             srcRangeSet.addAll(srcSwitch.getOutPorts().stream()
@@ -211,3 +239,4 @@ public class FlowSetBuilder {
         }
     }
 }
+

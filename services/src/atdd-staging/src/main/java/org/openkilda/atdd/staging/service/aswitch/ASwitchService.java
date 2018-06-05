@@ -13,29 +13,16 @@
  *   limitations under the License.
  */
 
-package org.openkilda.atdd.staging.service.topology;
+package org.openkilda.atdd.staging.service.aswitch;
 
-import org.openkilda.messaging.info.event.PathInfoData;
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.ImmutablePair;
-import org.openkilda.topo.ITopology;
+import org.openkilda.atdd.staging.service.aswitch.model.ASwitchFlow;
 
 import java.util.List;
 
-public interface TopologyEngineService {
+public interface ASwitchService {
+    void addFlow(ASwitchFlow flow);
 
-    Integer getLinkBandwidth(String srcSwitch, String srcPort);
+    void removeFlow(ASwitchFlow flow);
 
-    List<Flow> getAllFlows();
-
-    ImmutablePair<Flow, Flow> getFlow(String flowId);
-
-    void restoreFlows();
-
-    ITopology getTopology();
-
-    String clearTopology();
-
-    List<PathInfoData> getPaths(String srcSwitch, String dstSwitch);
-
+    List<ASwitchFlow> getAllFlows();
 }

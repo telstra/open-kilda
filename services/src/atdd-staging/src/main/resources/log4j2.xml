@@ -4,10 +4,13 @@
         <Console name="STDOUT" target="SYSTEM_OUT">
             <PatternLayout pattern="%d{ISO8601} %-5p %c{1}:%L - %m%n"/>
         </Console>
+        <File name="File" fileName="target/logs/tests.log">
+            <PatternLayout pattern="%d{ISO8601} %-5p %c{1}:%L - %m%n"/>
+        </File>
     </Appenders>
     <Loggers>
         <Logger name="org.openkilda" level="DEBUG" additivity="false">
-            <AppenderRef ref="STDOUT"/>
+            <AppenderRef ref="File"/>
         </Logger>
         <Root level="INFO">
             <AppenderRef ref="STDOUT"/>

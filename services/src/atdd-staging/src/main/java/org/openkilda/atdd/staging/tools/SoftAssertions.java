@@ -13,29 +13,13 @@
  *   limitations under the License.
  */
 
-package org.openkilda.atdd.staging.service.topology;
+package org.openkilda.atdd.staging.tools;
 
-import org.openkilda.messaging.info.event.PathInfoData;
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.ImmutablePair;
-import org.openkilda.topo.ITopology;
+import org.junit.rules.ErrorCollector;
 
-import java.util.List;
+public class SoftAssertions extends ErrorCollector {
 
-public interface TopologyEngineService {
-
-    Integer getLinkBandwidth(String srcSwitch, String srcPort);
-
-    List<Flow> getAllFlows();
-
-    ImmutablePair<Flow, Flow> getFlow(String flowId);
-
-    void restoreFlows();
-
-    ITopology getTopology();
-
-    String clearTopology();
-
-    List<PathInfoData> getPaths(String srcSwitch, String dstSwitch);
-
+    public void verify() throws Throwable {
+        super.verify();
+    }
 }

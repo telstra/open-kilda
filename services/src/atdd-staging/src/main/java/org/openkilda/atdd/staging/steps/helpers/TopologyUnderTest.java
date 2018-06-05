@@ -13,29 +13,18 @@
  *   limitations under the License.
  */
 
-package org.openkilda.atdd.staging.service.topology;
+package org.openkilda.atdd.staging.steps.helpers;
 
-import org.openkilda.messaging.info.event.PathInfoData;
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.ImmutablePair;
-import org.openkilda.topo.ITopology;
+import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
+import org.openkilda.messaging.payload.flow.FlowPayload;
 
+import lombok.Data;
+
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
-public interface TopologyEngineService {
-
-    Integer getLinkBandwidth(String srcSwitch, String srcPort);
-
-    List<Flow> getAllFlows();
-
-    ImmutablePair<Flow, Flow> getFlow(String flowId);
-
-    void restoreFlows();
-
-    ITopology getTopology();
-
-    String clearTopology();
-
-    List<PathInfoData> getPaths(String srcSwitch, String dstSwitch);
-
+@Data
+public class TopologyUnderTest {
+    Map<FlowPayload, List<TopologyDefinition.Isl>> flowIsls = new HashMap<>();
 }
