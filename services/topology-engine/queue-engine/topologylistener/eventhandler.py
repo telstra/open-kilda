@@ -46,7 +46,8 @@ known_commands = ['org.openkilda.messaging.command.flow.FlowCreateRequest',
                   'org.openkilda.messaging.command.switches.SwitchRulesSyncRequest',
                   'org.openkilda.messaging.command.switches.SwitchRulesValidateRequest',
                   'org.openkilda.messaging.command.discovery.NetworkCommandData',
-                  'org.openkilda.messaging.command.FlowsSyncRequest']
+                  'org.openkilda.messaging.command.FlowsSyncRequest',
+                  'org.openkilda.messaging.te.request.LinkPropsSync']
 
 
 def main_loop():
@@ -66,7 +67,7 @@ def main_loop():
         try:
             raw_event = kafkareader.read_message(consumer)
             logger.debug('READ MESSAGE %s', raw_event)
-            event = MessageItem(**json.loads(raw_event))
+            event = MessageItem(json.loads(raw_event))
 
             if event.get_message_type() in known_messages\
                     or event.get_command() in known_commands:

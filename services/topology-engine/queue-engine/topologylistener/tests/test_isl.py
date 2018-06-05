@@ -67,7 +67,7 @@ def make_switch_add(dpid):
         'description': 'test switch',
         'controller': '172.16.0.1'}
     command = share.command(payload)
-    return messageclasses.MessageItem(**command).handle()
+    return messageclasses.MessageItem(command).handle()
 
 
 def make_switch_remove(dpid):
@@ -80,7 +80,7 @@ def make_switch_remove(dpid):
         'description': 'test switch',
         'controller': '172.16.0.1'}
     command = share.command(payload)
-    return messageclasses.MessageItem(**command).handle()
+    return messageclasses.MessageItem(command).handle()
 
 
 def make_port_down(endpoint):
@@ -91,7 +91,7 @@ def make_port_down(endpoint):
         'port_no': endpoint.port}
     command = share.command(payload)
 
-    return messageclasses.MessageItem(**command).handle()
+    return messageclasses.MessageItem(command).handle()
 
 
 def make_isl_pair(source, dest):
@@ -111,7 +111,7 @@ def make_isl_failed(source):
             {
                 'switch_id': source.dpid,
                 'port_no': source.port}]})
-    return messageclasses.MessageItem(**command).handle()
+    return messageclasses.MessageItem(command).handle()
 
 
 def make_isl_moved(isl):
@@ -132,7 +132,7 @@ def make_isl_moved(isl):
             }
         ]
     })
-    return messageclasses.MessageItem(**command).handle()
+    return messageclasses.MessageItem(command).handle()
 
 
 class TestIsl(share.AbstractTest):
@@ -457,7 +457,7 @@ class TestIsl(share.AbstractTest):
 
         message = share.command(share.isl_info_payload(isl_alpha_beta))
         message['timestamp'] = update_point_a.as_java_timestamp()
-        self.assertTrue(messageclasses.MessageItem(**message).handle())
+        self.feed_service(message)
 
         recovered = model.TimeProperty.new_from_java_timestamp(message['timestamp'])
         self.assertEquals(update_point_a.value, recovered.value)
@@ -477,7 +477,7 @@ class TestIsl(share.AbstractTest):
         self.assertNotEqual(update_point_a.value, update_point_b.value)
 
         message['timestamp'] = update_point_b.as_java_timestamp()
-        self.assertTrue(messageclasses.MessageItem(**message).handle())
+        self.feed_service(message)
         with neo4j_connect.begin() as tx:
             isl = isl_utils.fetch(tx, isl_alpha_beta)
             neo4j_connect.pull(isl)

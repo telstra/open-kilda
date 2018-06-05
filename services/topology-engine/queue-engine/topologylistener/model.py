@@ -23,6 +23,8 @@ import weakref
 
 import pytz
 
+from topologylistener import exc
+
 logger = logging.getLogger(__name__)
 
 
@@ -148,6 +150,8 @@ class Abstract(object):
             raise TypeError('{!r} got unknown arguments: "{}"'.format(
                 self, '", "'.join(sorted(extra))))
 
+        self._verify_fields()
+
     def __str__(self):
         return '<{}:{}>'.format(
             type(self).__name__,
@@ -183,11 +187,14 @@ class Abstract(object):
 
         return fields
 
+    def _verify_fields(self):
+        pass
+
     def _sort_key(self):
         raise NotImplementedError
 
     @classmethod
-    def extract_fields(cls, data):
+    def _extract_fields(cls, data):
         data = data.copy()
         fields = {}
         for name in dir(cls):
@@ -214,8 +221,14 @@ class Abstract(object):
 
 
 class TimestampMixin(Abstract):
-    time_create = Default(TimeProperty.now, produce=True)
-    time_modify = Default(TimeProperty.now, produce=True)
+    time_create = Default(None)  # type: TimeProperty
+    time_modify = Default(None)  # type: TimeProperty
+
+    def __init__(self, **fields):
+        timestamp = TimeProperty.now()
+        for name in ('time_create', 'time_modify'):
+            fields.setdefault(name, timestamp)
+        super(TimestampMixin, self).__init__(**fields)
 
     @classmethod
     def decode_java_fields(cls, data):
@@ -301,13 +314,94 @@ class IslPathNode(AbstractNetworkEndpoint):
 
 
 class AbstractLink(Abstract):
-    def __init__(self, source, dest, **fields):
+    source = Default(None)
+    dest = Default(None)
+
+    def __init__(self, **fields):
         super(AbstractLink, self).__init__(**fields)
-        self.source = source
-        self.dest = dest
+
+    def _verify_fields(self):
+        super(AbstractLink, self)._verify_fields()
+        if not self.source or not self.dest:
+            raise exc.UnacceptableDataError(
+                self, (
+                    'can\'t instantiate {} without defining both '
+                    'source=={!r} and dest=={!r} fields').format(
+                    type(self).__name__, self.source, self.dest))
 
     def _sort_key(self):
         return self.source, self.dest
+
+
+class LinkProps(TimestampMixin, AbstractLink):
+    isl_protected_fields = frozenset((
+        'time_create', 'time_modify',
+        'latency', 'speed', 'available_bandwidth', 'actual', 'status'))
+    props_converters = {
+        'cost': convert_integer}
+
+    props = Default(dict, produce=True)
+    filtered = Default(set, produce=True)
+
+    @classmethod
+    def new_from_java(cls, data):
+        data = data.copy()
+        source = NetworkEndpoint.new_from_java(data.pop('source'))
+        dest = NetworkEndpoint.new_from_java(data.pop('dest'))
+        props = data.pop('props', dict()).copy()
+        data.update(cls.decode_java_fields(data))
+        return cls(source, dest, props=props, **data)
+
+    @classmethod
+    def new_from_db(cls, data):
+        data = data.copy()
+
+        endpoints = []
+        for prefix in ('src_', 'dst_'):
+            dpid = data.pop(prefix + 'switch')
+            port = data.pop(prefix + 'port')
+            endpoints.append(NetworkEndpoint(dpid, port))
+        source, dest = endpoints
+
+        data, props = cls._extract_fields(data)
+        data.update(cls.decode_db_fields(data))
+
+        return cls(source, dest, props=props, **data)
+
+    @classmethod
+    def new_from_isl(cls, isl):
+        return cls(isl.source, isl.dest)
+
+    def __init__(self, source, dest, **fields):
+        super(LinkProps, self).__init__(source=source, dest=dest, **fields)
+
+    def props_db_view(self):
+        props = self._decode_props(self.props)
+        return props
+
+    def extract_protected_props(self):
+        filtered = {}
+        for field in self.isl_protected_fields:
+            try:
+                filtered[field] = self.props.pop(field)
+            except KeyError:
+                pass
+        return filtered
+
+    @classmethod
+    def _decode_props(cls, props):
+        for field, converter in cls.props_converters.items():
+            try:
+                value = props[field]
+            except KeyError:
+                continue
+            props[field] = converter(value)
+        return props
+
+    def pack(self):
+        fields = super(LinkProps, self).pack()
+        fields.pop('filtered')
+        return fields
 
 
 class InterSwitchLink(TimestampMixin, AbstractLink):
@@ -342,9 +436,16 @@ class InterSwitchLink(TimestampMixin, AbstractLink):
         dest = IslPathNode(link['dst_switch'], link['dst_port'])
         return cls(source, dest, link['status'])
 
+    @classmethod
+    def new_from_link_props(cls, link_props):
+        endpoints = [
+            IslPathNode(x.dpid, x.port)
+            for x in link_props.source, link_props.dest]
+        return cls(*endpoints)
+
     def __init__(self, source, dest, state=None, **fields):
         super(InterSwitchLink, self).__init__(
-            source, dest, state=state, **fields)
+            source=source, dest=dest, state=state, **fields)
 
     def ensure_path_complete(self):
         ends_count = len(filter(None, (self.source, self.dest)))

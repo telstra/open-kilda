@@ -14,6 +14,7 @@
 #
 
 import json
+import uuid
 import logging
 
 from kafka import KafkaProducer
@@ -28,9 +29,12 @@ MT_ERROR = "org.openkilda.messaging.error.ErrorMessage"
 MT_COMMAND = "org.openkilda.messaging.command.CommandMessage"
 MT_COMMAND_REPLY = "org.openkilda.messaging.command.CommandWithReplyToMessage"
 MT_INFO = "org.openkilda.messaging.info.InfoMessage"
+MT_INFO_CHUNKED = 'org.openkilda.messaging.info.ChunkedInfoMessage'
 MT_INFO_FLOW_STATUS = "org.openkilda.messaging.info.flow.FlowStatusResponse"
 MT_ERROR_DATA = "org.openkilda.messaging.error.ErrorData"
 
+MI_LINK_PROPS_RESPONSE = (
+    'org.openkilda.messaging.te.response.LinkPropsSyncResponse')
 
 
 class Abstract(model.JsonSerializable):
@@ -335,3 +339,37 @@ def send_delete_commands(nodes, correlation_id):
 
         send_to_topic(data, correlation_id, MT_COMMAND,
                       destination="WFM", topic=config.KAFKA_FLOW_TOPIC)
+
+
+def make_link_props_response(request, link_props, error=None):
+    return {
+        'request': request,
+        'link_props': link_props,
+        'error': error,
+        'clazz': MI_LINK_PROPS_RESPONSE}
+
+
+def send_link_props_response(payload, correlation_id, chunked=False):
+    if chunked:
+        send_link_props_chunked_response([payload], correlation_id)
+        return
+
+    send_to_topic(
+        payload, correlation_id, MT_INFO, destination='NORTHBOUND',
+        topic=config.KAFKA_NORTHBOUND_TOPIC)
+
+
+def send_link_props_chunked_response(batch, correlation_id):
+    next_correlation_id = uuid.uuid4()
+    for payload in batch:
+        send_to_topic(
+            payload, correlation_id, MT_INFO_CHUNKED,
+            destination='NORTHBOUND', topic=config.KAFKA_NORTHBOUND_TOPIC,
+            extra={'next_request_id': next_correlation_id})
+        correlation_id, next_correlation_id = next_correlation_id, uuid.uuid4()
+
+    # End chain marker
+    send_to_topic(
+        None, correlation_id, MT_INFO_CHUNKED,
+        destination='NORTHBOUND', topic=config.KAFKA_NORTHBOUND_TOPIC,
+        extra={'next_request_id': None})

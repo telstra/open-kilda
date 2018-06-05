@@ -24,6 +24,7 @@ from topologylistener import config
 from topologylistener import db
 from topologylistener import exc
 from topologylistener import isl_utils
+from topologylistener import link_props_utils
 import flow_utils
 import message_utils
 
@@ -52,6 +53,8 @@ MT_NETWORK_TOPOLOGY_CHANGE = (
     "org.openkilda.messaging.info.event.NetworkTopologyChange")
 CD_NETWORK = "org.openkilda.messaging.command.discovery.NetworkCommandData"
 CD_FLOWS_SYNC_REQUEST = 'org.openkilda.messaging.command.FlowsSyncRequest'
+CD_LINK_PROPS_PUT = 'org.openkilda.messaging.te.request.LinkPropsPut'
+CD_LINK_PROPS_DROP = 'org.openkilda.messaging.te.request.LinkPropsDrop'
 
 FEATURE_SYNC_OFRULES = 'sync_rules_on_activation'
 FEATURE_REROUTE_ON_ISL_DISCOVERY = 'flows_reroute_on_isl_discovery'
@@ -123,16 +126,18 @@ def read_config():
 read_config()
 
 
-class MessageItem(object):
-    def __init__(self, **kwargs):
-        self.type = kwargs.get("clazz")
-        self.payload = kwargs.get("payload", {})
-        self.destination = kwargs.get("destination","")
-        self.correlation_id = kwargs.get("correlation_id", "admin-request")
-        self.reply_to = kwargs.get("reply_to", "")
+class MessageItem(model.JsonSerializable):
+    def __init__(self, message):
+        self._raw_message = message
+
+        self.type = message.get("clazz")
+        self.payload = message.get("payload", {})
+        self.destination = message.get("destination","")
+        self.correlation_id = message.get("correlation_id", "admin-request")
+        self.reply_to = message.get("reply_to", "")
 
         try:
-            timestamp = kwargs['timestamp']
+            timestamp = message['timestamp']
             timestamp = model.TimeProperty.new_from_java_timestamp(timestamp)
         except KeyError:
             timestamp = model.TimeProperty.now()
@@ -211,6 +216,11 @@ class MessageItem(object):
             elif self.get_message_type() == MT_SYNC_REQUEST:
                 event_handled = self.sync_switch_rules()
 
+            elif self.get_message_type() in (
+                    CD_LINK_PROPS_PUT, CD_LINK_PROPS_DROP):
+                self.handle_link_props()
+                event_handled = True
+
             if not event_handled:
                 logger.error('Message was not handled correctly: message=%s',
                              self.payload)
@@ -219,6 +229,22 @@ class MessageItem(object):
         except Exception as e:
             logger.exception("Exception during handling message")
             return False
+
+    def handle_link_props(self):
+        try:
+            if self.get_message_type() == CD_LINK_PROPS_PUT:
+                self.link_props_put()
+            elif self.get_message_type() == CD_LINK_PROPS_DROP:
+                self.link_props_drop()
+            else:
+                raise exc.NotImplementedError(
+                    'link props request {}'.format(self.get_message_type()))
+        except exc.Error as e:
+            payload = message_utils.make_link_props_response(
+                self.payload, None, error=str(e))
+            message_utils.send_link_props_response(
+                payload, self.correlation_id,
+                self.get_message_type() == CD_LINK_PROPS_DROP)
 
     def activate_switch(self):
         switch_id = self.payload['switch_id']
@@ -786,3 +812,48 @@ class MessageItem(object):
             if not value:
                 continue
             self.payload[key] = value.as_java_timestamp()
+
+    def link_props_put(self):
+        import time
+        time.sleep(0.001)
+        link_props = self._unpack_link_props()
+        time.sleep(0.001)
+        protected = link_props.extract_protected_props()
+        if protected:
+            raise exc.UnacceptableDataError(
+                link_props, 'property(es) %s is can\'t be changed'.format(
+                    ', '.join(repr(x) for x in sorted(protected))))
+
+        with graph.begin() as tx:
+            time.sleep(0.001)
+            link_props_utils.create_if_missing(tx, link_props)
+            time.sleep(0.001)
+            link_props_utils.set_props_and_propagate_to_isl(tx, link_props)
+
+            actual_link_props = link_props_utils.read(tx, link_props)
+
+        payload = message_utils.make_link_props_response(
+            self.payload, actual_link_props)
+        message_utils.send_link_props_response(payload, self.correlation_id)
+
+    def link_props_drop(self):
+        lookup_mask = self._unpack_link_props(key='lookup_mask')
+        with graph.begin() as tx:
+            removed_records = link_props_utils.drop_by_mask(tx, lookup_mask)
+            for link_props in removed_records:
+                isl = model.InterSwitchLink.new_from_link_props(link_props)
+                isl_utils.del_props(tx, isl, link_props.props)
+
+        response_batch = [
+            message_utils.make_link_props_response(self.payload, x)
+            for x in removed_records]
+        message_utils.send_link_props_chunked_response(
+            response_batch, self.correlation_id)
+
+    def _unpack_link_props(self, key='link_props'):
+        try:
+            link_props = model.LinkProps.new_from_java(
+                self.payload[key])
+        except (KeyError, ValueError, TypeError) as e:
+            raise exc.MalformedInputError(self._raw_message, e)
+        return link_props

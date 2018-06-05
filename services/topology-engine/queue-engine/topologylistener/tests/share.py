@@ -28,10 +28,38 @@ log = logging.getLogger(__name__)
 dpid_test_marker = 0xfffe000000000000
 dpid_protected_bits = 0xffffff0000000000
 
+dpid_test_marker = 0xfffe000000000000
+dpid_protected_bits = 0xffffff0000000000
+
 
 def exec_isl_discovery(isl, **fields):
     payload = isl_info_payload(isl, **fields)
-    return messageclasses.MessageItem(**command(payload)).handle()
+    return messageclasses.MessageItem(command(payload)).handle()
+
+
+def link_props_request(link_props):
+    return {
+        'source': {
+            'switch-id': link_props.source.dpid,
+            'port-id': link_props.source.port},
+        'dest': {
+            'switch-id': link_props.dest.dpid,
+            'port-id': link_props.dest.port},
+        'props': link_props.props,
+        'time_create': link_props.time_create.as_java_timestamp(),
+        'time_modify': link_props.time_modify.as_java_timestamp()}
+
+
+def link_props_put_payload(request):
+    return {
+        'link_props': request,
+        'clazz': messageclasses.CD_LINK_PROPS_PUT}
+
+
+def link_props_drop_payload(request):
+    return {
+        'lookup_mask': request,
+        'clazz': messageclasses.CD_LINK_PROPS_DROP}
 
 
 def isl_info_payload(isl, **fields):
@@ -181,6 +209,14 @@ class AbstractTest(unittest.TestCase):
     def drop_persistent_data(self):
         with env.neo4j_connect.begin() as tx:
             clean_neo4j_test_data(tx)
+
+    def feed_service(self, message, can_fail=False):
+        result = messageclasses.MessageItem(message).handle()
+        if not can_fail:
+            self.assertTrue(result)
+
+    def open_neo4j_session(self):
+        return env.neo4j_connect.begin()
 
 
 class KafkaProducerStub(object):
