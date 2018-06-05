@@ -15,16 +15,25 @@
 
 package org.openkilda.messaging.nbtopology.request;
 
-import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.model.NetworkEndpointMask;
 import org.openkilda.messaging.nbtopology.annotations.ReadRequest;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Getter;
 
-@JsonIgnoreProperties(ignoreUnknown = true)
-public abstract class BaseRequest extends CommandData {
+@ReadRequest
+@Getter
+public class LinkPropsGet extends LinksBaseRequest {
 
-    public boolean isReadRequest() {
-        return this.getClass().isAnnotationPresent(ReadRequest.class);
+    @JsonProperty("source")
+    private NetworkEndpointMask source;
+
+    @JsonProperty("destination")
+    private NetworkEndpointMask destination;
+
+    public LinkPropsGet(@JsonProperty("source") NetworkEndpointMask source,
+                        @JsonProperty("destination") NetworkEndpointMask destination) {
+        this.source = source;
+        this.destination = destination;
     }
-
 }

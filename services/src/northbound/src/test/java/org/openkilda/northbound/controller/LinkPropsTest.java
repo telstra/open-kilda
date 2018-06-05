@@ -117,7 +117,7 @@ public class LinkPropsTest extends NorthboundBaseTest {
         mockServer.verify();
         assertThat(result.size(), is(1));
         lpdto = result.get(0);
-        assertThat(lpdto.getDst_switch(), is("de:ad:be:ef:02:11:22:02"));
+        assertThat(lpdto.getDstSwitch(), is("de:ad:be:ef:02:11:22:02"));
         assertThat(lpdto.getProperty("cost"), is("1"));
     }
 

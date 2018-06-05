@@ -15,8 +15,8 @@
 
 package org.openkilda.northbound.utils;
 
+import org.openkilda.messaging.info.ChunkedInfoMessage;
 import org.openkilda.messaging.info.InfoData;
-import org.openkilda.messaging.nbtopology.response.ChunkedInfoMessage;
 import org.openkilda.northbound.messaging.MessageConsumer;
 
 import org.apache.commons.lang3.StringUtils;

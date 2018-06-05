@@ -16,38 +16,32 @@
 package org.openkilda.messaging.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
+import lombok.Value;
 
-public class NetworkEndpoint extends AbstractNetworkEndpoint {
+import java.io.Serializable;
+import java.util.Map;
+
+@Value
+public class LinkProps implements Serializable {
+    @JsonProperty("source")
+    private NetworkEndpoint source;
+
+    @JsonProperty("dest")
+    private NetworkEndpoint dest;
+
+    @JsonProperty("props")
+    Map<String, String> props;
+
     @Builder
     @JsonCreator
-    public NetworkEndpoint(
-            @JsonProperty("switch-id") String datapath,
-            @JsonProperty("port-id") Integer portNumber) {
-        super(datapath, portNumber);
-    }
-
-    public NetworkEndpoint(NetworkEndpoint that) {
-        this(that.getDatapath(), that.getPortNumber());
-    }
-
-    @Override
-    protected void validate() {
-        validateDatapath();
-        validatePortNumber();
-    }
-
-    @JsonIgnore
-    @Deprecated
-    public String getSwitchDpId() {
-        return getDatapath();
-    }
-
-    @JsonIgnore
-    @Deprecated
-    public Integer getPortId() {
-        return getPortNumber();
+    public LinkProps(
+            @JsonProperty("source") NetworkEndpoint source,
+            @JsonProperty("dest") NetworkEndpoint dest,
+            @JsonProperty("props") Map<String, String> props) {
+        this.source = source;
+        this.dest = dest;
+        this.props = props;
     }
 }

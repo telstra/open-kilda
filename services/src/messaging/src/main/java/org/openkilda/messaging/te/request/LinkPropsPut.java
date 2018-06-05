@@ -13,41 +13,24 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.model;
+package org.openkilda.messaging.te.request;
+
+import org.openkilda.messaging.model.LinkProps;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
+import lombok.Value;
 
-public class NetworkEndpoint extends AbstractNetworkEndpoint {
+@Value
+public class LinkPropsPut extends LinkPropsRequest {
+    @JsonProperty("link_props")
+    LinkProps linkProps;
+
     @Builder
     @JsonCreator
-    public NetworkEndpoint(
-            @JsonProperty("switch-id") String datapath,
-            @JsonProperty("port-id") Integer portNumber) {
-        super(datapath, portNumber);
-    }
-
-    public NetworkEndpoint(NetworkEndpoint that) {
-        this(that.getDatapath(), that.getPortNumber());
-    }
-
-    @Override
-    protected void validate() {
-        validateDatapath();
-        validatePortNumber();
-    }
-
-    @JsonIgnore
-    @Deprecated
-    public String getSwitchDpId() {
-        return getDatapath();
-    }
-
-    @JsonIgnore
-    @Deprecated
-    public Integer getPortId() {
-        return getPortNumber();
+    public LinkPropsPut(
+            @JsonProperty("link_props") LinkProps linkProps) {
+        this.linkProps = linkProps;
     }
 }

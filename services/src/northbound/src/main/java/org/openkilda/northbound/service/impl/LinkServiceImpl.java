@@ -111,17 +111,17 @@ public class LinkServiceImpl implements LinkService {
         UriComponentsBuilder builder = linkPropsBuilder.cloneBuilder();
         // TODO: pull out the URI builder .. to facilitate unit testing
         if (keys != null) {
-            if (!keys.getSrc_switch().isEmpty()) {
-                builder.queryParam("src_switch", keys.getSrc_switch());
+            if (!keys.getSrcSwitch().isEmpty()) {
+                builder.queryParam("src_switch", keys.getSrcSwitch());
             }
-            if (!keys.getSrc_port().isEmpty()) {
-                builder.queryParam("src_port", keys.getSrc_port());
+            if (keys.getSrcPort() != null) {
+                builder.queryParam("src_port", keys.getSrcPort());
             }
-            if (!keys.getDst_switch().isEmpty()) {
-                builder.queryParam("dst_switch", keys.getDst_switch());
+            if (!keys.getDstSwitch().isEmpty()) {
+                builder.queryParam("dst_switch", keys.getDstSwitch());
             }
-            if (!keys.getDst_port().isEmpty()) {
-                builder.queryParam("dst_port", keys.getDst_port());
+            if (keys.getDstPort() != null) {
+                builder.queryParam("dst_port", keys.getDstPort());
             }
         }
         String fullUri = builder.build().toUriString();
