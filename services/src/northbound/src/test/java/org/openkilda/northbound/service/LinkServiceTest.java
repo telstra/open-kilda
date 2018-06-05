@@ -23,13 +23,23 @@ import static org.mockito.Mockito.mock;
 
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.info.ChunkedInfoMessage;
+import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.model.LinkProps;
+import org.openkilda.messaging.model.LinkPropsMask;
 import org.openkilda.messaging.model.NetworkEndpoint;
+import org.openkilda.messaging.model.NetworkEndpointMask;
 import org.openkilda.messaging.nbtopology.response.LinkPropsData;
+import org.openkilda.messaging.te.request.LinkPropsDrop;
+import org.openkilda.messaging.te.request.LinkPropsPut;
+import org.openkilda.messaging.te.request.LinkPropsRequest;
+import org.openkilda.messaging.te.response.LinkPropsResponse;
 import org.openkilda.northbound.MessageExchanger;
 import org.openkilda.northbound.dto.LinkPropsDto;
 import org.openkilda.northbound.messaging.MessageConsumer;
 import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.service.impl.LinkServiceImpl;
+import org.openkilda.northbound.utils.CorrelationIdFactory;
+import org.openkilda.northbound.utils.CorrelationIdPredictableFactory;
 import org.openkilda.northbound.utils.RequestCorrelationId;
 
 import org.junit.Before;
@@ -44,10 +54,15 @@ import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 
 @RunWith(SpringRunner.class)
 public class LinkServiceTest {
+    private int requestIdIndex = 0;
+
+    @Autowired
+    private CorrelationIdFactory idFactory;
 
     @Autowired
     private LinkService linkService;
@@ -58,6 +73,10 @@ public class LinkServiceTest {
     @Before
     public void reset() {
         messageExchanger.resetMockedResponses();
+
+        String lastRequestId = idFactory.produceChained("dummy");
+        lastRequestId = lastRequestId.substring(0, lastRequestId.indexOf(':')).trim();
+        requestIdIndex = Integer.valueOf(lastRequestId) + 1;
     }
 
     @Test
@@ -86,10 +105,73 @@ public class LinkServiceTest {
         assertFalse("List of link props should be empty", result.isEmpty());
 
         LinkPropsDto dto = result.get(0);
-        assertThat(dto.getSrcSwitch(), is(linkProps.getSource().getSwitchDpId()));
-        assertThat(dto.getSrcPort(), is(linkProps.getSource().getPortId()));
-        assertThat(dto.getDstSwitch(), is(linkProps.getDestination().getSwitchDpId()));
-        assertThat(dto.getDstPort(), is(linkProps.getDestination().getPortId()));
+        assertThat(dto.getSrcSwitch(), is(linkProps.getSource().getDatapath()));
+        assertThat(dto.getSrcPort(), is(linkProps.getSource().getPortNumber()));
+        assertThat(dto.getDstSwitch(), is(linkProps.getDestination().getDatapath()));
+        assertThat(dto.getDstPort(), is(linkProps.getDestination().getPortNumber()));
+    }
+
+    @Test
+    public void putLinkProps() throws Exception {
+        final String correlationId = getClass().getCanonicalName();
+
+        HashMap<String, String> requestProps = new HashMap<>();
+        requestProps.put("test", "value");
+        LinkProps linkProps = new LinkProps(
+                new NetworkEndpoint("ff:fe:00:00:00:00:00:01", 8),
+                new NetworkEndpoint("ff:fe:00:00:00:00:00:02", 9),
+                requestProps);
+        LinkPropsRequest request = new LinkPropsPut(linkProps);
+
+        LinkPropsResponse payload = new LinkPropsResponse(request, linkProps, null);
+        String subCorrelationId = idFactory.produceChained(String.valueOf(requestIdIndex++), correlationId);
+        messageExchanger.mockResponse(new InfoMessage(payload, System.currentTimeMillis(), subCorrelationId));
+
+        LinkPropsDto inputItem = new LinkPropsDto(
+                linkProps.getSource().getDatapath(), linkProps.getSource().getPortNumber(),
+                linkProps.getDest().getDatapath(), linkProps.getDest().getPortNumber(),
+                requestProps);
+
+        RequestCorrelationId.create(correlationId);
+        LinkPropsResult result = linkService.setLinkProps(Collections.singletonList(inputItem));
+
+        assertThat(result.getFailures(), is(0));
+        assertThat(result.getSuccesses(), is(1));
+        assertThat(result.getMessages().length, is(0));
+    }
+
+    @Test
+    public void dropLinkProps() throws Exception {
+        final String correlationId = getClass().getCanonicalName();
+
+        LinkPropsDto input = new LinkPropsDto(
+                "ff:fe:00:00:00:00:00:01", 8, null, null, null);
+
+        LinkPropsDrop request = new LinkPropsDrop(new LinkPropsMask(
+                new NetworkEndpointMask(input.getSrcSwitch(), input.getSrcPort()),
+                new NetworkEndpointMask(input.getDstSwitch(), input.getDstPort())));
+
+        LinkProps linkProps = new LinkProps(
+                new NetworkEndpoint(input.getSrcSwitch(), input.getSrcPort()),
+                new NetworkEndpoint("ff:fe:00:00:00:00:00:02", 9),
+                new HashMap<>());
+
+        LinkPropsResponse payload = new LinkPropsResponse(request, linkProps, null);
+
+        String[] requestIdBatch = new String[] {
+                idFactory.produceChained(String.valueOf(requestIdIndex++), correlationId),
+                idFactory.produceChained(String.valueOf(requestIdIndex++), correlationId)};
+        messageExchanger.mockResponse(new ChunkedInfoMessage(
+                payload, System.currentTimeMillis(), requestIdBatch[0], requestIdBatch[1]));
+        messageExchanger.mockResponse(new ChunkedInfoMessage(
+                null, System.currentTimeMillis(), requestIdBatch[1], null));
+
+        RequestCorrelationId.create(correlationId);
+        LinkPropsResult result = linkService.delLinkProps(Collections.singletonList(input));
+
+        assertThat(result.getFailures(), is(0));
+        assertThat(result.getSuccesses(), is(1));
+        assertThat(result.getMessages().length, is(0));
     }
 
     @TestConfiguration
@@ -98,6 +180,10 @@ public class LinkServiceTest {
             "org.openkilda.northbound.utils"})
     @PropertySource({"classpath:northbound.properties"})
     static class Config {
+        @Bean
+        public CorrelationIdFactory idFactory() {
+            return new CorrelationIdPredictableFactory();
+        }
 
         @Bean
         public MessageExchanger messageExchanger() {
@@ -124,5 +210,4 @@ public class LinkServiceTest {
             return new LinkServiceImpl();
         }
     }
-
 }

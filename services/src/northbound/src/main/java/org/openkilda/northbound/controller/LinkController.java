@@ -94,7 +94,7 @@ public class LinkController {
      * @param keysAndProps if null, get all link props. Otherwise, the link props that much the primary keys.
      * @return list of link properties.
      */
-    @ApiOperation(value = "Get all link properties (static), based on arguments.", response = LinkPropsResult.class)
+    @ApiOperation(value = "Create/Update link properties", response = LinkPropsResult.class)
     @RequestMapping(path = "/link/props",
             method = RequestMethod.PUT,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
@@ -110,7 +110,7 @@ public class LinkController {
      * @param keysAndProps if null, get all link props. Otherwise, the link props that much the primary keys.
      * @return list of link properties.
      */
-    @ApiOperation(value = "Get all link properties (static), based on arguments.", response = LinkPropsResult.class)
+    @ApiOperation(value = "Delete link properties (static), based on arguments.", response = LinkPropsResult.class)
     @RequestMapping(path = "/link/props",
             method = RequestMethod.DELETE,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)

@@ -50,6 +50,7 @@ public class ResponseCollector<T extends InfoData> {
             message = messageConsumer.poll(nextRequest);
             nextRequest = message.getNextRequestId();
 
+            @SuppressWarnings("unchecked")
             T response = (T) message.getData();
             if (response != null) {
                 result.add(response);
