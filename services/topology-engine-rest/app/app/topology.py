@@ -13,14 +13,16 @@
 #   limitations under the License.
 #
 
+import ConfigParser
+import datetime
+import logging
+import json
+
 from flask import Flask, flash, redirect, render_template, request, session, abort, url_for, Response, jsonify
 from flask_login import LoginManager, UserMixin, login_required, login_user, logout_user, current_user
 import py2neo
+import pytz
 from werkzeug import exceptions as http_errors
-
-import logging
-import json
-import ConfigParser
 
 from app import application
 from . import neo4j_tools
@@ -31,6 +33,9 @@ config = ConfigParser.RawConfigParser()
 config.read('topology_engine_rest.ini')
 
 neo4j_connect = neo4j_tools.connect(config)
+
+DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%fZ'
+UNIX_EPOCH = datetime.datetime(1970, 1, 1, 0, 0, 0, 0, pytz.utc)
 
 
 @application.route('/api/v1/topology/network')
@@ -516,7 +521,7 @@ def format_isl(link):
     :param link: A valid Link returned from the db
     :return: A dictionary in the form of org.openkilda.messaging.info.event.IslInfoData
     """
-    isl =  {
+    isl = {
         'clazz': 'org.openkilda.messaging.info.event.IslInfoData',
         'latency_ns': int(link['latency']),
         'path': [{'switch_id': link['src_switch'],
@@ -529,7 +534,9 @@ def format_isl(link):
                   'segment_latency': 0}],
         'speed': link['speed'],
         'state': get_isl_state(link),
-        'available_bandwidth': link['available_bandwidth']
+        'available_bandwidth': link['available_bandwidth'],
+        'time_create': format_db_datetime(link['time_create']),
+        'time_modify': format_db_datetime(link['time_modify'])
     }
 
     # fields that have already been used .. should find easier way to do this..
@@ -689,3 +696,15 @@ def build_path_nodes(link, seq_id):
 # codebase
 def is_forward_cookie(cookie):
     return int(cookie) & 0x4000000000000000
+
+
+def format_db_datetime(value):
+    if not value:
+        return None
+
+    value = datetime.datetime.strptime(value, DATETIME_FORMAT)
+    value = value.replace(tzinfo=pytz.utc)
+
+    from_epoch = value - UNIX_EPOCH
+    seconds = from_epoch.total_seconds()
+    return seconds * 1000 + from_epoch.microseconds // 1000

@@ -35,7 +35,8 @@ RUN pip install \
     jsonschema \
     py2neo \
     requests \
-    python-logstash
+    python-logstash \
+    pytz
 ADD nginx/sites/ /etc/nginx/sites-available/
 ADD supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 ADD db/database.db /var/data/

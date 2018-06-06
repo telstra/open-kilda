@@ -12,14 +12,19 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 #
+
 import collections
+import logging
 import os
+import pprint
 import socket
 
 import py2neo
 
 from topologylistener import config
 from topologylistener import exc
+
+log = logging.getLogger(__name__)
 
 
 def create_p2n_driver():
@@ -28,6 +33,10 @@ def create_p2n_driver():
         os.environ.get('neo4jpass') or config.get('neo4j', 'pass'),
         os.environ.get('neo4jhost') or config.get('neo4j', 'host')))
     return graph
+
+
+def log_query(marker, q, p):
+    log.debug('NEO4J QUERY %s:\n%s\nparams:\n%s', marker, q, pprint.pformat(p))
 
 
 def neo_id(db_object):
@@ -50,7 +59,9 @@ def format_fields(payload, prefix, field_prefix=''):
 def escape_fields(payload, raw_values=False):
     result = []
     for field, value in payload.items():
-        if not raw_values:
+        if value is None:
+            value = 'null'
+        elif not raw_values:
             value = py2neo.cypher_repr(value)
         result.append(
                 (py2neo.cypher_escape(field), value))
