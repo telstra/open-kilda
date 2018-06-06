@@ -4,33 +4,36 @@ function stopParentDelegation(e) {
 }
 function reloadTabData(link, self, activeLink) {
     if (link == "#userTab") {
+    	$(".load-text").text('');
+    	$("#loading").css("display", "block");
         $(link).load('templates/userManagement/userList.html');
         $("#user-details").html('');
         userService.getUsers().then(function(userData) {
-            if (userData && userData.length) {
-                $("#loading").css("display", "none");
+            if (userData && userData.length) {               
                 userService.showAllUsers(userData);
                 //hasPermission();
             }
         });
         activeLink = 'user';
     } else if (link == "#roleTab") {
+    	$(".load-text").text('');
+    	$("#loading").css("display", "block");
         $(link).load('templates/userManagement/roleList.html');
         $("#role-details").html('');
         roleService.getRoles().then(function(roleData) {
-            if (roleData && roleData.length) {
-                $("#loading").css("display", "none");
+            if (roleData && roleData.length) {                
                 roleService.showAllRoles(roleData);
                 //hasPermission();
             }
         });
         activeLink = 'role';
     } else if (link == "#permissionTab") {
+    	$(".load-text").text('');
+    	$("#loading").css("display", "block");
         $(link).load('templates/userManagement/permissionList.html');
         $("#permission-details").html('');
         permissionService.getPermissions().then(function(permissionData) {
-            if (permissionData && permissionData.length) {
-                $("#loading").css("display", "none");
+            if (permissionData && permissionData.length) {                
                 permissionService.showAllPermissions(permissionData);
                 // hasPermission();
             }
@@ -39,12 +42,12 @@ function reloadTabData(link, self, activeLink) {
     }
 
 }
-$(document).ready(function() {
+$(document).ready(function() {	    
+	
     $("#userTab").load('templates/userManagement/userList.html');
     $("#user-details").html('');
     userService.getUsers().then(function(userData) {
-        if (userData && userData.length) {
-            $("#loading").css("display", "none");
+        if (userData && userData.length) {           
             userService.showAllUsers(userData);
             //hasPermission();
         }
@@ -52,25 +55,27 @@ $(document).ready(function() {
     // add user model
     $(document).on('click', "#addUserBtn", function() {
         /* Reset Form */
+    	$("#loading").css("display", "block");
         $("#addUserForm").find(".errorInput").removeClass("errorInput");
         $("#addUserForm").find(".error").hide();
         $("#user_id").parent().remove(); //remove existing hidden permission id input
         $("#addUserForm #submitBtn").text("Add User");
         $("#addUserForm #email").removeAttr("disabled");
-
+        $("input[name=email]").focus();
         //Clear input fields
         document.userForm.name.value = '';
         document.userForm.email.value = '';
-
-
-        userService.rolesToSelect();
         $("#userTabData").hide();
         $("#userForm").show();
+        $("input[name=email]").focus();
+        userService.rolesToSelect();
+        
     });
 
     // add permission model
     $(document).on('click', "#addPermissionBtn", function() {
         /* Reset Form */
+    	$("#loading").css("display", "block");
         $("#permissionForm").find(".errorInput").removeClass("errorInput");
         $("#permissionForm").find(".error").hide();
 
@@ -79,19 +84,22 @@ $(document).ready(function() {
         document.permissionForm.description.value = '';
         $("#permission_id").parent().remove(); //remove existing hidden permission id input
         $("#addPermissionForm #submitBtn").text("Add Permission");
-
+        $("#loading").css("display", "none");
         $("#permissionTabData").hide();
         $("#permissionForm").show();
         $("#addPermissionForm").attr("onsubmit", "permissionService.addPermission(event)");
         $("#pname, #pdescription").attr("readonly", false);
+        $("input[name=pname]").focus();
         $("#padmin").show();
         $('#chkAdminPermission').prop('checked', false);
         $("#permissionRoleAssign").hide();
+        
     });
 
     // add role model
     $(document).on('click', "#addRoleBtn", function() {
         /*reset form*/
+    	$("#loading").css("display", "block");
         $("#addRoleForm").find(".errorInput").removeClass("errorInput");
         $("#addRoleForm").find(".error").hide();
 
@@ -106,7 +114,8 @@ $(document).ready(function() {
         $("#roleTabData").hide();
         $("#roleForm").show();
         $("#addRoleForm").attr("onsubmit", "roleService.addRole(event)");
-        $("#roleUsersAssign").hide();
+        $("#roleUsersAssign").hide();  
+        $("input[name=rname]").focus();        
         $("#rolePermissionAssign").show();
         $("#rname, #rdescription").attr("readonly", false);
     });
@@ -157,26 +166,22 @@ $(document).ready(function() {
         $("#" + activeTab + "Form").hide();
         return false;
     });
-
-    $(document.body).on("change", "#userRoleToSelect", function() {
-        if ((this.value).trim() != '') {
-            $("#roleError").hide();
-            $('ul.select2-choices').removeClass("errorInput"); // Remove Error border
-        } else {
-            $("#roleError").show();
-            $('ul.select2-choices').addClass("errorInput"); // Add Error border
-        }
+    /****All select change event *****/
+    $(document).on('change', "#userRoleToSelect, #roleUserSelect", function() {    	
+    	var selectId = $(this).attr('id');
+    	if($(this).val().length > 0)
+    	{
+    		$('#'+selectId+'Error').hide();	
+    		$('.select2-selection ').removeClass("errorInput");	
+    	}
+    	else
+    	{
+    		$('#'+selectId+'Error').show();	
+    		$('.select2-selection ').addClass("errorInput");
+    	}	
+    	
     });
-    $(document.body).on("change", "#rolePermissionSelect", function() {
-        if ((this.value).trim() != '') {
-            $("#permissionError").hide();
-            $('ul.select2-choices').removeClass("errorInput"); // Remove Error border
-        } else {
-            $("#permissionError").show();
-            $('ul.select2-choices').addClass("errorInput"); // Add Error border
-        }
-    });
-
+   
 });
 
 //Function to convert string into capitalize format
@@ -250,8 +255,8 @@ function validatePassword(pwd) {
 }
 
 function validateEmail(email) {
-    var re = /^\S+@(([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,6})$/;
-    return re.test(String(email).toLowerCase());
+    var re = /^([a-zA-Z0-9_\.\-])+\@(([a-zA-Z0-9\-])+\.)+([a-zA-Z0-9]{2,4})+$/;
+    return re.test(email);
 }
 
 function userManagementSearch(idname, $event) {

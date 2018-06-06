@@ -1,10 +1,12 @@
 package org.usermanagement.service;
 
+import org.openkilda.constants.Status;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -89,7 +91,7 @@ public class RoleService {
 			throw new RequestValidationException(messageUtil.getAttributeInvalid("role_id", roleId + ""));
 		}
 
-		List<UserEntity> userEntityList = userRepository.findByRoles_roleId(roleId);
+		Set<UserEntity> userEntityList = userRepository.findByRoles_roleId(roleId);
 		if (userEntityList.size() > 0) {
 			String users = "";
 			for (UserEntity userEntity : userEntityList) {
@@ -106,7 +108,7 @@ public class RoleService {
 
 		PermissionEntity permissionEntity = permissionRepository.findByPermissionId(permissionId);
 
-		List<RoleEntity> roleEntityList = roleRepository.findByPermissions_permissionId(permissionId);
+		Set<RoleEntity> roleEntityList = roleRepository.findByPermissions_permissionId(permissionId);
 
 		return RoleConversionUtil.toPermissionByRole(roleEntityList, permissionEntity);
 	}
@@ -121,15 +123,17 @@ public class RoleService {
 		if (ValidatorUtil.isNull(roleEntity)) {
 			throw new RequestValidationException(messageUtil.getAttributeInvalid("role_id", roleId + ""));
 		}
-		Set<PermissionEntity> permissionEntities = null;
-		if (!ValidatorUtil.isNull(role.getPermissionId())) {
-			permissionEntities = new HashSet<>();
+
+		if (role.getPermissionId() != null) {
+			roleEntity.getPermissions().clear();
 			for (Long permissionId : role.getPermissionId()) {
 				PermissionEntity permissionEntity = permissionRepository.findByPermissionId(permissionId);
-				permissionEntities.add(permissionEntity);
+				if (permissionEntity != null) {
+					roleEntity.getPermissions().add(permissionEntity);
+				}
 			}
 		}
-		roleEntity = RoleConversionUtil.toUpateRoleEntity(role, roleEntity, permissionEntities);
+		roleEntity = RoleConversionUtil.toUpateRoleEntity(role, roleEntity);
 		roleRepository.save(roleEntity);
 
 		return RoleConversionUtil.toRole(roleEntity);
@@ -137,24 +141,34 @@ public class RoleService {
 	}
 
 	@Transactional(propagation = Propagation.REQUIRED, readOnly = false)
-	public Permission assignRoleByPermissionId(final Long permissionId, final Permission permissionRequest) {
-
+	public Permission assignRoleByPermissionId(final Long permissionId, final Permission request) {
 		PermissionEntity permissionEntity = permissionRepository.findByPermissionId(permissionId);
+		permissionEntity.getRoles().clear();
 
-		for (Role role : permissionRequest.getRoles()) {
-			RoleEntity roleEntity = roleRepository.findByroleId(role.getRoleId());
-			Set<PermissionEntity> permissionEntities = roleEntity.getPermissions();
-			permissionEntities.add(permissionEntity);
-
-			roleRepository.save(roleEntity);
+		if (request.getRoles() != null) {
+			for (Role role : request.getRoles()) {
+				RoleEntity roleEntity = roleRepository.findByroleId(role.getRoleId());
+				permissionEntity.getRoles().add(roleEntity);
+			}
 		}
+		permissionRepository.save(permissionEntity);
 
-		List<RoleEntity> roleEntityList = roleRepository.findByPermissions_permissionId(permissionId);
-		if (ValidatorUtil.isNull(roleEntityList)) {
-			throw new RequestValidationException(messageUtil.getAttributeInvalid("permission_id", permissionId + ""));
-		}
-
-		return RoleConversionUtil.toPermissionByRole(roleEntityList, permissionEntity);
+		return RoleConversionUtil.toPermissionByRole(permissionEntity.getRoles(), permissionEntity);
 	}
-
+	
+	@Transactional(propagation = Propagation.REQUIRED, readOnly = false)
+	public List<Role> getRoleByName(final Set<String> role) {
+		List<Role> roles = new ArrayList<Role>();
+		List<RoleEntity> roleEntities = roleRepository.findByNameIn(role);
+		if (ValidatorUtil.isNull(roleEntities)) {
+			throw new RequestValidationException(messageUtil.getAttributeInvalid("role", role + ""));
+		}
+		for (RoleEntity roleEntity : roleEntities) {
+			if (Status.ACTIVE.getStatusEntity().getStatus()
+					.equalsIgnoreCase(roleEntity.getStatusEntity().getStatus())) {
+				roles.add(RoleConversionUtil.toRole(roleEntity));
+			}
+		}
+		return roles;
+	}
 }

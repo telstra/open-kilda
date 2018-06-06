@@ -69,6 +69,7 @@ h1 {
 input:focus {
     border: 1px solid #00ccbe !important;
 }
+
 .main-header {
 	background: #1b1f26;
 	height: 55px;
@@ -214,6 +215,20 @@ input:focus {
 
 .sidebar ul li a i.icon-switch {
 	background: url(../images/icon-switch.png) no-repeat 0 0;
+	background-size: 18px auto;
+	display: inline-block;
+	width: 18px;
+	height: 18px;
+}
+.sidebar ul li a i.icon-usermanagement {
+	background: url(../images/icon-usermamagement.png) no-repeat 0 0;
+	background-size: 18px auto;
+	display: inline-block;
+	width: 18px;
+	height: 18px;
+}
+.sidebar ul li a i.icon-logactivity {
+	background: url(../images/icon-logactivity.png) no-repeat 0 0;
 	background-size: 18px auto;
 	display: inline-block;
 	width: 18px;
@@ -1309,7 +1324,7 @@ table.dataTable .flowDataRow.down-state .divTableCell:first-child:before {
 
 table.dataTable.order-column tbody tr>.sorting_1, table.dataTable.order-column tbody tr>.sorting_2, table.dataTable.order-column tbody tr>.sorting_3, table.dataTable.display tbody tr>.sorting_1, table.dataTable.display tbody tr>.sorting_2, table.dataTable.display tbody tr>.sorting_3,
 table.dataTable.display tbody tr.odd>.sorting_1, table.dataTable.order-column.stripe tbody tr.odd>.sorting_1 {
-	background: none;
+	background: none!important;
 }
 
 table.dataTable .flowDataRow.even {
@@ -1473,6 +1488,7 @@ table.dataTable .divTableCell {
     background-position: right 10px;
     padding: 10px 20px 10px 18px;
     overflow: hidden;
+    vertical-align: middle;
 }
 
 
@@ -2472,6 +2488,9 @@ i.fa.fa-undo.fa-stack-2x {
 .viewLayout .viewDetail {
 	margin: 10px;
 }
+.viewLayout .viewDetail label{
+	margin: 10px;
+}
 table.dataTable .wrapPermission{
 	white-space: normal;
 }
@@ -2482,7 +2501,10 @@ th.sorting:last-child {
 {
 	display:none;
 }
-
+#chkAdminPermission
+{
+	margin-top:10px;
+}
 #permissionTable .flowDataRow,#roleTable .flowDataRow,#userTable .flowDataRow{
 	cursor:default;
 }
@@ -2514,28 +2536,151 @@ span.mandatory-text.text-danger {
 .permissionCol{
 	white-space:normal;
 }
-.permissionCol .badge
+.permissionCol .badge ,.selectedFilter span.badge.badge-secondary
 {
-	margin:2px 0;
+	margin:2px;
+	line-height: 1.5;
+    font-size: 15px;
+    font-weight: 100;
 }
 #validate_flow_btn{
 	float:right;
 }
 
-.select2-container--default .select2-selection--multiple {
-	float: left;
-	width: 100%;
+.viewRole.permissionCol {
+	display: block;
+    width: 100%;
+    padding: 6px 12px;
+    font-size: 14px;
+    line-height: 1.42857143;
+    color: #555;
+    background-color: #eee;
+    background-image: none;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-shadow: inset 0 1px 1px rgba(0,0,0,.075);
+    overflow:hidden;
+	
+}
+
+.select2-container--default .select2-selection--multiple .select2-selection__rendered {
+	margin: 0;
+	padding: 0;
 	border: 1px solid rgb(169, 169, 169);
+	box-shadow: inset 0 1px 1px rgba(0,0,0,.075);
+}
+
+.select2-container--default .select2-selection--multiple {
 	border-radius: 0;
+	min-height: inherit;
+	border: none!important;
+}
+
+.select2-container--default.select2-container--focus .select2-selection--multiple {
+	border: none!important;
+}
+
+.select2-container--default .select2-selection--multiple.errorInput .select2-selection__rendered {
+	border: 1px solid #f00 !important;
 }
 
 .select2-container--default .select2-selection--multiple .select2-selection__rendered li {
+	height: 35px;
+}
+
+.select2-container--default .select2-selection--multiple .select2-selection__rendered li.select2-selection__choice {
 	height: auto;
 	padding: 5px;
 	margin: 5px;
 	border-radius: 0;
+	overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: calc(100% - 10px);
 }
 
-.select2-container .select2-search--inline .select2-search__field {
+.select2-container--default.select2-container--focus .select2-selection--multiple .select2-selection__rendered li.select2-search {
 	margin: 0;
+	padding: 0;
+}
+
+.select2-container--default.select2-container--focus .select2-selection--multiple .select2-selection__rendered li.select2-search input:focus {
+	border: none!important;
+}
+
+.select2-container--default .select2-selection--multiple .select2-selection__rendered li .form-control {
+	border: none;
+	box-shadow: 0 0 0;
+	cursor: text;
+    padding: 0;
+    margin: 4px;
+    height: calc(100% - 8px);
+}
+
+.select2-container--default.select2-container--focus .select2-selection--multiple .select2-selection__rendered {
+	 border-color: #66afe9;
+	 box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(102,175,233,.6);
+}
+
+::-webkit-input-placeholder {
+  color: #555;
+}
+::-moz-placeholder {
+  color: #555;
+}
+:-ms-input-placeholder {
+  color: #555;
+}
+:-moz-placeholder {
+  color: #555;
+}
+
+ul.selected-filter {
+    list-style-type: none;
+    float: left;
+}
+ul.selected-filter li {
+	float:left;
+	width:auto
+}
+
+
+span.labelFilter {
+    margin: 0 15px;
+     float: left;
+}
+span.closeBadge{
+	    background: #fff;
+    color: #333;
+    width: 12px;
+    height: 12px;
+    display: inline-flex;
+    font-size: 9px;
+    vertical-align: middle;
+    justify-content: center;
+    align-items: center;
+    border-radius: 100%;
+    margin-left: 7px;
+    margin-right: -3px;
+    cursor:pointer;
+    margin-top: -3px;
+}
+
+/* #useractivityTable {
+	border: 1px solid #ddd;
+	    margin-top: 20px;
+    float: left;
+    width: 100%;
+}
+
+#useractivityTable td {
+	border-left:1px solid #ddd
+}
+
+#useractivityTable th {
+	border: none;
+	border-left:1px solid #ddd
+
+} */
+span.badge-heading {
+    font-weight: 700;
 }

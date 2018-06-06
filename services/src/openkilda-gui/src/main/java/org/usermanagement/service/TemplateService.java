@@ -20,6 +20,6 @@ public interface TemplateService {
      * Enum of templates.
      */
     enum Template {
-         RESET_ACCOUNT_PASSWORD,ACCOUNT_USERNAME,ACCOUNT_PASSWORD,RESET_2FA,CHANGE_PASSWORD;
+        RESET_ACCOUNT_PASSWORD, ACCOUNT_USERNAME, ACCOUNT_PASSWORD, RESET_2FA, CHANGE_PASSWORD;
     }
 }

@@ -18,7 +18,7 @@ import org.openkilda.constants.IConstants;
 public class UsermanagementController extends BaseController {
 
     /**
-     * Topology.
+     * UserManagement.
      *
      * @param model the model
      * @param request the request

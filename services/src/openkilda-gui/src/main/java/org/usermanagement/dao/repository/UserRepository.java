@@ -4,6 +4,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Set;
 
 import org.usermanagement.dao.entity.RoleEntity;
 import org.usermanagement.dao.entity.UserEntity;
@@ -44,5 +45,19 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
      */
     UserEntity findByUserId(long userId);
 
-    List<UserEntity> findByRoles_roleId(Long roleId);
+    /**
+     * Find by roles role id.
+     *
+     * @param roleId the role id
+     * @return the sets the
+     */
+    Set<UserEntity> findByRoles_roleId(Long roleId);
+    
+    /**
+     * Find by user id in.
+     *
+     * @param userIds the user ids
+     * @return the list
+     */
+    List<UserEntity> findByUserIdIn(Set<Long> userIds);
 }

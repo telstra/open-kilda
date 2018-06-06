@@ -1,13 +1,18 @@
 package org.usermanagement.dao.entity;
 
 import java.io.Serializable;
+import java.util.HashSet;
+import java.util.Set;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
+import javax.persistence.JoinTable;
+import javax.persistence.ManyToMany;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 
@@ -39,6 +44,12 @@ public class PermissionEntity extends BaseEntity implements Serializable {
     @ManyToOne
     @JoinColumn(name = "status_id", nullable = false)
     private StatusEntity statusEntity;
+    
+    /** The roles. */
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(name = "role_permission", joinColumns = {@JoinColumn(name = "permission_id")},
+            inverseJoinColumns = {@JoinColumn(name = "role_id")})
+    private Set<RoleEntity> roles = new HashSet<RoleEntity>();
 
     public Long getPermissionId() {
         return permissionId;
@@ -90,7 +101,15 @@ public class PermissionEntity extends BaseEntity implements Serializable {
         this.isAdminPermission = isAdminPermission;
     }
 
-    @Override
+    public Set<RoleEntity> getRoles() {
+		return roles;
+	}
+
+	public void setRoles(Set<RoleEntity> roles) {
+		this.roles = roles;
+	}
+
+	@Override
     public String toString() {
         return "PermissionEntity [permissionId=" + permissionId + ", name=" + name + ", description=" + description
                 + ", statusEntity=" + statusEntity + "]";

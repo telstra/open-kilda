@@ -3,6 +3,7 @@ package org.usermanagement.conversion;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
 
 import org.openkilda.constants.Status;
 import org.usermanagement.dao.entity.PermissionEntity;
@@ -38,7 +39,7 @@ public class PermissionConversionUtil {
         return permissionEntity;
     }
 
-    public static Permission toPermission(final PermissionEntity permissionEntity, final List<RoleEntity> roleEntities) {
+    public static Permission toPermission(final PermissionEntity permissionEntity, final Set<RoleEntity> roleEntities) {
         Permission permission = new Permission();
         permission.setName(permissionEntity.getName());
         permission.setPermissionId(permissionEntity.getPermissionId());

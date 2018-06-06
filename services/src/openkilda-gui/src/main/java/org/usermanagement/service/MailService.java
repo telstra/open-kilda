@@ -32,7 +32,7 @@ public class MailService {
     private TemplateService templateService;
 
     @Autowired
-    JavaMailSender javaMailSender;
+    private JavaMailSender javaMailSender;
 
     /**
      * Sending message.
@@ -42,8 +42,8 @@ public class MailService {
      * @param template template.
      * @param context Map with context values for velocity template.
      */
-    public void send(List<String> receivers, String subject, TemplateService.Template template,
-            Map<String, Object> context) {
+    public void send(final List<String> receivers, final String subject, final TemplateService.Template template,
+            final Map<String, Object> context) {
         // SimpleMailMessage msg = new SimpleMailMessage();
         MimeMessage mimeMessage = javaMailSender.createMimeMessage();
         MimeMessageHelper msg = new MimeMessageHelper(mimeMessage);
@@ -70,7 +70,7 @@ public class MailService {
      * @param template template.
      * @param context Map with context values for velocity template.
      */
-    public void send(String receiver, String subject, TemplateService.Template template, Map<String, Object> context) {
+    public void send(final String receiver, final String subject, final TemplateService.Template template, final Map<String, Object> context) {
         // SimpleMailMessage msg = new SimpleMailMessage();
         MimeMessage mimeMessage = javaMailSender.createMimeMessage();
         MimeMessageHelper msg = new MimeMessageHelper(mimeMessage);
@@ -97,8 +97,8 @@ public class MailService {
      * @param template the template
      * @param context the context
      */
-    public void sendFeedback(String subject, TemplateService.Template template, Map<String, Object> context,
-            String receiver) {
+    public void sendFeedback(final String subject, final TemplateService.Template template, final Map<String, Object> context,
+            final String receiver) {
 
         _log.info("[sendFeedback]-start");
 

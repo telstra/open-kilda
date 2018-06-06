@@ -139,47 +139,11 @@ var max_zoom = 3;
 var isDragMove = false;
 var scale = 1.0;
 var optArray = [];
-var isGraphDataLoaded = false;
+
 var mLinkNum ={};
 var linkedByIndex = {};
 var nodes = [], links = [], flows = [];
-//Handle page visibility change events
-function handleVisibilityChange() {
-  if (document.visibilityState != "hidden" && isGraphDataLoaded) {
-  			graphLoadEnd();
-  	 }
-}
 
-document.addEventListener('visibilitychange', handleVisibilityChange, false);
-
-function graphLoadEnd(flag){
-		$("#wait").css("display", "none");
-		$("#switchesgraph").removeClass("hide");
-		isGraphDataLoaded = false;
-		try{
-			positions = storage.get('NODES_COORDINATES');
-			if(positions){
-				// control the coordinates here
-			    d3.selectAll("g.node").attr("transform", function(d){
-			    	try{
-			    		d.x = positions[d.switch_id][0];
-				    	d.y = positions[d.switch_id][1];
-			    	}catch(e){
-			    		
-			    	}
-			    	
-			        return "translate("+d.x+","+d.y+")";
-			    });
-			    
-				tick();
-			}
-		}catch(e){
-			console.log(e);
-		} 
-		if(zoomFitCall){
-			zoomFit(min_zoom, 500);
-		}
-}
 var margin = {top: -5, right: -5, bottom: -5, left: -5},
 	width = window.innerWidth,
 	height = window.innerHeight,
@@ -240,7 +204,7 @@ graph = {
 			common.infoMessage('No Data Available','info');
 			return false;
 		}
-		isGraphDataLoaded = true;
+
 		
 		/*
 		 * A force layout requires two data arrays. The first array, here named
@@ -346,7 +310,34 @@ graph = {
 		svg.call(zoom);  
 		svg.on("dblclick.zoom", null);
 	    resize();
-	    force.on('end', graphLoadEnd);
+		force.on('end', function() {
+			$("#wait").css("display", "none");
+			$("#switchesgraph").removeClass("hide");
+			
+			try{
+				positions = storage.get('NODES_COORDINATES');
+				if(positions){
+					// control the coordinates here
+				    d3.selectAll("g.node").attr("transform", function(d){
+				    	try{
+				    		d.x = positions[d.switch_id][0];
+					    	d.y = positions[d.switch_id][1];
+				    	}catch(e){
+				    		
+				    	}
+				    	
+				        return "translate("+d.x+","+d.y+")";
+				    });
+				    
+					tick();
+				}
+			}catch(e){
+				console.log(e);
+			} 
+			if(zoomFitCall){
+				zoomFit(min_zoom, 500);
+			}
+		});
 		
 		force.on("tick", tick);
 
@@ -1514,7 +1505,30 @@ function restartGraphWithNewIsl(newLinks,removedLinks){
 		insertLinks(links);
 		insertNodes(nodes);
 		graph.circle();
-		force.on('end', graphLoadEnd);
+		force.on('end',function(){
+			$("#wait1").css("display", "none");
+			$("#switchesgraph").removeClass("hide").addClass('show');
+			try{
+				positions = storage.get('NODES_COORDINATES');
+				if(positions){
+					// control the coordinates here
+				    d3.selectAll("g.node").attr("transform", function(d){
+				    	try{
+				    		d.x = positions[d.switch_id][0];
+					    	d.y = positions[d.switch_id][1];
+				    	}catch(e){
+				    		
+				    	}
+				    	
+				        return "translate("+d.x+","+d.y+")";
+				    });
+				    
+					tick();
+				}
+			}catch(e){
+				console.log(e);
+			}
+		})
 	}
 }
 var interval = {

@@ -6,15 +6,15 @@
    <table id="permissionTable" class="display"  width="100%" cellspacing="0" style="display:none;">
       <thead>
          <tr class="tableHeading">
-            <th><span title="name">Name</span> 
+            <th><span title="Name">Name</span> 
             	<i class="icon-search" onclick="userManagementSearch('name',event)" style=""></i> 
             	<input id="name" class="heading_search_box" onclick="stopParentDelegation(event)" type="search" style="display: none;" placeholder="Search" />
             </th>
-            <th><span title="description">Description</span> 
+            <th><span title="Description">Description</span> 
             	<i class="icon-search" onclick="userManagementSearch('description',event)" style=""></i>
             	<input id="description" class="heading_search_box" onclick="stopParentDelegation(event)" type="search" style="display: none;" placeholder="Search" />
             </th>
-            <th><span title="options">Options</span></th>
+            <th><span title="Options">Options</span></th>
          </tr>
       </thead>
       <tbody id="permission-details">
@@ -27,14 +27,14 @@
       <div class="form-group row">
          <label for="pname" class="col-sm-2 col-form-label text-right">Name:</label> 
          <div class="col-sm-6">
-         	<input id="pname" name="pname" type="text" class="form-control" placeholder="Name" onkeyup="removeError(this)" /> 
+         	<input id="pname" name="pname" maxlength="100" type="text" class="form-control" placeholder="Name" onkeyup="removeError(this)" /> 
          	<span id="pnameError" class="error" style="display: none; color: red;">Name is required.</span>
          </div>
       </div>
       <div class="form-group row">
          <label for="description" class="col-sm-2 col-form-label text-right">Description:</label>
          <div class="col-sm-6">
-         	<textarea id="pdescription" name="description" class="form-control" placeholder="Add description here." onkeyup="removeError(this)"></textarea>
+         	<textarea id="pdescription" name="description" class="form-control"  maxlength="250" placeholder="Add description here." onkeyup="removeError(this)"></textarea>
          	<span id="descriptionError" class="error" style="display: none; color: red;">Description is required.</span>
          </div>
       </div>
@@ -45,12 +45,12 @@
          </div>
       </div>
       <div class="form-group row" id="permissionRoleAssign" style="display:none;">
-         <label class="col-sm-2 text-right">Roles</label> 
+         <label class="col-sm-2 text-right">Roles:</label> 
          <div class="col-sm-6">
          	<select name="multiRoleCheckbox[]" id="permissionRoleSelect" multiple="multiple">
            		
          </select>
-         <span id="roleError" class="error" style="display: none; color: red;">role is required.</span>
+        <!--  <span id="permissionRoleSelectError" class="error" style="display: none; color: red;">Role is required.</span> -->
          </div>
       </div>
       <div class="form-group row">

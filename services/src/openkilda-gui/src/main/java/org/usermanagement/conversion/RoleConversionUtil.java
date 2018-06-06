@@ -58,7 +58,7 @@ public class RoleConversionUtil {
         return roleList;
     }
 
-    public static Permission toPermissionByRole(final List<RoleEntity> roleEntityList,
+    public static Permission toPermissionByRole(final Set<RoleEntity> roleEntityList,
             final PermissionEntity permissionEntity) {
         Permission permission = new Permission();
         permission.setName(permissionEntity.getName());
@@ -77,8 +77,7 @@ public class RoleConversionUtil {
         return permission;
     }
 
-    public static RoleEntity toUpateRoleEntity(final Role role, RoleEntity roleEntity,
-            Set<PermissionEntity> permissionEntitySet) {
+    public static RoleEntity toUpateRoleEntity(final Role role, RoleEntity roleEntity) {
         if (!ValidatorUtil.isNull(role.getStatus())) {
             StatusEntity newStatusEntity = Status.getStatusByName(role.getStatus()).getStatusEntity();
             roleEntity.setStatusEntity(newStatusEntity);
@@ -90,10 +89,6 @@ public class RoleConversionUtil {
 
         if (!ValidatorUtil.isNull(role.getDescription())) {
             roleEntity.setDescription(role.getDescription());
-        }
-
-        if (!ValidatorUtil.isNull(permissionEntitySet)) {
-            roleEntity.setPermissions(permissionEntitySet);
         }
 
         roleEntity.setCreatedDate(new Date());

@@ -34,6 +34,9 @@ public class MessageUtils {
 
     @Value("${attribute.2fa.not.configured}")
     private String attribute2faNotConfiured;
+    
+    @Value("${unauthorized.message}")
+    private String unauthorizedMessage;
 
     /**
      * Gets the attribute unique.
@@ -105,4 +108,14 @@ public class MessageUtils {
     public String getAttribute2faNotConfiured() {
         return attribute2faNotConfiured;
     }
+
+	/**
+	 * Gets the unauthorized message.
+	 *
+	 * @return the unauthorized message
+	 */
+	public String getUnauthorizedMessage() {
+		return unauthorizedMessage;
+	}
+	
 }

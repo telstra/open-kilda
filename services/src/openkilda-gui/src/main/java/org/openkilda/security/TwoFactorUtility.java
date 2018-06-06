@@ -155,7 +155,6 @@ public class TwoFactorUtility {
         while (result.length() < codeDigits) {
             result = "0" + result;
         }
-        // logger.debug(correlationId + "[generateTOTP] response " + result);
         return result;
     }
 

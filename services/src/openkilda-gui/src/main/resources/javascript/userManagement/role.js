@@ -34,17 +34,16 @@ var roleService = (function() {
             $('#descriptionError').show();
             $('textarea[name="description"').addClass("errorInput");
         }
-        if (selectedPermission === undefined || selectedPermission.length == 0) {
-            $('#permissionError').show();
-            $('ul.select2-choices').addClass("errorInput");
-        }
+        /*if (selectedPermission === undefined || selectedPermission.length == 0) {
+            $('#rolePermissionSelectError').show();
+            $('.select2-selection ').addClass("errorInput");
+        }*/
         if ((name == "" || name == null) || (desc == "" || desc == null)) {
             return false;
-        }
-        $('#roleForm').hide();
-        $('#roleTabData').show();
+        }       
         var roleData;
-        if (role_id) {
+        $("#loading").css("display", "block");
+        if (role_id) {        	
             roleData = {
                 name: name,
                 description: desc,
@@ -59,14 +58,14 @@ var roleService = (function() {
             }).then(function(response) {
                 $("#role-details").html('');
                 roleService.getRoles().then(function(allRoles) {
-                    if (allRoles && allRoles.length) {
-                        $("#loading").css("display", "none");
+                    if (allRoles && allRoles.length) { 
                         roleService.showAllRoles(allRoles);
                     }
                 });
                 common.infoMessage('Role updated successfully.', 'success');
             }, function(error) {
-                common.infoMessage(error.responseJSON['error-auxiliary-message'], 'error');
+            	$("#loading").css("display", "none");  console.log("error");
+                common.infoMessage(error.responseJSON['error-auxiliary-message'], 'error');               
             });
         } else {
             roleData = new Role(name, desc, selectedPermission);
@@ -79,15 +78,14 @@ var roleService = (function() {
             }).then(function(response) {
                 $("#role-details").html('');
                 roleService.getRoles().then(function(allRoles) {
-                    if (allRoles && allRoles.length) {
-                        $("#loading").css("display", "none");
+                    if (allRoles && allRoles.length) {                        
                         roleService.showAllRoles(allRoles);
                     }
                 });
                 common.infoMessage('Role added successfully.', 'success');
             }, function(error) {
                 $("#loading").css("display", "none");
-                common.infoMessage(error.responseJSON['error-auxiliary-message'], 'error');
+                common.infoMessage(error.responseJSON['error-auxiliary-message'], 'error');               
             });
         }
     }
@@ -110,7 +108,7 @@ var roleService = (function() {
             for (var i = 0; i < response.length; i++) {
                 var role = "response";
                 var PermissionList = [];
-                var tableCol1 = "<td class='divTableCell' title ='" + ((response[i].name === "" || response[i].name == undefined) ? "-" : response[i].name) + "'>" + ((response[i].name === "" || response[i].name == undefined) ? "-" : response[i].name) + "</td>";
+                var tableCol1 = "<td class='divTableCell' title ='" + ((response[i].name === "" || response[i].name == undefined) ? "-" : response[i].name) + "'><span title='"+response[i].name+"'>" + ((response[i].name === "" || response[i].name == undefined) ? "-" : response[i].name) + "</span></td>";
                 var tableCol2 = "<td class='divTableCell wrapPermission'><div class='permissionCol'>";
                 if (response[i].permissions) {
                     for (var p = 0; p < response[i].permissions.length; p++) {
@@ -123,10 +121,10 @@ var roleService = (function() {
                 }
                 tableCol2 += "</div></td>";
                 var tableCol3 = "<td class='divTableCell'>" +
-                    "<i title='edit' class='fa icon-edit' onclick='roleService.editRole(" + response[i].role_id + ")' permission='um_role_edit'></i>" +
-                    "<i title='assignRoleToUsers' class='fa icon-group' onClick='roleService.assignRoleToUsers(" + response[i].role_id + ")' permission='um_assign_role_to_users'></i>" +
-                    "<i title='viewUsersWithRole' class='fa icon-user' onClick='roleService.viewUsersByRole(" + response[i].role_id + ")' permission='um_role_view_users'></i>" +
-                    "<i title='delete' class='fa icon-trash' onclick='openConfirmationModal(" + response[i].role_id + ",\"deleteRole\")' permission='um_role_delete'></i>" +
+                    "<i title='Edit' class='fa icon-edit' onclick='roleService.editRole(" + response[i].role_id + ")' permission='um_role_edit'></i>" +
+                    "<i title='Assign Users' class='fa icon-group' onClick='roleService.assignRoleToUsers(" + response[i].role_id + ")' permission='um_assign_role_to_users'></i>" +
+                    "<i title='View Users' class='fa icon-user' onClick='roleService.viewUsersByRole(" + response[i].role_id + ")' permission='um_role_view_users'></i>" +
+                    "<i title='Delete' class='fa icon-trash' onclick='openConfirmationModal(" + response[i].role_id + ",\"deleteRole\")' permission='um_role_delete'></i>" +
                     "</td>";
 
                 //$("#roleTable").append(tableRow);
@@ -186,7 +184,9 @@ var roleService = (function() {
                 }
             });
         });
-
+        $("#loading").css("display", "none");
+        $('#roleForm').hide();
+        $('#roleTabData').show();
         $('#roleTable').show();
         hasPermission();
     }
@@ -215,9 +215,13 @@ var roleService = (function() {
 
                     $("#rolePermissionSelect").html(selectRoleElements);
                     $('#rolePermissionSelect').select2({
-                        width: "100%"
+                        width: "100%",
+                        placeholder: "Select Permission"
                     });
+                    $("input.select2-search__field").addClass("form-control");
+                    $("#loading").css("display", "none");
                 }, function(error) {
+                	 $("#loading").css("display", "none");
                     common.infoMessage(error.responseJSON['error-auxiliary-message'], 'error');
                 });
             } else {
@@ -231,14 +235,18 @@ var roleService = (function() {
                     placeholder: "Select Permission",
                     width: "100%"
                 });
+                $("input.select2-search__field").addClass("form-control");
+                $("#loading").css("display", "none");
             }
         }, function(err) {
+        	 $("#loading").css("display", "none");
             common.infoMessage(error.responseJSON['error-auxiliary-message'], 'error');
         });
     }
     /* edit roles */
     function editRole(id) {
         /* Reset Form */
+    	$("#loading").css("display", "block");
         $("#addRoleForm").find(".errorInput").removeClass("errorInput");
         $("#addRoleForm").find(".error").hide();
         $("#role_id").parent().remove(); //remove existing hidden role id input
@@ -250,12 +258,13 @@ var roleService = (function() {
         $("#rolePermissionAssign").show();
         $("#rname, #rdescription").attr("readonly", false);
         $("#add_update_btn").text("Update Role");
-        roleService.getRole(id).then(function(response) {
+        roleService.getRole(id).then(function(response) {        	
             document.roleForm.rname.value = response.name;
             document.roleForm.description.value = response.description;
             role_id = response.role_id;
             roleService.permissionsToSelect(role_id);
         }, function(err) {
+        	$("#loading").css("display", "none");
             common.infoMessage(error.responseJSON['error-auxiliary-message'], 'error');
         });
     }
@@ -264,7 +273,7 @@ var roleService = (function() {
         userService.getUsers().then(function(userRes) {
             var selectRoleElements = selectedRole = '';
             if (roleId > 0 && roleId != undefined) {
-                roleService.getRole(roleId).then(function(roleRes) {
+                roleService.getRole(roleId).then(function(roleRes) { 
                     userRes.forEach((element, index, array) => {
                         if (element.roles) {
                             if (jQuery.inArray(roleRes.name, element.roles) != -1) {
@@ -279,21 +288,28 @@ var roleService = (function() {
                     });
                     $("#roleUserSelect").html(selectRoleElements);
                     $('#roleUserSelect').select2({
-                        width: "100%"
+                        width: "100%",
+                        placeholder: "Select User"
                     });
+                    $("input.select2-search__field").addClass("form-control");
+                    $("#loading").css("display", "none");
                 }, function(error) {
+                	$("#loading").css("display", "none");
                     common.infoMessage(error.responseJSON['error-auxiliary-message'], 'error');
                 });
             } else {
+            	$("#loading").css("display", "none");
                 common.infoMessage(error.responseJSON['error-auxiliary-message'], 'error');
 
             }
         }, function(err) {
+        	$("#loading").css("display", "none");
             common.infoMessage(error.responseJSON['error-auxiliary-message'], 'error');
         });
     }
     /* Assign roles to users */
     function assignRoleToUsers(roleId) {
+    	$("#loading").css("display", "block");
         $("#addRoleForm").find(".errorInput").removeClass("errorInput");
         $("#addRoleForm").find(".error").hide();
         $("#role_id").parent().remove(); //remove existing hidden role id input
@@ -311,6 +327,7 @@ var roleService = (function() {
             role_id = response.role_id;
             roleService.selectUserByRole(role_id);
         }, function(err) {
+        	$("#loading").css("display", "none");
             common.infoMessage(error.responseJSON['error-auxiliary-message'], 'error');
         });
     }
@@ -324,6 +341,7 @@ var roleService = (function() {
     }
     /*** view Users by Role ***/
     function viewUsersByRole(RoleId) {
+    	$("#loading").css("display", "block");
         $("#roleTabData").show();
         $("#roleForm").hide();
         roleService.getUsersByRole(RoleId).then(function(response) {
@@ -344,11 +362,12 @@ var roleService = (function() {
                     response.users.forEach(function(user) {
                         users.push(user.name);
                     });
-                    html += '<div class="col-sm-6"><input type="text" class="form-control" value="' + users.join(' | ') + '" disabled/></div>'
+                    html += '<div class="col-sm-6"><div class="viewRole permissionCol"><span class="badge">'+users.join("</span> <span class='badge'>")+'</span></div></div>'
                 } else {
                     html += '<div class="col-sm-6"><input type="text" class="form-control" value= No users assigned. disabled/></div>'
                 }
                 html += '</div><div class="row viewDetail"><label class="col-sm-2 col-form-label"></label><div class="col-sm-6 text-right"><a class="backLoadTabData btn kilda_btn" href="#roleTab" data-toggle="tab" data-url="#roleTab">Back</a></div></div></div>';
+                $("#loading").css("display", "none")
                 $("#roleTabData").html(html);
             } else {
                 // Error Handling
@@ -371,18 +390,19 @@ var roleService = (function() {
         });
 
         if (selectedUser === undefined || selectedUser.length == 0) {
-            $('#userError').show();
+            $('#roleUserSelectError').show();
+            $('.select2-selection ').addClass("errorInput");
         }
         if (selectedUser === undefined || selectedUser.length == 0) {
             return false;
         }
-        $('#roleForm').hide();
-        $('#roleTabData').show();
+        
         var roleData = {
             'users': selectedUsers
         };
 
         if (role_id) {
+        	 $("#loading").css("display", "block")
             $.ajax({
                 url: './user/role/' + role_id,
                 contentType: 'application/json',
@@ -392,8 +412,7 @@ var roleService = (function() {
             }).then(function(response) {
                 $("#role-details").html('');
                 roleService.getRoles().then(function(allRoles) {
-                    if (allRoles && allRoles.length) {
-                        $("#loading").css("display", "none");
+                    if (allRoles && allRoles.length) {                       
                         roleService.showAllRoles(allRoles);
                     }
                 });
@@ -409,14 +428,14 @@ var roleService = (function() {
         $("#confirmModal").modal('hide');
         var id = document.getElementById("inputId").value;
         if (id != undefined) {
+        	$("#loading").css("display", "block")
             $.ajax({
                 url: './role/' + id,
                 type: 'DELETE'
             }).then(function(response) {
                 $("#role-details").html('');
                 roleService.getRoles().then(function(allRoles) {
-                    if (allRoles && allRoles.length) {
-                        $("#loading").css("display", "none");
+                    if (allRoles && allRoles.length) {                       
                         roleService.showAllRoles(allRoles);
                     }
                 });

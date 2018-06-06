@@ -39,6 +39,7 @@ public abstract class IConstants {
         public static final String USERMANAGEMENT = "usermanagement";
         public static final String TWO_FA_GENERATOR = "userManagement/twofa";
         public static final String OTP = "userManagement/otp";
+        public static final String ACTIVITY_LOGS= "useractivity";
     }
 
     public enum Metrics {

@@ -2,6 +2,8 @@ package org.openkilda.security.mapper;
 
 import static java.util.stream.Collectors.joining;
 
+import java.nio.file.AccessDeniedException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -258,6 +260,21 @@ public class GlobalExceptionMapper extends ResponseEntityExceptionHandler {
  	   ex.setStackTrace(new StackTraceElement[0]);
        return response(HttpError.UNPROCESSABLE_ENTITY.getHttpStatus(),
                HttpError.UNPROCESSABLE_ENTITY.getCode(),
+               ex.getMessage(), ex.getMessage());
+    }
+    
+    /**
+     * Unauthorize access.
+     *
+     * @param ex the ex
+     * @return the response entity
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    protected ResponseEntity<Object> unauthorizeAccess(
+    		AccessDeniedException ex) {
+ 	   ex.setStackTrace(new StackTraceElement[0]);
+       return response(HttpError.UNAUTHORIZED.getHttpStatus(),
+               HttpError.UNAUTHORIZED.getCode(),
                ex.getMessage(), ex.getMessage());
     }
 }

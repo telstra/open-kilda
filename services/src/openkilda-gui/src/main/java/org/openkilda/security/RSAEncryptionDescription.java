@@ -69,7 +69,6 @@ public class RSAEncryptionDescription {
      *
      * @param text the text
      * @param file_des the file_des
-     * @param correlationId the correlation id
      * @return the string
      * @throws Exception the exception
      */

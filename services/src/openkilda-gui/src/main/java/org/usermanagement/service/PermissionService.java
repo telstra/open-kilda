@@ -6,6 +6,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.usermanagement.conversion.PermissionConversionUtil;
@@ -59,7 +60,7 @@ public class PermissionService {
 	@Transactional(propagation = Propagation.REQUIRED, readOnly = false)
 	public Permission getPermissionById(final Long permissionId) {
 		PermissionEntity permissionEntity = permissionRepository.findByPermissionId(permissionId);
-		List<RoleEntity> roleEntityList = roleRepository.findByPermissions_permissionId(permissionId);
+		Set<RoleEntity> roleEntityList = roleRepository.findByPermissions_permissionId(permissionId);
 
 		if (ValidatorUtil.isNull(permissionEntity)) {
 			throw new RequestValidationException(messageUtil.getAttributeInvalid("permission_id", permissionId + ""));
@@ -75,7 +76,7 @@ public class PermissionService {
 		if (ValidatorUtil.isNull(permissionEntity)) {
 			throw new RequestValidationException(messageUtil.getAttributeInvalid("permission_id", permissionId + ""));
 		}
-		List<RoleEntity> roleEntityList = roleRepository.findByPermissions_permissionId(permissionId);
+		Set<RoleEntity> roleEntityList = roleRepository.findByPermissions_permissionId(permissionId);
 		if (roleEntityList.size() > 0) {
 			String roles = "";
 			for (RoleEntity roleEntity : roleEntityList) {

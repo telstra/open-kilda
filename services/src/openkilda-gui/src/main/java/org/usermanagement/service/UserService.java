@@ -92,7 +92,7 @@ public class UserService implements UserDetailsService {
     public Role getUserByRoleId(final Long roleId) {
         RoleEntity roleEntity = roleRepository.findByroleId(roleId);
 
-        List<UserEntity> userEntityList = userRepository.findByRoles_roleId(roleId);
+        Set<UserEntity> userEntityList = userRepository.findByRoles_roleId(roleId);
 
         return UserConversionUtil.toRoleByUser(userEntityList, roleEntity);
     }
@@ -132,29 +132,31 @@ public class UserService implements UserDetailsService {
     }
 
 
-    @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
-    public UserInfo updateUser(final UserInfo userRequest, final Long userId) {
+	@Transactional(propagation = Propagation.REQUIRED, readOnly = false)
+	public UserInfo updateUser(final UserInfo userRequest, final Long userId) {
 
-        UserEntity userEntity = userRepository.findByUserId(userId);
+		UserEntity userEntity = userRepository.findByUserId(userId);
 
-        if (ValidatorUtil.isNull(userEntity) || userId == 1) {
-            throw new RequestValidationException(messageUtil.getAttributeInvalid("user_id", userId + ""));
-        }
-        userValidator.validateUpdateUser(userRequest);
-        Set<RoleEntity> roleEntities = null;
-        if (!ValidatorUtil.isNull(userRequest.getRoleIds())) {
-            roleEntities = new HashSet<>();
-            for (Long roleId : userRequest.getRoleIds()) {
-                RoleEntity roleEntity = roleRepository.findByroleId(roleId);
-                roleEntities.add(roleEntity);
-            }
-        }
+		if (ValidatorUtil.isNull(userEntity) || userId == 1) {
+			throw new RequestValidationException(messageUtil.getAttributeInvalid("user_id", userId + ""));
+		}
+		userValidator.validateUpdateUser(userRequest);
 
-        userEntity = UserConversionUtil.toUpateUserEntity(userRequest, userEntity, roleEntities);
-        userEntity = userRepository.save(userEntity);
+		if (userRequest.getRoleIds() != null) {
+			userEntity.getRoles().clear();
+			for (Long roleId : userRequest.getRoleIds()) {
+				RoleEntity roleEntity = roleRepository.findByroleId(roleId);
+				if (roleEntity != null) {
+					userEntity.getRoles().add(roleEntity);
+				}
+			}
+		}
 
-        return UserConversionUtil.toUserInfo(userEntity);
-    }
+		userEntity = UserConversionUtil.toUpateUserEntity(userRequest, userEntity);
+		userEntity = userRepository.save(userEntity);
+
+		return UserConversionUtil.toUserInfo(userEntity);
+	}
 
 
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
@@ -213,22 +215,16 @@ public class UserService implements UserDetailsService {
     public Role assignUserByRoleId(final Long roleId, final Role role) {
 
         RoleEntity roleEntity = roleRepository.findByroleId(roleId);
-
-        for (UserInfo user : role.getUserInfo()) {
-            UserEntity userEntity = userRepository.findByUserId(user.getUserId());
-            Set<RoleEntity> roleEntities = userEntity.getRoles();
-            roleEntities.add(roleEntity);
-
-            userRepository.save(userEntity);
+        roleEntity.getUsers().clear();
+        if (role.getUserInfo() != null) {
+	        for (UserInfo user : role.getUserInfo()) {
+	            UserEntity userEntity = userRepository.findByUserId(user.getUserId());
+	            roleEntity.getUsers().add(userEntity);
+	        }
         }
-
-
-        List<UserEntity> userEntityList = userRepository.findByRoles_roleId(roleId);
-        if (ValidatorUtil.isNull(userEntityList)) {
-            throw new RequestValidationException(messageUtil.getAttributeInvalid("role_id", roleId + ""));
-        }
-
-        return UserConversionUtil.toRoleByUser(userEntityList, roleEntity);
+        roleRepository.save(roleEntity);
+        
+        return UserConversionUtil.toRoleByUser(roleEntity.getUsers(), roleEntity);
     }
 
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)

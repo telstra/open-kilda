@@ -19,7 +19,7 @@ var userService = (function() {
             dataType: "json"
         });
     }
-    
+
     /*** Add user ***/
     function addUser($event) {
         $event.preventDefault();
@@ -37,18 +37,16 @@ var userService = (function() {
             $('input[name="email"').addClass("errorInput");
         }
         if (roles == "" || roles == null) {
-            $('#roleError').show();
-            $('ul.select2-choices').addClass("errorInput");
+            $('#userRoleToSelectError').show();
+            $('.select2-selection ').addClass("errorInput");
         }
-        if ((name == "" || name == null) || (email == "" || email == null) || (roles == "" || roles == null)) {
+        if ((name == "" || name == null) || (!validateEmail(email) || email == "" || email == null) || (roles == "" || roles == null)) {
             return false;
-        }
-
-        $('#userForm').hide();
-        $('#userTabData').show();
+        }       
         var $form = $("#addUserForm");
         var data = getFormData($form);
         var userData = new User(data.name, data.email, data.email, roles, data.password);
+        $("#loading").css("display", "block");
         if (user_id) {
             $.ajax({
                 url: './user/' + user_id,
@@ -59,8 +57,7 @@ var userService = (function() {
             }).then(function(response) {
                 $("#user-details").html('');
                 userService.getUsers().then(function(allUsers) {
-                    if (allUsers && allUsers.length) {
-                        $("#loading").css("display", "none");
+                    if (allUsers && allUsers.length) { 
                         userService.showAllUsers(allUsers);
                     }
                 });
@@ -85,8 +82,7 @@ var userService = (function() {
             }).then(function(response) {
                 $("#user-details").html('');
                 userService.getUsers().then(function(allUsers) {
-                    if (allUsers && allUsers.length) {
-                        $("#loading").css("display", "none");
+                    if (allUsers && allUsers.length) {                      
                         userService.showAllUsers(allUsers);
                     }
                 });
@@ -110,6 +106,7 @@ var userService = (function() {
     /*** Edit user ***/
     function editUser(id) {
         /* Reset Form */
+    	$("#loading").css("display", "block");
         $("#addUserForm").find(".errorInput").removeClass("errorInput");
         $("#addUserForm").find(".error").hide();
         $("#user_id").parent().remove(); //remove existing hidden permission id input
@@ -135,14 +132,14 @@ var userService = (function() {
         $("#confirmModal").modal('hide');
         var id = document.getElementById("inputId").value;
         if (id != undefined) {
+        	 $("#loading").css("display", "block");
             $.ajax({
                 url: './user/' + id,
                 type: 'DELETE'
             }).then(function(response) {
                 $("#user-details").html('');
                 userService.getUsers().then(function(allUsers) {
-                    if (allUsers && allUsers.length) {
-                        $("#loading").css("display", "none");
+                    if (allUsers && allUsers.length) {                        
                         userService.showAllUsers(allUsers);
                     }
                 });
@@ -168,7 +165,7 @@ var userService = (function() {
                 "status": "inactive"
             };
         }
-
+        $("#loading").css("display", "block");
         $.ajax({
             url: './user/' + id,
             contentType: 'application/json',
@@ -178,8 +175,7 @@ var userService = (function() {
         }).then(function(response) {
             $("#user-details").html('');
             userService.getUsers().then(function(allUsers) {
-                if (allUsers && allUsers.length) {
-                    $("#loading").css("display", "none");
+                if (allUsers && allUsers.length) {                   
                     userService.showAllUsers(allUsers);
                 }
             });
@@ -195,6 +191,7 @@ var userService = (function() {
         $("#confirmModal").modal('hide');
         var id = document.getElementById("inputId").value;
         if (id != undefined) {
+        	$("#loading").css("display", "block");
             $.ajax({
                 url: './user/reset2fa/' + id,
                 contentType: 'application/json',
@@ -203,8 +200,7 @@ var userService = (function() {
             }).then(function(response) {
                 $("#user-details").html('');
                 userService.getUsers().then(function(allUsers) {
-                    if (allUsers && allUsers.length) {
-                        $("#loading").css("display", "none");
+                    if (allUsers && allUsers.length) {                       
                         userService.showAllUsers(allUsers);
                     }
                 });
@@ -233,20 +229,22 @@ var userService = (function() {
                 f_btn = 'fa-toggle-on';
                 toogle_text = 'Inactive';
             }
-            var tableCol1 = "<td class='divTableCell' title ='" + ((response[i].email === "" || response[i].email == undefined) ? "-" : response[i].email) + "'>" + ((response[i].email === "" || response[i].email == undefined) ? "-" : response[i].email) + "</td>";
-            var tableCol2 = "<td class='divTableCell' title ='" + ((response[i].name === "" || response[i].name == undefined) ? "-" : response[i].name) + "'>" + ((response[i].name === "" || response[i].name == undefined) ? "-" : response[i].name) + "</td>";
-            var tableCol3 = "<td class='divTableCell' title ='" + ((response[i].roles === "" || response[i].roles == undefined) ? "-" : response[i].roles) + "'>" + ((response[i].roles === "" || response[i].roles == undefined) ? "-" : response[i].roles) + "</td>";
+            var tableCol1 = "<td class='divTableCell' title ='" + ((response[i].email === "" || response[i].email == undefined) ? "-" : response[i].email) + "'><span title='"+response[i].email+"'>" + ((response[i].email === "" || response[i].email == undefined) ? "-" : response[i].email) + "</span></td>";
+            var tableCol2 = "<td class='divTableCell' title ='" + ((response[i].name === "" || response[i].name == undefined) ? "-" : response[i].name) + "'><span title='"+response[i].name+"'>" + ((response[i].name === "" || response[i].name == undefined) ? "-" : response[i].name) + "</span></td>";
+            var tableCol3 = "<td class='divTableCell' title ='" + ((response[i].roles === "" || response[i].roles == undefined) ? "-" : response[i].roles) + "'><span title='"+response[i].roles+"'>" + ((response[i].roles === "" || response[i].roles == undefined) ? "-" : response[i].roles) + "</span></td>";
 
             var tableCol4 = "<td class='divTableCell' >" +
-                "<i title='edit'class='fa icon-edit cursor-pointer' onclick='userService.editUser(" + response[i].user_id + ")' permission='um_user_edit'></i>";
+                "<i title='Edit'class='fa icon-edit cursor-pointer' onclick='userService.editUser(" + response[i].user_id + ")' permission='um_user_edit'></i>";
             if (response[i].user_id !== USER_SESSION.userId) {
-                tableCol4 += "<i title='delete' onclick='openConfirmationModal(" + response[i].user_id + ", \"deleteUser\")' class='fa icon-trash cursor-pointer' permission='um_user_delete'></i>" +
+                tableCol4 += "<i title='Delete' onclick='openConfirmationModal(" + response[i].user_id + ", \"deleteUser\")' class='fa icon-trash cursor-pointer' permission='um_user_delete'></i>" +
                     "<i title='" + toogle_text + "' onclick='openConfirmationModal(" + response[i].user_id + ",\"activeUser\"," + status + ")' class='fa cursor-pointer " + f_btn + "' permission='um_user_activate'></i>";
             }
             tableCol4 += "<span title='Reset Password' onclick='openConfirmationModal(" + response[i].user_id + ", \"resetPassword\")' class='fa-passwd-reset fa-stack cursor-pointer' permission='um_user_reset'><i title='Reset Password' class='fa fa-undo fa-stack-2x'></i><i class='fa fa-lock fa-stack-1x'></i></span>" +
-                "<span title='Reset Password By Admin' onclick='userService.resetPassword(" + response[i].user_id + ",true)' class='fa-passwd-reset fa-stack cursor-pointer' permission='um_user_reset_admin'><i title='Reset Password By Admin' class='fa fa-key fa-key-2x'></i></span>" +
-                "<span title='Reset 2FA' onclick='openConfirmationModal(" + response[i].user_id + ",\"reset2fa\")' class='fa-passwd-reset fa-stack cursor-pointer' permission='um_user_reset2fa'><i title='Reset 2FA' class='fa fa-undo fa-stack-2x'></i></span>" +
-                "</td>";
+                "<span title='Reset Password By Admin' onclick='userService.resetPassword(" + response[i].user_id + ",true)' class='fa-passwd-reset fa-stack cursor-pointer' permission='um_user_reset_admin'><i title='Reset Password By Admin' class='fa fa-key fa-key-2x'></i></span>";
+            if (response[i].is2FaEnabled) {
+            	tableCol4 += "<span title='Reset 2FA' onclick='openConfirmationModal(" + response[i].user_id + ",\"reset2fa\")' class='fa-passwd-reset fa-stack cursor-pointer' permission='um_user_reset2fa'><i title='Reset 2FA' class='fa fa-undo fa-stack-2x'></i></span>";
+            }
+            tableCol4 +=  "</td>";
 
 
             tableRowData.push([tableCol1, tableCol2, tableCol3, tableCol4]);
@@ -309,7 +307,9 @@ var userService = (function() {
                 }
             });
         });
-
+        $("#loading").css("display", "none");
+        $('#userForm').hide();
+        $('#userTabData').show();
         $('#userTable').show();
         hasPermission();
     }
@@ -335,8 +335,11 @@ var userService = (function() {
 
             $("#userRoleToSelect").html(selectRoleElements);
             $('#userRoleToSelect').select2({
-                width: "100%"
+                width: "100%",
+                placeholder: "Select Role"
             });
+            $("input.select2-search__field").addClass("form-control");
+            $("#loading").css("display", "none");
         }, function(err) {
             common.infoMessage(err.responseJSON['error-message'], 'error');
         });
@@ -357,26 +360,33 @@ var userService = (function() {
                             }
                         } else {
                             selectRoleElements += "<option value='" + element.role_id + "'>" + element.name + "</option>";
-                        }
-
-                        $("#userRoleToSelect").html(selectRoleElements);
-                        $('#userRoleToSelect').select2({
-                            width: "100%"
-                        });
+                        }                        
                     });
+                    $("#userRoleToSelect").html(selectRoleElements);
+                    $('#userRoleToSelect').select2({
+                        width: "100%",
+                        placeholder: "Select Role"
+                    });
+                    $("input.select2-search__field").addClass("form-control");
+                    $("#loading").css("display", "none");
                 }, function(error) {
+                	$("#loading").css("display", "none");
                     common.infoMessage(error.responseJSON['error-message'], 'error');
                 });
             } else {
                 roleRes.forEach((element, index, array) => {
-                    selectRoleElements += "<option value='" + element.role_id + "'>" + element.name + "</option>";
-                    $("#userRoleToSelect").html(selectRoleElements);
-                    $('#userRoleToSelect').select2({
-                        width: "100%"
-                    });
+                    selectRoleElements += "<option value='" + element.role_id + "'>" + element.name + "</option>";                    
                 });
+                $("#userRoleToSelect").html(selectRoleElements);
+                $('#userRoleToSelect').select2({
+                    width: "100%",
+                    placeholder: "Select Role"
+                });
+                $("#loading").css("display", "none");
+                $("input.select2-search__field").addClass("form-control");
             }
         }, function(error) {
+        	$("#loading").css("display", "none");
             common.infoMessage(error.responseJSON['error-message'], 'error');
         });
     }
@@ -392,6 +402,7 @@ var userService = (function() {
         $("#confirmModal").modal('hide');
         var id = document.getElementById("inputId").value;
         if (id != undefined) {
+        	 $("#loading").css("display", "block");
             var userData = {
                 'user_id': id
             }
@@ -405,17 +416,20 @@ var userService = (function() {
                     if (isByAdmin) {
                         common.infoMessage('Password Reset successfully!', 'success');
                         if (response && response.password) {
+                        	$("#loading").css("display", "none");
                             var msg = 'User password is ' + response.password;
                             doConfirmationModal('User New Password', msg, '', '');
                             //alert('User password is '+response.password)
                         }
                     } else {
+                    	$("#loading").css("display", "none");
                         common.infoMessage('Reset Password email sent successfully!', 'success');
                     }
 
                 },
                 error: function(err) {
                     if (err.status != '200') {
+                    	$("#loading").css("display", "none");
                         common.infoMessage(error.responseJSON['error-message'], 'error');
                     }
                 }

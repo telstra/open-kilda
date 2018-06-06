@@ -84,9 +84,9 @@ function showflowData(response){
 	}else{
 
 		if ( $.fn.DataTable.isDataTable('#flowTable') ) {
-					  $('#flowTable').DataTable().destroy();
-					}
-					$('#flowTable tbody').empty();
+			  $('#flowTable').DataTable().destroy();
+			}
+			$('#flowTable tbody').empty();
 	}
 	
 	//var flowDetailsData = localStorage.getItem("flowDetailsData");

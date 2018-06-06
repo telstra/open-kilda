@@ -31,20 +31,22 @@ var permissionService = (function() {
             $('#pnameError').show();
             $('input[name="pname"').addClass("errorInput");
         }
-        if (desc == "" || desc == null) {
+        /*if (desc == "" || desc == null) {
             $('#descriptionError').show();
             $('textarea[name="description"').addClass("errorInput");
-        }
+        }*/
 
-        if ((name == "" || name == null) || (desc == "" || desc == null)) {
+        /*if ((name == "" || name == null) || (desc == "" || desc == null)) {
             return false;
-        }
-        $('#permissionForm').hide();
-        $('#permissionTabData').show();
+        } */   
+        if ((name == "" || name == null)) {
+            return false;
+        } 
         var $form = $("#addPermissionForm");
         var data = getFormData($form);
         var permissionData = new Permission(data.pname, data.description, isAdminChecked);
-        if (permission_id) {
+        $("#loading").css("display", "block");
+        if (permission_id) {         	
             $.ajax({
                 url: './permission/' + permission_id,
                 contentType: 'application/json',
@@ -54,8 +56,7 @@ var permissionService = (function() {
             }).then(function(response) {
                 $("#permission-details").html('');
                 permissionService.getPermissions().then(function(allPermissions) {
-                    if (allPermissions && allPermissions.length) {
-                        $("#loading").css("display", "none");
+                    if (allPermissions && allPermissions.length) {                    	
                         permissionService.showAllPermissions(allPermissions);
                     }
                 });
@@ -63,8 +64,9 @@ var permissionService = (function() {
             }, function(error) {
                 $("#loading").css("display", "none");
                 common.infoMessage(error.responseJSON['error-message'], 'error');
+               
             });
-        } else {
+        } else {         	
             $.ajax({
                 url: './permission',
                 contentType: 'application/json',
@@ -74,8 +76,7 @@ var permissionService = (function() {
             }).then(function(response) {
                 $("#permission-details").html('');
                 permissionService.getPermissions().then(function(allPermissions) {
-                    if (allPermissions && allPermissions.length) {
-                        $("#loading").css("display", "none");
+                    if (allPermissions && allPermissions.length) {                       
                         permissionService.showAllPermissions(allPermissions);
                     }
                 });
@@ -83,6 +84,7 @@ var permissionService = (function() {
             }, function(error) {
                 $("#loading").css("display", "none");
                 common.infoMessage(error.responseJSON['error-message'], 'error');
+                
             });
         }
     }
@@ -113,17 +115,17 @@ var permissionService = (function() {
                 f_btn = 'fa-toggle-on';
                 toogle_text = 'Inactive';
             }
-            var tableCol1 = "<td class='divTableCell' title ='" + ((response[i].name === "" || response[i].name == undefined) ? "-" : response[i].name) + "'>" + ((response[i].name === "" || response[i].name == undefined) ? "-" : response[i].name) + "</td>";
-            var tableCol2 = "<td class='divTableCell' title ='" + ((response[i].description === "" || response[i].description == undefined) ? "-" : response[i].description) + "'>" + ((response[i].description === "" || response[i].description == undefined) ? "-" : response[i].description) + "</td>";
+            var tableCol1 = "<td class='divTableCell' title ='" + ((response[i].name === "" || response[i].name == undefined) ? "-" : response[i].name) + "'><span title='"+response[i].name+"'>" + ((response[i].name === "" || response[i].name == undefined) ? "-" : response[i].name) + "</span></td>";
+            var tableCol2 = "<td class='divTableCell' title ='" + ((response[i].description === "" || response[i].description == undefined) ? "-" : response[i].description) + "'><span title='"+response[i].description+"'>" + ((response[i].description === "" || response[i].description == undefined) ? "-" : response[i].description) + "</span></td>";
             var tableCol3 = "<td class='divTableCell'>";
             if (response[i].isEditable && response[i].isEditable == true) {
-                tableCol3 += "<i title='edit' class='fa icon-edit' onclick='permissionService.editPermission(" + response[i].permission_id + ")' permission='um_permission_edit'></i>";
+                tableCol3 += "<i title='Edit' class='fa icon-edit' onclick='permissionService.editPermission(" + response[i].permission_id + ")' permission='um_permission_edit'></i>";
             }
             tableCol3 += "<i title='Assign Roles' class='fa icon-group' onClick='permissionService.assignRolesByPermissionId(" + response[i].permission_id + ")' permission='um_assign_permission_to_roles'></i>" +
                 "<i title='View Roles' class='fa icon-user' onClick='permissionService.viewRolesByPermissionId(" + response[i].permission_id + ")' permission='um_permission_view_roles'></i>" +
                 "<i title='" + toogle_text + "' onclick='openConfirmationModal(" + response[i].permission_id + ",\"activePermission\"," + status + ")' class='fa cursor-pointer " + f_btn + "' permission='um_permission_activate'></i>";
             if (response[i].isEditable && response[i].isEditable == true) {
-                tableCol3 += "<i title='delete' class='fa icon-trash' onclick='openConfirmationModal(" + response[i].permission_id + ", \"deletePermission\")' permission='um_permission_delete'></i>";
+                tableCol3 += "<i title='Delete' class='fa icon-trash' onclick='openConfirmationModal(" + response[i].permission_id + ", \"deletePermission\")' permission='um_permission_delete'></i>";
             }
             tableCol3 += "</td>";
             //$("#permissionTable").append(tableRow);
@@ -182,7 +184,9 @@ var permissionService = (function() {
                 }
             });
         });
-
+        $("#loading").css("display", "none");
+        $('#permissionForm').hide();
+        $('#permissionTabData').show();
         $('#permissionTable').show();
         hasPermission();
     }
@@ -214,9 +218,13 @@ var permissionService = (function() {
                     });
                     $("#permissionRoleSelect").html(selectPermissionElements);
                     $('#permissionRoleSelect').select2({
-                        width: "100%"
+                        width: "100%",
+                        placeholder: "Select Role"
                     });
+                    $("input.select2-search__field").addClass("form-control");
+                    $("#loading").css("display", "none");
                 }, function(error) {
+                	$("#loading").css("display", "none");
                     common.infoMessage(error.responseJSON['error-auxiliary-message'], 'error');
                 });
             }
@@ -227,6 +235,7 @@ var permissionService = (function() {
 
     /*** View Permission ***/
     function viewRolesByPermissionId(permissionId) {
+    	$("#loading").css("display", "block");
         $("#permissionTabData").show();
         $("#permissionForm").hide();
         permissionService.getPermissionByIdWithRoles(permissionId).then(function(response) {
@@ -249,18 +258,21 @@ var permissionService = (function() {
                     response.roles.forEach(function(role) {
                         roles.push(role.name);
                     });
-                    html += '<div class="col-sm-6"><input type="text" class="form-control" value="' + roles.join(' | ') + '" disabled/></div>'
+                    html += '<div class="col-sm-6"><div class="viewRole permissionCol"><span class="badge">'+roles.join("</span> <span class='badge'>")+'</span></div></div>'
 
                 } else {
                     html += '<div class="col-sm-6"><input type="text" class="form-control" value= No roles assigned. disabled/></div>'
                 }
                 html += '</div><div class="row viewDetail"><label class="col-sm-2 col-form-label"></label><div class="col-sm-6 text-right"><a class="backLoadTabData btn kilda_btn" href="#permissionTab" data-toggle="tab" data-url="#permissionTab">Back</a></div></div></div>';
+                $("#loading").css("display", "none");
                 $("#permissionTabData").html(html);
             } else {
                 // Error Handling
+            	 $("#loading").css("display", "none");
                 common.infoMessage(response['error-auxiliary-message'], 'error');
             }
         }, function(err) {
+        	 $("#loading").css("display", "none");
             common.infoMessage(error.responseJSON['error-auxiliary-message'], 'error');
         });
     }
@@ -268,24 +280,26 @@ var permissionService = (function() {
     /*** Assign Roles ***/
     function assignRolesByPermissionId(id) {
         /* Reset Form */
+    	$("#loading").css("display", "block");
         $("#permissionForm").find(".errorInput").removeClass("errorInput");
         $("#permissionForm").find(".error").hide();
 
         $("#permissionTabData").hide();
         $("#permissionForm").show();
-        $("#addPermissionForm").attr("onsubmit", "permissionService.updateRolesToPermission(event)");
+        $("#addPermissionForm").attr("onsubmit", "permissionService.z(event)");
         $("#pname, #pdescription").attr("readonly", true);
         $("#padmin").hide();
         $("#permissionRoleAssign").show();
         $("#permission_id").parent().remove(); //remove existing hidden permission id input
         $("#addPermissionForm").append("<div class='form-group row'><input type='hidden' id='permission_id' value='" + id + "' /></div>"); //add hidden permission id input
         $("#addPermissionForm #submitBtn").text("Assign Roles");
-        permissionService.getPermission(id).then(function(response) {
+        permissionService.getPermission(id).then(function(response) {        	
             document.permissionForm.pname.value = response.name;
             document.permissionForm.description.value = response.description;
             permission_id = response.permission_id;
-            permissionService.rolesToSelect(permission_id);
+            permissionService.rolesToSelect(permission_id);            
         }, function(err) {
+        	$("#loading").css("display", "none");
             common.infoMessage(error.responseJSON['error-auxiliary-message'], 'error');
         });
     }
@@ -300,6 +314,7 @@ var permissionService = (function() {
     /*** Edit Permission ***/
     function editPermission(id) {
         /* Reset Form */
+    	$("#loading").css("display", "block");
         $("#permissionForm").find(".errorInput").removeClass("errorInput");
         $("#permissionForm").find(".error").hide();
 
@@ -313,11 +328,13 @@ var permissionService = (function() {
         $("#addPermissionForm").append("<div class='form-group row'><input type='hidden' id='permission_id' value='" + id + "' /></div>"); //add hidden permission id input
         $("#addPermissionForm #submitBtn").text("Update Permission");
         permissionService.getPermission(id).then(function(response) {
+        	$("#loading").css("display", "none");
             document.permissionForm.pname.value = response.name;
             document.permissionForm.description.value = response.description;
             $('#chkAdminPermission').prop('checked', response.isAdminPermission);
             permission_id = response.permission_id;
         }, function(err) {
+        	$("#loading").css("display", "none");
             common.infoMessage(error.responseJSON['error-auxiliary-message'], 'error');
         });
     }
@@ -334,19 +351,20 @@ var permissionService = (function() {
             };
         });
 
-        if (selectedRole === undefined || selectedRole.length == 0) {
-            $('#roleError').show();
-        }
-        if (selectedRole === undefined || selectedRole.length == 0) {
-            return false;
-        }
-        $('#permissionForm').hide();
-        $('#permissionTabData').show();
+//        if (selectedRole === undefined || selectedRole.length == 0) {
+//            $('#permissionRoleSelectError').show();
+//            $('.select2-selection ').addClass("errorInput")
+//        }
+//        if (selectedRole === undefined || selectedRole.length == 0) {
+//            return false;
+//        }
+        
         var permissionData = {
             'roles': selectedRoles
         };
 
         if (permission_id) {
+        	 $("#loading").css("display", "block");
             $.ajax({
                 url: './role/permission/' + permission_id,
                 contentType: 'application/json',
@@ -356,13 +374,13 @@ var permissionService = (function() {
             }).then(function(response) {
                 $("#permission-details").html('');
                 permissionService.getPermissions().then(function(allPermissions) {
-                    if (allPermissions && allPermissions.length) {
-                        $("#loading").css("display", "none");
+                    if (allPermissions && allPermissions.length) {                        
                         permissionService.showAllPermissions(allPermissions);
                     }
                 });
                 common.infoMessage('Role assigned successfully.', 'success');
             }, function(error) {
+            	$("#loading").css("display", "none");
                 common.infoMessage(error.responseJSON['error-auxiliary-message'], 'error');
             });
         }
@@ -373,14 +391,14 @@ var permissionService = (function() {
         $("#confirmModal").modal('hide');
         var id = document.getElementById("inputId").value;
         if (id != undefined) {
+        	$("#loading").css("display", "block");
             $.ajax({
                 url: './permission/' + id,
                 type: 'DELETE'
             }).then(function(response) {
                 $("#permission-details").html('');
                 permissionService.getPermissions().then(function(allPermissions) {
-                    if (allPermissions && allPermissions.length) {
-                        $("#loading").css("display", "none");
+                    if (allPermissions && allPermissions.length) {                        
                         permissionService.showAllPermissions(allPermissions);
                     }
                 });
@@ -406,7 +424,7 @@ var permissionService = (function() {
                 "status": "inactive"
             };
         }
-
+        $("#loading").css("display", "block");
         $.ajax({
             url: './permission/' + permission_id,
             contentType: 'application/json',
@@ -416,8 +434,7 @@ var permissionService = (function() {
         }).then(function(response) {
             $("#permission-details").html('');
             permissionService.getPermissions().then(function(allPermissions) {
-                if (allPermissions && allPermissions.length) {
-                    $("#loading").css("display", "none");
+                if (allPermissions && allPermissions.length) {                    
                     permissionService.showAllPermissions(allPermissions);
                 }
             });
@@ -425,7 +442,7 @@ var permissionService = (function() {
             if (type == 1) {
                 common.infoMessage('Permission activated successfully.', 'success');
             } else {
-                common.infoMessage('Permission de activated successfully.', 'success');
+                common.infoMessage('Permission de-activated successfully.', 'success');
             }
         }, function(error) {
             $("#loading").css("display", "none");

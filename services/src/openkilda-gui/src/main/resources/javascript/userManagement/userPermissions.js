@@ -1,6 +1,5 @@
 //window.onload= function(){
-	$(document).ready(function() {	
-	
+	$(document).ready(function() {			
 	var allPermissions = ['userTab','roleTab','permissionTab','addUser','editUser','deleteUser','activateUser','deActivateUser','resetPassword','addRole','addPermission'];
 	var userOperations=['userTab','addUser','editUser','deleteUser','activateUser','deActivateUser'];
 	var roleOperations=['roleTab','addRole','editRole','deleteRole','assignRoleToUsers','viewUsersWithRole'];
@@ -44,7 +43,7 @@ function getErrorFromUrl(){
 		 return error;
 }
 function doConfirmationModal(heading, formContent, strSubmitFunc, btnText)
-{
+{	
     var html =  '<div id="modalWindow" class="modal fade in" style="display:none;">';
     html+='<div class="modal-dialog"><div class="modal-content">'
     html += '<div class="modal-header">';
@@ -68,7 +67,11 @@ function doConfirmationModal(heading, formContent, strSubmitFunc, btnText)
     html+='</div></div>';
     html += '</div>';  // modalWindow
     $("body").append(html);
-    $("#modalWindow").modal();
+    $("#modalWindow").modal()
+    .on('hide.bs.modal', function () { 
+    $("body").find("#modalWindow").remove(); 
+    });
+    
 }
 
 

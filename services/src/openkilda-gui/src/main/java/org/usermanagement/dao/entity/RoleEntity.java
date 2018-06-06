@@ -44,6 +44,12 @@ public class RoleEntity extends BaseEntity implements Serializable {
     @JoinTable(name = "role_permission", joinColumns = {@JoinColumn(name = "role_id")},
             inverseJoinColumns = {@JoinColumn(name = "permission_id")})
     private Set<PermissionEntity> permissions = new HashSet<PermissionEntity>();
+    
+    /** The roles. */
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(name = "user_role", joinColumns = {@JoinColumn(name = "role_id")},
+            inverseJoinColumns = {@JoinColumn(name = "user_id")})
+    private Set<UserEntity> users = new HashSet<UserEntity>();
 
     /**
      * Gets the role id.
@@ -115,7 +121,15 @@ public class RoleEntity extends BaseEntity implements Serializable {
         this.description = description;
     }
 
-    @Override
+    public Set<UserEntity> getUsers() {
+		return users;
+	}
+
+	public void setUsers(Set<UserEntity> users) {
+		this.users = users;
+	}
+
+	@Override
     public String toString() {
         return "RoleEntity [roleId=" + roleId + ", name=" + name + ", description=" + description + ", statusEntity="
                 + statusEntity + ", permissions=" + permissions + "]";

@@ -10,11 +10,11 @@
             	<input id="Email" class="heading_search_box" onclick="stopParentDelegation(event)" type="search" style="display: none;"
                placeholder="Search" />
             </th>
-            <th width="20%"><span title="userName">Name</span> 
+            <th width="20%"><span title="Name">Name</span> 
             	<i class="icon-search" onclick="userManagementSearch('userName',event)" style=""></i>
             	<input id="userName" class="heading_search_box" onclick="stopParentDelegation(event)"  type="search" style="display: none;" placeholder="Search" />
             </th>
-            <th width="30%"><span title="Role">Roles</span> 
+            <th width="30%"><span title="Roles">Roles</span> 
             	<i class="icon-search" onclick="userManagementSearch('Role',event)" style=""></i> 
             	<input id="Role" class="heading_search_box" onclick="stopParentDelegation(event)" type="search" style="display: none;" placeholder="Search" />
             </th>
@@ -39,21 +39,17 @@
       <div class="form-group row">
          <label for="name" class="col-sm-2 text-right">Name:</label>
          <div class="col-sm-6">
-         	<input name="name" type="text" class="form-control" placeholder="Name" onkeyup="removeError(this)" />
-         	<span id="nameError" class="error" style="display: none; color: red;">User name is required.</span>
+         	<input name="name" type="text" maxlength="100" class="form-control" placeholder="Name" onkeyup="removeError(this)" />
+         	<span id="nameError" class="error" style="display: none; color: red;">Name is required.</span>
          </div> 
       </div>
       <div class="form-group row">
          <label for="role" class="col-sm-2 text-right">Role:</label> 
          <div class="col-sm-6">
          	<!-- <input name="role" type="text" class="form-control" placeholder="Role" onkeyup="removeError(this)" /> -->
-         	<select name="userRoles[]" id="userRoleToSelect" multiple="multiple">
-                <option value='1'>elem 1</option> 
-                <option value='2'>elem 2</option>
-                <option value='3'>elem 3</option>
-                <option value='4'>elem 4</option>
+         	<select name="userRoles[]" id="userRoleToSelect" multiple="multiple">                
          	</select> 
-			<span id="roleError" class="error" style="display: none; color: red;">Role is required.</span>
+			<span id="userRoleToSelectError" class="error" style="display: none; color: red;">Role is required.</span>
          </div>
       </div>
     <!--<div class="form-group row" id="pswd">
