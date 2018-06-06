@@ -61,6 +61,7 @@ switch.data.file.path=switchdata.json
 #Mail Server
 spring.mail.host=127.0.0.1
 spring.mail.port=10
+mail.from=donotreply@example.com
 
 spring.velocity.enabled = false
 

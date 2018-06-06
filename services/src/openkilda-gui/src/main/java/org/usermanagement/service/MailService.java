@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -33,6 +34,9 @@ public class MailService {
 
     @Autowired
     private JavaMailSender javaMailSender;
+    
+    @Value("${mail.from}")
+    private String from;
 
     /**
      * Sending message.
@@ -49,6 +53,7 @@ public class MailService {
         if (!CollectionUtils.isNullOrEmpty(receivers)) {
 
             try {
+                msg.setFrom(from);
                 msg.setSubject(subject);
                 msg.setTo(receivers.toArray(new String[receivers.size()]));
                 msg.setText(templateService.mergeTemplateToString(template, context), true);
@@ -75,6 +80,7 @@ public class MailService {
         if (!StringUtil.isNullOrEmpty(receiver)) {
 
             try {
+                msg.setFrom(from);
                 msg.setSubject(subject);
                 msg.setTo(receiver);
                 msg.setText(templateService.mergeTemplateToString(template, context), true);
