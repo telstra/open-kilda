@@ -44,7 +44,10 @@
 		                            <div class="form-group text-center">                            
 		                             	<img alt="QrCode" id="qrCode" src="" />
 		                            </div>      
-		                                                  
+		                            <div class="form-group row">                            
+		                             	<label for="qr_code">(Code : <span id="qr_code_text"> </span> )</label>
+		                             	
+		                            </div>                       
 									<input type="hidden" name="username" id="username" th:value="${username}" style="visibility:hidden;"/>
 									<input type="hidden" name="password" id="password" th:value="${password}" style="visibility:hidden;"/>
 									<input type="hidden" name="configure2Fa" id="configure2Fa" value="true" style="visibility:hidden;"/>
@@ -56,8 +59,8 @@
 	         									autocomplete="off" autofocus="true" required="true"/> -->
 	         									 <div class="barcode-bg">					
 													<div class="otp otp-container">
-													<input  autofocus="true" name="code" id="code" type="hidden" maxlength="6"  placeholder="OTP"  />
-													<input class="form-control otpdigit" placeholder="*" maxlength="1"  onkeypress="validateOtpFragment()" onkeyup="assembleOtp();removeErrorOtp();" />
+													<input   name="code" id="code" type="hidden" maxlength="6"  placeholder="OTP"  />
+													<input autofocus="true" class="form-control otpdigit" placeholder="*" maxlength="1"  onkeypress="validateOtpFragment()" onkeyup="assembleOtp();removeErrorOtp();" />
 													<input class="form-control otpdigit" placeholder="*" maxlength="1"  onkeypress="validateOtpFragment()" onkeyup="assembleOtp();removeErrorOtp();"/>
 													<input class="form-control otpdigit" placeholder="*" maxlength="1"  onkeypress="validateOtpFragment()" onkeyup="assembleOtp();removeErrorOtp();"/>
 													<input class="form-control otpdigit" placeholder="*" maxlength="1"  onkeypress="validateOtpFragment()" onkeyup="assembleOtp();removeErrorOtp();"/>

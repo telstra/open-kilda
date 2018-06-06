@@ -184,12 +184,12 @@ function showUserActivities(data){
 		return b.activityTime - a.activityTime
 	})
 	 for(var i = 0; i < data.length; i++) {
-		 var tableRow = "<tr id='div_"+(i+1)+"'>"
-		 				+"<td  title ='"+((data[i].activityTime === "" || data[i].activityTime == undefined)?"-":moment(new Date(data[i].activityTime)).format("MMMM Do YYYY, h:mm:ss:ms"))+"'>"+((data[i].activityTime === "" || data[i].activityTime == undefined)?"-":moment(new Date(data[i].activityTime)).format("MMMM Do YYYY, h:mm:ss:ms"))+"</td>"
-		 				+"<td title ='"+((data[i].clientIpAddress === "" || data[i].clientIpAddress == undefined)?"-":data[i].clientIpAddress)+"'>"+((data[i].clientIpAddress === "" || data[i].clientIpAddress == undefined)?"-":data[i].clientIpAddress)+"</td>"
-		 			    +"<td  title ='"+((data[i].userId === "" || data[i].userId == undefined)?"-":data[i].userId)+"'>"+((data[i].userId === "" || data[i].userId == undefined)?"-":data[i].userId)+"</td>"
-		 			    +"<td  title ='"+((data[i].activityType === "" || data[i].activityType == undefined)?"-":data[i].activityType)+"'>"+((data[i].activityType === "" || data[i].activityType == undefined)?"-":data[i].activityType)+"</td>"
-		 			    +"<td  title ='"+((data[i].objectId ==="" || data[i].objectId == undefined)?"-":data[i].objectId)+"'>"+((data[i].objectId === "" || data[i].objectId == undefined)?"-":data[i].objectId)+"</td>"
+		 var tableRow = "<tr class='flowDataRow' id='div_"+(i+1)+"'>"
+		 				+"<td class='divTableCell' title ='"+((data[i].activityTime === "" || data[i].activityTime == undefined)?"-":moment(new Date(data[i].activityTime)).format("MMMM Do YYYY, h:mm:ss:ms"))+"'>"+((data[i].activityTime === "" || data[i].activityTime == undefined)?"-":moment(new Date(data[i].activityTime)).format("MMMM Do YYYY, h:mm:ss:ms"))+"</td>"
+		 				+"<td class='divTableCell' title ='"+((data[i].clientIpAddress === "" || data[i].clientIpAddress == undefined)?"-":data[i].clientIpAddress)+"'>"+((data[i].clientIpAddress === "" || data[i].clientIpAddress == undefined)?"-":data[i].clientIpAddress)+"</td>"
+		 			    +"<td class='divTableCell' title ='"+((data[i].username === "" || data[i].username == undefined)?"-":data[i].username)+"'>"+((data[i].username === "" || data[i].username == undefined)?"-":data[i].username)+"</td>"
+		 			    +"<td class='divTableCell' title ='"+((data[i].activityType === "" || data[i].activityType == undefined)?"-":data[i].activityType)+"'>"+((data[i].activityType === "" || data[i].activityType == undefined)?"-":data[i].activityType)+"</td>"
+		 			    +"<td class='divTableCell' title ='"+((data[i].objectId ==="" || data[i].objectId == undefined)?"-":data[i].objectId)+"'>"+((data[i].objectId === "" || data[i].objectId == undefined)?"-":data[i].objectId)+"</td>"
 		 			    +"</tr>";
 		$("#useractivity-details").append(tableRow);
 		

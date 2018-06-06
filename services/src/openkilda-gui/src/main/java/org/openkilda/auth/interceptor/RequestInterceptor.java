@@ -1,5 +1,15 @@
 package org.openkilda.auth.interceptor;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+import org.springframework.web.method.HandlerMethod;
+import org.springframework.web.servlet.ModelAndView;
+import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
+
 import java.nio.file.AccessDeniedException;
 import java.util.HashSet;
 import java.util.List;
@@ -15,14 +25,6 @@ import org.openkilda.auth.model.Permissions;
 import org.openkilda.auth.model.RequestContext;
 import org.openkilda.constants.IConstants;
 import org.openkilda.constants.Status;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
-import org.springframework.web.method.HandlerMethod;
-import org.springframework.web.servlet.ModelAndView;
-import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
 import org.usermanagement.model.Permission;
 import org.usermanagement.model.Role;
 import org.usermanagement.model.UserInfo;
@@ -41,7 +43,7 @@ public class RequestInterceptor extends HandlerInterceptorAdapter {
 
     @Autowired
     private RoleService roleService;
-    
+
     @Autowired
     private MessageUtils messageUtils;
 
@@ -70,7 +72,6 @@ public class RequestInterceptor extends HandlerInterceptorAdapter {
 	            }
 
                 updateRequestContext(correlationId, request, userInfo);
-	            LOGGER.info("[preHandle] - End");
 			}
 		} catch (IllegalStateException ex) {
 			LOGGER.info("[getLoggedInUser] Exception while retrieving user information from session. Exception: "
@@ -103,11 +104,9 @@ public class RequestInterceptor extends HandlerInterceptorAdapter {
 				throw new AccessDeniedException(messageUtils.getUnauthorizedMessage());
 			}
 		}
-		LOGGER.info("[validateAndPopulatePermisssion] - End");
 	}
 
 	private boolean hasPermissions(final UserInfo userInfo, final String... permissions) {
-		LOGGER.info("[hasPermissions] - Start");
 		boolean hasPermission = true;
 		Set<String> availablePermissions = availablePermissions(userInfo);
 		if (!availablePermissions.isEmpty()) {
@@ -120,7 +119,6 @@ public class RequestInterceptor extends HandlerInterceptorAdapter {
 		} else {
 			hasPermission = false;
 		}
-		LOGGER.info("[hasPermissions] - End");
 		return hasPermission;
 	}
 

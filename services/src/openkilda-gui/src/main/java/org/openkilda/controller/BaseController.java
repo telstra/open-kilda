@@ -81,7 +81,6 @@ public abstract class BaseController implements ErrorController {
      * @return logged in user information.
      */
     protected UserInfo getLoggedInUser(final HttpServletRequest request) {
-        LOGGER.info("[getLoggedInUser] - start");
         HttpSession session = request.getSession();
         UserInfo userInfo = null;
         try {

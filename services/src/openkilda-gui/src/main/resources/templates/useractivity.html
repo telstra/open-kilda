@@ -32,7 +32,7 @@
 			</div>
 		</div>
 
-		<div class="container-fluid">
+		<div class="container-fluid topology-graph ">
 			<div id="loading" class="bg_load">
 				<div class="loader"></div>
 				<span class="load-text">Loading User Activities
@@ -42,10 +42,10 @@
   			   </span> 
 			</div>
 			
-			<div class="col-xs-12">
+			<div class="col-xs-12 filter useractivity_filters">
 					<div class="col-xs-6">
 						<fieldset  class="form-group clearfix">
-							<label class="col-xs-2 text-label">Start Date:</label>
+							<label class="col-xs-3 text-label text-left">Start Date:</label>
 							<div class="col-xs-6">
 								<input id="fromFilterField" type="text"  onChange="updateFilter('from',false)" placeholder="Date Time" class="form-control" />
 							</div>
@@ -53,18 +53,18 @@
 					</div>
 					<div class="col-xs-6">
 						<fieldset  class="form-group clearfix">
-							<label class="col-xs-2 text-label">End Date:</label>
+							<label class="col-xs-3 text-label text-left">End Date:</label>
 							<div class="col-xs-6">
 								<input id="toFilterField" type="text" onChange="updateFilter('to',false)" placeholder="Date Time" class="form-control" />
 							</div>
-							<div class="col-xs-2">
-								<a href="javascript:void(0)" onClick="setCurrentDate('toFilterField')">Set to now</a>
+							<div class="col-xs-3">
+								<a href="javascript:void(0)" onClick="setCurrentDate('toFilterField')" style="font-size: 14px; margin: 0px -13px;">Set to now</a>
 							</div>
 						</fieldset>
 					</div>
 					<div class="col-xs-6">
 						<fieldset  class="form-group clearfix">
-							<label class="col-xs-2 text-label">Type:</label>
+							<label class="col-xs-3 text-label text-left">Type:</label>
 							<div class="col-xs-6">
 								<select id="typeFilterField" name="typefilter[]" onChange="updateFilter('type',true)"  multiple="multiple"></select>
 							</div>
@@ -72,7 +72,7 @@
 					</div>
 					<div class="col-xs-6">
 						<fieldset  class="form-group clearfix">
-							<label class="col-xs-2 text-label">Username:</label>
+							<label class="col-xs-3 text-label text-left">Username:</label>
 							<div class="col-xs-6">
 								<select id="usernameFilterField" name="usernameFilter[]" onChange="updateFilter('username',true)"  multiple="multiple"></select>
 							</div>
@@ -85,9 +85,9 @@
 				
 			</div>
 
-			<div  class="col-xs-11" > 
-				<div  id="selectedFilter" style="display:none;" class="selectedFilter">
-					<span class="labelFilter">Selected Filters</span>
+			<div  class="col-xs-11 filter" > 
+				<div  id="selectedFilter" style="display:none;" class="selectedFilter form-group">
+					<label class="labelFilter text-label">Selected Filters</label>
 					 <ul class="selected-filter">
 						<li id="typeFilterSelected" style="display:none;"><span class="badge badge-secondary"><span class="badge-heading">Type </span><span class="selectedValues"></span><span onClick="removeFilter('type',true)" class="closeBadge">X</span></span></li>
 					  	<li id="usernameFilterSelected" style="display:none;"><span class="badge badge-secondary"><span class="badge-heading">Username </span><span class="selectedValues"></span><span onClick="removeFilter('username',true)" class="closeBadge" >X</span></span></li>
@@ -97,7 +97,7 @@
 				</div>
 			
 			</div>
-			<table id="useractivityTable" class="table table-striped dataTable" cellspacing="0" width="100%" style="display:none;" >
+			<table id="useractivityTable" class="table table-striped dataTable no-footer" cellspacing="0" width="100%" style="display:none;" >
 				<thead>
 					<tr class="tableHeading">
 						<th><span title="ActivityTime">Date Time</span></th>

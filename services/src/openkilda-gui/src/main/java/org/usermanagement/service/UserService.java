@@ -77,7 +77,6 @@ public class UserService implements UserDetailsService {
      */
     @Override
     public UserDetails loadUserByUsername(final String username) throws UsernameNotFoundException {
-        LOGGER.info("Inside loadUserByUsername ");
         UserEntity user = userRepository.findByUsername(username);
 
         Set<GrantedAuthority> authorities = new HashSet<GrantedAuthority>(0);
@@ -119,6 +118,7 @@ public class UserService implements UserDetailsService {
         userEntity.setPassword(StringUtil.encodeString(password));
         userEntity.setIs2FaEnabled(true);
         userEntity = userRepository.save(userEntity);
+        LOGGER.info("User with username '" + userEntity.getUsername() + "' created successfully.");
 
         if(userEntity.getUserId() != null){
 	        Map<String, Object> map = new HashMap<String, Object>();
@@ -127,6 +127,7 @@ public class UserService implements UserDetailsService {
 	        map.put("password",password);
 	        mailService.send(userEntity.getEmail(), mailUtils.getSubjectAccountUsername(), TemplateService.Template.ACCOUNT_USERNAME, map);
 	        mailService.send(userEntity.getEmail(), mailUtils.getSubjectAccountPassword(), TemplateService.Template.ACCOUNT_PASSWORD, map);
+	        LOGGER.info("Username and password email sent successfully to user(username: " + userEntity.getUsername() + ").");
         }
         return UserConversionUtil.toUserInfo(userEntity);
     }
@@ -134,7 +135,6 @@ public class UserService implements UserDetailsService {
 
 	@Transactional(propagation = Propagation.REQUIRED, readOnly = false)
 	public UserInfo updateUser(final UserInfo userRequest, final Long userId) {
-
 		UserEntity userEntity = userRepository.findByUserId(userId);
 
 		if (ValidatorUtil.isNull(userEntity) || userId == 1) {
@@ -223,7 +223,7 @@ public class UserService implements UserDetailsService {
 	        }
         }
         roleRepository.save(roleEntity);
-        
+
         return UserConversionUtil.toRoleByUser(roleEntity.getUsers(), roleEntity);
     }
 
@@ -248,11 +248,11 @@ public class UserService implements UserDetailsService {
 				}
 			}
 		}
-		
+
 		if (!StringUtil.matches(userRequest.getPassword(), userEntity.getPassword())) {
 			throw new RequestValidationException(messageUtil.getAttributePasswordInvalid());
 		}
-		
+
         userRequest.setUserId(userId);
         userValidator.validateChangePassword(userRequest);
 
@@ -286,7 +286,7 @@ public class UserService implements UserDetailsService {
 			userEntity.setTwoFaKey(null);
 		}
 		userEntity = userRepository.save(userEntity);
-		
+
 		if (!adminFlag) {
 			Map<String, Object> context = new HashMap<>();
 			context.put("name", userEntity.getName());

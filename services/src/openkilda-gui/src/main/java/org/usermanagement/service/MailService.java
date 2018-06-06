@@ -26,7 +26,7 @@ import org.usermanagement.util.CollectionUtils;
 public class MailService {
 
     /** The Constant _log. */
-    private static final Logger _log = LoggerFactory.getLogger(MailService.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(MailService.class);
 
     @Autowired
     private TemplateService templateService;
@@ -44,7 +44,6 @@ public class MailService {
      */
     public void send(final List<String> receivers, final String subject, final TemplateService.Template template,
             final Map<String, Object> context) {
-        // SimpleMailMessage msg = new SimpleMailMessage();
         MimeMessage mimeMessage = javaMailSender.createMimeMessage();
         MimeMessageHelper msg = new MimeMessageHelper(mimeMessage);
         if (!CollectionUtils.isNullOrEmpty(receivers)) {
@@ -53,12 +52,12 @@ public class MailService {
                 msg.setSubject(subject);
                 msg.setTo(receivers.toArray(new String[receivers.size()]));
                 msg.setText(templateService.mergeTemplateToString(template, context), true);
-            } catch (MessagingException e) {
-                e.printStackTrace();
-            }
 
-            javaMailSender.send(mimeMessage);
-            //
+                javaMailSender.send(mimeMessage);
+                LOGGER.info("Mail sent successfully. Subject: " + subject);
+            } catch (MessagingException e) {
+                LOGGER.error("Failed to send mail. Error: " + e.getMessage(), e);
+            }
         }
     }
 
@@ -71,7 +70,6 @@ public class MailService {
      * @param context Map with context values for velocity template.
      */
     public void send(final String receiver, final String subject, final TemplateService.Template template, final Map<String, Object> context) {
-        // SimpleMailMessage msg = new SimpleMailMessage();
         MimeMessage mimeMessage = javaMailSender.createMimeMessage();
         MimeMessageHelper msg = new MimeMessageHelper(mimeMessage);
         if (!StringUtil.isNullOrEmpty(receiver)) {
@@ -80,40 +78,12 @@ public class MailService {
                 msg.setSubject(subject);
                 msg.setTo(receiver);
                 msg.setText(templateService.mergeTemplateToString(template, context), true);
+
+                javaMailSender.send(mimeMessage);
+                LOGGER.info("Mail sent successfully. Subject: " + subject);
             } catch (MessagingException e) {
-                e.printStackTrace();
+                LOGGER.error("Failed to send mail. Error: " + e.getMessage(), e);
             }
-
-            javaMailSender.send(mimeMessage);
-            //
         }
-    }
-
-
-    /**
-     * Send feedback.
-     *
-     * @param subject the subject
-     * @param template the template
-     * @param context the context
-     */
-    public void sendFeedback(final String subject, final TemplateService.Template template, final Map<String, Object> context,
-            final String receiver) {
-
-        _log.info("[sendFeedback]-start");
-
-        MimeMessage mimeMessage = javaMailSender.createMimeMessage();
-        MimeMessageHelper msg = new MimeMessageHelper(mimeMessage);
-        try {
-            msg.setSubject(subject);
-            msg.setTo(receiver);
-            msg.setText(templateService.mergeTemplateToString(template, context), true);
-            _log.info("[sendFeedback]-sending mail with parms-to:" + receiver);
-
-        } catch (MessagingException e) {
-            e.printStackTrace();
-        }
-        javaMailSender.send(mimeMessage);
-        _log.info("[sendFeedback]-end");
     }
 }
