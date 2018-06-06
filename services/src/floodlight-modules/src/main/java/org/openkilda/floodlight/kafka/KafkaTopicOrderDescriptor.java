@@ -1,6 +1,6 @@
 package org.openkilda.floodlight.kafka;
 
-import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.common.PartitionInfo;
 
 public class KafkaTopicOrderDescriptor {
@@ -9,7 +9,7 @@ public class KafkaTopicOrderDescriptor {
     private final String topic;
     private final int partition;
 
-    public KafkaTopicOrderDescriptor(KafkaProducer<?, ?> producer, String topic) {
+    public KafkaTopicOrderDescriptor(Producer<?, ?> producer, String topic) {
         this.topic = topic;
         partition = producer.partitionsFor(topic)
                 .stream()
@@ -43,7 +43,7 @@ public class KafkaTopicOrderDescriptor {
         if (0 < deep) {
             return true;
         }
-        return expireAt < System.currentTimeMillis();
+        return System.currentTimeMillis() < expireAt;
     }
 
     public int getPartition() {
