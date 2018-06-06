@@ -23,7 +23,7 @@ Feature: Flow CRUD
     And each flow is valid per Northbound validation
     And all active switches have correct rules installed per Northbound validation
     And each flow has meters installed with 750 max bandwidth
-    And each flow has traffic going with bandwidth not less than 700 and not greater than 800
+    And each flow has traffic going with bandwidth not less than 700 and not greater than 820
 
     Then each flow can be updated with 250 max bandwidth
     And each flow is in UP state

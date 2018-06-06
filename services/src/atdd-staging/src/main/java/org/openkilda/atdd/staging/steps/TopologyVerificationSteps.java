@@ -12,6 +12,7 @@
  *   See the License for the specific language governing permissions and
  *   limitations under the License.
  */
+
 package org.openkilda.atdd.staging.steps;
 
 import static java.lang.String.format;
@@ -21,11 +22,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
-import cucumber.api.Scenario;
-import cucumber.api.java.Before;
-import cucumber.api.java.en.And;
-import cucumber.api.java.en.Given;
-import cucumber.api.java8.En;
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition.Isl;
 import org.openkilda.atdd.staging.service.northbound.NorthboundService;
@@ -35,6 +31,12 @@ import org.openkilda.atdd.staging.steps.helpers.TopologyChecker.SwitchMatcher;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
+
+import cucumber.api.Scenario;
+import cucumber.api.java.Before;
+import cucumber.api.java.en.And;
+import cucumber.api.java.en.Given;
+import cucumber.api.java8.En;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
@@ -105,7 +107,7 @@ public class TopologyVerificationSteps implements En {
                         .flatMap(link -> {
                             //in kilda we have forward and reverse isl, that's why we have to divide into 2
                             Isl pairedLink = Isl.factory(link.getDstSwitch(), link.getDstPort(),
-                                    link.getSrcSwitch(), link.getSrcPort(), link.getMaxBandwidth());
+                                    link.getSrcSwitch(), link.getSrcPort(), link.getMaxBandwidth(), link.getAswitch());
                             return Stream.of(link, pairedLink);
                         })
                         .map(IslMatcher::new)

@@ -13,29 +13,16 @@
  *   limitations under the License.
  */
 
-package org.openkilda.atdd.staging.service.topology;
+package org.openkilda.atdd.staging.steps;
 
-import org.openkilda.messaging.info.event.PathInfoData;
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.ImmutablePair;
-import org.openkilda.topo.ITopology;
+import cucumber.api.java.en.And;
 
-import java.util.List;
+import java.util.concurrent.TimeUnit;
 
-public interface TopologyEngineService {
+public class CommonSteps {
 
-    Integer getLinkBandwidth(String srcSwitch, String srcPort);
-
-    List<Flow> getAllFlows();
-
-    ImmutablePair<Flow, Flow> getFlow(String flowId);
-
-    void restoreFlows();
-
-    ITopology getTopology();
-
-    String clearTopology();
-
-    List<PathInfoData> getPaths(String srcSwitch, String dstSwitch);
-
+    @And("(?:Remains? in this state|Wait) for (\\d+) seconds")
+    public void delay(int seconds) throws InterruptedException {
+        TimeUnit.SECONDS.sleep(seconds);
+    }
 }

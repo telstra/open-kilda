@@ -13,29 +13,20 @@
  *   limitations under the License.
  */
 
-package org.openkilda.atdd.staging.service.topology;
+package org.openkilda.atdd.staging.config;
 
-import org.openkilda.messaging.info.event.PathInfoData;
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.ImmutablePair;
-import org.openkilda.topo.ITopology;
+import org.openkilda.atdd.staging.steps.helpers.TopologyUnderTest;
 
-import java.util.List;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
 
-public interface TopologyEngineService {
+@Configuration
+@ComponentScan(basePackages = {"org.openkilda.atdd.staging.steps"})
+public class SharedObjectsConfig {
 
-    Integer getLinkBandwidth(String srcSwitch, String srcPort);
-
-    List<Flow> getAllFlows();
-
-    ImmutablePair<Flow, Flow> getFlow(String flowId);
-
-    void restoreFlows();
-
-    ITopology getTopology();
-
-    String clearTopology();
-
-    List<PathInfoData> getPaths(String srcSwitch, String dstSwitch);
-
+    @Bean(name = "topologyUnderTest")
+    public TopologyUnderTest topologyUnderTest() {
+        return new TopologyUnderTest();
+    }
 }

@@ -12,11 +12,11 @@
  *   See the License for the specific language governing permissions and
  *   limitations under the License.
  */
+
 package org.openkilda.atdd.staging.steps;
 
 import static com.nitorcreations.Matchers.reflectEquals;
 import static java.lang.String.format;
-import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toList;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
@@ -33,20 +33,13 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import com.google.common.annotations.VisibleForTesting;
-import cucumber.api.java.en.And;
-import cucumber.api.java.en.Given;
-import cucumber.api.java.en.Then;
-import cucumber.api.java.en.When;
-import cucumber.api.java8.En;
-import net.jodah.failsafe.Failsafe;
-import net.jodah.failsafe.RetryPolicy;
 import org.apache.commons.collections4.ListValuedMap;
 import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
 import org.openkilda.atdd.staging.service.floodlight.FloodlightService;
 import org.openkilda.atdd.staging.service.floodlight.model.MeterEntry;
 import org.openkilda.atdd.staging.service.floodlight.model.MetersEntriesMap;
+import org.openkilda.atdd.staging.service.flowmanager.FlowManager;
 import org.openkilda.atdd.staging.service.northbound.NorthboundService;
 import org.openkilda.atdd.staging.service.topology.TopologyEngineService;
 import org.openkilda.atdd.staging.service.traffexam.FlowNotApplicableException;
@@ -55,15 +48,24 @@ import org.openkilda.atdd.staging.service.traffexam.TraffExamService;
 import org.openkilda.atdd.staging.service.traffexam.model.Exam;
 import org.openkilda.atdd.staging.service.traffexam.model.ExamReport;
 import org.openkilda.atdd.staging.service.traffexam.model.ExamResources;
-import org.openkilda.atdd.staging.steps.helpers.FlowSetBuilder;
 import org.openkilda.atdd.staging.steps.helpers.FlowTrafficExamBuilder;
-import org.openkilda.messaging.info.event.PathInfoData;
+import org.openkilda.atdd.staging.steps.helpers.TopologyUnderTest;
+import org.openkilda.atdd.staging.tools.SoftAssertions;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
+
+import com.google.common.annotations.VisibleForTesting;
+import cucumber.api.java.en.And;
+import cucumber.api.java.en.Given;
+import cucumber.api.java.en.Then;
+import cucumber.api.java.en.When;
+import cucumber.api.java8.En;
+import net.jodah.failsafe.Failsafe;
+import net.jodah.failsafe.RetryPolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -71,6 +73,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -96,61 +99,42 @@ public class FlowCrudSteps implements En {
     private TraffExamService traffExam;
 
     @Autowired
+    private FlowManager flowManager;
+
+    @Autowired
     @Qualifier("topologyEngineRetryPolicy")
     private RetryPolicy retryPolicy;
 
     @VisibleForTesting
-    Set<FlowPayload> flows = emptySet();
+    Set<FlowPayload> flows;
+
+    @Autowired
+    @Qualifier("topologyUnderTest")
+    private TopologyUnderTest topologyUnderTest;
 
     @Given("^flows defined over active switches in the reference topology$")
     public void defineFlowsOverActiveSwitches() {
-        FlowSetBuilder builder = new FlowSetBuilder();
-
-        final List<TopologyDefinition.Switch> switches = topologyDefinition.getActiveSwitches();
-        // check each combination of active switches for a path between them and create a flow definition if the path exists
-        switches.forEach(srcSwitch ->
-                switches.forEach(dstSwitch -> {
-                    // skip the same switch flow and reverse combination of switches
-                    if (srcSwitch.getDpId().compareTo(dstSwitch.getDpId()) >= 0) {
-                        return;
-                    }
-
-                    // test only bi-directional flow
-                    List<PathInfoData> forwardPath = topologyEngineService
-                            .getPaths(srcSwitch.getDpId(), dstSwitch.getDpId());
-                    List<PathInfoData> reversePath = topologyEngineService
-                            .getPaths(dstSwitch.getDpId(), srcSwitch.getDpId());
-                    if (!forwardPath.isEmpty() && !reversePath.isEmpty()) {
-                        String flowId = format("%s-%s", srcSwitch.getName(), dstSwitch.getName());
-                        builder.addFlow(flowId, srcSwitch, dstSwitch);
-                    }
-                })
-        );
-
-        flows = builder.getFlows();
+        flows = flowManager.allActiveSwitchesFlows();
     }
 
     @Given("^flows defined over active traffgens in the reference topology$")
     public void defineFlowsOverActiveTraffgens() {
-        FlowSetBuilder builder = new FlowSetBuilder();
+        flows = flowManager.allActiveTraffgenFlows();
+    }
 
-        final List<TopologyDefinition.TraffGen> traffGens = topologyDefinition.getActiveTraffGens();
-        // check each combination of active traffGens and create a flow definition
-        traffGens.forEach(srcTraffGen -> {
-            TopologyDefinition.Switch srcSwitch = srcTraffGen.getSwitchConnected();
-            traffGens.forEach(dstTraffGen -> {
-                TopologyDefinition.Switch dstSwitch = dstTraffGen.getSwitchConnected();
-                // skip the same switch flow and reverse combination of switches
-                if (srcSwitch.getDpId().compareTo(dstSwitch.getDpId()) >= 0) {
-                    return;
-                }
+    @Given("Create (\\d+) flows? with A Switch used and at least (\\d+) alternate paths? between source and "
+            + "destination switch and (\\d+) bandwidth")
+    public void flowsWithAlternatePaths(int flowsAmount, int alternatePaths, int bw) {
+        Map<FlowPayload, List<TopologyDefinition.Isl>> flowIsls = topologyUnderTest.getFlowIsls();
+        flowIsls.putAll(flowManager.createFlowsWithASwitch(flowsAmount, alternatePaths, bw));
+        //temporary resaving flows before refactoring all methods to work with topologyUnderTest
+        flows = flowIsls.keySet();
+    }
 
-                String flowId = format("%s-%s", srcSwitch.getName(), dstSwitch.getName());
-                builder.addFlow(flowId, srcSwitch, srcTraffGen.getSwitchPort(), dstSwitch, dstTraffGen.getSwitchPort());
-            });
-        });
-
-        flows = builder.getFlows();
+    @And("Create defined flows?")
+    public void createFlows() {
+        eachFlowIsCreatedAndStoredInTopologyEngine();
+        eachFlowIsInUpState();
     }
 
     @And("^each flow has unique flow_id$")
@@ -163,7 +147,7 @@ public class FlowCrudSteps implements En {
         flows.forEach(flow -> flow.setId(format("%s-%s", flowIdPrefix, flow.getId())));
     }
 
-    @And("^each flow has max bandwidth set to (\\d+)$")
+    @And("^(?:each )?flow has max bandwidth set to (\\d+)$")
     public void setBandwidthToEachFlow(int bandwidth) {
         flows.forEach(flow -> flow.setMaximumBandwidth(bandwidth));
     }
@@ -209,11 +193,12 @@ public class FlowCrudSteps implements En {
         }
     }
 
-    @And("^each flow is in UP state$")
+    @And("^(?:each )?flow is in UP state$")
     public void eachFlowIsInUpState() {
         for (FlowPayload flow : flows) {
             FlowIdStatusPayload status = Failsafe.with(retryPolicy
-                    .retryIf(p -> p == null || ((FlowIdStatusPayload) p).getStatus() != FlowState.UP))
+                    .retryIf(p -> !(p instanceof FlowIdStatusPayload)
+                            || ((FlowIdStatusPayload) p).getStatus() != FlowState.UP))
                     .get(() -> northboundService.getFlowStatus(flow.getId()));
 
             assertNotNull(format("The flow status for '%s' can't be retrived from Northbound.", flow.getId()), status);
@@ -235,44 +220,41 @@ public class FlowCrudSteps implements En {
         }
     }
 
-    @And("^each flow is valid per Northbound validation$")
+    @And("^(?:each )?flow is valid per Northbound validation$")
     public void eachFlowIsValid() {
         flows.forEach(flow -> {
             List<FlowValidationDto> validations = northboundService.validateFlow(flow.getId());
             validations.forEach(flowValidation -> {
                 assertEquals(flow.getId(), flowValidation.getFlowId());
-                assertTrue(format("The flow '%s' has discrepancies: %s", flow.getId(), flowValidation.getDiscrepancies()),
-                        flowValidation.getDiscrepancies().isEmpty());
-                assertTrue(format("The flow '%s' didn't pass validation.", flow.getId()), flowValidation.getAsExpected());
+                assertTrue(format("The flow '%s' has discrepancies: %s", flow.getId(),
+                        flowValidation.getDiscrepancies()), flowValidation.getDiscrepancies().isEmpty());
+                assertTrue(format("The flow '%s' didn't pass validation.", flow.getId()),
+                        flowValidation.getAsExpected());
             });
 
         });
     }
 
-    @And("^each flow has traffic going with bandwidth not less than (\\d+) and not greater than (\\d+)$")
-    public void eachFlowHasTrafficGoingWithBandwidthNotLessThan(int bandwidthLowLimit, int bandwidthHighLimit) {
+    @And("^(?:each )?flow has traffic going with bandwidth not less than (\\d+) and not greater than (\\d+)$")
+    public void eachFlowHasTrafficGoingWithBandwidthNotLessThan(int bandwidthLowLimit, int bandwidthHighLimit)
+            throws Throwable {
         List<Exam> examsInProgress = buildAndStartTraffExams();
-
+        SoftAssertions softAssertions = new SoftAssertions();
         List<String> issues = new ArrayList<>();
 
         for (Exam exam : examsInProgress) {
             String flowId = exam.getFlow().getId();
 
             ExamReport report = traffExam.waitExam(exam);
-
-            if (report.hasError()) {
-                issues.add(format("The flow %s had the error: %s", flowId, report.getErrors()));
-            }
-            if (!report.hasTraffic()) {
-                issues.add(format("The flow %s had no traffic.", flowId));
-            }
-            if (report.getBandwidth().getKbps() < bandwidthLowLimit
-                    && report.getBandwidth().getKbps() > bandwidthHighLimit) {
-                issues.add(format("The flow %s had unexpected bandwidth: %s", flowId, report.getBandwidth()));
-            }
+            softAssertions.checkThat(format("The flow %s had errors: %s",
+                    flowId, report.getErrors()), report.hasError(), is(false));
+            softAssertions.checkThat(format("The flow %s had no traffic.", flowId),
+                    report.hasTraffic(), is(true));
+            softAssertions.checkThat(format("The flow %s had unexpected bandwidth: %s", flowId, report.getBandwidth()),
+                    report.getBandwidth().getKbps() > bandwidthLowLimit
+                            && report.getBandwidth().getKbps() < bandwidthHighLimit, is(true));
         }
-
-        assertThat("There is an issue with traffic on installed flows.", issues, empty());
+        softAssertions.verify();
     }
 
     @And("^each flow has no traffic$")
