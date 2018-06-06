@@ -307,9 +307,9 @@ class MessageItem(object):
                 for isl in isl_utils.disable_by_endpoint(
                         tx, model.NetworkEndpoint(switch_id, port_id)):
                     # TODO(crimi): should be policy / toggle based
-                    isl_utils.set_cost(
+                    isl_utils.increase_cost(
                         tx, isl, config.ISL_COST_WHEN_PORT_DOWN)
-                    isl_utils.set_cost(
+                    isl_utils.increase_cost(
                         tx, isl.reversed(), config.ISL_COST_WHEN_PORT_DOWN)
         except exc.DBRecordNotFound:
             logger.info("There is no ISL on %s_%s", switch_id, port_id)

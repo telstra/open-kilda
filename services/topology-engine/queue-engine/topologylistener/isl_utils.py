@@ -100,6 +100,26 @@ def fetch_by_datapath(tx, dpid):
     return (x['target'] for x in cursor)
 
 
+def fetch_link_props(tx, isl):
+    match = _make_match(isl)
+    q = textwrap.dedent("""
+        MATCH (target:link_props {
+            src_switch: $src_switch,
+            src_port: $src_port,
+            dst_switch: $dst_switch,
+            dst_port: $dst_port})
+        RETURN target""")
+
+    logger.debug('link_props lookup query:\n%s', q)
+    cursor = tx.run(q, match)
+
+    try:
+        target = db.fetch_one(cursor)['target']
+    except exc.DBEmptyResponse:
+        raise exc.DBRecordNotFound(q, match)
+    return target
+
+
 def touch(tx, isl, mtime=None):
     logger.debug("Touch ISL %s", isl)
 
@@ -256,6 +276,21 @@ def set_active_field(tx, neo_id, status):
     tx.run(q, p)
 
 
+def increase_cost(tx, isl, amount):
+    cost = get_cost(tx, isl)
+    if not cost:
+        cost = 0
+    set_cost(tx, isl, cost + amount)
+
+
+def get_cost(tx, isl):
+    try:
+        db_record = fetch_link_props(tx, isl)
+    except exc.DBRecordNotFound:
+        db_record = fetch(tx, isl)
+    return db_record['cost']
+
+
 def set_cost(tx, isl, cost):
     props = {'cost': cost}
     try:
@@ -287,23 +322,7 @@ def set_props(tx, isl, props):
 
 
 def set_link_props(tx, isl, props):
-    match = _make_match(isl)
-    q = textwrap.dedent("""
-        MATCH (target:link_props {
-            src_switch: $src_switch,
-            src_port: $src_port,
-            dst_switch: $dst_switch,
-            dst_port: $dst_port})
-        RETURN target""")
-
-    logger.debug('link_props lookup query:\n%s', q)
-    cursor = tx.run(q, match)
-
-    try:
-        target = db.fetch_one(cursor)['target']
-    except exc.DBEmptyResponse:
-        raise exc.DBRecordNotFound(q, match)
-
+    target = fetch_link_props(tx, isl)
     origin, update = _locate_changes(target, props)
     if update:
         q = textwrap.dedent("""
