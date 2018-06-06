@@ -432,7 +432,7 @@ class TestIsl(unittest.TestCase):
 
     def test_cost_raise_on_port_down(self):
         self.setup_initial_data()
-        self._cost_raise_on_port_down(1, 10000, 10000)
+        self._cost_raise_on_port_down(10, 10010, 10010)
 
     def test_cost_raise_on_port_down_without_link_props(self):
         self.setup_initial_data(make_link_props=False)
@@ -468,22 +468,22 @@ class TestIsl(unittest.TestCase):
         isl = model.InterSwitchLink(src_endpoint, dst_endpoint, None)
 
         self.ensure_isl_costs(
-                (src_endpoint, 1),
-                (dst_endpoint, 1))
+                (src_endpoint, 10),
+                (dst_endpoint, 10))
 
         self.assertTrue(
                 make_isl_failed(src_endpoint), 'Port DOWN command have failed')
 
         self.ensure_isl_costs(
-                (src_endpoint, 1),
-                (dst_endpoint, 1))
+                (src_endpoint, 10),
+                (dst_endpoint, 10))
 
         self.assertTrue(
                 share.exec_isl_discovery(isl), 'ISL discovery command have failed')
 
         self.ensure_isl_costs(
-                (src_endpoint, 1),
-                (dst_endpoint, 1))
+                (src_endpoint, 10),
+                (dst_endpoint, 10))
 
     def test_moved_isl_should_be_marked(self):
         self.setup_initial_data()
@@ -600,7 +600,7 @@ class TestIsl(unittest.TestCase):
 
         if make_link_props:
             with neo4j_connect.begin() as tx:
-                payload = {'cost': 1}
+                payload = {'cost': 10}
                 inject_db_link_props(tx, src_endpoint, dst_endpoint, payload)
                 inject_db_link_props(tx, dst_endpoint, src_endpoint, payload)
 
