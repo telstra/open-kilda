@@ -28,7 +28,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
-import org.openkilda.atdd.staging.service.flowcalculator.FlowManagerImpl;
+import org.openkilda.atdd.staging.service.flowmanager.FlowManagerImpl;
 import org.openkilda.atdd.staging.service.northbound.NorthboundService;
 import org.openkilda.atdd.staging.service.topology.TopologyEngineService;
 import org.openkilda.messaging.info.event.PathInfoData;

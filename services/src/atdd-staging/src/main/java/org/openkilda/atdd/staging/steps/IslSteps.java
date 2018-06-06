@@ -25,7 +25,6 @@ import org.openkilda.atdd.staging.steps.helpers.TopologyUnderTest;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.PathNode;
 
-import cucumber.api.java.After;
 import cucumber.api.java.en.Then;
 import cucumber.api.java.en.When;
 import net.jodah.failsafe.Failsafe;
@@ -34,6 +33,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class IslSteps {
@@ -67,8 +67,7 @@ public class IslSteps {
             TopologyDefinition.ASwitch aswitch = islToRemove.getAswitch();
             ASwitchFlow aswFlowForward = new ASwitchFlow(aswitch.getInPort(), aswitch.getOutPort());
             ASwitchFlow aswFlowReverse = new ASwitchFlow(aswitch.getOutPort(), aswitch.getInPort());
-            aswitchService.removeFlow(aswFlowForward);
-            aswitchService.removeFlow(aswFlowReverse);
+            aswitchService.removeFlow(Arrays.asList(aswFlowForward, aswFlowReverse));
             changedIsls.add(islToRemove);
         });
     }
@@ -82,8 +81,7 @@ public class IslSteps {
             TopologyDefinition.ASwitch aswitch = isl.getAswitch();
             ASwitchFlow aswFlowForward = new ASwitchFlow(aswitch.getInPort(), aswitch.getOutPort());
             ASwitchFlow aswFlowReverse = new ASwitchFlow(aswitch.getOutPort(), aswitch.getInPort());
-            aswitchService.addFlow(aswFlowForward);
-            aswitchService.addFlow(aswFlowReverse);
+            aswitchService.addFlow(Arrays.asList(aswFlowForward, aswFlowReverse));
         });
     }
 
@@ -108,8 +106,16 @@ public class IslSteps {
         });
     }
 
-    @After({"@requires_cleanup", "@cuts_out_isls"})
-    public void bringIslBack() {
-        transitIslUp();
+    @Then("ISLs? status is (.*)")
+    public void checkIslStatus(String islStatus) {
+        IslChangeType expectedIslState = IslChangeType.valueOf(islStatus);
+        changedIsls.forEach(isl -> {
+            IslChangeType actualIslState = northboundService.getAllLinks().stream().filter(link -> {
+                PathNode src = link.getPath().get(0);
+                PathNode dst = link.getPath().get(1);
+                return src.getPortNo() == isl.getSrcPort() && dst.getPortNo() == isl.getDstPort();
+            }).findFirst().get().getState();
+            assertEquals(expectedIslState, actualIslState);
+        });
     }
 }

@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.atdd.staging.service.flowcalculator;
+package org.openkilda.atdd.staging.service.flowmanager;
 
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
 import org.openkilda.messaging.payload.flow.FlowPayload;

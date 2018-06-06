@@ -20,6 +20,7 @@ import static java.lang.String.format;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.google.common.base.Strings;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,12 +53,7 @@ public class LoggingRequestInterceptor implements ClientHttpRequestInterceptor {
     private void traceResponse(ClientHttpResponse response) throws IOException {
         StringBuilder inputStringBuilder = new StringBuilder();
         BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(response.getBody(), "UTF-8"));
-        String line = bufferedReader.readLine();
-        while (line != null) {
-            inputStringBuilder.append(line);
-            inputStringBuilder.append('\n');
-            line = bufferedReader.readLine();
-        }
+        inputStringBuilder.append(IOUtils.toString(bufferedReader));
         log.debug(format("\n%s response begin %1$s\n"
                         + "Status code  : %s\nStatus text  : %s\nHeaders      : %s\nResponse body: %s\n"
                         + "%1$s response end %1$s", Strings.repeat("=", 20),

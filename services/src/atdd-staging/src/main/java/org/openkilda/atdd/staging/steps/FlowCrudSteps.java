@@ -39,7 +39,7 @@ import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
 import org.openkilda.atdd.staging.service.floodlight.FloodlightService;
 import org.openkilda.atdd.staging.service.floodlight.model.MeterEntry;
 import org.openkilda.atdd.staging.service.floodlight.model.MetersEntriesMap;
-import org.openkilda.atdd.staging.service.flowcalculator.FlowManager;
+import org.openkilda.atdd.staging.service.flowmanager.FlowManager;
 import org.openkilda.atdd.staging.service.northbound.NorthboundService;
 import org.openkilda.atdd.staging.service.topology.TopologyEngineService;
 import org.openkilda.atdd.staging.service.traffexam.FlowNotApplicableException;

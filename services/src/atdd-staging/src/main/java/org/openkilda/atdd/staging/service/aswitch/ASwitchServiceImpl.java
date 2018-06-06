@@ -45,15 +45,15 @@ public class ASwitchServiceImpl implements ASwitchService {
     private RestTemplate restTemplate;
 
     @Override
-    public void addFlow(ASwitchFlow flow) {
+    public void addFlow(List<ASwitchFlow> flows) {
         restTemplate.exchange("/flows", HttpMethod.POST,
-                new HttpEntity<>(flow, buildJsonHeaders()), String.class);
+                new HttpEntity<>(flows, buildJsonHeaders()), String.class);
     }
 
     @Override
-    public void removeFlow(ASwitchFlow flow) {
+    public void removeFlow(List<ASwitchFlow> flows) {
         restTemplate.exchange("/flows", HttpMethod.DELETE,
-                new HttpEntity<>(flow, buildJsonHeaders()), String.class);
+                new HttpEntity<>(flows, buildJsonHeaders()), String.class);
     }
 
     @Override

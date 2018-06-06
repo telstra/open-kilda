@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.atdd.staging.service.flowcalculator;
+package org.openkilda.atdd.staging.service.flowmanager;
 
 import static java.lang.String.format;
 
@@ -38,6 +38,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+/**
+ * This class helps to define/create different flow sets that may be required by tests.
+ */
 @Service
 public class FlowManagerImpl implements FlowManager {
     private static final SimpleDateFormat sdf = new SimpleDateFormat("ddMMMHHmm");
@@ -56,10 +59,10 @@ public class FlowManagerImpl implements FlowManager {
      * will later allow to bring such link down and verify the further flow behavior. <br>
      * Note that unlike some other methods here, the flow(s) will already be created in the system.
      *
-     * @param flowsAmount    amount of flows to create. Will throw assumption error if unable to find enough flows in
-     *                       given topology
+     * @param flowsAmount amount of flows to create. Will throw assumption error if unable to find enough flows in
+     *        given topology
      * @param alternatePaths amount of alternate paths that should be available for the created flows
-     * @param bandwidth             bandwidth for created flows
+     * @param bandwidth bandwidth for created flows
      * @return map. Key: created flow. Value: list of a-switch isls for flow.
      */
     @Override
@@ -116,8 +119,8 @@ public class FlowManagerImpl implements FlowManager {
         if (!foundEnoughFlows) {
             result.keySet().forEach(f -> northboundService.deleteFlow(f.getId()));
         }
-        Assume.assumeTrue("Didn't find enough of requested flows. This test cannot be run on given topology",
-                foundEnoughFlows);
+        Assume.assumeTrue("Didn't find enough of requested flows. This test cannot be run on given topology."
+                + "Do you have enough a-switch links in the topology?", foundEnoughFlows);
         return result;
     }
 

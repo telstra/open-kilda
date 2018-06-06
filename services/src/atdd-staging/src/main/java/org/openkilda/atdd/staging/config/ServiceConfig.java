@@ -15,8 +15,8 @@
 
 package org.openkilda.atdd.staging.config;
 
-import org.openkilda.atdd.staging.service.flowcalculator.FlowManager;
-import org.openkilda.atdd.staging.service.flowcalculator.FlowManagerImpl;
+import org.openkilda.atdd.staging.service.flowmanager.FlowManager;
+import org.openkilda.atdd.staging.service.flowmanager.FlowManagerImpl;
 import org.openkilda.atdd.staging.tools.LoggingRequestInterceptor;
 
 import net.jodah.failsafe.RetryPolicy;
@@ -91,7 +91,7 @@ public class ServiceConfig {
     }
 
     @Bean(name = "aSwitchRestTemplate")
-    public RestTemplate aswitchtRestTemplate(@Value("${aswitch.endpoint}") String endpoint) {
+    public RestTemplate aswitchRestTemplate(@Value("${aswitch.endpoint}") String endpoint) {
         return buildLoggingRestTemplate(endpoint);
     }
 

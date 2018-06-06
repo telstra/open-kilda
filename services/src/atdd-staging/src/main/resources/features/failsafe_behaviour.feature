@@ -6,14 +6,14 @@ Feature: Failsafe Suite
   Background:
     Given the reference topology
 
-  @requires_cleanup @cuts_out_isls
   Scenario: ISL goes down, system is able to react in expected way and reroute
     Given Create 1 flow with A Switch used and at least 1 alternate path between source and destination switch and 500 bandwidth
 
     When ISL between switches goes down
     And Remains in this state for 180 seconds
 
-    Then ISL status changes to FAILED
+    Then ISL status is DISCOVERED
+    And ISL status changes to FAILED
     Then flow is in UP state
     And flow is valid per Northbound validation
     And all active switches have correct rules installed per Northbound validation

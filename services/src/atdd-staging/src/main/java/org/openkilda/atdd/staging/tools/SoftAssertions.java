@@ -17,6 +17,9 @@ package org.openkilda.atdd.staging.tools;
 
 import org.junit.rules.ErrorCollector;
 
+/**
+ * Allows to assert multiple times without failing, then fail with multiple assertion errors at once.
+ */
 public class SoftAssertions extends ErrorCollector {
 
     public void verify() throws Throwable {

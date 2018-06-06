@@ -20,9 +20,9 @@ import org.openkilda.atdd.staging.service.aswitch.model.ASwitchFlow;
 import java.util.List;
 
 public interface ASwitchService {
-    void addFlow(ASwitchFlow flow);
+    void addFlow(List<ASwitchFlow> flows);
 
-    void removeFlow(ASwitchFlow flow);
+    void removeFlow(List<ASwitchFlow> flows);
 
     List<ASwitchFlow> getAllFlows();
 }
