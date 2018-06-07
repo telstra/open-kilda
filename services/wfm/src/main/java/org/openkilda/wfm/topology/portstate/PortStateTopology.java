@@ -18,14 +18,14 @@ public class PortStateTopology extends AbstractTopology<PortStateTopologyConfig>
     private static final Logger logger = LoggerFactory.getLogger(PortStateTopology.class);
 
     public static final String TOPO_DISCO_SPOUT = "topo.disco.spout";
-    public static final String WFM_STATS_SPOUT = "wfm.stats.spout";
-    public static final int JANITOR_REFRESH = 600;
-    public final String PARSE_PORT_INFO_BOLT_NAME = ParsePortInfoBolt.class.getSimpleName();
-    public final String TOPO_DISCO_PARSE_BOLT_NAME = TopoDiscoParseBolt.class.getSimpleName();
-    public final String SWITCH_PORTS_SPOUT_NAME = SwitchPortsSpout.class.getSimpleName();
-    public final String WFM_STATS_PARSE_BOLT_NAME = WfmStatsParseBolt.class.getSimpleName();
-    public final String SpeakerBoltName = "speaker.kafka.bolt";
-    public final String OtsdbKafkaBoltName = "otsdb.kafka.bolt";
+    private static final String WFM_STATS_SPOUT = "wfm.stats.spout";
+    private static final int JANITOR_REFRESH = 600;
+    private static final String PARSE_PORT_INFO_BOLT_NAME = ParsePortInfoBolt.class.getSimpleName();
+    private static final String TOPO_DISCO_PARSE_BOLT_NAME = TopoDiscoParseBolt.class.getSimpleName();
+    private static final String SWITCH_PORTS_SPOUT_NAME = SwitchPortsSpout.class.getSimpleName();
+    private static final String WFM_STATS_PARSE_BOLT_NAME = WfmStatsParseBolt.class.getSimpleName();
+    private static final String SPEAKER_KAFKA_BOLT_NAME = "speaker.kafka.bolt";
+    private static final String OTSDB_KAFKA_BOLT_NAME = "otsdb.kafka.bolt";
 
     protected PortStateTopology(LaunchEnvironment env) {
         super(env, PortStateTopologyConfig.class);
@@ -33,8 +33,7 @@ public class PortStateTopology extends AbstractTopology<PortStateTopologyConfig>
 
     @Override
     public StormTopology createTopology() throws NameCollisionException {
-        final String clazzName = this.getClass().getSimpleName();
-        logger.debug("Building Topology - {}", clazzName);
+        logger.info("Creating PortStateTopology - {}", topologyName);
 
         TopologyBuilder builder = new TopologyBuilder();
 
@@ -54,8 +53,8 @@ public class PortStateTopology extends AbstractTopology<PortStateTopologyConfig>
         // Setup spout and bolt for TOPO_DISCO_SPOUT line
         String topoDiscoTopic = topologyConfig.getKafkaTopoDiscoTopic();
         checkAndCreateTopic(topoDiscoTopic);
-        logger.debug("connecting to topic {}", topoDiscoTopic);
-        builder.setSpout(TOPO_DISCO_SPOUT, createKafkaSpout(topoDiscoTopic, clazzName+topoDiscoTopic));
+        logger.debug("connecting to {} topic", topoDiscoTopic);
+        builder.setSpout(TOPO_DISCO_SPOUT, createKafkaSpout(topoDiscoTopic, TOPO_DISCO_SPOUT));
 
         TopoDiscoParseBolt topoDiscoParseBolt = new TopoDiscoParseBolt();
         builder.setBolt(TOPO_DISCO_PARSE_BOLT_NAME, topoDiscoParseBolt, topologyConfig.getParallelism())
@@ -66,17 +65,17 @@ public class PortStateTopology extends AbstractTopology<PortStateTopologyConfig>
                 .shuffleGrouping(TOPO_DISCO_PARSE_BOLT_NAME, TopoDiscoParseBolt.TOPO_TO_PORT_INFO_STREAM)
                 .shuffleGrouping(WFM_STATS_PARSE_BOLT_NAME, WfmStatsParseBolt.WFM_TO_PARSE_PORT_INFO_STREAM);
 
-        final String openTsdbTopic = topologyConfig.getKafkaOtsdbTopic();
+        String openTsdbTopic = topologyConfig.getKafkaOtsdbTopic();
         checkAndCreateTopic(openTsdbTopic);
         KafkaBolt openTsdbBolt = createKafkaBolt(openTsdbTopic);
-        builder.setBolt(OtsdbKafkaBoltName, openTsdbBolt, topologyConfig.getParallelism())
+        builder.setBolt(OTSDB_KAFKA_BOLT_NAME, openTsdbBolt, topologyConfig.getParallelism())
                 .shuffleGrouping(PARSE_PORT_INFO_BOLT_NAME);
 
         // Setup spout and bolt for WFM_STATS_SPOUT line
         String wfmStatsTopic = topologyConfig.getKafkaStatsTopic();
         checkAndCreateTopic(wfmStatsTopic);
-        logger.debug("conencting to topic {}", wfmStatsTopic);
-        builder.setSpout(WFM_STATS_SPOUT, createKafkaSpout(wfmStatsTopic, clazzName+wfmStatsTopic));
+        logger.debug("connecting to {} topic", wfmStatsTopic);
+        builder.setSpout(WFM_STATS_SPOUT, createKafkaSpout(wfmStatsTopic, WFM_STATS_SPOUT));
         
         WfmStatsParseBolt wfmStatsParseBolt = new WfmStatsParseBolt();
         builder.setBolt(WFM_STATS_PARSE_BOLT_NAME, wfmStatsParseBolt, topologyConfig.getParallelism())
@@ -86,10 +85,10 @@ public class PortStateTopology extends AbstractTopology<PortStateTopologyConfig>
         SwitchPortsSpout switchPortsSpout = new SwitchPortsSpout(topologyConfig, JANITOR_REFRESH);
         builder.setSpout(SWITCH_PORTS_SPOUT_NAME, switchPortsSpout);
 
-        final String speakerTopic = topologyConfig.getKafkaSpeakerTopic();
+        String speakerTopic = topologyConfig.getKafkaSpeakerTopic();
         checkAndCreateTopic(speakerTopic);
         KafkaBolt speakerBolt = createKafkaBolt(speakerTopic);
-        builder.setBolt(SpeakerBoltName, speakerBolt, topologyConfig.getParallelism())
+        builder.setBolt(SPEAKER_KAFKA_BOLT_NAME, speakerBolt, topologyConfig.getParallelism())
                 .shuffleGrouping(SWITCH_PORTS_SPOUT_NAME);
 
         return builder.createTopology();

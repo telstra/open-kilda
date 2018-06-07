@@ -80,7 +80,7 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
 
     @Override
     public StormTopology createTopology() throws NameCollisionException {
-        logger.info("Creating Topology: {}", topologyName);
+        logger.info("Creating FlowTopology - {}", topologyName);
 
         TopologyBuilder builder = new TopologyBuilder();
         final List<CtrlBoltRef> ctrlTargets = new ArrayList<>();
@@ -100,14 +100,11 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
          * Spout receives all Northbound requests.
          */
 
-        KafkaSpoutConfig<String, String> kafkaSpoutConfig;
-        KafkaSpout<String, String> kafkaSpout;
-
-        kafkaSpoutConfig = makeKafkaSpoutConfigBuilder(
+        KafkaSpoutConfig<String, String> kafkaSpoutConfig = makeKafkaSpoutConfigBuilder(
                 ComponentType.NORTHBOUND_KAFKA_SPOUT.toString(), topologyConfig.getKafkaFlowTopic()).build();
         // (crimi) - commenting out LcmKafkaSpout here due to dying worker
         //kafkaSpout = new LcmKafkaSpout<>(kafkaSpoutConfig);
-        kafkaSpout = new KafkaSpout<>(kafkaSpoutConfig);
+        KafkaSpout<String, String> kafkaSpout = new KafkaSpout<>(kafkaSpoutConfig);
         builder.setSpout(ComponentType.NORTHBOUND_KAFKA_SPOUT.toString(), kafkaSpout, parallelism);
 
         /*

@@ -36,8 +36,8 @@ public class OFELinkBoltTest extends AbstractStormTest {
         context = Mockito.mock(TopologyContext.class);
 
         Mockito.when(context.getComponentId(TASK_ID_BOLT))
-                .thenReturn(manager.getSpoutIdInput());
-        Mockito.when(context.getComponentOutputFields(manager.getSpoutIdInput(), STREAM_ID_INPUT))
+                .thenReturn(OFEventWFMTopology.DISCO_SPOUT_ID);
+        Mockito.when(context.getComponentOutputFields(OFEventWFMTopology.DISCO_SPOUT_ID, STREAM_ID_INPUT))
                 .thenReturn(KafkaMessage.FORMAT);
 
         outputDelegate = Mockito.spy(new OutputCollectorMock());

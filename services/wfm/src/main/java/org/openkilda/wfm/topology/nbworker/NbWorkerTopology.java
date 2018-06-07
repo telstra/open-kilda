@@ -56,8 +56,7 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
     private static final String FLOWS_BOLT_NAME = "flows-operations-bolt";
     private static final String SPLITTER_BOLT_NAME = "response-splitter-bolt";
     private static final String NB_KAFKA_BOLT_NAME = "nb-kafka-bolt";
-    private final String topicName = topologyConfig.getKafkaTopoNbTopic();
-    private final String spoutId = topicName + "-spout";
+    private static final String NB_SPOUT_ID = "nb-spout";
 
     public NbWorkerTopology(LaunchEnvironment env) {
         super(env, NbWorkerTopologyConfig.class);
@@ -65,17 +64,18 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
 
     @Override
     public StormTopology createTopology() {
-        LOGGER.info("Creating of NbWorkerTopology has been started");
+        LOGGER.info("Creating NbWorkerTopology - {}", topologyName);
+
         TopologyBuilder tb = new TopologyBuilder();
 
         final Integer parallelism = topologyConfig.getParallelism();
 
-        KafkaSpout kafkaSpout = createKafkaSpout(topicName, spoutId);
-        tb.setSpout(spoutId, kafkaSpout, parallelism);
+        KafkaSpout kafkaSpout = createKafkaSpout(topologyConfig.getKafkaTopoNbTopic(), NB_SPOUT_ID);
+        tb.setSpout(NB_SPOUT_ID, kafkaSpout, parallelism);
 
         RouterBolt router = new RouterBolt();
         tb.setBolt(ROUTER_BOLT_NAME, router, parallelism)
-                .shuffleGrouping(spoutId);
+                .shuffleGrouping(NB_SPOUT_ID);
 
         Neo4jConfig neo4jConfig = configurationProvider.getConfiguration(Neo4jConfig.class);
         Auth pathComputerAuth = new PathComputerAuth(neo4jConfig.getHost(),

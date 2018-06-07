@@ -99,7 +99,9 @@ public class OFELinkBolt
 
     private static final String STREAM_ID_CTRL = "ctrl";
     private static final String STATE_ID_DISCOVERY = "discovery-manager";
-    private final String topoEngTopic;
+    static final String TOPO_ENG_STREAM = "topo.eng";
+    static final String SPEAKER_STREAM = "speaker";
+
     private final String islDiscoveryTopic;
 
     private final int islHealthCheckInterval;
@@ -136,7 +138,6 @@ public class OFELinkBolt
         watchDogInterval = discoveryConfig.getDiscoverySpeakerFailureTimeout();
         dumpRequestTimeout = discoveryConfig.getDiscoveryDumpRequestTimeout();
 
-        topoEngTopic = config.getKafkaTopoEngTopic();
         islDiscoveryTopic = config.getKafkaSpeakerTopic();
     }
 
@@ -226,7 +227,7 @@ public class OFELinkBolt
 
         try {
             String json = Utils.MAPPER.writeValueAsString(command);
-            collector.emit(islDiscoveryTopic, tuple, new Values(PAYLOAD, json));
+            collector.emit(SPEAKER_STREAM, tuple, new Values(PAYLOAD, json));
         } catch (JsonProcessingException exception) {
             logger.error("Could not serialize network cache request", exception);
         }
@@ -263,7 +264,7 @@ public class OFELinkBolt
     private void sendDiscoveryMessage(Tuple tuple, NetworkEndpoint node, String correlationId) throws IOException {
         String json = OFEMessageUtils.createIslDiscovery(node.getSwitchDpId(), node.getPortId(), correlationId);
         logger.debug("LINK: Send ISL discovery command: {}", json);
-        collector.emit(islDiscoveryTopic, tuple, new Values(PAYLOAD, json));
+        collector.emit(SPEAKER_STREAM, tuple, new Values(PAYLOAD, json));
     }
 
     @Override
@@ -433,13 +434,13 @@ public class OFELinkBolt
      */
     private void passToTopologyEngine(Tuple tuple) {
         String json = tuple.getString(0);
-        collector.emit(topoEngTopic, tuple, new Values(PAYLOAD, json));
+        collector.emit(TOPO_ENG_STREAM, tuple, new Values(PAYLOAD, json));
     }
 
     private void passToTopologyEngine(Tuple tuple, InfoMessage message) {
         try {
             String json = Utils.MAPPER.writeValueAsString(message);
-            collector.emit(topoEngTopic, tuple, new Values(PAYLOAD, json));
+            collector.emit(TOPO_ENG_STREAM, tuple, new Values(PAYLOAD, json));
         } catch (JsonProcessingException e) {
             logger.error("Error during json processing", e);
         }
@@ -522,7 +523,7 @@ public class OFELinkBolt
         String discoFail = OFEMessageUtils.createIslFail(switchId, portId, correlationId);
         //        Values dataVal = new Values(PAYLOAD, discoFail, switchId, portId, OFEMessageUtils.LINK_DOWN);
         //        collector.emit(topoEngTopic, tuple, dataVal);
-        collector.emit(topoEngTopic, tuple, new Values(PAYLOAD, discoFail));
+        collector.emit(TOPO_ENG_STREAM, tuple, new Values(PAYLOAD, discoFail));
         discovery.handleFailed(switchId, portId);
         logger.warn("LINK: Send ISL discovery failure message={}", discoFail);
     }
@@ -561,8 +562,8 @@ public class OFELinkBolt
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declareStream(islDiscoveryTopic, new Fields("key", "message"));
-        declarer.declareStream(topoEngTopic, new Fields("key", "message"));
+        declarer.declareStream(SPEAKER_STREAM, new Fields("key", "message"));
+        declarer.declareStream(TOPO_ENG_STREAM, new Fields("key", "message"));
         // FIXME(dbogun): use proper tuple format
         declarer.declareStream(STREAM_ID_CTRL, AbstractTopology.fieldMessage);
     }

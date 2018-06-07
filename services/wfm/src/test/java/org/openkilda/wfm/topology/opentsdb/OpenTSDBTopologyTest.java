@@ -57,7 +57,7 @@ public class OpenTSDBTopologyTest extends StableAbstractStormTest {
         Testing.withTrackedCluster(clusterParam, (cluster) ->  {
             OpenTSDBTopology topology = new TestingTargetTopology(new TestingKafkaBolt());
 
-            sources.addMockData(topology.getSpoutId(),
+            sources.addMockData(OpenTSDBTopology.OTSDB_SPOUT_ID,
                     new Values(MAPPER.writeValueAsString(datapoint)));
             completeTopologyParam.setMockedSources(sources);
 
@@ -81,7 +81,7 @@ public class OpenTSDBTopologyTest extends StableAbstractStormTest {
         Testing.withTrackedCluster(clusterParam, (cluster) ->  {
             OpenTSDBTopology topology = new TestingTargetTopology(new TestingKafkaBolt());
 
-            sources.addMockData(topology.getSpoutId(),
+            sources.addMockData(OpenTSDBTopology.OTSDB_SPOUT_ID,
                     new Values(jsonDatapoint), new Values(jsonDatapoint));
             completeTopologyParam.setMockedSources(sources);
 
@@ -107,7 +107,7 @@ public class OpenTSDBTopologyTest extends StableAbstractStormTest {
         Testing.withTrackedCluster(clusterParam, (cluster) ->  {
             OpenTSDBTopology topology = new TestingTargetTopology(new TestingKafkaBolt());
 
-            sources.addMockData(topology.getSpoutId(),
+            sources.addMockData(OpenTSDBTopology.OTSDB_SPOUT_ID,
                     new Values(jsonDatapoint1), new Values(jsonDatapoint2));
             completeTopologyParam.setMockedSources(sources);
 

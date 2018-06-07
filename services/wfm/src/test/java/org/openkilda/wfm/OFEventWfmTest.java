@@ -306,9 +306,9 @@ public class OFEventWfmTest extends AbstractStormTest {
         when(topologyContext.getComponentOutputFields(topoInputTopic,
                 topoInputTopic)).thenReturn(islSchema);
 
-        when(topologyContext.getComponentId(4)).thenReturn(manager.getSpoutIdInput());
+        when(topologyContext.getComponentId(4)).thenReturn(OFEventWFMTopology.DISCO_SPOUT_ID);
         when(topologyContext.getComponentOutputFields(
-                manager.getSpoutIdInput(), AbstractTopology.MESSAGE_FIELD))
+                OFEventWFMTopology.DISCO_SPOUT_ID, AbstractTopology.MESSAGE_FIELD))
                 .thenReturn(AbstractTopology.fieldMessage);
     }
 }

@@ -46,26 +46,28 @@ public class OpenTSDBTopology extends AbstractTopology<OpenTsdbTopologyConfig> {
         super(env, OpenTsdbTopologyConfig.class);
     }
 
-    private final String topic = topologyConfig.getKafkaOtsdbTopic();
-    private final String spoutId = topic + "-spout";
-    private final String boltId = topic + "-bolt";
-    private final String parseBoltId = topic + "parse-bolt";
+    @VisibleForTesting
+    static final String OTSDB_SPOUT_ID = "otsdb-spout";
+    private static final String OTSDB_BOLT_ID = "otsdb-bolt";
+    private static final String OTSDB_FILTER_BOLT_ID = OpenTSDBFilterBolt.class.getSimpleName();
+    private static final String OTSDB_PARSE_BOLT_ID = DatapointParseBolt.class.getSimpleName();
 
     @Override
     public StormTopology createTopology() {
-        LOGGER.info("Creating OpenTSDB topology");
+        LOGGER.info("Creating OpenTSDBTopology - {}", topologyName);
+
         TopologyBuilder tb = new TopologyBuilder();
 
         attachInput(tb);
 
         OpenTsdbConfig openTsdbConfig = topologyConfig.getOpenTsdbConfig();
 
-        tb.setBolt(parseBoltId, new DatapointParseBolt(), openTsdbConfig.getDatapointParseBoltExecutors())
+        tb.setBolt(OTSDB_PARSE_BOLT_ID, new DatapointParseBolt(), openTsdbConfig.getDatapointParseBoltExecutors())
                 .setNumTasks(openTsdbConfig.getDatapointParseBoltWorkers())
-                .shuffleGrouping(spoutId);
+                .shuffleGrouping(OTSDB_SPOUT_ID);
 
-        tb.setBolt(boltId, new OpenTSDBFilterBolt(), openTsdbConfig.getFilterBoltExecutors())
-                .fieldsGrouping(parseBoltId, new Fields("hash"));
+        tb.setBolt(OTSDB_FILTER_BOLT_ID, new OpenTSDBFilterBolt(), openTsdbConfig.getFilterBoltExecutors())
+                .fieldsGrouping(OTSDB_PARSE_BOLT_ID, new Fields("hash"));
 
         OpenTsdbClient.Builder tsdbBuilder = OpenTsdbClient
                 .newBuilder(openTsdbConfig.getHosts())
@@ -79,28 +81,24 @@ public class OpenTSDBTopology extends AbstractTopology<OpenTsdbTopologyConfig> {
                 Collections.singletonList(TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER));
         openTsdbBolt.withBatchSize(openTsdbConfig.getBatchSize()).withFlushInterval(openTsdbConfig.getFlushInterval());
         //        .failTupleForFailedMetrics();
-        tb.setBolt("opentsdb", openTsdbBolt, openTsdbConfig.getBoltExecutors())
+        tb.setBolt(OTSDB_BOLT_ID, openTsdbBolt, openTsdbConfig.getBoltExecutors())
                 .setNumTasks(openTsdbConfig.getBoltWorkers())
-                .shuffleGrouping(boltId);
+                .shuffleGrouping(OTSDB_FILTER_BOLT_ID);
 
         return tb.createTopology();
     }
 
     private void attachInput(TopologyBuilder topology) {
-        checkAndCreateTopic(topic);
+        String otsdbTopic = topologyConfig.getKafkaOtsdbTopic();
+        checkAndCreateTopic(otsdbTopic);
 
         OpenTsdbConfig openTsdbConfig = topologyConfig.getOpenTsdbConfig();
 
-        KafkaSpoutConfig<String, String> spoutConfig = makeKafkaSpoutConfigBuilder(spoutId, topic)
+        KafkaSpoutConfig<String, String> spoutConfig = makeKafkaSpoutConfigBuilder(OTSDB_SPOUT_ID, otsdbTopic)
                 .setFirstPollOffsetStrategy(KafkaSpoutConfig.FirstPollOffsetStrategy.UNCOMMITTED_EARLIEST)
                 .build();
         KafkaSpout kafkaSpout = new KafkaSpout<>(spoutConfig);
-        topology.setSpout(spoutId, kafkaSpout, openTsdbConfig.getNumSpouts());
-    }
-
-    @VisibleForTesting
-    public String getSpoutId() {
-        return spoutId;
+        topology.setSpout(OTSDB_SPOUT_ID, kafkaSpout, openTsdbConfig.getNumSpouts());
     }
 
     /**

@@ -153,7 +153,7 @@
     <suppress files="src/main/java/org/openkilda/simulator/SimulatorTopology.java" lines="9" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/simulator/SimulatorTopology.java" lines="10" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/simulator/SimulatorTopology.java" lines="11" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/simulator/SimulatorTopology.java" lines="82" checks="JavadocMethod"/>
+    <suppress files="src/main/java/org/openkilda/simulator/SimulatorTopology.java" lines="81" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/AbstractAction.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/main/java/org/openkilda/wfm/AbstractAction.java" lines="6" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/wfm/AbstractAction.java" lines="7" checks="CustomImportOrder"/>
@@ -347,11 +347,11 @@
     <suppress files="src/main/java/org/openkilda/wfm/topology/cache/CacheTopology.java" lines="50" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/cache/CacheTopology.java" lines="65" checks="VariableDeclarationUsageDistance"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/cache/CacheTopology.java" lines="66" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/cache/CacheTopology.java" lines="80" checks="CommentsIndentation"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/cache/CacheTopology.java" lines="93" checks="CommentsIndentation"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/cache/CacheTopology.java" lines="78" checks="CommentsIndentation"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/cache/CacheTopology.java" lines="91" checks="CommentsIndentation"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/cache/CacheTopology.java" lines="119" checks="AbbreviationAsWordInName"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/cache/CacheTopology.java" lines="119" checks="LocalVariableName"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/cache/CacheTopology.java" lines="132" checks="JavadocMethod"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/cache/CacheTopology.java" lines="129" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/cache/service/CacheWarmingService.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/cache/service/CacheWarmingService.java" lines="5" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/cache/service/CacheWarmingService.java" lines="6" checks="CustomImportOrder"/>
@@ -426,10 +426,10 @@
     <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFEventWFMTopology.java" lines="60" checks="WhitespaceAround"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFEventWFMTopology.java" lines="60" checks="WhitespaceAround"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFEventWFMTopology.java" lines="63" checks="CommentsIndentation"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFEventWFMTopology.java" lines="69" checks="[a-zA-Z0-9]*"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFEventWFMTopology.java" lines="75" checks="[a-zA-Z0-9]*"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFEventWFMTopology.java" lines="76" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFEventWFMTopology.java" lines="82" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFEventWFMTopology.java" lines="128" checks="JavadocMethod"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFEventWFMTopology.java" lines="87" checks="VariableDeclarationUsageDistance"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFEventWFMTopology.java" lines="124" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFEventWfmTopologyConfig.java" lines="25" checks="AbbreviationAsWordInName"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/event/PopulateIslFilterAction.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/flow/bolts/ErrorBolt.java" lines="27" checks="CustomImportOrder"/>
@@ -501,8 +501,8 @@
     <suppress files="src/main/java/org/openkilda/wfm/topology/islstats/bolts/IslStatsBolt.java" lines="84" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/islstats/bolts/IslStatsBolt.java" lines="101" checks="WhitespaceAround"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/islstats/bolts/IslStatsBolt.java" lines="103" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/islstats/IslStatsTopology.java" lines="35" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/islstats/IslStatsTopology.java" lines="63" checks="JavadocMethod"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/islstats/IslStatsTopology.java" lines="39" checks="JavadocMethod"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/islstats/IslStatsTopology.java" lines="64" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/nbworker/NbWorkerTopology.java" lines="109" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/bolts/DatapointParseBolt.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/bolts/DatapointParseBolt.java" lines="5" checks="CustomImportOrder"/>
@@ -566,7 +566,7 @@
     <suppress files="src/main/java/org/openkilda/wfm/topology/portstate/PortStateTopology.java" lines="58" checks="WhitespaceAround"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/portstate/PortStateTopology.java" lines="79" checks="WhitespaceAround"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/portstate/PortStateTopology.java" lines="79" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/portstate/PortStateTopology.java" lines="98" checks="JavadocMethod"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/portstate/PortStateTopology.java" lines="97" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/portstate/spout/SwitchPortsSpout.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/portstate/spout/SwitchPortsSpout.java" lines="31" checks="AbbreviationAsWordInName"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/portstate/spout/SwitchPortsSpout.java" lines="31" checks="MemberName"/>

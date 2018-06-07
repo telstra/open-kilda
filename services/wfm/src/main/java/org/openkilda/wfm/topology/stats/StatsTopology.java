@@ -62,7 +62,7 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
 
     @Override
     public StormTopology createTopology() {
-        logger.info("Creating Topology: {}", topologyName);
+        logger.info("Creating StatsTopology - {}", topologyName);
 
         final Integer parallelism = topologyConfig.getParallelism();
         TopologyBuilder builder = new TopologyBuilder();
@@ -109,7 +109,7 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
                 parallelism)
                 .fieldsGrouping(STATS_CACHE_BOLT.name(), StatsStreamType.FLOW_STATS.toString(), fieldMessage);
 
-        final String openTsdbTopic = topologyConfig.getKafkaOtsdbTopic();
+        String openTsdbTopic = topologyConfig.getKafkaOtsdbTopic();
         checkAndCreateTopic(openTsdbTopic);
         builder.setBolt("stats-opentsdb", createKafkaBolt(openTsdbTopic))
                 .shuffleGrouping(PORT_STATS_METRIC_GEN.name())

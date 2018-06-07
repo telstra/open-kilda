@@ -15,11 +15,9 @@ import org.slf4j.LoggerFactory;
 public class SimulatorTopology extends AbstractTopology<SimulatorTopologyConfig> {
     private final String topoName = "simulatorTopology";
     private final int parallelism = 1;
-    public static final String SIMULATOR_TOPIC = "kilda-simulator";
-    public static  final String COMMAND_TOPIC = "kilda-test";
+
     public static final String SIMULATOR_SPOUT = "simulator-spout";
     public static final String COMMAND_SPOUT = "command-spout";
-    private static final Logger logger = LoggerFactory.getLogger(SimulatorTopology.class);
     public static final String DEPLOY_TOPOLOGY_BOLT_STREAM = "deploy_topology_stream";
     public static final String COMMAND_BOLT_STREAM = "command_bolt_stream";
     public static final String COMMAND_BOLT = "command_bolt";
@@ -29,6 +27,8 @@ public class SimulatorTopology extends AbstractTopology<SimulatorTopologyConfig>
     public static final String KAFKA_BOLT_STREAM = "kafka_bolt_stream";
     public static final String SIMULATOR_COMMAND_BOLT = "simulator_command_bolt";
     public static final String SIMULATOR_COMMAND_STREAM = "simulator_command_stream";
+
+    private static final Logger logger = LoggerFactory.getLogger(SimulatorTopology.class);
 
     public SimulatorTopology(LaunchEnvironment env) {
         super(env, SimulatorTopologyConfig.class);
@@ -40,14 +40,13 @@ public class SimulatorTopology extends AbstractTopology<SimulatorTopologyConfig>
         final String inputTopic = topologyConfig.getKafkaSpeakerTopic();
         final String simulatorTopic = topologyConfig.getKafkaSimulatorTopic();
 
-
         final TopologyBuilder builder = new TopologyBuilder();
 
         logger.debug("Building SimulatorTopology - {}", topologyName);
 
         checkAndCreateTopic(simulatorTopic);
         logger.debug("connecting to {} topic", simulatorTopic);
-        builder.setSpout(SIMULATOR_SPOUT, createKafkaSpout(simulatorTopic, topologyName));
+        builder.setSpout(SIMULATOR_SPOUT, createKafkaSpout(simulatorTopic, SIMULATOR_SPOUT));
 
         checkAndCreateTopic(inputTopic);
         logger.debug("connecting to {} topic", inputTopic);

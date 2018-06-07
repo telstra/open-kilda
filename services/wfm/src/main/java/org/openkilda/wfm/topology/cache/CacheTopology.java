@@ -43,7 +43,7 @@ public class CacheTopology extends AbstractTopology<CacheTopologyConfig> {
     private static final String BOLT_ID_OFE = "event.out";
     private static final String BOLT_ID_TOPOLOGY_OUTPUT = "topology.out";
     static final String BOLT_ID_CACHE = "cache";
-    static final String SPOUT_ID_COMMON = "generic";
+    private static final String SPOUT_ID_COMMON = "generic";
 //    static final String SPOUT_ID_TOPOLOGY = "topology";
 
     public CacheTopology(LaunchEnvironment env) {
@@ -55,7 +55,7 @@ public class CacheTopology extends AbstractTopology<CacheTopologyConfig> {
      */
     @Override
     public StormTopology createTopology() throws NameCollisionException {
-        logger.info("Creating Topology: {}", topologyName);
+        logger.info("Creating CacheTopology - {}", topologyName);
 
         initKafkaTopics();
 
@@ -63,13 +63,11 @@ public class CacheTopology extends AbstractTopology<CacheTopologyConfig> {
 
         TopologyBuilder builder = new TopologyBuilder();
         List<CtrlBoltRef> ctrlTargets = new ArrayList<>();
-        BoltDeclarer boltSetup;
 
-        KafkaSpout kafkaSpout;
         /*
          * Receives cache from storage.
          */
-        kafkaSpout = createKafkaSpout(topologyConfig.getKafkaTopoCacheTopic(), SPOUT_ID_COMMON);
+        KafkaSpout kafkaSpout = createKafkaSpout(topologyConfig.getKafkaTopoCacheTopic(), SPOUT_ID_COMMON);
         builder.setSpout(SPOUT_ID_COMMON, kafkaSpout, parallelism);
 
 // (carmine) - as part of 0.8 refactor, merged inputs to one topic, so this isn't neccessary
@@ -87,26 +85,25 @@ public class CacheTopology extends AbstractTopology<CacheTopologyConfig> {
                 neo4jConfig.getLogin(), neo4jConfig.getPassword());
         CacheBolt cacheBolt = new CacheBolt(pathComputerAuth);
         ComponentObject.serialized_java(org.apache.storm.utils.Utils.javaSerialize(pathComputerAuth));
-        boltSetup = builder.setBolt(BOLT_ID_CACHE, cacheBolt, parallelism)
+        BoltDeclarer boltSetup = builder.setBolt(BOLT_ID_CACHE, cacheBolt, parallelism)
                 .shuffleGrouping(SPOUT_ID_COMMON)
 // (carmine) as per above comment, only a single input streamt
 //                .shuffleGrouping(SPOUT_ID_TOPOLOGY)
         ;
         ctrlTargets.add(new CtrlBoltRef(BOLT_ID_CACHE, cacheBolt, boltSetup));
 
-        KafkaBolt kafkaBolt;
         /*
          * Sends network events to storage.
          */
-        kafkaBolt = createKafkaBolt(topologyConfig.getKafkaTopoEngTopic());
-        builder.setBolt(BOLT_ID_COMMON_OUTPUT, kafkaBolt, parallelism)
+        KafkaBolt kafkaTopoEngBolt = createKafkaBolt(topologyConfig.getKafkaTopoEngTopic());
+        builder.setBolt(BOLT_ID_COMMON_OUTPUT, kafkaTopoEngBolt, parallelism)
                 .shuffleGrouping(BOLT_ID_CACHE, StreamType.TPE.toString());
 
         /*
          * Sends cache dump and reroute requests to `flow` topology.
          */
-        kafkaBolt = createKafkaBolt(topologyConfig.getKafkaFlowTopic());
-        builder.setBolt(BOLT_ID_TOPOLOGY_OUTPUT, kafkaBolt, parallelism)
+        KafkaBolt kafkaFlowBolt = createKafkaBolt(topologyConfig.getKafkaFlowTopic());
+        builder.setBolt(BOLT_ID_TOPOLOGY_OUTPUT, kafkaFlowBolt, parallelism)
                 .shuffleGrouping(BOLT_ID_CACHE, StreamType.WFM_DUMP.toString());
 
         /*
