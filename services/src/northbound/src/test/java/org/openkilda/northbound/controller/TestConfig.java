@@ -22,9 +22,12 @@ import org.openkilda.northbound.config.WebConfig;
 import org.openkilda.northbound.messaging.HealthCheckMessageConsumer;
 import org.openkilda.northbound.messaging.MessageConsumer;
 import org.openkilda.northbound.messaging.MessageProducer;
+
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -38,11 +41,16 @@ import java.util.Map;
 @Configuration
 @EnableWebSecurity
 @Import({WebConfig.class, SecurityConfig.class})
-@ComponentScan({
-        "org.openkilda.northbound.controller",
-        "org.openkilda.northbound.converter",
-        "org.openkilda.northbound.service",
-        "org.openkilda.northbound.utils"})
+@ComponentScan(
+        basePackages = {
+                "org.openkilda.northbound.controller",
+                "org.openkilda.northbound.converter",
+                "org.openkilda.northbound.service",
+                "org.openkilda.northbound.utils"
+        },
+        excludeFilters = {
+                @ComponentScan.Filter(type = FilterType.ANNOTATION, value = TestConfiguration.class)
+        })
 @PropertySource({"classpath:northbound.properties"})
 public class TestConfig {
     @Bean

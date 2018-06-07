@@ -1,12 +1,30 @@
+/* Copyright 2017 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.openkilda.northbound.controller;
 
-import io.swagger.annotations.Api;
-import java.util.List;
 import org.openkilda.messaging.error.MessageError;
 import org.openkilda.northbound.dto.LinkPropsDto;
 import org.openkilda.northbound.dto.LinksDto;
 import org.openkilda.northbound.service.LinkPropsResult;
 import org.openkilda.northbound.service.LinkService;
+
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiResponse;
+import io.swagger.annotations.ApiResponses;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.http.HttpStatus;
@@ -15,12 +33,11 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiResponse;
-import io.swagger.annotations.ApiResponses;
+import java.util.List;
 
 /**
  * REST Controller for links.
@@ -41,8 +58,6 @@ public class LinkController {
     @Autowired
     private LinkService linkService;
 
-    // TODO: Does LinkController really return all of the codes below? Looks like copy / paste.
-
     /**
      * Get all available links.
      *
@@ -58,7 +73,6 @@ public class LinkController {
     /**
      * Get link properties from the static link properties table.
      *
-     * @param keys if null, get all link props. Otherwise, the link props that much the primary keys.
      * @return list of link properties.
      */
     @ApiOperation(value = "Get all link properties (static), based on arguments.", response = LinkPropsDto.class,
@@ -67,8 +81,11 @@ public class LinkController {
             method = RequestMethod.GET,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     @ResponseStatus(HttpStatus.OK)
-    public List<LinkPropsDto> getLinkProps(LinkPropsDto keys) {
-        return linkService.getLinkProps(keys);
+    public List<LinkPropsDto> getLinkProps(@RequestParam(value = "src_switch", required = false) String srcSwitch,
+                                           @RequestParam(value = "src_port", required = false) Integer srcPort,
+                                           @RequestParam(value = "dst_switch", required = false) String dstSwitch,
+                                           @RequestParam(value = "dst_port", required = false) Integer dstPort) {
+        return linkService.getLinkProps(srcSwitch, srcPort, dstSwitch, dstPort);
     }
 
     /**

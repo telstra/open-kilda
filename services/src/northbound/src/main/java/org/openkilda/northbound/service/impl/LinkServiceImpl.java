@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -20,8 +20,13 @@ import static org.openkilda.messaging.Utils.CORRELATION_ID;
 
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.messaging.model.NetworkEndpointMask;
 import org.openkilda.messaging.nbtopology.request.GetLinksRequest;
+import org.openkilda.messaging.nbtopology.request.LinkPropsGet;
+import org.openkilda.messaging.nbtopology.response.LinkPropsData;
+import org.openkilda.messaging.te.response.LinkPropsResponse;
 import org.openkilda.northbound.converter.LinkMapper;
+import org.openkilda.northbound.converter.LinkPropsMapper;
 import org.openkilda.northbound.dto.LinkPropsDto;
 import org.openkilda.northbound.dto.LinksDto;
 import org.openkilda.northbound.messaging.MessageProducer;
@@ -42,15 +47,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
-import javax.annotation.PostConstruct;
 
 @Service
 public class LinkServiceImpl implements LinkService {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(LinkServiceImpl.class);
+    private static final Logger logger = LoggerFactory.getLogger(LinkServiceImpl.class);
 
     //todo: refactor to use interceptor or custom rest template
     private static final String auth = "kilda:kilda";
@@ -67,11 +70,14 @@ public class LinkServiceImpl implements LinkService {
     private LinkMapper linkMapper;
 
     @Autowired
+    private LinkPropsMapper linkPropsMapper;
+
+    @Autowired
     private RestTemplate restTemplate;
 
-    /**
-     * The kafka topic for the nb topology.
-     */
+    @Value("${kafka.topo.eng.topic}")
+    private String topologyEngineTopic;
+
     @Value("${kafka.nbworker.topic}")
     private String nbworkerTopic;
 
@@ -83,19 +89,15 @@ public class LinkServiceImpl implements LinkService {
 
     @Autowired
     private ResponseCollector<IslInfoData> linksCollector;
-
-    @PostConstruct
-    void init() {
-        linkPropsBuilder = UriComponentsBuilder.fromHttpUrl(topologyEngineRest)
-                .pathSegment("api", "v1", "topology", "link", "props");
-        linkPropsUrlBase = UriComponentsBuilder.fromHttpUrl(topologyEngineRest)
-                .pathSegment("api", "v1", "topology", "link", "props").build().toUriString();
-    }
+    @Autowired
+    private ResponseCollector<LinkPropsResponse> teLinksCollector;
+    @Autowired
+    private ResponseCollector<LinkPropsData> linksPropsCollector;
 
     @Override
     public List<LinksDto> getLinks() {
         final String correlationId = RequestCorrelationId.getId();
-        LOGGER.debug("Get links request received");
+        logger.debug("Get links request received");
         CommandMessage request = new CommandMessage(new GetLinksRequest(), System.currentTimeMillis(), correlationId);
         messageProducer.send(nbworkerTopic, request);
         List<IslInfoData> links = linksCollector.getResult(correlationId);
@@ -106,31 +108,19 @@ public class LinkServiceImpl implements LinkService {
     }
 
     @Override
-    public List<LinkPropsDto> getLinkProps(LinkPropsDto keys) {
-        LOGGER.debug("Get link properties request received");
-        UriComponentsBuilder builder = linkPropsBuilder.cloneBuilder();
-        // TODO: pull out the URI builder .. to facilitate unit testing
-        if (keys != null) {
-            if (!keys.getSrcSwitch().isEmpty()) {
-                builder.queryParam("src_switch", keys.getSrcSwitch());
-            }
-            if (keys.getSrcPort() != null) {
-                builder.queryParam("src_port", keys.getSrcPort());
-            }
-            if (!keys.getDstSwitch().isEmpty()) {
-                builder.queryParam("dst_switch", keys.getDstSwitch());
-            }
-            if (keys.getDstPort() != null) {
-                builder.queryParam("dst_port", keys.getDstPort());
-            }
-        }
-        String fullUri = builder.build().toUriString();
+    public List<LinkPropsDto> getLinkProps(String srcSwitch, Integer srcPort, String dstSwitch, Integer dstPort) {
+        final String correlationId = RequestCorrelationId.getId();
+        logger.debug("Get link properties request received");
+        LinkPropsGet request = new LinkPropsGet(new NetworkEndpointMask(srcSwitch, srcPort),
+                new NetworkEndpointMask(dstSwitch, dstPort));
+        CommandMessage message = new CommandMessage(request, System.currentTimeMillis(), correlationId);
+        messageProducer.send(nbworkerTopic, message);
+        List<LinkPropsData> links = linksPropsCollector.getResult(correlationId);
 
-        ResponseEntity<LinkPropsDto[]> response = restTemplate.exchange(fullUri,
-                HttpMethod.GET, new HttpEntity<>(buildHttpHeaders()), LinkPropsDto[].class);
-        LinkPropsDto[] linkProps = response.getBody();
-        LOGGER.debug("Returned {} links (with properties)", linkProps.length);
-        return Arrays.asList(linkProps);
+        logger.debug("Found link props items: {}", links.size());
+        return links.stream()
+                .map(linkPropsMapper::toDto)
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -144,13 +134,13 @@ public class LinkServiceImpl implements LinkService {
     }
 
     protected LinkPropsResult doLinkProps(HttpMethod verb, List<LinkPropsDto> linkPropsList) {
-        LOGGER.debug("{} link properties request received", verb);
-        LOGGER.debug("Size of list: {}", linkPropsList.size());
+        logger.debug("{} link properties request received", verb);
+        logger.debug("Size of list: {}", linkPropsList.size());
         HttpEntity<List<LinkPropsDto>> entity = new HttpEntity<>(linkPropsList, buildHttpHeaders());
         ResponseEntity<LinkPropsResult> response = restTemplate.exchange(linkPropsUrlBase,
                 verb, entity, LinkPropsResult.class);
         LinkPropsResult result = response.getBody();
-        LOGGER.debug("Returned: ", result);
+        logger.debug("Returned: ", result);
         return result;
     }
 
