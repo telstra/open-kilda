@@ -147,4 +147,35 @@ public class LinkPropertiesSteps {
             session.run(query);
         }
     }
+
+    @Then("^link props response has (\\d+) results?$")
+    public void responseHasResults(int resultsAmount) {
+        assertEquals(((List<LinkPropsDto>) topologyUnderTest.getResponse()).size(), resultsAmount);
+    }
+
+    @When("^update request: change src_switch to '(.*)'$")
+    public void updateRequestChangeSrcSwitch(String newSrcSwitch) {
+        linkPropsRequest.setSrcSwitch(newSrcSwitch);
+    }
+
+    @And("^update request: change src_port to '(.*)'$")
+    public void updateRequestChangeSrc_portTo(String newSrcPort) {
+        linkPropsRequest.setSrcPort(newSrcPort);
+    }
+
+    @When("^create empty link properties request$")
+    public void createEmptyLinkPropertiesRequest() {
+        linkPropsRequest = new LinkPropsDto();
+    }
+
+    @And("^get link properties for defined request$")
+    public void getLinkPropertiesForDefinedRequest() {
+        topologyUnderTest.setResponse(northboundService.getLinkProps(linkPropsRequest));
+    }
+
+    @And("^delete all link properties$")
+    public void deleteAllLinkProperties() {
+        List<LinkPropsDto> linkProps = northboundService.getLinkProps(new LinkPropsDto());
+        topologyUnderTest.setResponse(northboundService.deleteLinkProps(linkProps));
+    }
 }
