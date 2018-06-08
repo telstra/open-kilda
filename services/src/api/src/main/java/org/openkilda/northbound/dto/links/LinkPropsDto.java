@@ -37,18 +37,18 @@ public class LinkPropsDto {
     private String dstSwitch = DEFAULT;
     private String dstPort = DEFAULT;
     @JsonProperty("props")
-    private Map<String,String> props = new HashMap<>();
+    private Map<String, String> props = new HashMap<>();
 
     /**
      * Creates an empty link properties.
      */
-    public LinkPropsDto(){
+    public LinkPropsDto() {
     }
 
     /**
-     * Creates a copy of link properties
+     * Creates a copy of link properties.
      */
-    public LinkPropsDto(Map<String,String> props){
+    public LinkPropsDto(Map<String, String> props) {
         this.props = new HashMap<>(props);
     }
 

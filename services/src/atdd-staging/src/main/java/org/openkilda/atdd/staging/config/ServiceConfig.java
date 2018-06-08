@@ -15,9 +15,9 @@
 
 package org.openkilda.atdd.staging.config;
 
-import org.openkilda.atdd.staging.service.neo4j.Neo4jServiceImpl;
 import org.openkilda.atdd.staging.service.flowmanager.FlowManager;
 import org.openkilda.atdd.staging.service.flowmanager.FlowManagerImpl;
+import org.openkilda.atdd.staging.service.neo4j.Neo4jServiceImpl;
 import org.openkilda.atdd.staging.tools.LoggingRequestInterceptor;
 
 import org.slf4j.Logger;

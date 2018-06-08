@@ -23,9 +23,9 @@ import static org.junit.Assert.assertThat;
 
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition.Isl;
+import org.openkilda.atdd.staging.service.neo4j.Neo4jServiceImpl;
 import org.openkilda.atdd.staging.service.northbound.NorthboundService;
 import org.openkilda.atdd.staging.steps.helpers.TopologyUnderTest;
-import org.openkilda.atdd.staging.service.neo4j.Neo4jServiceImpl;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
 
@@ -96,7 +96,7 @@ public class LinkPropertiesSteps {
 
     @Then("^response has( no)? link properties from request$")
     public void responseHasLinkPropertiesEntry(String shouldHaveStr) {
-        boolean shouldHave = shouldHaveStr == null;
+        final boolean shouldHave = shouldHaveStr == null;
         List<LinkPropsDto> response = (List<LinkPropsDto>) topologyUnderTest.getResponse();
         Optional<LinkPropsDto> wantedProps = response.stream()
                 .filter(props -> props.equals(linkPropsRequest)).findFirst();
@@ -118,7 +118,7 @@ public class LinkPropertiesSteps {
 
     @And("^requested link property in Neo4j has( no)? property '(.*)' with value '(.*)'$")
     public void verifyLinkPropertyInNeo(String shouldHaveStr, String key, String value) {
-        boolean shouldHave = shouldHaveStr == null;
+        final boolean shouldHave = shouldHaveStr == null;
         Driver neo = neo4j.getDriver();
         String query = "MATCH ()-[link:isl {src_port:{srcPort}, dst_port:{dstPort}, src_switch:{srcSwitch}, "
                 + "dst_switch:{dstSwitch}}]-() RETURN properties(link)";
@@ -132,7 +132,6 @@ public class LinkPropertiesSteps {
             result = session.run(query, params);
         }
         Map props = result.list().get(0).get("properties(link)").asMap();
-        ;
         if (shouldHave) {
             assertEquals(props.get(key), value);
         } else {
