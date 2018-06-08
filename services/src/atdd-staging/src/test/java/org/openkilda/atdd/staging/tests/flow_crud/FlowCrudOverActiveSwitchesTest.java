@@ -18,13 +18,14 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-import cucumber.api.CucumberOptions;
-import cucumber.api.java.After;
-import org.junit.runner.RunWith;
 import org.openkilda.atdd.staging.cucumber.CucumberWithSpringProfile;
 import org.openkilda.atdd.staging.service.northbound.NorthboundService;
 import org.openkilda.atdd.staging.service.traffexam.OperationalException;
 import org.openkilda.atdd.staging.service.traffexam.TraffExamService;
+
+import cucumber.api.CucumberOptions;
+import cucumber.api.java.After;
+import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.ActiveProfiles;
 

@@ -12,7 +12,8 @@
  *   See the License for the specific language governing permissions and
  *   limitations under the License.
  */
-package org.openkilda.atdd.staging.steps;
+
+package org.openkilda.atdd.staging.service;
 
 import static java.util.Collections.singletonList;
 import static org.hamcrest.CoreMatchers.hasItems;
@@ -26,6 +27,13 @@ import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
+import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
+import org.openkilda.atdd.staging.service.flowmanager.FlowManagerImpl;
+import org.openkilda.atdd.staging.service.northbound.NorthboundService;
+import org.openkilda.atdd.staging.service.topology.TopologyEngineService;
+import org.openkilda.messaging.info.event.PathInfoData;
+import org.openkilda.messaging.payload.flow.FlowPayload;
+
 import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
@@ -36,27 +44,16 @@ import org.junit.rules.ExpectedException;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
-import org.openkilda.atdd.staging.model.topology.TopologyDefinition.TraffGen;
-import org.openkilda.atdd.staging.service.floodlight.FloodlightService;
-import org.openkilda.atdd.staging.service.northbound.NorthboundService;
-import org.openkilda.atdd.staging.service.topology.TopologyEngineService;
-import org.openkilda.messaging.info.event.PathInfoData;
-import org.openkilda.messaging.payload.flow.FlowPayload;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-import javax.annotation.Resource;
 
-public class FlowCrudStepsTest {
+public class FlowManagerTest {
 
     @Mock
     private NorthboundService northboundService;
-
-    @Mock
-    private FloodlightService floodlightService;
 
     @Mock
     private TopologyEngineService topologyEngineService;
@@ -65,8 +62,7 @@ public class FlowCrudStepsTest {
     private TopologyDefinition topologyDefinition;
 
     @InjectMocks
-    @Resource
-    private FlowCrudSteps flowCrudSteps;
+    private FlowManagerImpl flowManager;
 
     @Rule
     public ExpectedException expectedException = ExpectedException.none();
@@ -93,10 +89,9 @@ public class FlowCrudStepsTest {
                 .thenReturn(singletonList(new PathInfoData()));
 
         // when
-        flowCrudSteps.defineFlowsOverActiveSwitches();
+        final Set<FlowPayload> flows = flowManager.allActiveSwitchesFlows();
 
         // then
-        final Set<FlowPayload> flows = flowCrudSteps.flows;
         assertEquals(1, flows.size());
         assertThat(flows, hasItem(allOf(
                 hasProperty("source", allOf(
@@ -123,10 +118,9 @@ public class FlowCrudStepsTest {
                 .thenReturn(singletonList(new PathInfoData()));
 
         // when
-        flowCrudSteps.defineFlowsOverActiveSwitches();
+        final Set<FlowPayload> flows = flowManager.allActiveSwitchesFlows();
 
         // then
-        final Set<FlowPayload> flows = flowCrudSteps.flows;
         assertEquals(2, flows.size());
 
         assertThat(flows, hasItems(
@@ -160,10 +154,9 @@ public class FlowCrudStepsTest {
                 .thenReturn(singletonList(new PathInfoData()));
 
         // when
-        flowCrudSteps.defineFlowsOverActiveSwitches();
+        final Set<FlowPayload> flows = flowManager.allActiveSwitchesFlows();
 
         // then
-        final Set<FlowPayload> flows = flowCrudSteps.flows;
         assertEquals(0, flows.size());
     }
 
@@ -176,10 +169,9 @@ public class FlowCrudStepsTest {
                 .thenReturn(singletonList(new PathInfoData()));
 
         // when
-        flowCrudSteps.defineFlowsOverActiveSwitches();
+        final Set<FlowPayload> flows = flowManager.allActiveSwitchesFlows();
 
         // then
-        final Set<FlowPayload> flows = flowCrudSteps.flows;
         assertEquals(1, flows.size());
 
         assertThat(flows, hasItem(allOf(
@@ -207,7 +199,7 @@ public class FlowCrudStepsTest {
         expectedException.expect(IllegalStateException.class);
 
         // when
-        flowCrudSteps.defineFlowsOverActiveSwitches();
+        flowManager.allActiveSwitchesFlows();
 
         // then
         fail();
@@ -216,7 +208,7 @@ public class FlowCrudStepsTest {
     @Test
     public void shouldDefineFlowsOver2TraffGens() {
         // given
-        final List<TraffGen> activeTraffGens = topologyDefinition.getTraffGens().stream()
+        final List<TopologyDefinition.TraffGen> activeTraffGens = topologyDefinition.getTraffGens().stream()
                 .filter(traffGen -> {
                     String dpId = traffGen.getSwitchConnected().getDpId();
                     return dpId.equals("00:00:00:00:00:01") || dpId.equals("00:00:00:00:00:02");
@@ -225,10 +217,9 @@ public class FlowCrudStepsTest {
         when(topologyDefinition.getActiveTraffGens()).thenReturn(activeTraffGens);
 
         // when
-        flowCrudSteps.defineFlowsOverActiveTraffgens();
+        final Set<FlowPayload> flows = flowManager.allActiveTraffgenFlows();
 
         // then
-        final Set<FlowPayload> flows = flowCrudSteps.flows;
         assertEquals(1, flows.size());
         assertThat(flows, hasItem(allOf(
                 hasProperty("source", allOf(
@@ -245,14 +236,13 @@ public class FlowCrudStepsTest {
     @Test
     public void shouldDefineFlowsOver3TraffGens() {
         // given
-        final List<TraffGen> activeTraffGens = topologyDefinition.getTraffGens();
+        final List<TopologyDefinition.TraffGen> activeTraffGens = topologyDefinition.getTraffGens();
         when(topologyDefinition.getActiveTraffGens()).thenReturn(activeTraffGens);
 
         // when
-        flowCrudSteps.defineFlowsOverActiveTraffgens();
+        final Set<FlowPayload> flows = flowManager.allActiveTraffgenFlows();
 
         // then
-        final Set<FlowPayload> flows = flowCrudSteps.flows;
         assertEquals(3, flows.size());
         assertThat(flows, hasItems(
                 allOf(
