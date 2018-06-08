@@ -33,7 +33,7 @@ RUN pip install \
     uwsgi \
     pyotp \
     jsonschema \
-    py2neo \
+    'py2neo<4.0.0' \
     requests \
     python-logstash \
     pytz
