@@ -21,6 +21,12 @@ import json
 import pytz
 
 
+def convert_integer(raw):
+    if isinstance(raw, (int, long)):
+        return raw
+    return int(raw, 0)
+
+
 class NetworkEndpoint(
         collections.namedtuple('NetworkEndpoint', ('dpid', 'port'))):
 
