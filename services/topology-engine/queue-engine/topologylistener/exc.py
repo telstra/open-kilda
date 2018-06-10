@@ -13,8 +13,6 @@
 #   limitations under the License.
 #
 
-import sys
-
 
 class Error(Exception):
     pass

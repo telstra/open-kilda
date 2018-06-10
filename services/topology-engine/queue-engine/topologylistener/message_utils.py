@@ -13,13 +13,13 @@
 #   limitations under the License.
 #
 
-import time
 import json
-from kafka import KafkaProducer
-
 import logging
 
+from kafka import KafkaProducer
+
 import config
+from topologylistener import model
 
 producer = KafkaProducer(bootstrap_servers=config.KAFKA_BOOTSTRAP_SERVERS)
 logger = logging.getLogger(__name__)
@@ -32,14 +32,14 @@ MT_INFO_FLOW_STATUS = "org.openkilda.messaging.info.flow.FlowStatusResponse"
 MT_ERROR_DATA = "org.openkilda.messaging.error.ErrorData"
 
 
-def get_timestamp():
-    return int(round(time.time() * 1000))
 
-
-class Flow(object):
+class Abstract(model.JsonSerializable):
     def to_json(self):
-        return json.dumps(
-            self, default=lambda o: o.__dict__, sort_keys=False, indent=4)
+        return json.dumps(self, cls=model.JSONEncoder)
+
+
+class Flow(Abstract):
+    pass
 
 
 def build_ingress_flow(path_nodes, src_switch, src_port, src_vlan,
@@ -246,11 +246,7 @@ def send_force_install_commands(switch_id, flow_commands, correlation_id):
                   topic=config.KAFKA_SPEAKER_TOPIC)
 
 
-class Message(object):
-    def to_json(self):
-        return json.dumps(
-            self, default=lambda o: o.__dict__, sort_keys=False, indent=4)
-
+class Message(Abstract):
     def add(self, vals):
         self.__dict__.update(vals)
 
@@ -267,7 +263,7 @@ def send_to_topic(payload, correlation_id,
     message.payload = payload
     message.clazz = message_type
     message.destination = destination
-    message.timestamp = get_timestamp()
+    message.timestamp = model.TimeProperty.now().as_java_timestamp()
     message.correlation_id = correlation_id
     if extra:
         message.add(extra)

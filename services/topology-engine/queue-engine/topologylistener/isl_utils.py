@@ -36,8 +36,9 @@ def create_if_missing(tx, timestamp, *links):
         }] -> (dst)
         ON CREATE SET 
           target.status=$status, target.actual=$status,
+          target.latency=-1,
           target.time_create=$timestamp,
-          target.latency=-1
+          target.time_modify=$timestamp
         ON MATCH SET target.time_modify=$timestamp""")
 
     for isl in sorted(links):
@@ -162,9 +163,9 @@ def switch_unplug(tx, dpid, mtime=True):
     _lock_affected_switches(tx, involved, dpid)
 
     for db_link in involved:
-        source = model.NetworkEndpoint(
+        source = model.IslPathNode(
                 db_link['src_switch'], db_link['src_port'])
-        dest = model.NetworkEndpoint(db_link['dst_switch'], db_link['dst_port'])
+        dest = model.IslPathNode(db_link['dst_switch'], db_link['dst_port'])
         isl = model.InterSwitchLink(source, dest, db_link['actual'])
         logging.debug("Found ISL: %s", isl)
 

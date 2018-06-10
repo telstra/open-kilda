@@ -14,69 +14,22 @@
 #   limitations under the License.
 #
 
-import datetime
 import collections
+import datetime
 import json
+import logging
+import uuid
+import weakref
 
 import pytz
 
-
-class NetworkEndpoint(
-        collections.namedtuple('NetworkEndpoint', ('dpid', 'port'))):
-
-    @classmethod
-    def new_from_isl_data_path(cls, path_node):
-        return cls(path_node['switch_id'], path_node['port_no'])
-
-    def __str__(self):
-        return '{}-{}'.format(*self)
+logger = logging.getLogger(__name__)
 
 
-class InterSwitchLink(
-        collections.namedtuple(
-            'InterSwitchLink', ('source', 'dest', 'state'))):
-
-    @classmethod
-    def new_from_isl_data(cls, isl_data):
-        try:
-            path = isl_data['path']
-            endpoints = [
-                NetworkEndpoint.new_from_isl_data_path(x)
-                for x in path]
-        except KeyError as e:
-            raise ValueError((
-                 'Invalid record format "path": is not contain key '
-                 '{}').format(e))
-
-        if 2 == len(endpoints):
-            pass
-        elif 1 == len(endpoints):
-            endpoints.append(None)
-        else:
-            raise ValueError(
-                'Invalid record format "path": expect list with 1 or 2 nodes')
-
-        source, dest = endpoints
-        return cls(source, dest, isl_data['state'])
-
-    @classmethod
-    def new_from_db(cls, link):
-        source = NetworkEndpoint(link['src_switch'], link['src_port'])
-        dest = NetworkEndpoint(link['dst_switch'], link['dst_port'])
-        return cls(source, dest, link['status'])
-
-    def ensure_path_complete(self):
-        ends_count = len(filter(None, (self.source, self.dest)))
-        if ends_count != 2:
-            raise ValueError(
-                'ISL path not define %s/2 ends'.format(ends_count))
-
-    def reversed(self):
-        cls = type(self)
-        return cls(self.dest, self.source, self.state)
-
-    def __str__(self):
-        return '{} <===> {}'.format(self.source, self.dest)
+def convert_integer(raw):
+    if isinstance(raw, (int, long)):
+        return raw
+    return int(raw, 0)
 
 
 LifeCycleFields = collections.namedtuple('LifeCycleFields', ('ctime', 'mtime'))
@@ -124,12 +77,299 @@ class JsonSerializable(object):
     pass
 
 
+class Default(object):
+    def __init__(self, value, produce=False, override_none=True):
+        self._resolve_cache = weakref.WeakKeyDictionary()
+        self.value = value
+        self.produce = produce
+        self.override_none = override_none
+
+    def __get__(self, instance, owner):
+        if instance is None:
+            return self
+
+        value = self.value
+        if self.produce:
+            value = value()
+
+        setattr(instance, self._resolve_name(owner), value)
+        return value
+
+    def is_filled(self, instance):
+        name = self._resolve_name(type(instance))
+        data = vars(instance)
+        return name in data
+
+    def _resolve_name(self, owner):
+        try:
+            return self._resolve_cache[owner]
+        except KeyError:
+            pass
+
+        for name in dir(owner):
+            try:
+                attr = getattr(owner, name)
+            except AttributeError:
+                continue
+            if attr is not self:
+                continue
+            break
+        else:
+            raise RuntimeError(
+                '{!r} Unable to resolve bounded name (UNREACHABLE)'.format(
+                    self))
+
+        self._resolve_cache[owner] = name
+        return name
+
+
+class Abstract(object):
+    pack_exclude = frozenset()
+
+    def __init__(self, **fields):
+        cls = type(self)
+        extra = set()
+        for name in fields:
+            extra.add(name)
+            try:
+                attr = getattr(cls, name)
+            except AttributeError:
+                continue
+            if not isinstance(attr, Default):
+                continue
+
+            extra.remove(name)
+
+            if attr.override_none and fields[name] is None:
+                continue
+            setattr(self, name, fields[name])
+
+        if extra:
+            raise TypeError('{!r} got unknown arguments: "{}"'.format(
+                self, '", "'.join(sorted(extra))))
+
+    def __str__(self):
+        return '<{}:{}>'.format(
+            type(self).__name__,
+            json.dumps(self.pack(), sort_keys=True, cls=JSONEncoder))
+
+    def __eq__(self, other):
+        if not isinstance(other, Abstract):
+            raise NotImplementedError
+        return self._sort_key() == other._sort_key()
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def pack(self):
+        fields = vars(self).copy()
+
+        cls = type(self)
+        for name in dir(cls):
+            if name.startswith('_'):
+                continue
+            if name in fields:
+                continue
+
+            attr = getattr(cls, name)
+            if not isinstance(attr, Default):
+                continue
+            fields[name] = getattr(self, name)
+
+        for name in tuple(fields):
+            if not name.startswith('_') and name not in self.pack_exclude:
+                continue
+            del fields[name]
+
+        return fields
+
+    def _sort_key(self):
+        raise NotImplementedError
+
+    @classmethod
+    def extract_fields(cls, data):
+        data = data.copy()
+        fields = {}
+        for name in dir(cls):
+            if name.startswith('_'):
+                continue
+            attr = getattr(cls, name)
+            if not isinstance(attr, Default):
+                continue
+
+            try:
+                fields[name] = data.pop(name)
+            except KeyError:
+                pass
+
+        return fields, data
+
+    @classmethod
+    def decode_java_fields(cls, data):
+        return {}
+
+    @classmethod
+    def decode_db_fields(cls, data):
+        return {}
+
+
+class TimestampMixin(Abstract):
+    time_create = Default(TimeProperty.now, produce=True)
+    time_modify = Default(TimeProperty.now, produce=True)
+
+    @classmethod
+    def decode_java_fields(cls, data):
+        decoded = super(TimestampMixin, cls).decode_java_fields(data)
+        for name in ('time_create', 'time_modify'):
+            try:
+                decoded[name] = TimeProperty.new_from_java_timestamp(data[name])
+            except KeyError:
+                pass
+
+        try:
+            decoded.setdefault('time_modify', decoded['time_create'])
+        except KeyError:
+            pass
+
+        return decoded
+
+    @classmethod
+    def decode_db_fields(cls, data):
+        decoded = super(TimestampMixin, cls).decode_db_fields(data)
+        for name in ('time_create', 'time_modify'):
+            try:
+                decoded[name] = TimeProperty.new_from_db(data[name])
+            except KeyError:
+                pass
+        return decoded
+
+    def pack(self):
+        fields = super(TimestampMixin, self).pack()
+        for name in 'time_create', 'time_modify':
+            try:
+                fields[name] = fields[name].as_java_timestamp()
+            except KeyError:
+                pass
+        return fields
+
+
+class AbstractNetworkEndpoint(Abstract):
+    def __init__(self, dpid, port, **fields):
+        super(AbstractNetworkEndpoint, self).__init__(**fields)
+
+        if isinstance(dpid, basestring):
+            dpid = dpid.lower()
+        if port is not None:
+            port = convert_integer(port)
+
+        self.dpid = dpid
+        self.port = port
+
+    def __str__(self):
+        return '{}-{}'.format(self.dpid, self.port)
+
+    def _sort_key(self):
+        return self.dpid, self.port
+
+
+class NetworkEndpoint(AbstractNetworkEndpoint):
+    @classmethod
+    def new_from_java(cls, data):
+        return cls(data['switch-id'], data['port-id'])
+
+    def pack(self):
+        fields = super(NetworkEndpoint, self).pack()
+        for src, dst in (
+                ('dpid', 'switch-id'),
+                ('port', 'port-id')):
+            fields[dst] = fields.pop(src)
+        return fields
+
+
+class IslPathNode(AbstractNetworkEndpoint):
+    @classmethod
+    def new_from_java(cls, data):
+        return cls(data['switch_id'], data['port_no'])
+
+    def pack(self):
+        fields = super(IslPathNode, self).pack()
+        for src, dst in (
+                ('dpid', 'switch_id'),
+                ('port', 'port_no')):
+            fields[dst] = fields.pop(src)
+        return fields
+
+
+class AbstractLink(Abstract):
+    def __init__(self, source, dest, **fields):
+        super(AbstractLink, self).__init__(**fields)
+        self.source = source
+        self.dest = dest
+
+    def _sort_key(self):
+        return self.source, self.dest
+
+
+class InterSwitchLink(TimestampMixin, AbstractLink):
+    state = Default(None)
+
+    @classmethod
+    def new_from_java(cls, data):
+        try:
+            path = data['path']
+            endpoints = [
+                IslPathNode.new_from_java(x)
+                for x in path]
+        except KeyError as e:
+            raise ValueError((
+                 'Invalid record format "path": is not contain key '
+                 '{}').format(e))
+
+        if 2 == len(endpoints):
+            pass
+        elif 1 == len(endpoints):
+            endpoints.append(None)
+        else:
+            raise ValueError(
+                'Invalid record format "path": expect list with 1 or 2 nodes')
+
+        source, dest = endpoints
+        return cls(source, dest, data['state'])
+
+    @classmethod
+    def new_from_db(cls, link):
+        source = IslPathNode(link['src_switch'], link['src_port'])
+        dest = IslPathNode(link['dst_switch'], link['dst_port'])
+        return cls(source, dest, link['status'])
+
+    def __init__(self, source, dest, state=None, **fields):
+        super(InterSwitchLink, self).__init__(
+            source, dest, state=state, **fields)
+
+    def ensure_path_complete(self):
+        ends_count = len(filter(None, (self.source, self.dest)))
+        if ends_count != 2:
+            raise ValueError(
+                'ISL path not define %s/2 ends'.format(ends_count))
+
+    def reversed(self):
+        cls = type(self)
+        return cls(self.dest, self.source, self.state)
+
+    def __str__(self):
+        return '{} <===> {}'.format(self.source, self.dest)
+
+
 class JSONEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, TimeProperty):
-            result = str(o)
+            value = str(o)
+        elif isinstance(o, uuid.UUID):
+            value = str(o)
         elif isinstance(o, JsonSerializable):
-            result = vars(o)
+            value = vars(o)
+        elif isinstance(o, Abstract):
+            value = o.pack()
         else:
-            result = super(JSONEncoder, self).default(o)
-        return result
+            value = super(JSONEncoder, self).default(o)
+        return value

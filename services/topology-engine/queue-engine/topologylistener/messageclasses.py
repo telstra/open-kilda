@@ -18,7 +18,6 @@ import json
 import logging
 import threading
 
-from py2neo import Node
 from topologylistener import model
 
 from topologylistener import config
@@ -127,12 +126,17 @@ read_config()
 class MessageItem(object):
     def __init__(self, **kwargs):
         self.type = kwargs.get("clazz")
-        self.timestamp = model.TimeProperty.new_from_java_timestamp(
-                kwargs.get("timestamp"))
         self.payload = kwargs.get("payload", {})
         self.destination = kwargs.get("destination","")
         self.correlation_id = kwargs.get("correlation_id", "admin-request")
         self.reply_to = kwargs.get("reply_to", "")
+
+        try:
+            timestamp = kwargs['timestamp']
+            timestamp = model.TimeProperty.new_from_java_timestamp(timestamp)
+        except KeyError:
+            timestamp = model.TimeProperty.now()
+        self.timestamp = timestamp
 
     def to_json(self):
         return json.dumps(
@@ -283,7 +287,7 @@ class MessageItem(object):
         try:
             with graph.begin() as tx:
                 updated = isl_utils.disable_by_endpoint(
-                        tx, model.NetworkEndpoint(switch_id, port), is_moved)
+                        tx, model.IslPathNode(switch_id, port), is_moved)
                 updated.sort(key=lambda x: (x.source, x.dest))
                 for isl in updated:
                     # we can get multiple records for one port
@@ -305,7 +309,7 @@ class MessageItem(object):
         try:
             with graph.begin() as tx:
                 for isl in isl_utils.disable_by_endpoint(
-                        tx, model.NetworkEndpoint(switch_id, port_id)):
+                        tx, model.IslPathNode(switch_id, port_id)):
                     # TODO(crimi): should be policy / toggle based
                     isl_utils.increase_cost(
                         tx, isl, config.ISL_COST_WHEN_PORT_DOWN)
@@ -334,7 +338,7 @@ class MessageItem(object):
         speed = int(self.payload['speed'])
         available_bandwidth = int(self.payload['available_bandwidth'])
 
-        isl = model.InterSwitchLink.new_from_isl_data(self.payload)
+        isl = model.InterSwitchLink.new_from_java(self.payload)
         isl.ensure_path_complete()
 
         logger.info('ISL %s create request', isl)
