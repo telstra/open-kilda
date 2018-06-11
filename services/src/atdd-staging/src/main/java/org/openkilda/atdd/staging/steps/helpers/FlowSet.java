@@ -46,10 +46,6 @@ public class FlowSet {
         return unmodifiableSet(flows);
     }
 
-    public void setFlows(Set<FlowPayload> flows) {
-        this.flows = flows;
-    }
-
     /**
      * Returns an unallocated vlan. The returned vlan is immediately added to the list of allocated vlans
      */
