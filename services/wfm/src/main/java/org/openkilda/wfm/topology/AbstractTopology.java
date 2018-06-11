@@ -77,11 +77,14 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
     private final KafkaConfig kafkaConfig;
 
     protected AbstractTopology(LaunchEnvironment env, Class<T> topologyConfigClass) {
-        String defaultTopologyName = getDefaultTopologyName();
-        topologyName = Optional.ofNullable(env.getTopologyName()).orElse(defaultTopologyName);
-
         kafkaNamingStrategy = env.getKafkaNamingStrategy();
         topoNamingStrategy = env.getTopologyNamingStrategy();
+
+        String defaultTopologyName = getDefaultTopologyName();
+        // Use the default topology name with naming strategy applied only if no specific name provided via CLI.
+        topologyName = Optional.ofNullable(env.getTopologyName())
+                .orElse(topoNamingStrategy.stormTopologyName(defaultTopologyName));
+
         configurationProvider = env.getConfigurationProvider(topologyName,
                 TOPOLOGY_PROPERTIES_DEFAULTS_PREFIX + defaultTopologyName);
 
@@ -109,22 +112,18 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
         Config config = makeStormConfig();
         config.setDebug(false);
 
-        String stormTopologyName = topoNamingStrategy.stormTopologyName(topologyName);
-
-        logger.info("Submit Topology: {}", stormTopologyName);
-        StormSubmitter.submitTopology(stormTopologyName, config, createTopology());
+        logger.info("Submit Topology: {}", topologyName);
+        StormSubmitter.submitTopology(topologyName, config, createTopology());
     }
 
     private void setupLocal() throws NameCollisionException {
         Config config = makeStormConfig();
         config.setDebug(true);
 
-        String stormTopologyName = topoNamingStrategy.stormTopologyName(topologyName);
-
         LocalCluster cluster = new LocalCluster();
-        cluster.submitTopology(stormTopologyName, config, createTopology());
+        cluster.submitTopology(topologyName, config, createTopology());
 
-        logger.info("Start Topology: {} (local)", stormTopologyName);
+        logger.info("Start Topology: {} (local)", topologyName);
         localExecutionMainLoop();
 
         cluster.shutdown();
