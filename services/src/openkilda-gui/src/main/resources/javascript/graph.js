@@ -188,7 +188,7 @@ function zoomEventCall(){
 		    .type(function(d) { return d.type; }))
 		if (!text_center) {
 			text.attr("dx", function(d) { 
-			    	return nominal_base_node_size;
+				return nominal_base_node_size;
 				//return (size(d.size)*base_radius/nominal_base_node_size||base_radius);
 			
 			});

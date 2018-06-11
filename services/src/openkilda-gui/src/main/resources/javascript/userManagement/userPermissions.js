@@ -10,12 +10,14 @@
 	var data=getPermissionsFromDOM();
 	data.forEach(function(val){
 		if(userPermissions.includes(val)){
+			$('[permission='+val+']').removeClass('hidePermission');
 			$('[permission='+val+']').addClass('showPermission');
 		}	
 		else
 		{
+			$('[permission='+val+']').removeClass('showPermission');
 			$('[permission='+val+']').addClass('hidePermission');
-		}	
+		}
 	})
    }
 $('#myModal').on('hidden.bs.modal', function (e) {
@@ -87,10 +89,12 @@ function hasPermission(){
 	var data = getPermissionsFromDOM();
 	data.forEach(function(val){
 		if(userPermissions.includes(val)){
+			$('[permission='+val+']').removeClass('hidePermission');
 			$('[permission='+val+']').addClass('showPermission');
 		}	
 		else
 		{
+			$('[permission='+val+']').removeClass('showPermission');
 			$('[permission='+val+']').addClass('hidePermission');
 		}		
 	})
