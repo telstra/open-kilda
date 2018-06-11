@@ -45,7 +45,7 @@ public class RoleValidator {
         }
 
         if (!ValidatorUtil.isNull(role.getName())) {
-            RoleEntity roleEntity = roleRepository.findByroleId(roleId);
+            RoleEntity roleEntity = roleRepository.findByRoleId(roleId);
             if (!roleEntity.getName().equalsIgnoreCase(role.getName())) {
                 validateRole(role);
             }

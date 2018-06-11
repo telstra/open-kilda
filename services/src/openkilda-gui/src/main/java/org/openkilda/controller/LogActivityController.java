@@ -5,6 +5,7 @@ import java.util.List;
 
 import javax.servlet.http.HttpServletRequest;
 
+import org.openkilda.auth.model.Permissions;
 import org.openkilda.constants.IConstants;
 import org.openkilda.log.constants.ActivityType;
 import org.openkilda.log.model.ActivityTypeInfo;
@@ -35,6 +36,7 @@ public class LogActivityController extends BaseController {
      * @return the model and view
      */
     @RequestMapping
+    @Permissions(values = {IConstants.Permission.MENU_USER_ACTIVITY})
     public ModelAndView useractivity(final HttpServletRequest request) {
         return validateAndRedirect(request, IConstants.View.ACTIVITY_LOGS);
     }

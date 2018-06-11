@@ -867,11 +867,12 @@ $('#viewISL').click(function(e){
 });
 
 function setISLData(response,id){
+	// destroy table before creating new one
+	if ( $.fn.DataTable.isDataTable('#'+id) ) {
+		 $('#'+id).DataTable().destroy();
+	}
 	if(response && response.length){
-		if ( $.fn.DataTable.isDataTable('#'+id) ) {
-					  $('#'+id).DataTable().destroy();
-					}
-					$('#'+id+' tbody').empty();
+		$('#'+id+' tbody').empty();
 	}
 	for(var i = 0; i < response.length; i++) {
 		 var tableRow = "<tr id='div_"+(i+1)+"' class='flowDataRow'>"

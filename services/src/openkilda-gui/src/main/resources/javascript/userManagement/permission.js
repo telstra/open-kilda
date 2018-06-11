@@ -286,7 +286,7 @@ var permissionService = (function() {
 
         $("#permissionTabData").hide();
         $("#permissionForm").show();
-        $("#addPermissionForm").attr("onsubmit", "permissionService.z(event)");
+        $("#addPermissionForm").attr("onsubmit", "permissionService.updateRolesToPermission(event)");
         $("#pname, #pdescription").attr("readonly", true);
         $("#padmin").hide();
         $("#permissionRoleAssign").show();

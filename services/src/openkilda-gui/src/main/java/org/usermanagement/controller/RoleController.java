@@ -1,5 +1,7 @@
 package org.usermanagement.controller;
 
+import org.openkilda.auth.model.Permissions;
+import org.openkilda.constants.IConstants;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -25,6 +27,7 @@ public class RoleController {
 
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(method = RequestMethod.POST)
+    @Permissions(values = { IConstants.Permission.UM_ROLE_ADD})
     public Role create(@RequestBody final Role request) {
         Role roleResponse = roleService.createRole(request);
 
@@ -50,6 +53,7 @@ public class RoleController {
 
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @RequestMapping(value = "/{role_id}", method = RequestMethod.DELETE)
+    @Permissions(values = { IConstants.Permission.UM_ROLE_DELETE})
     public void deleteRoleById(@PathVariable("role_id") Long roleId) {
         roleService.deleteRoleById(roleId);
 
@@ -57,6 +61,7 @@ public class RoleController {
 
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(value = "/permission/{permission_id}", method = RequestMethod.GET)
+    @Permissions(values = { IConstants.Permission.UM_PERMISSION_VIEW_ROLES})
     public Permission getRolesByPermissionId(@PathVariable("permission_id") final Long permissionId) {
         Permission permission = roleService.getRolesByPermissionId(permissionId);
 
@@ -65,6 +70,7 @@ public class RoleController {
 
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(value = "/{role_id}", method = RequestMethod.PUT)
+    @Permissions(values = { IConstants.Permission.UM_ROLE_EDIT})
     public Role updateRole(@PathVariable("role_id") Long roleId, @RequestBody final Role request) {
         Role roleResponse = roleService.updateRole(roleId, request);
         return roleResponse;
@@ -72,6 +78,7 @@ public class RoleController {
 
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(value = "/permission/{permission_id}", method = RequestMethod.PUT)
+    @Permissions(values = {IConstants.Permission.UM_PERMISSION_ASSIGN_ROLES})
     public Permission assignRoleToPermission(@PathVariable("permission_id") final Long permissionId,
             @RequestBody Permission request) {
         Permission permission = roleService.assignRoleByPermissionId(permissionId, request);

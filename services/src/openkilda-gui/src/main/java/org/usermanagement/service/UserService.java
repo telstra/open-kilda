@@ -23,9 +23,9 @@ import java.util.Set;
 import org.openkilda.exception.InvalidOtpException;
 import org.openkilda.exception.OtpRequiredException;
 import org.openkilda.exception.TwoFaKeyNotSetException;
-import org.openkilda.security.CustomWebAuthenticationDetails;
 import org.openkilda.security.TwoFactorUtility;
 import org.openkilda.utility.StringUtil;
+import org.usermanagement.conversion.RoleConversionUtil;
 import org.usermanagement.conversion.UserConversionUtil;
 import org.usermanagement.dao.entity.RoleEntity;
 import org.usermanagement.dao.entity.UserEntity;
@@ -50,7 +50,9 @@ public class UserService implements UserDetailsService {
     /** The Constant LOG. */
     private static final Logger LOGGER = LoggerFactory.getLogger(UserService.class);
 
-    /** The user repository. */
+    @Autowired
+    private RoleService roleService;
+
     @Autowired
     private UserRepository userRepository;
 
@@ -81,37 +83,25 @@ public class UserService implements UserDetailsService {
 
         Set<GrantedAuthority> authorities = new HashSet<GrantedAuthority>(0);
         if (user == null) {
+            LOGGER.error("User with username '" + username + "' not found.");
             throw new UsernameNotFoundException(username);
         }
 
-        return new org.springframework.security.core.userdetails.User(username, user.getPassword(), authorities);
+        return new org.springframework.security.core.userdetails.User(username, user.getPassword(),
+                authorities);
     }
 
-    @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
-    public Role getUserByRoleId(final Long roleId) {
-        RoleEntity roleEntity = roleRepository.findByroleId(roleId);
-
-        Set<UserEntity> userEntityList = userRepository.findByRoles_roleId(roleId);
-
-        return UserConversionUtil.toRoleByUser(userEntityList, roleEntity);
-    }
-
+    /**
+     * Creates the user.
+     *
+     * @param userRequest the user request
+     * @return the user info
+     */
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
     public UserInfo createUser(final UserInfo userRequest) {
         userValidator.validateCreateUser(userRequest);
 
-        Set<RoleEntity> roleEntities = new HashSet<>();
-        List<RoleEntity> roleEntityList = roleRepository.findAll();
-        for (Long roleId : userRequest.getRoleIds()) {
-            RoleEntity roleEntity = roleEntityList.parallelStream()
-                    .filter((entity) -> entity.getRoleId().equals(roleId)).findFirst().orElse(null);
-
-            if (!ValidatorUtil.isNull(roleEntity)) {
-                roleEntities.add(roleEntity);
-            } else {
-                throw new RequestValidationException(messageUtil.getAttributeNotFound("roles"));
-            }
-        }
+        Set<RoleEntity> roleEntities = roleService.getRolesById(userRequest.getRoleIds());
 
         UserEntity userEntity = UserConversionUtil.toUserEntity(userRequest, roleEntities);
         String password = ValidatorUtil.randomAlphaNumeric(16);
@@ -120,70 +110,89 @@ public class UserService implements UserDetailsService {
         userEntity = userRepository.save(userEntity);
         LOGGER.info("User with username '" + userEntity.getUsername() + "' created successfully.");
 
-        if(userEntity.getUserId() != null){
-	        Map<String, Object> map = new HashMap<String, Object>();
-	        map.put("name",userEntity.getName());
-	        map.put("username",userEntity.getUsername());
-	        map.put("password",password);
-	        mailService.send(userEntity.getEmail(), mailUtils.getSubjectAccountUsername(), TemplateService.Template.ACCOUNT_USERNAME, map);
-	        mailService.send(userEntity.getEmail(), mailUtils.getSubjectAccountPassword(), TemplateService.Template.ACCOUNT_PASSWORD, map);
-	        LOGGER.info("Username and password email sent successfully to user(username: " + userEntity.getUsername() + ").");
+        if (userEntity.getUserId() != null) {
+            Map<String, Object> map = new HashMap<String, Object>();
+            map.put("name", userEntity.getName());
+            map.put("username", userEntity.getUsername());
+            map.put("password", password);
+            mailService.send(userEntity.getEmail(), mailUtils.getSubjectAccountUsername(),
+                    TemplateService.Template.ACCOUNT_USERNAME, map);
+            mailService.send(userEntity.getEmail(), mailUtils.getSubjectAccountPassword(),
+                    TemplateService.Template.ACCOUNT_PASSWORD, map);
+            LOGGER.info("Username and password email sent successfully to user(username: "
+                    + userEntity.getUsername() + ").");
         }
         return UserConversionUtil.toUserInfo(userEntity);
     }
 
 
-	@Transactional(propagation = Propagation.REQUIRED, readOnly = false)
-	public UserInfo updateUser(final UserInfo userRequest, final Long userId) {
-		UserEntity userEntity = userRepository.findByUserId(userId);
+    /**
+     * Update user.
+     *
+     * @param userInfo the user info
+     * @param userId the user id
+     * @return the user info
+     */
+    @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
+    public UserInfo updateUser(final UserInfo userInfo, final Long userId) {
+        UserEntity userEntity = userValidator.validateUpdateUser(userInfo);
 
-		if (ValidatorUtil.isNull(userEntity) || userId == 1) {
-			throw new RequestValidationException(messageUtil.getAttributeInvalid("user_id", userId + ""));
-		}
-		userValidator.validateUpdateUser(userRequest);
+        if (userInfo.getRoleIds() != null) {
+            userEntity.getRoles().clear();
+            Set<RoleEntity> roleEntities = roleService.getRolesById(userInfo.getRoleIds());
+            userEntity.getRoles().addAll(roleEntities);
+        }
 
-		if (userRequest.getRoleIds() != null) {
-			userEntity.getRoles().clear();
-			for (Long roleId : userRequest.getRoleIds()) {
-				RoleEntity roleEntity = roleRepository.findByroleId(roleId);
-				if (roleEntity != null) {
-					userEntity.getRoles().add(roleEntity);
-				}
-			}
-		}
+        UserConversionUtil.toUpateUserEntity(userInfo, userEntity);
+        userEntity = userRepository.save(userEntity);
+        LOGGER.info("User updated successfully (id: " + userId + ")");
 
-		userEntity = UserConversionUtil.toUpateUserEntity(userRequest, userEntity);
-		userEntity = userRepository.save(userEntity);
-
-		return UserConversionUtil.toUserInfo(userEntity);
-	}
+        return UserConversionUtil.toUserInfo(userEntity);
+    }
 
 
+    /**
+     * Gets the all users.
+     *
+     * @return the all users
+     */
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
     public List<UserInfo> getAllUsers() {
-        List<UserEntity> userEntityList = userRepository.findAll();
-        List<UserInfo> userList = UserConversionUtil.toAllUserResponse(userEntityList);
-        return userList;
+        List<UserEntity> userEntities = userRepository.findAll();
+        return UserConversionUtil.toAllUsers(userEntities);
     }
 
 
+    /**
+     * Gets the user by id.
+     *
+     * @param userId the user id
+     * @return the user by id
+     */
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
     public UserInfo getUserById(final Long userId) {
-
-        UserEntity userEntity = userRepository.findByUserId(userId);
-        if (ValidatorUtil.isNull(userEntity) || userId == 1) {
-            throw new RequestValidationException(messageUtil.getAttributeInvalid("user_id", userId + ""));
-        }
-
+        UserEntity userEntity = userValidator.validateUserId(userId);
         return UserConversionUtil.toUserInfo(userEntity);
     }
 
 
+    /**
+     * Gets the user by username.
+     *
+     * @param userName the user name
+     * @return the user by username
+     */
     @Transactional(propagation = Propagation.REQUIRED, readOnly = true)
     public UserEntity getUserByUsername(final String userName) {
         return userRepository.findByUsername(userName);
     }
 
+    /**
+     * Update user 2 FA key.
+     *
+     * @param userName the user name
+     * @param secretKey the secret key
+     */
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
     public void updateUser2FAKey(final String userName, final String secretKey) {
         UserEntity userEntity = userRepository.findByUsername(userName);
@@ -191,6 +200,11 @@ public class UserService implements UserDetailsService {
         userRepository.save(userEntity);
     }
 
+    /**
+     * Update login detail.
+     *
+     * @param userName the user name
+     */
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
     public void updateLoginDetail(final String userName) {
         UserEntity userEntity = userRepository.findByUsername(userName);
@@ -199,105 +213,144 @@ public class UserService implements UserDetailsService {
         userRepository.save(userEntity);
     }
 
+    /**
+     * Delete user by id.
+     *
+     * @param userId the user id
+     */
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
     public void deleteUserById(final Long userId) {
-
         UserEntity userEntity = userRepository.findByUserId(userId);
         if (ValidatorUtil.isNull(userEntity)) {
-            throw new RequestValidationException(messageUtil.getAttributeInvalid("user_id", userId + ""));
+            throw new RequestValidationException(
+                    messageUtil.getAttributeInvalid("user_id", userId + ""));
         }
 
         userRepository.delete(userEntity);
-
     }
 
+    /**
+     * Assign user by role id.
+     *
+     * @param roleId the role id
+     * @param role the role
+     * @return the role
+     */
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
     public Role assignUserByRoleId(final Long roleId, final Role role) {
 
-        RoleEntity roleEntity = roleRepository.findByroleId(roleId);
+        RoleEntity roleEntity = roleRepository.findByRoleId(roleId);
         roleEntity.getUsers().clear();
         if (role.getUserInfo() != null) {
-	        for (UserInfo user : role.getUserInfo()) {
-	            UserEntity userEntity = userRepository.findByUserId(user.getUserId());
-	            roleEntity.getUsers().add(userEntity);
-	        }
+            for (UserInfo user : role.getUserInfo()) {
+                UserEntity userEntity = userRepository.findByUserId(user.getUserId());
+                roleEntity.getUsers().add(userEntity);
+            }
         }
-        roleRepository.save(roleEntity);
-
-        return UserConversionUtil.toRoleByUser(roleEntity.getUsers(), roleEntity);
+        roleEntity = roleRepository.save(roleEntity);
+        return RoleConversionUtil.toRole(roleEntity, false, true);
     }
 
+    /**
+     * Change password.
+     *
+     * @param userInfo the user info
+     * @param userId the user id
+     * @return the user info
+     */
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
-	public UserInfo changePassword(final UserInfo userRequest, final Long userId,
-			final CustomWebAuthenticationDetails customWebAuthenticationDetails) {
+    public UserInfo changePassword(final UserInfo userInfo, final Long userId) {
+        userValidator.validateChangePassword(userInfo);
 
         UserEntity userEntity = userRepository.findByUserId(userId);
-
         if (ValidatorUtil.isNull(userEntity)) {
-            throw new RequestValidationException(messageUtil.getAttributeInvalid("user_id", userId + ""));
+            LOGGER.error("User Entity not found for user(id: " + userId + ")");
+            throw new RequestValidationException(
+                    messageUtil.getAttributeInvalid("user_id", userId + ""));
         }
 
-		if (userEntity.getIs2FaEnabled()) {
-			if (!userEntity.getIs2FaConfigured() && !customWebAuthenticationDetails.isConfigure2Fa()) {
-				throw new TwoFaKeyNotSetException(messageUtil.getAttribute2faNotConfiured());
-			} else {
-				if (userRequest.getCode() == null || userRequest.getCode().isEmpty()) {
-					throw new OtpRequiredException(messageUtil.getAttributeNotNull("OTP"));
-				} else if (!TwoFactorUtility.validateOtp(userRequest.getCode(), userEntity.getTwoFaKey())) {
-					throw new InvalidOtpException(messageUtil.getAttributeInvalid("OTP", userRequest.getCode()));
-				}
-			}
-		}
+        if (userEntity.getIs2FaEnabled()) {
+            if (!userEntity.getIs2FaConfigured()) {
+                LOGGER.error("2FA key is not configured for user(id: " + userId + "). Error: "
+                        + messageUtil.getAttribute2faNotConfiured());
+                throw new TwoFaKeyNotSetException(messageUtil.getAttribute2faNotConfiured());
+            } else {
+                if (userInfo.getCode() == null || userInfo.getCode().isEmpty()) {
+                    LOGGER.error("OTP code is madatory as 2FA is configured for user (id: " + userId + "). Error: "
+                            + messageUtil.getAttributeNotNull("OTP"));
+                    throw new OtpRequiredException(messageUtil.getAttributeNotNull("OTP"));
+                } else if (!TwoFactorUtility.validateOtp(userInfo.getCode(),
+                        userEntity.getTwoFaKey())) {
+                    LOGGER.error("Invalid OTP for user (id: " + userId + "). Error: "
+                            + messageUtil.getAttributeInvalid("OTP", userInfo.getCode()));
+                    throw new InvalidOtpException(
+                            messageUtil.getAttributeInvalid("OTP", userInfo.getCode()));
+                }
+            }
+        }
 
-		if (!StringUtil.matches(userRequest.getPassword(), userEntity.getPassword())) {
-			throw new RequestValidationException(messageUtil.getAttributePasswordInvalid());
-		}
+        if (!StringUtil.matches(userInfo.getPassword(), userEntity.getPassword())) {
+            LOGGER.error("Password not matched for user (id: " + userId + "). Error: "
+                    + messageUtil.getAttributePasswordInvalid());
+            throw new RequestValidationException(messageUtil.getAttributePasswordInvalid());
+        }
 
-        userRequest.setUserId(userId);
-        userValidator.validateChangePassword(userRequest);
-
-        userEntity.setPassword(StringUtil.encodeString(userRequest.getNewPassword()));
+        userEntity.setPassword(StringUtil.encodeString(userInfo.getNewPassword()));
         userEntity.setUpdatedDate(new Date());
-
         userEntity = userRepository.save(userEntity);
+        LOGGER.info("User(userId: " + userId + ") password changed successfully.");
 
         Map<String, Object> context = new HashMap<>();
         context.put("name", userEntity.getName());
         mailService.send(userEntity.getEmail(), mailUtils.getSubjectChangePassword(),
                 TemplateService.Template.CHANGE_PASSWORD, context);
+        LOGGER.info("Changed password mail sent successfully for user(userId: " + userId + ").");
 
         return UserConversionUtil.toUserInfo(userEntity);
     }
 
-	@Transactional(propagation = Propagation.REQUIRED, readOnly = false)
-	public UserInfo resetPassword(final long userId, final boolean adminFlag) {
-		UserInfo userinfo = new UserInfo();
-		userinfo.setUserId(userId);
+    /**
+     * Reset password.
+     *
+     * @param userId the user id
+     * @param adminFlag the admin flag
+     * @return the user info
+     */
+    @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
+    public UserInfo resetPassword(final long userId, final boolean adminFlag) {
+        UserInfo userinfo = new UserInfo();
+        userinfo.setUserId(userId);
 
-		UserEntity userEntity = userRepository.findByUserId(userId);
+        UserEntity userEntity = userRepository.findByUserId(userId);
 
-		if (ValidatorUtil.isNull(userEntity)) {
-			throw new RequestValidationException(messageUtil.getAttributeInvalid("user_id", userId + ""));
-		}
-		String randomPassword = ValidatorUtil.randomAlphaNumeric(16);
-		userEntity = UserConversionUtil.toResetPwdUserEntity(userEntity, randomPassword);
-		if (adminFlag) {
-			userEntity.setIs2FaConfigured(false);
-			userEntity.setTwoFaKey(null);
-		}
-		userEntity = userRepository.save(userEntity);
+        if (ValidatorUtil.isNull(userEntity)) {
+            throw new RequestValidationException(
+                    messageUtil.getAttributeInvalid("user_id", userId + ""));
+        }
+        String randomPassword = ValidatorUtil.randomAlphaNumeric(16);
+        userEntity = UserConversionUtil.toResetPwdUserEntity(userEntity, randomPassword);
+        if (adminFlag) {
+            userEntity.setIs2FaConfigured(false);
+            userEntity.setTwoFaKey(null);
+        }
+        userEntity = userRepository.save(userEntity);
 
-		if (!adminFlag) {
-			Map<String, Object> context = new HashMap<>();
-			context.put("name", userEntity.getName());
-			context.put("password", randomPassword);
-			mailService.send(userEntity.getEmail(), mailUtils.getSubjectResetPassword(),
-					TemplateService.Template.RESET_ACCOUNT_PASSWORD, context);
-		}
-		userinfo.setPassword(randomPassword);
-		return userinfo;
-	}
+        if (!adminFlag) {
+            Map<String, Object> context = new HashMap<>();
+            context.put("name", userEntity.getName());
+            context.put("password", randomPassword);
+            mailService.send(userEntity.getEmail(), mailUtils.getSubjectResetPassword(),
+                    TemplateService.Template.RESET_ACCOUNT_PASSWORD, context);
+        }
+        userinfo.setPassword(randomPassword);
+        return userinfo;
+    }
 
+    /**
+     * Reset 2 fa.
+     *
+     * @param userId the user id
+     */
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
     public void reset2fa(final long userId) {
         UserEntity userEntity = userRepository.findByUserId(userId);
@@ -310,12 +363,12 @@ public class UserService implements UserDetailsService {
         userEntity.setTwoFaKey(null);
         userEntity = userRepository.save(userEntity);
 
-        if(!userEntity.getIs2FaConfigured()){
+        if (!userEntity.getIs2FaConfigured()) {
             Map<String, Object> context = new HashMap<>();
             context.put("name", userEntity.getName());
 
-	        mailService.send(userEntity.getEmail(), mailUtils.getSubjectReset2fa(),
-	                TemplateService.Template.RESET_2FA, context);
+            mailService.send(userEntity.getEmail(), mailUtils.getSubjectReset2fa(),
+                    TemplateService.Template.RESET_2FA, context);
         }
     }
 }

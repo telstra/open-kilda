@@ -3,6 +3,8 @@ package org.openkilda.controller;
 import java.util.List;
 
 import org.apache.log4j.Logger;
+import org.openkilda.auth.model.Permissions;
+import org.openkilda.constants.IConstants;
 import org.openkilda.constants.IConstants.Metrics;
 import org.openkilda.service.StatsService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,6 +52,7 @@ public class StatsController {
             value = "isl/{srcSwitch}/{srcPort}/{dstSwitch}/{dstPort}/{startDate}/{endDate}/{downsample}/{metric}",
             method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.OK)
+    @Permissions(values = {IConstants.Permission.MENU_ISL})
     public @ResponseBody String getIslStats(@PathVariable String srcSwitch,
             @PathVariable String srcPort, @PathVariable String dstSwitch,
             @PathVariable String dstPort, @PathVariable String startDate,
@@ -77,6 +80,7 @@ public class StatsController {
             value = "switchid/{switchid}/port/{port}/{startDate}/{endDate}/{downsample}/{metric}",
             method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.OK)
+    @Permissions(values = {IConstants.Permission.MENU_SWITCHES})
     public @ResponseBody String getPortStats(@PathVariable String switchid,
             @PathVariable String port, @PathVariable String startDate,
             @PathVariable String endDate, @PathVariable String downsample,
@@ -101,6 +105,7 @@ public class StatsController {
     @RequestMapping(value = "flowid/{flowid}/{startDate}/{endDate}/{downsample}/{metric}",
             method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.OK)
+    @Permissions(values = {IConstants.Permission.MENU_FLOWS})
     public @ResponseBody String getFlowStats(@PathVariable String flowid,
             @PathVariable String startDate, @PathVariable String endDate,
             @PathVariable String downsample, @PathVariable String metric) throws Exception {

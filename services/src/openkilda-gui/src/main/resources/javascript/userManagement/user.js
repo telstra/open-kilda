@@ -395,7 +395,7 @@ var userService = (function() {
     function resetPassword(id, isByAdmin) {
         var apiUrl = '';
         if (isByAdmin) {
-            apiUrl = './user/resetpassword/' + id + '?admin=true';
+            apiUrl = './user/admin/resetpassword/' + id;
         } else {
             apiUrl = './user/resetpassword/' + id;
         }

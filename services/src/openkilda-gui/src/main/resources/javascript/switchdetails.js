@@ -79,10 +79,15 @@ $( 'input').on( 'click', function () {
 /** function to retrieve and show port details from 
  * the port response json object and display on the html page*/
 function showPortData(response) {
-
+	if ( $.fn.DataTable.isDataTable('#flowTable') ) {
+		  $('#flowTable').DataTable().destroy();
+		}
+	
 	if(!response || response.length==0) {
 		response=[]
 		common.infoMessage('No Ports Available','info');
+	}else{
+		$('#flowTable tbody').empty();
 	}
 	
 	$("#flowTable #div_loader").remove();

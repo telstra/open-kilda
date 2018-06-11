@@ -19,6 +19,45 @@ public abstract class IConstants {
         public static final String USER = "ROLE_USER";
     }
 
+    public class Permission {
+    	public static final String MENU_TOPOLOGY = "menu_topology";
+    	public static final String MENU_FLOWS = "menu_flows";
+    	public static final String MENU_ISL = "menu_isl";
+    	public static final String MENU_SWITCHES = "menu_switches";
+    	public static final String MENU_USER_MANAGEMENT = "menu_user_management";
+    	public static final String MENU_USER_ACTIVITY = "menu_user_activity";
+    	
+    	public static final String UM_ROLE = "um_role";
+    	public static final String UM_PERMISSION = "um_permission";
+    	
+    	public static final String UM_USER_ADD = "um_user_add";
+    	public static final String UM_USER_EDIT = "um_user_edit";
+    	public static final String UM_USER_DELETE = "um_user_delete";
+    	public static final String UM_USER_RESET = "um_user_reset";
+    	public static final String UM_USER_RESET_ADMIN = "um_user_reset_admin";
+    	public static final String UM_USER_RESET2FA = "um_user_reset2fa";
+    	public static final String UM_ROLE_ADD = "um_role_add";
+    	public static final String UM_ROLE_EDIT = "um_role_edit";
+    	public static final String UM_ROLE_DELETE = "um_role_delete";
+    	public static final String UM_ROLE_VIEW_USERS = "um_role_view_users";
+    	public static final String UM_PERMISSION_ADD = "um_permission_add";
+    	public static final String UM_PERMISSION_EDIT = "um_permission_edit";
+    	public static final String UM_PERMISSION_DELETE = "um_permission_delete";
+    	public static final String UM_PERMISSION_VIEW_ROLES = "um_permission_view_roles";
+    	public static final String UM_PERMISSION_ASSIGN_ROLES = "um_permission_assign_roles";
+    	public static final String UM_ASSIGN_ROLE_TO_USERS = "um_assign_role_to_users";
+    	
+    	public static final String UM_USER_ACTIVATE = "um_user_activate";
+    	public static final String UM_PERMISSION_ACTIVATE = "um_permission_activate";
+    	public static final String UM_ROLE_ASSIGN_USERS = "um_role_assign_users";
+    	public static final String UM_ASSIGN_PERMISSION_TO_ROLES = "um_assign_permission_to_roles";
+    	
+    	public static final String SW_PERMISSION_RULES = "sw_permission_rules";
+    	public static final String FW_PERMISSION_REROUTE = "fw_permission_reroute";
+    	public static final String ISL_PERMISSION_EDITCOST = "isl_permission_editcost";
+    	public static final String FW_PERMISSION_VALIDATE = "fw_permission_validate";
+    }
+
 
     public class View {
         public static final String ERROR = "error";

@@ -14,6 +14,7 @@ import java.util.List;
 
 import javax.servlet.http.HttpServletRequest;
 
+import org.openkilda.auth.model.Permissions;
 import org.openkilda.constants.IConstants;
 import org.usermanagement.model.Permission;
 import org.usermanagement.model.UserInfo;
@@ -28,9 +29,9 @@ public class PermissionController {
 
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(method = RequestMethod.POST)
+    @Permissions(values = {IConstants.Permission.UM_PERMISSION_ADD})
     public Permission create(@RequestBody final Permission request) {
         Permission permissionResponse = permissionService.createPermission(request);
-
         return permissionResponse;
     }
 
@@ -49,13 +50,14 @@ public class PermissionController {
 
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @RequestMapping(value = "/{permission_id}", method = RequestMethod.DELETE)
+    @Permissions(values = {IConstants.Permission.UM_PERMISSION_DELETE})
     public void deletePermissionById(@PathVariable("permission_id") final Long permissionId) {
         permissionService.deletePermissionById(permissionId);
-
     }
 
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(value = "/{permission_id}", method = RequestMethod.PUT)
+    @Permissions(values = {IConstants.Permission.UM_PERMISSION_EDIT})
     public Permission updatePermission(@PathVariable("permission_id") final Long permissionId,
             @RequestBody final Permission request) {
         Permission permissionResponse = permissionService.updatePermission(permissionId, request);

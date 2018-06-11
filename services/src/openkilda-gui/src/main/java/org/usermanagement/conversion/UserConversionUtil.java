@@ -12,7 +12,6 @@ import org.openkilda.utility.StringUtil;
 import org.usermanagement.dao.entity.RoleEntity;
 import org.usermanagement.dao.entity.StatusEntity;
 import org.usermanagement.dao.entity.UserEntity;
-import org.usermanagement.model.Role;
 import org.usermanagement.model.UserInfo;
 import org.usermanagement.util.ValidatorUtil;
 
@@ -63,7 +62,7 @@ public class UserConversionUtil {
         return userInfo;
     }
 
-    public static List<UserInfo> toAllUserResponse(final List<UserEntity> userEntityList) {
+    public static List<UserInfo> toAllUsers(final List<UserEntity> userEntityList) {
         List<UserInfo> userList = new ArrayList<>();
 
         for (UserEntity userEntity : userEntityList) {
@@ -74,8 +73,7 @@ public class UserConversionUtil {
         return userList;
     }
 
-    public static UserEntity toUpateUserEntity(final UserInfo userInfo, final UserEntity userEntity) {
-
+    public static void toUpateUserEntity(final UserInfo userInfo, final UserEntity userEntity) {
         if (!ValidatorUtil.isNull(userInfo.getName())) {
             userEntity.setName(userInfo.getName());
         }
@@ -93,35 +91,12 @@ public class UserConversionUtil {
         if (!ValidatorUtil.isNull(userInfo.getPassword())) {
             userEntity.setPassword(StringUtil.encodeString(userInfo.getPassword()));
         }
-        userEntity.setCreatedDate(new Date());
         userEntity.setUpdatedDate(new Date());
-        return userEntity;
-    }
-
-    public static Role toRoleByUser(final Set<UserEntity> userEntityList, final RoleEntity roleEntity) {
-        Role role = new Role();
-        role.setName(roleEntity.getName());
-        role.setDescription(roleEntity.getDescription());
-        role.setRoleId(roleEntity.getRoleId());
-
-        List<UserInfo> userInfoList = new ArrayList<>();
-        for (UserEntity userEntity : userEntityList) {
-			if (userEntity.getUserId() != 1) {
-				UserInfo userInfo = new UserInfo();
-				userInfo.setUserId(userEntity.getUserId());
-				userInfo.setName(userEntity.getName());
-				userInfoList.add(userInfo);
-			}
-        }
-
-        role.setUserInfo(userInfoList);
-        return role;
     }
 
     public static UserEntity toResetPwdUserEntity(final UserEntity userEntity, final String randomPassword) {
         userEntity.setPassword(StringUtil.encodeString(randomPassword));
         userEntity.setUpdatedDate(new Date());
         return userEntity;
-
     }
 }

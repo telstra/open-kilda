@@ -7,7 +7,7 @@ INSERT  INTO "KILDA_STATUS" (status_id, STATUS_CODE, STATUS) VALUES
 	(2, 'INA', 'Inactive');
 	
 INSERT INTO "KILDA_USER" (USER_ID, Username, Name, Password, email, Login_Time, Logout_Time, Active_Flag, Is_Authorized, is_two_fa_enabled, two_fa_key, is_two_fa_configured, CREATED_BY, CREATED_DATE, UPDATED_BY, UPDATED_DATE,STATUS_ID) VALUES 
-	(1, 'superadmin@openkilda.org', 'Super Admin', '$2a$11$/PHW3eqqJkN2SDbrQhu44eYQkOPIMmoclx5eg8MeTk3tbay6hsVou', '', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, true, true, true, null, false, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP,1),
+	(1, 'superadmin@openkilda.org', 'Super Admin', '$2a$11$/PHW3eqqJkN2SDbrQhu44eYQkOPIMmoclx5eg8MeTk3tbay6hsVou', '', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, true, true, false, null, false, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP,1),
 	(2, 'admin', 'Admin', '$2a$11$/PHW3eqqJkN2SDbrQhu44eYQkOPIMmoclx5eg8MeTk3tbay6hsVou', 'admin@openkilda.org', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, true, true, false, null, false, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP,1),
 	(3, 'user@openkilda.org', 'User', '$2a$11$/PHW3eqqJkN2SDbrQhu44eYQkOPIMmoclx5eg8MeTk3tbay6hsVou', 'user@openkilda.org', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, true, true, true, null, false, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP,1);
 	
@@ -87,7 +87,7 @@ INSERT INTO "ROLE_PERMISSION" (ROLE_ID,PERMISSION_ID) VALUES
 	
 INSERT INTO "USER_ROLE" (USER_ID, ROLE_ID) VALUES 
 	(1, 1),	
-	(2, 2),	
+	(2, 1),	
 	(3, 1);
 
 ALTER TABLE KILDA_PERMISSION ALTER COLUMN permission_id RESTART WITH 100;

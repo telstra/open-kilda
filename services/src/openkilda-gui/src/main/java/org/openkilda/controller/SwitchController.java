@@ -15,6 +15,7 @@ import java.util.List;
 
 import javax.servlet.http.HttpServletRequest;
 
+import org.openkilda.auth.model.Permissions;
 import org.openkilda.constants.IConstants;
 import org.openkilda.log.ActivityLogger;
 import org.openkilda.log.constants.ActivityType;
@@ -49,6 +50,7 @@ public class SwitchController extends BaseController {
      * @return the model and view
      */
     @RequestMapping
+    @Permissions(values = {IConstants.Permission.MENU_SWITCHES})
     public ModelAndView switchList(final HttpServletRequest request) {
         return validateAndRedirect(request, IConstants.View.SWITCH_LIST);
 
@@ -88,6 +90,7 @@ public class SwitchController extends BaseController {
      * @return the model and view
      */
     @RequestMapping(value = "/isllist", method = RequestMethod.GET)
+    @Permissions(values = {IConstants.Permission.MENU_ISL})
     public ModelAndView islList(final HttpServletRequest request) {
         return validateAndRedirect(request, IConstants.View.ISL_LIST);
     }

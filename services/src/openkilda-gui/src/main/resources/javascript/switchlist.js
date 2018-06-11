@@ -48,15 +48,14 @@ $( 'input').on( 'click', function () {
 
 function showSwitchData(response){
 
+	if ( $.fn.DataTable.isDataTable('#flowTable') ) {
+		  $('#flowTable').DataTable().destroy();
+		}
 	if(!response || response.length==0) {
 		response=[]
 		common.infoMessage('No Switch Available','info');
 	}else{
-
-		if ( $.fn.DataTable.isDataTable('#flowTable') ) {
-					  $('#flowTable').DataTable().destroy();
-					}
-					$('#flowTable tbody').empty();
+		$('#flowTable tbody').empty();
 	}
 	
 	

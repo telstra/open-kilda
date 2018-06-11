@@ -11,7 +11,7 @@ import org.usermanagement.dao.entity.RoleEntity;
 
 @Repository
 public interface RoleRepository extends JpaRepository<RoleEntity, Long> {
-    public RoleEntity findByroleId(Long roleId);
+    public RoleEntity findByRoleId(Long roleId);
     
     public List<RoleEntity> findByPermissions(PermissionEntity permissionEntity);
     

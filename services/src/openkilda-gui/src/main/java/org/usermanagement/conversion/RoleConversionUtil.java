@@ -9,12 +9,15 @@ import org.openkilda.constants.Status;
 import org.usermanagement.dao.entity.PermissionEntity;
 import org.usermanagement.dao.entity.RoleEntity;
 import org.usermanagement.dao.entity.StatusEntity;
+import org.usermanagement.dao.entity.UserEntity;
 import org.usermanagement.model.Permission;
 import org.usermanagement.model.Role;
+import org.usermanagement.model.UserInfo;
 import org.usermanagement.util.ValidatorUtil;
 
 public class RoleConversionUtil {
-    public static RoleEntity toRoleEntity(final Role role, Set<PermissionEntity> permissionEntitySet) {
+
+    public static RoleEntity toRoleEntity(final Role role, final Set<PermissionEntity> permissionEntitySet) {
 
 
         RoleEntity roleEntity = new RoleEntity();
@@ -31,20 +34,36 @@ public class RoleConversionUtil {
         return roleEntity;
     }
 
-	public static Role toRole(final RoleEntity roleEntity) {
+	public static Role toRole(final RoleEntity roleEntity, final boolean withPermissions, final boolean withUsers) {
 		Role role = new Role();
 		role.setName(roleEntity.getName());
 		role.setRoleId(roleEntity.getRoleId());
 		role.setStatus(roleEntity.getStatusEntity().getStatus());
 		role.setDescription(roleEntity.getDescription());
 
-		List<Permission> permissionList = new ArrayList<Permission>();
+		if(withPermissions) {
+		    List<Permission> permissionList = new ArrayList<Permission>();
 
-		if (!ValidatorUtil.isNull(roleEntity.getPermissions())) {
-			for (PermissionEntity permissionEntity : roleEntity.getPermissions()) {
-				permissionList.add(PermissionConversionUtil.toPermission(permissionEntity, null));
-			}
-			role.setPermissions(permissionList);
+	        if (!ValidatorUtil.isNull(roleEntity.getPermissions())) {
+	            for (PermissionEntity permissionEntity : roleEntity.getPermissions()) {
+	                permissionList.add(PermissionConversionUtil.toPermission(permissionEntity, null));
+	            }
+	            role.setPermissions(permissionList);
+	        }
+		}
+
+
+		if(withUsers) {
+		    List<UserInfo> userInfoList = new ArrayList<>();
+	        for (UserEntity userEntity : roleEntity.getUsers()) {
+	            if (userEntity.getUserId() != 1) {
+	                UserInfo userInfo = new UserInfo();
+	                userInfo.setUserId(userEntity.getUserId());
+	                userInfo.setName(userEntity.getName());
+	                userInfoList.add(userInfo);
+	            }
+	        }
+	        role.setUserInfo(userInfoList);
 		}
 		return role;
 	}
@@ -53,7 +72,7 @@ public class RoleConversionUtil {
         List<Role> roleList = new ArrayList<>();
 
         for (RoleEntity roleEntity : roleEntityList) {
-            roleList.add(toRole(roleEntity));
+            roleList.add(toRole(roleEntity, true, false));
         }
         return roleList;
     }
@@ -77,7 +96,7 @@ public class RoleConversionUtil {
         return permission;
     }
 
-    public static RoleEntity toUpateRoleEntity(final Role role, RoleEntity roleEntity) {
+    public static RoleEntity toUpateRoleEntity(final Role role, final RoleEntity roleEntity) {
         if (!ValidatorUtil.isNull(role.getStatus())) {
             StatusEntity newStatusEntity = Status.getStatusByName(role.getStatus()).getStatusEntity();
             roleEntity.setStatusEntity(newStatusEntity);

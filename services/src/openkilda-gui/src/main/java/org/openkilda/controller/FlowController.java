@@ -19,6 +19,7 @@ import java.util.List;
 
 import javax.servlet.http.HttpServletRequest;
 
+import org.openkilda.auth.model.Permissions;
 import org.openkilda.constants.IConstants;
 import org.openkilda.integration.model.Flow;
 import org.openkilda.integration.model.FlowStatus;
@@ -53,6 +54,7 @@ public class FlowController extends BaseController {
      * @return flows view if called with valid user session.
      */
     @RequestMapping
+    @Permissions(values = {IConstants.Permission.MENU_FLOWS})
     public ModelAndView flowList(final HttpServletRequest request) {
         LOGGER.info("[flowList] - start");
         return validateAndRedirect(request, IConstants.View.FLOW_LIST);
