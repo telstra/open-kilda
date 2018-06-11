@@ -1,7 +1,7 @@
 # 'make' will build the latest and try to run it.
 default: build-latest run-dev
 
-build-base: compile
+build-base:
 	base/hacks/kilda-bins.download.sh
 	base/hacks/shorm.requirements.download.sh
 	rsync -au kilda-bins/zookeeper* services/zookeeper/tar/
@@ -15,10 +15,9 @@ build-base: compile
 	docker build -t kilda/storm:latest services/storm
 	docker build -t kilda/neo4j:latest services/neo4j
 	docker build -t kilda/opentsdb:latest services/opentsdb
-	docker build -t kilda/mininet:latest services/mininet
 	docker build -t kilda/logstash:latest services/logstash
 
-build-latest: build-base
+build-latest: build-base compile
 	docker-compose build
 
 run-dev:
@@ -61,9 +60,18 @@ compile:
 	$(MAKE) -C services/wfm all-in-one
 	$(MAKE) -C services/mininet
 
-unit:
+.PHONY: unit unit-java-common unit-java-storm unit-py-te
+unit: unit-java-common unit-java-storm unit-py-te
+unit-java-common: build-base
 	$(MAKE) -C services/src
-	mvn -B -f services/wfm/pom.xml clean assembly:assembly
+unit-java-storm: avoid-port-conflicts
+	mvn -B -f services/wfm/pom.xml test
+unit-py-te:
+	$(MAKE) -C services/topology-engine ARTIFACTS=../../artifact/topology-engine test
+
+.PHONY: avoid-port-conflicts
+avoid-port-conflicts:
+	docker-compose stop
 
 clean-test:
 	docker-compose down

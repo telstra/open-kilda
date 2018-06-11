@@ -201,11 +201,12 @@ def unpack_dpid(dpid_str):
     return int(value, 16)
 
 
-class TestIsl(unittest.TestCase):
+class TestIsl(share.AbstractTest):
     src_endpoint = model.NetworkEndpoint(make_datapath_id(1), 2)
     dst_endpoint = model.NetworkEndpoint(make_datapath_id(2), 4)
 
     def setUp(self):
+        super(TestIsl, self).setUp()
         with neo4j_connect.begin() as tx:
             clean_neo4j_test_data(tx)
 
