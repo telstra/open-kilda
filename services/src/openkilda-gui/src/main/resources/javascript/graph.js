@@ -186,7 +186,13 @@ function zoomEventCall(){
 		    circle.attr("d", d3.svg.symbol()
 		    .size(function(d) { return Math.PI*Math.pow(size(d.size)*base_radius/nominal_base_node_size||base_radius,2); })
 		    .type(function(d) { return d.type; }))
-		if (!text_center) text.attr("dx", function(d) { return (size(d.size)*base_radius/nominal_base_node_size||base_radius); });
+		if (!text_center) {
+			text.attr("dx", function(d) { 
+			    	return nominal_base_node_size;
+				//return (size(d.size)*base_radius/nominal_base_node_size||base_radius);
+			
+			});
+		}
 		
 		var text_size = nominal_text_size;
 		if (nominal_text_size*zoom.scale()>max_text_size) text_size = max_text_size/zoom.scale();

@@ -37,6 +37,7 @@ import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonMappingException.Reference;
 
 import org.openkilda.constants.HttpError;
+import org.openkilda.exception.InvalidOtpException;
 import org.openkilda.model.response.ErrorMessage;
 
 /**
@@ -273,6 +274,20 @@ public class GlobalExceptionMapper extends ResponseEntityExceptionHandler {
     protected ResponseEntity<Object> unauthorizeAccess(
     		AccessDeniedException ex) {
  	   ex.setStackTrace(new StackTraceElement[0]);
+       return response(HttpError.UNAUTHORIZED.getHttpStatus(),
+               HttpError.UNAUTHORIZED.getCode(),
+               ex.getMessage(), ex.getMessage());
+    }
+    /**
+     * Invalid OTP access.
+     *
+     * @param ex the ex
+     * @return the response entity
+     */
+    @ExceptionHandler(InvalidOtpException.class)
+    protected ResponseEntity<Object> invalidOTP(
+            InvalidOtpException ex) {
+       ex.setStackTrace(new StackTraceElement[0]);
        return response(HttpError.UNAUTHORIZED.getHttpStatus(),
                HttpError.UNAUTHORIZED.getCode(),
                ex.getMessage(), ex.getMessage());
