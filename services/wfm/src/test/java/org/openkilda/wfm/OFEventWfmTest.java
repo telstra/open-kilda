@@ -33,9 +33,9 @@ import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.OutputCollectorMock;
-import org.openkilda.wfm.topology.TopologyConfig;
 import org.openkilda.wfm.topology.event.OFELinkBolt;
 import org.openkilda.wfm.topology.event.OFEventWFMTopology;
+import org.openkilda.wfm.topology.event.OFEventWfmTopologyConfig;
 import org.openkilda.wfm.topology.utils.KafkaFilerTopology;
 
 import com.google.common.base.Charsets;
@@ -93,7 +93,7 @@ public class OFEventWfmTest extends AbstractStormTest {
 
         LaunchEnvironment env = makeLaunchEnvironment(overlay);
         manager = new OFEventWFMTopology(env);
-        cluster.submitTopology(manager.makeTopologyName(), stormConfig(), manager.createTopology());
+        cluster.submitTopology(manager.getTopologyName(), stormConfig(), manager.createTopology());
 
         discoFiler = new KafkaFilerTopology(env, manager.getConfig().getKafkaTopoDiscoTopic());
         cluster.submitTopology("utils-1", stormConfig(), discoFiler.createTopology());
@@ -108,7 +108,7 @@ public class OFEventWfmTest extends AbstractStormTest {
     @AfterClass
     public static void teardownOnce() throws Exception {
         cluster.killTopology("utils-1");
-        cluster.killTopology(manager.makeTopologyName());
+        cluster.killTopology(manager.getTopologyName());
         Utils.sleep(4 * 1000);
         AbstractStormTest.teardownOnce();
     }
@@ -121,7 +121,7 @@ public class OFEventWfmTest extends AbstractStormTest {
 
         // TOOD: Is this test still valide, without the deprecated Switch/Port bolts?
         OFEventWFMTopology manager = new OFEventWFMTopology(makeLaunchEnvironment());
-        TopologyConfig config = manager.getConfig();
+        OFEventWfmTopologyConfig config = manager.getConfig();
 
         String sw1Up = OFEMessageUtils.createSwitchDataMessage(
                 OFEMessageUtils.SWITCH_UP, "sw1");
@@ -175,7 +175,7 @@ public class OFEventWfmTest extends AbstractStormTest {
         // NB: ISL discovery messages will be generated .. multiple .. at present 9-11.
         Assert.assertTrue(messagesReceived > 0);
 
-        cluster.killTopology(manager.makeTopologyName());
+        cluster.killTopology(manager.getTopologyName());
         cluster.killTopology("utils-1");
         Utils.sleep(4 * 1000);
     }
@@ -199,7 +199,7 @@ public class OFEventWfmTest extends AbstractStormTest {
     public void basicLinkDiscoveryTest() throws Exception {
         System.out.println("==> Starting BasicLinkDiscoveryTest");
         OFEventWFMTopology manager = new OFEventWFMTopology(makeLaunchEnvironment());
-        TopologyConfig config = manager.getConfig();
+        OFEventWfmTopologyConfig config = manager.getConfig();
         String topoInputTopic = config.getKafkaTopoDiscoTopic();
 
         KeyValueState<String, Object> state = new InMemoryKeyValueState<>();
@@ -306,9 +306,9 @@ public class OFEventWfmTest extends AbstractStormTest {
         when(topologyContext.getComponentOutputFields(topoInputTopic,
                 topoInputTopic)).thenReturn(islSchema);
 
-        when(topologyContext.getComponentId(4)).thenReturn(OFEventWFMTopology.SPOUT_ID_INPUT);
+        when(topologyContext.getComponentId(4)).thenReturn(OFEventWFMTopology.DISCO_SPOUT_ID);
         when(topologyContext.getComponentOutputFields(
-                OFEventWFMTopology.SPOUT_ID_INPUT, AbstractTopology.MESSAGE_FIELD))
+                OFEventWFMTopology.DISCO_SPOUT_ID, AbstractTopology.MESSAGE_FIELD))
                 .thenReturn(AbstractTopology.fieldMessage);
     }
 }

@@ -9,13 +9,13 @@ path:
   - topology_properties:
     dest: services/src/topology/src/main/resources/topology.properties
     tmpl: templates/topology/topology.properties.j2
-  - topology_engine_properties:
-    dest: services/topology-engine/queue-engine/topology_engine.properties
-    tmpl: templates/topology-engine/topology_engine.properties.j2
+  - topology_engine_ini:
+    dest: services/topology-engine/queue-engine/topology_engine.ini
+    tmpl: templates/topology-engine/topology_engine.ini.j2
   - topology_engine_log_json:
     dest: services/topology-engine/queue-engine/log.json
     tmpl: templates/topology-engine/log.json.j2
-  - topology_engine_rest_properties:
+  - topology_engine_rest_ini:
     dest: services/topology-engine-rest/app/topology_engine_rest.ini
     tmpl: templates/topology-engine-rest/topology_engine_rest.ini.j2
   - topology_engine_rest_log_json:

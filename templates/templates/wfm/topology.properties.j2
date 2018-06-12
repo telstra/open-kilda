@@ -1,25 +1,11 @@
+environment.naming.prefix = {{ environment_naming_prefix }}
+
 parallelism = 1
 workers = 1
-
-zookeeper.hosts = {{ zookeeper_hosts }}
-zookeeper.session.timeout = 5
-zookeeper.connect.timeout = 5
 
 kafka.hosts = {{ kafka_hosts }}
 kafka.partitions.default = 1
 kafka.replication.default = 3
-kafka.topic.ctrl = {{ kafka_topic_ctrl }}
-kafka.topic.flow = {{ kafka_topic_flow }}
-kafka.topic.health.check = {{ kafka_topic_health_check }}
-kafka.topic.northbound = {{ kafka_topic_northbound }}
-kafka.topic.opentsdb = {{ kafka_topic_opentsdb }}
-kafka.topic.simulator = {{ kafka_topic_simulator }}
-kafka.topic.speaker = {{ kafka_topic_speaker }}
-kafka.topic.stats = {{ kafka_topic_stats }}
-kafka.topic.topo.cache = {{ kafka_topic_topo_cache }}
-kafka.topic.topo.disco = {{ kafka_topic_topo_disco }}
-kafka.topic.topo.eng = {{ kafka_topic_topo_eng }}
-kafka.topic.topo.nbworker = {{ kafka_topic_topo_nb }}
 
 opentsdb.hosts = {{ opentsdb_hosts }}
 

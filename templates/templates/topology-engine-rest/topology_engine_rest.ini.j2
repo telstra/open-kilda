@@ -2,6 +2,7 @@
 consumer.group=python-tper-flow-consumer
 kafka.topic.flow={{ kafka_topic_flow }}
 bootstrap.servers={{ kafka_hosts }}
+environment.naming.prefix = {{ environment_naming_prefix }}
 
 [neo4j]
 host={{ neo4j_host }}

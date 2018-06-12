@@ -28,13 +28,14 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class Producer {
+
     private static final Logger logger = LoggerFactory.getLogger(Producer.class);
 
     private final org.apache.kafka.clients.producer.Producer producer;
     private final Map<String, AbstractWorker> workersMap = new HashMap<>();
 
     public Producer(Context context) {
-        this(new KafkaProducer<>(context.getKafkaConfig()));
+        this(new KafkaProducer<>(context.getKafkaProducerProperties()));
     }
 
     Producer(org.apache.kafka.clients.producer.Producer producer) {

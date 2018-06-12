@@ -11,7 +11,7 @@ Feature: Basic Topology Events
   these types of tests - ie ensure we are honoring the policies, and have the ability to overwrite
   the policies.
 
-  @MVP1.1
+  @MVP1
   Scenario: Link is Dropped
 
     Given a clean controller
@@ -19,7 +19,7 @@ Feature: Basic Topology Events
     When the controller learns the topology
     And multiple links exist between all switches
     And a link is dropped in the middle
-    Then the link disappears from the topology engine.
+    Then the link disappears from the topology engine in 60 seconds.
 
   @MVP1.1
   Scenario: Link is Added

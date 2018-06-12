@@ -37,13 +37,26 @@ import java.util.Set;
 /**
  * A builder for flows ({@link FlowPayload}) in nonoverlapped VLANs.
  */
-public class FlowSetBuilder {
+public class FlowSet {
 
     private Set<FlowPayload> flows = new HashSet<>();
     private RangeSet<Integer> allocatedVlans = TreeRangeSet.create();
 
     public Set<FlowPayload> getFlows() {
         return unmodifiableSet(flows);
+    }
+
+    /**
+     * Returns an unallocated vlan. The returned vlan is immediately added to the list of allocated vlans
+     */
+    public int allocateVlan() {
+        RangeSet<Integer> availableVlansRange = TreeRangeSet.create();
+        availableVlansRange.removeAll(allocatedVlans);
+        Integer vlan = availableVlansRange.asRanges().stream()
+                .flatMap(range -> ContiguousSet.create(range, DiscreteDomain.integers()).stream())
+                .findFirst().get();
+        allocatedVlans.add(Range.singleton(vlan));
+        return vlan;
     }
 
     public void addFlow(String flowId, Switch srcSwitch, Switch destSwitch) {

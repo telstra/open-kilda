@@ -15,6 +15,9 @@
 
 package org.openkilda.floodlight.kafka;
 
+import org.openkilda.config.KafkaTopicsConfig;
+import org.openkilda.floodlight.config.KafkaFloodlightConfig;
+import org.openkilda.floodlight.config.provider.ConfigurationProvider;
 import org.openkilda.floodlight.kafka.producer.Producer;
 import org.openkilda.messaging.Message;
 
@@ -34,6 +37,8 @@ import java.util.Map;
 public class KafkaMessageProducer implements IFloodlightModule, IFloodlightService {
     private Producer producer;
     private HeartBeat heartBeat;
+
+    private String topoDiscoTopic;
 
     /**
      * {@inheritDoc}
@@ -64,7 +69,13 @@ public class KafkaMessageProducer implements IFloodlightModule, IFloodlightServi
      */
     @Override
     public void init(FloodlightModuleContext moduleContext) throws FloodlightModuleException {
-        Context context = new Context(moduleContext, this);
+        ConfigurationProvider provider = new ConfigurationProvider(moduleContext, this);
+
+        KafkaTopicsConfig topicsConfig = provider.getConfiguration(KafkaTopicsConfig.class);
+        topoDiscoTopic = topicsConfig.getTopoDiscoTopic();
+
+        KafkaFloodlightConfig kafkaConfig = provider.getConfiguration(KafkaFloodlightConfig.class);
+        Context context = new Context(kafkaConfig);
 
         initProducer(context);
         initHeartBeat(context);
@@ -89,7 +100,7 @@ public class KafkaMessageProducer implements IFloodlightModule, IFloodlightServi
     }
 
     private void initProducer(Context context) {
-        if (! "YES".equals(context.configLookup("testing-mode"))) {
+        if (!context.isTestingMode()) {
             producer = new Producer(context);
         } else {
             producer = new TestAwareProducer(context);
@@ -98,15 +109,16 @@ public class KafkaMessageProducer implements IFloodlightModule, IFloodlightServi
 
     private void initHeartBeat(Context context) throws FloodlightModuleException {
         final String option = "heart-beat-interval";
-        String value = context.configLookup(option);
+
+        String value = context.getHeartBeatInterval();
 
         try {
-            Float interval = Float.valueOf(context.configLookup(option));
+            Float interval = Float.valueOf(value);
             if (interval < 1) {
                 throw new FloodlightModuleException(String.format(
                         "Invalid value for option %s: %s < 1", option, value));
             }
-            heartBeat = new HeartBeat(producer, (long) (interval * 1000));
+            heartBeat = new HeartBeat(producer, (long) (interval * 1000), topoDiscoTopic);
         } catch (NumberFormatException e) {
             throw new FloodlightModuleException(String.format(
                     "Invalid value for option %s=\"%s\", expect number", option, value));

@@ -20,7 +20,7 @@ import static java.lang.String.format;
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
 import org.openkilda.atdd.staging.service.northbound.NorthboundService;
 import org.openkilda.atdd.staging.service.topology.TopologyEngineService;
-import org.openkilda.atdd.staging.steps.helpers.FlowSetBuilder;
+import org.openkilda.atdd.staging.steps.helpers.FlowSet;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.payload.flow.FlowPayload;
@@ -70,7 +70,7 @@ public class FlowManagerImpl implements FlowManager {
                                                                                  int alternatePaths, int bandwidth) {
 
         final List<TopologyDefinition.Switch> switches = topologyDefinition.getActiveSwitches();
-        FlowSetBuilder flowSet = new FlowSetBuilder();
+        FlowSet flowSet = new FlowSet();
         boolean foundEnoughFlows = false;
         Map<FlowPayload, List<TopologyDefinition.Isl>> result = new HashMap<>();
 
@@ -130,7 +130,7 @@ public class FlowManagerImpl implements FlowManager {
     @Override
     public Set<FlowPayload> allActiveSwitchesFlows() {
 
-        FlowSetBuilder builder = new FlowSetBuilder();
+        FlowSet flowSet = new FlowSet();
 
         final List<TopologyDefinition.Switch> switches = topologyDefinition.getActiveSwitches();
         // check each combination of active switches for a path between them and create
@@ -149,12 +149,12 @@ public class FlowManagerImpl implements FlowManager {
                             .getPaths(dstSwitch.getDpId(), srcSwitch.getDpId());
                     if (!forwardPath.isEmpty() && !reversePath.isEmpty()) {
                         String flowId = format("%s-%s", srcSwitch.getName(), dstSwitch.getName());
-                        builder.addFlow(flowId, srcSwitch, dstSwitch);
+                        flowSet.addFlow(flowId, srcSwitch, dstSwitch);
                     }
                 })
         );
 
-        return builder.getFlows();
+        return flowSet.getFlows();
     }
 
     /**
@@ -164,7 +164,7 @@ public class FlowManagerImpl implements FlowManager {
     @Override
     public Set<FlowPayload> allActiveTraffgenFlows() {
 
-        FlowSetBuilder builder = new FlowSetBuilder();
+        FlowSet flowSet = new FlowSet();
 
         final List<TopologyDefinition.TraffGen> traffGens = topologyDefinition.getActiveTraffGens();
         // check each combination of active traffGens and create a flow definition
@@ -178,9 +178,9 @@ public class FlowManagerImpl implements FlowManager {
                 }
 
                 String flowId = format("%s-%s", srcSwitch.getName(), dstSwitch.getName());
-                builder.addFlow(flowId, srcSwitch, srcTraffGen.getSwitchPort(), dstSwitch, dstTraffGen.getSwitchPort());
+                flowSet.addFlow(flowId, srcSwitch, srcTraffGen.getSwitchPort(), dstSwitch, dstTraffGen.getSwitchPort());
             });
         });
-        return builder.getFlows();
+        return flowSet.getFlows();
     }
 }
