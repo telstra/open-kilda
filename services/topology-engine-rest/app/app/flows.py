@@ -42,8 +42,9 @@ topic = config.get('kafka', 'kafka.topic.flow')
 try:
     environment_naming_prefix = config.get('kafka',
                                            'environment.naming.prefix')
-    group = '_'.join([environment_naming_prefix, group])
-    topic = '_'.join([environment_naming_prefix, topic])
+    if environment_naming_prefix.strip():
+        group = '_'.join([environment_naming_prefix, group])
+        topic = '_'.join([environment_naming_prefix, topic])
 except ConfigParser.NoOptionError:
     pass
 

@@ -376,7 +376,7 @@
     <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFELinkBolt.java" lines="93" checks="AbbreviationAsWordInName"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFELinkBolt.java" lines="93" checks="MemberName"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFELinkBolt.java" lines="94" checks="MemberName"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFELinkBolt.java" lines="94" checks="AbbreviationAsWordInName"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFELinkBolt.java" lines="95" checks="AbbreviationAsWordInName"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFELinkBolt.java" lines="160" checks="SummaryJavadoc"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFELinkBolt.java" lines="173" checks="MissingSwitchDefault"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFELinkBolt.java" lines="205" checks="Indentation"/>

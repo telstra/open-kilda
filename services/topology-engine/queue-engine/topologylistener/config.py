@@ -59,6 +59,9 @@ def _get_bootstrap_servers():
 try:
     ENVIRONMENT_NAMING_PREFIX = config.get('kafka',
                                            'environment.naming.prefix')
+    if not ENVIRONMENT_NAMING_PREFIX.strip():
+        ENVIRONMENT_NAMING_PREFIX = None
+
 except ConfigParser.NoOptionError:
     ENVIRONMENT_NAMING_PREFIX = None
 

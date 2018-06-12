@@ -6,9 +6,7 @@ speaker.topic={{ kafka_topic_speaker }}
 topo.eng.topic={{ kafka_topic_topo_eng }}
 northbound.topic={{ kafka_topic_northbound }}
 bootstrap.servers={{ kafka_hosts }}
-{% if environment_naming_prefix %}
 environment.naming.prefix = {{ environment_naming_prefix }}
-{% endif %}
 
 [gevent]
 worker.pool.size={{ worker_pool_size }}
