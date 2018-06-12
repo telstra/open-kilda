@@ -16,6 +16,7 @@
 package org.openkilda.floodlight.pathverification;
 
 import com.sabre.oss.conf4j.annotation.Configuration;
+import com.sabre.oss.conf4j.annotation.Default;
 import com.sabre.oss.conf4j.annotation.Key;
 
 import java.util.Properties;
@@ -23,6 +24,7 @@ import java.util.Properties;
 @Configuration
 public interface PathVerificationServiceConfig {
     @Key("isl_bandwidth_quotient")
+    @Default("1.0")
     double getIslBandwidthQuotient();
 
     @Key("hmac256-secret")
