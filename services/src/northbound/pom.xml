@@ -53,6 +53,11 @@
                 </exclusion>
             </exclusions>
         </dependency>
+        <dependency>
+            <groupId>org.openkilda</groupId>
+            <artifactId>configuration</artifactId>
+            <version>${project.version}</version>
+        </dependency>
 
         <!-- Spring dependencies -->
         <dependency>
@@ -184,6 +189,10 @@
             <artifactId>commons-collections4</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>com.sabre.oss.conf4j</groupId>
+            <artifactId>conf4j-spring-boot</artifactId>
+        </dependency>
     </dependencies>
 
     <dependencyManagement>

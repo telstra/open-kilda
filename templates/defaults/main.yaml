@@ -1,5 +1,6 @@
 ---
 # defaults file for templates
+environment_naming_prefix: ""
 kafka_hosts: "kafka.pendev:9092"
 zookeeper_hosts: "zookeeper.pendev:2181"
 opentsdb_hosts: "http://opentsdb.pendev:4242"

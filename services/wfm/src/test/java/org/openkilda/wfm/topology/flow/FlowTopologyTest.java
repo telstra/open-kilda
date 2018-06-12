@@ -61,7 +61,6 @@ import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
 import org.openkilda.wfm.AbstractStormTest;
 import org.openkilda.wfm.topology.TestKafkaConsumer;
-import org.openkilda.wfm.topology.TopologyConfig;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -90,7 +89,7 @@ public class FlowTopologyTest extends AbstractStormTest {
     private static TestKafkaConsumer teResponseConsumer;
     private static TestKafkaConsumer ctrlConsumer;
     private static FlowTopology flowTopology;
-    private static TopologyConfig topologyConfig;
+    private static FlowTopologyConfig topologyConfig;
 
     @BeforeClass
     public static void setupOnce() throws Exception {

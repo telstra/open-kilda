@@ -66,7 +66,9 @@ public class PathVerificationPacketOutTest extends FloodlightTestCase {
         fmc.addService(IOFSwitchService.class, getMockSwitchService());
         swDescription = factory.buildDescStatsReply().build();
         pvs = new PathVerificationService();
+
         pvs.initAlgorithm("secret");
+
         srcIpTarget = new InetSocketAddress("192.168.10.1", 200);
         dstIpTarget = new InetSocketAddress("192.168.10.101", 100);
         sw1HwAddrTarget = "11:22:33:44:55:66";

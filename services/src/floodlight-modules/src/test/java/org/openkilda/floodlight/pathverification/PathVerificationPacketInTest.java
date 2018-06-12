@@ -19,6 +19,10 @@ import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.replay;
 import static org.junit.Assert.assertArrayEquals;
 
+import org.openkilda.config.KafkaTopicsConfig;
+import org.openkilda.floodlight.config.provider.ConfigurationProvider;
+import org.openkilda.floodlightcontroller.test.FloodlightTestCase;
+
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
@@ -35,7 +39,6 @@ import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.openkilda.floodlightcontroller.test.FloodlightTestCase;
 import org.projectfloodlight.openflow.protocol.OFDescStatsReply;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketInReason;
@@ -150,8 +153,12 @@ public class PathVerificationPacketInTest extends FloodlightTestCase {
         fmc.addConfigParam(pvs, "isl_bandwidth_quotient", "0.0");
         fmc.addConfigParam(pvs, "hmac256-secret", "secret");
         fmc.addConfigParam(pvs, "bootstrap-servers", "");
+        ConfigurationProvider provider = new ConfigurationProvider(fmc, pvs);
+        KafkaTopicsConfig topicsConfig = provider.getConfiguration(KafkaTopicsConfig.class);
+        PathVerificationServiceConfig serviceConfig = provider.getConfiguration(PathVerificationServiceConfig.class);
+
+        pvs.initConfiguration(topicsConfig, serviceConfig);
         pvs.initServices(fmc);
-        pvs.initAlgorithm("secret");
 
         srcIpTarget = new InetSocketAddress("192.168.10.1", 200);
         dstIpTarget = new InetSocketAddress("192.168.10.101", 100);

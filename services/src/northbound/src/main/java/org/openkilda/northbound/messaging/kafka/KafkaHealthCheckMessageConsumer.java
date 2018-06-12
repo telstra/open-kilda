@@ -18,7 +18,6 @@ package org.openkilda.northbound.messaging.kafka;
 import static org.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.openkilda.messaging.Utils.MAPPER;
 import static org.openkilda.messaging.error.ErrorType.INTERNAL_ERROR;
-import org.openkilda.messaging.Topic;
 
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
@@ -62,7 +61,7 @@ public class KafkaHealthCheckMessageConsumer implements HealthCheckMessageConsum
      *
      * @param record the message object instance
      */
-    @KafkaListener(id = "northbound-listener-health-check", topics = Topic.HEALTH_CHECK)
+    @KafkaListener(id = "northbound-listener-health-check", topics = "#{kafkaTopicsConfig.getHealthCheckTopic()}")
     public void receive(final String record) {
         Message message;
 
