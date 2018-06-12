@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.nbworker.converters;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.messaging.model.LinkProps;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.nbtopology.response.LinkPropsData;
 
@@ -97,8 +98,9 @@ public final class LinksConverter {
         String dstSwitch = properties.remove(DST_SWITCH_FIELD);
         int dstPort = NumberUtils.toInt(properties.remove(DST_PORT_FIELD));
 
-        return new LinkPropsData(new NetworkEndpoint(srcSwitch, srcPort), new NetworkEndpoint(dstSwitch, dstPort),
-                properties);
+        LinkProps linkProps = new LinkProps(new NetworkEndpoint(srcSwitch, srcPort),
+                new NetworkEndpoint(dstSwitch, dstPort), properties);
+        return new LinkPropsData(linkProps);
     }
 
     private static int parseIntValue(Value value) {

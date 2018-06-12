@@ -94,10 +94,11 @@ public class LinkServiceTest {
     public void shouldGetPropsList() {
         final String correlationId = "non-empty-link-props";
 
-        LinkPropsData linkProps = new LinkPropsData(new NetworkEndpoint("00:00:00:00:00:00:00:01", 1),
+        LinkProps linkProps = new LinkProps(new NetworkEndpoint("00:00:00:00:00:00:00:01", 1),
                 new NetworkEndpoint("00:00:00:00:00:00:00:02", 2),
                 Collections.singletonMap("cost", "2"));
-        Message message = new ChunkedInfoMessage(linkProps, 0, correlationId, null);
+        LinkPropsData linkPropsData = new LinkPropsData(linkProps);
+        Message message = new ChunkedInfoMessage(linkPropsData, 0, correlationId, null);
         messageExchanger.mockResponse(message);
         RequestCorrelationId.create(correlationId);
 
@@ -105,10 +106,10 @@ public class LinkServiceTest {
         assertFalse("List of link props should be empty", result.isEmpty());
 
         LinkPropsDto dto = result.get(0);
-        assertThat(dto.getSrcSwitch(), is(linkProps.getSource().getDatapath()));
-        assertThat(dto.getSrcPort(), is(linkProps.getSource().getPortNumber()));
-        assertThat(dto.getDstSwitch(), is(linkProps.getDestination().getDatapath()));
-        assertThat(dto.getDstPort(), is(linkProps.getDestination().getPortNumber()));
+        assertThat(dto.getSrcSwitch(), is(linkPropsData.getLinkProps().getSource().getDatapath()));
+        assertThat(dto.getSrcPort(), is(linkPropsData.getLinkProps().getSource().getPortNumber()));
+        assertThat(dto.getDstSwitch(), is(linkPropsData.getLinkProps().getDest().getDatapath()));
+        assertThat(dto.getDstPort(), is(linkPropsData.getLinkProps().getDest().getPortNumber()));
     }
 
     @Test

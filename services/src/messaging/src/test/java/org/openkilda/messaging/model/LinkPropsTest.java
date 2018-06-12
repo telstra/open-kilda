@@ -44,7 +44,8 @@ public class LinkPropsTest implements StringSerializer {
         HashMap<String, String> props = new HashMap<>();
         props.put("cost", "10");
 
-        return new LinkProps(source, dest, props);
+        long created = System.currentTimeMillis();
+        return new LinkProps(source, dest, props, created, created);
     }
 
     @Override

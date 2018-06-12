@@ -16,28 +16,19 @@
 package org.openkilda.messaging.nbtopology.response;
 
 import org.openkilda.messaging.info.InfoData;
-import org.openkilda.messaging.model.NetworkEndpoint;
+import org.openkilda.messaging.model.LinkProps;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Getter;
+import jdk.nashorn.internal.objects.annotations.Property;
+import lombok.Value;
 
-import java.util.Map;
-
-@Getter
+@Value
 public class LinkPropsData extends InfoData {
 
-    @JsonProperty("source")
-    private NetworkEndpoint source;
-    @JsonProperty("destination")
-    private NetworkEndpoint destination;
-    @JsonProperty("props")
-    private Map<String, String> props;
+    @Property
+    private LinkProps linkProps;
 
-    public LinkPropsData(@JsonProperty("source") NetworkEndpoint source,
-                         @JsonProperty("destination") NetworkEndpoint destination,
-                         @JsonProperty("props") Map<String, String> props) {
-        this.source = source;
-        this.destination = destination;
-        this.props = props;
+    public LinkPropsData(@JsonProperty("props") LinkProps linkProps) {
+        this.linkProps = linkProps;
     }
 }

@@ -235,6 +235,9 @@ class TimestampMixin(Abstract):
         decoded = super(TimestampMixin, cls).decode_java_fields(data)
         for name in ('time_create', 'time_modify'):
             try:
+                if data[name] is None:
+                    continue
+
                 decoded[name] = TimeProperty.new_from_java_timestamp(data[name])
             except KeyError:
                 pass

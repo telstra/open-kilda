@@ -47,7 +47,8 @@ known_commands = ['org.openkilda.messaging.command.flow.FlowCreateRequest',
                   'org.openkilda.messaging.command.switches.SwitchRulesValidateRequest',
                   'org.openkilda.messaging.command.discovery.NetworkCommandData',
                   'org.openkilda.messaging.command.FlowsSyncRequest',
-                  'org.openkilda.messaging.te.request.LinkPropsSync']
+                  'org.openkilda.messaging.te.request.LinkPropsDrop',
+                  'org.openkilda.messaging.te.request.LinkPropsPut']
 
 
 def main_loop():

@@ -15,6 +15,8 @@
 
 package org.openkilda.northbound.converter;
 
+import static java.util.Objects.requireNonNull;
+
 import org.openkilda.messaging.model.LinkProps;
 import org.openkilda.messaging.model.LinkPropsMask;
 import org.openkilda.messaging.model.NetworkEndpoint;
@@ -31,12 +33,14 @@ public interface LinkPropsMapper {
      * Converts link properties to {@link LinkPropsDto}.
      */
     default LinkPropsDto toDto(LinkPropsData data) {
-        NetworkEndpoint source = data.getSource();
-        NetworkEndpoint destination = data.getDestination();
+        requireNonNull(data.getLinkProps(), "Link props should be presented");
+
+        NetworkEndpoint source = data.getLinkProps().getSource();
+        NetworkEndpoint destination = data.getLinkProps().getDest();
         return new LinkPropsDto(
                 source.getDatapath(), source.getPortNumber(),
                 destination.getDatapath(), destination.getPortNumber(),
-                data.getProps());
+                data.getLinkProps().getProps());
     }
 
     /**

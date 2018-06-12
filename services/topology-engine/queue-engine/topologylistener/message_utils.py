@@ -34,7 +34,7 @@ MT_INFO_FLOW_STATUS = "org.openkilda.messaging.info.flow.FlowStatusResponse"
 MT_ERROR_DATA = "org.openkilda.messaging.error.ErrorData"
 
 MI_LINK_PROPS_RESPONSE = (
-    'org.openkilda.messaging.te.response.LinkPropsSyncResponse')
+    'org.openkilda.messaging.te.response.LinkPropsResponse')
 
 
 class Abstract(model.JsonSerializable):

@@ -32,16 +32,34 @@ public class LinkProps implements Serializable {
     private NetworkEndpoint dest;
 
     @JsonProperty("props")
-    Map<String, String> props;
+    private Map<String, String> props;
+
+    @JsonProperty("time_create")
+    private Long created;
+
+    @JsonProperty("time_modify")
+    private Long modified;
 
     @Builder
     @JsonCreator
     public LinkProps(
             @JsonProperty("source") NetworkEndpoint source,
             @JsonProperty("dest") NetworkEndpoint dest,
-            @JsonProperty("props") Map<String, String> props) {
+            @JsonProperty("props") Map<String, String> props,
+            @JsonProperty("time_create") Long created,
+            @JsonProperty("time_modify") Long modified) {
         this.source = source;
         this.dest = dest;
         this.props = props;
+        this.created = created;
+        this.modified = modified;
+    }
+
+    public LinkProps(NetworkEndpoint source, NetworkEndpoint dest, Map<String, String> props) {
+        this.source = source;
+        this.dest = dest;
+        this.props = props;
+        this.created = null;
+        this.modified = null;
     }
 }

@@ -33,7 +33,9 @@ import org.neo4j.driver.v1.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public class LinkOperationsBolt extends NeoOperationsBolt {
@@ -77,17 +79,20 @@ public class LinkOperationsBolt extends NeoOperationsBolt {
 
     private List<LinkPropsData> getLinkProps(LinkPropsGet request, Session session) {
         logger.debug("Processing get link props request");
-        String q = String.format(
-                "MATCH (props:link_props) "
-                        + "WHERE (%1$s IS NULL OR props.src_switch='%1$s') "
-                        + "AND (%2$s IS NULL OR props.src_port=%2$s) "
-                        + "AND (%3$s IS NULL OR props.dst_switch='%3$s') "
-                        + "AND (%4$s IS NULL OR props.dst_port=%4$s) "
-                        + "RETURN props",
-                request.getSource().getDatapath(), request.getSource().getPortNumber(),
-                request.getDestination().getDatapath(), request.getDestination().getPortNumber());
+        String q = "MATCH (props:link_props) "
+                + "WHERE ({src_switch} IS NULL OR props.src_switch={src_switch}) "
+                + "AND ({src_port} IS NULL OR props.src_port={src_port}) "
+                + "AND ({dst_switch} IS NULL OR props.dst_switch={dst_switch}) "
+                + "AND ({dst_port} IS NULL OR props.dst_port={dst_port}) "
+                + "RETURN props";
 
-        StatementResult queryResults = session.run(q);
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("src_switch", request.getSource().getDatapath());
+        parameters.put("src_port", request.getSource().getPortNumber());
+        parameters.put("dst_switch", request.getDestination().getDatapath());
+        parameters.put("dst_port", request.getDestination().getPortNumber());
+
+        StatementResult queryResults = session.run(q, parameters);
         List<LinkPropsData> results = queryResults.list()
                 .stream()
                 .map(record -> record.get("props"))
