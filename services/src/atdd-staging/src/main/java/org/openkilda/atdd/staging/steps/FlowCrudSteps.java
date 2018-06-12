@@ -33,9 +33,16 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import com.google.common.collect.ContiguousSet;
+import com.google.common.collect.DiscreteDomain;
+import com.google.common.collect.Range;
+import com.google.common.collect.RangeSet;
+import com.google.common.collect.TreeRangeSet;
 import org.apache.commons.collections4.ListValuedMap;
 import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
+
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
+import org.openkilda.atdd.staging.model.topology.TopologyDefinition.Switch;
 import org.openkilda.atdd.staging.service.floodlight.FloodlightService;
 import org.openkilda.atdd.staging.service.floodlight.model.MeterEntry;
 import org.openkilda.atdd.staging.service.floodlight.model.MetersEntriesMap;
@@ -58,7 +65,6 @@ import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
 
-import com.google.common.annotations.VisibleForTesting;
 import cucumber.api.java.en.And;
 import cucumber.api.java.en.Given;
 import cucumber.api.java.en.Then;
@@ -105,12 +111,11 @@ public class FlowCrudSteps implements En {
     @Qualifier("topologyEngineRetryPolicy")
     private RetryPolicy retryPolicy;
 
-    @VisibleForTesting
-    Set<FlowPayload> flows;
-
     @Autowired
     @Qualifier("topologyUnderTest")
     private TopologyUnderTest topologyUnderTest;
+
+    Set<FlowPayload> flows;
 
     @Given("^flows defined over active switches in the reference topology$")
     public void defineFlowsOverActiveSwitches() {
@@ -293,26 +298,41 @@ public class FlowCrudSteps implements En {
                 })
                 .collect(toList());
 
-        LOGGER.info("{} of {} flow's traffic examination have been started", result.size(), flows.size());
+        LOGGER.info("{} of {} flow's traffic examination have been started", result.size(),
+                flows.size());
 
         return result;
     }
 
-    @Then("^each flow can be updated with (\\d+) max bandwidth$")
-    public void eachFlowCanBeUpdatedWithBandwidth(int bandwidth) {
-        List<String> updatedFlowIds = new ArrayList<>();
-
+    @Then("^each flow can be updated with (\\d+) max bandwidth( and new vlan)?$")
+    public void eachFlowCanBeUpdatedWithBandwidth(int bandwidth, String newVlanStr) {
+        final boolean newVlan = newVlanStr != null;
         for (FlowPayload flow : flows) {
             flow.setMaximumBandwidth(bandwidth);
-
-            FlowPayload result = northboundService.updateFlow(flow.getId(), flow);
-            if (result != null) {
-                updatedFlowIds.add(result.getId());
+            if (newVlan) {
+                flow.getDestination().setVlanId(getAllowedVlan(flows, flow.getDestination().getSwitchDpId()));
+                flow.getSource().setVlanId(getAllowedVlan(flows, flow.getSource().getSwitchDpId()));
             }
+            FlowPayload result = northboundService.updateFlow(flow.getId(), flow);
+            assertThat(format("A flow update request for '%s' failed.", flow.getId()), result,
+                    reflectEquals(flow, "lastUpdated", "status"));
         }
+    }
 
-        assertThat("Updated flows in Northbound don't match expected", updatedFlowIds, containsInAnyOrder(
-                flows.stream().map(flow -> equalTo(flow.getId())).collect(toList())));
+    private int getAllowedVlan(Set<FlowPayload> flows, String switchDpId) {
+        RangeSet<Integer> allocatedVlans = TreeRangeSet.create();
+        flows.forEach(f -> {
+            allocatedVlans.add(Range.singleton(f.getSource().getVlanId()));
+            allocatedVlans.add(Range.singleton(f.getDestination().getVlanId()));
+        });
+        RangeSet<Integer> availableVlansRange = TreeRangeSet.create();
+        Switch theSwitch = topologyDefinition.getSwitches().stream()
+                .filter(sw -> sw.getDpId().equals(switchDpId)).findFirst().get();
+        theSwitch.getOutPorts().forEach(port -> availableVlansRange.addAll(port.getVlanRange()));
+        availableVlansRange.removeAll(allocatedVlans);
+        return availableVlansRange.asRanges().stream()
+                .flatMap(range -> ContiguousSet.create(range, DiscreteDomain.integers()).stream())
+                .findFirst().get();
     }
 
     @And("^each flow has meters installed with (\\d+) max bandwidth$")
