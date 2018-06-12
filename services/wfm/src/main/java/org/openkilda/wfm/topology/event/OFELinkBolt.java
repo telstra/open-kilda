@@ -52,6 +52,7 @@ import org.openkilda.wfm.topology.utils.AbstractTickStatefulBolt;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import org.apache.storm.kafka.spout.internal.Timer;
 import org.apache.storm.state.KeyValueState;
@@ -129,11 +130,14 @@ public class OFELinkBolt
         super(BOLT_TICK_INTERVAL);
 
         DiscoveryConfig discoveryConfig = config.getDiscoveryConfig();
-
-        this.islHealthCheckInterval = discoveryConfig.getDiscoveryInterval();
-        this.islHealthCheckTimeout = discoveryConfig.getDiscoveryTimeout();
-        this.islHealthFailureLimit = discoveryConfig.getDiscoveryLimit();
-        this.islKeepRemovedTimeout = discoveryConfig.getKeepRemovedIslTimeout();
+        islHealthCheckInterval = discoveryConfig.getDiscoveryInterval();
+        Preconditions.checkArgument(islHealthCheckInterval > 0,
+                "Invalid value for DiscoveryInterval: %s", islHealthCheckInterval);
+        islHealthCheckTimeout = discoveryConfig.getDiscoveryTimeout();
+        Preconditions.checkArgument(islHealthCheckTimeout > 0,
+                "Invalid value for DiscoveryTimeout: %s", islHealthCheckTimeout);
+        islHealthFailureLimit = discoveryConfig.getDiscoveryLimit();
+        islKeepRemovedTimeout = discoveryConfig.getKeepRemovedIslTimeout();
 
         watchDogInterval = discoveryConfig.getDiscoverySpeakerFailureTimeout();
         dumpRequestTimeout = discoveryConfig.getDiscoveryDumpRequestTimeout();
@@ -164,7 +168,11 @@ public class OFELinkBolt
             discoveryQueue = (LinkedList<DiscoveryLink>) payload;
         }
 
-        discovery = new DiscoveryManager(islFilter, discoveryQueue, islHealthCheckInterval, islHealthCheckTimeout,
+        // DiscoveryManager counts failures as failed attempts,
+        // so we need to convert islHealthCheckTimeout (which is in ticks) into attempts.
+        int islConsecutiveFailureLimit = (int) Math.ceil(islHealthCheckTimeout / (float) islHealthCheckInterval);
+
+        discovery = new DiscoveryManager(islFilter, discoveryQueue, islHealthCheckInterval, islConsecutiveFailureLimit,
                 islHealthFailureLimit, islKeepRemovedTimeout);
     }
 

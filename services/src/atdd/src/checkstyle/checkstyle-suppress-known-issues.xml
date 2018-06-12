@@ -927,19 +927,7 @@
     <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="705" checks="AbbreviationAsWordInName"/>
     <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="752" checks="LineLength"/>
     <suppress files="src/test/java/org/openkilda/LinksUtils.java" lines="1" checks="RegexpHeader"/>
-    <suppress files="src/test/java/org/openkilda/LinksUtils.java" lines="12" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/LinksUtils.java" lines="13" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/LinksUtils.java" lines="14" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/LinksUtils.java" lines="15" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/LinksUtils.java" lines="18" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/LinksUtils.java" lines="19" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/LinksUtils.java" lines="20" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/LinksUtils.java" lines="21" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/LinksUtils.java" lines="22" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/LinksUtils.java" lines="23" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/LinksUtils.java" lines="24" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/LinksUtils.java" lines="25" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/LinksUtils.java" lines="68" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/LinksUtils.java" lines="87" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/LinksUtils.java" lines="69" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/LinksUtils.java" lines="88" checks="JavadocMethod"/>
     <suppress files="src/test/resources/atdd.properties" lines="0" checks="NewlineAtEndOfFile"/>
 </suppressions>

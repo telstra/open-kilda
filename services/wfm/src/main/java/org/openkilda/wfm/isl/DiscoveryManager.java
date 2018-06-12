@@ -41,9 +41,9 @@ public class DiscoveryManager {
     /**
      * The frequency with which we should check if the ISL is healthy or existant.
      */
-    private final Integer islHealthCheckInterval;
-    private final Integer islConsecutiveFailureLimit;
-    private final Integer maxAttempts;
+    private final int islHealthCheckInterval;
+    private final int islConsecutiveFailureLimit;
+    private final int maxAttempts;
     private final LinkedList<DiscoveryLink> pollQueue;
     private final Map<NetworkEndpoint, DiscoveryLink> removedFromDiscovery;
 
@@ -56,8 +56,8 @@ public class DiscoveryManager {
      * @param maxAttempts - the limit for stopping all checks.
      */
     public DiscoveryManager(IIslFilter filter, LinkedList<DiscoveryLink> persistentQueue,
-                            Integer islHealthCheckInterval, Integer islConsecutiveFailureLimit,
-                            Integer maxAttempts, Integer minutesKeepRemovedIsl) {
+                            int islHealthCheckInterval, int islConsecutiveFailureLimit,
+                            int maxAttempts, Integer minutesKeepRemovedIsl) {
         this.filter = filter;
         this.islHealthCheckInterval = islHealthCheckInterval;
         this.islConsecutiveFailureLimit = islConsecutiveFailureLimit;
