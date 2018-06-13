@@ -44,7 +44,6 @@ Feature: Northbound endpoints
     And update request: add link property 'test_property' with value 'test value'
     And send update link properties request
     Then response has 0 failures and 1 success
-    And requested link property in Neo4j has property 'test_property' with value 'test value'
 
     When get all properties
     Then response has link properties from request
@@ -53,16 +52,16 @@ Feature: Northbound endpoints
     When update request: add link property 'test_property' with value 'test value updated'
     And send update link properties request
     Then response has 0 failures and 1 success
-    And requested link property in Neo4j has property 'test_property' with value 'test value updated'
+    When get all properties
+    Then response has link properties from request
+    And response link properties from request has property 'test_property' with value 'test value updated'
 
     When send delete link properties request
     Then response has 0 failures and 1 success
-    And requested link property in Neo4j has property 'test_property' with value 'test value updated'
 
     When get all properties
     Then response has no link properties from request
-
-    And remove all 'test_property' link properties from ISLs in Neo4j
+    And link props response has 0 results
 
   @Links
   Scenario: Search link properties
@@ -91,3 +90,4 @@ Feature: Northbound endpoints
     Then link props response has 1 result
 
     And delete all link properties
+    
