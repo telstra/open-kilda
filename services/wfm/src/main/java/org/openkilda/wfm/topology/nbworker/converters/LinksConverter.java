@@ -41,6 +41,8 @@ public final class LinksConverter {
     private static final String SRC_PORT_FIELD = "src_port";
     private static final String DST_SWITCH_FIELD = "dst_switch";
     private static final String DST_PORT_FIELD = "dst_port";
+    private static final String CREATED_FIELD = "time_create";
+    private static final String MODIFIED_FIELD = "time_modify";
 
     private static final Logger logger = LoggerFactory.getLogger(LinksConverter.class);
 
@@ -97,6 +99,10 @@ public final class LinksConverter {
         int srcPort = NumberUtils.toInt(properties.remove(SRC_PORT_FIELD));
         String dstSwitch = properties.remove(DST_SWITCH_FIELD);
         int dstPort = NumberUtils.toInt(properties.remove(DST_PORT_FIELD));
+
+        // remove created/updated fields as they aren't part of link properties
+        properties.remove(CREATED_FIELD);
+        properties.remove(MODIFIED_FIELD);
 
         LinkProps linkProps = new LinkProps(new NetworkEndpoint(srcSwitch, srcPort),
                 new NetworkEndpoint(dstSwitch, dstPort), properties);

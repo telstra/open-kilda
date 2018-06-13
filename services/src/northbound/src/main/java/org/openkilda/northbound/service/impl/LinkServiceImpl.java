@@ -61,7 +61,7 @@ public class LinkServiceImpl implements LinkService {
     @Autowired
     private LinkPropsMapper linkPropsMapper;
 
-    @Value("${kafka.topo.eng.topic}")
+    @Value("#{kafkaTopicsConfig.getTopoEngTopic()}")
     private String topologyEngineTopic;
 
     /**

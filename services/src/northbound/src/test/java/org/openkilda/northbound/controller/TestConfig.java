@@ -17,8 +17,7 @@ package org.openkilda.northbound.controller;
 
 import static org.mockito.Mockito.mock;
 
-import org.openkilda.config.KafkaTopicsConfig;
-import org.openkilda.northbound.config.KafkaNorthboundConfig;
+import org.openkilda.northbound.config.KafkaConfig;
 import org.openkilda.northbound.config.SecurityConfig;
 import org.openkilda.northbound.config.WebConfig;
 import org.openkilda.northbound.messaging.HealthCheckMessageConsumer;
@@ -27,8 +26,6 @@ import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.utils.CorrelationIdFactory;
 import org.openkilda.northbound.utils.CorrelationIdPredictableFactory;
 
-import com.sabre.oss.conf4j.spring.annotation.ConfigurationType;
-import com.sabre.oss.conf4j.spring.annotation.EnableConf4j;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
@@ -46,7 +43,7 @@ import java.util.Map;
  */
 @Configuration
 @EnableWebSecurity
-@Import({WebConfig.class, SecurityConfig.class})
+@Import({WebConfig.class, SecurityConfig.class, KafkaConfig.class})
 @ComponentScan(
         basePackages = {
                 "org.openkilda.northbound.controller",
@@ -58,9 +55,6 @@ import java.util.Map;
                 @ComponentScan.Filter(type = FilterType.ANNOTATION, value = TestConfiguration.class)
         })
 @PropertySource({"classpath:northbound.properties"})
-@EnableConf4j
-@ConfigurationType(name = "kafkaTopicsConfig", value = KafkaTopicsConfig.class)
-@ConfigurationType(name = "kafkaGroupConfig", value = KafkaNorthboundConfig.class)
 public class TestConfig {
     @Bean
     public MessageConsumer messageConsumer() {

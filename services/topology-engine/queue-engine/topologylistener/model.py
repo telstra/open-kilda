@@ -236,6 +236,7 @@ class TimestampMixin(Abstract):
         for name in ('time_create', 'time_modify'):
             try:
                 if data[name] is None:
+                    del data[name]
                     continue
 
                 decoded[name] = TimeProperty.new_from_java_timestamp(data[name])

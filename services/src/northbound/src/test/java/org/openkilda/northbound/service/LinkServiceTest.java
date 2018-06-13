@@ -34,6 +34,7 @@ import org.openkilda.messaging.te.request.LinkPropsPut;
 import org.openkilda.messaging.te.request.LinkPropsRequest;
 import org.openkilda.messaging.te.response.LinkPropsResponse;
 import org.openkilda.northbound.MessageExchanger;
+import org.openkilda.northbound.config.KafkaConfig;
 import org.openkilda.northbound.dto.LinkPropsDto;
 import org.openkilda.northbound.messaging.MessageConsumer;
 import org.openkilda.northbound.messaging.MessageProducer;
@@ -49,6 +50,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.web.client.RestTemplate;
@@ -176,6 +178,7 @@ public class LinkServiceTest {
     }
 
     @TestConfiguration
+    @Import(KafkaConfig.class)
     @ComponentScan({
             "org.openkilda.northbound.converter",
             "org.openkilda.northbound.utils"})
