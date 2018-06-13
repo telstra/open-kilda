@@ -56,13 +56,30 @@ def _get_bootstrap_servers():
     bootstrap_servers_property = config.get('kafka', 'bootstrap.servers')
     return [x.strip() for x in bootstrap_servers_property.split(',')]
 
+try:
+    ENVIRONMENT_NAMING_PREFIX = config.get('kafka',
+                                           'environment.naming.prefix')
+    if not ENVIRONMENT_NAMING_PREFIX.strip():
+        ENVIRONMENT_NAMING_PREFIX = None
+
+except ConfigParser.NoOptionError:
+    ENVIRONMENT_NAMING_PREFIX = None
+
+
+def read_and_format_with_env_name(name):
+    topic_config_name = read_option('kafka', name)
+    if ENVIRONMENT_NAMING_PREFIX is None:
+        return topic_config_name
+    return '_'.join([ENVIRONMENT_NAMING_PREFIX, topic_config_name])
+
 
 KAFKA_BOOTSTRAP_SERVERS = _get_bootstrap_servers()
-KAFKA_FLOW_TOPIC = config.get('kafka', 'flow.topic')
-KAFKA_CACHE_TOPIC = config.get('kafka', 'cache.topic')
-KAFKA_SPEAKER_TOPIC = config.get('kafka', 'speaker.topic')
-KAFKA_TOPO_ENG_TOPIC = config.get('kafka', 'topo.eng.topic')
-KAFKA_NORTHBOUND_TOPIC = config.get('kafka', 'northbound.topic')
+KAFKA_FLOW_TOPIC = read_and_format_with_env_name('flow.topic')
+KAFKA_CACHE_TOPIC = read_and_format_with_env_name('cache.topic')
+KAFKA_SPEAKER_TOPIC = read_and_format_with_env_name('speaker.topic')
+KAFKA_TOPO_ENG_TOPIC = read_and_format_with_env_name('topo.eng.topic')
+KAFKA_NORTHBOUND_TOPIC = read_and_format_with_env_name('northbound.topic')
+KAFKA_CONSUMER_GROUP = read_and_format_with_env_name('consumer.group')
 
 ZOOKEEPER_HOSTS = config.get('zookeeper', 'hosts')
 

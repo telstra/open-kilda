@@ -185,7 +185,7 @@ public class DiscoveryLink implements Serializable {
      * Check if we should stop to verify ISL.
      * @return true if attempts is greater than attemptLimit.
      */
-    public boolean isAttemptsLimitExceeded(Integer attemptsLimit) {
+    public boolean isAttemptsLimitExceeded(int attemptsLimit) {
         return attempts > attemptsLimit;
     }
 

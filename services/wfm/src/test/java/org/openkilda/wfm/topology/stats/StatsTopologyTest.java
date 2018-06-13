@@ -319,7 +319,7 @@ public class StatsTopologyTest extends StableAbstractStormTest {
         }
 
         @Override
-        public String makeTopologyName() {
+        public String getDefaultTopologyName() {
             return StatsTopology.class.getSimpleName().toLowerCase();
         }
 

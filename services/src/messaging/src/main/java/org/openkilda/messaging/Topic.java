@@ -18,6 +18,7 @@ package org.openkilda.messaging;
 /**
  * This class contains Kilda-specific Kafka topics.
  */
+@Deprecated
 public interface Topic {
 
     public static final String CTRL = "kilda.ctrl";

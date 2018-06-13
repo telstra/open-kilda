@@ -64,7 +64,10 @@ public class LinkServiceImpl implements LinkService {
     @Value("${kafka.topo.eng.topic}")
     private String topologyEngineTopic;
 
-    @Value("${kafka.nbworker.topic}")
+    /**
+     * The kafka topic for the nb topology.
+     */
+    @Value("#{kafkaTopicsConfig.getTopoNbTopic()}")
     private String nbworkerTopic;
 
     @Autowired

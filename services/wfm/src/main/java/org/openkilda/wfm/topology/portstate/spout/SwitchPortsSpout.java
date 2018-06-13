@@ -3,6 +3,13 @@ package org.openkilda.wfm.topology.portstate.spout;
 import static java.lang.String.format;
 import static org.openkilda.messaging.Utils.PAYLOAD;
 
+import org.openkilda.messaging.Destination;
+import org.openkilda.messaging.Message;
+import org.openkilda.messaging.Utils;
+import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.discovery.PortsCommandData;
+import org.openkilda.wfm.topology.portstate.PortStateTopologyConfig;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.storm.spout.SpoutOutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -10,12 +17,6 @@ import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseRichSpout;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Values;
-import org.openkilda.messaging.Destination;
-import org.openkilda.messaging.Message;
-import org.openkilda.messaging.Utils;
-import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.messaging.command.discovery.PortsCommandData;
-import org.openkilda.wfm.topology.TopologyConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,11 +33,11 @@ public class SwitchPortsSpout extends BaseRichSpout {
     private SpoutOutputCollector collector;
     final String speakerTopic;
 
-    public SwitchPortsSpout(TopologyConfig config) {
+    public SwitchPortsSpout(PortStateTopologyConfig config) {
         this(config, DEFAULT_FREQUENCY);
     }
 
-    public SwitchPortsSpout(TopologyConfig config, int frequency) {
+    public SwitchPortsSpout(PortStateTopologyConfig config, int frequency) {
         this.frequency = frequency;
         this.speakerTopic = config.getKafkaSpeakerTopic();
     }

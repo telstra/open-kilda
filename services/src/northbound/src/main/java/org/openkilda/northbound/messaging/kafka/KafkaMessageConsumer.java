@@ -21,7 +21,6 @@ import static org.openkilda.messaging.error.ErrorType.INTERNAL_ERROR;
 import static org.openkilda.messaging.error.ErrorType.OPERATION_TIMED_OUT;
 
 import org.openkilda.messaging.Message;
-import org.openkilda.messaging.Topic;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.northbound.messaging.MessageConsumer;
 
@@ -65,6 +64,9 @@ public class KafkaMessageConsumer implements MessageConsumer<Message> {
     @Value("${northbound.messages.expiration.minutes}")
     private int expiredTime;
 
+    @Value("#{kafkaTopicsConfig.getNorthboundTopic()}")
+    private String northboundTopic;
+
     /**
      * Messages map.
      */
@@ -80,7 +82,7 @@ public class KafkaMessageConsumer implements MessageConsumer<Message> {
      *
      * @param record the message object instance
      */
-    @KafkaListener(id = "northbound-listener", topics = Topic.NORTHBOUND)
+    @KafkaListener(id = "northbound-listener", topics = "#{kafkaTopicsConfig.getNorthboundTopic()}")
     public void receive(final String record) {
         Message message;
 
@@ -113,11 +115,11 @@ public class KafkaMessageConsumer implements MessageConsumer<Message> {
         } catch (InterruptedException exception) {
             logger.error("{}: {}={}", INTERRUPTED_ERROR_MESSAGE, CORRELATION_ID, correlationId);
             throw new MessageException(correlationId, System.currentTimeMillis(),
-                    INTERNAL_ERROR, INTERRUPTED_ERROR_MESSAGE, Topic.NORTHBOUND);
+                    INTERNAL_ERROR, INTERRUPTED_ERROR_MESSAGE, northboundTopic);
         }
         logger.error("{}: {}={}", TIMEOUT_ERROR_MESSAGE, CORRELATION_ID, correlationId);
         throw new MessageException(correlationId, System.currentTimeMillis(),
-                OPERATION_TIMED_OUT, TIMEOUT_ERROR_MESSAGE, Topic.NORTHBOUND);
+                OPERATION_TIMED_OUT, TIMEOUT_ERROR_MESSAGE, northboundTopic);
     }
 
     //todo(Nikita C): rewrite current poll method using async way.

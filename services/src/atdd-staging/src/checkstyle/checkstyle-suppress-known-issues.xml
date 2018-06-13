@@ -176,16 +176,16 @@
     <suppress files="src/main/java/org/openkilda/atdd/staging/steps/helpers/DefaultFlowsChecker.java" lines="9" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/atdd/staging/steps/helpers/DefaultFlowsChecker.java" lines="10" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/atdd/staging/steps/helpers/DefaultFlowsChecker.java" lines="24" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/atdd/staging/steps/helpers/FlowSetBuilder.java" lines="15" checks="EmptyLineSeparator"/>
-    <suppress files="src/main/java/org/openkilda/atdd/staging/steps/helpers/FlowSetBuilder.java" lines="20" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/atdd/staging/steps/helpers/FlowSetBuilder.java" lines="21" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/atdd/staging/steps/helpers/FlowSetBuilder.java" lines="22" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/atdd/staging/steps/helpers/FlowSetBuilder.java" lines="23" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/atdd/staging/steps/helpers/FlowSetBuilder.java" lines="24" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/atdd/staging/steps/helpers/FlowSetBuilder.java" lines="25" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/atdd/staging/steps/helpers/FlowSetBuilder.java" lines="31" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/atdd/staging/steps/helpers/FlowSetBuilder.java" lines="32" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/atdd/staging/steps/helpers/FlowSetBuilder.java" lines="33" checks="CustomImportOrder"/>
+    <suppress files="src/main/java/org/openkilda/atdd/staging/steps/helpers/FlowSet.java" lines="15" checks="EmptyLineSeparator"/>
+    <suppress files="src/main/java/org/openkilda/atdd/staging/steps/helpers/FlowSet.java" lines="20" checks="CustomImportOrder"/>
+    <suppress files="src/main/java/org/openkilda/atdd/staging/steps/helpers/FlowSet.java" lines="21" checks="CustomImportOrder"/>
+    <suppress files="src/main/java/org/openkilda/atdd/staging/steps/helpers/FlowSet.java" lines="22" checks="CustomImportOrder"/>
+    <suppress files="src/main/java/org/openkilda/atdd/staging/steps/helpers/FlowSet.java" lines="23" checks="CustomImportOrder"/>
+    <suppress files="src/main/java/org/openkilda/atdd/staging/steps/helpers/FlowSet.java" lines="24" checks="CustomImportOrder"/>
+    <suppress files="src/main/java/org/openkilda/atdd/staging/steps/helpers/FlowSet.java" lines="25" checks="CustomImportOrder"/>
+    <suppress files="src/main/java/org/openkilda/atdd/staging/steps/helpers/FlowSet.java" lines="31" checks="CustomImportOrder"/>
+    <suppress files="src/main/java/org/openkilda/atdd/staging/steps/helpers/FlowSet.java" lines="32" checks="CustomImportOrder"/>
+    <suppress files="src/main/java/org/openkilda/atdd/staging/steps/helpers/FlowSet.java" lines="33" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/atdd/staging/steps/helpers/FlowTrafficExamBuilder.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/main/java/org/openkilda/atdd/staging/steps/helpers/FlowTrafficExamBuilder.java" lines="26" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/atdd/staging/steps/helpers/FlowTrafficExamBuilder.java" lines="36" checks="JavadocMethod"/>
