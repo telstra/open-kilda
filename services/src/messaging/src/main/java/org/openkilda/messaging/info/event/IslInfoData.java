@@ -18,6 +18,7 @@ package org.openkilda.messaging.info.event;
 import static com.google.common.base.MoreObjects.toStringHelper;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -194,6 +195,17 @@ public class IslInfoData extends PathInfoData {
      */
     public void setState(IslChangeType state) {
         this.state = state;
+    }
+
+    /**
+     * Check whether source and destination switch are the same.
+     * @return true if ISL is self looped.
+     */
+    @JsonIgnore
+    public boolean isSelfLooped() {
+        PathNode source = this.getPath().get(0);
+        PathNode destination = this.getPath().get(1);
+        return Objects.equals(source.getSwitchId(), destination.getSwitchId());
     }
 
     /**

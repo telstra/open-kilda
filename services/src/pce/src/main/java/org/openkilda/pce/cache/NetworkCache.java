@@ -18,7 +18,6 @@ package org.openkilda.pce.cache;
 import org.openkilda.messaging.error.CacheException;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.event.IslInfoData;
-import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
 
@@ -32,7 +31,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashSet;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -452,18 +450,6 @@ public class NetworkCache extends Cache {
         logger.debug("Is isl {} in cache", islId);
 
         return islPool.containsKey(islId);
-    }
-
-    /**
-     * Checks link's destination switch is the same as source switch.
-     *
-     * @param isl {@link IslInfoData} instance id
-     * @return true if isl source switch and destination switch are the same.
-     */
-    public boolean isSelfLoopedIsl(IslInfoData isl) {
-        PathNode source = isl.getPath().get(0);
-        PathNode destination = isl.getPath().get(1);
-        return Objects.equals(source.getSwitchId(), destination.getSwitchId());
     }
 
     /**
