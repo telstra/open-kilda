@@ -27,13 +27,13 @@ Feature: Northbound endpoints
   Scenario: Get and update feature toggles
     When get all feature toggles
     And create feature toggles request based on the response
-    And update request: switch each toggle to a separate state
+    And update request: switch each toggle to an opposite state
     And send update request to feature toggles
     And get all feature toggles
     Then feature toggles response matches request
 
     When create feature toggles request based on the response
-    And update request: switch each toggle to a separate state
+    And update request: switch each toggle to an opposite state
     And send update request to feature toggles
 
   @Links

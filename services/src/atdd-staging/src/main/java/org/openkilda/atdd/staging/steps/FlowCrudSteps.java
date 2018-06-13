@@ -38,6 +38,7 @@ import com.google.common.collect.DiscreteDomain;
 import com.google.common.collect.Range;
 import com.google.common.collect.RangeSet;
 import com.google.common.collect.TreeRangeSet;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.ListValuedMap;
 import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 
@@ -72,8 +73,6 @@ import cucumber.api.java.en.When;
 import cucumber.api.java8.En;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 
@@ -86,9 +85,8 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
+@Slf4j
 public class FlowCrudSteps implements En {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(FlowCrudSteps.class);
 
     @Autowired
     private NorthboundService northboundService;
@@ -279,7 +277,7 @@ public class FlowCrudSteps implements En {
                         // Instruct TraffGen to produce traffic with maximum bandwidth.
                         return Stream.of(examBuilder.buildExam(flow, 0));
                     } catch (FlowNotApplicableException ex) {
-                        LOGGER.info("Skip traffic exam. {}", ex.getMessage());
+                        log.info("Skip traffic exam. {}", ex.getMessage());
                         return Stream.empty();
                     }
                 })
@@ -288,13 +286,13 @@ public class FlowCrudSteps implements En {
                         ExamResources resources = traffExam.startExam(exam);
                         exam.setResources(resources);
                     } catch (OperationalException ex) {
-                        LOGGER.error("Unable to start traffic exam for {}.", exam.getFlow(), ex);
+                        log.error("Unable to start traffic exam for {}.", exam.getFlow(), ex);
                         fail(ex.getMessage());
                     }
                 })
                 .collect(toList());
 
-        LOGGER.info("{} of {} flow's traffic examination have been started", result.size(),
+        log.info("{} of {} flow's traffic examination have been started", result.size(),
                 flows.size());
 
         return result;
@@ -352,7 +350,7 @@ public class FlowCrudSteps implements En {
                 assertThat(reverseMeter.getEntries(), contains(hasProperty("rate", equalTo(bandwidth))));
             } catch (UnsupportedOperationException ex) {
                 //TODO: a workaround for not implemented dumpMeters on OF_12 switches.
-                LOGGER.warn("Switch doesn't support dumping of meters. {}", ex.getMessage());
+                log.warn("Switch doesn't support dumping of meters. {}", ex.getMessage());
             }
         }
     }
@@ -383,7 +381,7 @@ public class FlowCrudSteps implements En {
 
             } catch (UnsupportedOperationException ex) {
                 //TODO: a workaround for not implemented dumpMeters on OF_12 switches.
-                LOGGER.warn("Switch doesn't support dumping of meters. {}", ex.getMessage());
+                log.warn("Switch doesn't support dumping of meters. {}", ex.getMessage());
             }
         });
     }

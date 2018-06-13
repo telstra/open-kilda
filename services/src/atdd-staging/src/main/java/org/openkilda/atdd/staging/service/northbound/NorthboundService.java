@@ -73,7 +73,9 @@ public interface NorthboundService {
 
     List<IslInfoData> getAllLinks();
 
-    List<LinkPropsDto> getLinkProps(LinkPropsDto keys);
+    List<LinkPropsDto> getAllLinkProps();
+
+    List<LinkPropsDto> getLinkProps(String srcSwitch, Integer srcPort, String dstSwitch, Integer dstPort);
 
     BatchResults updateLinkProps(List<LinkPropsDto> keys);
 

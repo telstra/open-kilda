@@ -25,13 +25,12 @@ import cucumber.api.java8.En;
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
 import org.openkilda.atdd.staging.service.floodlight.FloodlightService;
 import org.openkilda.atdd.staging.service.northbound.NorthboundService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 
+@Slf4j
 public class CleanupSteps implements En {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(CleanupSteps.class);
 
     @Autowired
     private NorthboundService northboundService;
@@ -63,7 +62,7 @@ public class CleanupSteps implements En {
                                 floodlightService.getMeters(sw.getDpId()).values(), empty());
                     } catch (UnsupportedOperationException ex) {
                         //TODO: a workaround for not implemented dumpMeters on OF_12 switches.
-                        LOGGER.warn("Switch {} doesn't support dumping of meters. {}", sw.getDpId(), ex.getMessage());
+                        log.warn("Switch {} doesn't support dumping of meters. {}", sw.getDpId(), ex.getMessage());
                     }
                 });
     }

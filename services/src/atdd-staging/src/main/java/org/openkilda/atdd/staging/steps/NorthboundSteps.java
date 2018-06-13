@@ -27,15 +27,13 @@ import org.openkilda.messaging.payload.FeatureTogglePayload;
 
 import cucumber.api.java.en.Then;
 import cucumber.api.java.en.When;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 
+@Slf4j
 public class NorthboundSteps {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(NorthboundSteps.class);
-
-    FeatureTogglePayload featureToggleRequest;
+    private FeatureTogglePayload featureToggleRequest;
 
     @Autowired
     private NorthboundService northboundService;
@@ -46,28 +44,30 @@ public class NorthboundSteps {
     @Autowired
     private TopologyUnderTest topologyUnderTest;
 
+    private HealthCheck healthCheckResponse;
+    private FeatureTogglePayload featureTogglesResponse;
+
     @When("^request Northbound health check$")
     public void requestNorthboundHealthcheck() {
-        topologyUnderTest.setResponse(northboundService.getHealthCheck());
+        healthCheckResponse = northboundService.getHealthCheck();
     }
 
     @Then("^all healthcheck components are (.*)")
     public void allHealthcheckComponentsAreOperational(String componentStatus) {
-        HealthCheck response = (HealthCheck) topologyUnderTest.getResponse();
-        assertTrue(response.getComponents().values().stream().allMatch(c -> c.equals(componentStatus)));
+        assertTrue(healthCheckResponse.getComponents().values().stream().allMatch(c -> c.equals(componentStatus)));
     }
 
     @When("^get all feature toggles$")
     public void getAllFeatureToggles() {
-        topologyUnderTest.setResponse(northboundService.getFeatureToggles());
+        featureTogglesResponse = northboundService.getFeatureToggles();
     }
 
     @When("^create feature toggles request based on the response$")
     public void createFetureTogglesRequestBasedOnTheResponse() {
-        featureToggleRequest = new FeatureTogglePayload((FeatureTogglePayload) topologyUnderTest.getResponse());
+        featureToggleRequest = new FeatureTogglePayload(featureTogglesResponse);
     }
 
-    @When("^update request: switch each toggle to a separate state$")
+    @When("^update request: switch each toggle to an opposite state$")
     public void updateRequestSwitchEachToggleToASeparateState() {
         featureToggleRequest.setCreateFlowEnabled(!featureToggleRequest.getCreateFlowEnabled());
         featureToggleRequest.setDeleteFlowEnabled(!featureToggleRequest.getDeleteFlowEnabled());
@@ -81,11 +81,11 @@ public class NorthboundSteps {
 
     @When("^send update request to feature toggles$")
     public void sendUpdateRequestToFeatureToggles() {
-        topologyUnderTest.setResponse(northboundService.toggleFeature(featureToggleRequest));
+        featureTogglesResponse = northboundService.toggleFeature(featureToggleRequest);
     }
 
     @Then("^feature toggles response matches request$")
     public void northboundResponseMatchesRequest() {
-        assertThat(featureToggleRequest, reflectEquals(topologyUnderTest.getResponse()));
+        assertThat(featureToggleRequest, reflectEquals(featureTogglesResponse));
     }
 }

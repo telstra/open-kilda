@@ -30,19 +30,16 @@ import cucumber.api.java.en.And;
 import cucumber.api.java.en.Given;
 import cucumber.api.java.en.Then;
 import cucumber.api.java.en.When;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.junit.Assume;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
 import java.util.Random;
-import java.util.stream.Collectors;
 
+@Slf4j
 public class SwitchSteps {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(SwitchSteps.class);
 
     @Autowired
     private NorthboundService northboundService;
@@ -53,15 +50,17 @@ public class SwitchSteps {
     @Autowired
     private TopologyUnderTest topologyUnderTest;
 
+    private List<SwitchInfoData> allSwitchesResponse;
+    private SwitchFlowEntries switchRulesResponse;
+
     @When("^request all available switches from Northbound$")
     public void requestSwitches() {
-        topologyUnderTest.setResponse(northboundService.getAllSwitches());
+        allSwitchesResponse = northboundService.getAllSwitches();
     }
 
     @Then("response has at least (\\d+) switch(?:es)?")
     public void verifySwitchesAmount(int expectedSwitchesAmount) {
-        List<SwitchInfoData> response = (List<SwitchInfoData>) topologyUnderTest.getResponse();
-        assertTrue(response.size() >= expectedSwitchesAmount);
+        assertTrue(allSwitchesResponse.size() >= expectedSwitchesAmount);
     }
 
     @Given("^select a random switch and alias it as '(.*)'$")
@@ -69,44 +68,40 @@ public class SwitchSteps {
         List<Switch> switches = getUnaliasedSwitches();
         Random r = new Random();
         Switch theSwitch = switches.get(r.nextInt(switches.size()));
-        LOGGER.info("Selected random switch with id: {}", theSwitch.getDpId());
-        topologyUnderTest.getAliasedObjects().put(switchAlias, theSwitch);
+        log.info("Selected random switch with id: {}", theSwitch.getDpId());
+        topologyUnderTest.addAlias(switchAlias, theSwitch);
     }
 
     @When("^request all switch rules for switch '(.*)'$")
     public void requestAllSwitchRulesForSwitch(String switchAlias) {
-        topologyUnderTest.setResponse(northboundService.getSwitchRules(
-                ((Switch) topologyUnderTest.getAliasedObjects().get(switchAlias)).getDpId()));
+        switchRulesResponse = northboundService.getSwitchRules(
+                ((Switch) topologyUnderTest.getAliasedObject(switchAlias)).getDpId());
     }
 
     @Then("^response switch_id matches id of '(.*)'$")
     public void responseSwitch_idMatchesIdOfSwitch(String switchAlias) {
-        SwitchFlowEntries response = (SwitchFlowEntries) topologyUnderTest.getResponse();
-        assertEquals(((Switch) topologyUnderTest.getAliasedObjects().get(switchAlias)).getDpId(),
-                response.getSwitchId());
+        assertEquals(((Switch) topologyUnderTest.getAliasedObject(switchAlias)).getDpId(),
+                switchRulesResponse.getSwitchId());
     }
 
     @Then("^response has at least (\\d+) rules? installed$")
     public void responseHasAtLeastRulesInstalled(int rulesAmount) {
-        SwitchFlowEntries response = (SwitchFlowEntries) topologyUnderTest.getResponse();
-        assertTrue(response.getFlowEntries().size() >= rulesAmount);
+        assertTrue(switchRulesResponse.getFlowEntries().size() >= rulesAmount);
     }
 
     @And("^select a switch with direct link to '(.*)' and alias it as '(.*)'$")
     public void selectSwitchWithDirectLink(String nearSwitchAlias, String newSwitchAlias) {
-        Switch nearSwitch = (Switch) topologyUnderTest.getAliasedObjects().get(newSwitchAlias);
+        Switch nearSwitch = topologyUnderTest.getAliasedObject(nearSwitchAlias);
         Isl link = topologyDefinition.getIslsForActiveSwitches().stream().filter(isl ->
                 isl.getSrcSwitch().getDpId().equals(nearSwitch.getDpId())
                         || isl.getDstSwitch().getDpId().equals(nearSwitch.getDpId())).findAny().get();
         Switch newSwitch = link.getSrcSwitch().getDpId().equals(nearSwitch.getDpId())
                 ? link.getDstSwitch() : link.getDstSwitch();
-        topologyUnderTest.getAliasedObjects().put(newSwitchAlias, newSwitch);
+        topologyUnderTest.addAlias(newSwitchAlias, newSwitch);
     }
 
     private List<Switch> getUnaliasedSwitches() {
-        List<Switch> aliasedSwitches = topologyUnderTest.getAliasedObjects().values().stream()
-                .filter(obj -> obj instanceof Switch)
-                .map(sw -> (Switch) sw).collect(Collectors.toList());
+        List<Switch> aliasedSwitches = topologyUnderTest.getAliasedObjects(Switch.class);
         List<Switch> switches = (List<Switch>) CollectionUtils.subtract(
                 topologyDefinition.getActiveSwitches(), aliasedSwitches);
         Assume.assumeTrue("No unaliased switches left, unable to proceed", !switches.isEmpty());

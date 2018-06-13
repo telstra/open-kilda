@@ -20,7 +20,7 @@ import org.neo4j.driver.v1.GraphDatabase;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.annotation.Value;
 
-public class Neo4jServiceImpl implements DisposableBean, Neo4jService {
+public class Neo4jDriverFactoryImpl implements DisposableBean, Neo4jDriverFactory {
 
     @Value("${neo.uri}")
     private String neoUri;

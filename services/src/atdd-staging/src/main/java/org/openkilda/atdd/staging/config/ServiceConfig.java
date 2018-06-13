@@ -17,7 +17,8 @@ package org.openkilda.atdd.staging.config;
 
 import org.openkilda.atdd.staging.service.flowmanager.FlowManager;
 import org.openkilda.atdd.staging.service.flowmanager.FlowManagerImpl;
-import org.openkilda.atdd.staging.service.neo4j.Neo4jServiceImpl;
+import org.openkilda.atdd.staging.service.neo4j.Neo4jDriverFactory;
+import org.openkilda.atdd.staging.service.neo4j.Neo4jDriverFactoryImpl;
 import org.openkilda.atdd.staging.tools.LoggingRequestInterceptor;
 
 import org.slf4j.Logger;
@@ -91,8 +92,8 @@ public class ServiceConfig {
     }
 
     @Bean
-    public Neo4jServiceImpl neo4j() {
-        return new Neo4jServiceImpl();
+    public Neo4jDriverFactory neo4j() {
+        return new Neo4jDriverFactoryImpl();
     }
 
     private RestTemplate buildLoggingRestTemplate(String endpoint) {

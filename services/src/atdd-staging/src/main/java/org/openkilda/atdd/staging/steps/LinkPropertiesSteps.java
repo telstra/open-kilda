@@ -23,7 +23,7 @@ import static org.junit.Assert.assertThat;
 
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition.Isl;
-import org.openkilda.atdd.staging.service.neo4j.Neo4jServiceImpl;
+import org.openkilda.atdd.staging.service.neo4j.Neo4jDriverFactoryImpl;
 import org.openkilda.atdd.staging.service.northbound.NorthboundService;
 import org.openkilda.atdd.staging.steps.helpers.TopologyUnderTest;
 import org.openkilda.northbound.dto.BatchResults;
@@ -32,11 +32,10 @@ import org.openkilda.northbound.dto.links.LinkPropsDto;
 import cucumber.api.java.en.And;
 import cucumber.api.java.en.Then;
 import cucumber.api.java.en.When;
+import lombok.extern.slf4j.Slf4j;
 import org.neo4j.driver.v1.Driver;
 import org.neo4j.driver.v1.Session;
 import org.neo4j.driver.v1.StatementResult;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.HashMap;
@@ -44,8 +43,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+@Slf4j
 public class LinkPropertiesSteps {
-    private static final Logger LOGGER = LoggerFactory.getLogger(LinkPropertiesSteps.class);
 
     @Autowired
     private NorthboundService northboundService;
@@ -57,19 +56,21 @@ public class LinkPropertiesSteps {
     private TopologyUnderTest topologyUnderTest;
 
     @Autowired
-    private Neo4jServiceImpl neo4j;
+    private Neo4jDriverFactoryImpl neo4j;
 
-    LinkPropsDto linkPropsRequest;
+    private LinkPropsDto linkPropsRequest;
+    private BatchResults changePropsResponse;
+    private List<LinkPropsDto> getLinkPropsResponse;
 
 
     @When("^create link properties request for isl '(.*)'$")
     public void createLinkPropertiesRequest(String islAlias) {
         linkPropsRequest = new LinkPropsDto();
-        Isl theIsl = (Isl) topologyUnderTest.getAliasedObjects().get(islAlias);
+        Isl theIsl = topologyUnderTest.getAliasedObject(islAlias);
         linkPropsRequest.setSrcSwitch(theIsl.getSrcSwitch().getDpId());
-        linkPropsRequest.setSrcPort(String.valueOf(theIsl.getSrcPort()));
+        linkPropsRequest.setSrcPort(theIsl.getSrcPort());
         linkPropsRequest.setDstSwitch(theIsl.getDstSwitch().getDpId());
-        linkPropsRequest.setDstPort(String.valueOf(theIsl.getDstPort()));
+        linkPropsRequest.setDstPort(theIsl.getDstPort());
     }
 
     @When("^update request: add link property '(.*)' with value '(.*)'$")
@@ -79,41 +80,38 @@ public class LinkPropertiesSteps {
 
     @When("^send update link properties request$")
     public void sendUpdateLinkPropertiesRequest() {
-        topologyUnderTest.setResponse(northboundService.updateLinkProps(singletonList(linkPropsRequest)));
+        changePropsResponse = northboundService.updateLinkProps(singletonList(linkPropsRequest));
     }
 
     @Then("^response has (\\d+) failures? and (\\d+) success(?:es)?$")
     public void responseHasFailuresAndSuccess(int failures, int successes) {
-        BatchResults response = (BatchResults) topologyUnderTest.getResponse();
-        assertEquals(response.getFailures(), failures);
-        assertEquals(response.getSuccesses(), successes);
+        assertEquals(changePropsResponse.getFailures(), failures);
+        assertEquals(changePropsResponse.getSuccesses(), successes);
     }
 
     @When("^get all properties$")
     public void getAllProperties() {
-        topologyUnderTest.setResponse(northboundService.getLinkProps(new LinkPropsDto()));
+        getLinkPropsResponse = northboundService.getLinkProps(null, null, null, null);
     }
 
     @Then("^response has( no)? link properties from request$")
     public void responseHasLinkPropertiesEntry(String shouldHaveStr) {
         final boolean shouldHave = shouldHaveStr == null;
-        List<LinkPropsDto> response = (List<LinkPropsDto>) topologyUnderTest.getResponse();
-        Optional<LinkPropsDto> wantedProps = response.stream()
+        Optional<LinkPropsDto> wantedProps = getLinkPropsResponse.stream()
                 .filter(props -> props.equals(linkPropsRequest)).findFirst();
         assertEquals(wantedProps.isPresent(), shouldHave);
     }
 
     @Then("^response link properties from request has property '(.*)' with value '(.*)'$")
     public void verifyResponseLinkProperties(String key, String value) {
-        List<LinkPropsDto> response = (List<LinkPropsDto>) topologyUnderTest.getResponse();
-        LinkPropsDto props = response.stream()
+        LinkPropsDto props = getLinkPropsResponse.stream()
                 .filter(p -> p.equals(linkPropsRequest)).findFirst().get();
         assertThat(props.getProperty(key), equalTo(value));
     }
 
     @When("^send delete link properties request$")
     public void sendDeleteLinkPropertiesRequest() {
-        topologyUnderTest.setResponse(northboundService.deleteLinkProps(singletonList(linkPropsRequest)));
+        changePropsResponse = northboundService.deleteLinkProps(singletonList(linkPropsRequest));
     }
 
     @And("^requested link property in Neo4j has( no)? property '(.*)' with value '(.*)'$")
@@ -123,8 +121,8 @@ public class LinkPropertiesSteps {
         String query = "MATCH ()-[link:isl {src_port:{srcPort}, dst_port:{dstPort}, src_switch:{srcSwitch}, "
                 + "dst_switch:{dstSwitch}}]-() RETURN properties(link)";
         Map<String, Object> params = new HashMap<>();
-        params.put("srcPort", Integer.parseInt(linkPropsRequest.getSrcPort()));
-        params.put("dstPort", Integer.parseInt(linkPropsRequest.getDstPort()));
+        params.put("srcPort", linkPropsRequest.getSrcPort());
+        params.put("dstPort", linkPropsRequest.getDstPort());
         params.put("srcSwitch", linkPropsRequest.getSrcSwitch());
         params.put("dstSwitch", linkPropsRequest.getDstSwitch());
         StatementResult result;
@@ -150,7 +148,7 @@ public class LinkPropertiesSteps {
 
     @Then("^link props response has (\\d+) results?$")
     public void responseHasResults(int resultsAmount) {
-        assertEquals(((List<LinkPropsDto>) topologyUnderTest.getResponse()).size(), resultsAmount);
+        assertEquals(getLinkPropsResponse.size(), resultsAmount);
     }
 
     @When("^update request: change src_switch to '(.*)'$")
@@ -160,7 +158,7 @@ public class LinkPropertiesSteps {
 
     @And("^update request: change src_port to '(.*)'$")
     public void updateRequestChangeSrc_portTo(String newSrcPort) {
-        linkPropsRequest.setSrcPort(newSrcPort);
+        linkPropsRequest.setSrcPort(Integer.valueOf(newSrcPort));
     }
 
     @When("^create empty link properties request$")
@@ -170,12 +168,13 @@ public class LinkPropertiesSteps {
 
     @And("^get link properties for defined request$")
     public void getLinkPropertiesForDefinedRequest() {
-        topologyUnderTest.setResponse(northboundService.getLinkProps(linkPropsRequest));
+        getLinkPropsResponse = northboundService.getLinkProps(linkPropsRequest.getSrcSwitch(),
+                linkPropsRequest.getSrcPort(), linkPropsRequest.getDstSwitch(), linkPropsRequest.getDstPort());
     }
 
     @And("^delete all link properties$")
     public void deleteAllLinkProperties() {
-        List<LinkPropsDto> linkProps = northboundService.getLinkProps(new LinkPropsDto());
-        topologyUnderTest.setResponse(northboundService.deleteLinkProps(linkProps));
+        List<LinkPropsDto> linkProps = northboundService.getAllLinkProps();
+        changePropsResponse = northboundService.deleteLinkProps(linkProps);
     }
 }

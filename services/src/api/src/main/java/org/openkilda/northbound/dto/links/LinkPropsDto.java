@@ -31,18 +31,26 @@ import java.util.Map;
 @JsonNaming(PropertyNamingStrategy.SnakeCaseStrategy.class)
 public class LinkPropsDto {
 
-    private static final String DEFAULT = "";
-    private String srcSwitch = DEFAULT;
-    private String srcPort = DEFAULT;
-    private String dstSwitch = DEFAULT;
-    private String dstPort = DEFAULT;
-    @JsonProperty("props")
+    private String srcSwitch;
+    private Integer srcPort;
+    private String dstSwitch;
+    private Integer dstPort;
     private Map<String, String> props = new HashMap<>();
 
     /**
      * Creates an empty link properties.
      */
     public LinkPropsDto() {
+    }
+
+    public LinkPropsDto(@JsonProperty("src_switch") String srcSwitch, @JsonProperty("src_port") Integer srcPort,
+                        @JsonProperty("dst_switch") String dstSwitch, @JsonProperty("dst_port") Integer dstPort,
+                        @JsonProperty("props") Map<String, String> props) {
+        this.srcSwitch = srcSwitch;
+        this.srcPort = srcPort;
+        this.dstSwitch = dstSwitch;
+        this.dstPort = dstPort;
+        this.props = props;
     }
 
     /**
@@ -53,11 +61,10 @@ public class LinkPropsDto {
     }
 
     public String getProperty(String key) {
-        return props.getOrDefault(key, DEFAULT);
+        return props.get(key);
     }
 
-    public LinkPropsDto setProperty(String key, String value) {
+    public void setProperty(String key, String value) {
         props.put(key, value);
-        return this;
     }
 }
