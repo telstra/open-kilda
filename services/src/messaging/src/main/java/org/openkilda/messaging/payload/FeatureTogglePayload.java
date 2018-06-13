@@ -16,80 +16,64 @@
 package org.openkilda.messaging.payload;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Data;
 
+@Data
 public class FeatureTogglePayload {
 
-	@JsonProperty("sync_rules")
-	private Boolean syncRulesEnabled;
+    @JsonProperty("sync_rules")
+    private Boolean syncRulesEnabled;
 
-	@JsonProperty("reflow_on_switch_activation")
-	private Boolean reflowOnSwitchActivationEnabled;
+    @JsonProperty("reflow_on_switch_activation")
+    private Boolean reflowOnSwitchActivationEnabled;
 
-	@JsonProperty("create_flow")
-	private Boolean createFlowEnabled;
+    @JsonProperty("create_flow")
+    private Boolean createFlowEnabled;
 
-	@JsonProperty("update_flow")
-	private Boolean updateFlowEnabled;
+    @JsonProperty("update_flow")
+    private Boolean updateFlowEnabled;
 
-	@JsonProperty("delete_flow")
-	private Boolean deleteFlowEnabled;
+    @JsonProperty("delete_flow")
+    private Boolean deleteFlowEnabled;
 
-	@JsonProperty("push_flow")
-	private Boolean pushFlowEnabled;
+    @JsonProperty("push_flow")
+    private Boolean pushFlowEnabled;
 
-	@JsonProperty("unpush_flow")
-	private Boolean unpushFlowEnabled;
+    @JsonProperty("unpush_flow")
+    private Boolean unpushFlowEnabled;
 
-	public FeatureTogglePayload(@JsonProperty("sync_rules") Boolean syncRulesEnabled,
-			@JsonProperty("reflow_on_switch_activation") Boolean reflowOnSwitchActivationEnabled,
-			@JsonProperty("create_flow") Boolean createFlowEnabled,
-			@JsonProperty("update_flow") Boolean updateFlowEnabled,
-			@JsonProperty("delete_flow") Boolean deleteFlowEnabled,
-			@JsonProperty("push_flow") Boolean pushFlowEnabled,
-			@JsonProperty("unpush_flow") Boolean unpushFlowEnabled) {
-		this.syncRulesEnabled = syncRulesEnabled;
-		this.reflowOnSwitchActivationEnabled = reflowOnSwitchActivationEnabled;
-		this.createFlowEnabled = createFlowEnabled;
-		this.updateFlowEnabled = updateFlowEnabled;
-		this.deleteFlowEnabled = deleteFlowEnabled;
-		this.pushFlowEnabled = pushFlowEnabled;
-		this.unpushFlowEnabled = unpushFlowEnabled;
-	}
+    public FeatureTogglePayload(@JsonProperty("sync_rules") Boolean syncRulesEnabled,
+                                @JsonProperty("reflow_on_switch_activation") Boolean reflowOnSwitchActivationEnabled,
+                                @JsonProperty("create_flow") Boolean createFlowEnabled,
+                                @JsonProperty("update_flow") Boolean updateFlowEnabled,
+                                @JsonProperty("delete_flow") Boolean deleteFlowEnabled,
+                                @JsonProperty("push_flow") Boolean pushFlowEnabled,
+                                @JsonProperty("unpush_flow") Boolean unpushFlowEnabled) {
+        this.syncRulesEnabled = syncRulesEnabled;
+        this.reflowOnSwitchActivationEnabled = reflowOnSwitchActivationEnabled;
+        this.createFlowEnabled = createFlowEnabled;
+        this.updateFlowEnabled = updateFlowEnabled;
+        this.deleteFlowEnabled = deleteFlowEnabled;
+        this.pushFlowEnabled = pushFlowEnabled;
+        this.unpushFlowEnabled = unpushFlowEnabled;
+    }
 
-	public Boolean getSyncRulesEnabled() {
-		return syncRulesEnabled;
-	}
+    public FeatureTogglePayload(FeatureTogglePayload payload) {
+        this.syncRulesEnabled = payload.syncRulesEnabled;
+        this.reflowOnSwitchActivationEnabled = payload.reflowOnSwitchActivationEnabled;
+        this.createFlowEnabled = payload.createFlowEnabled;
+        this.updateFlowEnabled = payload.updateFlowEnabled;
+        this.deleteFlowEnabled = payload.deleteFlowEnabled;
+        this.pushFlowEnabled = payload.pushFlowEnabled;
+        this.unpushFlowEnabled = payload.unpushFlowEnabled;
+    }
 
-	public Boolean getReflowOnSwitchActivationEnabled() {
-		return reflowOnSwitchActivationEnabled;
-	}
-
-	public Boolean getCreateFlowEnabled() {
-		return createFlowEnabled;
-	}
-
-	public Boolean getUpdateFlowEnabled() {
-		return updateFlowEnabled;
-	}
-
-	public Boolean getDeleteFlowEnabled() {
-		return deleteFlowEnabled;
-	}
-
-	public Boolean getPushFlowEnabled() {
-		return pushFlowEnabled;
-	}
-
-	public Boolean getUnpushFlowEnabled() {
-		return unpushFlowEnabled;
-	}
-
-	@Override
-	public String toString() {
-		return "FeatureTogglePayload [syncRulesEnabled=" + syncRulesEnabled + ", reflowOnSwitchActivationEnabled="
-				+ reflowOnSwitchActivationEnabled + ", createFlowEnabled=" + createFlowEnabled + ", updateFlowEnabled="
-				+ updateFlowEnabled + ", deleteFlowEnabled=" + deleteFlowEnabled + ", pushFlowEnabled="
-				+ pushFlowEnabled + ", unpushFlowEnabled=" + unpushFlowEnabled + "]";
-	}
+    @Override
+    public String toString() {
+        return "FeatureTogglePayload [syncRulesEnabled=" + syncRulesEnabled + ", reflowOnSwitchActivationEnabled="
+                + reflowOnSwitchActivationEnabled + ", createFlowEnabled=" + createFlowEnabled + ", updateFlowEnabled="
+                + updateFlowEnabled + ", deleteFlowEnabled=" + deleteFlowEnabled + ", pushFlowEnabled="
+                + pushFlowEnabled + ", unpushFlowEnabled=" + unpushFlowEnabled + "]";
+    }
 
 }

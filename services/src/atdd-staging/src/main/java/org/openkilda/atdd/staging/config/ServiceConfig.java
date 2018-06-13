@@ -17,9 +17,10 @@ package org.openkilda.atdd.staging.config;
 
 import org.openkilda.atdd.staging.service.flowmanager.FlowManager;
 import org.openkilda.atdd.staging.service.flowmanager.FlowManagerImpl;
+import org.openkilda.atdd.staging.service.neo4j.Neo4jDriverFactory;
+import org.openkilda.atdd.staging.service.neo4j.Neo4jDriverFactoryImpl;
 import org.openkilda.atdd.staging.tools.LoggingRequestInterceptor;
 
-import net.jodah.failsafe.RetryPolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -42,7 +43,6 @@ import org.springframework.web.util.DefaultUriBuilderFactory;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 @Configuration
 @Profile("default")
@@ -74,15 +74,6 @@ public class ServiceConfig {
         return buildRestTemplateWithAuth(endpoint, username, password);
     }
 
-    // The retrier is used for repeating operations which depend on the system state and may change the result
-    // after delays.
-    @Bean(name = "topologyEngineRetryPolicy")
-    public RetryPolicy retryPolicy() {
-        return new RetryPolicy()
-                .withDelay(2, TimeUnit.SECONDS)
-                .withMaxRetries(10);
-    }
-
     @Bean(name = "traffExamRestTemplate")
     public RestTemplate traffExamRestTemplate() {
         RestTemplate restTemplate = buildLoggingRestTemplate();
@@ -98,6 +89,11 @@ public class ServiceConfig {
     @Bean
     public FlowManager flowManager() {
         return new FlowManagerImpl();
+    }
+
+    @Bean
+    public Neo4jDriverFactory neo4j() {
+        return new Neo4jDriverFactoryImpl();
     }
 
     private RestTemplate buildLoggingRestTemplate(String endpoint) {
