@@ -35,21 +35,18 @@ public abstract class AbstractNetworkEndpoint implements Serializable {
     public AbstractNetworkEndpoint(String datapath, Integer portNumber) {
         this.datapath = datapath;
         this.portNumber = portNumber;
-
-        validate();
     }
 
-    protected abstract void validate();
-
-    protected void validateDatapath() {
+    final void validateDatapath() {
         if (!Utils.validateSwitchId(datapath)) {
             throw new IllegalArgumentException(String.format("Invalid switch DPID: %s", datapath));
         }
     }
 
-    protected void validatePortNumber() {
+    final void validatePortNumber() {
         if (portNumber == null || portNumber < 0) {
             throw new IllegalArgumentException(String.format("Invalid portId: %s", portNumber));
         }
     }
+
 }

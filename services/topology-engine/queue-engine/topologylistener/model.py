@@ -296,9 +296,9 @@ class NetworkEndpoint(AbstractNetworkEndpoint):
 
     def pack(self):
         fields = super(NetworkEndpoint, self).pack()
-        for src, dst in (
+        for src, dst in [
                 ('dpid', 'switch-id'),
-                ('port', 'port-id')):
+                ('port', 'port-id')]:
             fields[dst] = fields.pop(src)
         return fields
 
@@ -310,9 +310,9 @@ class IslPathNode(AbstractNetworkEndpoint):
 
     def pack(self):
         fields = super(IslPathNode, self).pack()
-        for src, dst in (
+        for src, dst in [
                 ('dpid', 'switch_id'),
-                ('port', 'port_no')):
+                ('port', 'port_no')]:
             fields[dst] = fields.pop(src)
         return fields
 

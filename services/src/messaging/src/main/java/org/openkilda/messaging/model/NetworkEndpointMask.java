@@ -26,20 +26,20 @@ import org.apache.commons.lang3.StringUtils;
  */
 @Value
 public class NetworkEndpointMask extends AbstractNetworkEndpoint {
+
     @JsonCreator
     public NetworkEndpointMask(
             @JsonProperty("switch-id") String datapath,
             @JsonProperty("port-id") Integer portNumber) {
         super(StringUtils.isEmpty(datapath) ? null : datapath, portNumber);
-    }
 
-    @Override
-    protected void validate() {
-        if (getDatapath() != null) {
+        if (datapath != null) {
             validateDatapath();
         }
-        if (getPortNumber() != null) {
+
+        if (portNumber != null) {
             validatePortNumber();
         }
     }
+
 }

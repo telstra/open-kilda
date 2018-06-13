@@ -814,10 +814,7 @@ class MessageItem(model.JsonSerializable):
             self.payload[key] = value.as_java_timestamp()
 
     def link_props_put(self):
-        import time
-        time.sleep(0.001)
         link_props = self._unpack_link_props()
-        time.sleep(0.001)
         protected = link_props.extract_protected_props()
         if protected:
             raise exc.UnacceptableDataError(
@@ -825,9 +822,7 @@ class MessageItem(model.JsonSerializable):
                     ', '.join(repr(x) for x in sorted(protected))))
 
         with graph.begin() as tx:
-            time.sleep(0.001)
             link_props_utils.create_if_missing(tx, link_props)
-            time.sleep(0.001)
             link_props_utils.set_props_and_propagate_to_isl(tx, link_props)
 
             actual_link_props = link_props_utils.read(tx, link_props)

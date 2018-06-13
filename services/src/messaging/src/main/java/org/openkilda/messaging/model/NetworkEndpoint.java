@@ -27,16 +27,13 @@ public class NetworkEndpoint extends AbstractNetworkEndpoint {
             @JsonProperty("switch-id") String datapath,
             @JsonProperty("port-id") Integer portNumber) {
         super(datapath, portNumber);
+
+        validateDatapath();
+        validatePortNumber();
     }
 
     public NetworkEndpoint(NetworkEndpoint that) {
         this(that.getDatapath(), that.getPortNumber());
-    }
-
-    @Override
-    protected void validate() {
-        validateDatapath();
-        validatePortNumber();
     }
 
     @JsonIgnore
