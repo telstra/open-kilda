@@ -126,21 +126,50 @@ function changePassword($event){
 	var oldPassword = document.cpForm.oldPassword.value;
 	var newPassword = document.cpForm.newPassword.value;
 	var confirmPassword = document.cpForm.confirmPassword.value;
+	var regex = /^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[^\w\s]).{8,15}$/;
+	var notPermittedRegex = /[%,&,+,\,",\w,\s]/;
+	$('.error').hide();
+	$('input').removeClass('errorInput');
 	if(oldPassword=="" || oldPassword == null){
 		$('#oldPasswordError').show();
 		$('input[name="oldPassword"').addClass("errorInput");
+		return false;
 	}
 	if(newPassword=="" || newPassword == null){
 		$('#newPasswordError').show();
 		$('input[name="newPassword"').addClass("errorInput");
+		return false;
 	}
 	if(confirmPassword=="" || confirmPassword == null){
 		$('#confirmPasswordError').show();
 		$('input[name="confirmPassword"').addClass("errorInput");
+		return false;
 	}
 	if(newPassword !== confirmPassword){
 		$('#confirmPasswordError').html('Please enter same password');
 		$('#confirmPasswordError').show();
+		$('input[name="confirmPassword"').addClass("errorInput");
+		return false;
+	}
+	if(oldPassword == newPassword){
+		$('#oldnewPasswordError').html('Old password & new password can not be same');
+		$('#oldnewPasswordError').show();
+		$('input[name="newPassword"').addClass("errorInput");
+		return false;
+	}
+	
+	if(!regex.test(newPassword)){
+		$('#lengthPasswordError').html('Password should be between 8 to 15 characters which contain at least one lowercase letter, one uppercase letter, one numeric digit, and one special character.');
+		$('#lengthPasswordError').show();
+		$('input[name="newPassword"').addClass("errorInput");
+		$('input[name="confirmPassword"').addClass("errorInput");
+		return false;
+	}
+	
+	if(notPermittedRegex.test(newPassword)){
+		$('#lengthPasswordError').html('Password contains invalid characters. [%,&,+,\,", ] characters are not allowed');
+		$('#lengthPasswordError').show();
+		$('input[name="newPassword"').addClass("errorInput");
 		$('input[name="confirmPassword"').addClass("errorInput");
 		return false;
 	}

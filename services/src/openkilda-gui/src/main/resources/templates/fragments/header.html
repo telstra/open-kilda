@@ -65,6 +65,7 @@
 				            <div class="form-group">
 				                <input type="password" name="newPassword" id="newPassword" class="form-control input-lg" placeholder="New Password" onkeyup="removeCpError(this)" />
 				                <span id="newPasswordError" class="error" style="display: none; color: red;">New Password is required.</span>
+				                
 				            </div>
 				            <div class="form-group">
 				                <input type="password" name="confirmPassword" id="confirmPassword" class="form-control input-lg" placeholder="Confirm Password" onkeyup="removeCpError(this)"/>
@@ -74,6 +75,10 @@
 				                <input type="password" name="code" id="code" class="form-control input-lg" placeholder="Enter OTP" onkeyup="removeCpError(this)"/>
 				                <span id="codeError" class="error" style="display: none; color: red;">OTP is required.</span>
 				            </div>
+				            <div class="form-group">
+				            <span id="oldnewPasswordError" class="error" style="display: none; color: red;">Old password and new password can not be same.</span>
+				            <span id="lengthPasswordError" class="error" style="display: none; color: red;">Password should be min 8 and max 15 character long..</span>
+				             </div>   
 				            <span class="button-checkbox">
 				                <button  class="btn kilda_btn" >Change Password</button>
 				            </span>

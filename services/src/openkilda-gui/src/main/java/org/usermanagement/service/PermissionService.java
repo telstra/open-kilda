@@ -1,14 +1,15 @@
 package org.usermanagement.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import org.usermanagement.conversion.PermissionConversionUtil;
 import org.usermanagement.dao.entity.PermissionEntity;
 import org.usermanagement.dao.entity.RoleEntity;
@@ -24,6 +25,8 @@ import org.usermanagement.validator.PermissionValidator;
 @Transactional(propagation = Propagation.REQUIRED, readOnly = true)
 public class PermissionService {
 
+	private static final Logger LOGGER = LoggerFactory.getLogger(PermissionService.class);
+	
 	@Autowired
 	private PermissionRepository permissionRepository;
 
@@ -42,7 +45,7 @@ public class PermissionService {
 
 		PermissionEntity permissionEntity = PermissionConversionUtil.toPermissionEntity(permission);
 		permissionRepository.save(permissionEntity);
-
+		LOGGER.info("Permission with name '" + permission.getName() + "' created successfully.");
 		return PermissionConversionUtil.toPermission(permissionEntity, null);
 	}
 
@@ -60,12 +63,13 @@ public class PermissionService {
 	@Transactional(propagation = Propagation.REQUIRED, readOnly = false)
 	public Permission getPermissionById(final Long permissionId) {
 		PermissionEntity permissionEntity = permissionRepository.findByPermissionId(permissionId);
-		Set<RoleEntity> roleEntityList = roleRepository.findByPermissions_permissionId(permissionId);
-
+		
 		if (ValidatorUtil.isNull(permissionEntity)) {
+			LOGGER.error("Permission with permissionId '" + permissionId + "' not found. Error: "
+					+ messageUtil.getAttributeInvalid("permission_id", permissionId + ""));
 			throw new RequestValidationException(messageUtil.getAttributeInvalid("permission_id", permissionId + ""));
 		}
-
+		Set<RoleEntity> roleEntityList = roleRepository.findByPermissions_permissionId(permissionId);
 		return PermissionConversionUtil.toPermission(permissionEntity, roleEntityList);
 	}
 
@@ -82,11 +86,13 @@ public class PermissionService {
 			for (RoleEntity roleEntity : roleEntityList) {
 				roles += !"".equals(roles) ? "," + roleEntity.getName() : roleEntity.getName();
 			}
+			LOGGER.error("Permission with permissionId '" + permissionId + "' not allowed to delete. Error: "
+					+ messageUtil.getAttributeDeletionNotAllowed(permissionEntity.getName(), roles));
 			throw new RequestValidationException(
 					messageUtil.getAttributeDeletionNotAllowed(permissionEntity.getName(), roles));
 		}
 		permissionRepository.delete(permissionEntity);
-
+		LOGGER.info("Permission(permissionId: " + permissionId + ") deleted successfully.");
 	}
 
 	@Transactional(propagation = Propagation.REQUIRED, readOnly = false)
@@ -96,12 +102,14 @@ public class PermissionService {
 
 		PermissionEntity permissionEntity = permissionRepository.findByPermissionId(permissionId);
 		if (ValidatorUtil.isNull(permissionEntity)) {
+			LOGGER.error("Permission with permissionId '" + permissionId + "' not found. Error: "
+					+ messageUtil.getAttributeInvalid("permission_id", permissionId + ""));
 			throw new RequestValidationException(messageUtil.getAttributeInvalid("permission_id", permissionId + ""));
 		}
 
 		permissionEntity = PermissionConversionUtil.toUpatePermissionEntity(permission, permissionEntity);
 		permissionRepository.save(permissionEntity);
-
+		LOGGER.info("Permission(permissionId: " + permissionId + ") updated successfully.");
 		return PermissionConversionUtil.toPermission(permissionEntity, null);
 
 	}

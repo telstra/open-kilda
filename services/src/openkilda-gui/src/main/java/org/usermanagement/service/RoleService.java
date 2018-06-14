@@ -50,11 +50,11 @@ public class RoleService {
     private RoleValidator roleValidator;
 
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
-    public Role createRole(final Role roleRequest) {
-        roleValidator.validateRole(roleRequest);
+    public Role createRole(final Role role) {
+        roleValidator.validateRole(role);
         Set<PermissionEntity> permissionEntities = new HashSet<>();
         List<PermissionEntity> permissionEntityList = permissionRepository.findAll();
-        for (Long permissionId : roleRequest.getPermissionId()) {
+        for (Long permissionId : role.getPermissionId()) {
             PermissionEntity permissionEntity = permissionEntityList.parallelStream()
                     .filter((entity) -> entity.getPermissionId().equals(permissionId)).findFirst()
                     .orElse(null);
@@ -62,13 +62,15 @@ public class RoleService {
             if (!ValidatorUtil.isNull(permissionEntity)) {
                 permissionEntities.add(permissionEntity);
             } else {
+            	LOGGER.error("Permission with id '" + permissionId + "' not found.");
                 throw new RequestValidationException(
                         messageUtil.getAttributeNotFound("permission"));
             }
         }
 
-        RoleEntity roleEntity = RoleConversionUtil.toRoleEntity(roleRequest, permissionEntities);
+        RoleEntity roleEntity = RoleConversionUtil.toRoleEntity(role, permissionEntities);
         roleRepository.save(roleEntity);
+        LOGGER.info("Role with name '" + roleEntity.getName() + "' created successfully.");
         return RoleConversionUtil.toRole(roleEntity, true, false);
     }
 
@@ -79,28 +81,31 @@ public class RoleService {
         return roleList;
     }
 
-    @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
-    public Set<RoleEntity> getRolesById(final List<Long> roleIds) {
-        Set<RoleEntity> roleEntities = new HashSet<>();
-        List<RoleEntity> roleEntityList = roleRepository.findAll();
-        for (Long roleId : roleIds) {
-            RoleEntity roleEntity = roleEntityList.parallelStream()
-                    .filter((entity) -> entity.getRoleId().equals(roleId)).findFirst().orElse(null);
+	@Transactional(propagation = Propagation.REQUIRED, readOnly = false)
+	public Set<RoleEntity> getRolesById(final List<Long> roleIds) {
+		Set<RoleEntity> roleEntities = new HashSet<>();
+		List<RoleEntity> roleEntityList = roleRepository.findAll();
+		for (Long roleId : roleIds) {
+			RoleEntity roleEntity = roleEntityList.parallelStream()
+					.filter((entity) -> entity.getRoleId().equals(roleId)).findFirst().orElse(null);
 
-            if (!ValidatorUtil.isNull(roleEntity)) {
-                roleEntities.add(roleEntity);
-            } else {
-                LOGGER.error("Role with role id '" + roleId + "' not found. Error: " + messageUtil.getAttributeNotFound("roles"));
-                throw new RequestValidationException(messageUtil.getAttributeNotFound("roles"));
-            }
-        }
-        return roleEntities;
-    }
+			if (!ValidatorUtil.isNull(roleEntity)) {
+				roleEntities.add(roleEntity);
+			} else {
+				LOGGER.error("Role with role id '" + roleId + "' not found. Error: "
+						+ messageUtil.getAttributeNotFound("roles"));
+				throw new RequestValidationException(messageUtil.getAttributeNotFound("roles"));
+			}
+		}
+		return roleEntities;
+	}
 
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
     public Role getRoleById(final Long roleId) {
         RoleEntity roleEntity = roleRepository.findByRoleId(roleId);
         if (ValidatorUtil.isNull(roleEntity)) {
+        	LOGGER.error("Role with role id '" + roleId + "' not found. Error: "
+					+ messageUtil.getAttributeInvalid("role_id", roleId + ""));
             throw new RequestValidationException(
                     messageUtil.getAttributeInvalid("role_id", roleId + ""));
         }
@@ -113,6 +118,8 @@ public class RoleService {
 
         RoleEntity roleEntity = roleRepository.findByRoleId(roleId);
         if (ValidatorUtil.isNull(roleEntity)) {
+        	LOGGER.error("Role with role id '" + roleId + "' not found. Error: "
+					+ messageUtil.getAttributeInvalid("role_id", roleId + ""));
             throw new RequestValidationException(
                     messageUtil.getAttributeInvalid("role_id", roleId + ""));
         }
@@ -123,10 +130,13 @@ public class RoleService {
             for (UserEntity userEntity : userEntityList) {
                 users += !"".equals(users) ? "," + userEntity.getName() : userEntity.getName();
             }
+        	LOGGER.error("Role with role id '" + roleId + "' not allowed to delete. Error: "
+					+ messageUtil.getAttributeDeletionNotAllowed(roleEntity.getName(), users));
             throw new RequestValidationException(
                     messageUtil.getAttributeDeletionNotAllowed(roleEntity.getName(), users));
         }
         roleRepository.delete(roleEntity);
+        LOGGER.info("Role(roleId: " + roleId + ") deleted successfully.");
     }
 
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
@@ -148,6 +158,8 @@ public class RoleService {
         RoleEntity roleEntity = roleRepository.findByRoleId(roleId);
 
         if (ValidatorUtil.isNull(roleEntity)) {
+        	LOGGER.error("Role with role id '" + roleId + "' not found. Error: "
+					+ messageUtil.getAttributeInvalid("role_id", roleId + ""));
             throw new RequestValidationException(
                     messageUtil.getAttributeInvalid("role_id", roleId + ""));
         }
@@ -164,7 +176,7 @@ public class RoleService {
         }
         roleEntity = RoleConversionUtil.toUpateRoleEntity(role, roleEntity);
         roleRepository.save(roleEntity);
-
+        LOGGER.info("Role updated successfully (roleId: " + roleId + ")");
         return RoleConversionUtil.toRole(roleEntity, true, false);
 
     }
@@ -172,8 +184,14 @@ public class RoleService {
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
     public Permission assignRoleByPermissionId(final Long permissionId, final Permission request) {
         PermissionEntity permissionEntity = permissionRepository.findByPermissionId(permissionId);
+        
+        if (ValidatorUtil.isNull(permissionEntity)) {
+        	LOGGER.error("Permission with permissionId '" + permissionId + "' not found. Error: "
+					+ messageUtil.getAttributeInvalid("permissionId", permissionId + ""));
+            throw new RequestValidationException(
+                    messageUtil.getAttributeInvalid("permissionId", permissionId + ""));
+        }
         permissionEntity.getRoles().clear();
-
         if (request.getRoles() != null) {
             for (Role role : request.getRoles()) {
                 RoleEntity roleEntity = roleRepository.findByRoleId(role.getRoleId());
@@ -181,7 +199,7 @@ public class RoleService {
             }
         }
         permissionRepository.save(permissionEntity);
-
+        LOGGER.info("Roles assigned with permission successfully (permissionId: " + permissionId + ")");
         return RoleConversionUtil.toPermissionByRole(permissionEntity.getRoles(), permissionEntity);
     }
 
@@ -190,6 +208,8 @@ public class RoleService {
         List<Role> roles = new ArrayList<Role>();
         List<RoleEntity> roleEntities = roleRepository.findByNameIn(role);
         if (ValidatorUtil.isNull(roleEntities)) {
+        	LOGGER.error("Roles with name '" + role + "' not found. Error: "
+					+ messageUtil.getAttributeInvalid("role", role + ""));
             throw new RequestValidationException(
                     messageUtil.getAttributeInvalid("role", role + ""));
         }
@@ -211,6 +231,12 @@ public class RoleService {
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
     public Role getUserByRoleId(final Long roleId) {
         RoleEntity roleEntity = roleRepository.findByRoleId(roleId);
+        if (ValidatorUtil.isNull(roleEntity)) {
+        	LOGGER.error("Role with role id '" + roleId + "' not found. Error: "
+					+ messageUtil.getAttributeInvalid("role_id", roleId + ""));
+            throw new RequestValidationException(
+                    messageUtil.getAttributeInvalid("role_id", roleId + ""));
+        }
         return RoleConversionUtil.toRole(roleEntity, false, true);
     }
 }

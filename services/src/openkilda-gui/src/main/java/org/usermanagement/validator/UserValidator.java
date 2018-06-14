@@ -6,6 +6,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import org.openkilda.constants.Status;
 import org.usermanagement.dao.entity.UserEntity;
 import org.usermanagement.dao.repository.UserRepository;
@@ -100,10 +103,39 @@ public class UserValidator {
     }
 
     public void validateChangePassword(final UserInfo userInfo) {
+    	String REGEX_ONE = "^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[^\\w\\s]).{8,15}$";
+    	String REGEX_TWO = "[%,&,+,\\,\\s,\"]";
+    	
         if (ValidatorUtil.isNull(userInfo.getNewPassword())) {
             LOGGER.error("Validation fail for change user password request (id: " + userInfo.getUserId()
                 + "). Error: " + messageUtil.getAttributeNotNull("password"));
             throw new RequestValidationException(messageUtil.getAttributeNotNull("password"));
+        }
+        
+        Matcher matcher_one = Pattern.compile(REGEX_ONE).matcher(userInfo.getNewPassword());
+        if(!matcher_one.matches()){
+            LOGGER.error("Validation fail for change user password request (id: " + userInfo.getUserId()
+                    + "). Error: " + messageUtil.getAttributePasswordMustContain());
+        	throw new RequestValidationException(messageUtil.getAttributePasswordMustContain());
+        }
+        
+        Matcher matcher_two = Pattern.compile(REGEX_TWO).matcher(userInfo.getNewPassword());
+        if(matcher_two.find()){
+            LOGGER.error("Validation fail for change user password request (id: " + userInfo.getUserId()
+                    + "). Error: " + messageUtil.getAttributePasswordMustNotContain());
+        	throw new RequestValidationException(messageUtil.getAttributePasswordMustNotContain());
+        }
+        
+        if(userInfo.getNewPassword().equals(userInfo.getPassword())){
+            LOGGER.error("New password not valid (id: " + userInfo.getUserId() + "). Error: "
+                    + messageUtil.getAttributePasswordShouldNotSame());
+            throw new RequestValidationException(messageUtil.getAttributePasswordShouldNotSame());
+        }
+        
+        if(userInfo.getNewPassword().equals(userInfo.getPassword())){
+            LOGGER.error("New password not valid (id: " + userInfo.getUserId() + "). Error: "
+                    + messageUtil.getAttributePasswordLength("8","15"));
+            throw new RequestValidationException(messageUtil.getAttributePasswordLength("8","15"));
         }
     }
 }

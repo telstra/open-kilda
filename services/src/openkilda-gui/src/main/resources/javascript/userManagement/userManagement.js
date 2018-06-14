@@ -167,7 +167,7 @@ $(document).ready(function() {
         return false;
     });
     /****All select change event *****/
-    $(document).on('change', "#userRoleToSelect, #roleUserSelect", function() {    	
+    $(document).on('change', "#userRoleToSelect", function() {    	
     	var selectId = $(this).attr('id');
     	if($(this).val().length > 0)
     	{

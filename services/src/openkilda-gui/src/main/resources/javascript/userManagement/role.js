@@ -389,13 +389,13 @@ var roleService = (function() {
             };
         });
 
-        if (selectedUser === undefined || selectedUser.length == 0) {
-            $('#roleUserSelectError').show();
-            $('.select2-selection ').addClass("errorInput");
-        }
-        if (selectedUser === undefined || selectedUser.length == 0) {
-            return false;
-        }
+//        if (selectedUser === undefined || selectedUser.length == 0) {
+//            $('#roleUserSelectError').show();
+//            $('.select2-selection ').addClass("errorInput");
+//        }
+//        if (selectedUser === undefined || selectedUser.length == 0) {
+//            return false;
+//        }
         
         var roleData = {
             'users': selectedUsers

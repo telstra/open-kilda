@@ -16,6 +16,8 @@ import javax.servlet.http.HttpServletRequest;
 
 import org.openkilda.auth.model.Permissions;
 import org.openkilda.constants.IConstants;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.usermanagement.model.Permission;
 import org.usermanagement.model.UserInfo;
 import org.usermanagement.service.PermissionService;
@@ -24,14 +26,17 @@ import org.usermanagement.service.PermissionService;
 @RequestMapping(path = "/permission", produces = MediaType.APPLICATION_JSON_VALUE)
 public class PermissionController {
 
+	private static final Logger LOGGER = LoggerFactory.getLogger(PermissionController.class);
+	
     @Autowired
     private PermissionService permissionService;
 
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(method = RequestMethod.POST)
     @Permissions(values = {IConstants.Permission.UM_PERMISSION_ADD})
-    public Permission create(@RequestBody final Permission request) {
-        Permission permissionResponse = permissionService.createPermission(request);
+    public Permission createPermission(@RequestBody final Permission permission) {
+    	LOGGER.info("[createPermission] (name: " + permission.getName() +")");
+        Permission permissionResponse = permissionService.createPermission(permission);
         return permissionResponse;
     }
 
@@ -39,12 +44,14 @@ public class PermissionController {
     @RequestMapping(method = RequestMethod.GET)
     public List<Permission> getPermissionList(final HttpServletRequest request) {
         UserInfo userInfo = (UserInfo) request.getSession().getAttribute(IConstants.SESSION_OBJECT);
+        LOGGER.info("[getPermissionList] (userId: " + userInfo.getUserId() +")");
         return permissionService.getAllPermission(userInfo.getUserId());
     }
 
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(value = "/{permission_id}", method = RequestMethod.GET)
     public Permission getPermissionById(@PathVariable("permission_id") final Long permissionId) {
+    	LOGGER.info("[getPermissionById] (permissionId: " + permissionId +")");
         return permissionService.getPermissionById(permissionId);
     }
 
@@ -52,6 +59,7 @@ public class PermissionController {
     @RequestMapping(value = "/{permission_id}", method = RequestMethod.DELETE)
     @Permissions(values = {IConstants.Permission.UM_PERMISSION_DELETE})
     public void deletePermissionById(@PathVariable("permission_id") final Long permissionId) {
+    	LOGGER.info("[deletePermissionById] (permissionId: " + permissionId +")");
         permissionService.deletePermissionById(permissionId);
     }
 
@@ -59,8 +67,8 @@ public class PermissionController {
     @RequestMapping(value = "/{permission_id}", method = RequestMethod.PUT)
     @Permissions(values = {IConstants.Permission.UM_PERMISSION_EDIT})
     public Permission updatePermission(@PathVariable("permission_id") final Long permissionId,
-            @RequestBody final Permission request) {
-        Permission permissionResponse = permissionService.updatePermission(permissionId, request);
-        return permissionResponse;
+            @RequestBody final Permission permission) {
+    	LOGGER.info("[updatePermission] (permissionId: " + permissionId +")");
+    	return permissionService.updatePermission(permissionId, permission);
     }
 }

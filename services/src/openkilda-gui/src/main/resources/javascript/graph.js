@@ -205,7 +205,10 @@ function zoomEventCall(){
 graph = {
 
 	init: function(responseData){
-	    
+	    var isDirtyCordinates =(typeof(storage.get('isDirtyCordinates'))=='undefined') ?  false : storage.get('isDirtyCordinates');
+	    if(typeof(storage.get('isDirtyCordinates'))=='undefined'){
+	    	storage.set('isDirtyCordinates',isDirtyCordinates);
+	    }
 		if (responseData.switch.data.length == 0 && responseData.isl.data.length == 0 && responseData.flow.data.length == 0) {
 			common.infoMessage('No Data Available','info');
 			return false;
@@ -321,22 +324,27 @@ graph = {
 			$("#switchesgraph").removeClass("hide");
 			
 			try{
-				positions = storage.get('NODES_COORDINATES');
-				if(positions){
-					// control the coordinates here
-				    d3.selectAll("g.node").attr("transform", function(d){
-				    	try{
-				    		d.x = positions[d.switch_id][0];
-					    	d.y = positions[d.switch_id][1];
-				    	}catch(e){
-				    		
-				    	}
-				    	
-				        return "translate("+d.x+","+d.y+")";
-				    });
-				    
-					tick();
-				}
+				common.getData('/user/settings','GET').then(function(data){
+					positions = data;
+						if(positions){
+							storage.set('NODES_COORDINATES',positions)
+							// control the coordinates here
+						    d3.selectAll("g.node").attr("transform", function(d){
+						    	try{
+						    		d.x = positions[d.switch_id][0];
+							    	d.y = positions[d.switch_id][1];
+						    	}catch(e){
+						    		
+						    	}
+						    	
+						        return "translate("+d.x+","+d.y+")";
+						    });
+						    
+							tick();
+						}
+					
+				})
+				
 			}catch(e){
 				console.log(e);
 			} 
@@ -745,7 +753,7 @@ function updateCoordinates(){
 	nodes.forEach(function(d){
 		coordinates[d.switch_id] = [Math.round(d.x * 100) / 100, Math.round(d.y * 100) / 100];
 	})
-	
+	storage.set('isDirtyCordinates', true);
 	storage.set('NODES_COORDINATES', coordinates);
 }
 

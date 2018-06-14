@@ -19,7 +19,7 @@ if(page == "isl") {
 
 var graphIntervalISL;
 var graphIntervalISLName;
-
+var TopologyIntervalID;
 
 var LocalStorageHandler = function() {
 
@@ -208,7 +208,23 @@ var urlString = window.location.href;
 $("#menubar-tbn li").each(function(){
 	$(this).removeClass();
 })
-
+function updateTopologyCoordinates(){
+	var isDirtyCordinates =(typeof(storage.get('isDirtyCordinates'))=='undefined') ?  false : storage.get('isDirtyCordinates');
+	if(isDirtyCordinates){
+		var coordinatesJson = storage.get('NODES_COORDINATES');
+    	common.updateData("/user/settings","PATCH",coordinatesJson).then(function(res){
+    		console.log('topology position updated')
+    		storage.set('isDirtyCordinates',false);
+    	}).fail(function(error){
+    		console.log('topology position failed to update')
+       })
+    } 
+}
+if(typeof(TopologyIntervalID)!='undefined' && page !=='topology'){
+	clearTimeout(TopologyIntervalID);
+	console.log('TopologyIntervalID',TopologyIntervalID)
+	TopologyIntervalID = undefined;
+}
 if(page == "home"){
 	$("#home-menu-id").addClass("active");
 	storage.remove("FLOWS_LIST");
@@ -217,6 +233,7 @@ if(page == "home"){
 	$("#topology-menu-id").addClass("active");
 	storage.remove("FLOWS_LIST");
 	storage.remove("SWITCHES_LIST");
+	TopologyIntervalID = setInterval(updateTopologyCoordinates,5000);
 }else if(page == "flows" || page == "flowdetails" || (page.indexOf('details')!==-1 && href.indexOf('flows')!==-1)){
 	$("#flows-menu-id").addClass("active");
 	storage.remove("SWITCHES_LIST");

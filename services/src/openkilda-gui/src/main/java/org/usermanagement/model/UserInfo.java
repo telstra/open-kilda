@@ -14,7 +14,7 @@ import java.util.Set;
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({ "user_id", "name", "user_name", "roles", "email", "role_id", "password", "status",
-		"new_password", "code" })
+		"new_password", "code", "settings" })
 public class UserInfo implements Serializable {
 
     private static final long serialVersionUID = 5779373512137456449L;
@@ -57,6 +57,9 @@ public class UserInfo implements Serializable {
     
     @JsonProperty("code")
     private String code;
+    
+    @JsonProperty("settings")
+    private String settings;
 
 
     /**
@@ -295,6 +298,25 @@ public class UserInfo implements Serializable {
 	 */
 	public void setCode(String code) {
 		this.code = code;
+	}
+	
+	/**
+	 * Gets the settings.
+	 *
+	 * @return the settings
+	 */
+	public String getSettings() {
+		return settings;
+	}
+	
+
+	/**
+	 * Sets the settings.
+	 *
+	 * @param settings the new settings
+	 */
+	public void setSettings(String settings) {
+		this.settings = settings;
 	}
 	
 

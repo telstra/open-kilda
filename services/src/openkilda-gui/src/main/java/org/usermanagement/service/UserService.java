@@ -29,8 +29,10 @@ import org.usermanagement.conversion.RoleConversionUtil;
 import org.usermanagement.conversion.UserConversionUtil;
 import org.usermanagement.dao.entity.RoleEntity;
 import org.usermanagement.dao.entity.UserEntity;
+import org.usermanagement.dao.entity.UserSettingEntity;
 import org.usermanagement.dao.repository.RoleRepository;
 import org.usermanagement.dao.repository.UserRepository;
+import org.usermanagement.dao.repository.UserSettingRepository;
 import org.usermanagement.exception.RequestValidationException;
 import org.usermanagement.model.Role;
 import org.usermanagement.model.UserInfo;
@@ -70,6 +72,9 @@ public class UserService implements UserDetailsService {
 
     @Autowired
     private MailUtils mailUtils;
+    
+    @Autowired
+    private UserSettingRepository userSettingRepository;
 
     /*
      * (non-Javadoc)
@@ -198,6 +203,7 @@ public class UserService implements UserDetailsService {
         UserEntity userEntity = userRepository.findByUsername(userName);
         userEntity.setTwoFaKey(secretKey);
         userRepository.save(userEntity);
+        LOGGER.info("User 2FA updated successfully (username: " + userName + ")");
     }
 
     /**
@@ -208,9 +214,16 @@ public class UserService implements UserDetailsService {
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
     public void updateLoginDetail(final String userName) {
         UserEntity userEntity = userRepository.findByUsername(userName);
+        if (ValidatorUtil.isNull(userEntity)) {
+        	LOGGER.error("User with username '" + userName + "' not found. Error: "
+					+ messageUtil.getAttributeInvalid("username", userName + ""));
+            throw new RequestValidationException(
+                    messageUtil.getAttributeInvalid("username", userName + ""));
+        }
         userEntity.setLoginTime(Calendar.getInstance().getTime());
         userEntity.setIs2FaConfigured(true);
         userRepository.save(userEntity);
+        LOGGER.info("User last login updated successfully (username: " + userName + ")");
     }
 
     /**
@@ -222,11 +235,14 @@ public class UserService implements UserDetailsService {
     public void deleteUserById(final Long userId) {
         UserEntity userEntity = userRepository.findByUserId(userId);
         if (ValidatorUtil.isNull(userEntity)) {
+        	LOGGER.error("User with user id '" + userId + "' not found. Error: "
+					+ messageUtil.getAttributeInvalid("user_id", userId + ""));
             throw new RequestValidationException(
                     messageUtil.getAttributeInvalid("user_id", userId + ""));
         }
 
         userRepository.delete(userEntity);
+        LOGGER.info("User deleted successfully (userId: " + userId + ")");
     }
 
     /**
@@ -240,6 +256,12 @@ public class UserService implements UserDetailsService {
     public Role assignUserByRoleId(final Long roleId, final Role role) {
 
         RoleEntity roleEntity = roleRepository.findByRoleId(roleId);
+        if (ValidatorUtil.isNull(roleEntity)) {
+        	LOGGER.error("Role with role id '" + roleId + "' not found. Error: "
+					+ messageUtil.getAttributeInvalid("role_id", roleId + ""));
+            throw new RequestValidationException(
+                    messageUtil.getAttributeInvalid("role_id", roleId + ""));
+        }
         roleEntity.getUsers().clear();
         if (role.getUserInfo() != null) {
             for (UserInfo user : role.getUserInfo()) {
@@ -248,6 +270,7 @@ public class UserService implements UserDetailsService {
             }
         }
         roleEntity = roleRepository.save(roleEntity);
+        LOGGER.info("Users assigned with role successfully (role id: " + roleId + ")");
         return RoleConversionUtil.toRole(roleEntity, false, true);
     }
 
@@ -269,6 +292,12 @@ public class UserService implements UserDetailsService {
                     messageUtil.getAttributeInvalid("user_id", userId + ""));
         }
 
+        if (!StringUtil.matches(userInfo.getPassword(), userEntity.getPassword())) {
+            LOGGER.error("Password not matched for user (id: " + userId + "). Error: "
+                    + messageUtil.getAttributePasswordInvalid());
+            throw new RequestValidationException(messageUtil.getAttributePasswordInvalid());
+        }
+        
         if (userEntity.getIs2FaEnabled()) {
             if (!userEntity.getIs2FaConfigured()) {
                 LOGGER.error("2FA key is not configured for user(id: " + userId + "). Error: "
@@ -282,17 +311,11 @@ public class UserService implements UserDetailsService {
                 } else if (!TwoFactorUtility.validateOtp(userInfo.getCode(),
                         userEntity.getTwoFaKey())) {
                     LOGGER.error("Invalid OTP for user (id: " + userId + "). Error: "
-                            + messageUtil.getAttributeInvalid("OTP", userInfo.getCode()));
+                            + messageUtil.getAttributeNotvalid("OTP"));
                     throw new InvalidOtpException(
-                            messageUtil.getAttributeInvalid("OTP", userInfo.getCode()));
+                            messageUtil.getAttributeNotvalid("OTP"));
                 }
             }
-        }
-
-        if (!StringUtil.matches(userInfo.getPassword(), userEntity.getPassword())) {
-            LOGGER.error("Password not matched for user (id: " + userId + "). Error: "
-                    + messageUtil.getAttributePasswordInvalid());
-            throw new RequestValidationException(messageUtil.getAttributePasswordInvalid());
         }
 
         userEntity.setPassword(StringUtil.encodeString(userInfo.getNewPassword()));
@@ -324,6 +347,7 @@ public class UserService implements UserDetailsService {
         UserEntity userEntity = userRepository.findByUserId(userId);
 
         if (ValidatorUtil.isNull(userEntity)) {
+        	LOGGER.error("User Entity not found for user(id: " + userId + ")");
             throw new RequestValidationException(
                     messageUtil.getAttributeInvalid("user_id", userId + ""));
         }
@@ -334,13 +358,14 @@ public class UserService implements UserDetailsService {
             userEntity.setTwoFaKey(null);
         }
         userEntity = userRepository.save(userEntity);
-
+		LOGGER.info("Password reset successfully for user(userId: " + userId + ").");
         if (!adminFlag) {
             Map<String, Object> context = new HashMap<>();
             context.put("name", userEntity.getName());
             context.put("password", randomPassword);
             mailService.send(userEntity.getEmail(), mailUtils.getSubjectResetPassword(),
                     TemplateService.Template.RESET_ACCOUNT_PASSWORD, context);
+            LOGGER.info("Reset password mail sent successfully for user(userId: " + userId + ").");
         }
         userinfo.setPassword(randomPassword);
         return userinfo;
@@ -356,19 +381,58 @@ public class UserService implements UserDetailsService {
         UserEntity userEntity = userRepository.findByUserId(userId);
 
         if (ValidatorUtil.isNull(userEntity)) {
+        	LOGGER.error("User Entity not found for user(user_id: " + userId + ")");
             throw new RequestValidationException(
                     messageUtil.getAttributeInvalid("user_id", userId + ""));
         }
         userEntity.setIs2FaConfigured(false);
         userEntity.setTwoFaKey(null);
         userEntity = userRepository.save(userEntity);
-
+        LOGGER.info("2FA reset successfully for user(user_id: " + userId + ").");
         if (!userEntity.getIs2FaConfigured()) {
             Map<String, Object> context = new HashMap<>();
             context.put("name", userEntity.getName());
 
             mailService.send(userEntity.getEmail(), mailUtils.getSubjectReset2fa(),
                     TemplateService.Template.RESET_2FA, context);
+            LOGGER.info("Reset 2FA mail sent successfully for user(user_id: " + userId + ").");
         }
     }
+    
+	@Transactional(propagation = Propagation.REQUIRED, readOnly = false)
+	public UserInfo saveOrUpdateSettings(UserInfo userInfo) {
+
+		if (ValidatorUtil.isNull(userInfo.getUserId())) {
+			LOGGER.error("Validation failed for user (id: " + userInfo.getUserId() + "). Error: "
+					+ messageUtil.getAttributeInvalid("user_id", userInfo.getUserId() + ""));
+			throw new RequestValidationException(messageUtil.getAttributeInvalid("user_id", userInfo.getUserId() + ""));
+		}
+
+		UserSettingEntity userSettingEntity = userSettingRepository.findOneByUserId(userInfo.getUserId());
+		if (userSettingEntity == null) {
+			userSettingEntity = new UserSettingEntity();
+			userSettingEntity.setUserId(userInfo.getUserId());
+		}
+		userSettingEntity.setSettings(userInfo.getSettings());
+		userSettingEntity = userSettingRepository.save(userSettingEntity);
+		LOGGER.info("User Settings saved successfully for user(user_id: " + userInfo.getUserId() + ").");
+		return userInfo;
+	}
+
+	@Transactional(propagation = Propagation.REQUIRED, readOnly = false)
+	public String getUserSettings(final long userId) {
+
+		if (ValidatorUtil.isNull(userId)) {
+			LOGGER.error("Validation failed for user (id: " + userId + "). Error: "
+					+ messageUtil.getAttributeInvalid("user_id", userId + ""));
+			throw new RequestValidationException(messageUtil.getAttributeInvalid("user_id", userId + ""));
+		}
+
+		UserSettingEntity userSettingEntity = userSettingRepository.findOneByUserId(userId);
+		if (userSettingEntity == null) {
+			LOGGER.error("User settings not found for user(user_id: " + userId + ")");
+			throw new RequestValidationException(messageUtil.getAttributeNotFound("User settings"));
+		}
+		return userSettingEntity.getSettings();
+	}
 }

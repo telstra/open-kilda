@@ -21,6 +21,9 @@ public class MessageUtils {
 
     @Value("${attribute.invalid.message}")
     private String attributeInvalid;
+    
+    @Value("${attribute.not.valid.message}")
+    private String attributeNotvalid;
 
     /** The attribute not found. */
     @Value("${attribute.not.found.message}")
@@ -35,8 +38,20 @@ public class MessageUtils {
     @Value("${attribute.2fa.not.configured}")
     private String attribute2faNotConfiured;
     
+    @Value("${attribute.password.should.not.same}")
+    private String attributePasswordShouldNotSame;
+    
+    @Value("${attribute.password.length}")
+    private String attributePasswordLength;
+    
     @Value("${unauthorized.message}")
     private String unauthorizedMessage;
+    
+    @Value("${attribute.password.must.contain}")
+    private String attributePasswordMustContain;
+    
+    @Value("${attribute.password.must.not.contain}")
+    private String attributePasswordMustNotContain;
 
     /**
      * Gets the attribute unique.
@@ -117,5 +132,54 @@ public class MessageUtils {
 	public String getUnauthorizedMessage() {
 		return unauthorizedMessage;
 	}
+	
+    /**
+     * Gets the attribute not valid.
+     *
+     * @param attribute the attribute
+     * @return the attribute invalid
+     */
+    public String getAttributeNotvalid(final String attribute) {
+        return attributeNotvalid.replace("{{ATTRIBUTE}}", attribute);
+    }
+	
+    /**
+     * Gets the attribute password should not same.
+     *
+     * @return the attribute password should not same
+     */
+    public String getAttributePasswordShouldNotSame(){
+    	return attributePasswordShouldNotSame;
+    }
+
+	/**
+	 * Gets the attribute password length.
+	 *
+	 * @param min the min
+	 * @param max the max
+	 * @return the attribute password length
+	 */
+	public String getAttributePasswordLength(final String min, final String max) {
+		return attributePasswordLength.replace("{{VALUE1}}", min).replace("{{VALUE2}}", min);
+	}
+
+	/**
+	 * Gets the attribute password must contain.
+	 *
+	 * @return the attribute password must contain
+	 */
+	public String getAttributePasswordMustContain() {
+		return attributePasswordMustContain;
+	}
+
+	/**
+	 * Gets the attribute password must not contain.
+	 *
+	 * @return the attribute password must not contain
+	 */
+	public String getAttributePasswordMustNotContain() {
+		return attributePasswordMustNotContain;
+	}
+
 	
 }
