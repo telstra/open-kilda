@@ -17,11 +17,16 @@ package org.openkilda.northbound.controller;
 
 import static org.mockito.Mockito.mock;
 
+import org.openkilda.config.KafkaTopicsConfig;
+import org.openkilda.northbound.config.KafkaNorthboundConfig;
 import org.openkilda.northbound.config.SecurityConfig;
 import org.openkilda.northbound.config.WebConfig;
 import org.openkilda.northbound.messaging.HealthCheckMessageConsumer;
 import org.openkilda.northbound.messaging.MessageConsumer;
 import org.openkilda.northbound.messaging.MessageProducer;
+
+import com.sabre.oss.conf4j.spring.annotation.ConfigurationType;
+import com.sabre.oss.conf4j.spring.annotation.EnableConf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
@@ -44,6 +49,9 @@ import java.util.Map;
         "org.openkilda.northbound.service",
         "org.openkilda.northbound.utils"})
 @PropertySource({"classpath:northbound.properties"})
+@EnableConf4j
+@ConfigurationType(name = "kafkaTopicsConfig", value = KafkaTopicsConfig.class)
+@ConfigurationType(name = "kafkaGroupConfig", value = KafkaNorthboundConfig.class)
 public class TestConfig {
     @Bean
     public MessageConsumer messageConsumer() {

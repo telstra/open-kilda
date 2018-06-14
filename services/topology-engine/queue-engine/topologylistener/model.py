@@ -14,7 +14,11 @@
 #   limitations under the License.
 #
 
+import datetime
 import collections
+import json
+
+import pytz
 
 
 class NetworkEndpoint(
@@ -73,3 +77,59 @@ class InterSwitchLink(
 
     def __str__(self):
         return '{} <===> {}'.format(self.source, self.dest)
+
+
+LifeCycleFields = collections.namedtuple('LifeCycleFields', ('ctime', 'mtime'))
+
+
+class TimeProperty(object):
+    FORMAT = '%Y-%m-%dT%H:%M:%S.%fZ'
+    UNIX_EPOCH = datetime.datetime(1970, 1, 1, 0, 0, 0, 0, pytz.utc)
+
+    @classmethod
+    def new_from_java_timestamp(cls, value):
+        value = int(value)
+        value /= 1000.0
+        return cls(datetime.datetime.utcfromtimestamp(value))
+
+    @classmethod
+    def new_from_db(cls, value):
+        value = datetime.datetime.strptime(value, cls.FORMAT)
+        return cls(value)
+
+    @classmethod
+    def now(cls, milliseconds_precission=False):
+        value = datetime.datetime.utcnow()
+        if milliseconds_precission:
+            microseconds = value.microsecond
+            microseconds -= microseconds % 1000
+            value = value.replace(microsecond=microseconds)
+        return cls(value)
+
+    def __init__(self, value):
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=pytz.utc)
+        self.value = value
+
+    def __str__(self):
+        return self.value.strftime(self.FORMAT)
+
+    def as_java_timestamp(self):
+        from_epoch = self.value - self.UNIX_EPOCH
+        seconds = int(from_epoch.total_seconds())
+        return seconds * 1000 + from_epoch.microseconds // 1000
+
+
+class JsonSerializable(object):
+    pass
+
+
+class JSONEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, TimeProperty):
+            result = str(o)
+        elif isinstance(o, JsonSerializable):
+            result = vars(o)
+        else:
+            result = super(JSONEncoder, self).default(o)
+        return result

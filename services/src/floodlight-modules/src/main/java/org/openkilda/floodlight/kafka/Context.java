@@ -1,28 +1,31 @@
 package org.openkilda.floodlight.kafka;
 
-import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.core.module.IFloodlightModule;
-import net.floodlightcontroller.core.module.IFloodlightService;
+import static java.util.Objects.requireNonNull;
 
-import java.util.Collection;
-import java.util.Map;
+import org.openkilda.floodlight.config.KafkaFloodlightConfig;
+
+import java.util.Properties;
 
 public class Context {
-    private KafkaConfig kafkaConfig;
-    private Map<String, String> moduleConfig;
+    private final KafkaFloodlightConfig kafkaConfig;
 
-    public static void fillDependencies(Collection<Class<? extends IFloodlightService>> dependencies) {}
-
-    public Context(FloodlightModuleContext moduleContext, IFloodlightModule module) {
-        moduleConfig = moduleContext.getConfigParams(module);
-        kafkaConfig = new KafkaConfig(moduleConfig);
+    public Context(KafkaFloodlightConfig kafkaConfig) {
+        this.kafkaConfig = requireNonNull(kafkaConfig, "kafkaConfig cannot be null");
     }
 
-    public KafkaConfig getKafkaConfig() {
-        return kafkaConfig;
+    public boolean isTestingMode() {
+        return "YES".equals(kafkaConfig.getTestingMode());
     }
 
-    public String configLookup(String option) {
-        return moduleConfig.get(option);
+    public String getHeartBeatInterval() {
+        return kafkaConfig.getHeartBeatInterval();
+    }
+
+    public Properties getKafkaProducerProperties() {
+        return kafkaConfig.createKafkaProducerProperties();
+    }
+
+    public Properties getKafkaConsumerProperties() {
+        return kafkaConfig.createKafkaConsumerProperties();
     }
 }

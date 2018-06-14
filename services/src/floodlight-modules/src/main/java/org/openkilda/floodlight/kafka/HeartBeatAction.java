@@ -1,5 +1,6 @@
 package org.openkilda.floodlight.kafka;
 
+import org.openkilda.floodlight.kafka.producer.Producer;
 import org.openkilda.floodlight.utils.CorrelationContext;
 import org.openkilda.floodlight.utils.NewCorrelationContextRequired;
 import org.openkilda.messaging.Message;
@@ -19,6 +20,6 @@ public class HeartBeatAction extends TimerTask {
     @NewCorrelationContextRequired
     public void run() {
         Message message = new org.openkilda.messaging.HeartBeat(System.currentTimeMillis(), CorrelationContext.getId());
-        producer.handle(topic, message);
+        producer.sendMessageAndTrack(topic, message);
     }
 }

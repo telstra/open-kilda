@@ -3,8 +3,8 @@ services:
 
   mininet:
     container_name: mininet
-    image: "kilda/mininet:${full_build_number:-latest}"
-    command: /app/entry-point.sh
+    build:
+      context: services/mininet/
     ports:
       - "38080:38080"
       - "17191:17191"

@@ -25,7 +25,9 @@ import static org.junit.Assert.assertEquals;
 import static org.openkilda.floodlight.message.command.encapsulation.PushSchemeOutputCommands.ofFactory;
 import static org.openkilda.messaging.Utils.MAPPER;
 
-import com.google.common.util.concurrent.Futures;
+import org.openkilda.config.KafkaTopicsConfig;
+import org.openkilda.floodlight.config.KafkaFloodlightConfig;
+import org.openkilda.floodlight.config.provider.ConfigurationProvider;
 import org.openkilda.floodlight.message.command.encapsulation.OutputCommands;
 import org.openkilda.floodlight.message.command.encapsulation.ReplaceSchemeOutputCommands;
 import org.openkilda.floodlight.pathverification.IPathVerificationService;
@@ -43,6 +45,7 @@ import org.openkilda.messaging.command.flow.InstallTransitFlow;
 
 import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
+import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.MoreExecutors;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.SwitchDescription;
@@ -254,8 +257,12 @@ public class ReplaceInstallFlowTest {
         // construct kafka message
         ConsumerRecord<String, String> record = new ConsumerRecord<>("", 0, 0, "", value);
 
+        ConfigurationProvider provider = new ConfigurationProvider(context, collector);
+        KafkaFloodlightConfig kafkaConfig = provider.getConfiguration(KafkaFloodlightConfig.class);
+        KafkaTopicsConfig topicsConfig = provider.getConfiguration(KafkaTopicsConfig.class);
+
         // create parser instance
-        ConsumerContext kafkaContext = new ConsumerContext(context, collector);
+        ConsumerContext kafkaContext = new ConsumerContext(context, kafkaConfig, topicsConfig);
         RecordHandler parseRecord = new RecordHandler(kafkaContext, record, new MeterPool());
         // init test mocks
         Capture<OFFlowAdd> flowAddCapture = flowCommand == null ? null : newCapture(CaptureType.ALL);

@@ -17,12 +17,13 @@ package org.openkilda.floodlight.statistics;
 
 import static java.util.stream.Collectors.toList;
 
+import org.openkilda.config.KafkaTopicsConfig;
+import org.openkilda.floodlight.config.provider.ConfigurationProvider;
 import org.openkilda.floodlight.kafka.KafkaMessageProducer;
 import org.openkilda.floodlight.utils.CorrelationContext;
 import org.openkilda.floodlight.utils.CorrelationContext.CorrelationContextClosable;
 import org.openkilda.floodlight.utils.NewCorrelationContextRequired;
 import org.openkilda.messaging.Destination;
-import org.openkilda.messaging.Topic;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.FlowStatsData;
@@ -70,12 +71,12 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
     private static final Logger logger = LoggerFactory.getLogger(StatisticsService.class);
     private static final U64 SYSTEM_MASK = U64.of(0x8000000000000000L);
     private static final long OFPM_ALL = 0xffffffffL;
-    private static final String STATISTICS_TOPIC = Topic.STATS;
 
     private IOFSwitchService switchService;
     private KafkaMessageProducer kafkaProducer;
     private IThreadPoolService threadPoolService;
     private int interval;
+    private String statisticsTopic;
 
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
@@ -101,8 +102,13 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
         switchService = context.getServiceImpl(IOFSwitchService.class);
         threadPoolService = context.getServiceImpl(IThreadPoolService.class);
         kafkaProducer = context.getServiceImpl(KafkaMessageProducer.class);
-        Map<String, String> configParameters = context.getConfigParams(this);
-        interval = Integer.valueOf(configParameters.get("interval"));
+
+        ConfigurationProvider provider = new ConfigurationProvider(context, this);
+        KafkaTopicsConfig topicsConfig = provider.getConfiguration(KafkaTopicsConfig.class);
+        statisticsTopic = topicsConfig.getStatsTopic();
+
+        StatisticsServiceConfig serviceConfig = provider.getConfiguration(StatisticsServiceConfig.class);
+        interval = serviceConfig.getInterval();
     }
 
     @Override
@@ -110,8 +116,8 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
         if (interval > 0) {
             threadPoolService.getScheduledExecutor().scheduleAtFixedRate(
                     () -> switchService.getAllSwitchMap().values().forEach(iofSwitch -> {
-                            gatherPortStats(iofSwitch);
-                            gatherFlowStats(iofSwitch);
+                        gatherPortStats(iofSwitch);
+                        gatherFlowStats(iofSwitch);
                     }), interval, interval, TimeUnit.SECONDS);
         }
     }
@@ -236,7 +242,7 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
 
                 InfoMessage infoMessage = new InfoMessage(transform.apply(data),
                         System.currentTimeMillis(), correlationId, Destination.WFM_STATS);
-                kafkaProducer.postMessage(STATISTICS_TOPIC, infoMessage);
+                kafkaProducer.postMessage(statisticsTopic, infoMessage);
             }
         }
 

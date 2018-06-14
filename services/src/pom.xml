@@ -19,6 +19,8 @@
         <apache.kafka.version>0.10.2.1</apache.kafka.version>
         <commons.cli.version>1.4</commons.cli.version>
         <commons.codec.version>1.10</commons.codec.version>
+        <commons-collections.version>4.1</commons-collections.version>
+        <commons-lang3.version>3.7</commons-lang3.version>
         <cucumber.version>1.2.5</cucumber.version>
         <easymock.version>3.4</easymock.version>
         <enunciate.version>2.9.1</enunciate.version>
@@ -45,12 +47,18 @@
         <slf4j.version>1.7.25</slf4j.version>
         <snakeyaml.version>1.18</snakeyaml.version>
         <lombok.version>1.16.20</lombok.version>
+        <failsafe.version>1.0.5</failsafe.version>
+        <commons.io.version>1.3.2</commons.io.version>
         <aspectj.version>1.8.13</aspectj.version>
+        <conf4j.version>1.0</conf4j.version>
+
         <aspectj-maven-plugin.version>1.11</aspectj-maven-plugin.version>
+        <failsafe.version>1.0.5</failsafe.version>
     </properties>
 
     <modules>
         <module>messaging</module>
+        <module>configuration</module>
         <module>pce</module>
         <module>floodlight-modules</module>
         <module>northbound</module>
@@ -108,6 +116,11 @@
                 <version>${jersey.version}</version>
             </dependency>
             <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-io</artifactId>
+                <version>${commons.io.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>com.google.guava</groupId>
                 <artifactId>guava</artifactId>
                 <version>${guava.version}</version>
@@ -121,6 +134,16 @@
                 <groupId>commons-httpclient</groupId>
                 <artifactId>commons-httpclient</artifactId>
                 <version>${httpclient.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-collections4</artifactId>
+                <version>${commons-collections.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-lang3</artifactId>
+                <version>${commons-lang3.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.kafka</groupId>
@@ -165,6 +188,21 @@
                 <artifactId>aspectjrt</artifactId>
                 <version>${aspectj.version}</version>
             </dependency>
+            <dependency>
+                <groupId>com.sabre.oss.conf4j</groupId>
+                <artifactId>conf4j-core</artifactId>
+                <version>${conf4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.sabre.oss.conf4j</groupId>
+                <artifactId>conf4j-spring-boot</artifactId>
+                <version>${conf4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>net.jodah</groupId>
+                <artifactId>failsafe</artifactId>
+                <version>${failsafe.version}</version>
+            </dependency>
 
             <dependency>
                 <groupId>junit</groupId>
@@ -201,6 +239,13 @@
                 <artifactId>easymock</artifactId>
                 <version>${easymock.version}</version>
                 <scope>test</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok</artifactId>
+                <version>${lombok.version}</version>
+                <scope>provided</scope>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -334,15 +379,48 @@
                         <source>1.8</source>
                         <target>1.8</target>
                         <showWeaveInfo>true</showWeaveInfo>
+                        <forceAjcCompile>true</forceAjcCompile>
+                        <sources/>
+                        <testSources/>
                     </configuration>
                     <executions>
                         <execution>
+                            <id>aspectj-classes</id>
+                            <configuration>
+                                <weaveDirectories>
+                                    <weaveDirectory>${project.build.outputDirectory}</weaveDirectory>
+                                </weaveDirectories>
+                            </configuration>
+                            <phase>process-classes</phase>
                             <goals>
                                 <goal>compile</goal>
-                                <goal>test-compile</goal>
                             </goals>
                         </execution>
+                        <execution>
+                            <id>aspectj-test-classes</id>
+                            <phase>process-test-classes</phase>
+                            <goals>
+                                <goal>test-compile</goal>
+                            </goals>
+                            <configuration>
+                                <weaveDirectories>
+                                    <weaveDirectory>${project.build.testOutputDirectory}</weaveDirectory>
+                                </weaveDirectories>
+                            </configuration>
+                        </execution>
                     </executions>
+                    <dependencies>
+                        <dependency>
+                            <groupId>org.aspectj</groupId>
+                            <artifactId>aspectjrt</artifactId>
+                            <version>${aspectj.version}</version>
+                        </dependency>
+                        <dependency>
+                            <groupId>org.aspectj</groupId>
+                            <artifactId>aspectjtools</artifactId>
+                            <version>${aspectj.version}</version>
+                        </dependency>
+                    </dependencies>
                 </plugin>
             </plugins>
         </pluginManagement>

@@ -1,3 +1,6 @@
+services:
+  - docker
+
 jobs:
   include:
     - stage: ansible-test

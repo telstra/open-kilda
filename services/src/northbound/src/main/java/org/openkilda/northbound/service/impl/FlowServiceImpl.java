@@ -28,7 +28,6 @@ import org.openkilda.messaging.command.flow.FlowPathRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowStatusRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
-import org.openkilda.messaging.command.flow.FlowsGetRequest;
 import org.openkilda.messaging.command.flow.SynchronizeCacheAction;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.PathNode;
@@ -39,7 +38,6 @@ import org.openkilda.messaging.info.flow.FlowPathResponse;
 import org.openkilda.messaging.info.flow.FlowRerouteResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowStatusResponse;
-import org.openkilda.messaging.info.flow.FlowsResponse;
 import org.openkilda.messaging.info.rule.FlowApplyActions;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.FlowSetFieldAction;
@@ -60,6 +58,7 @@ import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.service.FlowService;
 import org.openkilda.northbound.service.SwitchService;
 import org.openkilda.northbound.utils.RequestCorrelationId;
+import org.openkilda.northbound.utils.ResponseCollector;
 import org.openkilda.pce.provider.Auth;
 import org.openkilda.pce.provider.AuthNeo4j;
 import org.openkilda.pce.provider.NeoDriver;
@@ -82,6 +81,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 import javax.annotation.PostConstruct;
 
 /**
@@ -105,13 +105,13 @@ public class FlowServiceImpl implements FlowService {
     /**
      * The kafka topic for the flow topology.
      */
-    @Value("${kafka.flow.topic}")
+    @Value("#{kafkaTopicsConfig.getFlowTopic()}")
     private String topic;
 
     /**
      * The kafka topic for the topology engine.
      */
-    @Value("${kafka.topo.eng.topic}")
+    @Value("#{kafkaTopicsConfig.getTopoEngTopic()}")
     private String topoEngTopic;
 
 
@@ -158,6 +158,9 @@ public class FlowServiceImpl implements FlowService {
      */
     @Autowired
     private RestTemplate restTemplate;
+
+    @Autowired
+    private ResponseCollector<FlowResponse> flowsCollector;
 
 
     @PostConstruct
@@ -257,17 +260,17 @@ public class FlowServiceImpl implements FlowService {
     @Override
     public List<FlowPayload> getFlows() {
         final String correlationId = RequestCorrelationId.getId();
-        LOGGER.debug("\n\n\nGet flows: ENTER {}={}\n", CORRELATION_ID, correlationId);
-        // TODO: why does FlowsGetRequest use empty FlowIdStatusPayload? Delete if not needed.
-        FlowsGetRequest data = new FlowsGetRequest(new FlowIdStatusPayload());
+        LOGGER.debug("Get flows request processing");
+        FlowGetRequest data = new FlowGetRequest();
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
-        messageConsumer.clear();
         messageProducer.send(topic, request);
-        Message message = (Message) messageConsumer.poll(correlationId);
-        FlowsResponse response = (FlowsResponse) validateInfoMessage(request, message, correlationId);
-        List<FlowPayload> result = collectFlows(response.getFlowIds(), correlationId);
-        logger.debug("\nGet flows: EXIT {}={}, num_flows {}\n\n\n", CORRELATION_ID, correlationId, result.size());
-        return result;
+        List<FlowResponse> result = flowsCollector.getResult(correlationId);
+        logger.debug("Received {} flows", result.size());
+
+        return result.stream()
+                .map(FlowResponse::getPayload)
+                .map(FlowPayloadToFlowConverter::buildFlowPayloadByFlow)
+                .collect(Collectors.toList());
     }
 
     /**
@@ -798,28 +801,4 @@ public class FlowServiceImpl implements FlowService {
         FlowCacheSyncResponse response = (FlowCacheSyncResponse) validateInfoMessage(request, message, correlationId);
         return response.getPayload();
     }
-
-    private List<FlowPayload> collectFlows(List<String> flowIds, String correlationId) {
-        int requestsAmount = flowIds.size();
-        List<FlowPayload> result = new ArrayList<>(requestsAmount);
-        List<CommandMessage> requests = new ArrayList<>(requestsAmount);
-
-        for (String id : flowIds) {
-            String getFlowCorrelationId = correlationId + id;
-            FlowGetRequest data = new FlowGetRequest(new FlowIdStatusPayload(id, null));
-            CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), getFlowCorrelationId,
-                    Destination.WFM);
-            messageProducer.send(topic, request);
-            requests.add(request);
-        }
-
-        for (CommandMessage request : requests) {
-            Message message = (Message) messageConsumer.poll(request.getCorrelationId());
-            FlowResponse response = (FlowResponse) validateInfoMessage(request, message, correlationId);
-            result.add(FlowPayloadToFlowConverter.buildFlowPayloadByFlow(response.getPayload()));
-        }
-
-        return result;
-    }
-
 }

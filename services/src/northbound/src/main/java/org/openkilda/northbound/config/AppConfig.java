@@ -15,12 +15,24 @@
 
 package org.openkilda.northbound.config;
 
+import static com.sabre.oss.conf4j.spring.Conf4jSpringConstants.CONF4J_CONFIGURATION_VALUE_PROCESSORS;
+import static java.util.Collections.singletonList;
+
+import org.openkilda.config.EnvironmentConfig;
+import org.openkilda.config.KafkaTopicsConfig;
+import org.openkilda.config.naming.KafkaNamingForConfigurationValueProcessor;
+import org.openkilda.config.naming.KafkaNamingStrategy;
+
+import com.sabre.oss.conf4j.processor.ConfigurationValueProcessor;
+import com.sabre.oss.conf4j.spring.annotation.ConfigurationType;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.web.ErrorMvcAutoConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.PropertySource;
+
+import java.util.List;
 
 /**
  * The Application configuration. This configuration is used for application run. It includes configs of different
@@ -35,5 +47,17 @@ import org.springframework.context.annotation.PropertySource;
         "org.openkilda.northbound.converter",
         "org.openkilda.northbound.service",
         "org.openkilda.northbound.utils"})
+@ConfigurationType(name = "kafkaTopicsConfig", value = KafkaTopicsConfig.class)
+@ConfigurationType(name = "kafkaGroupConfig", value = KafkaNorthboundConfig.class)
+@ConfigurationType(EnvironmentConfig.class)
 public class AppConfig {
+
+    @Bean(CONF4J_CONFIGURATION_VALUE_PROCESSORS)
+    List<ConfigurationValueProcessor> configurationValueProcessors(EnvironmentConfig environmentConfig) {
+        String namingPrefix = environmentConfig.getNamingPrefix();
+        KafkaNamingStrategy namingStrategy = new KafkaNamingStrategy(namingPrefix != null ? namingPrefix : "");
+
+        // Apply the environment prefix to Kafka topics and groups in the configuration.
+        return singletonList(new KafkaNamingForConfigurationValueProcessor(namingStrategy));
+    }
 }
