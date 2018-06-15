@@ -399,6 +399,19 @@ class TestIsl(share.AbstractTest):
                 exc.DBRecordNotFound, isl_utils.fetch,
                 neo4j_connect, isl_beta_alpha)
 
+    def test_port_down_with_cost_as_string(self):
+        sw_alpha = make_datapath_id(1)
+        sw_beta = make_datapath_id(2)
+        isl_alpha_beta = model.InterSwitchLink(
+                model.NetworkEndpoint(sw_alpha, 2),
+                model.NetworkEndpoint(sw_beta, 2), None)
+        self.assertTrue(share.exec_isl_discovery(isl_alpha_beta))
+
+        with neo4j_connect.begin() as tx:
+            isl_utils.set_props(tx, isl_alpha_beta, {"cost": "10"})
+
+        self.assertTrue(make_port_down(isl_alpha_beta.source))
+
     def test_multi_isl_port_down(self):
         sw_alpha = make_datapath_id(1)
         sw_beta = make_datapath_id(2)
@@ -434,6 +447,17 @@ class TestIsl(share.AbstractTest):
     def test_cost_raise_on_port_down(self):
         self.setup_initial_data()
         self._cost_raise_on_port_down(10, 10010, 10010)
+        self._cost_raise_on_port_down(10010, 10010, 10010)
+
+        self._set_isl_cost('20')
+
+        self._cost_raise_on_port_down('20', 10020, 10020)
+        self._cost_raise_on_port_down(10020, 10020, 10020)
+
+        self._set_isl_cost(0)
+
+        self._cost_raise_on_port_down(0, 10000, 10000)
+        self._cost_raise_on_port_down(10000, 10000, 10000)
 
     def test_cost_raise_on_port_down_without_link_props(self):
         self.setup_initial_data(make_link_props=False)
@@ -461,6 +485,18 @@ class TestIsl(share.AbstractTest):
         self.ensure_isl_costs(
             (src_endpoint, recover),
             (dst_endpoint, recover))
+
+    def _set_isl_cost(self, value):
+        with neo4j_connect.begin() as tx:
+            isl = model.InterSwitchLink(
+                self.src_endpoint, self.dst_endpoint, None)
+            isl_utils.set_cost(tx, isl, value)
+            isl_utils.set_cost(tx, isl.reversed(), value)
+
+        with neo4j_connect.begin() as tx:
+            props = {'cost': value}
+            self.ensure_isl_props(tx, isl, props)
+            self.ensure_isl_props(tx, isl.reversed(), props)
 
     def test_no_cost_raise_on_isl_down(self):
         self.setup_initial_data()
