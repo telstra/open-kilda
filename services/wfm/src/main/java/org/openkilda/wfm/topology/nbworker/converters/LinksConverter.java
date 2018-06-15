@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.nbworker.converters;
 
+import static java.lang.String.format;
+
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
@@ -114,12 +116,13 @@ public final class LinksConverter {
         try {
             intValue = Optional.ofNullable(value)
                     .filter(val -> !val.isNull())
-                    .map(Value::asString)
+                    .map(Value::asObject)
+                    .map(Object::toString)
                     .filter(NumberUtils::isCreatable)
                     .map(Integer::parseInt)
                     .orElse(0);
         } catch (Exception e) {
-            logger.info("Exception trying to get an Integer; the String isn't parseable. Value: {}", value);
+            logger.warn(format("Exception trying to get an Integer; the String isn't parseable. Value: %s", value), e);
         }
         return intValue;
     }
