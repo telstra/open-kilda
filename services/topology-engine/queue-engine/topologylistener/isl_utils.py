@@ -276,10 +276,13 @@ def set_active_field(tx, neo_id, status):
     tx.run(q, p)
 
 
-def increase_cost(tx, isl, amount):
+def increase_cost(tx, isl, amount, limit):
     cost = get_cost(tx, isl)
     if not cost:
         cost = 0
+    if limit <= cost:
+        return
+
     set_cost(tx, isl, cost + amount)
 
 
@@ -288,7 +291,11 @@ def get_cost(tx, isl):
         db_record = fetch_link_props(tx, isl)
     except exc.DBRecordNotFound:
         db_record = fetch(tx, isl)
-    return db_record['cost']
+
+    value = db_record['cost']
+    if value is not None:
+        value = model.convert_integer(value)
+    return value
 
 
 def set_cost(tx, isl, cost):
@@ -331,8 +338,9 @@ def set_link_props(tx, isl, props):
         """) + db.format_set_fields(
                 db.escape_fields(update), field_prefix='target.')
 
-        logger.debug('Push link_props properties: %r', update)
-        tx.run(q, {'target_id': db.neo_id(target)})
+        p = {'target_id': db.neo_id(target)}
+        db.log_query('link_props set props', q, p)
+        tx.run(q, p)
 
         sync_with_link_props(tx, isl, *update.keys())
 
@@ -362,7 +370,10 @@ def sync_with_link_props(tx, isl, *fields):
         """) + db.format_set_fields(
             db.escape_fields(copy_fields, raw_values=True),
             field_prefix='target.')
-    tx.run(q, _make_match(isl))
+    p = _make_match(isl)
+
+    db.log_query('propagate link props to ISL', q, p)
+    tx.run(q, p)
 
 
 def _lock_affected_switches(tx, db_links, *extra):
