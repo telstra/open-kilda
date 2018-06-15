@@ -29,7 +29,6 @@ import org.openkilda.floodlight.switchmanager.SwitchOperationException;
 import org.openkilda.floodlight.utils.CorrelationContext;
 import org.openkilda.floodlight.utils.CorrelationContext.CorrelationContextClosable;
 import org.openkilda.messaging.Destination;
-import org.openkilda.messaging.Topic;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.CommandWithReplyToMessage;
@@ -89,17 +88,13 @@ import java.util.stream.Collectors;
 
 class RecordHandler implements Runnable {
     private static final Logger logger = LoggerFactory.getLogger(RecordHandler.class);
-    private static final String OUTPUT_FLOW_TOPIC = Topic.FLOW;
-    private static final String OUTPUT_DISCO_TOPIC = Topic.TOPO_DISCO;
-    private static final String TOPO_ENG_TOPIC = Topic.TOPO_ENG;
-    private static final String TOPO_STATS = Topic.STATS;
 
     private final ConsumerContext context;
     private final ConsumerRecord<String, String> record;
     private final MeterPool meterPool;
 
     public RecordHandler(ConsumerContext context, ConsumerRecord<String, String> record,
-            MeterPool meterPool) {
+                         MeterPool meterPool) {
         this.context = context;
         this.record = record;
         this.meterPool = meterPool;
@@ -111,7 +106,7 @@ class RecordHandler implements Runnable {
         if (message instanceof CommandWithReplyToMessage) {
             replyToTopic = ((CommandWithReplyToMessage) message).getReplyTo();
         } else {
-            replyToTopic = OUTPUT_FLOW_TOPIC;
+            replyToTopic = context.getKafkaFlowTopic();
         }
         final Destination replyDestination = getDestinationForTopic(replyToTopic);
 
@@ -170,11 +165,10 @@ class RecordHandler implements Runnable {
 
     private Destination getDestinationForTopic(String replyToTopic) {
         //TODO: depending on the future system design, either get rid of destination or complete the switch-case.
-        switch (replyToTopic) {
-            case Topic.NORTHBOUND:
-                return Destination.NORTHBOUND;
-            default:
-                return Destination.WFM_TRANSACTION;
+        if (context.getKafkaNorthboundTopic().equals(replyToTopic)) {
+            return Destination.NORTHBOUND;
+        } else {
+            return Destination.WFM_TRANSACTION;
         }
     }
 
@@ -410,13 +404,14 @@ class RecordHandler implements Runnable {
 
         String correlationId = message.getCorrelationId();
         KafkaMessageProducer kafkaProducer = context.getKafkaProducer();
+        String outputDiscoTopic = context.getKafkaTopoDiscoTopic();
 
         logger.debug("Processing request from WFM to dump switches. {}", correlationId);
 
-        kafkaProducer.getProducer().enableGuaranteedOrder(OUTPUT_DISCO_TOPIC);
+        kafkaProducer.getProducer().enableGuaranteedOrder(outputDiscoTopic);
         try {
 
-            kafkaProducer.postMessage(OUTPUT_DISCO_TOPIC,
+            kafkaProducer.postMessage(outputDiscoTopic,
                     new InfoMessage(new NetworkSyncBeginMarker(), System.currentTimeMillis(), correlationId));
 
             Map<DatapathId, IOFSwitch> allSwitchMap = context.getSwitchManager().getAllSwitchMap();
@@ -424,7 +419,7 @@ class RecordHandler implements Runnable {
             allSwitchMap.values().stream()
                     .map(this::buildSwitchInfoData)
                     .forEach(sw ->
-                            kafkaProducer.postMessage(OUTPUT_DISCO_TOPIC,
+                            kafkaProducer.postMessage(outputDiscoTopic,
                                     new InfoMessage(sw, System.currentTimeMillis(), correlationId)));
 
             allSwitchMap.values().stream()
@@ -435,16 +430,16 @@ class RecordHandler implements Runnable {
                                     .collect(Collectors.toSet())
                                     .stream())
                     .forEach(port ->
-                            kafkaProducer.postMessage(OUTPUT_DISCO_TOPIC,
+                            kafkaProducer.postMessage(outputDiscoTopic,
                                     new InfoMessage(port, System.currentTimeMillis(), correlationId)));
 
             kafkaProducer.postMessage(
-                    OUTPUT_DISCO_TOPIC,
+                    outputDiscoTopic,
                     new InfoMessage(
                             new NetworkSyncEndMarker(), System.currentTimeMillis(),
                             correlationId));
         } finally {
-            kafkaProducer.getProducer().disableGuaranteedOrder(OUTPUT_DISCO_TOPIC);
+            kafkaProducer.getProducer().disableGuaranteedOrder(outputDiscoTopic);
         }
     }
 
@@ -519,8 +514,6 @@ class RecordHandler implements Runnable {
                                 .cookie(ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE).build();
                         break;
                     default:
-                        logger.error("invalid action={}", deleteAction);
-                        throw new SwitchOperationException(dpid, "invalid DeleteRulesAction");
                 }
 
                 // The cases when we delete all non-default rules.
@@ -652,7 +645,7 @@ class RecordHandler implements Runnable {
 
                     InfoMessage infoMessage = new InfoMessage(response, message.getTimestamp(),
                             message.getCorrelationId());
-                    context.getKafkaProducer().postMessage(TOPO_STATS, infoMessage);
+                    context.getKafkaProducer().postMessage(context.getKafkaStatsTopic(), infoMessage);
                 } catch (Exception e) {
                     logger.error("Could not get port stats data for switch {} with error {}",
                             switchId, e.getMessage());

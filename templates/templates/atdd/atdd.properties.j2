@@ -1,13 +1,3 @@
-kafka.hosts = kafka.pendev:9092
+environment.naming.prefix = {{ environment_naming_prefix }}
 
-kafka.topic.ctrl = {{ kafka_topic_ctrl }}
-kafka.topic.flow = {{ kafka_topic_flow }}
-kafka.topic.health.check = {{ kafka_topic_health_check }}
-kafka.topic.northbound = {{ kafka_topic_northbound }}
-kafka.topic.opentsdb = {{ kafka_topic_opentsdb }}
-kafka.topic.simulator = {{ kafka_topic_simulator }}
-kafka.topic.speaker = {{ kafka_topic_speaker }}
-kafka.topic.stats = {{ kafka_topic_stats }}
-kafka.topic.topo.cache = {{ kafka_topic_topo_cache }}
-kafka.topic.topo.disco = {{ kafka_topic_topo_disco }}
-kafka.topic.topo.eng = {{ kafka_topic_topo_eng }}
+kafka.hosts = kafka.pendev:9092

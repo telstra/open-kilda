@@ -15,6 +15,20 @@
 
 package org.openkilda.floodlight.switchmanager;
 
+import org.openkilda.config.KafkaTopicsConfig;
+import org.openkilda.floodlight.config.provider.ConfigurationProvider;
+import org.openkilda.floodlight.converter.IOFSwitchConverter;
+import org.openkilda.floodlight.kafka.KafkaMessageProducer;
+import org.openkilda.floodlight.utils.CorrelationContext;
+import org.openkilda.floodlight.utils.NewCorrelationContextRequired;
+import org.openkilda.messaging.Message;
+import org.openkilda.messaging.command.switches.ConnectModeRequest;
+import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.event.PortInfoData;
+import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.info.event.SwitchState;
+
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.PortChangeType;
@@ -23,18 +37,6 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
-import org.openkilda.floodlight.converter.IOFSwitchConverter;
-import org.openkilda.floodlight.kafka.KafkaMessageProducer;
-import org.openkilda.floodlight.utils.CorrelationContext;
-import org.openkilda.floodlight.utils.NewCorrelationContextRequired;
-import org.openkilda.messaging.Message;
-import org.openkilda.messaging.Topic;
-import org.openkilda.messaging.command.switches.ConnectModeRequest;
-import org.openkilda.messaging.info.InfoData;
-import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.event.PortInfoData;
-import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.messaging.info.event.SwitchState;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.DatapathId;
@@ -49,12 +51,14 @@ import java.util.Map;
 
 public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListener, IFloodlightService {
     private static final Logger logger = LoggerFactory.getLogger(SwitchEventCollector.class);
-    private static final String TOPO_EVENT_TOPIC = Topic.TOPO_DISCO;
+
     private IOFSwitchService switchService;
     private KafkaMessageProducer kafkaProducer;
     private ISwitchManager switchManager;
 
-     /*
+    private String topoDiscoTopic;
+
+    /*
       * IOFSwitchListener methods
       */
 
@@ -80,7 +84,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
     @NewCorrelationContextRequired
     public void switchAdded(final DatapathId switchId) {
         Message message = buildSwitchMessage(switchService.getSwitch(switchId), SwitchState.ADDED);
-        kafkaProducer.postMessage(TOPO_EVENT_TOPIC, message);
+        kafkaProducer.postMessage(topoDiscoTopic, message);
     }
 
     /**
@@ -91,7 +95,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
     public void switchRemoved(final DatapathId switchId) {
         switchManager.stopSafeMode(switchId);
         Message message = buildSwitchMessage(switchId, SwitchState.REMOVED);
-        kafkaProducer.postMessage(TOPO_EVENT_TOPIC, message);
+        kafkaProducer.postMessage(topoDiscoTopic, message);
     }
 
     /**
@@ -104,7 +108,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
         logger.info("ACTIVATING SWITCH: {}", switchId);
 
 //        Message message = buildExtendedSwitchMessage(sw, SwitchState.ACTIVATED, switchManager.dumpFlowTable(switchId));
-//        kafkaProducer.postMessage(TOPO_EVENT_TOPIC, message);
+//        kafkaProducer.postMessage(topoDiscoTopic, message);
         ConnectModeRequest.Mode mode = switchManager.connectMode(null);
 
         try {
@@ -115,7 +119,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
             }
 
             switchManager.sendSwitchActivate(sw);
-            if (mode == ConnectModeRequest.Mode.AUTO){
+            if (mode == ConnectModeRequest.Mode.AUTO) {
                 switchManager.installDefaultRules(switchId);
             }
 
@@ -149,7 +153,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
     public void switchPortChanged(final DatapathId switchId, final OFPortDesc port, final PortChangeType type) {
         if (isPhysicalPort(port.getPortNo())) {
             Message message = buildPortMessage(switchId, port, type);
-            kafkaProducer.postMessage(TOPO_EVENT_TOPIC, message);
+            kafkaProducer.postMessage(topoDiscoTopic, message);
         }
     }
 
@@ -160,7 +164,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
     @NewCorrelationContextRequired
     public void switchChanged(final DatapathId switchId) {
         Message message = buildSwitchMessage(switchService.getSwitch(switchId), SwitchState.CHANGED);
-        kafkaProducer.postMessage(TOPO_EVENT_TOPIC, message);
+        kafkaProducer.postMessage(topoDiscoTopic, message);
     }
 
     /*
@@ -175,7 +179,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
     public void switchDeactivated(final DatapathId switchId) {
         switchManager.stopSafeMode(switchId);
         Message message = buildSwitchMessage(switchId, SwitchState.DEACTIVATED);
-        kafkaProducer.postMessage(TOPO_EVENT_TOPIC, message);
+        kafkaProducer.postMessage(topoDiscoTopic, message);
     }
 
     /**
@@ -218,6 +222,10 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
         switchService = context.getServiceImpl(IOFSwitchService.class);
         kafkaProducer = context.getServiceImpl(KafkaMessageProducer.class);
         switchManager = context.getServiceImpl(ISwitchManager.class);
+
+        ConfigurationProvider provider = new ConfigurationProvider(context, this);
+        KafkaTopicsConfig topicsConfig = provider.getConfiguration(KafkaTopicsConfig.class);
+        topoDiscoTopic = topicsConfig.getTopoDiscoTopic();
     }
 
     /*

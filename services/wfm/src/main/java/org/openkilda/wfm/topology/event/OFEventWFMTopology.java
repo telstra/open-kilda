@@ -16,20 +16,19 @@
 package org.openkilda.wfm.topology.event;
 
 import org.openkilda.messaging.ServiceType;
-import org.openkilda.messaging.Topic;
 import org.openkilda.wfm.CtrlBoltRef;
-import org.openkilda.wfm.error.ConfigurationException;
-import org.openkilda.wfm.error.StreamNameCollisionException;
-import org.openkilda.wfm.ctrl.ICtrlBolt;
-import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.LaunchEnvironment;
+import org.openkilda.wfm.ctrl.ICtrlBolt;
+import org.openkilda.wfm.error.StreamNameCollisionException;
+import org.openkilda.wfm.topology.AbstractTopology;
 
-import org.slf4j.LoggerFactory;
-import org.slf4j.Logger;
+import com.google.common.annotations.VisibleForTesting;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.topology.BoltDeclarer;
 import org.apache.storm.topology.IStatefulBolt;
 import org.apache.storm.topology.TopologyBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,7 +40,7 @@ import java.util.List;
  * (2) Port UP/DOWN
  * (3) Link UP/DOWN (ISL) - and health manager
  */
-public class OFEventWFMTopology extends AbstractTopology {
+public class OFEventWFMTopology extends AbstractTopology<OFEventWfmTopologyConfig> {
     /*
      * Progress Tracker - Phase 1: Simple message flow, a little bit of state, re-wire spkr/tpe
      * (1) √ Switch UP - Simple pass through
@@ -55,15 +54,14 @@ public class OFEventWFMTopology extends AbstractTopology {
 
     private static Logger logger = LoggerFactory.getLogger(OFEventWFMTopology.class);
 
-    /** Externalize the ID so that the Test classes can leverage it */
-    public static final String SPOUT_ID_INPUT = Topic.TOPO_DISCO+"-spout";
-    public static final String BOLT_ID = Topic.TOPO_DISCO+"-bolt";
+    @VisibleForTesting
+    public static final String DISCO_SPOUT_ID = "disco-spout";
+    private static final String DISCO_BOLT_ID = OFELinkBolt.class.getSimpleName();
+    private static final String TOPO_ENG_BOLT_ID = "topo.eng-bolt";
+    private static final String SPEAKER_BOLT_ID = "speaker-bolt";
 
-//    public static final String SPOUT_ID_INPUT = "input";
-//    public static final String BOLT_ID_OUTPUT = "out";
-
-    public OFEventWFMTopology(LaunchEnvironment env) throws ConfigurationException {
-        super(env);
+    public OFEventWFMTopology(LaunchEnvironment env) {
+        super(env, OFEventWfmTopologyConfig.class);
     }
 
     /**
@@ -77,11 +75,10 @@ public class OFEventWFMTopology extends AbstractTopology {
      * @throws StreamNameCollisionException
      */
     public StormTopology createTopology() throws StreamNameCollisionException {
-        logger.debug("Building Topology - " + this.getClass().getSimpleName());
+        logger.info("Building OFEventWFMTopology - {}", topologyName);
 
-        String kafkaTopoDiscoTopic = config.getKafkaTopoDiscoTopic();
-        String kafkaTopoEngTopic = config.getKafkaTopoEngTopic();
-        String kafkaSpeakerTopic = config.getKafkaSpeakerTopic();
+        String kafkaTopoDiscoTopic = topologyConfig.getKafkaTopoDiscoTopic();
+        String kafkaTopoEngTopic = topologyConfig.getKafkaTopoEngTopic();
 
         checkAndCreateTopic(kafkaTopoDiscoTopic);
         checkAndCreateTopic(kafkaTopoEngTopic);
@@ -89,28 +86,25 @@ public class OFEventWFMTopology extends AbstractTopology {
         TopologyBuilder builder = new TopologyBuilder();
         List<CtrlBoltRef> ctrlTargets = new ArrayList<>();
 
-        String spoutName = SPOUT_ID_INPUT;
-        String boltName = BOLT_ID;
+        builder.setSpout(DISCO_SPOUT_ID, createKafkaSpout(kafkaTopoDiscoTopic, DISCO_SPOUT_ID));
 
-        builder.setSpout(spoutName, createKafkaSpout(kafkaTopoDiscoTopic, spoutName));
-
-        IStatefulBolt bolt = new OFELinkBolt(config);
+        IStatefulBolt bolt = new OFELinkBolt(topologyConfig);
 
         // TODO: resolve the comments below; are there any state issues?
         // NB: with shuffleGrouping, we can't maintain state .. would need to parse first
         //      just to pull out switchID.
         // (crimi) - not sure I agree here .. state can be maintained, albeit distributed.
         //
-        BoltDeclarer bd = builder.setBolt(boltName, bolt, config.getParallelism())
-                .shuffleGrouping(spoutName);
+        BoltDeclarer bd = builder.setBolt(DISCO_BOLT_ID, bolt, topologyConfig.getParallelism())
+                .shuffleGrouping(DISCO_SPOUT_ID);
 
-        builder.setBolt(kafkaTopoEngTopic, createKafkaBolt(kafkaTopoEngTopic),
-                config.getParallelism()).shuffleGrouping(boltName, kafkaTopoEngTopic);
-        builder.setBolt(kafkaSpeakerTopic, createKafkaBolt(kafkaSpeakerTopic),
-                config.getParallelism()).shuffleGrouping(boltName, kafkaSpeakerTopic);
+        builder.setBolt(TOPO_ENG_BOLT_ID, createKafkaBolt(kafkaTopoEngTopic),
+                topologyConfig.getParallelism()).shuffleGrouping(DISCO_BOLT_ID, OFELinkBolt.TOPO_ENG_STREAM);
+        builder.setBolt(SPEAKER_BOLT_ID, createKafkaBolt(topologyConfig.getKafkaSpeakerTopic()),
+                topologyConfig.getParallelism()).shuffleGrouping(DISCO_BOLT_ID, OFELinkBolt.SPEAKER_STREAM);
 
         // TODO: verify this ctrlTarget after refactoring.
-        ctrlTargets.add(new CtrlBoltRef(boltName, (ICtrlBolt) bolt, bd));
+        ctrlTargets.add(new CtrlBoltRef(DISCO_BOLT_ID, (ICtrlBolt) bolt, bd));
         createCtrlBranch(builder, ctrlTargets);
         // TODO: verify WFM_TOPOLOGY health check
         createHealthCheckHandler(builder, ServiceType.WFM_TOPOLOGY.getId());

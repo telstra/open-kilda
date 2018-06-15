@@ -92,7 +92,8 @@ public class TopologyDefinition {
 
     public List<Isl> getIslsForActiveSwitches() {
         return isls.stream()
-                .filter(isl -> isl.getSrcSwitch().isActive() && isl.getDstSwitch().isActive())
+                .filter(isl ->
+                        isl.getDstSwitch() != null && isl.getSrcSwitch().isActive() && isl.getDstSwitch().isActive())
                 .collect(toList());
     }
 
@@ -179,10 +180,10 @@ public class TopologyDefinition {
         @NonNull
         private Switch srcSwitch;
         private int srcPort;
-        @NonNull
         private Switch dstSwitch;
         private int dstPort;
         private long maxBandwidth;
+        private ASwitch aswitch;
 
         @JsonCreator
         public static Isl factory(
@@ -190,8 +191,25 @@ public class TopologyDefinition {
                 @JsonProperty("src_port") int srcPort,
                 @JsonProperty("dst_switch") Switch dstSwitch,
                 @JsonProperty("dst_port") int dstPort,
-                @JsonProperty("max_bandwidth") long maxBandwidth) {
-            return new Isl(srcSwitch, srcPort, dstSwitch, dstPort, maxBandwidth);
+                @JsonProperty("max_bandwidth") long maxBandwidth,
+                @JsonProperty("a_switch") ASwitch aswitch) {
+            return new Isl(srcSwitch, srcPort, dstSwitch, dstPort, maxBandwidth, aswitch);
+        }
+    }
+
+    @Value
+    @NonFinal
+    public static class ASwitch {
+
+        @NonNull
+        private Integer inPort;
+        private Integer outPort;
+
+        @JsonCreator
+        public static ASwitch factory(
+                @JsonProperty("in_port") Integer inPort,
+                @JsonProperty("out_port") Integer outPort) {
+            return new ASwitch(inPort, outPort);
         }
     }
 

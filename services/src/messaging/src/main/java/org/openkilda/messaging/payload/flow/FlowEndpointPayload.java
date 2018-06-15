@@ -75,7 +75,7 @@ public class FlowEndpointPayload extends NetworkEndpoint {
      *
      * @param vlanId vlan id
      */
-    private void setVlanId(Integer vlanId) {
+    public void setVlanId(Integer vlanId) {
         if (vlanId == null) {
             this.vlanId = 0;
         } else if (Utils.validateVlanRange(vlanId)) {

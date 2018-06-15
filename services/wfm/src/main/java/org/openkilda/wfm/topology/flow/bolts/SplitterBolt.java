@@ -31,11 +31,11 @@ import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowStatusRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.openkilda.messaging.command.flow.FlowVerificationRequest;
-import org.openkilda.messaging.command.flow.FlowsGetRequest;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.info.flow.FlowOperation;
+import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.wfm.topology.flow.FlowTopology;
 import org.openkilda.wfm.topology.flow.StreamType;
 
@@ -49,6 +49,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Northbound Request Bolt. Handles northbound requests.
@@ -185,17 +186,13 @@ public class SplitterBolt extends BaseRichBolt {
                 outputCollector.emit(StreamType.STATUS.toString(), tuple, values);
 
             } else if (data instanceof FlowGetRequest) {
-                String flowId = ((FlowGetRequest) data).getPayload().getId();
+                String flowId = Optional.ofNullable(((FlowGetRequest) data).getPayload())
+                        .map(FlowIdStatusPayload::getId)
+                        .orElse(null);
 
                 logger.info("Flow {} get message: values={}", flowId, values);
 
                 values = new Values(message, flowId);
-                outputCollector.emit(StreamType.READ.toString(), tuple, values);
-
-            } else if (data instanceof FlowsGetRequest) {
-                logger.info("Flows get message: values={}", values);
-
-                values = new Values(message, null);
                 outputCollector.emit(StreamType.READ.toString(), tuple, values);
 
             } else if (data instanceof FlowPathRequest) {

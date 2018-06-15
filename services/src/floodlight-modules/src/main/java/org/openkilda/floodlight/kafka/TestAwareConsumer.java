@@ -1,9 +1,25 @@
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.openkilda.floodlight.kafka;
 
 import org.openkilda.floodlight.kafka.RecordHandler.Factory;
+import org.openkilda.floodlight.kafka.producer.Producer;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
-import org.openkilda.messaging.ctrl.KafkaBreakTrigger;
 import org.openkilda.messaging.ctrl.KafkaBreakTarget;
+import org.openkilda.messaging.ctrl.KafkaBreakTrigger;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;
@@ -38,14 +54,16 @@ public class TestAwareConsumer extends Consumer {
     protected void handle(ConsumerRecord<String, String> record) {
         boolean isHandled = false;
         for (KafkaBreakTrigger trigger : expectedTriggers) {
-            if (! trigger.handle(record.key(), record.value()))
+            if (!trigger.handle(record.key(), record.value())) {
                 continue;
+            }
             isHandled = true;
             break;
         }
 
-        if (isHandled)
+        if (isHandled) {
             return;
+        }
 
         if (! breakTrigger.isCommunicationEnabled()) {
             logger.info("Suppress record - key: {}, value: {}", record.key(), record.value());

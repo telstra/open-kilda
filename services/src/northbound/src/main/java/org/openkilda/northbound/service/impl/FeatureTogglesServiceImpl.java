@@ -39,7 +39,7 @@ public class FeatureTogglesServiceImpl implements FeatureTogglesService {
 
     private final Logger logger = LoggerFactory.getLogger(FeatureTogglesServiceImpl.class);
 
-    @Value("${kafka.topo.eng.topic}")
+    @Value("#{kafkaTopicsConfig.getTopoEngTopic()}")
     private String topoEngTopic;
 
     @Autowired

@@ -48,10 +48,10 @@ import org.openkilda.messaging.info.flow.FlowPathResponse;
 import org.openkilda.messaging.info.flow.FlowRerouteResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowStatusResponse;
-import org.openkilda.messaging.info.flow.FlowsResponse;
 import org.openkilda.messaging.model.BidirectionalFlow;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.nbtopology.response.ChunkedInfoMessage;
 import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
@@ -77,7 +77,6 @@ import org.openkilda.wfm.topology.flow.validation.FlowValidator;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.annotations.VisibleForTesting;
-import org.apache.commons.lang.StringUtils;
 import org.apache.storm.state.InMemoryKeyValueState;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -93,10 +92,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.Nullable;
@@ -750,16 +751,28 @@ public class CrudBolt
     }
 
     private void handleDumpRequest(CommandMessage message, Tuple tuple) {
-        List<String> flowIds = flowCache.dumpFlows().stream()
+        List<Flow> flows = flowCache.dumpFlows().stream()
                 .map(ImmutablePair::getLeft)
-                .map(Flow::getFlowId)
                 .collect(Collectors.toList());
 
-        logger.info("Dump flows: {}", StringUtils.join(flowIds, ", "));
+        logger.debug("Dump flows: found {} items", flows.size());
 
-        Values northbound = new Values(new InfoMessage(new FlowsResponse(flowIds),
-                message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
-        outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
+        String requestId = message.getCorrelationId();
+        if (flows.isEmpty()) {
+            Message response = new ChunkedInfoMessage(null, System.currentTimeMillis(), requestId, null);
+            outputCollector.emit(StreamType.RESPONSE.toString(), tuple, new Values(response));
+        } else {
+            Iterator<Flow> iterator = flows.iterator();
+            do {
+                Flow flow = iterator.next();
+                String nextRequestId = iterator.hasNext() ? UUID.randomUUID().toString() : null;
+
+                Message response = new ChunkedInfoMessage(new FlowResponse(flow), System.currentTimeMillis(),
+                        requestId, nextRequestId);
+                outputCollector.emit(StreamType.RESPONSE.toString(), tuple, new Values(response));
+                requestId = nextRequestId;
+            } while (iterator.hasNext());
+        }
     }
 
     private void handleReadRequest(String flowId, CommandMessage message, Tuple tuple) {

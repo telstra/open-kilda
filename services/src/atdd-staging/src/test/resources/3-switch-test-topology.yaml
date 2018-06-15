@@ -35,6 +35,9 @@ isls:
       dst_switch: sw2
       dst_port: 2
       max_bandwidth: 10000
+      a_switch:
+        in_port: 49
+        out_port: 50
 
     - src_switch: sw2
       src_port: 3

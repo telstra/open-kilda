@@ -1,5 +1,6 @@
 ---
 # defaults file for templates
+environment_naming_prefix: ""
 kafka_hosts: "kafka.pendev:9092"
 zookeeper_hosts: "zookeeper.pendev:2181"
 opentsdb_hosts: "http://opentsdb.pendev:4242"
@@ -38,7 +39,7 @@ discovery_timeout: "9"
 # 28000 is about a day (test every 3 seconds, 20 failures per minute, 1200 per hour ..
 discovery_limit: "-1"
 discovery_keep_removed_isl: 60
-worker_pool_size: "30000"
+worker_pool_size: 512
 production_fileserver: "http://127.0.0.1"
 opentsdb_timeout: 30
 opentsdb_num_spouts: 5

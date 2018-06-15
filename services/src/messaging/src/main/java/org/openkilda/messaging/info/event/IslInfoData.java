@@ -15,14 +15,11 @@
 
 package org.openkilda.messaging.info.event;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
-
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import lombok.Data;
 
 import java.util.List;
 import java.util.Objects;
@@ -30,16 +27,9 @@ import java.util.Objects;
 /**
  * Defines the payload payload of a Message representing an isl info.
  */
-@JsonSerialize
+@Data
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JsonPropertyOrder({
-        "id",
-        "latency_ns",
-        "path",
-        "speed",
-        "available_bandwidth",
-        "state"})
 public class IslInfoData extends PathInfoData {
     /**
      * Serialization version number constant.
@@ -50,13 +40,13 @@ public class IslInfoData extends PathInfoData {
      * Instance id.
      */
     @JsonProperty("id")
-    protected String id;
+    protected final String id;
 
     /**
      * Port speed.
      */
     @JsonProperty("speed")
-    private long speed;
+    private final long speed;
 
     /**
      * Available bandwidth.
@@ -70,11 +60,11 @@ public class IslInfoData extends PathInfoData {
     @JsonProperty("state")
     protected IslChangeType state;
 
-    /**
-     * Default constructor.
-     */
-    public IslInfoData() {
-    }
+    @JsonProperty("time_create")
+    private final Long timeCreateMillis;
+
+    @JsonProperty("time_modify")
+    private final Long timeModifyMillis;
 
     /**
      * Copy constructor.
@@ -82,35 +72,14 @@ public class IslInfoData extends PathInfoData {
      * @param that {@link IslInfoData} instance
      */
     public IslInfoData(IslInfoData that) {
-        this.id = that.id;
-        this.path = that.path;
-        this.speed = that.speed;
-        this.state = that.state;
-        this.latency = that.latency;
-        this.availableBandwidth = that.availableBandwidth;
-    }
-
-    /**
-     * Instance constructor.
-     *
-     * @param latency            latency
-     * @param path               path
-     * @param speed              port speed
-     * @param state              isl discovery result
-     * @param availableBandwidth isl available bandwidth
-     */
-    @JsonCreator
-    public IslInfoData(@JsonProperty("latency_ns") long latency,
-                       @JsonProperty("path") List<PathNode> path,
-                       @JsonProperty("speed") long speed,
-                       @JsonProperty("state") IslChangeType state,
-                       @JsonProperty("available_bandwidth") long availableBandwidth) {
-        this.latency = latency;
-        this.path = path;
-        this.speed = speed;
-        this.state = state;
-        this.availableBandwidth = availableBandwidth;
-        this.id = String.format("%s_%s", path.get(0).getSwitchId(), String.valueOf(path.get(0).getPortNo()));
+        this(
+                that.getLatency(),
+                that.getPath(),
+                that.getSpeed(),
+                that.getAvailableBandwidth(),
+                that.getState(),
+                that.getTimeCreateMillis(),
+                that.getTimeModifyMillis());
     }
 
     /**
@@ -119,54 +88,29 @@ public class IslInfoData extends PathInfoData {
      * @param state current state.
      */
     public IslInfoData(List<PathNode> path, IslChangeType state) {
-        this.path = path;
-        this.state = state;
-        this.id = String.format("%s_%s", path.get(0).getSwitchId(), String.valueOf(path.get(0).getPortNo()));
+        this(-1, path, 0, 0, state, null, null);
     }
 
-    /**
-     * Returns id.
-     *
-     * @return id
-     */
-    public String getId() {
-        return id;
+    public IslInfoData(long latency, List<PathNode> path, long speed, IslChangeType state, long availableBandwidth) {
+        this(latency, path, speed, availableBandwidth, state, null, null);
     }
 
-    /**
-     * Sets id.
-     *
-     * @param id id to set
-     */
-    public void setId(String id) {
-        this.id = id;
-    }
+    @JsonCreator
+    public IslInfoData(@JsonProperty("latency_ns") long latency,
+                       @JsonProperty("path") List<PathNode> path,
+                       @JsonProperty("speed") long speed,
+                       @JsonProperty("available_bandwidth") long availableBandwidth,
+                       @JsonProperty("state") IslChangeType state,
+                       @JsonProperty("time_create") Long timeCreateMillis,
+                       @JsonProperty("time_modify") Long timeModifyMillis) {
+        super(latency, path);
 
-    /**
-     * Gets port speed.
-     *
-     * @return port speed
-     */
-    public long getSpeed() {
-        return speed;
-    }
-
-    /**
-     * Sets port speed.
-     *
-     * @param speed port speed
-     */
-    public void setSpeed(long speed) {
         this.speed = speed;
-    }
-
-    /**
-     * Gets available bandwidth.
-     *
-     * @return available bandwidth
-     */
-    public long getAvailableBandwidth() {
-        return availableBandwidth;
+        this.availableBandwidth = availableBandwidth;
+        this.state = state;
+        this.timeCreateMillis = timeCreateMillis;
+        this.timeModifyMillis = timeModifyMillis;
+        this.id = String.format("%s_%d", path.get(0).getSwitchId(), path.get(0).getPortNo());
     }
 
     /**
@@ -179,35 +123,12 @@ public class IslInfoData extends PathInfoData {
     }
 
     /**
-     * Returns isl state.
-     *
-     * @return isl state
-     */
-    public IslChangeType getState() {
-        return state;
-    }
-
-    /**
      * Sets isl state.
      *
      * @param state isl state to set
      */
     public void setState(IslChangeType state) {
         this.state = state;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public String toString() {
-        return toStringHelper(this)
-                .add("latency_ns", latency)
-                .add("path", path)
-                .add("speed", speed)
-                .add("available_bandwidth", availableBandwidth)
-                .add("state", state)
-                .toString();
     }
 
     /**

@@ -15,9 +15,9 @@
 
 package org.openkilda.wfm;
 
-import org.apache.storm.testing.CompleteTopologyParam;
-import org.apache.storm.testing.MkClusterParam;
-import org.kohsuke.args4j.CmdLineException;
+import org.openkilda.config.KafkaConfig;
+import org.openkilda.wfm.config.ZookeeperConfig;
+import org.openkilda.wfm.config.provider.ConfigurationProvider;
 import org.openkilda.wfm.error.ConfigurationException;
 import org.openkilda.wfm.topology.TestKafkaProducer;
 
@@ -25,12 +25,13 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.storm.Config;
 import org.apache.storm.LocalCluster;
+import org.apache.storm.testing.CompleteTopologyParam;
+import org.apache.storm.testing.MkClusterParam;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.rules.TemporaryFolder;
-
-import org.openkilda.wfm.topology.TopologyConfig;
+import org.kohsuke.args4j.CmdLineException;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -55,7 +56,7 @@ public class AbstractStormTest {
 
     protected static Properties kafkaProperties() throws ConfigurationException, CmdLineException {
         Properties properties = new Properties();
-        properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, makeUnboundConfig().getKafkaHosts());
+        properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, makeUnboundConfig(KafkaConfig.class).getHosts());
         properties.put(ConsumerConfig.GROUP_ID_CONFIG, "test");
         properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
         properties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
@@ -86,7 +87,7 @@ public class AbstractStormTest {
 
         makeConfigFile();
 
-        server = new TestUtils.KafkaTestFixture(makeUnboundConfig());
+        server = new TestUtils.KafkaTestFixture(makeUnboundConfig(ZookeeperConfig.class));
         server.start();
 
         cluster = new LocalCluster();
@@ -101,9 +102,11 @@ public class AbstractStormTest {
         server.stop();
     }
 
-    protected static TopologyConfig makeUnboundConfig() throws ConfigurationException, CmdLineException {
+    protected static <T> T makeUnboundConfig(Class<T> configurationType)
+            throws ConfigurationException, CmdLineException {
         LaunchEnvironment env = makeLaunchEnvironment();
-        return new TopologyConfig(env.makePropertiesReader());
+        ConfigurationProvider configurationProvider = env.getConfigurationProvider();
+        return configurationProvider.getConfiguration(configurationType);
     }
 
     protected static LaunchEnvironment makeLaunchEnvironment() throws CmdLineException, ConfigurationException {

@@ -55,7 +55,7 @@ public class MessageConsumerConfig {
     /**
      * Kafka group id.
      */
-    @Value("${kafka.groupid}")
+    @Value("#{kafkaGroupConfig.getGroupId()}")
     private String groupId;
 
     /**

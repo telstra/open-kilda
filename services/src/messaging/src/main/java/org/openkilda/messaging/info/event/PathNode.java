@@ -20,8 +20,6 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 import java.io.Serializable;
 import java.util.Objects;
@@ -29,13 +27,7 @@ import java.util.Objects;
 /**
  * Defines the payload payload of a Message representing a path node info.
  */
-@JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonPropertyOrder({
-        "switch_id",
-        "port_no",
-        "seq_id",
-        "segment_latency"})
 public class PathNode implements Serializable {
     /**
      * Serialization version number constant.
@@ -63,7 +55,6 @@ public class PathNode implements Serializable {
     /**
      * Segment latency.
      */
-    @JsonInclude(JsonInclude.Include.NON_DEFAULT) // Needed to exclude when not set
     @JsonProperty("segment_latency")
     private Long segmentLatency;
 

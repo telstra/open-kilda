@@ -24,13 +24,14 @@ import static org.projectfloodlight.openflow.protocol.OFVersion.OF_12;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_13;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_15;
 
+import org.openkilda.config.KafkaTopicsConfig;
+import org.openkilda.floodlight.config.provider.ConfigurationProvider;
 import org.openkilda.floodlight.kafka.KafkaMessageProducer;
 import org.openkilda.floodlight.switchmanager.web.SwitchManagerWebRoutable;
 import org.openkilda.floodlight.utils.CorrelationContext;
 import org.openkilda.floodlight.utils.NewCorrelationContextRequired;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
-import org.openkilda.messaging.Topic;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.error.ErrorData;
@@ -116,8 +117,6 @@ import java.util.stream.Stream;
 public class SwitchManager implements IFloodlightModule, IFloodlightService, ISwitchManager, IOFMessageListener {
     private static final Logger logger = LoggerFactory.getLogger(SwitchManager.class);
 
-    private static final String TOPO_EVENT_TOPIC = Topic.TOPO_DISCO;
-
     /**
      * Make sure we clear the top bit .. that is for NON_SYSTEM_MASK. This mask is applied to
      * Cookie IDs when creating a flow.
@@ -139,6 +138,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     private IRestApiService restApiService;
     private KafkaMessageProducer kafkaProducer;
     private ConnectModeRequest.Mode connectMode;
+
+    private String topoDiscoTopic;
 
     // IFloodlightModule Methods
 
@@ -207,11 +208,16 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         restApiService = context.getServiceImpl(IRestApiService.class);
         kafkaProducer = context.getServiceImpl(KafkaMessageProducer.class);
 
-        String property = context.getConfigParams(this).get("connect-mode");
+        ConfigurationProvider provider = new ConfigurationProvider(context, this);
+        KafkaTopicsConfig topicsConfig = provider.getConfiguration(KafkaTopicsConfig.class);
+        topoDiscoTopic = topicsConfig.getTopoDiscoTopic();
+
+        String connectModeProperty = provider.getConfiguration(SwitchManagerConfig.class).getConnectMode();
         try {
-            connectMode = ConnectModeRequest.Mode.valueOf(property);
+            connectMode = ConnectModeRequest.Mode.valueOf(connectModeProperty);
         } catch (Exception e) {
-            logger.error("CONFIG EXCEPTION: connect-mode could not be set to {}, defaulting to AUTO", property);
+            logger.error("CONFIG EXCEPTION: connect-mode could not be set to {}, defaulting to AUTO",
+                    connectModeProperty);
             connectMode = ConnectModeRequest.Mode.AUTO;
         }
         // TODO: Ensure Kafka Topics are created..
@@ -1451,7 +1457,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     @Override
     public void sendSwitchActivate(final IOFSwitch sw) throws SwitchOperationException {
         Message message = SwitchEventCollector.buildSwitchMessage(sw, SwitchState.ACTIVATED);
-        kafkaProducer.postMessage(TOPO_EVENT_TOPIC, message);
+        kafkaProducer.postMessage(topoDiscoTopic, message);
     }
 
     /**
@@ -1462,7 +1468,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         if (sw.getEnabledPortNumbers() != null) {
             for (OFPort p : sw.getEnabledPortNumbers()) {
                 if (SwitchEventCollector.isPhysicalPort(p)) {
-                    kafkaProducer.postMessage(TOPO_EVENT_TOPIC,
+                    kafkaProducer.postMessage(topoDiscoTopic,
                             SwitchEventCollector.buildPortMessage(sw.getId(), p,
                                     PortChangeType.UP));
                 }

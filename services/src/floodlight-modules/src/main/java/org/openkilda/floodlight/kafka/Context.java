@@ -1,34 +1,54 @@
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.openkilda.floodlight.kafka;
 
-import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.core.module.IFloodlightModule;
-import net.floodlightcontroller.core.module.IFloodlightService;
+import static java.util.Objects.requireNonNull;
 
-import java.util.Collection;
-import java.util.Map;
+import org.openkilda.floodlight.config.KafkaFloodlightConfig;
+
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
+
+import java.util.Properties;
 
 public class Context {
     private final FloodlightModuleContext moduleContext;
-    private KafkaConfig kafkaConfig;
-    private Map<String, String> moduleConfig;
+    private final KafkaFloodlightConfig kafkaConfig;
 
-    public static void fillDependencies(Collection<Class<? extends IFloodlightService>> dependencies) {}
-
-    public Context(FloodlightModuleContext moduleContext, IFloodlightModule module) {
+    public Context(FloodlightModuleContext moduleContext, KafkaFloodlightConfig kafkaConfig) {
         this.moduleContext = moduleContext;
-        moduleConfig = moduleContext.getConfigParams(module);
-        kafkaConfig = new KafkaConfig(moduleConfig);
+        this.kafkaConfig = requireNonNull(kafkaConfig, "kafkaConfig cannot be null");
     }
 
     public FloodlightModuleContext getModuleContext() {
         return moduleContext;
     }
 
-    public KafkaConfig getKafkaConfig() {
-        return kafkaConfig;
+    public boolean isTestingMode() {
+        return "YES".equals(kafkaConfig.getTestingMode());
     }
 
-    public String configLookup(String option) {
-        return moduleConfig.get(option);
+    public String getHeartBeatInterval() {
+        return kafkaConfig.getHeartBeatInterval();
+    }
+
+    public Properties getKafkaProducerProperties() {
+        return kafkaConfig.createKafkaProducerProperties();
+    }
+
+    public Properties getKafkaConsumerProperties() {
+        return kafkaConfig.createKafkaConsumerProperties();
     }
 }

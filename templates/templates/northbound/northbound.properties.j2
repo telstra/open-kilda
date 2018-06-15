@@ -1,3 +1,5 @@
+environment.naming.prefix = {{ environment_naming_prefix }}
+
 service.name=@project.name@
 service.version=@project.version@
 service.description=@project.description@
@@ -5,16 +7,11 @@ security.rest.username.env=REST_USERNAME
 security.rest.password.env=REST_PASSWORD
 security.rest.username.default={{ kilda_username }}
 security.rest.password.default={{ kilda_username }}
-zookeeper.hosts={{ zookeeper_hosts }}
+
 kafka.hosts={{ kafka_hosts }}
-kafka.groupid=northbound-consumer
+
 server.contextPath=/api/v1
-kafka.flow.topic={{ kafka_topic_flow }}
-kafka.topo.eng.topic={{ kafka_topic_topo_eng }}
-kafka.health.topic={{ kafka_topic_health_check }}
-kafka.northbound.topic={{ kafka_topic_northbound }}
-kafka.speaker.topic={{ kafka_topic_speaker }}
-kafka.nbworker.topic={{ kafka_topic_topo_nb }}
+
 topology.engine.rest.endpoint={{ topology_engine_rest_endpoint }}:{{ topology_engine_rest_port }}
 northbound.messages.expiration.minutes=15
 
