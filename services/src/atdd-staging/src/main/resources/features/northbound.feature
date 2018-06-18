@@ -40,7 +40,7 @@ Feature: Northbound endpoints
   Scenario: CRUD link properties
     Given select a random isl and alias it as 'isl1'
 
-    When create link properties request for isl 'isl1'
+    When create link properties request for ISL 'isl1'
     And update request: add link property 'test_property' with value 'test value'
     And send update link properties request
     Then response has 0 failures and 1 success
