@@ -324,6 +324,7 @@ graph = {
 			$("#switchesgraph").removeClass("hide");
 			
 			try{
+				var positionsNodes = storage.get('NODES_COORDINATES');
 				common.getData('/user/settings','GET').then(function(data){
 					positions = data;
 						if(positions){
@@ -343,6 +344,24 @@ graph = {
 							tick();
 						}
 					
+				},function(error){
+					var errorData = error.responseJSON;
+					var ifnoUserDatainDB = errorData && errorData['error-code']=='100001';
+					if(positionsNodes && ifnoUserDatainDB ){
+						storage.set('isDirtyCordinates', true);
+						d3.selectAll("g.node").attr("transform", function(d){
+					    	try{
+					    		d.x = positions[d.switch_id][0];
+						    	d.y = positions[d.switch_id][1];
+					    	}catch(e){
+					    		
+					    	}
+					    	
+					        return "translate("+d.x+","+d.y+")";
+					    });
+					    
+						tick();
+					}
 				})
 				
 			}catch(e){

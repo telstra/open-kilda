@@ -16,6 +16,8 @@ import javax.servlet.http.HttpServletRequest;
 
 import org.openkilda.auth.model.Permissions;
 import org.openkilda.constants.IConstants;
+import org.openkilda.log.ActivityLogger;
+import org.openkilda.log.constants.ActivityType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.usermanagement.model.Permission;
@@ -30,15 +32,19 @@ public class PermissionController {
 	
     @Autowired
     private PermissionService permissionService;
+    
+    @Autowired
+    private ActivityLogger activityLogger;
 
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(method = RequestMethod.POST)
     @Permissions(values = {IConstants.Permission.UM_PERMISSION_ADD})
-    public Permission createPermission(@RequestBody final Permission permission) {
-    	LOGGER.info("[createPermission] (name: " + permission.getName() +")");
-        Permission permissionResponse = permissionService.createPermission(permission);
-        return permissionResponse;
-    }
+	public Permission createPermission(@RequestBody final Permission permission) {
+		activityLogger.log(ActivityType.CREATE_PERMISSION, permission.getName());
+		LOGGER.info("[createPermission] (name: " + permission.getName() + ")");
+		Permission permissionResponse = permissionService.createPermission(permission);
+		return permissionResponse;
+	}
 
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(method = RequestMethod.GET)
@@ -58,17 +64,19 @@ public class PermissionController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @RequestMapping(value = "/{permission_id}", method = RequestMethod.DELETE)
     @Permissions(values = {IConstants.Permission.UM_PERMISSION_DELETE})
-    public void deletePermissionById(@PathVariable("permission_id") final Long permissionId) {
-    	LOGGER.info("[deletePermissionById] (permissionId: " + permissionId +")");
-        permissionService.deletePermissionById(permissionId);
-    }
+	public void deletePermissionById(@PathVariable("permission_id") final Long permissionId) {
+		activityLogger.log(ActivityType.DELETE_PERMISSION, permissionId + "");
+		LOGGER.info("[deletePermissionById] (permissionId: " + permissionId + ")");
+		permissionService.deletePermissionById(permissionId);
+	}
 
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(value = "/{permission_id}", method = RequestMethod.PUT)
     @Permissions(values = {IConstants.Permission.UM_PERMISSION_EDIT})
-    public Permission updatePermission(@PathVariable("permission_id") final Long permissionId,
-            @RequestBody final Permission permission) {
-    	LOGGER.info("[updatePermission] (permissionId: " + permissionId +")");
-    	return permissionService.updatePermission(permissionId, permission);
-    }
+	public Permission updatePermission(@PathVariable("permission_id") final Long permissionId,
+			@RequestBody final Permission permission) {
+		activityLogger.log(ActivityType.UPDATE_PERMISSION, permissionId + "");
+		LOGGER.info("[updatePermission] (permissionId: " + permissionId + ")");
+		return permissionService.updatePermission(permissionId, permission);
+	}
 }

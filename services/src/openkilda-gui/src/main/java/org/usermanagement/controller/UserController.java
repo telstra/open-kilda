@@ -18,6 +18,8 @@ import java.util.List;
 import org.openkilda.auth.context.ServerContext;
 import org.openkilda.auth.model.Permissions;
 import org.openkilda.constants.IConstants;
+import org.openkilda.log.ActivityLogger;
+import org.openkilda.log.constants.ActivityType;
 import org.usermanagement.model.Message;
 import org.usermanagement.model.Role;
 import org.usermanagement.model.UserInfo;
@@ -41,6 +43,9 @@ public class UserController {
     
     @Autowired
     private ServerContext serverContext;
+    
+    @Autowired
+    private ActivityLogger activityLogger;
 
     /**
      * Gets the users by role id.
@@ -65,10 +70,11 @@ public class UserController {
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(method = RequestMethod.POST)
     @Permissions(values = {IConstants.Permission.UM_USER_ADD})
-    public UserInfo createUser(@RequestBody final UserInfo userInfo) {
-        LOGGER.info("[createUser] (username: " + userInfo.getUsername() + ", name: " + userInfo.getName() + ")");
-        return userService.createUser(userInfo);
-    }
+	public UserInfo createUser(@RequestBody final UserInfo userInfo) {
+		activityLogger.log(ActivityType.CREATE_USER, userInfo.getName());
+		LOGGER.info("[createUser] (username: " + userInfo.getUsername() + ", name: " + userInfo.getName() + ")");
+		return userService.createUser(userInfo);
+	}
 
     /**
      * Update user.
@@ -80,11 +86,12 @@ public class UserController {
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(value = "/{user_id}", method = RequestMethod.PUT)
     @Permissions(values = {IConstants.Permission.UM_USER_EDIT})
-    public UserInfo updateUser(@RequestBody final UserInfo userInfo, @PathVariable("user_id") final Long userId) {
-        LOGGER.info("[updateUser] (id: " + userId + ")");
-        userInfo.setUserId(userId);
-        return userService.updateUser(userInfo, userId);
-    }
+	public UserInfo updateUser(@RequestBody final UserInfo userInfo, @PathVariable("user_id") final Long userId) {
+		activityLogger.log(ActivityType.UPDATE_USER, userId + "");
+		LOGGER.info("[updateUser] (id: " + userId + ")");
+		userInfo.setUserId(userId);
+		return userService.updateUser(userInfo, userId);
+	}
 
     /**
      * Gets the user list.
@@ -121,10 +128,11 @@ public class UserController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @RequestMapping(value = "/{user_id}", method = RequestMethod.DELETE)
     @Permissions(values = {IConstants.Permission.UM_USER_DELETE})
-    public void deleteUserById(@PathVariable("user_id") final Long userId) {
-        LOGGER.info("[deleteUserById] (id: " + userId + ")");
-        userService.deleteUserById(userId);
-    }
+	public void deleteUserById(@PathVariable("user_id") final Long userId) {
+		activityLogger.log(ActivityType.DELETE_USER, userId + "");
+		LOGGER.info("[deleteUserById] (id: " + userId + ")");
+		userService.deleteUserById(userId);
+	}
 
     /**
      * Assign users by role id.
@@ -136,10 +144,11 @@ public class UserController {
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(value = "/role/{role_id}", method = RequestMethod.PUT)
     @Permissions(values = {IConstants.Permission.UM_ASSIGN_ROLE_TO_USERS})
-    public Role assignUsersByRoleId(@PathVariable("role_id") final Long roleId, @RequestBody final Role role) {
-        LOGGER.info("[assignUsersByRoleId] (roleId: " + roleId + ")");
-        return userService.assignUserByRoleId(roleId, role);
-    }
+	public Role assignUsersByRoleId(@PathVariable("role_id") final Long roleId, @RequestBody final Role role) {
+		activityLogger.log(ActivityType.ASSIGN_USERS_BY_ROLE, roleId + "");
+		LOGGER.info("[assignUsersByRoleId] (roleId: " + roleId + ")");
+		return userService.assignUserByRoleId(roleId, role);
+	}
 
     /**
      * Change password.
@@ -151,12 +160,12 @@ public class UserController {
      */
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(value = "/changePassword/{user_id}", method = RequestMethod.PUT)
-    public Message changePassword(@RequestBody final UserInfo userInfo,
-    		@PathVariable("user_id") final Long userId) {
-        LOGGER.info("[changePassword] (userId: " + userId + ")");
-    	userService.changePassword(userInfo, userId);
-    	return new Message("Password has been changed successfully.");
-    }
+	public Message changePassword(@RequestBody final UserInfo userInfo, @PathVariable("user_id") final Long userId) {
+		activityLogger.log(ActivityType.CHANGE_PASSWORD, userId + "");
+		LOGGER.info("[changePassword] (userId: " + userId + ")");
+		userService.changePassword(userInfo, userId);
+		return new Message("Password has been changed successfully.");
+	}
 
     /**
      * Reset password.
@@ -167,11 +176,12 @@ public class UserController {
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(value = "/resetpassword/{id}", method = RequestMethod.GET)
     @Permissions(values = {IConstants.Permission.UM_USER_RESET})
-    public Object resetPassword(@PathVariable("id") final Long userId) {
-        LOGGER.info("[resetPassword] (userId: " + userId + ")");
-    	userService.resetPassword(userId,false);
-        return new Message("Password has been sent to your EmailId");
-    }
+	public Object resetPassword(@PathVariable("id") final Long userId) {
+		activityLogger.log(ActivityType.RESET_PASSWORD, userId + "");
+		LOGGER.info("[resetPassword] (userId: " + userId + ")");
+		userService.resetPassword(userId, false);
+		return new Message("Password has been sent to your EmailId");
+	}
 
     /**
      * Reset password by admin.
@@ -182,10 +192,11 @@ public class UserController {
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(value = "/admin/resetpassword/{id}", method = RequestMethod.GET)
     @Permissions(values = {IConstants.Permission.UM_USER_RESET_ADMIN})
-    public Object resetPasswordByAdmin(@PathVariable("id") final Long userId) {
-        LOGGER.info("[resetPasswordByAdmin] (userId: " + userId + ")");
-        return userService.resetPassword(userId,true);
-    }
+	public Object resetPasswordByAdmin(@PathVariable("id") final Long userId) {
+		activityLogger.log(ActivityType.ADMIN_RESET_PASSWORD, userId + "");
+		LOGGER.info("[resetPasswordByAdmin] (userId: " + userId + ")");
+		return userService.resetPassword(userId, true);
+	}
 
     /**
      * Reset twofa.
@@ -196,11 +207,12 @@ public class UserController {
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(value = "/reset2fa/{user_id}", method = RequestMethod.PUT)
     @Permissions(values = {IConstants.Permission.UM_USER_RESET2FA})
-    public Message resetTwofa(@PathVariable("user_id") final Long userId) {
-        LOGGER.info("[resetTwofa] (userId: " + userId + ")");
-        userService.reset2fa(userId);
-        return new Message("2FA has been reset for the user.");
-    }
+	public Message resetTwofa(@PathVariable("user_id") final Long userId) {
+		activityLogger.log(ActivityType.RESET_2FA, userId + "");
+		LOGGER.info("[resetTwofa] (userId: " + userId + ")");
+		userService.reset2fa(userId);
+		return new Message("2FA has been reset for the user.");
+	}
     
 	@ResponseStatus(HttpStatus.OK)
 	@RequestMapping(value = "/settings", method = RequestMethod.GET)
@@ -212,6 +224,7 @@ public class UserController {
 	@ResponseStatus(HttpStatus.OK)
 	@RequestMapping(value = "/settings", method = RequestMethod.PATCH)
 	public String saveOrUpdateSettings(@RequestBody final String settings) {
+		activityLogger.log(ActivityType.UPDATE_USER_SETTINGS, serverContext.getRequestContext().getUserId() + "");
 		UserInfo userInfo = new UserInfo();
 		userInfo.setSettings(settings);
 		userInfo.setUserId(serverContext.getRequestContext().getUserId());

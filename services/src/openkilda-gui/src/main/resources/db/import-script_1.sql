@@ -7,13 +7,12 @@ INSERT  INTO "KILDA_STATUS" (status_id, STATUS_CODE, STATUS) VALUES
 	(2, 'INA', 'Inactive');
 	
 INSERT INTO "KILDA_USER" (USER_ID, Username, Name, Password, email, Login_Time, Logout_Time, Active_Flag, Is_Authorized, is_two_fa_enabled, two_fa_key, is_two_fa_configured, CREATED_BY, CREATED_DATE, UPDATED_BY, UPDATED_DATE,STATUS_ID) VALUES 
-	(1, 'superadmin@openkilda.org', 'Super Admin', '$2a$11$/PHW3eqqJkN2SDbrQhu44eYQkOPIMmoclx5eg8MeTk3tbay6hsVou', '', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, true, true, false, null, false, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP,1),
-	(2, 'admin', 'Admin', '$2a$11$/PHW3eqqJkN2SDbrQhu44eYQkOPIMmoclx5eg8MeTk3tbay6hsVou', 'admin@openkilda.org', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, true, true, false, null, false, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP,1),
-	(3, 'user@openkilda.org', 'User', '$2a$11$/PHW3eqqJkN2SDbrQhu44eYQkOPIMmoclx5eg8MeTk3tbay6hsVou', 'user@openkilda.org', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, true, true, true, null, false, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP,1);
+	(1, 'appadmin', 'APP Admin', '$2a$11$/PHW3eqqJkN2SDbrQhu44eYQkOPIMmoclx5eg8MeTk3tbay6hsVou', '', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, true, true, false, null, false, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP,1),
+	(2, 'admin', 'Admin', '$2a$11$/PHW3eqqJkN2SDbrQhu44eYQkOPIMmoclx5eg8MeTk3tbay6hsVou', 'admin@openkilda.org', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, true, true, false, null, false, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP,1);
 	
 INSERT INTO "KILDA_ROLE" (ROLE_ID, ROLE,STATUS_ID, CREATED_BY, CREATED_DATE, UPDATED_BY, UPDATED_DATE,DESCRIPTION) VALUES 
-	(1, 'kilda_user',1,1,CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP,'TESTING'),
-	(2, 'kilda_admin',1,1,CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP,'TESTING');
+	(1, 'kilda_user',1,1,CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP,'Kilda User'),
+	(2, 'kilda_admin',1,1,CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP,'Kilda Admin');
 
 INSERT INTO "KILDA_PERMISSION" (PERMISSION_ID, PERMISSION, IS_EDITABLE, IS_ADMIN_PERMISSION, STATUS_ID, CREATED_BY, CREATED_DATE, UPDATED_BY, UPDATED_DATE,DESCRIPTION) VALUES 
 	(1, 'menu_topology', false, false, 1, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, 'Permission for topology menu'),
@@ -28,19 +27,19 @@ INSERT INTO "KILDA_PERMISSION" (PERMISSION_ID, PERMISSION, IS_EDITABLE, IS_ADMIN
 	(10, 'um_user_delete', false, false, 1, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, 'Permission for user management -> delete user'),
 	(11, 'um_user_activate', false, false, 1, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, 'Permission for user management -> activate/deactivate User'),
 	(12, 'um_user_reset', false, false, 1, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, 'Permission for user management -> reset password'),
-	(13, 'um_user_reset_admin', false, false, 1, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, 'Permission for user management -> reset password (admin)'),
+	(13, 'um_user_reset_admin', false, true, 1, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, 'Permission for user management -> reset password (admin)'),
 	(14, 'um_user_reset2fa',  false, false, 1, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, 'Permission for user management -> Reset 2 fa'),
 	(15, 'um_role_add', false, false, 1, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, 'Permission for user management -> add role'),
 	(16, 'um_role_edit', false, false, 1, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, 'Permission for user management -> edit role'),
 	(17, 'um_role_delete', false, false, 1, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, 'Permission for user management -> delete role'),
 	(18, 'um_role_view_users', false, false, 1, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, 'Permission for user management -> view users by role'),
-	(19, 'um_permission_add', false, false, 1, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, 'Permission for user management -> add permission'),
-	(20, 'um_permission_edit', false, false, 1, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, 'Permission for user management -> edit permission'),
-	(21, 'um_permission_delete', false, false, 1, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, 'Permission for user management -> delete permission'),
+	(19, 'um_permission_add', false, true, 1, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, 'Permission for user management -> add permission'),
+	(20, 'um_permission_edit', false, true, 1, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, 'Permission for user management -> edit permission'),
+	(21, 'um_permission_delete', false, true, 1, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, 'Permission for user management -> delete permission'),
 	(22, 'um_permission_view_roles', false, false, 1, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, 'Permission for user management -> view roles by permission'),
 	(23, 'um_role_assign_users', false, false, 1, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, 'Permission for user management -> assign users to role'),
 	(24, 'um_permission_assign_roles', false, false, 1, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, 'Permission for user management -> assign permissions to user'),
-	(25, 'um_permission_activate', false, false, 1, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, 'Permission for user management -> activate/deactivate permission'),
+	(25, 'um_permission_activate', false, true, 1, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, 'Permission for user management -> activate/deactivate permission'),
 	(26, 'sw_permission_rules', false, false, 1, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, 'Permission for switches -> rules'),
 	(27, 'fw_permission_reroute', false, false, 1, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, 'Permission for flow -> reroute'),
 	(28, 'isl_permission_editcost', false, false, 1, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, 'Permission for isl -> edit cost'),
@@ -87,8 +86,7 @@ INSERT INTO "ROLE_PERMISSION" (ROLE_ID,PERMISSION_ID) VALUES
 	
 INSERT INTO "USER_ROLE" (USER_ID, ROLE_ID) VALUES 
 	(1, 1),	
-	(2, 1),	
-	(3, 1);
+	(2, 1);
 
 ALTER TABLE KILDA_PERMISSION ALTER COLUMN permission_id RESTART WITH 100;
 ALTER TABLE KILDA_ROLE ALTER COLUMN role_id RESTART WITH 100;

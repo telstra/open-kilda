@@ -2685,3 +2685,21 @@ span.badge-heading {
     -o-transition: border-color ease-in-out .15s,box-shadow ease-in-out .15s;
     transition: border-color ease-in-out .15s,box-shadow ease-in-out .15s;
 }
+
+.icon-logo img {
+    width: 30px;
+    height: 30px;
+    float: left;
+}
+span.icon-logo.toggleText {
+    padding: 18px 0px;
+    float: left;
+}
+aside.main-sidebar.min-sidebar {
+    width: 60px;
+    float: left;
+}
+a.logo.min-logo {
+    width: 60px;
+    float: left;
+}

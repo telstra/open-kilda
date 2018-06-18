@@ -248,6 +248,9 @@ if(page == "home"){
 else if(page == "usermanagement" || (page.indexOf('details')!==-1 && href.indexOf('usermanagement')!==-1)){ 
 	$("#usermanagement-menu-id").addClass("active");
 	storage.remove("FLOWS_LIST");
+}else if(page =='useractivity'){
+	$("#useractivity-menu-id").addClass("active");
+	storage.remove("FLOWS_LIST");
 }
 /** sub menu related code End **/
 
