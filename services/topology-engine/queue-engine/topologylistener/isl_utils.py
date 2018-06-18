@@ -20,6 +20,7 @@ from topologylistener import db
 from topologylistener import exc
 from topologylistener import flow_utils
 from topologylistener import model
+from topologylistener import link_props_utils
 
 logger = logging.getLogger(__name__)
 
@@ -36,8 +37,9 @@ def create_if_missing(tx, timestamp, *links):
         }] -> (dst)
         ON CREATE SET 
           target.status=$status, target.actual=$status,
+          target.latency=-1,
           target.time_create=$timestamp,
-          target.latency=-1
+          target.time_modify=$timestamp
         ON MATCH SET target.time_modify=$timestamp""")
 
     for isl in sorted(links):
@@ -100,26 +102,6 @@ def fetch_by_datapath(tx, dpid):
     return (x['target'] for x in cursor)
 
 
-def fetch_link_props(tx, isl):
-    match = _make_match(isl)
-    q = textwrap.dedent("""
-        MATCH (target:link_props {
-            src_switch: $src_switch,
-            src_port: $src_port,
-            dst_switch: $dst_switch,
-            dst_port: $dst_port})
-        RETURN target""")
-
-    logger.debug('link_props lookup query:\n%s', q)
-    cursor = tx.run(q, match)
-
-    try:
-        target = db.fetch_one(cursor)['target']
-    except exc.DBEmptyResponse:
-        raise exc.DBRecordNotFound(q, match)
-    return target
-
-
 def touch(tx, isl, mtime=None):
     logger.debug("Touch ISL %s", isl)
 
@@ -162,9 +144,9 @@ def switch_unplug(tx, dpid, mtime=True):
     _lock_affected_switches(tx, involved, dpid)
 
     for db_link in involved:
-        source = model.NetworkEndpoint(
+        source = model.IslPathNode(
                 db_link['src_switch'], db_link['src_port'])
-        dest = model.NetworkEndpoint(db_link['dst_switch'], db_link['dst_port'])
+        dest = model.IslPathNode(db_link['dst_switch'], db_link['dst_port'])
         isl = model.InterSwitchLink(source, dest, db_link['actual'])
         logging.debug("Found ISL: %s", isl)
 
@@ -287,11 +269,7 @@ def increase_cost(tx, isl, amount, limit):
 
 
 def get_cost(tx, isl):
-    try:
-        db_record = fetch_link_props(tx, isl)
-    except exc.DBRecordNotFound:
-        db_record = fetch(tx, isl)
-
+    db_record = fetch(tx, isl)
     value = db_record['cost']
     if value is not None:
         value = model.convert_integer(value)
@@ -299,13 +277,15 @@ def get_cost(tx, isl):
 
 
 def set_cost(tx, isl, cost):
-    props = {'cost': cost}
+    link_props = model.LinkProps.new_from_isl(isl)
+    link_props.props['cost'] = cost
     try:
-        changed = set_link_props(tx, isl, props)
+        origin = link_props_utils.set_props_and_propagate_to_isl(
+            tx, link_props)
     except exc.DBRecordNotFound:
-        changed = set_props(tx, isl, props)
+        origin = set_props(tx, isl, {'cost': cost})
 
-    original_cost = changed.get('cost')
+    original_cost = origin.get('cost')
     if original_cost != cost:
         logger.warning(
             'ISL %s cost have been changed from %s to %s',
@@ -314,7 +294,7 @@ def set_cost(tx, isl, cost):
 
 def set_props(tx, isl, props):
     target = fetch(tx, isl)
-    origin, update = _locate_changes(target, props)
+    origin, update = db.locate_changes(target, props)
     if update:
         q = textwrap.dedent("""
         MATCH (:switch)-[target:isl]->(:switch) 
@@ -328,34 +308,17 @@ def set_props(tx, isl, props):
     return origin
 
 
-def set_link_props(tx, isl, props):
-    target = fetch_link_props(tx, isl)
-    origin, update = _locate_changes(target, props)
-    if update:
-        q = textwrap.dedent("""
-        MATCH (target:link_props) 
-        WHERE id(target)=$target_id
-        """) + db.format_set_fields(
-                db.escape_fields(update), field_prefix='target.')
+def del_props(tx, isl, props):
+    logger.info(
+        'ISL drop %s props request: %s', isl, ', '.join(repr(x) for x in props))
 
-        p = {'target_id': db.neo_id(target)}
-        db.log_query('link_props set props', q, p)
-        tx.run(q, p)
+    remove = ['target.{}'.format(db.escape(x)) for x in props]
+    if not remove:
+        return
 
-        sync_with_link_props(tx, isl, *update.keys())
-
-    return origin
-
-
-def sync_with_link_props(tx, isl, *fields):
-    copy_fields = {
-        name: 'source.' + name for name in fields}
+    remove.insert(0, '')
+    p = _make_match(isl)
     q = textwrap.dedent("""
-        MATCH (source:link_props) 
-        WHERE source.src_switch = $src_switch
-          AND source.src_port = $src_port
-          AND source.dst_switch = $dst_switch
-          AND source.dst_port = $dst_port
         MATCH
           (:switch {name: $src_switch})
           -
@@ -366,14 +329,10 @@ def sync_with_link_props(tx, isl, *fields):
             dst_port: $dst_port
           }]
           ->
-          (:switch {name: $dst_switch})
-        """) + db.format_set_fields(
-            db.escape_fields(copy_fields, raw_values=True),
-            field_prefix='target.')
-    p = _make_match(isl)
-
-    db.log_query('propagate link props to ISL', q, p)
-    tx.run(q, p)
+          (:switch {name: $dst_switch})""") + '\nREMOVE '.join(remove)
+    db.log_query('ISL drop props', q, p)
+    stats = tx.run(q, p).stats()
+    return stats['contains_updates']
 
 
 def _lock_affected_switches(tx, db_links, *extra):
@@ -383,22 +342,6 @@ def _lock_affected_switches(tx, db_links, *extra):
         affected_switches.add(link['dst_switch'])
 
     flow_utils.precreate_switches(tx, *affected_switches)
-
-
-def _locate_changes(target, props):
-    origin = {}
-    update = {}
-    for field, value in props.items():
-        try:
-            current = target[field]
-        except KeyError:
-            update[field] = props[field]
-        else:
-            if current != props[field]:
-                update[field] = props[field]
-                origin[field] = current
-
-    return origin, update
 
 
 def _make_match(isl):

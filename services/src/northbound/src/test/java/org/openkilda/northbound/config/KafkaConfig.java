@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,18 +13,16 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.nbtopology.annotations;
+package org.openkilda.northbound.config;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import org.openkilda.config.KafkaTopicsConfig;
 
-/**
- * Requests marked with {@link ReadRequest} annotation won't change any records in DB.
- */
-@Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.TYPE})
-public @interface ReadRequest {
+import com.sabre.oss.conf4j.spring.annotation.ConfigurationType;
+import com.sabre.oss.conf4j.spring.annotation.EnableConf4j;
+
+@EnableConf4j
+@ConfigurationType(name = "kafkaTopicsConfig", value = KafkaTopicsConfig.class)
+@ConfigurationType(name = "kafkaGroupConfig", value = KafkaNorthboundConfig.class)
+public class KafkaConfig {
 
 }

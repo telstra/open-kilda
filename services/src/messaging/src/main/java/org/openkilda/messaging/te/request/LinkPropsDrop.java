@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,18 +13,22 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.nbtopology.annotations;
+package org.openkilda.messaging.te.request;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import org.openkilda.messaging.model.LinkPropsMask;
 
-/**
- * Requests marked with {@link ReadRequest} annotation won't change any records in DB.
- */
-@Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.TYPE})
-public @interface ReadRequest {
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Value;
 
+@Value
+public class LinkPropsDrop extends LinkPropsRequest {
+    @JsonProperty("lookup_mask")
+    LinkPropsMask propsMask;
+
+    @JsonCreator
+    public LinkPropsDrop(
+            @JsonProperty("lookup_mask") LinkPropsMask propsMask) {
+        this.propsMask = propsMask;
+    }
 }

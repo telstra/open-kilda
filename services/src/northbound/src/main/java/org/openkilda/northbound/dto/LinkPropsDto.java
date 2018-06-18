@@ -1,77 +1,71 @@
-package org.openkilda.northbound.dto;
+/* Copyright 2017 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
 
+package org.openkilda.northbound.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
-@JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class LinkPropsDto {
 
-    private static final String DEFAULT = "";
-    private String src_switch = DEFAULT;
-    private String src_port = DEFAULT;
-    private String dst_switch = DEFAULT;
-    private String dst_port = DEFAULT;
+    @JsonProperty("src_switch")
+    private String srcSwitch;
+    @JsonProperty("src_port")
+    private Integer srcPort;
+    @JsonProperty("dst_switch")
+    private String dstSwitch;
+    @JsonProperty("dst_port")
+    private Integer dstPort;
     @JsonProperty("props")
-    private Map<String,String> props = new HashMap<>();
+    private Map<String, String> props;
 
-    /**
-     * Creates an empty link properties.
-     */
-    public LinkPropsDto(){
+    public LinkPropsDto(@JsonProperty("src_switch") String srcSwitch, @JsonProperty("src_port") Integer srcPort,
+                        @JsonProperty("dst_switch") String dstSwitch, @JsonProperty("dst_port") Integer dstPort,
+                        @JsonProperty("props") Map<String, String> props) {
+        this.srcSwitch = srcSwitch;
+        this.srcPort = srcPort;
+        this.dstSwitch = dstSwitch;
+        this.dstPort = dstPort;
+        this.props = props;
     }
 
-    /**
-     * Creates a copy of link properties
-     */
-    public LinkPropsDto(Map<String,String> props){
-        this.props = new HashMap<>(props);
+    public String getSrcSwitch() {
+        return srcSwitch;
+    }
+
+    public Integer getSrcPort() {
+        return srcPort;
+    }
+
+    public String getDstSwitch() {
+        return dstSwitch;
+    }
+
+    public Integer getDstPort() {
+        return dstPort;
+    }
+
+    public Map<String, String> getProps() {
+        return new HashMap<>(props);
     }
 
     public String getProperty(String key) {
-        return props.getOrDefault(key, DEFAULT);
-    }
-
-    public LinkPropsDto setProperty(String key, String value) {
-        props.put(key, value);
-        return this;
-    }
-
-    public String getSrc_switch() {
-        return src_switch;
-    }
-
-    public void setSrc_switch(String src_switch) {
-        this.src_switch = src_switch;
-    }
-
-    public String getSrc_port() {
-        return src_port;
-    }
-
-    public void setSrc_port(String src_port) {
-        this.src_port = src_port;
-    }
-
-    public String getDst_switch() {
-        return dst_switch;
-    }
-
-    public void setDst_switch(String dst_switch) {
-        this.dst_switch = dst_switch;
-    }
-
-    public String getDst_port() {
-        return dst_port;
-    }
-
-    public void setDst_port(String dst_port) {
-        this.dst_port = dst_port;
+        return props.get(key);
     }
 }

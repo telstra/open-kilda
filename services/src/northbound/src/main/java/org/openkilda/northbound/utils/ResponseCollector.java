@@ -15,8 +15,8 @@
 
 package org.openkilda.northbound.utils;
 
+import org.openkilda.messaging.info.ChunkedInfoMessage;
 import org.openkilda.messaging.info.InfoData;
-import org.openkilda.messaging.nbtopology.response.ChunkedInfoMessage;
 import org.openkilda.northbound.messaging.MessageConsumer;
 
 import org.apache.commons.lang3.StringUtils;
@@ -50,6 +50,7 @@ public class ResponseCollector<T extends InfoData> {
             message = messageConsumer.poll(nextRequest);
             nextRequest = message.getNextRequestId();
 
+            @SuppressWarnings("unchecked")
             T response = (T) message.getData();
             if (response != null) {
                 result.add(response);

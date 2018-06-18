@@ -16,35 +16,30 @@
 package org.openkilda.messaging.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Builder;
+import lombok.Value;
+import org.apache.commons.lang3.StringUtils;
 
-public class NetworkEndpoint extends AbstractNetworkEndpoint {
-    @Builder
+/**
+ * The aim of this object is to define fuzzy definition of network endpoint. If field is not defined(equal to null),
+ * this filed must be treated as having "any possible value".
+ */
+@Value
+public class NetworkEndpointMask extends AbstractNetworkEndpoint {
+
     @JsonCreator
-    public NetworkEndpoint(
+    public NetworkEndpointMask(
             @JsonProperty("switch-id") String datapath,
             @JsonProperty("port-id") Integer portNumber) {
-        super(datapath, portNumber);
+        super(StringUtils.isEmpty(datapath) ? null : datapath, portNumber);
 
-        validateDatapath();
-        validatePortNumber();
+        if (datapath != null) {
+            validateDatapath();
+        }
+
+        if (portNumber != null) {
+            validatePortNumber();
+        }
     }
 
-    public NetworkEndpoint(NetworkEndpoint that) {
-        this(that.getDatapath(), that.getPortNumber());
-    }
-
-    @JsonIgnore
-    @Deprecated
-    public String getSwitchDpId() {
-        return getDatapath();
-    }
-
-    @JsonIgnore
-    @Deprecated
-    public Integer getPortId() {
-        return getPortNumber();
-    }
 }

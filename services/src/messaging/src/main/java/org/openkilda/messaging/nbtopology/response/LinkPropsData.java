@@ -13,18 +13,21 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.nbtopology.annotations;
+package org.openkilda.messaging.nbtopology.response;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.model.LinkProps;
 
-/**
- * Requests marked with {@link ReadRequest} annotation won't change any records in DB.
- */
-@Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.TYPE})
-public @interface ReadRequest {
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Value;
 
+@Value
+public class LinkPropsData extends InfoData {
+
+    @JsonProperty
+    private LinkProps linkProps;
+
+    public LinkPropsData(@JsonProperty("props") LinkProps linkProps) {
+        this.linkProps = linkProps;
+    }
 }

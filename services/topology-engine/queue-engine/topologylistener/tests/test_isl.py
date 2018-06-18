@@ -15,8 +15,6 @@
 
 import unittest
 
-import py2neo
-
 from topologylistener import exc
 from topologylistener import isl_utils
 from topologylistener import messageclasses
@@ -35,16 +33,7 @@ ISL_STATUS_PROPS_UP = {'actual': ISL_STATUS_ACTIVE, 'status': ISL_STATUS_ACTIVE}
 ISL_STATUS_PROPS_MOVED = {
     'actual': ISL_STATUS_MOVED, 'status': ISL_STATUS_MOVED}
 
-dpid_test_marker = 0xfffe000000000000
-dpid_protected_bits = 0xffffff0000000000
-
 neo4j_connect = share.env.neo4j_connect
-
-
-def clean_neo4j_test_data(tx):
-    drop_db_isls(tx)
-    drop_db_switches(tx)
-    drop_db_link_props(tx)
 
 
 def inject_db_link_props(tx, source, dest, payload):
@@ -68,36 +57,6 @@ def inject_db_link_props(tx, source, dest, payload):
     tx.run(q, p)
 
 
-def drop_db_isls(tx):
-    q = 'MATCH (:switch)-[self:isl|:link_props]->() RETURN self'
-    for data_set in tx.run(q):
-        rel = data_set['self']
-        if not is_test_dpid(rel['src_switch']):
-            continue
-        if not is_test_dpid(rel['dst_switch']):
-            continue
-
-        tx.separate(rel)
-
-
-def drop_db_switches(tx):
-    selector = py2neo.NodeSelector(tx)
-    for node in selector.select('switch'):
-        if not is_test_dpid(node['name']):
-            continue
-        tx.delete(node)
-
-
-def drop_db_link_props(tx):
-    selector = py2neo.NodeSelector(tx)
-    for node in selector.select('link_props'):
-        match = [
-            is_test_dpid(node[rel]) for rel in ('src_switch', 'dst_switch')]
-        if not all(match):
-            continue
-        tx.delete(node)
-
-
 def make_switch_add(dpid):
     payload = {
         'clazz': messageclasses.MT_SWITCH,
@@ -108,7 +67,7 @@ def make_switch_add(dpid):
         'description': 'test switch',
         'controller': '172.16.0.1'}
     command = share.command(payload)
-    return messageclasses.MessageItem(**command).handle()
+    return messageclasses.MessageItem(command).handle()
 
 
 def make_switch_remove(dpid):
@@ -121,7 +80,7 @@ def make_switch_remove(dpid):
         'description': 'test switch',
         'controller': '172.16.0.1'}
     command = share.command(payload)
-    return messageclasses.MessageItem(**command).handle()
+    return messageclasses.MessageItem(command).handle()
 
 
 def make_port_down(endpoint):
@@ -132,7 +91,7 @@ def make_port_down(endpoint):
         'port_no': endpoint.port}
     command = share.command(payload)
 
-    return messageclasses.MessageItem(**command).handle()
+    return messageclasses.MessageItem(command).handle()
 
 
 def make_isl_pair(source, dest):
@@ -152,7 +111,7 @@ def make_isl_failed(source):
             {
                 'switch_id': source.dpid,
                 'port_no': source.port}]})
-    return messageclasses.MessageItem(**command).handle()
+    return messageclasses.MessageItem(command).handle()
 
 
 def make_isl_moved(isl):
@@ -173,42 +132,12 @@ def make_isl_moved(isl):
             }
         ]
     })
-    return messageclasses.MessageItem(**command).handle()
-
-
-def make_datapath_id(number):
-    if number & dpid_protected_bits:
-        raise ValueError(
-                'Invalid switch id {}: use protected bits'.format(number))
-    return pack_dpid(number | dpid_test_marker)
-
-
-def is_test_dpid(dpid):
-    dpid = unpack_dpid(dpid)
-    return dpid & dpid_protected_bits == dpid_test_marker
-
-
-def pack_dpid(dpid):
-    value = hex(dpid)
-    i = iter(value)
-    chunked = [a + b for a, b in zip(i, i)]
-    chunked.pop(0)
-    return ':'.join(chunked)
-
-
-def unpack_dpid(dpid_str):
-    value = dpid_str.replace(':', '')
-    return int(value, 16)
+    return messageclasses.MessageItem(command).handle()
 
 
 class TestIsl(share.AbstractTest):
-    src_endpoint = model.NetworkEndpoint(make_datapath_id(1), 2)
-    dst_endpoint = model.NetworkEndpoint(make_datapath_id(2), 4)
-
-    def setUp(self):
-        super(TestIsl, self).setUp()
-        with neo4j_connect.begin() as tx:
-            clean_neo4j_test_data(tx)
+    src_endpoint = model.IslPathNode(share.make_datapath_id(1), 2)
+    dst_endpoint = model.IslPathNode(share.make_datapath_id(2), 4)
 
     def test_isl_status(self):
         src_endpoint, dst_endpoint = self.src_endpoint, self.dst_endpoint
@@ -266,22 +195,22 @@ class TestIsl(share.AbstractTest):
 
     @unittest.skip('ISL conflict resolution was disabled, because event topology is responsible for them now')
     def test_isl_replug(self):
-        sw_alpha = make_datapath_id(1)
-        sw_beta = make_datapath_id(2)
-        sw_gamma = make_datapath_id(3)
-        sw_delta = make_datapath_id(4)
+        sw_alpha = share.make_datapath_id(1)
+        sw_beta = share.make_datapath_id(2)
+        sw_gamma = share.make_datapath_id(3)
+        sw_delta = share.make_datapath_id(4)
 
         isl_alpha_beta = model.InterSwitchLink(
-                model.NetworkEndpoint(sw_alpha, 2),
-                model.NetworkEndpoint(sw_beta, 2), None)
+                model.IslPathNode(sw_alpha, 2),
+                model.IslPathNode(sw_beta, 2), None)
         isl_beta_alpha = isl_alpha_beta.reversed()
         isl_beta_gamma = model.InterSwitchLink(
-                model.NetworkEndpoint(sw_beta, 2),
-                model.NetworkEndpoint(sw_gamma, 3), None)
+                model.IslPathNode(sw_beta, 2),
+                model.IslPathNode(sw_gamma, 3), None)
         isl_gamma_beta = isl_beta_gamma.reversed()
         isl_gamma_delta = model.InterSwitchLink(
-                model.NetworkEndpoint(sw_gamma, 3),
-                model.NetworkEndpoint(sw_delta, 3), None)
+                model.IslPathNode(sw_gamma, 3),
+                model.IslPathNode(sw_delta, 3), None)
         isl_delta_gamma = isl_gamma_delta.reversed()
 
         for dpid in sw_alpha, sw_beta, sw_gamma, sw_delta:
@@ -364,11 +293,11 @@ class TestIsl(share.AbstractTest):
         self.ensure_isl_props(neo4j_connect, reverse, ISL_STATUS_PROPS_HALF_UP)
 
     def test_isl_down_without_isl(self):
-        sw_alpha = make_datapath_id(1)
-        sw_beta = make_datapath_id(2)
+        sw_alpha = share.make_datapath_id(1)
+        sw_beta = share.make_datapath_id(2)
         isl_alpha_beta = model.InterSwitchLink(
-                model.NetworkEndpoint(sw_alpha, 2),
-                model.NetworkEndpoint(sw_beta, 2), None)
+                model.IslPathNode(sw_alpha, 2),
+                model.IslPathNode(sw_beta, 2), None)
         isl_beta_alpha = isl_alpha_beta.reversed()
 
         self.assertTrue(make_switch_add(sw_alpha))
@@ -382,11 +311,11 @@ class TestIsl(share.AbstractTest):
                 neo4j_connect, isl_beta_alpha)
 
     def test_port_down_without_isl(self):
-        sw_alpha = make_datapath_id(1)
-        sw_beta = make_datapath_id(2)
+        sw_alpha = share.make_datapath_id(1)
+        sw_beta = share.make_datapath_id(2)
         isl_alpha_beta = model.InterSwitchLink(
-                model.NetworkEndpoint(sw_alpha, 2),
-                model.NetworkEndpoint(sw_beta, 2), None)
+                model.IslPathNode(sw_alpha, 2),
+                model.IslPathNode(sw_beta, 2), None)
         isl_beta_alpha = isl_alpha_beta.reversed()
 
         self.assertTrue(make_switch_add(sw_alpha))
@@ -400,8 +329,8 @@ class TestIsl(share.AbstractTest):
                 neo4j_connect, isl_beta_alpha)
 
     def test_port_down_with_cost_as_string(self):
-        sw_alpha = make_datapath_id(1)
-        sw_beta = make_datapath_id(2)
+        sw_alpha = share.make_datapath_id(1)
+        sw_beta = share.make_datapath_id(2)
         isl_alpha_beta = model.InterSwitchLink(
                 model.NetworkEndpoint(sw_alpha, 2),
                 model.NetworkEndpoint(sw_beta, 2), None)
@@ -413,17 +342,17 @@ class TestIsl(share.AbstractTest):
         self.assertTrue(make_port_down(isl_alpha_beta.source))
 
     def test_multi_isl_port_down(self):
-        sw_alpha = make_datapath_id(1)
-        sw_beta = make_datapath_id(2)
-        sw_gamma = make_datapath_id(3)
+        sw_alpha = share.make_datapath_id(1)
+        sw_beta = share.make_datapath_id(2)
+        sw_gamma = share.make_datapath_id(3)
 
         isl_alpha_beta = model.InterSwitchLink(
-            model.NetworkEndpoint(sw_alpha, 2),
-            model.NetworkEndpoint(sw_beta, 2), None)
+            model.IslPathNode(sw_alpha, 2),
+            model.IslPathNode(sw_beta, 2), None)
         isl_beta_alpha = isl_alpha_beta.reversed()
         isl_beta_gamma = model.InterSwitchLink(
-            model.NetworkEndpoint(sw_beta, 2),
-            model.NetworkEndpoint(sw_gamma, 3), None)
+            model.IslPathNode(sw_beta, 2),
+            model.IslPathNode(sw_gamma, 3), None)
         isl_gamma_beta = isl_beta_gamma.reversed()
 
         for dpid in sw_alpha, sw_beta, sw_gamma:
@@ -451,7 +380,7 @@ class TestIsl(share.AbstractTest):
 
         self._set_isl_cost('20')
 
-        self._cost_raise_on_port_down('20', 10020, 10020)
+        self._cost_raise_on_port_down(20, 10020, 10020)
         self._cost_raise_on_port_down(10020, 10020, 10020)
 
         self._set_isl_cost(0)
@@ -494,7 +423,7 @@ class TestIsl(share.AbstractTest):
             isl_utils.set_cost(tx, isl.reversed(), value)
 
         with neo4j_connect.begin() as tx:
-            props = {'cost': value}
+            props = {'cost': model.convert_integer(value)}
             self.ensure_isl_props(tx, isl, props)
             self.ensure_isl_props(tx, isl.reversed(), props)
 
@@ -531,11 +460,11 @@ class TestIsl(share.AbstractTest):
         self.ensure_isl_props(neo4j_connect, forward, ISL_STATUS_PROPS_MOVED)
 
     def test_isl_without_life_cycle_fields(self):
-        sw_alpha = make_datapath_id(1)
-        sw_beta = make_datapath_id(2)
+        sw_alpha = share.make_datapath_id(1)
+        sw_beta = share.make_datapath_id(2)
         isl_alpha_beta = model.InterSwitchLink(
-                model.NetworkEndpoint(sw_alpha, 2),
-                model.NetworkEndpoint(sw_beta, 2), None)
+                model.IslPathNode(sw_alpha, 2),
+                model.IslPathNode(sw_beta, 2), None)
 
         self.assertTrue(make_switch_add(sw_alpha))
         self.assertTrue(make_switch_add(sw_beta))
@@ -551,20 +480,20 @@ class TestIsl(share.AbstractTest):
         self.assertTrue(share.exec_isl_discovery(isl_alpha_beta))
 
     def test_time_update_on_isl_discovery(self):
-        sw_alpha = make_datapath_id(1)
-        sw_beta = make_datapath_id(2)
+        sw_alpha = share.make_datapath_id(1)
+        sw_beta = share.make_datapath_id(2)
         isl_alpha_beta = model.InterSwitchLink(
-                model.NetworkEndpoint(sw_alpha, 2),
-                model.NetworkEndpoint(sw_beta, 2), None)
+                model.IslPathNode(sw_alpha, 2),
+                model.IslPathNode(sw_beta, 2), None)
 
         self.assertTrue(make_switch_add(sw_alpha))
         self.assertTrue(make_switch_add(sw_beta))
 
         update_point_a = model.TimeProperty.now(milliseconds_precission=True)
 
-        message = share.command(share.payload_isl_info(isl_alpha_beta))
+        message = share.command(share.isl_info_payload(isl_alpha_beta))
         message['timestamp'] = update_point_a.as_java_timestamp()
-        self.assertTrue(messageclasses.MessageItem(**message).handle())
+        self.feed_service(message)
 
         recovered = model.TimeProperty.new_from_java_timestamp(message['timestamp'])
         self.assertEquals(update_point_a.value, recovered.value)
@@ -584,7 +513,7 @@ class TestIsl(share.AbstractTest):
         self.assertNotEqual(update_point_a.value, update_point_b.value)
 
         message['timestamp'] = update_point_b.as_java_timestamp()
-        self.assertTrue(messageclasses.MessageItem(**message).handle())
+        self.feed_service(message)
         with neo4j_connect.begin() as tx:
             isl = isl_utils.fetch(tx, isl_alpha_beta)
             neo4j_connect.pull(isl)
