@@ -16,7 +16,6 @@
 package org.openkilda.northbound.utils;
 
 public interface CorrelationIdFactory {
-    String getLastId();
 
     String produce();
 

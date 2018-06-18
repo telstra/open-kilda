@@ -40,8 +40,8 @@ import org.openkilda.northbound.messaging.MessageConsumer;
 import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.service.impl.LinkServiceImpl;
 import org.openkilda.northbound.utils.CorrelationIdFactory;
-import org.openkilda.northbound.utils.CorrelationIdPredictableFactory;
 import org.openkilda.northbound.utils.RequestCorrelationId;
+import org.openkilda.northbound.utils.TestCorrelationIdFactory;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -186,7 +186,7 @@ public class LinkServiceTest {
     static class Config {
         @Bean
         public CorrelationIdFactory idFactory() {
-            return new CorrelationIdPredictableFactory();
+            return new TestCorrelationIdFactory();
         }
 
         @Bean

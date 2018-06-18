@@ -19,13 +19,12 @@ import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.model.LinkProps;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jdk.nashorn.internal.objects.annotations.Property;
 import lombok.Value;
 
 @Value
 public class LinkPropsData extends InfoData {
 
-    @Property
+    @JsonProperty
     private LinkProps linkProps;
 
     public LinkPropsData(@JsonProperty("props") LinkProps linkProps) {

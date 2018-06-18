@@ -15,34 +15,23 @@
 
 package org.openkilda.messaging.model;
 
-import org.openkilda.messaging.StringSerializer;
-import org.openkilda.messaging.Utils;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.io.IOException;
+public class LinkPropsMaskTest {
 
-public class LinkPropsMaskTest implements StringSerializer {
+    private ObjectMapper mapper = new ObjectMapper();
+
     @Test
-    public void serializeLoop() throws Exception {
+    public void testLinkPropsSerialization() throws Exception {
         NetworkEndpointMask source = new NetworkEndpointMask("ff:fe:00:00:00:00:00:01", 8);
         NetworkEndpointMask dest = new NetworkEndpointMask("ff:fe:00:00:00:00:00:02", null);
 
         LinkPropsMask origin = new LinkPropsMask(source, dest);
-        serialize(origin);
+        String json = mapper.writeValueAsString(origin);
 
-        LinkPropsMask reconstructed = (LinkPropsMask) deserialize();
+        LinkPropsMask reconstructed = mapper.readValue(json, LinkPropsMask.class);
         Assert.assertEquals(origin, reconstructed);
-    }
-
-    @Override
-    public Object deserialize() throws IOException {
-        return Utils.MAPPER.readValue(strings.poll(), LinkPropsMask.class);
-    }
-
-    @Override
-    public void serialize(Object subject) throws IOException {
-        strings.add(Utils.MAPPER.writeValueAsString(subject));
     }
 }

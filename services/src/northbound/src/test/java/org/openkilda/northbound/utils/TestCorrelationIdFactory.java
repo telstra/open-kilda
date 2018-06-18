@@ -15,7 +15,7 @@
 
 package org.openkilda.northbound.utils;
 
-public class CorrelationIdPredictableFactory extends CorrelationIdUuidFactory {
+public class TestCorrelationIdFactory extends CorrelationIdUuidFactory {
     private int counter = 0;
 
     @Override

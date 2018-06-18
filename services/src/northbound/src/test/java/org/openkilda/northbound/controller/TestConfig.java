@@ -24,7 +24,7 @@ import org.openkilda.northbound.messaging.HealthCheckMessageConsumer;
 import org.openkilda.northbound.messaging.MessageConsumer;
 import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.utils.CorrelationIdFactory;
-import org.openkilda.northbound.utils.CorrelationIdPredictableFactory;
+import org.openkilda.northbound.utils.TestCorrelationIdFactory;
 
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -78,7 +78,7 @@ public class TestConfig {
 
     @Bean
     public CorrelationIdFactory idFactory() {
-        return new CorrelationIdPredictableFactory();
+        return new TestCorrelationIdFactory();
     }
 
     private class TestHealthCheckMessageMock implements HealthCheckMessageConsumer {

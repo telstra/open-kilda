@@ -21,34 +21,23 @@ import java.util.UUID;
 
 @Component
 public class CorrelationIdUuidFactory implements CorrelationIdFactory {
-    private String lastId = null;
 
     @Override
     public String produce() {
-        return setLastId(UUID.randomUUID().toString());
+        return UUID.randomUUID().toString();
     }
 
     @Override
     public String produceChained(String outer) {
-        return setLastId(RequestCorrelationId.chain(produceInner(), outer));
+        return RequestCorrelationId.chain(produceInner(), outer);
     }
 
     @Override
     public String produceChained(String inner, String outer) {
-        return setLastId(RequestCorrelationId.chain(inner, outer));
-    }
-
-    @Override
-    public String getLastId() {
-        return lastId;
+        return RequestCorrelationId.chain(inner, outer);
     }
 
     protected String produceInner() {
         return produce();
-    }
-
-    protected String setLastId(String lastId) {
-        this.lastId = lastId;
-        return lastId;
     }
 }
