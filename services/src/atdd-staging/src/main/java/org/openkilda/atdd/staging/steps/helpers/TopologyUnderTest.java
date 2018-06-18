@@ -23,8 +23,29 @@ import lombok.Data;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Data
 public class TopologyUnderTest {
     Map<FlowPayload, List<TopologyDefinition.Isl>> flowIsls = new HashMap<>();
+    Map<String, Object> aliasedObjects = new HashMap<>();
+
+    public void addAlias(String alias, Object obj) {
+        aliasedObjects.put(alias, obj);
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T> T getAliasedObject(String alias) {
+        return (T) aliasedObjects.get(alias);
+    }
+
+    /**
+     * Get all aliased objects of certain type.
+     */
+    @SuppressWarnings("unchecked")
+    public <T> List<T> getAliasedObjects(Class<T> clazz) {
+        return aliasedObjects.values().stream()
+                .filter(clazz::isInstance)
+                .map(sw -> (T) sw).collect(Collectors.toList());
+    }
 }
