@@ -258,16 +258,22 @@ def set_active_field(tx, neo_id, status):
     tx.run(q, p)
 
 
-def increase_cost(tx, isl, amount):
+def increase_cost(tx, isl, amount, limit):
     cost = get_cost(tx, isl)
     if not cost:
         cost = 0
+    if limit <= cost:
+        return
+
     set_cost(tx, isl, cost + amount)
 
 
 def get_cost(tx, isl):
     db_record = fetch(tx, isl)
-    return db_record['cost']
+    value = db_record['cost']
+    if value is not None:
+        value = model.convert_integer(value)
+    return value
 
 
 def set_cost(tx, isl, cost):

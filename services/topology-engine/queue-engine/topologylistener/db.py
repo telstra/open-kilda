@@ -36,6 +36,7 @@ def create_p2n_driver():
 
 
 def log_query(marker, q, p):
+    q = q.strip()
     log.debug('NEO4J QUERY %s:\n%s\nparams:\n%s', marker, q, pprint.pformat(p))
 
 
