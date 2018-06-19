@@ -443,7 +443,7 @@ public class UserService implements UserDetailsService {
 		userSettingEntity.setSettings(userInfo.getSettings());
 		userSettingEntity = userSettingRepository.save(userSettingEntity);
 		
-		activityLogger.log(ActivityType.UPDATE_USER_SETTINGS, userInfo.getUserId() + "");
+		//activityLogger.log(ActivityType.UPDATE_USER_SETTINGS, userInfo.getUserId() + "");
 		LOGGER.info("User Settings saved successfully for user(user_id: " + userInfo.getUserId() + ").");
 		return userInfo;
 	}
