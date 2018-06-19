@@ -6,7 +6,7 @@ function reloadTabData(link, self, activeLink) {
     if (link == "#userTab") {
     	$(".load-text").text('');
     	$("#loading").css("display", "block");
-        $(link).load('ui/templates/userManagement/userList.html');
+        $(link).load('ui/templates/usermanagement/userList.html');
         $("#user-details").html('');
         userService.getUsers().then(function(userData) {
             if (userData && userData.length) {               
@@ -18,7 +18,7 @@ function reloadTabData(link, self, activeLink) {
     } else if (link == "#roleTab") {
     	$(".load-text").text('');
     	$("#loading").css("display", "block");
-        $(link).load('ui/templates/userManagement/roleList.html');
+        $(link).load('ui/templates/usermanagement/roleList.html');
         $("#role-details").html('');
         roleService.getRoles().then(function(roleData) {
             if (roleData && roleData.length) {                
@@ -30,7 +30,7 @@ function reloadTabData(link, self, activeLink) {
     } else if (link == "#permissionTab") {
     	$(".load-text").text('');
     	$("#loading").css("display", "block");
-        $(link).load('ui/templates/userManagement/permissionList.html');
+        $(link).load('ui/templates/usermanagement/permissionList.html');
         $("#permission-details").html('');
         permissionService.getPermissions().then(function(permissionData) {
             if (permissionData && permissionData.length) {                
@@ -44,7 +44,7 @@ function reloadTabData(link, self, activeLink) {
 }
 $(document).ready(function() {	    
 	
-    $("#userTab").load('ui/templates/userManagement/userList.html');
+    $("#userTab").load('ui/templates/usermanagement/userList.html');
     $("#user-details").html('');
     userService.getUsers().then(function(userData) {
         if (userData && userData.length) {           
