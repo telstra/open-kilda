@@ -8,7 +8,9 @@
         <RollingFile name="J1" immediateFlush="false"
                  fileName="{{ logging.logfile_path }}/northbound.log.json"
                  filePattern="{{ logging.logfile_path }}/northbound.log.json.%i.gz">
-           <JSONLayout compact="true" eventEol="true" properties="true"/>
+           <JsonLayout compact="true" eventEol="true" properties="true">
+                <KeyValuePair key="correlation_id" value="${ctx:correlation_id}"/>
+           </JsonLayout>
            <Policies>
             <SizeBasedTriggeringPolicy size="100 MB"/> <!-- Or every 100 MB -->
           </Policies>
@@ -17,7 +19,9 @@
 {% endif %}
 {% if logging.logstash %}
         <Socket name="LOGSTASH" host="{{ logging.logstash_host }}" port="{{ logging.port.northbound }}">
-            <JsonLayout compact="true" eventEol="true" properties="true" />
+           <JsonLayout compact="true" eventEol="true" properties="true">
+                <KeyValuePair key="correlation_id" value="${ctx:correlation_id}"/>
+           </JsonLayout>
         </Socket>
 {% endif %}
         <RollingFile name="ROLLINGFILE" fileName="/var/logs/northbound/app.log"
