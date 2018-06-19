@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.openkilda.log.ActivityLogger;
+import org.openkilda.log.constants.ActivityType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +40,9 @@ public class PermissionService {
 
 	@Autowired
 	private MessageUtils messageUtil;
+	
+    @Autowired
+    private ActivityLogger activityLogger;
 
 	@Transactional(propagation = Propagation.REQUIRED, readOnly = false)
 	public Permission createPermission(final Permission permission) {
@@ -45,6 +50,8 @@ public class PermissionService {
 
 		PermissionEntity permissionEntity = PermissionConversionUtil.toPermissionEntity(permission);
 		permissionRepository.save(permissionEntity);
+		
+		activityLogger.log(ActivityType.CREATE_PERMISSION, permission.getName());
 		LOGGER.info("Permission with name '" + permission.getName() + "' created successfully.");
 		return PermissionConversionUtil.toPermission(permissionEntity, null);
 	}
@@ -93,6 +100,7 @@ public class PermissionService {
 		}
 		permissionRepository.delete(permissionEntity);
 		LOGGER.info("Permission(permissionId: " + permissionId + ") deleted successfully.");
+		activityLogger.log(ActivityType.DELETE_PERMISSION, permissionEntity.getName());
 	}
 
 	@Transactional(propagation = Propagation.REQUIRED, readOnly = false)
@@ -109,6 +117,7 @@ public class PermissionService {
 
 		permissionEntity = PermissionConversionUtil.toUpatePermissionEntity(permission, permissionEntity);
 		permissionRepository.save(permissionEntity);
+		activityLogger.log(ActivityType.UPDATE_PERMISSION, permissionEntity.getName());
 		LOGGER.info("Permission(permissionId: " + permissionId + ") updated successfully.");
 		return PermissionConversionUtil.toPermission(permissionEntity, null);
 

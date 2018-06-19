@@ -23,6 +23,8 @@ import java.util.Set;
 import org.openkilda.exception.InvalidOtpException;
 import org.openkilda.exception.OtpRequiredException;
 import org.openkilda.exception.TwoFaKeyNotSetException;
+import org.openkilda.log.ActivityLogger;
+import org.openkilda.log.constants.ActivityType;
 import org.openkilda.security.TwoFactorUtility;
 import org.openkilda.utility.StringUtil;
 import org.usermanagement.conversion.RoleConversionUtil;
@@ -37,6 +39,7 @@ import org.usermanagement.exception.RequestValidationException;
 import org.usermanagement.model.Role;
 import org.usermanagement.model.UserInfo;
 import org.usermanagement.util.MailUtils;
+import org.usermanagement.util.MessageCodeUtil;
 import org.usermanagement.util.MessageUtils;
 import org.usermanagement.util.ValidatorUtil;
 import org.usermanagement.validator.UserValidator;
@@ -75,7 +78,13 @@ public class UserService implements UserDetailsService {
     
     @Autowired
     private UserSettingRepository userSettingRepository;
+    
+    @Autowired
+    private ActivityLogger activityLogger;
 
+    @Autowired
+    MessageCodeUtil messageCodeUtil;
+    
     /*
      * (non-Javadoc)
      *
@@ -114,7 +123,9 @@ public class UserService implements UserDetailsService {
         userEntity.setIs2FaEnabled(true);
         userEntity = userRepository.save(userEntity);
         LOGGER.info("User with username '" + userEntity.getUsername() + "' created successfully.");
-
+        
+        activityLogger.log(ActivityType.CREATE_USER, userRequest.getUsername());
+        
         if (userEntity.getUserId() != null) {
             Map<String, Object> map = new HashMap<String, Object>();
             map.put("name", userEntity.getName());
@@ -150,6 +161,8 @@ public class UserService implements UserDetailsService {
 
         UserConversionUtil.toUpateUserEntity(userInfo, userEntity);
         userEntity = userRepository.save(userEntity);
+        
+        activityLogger.log(ActivityType.UPDATE_USER, userEntity.getUsername());
         LOGGER.info("User updated successfully (id: " + userId + ")");
 
         return UserConversionUtil.toUserInfo(userEntity);
@@ -242,6 +255,8 @@ public class UserService implements UserDetailsService {
         }
 
         userRepository.delete(userEntity);
+        
+        activityLogger.log(ActivityType.DELETE_USER, userEntity.getUsername());
         LOGGER.info("User deleted successfully (userId: " + userId + ")");
     }
 
@@ -270,6 +285,8 @@ public class UserService implements UserDetailsService {
             }
         }
         roleEntity = roleRepository.save(roleEntity);
+        
+        activityLogger.log(ActivityType.ASSIGN_USERS_BY_ROLE, roleEntity.getName());
         LOGGER.info("Users assigned with role successfully (role id: " + roleId + ")");
         return RoleConversionUtil.toRole(roleEntity, false, true);
     }
@@ -321,6 +338,8 @@ public class UserService implements UserDetailsService {
         userEntity.setPassword(StringUtil.encodeString(userInfo.getNewPassword()));
         userEntity.setUpdatedDate(new Date());
         userEntity = userRepository.save(userEntity);
+        
+        activityLogger.log(ActivityType.CHANGE_PASSWORD, userEntity.getUsername());
         LOGGER.info("User(userId: " + userId + ") password changed successfully.");
 
         Map<String, Object> context = new HashMap<>();
@@ -358,6 +377,12 @@ public class UserService implements UserDetailsService {
             userEntity.setTwoFaKey(null);
         }
         userEntity = userRepository.save(userEntity);
+        if (adminFlag) {
+        	activityLogger.log(ActivityType.ADMIN_RESET_PASSWORD, userEntity.getUsername());
+        } else {
+        	activityLogger.log(ActivityType.RESET_PASSWORD, userEntity.getUsername());
+        }
+        
 		LOGGER.info("Password reset successfully for user(userId: " + userId + ").");
         if (!adminFlag) {
             Map<String, Object> context = new HashMap<>();
@@ -388,6 +413,8 @@ public class UserService implements UserDetailsService {
         userEntity.setIs2FaConfigured(false);
         userEntity.setTwoFaKey(null);
         userEntity = userRepository.save(userEntity);
+        
+        activityLogger.log(ActivityType.RESET_2FA, userEntity.getUsername());
         LOGGER.info("2FA reset successfully for user(user_id: " + userId + ").");
         if (!userEntity.getIs2FaConfigured()) {
             Map<String, Object> context = new HashMap<>();
@@ -415,6 +442,8 @@ public class UserService implements UserDetailsService {
 		}
 		userSettingEntity.setSettings(userInfo.getSettings());
 		userSettingEntity = userSettingRepository.save(userSettingEntity);
+		
+		activityLogger.log(ActivityType.UPDATE_USER_SETTINGS, userInfo.getUserId() + "");
 		LOGGER.info("User Settings saved successfully for user(user_id: " + userInfo.getUserId() + ").");
 		return userInfo;
 	}
@@ -430,9 +459,11 @@ public class UserService implements UserDetailsService {
 
 		UserSettingEntity userSettingEntity = userSettingRepository.findOneByUserId(userId);
 		if (userSettingEntity == null) {
-			LOGGER.error("User settings not found for user(user_id: " + userId + ")");
-			throw new RequestValidationException(messageUtil.getAttributeNotFound("User settings"));
+			LOGGER.error("User settings not found for user(user_id: " + userId + ")" + messageCodeUtil.getAttributeNotFoundCode());
+			throw new RequestValidationException(messageCodeUtil.getAttributeNotFoundCode(),
+					messageUtil.getAttributeNotFound("User settings"));
 		}
 		return userSettingEntity.getSettings();
 	}
 }
+

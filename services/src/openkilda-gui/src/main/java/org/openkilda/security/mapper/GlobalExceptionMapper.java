@@ -260,7 +260,7 @@ public class GlobalExceptionMapper extends ResponseEntityExceptionHandler {
  		   RequestValidationException ex) {
  	   ex.setStackTrace(new StackTraceElement[0]);
        return response(HttpError.UNPROCESSABLE_ENTITY.getHttpStatus(),
-               HttpError.UNPROCESSABLE_ENTITY.getCode(),
+    		   ex.getCode() != null ? ex.getCode() :HttpError.UNPROCESSABLE_ENTITY.getCode(),
                ex.getMessage(), ex.getMessage());
     }
     

@@ -60,25 +60,25 @@ public abstract class IConstants {
 
 
     public class View {
-        public static final String ERROR = "error";
-        public static final String ERROR_403 = "403";
-        public static final String LOGIN = "login";
+        public static final String ERROR = "errors/error";
+        public static final String ERROR_403 = "errors/403";
+        public static final String LOGIN = "login/login";
         public static final String HOME = "home";
-        public static final String TOPOLOGY = "topology";
-        public static final String LOGOUT = "logout";
+        public static final String TOPOLOGY = "topology/topology";
+        public static final String LOGOUT = "login/logout";
         public static final String REDIRECT_HOME = "redirect:/home";
         public static final String REDIRECT_LOGIN = "redirect:/login";
-        public static final String SWITCH = "switchdetails";
-        public static final String ISL = "isl";
-        public static final String ISL_LIST = "isllist";
-        public static final String FLOW_LIST = "flows";
-        public static final String FLOW_DETAILS = "flowdetails";
-        public static final String PORT_DETAILS = "portdetails";
-        public static final String SWITCH_LIST = "switch";
-        public static final String USERMANAGEMENT = "usermanagement";
-        public static final String TWO_FA_GENERATOR = "userManagement/twofa";
-        public static final String OTP = "userManagement/otp";
-        public static final String ACTIVITY_LOGS= "useractivity";
+        public static final String SWITCH = "switch/switchdetails";
+        public static final String ISL = "isl/isl";
+        public static final String ISL_LIST = "isl/isllist";
+        public static final String FLOW_LIST = "flows/flows";
+        public static final String FLOW_DETAILS = "flows/flowdetails";
+        public static final String PORT_DETAILS = "port/portdetails";
+        public static final String SWITCH_LIST = "switch/switch";
+        public static final String USERMANAGEMENT = "usermanagement/usermanagement";
+        public static final String TWO_FA_GENERATOR = "login/twofa";
+        public static final String OTP = "login/otp";
+        public static final String ACTIVITY_LOGS= "useractivity/useractivity";
     }
 
     public enum Metrics {

@@ -75,7 +75,9 @@ public class PermissionConversionUtil {
         if (!ValidatorUtil.isNull(permission.getDescription())) {
             permissionEntity.setDescription(permission.getDescription());
         }
-
+		if (!ValidatorUtil.isNull(permission.getIsAdminPermission())) {
+			permissionEntity.setIsAdminPermission(permission.getIsAdminPermission());
+		}
         permissionEntity.setCreatedDate(new Date());
         permissionEntity.setUpdatedDate(new Date());
         return permissionEntity;

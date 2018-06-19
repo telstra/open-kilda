@@ -13,13 +13,13 @@ public interface IConstantsTest {
 	static final String CLASSPATH = "src/main/resources";
 	
 	/** The Constant CSS_PATH. */
-	static final String CSS_PATH = "/css/";
+	static final String CSS_PATH = "/lib/css/";
 	
 	/** The Constant JAVASCRIPT_PATH. */
-	static final String JAVASCRIPT_PATH = "/javascript/";
+	static final String JAVASCRIPT_PATH = "/lib/javascript/";
 	
 	/** The Constant FONTS_PATH. */
-	static final String FONTS_PATH = "/font/";
+	static final String FONTS_PATH = "/lib/font/";
 	
 	/** The Constant FILE_PATH. */
 	static final String FILE_PATH = "src/test/resources/config";

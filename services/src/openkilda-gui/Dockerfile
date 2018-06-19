@@ -17,7 +17,8 @@ ADD pom.xml /app
 ADD src/ /app/src/
 ADD conf/ /app/conf/
 RUN mkdir target
-RUN mkdir /app/src/main/resources/font/
+RUN mkdir /app/src/main/resources/lib/font/
+RUN mkdir /app/src/main/resources/lib/javascript/
 
 #WGET FONTS
 RUN wget https://cdnjs.cloudflare.com/ajax/libs/font-awesome/3.2.1/font/fontawesome-webfont.ttf
@@ -49,33 +50,33 @@ RUN wget https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.5/js/select2.min.js
 RUN wget https://cdnjs.cloudflare.com/ajax/libs/multi-select/0.9.12/js/jquery.multi-select.js
 
 #MOVING FONTS
-RUN mv fontawesome-webfont.ttf src/main/resources/font/
-RUN mv fontawesome-webfont.woff src/main/resources/font/
+RUN mv fontawesome-webfont.ttf src/main/resources/lib/font/
+RUN mv fontawesome-webfont.woff src/main/resources/lib/font/
 
 #MOVING CSS FILES
-RUN mv roboto.css src/main/resources/css/
-RUN mv dygraph.css src/main/resources/css/
-RUN mv bootstrap.min.css src/main/resources/css/
-RUN mv jquery.datetimepicker.css src/main/resources/css/
-RUN mv font-awesome.min.css src/main/resources/css/
-RUN mv jquery.toast.min.css src/main/resources/css/
-RUN mv jquery.dataTables.min.css src/main/resources/css/
-RUN mv jquery-ui.min.css src/main/resources/css/
-RUN mv select2.min.css src/main/resources/css/
-RUN mv multi-select.css src/main/resources/css/
+RUN mv roboto.css src/main/resources/lib/css/
+RUN mv dygraph.css src/main/resources/lib/css/
+RUN mv bootstrap.min.css src/main/resources/lib/css/
+RUN mv jquery.datetimepicker.css src/main/resources/lib/css/
+RUN mv font-awesome.min.css src/main/resources/lib/css/
+RUN mv jquery.toast.min.css src/main/resources/lib/css/
+RUN mv jquery.dataTables.min.css src/main/resources/lib/css/
+RUN mv jquery-ui.min.css src/main/resources/lib/css/
+RUN mv select2.min.css src/main/resources/lib/css/
+RUN mv multi-select.css src/main/resources/lib/css/
 
 #MOVING JAVASCRIPT FILES
-RUN mv jquery.datetimepicker.full.js src/main/resources/javascript/
-RUN mv bootstrap.min.js src/main/resources/javascript/
-RUN mv moment.js src/main/resources/javascript/
-RUN mv dygraph.js src/main/resources/javascript/
-RUN mv jquery-3.2.1.min.js src/main/resources/javascript/
-RUN mv jquery.toast.min.js src/main/resources/javascript/
-RUN mv jquery.dataTables.min.js src/main/resources/javascript/
-RUN mv d3.v3.min.js src/main/resources/javascript/
-RUN mv jquery-ui.min.js src/main/resources/javascript/
-RUN mv select2.min.js src/main/resources/javascript/
-RUN mv jquery.multi-select.js src/main/resources/javascript/
+RUN mv jquery.datetimepicker.full.js src/main/resources/lib/javascript/
+RUN mv bootstrap.min.js src/main/resources/lib/javascript/
+RUN mv moment.js src/main/resources/lib/javascript/
+RUN mv dygraph.js src/main/resources/lib/javascript/
+RUN mv jquery-3.2.1.min.js src/main/resources/lib/javascript/
+RUN mv jquery.toast.min.js src/main/resources/lib/javascript/
+RUN mv jquery.dataTables.min.js src/main/resources/lib/javascript/
+RUN mv d3.v3.min.js src/main/resources/lib/javascript/
+RUN mv jquery-ui.min.js src/main/resources/lib/javascript/
+RUN mv select2.min.js src/main/resources/lib/javascript/
+RUN mv jquery.multi-select.js src/main/resources/lib/javascript/
 RUN ls -la 
 RUN mvn clean install
 

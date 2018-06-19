@@ -14,6 +14,8 @@ import java.util.List;
 import java.util.Set;
 
 import org.openkilda.constants.Status;
+import org.openkilda.log.ActivityLogger;
+import org.openkilda.log.constants.ActivityType;
 import org.usermanagement.conversion.RoleConversionUtil;
 import org.usermanagement.dao.entity.PermissionEntity;
 import org.usermanagement.dao.entity.RoleEntity;
@@ -48,6 +50,9 @@ public class RoleService {
 
     @Autowired
     private RoleValidator roleValidator;
+    
+    @Autowired
+    private ActivityLogger activityLogger;
 
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
     public Role createRole(final Role role) {
@@ -70,6 +75,7 @@ public class RoleService {
 
         RoleEntity roleEntity = RoleConversionUtil.toRoleEntity(role, permissionEntities);
         roleRepository.save(roleEntity);
+        activityLogger.log(ActivityType.CREATE_ROLE, role.getName());
         LOGGER.info("Role with name '" + roleEntity.getName() + "' created successfully.");
         return RoleConversionUtil.toRole(roleEntity, true, false);
     }
@@ -136,6 +142,7 @@ public class RoleService {
                     messageUtil.getAttributeDeletionNotAllowed(roleEntity.getName(), users));
         }
         roleRepository.delete(roleEntity);
+        activityLogger.log(ActivityType.DELETE_ROLE, roleEntity.getName());
         LOGGER.info("Role(roleId: " + roleId + ") deleted successfully.");
     }
 
@@ -176,6 +183,7 @@ public class RoleService {
         }
         roleEntity = RoleConversionUtil.toUpateRoleEntity(role, roleEntity);
         roleRepository.save(roleEntity);
+        activityLogger.log(ActivityType.UPDATE_ROLE, roleEntity.getName());
         LOGGER.info("Role updated successfully (roleId: " + roleId + ")");
         return RoleConversionUtil.toRole(roleEntity, true, false);
 
@@ -199,6 +207,7 @@ public class RoleService {
             }
         }
         permissionRepository.save(permissionEntity);
+        activityLogger.log(ActivityType.ASSIGN_ROLES_TO_PERMISSION, permissionEntity.getName());
         LOGGER.info("Roles assigned with permission successfully (permissionId: " + permissionId + ")");
         return RoleConversionUtil.toPermissionByRole(permissionEntity.getRoles(), permissionEntity);
     }

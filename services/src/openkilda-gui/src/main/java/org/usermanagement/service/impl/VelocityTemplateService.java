@@ -32,11 +32,11 @@ public class VelocityTemplateService implements TemplateService {
                 ClasspathResourceLoader.class.getName());
         velocityEngine.init();
 
-        templates.put(Template.RESET_ACCOUNT_PASSWORD, "templates/mail/resetAccountPassword.vm");
-        templates.put(Template.ACCOUNT_USERNAME, "templates/mail/accountUsername.vm");
-        templates.put(Template.ACCOUNT_PASSWORD, "templates/mail/accountPassword.vm");
-        templates.put(Template.RESET_2FA, "templates/mail/reset2fa.vm");
-        templates.put(Template.CHANGE_PASSWORD, "templates/mail/changePassword.vm");
+        templates.put(Template.RESET_ACCOUNT_PASSWORD, "ui/templates/mail/resetAccountPassword.vm");
+        templates.put(Template.ACCOUNT_USERNAME, "ui/templates/mail/accountUsername.vm");
+        templates.put(Template.ACCOUNT_PASSWORD, "ui/templates/mail/accountPassword.vm");
+        templates.put(Template.RESET_2FA, "ui/templates/mail/reset2fa.vm");
+        templates.put(Template.CHANGE_PASSWORD, "ui/templates/mail/changePassword.vm");
      
     }
 

@@ -1,9 +1,11 @@
 package org.openkilda.service;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.openkilda.auth.context.ServerContext;
 import org.openkilda.log.model.LogInfo;
 import org.openkilda.log.service.UserActivityService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +23,9 @@ public class UserActivityLogService {
 	@Autowired
 	private UserRepository userRepository;
 	
+    @Autowired
+    private ServerContext serverContext;
+	
 	/**
 	 * Gets the activity log.
 	 *
@@ -33,11 +38,17 @@ public class UserActivityLogService {
 	public List<LogInfo> getActivityLog(final List<Long> users, final List<String> activities, final String start,
 			final String end) {
 		List<LogInfo> logs = userActivityService.getLogs(users, activities, start, end);
+		List<LogInfo> appAdminlogs = new ArrayList<LogInfo>();
 		if (!ValidatorUtil.isNull(logs)) {
 			Set<Long> userIds = new HashSet<Long>();
 			for (LogInfo log : logs) {
+				if (serverContext.getRequestContext().getUserId() != 1 && log.getUserId() == 1) {
+					appAdminlogs.add(log);
+				}
 				userIds.add(log.getUserId());
 			}
+			logs.removeAll(appAdminlogs);
+			
 			List<UserEntity> usersList = userRepository.findByUserIdIn(userIds);
 			for (int i = 0; i < logs.size(); i++) {
 				UserEntity userEntity = getUser(logs.get(i).getUserId(), usersList);

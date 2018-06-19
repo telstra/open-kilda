@@ -1,9 +1,9 @@
 package org.usermanagement.controller;
 
+import java.util.List;
+
 import org.openkilda.auth.model.Permissions;
 import org.openkilda.constants.IConstants;
-import org.openkilda.log.ActivityLogger;
-import org.openkilda.log.constants.ActivityType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,9 +15,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
-
 import org.usermanagement.model.Permission;
 import org.usermanagement.model.Role;
 import org.usermanagement.service.RoleService;
@@ -31,14 +28,10 @@ public class RoleController {
     @Autowired
     private RoleService roleService;
     
-    @Autowired
-    private ActivityLogger activityLogger;
-
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(method = RequestMethod.POST)
     @Permissions(values = { IConstants.Permission.UM_ROLE_ADD})
 	public Role createRole(@RequestBody final Role role) {
-		activityLogger.log(ActivityType.CREATE_ROLE, role.getName());
 		LOGGER.info("[createRole] (name: " + role.getName() + ")");
 		Role roleResponse = roleService.createRole(role);
 		return roleResponse;
@@ -65,7 +58,6 @@ public class RoleController {
     @RequestMapping(value = "/{role_id}", method = RequestMethod.DELETE)
     @Permissions(values = { IConstants.Permission.UM_ROLE_DELETE})
     public void deleteRole(@PathVariable("role_id") Long roleId) {
-		activityLogger.log(ActivityType.DELETE_ROLE, roleId + "");
     	LOGGER.info("[deleteRoleById] (id: " + roleId +")");
         roleService.deleteRoleById(roleId);
 
@@ -84,7 +76,6 @@ public class RoleController {
     @RequestMapping(value = "/{role_id}", method = RequestMethod.PUT)
     @Permissions(values = { IConstants.Permission.UM_ROLE_EDIT})
 	public Role updateRole(@PathVariable("role_id") Long roleId, @RequestBody final Role role) {
-		activityLogger.log(ActivityType.UPDATE_ROLE, roleId + "");
 		LOGGER.info("[updateRole] (id: " + roleId + ", name: " + role.getName() + ")");
 		Role roleResponse = roleService.updateRole(roleId, role);
 		return roleResponse;
@@ -95,7 +86,6 @@ public class RoleController {
     @Permissions(values = {IConstants.Permission.UM_PERMISSION_ASSIGN_ROLES})
 	public Permission assignRolesToPermission(@PathVariable("permission_id") final Long permissionId,
 			@RequestBody Permission permission) {
-		activityLogger.log(ActivityType.ASSIGN_ROLES_TO_PERMISSION, permissionId + "");
 		LOGGER.info("[assignRoleToPermission] (permissionId: " + permissionId + ")");
 		permission = roleService.assignRoleByPermissionId(permissionId, permission);
 		return permission;
