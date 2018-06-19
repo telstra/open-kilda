@@ -13,11 +13,23 @@
 #   limitations under the License.
 #
 
-import sys
+import pprint
 
 
 class Error(Exception):
     pass
+
+
+class NotImplementedError(Error):
+    @property
+    def details(self):
+        return self.args[0]
+
+    def __init__(self, details):
+        super(NotImplementedError, self).__init__(details)
+
+    def __str__(self):
+        return 'NOT IMPLEMENTED: {}'.format(self.details)
 
 
 class DBInvalidResponse(Error):
@@ -48,3 +60,36 @@ class DBRecordNotFound(Error):
 
     def __str__(self):
         return 'DB record not found'
+
+
+class UnacceptableDataError(Error):
+    @property
+    def details(self):
+        return self.args[1]
+
+    @property
+    def data(self):
+        return self.args[0]
+
+    def __init__(self, data, details):
+        super(UnacceptableDataError, self).__init__(data, details)
+
+    def __str__(self):
+        return 'Unacceptable data - {}'.format(self.details)
+
+
+class MalformedInputError(Error):
+    @property
+    def data(self):
+        return self.args[0]
+
+    @property
+    def nested_exception(self):
+        return self.args[1]
+
+    def __init__(self, data, nested_exception):
+        super(MalformedInputError, self).__init__(data, nested_exception)
+
+    def __str__(self):
+        return 'Malformed input record - {}:\n{}'.format(
+            self.nested_exception, pprint.pformat(self.data))

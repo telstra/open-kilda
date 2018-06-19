@@ -23,7 +23,7 @@ def make_feature_toggle_request(payload):
     data['clazz'] = (
         'org.openkilda.messaging.command.system.FeatureToggleRequest')
     message = share.command(data)
-    return messageclasses.MessageItem(**message).handle()
+    return messageclasses.MessageItem(message).handle()
 
 
 def clean_neo4j_test_data(tx):

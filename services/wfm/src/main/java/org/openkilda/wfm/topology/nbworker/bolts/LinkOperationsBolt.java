@@ -16,30 +16,31 @@
 package org.openkilda.wfm.topology.nbworker.bolts;
 
 import org.openkilda.messaging.info.InfoData;
-import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
-import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.GetLinksRequest;
+import org.openkilda.messaging.nbtopology.request.LinkPropsGet;
+import org.openkilda.messaging.nbtopology.response.LinkPropsData;
 import org.openkilda.pce.provider.Auth;
+import org.openkilda.wfm.topology.nbworker.converters.LinksConverter;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
-import org.neo4j.driver.v1.Record;
 import org.neo4j.driver.v1.Session;
 import org.neo4j.driver.v1.StatementResult;
 import org.neo4j.driver.v1.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 public class LinkOperationsBolt extends NeoOperationsBolt {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(LinkOperationsBolt.class);
+    private static final Logger logger = LoggerFactory.getLogger(LinkOperationsBolt.class);
 
     public LinkOperationsBolt(Auth neoAuth) {
         super(neoAuth);
@@ -50,6 +51,8 @@ public class LinkOperationsBolt extends NeoOperationsBolt {
         List<? extends InfoData> result = null;
         if (request instanceof GetLinksRequest) {
             result = getAllLinks(session);
+        } else if (request instanceof LinkPropsGet) {
+            result = getLinkProps((LinkPropsGet) request, session);
         } else {
             unhandledInput(tuple);
         }
@@ -58,53 +61,46 @@ public class LinkOperationsBolt extends NeoOperationsBolt {
     }
 
     private List<IslInfoData> getAllLinks(Session session) {
-        LOGGER.debug("Getting ISLs...");
+        logger.debug("Processing get all links request");
         String q =
                 "MATCH (:switch)-[isl:isl]->(:switch) "
-                        + "RETURN "
-                        + "isl.src_switch as src_switch, "
-                        + "isl.src_port as src_port, "
-                        + "isl.dst_switch as dst_switch, "
-                        + "isl.dst_port as dst_port, "
-                        + "isl.speed as speed, "
-                        + "isl.max_bandwidth as max_bandwidth, "
-                        + "isl.latency as latency, "
-                        + "isl.available_bandwidth as available_bandwidth, "
-                        + "isl.status as status";
+                        + "RETURN isl";
 
         StatementResult queryResults = session.run(q);
-        List<IslInfoData> results = new ArrayList<>();
-        for (Record record : queryResults.list()) {
-            // max_bandwidth not used in IslInfoData
-            PathNode src = new PathNode();
-            src.setSwitchId(record.get("src_switch").asString());
-            src.setPortNo(parseIntValue(record.get("src_port")));
-            src.setSegLatency(parseIntValue(record.get("latency")));
-            src.setSeqId(0);
+        List<IslInfoData> results = queryResults.list()
+                .stream()
+                .map(record -> record.get("isl"))
+                .map(Value::asRelationship)
+                .map(LinksConverter::toIslInfoData)
+                .collect(Collectors.toList());
+        logger.debug("Found {} links in the database", results.size());
+        return results;
+    }
 
-            PathNode dst = new PathNode();
-            dst.setSwitchId(record.get("dst_switch").asString());
-            dst.setPortNo(parseIntValue(record.get("dst_port")));
-            dst.setSegLatency(parseIntValue(record.get("latency")));
-            dst.setSeqId(1);
+    private List<LinkPropsData> getLinkProps(LinkPropsGet request, Session session) {
+        logger.debug("Processing get link props request");
+        String q = "MATCH (props:link_props) "
+                + "WHERE ({src_switch} IS NULL OR props.src_switch={src_switch}) "
+                + "AND ({src_port} IS NULL OR props.src_port={src_port}) "
+                + "AND ({dst_switch} IS NULL OR props.dst_switch={dst_switch}) "
+                + "AND ({dst_port} IS NULL OR props.dst_port={dst_port}) "
+                + "RETURN props";
 
-            List<PathNode> pathNodes = new ArrayList<>();
-            pathNodes.add(src);
-            pathNodes.add(dst);
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("src_switch", request.getSource().getDatapath());
+        parameters.put("src_port", request.getSource().getPortNumber());
+        parameters.put("dst_switch", request.getDestination().getDatapath());
+        parameters.put("dst_port", request.getDestination().getPortNumber());
 
-            IslChangeType state = getStatus(record.get("status").asString());
-            IslInfoData isl = new IslInfoData(
-                    parseIntValue(record.get("latency")),
-                    pathNodes,
-                    parseIntValue(record.get("speed")),
-                    state,
-                    parseIntValue(record.get("available_bandwidth"))
-            );
-            isl.setTimestamp(System.currentTimeMillis());
+        StatementResult queryResults = session.run(q, parameters);
+        List<LinkPropsData> results = queryResults.list()
+                .stream()
+                .map(record -> record.get("props"))
+                .map(Value::asNode)
+                .map(LinksConverter::toLinkPropsData)
+                .collect(Collectors.toList());
 
-            results.add(isl);
-        }
-        LOGGER.debug("Found links: {}", results.size());
+        logger.debug("Found {} link props in the database", results.size());
         return results;
     }
 
@@ -115,38 +111,7 @@ public class LinkOperationsBolt extends NeoOperationsBolt {
 
     @Override
     Logger getLogger() {
-        return LOGGER;
+        return logger;
     }
-
-    private int parseIntValue(Value value) {
-        int intValue = 0;
-        try {
-            intValue = Optional.ofNullable(value)
-                    .filter(val -> !val.isNull())
-                    .map(Value::asObject)
-                    .map(Object::toString)
-                    .map(Integer::parseInt)
-                    .orElse(0);
-        } catch (Exception e) {
-            LOGGER.info("Exception trying to get an Integer; the String isn't parseable. Value: {}", value);
-        }
-        return intValue;
-    }
-
-    private IslChangeType getStatus(String status) {
-        switch (status) {
-            case "active":
-                return IslChangeType.DISCOVERED;
-            case "inactive":
-                return IslChangeType.FAILED;
-            case "moved":
-                return IslChangeType.MOVED;
-            default:
-                LOGGER.warn("Found incorrect ISL status: {}", status);
-                return IslChangeType.FAILED;
-        }
-    }
-
-
 
 }
