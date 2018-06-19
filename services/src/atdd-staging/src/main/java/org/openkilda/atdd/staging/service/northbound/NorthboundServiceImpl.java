@@ -202,13 +202,20 @@ public class NorthboundServiceImpl implements NorthboundService {
 
     @Override
     public List<LinkPropsDto> getLinkProps(String srcSwitch, Integer srcPort, String dstSwitch, Integer dstPort) {
-        String uri = UriComponentsBuilder.fromUriString("/api/v1/link/props")
-                .queryParam("src_switch", srcSwitch)
-                .queryParam("dst_switch", dstSwitch)
-                .queryParam("src_port", srcPort)
-                .queryParam("dst_port", dstPort)
-                .build().toString();
-        LinkPropsDto[] linkProps = restTemplate.exchange(uri, HttpMethod.GET,
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v1/link/props");
+        if (srcSwitch != null) {
+            uriBuilder.queryParam("src_switch", srcSwitch);
+        }
+        if (srcPort != null) {
+            uriBuilder.queryParam("src_port", srcPort);
+        }
+        if (dstSwitch != null) {
+            uriBuilder.queryParam("dst_switch", dstSwitch);
+        }
+        if (dstPort != null) {
+            uriBuilder.queryParam("dst_port", dstPort);
+        }
+        LinkPropsDto[] linkProps = restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), LinkPropsDto[].class).getBody();
         return Arrays.asList(linkProps);
     }
