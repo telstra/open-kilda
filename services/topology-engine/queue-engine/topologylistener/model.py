@@ -18,6 +18,7 @@ import collections
 import datetime
 import json
 import logging
+import sys
 import uuid
 import weakref
 
@@ -28,10 +29,13 @@ from topologylistener import exc
 logger = logging.getLogger(__name__)
 
 
-def convert_integer(raw):
+def convert_integer(raw, limit=sys.maxint):
     if isinstance(raw, (int, long)):
         return raw
-    return int(raw, 0)
+    value = int(raw, 0)
+    if value > limit:
+        raise exc.UnacceptableDataError(raw, 'numeric value too big {}'.format(raw))
+    return value
 
 
 LifeCycleFields = collections.namedtuple('LifeCycleFields', ('ctime', 'mtime'))
