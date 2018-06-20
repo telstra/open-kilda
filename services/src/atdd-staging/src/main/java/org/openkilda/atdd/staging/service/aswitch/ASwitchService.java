@@ -20,9 +20,13 @@ import org.openkilda.atdd.staging.service.aswitch.model.ASwitchFlow;
 import java.util.List;
 
 public interface ASwitchService {
-    void addFlow(List<ASwitchFlow> flows);
+    void addFlows(List<ASwitchFlow> flows);
 
-    void removeFlow(List<ASwitchFlow> flows);
+    void removeFlows(List<ASwitchFlow> flows);
 
     List<ASwitchFlow> getAllFlows();
+
+    void portsUp(List<Integer> ports);
+
+    void portsDown(List<Integer> ports);
 }
