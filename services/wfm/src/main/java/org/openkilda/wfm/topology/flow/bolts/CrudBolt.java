@@ -882,7 +882,7 @@ public class CrudBolt
     }
 
     private boolean isFlowActive(ImmutablePair<Flow, Flow> flowPair) {
-        return flowPair.getLeft().getState().isActive() && flowPair.getRight().getState().isActive();
+        return flowPair.getLeft().getState().isActiveOrCached() && flowPair.getRight().getState().isActiveOrCached();
     }
 
     private void initFlowCache() {
