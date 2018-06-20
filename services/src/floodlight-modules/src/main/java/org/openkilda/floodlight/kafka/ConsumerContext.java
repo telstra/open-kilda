@@ -25,7 +25,7 @@ public class ConsumerContext extends Context {
 
     public ConsumerContext(FloodlightModuleContext moduleContext, KafkaFloodlightConfig kafkaFloodlightConfig,
                            KafkaTopicsConfig kafkaTopicsConfig) {
-        super(kafkaFloodlightConfig);
+        super(moduleContext, kafkaFloodlightConfig);
 
         pathVerificationService = moduleContext.getServiceImpl(IPathVerificationService.class);
         switchManager = moduleContext.getServiceImpl(ISwitchManager.class);

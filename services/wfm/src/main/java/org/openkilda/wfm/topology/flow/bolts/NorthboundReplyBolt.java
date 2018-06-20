@@ -56,7 +56,7 @@ public class NorthboundReplyBolt extends BaseRichBolt {
     @Override
     public void execute(Tuple tuple) {
         ComponentType componentId = ComponentType.valueOf(tuple.getSourceComponent());
-        StreamType streamId = StreamType.valueOf(tuple.getSourceStreamId());
+        String streamId = tuple.getSourceStreamId();
         Message message = (Message) tuple.getValueByField(AbstractTopology.MESSAGE_FIELD);
         Values values = null;
 
@@ -65,7 +65,7 @@ public class NorthboundReplyBolt extends BaseRichBolt {
 
             switch (componentId) {
 
-                case TOPOLOGY_ENGINE_BOLT:
+                case VERIFICATION_JOINT_BOLT:
                 case CRUD_BOLT:
                 case ERROR_BOLT:
                     logger.debug("Flow response: {}={}, component={}, stream={}, message={}",
