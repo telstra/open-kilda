@@ -38,11 +38,19 @@ function focusNextInput(){
 	    }
 	}
 }
+function validateTwoFaOtp(){
+	var otp = document.twoFaForm.code.value;
+	if(otp=="" || otp == null){
+		$('#codeError').css('display','block');
+		return false;
+	}
+	return true;
+}
 function validateOTP($event){
 	$event.preventDefault(); 
-	var otp = document.otpForm.otp.value;
+	var otp = document.otpForm.code.value || document.twoFaForm.code.value;
 	if(otp=="" || otp == null){
-		$('#otpError').show();
+		$('#codeError').css('display','block');
 		$('input[name="otp"').addClass("errorInput");
 		return false;
 	}
@@ -65,7 +73,7 @@ function removeError(elem) {
         $('textarea[name="'+id+'"').removeClass("errorInput"); // Remove Error border
     } else {
     	$('.error').hide();
-        $("#" + id + "Error").show();
+        $("#" + id + "Error").css('display','block');
         $('input[name="'+id+'"').addClass("errorInput"); // Add Error border
         $('textarea[name="'+id+'"').addClass("errorInput"); // Remove Error border
     }
@@ -88,7 +96,7 @@ function removeErrorOtp(){
 	        $('textarea[name="code"').removeClass("errorInput"); // Remove Error border
 	}else{
 		$('.error').hide();
-        $("#codeError").show();
+        $("#codeError").css('display','block');
         $('input[name="code"').addClass("errorInput"); // Add Error border
         $('textarea[name="code"').addClass("errorInput"); // Remove Error border
 	}

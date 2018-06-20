@@ -57,6 +57,10 @@ public abstract class IConstants {
     	public static final String ISL_PERMISSION_EDITCOST = "isl_permission_editcost";
     	public static final String FW_PERMISSION_VALIDATE = "fw_permission_validate";
     }
+    
+    public class SETTINGS {
+        public static final String TOPOLOGY_SETTING = "topology_setting";
+    }
 
 
     public class View {

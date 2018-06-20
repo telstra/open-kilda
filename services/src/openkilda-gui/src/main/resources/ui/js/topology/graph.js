@@ -323,8 +323,8 @@ graph = {
 		force.on('end', function() {
 			$("#wait").css("display", "none");
 			$("#switchesgraph").removeClass("hide");
-			console.log('i m here in end')
 			try{
+				var positionsNodes = storage.get('NODES_COORDINATES');
 				common.getData('/user/settings','GET').then(function(data){
 					positions = data;
 						if(positions){
@@ -337,8 +337,7 @@ graph = {
 						    	}catch(e){
 						    		
 						    	}
-						    	
-						        return "translate("+d.x+","+d.y+")";
+						    	 return "translate("+d.x+","+d.y+")";
 						    });
 						    
 							tick();
@@ -349,6 +348,7 @@ graph = {
 					var ifnoUserDatainDB = errorData && errorData['error-code']=='100001';
 					if(positionsNodes && ifnoUserDatainDB ){
 						storage.set('isDirtyCordinates', true);
+						positions = positionsNodes;
 						d3.selectAll("g.node").attr("transform", function(d){
 					    	try{
 					    		d.x = positions[d.switch_id][0];
@@ -356,8 +356,7 @@ graph = {
 					    	}catch(e){
 					    		
 					    	}
-					    	
-					        return "translate("+d.x+","+d.y+")";
+					    	 return "translate("+d.x+","+d.y+")";
 					    });
 					    
 						tick();

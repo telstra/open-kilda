@@ -195,14 +195,16 @@ function changePassword($event){
 		}
 		var changePasswordData = {password:oldPassword,new_password:newPassword};
 	}
-
+		$('#change_password_loader').show();
 		$.ajax({url : './user/changePassword/'+USER_SESSION.userId,contentType:'application/json',dataType : "json",type : 'PUT',data: JSON.stringify(changePasswordData)}).then(function(response){
 			$('#myModal').modal('hide')	
+			$('#change_password_loader').hide();
 			document.cpForm.oldPassword.value="";
 			document.cpForm.newPassword.value="";
 			document.cpForm.confirmPassword.value="";
 	        common.infoMessage('Password has updated successfully.','success');
 		}, function(error){
+			$('#change_password_loader').hide();
 			common.infoMessage(error.responseJSON['error-message'],'error');
 		});
 	

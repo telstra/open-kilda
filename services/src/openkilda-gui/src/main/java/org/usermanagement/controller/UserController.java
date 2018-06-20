@@ -208,12 +208,12 @@ public class UserController {
 
 	@ResponseStatus(HttpStatus.OK)
 	@RequestMapping(value = "/settings", method = RequestMethod.PATCH)
-	public String saveOrUpdateSettings(@RequestBody final String settings) {
+	public String saveOrUpdateSettings(@RequestBody final String data) {
 		UserInfo userInfo = new UserInfo();
-		userInfo.setSettings(settings);
+		userInfo.setData(data);
 		userInfo.setUserId(serverContext.getRequestContext().getUserId());
 		LOGGER.info("[saveOrUpdateSettings] (userId: " + userInfo.getUserId() + ")");
 		userService.saveOrUpdateSettings(userInfo);
-		return settings;
+		return data;
 	}
 }

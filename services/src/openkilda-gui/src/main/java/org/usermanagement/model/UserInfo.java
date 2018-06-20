@@ -59,7 +59,7 @@ public class UserInfo implements Serializable {
     private String code;
     
     @JsonProperty("settings")
-    private String settings;
+    private String data;
 
 
     /**
@@ -301,22 +301,21 @@ public class UserInfo implements Serializable {
 	}
 	
 	/**
-	 * Gets the settings.
+	 * Gets the data.
 	 *
-	 * @return the settings
+	 * @return the data
 	 */
-	public String getSettings() {
-		return settings;
+	public String getData() {
+		return data;
 	}
-	
 
 	/**
-	 * Sets the settings.
+	 * Sets the data.
 	 *
-	 * @param settings the new settings
+	 * @param data the new data
 	 */
-	public void setSettings(String settings) {
-		this.settings = settings;
+	public void setData(String data) {
+		this.data = data;
 	}
 	
 

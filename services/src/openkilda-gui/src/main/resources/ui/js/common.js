@@ -7,7 +7,7 @@ var metricVarList = ["bits:Bits/sec","bytes:Bytes/sec","packets:Packets/sec","dr
 var href = window.location.href;
 var lastslashindex = href.lastIndexOf('/');
 var page = $.trim(href.substring(lastslashindex  + 1)).split("#")[0];
-
+var topologyFailCounter = 0;
 if(page == "isl") {
 	var linkData = localStorage.getItem("linkData");
 	var obj = JSON.parse(linkData);
@@ -216,6 +216,11 @@ function updateTopologyCoordinates(){
     		console.log('topology position updated')
     		storage.set('isDirtyCordinates',false);
     	}).fail(function(error){
+    		if(topologyFailCounter >=5){
+    			storage.set('isDirtyCordinates',false);
+    			topologyFailCounter=0;
+    		}
+    		topologyFailCounter = topologyFailCounter+1
     		console.log('topology position failed to update')
        })
     } 

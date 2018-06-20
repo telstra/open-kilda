@@ -29,14 +29,19 @@ public class UserSettingEntity extends BaseEntity implements Serializable {
 	@GeneratedValue(strategy = GenerationType.SEQUENCE)
 	private Long userSettingId;
 
-	/** The username. */
+	/** The userId. */
 	@Column(name = "USER_ID", nullable = false)
 	private Long userId;
 
-	/** The username. */
+	/** The settings. */
 	@Column(name = "SETTINGS", nullable = false)
 	@Lob
 	private String settings;
+	
+	/** The data. */
+	@Column(name = "DATA", nullable = true, columnDefinition="clob")
+	@Lob
+	private String data;
 
 	public Long getUserSettingId() {
 		return userSettingId;
@@ -61,6 +66,14 @@ public class UserSettingEntity extends BaseEntity implements Serializable {
 	public void setUserId(Long userId) {
 		this.userId = userId;
 	} 
+	
+	public String getData() {
+		return data;
+	}
+
+	public void setData(String data) {
+		this.data = data;
+	}
 
 	/*
 	 * (non-Javadoc)

@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.openkilda.constants.IConstants;
 import org.openkilda.exception.InvalidOtpException;
 import org.openkilda.exception.OtpRequiredException;
 import org.openkilda.exception.TwoFaKeyNotSetException;
@@ -440,10 +441,11 @@ public class UserService implements UserDetailsService {
 			userSettingEntity = new UserSettingEntity();
 			userSettingEntity.setUserId(userInfo.getUserId());
 		}
-		userSettingEntity.setSettings(userInfo.getSettings());
+		userSettingEntity.setSettings(IConstants.SETTINGS.TOPOLOGY_SETTING);
+		userSettingEntity.setData(userInfo.getData());
 		userSettingEntity = userSettingRepository.save(userSettingEntity);
 		
-		//activityLogger.log(ActivityType.UPDATE_USER_SETTINGS, userInfo.getUserId() + "");
+		activityLogger.log(ActivityType.UPDATE_USER_SETTINGS, userInfo.getUserId() + "");
 		LOGGER.info("User Settings saved successfully for user(user_id: " + userInfo.getUserId() + ").");
 		return userInfo;
 	}
@@ -463,7 +465,7 @@ public class UserService implements UserDetailsService {
 			throw new RequestValidationException(messageCodeUtil.getAttributeNotFoundCode(),
 					messageUtil.getAttributeNotFound("User settings"));
 		}
-		return userSettingEntity.getSettings();
+		return userSettingEntity.getData();
 	}
 }
 

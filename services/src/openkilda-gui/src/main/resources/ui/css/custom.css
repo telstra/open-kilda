@@ -239,6 +239,7 @@ input:focus {
 	background: #1e242c;
 	border-left: 3px solid #00ccbe;
 	color: #fff;
+	width:100%;
 }
 
 .content {
@@ -2403,7 +2404,7 @@ i.fa.fa-undo.fa-stack-2x {
 }
 */
 .showPermission{
-	display: block  !important;
+	display: inline-block  !important;
 }
 .hidePermission{
 	display: none !important;
@@ -2416,10 +2417,11 @@ i.fa.fa-undo.fa-stack-2x {
 
 
 /*twofa css*/
-
-.twofa-wrapper{
-	padding-bottom: 70px;
-    padding-top: 70px;
+.twofa-wrapper {
+    width: 80%;
+    margin: 70px auto;
+    padding: 30px;
+    box-shadow: 0 0 15px rgba(0,0,0,0.3);
 }
 
 .twofa-wrapper h2 {
@@ -2514,14 +2516,18 @@ th.sorting:last-child {
     outline: 0;
     background: transparent;
     border-bottom: 2px solid #c1c1c1;
-    width: 7%;
+    width: 25px;
     text-align: center;
     padding: 5px;
-    margin: 10px 9px;
+    margin: 10px;
     font-family: Telstra-Regular-Bold, Arial, Helvetica, sans-serif;
     font-size: 25px;
     color: #2aa4a2;
     float: left;
+}
+
+.barcode-bg .otp input:first-child + input {
+	margin-left: 0;
 }
 	
 .barcode-bg .otp input:active, .barcode-bg .otp input:focus, .barcode-bg .otp input:visited {
@@ -2702,4 +2708,10 @@ aside.main-sidebar.min-sidebar {
 a.logo.min-logo {
     width: 60px;
     float: left;
+}
+div#change_password_loader {
+    z-index: 9999;
+}
+body.twofa_body {
+    overflow-y: auto;
 }

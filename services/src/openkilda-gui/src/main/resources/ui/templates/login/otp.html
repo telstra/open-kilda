@@ -20,7 +20,7 @@
 			
 		<div class="login">
 			<div class="col-lg-12">
-				<form name="form" method="POST" th:action="@{authenticate}">
+				<form name="otpForm" method="POST" th:action="@{authenticate}" onSubmit="return validateTwoFaOtp()">
 					<h1 class="text-center">Open Kilda</h1>
 					<h2 class="text-center">Two-factor authentication</h2>
 					<input type="hidden" name="username" id="username" th:value="${username}" style="visibility:hidden;"/>
