@@ -2499,7 +2499,7 @@ table.dataTable .wrapPermission{
 th.sorting:last-child {
     background-image:none !important;
 }
-.dataTables_filter 
+#userTable_wrapper .dataTables_filter ,#permissionTable_wrapper .dataTables_filter,#roleTable_wrapper .dataTables_filter
 {
 	display:none;
 }
