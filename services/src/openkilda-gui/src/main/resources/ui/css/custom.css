@@ -2551,6 +2551,7 @@ span.mandatory-text.text-danger {
 }
 #validate_flow_btn{
 	float:right;
+    margin: -20px 10px 10px 0px;
 }
 
 .viewRole.permissionCol {
@@ -2714,4 +2715,7 @@ div#change_password_loader {
 }
 body.twofa_body {
     overflow-y: auto;
+}
+.row.switch_rules {
+    width: 100%;
 }
