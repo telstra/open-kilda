@@ -15,13 +15,12 @@
 
 package org.openkilda.atdd.staging.service.topology;
 
-import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
-import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.topo.ITopology;
 import org.openkilda.topo.builders.TeTopologyParser;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,21 +45,9 @@ public class TopologyEngineServiceImpl implements TopologyEngineService {
     private RestTemplate restTemplate;
 
     @Override
-    public List<IslInfoData> getAllLinks() {
-        IslInfoData[] links = restTemplate.getForObject("/api/v1/topology/links", IslInfoData[].class);
-        return Arrays.asList(links);
-    }
-
-    @Override
     public Integer getLinkBandwidth(String srcSwitch, String srcPort) {
         return restTemplate.getForObject("/api/v1/topology/links/bandwidth/{src_switch}/{src_port}", Integer.class,
                 srcSwitch, srcPort);
-    }
-
-    @Override
-    public List<SwitchInfoData> getAllSwitches() {
-        SwitchInfoData[] links = restTemplate.getForObject("/api/v1/topology/switches", SwitchInfoData[].class);
-        return Arrays.asList(links);
     }
 
     @Override

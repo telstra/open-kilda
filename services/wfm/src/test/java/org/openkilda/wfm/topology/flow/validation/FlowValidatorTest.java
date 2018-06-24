@@ -99,4 +99,12 @@ public class FlowValidatorTest {
 
         target.checkFlowForEndpointConflicts(flow);
     }
+
+    @Test(expected = FlowValidationException.class)
+    public void shouldFailForNegativeBandwidth() throws FlowValidationException {
+        Flow flow = new Flow();
+        flow.setBandwidth(-1);
+
+        target.checkBandwidth(flow);
+    }
 }

@@ -13,21 +13,19 @@
 #   limitations under the License.
 #
 
-import json
 import logging
 import textwrap
-
-import py2neo
 
 from topologylistener import db
 from topologylistener import exc
 from topologylistener import flow_utils
 from topologylistener import model
+from topologylistener import link_props_utils
 
 logger = logging.getLogger(__name__)
 
 
-def create_if_missing(tx, *links):
+def create_if_missing(tx, timestamp, *links):
     q = textwrap.dedent("""
         MATCH (src:switch {name: $src_switch})
         MATCH (dst:switch {name: $dst_switch})
@@ -39,19 +37,24 @@ def create_if_missing(tx, *links):
         }] -> (dst)
         ON CREATE SET 
           target.status=$status, target.actual=$status,
-          target.latency=0""")
+          target.latency=-1,
+          target.time_create=$timestamp,
+          target.time_modify=$timestamp
+        ON MATCH SET target.time_modify=$timestamp""")
 
     for isl in sorted(links):
         for target in (isl, isl.reversed()):
-            match = _make_match(target)
-            match['status'] = 'inactive'
+            p = _make_match(target)
+            p['status'] = 'inactive'
+            p['timestamp'] = str(timestamp)
 
-            logger.info('Ensure ISL exist: %s', target)
-            tx.run(q, match)
+            logger.info('Ensure ISL %s exists', target)
+            db.log_query('create ISL', q, p)
+            tx.run(q, p)
 
 
 def fetch(tx, isl):
-    match = _make_match(isl)
+    p = _make_match(isl)
     q = textwrap.dedent("""
         MATCH
           (:switch {name: $src_switch})
@@ -66,13 +69,13 @@ def fetch(tx, isl):
           (:switch {name: $dst_switch})
         RETURN target""")
 
-    logger.debug('link_props lookup query:\n%s', q)
-    cursor = tx.run(q, match)
+    db.log_query('ISL fetch', q, p)
+    cursor = tx.run(q, p)
 
     try:
         target = db.fetch_one(cursor)['target']
     except exc.DBEmptyResponse:
-        raise exc.DBRecordNotFound(q, match)
+        raise exc.DBRecordNotFound(q, p)
 
     return target
 
@@ -99,8 +102,17 @@ def fetch_by_datapath(tx, dpid):
     return (x['target'] for x in cursor)
 
 
+def touch(tx, isl, mtime=None):
+    logger.debug("Touch ISL %s", isl)
+
+    if mtime is None:
+        mtime = model.TimeProperty.now()
+    props = {'time_modify': str(mtime)}
+    set_props(tx, isl, props)
+
+
 def resolve_conflicts(tx, isl):
-    logger.info('Check for ISL conflicts with %s', isl)
+    logger.info('Check ISL %s for conflicts', isl)
 
     involved = [
         fetch(tx, isl), fetch(tx, isl.reversed())]
@@ -109,13 +121,7 @@ def resolve_conflicts(tx, isl):
     involved.extend(fetch_by_endpoint(tx, isl.source))
     involved.extend(fetch_by_endpoint(tx, isl.dest))
 
-    affected_switches = set()
-    for link in involved:
-        affected_switches.add(link['src_switch'])
-        affected_switches.add(link['dst_switch'])
-
-    # acquire lock on all involved switches
-    flow_utils.precreate_switches(tx, *affected_switches)
+    _lock_affected_switches(tx, involved)
 
     for link in involved:
         link_dbid = db.neo_id(link)
@@ -123,50 +129,52 @@ def resolve_conflicts(tx, isl):
             continue
 
         link_isl = model.InterSwitchLink.new_from_db(link)
-        logger.warning('Deactivate ISL %s due conflict with %s', link_isl, isl)
-        set_active_field(tx, link_dbid, 'inactive')
-        update_status(tx, link_isl)
+        if is_active_status(link['actual']):
+            logger.error('Detected ISL %s conflict with %s. Please contact dev team', link_isl, isl)
+            # set_active_field(tx, link_dbid, 'inactive')
+            # update_status(tx, link_isl)
+        else:
+            logger.debug("Skip conflict ISL %s deactivation due to its current status - %s", link_isl, link['actual'])
 
 
-def switch_unplug(tx, dpid):
+def switch_unplug(tx, dpid, mtime=True):
     logging.info("Deactivate all ISL to/from %s", dpid)
 
-    for db_link in fetch_by_datapath(tx, dpid):
-        source = model.NetworkEndpoint(
+    involved = list(fetch_by_datapath(tx, dpid))
+    _lock_affected_switches(tx, involved, dpid)
+
+    for db_link in involved:
+        source = model.IslPathNode(
                 db_link['src_switch'], db_link['src_port'])
-        dest = model.NetworkEndpoint(db_link['dst_switch'], db_link['dst_port'])
+        dest = model.IslPathNode(db_link['dst_switch'], db_link['dst_port'])
         isl = model.InterSwitchLink(source, dest, db_link['actual'])
         logging.debug("Found ISL: %s", isl)
 
         set_active_field(tx, db.neo_id(db_link), 'inactive')
-        update_status(tx, isl)
+        update_status(tx, isl, mtime=mtime)
 
 
-def disable_by_endpoint(tx, endpoint):
+def disable_by_endpoint(tx, endpoint, is_moved=False, mtime=True):
     logging.debug('Locate all ISL starts on %s', endpoint)
 
     involved = list(fetch_by_endpoint(tx, endpoint))
-    switches = set()
-    for link in involved:
-        switches.add(link['src_switch'])
-        switches.add(link['dst_switch'])
-
-    flow_utils.precreate_switches(tx, *switches)
+    _lock_affected_switches(tx, involved, endpoint.dpid)
 
     updated = []
     for link in involved:
         isl = model.InterSwitchLink.new_from_db(link)
         logger.info('Deactivate ISL %s', isl)
 
-        set_active_field(tx, db.neo_id(link), 'inactive')
-        update_status(tx, isl)
+        status = 'moved' if is_moved else 'inactive'
+        set_active_field(tx, db.neo_id(link), status)
+        update_status(tx, isl, mtime=mtime)
 
         updated.append(isl)
 
     return updated
 
 
-def update_status(tx, isl):
+def update_status(tx, isl, mtime=True):
     logging.info("Sync status both sides of ISL %s to each other", isl)
 
     q = textwrap.dedent("""
@@ -193,31 +201,50 @@ def update_status(tx, isl):
           ->
           (:switch {name: $peer_dst_switch})
 
-        WITH self, peer,
-          CASE WHEN self.actual = $status_up AND peer.actual = $status_up
-               THEN $status_up ELSE $status_down END AS isl_status
+        WITH self, peer, CASE 
+          WHEN self.actual = $status_up AND peer.actual = $status_up
+            THEN $status_up 
+          WHEN self.actual = $status_moved OR peer.actual = $status_moved
+            THEN $status_moved
+          ELSE $status_down 
+        END AS isl_status  
 
         SET self.status=isl_status
         SET peer.status=isl_status""")
-
     p = {
         'status_up': 'active',
+        'status_moved': 'moved',
         'status_down': 'inactive'}
     p.update(_make_match(isl))
     p.update({'peer_' + k: v for k, v in _make_match(isl.reversed()).items()})
 
-    logger.debug('ISL update status query:\n%s', q)
+    expected_update_properties_count = 2
+    if mtime:
+        if not isinstance(mtime, model.TimeProperty):
+            mtime = model.TimeProperty.now()
+
+        q += '\nSET self.time_modify=$mtime, peer.time_modify=$mtime'
+        p['mtime'] = str(mtime)
+        expected_update_properties_count = 4
+
+    db.log_query('ISL update status', q, p)
     cursor = tx.run(q, p)
 
     stats = cursor.stats()
-    if stats['properties_set'] != 2:
+    if stats['properties_set'] != expected_update_properties_count:
         logger.error(
-            'ISL update status query do not update one or both edges '
-            'of ISL.')
-        logger.error('ISL update status query:\n%s', q)
-        logger.error(
-            'ISL update status query stats:\n%s',
-            json.dumps(stats, indent=2))
+                'Failed to sync ISL\'s %s records statuses. Looks like it is '
+                'unidirectional.', isl)
+
+
+def get_life_cycle_fields(tx, isl):
+    db_isl = fetch(tx, isl)
+    values = [db_isl['time_create'], db_isl['time_modify']]
+    for idx, item in enumerate(values):
+        if not item:
+            continue
+        values[idx] = model.TimeProperty.new_from_db(item)
+    return model.LifeCycleFields(*values)
 
 
 def set_active_field(tx, neo_id, status):
@@ -231,14 +258,34 @@ def set_active_field(tx, neo_id, status):
     tx.run(q, p)
 
 
-def set_cost(tx, isl, cost):
-    props = {'cost': cost}
-    try:
-        changed = set_link_props(tx, isl, props)
-    except exc.DBRecordNotFound:
-        changed = set_props(tx, isl, props)
+def increase_cost(tx, isl, amount, limit):
+    cost = get_cost(tx, isl)
+    if not cost:
+        cost = 0
+    if limit <= cost:
+        return
 
-    original_cost = changed.get('cost')
+    set_cost(tx, isl, cost + amount)
+
+
+def get_cost(tx, isl):
+    db_record = fetch(tx, isl)
+    value = db_record['cost']
+    if value is not None:
+        value = model.convert_integer(value)
+    return value
+
+
+def set_cost(tx, isl, cost):
+    link_props = model.LinkProps.new_from_isl(isl)
+    link_props.props['cost'] = cost
+    try:
+        origin = link_props_utils.set_props_and_propagate_to_isl(
+            tx, link_props)
+    except exc.DBRecordNotFound:
+        origin = set_props(tx, isl, {'cost': cost})
+
+    original_cost = origin.get('cost')
     if original_cost != cost:
         logger.warning(
             'ISL %s cost have been changed from %s to %s',
@@ -246,30 +293,8 @@ def set_cost(tx, isl, cost):
 
 
 def set_props(tx, isl, props):
-    match = _make_match(isl)
-    q = textwrap.dedent("""
-        MATCH
-          (:switch {name: $src_switch})
-          -
-          [target:isl {
-            src_switch: $src_switch,
-            src_port: $src_port,
-            dst_switch: $dst_switch,
-            dst_port: $dst_port
-          }]
-          ->
-          (:switch {name: $dst_switch})
-        RETURN target""")
-
-    logger.debug('ISL lookup query:\n%s', q)
-    cursor = tx.run(q, match)
-
-    try:
-        target = db.fetch_one(cursor)['target']
-    except exc.DBEmptyResponse:
-        raise exc.DBRecordNotFound(q, match)
-
-    origin, update = _locate_changes(target, props)
+    target = fetch(tx, isl)
+    origin, update = db.locate_changes(target, props)
     if update:
         q = textwrap.dedent("""
         MATCH (:switch)-[target:isl]->(:switch) 
@@ -283,49 +308,17 @@ def set_props(tx, isl, props):
     return origin
 
 
-def set_link_props(tx, isl, props):
-    match = _make_match(isl)
+def del_props(tx, isl, props):
+    logger.info(
+        'ISL drop %s props request: %s', isl, ', '.join(repr(x) for x in props))
+
+    remove = ['target.{}'.format(db.escape(x)) for x in props]
+    if not remove:
+        return
+
+    remove.insert(0, '')
+    p = _make_match(isl)
     q = textwrap.dedent("""
-        MATCH (target:link_props {
-            src_switch: $src_switch,
-            src_port: $src_port,
-            dst_switch: $dst_switch,
-            dst_port: $dst_port})
-        RETURN target""")
-
-    logger.debug('link_props lookup query:\n%s', q)
-    cursor = tx.run(q, match)
-
-    try:
-        target = db.fetch_one(cursor)['target']
-    except exc.DBEmptyResponse:
-        raise exc.DBRecordNotFound(q, match)
-
-    origin, update = _locate_changes(target, props)
-    if update:
-        q = textwrap.dedent("""
-        MATCH (target:link_props) 
-        WHERE id(target)=$target_id
-        """) + db.format_set_fields(
-                db.escape_fields(update), field_prefix='target.')
-
-        logger.debug('Push link_props properties: %r', update)
-        tx.run(q, {'target_id': py2neo.remote(target)._id})
-
-        sync_with_link_props(tx, isl, *update.keys())
-
-    return origin
-
-
-def sync_with_link_props(tx, isl, *fields):
-    copy_fields = {
-        name: 'source.' + name for name in fields}
-    q = textwrap.dedent("""
-        MATCH (source:link_props) 
-        WHERE source.src_switch = $src_switch
-          AND source.src_port = $src_port
-          AND source.dst_switch = $dst_switch
-          AND source.dst_port = $dst_port
         MATCH
           (:switch {name: $src_switch})
           -
@@ -336,27 +329,19 @@ def sync_with_link_props(tx, isl, *fields):
             dst_port: $dst_port
           }]
           ->
-          (:switch {name: $dst_switch})
-        """) + db.format_set_fields(
-            db.escape_fields(copy_fields, raw_values=True),
-            field_prefix='target.')
-    tx.run(q, _make_match(isl))
+          (:switch {name: $dst_switch})""") + '\nREMOVE '.join(remove)
+    db.log_query('ISL drop props', q, p)
+    stats = tx.run(q, p).stats()
+    return stats['contains_updates']
 
 
-def _locate_changes(target, props):
-    origin = {}
-    update = {}
-    for field, value in props.items():
-        try:
-            current = target[field]
-        except KeyError:
-            update[field] = props[field]
-        else:
-            if current != props[field]:
-                update[field] = props[field]
-                origin[field] = current
+def _lock_affected_switches(tx, db_links, *extra):
+    affected_switches = set(extra)
+    for link in db_links:
+        affected_switches.add(link['src_switch'])
+        affected_switches.add(link['dst_switch'])
 
-    return origin, update
+    flow_utils.precreate_switches(tx, *affected_switches)
 
 
 def _make_match(isl):
@@ -365,3 +350,7 @@ def _make_match(isl):
         'src_port': isl.source.port,
         'dst_switch': isl.dest.dpid,
         'dst_port': isl.dest.port}
+
+
+def is_active_status(status):
+    return status == 'active'

@@ -18,6 +18,11 @@ package org.openkilda.wfm;
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertThat;
 
+import org.openkilda.config.KafkaConfig;
+import org.openkilda.wfm.config.ZookeeperConfig;
+import org.openkilda.wfm.config.provider.ConfigurationProvider;
+import org.openkilda.wfm.error.ConfigurationException;
+
 import kafka.consumer.Consumer;
 import kafka.consumer.ConsumerConfig;
 import kafka.consumer.ConsumerIterator;
@@ -33,7 +38,6 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.kohsuke.args4j.CmdLineException;
-import org.openkilda.wfm.topology.TopologyConfig;
 
 import java.util.HashMap;
 import java.util.List;
@@ -45,8 +49,11 @@ import java.util.Properties;
  * It should be useful when developing Storm Topologies that have a Kafka Spout
  */
 public class SimpleKafkaTest {
-    private static TopologyConfig config;
     public static final String topic = "simple-kafka"; // + System.currentTimeMillis();
+    private static final String[] NO_ARGS = {};
+
+    private static ZookeeperConfig zooKeeperConfig;
+    private static KafkaConfig kafkaConfig;
 
     private TestUtils.KafkaTestFixture server;
     private Producer<String, String> producer;
@@ -54,13 +61,14 @@ public class SimpleKafkaTest {
 
     @BeforeClass
     public static void allocateConfig() throws ConfigurationException, CmdLineException {
-        String args[] = {};
-        config = new TopologyConfig((new LaunchEnvironment(args)).makePropertiesReader());
+        ConfigurationProvider configurationProvider = new LaunchEnvironment(NO_ARGS).getConfigurationProvider();
+        zooKeeperConfig = configurationProvider.getConfiguration(ZookeeperConfig.class);
+        kafkaConfig = configurationProvider.getConfiguration(KafkaConfig.class);
     }
 
     @Before
     public void setup() throws Exception {
-        server = new TestUtils.KafkaTestFixture(config);
+        server = new TestUtils.KafkaTestFixture(zooKeeperConfig);
         server.start();
     }
 
@@ -104,7 +112,7 @@ public class SimpleKafkaTest {
 
     private Properties consumerProperties() {
         Properties props = new Properties();
-        props.put("zookeeper.connect", config.getZookeeperHosts());
+        props.put("zookeeper.connect", zooKeeperConfig.getHosts());
         props.put("group.id", "group1");
         props.put("auto.offset.reset", "smallest");
         return props;
@@ -112,7 +120,7 @@ public class SimpleKafkaTest {
 
     private Properties producerProps() {
         Properties props = new Properties();
-        props.put("bootstrap.servers", config.getKafkaHosts());
+        props.put("bootstrap.servers", kafkaConfig.getHosts());
         props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         props.put("request.required.acks", "1");

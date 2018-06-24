@@ -24,19 +24,13 @@ import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 import java.util.Objects;
 
 /**
  * Represents get flow northbound request.
  */
-@JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonPropertyOrder({
-        "command",
-        PAYLOAD})
 public class FlowGetRequest extends CommandData {
     /**
      * Serialization version number constant.
@@ -48,6 +42,9 @@ public class FlowGetRequest extends CommandData {
      */
     @JsonProperty(PAYLOAD)
     protected FlowIdStatusPayload payload;
+
+    public FlowGetRequest() {
+    }
 
     /**
      * Instance constructor.
@@ -75,9 +72,6 @@ public class FlowGetRequest extends CommandData {
      * @param payload request payload
      */
     public void setPayload(final FlowIdStatusPayload payload) {
-        if (payload == null) {
-            throw new IllegalArgumentException("need to set payload");
-        }
         this.payload = payload;
     }
 

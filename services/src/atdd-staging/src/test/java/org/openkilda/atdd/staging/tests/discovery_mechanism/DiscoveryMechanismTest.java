@@ -18,34 +18,36 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import org.openkilda.atdd.staging.cucumber.CucumberWithSpringProfile;
+import org.openkilda.atdd.staging.service.floodlight.FloodlightService;
+import org.openkilda.atdd.staging.service.northbound.NorthboundService;
+
 import cucumber.api.CucumberOptions;
 import cucumber.api.java.After;
 import org.junit.runner.RunWith;
-import org.openkilda.atdd.staging.cucumber.CucumberWithSpringProfile;
-import org.openkilda.atdd.staging.service.floodlight.FloodlightService;
-import org.openkilda.atdd.staging.service.topology.TopologyEngineService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.ActiveProfiles;
 
 
 @RunWith(CucumberWithSpringProfile.class)
 @CucumberOptions(features = {"classpath:features/discovery_mechanism.feature"},
-        glue = {"org.openkilda.atdd.staging.tests.discovery_mechanism", "org.openkilda.atdd.staging.steps"})
+        glue = {"org.openkilda.atdd.staging.tests.discovery_mechanism", "org.openkilda.atdd.staging.steps"},
+        plugin = {"json:target/cucumber-reports/discovery_mechanism_report.json"})
 @ActiveProfiles("mock")
 public class DiscoveryMechanismTest {
 
     public static class DiscoveryMechanismHook {
 
         @Autowired
-        private TopologyEngineService topologyEngineService;
+        private NorthboundService northboundService;
 
         @Autowired
         private FloodlightService floodlightService;
 
         @After
         public void verifyMocks() {
-            verify(topologyEngineService).getActiveSwitches();
-            verify(topologyEngineService).getActiveLinks();
+            verify(northboundService).getActiveSwitches();
+            verify(northboundService).getActiveLinks();
 
             verify(floodlightService, times(3)).getFlows(any());
         }

@@ -81,6 +81,12 @@ function showflowData(response){
 	if(!response || response.length==0) {
 		response=[]
 		common.infoMessage('No Flow Available','info');
+	}else{
+
+		if ( $.fn.DataTable.isDataTable('#flowTable') ) {
+					  $('#flowTable').DataTable().destroy();
+					}
+					$('#flowTable tbody').empty();
 	}
 	
 	//var flowDetailsData = localStorage.getItem("flowDetailsData");
@@ -116,7 +122,6 @@ function showflowData(response){
 		  "responsive": true,
 		  "bSortCellsTop": true,
 		  "autoWidth": false,
-		  destroy: true,
 		  language: {searchPlaceholder: "Search"},
 		  "aaSorting": [[1, "asc"]],
 		  "aoColumns": [

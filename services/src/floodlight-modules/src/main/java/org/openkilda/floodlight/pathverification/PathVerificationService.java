@@ -17,6 +17,18 @@ package org.openkilda.floodlight.pathverification;
 
 import static org.openkilda.messaging.Utils.MAPPER;
 
+import org.openkilda.config.KafkaTopicsConfig;
+import org.openkilda.floodlight.config.provider.ConfigurationProvider;
+import org.openkilda.floodlight.pathverification.type.PathType;
+import org.openkilda.floodlight.pathverification.web.PathVerificationServiceWebRoutable;
+import org.openkilda.floodlight.utils.CorrelationContext;
+import org.openkilda.floodlight.utils.NewCorrelationContextRequired;
+import org.openkilda.messaging.Message;
+import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.event.IslChangeType;
+import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.messaging.info.event.PathNode;
+
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
@@ -44,14 +56,6 @@ import net.floodlightcontroller.util.OFMessageUtils;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.openkilda.floodlight.pathverification.type.PathType;
-import org.openkilda.floodlight.pathverification.web.PathVerificationServiceWebRoutable;
-import org.openkilda.messaging.Message;
-import org.openkilda.messaging.Topic;
-import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.event.IslChangeType;
-import org.openkilda.messaging.info.event.IslInfoData;
-import org.openkilda.messaging.info.event.PathNode;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
@@ -84,18 +88,17 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 
 public class PathVerificationService implements IFloodlightModule, IOFMessageListener, IPathVerificationService {
     private static final Logger logger = LoggerFactory.getLogger(PathVerificationService.class);
     private static final Logger logIsl = LoggerFactory.getLogger(
-            String.format("%s.ISL", PathVerificationService.class));
+            String.format("%s.ISL", PathVerificationService.class.getName()));
 
     public static final String VERIFICATION_BCAST_PACKET_DST = "08:ED:02:E3:FF:FF";
     public static final int VERIFICATION_PACKET_UDP_PORT = 61231;
     public static final String VERIFICATION_PACKET_IP_DST = "192.168.0.255";
-    private static final String TOPIC = Topic.TOPO_DISCO;
 
+    private String topoDiscoTopic;
     private IFloodlightProviderService floodlightProvider;
     private IOFSwitchService switchService;
     private IRestApiService restApiService;
@@ -134,30 +137,28 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
     @Override
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
         logger.debug("main pathverification service: " + this);
-        Map<String, String> configParameters = context.getConfigParams(this);
+        ConfigurationProvider provider = new ConfigurationProvider(context, this);
+        KafkaTopicsConfig topicsConfig = provider.getConfiguration(KafkaTopicsConfig.class);
+        PathVerificationServiceConfig serviceConfig = provider.getConfiguration(PathVerificationServiceConfig.class);
 
-        islBandwidthQuotient = Double.parseDouble(configParameters.get("isl_bandwidth_quotient"));
+        initConfiguration(topicsConfig, serviceConfig);
 
         initServices(context);
 
-        initAlgorithm(configParameters.get("hmac256-secret"));
-
-        initKafka(configParameters);
+        producer = new KafkaProducer<>(serviceConfig.createKafkaProducerProperties());
     }
 
     @VisibleForTesting
-    void initKafka(Map<String, String> configParameters)
-    {
-        Properties kafkaProps = new Properties();
-        kafkaProps.put("bootstrap.servers", configParameters.get("bootstrap-servers"));
-        kafkaProps.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-        kafkaProps.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-        producer = new KafkaProducer<>(kafkaProps);
+    void initConfiguration(KafkaTopicsConfig topicsConfig, PathVerificationServiceConfig serviceConfig)
+            throws FloodlightModuleException {
+        topoDiscoTopic = topicsConfig.getTopoDiscoTopic();
+        islBandwidthQuotient = serviceConfig.getIslBandwidthQuotient();
+
+        initAlgorithm(serviceConfig.getHmac256Secret());
     }
 
     @VisibleForTesting
-    void initServices(FloodlightModuleContext context)
-    {
+    void initServices(FloodlightModuleContext context) {
         floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
         switchService = context.getServiceImpl(IOFSwitchService.class);
         restApiService = context.getServiceImpl(IRestApiService.class);
@@ -206,6 +207,7 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
     }
 
     @Override
+    @NewCorrelationContextRequired
     public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext context) {
         logger.debug("PathVerificationService received new message of type {}: {}", msg.getType(), msg.toString());
         switch (msg.getType()) {
@@ -538,11 +540,11 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
             IslInfoData path = new IslInfoData(latency.getValue(), nodes, speed, IslChangeType.DISCOVERED,
                     getAvailableBandwidth(speed));
 
-            Message message = new InfoMessage(path, System.currentTimeMillis(), "system", null);
+            Message message = new InfoMessage(path, System.currentTimeMillis(), CorrelationContext.getId(), null);
 
             final String json = MAPPER.writeValueAsString(message);
             logger.debug("about to send {}", json);
-            producer.send(new ProducerRecord<>(TOPIC, json));
+            producer.send(new ProducerRecord<>(topoDiscoTopic, json));
             logger.debug("packet_in processed for {}-{}", sw.getId(), inPort);
 
         } catch (JsonProcessingException exception) {

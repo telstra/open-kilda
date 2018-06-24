@@ -15,14 +15,13 @@
 
 package org.openkilda.wfm.topology.utils;
 
-import org.openkilda.wfm.ConfigurationException;
-import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.LaunchEnvironment;
+import org.openkilda.wfm.topology.AbstractTopology;
 
-import org.slf4j.event.Level;
 import org.apache.storm.Config;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.topology.TopologyBuilder;
+import org.slf4j.event.Level;
 
 /**
  * A topology that will listen to a kafka topic and log the messages at the configured level.
@@ -46,24 +45,24 @@ import org.apache.storm.topology.TopologyBuilder;
  * storm jar target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar \
  * org.openkilda.wfm.KafkaLoggerTopology logger-5 kilda.speaker INFO fred localhost:2181
  */
-public class KafkaLoggerTopology extends AbstractTopology {
-    public KafkaLoggerTopology(LaunchEnvironment env) throws ConfigurationException {
-        super(env);
+public class KafkaLoggerTopology extends AbstractTopology<KafkaLoggerTopologyConfig> {
+    public KafkaLoggerTopology(LaunchEnvironment env) {
+        super(env, KafkaLoggerTopologyConfig.class);
     }
 
     @Override
     public StormTopology createTopology() {
-        final String topic = config.getKafkaSpeakerTopic();
+        final String topic = topologyConfig.getKafkaSpeakerTopic();
         final String name = String.format("%s_%s_%d", getTopologyName(), topic, System.currentTimeMillis());
-        final Integer parallelism = config.getParallelism();
+        final Integer parallelism = topologyConfig.getParallelism();
 
         TopologyBuilder builder = new TopologyBuilder();
 
         String spoutId = "KafkaSpout-" + topic;
         builder.setSpout(spoutId, createKafkaSpout(topic, name), parallelism);
         LoggerBolt logger = new LoggerBolt()
-                .withLevel(config.getLoggerLevel())
-                .withWatermark(config.getLoggerWatermark());
+                .withLevel(topologyConfig.getLoggerLevel())
+                .withWatermark(topologyConfig.getLoggerWatermark());
 
         builder.setBolt("Logger", logger, parallelism)
                 .shuffleGrouping(spoutId);
@@ -74,7 +73,7 @@ public class KafkaLoggerTopology extends AbstractTopology {
     @Override
     protected Config makeStormConfig() {
         Config config = super.makeStormConfig();
-        Level level = this.config.getLoggerLevel();
+        Level level = this.topologyConfig.getLoggerLevel();
 
         config.setDebug(level == Level.DEBUG || level == Level.TRACE);
 

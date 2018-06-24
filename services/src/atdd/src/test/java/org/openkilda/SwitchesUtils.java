@@ -4,23 +4,23 @@ import static java.lang.String.format;
 import static java.util.Base64.getEncoder;
 import static org.openkilda.DefaultParameters.mininetEndpoint;
 import static org.openkilda.DefaultParameters.northboundEndpoint;
-import static org.openkilda.DefaultParameters.topologyEndpoint;
 import static org.openkilda.DefaultParameters.topologyPassword;
 import static org.openkilda.DefaultParameters.topologyUsername;
 import static org.openkilda.DefaultParameters.trafficEndpoint;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.glassfish.jersey.client.ClientConfig;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.error.MessageError;
-import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
+import org.openkilda.northbound.dto.switches.SwitchDto;
 import org.openkilda.topo.exceptions.TopologyProcessingException;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.glassfish.jersey.client.ClientConfig;
 
 import java.io.IOException;
 import java.util.List;
@@ -88,23 +88,24 @@ public final class SwitchesUtils {
      *
      * @return The JSON document of all flows
      */
-    public static List<SwitchInfoData> dumpSwitches()  {
+    public static List<SwitchDto> dumpSwitches() {
         System.out.println("\n==> Topology-Engine Dump Switches");
 
         Client client = ClientBuilder.newClient(new ClientConfig());
 
         Response response = client
-                .target(topologyEndpoint)
-                .path("/api/v1/topology/switches")
-                .request()
+                .target(northboundEndpoint)
+                .path("/api/v1/switches")
+                .request(MediaType.APPLICATION_JSON)
                 .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
+                .header(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()))
                 .get();
 
         System.out.println(format("===> Response = %s", response.toString()));
 
         try {
-            List<SwitchInfoData> switches = new ObjectMapper().readValue(
-                    response.readEntity(String.class), new TypeReference<List<SwitchInfoData>>() {
+            List<SwitchDto> switches = new ObjectMapper().readValue(
+                    response.readEntity(String.class), new TypeReference<List<SwitchDto>>() {
                     });
             //System.out.println(String.format("====> Data = %s", switches));
 
@@ -165,16 +166,16 @@ public final class SwitchesUtils {
                 .path("rules")
                 .resolveTemplate("switch-id", switchId);
 
-        if(deleteAction != null) {
+        if (deleteAction != null) {
             requestBuilder = requestBuilder.queryParam("delete-action", deleteAction);
         }
-        if(inPort != null) {
+        if (inPort != null) {
             requestBuilder = requestBuilder.queryParam("in-port", inPort);
         }
-        if(inVlan != null) {
+        if (inVlan != null) {
             requestBuilder = requestBuilder.queryParam("in-vlan", inVlan);
         }
-        if(outPort != null) {
+        if (outPort != null) {
             requestBuilder = requestBuilder.queryParam("out-port", outPort);
         }
 

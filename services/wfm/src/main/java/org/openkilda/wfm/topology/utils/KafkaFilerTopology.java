@@ -15,9 +15,8 @@
 
 package org.openkilda.wfm.topology.utils;
 
-import org.openkilda.wfm.ConfigurationException;
-import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.LaunchEnvironment;
+import org.openkilda.wfm.topology.AbstractTopology;
 
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.topology.TopologyBuilder;
@@ -27,28 +26,28 @@ import java.io.File;
 /**
  * Take a kafka topic and dump it to file.
  */
-public class KafkaFilerTopology extends AbstractTopology {
+public class KafkaFilerTopology extends AbstractTopology<KafkaFilerTopologyConfig> {
     private String topic;
     /**
      * assigned after createTopology() is called
      */
     private FilerBolt filer;
 
-    public KafkaFilerTopology(LaunchEnvironment env) throws ConfigurationException {
-        super(env);
+    public KafkaFilerTopology(LaunchEnvironment env) {
+        super(env, KafkaFilerTopologyConfig.class);
 
-        topic = config.getKafkaSpeakerTopic();
+        topic = topologyConfig.getKafkaSpeakerTopic();
     }
 
-    public KafkaFilerTopology(LaunchEnvironment env, String topic) throws ConfigurationException {
-        super(env);
+    public KafkaFilerTopology(LaunchEnvironment env, String topic) {
+        super(env, KafkaFilerTopologyConfig.class);
 
         this.topic = topic;
     }
 
     @Override
     public StormTopology createTopology() {
-        final String directory = config.getFilterDirectory();
+        final String directory = topologyConfig.getFilterDirectory();
         final String name = String.format("%s_%s_%s_%d", getTopologyName(), topic, directory, System.currentTimeMillis());
 
         String spoutId = "KafkaSpout-" + topic;

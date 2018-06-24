@@ -15,8 +15,10 @@
 
 package org.openkilda.atdd.staging.config;
 
-import com.google.common.io.CharStreams;
-import net.jodah.failsafe.RetryPolicy;
+import org.openkilda.atdd.staging.service.flowmanager.FlowManager;
+import org.openkilda.atdd.staging.service.flowmanager.FlowManagerImpl;
+import org.openkilda.atdd.staging.tools.LoggingRequestInterceptor;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,16 +28,19 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.client.BufferingClientHttpRequestFactory;
+import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.ClientHttpResponse;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.http.client.support.BasicAuthorizationInterceptor;
 import org.springframework.web.client.DefaultResponseErrorHandler;
 import org.springframework.web.client.ResponseErrorHandler;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.DefaultUriBuilderFactory;
 
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.concurrent.TimeUnit;
+import java.util.List;
 
 @Configuration
 @Profile("default")
@@ -67,38 +72,59 @@ public class ServiceConfig {
         return buildRestTemplateWithAuth(endpoint, username, password);
     }
 
-    // The retrier is used for repeating operations which depend on the system state and may change the result after delays.
-    @Bean(name = "topologyEngineRetryPolicy")
-    public RetryPolicy retryPolicy() {
-        return new RetryPolicy()
-                .withDelay(2, TimeUnit.SECONDS)
-                .withMaxRetries(10);
-    }
-
     @Bean(name = "traffExamRestTemplate")
     public RestTemplate traffExamRestTemplate() {
-        return new RestTemplate();
+        RestTemplate restTemplate = buildLoggingRestTemplate();
+        restTemplate.setErrorHandler(buildErrorHandler());
+        return restTemplate;
+    }
+
+    @Bean(name = "aSwitchRestTemplate")
+    public RestTemplate aswitchRestTemplate(@Value("${aswitch.endpoint}") String endpoint) {
+        return buildLoggingRestTemplate(endpoint);
+    }
+
+    @Bean
+    public FlowManager flowManager() {
+        return new FlowManagerImpl();
+    }
+
+    private RestTemplate buildLoggingRestTemplate(String endpoint) {
+        final RestTemplate restTemplate = buildLoggingRestTemplate();
+        restTemplate.setUriTemplateHandler(new DefaultUriBuilderFactory(endpoint));
+        return restTemplate;
+    }
+
+    private RestTemplate buildLoggingRestTemplate() {
+        final RestTemplate restTemplate = new RestTemplate(new BufferingClientHttpRequestFactory(
+                new SimpleClientHttpRequestFactory()));
+        List<ClientHttpRequestInterceptor> interceptors = restTemplate.getInterceptors();
+        interceptors.add(new LoggingRequestInterceptor());
+        restTemplate.setErrorHandler(buildErrorHandler());
+        return restTemplate;
     }
 
     private RestTemplate buildRestTemplateWithAuth(String endpoint, String username, String password) {
-        final RestTemplate restTemplate = new RestTemplate();
-        restTemplate.setUriTemplateHandler(new DefaultUriBuilderFactory(endpoint));
+        RestTemplate restTemplate = buildLoggingRestTemplate(endpoint);
         restTemplate.getInterceptors().add(new BasicAuthorizationInterceptor(username, password));
-        restTemplate.setErrorHandler(buildErrorHandler());
         return restTemplate;
     }
 
     private ResponseErrorHandler buildErrorHandler() {
         return new DefaultResponseErrorHandler() {
-            private final Logger LOGGER = LoggerFactory.getLogger(ResponseErrorHandler.class);
+            private final Logger logger = LoggerFactory.getLogger(ResponseErrorHandler.class);
 
             @Override
             public void handleError(ClientHttpResponse clientHttpResponse) throws IOException {
-                if (clientHttpResponse.getStatusCode() != HttpStatus.NOT_FOUND) {
-                    LOGGER.error("HTTP response with status {} and body '{}'", clientHttpResponse.getStatusCode(),
-                            CharStreams.toString(new InputStreamReader(clientHttpResponse.getBody())));
+                try {
+                    super.handleError(clientHttpResponse);
+                } catch (RestClientResponseException e) {
+                    if (e.getRawStatusCode() != HttpStatus.NOT_FOUND.value()) {
+                        logger.error("HTTP response with status {} and body '{}'", e.getRawStatusCode(),
+                                e.getResponseBodyAsString());
+                    }
+                    throw e;
                 }
-                super.handleError(clientHttpResponse);
             }
         };
     }

@@ -33,6 +33,11 @@
             <artifactId>messaging</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.openkilda</groupId>
+            <artifactId>configuration</artifactId>
+            <version>${project.version}</version>
+        </dependency>
 
         <dependency>
             <groupId>commons-httpclient</groupId>
@@ -78,17 +83,14 @@
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-core</artifactId>
-            <version>${jackson.version}</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-annotations</artifactId>
-            <version>${jackson.version}</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>${jackson.version}</version>
         </dependency>
         <dependency>
             <groupId>ch.qos.logback</groupId>
@@ -106,16 +108,21 @@
             <!--<artifactId>slf4j-api</artifactId>-->
             <!--<version>${slf4j.version}</version>-->
         <!--</dependency>-->
+
+        <dependency>
+            <groupId>org.aspectj</groupId>
+            <artifactId>aspectjrt</artifactId>
+        </dependency>
     </dependencies>
 
     <build>
         <finalName>floodlight-modules</finalName>
 
         <plugins>
-            <!--plugin>
+            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-checkstyle-plugin</artifactId>
-            </plugin-->
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
@@ -164,6 +171,11 @@
                     </execution>
                 </executions>
 
+            </plugin>
+
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>aspectj-maven-plugin</artifactId>
             </plugin>
         </plugins>
 

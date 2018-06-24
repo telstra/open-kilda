@@ -15,7 +15,7 @@
 
 package org.openkilda.wfm;
 
-import org.openkilda.wfm.topology.TopologyConfig;
+import org.openkilda.wfm.config.ZookeeperConfig;
 
 import com.google.common.io.Files;
 import kafka.server.KafkaConfig;
@@ -33,9 +33,9 @@ import java.util.Properties;
  * Key Utilities:
  */
 public class TestUtils {
-    public static Properties serverProperties(TopologyConfig config) {
+    public static Properties serverProperties(ZookeeperConfig config) {
         Properties props = new Properties();
-        props.setProperty("zookeeper.connect", config.getZookeeperHosts());
+        props.setProperty("zookeeper.connect", config.getHosts());
         props.setProperty("broker.id", "1");
         props.setProperty("delete.topic.enable", "true");
         return props;
@@ -52,14 +52,14 @@ public class TestUtils {
         public TestingServer zk;
         public KafkaServerStartable kafka;
         public File tempDir = Files.createTempDir();
-        private TopologyConfig config;
+        private ZookeeperConfig zooKeeperConfig;
 
-        public KafkaTestFixture(TopologyConfig config) throws ConfigurationException {
-            this.config = config;
+        public KafkaTestFixture(ZookeeperConfig zooKeeperConfig) {
+            this.zooKeeperConfig = zooKeeperConfig;
         }
 
         public void start() throws Exception {
-            Properties props = serverProperties(config);
+            Properties props = serverProperties(zooKeeperConfig);
             this.start(props);
         }
 

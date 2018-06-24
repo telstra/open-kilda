@@ -12,25 +12,31 @@
  *   See the License for the specific language governing permissions and
  *   limitations under the License.
  */
+
 package org.openkilda.atdd.staging.steps;
 
+import static java.lang.String.format;
 import static java.util.stream.Collectors.toList;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
+
+import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
+import org.openkilda.atdd.staging.model.topology.TopologyDefinition.Isl;
+import org.openkilda.atdd.staging.service.northbound.NorthboundService;
+import org.openkilda.atdd.staging.service.topology.TopologyEngineService;
+import org.openkilda.atdd.staging.steps.helpers.TopologyChecker.IslMatcher;
+import org.openkilda.atdd.staging.steps.helpers.TopologyChecker.SwitchMatcher;
+import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.northbound.dto.switches.RulesValidationResult;
 
 import cucumber.api.Scenario;
 import cucumber.api.java.Before;
 import cucumber.api.java.en.And;
 import cucumber.api.java.en.Given;
 import cucumber.api.java8.En;
-import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
-import org.openkilda.atdd.staging.model.topology.TopologyDefinition.Isl;
-import org.openkilda.atdd.staging.service.topology.TopologyEngineService;
-import org.openkilda.atdd.staging.steps.helpers.TopologyChecker.IslMatcher;
-import org.openkilda.atdd.staging.steps.helpers.TopologyChecker.SwitchMatcher;
-import org.openkilda.messaging.info.event.IslInfoData;
-import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
@@ -45,6 +51,9 @@ public class TopologyVerificationSteps implements En {
 
     @Autowired
     private TopologyDefinition topologyDefinition;
+
+    @Autowired
+    private NorthboundService northboundService;
 
     private List<TopologyDefinition.Switch> referenceSwitches;
     private List<TopologyDefinition.Isl> referenceLinks;
@@ -63,12 +72,12 @@ public class TopologyVerificationSteps implements En {
         Set<String> skippedSwitches = topologyDefinition.getSkippedSwitchIds();
 
         referenceSwitches = topologyDefinition.getActiveSwitches();
-        actualSwitches = topologyEngineService.getActiveSwitches().stream()
+        actualSwitches = northboundService.getActiveSwitches().stream()
                 .filter(sw -> !skippedSwitches.contains(sw.getSwitchId()))
                 .collect(toList());
 
         referenceLinks = topologyDefinition.getIslsForActiveSwitches();
-        actualLinks = topologyEngineService.getActiveLinks().stream()
+        actualLinks = northboundService.getActiveLinks().stream()
                 .filter(sw -> !skippedSwitches.contains(sw.getPath().get(0).getSwitchId()))
                 .filter(sw -> !skippedSwitches.contains(sw.getPath().get(1).getSwitchId()))
                 .collect(Collectors.toList());
@@ -98,10 +107,22 @@ public class TopologyVerificationSteps implements En {
                         .flatMap(link -> {
                             //in kilda we have forward and reverse isl, that's why we have to divide into 2
                             Isl pairedLink = Isl.factory(link.getDstSwitch(), link.getDstPort(),
-                                    link.getSrcSwitch(), link.getSrcPort(), link.getMaxBandwidth());
+                                    link.getSrcSwitch(), link.getSrcPort(), link.getMaxBandwidth(), link.getAswitch());
                             return Stream.of(link, pairedLink);
                         })
                         .map(IslMatcher::new)
                         .collect(toList())));
+    }
+
+    @And("^all active switches have correct rules installed per Northbound validation")
+    public void validateSwitchRules() {
+        actualSwitches.forEach(sw -> {
+            String switchId = sw.getSwitchId();
+            RulesValidationResult validationResult = northboundService.validateSwitchRules(switchId);
+            assertTrue(format("The switch '%s' is missing rules: %s", switchId, validationResult.getMissingRules()),
+                    validationResult.getMissingRules().isEmpty());
+            assertTrue(format("The switch '%s' has excess rules: %s", switchId, validationResult.getExcessRules()),
+                    validationResult.getExcessRules().isEmpty());
+        });
     }
 }

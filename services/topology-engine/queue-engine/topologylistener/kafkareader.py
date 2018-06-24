@@ -13,7 +13,6 @@
 #   limitations under the License.
 #
 
-import os
 import time
 import logging
 
@@ -23,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 def create_consumer(config):
-    group = os.environ.get('group', config.get('kafka', 'consumer.group'))
+    group = config.KAFKA_CONSUMER_GROUP
     topic = config.KAFKA_TOPO_ENG_TOPIC
 
     bootstrap_servers = config.KAFKA_BOOTSTRAP_SERVERS

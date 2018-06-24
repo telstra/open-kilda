@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,121 +15,159 @@
 
 package org.openkilda.northbound.service.impl;
 
-import static java.util.Base64.getEncoder;
-
+import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.messaging.model.NetworkEndpointMask;
+import org.openkilda.messaging.nbtopology.request.GetLinksRequest;
+import org.openkilda.messaging.nbtopology.request.LinkPropsGet;
+import org.openkilda.messaging.nbtopology.response.LinkPropsData;
+import org.openkilda.messaging.te.request.LinkPropsDrop;
+import org.openkilda.messaging.te.request.LinkPropsPut;
+import org.openkilda.messaging.te.response.LinkPropsResponse;
 import org.openkilda.northbound.converter.LinkMapper;
+import org.openkilda.northbound.converter.LinkPropsMapper;
 import org.openkilda.northbound.dto.LinkPropsDto;
 import org.openkilda.northbound.dto.LinksDto;
+import org.openkilda.northbound.messaging.MessageConsumer;
+import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.service.LinkPropsResult;
 import org.openkilda.northbound.service.LinkService;
+import org.openkilda.northbound.utils.CorrelationIdFactory;
+import org.openkilda.northbound.utils.RequestCorrelationId;
+import org.openkilda.northbound.utils.ResponseCollector;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
-import org.springframework.web.util.UriComponentsBuilder;
 
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import javax.annotation.PostConstruct;
 
 @Service
 public class LinkServiceImpl implements LinkService {
 
-    //todo: refactor to use interceptor or custom rest template
-    private static final String auth = "kilda:kilda";
-    private static final String authHeaderValue = "Basic " + getEncoder().encodeToString(auth.getBytes());
+    private static final Logger logger = LoggerFactory.getLogger(LinkServiceImpl.class);
 
-    private final Logger LOGGER = LoggerFactory.getLogger(LinkServiceImpl.class);
-
-    private String linksUrl;
-    /** The URL to hit the Links Properties table .. ie :link_props in Neo4J */
-    private String linkPropsUrlBase;
-    private UriComponentsBuilder linkPropsBuilder;
-    private HttpHeaders headers;
-
-    @Value("${topology.engine.rest.endpoint}")
-    private String topologyEngineRest;
+    @Autowired
+    private CorrelationIdFactory idFactory;
 
     @Autowired
     private LinkMapper linkMapper;
 
     @Autowired
-    private RestTemplate restTemplate;
+    private LinkPropsMapper linkPropsMapper;
 
-    @PostConstruct
-    void init() {
-        linksUrl = UriComponentsBuilder.fromHttpUrl(topologyEngineRest)
-                .pathSegment("api", "v1", "topology", "links").build().toUriString();
-        linkPropsBuilder = UriComponentsBuilder.fromHttpUrl(topologyEngineRest)
-                .pathSegment("api", "v1", "topology", "link", "props");
-        linkPropsUrlBase = UriComponentsBuilder.fromHttpUrl(topologyEngineRest)
-                .pathSegment("api", "v1", "topology", "link", "props").build().toUriString();
-        headers = new HttpHeaders();
-        headers.add(HttpHeaders.AUTHORIZATION, authHeaderValue);
-    }
+    @Value("#{kafkaTopicsConfig.getTopoEngTopic()}")
+    private String topologyEngineTopic;
+
+    /**
+     * The kafka topic for the nb topology.
+     */
+    @Value("#{kafkaTopicsConfig.getTopoNbTopic()}")
+    private String nbworkerTopic;
+
+    @Autowired
+    private MessageConsumer messageConsumer;
+    @Autowired
+    private MessageProducer messageProducer;
+
+    @Autowired
+    private ResponseCollector<IslInfoData> linksCollector;
+    @Autowired
+    private ResponseCollector<LinkPropsResponse> teLinksCollector;
+    @Autowired
+    private ResponseCollector<LinkPropsData> linksPropsCollector;
 
     @Override
     public List<LinksDto> getLinks() {
-        LOGGER.debug("Get links request received");
-        IslInfoData[] links = restTemplate.exchange(linksUrl, HttpMethod.GET, new HttpEntity<>(headers),
-                IslInfoData[].class).getBody();
-        LOGGER.debug("Returned {} links", links.length);
-        return Stream.of(links)
+        final String correlationId = RequestCorrelationId.getId();
+        logger.debug("Get links request received");
+        CommandMessage request = new CommandMessage(new GetLinksRequest(), System.currentTimeMillis(), correlationId);
+        messageProducer.send(nbworkerTopic, request);
+        List<IslInfoData> links = linksCollector.getResult(correlationId);
+
+        return links.stream()
                 .map(linkMapper::toLinkDto)
                 .collect(Collectors.toList());
     }
 
     @Override
-    public List<LinkPropsDto> getLinkProps(LinkPropsDto keys) {
-        LOGGER.debug("Get link properties request received");
-        UriComponentsBuilder builder = linkPropsBuilder.cloneBuilder();
-        // TODO: pull out the URI builder .. to facilitate unit testing
-        if (keys != null){
-            if (!keys.getSrc_switch().isEmpty())
-                builder.queryParam("src_switch", keys.getSrc_switch());
-            if (!keys.getSrc_port().isEmpty())
-                builder.queryParam("src_port", keys.getSrc_port());
-            if (!keys.getDst_switch().isEmpty())
-                builder.queryParam("dst_switch", keys.getDst_switch());
-            if (!keys.getDst_port().isEmpty())
-                builder.queryParam("dst_port", keys.getDst_port());
-        }
-        String fullUri = builder.build().toUriString();
+    public List<LinkPropsDto> getLinkProps(String srcSwitch, Integer srcPort, String dstSwitch, Integer dstPort) {
+        final String correlationId = RequestCorrelationId.getId();
+        logger.debug("Get link properties request received");
+        LinkPropsGet request = new LinkPropsGet(new NetworkEndpointMask(srcSwitch, srcPort),
+                new NetworkEndpointMask(dstSwitch, dstPort));
+        CommandMessage message = new CommandMessage(request, System.currentTimeMillis(), correlationId);
+        messageProducer.send(nbworkerTopic, message);
+        List<LinkPropsData> links = linksPropsCollector.getResult(correlationId);
 
-        ResponseEntity<LinkPropsDto[]> response = restTemplate.exchange(fullUri,
-                HttpMethod.GET, new HttpEntity<>(headers), LinkPropsDto[].class);
-        LinkPropsDto[] linkProps = response.getBody();
-        LOGGER.debug("Returned {} links (with properties)", linkProps.length);
-        return Arrays.asList(linkProps);
+        logger.debug("Found link props items: {}", links.size());
+        return links.stream()
+                .map(linkPropsMapper::toDto)
+                .collect(Collectors.toList());
     }
 
     @Override
     public LinkPropsResult setLinkProps(List<LinkPropsDto> linkPropsList) {
-        return doLinkProps(HttpMethod.PUT, linkPropsList);
+        logger.debug("Link props \"SET\" request received (consists of {} records)", linkPropsList.size());
+
+        ArrayList<String> pendingRequest = new ArrayList<>(linkPropsList.size());
+        for (LinkPropsDto requestItem : linkPropsList) {
+            LinkPropsPut teRequest = new LinkPropsPut(linkPropsMapper.toLinkProps(requestItem));
+            String requestId = idFactory.produceChained(RequestCorrelationId.getId());
+            CommandMessage message = new CommandMessage(teRequest, System.currentTimeMillis(), requestId);
+            messageProducer.send(topologyEngineTopic, message);
+
+            pendingRequest.add(requestId);
+        }
+
+        int successCount = 0;
+        ArrayList<String> errors = new ArrayList<>(pendingRequest.size());
+        for (String requestId : pendingRequest) {
+            InfoMessage message = (InfoMessage) messageConsumer.poll(requestId);
+            LinkPropsResponse response = (LinkPropsResponse) message.getData();
+
+            if (response.isSuccess()) {
+                successCount += 1;
+            } else {
+                errors.add(response.getError());
+            }
+        }
+
+        return new LinkPropsResult(
+                linkPropsList.size() - successCount, successCount,
+                errors.toArray(new String[0]));
     }
 
     @Override
     public LinkPropsResult delLinkProps(List<LinkPropsDto> linkPropsList) {
-        return doLinkProps(HttpMethod.DELETE, linkPropsList);
-    }
+        ArrayList<String> pendingChains = new ArrayList<>();
+        for (LinkPropsDto requestItem : linkPropsList) {
+            LinkPropsDrop teRequest = new LinkPropsDrop(linkPropsMapper.toLinkPropsMask(requestItem));
+            String requestId = idFactory.produceChained(RequestCorrelationId.getId());
+            CommandMessage message = new CommandMessage(teRequest, System.currentTimeMillis(), requestId);
+            messageProducer.send(topologyEngineTopic, message);
 
-    protected LinkPropsResult doLinkProps(HttpMethod verb, List<LinkPropsDto> linkPropsList) {
-        LOGGER.debug("{} link properties request received", verb);
-        LOGGER.debug("Size of list: {}", linkPropsList.size());
-        HttpEntity<List<LinkPropsDto>> entity = new HttpEntity<>(linkPropsList,headers);
-        ResponseEntity<LinkPropsResult> response = restTemplate.exchange(linkPropsUrlBase,
-                verb, entity, LinkPropsResult.class);
-        LinkPropsResult result = response.getBody();
-        LOGGER.debug("Returned: ", result);
-        return result;
+            pendingChains.add(requestId);
+        }
+
+        int successCount = 0;
+        ArrayList<String> errors = new ArrayList<>();
+        for (String requestId : pendingChains) {
+            List<LinkPropsResponse> responseBatch = teLinksCollector.getResult(requestId);
+            for (LinkPropsResponse response : responseBatch) {
+                if (response.isSuccess()) {
+                    successCount += 1;
+                } else {
+                    errors.add(response.getError());
+                }
+            }
+        }
+
+        return new LinkPropsResult(errors.size(), successCount, errors.toArray(new String[0]));
     }
 }

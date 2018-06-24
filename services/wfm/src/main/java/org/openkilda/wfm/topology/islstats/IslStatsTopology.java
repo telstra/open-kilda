@@ -15,51 +15,48 @@
 
 package org.openkilda.wfm.topology.islstats;
 
-import org.apache.storm.kafka.bolt.KafkaBolt;
-import org.openkilda.wfm.ConfigurationException;
-import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.LaunchEnvironment;
+import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.islstats.bolts.IslStatsBolt;
 
-import org.slf4j.LoggerFactory;
-import org.slf4j.Logger;
 import org.apache.storm.generated.StormTopology;
-import org.apache.storm.opentsdb.bolt.OpenTsdbBolt;
-import org.apache.storm.opentsdb.bolt.TupleOpenTsdbDatapointMapper;
-import org.apache.storm.opentsdb.client.OpenTsdbClient;
+import org.apache.storm.kafka.bolt.KafkaBolt;
 import org.apache.storm.topology.TopologyBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public class IslStatsTopology extends AbstractTopology {
+public class IslStatsTopology extends AbstractTopology<IslStatsTopologyConfig> {
     private static final Logger logger = LoggerFactory.getLogger(IslStatsTopology.class);
 
-    public IslStatsTopology(LaunchEnvironment env) throws ConfigurationException {
-        super(env);
+    private static final String ISL_STATS_SPOUT_ID = "islstats-spout";
+    private static final String ISL_STATS_OTSDB_BOLT_ID = "islstats-otsdb-bolt";
+    private static final String ISL_STATS_BOLT_ID = IslStatsBolt.class.getSimpleName();
+
+    public IslStatsTopology(LaunchEnvironment env) {
+        super(env, IslStatsTopologyConfig.class);
     }
 
     public StormTopology createTopology() {
-        final String clazzName = this.getClass().getSimpleName();
-        final String spoutName = "islstats-spout";
-        logger.debug("Building Topology - {}", clazzName);
+        logger.info("Creating IslStatsTopology - {}", topologyName);
 
         TopologyBuilder builder = new TopologyBuilder();
 
-        String topic = config.getKafkaTopoDiscoTopic();
-        checkAndCreateTopic(topic);
+        String topoDiscoTopic = topologyConfig.getKafkaTopoDiscoTopic();
+        checkAndCreateTopic(topoDiscoTopic);
 
-        logger.debug("connecting to {} topic", topic);
-        builder.setSpout(spoutName, createKafkaSpout(topic, clazzName));
+        logger.debug("connecting to {} topic", topoDiscoTopic);
+        builder.setSpout(ISL_STATS_SPOUT_ID, createKafkaSpout(topoDiscoTopic, ISL_STATS_SPOUT_ID));
 
-        final String verifyIslStatsBoltName = IslStatsBolt.class.getSimpleName();
         IslStatsBolt verifyIslStatsBolt = new IslStatsBolt();
-        logger.debug("starting {} bolt", verifyIslStatsBoltName);
-        builder.setBolt(verifyIslStatsBoltName, verifyIslStatsBolt, config.getParallelism())
-                .shuffleGrouping(spoutName);
+        logger.debug("starting {} bolt", ISL_STATS_BOLT_ID);
+        builder.setBolt(ISL_STATS_BOLT_ID, verifyIslStatsBolt, topologyConfig.getParallelism())
+                .shuffleGrouping(ISL_STATS_SPOUT_ID);
 
-        final String openTsdbTopic = config.getKafkaOtsdbTopic();
+        String openTsdbTopic = topologyConfig.getKafkaOtsdbTopic();
         checkAndCreateTopic(openTsdbTopic);
         KafkaBolt openTsdbBolt = createKafkaBolt(openTsdbTopic);
-        builder.setBolt("isl-stats-opentsdb", openTsdbBolt, config.getParallelism())
-                .shuffleGrouping(verifyIslStatsBoltName);
+        builder.setBolt(ISL_STATS_OTSDB_BOLT_ID, openTsdbBolt, topologyConfig.getParallelism())
+                .shuffleGrouping(ISL_STATS_BOLT_ID);
 
         return builder.createTopology();
     }

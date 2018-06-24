@@ -15,19 +15,23 @@
 
 package org.openkilda.wfm.topology;
 
-import org.openkilda.messaging.Topic;
-import org.openkilda.wfm.ConfigurationException;
+import static java.lang.String.format;
+
+import org.openkilda.config.KafkaConfig;
+import org.openkilda.config.naming.KafkaNamingStrategy;
 import org.openkilda.wfm.CtrlBoltRef;
 import org.openkilda.wfm.LaunchEnvironment;
-import org.openkilda.wfm.NameCollisionException;
-import org.openkilda.wfm.PropertiesReader;
-import org.openkilda.wfm.StreamNameCollisionException;
+import org.openkilda.wfm.config.naming.TopologyNamingStrategy;
+import org.openkilda.wfm.config.provider.ConfigurationProvider;
 import org.openkilda.wfm.ctrl.RouteBolt;
+import org.openkilda.wfm.error.ConfigurationException;
+import org.openkilda.wfm.error.NameCollisionException;
+import org.openkilda.wfm.error.StreamNameCollisionException;
 import org.openkilda.wfm.kafka.CustomNamedSubscription;
 import org.openkilda.wfm.topology.utils.HealthCheckBolt;
 import org.openkilda.wfm.topology.utils.KafkaRecordTranslator;
 
-import org.apache.kafka.clients.consumer.ConsumerConfig;
+import com.google.common.annotations.VisibleForTesting;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.storm.Config;
@@ -47,19 +51,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Properties;
 
 /**
  * Represents abstract topology.
  */
-public abstract class AbstractTopology implements Topology {
+public abstract class AbstractTopology<T extends AbstractTopologyConfig> implements Topology {
     private static final Logger logger = LoggerFactory.getLogger(AbstractTopology.class);
-
-    protected final LaunchEnvironment env;
-    protected final PropertiesReader propertiesReader;
-    protected TopologyConfig config;
-    protected final String topologyName;
-    private final Properties kafkaProperties;
 
     public static final String SPOUT_ID_CTRL = "ctrl.in";
     public static final String BOLT_ID_CTRL_ROUTE = "ctrl.route";
@@ -68,23 +67,41 @@ public abstract class AbstractTopology implements Topology {
     public static final String MESSAGE_FIELD = "message";
     public static final Fields fieldMessage = new Fields(MESSAGE_FIELD);
 
-    protected AbstractTopology(LaunchEnvironment env) throws ConfigurationException {
-        this.env = env;
+    protected final String topologyName;
 
-        String builtinName = makeTopologyName();
-        String name = env.getTopologyName();
-        if (name == null) {
-            name = builtinName;
-        }
-        topologyName = name;
+    protected final KafkaNamingStrategy kafkaNamingStrategy;
+    protected final TopologyNamingStrategy topoNamingStrategy;
+    protected final ConfigurationProvider configurationProvider;
 
-        propertiesReader = env.makePropertiesReader(name, builtinName);
-        config = new TopologyConfig(propertiesReader);
-        kafkaProperties = makeKafkaProperties();
+    protected final T topologyConfig;
+    private final KafkaConfig kafkaConfig;
+
+    protected AbstractTopology(LaunchEnvironment env, Class<T> topologyConfigClass) {
+        kafkaNamingStrategy = env.getKafkaNamingStrategy();
+        topoNamingStrategy = env.getTopologyNamingStrategy();
+
+        String defaultTopologyName = getDefaultTopologyName();
+        // Use the default topology name with naming strategy applied only if no specific name provided via CLI.
+        topologyName = Optional.ofNullable(env.getTopologyName())
+                .orElse(topoNamingStrategy.stormTopologyName(defaultTopologyName));
+
+        configurationProvider = env.getConfigurationProvider(topologyName,
+                TOPOLOGY_PROPERTIES_DEFAULTS_PREFIX + defaultTopologyName);
+
+        topologyConfig = configurationProvider.getConfiguration(topologyConfigClass);
+        kafkaConfig = configurationProvider.getConfiguration(KafkaConfig.class);
+
+        logger.debug("Topology built {}: kafka={}, parallelism={}, workers={}",
+                topologyName, kafkaConfig.getHosts(), topologyConfig.getParallelism(),
+                topologyConfig.getWorkers());
+    }
+
+    protected String getDefaultTopologyName() {
+        return getClass().getSimpleName().toLowerCase();
     }
 
     protected void setup() throws TException, NameCollisionException {
-        if (config.getLocal()) {
+        if (topologyConfig.getUseLocalCluster()) {
             setupLocal();
         } else {
             setupRemote();
@@ -95,8 +112,8 @@ public abstract class AbstractTopology implements Topology {
         Config config = makeStormConfig();
         config.setDebug(false);
 
-        logger.info("Submit Topology: {}", getTopologyName());
-        StormSubmitter.submitTopology(getTopologyName(), config, createTopology());
+        logger.info("Submit Topology: {}", topologyName);
+        StormSubmitter.submitTopology(topologyName, config, createTopology());
     }
 
     private void setupLocal() throws NameCollisionException {
@@ -104,9 +121,9 @@ public abstract class AbstractTopology implements Topology {
         config.setDebug(true);
 
         LocalCluster cluster = new LocalCluster();
-        cluster.submitTopology(getTopologyName(), config, createTopology());
+        cluster.submitTopology(topologyName, config, createTopology());
 
-        logger.info("Start Topology: {} (local)", getTopologyName());
+        logger.info("Start Topology: {} (local)", topologyName);
         localExecutionMainLoop();
 
         cluster.shutdown();
@@ -137,13 +154,14 @@ public abstract class AbstractTopology implements Topology {
         return errorCode;
     }
 
-    private Properties makeKafkaProperties() {
+    private Properties getKafkaProducerProperties() {
         Properties kafka = new Properties();
 
-        kafka.setProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
-        kafka.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
-        kafka.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, config.getKafkaHosts());
-        kafka.setProperty(ConsumerConfig.GROUP_ID_CONFIG, getTopologyName());
+        kafka.setProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
+                "org.apache.kafka.common.serialization.StringSerializer");
+        kafka.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
+                "org.apache.kafka.common.serialization.StringSerializer");
+        kafka.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaConfig.getHosts());
         kafka.setProperty("request.required.acks", "1");
 
         return kafka;
@@ -152,9 +170,9 @@ public abstract class AbstractTopology implements Topology {
     protected Config makeStormConfig() {
         Config stormConfig = new Config();
 
-        stormConfig.setNumWorkers(config.getWorkers(topologyName));
-        if (config.getLocal()) {
-            stormConfig.setMaxTaskParallelism(config.getParallelism());
+        stormConfig.setNumWorkers(topologyConfig.getWorkers());
+        if (topologyConfig.getUseLocalCluster()) {
+            stormConfig.setMaxTaskParallelism(topologyConfig.getParallelism());
         }
 
         return stormConfig;
@@ -163,18 +181,20 @@ public abstract class AbstractTopology implements Topology {
     protected void localExecutionMainLoop() {
         logger.info("Sleep while local topology is executing");
         try {
-            Thread.sleep(config.getLocalExecutionTime());
+            Thread.sleep(topologyConfig.getLocalExecutionTime());
         } catch (InterruptedException e) {
             logger.warn("Execution process have been interrupted.");
         }
     }
 
-    public String getTopologyName() {
+    @Override
+    public final String getTopologyName() {
         return topologyName;
     }
 
-    public TopologyConfig getConfig() {
-        return config;
+    @VisibleForTesting
+    public final T getConfig() {
+        return topologyConfig;
     }
 
     /**
@@ -207,24 +227,26 @@ public abstract class AbstractTopology implements Topology {
      */
     protected KafkaBolt createKafkaBolt(final String topic) {
         return new KafkaBolt<String, String>()
-                .withProducerProperties(kafkaProperties)
+                .withProducerProperties(getKafkaProducerProperties())
                 .withTopicSelector(new DefaultTopicSelector(topic))
                 .withTupleToKafkaMapper(new FieldNameBasedTupleToKafkaMapper<>());
     }
 
     protected void createCtrlBranch(TopologyBuilder builder, List<CtrlBoltRef> targets)
             throws StreamNameCollisionException {
-        checkAndCreateTopic(config.getKafkaCtrlTopic());
+        String ctrlTopic = topologyConfig.getKafkaCtrlTopic();
+
+        checkAndCreateTopic(ctrlTopic);
 
         KafkaSpout kafkaSpout;
-        kafkaSpout = createKafkaSpout(config.getKafkaCtrlTopic(), SPOUT_ID_CTRL);
+        kafkaSpout = createKafkaSpout(ctrlTopic, SPOUT_ID_CTRL);
         builder.setSpout(SPOUT_ID_CTRL, kafkaSpout);
 
-        RouteBolt route = new RouteBolt(getTopologyName());
+        RouteBolt route = new RouteBolt(topologyName);
         builder.setBolt(BOLT_ID_CTRL_ROUTE, route)
                 .shuffleGrouping(SPOUT_ID_CTRL);
 
-        KafkaBolt kafkaBolt = createKafkaBolt(config.getKafkaCtrlTopic());
+        KafkaBolt kafkaBolt = createKafkaBolt(ctrlTopic);
         BoltDeclarer outputSetup = builder.setBolt(BOLT_ID_CTRL_OUTPUT, kafkaBolt)
                 .shuffleGrouping(BOLT_ID_CTRL_ROUTE, route.STREAM_ID_ERROR);
 
@@ -242,20 +264,23 @@ public abstract class AbstractTopology implements Topology {
      * @param prefix  component id
      */
     protected void createHealthCheckHandler(TopologyBuilder builder, String prefix) {
-        checkAndCreateTopic(Topic.HEALTH_CHECK);
-        KafkaSpout healthCheckKafkaSpout = createKafkaSpout(Topic.HEALTH_CHECK, prefix);
+        String healthCheckTopic = topologyConfig.getKafkaHealthCheckTopic();
+
+        checkAndCreateTopic(healthCheckTopic);
+
+        KafkaSpout healthCheckKafkaSpout = createKafkaSpout(healthCheckTopic, prefix);
         builder.setSpout(prefix + "HealthCheckKafkaSpout", healthCheckKafkaSpout, 1);
-        HealthCheckBolt healthCheckBolt = new HealthCheckBolt(prefix);
+        HealthCheckBolt healthCheckBolt = new HealthCheckBolt(prefix, healthCheckTopic);
         builder.setBolt(prefix + "HealthCheckBolt", healthCheckBolt, 1)
                 .shuffleGrouping(prefix + "HealthCheckKafkaSpout");
-        KafkaBolt healthCheckKafkaBolt = createKafkaBolt(Topic.HEALTH_CHECK);
+        KafkaBolt healthCheckKafkaBolt = createKafkaBolt(healthCheckTopic);
         builder.setBolt(prefix + "HealthCheckKafkaBolt", healthCheckKafkaBolt, 1)
-                .shuffleGrouping(prefix + "HealthCheckBolt", Topic.HEALTH_CHECK);
+                .shuffleGrouping(prefix + "HealthCheckBolt", healthCheckTopic);
     }
 
     protected KafkaSpoutConfig.Builder<String, String> makeKafkaSpoutConfigBuilder(String spoutId, String topic) {
         return new KafkaSpoutConfig.Builder<>(
-                config.getKafkaHosts(), StringDeserializer.class, StringDeserializer.class,
+                kafkaConfig.getHosts(), StringDeserializer.class, StringDeserializer.class,
                 new CustomNamedSubscription(topic))
 
                 .setGroupId(makeKafkaGroupName(spoutId))
@@ -268,7 +293,7 @@ public abstract class AbstractTopology implements Topology {
                 .setFirstPollOffsetStrategy(KafkaSpoutConfig.FirstPollOffsetStrategy.LATEST);
     }
 
-    protected String makeKafkaGroupName(String spoutId) {
-        return String.format("%s__%s", getTopologyName(), spoutId);
+    private String makeKafkaGroupName(String spoutId) {
+        return kafkaNamingStrategy.kafkaConsumerGroupName(format("%s__%s", topologyName, spoutId));
     }
 }

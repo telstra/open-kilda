@@ -36,6 +36,12 @@ function showflowData(response){
 	if(!response || response.length==0) {
 		response=[]
 		common.infoMessage('No ISL Available','info');
+	}else{
+
+		if ( $.fn.DataTable.isDataTable('#flowTable') ) {
+					  $('#flowTable').DataTable().destroy();
+					}
+					$('#flowTable tbody').empty();
 	}
 	
 	var flowDetailsData = localStorage.getItem("flowDetailsData");

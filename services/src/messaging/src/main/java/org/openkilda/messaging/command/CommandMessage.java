@@ -69,6 +69,13 @@ public class CommandMessage extends Message {
         setData(data);
     }
 
+    public CommandMessage(final CommandData data,
+                          final long timestamp,
+                          final String correlationId) {
+        super(timestamp, correlationId);
+        setData(data);
+    }
+
     /**
      * Returns payload of the command message.
      *

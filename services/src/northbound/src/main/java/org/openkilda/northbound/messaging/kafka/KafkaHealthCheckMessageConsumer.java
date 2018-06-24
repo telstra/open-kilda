@@ -18,7 +18,6 @@ package org.openkilda.northbound.messaging.kafka;
 import static org.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.openkilda.messaging.Utils.MAPPER;
 import static org.openkilda.messaging.error.ErrorType.INTERNAL_ERROR;
-import org.openkilda.messaging.Topic;
 
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
@@ -29,6 +28,8 @@ import org.openkilda.northbound.messaging.HealthCheckMessageConsumer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
+import org.slf4j.MDC.MDCCloseable;
 import org.springframework.kafka.annotation.KafkaListener;
 
 import java.io.IOException;
@@ -60,21 +61,27 @@ public class KafkaHealthCheckMessageConsumer implements HealthCheckMessageConsum
      *
      * @param record the message object instance
      */
-    @KafkaListener(id = "northbound-listener-health-check", topics = Topic.HEALTH_CHECK)
+    @KafkaListener(id = "northbound-listener-health-check", topics = "#{kafkaTopicsConfig.getHealthCheckTopic()}")
     public void receive(final String record) {
+        Message message;
+
         try {
-            logger.trace("message received");
-            Message message = MAPPER.readValue(record, Message.class);
+            logger.trace("message received: {}", record);
+            message = MAPPER.readValue(record, Message.class);
+        } catch (IOException exception) {
+            logger.error("Could not deserialize message: {}", record, exception);
+            return;
+        }
+
+        try (MDCCloseable closable = MDC.putCloseable(CORRELATION_ID, message.getCorrelationId())) {
             if (Destination.NORTHBOUND.equals(message.getDestination())) {
-                logger.debug("message received: {}", record);
+                logger.debug("message received: {}", message);
                 InfoMessage info = (InfoMessage) message;
                 HealthCheckInfoData healthCheck = (HealthCheckInfoData) info.getData();
                 messages.put(healthCheck.getId(), healthCheck);
             } else {
                 logger.trace("Skip message: {}", message);
             }
-        } catch (IOException exception) {
-            logger.error("Could not deserialize message: {}", record, exception);
         }
     }
 

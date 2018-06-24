@@ -8,10 +8,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import org.apache.commons.lang3.SerializationUtils;
-import org.mockito.stubbing.Answer;
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition.Switch;
+import org.openkilda.atdd.staging.service.aswitch.ASwitchService;
+import org.openkilda.atdd.staging.service.aswitch.model.ASwitchFlow;
 import org.openkilda.atdd.staging.service.floodlight.FloodlightService;
 import org.openkilda.atdd.staging.service.floodlight.model.FlowApplyActions;
 import org.openkilda.atdd.staging.service.floodlight.model.FlowEntriesMap;
@@ -25,6 +25,9 @@ import org.openkilda.atdd.staging.service.floodlight.model.SwitchEntry;
 import org.openkilda.atdd.staging.service.northbound.NorthboundService;
 import org.openkilda.atdd.staging.service.topology.TopologyEngineService;
 import org.openkilda.atdd.staging.service.traffexam.TraffExamService;
+import org.openkilda.atdd.staging.service.traffexam.model.Bandwidth;
+import org.openkilda.atdd.staging.service.traffexam.model.Exam;
+import org.openkilda.atdd.staging.service.traffexam.model.ExamReport;
 import org.openkilda.atdd.staging.service.traffexam.model.Host;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
@@ -39,9 +42,14 @@ import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowPayloadToFlowConverter;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
+import org.openkilda.northbound.dto.switches.RulesValidationResult;
+
+import org.apache.commons.lang3.SerializationUtils;
+import org.mockito.stubbing.Answer;
 
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,7 +57,6 @@ import java.util.stream.Stream;
 
 /**
  * A factory for stub implementations of services.
- *
  * This is used by unit tests to imitate correct behaviour of Kilda components.
  */
 public class StubServiceFactory {
@@ -77,26 +84,7 @@ public class StubServiceFactory {
                 });
 
         when(serviceMock.getPaths(any(), any()))
-                .thenReturn(singletonList(new PathInfoData()));
-
-        when(serviceMock.getActiveSwitches())
-                .thenAnswer(invocation -> topologyDefinition.getActiveSwitches().stream()
-                        .map(sw -> new SwitchInfoData(sw.getDpId(), SwitchState.ACTIVATED, "", "", "", ""))
-                        .collect(toList()));
-
-        when(serviceMock.getActiveLinks())
-                .thenAnswer(invocation -> topologyDefinition.getIslsForActiveSwitches().stream()
-                        .flatMap(link -> Stream.of(
-                                new IslInfoData(0,
-                                        asList(new PathNode(link.getSrcSwitch().getDpId(), link.getSrcPort(), 0),
-                                                new PathNode(link.getDstSwitch().getDpId(), link.getDstPort(), 1)),
-                                        link.getMaxBandwidth(), IslChangeType.DISCOVERED, 0),
-                                new IslInfoData(0,
-                                        asList(new PathNode(link.getDstSwitch().getDpId(), link.getDstPort(), 0),
-                                                new PathNode(link.getSrcSwitch().getDpId(), link.getSrcPort(), 1)),
-                                        link.getMaxBandwidth(), IslChangeType.DISCOVERED, 0)
-                        ))
-                        .collect(toList()));
+                .thenReturn(Arrays.asList(new PathInfoData(), new PathInfoData()));
 
         return serviceMock;
     }
@@ -145,6 +133,24 @@ public class StubServiceFactory {
         return serviceMock;
     }
 
+    /**
+     * Get a stub for {@link ASwitchService}. The instance is tied to the factory state.
+     */
+    public ASwitchService getASwitchStub() {
+        ASwitchService serviceMock = mock(ASwitchService.class);
+        List<ASwitchFlow> aswitchFlows = topologyDefinition.getIslsForActiveSwitches().stream()
+                .filter(isl -> isl.getAswitch() != null)
+                .map(isl -> {
+                    TopologyDefinition.ASwitch asw = isl.getAswitch();
+                    return Arrays.asList(new ASwitchFlow(asw.getInPort(), asw.getOutPort()),
+                            new ASwitchFlow(asw.getOutPort(), asw.getInPort()));
+                }).flatMap(List::stream).collect(toList());
+
+        when(serviceMock.getAllFlows())
+                .thenReturn(aswitchFlows);
+        return serviceMock;
+    }
+
     private FlowEntriesMap buildFlowEntries(String switchId, String switchVersion) {
         FlowEntriesMap result = new FlowEntriesMap();
 
@@ -152,8 +158,8 @@ public class StubServiceFactory {
         FlowEntry flowEntry = buildFlowEntry("flow-0x8000000000000002",
                 FlowMatchField.builder().ethDst("08:ed:02:ef:ff:ff").build(),
                 FlowInstructions.builder().applyActions(
-                        FlowApplyActions.builder().
-                                flowOutput("controller").field(switchId + "->eth_dst").build()
+                        FlowApplyActions.builder()
+                                .flowOutput("controller").field(switchId + "->eth_dst").build()
                 ).build()
         );
         result.put(flowEntry.getCookie(), flowEntry);
@@ -171,9 +177,9 @@ public class StubServiceFactory {
             FlowEntry flowFor13Version = buildFlowEntry("flow-0x8000000000000003",
                     FlowMatchField.builder().ethDst(switchId).build(),
                     FlowInstructions.builder().applyActions(
-                            FlowApplyActions.builder().
-                                    flowOutput("controller").
-                                    field(switchId + "->eth_dst")
+                            FlowApplyActions.builder()
+                                    .flowOutput("controller")
+                                    .field(switchId + "->eth_dst")
                                     .build()
                     ).build()
             );
@@ -197,6 +203,25 @@ public class StubServiceFactory {
     public NorthboundService getNorthboundStub() {
         NorthboundService serviceMock = mock(NorthboundService.class);
 
+        when(serviceMock.getActiveSwitches())
+                .thenAnswer(invocation -> topologyDefinition.getActiveSwitches().stream()
+                        .map(sw -> new SwitchInfoData(sw.getDpId(), SwitchState.ACTIVATED, "", "", "", ""))
+                        .collect(toList()));
+
+        when(serviceMock.getActiveLinks())
+                .thenAnswer(invocation -> topologyDefinition.getIslsForActiveSwitches().stream()
+                        .flatMap(link -> Stream.of(
+                                new IslInfoData(0,
+                                        asList(new PathNode(link.getSrcSwitch().getDpId(), link.getSrcPort(), 0),
+                                                new PathNode(link.getDstSwitch().getDpId(), link.getDstPort(), 1)),
+                                        link.getMaxBandwidth(), IslChangeType.DISCOVERED, 0),
+                                new IslInfoData(0,
+                                        asList(new PathNode(link.getDstSwitch().getDpId(), link.getDstPort(), 0),
+                                                new PathNode(link.getSrcSwitch().getDpId(), link.getSrcPort(), 1)),
+                                        link.getMaxBandwidth(), IslChangeType.DISCOVERED, 0)
+                        ))
+                        .collect(toList()));
+
         when(serviceMock.getAllFlows())
                 .thenReturn(new ArrayList<>(flowPayloads.values()));
 
@@ -216,6 +241,7 @@ public class StubServiceFactory {
                 .thenAnswer(invocation -> {
                     FlowPayload result = SerializationUtils.clone(((FlowPayload) invocation.getArguments()[0]));
                     result.setLastUpdated(LocalTime.now().toString());
+                    result.setStatus(FlowState.ALLOCATED.toString());
                     putFlow(result.getId(), result);
                     return result;
                 });
@@ -238,6 +264,9 @@ public class StubServiceFactory {
 
         when(serviceMock.synchronizeSwitchRules(any()))
                 .thenReturn(new RulesSyncResult(emptyList(), emptyList(), emptyList(), emptyList()));
+
+        when(serviceMock.validateSwitchRules(any()))
+                .thenReturn(new RulesValidationResult(emptyList(), emptyList(), emptyList()));
 
         return serviceMock;
     }
@@ -271,6 +300,16 @@ public class StubServiceFactory {
                     Host host = mock(Host.class);
                     when(host.getName()).thenReturn(hostName);
                     return host;
+                });
+
+        when(serviceMock.waitExam(any()))
+                .thenAnswer(invocation -> {
+                    Exam exam = (Exam) invocation.getArguments()[0];
+                    ExamReport report = mock(ExamReport.class);
+                    when(report.hasError()).thenReturn(false);
+                    when(report.hasTraffic()).thenReturn(flows.containsKey(exam.getFlow().getId()));
+                    when(report.getBandwidth()).thenReturn(new Bandwidth(exam.getFlow().getMaximumBandwidth()));
+                    return report;
                 });
 
         return serviceMock;

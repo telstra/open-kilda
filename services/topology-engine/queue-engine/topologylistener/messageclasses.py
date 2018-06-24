@@ -16,15 +16,15 @@
 
 import json
 import logging
-import textwrap
 import threading
 
-from py2neo import Node
 from topologylistener import model
 
 from topologylistener import config
+from topologylistener import db
 from topologylistener import exc
 from topologylistener import isl_utils
+from topologylistener import link_props_utils
 import flow_utils
 import message_utils
 
@@ -53,7 +53,8 @@ MT_NETWORK_TOPOLOGY_CHANGE = (
     "org.openkilda.messaging.info.event.NetworkTopologyChange")
 CD_NETWORK = "org.openkilda.messaging.command.discovery.NetworkCommandData"
 CD_FLOWS_SYNC_REQUEST = 'org.openkilda.messaging.command.FlowsSyncRequest'
-
+CD_LINK_PROPS_PUT = 'org.openkilda.messaging.te.request.LinkPropsPut'
+CD_LINK_PROPS_DROP = 'org.openkilda.messaging.te.request.LinkPropsDrop'
 
 FEATURE_SYNC_OFRULES = 'sync_rules_on_activation'
 FEATURE_REROUTE_ON_ISL_DISCOVERY = 'flows_reroute_on_isl_discovery'
@@ -94,31 +95,53 @@ neo4j_update_lock = threading.RLock()
 
 
 def update_config():
-    config_node = Node('config', name='config')
-    graph.merge(config_node)
-    for feature, name in features_status_app_to_transport_map.items():
-        config_node[name] = features_status[feature]
-    config_node.push()
-    return True
+    q = 'MERGE (target:config {name: "config"})\n'
+    q += db.format_set_fields(db.escape_fields(
+            {x: '$' + x for x in features_status_app_to_transport_map.values()},
+            raw_values=True), field_prefix='target.')
+    p = {
+        y: features_status[x]
+        for x, y in features_status_app_to_transport_map.items()}
+
+    with graph.begin() as tx:
+        db.log_query('CONFIG update', q, p)
+        tx.run(q, p)
 
 
 def read_config():
-    config_node = graph.find_one('config')
-    if config_node is not None:
-        for feature, name in features_status_app_to_transport_map.items():
-            features_status[feature] = config_node[name]
+    q = 'MATCH (target:config {name: "config"}) RETURN target LIMIT 2'
+    db.log_query('CONFIG read', q, None)
+    with graph.begin() as tx:
+        cursor = tx.run(q)
+        try:
+            config_node = db.fetch_one(cursor)['target']
+            for feature, name in features_status_app_to_transport_map.items():
+                features_status[feature] = config_node[name]
+        except exc.DBEmptyResponse:
+            logger.info(
+                    'There is no persistent config in DB, fallback to'
+                    ' builtin defaults')
+
 
 read_config()
 
 
-class MessageItem(object):
-    def __init__(self, **kwargs):
-        self.type = kwargs.get("clazz")
-        self.timestamp = str(kwargs.get("timestamp"))
-        self.payload = kwargs.get("payload", {})
-        self.destination = kwargs.get("destination","")
-        self.correlation_id = kwargs.get("correlation_id", "admin-request")
-        self.reply_to = kwargs.get("reply_to", "")
+class MessageItem(model.JsonSerializable):
+    def __init__(self, message):
+        self._raw_message = message
+
+        self.type = message.get("clazz")
+        self.payload = message.get("payload", {})
+        self.destination = message.get("destination","")
+        self.correlation_id = message.get("correlation_id", "admin-request")
+        self.reply_to = message.get("reply_to", "")
+
+        try:
+            timestamp = message['timestamp']
+            timestamp = model.TimeProperty.new_from_java_timestamp(timestamp)
+        except KeyError:
+            timestamp = model.TimeProperty.now()
+        self.timestamp = timestamp
 
     def to_json(self):
         return json.dumps(
@@ -141,18 +164,19 @@ class MessageItem(object):
 
             if self.get_message_type() == MT_SWITCH:
                 if self.payload['state'] == "ADDED":
-                    event_handled = self.create_switch()
+                    self.create_switch()
                 elif self.payload['state'] == "ACTIVATED":
-                    event_handled = self.activate_switch()
+                    self.activate_switch()
                 elif self.payload['state'] in ("DEACTIVATED", "REMOVED"):
                     self.switch_unplug()
-                    event_handled = True
+                event_handled = True
 
             elif self.get_message_type() == MT_ISL:
                 if self.payload['state'] == "DISCOVERED":
-                    event_handled = self.create_isl()
-                elif self.payload['state'] == "FAILED":
-                    event_handled = self.isl_discovery_failed()
+                    self.create_isl()
+                elif self.payload['state'] in ("FAILED", "MOVED"):
+                    self.isl_discovery_failed()
+                event_handled = True
 
             elif self.get_message_type() == MT_PORT:
                 if self.payload['state'] == "DOWN":
@@ -192,6 +216,11 @@ class MessageItem(object):
             elif self.get_message_type() == MT_SYNC_REQUEST:
                 event_handled = self.sync_switch_rules()
 
+            elif self.get_message_type() in (
+                    CD_LINK_PROPS_PUT, CD_LINK_PROPS_DROP):
+                self.handle_link_props()
+                event_handled = True
+
             if not event_handled:
                 logger.error('Message was not handled correctly: message=%s',
                              self.payload)
@@ -201,22 +230,35 @@ class MessageItem(object):
             logger.exception("Exception during handling message")
             return False
 
+    def handle_link_props(self):
+        try:
+            if self.get_message_type() == CD_LINK_PROPS_PUT:
+                self.link_props_put()
+            elif self.get_message_type() == CD_LINK_PROPS_DROP:
+                self.link_props_drop()
+            else:
+                raise exc.NotImplementedError(
+                    'link props request {}'.format(self.get_message_type()))
+        except exc.Error as e:
+            payload = message_utils.make_link_props_response(
+                self.payload, None, error=str(e))
+            message_utils.send_link_props_response(
+                payload, self.correlation_id,
+                self.get_message_type() == CD_LINK_PROPS_DROP)
+
     def activate_switch(self):
         switch_id = self.payload['switch_id']
 
         logger.info('Switch %s activation request: timestamp=%s',
                     switch_id, self.timestamp)
 
-        # FIXME(surabujin): avoid usage of graph.find_* functions - due to lack of transaction support
-        switch = graph.find_one('switch',
-                                property_key='name',
-                                property_value='{}'.format(switch_id))
-        if switch:
-            graph.merge(switch)
-            switch['state'] = "active"
-            switch.push()
-            logger.info('Activating switch: %s', switch_id)
-        return True
+        with graph.begin() as tx:
+            flow_utils.precreate_switches(tx, switch_id)
+
+            q = 'MATCH (target:switch {name: $dpid}) SET target.state="active"'
+            p = {'dpid': switch_id}
+            db.log_query('SWITCH activate', q, p)
+            tx.run(q, p)
 
     def create_switch(self):
         switch_id = self.payload['switch_id']
@@ -224,29 +266,29 @@ class MessageItem(object):
         logger.info('Switch %s creation request: timestamp=%s',
                     switch_id, self.timestamp)
 
-        # ensure it exists
-        switch = Node("switch",name=switch_id)
-        graph.merge(switch)
+        with graph.begin() as tx:
+            flow_utils.precreate_switches(tx, switch_id)
 
-        # now update it
-        switch['address'] = self.payload['address']
-        switch['hostname'] = self.payload['hostname']
-        switch['description'] = self.payload['description']
-        switch['controller'] = self.payload['controller']
-        switch['state'] = 'active'
-        switch.push()
+            p = {
+                'address': self.payload['address'],
+                'hostname': self.payload['hostname'],
+                'description': self.payload['description'],
+                'controller': self.payload['controller'],
+                'state': 'active'}
+            q = 'MATCH (target:switch {name: $dpid})\n' + db.format_set_fields(
+                    db.escape_fields(
+                            {x: '$' + x for x in p}, raw_values=True),
+                    field_prefix='target.')
+            p['dpid'] = switch_id
 
-        logger.info("Successfully created switch %s", switch_id)
-        return True
+            db.log_query('SWITCH create', q, p)
+            tx.run(q, p)
 
     def switch_unplug(self):
         switch_id = self.payload['switch_id']
-
-        logger.info('Switch %s deactivation request: timestamp=%s, ',
-                    switch_id, self.timestamp)
+        logger.info('Switch %s deactivation request', switch_id)
 
         with graph.begin() as tx:
-            logger.info('Deactivating switch: %s', switch_id)
             flow_utils.precreate_switches(tx, switch_id)
 
             q = ('MATCH (target:switch {name: $dpid}) '
@@ -267,13 +309,21 @@ class MessageItem(object):
         logger.info('Isl failure: %s_%d -- apply policy %s: timestamp=%s',
                     switch_id, port, effective_policy, self.timestamp)
 
+        is_moved = self.payload['state'] == 'MOVED'
         try:
             with graph.begin() as tx:
-                isl_utils.disable_by_endpoint(tx, model.NetworkEndpoint(switch_id, port))
+                updated = isl_utils.disable_by_endpoint(
+                        tx, model.IslPathNode(switch_id, port), is_moved)
+                updated.sort(key=lambda x: (x.source, x.dest))
+                for isl in updated:
+                    # we can get multiple records for one port
+                    # but will use lifecycle data from first one
+                    life_cycle = isl_utils.get_life_cycle_fields(tx, isl)
+                    self.update_payload_lifecycle(life_cycle)
+                    break
+
         except exc.DBRecordNotFound:
             logger.error('There is no ISL on %s_%s', switch_id, port)
-
-        return True
 
     def port_down(self):
         switch_id = self.payload['switch_id']
@@ -285,12 +335,16 @@ class MessageItem(object):
         try:
             with graph.begin() as tx:
                 for isl in isl_utils.disable_by_endpoint(
-                        tx, model.NetworkEndpoint(switch_id, port_id)):
+                        tx, model.IslPathNode(switch_id, port_id)):
                     # TODO(crimi): should be policy / toggle based
-                    isl_utils.set_cost(
-                        tx, isl, config.ISL_COST_WHEN_PORT_DOWN)
-                    isl_utils.set_cost(
-                        tx, isl.reversed(), config.ISL_COST_WHEN_PORT_DOWN)
+                    isl_utils.increase_cost(
+                        tx, isl,
+                        config.ISL_COST_WHEN_PORT_DOWN,
+                        config.ISL_COST_WHEN_PORT_DOWN)
+                    isl_utils.increase_cost(
+                        tx, isl.reversed(),
+                        config.ISL_COST_WHEN_PORT_DOWN,
+                        config.ISL_COST_WHEN_PORT_DOWN)
         except exc.DBRecordNotFound:
             logger.info("There is no ISL on %s_%s", switch_id, port_id)
 
@@ -314,83 +368,50 @@ class MessageItem(object):
         speed = int(self.payload['speed'])
         available_bandwidth = int(self.payload['available_bandwidth'])
 
-        try:
-            logger.info('ISL %s_%d create or update request: timestamp=%s',
-                        a_switch, a_port, self.timestamp)
+        isl = model.InterSwitchLink.new_from_java(self.payload)
+        isl.ensure_path_complete()
 
-            with graph.begin() as tx:
-                isl = model.InterSwitchLink.new_from_isl_data(self.payload)
-                isl.ensure_path_complete()
+        logger.info('ISL %s create request', isl)
+        with graph.begin() as tx:
+            flow_utils.precreate_switches(
+                tx, isl.source.dpid, isl.dest.dpid)
+            isl_utils.create_if_missing(tx, self.timestamp, isl)
+            isl_utils.set_props(tx, isl, {
+                'latency': latency,
+                'speed': speed,
+                'max_bandwidth': available_bandwidth,
+                'actual': 'active'})
 
-                flow_utils.precreate_switches(
-                        tx, isl.source.dpid, isl.dest.dpid)
-                isl_utils.create_if_missing(tx, isl)
+            isl_utils.update_status(tx, isl, mtime=self.timestamp)
+            isl_utils.resolve_conflicts(tx, isl)
 
-                #
-                # Given that we know the the src and dst exist, the following query will either
-                # create the relationship if it doesn't exist, or update it if it does
-                #
-                isl_create_or_update = (
-                    "MERGE "
-                    "(src:switch {{name:'{}'}}) "
-                    "ON CREATE SET src.state = 'inactive' "
-                    "MERGE "
-                    "(dst:switch {{name:'{}'}}) "
-                    "ON CREATE SET dst.state = 'inactive' "
-                    "MERGE "
-                    "(src)-[i:isl {{"
-                    "src_switch: '{}', src_port: {}, "
-                    "dst_switch: '{}', dst_port: {} "
-                    "}}]->(dst) "
-                    "SET "
-                    "i.latency = {}, "
-                    "i.speed = {}, "
-                    "i.max_bandwidth = {}, "
-                    "i.actual = 'active', "
-                    "i.status = 'inactive'"
-                ).format(
-                    a_switch,
-                    b_switch,
-                    a_switch, a_port,
-                    b_switch, b_port,
-                    latency,
-                    speed,
-                    available_bandwidth
-                )
-                tx.run(isl_create_or_update)
+            life_cycle = isl_utils.get_life_cycle_fields(tx, isl)
+            self.update_payload_lifecycle(life_cycle)
 
-                isl_utils.update_status(tx, isl)
-                isl_utils.resolve_conflicts(tx, isl)
+        #
+        # Now handle the second part .. pull properties from link_props if they exist
+        #
 
-            #
-            # Now handle the second part .. pull properties from link_props if they exist
-            #
+        src_sw, src_pt, dst_sw, dst_pt = a_switch, a_port, b_switch, b_port  # use same names as TER code
+        query = 'MATCH (src:switch)-[i:isl]->(dst:switch) '
+        query += ' WHERE i.src_switch = "%s" ' \
+                 ' AND i.src_port = %s ' \
+                 ' AND i.dst_switch = "%s" ' \
+                 ' AND i.dst_port = %s ' % (src_sw, src_pt, dst_sw, dst_pt)
+        query += ' MATCH (lp:link_props) '
+        query += ' WHERE lp.src_switch = "%s" ' \
+                 ' AND lp.src_port = %s ' \
+                 ' AND lp.dst_switch = "%s" ' \
+                 ' AND lp.dst_port = %s ' % (src_sw, src_pt, dst_sw, dst_pt)
+        query += ' SET i += lp '
+        graph.run(query)
 
-            src_sw, src_pt, dst_sw, dst_pt = a_switch, a_port, b_switch, b_port # use same names as TER code
-            query = 'MATCH (src:switch)-[i:isl]->(dst:switch) '
-            query += ' WHERE i.src_switch = "%s" ' \
-                     ' AND i.src_port = %s ' \
-                     ' AND i.dst_switch = "%s" ' \
-                     ' AND i.dst_port = %s ' % (src_sw, src_pt, dst_sw, dst_pt)
-            query += ' MATCH (lp:link_props) '
-            query += ' WHERE lp.src_switch = "%s" ' \
-                     ' AND lp.src_port = %s ' \
-                     ' AND lp.dst_switch = "%s" ' \
-                     ' AND lp.dst_port = %s ' % (src_sw, src_pt, dst_sw, dst_pt)
-            query += ' SET i += lp '
-            graph.run(query)
+        #
+        # Finally, update the available_bandwidth..
+        #
+        flow_utils.update_isl_bandwidth(src_sw, src_pt, dst_sw, dst_pt)
 
-            #
-            # Finally, update the available_bandwidth..
-            #
-            flow_utils.update_isl_bandwidth(src_sw, src_pt, dst_sw, dst_pt)
-
-            logger.info('ISL between %s and %s updated', a_switch, b_switch)
-
-        except Exception as e:
-            logger.exception('ISL between %s and %s creation error: %s',
-                             a_switch, b_switch, e.message)
-            return False
+        logger.info('ISL %s have been created/updated', isl)
 
         return True
 
@@ -787,3 +808,51 @@ class MessageItem(object):
         message_utils.send_dump_rules_request(self.payload['switch_id'],
                                               self.correlation_id)
         return True
+
+    def update_payload_lifecycle(self, life_cycle):
+        for key, value in (
+                ('time_create', life_cycle.ctime),
+                ('time_modify', life_cycle.mtime)):
+            if not value:
+                continue
+            self.payload[key] = value.as_java_timestamp()
+
+    def link_props_put(self):
+        link_props = self._unpack_link_props()
+        protected = link_props.extract_protected_props()
+        if protected:
+            raise exc.UnacceptableDataError(
+                link_props, 'property(es) %s is can\'t be changed'.format(
+                    ', '.join(repr(x) for x in sorted(protected))))
+
+        with graph.begin() as tx:
+            link_props_utils.create_if_missing(tx, link_props)
+            link_props_utils.set_props_and_propagate_to_isl(tx, link_props)
+
+            actual_link_props = link_props_utils.read(tx, link_props)
+
+        payload = message_utils.make_link_props_response(
+            self.payload, actual_link_props)
+        message_utils.send_link_props_response(payload, self.correlation_id)
+
+    def link_props_drop(self):
+        lookup_mask = self._unpack_link_props(key='lookup_mask')
+        with graph.begin() as tx:
+            removed_records = link_props_utils.drop_by_mask(tx, lookup_mask)
+            for link_props in removed_records:
+                isl = model.InterSwitchLink.new_from_link_props(link_props)
+                isl_utils.del_props(tx, isl, link_props.props)
+
+        response_batch = [
+            message_utils.make_link_props_response(self.payload, x)
+            for x in removed_records]
+        message_utils.send_link_props_chunked_response(
+            response_batch, self.correlation_id)
+
+    def _unpack_link_props(self, key='link_props'):
+        try:
+            link_props = model.LinkProps.new_from_java(
+                self.payload[key])
+        except (KeyError, ValueError, TypeError) as e:
+            raise exc.MalformedInputError(self._raw_message, e)
+        return link_props

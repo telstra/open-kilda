@@ -15,17 +15,29 @@
 
 package org.openkilda.atdd.staging.service.northbound;
 
+import org.openkilda.messaging.info.event.IslChangeType;
+import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.model.HealthCheck;
+import org.openkilda.messaging.payload.FeatureTogglePayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.northbound.dto.BatchResults;
+import org.openkilda.northbound.dto.flows.FlowValidationDto;
+import org.openkilda.northbound.dto.links.LinkPropsDto;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
+import org.openkilda.northbound.dto.switches.RulesValidationResult;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 public interface NorthboundService {
 
     HealthCheck getHealthCheck();
+
+    //flows
 
     FlowPayload getFlow(String flowId);
 
@@ -35,11 +47,62 @@ public interface NorthboundService {
 
     FlowPayload deleteFlow(String flowId);
 
+    List<FlowPayload> deleteAllFlows();
+
     FlowPathPayload getFlowPath(String flowId);
 
     FlowIdStatusPayload getFlowStatus(String flowId);
 
     List<FlowPayload> getAllFlows();
 
+    List<FlowValidationDto> validateFlow(String flowId);
+
+    //switches
+
+    SwitchFlowEntries getSwitchRules(String switchId);
+
+    List<Long> deleteSwitchRules(String switchId);
+
     RulesSyncResult synchronizeSwitchRules(String switchId);
+
+    RulesValidationResult validateSwitchRules(String switchId);
+
+    List<SwitchInfoData> getAllSwitches();
+
+    //links
+
+    List<IslInfoData> getAllLinks();
+
+    List<LinkPropsDto> getAllLinkProps();
+
+    List<LinkPropsDto> getLinkProps(String srcSwitch, Integer srcPort, String dstSwitch, Integer dstPort);
+
+    BatchResults updateLinkProps(List<LinkPropsDto> keys);
+
+    BatchResults deleteLinkProps(List<LinkPropsDto> keys);
+
+    //feature toggles
+
+    FeatureTogglePayload getFeatureToggles();
+
+    FeatureTogglePayload toggleFeature(FeatureTogglePayload request);
+
+    /**
+     *  Returns all active links.
+     */
+    default List<IslInfoData> getActiveLinks() {
+        return getAllLinks().stream()
+                .filter(sw -> sw.getState() == IslChangeType.DISCOVERED)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     *  Returns all active switches.
+     */
+    default List<SwitchInfoData> getActiveSwitches() {
+        return getAllSwitches().stream()
+                .filter(sw -> sw.getState().isActive())
+                .collect(Collectors.toList());
+    }
+
 }

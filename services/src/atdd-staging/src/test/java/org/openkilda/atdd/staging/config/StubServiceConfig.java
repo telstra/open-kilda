@@ -15,18 +15,19 @@
 
 package org.openkilda.atdd.staging.config;
 
-import net.jodah.failsafe.RetryPolicy;
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
 import org.openkilda.atdd.staging.service.StubServiceFactory;
+import org.openkilda.atdd.staging.service.aswitch.ASwitchService;
 import org.openkilda.atdd.staging.service.floodlight.FloodlightService;
+import org.openkilda.atdd.staging.service.flowmanager.FlowManager;
+import org.openkilda.atdd.staging.service.flowmanager.FlowManagerImpl;
 import org.openkilda.atdd.staging.service.northbound.NorthboundService;
 import org.openkilda.atdd.staging.service.topology.TopologyEngineService;
 import org.openkilda.atdd.staging.service.traffexam.TraffExamService;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
-
-import java.util.concurrent.TimeUnit;
 
 @Configuration
 @Profile("mock")
@@ -52,16 +53,18 @@ public class StubServiceConfig {
         return factory.getTopologyEngineStub();
     }
 
-    // The retrier is used for repeating operations which depend on the system state and may change the result after delays.
-    @Bean(name = "topologyEngineRetryPolicy")
-    public RetryPolicy retryPolicy() {
-        return new RetryPolicy()
-                .withDelay(1, TimeUnit.MILLISECONDS)
-                .withMaxRetries(3);
-    }
-
     @Bean
     public TraffExamService traffExamService(StubServiceFactory factory) {
         return factory.getTraffExamStub();
+    }
+
+    @Bean
+    public ASwitchService aswitchService(StubServiceFactory factory) {
+        return factory.getASwitchStub();
+    }
+
+    @Bean
+    public FlowManager flowManager(StubServiceFactory factory) {
+        return new FlowManagerImpl();
     }
 }

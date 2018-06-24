@@ -1,25 +1,23 @@
 package org.openkilda.simulator;
 
-import org.apache.storm.generated.StormTopology;
-import org.apache.storm.topology.TopologyBuilder;
-import org.apache.storm.tuple.Fields;
 import org.openkilda.simulator.bolts.CommandBolt;
 import org.openkilda.simulator.bolts.SimulatorCommandBolt;
 import org.openkilda.simulator.bolts.SpeakerBolt;
-import org.openkilda.wfm.ConfigurationException;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.topology.AbstractTopology;
+
+import org.apache.storm.generated.StormTopology;
+import org.apache.storm.topology.TopologyBuilder;
+import org.apache.storm.tuple.Fields;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class SimulatorTopology extends AbstractTopology {
+public class SimulatorTopology extends AbstractTopology<SimulatorTopologyConfig> {
     private final String topoName = "simulatorTopology";
     private final int parallelism = 1;
-    public static final String SIMULATOR_TOPIC = "kilda-simulator";
-    public static  final String COMMAND_TOPIC = "kilda-test";
+
     public static final String SIMULATOR_SPOUT = "simulator-spout";
     public static final String COMMAND_SPOUT = "command-spout";
-    private static final Logger logger = LoggerFactory.getLogger(SimulatorTopology.class);
     public static final String DEPLOY_TOPOLOGY_BOLT_STREAM = "deploy_topology_stream";
     public static final String COMMAND_BOLT_STREAM = "command_bolt_stream";
     public static final String COMMAND_BOLT = "command_bolt";
@@ -30,24 +28,25 @@ public class SimulatorTopology extends AbstractTopology {
     public static final String SIMULATOR_COMMAND_BOLT = "simulator_command_bolt";
     public static final String SIMULATOR_COMMAND_STREAM = "simulator_command_stream";
 
-    public SimulatorTopology(LaunchEnvironment env) throws ConfigurationException {
-        super(env);
+    private static final Logger logger = LoggerFactory.getLogger(SimulatorTopology.class);
+
+    public SimulatorTopology(LaunchEnvironment env) {
+        super(env, SimulatorTopologyConfig.class);
     }
 
     @Override
     public StormTopology createTopology() {
-        final Integer parallelism = config.getParallelism();
-        final String inputTopic = config.getKafkaSpeakerTopic();
-        final String simulatorTopic = config.getKafkaSimulatorTopic();
-
+        final int parallelism = topologyConfig.getParallelism();
+        final String inputTopic = topologyConfig.getKafkaSpeakerTopic();
+        final String simulatorTopic = topologyConfig.getKafkaSimulatorTopic();
 
         final TopologyBuilder builder = new TopologyBuilder();
 
-        logger.debug("Building SimulatorTopology - {}", getTopologyName());
+        logger.debug("Building SimulatorTopology - {}", topologyName);
 
         checkAndCreateTopic(simulatorTopic);
         logger.debug("connecting to {} topic", simulatorTopic);
-        builder.setSpout(SIMULATOR_SPOUT, createKafkaSpout(simulatorTopic, getTopologyName()));
+        builder.setSpout(SIMULATOR_SPOUT, createKafkaSpout(simulatorTopic, SIMULATOR_SPOUT));
 
         checkAndCreateTopic(inputTopic);
         logger.debug("connecting to {} topic", inputTopic);

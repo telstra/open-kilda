@@ -309,27 +309,6 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     }
 
     @Test
-    public void flowsGetRequestTest() throws IOException, ClassNotFoundException {
-        FlowsGetRequest data = new FlowsGetRequest(flowsIdStatusRequest);
-        System.out.println(data);
-
-        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
-        serialize(command);
-
-        Message message = (Message) deserialize();
-        assertTrue(message instanceof CommandMessage);
-
-        CommandMessage resultCommand = (CommandMessage) message;
-        assertTrue(resultCommand.getData() instanceof FlowsGetRequest);
-
-        FlowsGetRequest resultData = (FlowsGetRequest) resultCommand.getData();
-        System.out.println(resultData);
-        assertEquals(data, resultData);
-        assertEquals(data.hashCode(), resultData.hashCode());
-        assertEquals(flowsIdStatusRequest.hashCode(), resultData.getPayload().hashCode());
-    }
-
-    @Test
     public void flowPathResponseTest() throws IOException, ClassNotFoundException {
         FlowPathResponse data = new FlowPathResponse(path);
         System.out.println(data);

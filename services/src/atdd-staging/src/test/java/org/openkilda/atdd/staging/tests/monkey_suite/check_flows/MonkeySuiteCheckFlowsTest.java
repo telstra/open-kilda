@@ -29,9 +29,10 @@ import org.springframework.test.context.ActiveProfiles;
 
 @Ignore
 @RunWith(CucumberWithSpringProfile.class)
-@CucumberOptions(features = {"classpath:features/monkey_suite.feature"},
+@CucumberOptions(features = {"classpath:features/monkey_suite.featuremonkey_suite.feature"},
         glue = {"org.openkilda.atdd.staging.tests.monkey_suite.check_flows", "org.openkilda.atdd.staging.steps"},
-        tags = {"@CheckFlows"})
+        tags = {"@CheckFlows"},
+        plugin = {"json:target/cucumber-reports/monkey_suite_check_flows_report.json"})
 @ActiveProfiles("mock")
 public class MonkeySuiteCheckFlowsTest {
 

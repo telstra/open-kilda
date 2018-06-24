@@ -1,23 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Configuration monitorInterval="30">
+<Configuration status="WARN" monitorInterval="30">
     <Appenders>
         <Console name="STDOUT" target="SYSTEM_OUT">
-            <PatternLayout pattern="%d{ISO8601} | %-5.5p | %-32.32t | %-32.32c{1} | @project.name@ - @project.version@ | [%X] %m%n"/>
+            <PatternLayout pattern="%d{ISO8601} %-5p [%t] %c{1.} - [%X] %m%n"/>
         </Console>
         <Socket name="LOGSTASH" host="logstash.pendev" port="5005">
-            <JsonLayout compact="true" eventEol="true" />
+            <JsonLayout compact="true" eventEol="true" properties="true"/>
         </Socket>
         <RollingFile name="ROLLINGFILE" fileName="/var/logs/northbound/app.log"
                 filePattern="/var/logs/northbound/app-%d{MM-dd-yyyy}-%i.log.gz">
-            <PatternLayout pattern="%d{ISO8601} | %-5.5p | %-32.32t | %-32.32c{1} | @project.name@ - @project.version@ | [%X] %m%n"/>
+            <PatternLayout pattern="%d{ISO8601} %-5p [%t] %c{1} - [%X] %m%n"/>
             <Policies>
-                <TimeBasedTriggeringPolicy />
+                <TimeBasedTriggeringPolicy/>
                 <SizeBasedTriggeringPolicy size="250 MB"/>
             </Policies>
         </RollingFile>
     </Appenders>
     <Loggers>
-        <Logger name="org.openkilda" level="DEBUG" />
+        <Logger name="org.openkilda" level="DEBUG"/>
         <Root level="INFO">
             <AppenderRef ref="STDOUT"/>
             <AppenderRef ref="LOGSTASH"/>

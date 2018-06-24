@@ -49,7 +49,7 @@ public class Consumer implements Runnable {
              */
             KafkaConsumer<String, String> consumer = null;
             try {
-                consumer = new KafkaConsumer<>(context.getKafkaConfig());
+                consumer = new KafkaConsumer<>(context.getKafkaConsumerProperties());
                 consumer.subscribe(topics);
 
                 while (true) {

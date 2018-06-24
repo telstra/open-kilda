@@ -12,14 +12,19 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 #
+
 import collections
+import logging
 import os
+import pprint
 import socket
 
 import py2neo
 
 from topologylistener import config
 from topologylistener import exc
+
+log = logging.getLogger(__name__)
 
 
 def create_p2n_driver():
@@ -28,6 +33,27 @@ def create_p2n_driver():
         os.environ.get('neo4jpass') or config.get('neo4j', 'pass'),
         os.environ.get('neo4jhost') or config.get('neo4j', 'host')))
     return graph
+
+
+def log_query(marker, q, p):
+    q = q.strip()
+    log.debug('NEO4J QUERY %s:\n%s\nparams:\n%s', marker, q, pprint.pformat(p))
+
+
+def locate_changes(target, props):
+    origin = {}
+    update = {}
+    for field, value in props.items():
+        try:
+            current = target[field]
+        except KeyError:
+            update[field] = props[field]
+        else:
+            if current != props[field]:
+                update[field] = props[field]
+                origin[field] = current
+
+    return origin, update
 
 
 def neo_id(db_object):
@@ -50,11 +76,17 @@ def format_fields(payload, prefix, field_prefix=''):
 def escape_fields(payload, raw_values=False):
     result = []
     for field, value in payload.items():
-        if not raw_values:
+        if value is None:
+            value = 'null'
+        elif not raw_values:
             value = py2neo.cypher_repr(value)
         result.append(
                 (py2neo.cypher_escape(field), value))
     return result
+
+
+def escape(identifier):
+    return py2neo.cypher_escape(identifier)
 
 
 def fetch_one(cursor):

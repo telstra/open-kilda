@@ -14,30 +14,23 @@
  */
 package org.openkilda.atdd.staging.steps;
 
-import static java.util.stream.Collectors.toList;
+import static java.lang.String.format;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import cucumber.api.java.en.Given;
 import cucumber.api.java8.En;
-import net.jodah.failsafe.Failsafe;
-import net.jodah.failsafe.RetryPolicy;
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
+import org.openkilda.atdd.staging.service.floodlight.FloodlightService;
 import org.openkilda.atdd.staging.service.northbound.NorthboundService;
-import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
-import org.openkilda.messaging.payload.flow.FlowPayload;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import java.util.List;
-import java.util.Objects;
-
+@Slf4j
 public class CleanupSteps implements En {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(CleanupSteps.class);
 
     @Autowired
     private NorthboundService northboundService;
@@ -46,29 +39,31 @@ public class CleanupSteps implements En {
     private TopologyDefinition topologyDefinition;
 
     @Autowired
-    private RetryPolicy retryPolicy;
+    private FloodlightService floodlightService;
 
-    @Given("^a clean topology with no flows and no discrepancies")
+    @Given("^a clean topology with no flows and no discrepancies in switch rules and meters")
     public void cleanupFlowsAndSwitches() {
-        List<String> flows = northboundService.getAllFlows().stream()
-                .map(FlowPayload::getId)
-                .collect(toList());
-
-        flows.forEach(northboundService::deleteFlow);
-
-        flows.forEach(flow -> {
-            FlowIdStatusPayload status = Failsafe.with(retryPolicy
-                    .retryIf(Objects::nonNull))
-                    .get(() -> northboundService.getFlowStatus(flow));
-            assertNull(status);
-        });
+        northboundService.deleteAllFlows();
+        assertTrue(northboundService.getAllFlows().isEmpty());
 
         topologyDefinition.getActiveSwitches().stream()
+                .peek(sw -> northboundService.deleteSwitchRules(sw.getDpId()))
                 .map(sw -> northboundService.synchronizeSwitchRules(sw.getDpId()))
                 .forEach(rulesSyncResult -> {
                     assertThat(rulesSyncResult.getExcessRules(), empty());
                     assertEquals(0,
                             rulesSyncResult.getMissingRules().size() - rulesSyncResult.getInstalledRules().size());
+                });
+
+        topologyDefinition.getActiveSwitches()
+                .forEach(sw -> {
+                    try {
+                        assertThat(format("Switch %s has unexpected meters installed", sw),
+                                floodlightService.getMeters(sw.getDpId()).values(), empty());
+                    } catch (UnsupportedOperationException ex) {
+                        //TODO: a workaround for not implemented dumpMeters on OF_12 switches.
+                        log.warn("Switch {} doesn't support dumping of meters. {}", sw.getDpId(), ex.getMessage());
+                    }
                 });
     }
 }

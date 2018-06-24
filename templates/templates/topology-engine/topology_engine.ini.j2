@@ -1,0 +1,29 @@
+[kafka]
+consumer.group=python-tpe-tl-consumer
+flow.topic={{ kafka_topic_flow }}
+cache.topic={{ kafka_topic_topo_cache }}
+speaker.topic={{ kafka_topic_speaker }}
+topo.eng.topic={{ kafka_topic_topo_eng }}
+northbound.topic={{ kafka_topic_northbound }}
+bootstrap.servers={{ kafka_hosts }}
+environment.naming.prefix = {{ environment_naming_prefix }}
+
+[gevent]
+worker.pool.size={{ worker_pool_size }}
+
+[zookeeper]
+hosts={{ zookeeper_hosts }}
+
+[neo4j]
+host={{ neo4j_host }}
+user={{ neo4j_user }}
+pass={{ neo4j_password }}
+socket.timeout=30
+
+[isl_failover_policy]
+# effective_policy determines what to do with a failed link.
+# Available options are delete and deactivate.
+effective_policy=deactivate
+
+[isl]
+cost_when_port_down=10000

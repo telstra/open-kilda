@@ -16,21 +16,10 @@
 package org.openkilda.wfm.topology.flow;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.storm.Config;
-import org.apache.storm.generated.StormTopology;
-import org.apache.storm.utils.Utils;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Ignore;
-import org.junit.Test;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
@@ -41,7 +30,6 @@ import org.openkilda.messaging.command.flow.FlowGetRequest;
 import org.openkilda.messaging.command.flow.FlowPathRequest;
 import org.openkilda.messaging.command.flow.FlowStatusRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
-import org.openkilda.messaging.command.flow.FlowsGetRequest;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.command.flow.SynchronizeCacheAction;
@@ -73,16 +61,26 @@ import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
 import org.openkilda.wfm.AbstractStormTest;
 import org.openkilda.wfm.topology.TestKafkaConsumer;
-import org.openkilda.wfm.topology.TopologyConfig;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.storm.Config;
+import org.apache.storm.generated.StormTopology;
+import org.apache.storm.utils.Utils;
+import org.junit.After;
+import org.junit.AfterClass;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Ignore;
+import org.junit.Test;
 
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 
 public class FlowTopologyTest extends AbstractStormTest {
+
     private static final long COOKIE = 0x1FFFFFFFFL;
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private static TestKafkaConsumer nbConsumer;
@@ -91,13 +89,13 @@ public class FlowTopologyTest extends AbstractStormTest {
     private static TestKafkaConsumer teResponseConsumer;
     private static TestKafkaConsumer ctrlConsumer;
     private static FlowTopology flowTopology;
-    private static TopologyConfig topologyConfig;
+    private static FlowTopologyConfig topologyConfig;
 
     @BeforeClass
     public static void setupOnce() throws Exception {
         AbstractStormTest.setupOnce();
 
-        flowTopology = new FlowTopology(makeLaunchEnvironment(), new PathComputerAuth());
+        flowTopology = new FlowTopology(makeLaunchEnvironment(), new MockedPathComputerAuth());
         topologyConfig = flowTopology.getConfig();
 
         StormTopology stormTopology = flowTopology.createTopology();
@@ -118,7 +116,7 @@ public class FlowTopologyTest extends AbstractStormTest {
                 kafkaProperties(UUID.nameUUIDFromBytes(Destination.TOPOLOGY_ENGINE.toString().getBytes()).toString()));
         cacheConsumer.start();
 
-//        teResponseConsumer = new TestKafkaConsumer(topologyConfig.getKafkaTopoEngTopic(),
+        //teResponseConsumer = new TestKafkaConsumer(topologyConfig.getKafkaTopoEngTopic(),
         teResponseConsumer = new TestKafkaConsumer(topologyConfig.getKafkaFlowTopic(),
                 Destination.WFM,
                 kafkaProperties(UUID.nameUUIDFromBytes(Destination.WFM.toString().getBytes()).toString()));
@@ -141,6 +139,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         cacheConsumer.join();
         teResponseConsumer.wakeup();
         teResponseConsumer.join();
+
         AbstractStormTest.teardownOnce();
     }
 
@@ -228,7 +227,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         assertNotNull(record);
         assertNotNull(record.value());
 
-        createFlow(flowId+"_alt");
+        createFlow(flowId + "_alt");
 
         record = nbConsumer.pollMessage();
         assertNotNull(record);
@@ -514,17 +513,29 @@ public class FlowTopologyTest extends AbstractStormTest {
         assertNotNull(record);
         assertNotNull(record.value());
 
-        dumpFlows(null);
+        dumpFlows();
 
         record = nbConsumer.pollMessage();
         assertNotNull(record);
         assertNotNull(record.value());
 
         InfoMessage infoMessage = objectMapper.readValue(record.value(), InfoMessage.class);
-        FlowsResponse infoData = (FlowsResponse) infoMessage.getData();
+        FlowResponse infoData = (FlowResponse) infoMessage.getData();
         assertNotNull(infoData);
-        assertNotNull(infoData.getFlowIds());
-        assertFalse(infoData.getFlowIds().isEmpty());
+        assertNotNull(infoData.getPayload());
+        assertEquals(flowId, infoData.getPayload().getFlowId());
+    }
+
+    @Test
+    public void dumpFlowsWhenThereIsNoFlowsCreated() throws Exception {
+        dumpFlows();
+
+        ConsumerRecord<String, String> record = nbConsumer.pollMessage();
+        assertNotNull(record);
+        assertNotNull(record.value());
+
+        InfoMessage infoMessage = objectMapper.readValue(record.value(), InfoMessage.class);
+        assertNull(infoMessage.getData());
     }
 
     @Test
@@ -1021,8 +1032,8 @@ public class FlowTopologyTest extends AbstractStormTest {
     @Test
     @Ignore("Not reliable during batch run")
     public void ctrlDumpHandler() throws Exception {
-        CtrlRequest request = new CtrlRequest(
-                "flowtopology/" + ComponentType.CRUD_BOLT.toString(), new RequestData("dump"), 1, "dump-correlation-id", Destination.WFM_CTRL);
+        CtrlRequest request = new CtrlRequest("flowtopology/" + ComponentType.CRUD_BOLT.toString(),
+                new RequestData("dump"), 1, "dump-correlation-id", Destination.WFM_CTRL);
 
         sendMessage(request, flowTopology.getConfig().getKafkaFlowTopic());
 
@@ -1069,6 +1080,7 @@ public class FlowTopologyTest extends AbstractStormTest {
 
         createFlow(flowId);
 
+        cacheConsumer.pollMessage();
         cacheConsumer.clear();
 
         FlowCacheSyncRequest commandData = new FlowCacheSyncRequest(SynchronizeCacheAction.SYNCHRONIZE_CACHE);
@@ -1077,7 +1089,7 @@ public class FlowTopologyTest extends AbstractStormTest {
 
         String cacheMessageValue = cacheConsumer.pollMessageValue();
         InfoMessage infoMessage = objectMapper.readValue(cacheMessageValue, InfoMessage.class);
-        FlowInfoData infoData = (FlowInfoData)infoMessage.getData();
+        FlowInfoData infoData = (FlowInfoData) infoMessage.getData();
         assertEquals(FlowOperation.CACHE, infoData.getOperation());
         assertEquals(flowId, infoData.getFlowId());
 
@@ -1098,6 +1110,7 @@ public class FlowTopologyTest extends AbstractStormTest {
 
         createFlow(flowId);
 
+        cacheConsumer.pollMessage();
         cacheConsumer.clear();
 
         FlowCacheSyncRequest commandData = new FlowCacheSyncRequest(SynchronizeCacheAction.INVALIDATE_CACHE);
@@ -1106,7 +1119,7 @@ public class FlowTopologyTest extends AbstractStormTest {
 
         String cacheMessageValue = cacheConsumer.pollMessageValue();
         InfoMessage infoMessage = objectMapper.readValue(cacheMessageValue, InfoMessage.class);
-        FlowInfoData infoData = (FlowInfoData)infoMessage.getData();
+        FlowInfoData infoData = (FlowInfoData) infoMessage.getData();
         assertEquals(FlowOperation.CACHE, infoData.getOperation());
         assertEquals(flowId, infoData.getFlowId());
 
@@ -1129,7 +1142,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         CommandMessage message = new CommandMessage(commandData, 0, "delete-flow", Destination.WFM);
 
         //sendNorthboundMessage(message);
-//        sendTopologyEngineMessage(message);
+        //sendTopologyEngineMessage(message);
         sendFlowMessage(message);
 
         return payload;
@@ -1150,7 +1163,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         Flow flowPayload = new Flow(flowId, 10000, false, "", "test-switch", 1, 2, "test-switch", 1, 2);
         FlowUpdateRequest commandData = new FlowUpdateRequest(flowPayload);
         CommandMessage message = new CommandMessage(commandData, 0, "update-flow", Destination.WFM);
-//        sendNorthboundMessage(message);
+        //sendNorthboundMessage(message);
         sendFlowMessage(message);
         return flowPayload;
     }
@@ -1160,7 +1173,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         FlowIdStatusPayload payload = new FlowIdStatusPayload(flowId);
         FlowStatusRequest commandData = new FlowStatusRequest(payload);
         CommandMessage message = new CommandMessage(commandData, 0, "status-flow", Destination.WFM);
-//        sendNorthboundMessage(message);
+        //sendNorthboundMessage(message);
         sendFlowMessage(message);
         return payload;
     }
@@ -1170,7 +1183,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         FlowIdStatusPayload payload = new FlowIdStatusPayload(flowId);
         FlowPathRequest commandData = new FlowPathRequest(payload);
         CommandMessage message = new CommandMessage(commandData, 0, "path-flow", Destination.WFM);
-//        sendNorthboundMessage(message);
+        //sendNorthboundMessage(message);
         sendFlowMessage(message);
         return new PathInfoData(0L, Collections.emptyList());
     }
@@ -1180,17 +1193,17 @@ public class FlowTopologyTest extends AbstractStormTest {
         FlowIdStatusPayload payload = new FlowIdStatusPayload(flowId);
         FlowGetRequest commandData = new FlowGetRequest(payload);
         CommandMessage message = new CommandMessage(commandData, 0, "get-flow", Destination.WFM);
-//        sendNorthboundMessage(message);
+        //sendNorthboundMessage(message);
         sendFlowMessage(message);
         return payload;
     }
 
-    private FlowIdStatusPayload dumpFlows(final String flowId) throws IOException {
+    private FlowIdStatusPayload dumpFlows() throws IOException {
         System.out.println("NORTHBOUND: Get flows");
-        FlowIdStatusPayload payload = new FlowIdStatusPayload(flowId);
-        FlowsGetRequest commandData = new FlowsGetRequest(payload);
+        FlowIdStatusPayload payload = new FlowIdStatusPayload();
+        FlowGetRequest commandData = new FlowGetRequest(payload);
         CommandMessage message = new CommandMessage(commandData, 0, "get-flows", Destination.WFM);
-//        sendNorthboundMessage(message);
+        //sendNorthboundMessage(message);
         sendFlowMessage(message);
         return payload;
     }
@@ -1205,8 +1218,8 @@ public class FlowTopologyTest extends AbstractStormTest {
         InstallOneSwitchFlow commandData = new InstallOneSwitchFlow(0L, flowId,
                 COOKIE, "switch-id", 1, 2, 0, 0, OutputVlanType.NONE, 10000L, 0L);
         CommandMessage commandMessage = new CommandMessage(commandData, 0, "install-flow", Destination.WFM);
-//        sendTopologyEngineMessage(commandMessage);
-//        sendSpeakerMessage(commandMessage);
+        //sendTopologyEngineMessage(commandMessage);
+        //sendSpeakerMessage(commandMessage);
         sendFlowMessage(commandMessage);
         return commandData;
     }
@@ -1216,7 +1229,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         RemoveFlow commandData = new RemoveFlow(0L, flowId, COOKIE, "switch-id", 0L,
                 DeleteRulesCriteria.builder().cookie(COOKIE).build());
         CommandMessage commandMessage = new CommandMessage(commandData, 0, "remove-flow", Destination.WFM);
-//        sendTopologyEngineMessage(commandMessage);
+        //sendTopologyEngineMessage(commandMessage);
         sendFlowMessage(commandMessage);
         return commandData;
     }
@@ -1253,7 +1266,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         System.out.println("TOPOLOGY: Error flow");
         ErrorData errorData = new ErrorData(type, "Could not operate with flow", flowId);
         ErrorMessage errorMessage = new ErrorMessage(errorData, 0, "error-flow", Destination.WFM);
-//        sendTopologyEngineMessage(errorMessage);
+        //sendTopologyEngineMessage(errorMessage);
         sendMessage(errorMessage, topologyConfig.getKafkaFlowTopic());
         return errorMessage;
     }
@@ -1279,7 +1292,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         System.out.println("TOPOLOGY: Error rule");
         ErrorData errorData = new ErrorData(ErrorType.REQUEST_INVALID, "Could not operate with flow", flowId);
         ErrorMessage errorMessage = new ErrorMessage(errorData, 0, "error-flow", Destination.WFM_TRANSACTION);
-//        sendSpeakerMessage(errorMessage);
+        //sendSpeakerMessage(errorMessage);
         sendMessage(errorMessage, topologyConfig.getKafkaFlowTopic());
         return errorMessage;
     }

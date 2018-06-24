@@ -15,9 +15,10 @@
 
 package org.openkilda.floodlight.kafka;
 
-import net.floodlightcontroller.core.internal.IOFSwitchService;
+import org.openkilda.config.KafkaTopicsConfig;
+import org.openkilda.floodlight.config.KafkaFloodlightConfig;
+import org.openkilda.floodlight.config.provider.ConfigurationProvider;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
-import org.openkilda.messaging.Topic;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
@@ -36,7 +37,6 @@ public class KafkaMessageCollector implements IFloodlightModule {
     private static int EXEC_POOL_SIZE = 10;
 
     private static final Logger logger = LoggerFactory.getLogger(KafkaMessageCollector.class);
-    private static final String INPUT_TOPIC = Topic.SPEAKER;
 
     /**
      * IFloodLightModule Methods
@@ -59,11 +59,18 @@ public class KafkaMessageCollector implements IFloodlightModule {
     }
 
     @Override
-    public void init(FloodlightModuleContext context) throws FloodlightModuleException {}
+    public void init(FloodlightModuleContext context) throws FloodlightModuleException {
+    }
 
     @Override
     public void startUp(FloodlightModuleContext moduleContext) throws FloodlightModuleException {
-        ConsumerContext context = new ConsumerContext(moduleContext, this);
+        ConfigurationProvider provider = new ConfigurationProvider(moduleContext, this);
+
+        KafkaFloodlightConfig kafkaConfig = provider.getConfiguration(KafkaFloodlightConfig.class);
+        KafkaTopicsConfig topicsConfig = provider.getConfiguration(KafkaTopicsConfig.class);
+        String inputTopic = topicsConfig.getSpeakerTopic();
+
+        ConsumerContext context = new ConsumerContext(moduleContext, kafkaConfig, topicsConfig);
         RecordHandler.Factory handlerFactory = new RecordHandler.Factory(context);
         ISwitchManager switchManager = moduleContext.getServiceImpl(ISwitchManager.class);
 
@@ -72,10 +79,10 @@ public class KafkaMessageCollector implements IFloodlightModule {
             ExecutorService parseRecordExecutor = Executors.newFixedThreadPool(EXEC_POOL_SIZE);
 
             Consumer consumer;
-            if (! "YES".equals(context.configLookup("testing-mode"))) {
-                consumer = new Consumer(context, parseRecordExecutor, handlerFactory, switchManager, INPUT_TOPIC);
+            if (!context.isTestingMode()) {
+                consumer = new Consumer(context, parseRecordExecutor, handlerFactory, switchManager, inputTopic);
             } else {
-                consumer = new TestAwareConsumer(context, parseRecordExecutor, handlerFactory, switchManager, INPUT_TOPIC);
+                consumer = new TestAwareConsumer(context, parseRecordExecutor, handlerFactory, switchManager, inputTopic);
             }
             Executors.newSingleThreadExecutor().execute(consumer);
         } catch (Exception exception) {

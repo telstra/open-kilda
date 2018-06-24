@@ -16,11 +16,25 @@
 package org.openkilda.atdd.staging.service.northbound;
 
 import org.openkilda.messaging.Utils;
+import org.openkilda.messaging.info.event.IslChangeType;
+import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.info.event.SwitchState;
+import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.model.HealthCheck;
+import org.openkilda.messaging.payload.FeatureTogglePayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.northbound.dto.BatchResults;
+import org.openkilda.northbound.dto.flows.FlowValidationDto;
+import org.openkilda.northbound.dto.links.LinkDto;
+import org.openkilda.northbound.dto.links.LinkPropsDto;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
+import org.openkilda.northbound.dto.switches.RulesValidationResult;
+import org.openkilda.northbound.dto.switches.SwitchDto;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,14 +46,19 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 public class NorthboundServiceImpl implements NorthboundService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(NorthboundServiceImpl.class);
+
+    private static final String KILDA_CONTROLLER = "kilda";
 
     @Autowired
     @Qualifier("northboundRestTemplate")
@@ -95,6 +114,15 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
+    public List<FlowPayload> deleteAllFlows() {
+        HttpHeaders httpHeaders = buildHeadersWithCorrelationId();
+        httpHeaders.set(Utils.EXTRA_AUTH, String.valueOf(System.currentTimeMillis()));
+        FlowPayload[] deletedFlows = restTemplate.exchange("/api/v1/flows", HttpMethod.DELETE,
+                new HttpEntity(httpHeaders), FlowPayload[].class).getBody();
+        return Arrays.asList(deletedFlows);
+    }
+
+    @Override
     public FlowPathPayload getFlowPath(String flowId) {
         return restTemplate.exchange("/api/v1/flows/path/{flow_id}", HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), FlowPathPayload.class, flowId).getBody();
@@ -122,14 +150,129 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
+    public List<Long> deleteSwitchRules(String switchId) {
+        HttpHeaders httpHeaders = buildHeadersWithCorrelationId();
+        httpHeaders.set(Utils.EXTRA_AUTH, String.valueOf(System.currentTimeMillis()));
+
+        Long[] deletedRules = restTemplate.exchange(
+                "/api/v1/switches/{switch_id}/rules?delete-action=IGNORE_DEFAULTS", HttpMethod.DELETE,
+                new HttpEntity(httpHeaders), Long[].class, switchId).getBody();
+        return Arrays.asList(deletedRules);
+    }
+
+    @Override
     public RulesSyncResult synchronizeSwitchRules(String switchId) {
         return restTemplate.exchange("/api/v1/switches/{switch_id}/rules/synchronize", HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), RulesSyncResult.class, switchId).getBody();
+    }
+
+    @Override
+    public List<FlowValidationDto> validateFlow(String flowId) {
+        FlowValidationDto[] flowValidations = restTemplate.exchange("/api/v1/flows/{flow_id}/validate", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), FlowValidationDto[].class, flowId).getBody();
+        return Arrays.asList(flowValidations);
+    }
+
+    @Override
+    public SwitchFlowEntries getSwitchRules(String switchId) {
+        return restTemplate.exchange("/api/v1/switches/{switch_id}/rules", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), SwitchFlowEntries.class, switchId).getBody();
+    }
+
+    @Override
+    public RulesValidationResult validateSwitchRules(String switchId) {
+        return restTemplate.exchange("/api/v1/switches/{switch_id}/rules/validate", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), RulesValidationResult.class, switchId).getBody();
+    }
+
+    @Override
+    public List<IslInfoData> getAllLinks() {
+        LinkDto[] links = restTemplate.exchange("/api/v1/links", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), LinkDto[].class).getBody();
+
+        return Stream.of(links)
+                .map(this::convertToIslInfoData)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<LinkPropsDto> getAllLinkProps() {
+        return getLinkProps(null, null, null, null);
+    }
+
+    @Override
+    public List<LinkPropsDto> getLinkProps(String srcSwitch, Integer srcPort, String dstSwitch, Integer dstPort) {
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v1/link/props");
+        if (srcSwitch != null) {
+            uriBuilder.queryParam("src_switch", srcSwitch);
+        }
+        if (srcPort != null) {
+            uriBuilder.queryParam("src_port", srcPort);
+        }
+        if (dstSwitch != null) {
+            uriBuilder.queryParam("dst_switch", dstSwitch);
+        }
+        if (dstPort != null) {
+            uriBuilder.queryParam("dst_port", dstPort);
+        }
+        LinkPropsDto[] linkProps = restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), LinkPropsDto[].class).getBody();
+        return Arrays.asList(linkProps);
+    }
+
+    @Override
+    public BatchResults updateLinkProps(List<LinkPropsDto> keys) {
+        HttpEntity<List<LinkPropsDto>> httpEntity = new HttpEntity<>(keys, buildHeadersWithCorrelationId());
+        return restTemplate.exchange("/api/v1/link/props", HttpMethod.PUT, httpEntity,
+                BatchResults.class).getBody();
+    }
+
+    @Override
+    public BatchResults deleteLinkProps(List<LinkPropsDto> keys) {
+        HttpEntity<List<LinkPropsDto>> httpEntity = new HttpEntity<>(keys, buildHeadersWithCorrelationId());
+        return restTemplate.exchange("/api/v1/link/props", HttpMethod.DELETE, httpEntity,
+                BatchResults.class).getBody();
+    }
+
+    @Override
+    public FeatureTogglePayload getFeatureToggles() {
+        return restTemplate.exchange("/api/v1/features", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), FeatureTogglePayload.class).getBody();
+    }
+
+    @Override
+    public FeatureTogglePayload toggleFeature(FeatureTogglePayload request) {
+        HttpEntity<FeatureTogglePayload> httpEntity = new HttpEntity<>(request, buildHeadersWithCorrelationId());
+        return restTemplate.exchange("/api/v1/features", HttpMethod.POST, httpEntity,
+                FeatureTogglePayload.class).getBody();
+    }
+
+    @Override
+    public List<SwitchInfoData> getAllSwitches() {
+        SwitchDto[] switches = restTemplate.exchange("/api/v1/switches", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), SwitchDto[].class).getBody();
+        return Stream.of(switches)
+                .map(this::convertToSwitchInfoData)
+                .collect(Collectors.toList());
     }
 
     private HttpHeaders buildHeadersWithCorrelationId() {
         HttpHeaders headers = new HttpHeaders();
         headers.set(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()));
         return headers;
+    }
+
+    private IslInfoData convertToIslInfoData(LinkDto dto) {
+        List<PathNode> path = dto.getPath().stream()
+                .map(pathDto -> new PathNode(pathDto.getSwitchId(), pathDto.getPortNo(), pathDto.getSeqId(),
+                        pathDto.getSegLatency()))
+                .collect(Collectors.toList());
+        return new IslInfoData(0, path, dto.getSpeed(), IslChangeType.from(dto.getState().toString()),
+                dto.getAvailableBandwidth());
+    }
+
+    private SwitchInfoData convertToSwitchInfoData(SwitchDto dto) {
+        return new SwitchInfoData(dto.getSwitchId(), SwitchState.from(dto.getState()), dto.getAddress(),
+                dto.getHostname(), dto.getDescription(), KILDA_CONTROLLER);
     }
 }

@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<!DOCTYPE suppressions PUBLIC
+        "-//Puppy Crawl//DTD Suppressions 1.2//EN"
+        "http://checkstyle.sourceforge.net/dtds/suppressions_1_2.dtd">
+
+<suppressions>
+    <suppress files="src/main/java/org/openkilda/northbound/dto/BatchResults.java" lines="1" checks="RegexpHeader"/>
+    <suppress files="src/main/java/org/openkilda/northbound/dto/BatchResults.java" lines="7" checks="JavadocParagraph"/>
+    <suppress files="src/main/java/org/openkilda/northbound/dto/BatchResults.java" lines="17" checks="WhitespaceAfter"/>
+    <suppress files="src/main/java/org/openkilda/northbound/dto/BatchResults.java" lines="17" checks="WhitespaceAfter"/>
+    <suppress files="src/main/java/org/openkilda/northbound/dto/BatchResults.java" lines="20" checks="JavadocMethod"/>
+    <suppress files="src/main/java/org/openkilda/northbound/dto/BatchResults.java" lines="23" checks="NeedBraces"/>
+    <suppress files="src/main/java/org/openkilda/northbound/dto/BatchResults.java" lines="25" checks="NeedBraces"/>
+    <suppress files="src/main/java/org/openkilda/northbound/dto/switches/RulesSyncResult.java" lines="30" checks="JavadocMethod"/>
+    <suppress files="src/main/java/org/openkilda/northbound/dto/switches/RulesValidationResult.java" lines="38" checks="JavadocMethod"/>
+    <suppress files="src/main/java/org/openkilda/northbound/dto/flows/PathDiscrepancyDto.java" lines="1" checks="RegexpHeader"/>
+    <suppress files="src/main/java/org/openkilda/northbound/dto/flows/PathDiscrepancyDto.java" lines="4" checks="CustomImportOrder"/>
+    <suppress files="src/main/java/org/openkilda/northbound/dto/flows/PathDiscrepancyDto.java" lines="20" checks="SummaryJavadoc"/>
+    <suppress files="src/main/java/org/openkilda/northbound/dto/flows/PathDiscrepancyDto.java" lines="30" checks="JavadocMethod"/>
+    <suppress files="src/main/java/org/openkilda/northbound/dto/flows/FlowValidationDto.java" lines="1" checks="RegexpHeader"/>
+    <suppress files="src/main/java/org/openkilda/northbound/dto/flows/FlowValidationDto.java" lines="4" checks="CustomImportOrder"/>
+</suppressions>

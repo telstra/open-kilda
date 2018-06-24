@@ -16,10 +16,6 @@
     <description>Acceptance tests</description>
     <url>https://bitbucket.org/openkilda/controller/wiki/Home</url>
 
-    <properties>
-        <lombok.version>1.16.20</lombok.version>
-    </properties>
-
     <dependencies>
         <dependency>
             <groupId>org.openkilda</groupId>
@@ -41,6 +37,12 @@
         <dependency>
             <groupId>org.openkilda</groupId>
             <artifactId>api</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.openkilda</groupId>
+            <artifactId>configuration</artifactId>
             <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
@@ -111,19 +113,29 @@
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-collections4</artifactId>
-            <version>4.0</version>
+        </dependency>
+        <dependency>
+            <groupId>net.jodah</groupId>
+            <artifactId>failsafe</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>net.jodah</groupId>
+            <artifactId>failsafe</artifactId>
+            <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>${lombok.version}</version>
-            <scope>provided</scope>
         </dependency>
     </dependencies>
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-checkstyle-plugin</artifactId>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>

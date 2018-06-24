@@ -26,6 +26,10 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
+import lombok.Builder;
+import lombok.Getter;
+import lombok.Setter;
+
 import java.io.Serializable;
 import java.util.Objects;
 
@@ -33,6 +37,8 @@ import java.util.Objects;
  * Represents flow entity.
  */
 @JsonSerialize
+@Getter
+@Setter
 public class Flow implements Serializable {
     /**
      * Serialization version number constant.
@@ -54,7 +60,7 @@ public class Flow implements Serializable {
     private int bandwidth;
 
     /**
-     * Should flow ignore bandwidth in path computation?
+     * Should flow ignore bandwidth in path computation.
      */
     @JsonProperty("ignore_bandwidth")
     private boolean ignoreBandwidth;
@@ -189,6 +195,7 @@ public class Flow implements Serializable {
      * @param state             flow state
      */
     @JsonCreator
+    @Builder
     public Flow(@JsonProperty(Utils.FLOW_ID) final String flowId,
                 @JsonProperty("bandwidth") final int bandwidth,
                 @JsonProperty("ignore_bandwidth") Boolean ignoreBandwidth,
@@ -253,59 +260,7 @@ public class Flow implements Serializable {
     }
 
     /**
-     * Gets flow id.
-     *
-     * @return flow id
-     */
-    public String getFlowId() {
-        return flowId;
-    }
-
-    /**
-     * Sets flow id.
-     *
-     * @param flowId flow id
-     */
-    public void setFlowId(String flowId) {
-        this.flowId = flowId;
-    }
-
-    /**
-     * Gets flow state.
-     *
-     * @return flow state
-     */
-    public FlowState getState() {
-        return state;
-    }
-
-    /**
-     * Sets flow state.
-     *
-     * @param state flow state
-     */
-    public void setState(FlowState state) {
-        this.state = state;
-    }
-
-    /**
-     * Gets flow bandwidth.
-     *
-     * @return flow bandwidth
-     */
-    public int getBandwidth() {
-        return bandwidth;
-    }
-
-    /**
-     *
-     * @return ignore bandwidth flag
-     */
-    public boolean isIgnoreBandwidth() {
-        return ignoreBandwidth;
-    }
-
-    /**
+     * Sets the ignoreBandwidth.
      *
      * @param ignoreBandwidth ignore bandwidth flag
      */
@@ -317,233 +272,7 @@ public class Flow implements Serializable {
     }
 
     /**
-     * Sets flow bandwidth.
-     *
-     * @param bandwidth flow bandwidth
-     */
-    public void setBandwidth(int bandwidth) {
-        this.bandwidth = bandwidth;
-    }
-
-    /**
-     * Gets flow cookie.
-     *
-     * @return flow cookie
-     */
-    public long getCookie() {
-        return cookie;
-    }
-
-    /**
-     * Sets flow cookie.
-     *
-     * @param cookie flow cookie
-     */
-    public void setCookie(long cookie) {
-        this.cookie = cookie;
-    }
-
-    /**
-     * Gets flow description.
-     *
-     * @return flow description
-     */
-    public String getDescription() {
-        return description;
-    }
-
-    /**
-     * Sets flow description.
-     *
-     * @param description flow description
-     */
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    /**
-     * Gets flow last updated timestamp.
-     *
-     * @return flow last updated timestamp
-     */
-    public String getLastUpdated() {
-        return lastUpdated;
-    }
-
-    /**
-     * Sets flow last updated timestamp.
-     *
-     * @param lastUpdated flow last updated timestamp
-     */
-    public void setLastUpdated(String lastUpdated) {
-        this.lastUpdated = lastUpdated;
-    }
-
-    /**
-     * Gets flow source switch.
-     *
-     * @return flow source switch
-     */
-    public String getSourceSwitch() {
-        return sourceSwitch;
-    }
-
-    /**
-     * Sets flow source switch.
-     *
-     * @param sourceSwitch flow source switch
-     */
-    public void setSourceSwitch(String sourceSwitch) {
-        this.sourceSwitch = sourceSwitch;
-    }
-
-    /**
-     * Gets flow destination switch.
-     *
-     * @return flow destination switch
-     */
-    public String getDestinationSwitch() {
-        return destinationSwitch;
-    }
-
-    /**
-     * Sets flow destination switch.
-     *
-     * @param destinationSwitch flow destination switch
-     */
-    public void setDestinationSwitch(String destinationSwitch) {
-        this.destinationSwitch = destinationSwitch;
-    }
-
-    /**
-     * Gets flow source port.
-     *
-     * @return flow source port
-     */
-    public int getSourcePort() {
-        return sourcePort;
-    }
-
-    /**
-     * Sets flow source port.
-     *
-     * @param sourcePort flow source port
-     */
-    public void setSourcePort(int sourcePort) {
-        this.sourcePort = sourcePort;
-    }
-
-    /**
-     * Gets flow destination port.
-     *
-     * @return flow destination port
-     */
-    public int getDestinationPort() {
-        return destinationPort;
-    }
-
-    /**
-     * Sets flow destination port.
-     *
-     * @param destinationPort flow destination port
-     */
-    public void setDestinationPort(int destinationPort) {
-        this.destinationPort = destinationPort;
-    }
-
-    /**
-     * Gets flow source vlan id.
-     *
-     * @return flow source vlan id
-     */
-    public int getSourceVlan() {
-        return sourceVlan;
-    }
-
-    /**
-     * Sets flow source vlan id.
-     *
-     * @param sourceVlan flow source vlan id
-     */
-    public void setSourceVlan(int sourceVlan) {
-        this.sourceVlan = sourceVlan;
-    }
-
-    /**
-     * Gets flow destination vlan id.
-     *
-     * @return flow destination vlan id
-     */
-    public int getDestinationVlan() {
-        return destinationVlan;
-    }
-
-    /**
-     * Sets flow destination vlan id.
-     *
-     * @param destinationVlan flow destination vlan id
-     */
-    public void setDestinationVlan(int destinationVlan) {
-        this.destinationVlan = destinationVlan;
-    }
-
-    /**
-     * Gets flow transit vlan id.
-     *
-     * @return flow transit vlan id
-     */
-    public int getTransitVlan() {
-        return transitVlan;
-    }
-
-    /**
-     * Sets flow transit vlan id.
-     *
-     * @param transitVlan flow transit vlan id
-     */
-    public void setTransitVlan(int transitVlan) {
-        this.transitVlan = transitVlan;
-    }
-
-    /**
-     * Gets flow meter id.
-     *
-     * @return flow meter id
-     */
-    public int getMeterId() {
-        return meterId;
-    }
-
-    /**
-     * Sets flow meter id.
-     *
-     * @param meterId flow meter id
-     */
-    public void setMeterId(int meterId) {
-        this.meterId = meterId;
-    }
-
-    /**
-     * Gets flow switch path.
-     *
-     * @return flow switch path
-     */
-    public PathInfoData getFlowPath() {
-        return flowPath;
-    }
-
-    /**
-     * Sets flow switch path.
-     *
-     * @param flowPath flow switch path
-     */
-    public void setFlowPath(PathInfoData flowPath) {
-        this.flowPath = flowPath;
-    }
-
-    /**
-     *
-     * @return is this is single switch flow
+     * Returns whether this is a single switch flow.
      */
     @JsonIgnore
     public boolean isOneSwitchFlow() {
@@ -559,6 +288,11 @@ public class Flow implements Serializable {
         return cookie & MASK_COOKIE_FLAGS;
     }
 
+    /**
+     * Returns whether this represents a forward flow.
+     * The result is based on the cookie value,
+     * see {@link Flow#cookieMarkedAsFroward} and {@link Flow#cookieMarkedAsReversed()}.
+     */
     @JsonIgnore
     public boolean isForward() {
         boolean isForward = cookieMarkedAsFroward();

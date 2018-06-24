@@ -17,14 +17,20 @@ package org.openkilda.northbound.controller;
 
 import static org.mockito.Mockito.mock;
 
+import org.openkilda.northbound.config.KafkaConfig;
 import org.openkilda.northbound.config.SecurityConfig;
 import org.openkilda.northbound.config.WebConfig;
 import org.openkilda.northbound.messaging.HealthCheckMessageConsumer;
 import org.openkilda.northbound.messaging.MessageConsumer;
 import org.openkilda.northbound.messaging.MessageProducer;
+import org.openkilda.northbound.utils.CorrelationIdFactory;
+import org.openkilda.northbound.utils.TestCorrelationIdFactory;
+
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -37,12 +43,17 @@ import java.util.Map;
  */
 @Configuration
 @EnableWebSecurity
-@Import({WebConfig.class, SecurityConfig.class})
-@ComponentScan({
-        "org.openkilda.northbound.controller",
-        "org.openkilda.northbound.converter",
-        "org.openkilda.northbound.service",
-        "org.openkilda.northbound.utils"})
+@Import({WebConfig.class, SecurityConfig.class, KafkaConfig.class})
+@ComponentScan(
+        basePackages = {
+                "org.openkilda.northbound.controller",
+                "org.openkilda.northbound.converter",
+                "org.openkilda.northbound.service",
+                "org.openkilda.northbound.utils"
+        },
+        excludeFilters = {
+                @ComponentScan.Filter(type = FilterType.ANNOTATION, value = TestConfiguration.class)
+        })
 @PropertySource({"classpath:northbound.properties"})
 public class TestConfig {
     @Bean
@@ -63,6 +74,11 @@ public class TestConfig {
     @Bean
     public RestTemplate restTemplate() {
         return mock(RestTemplate.class);
+    }
+
+    @Bean
+    public CorrelationIdFactory idFactory() {
+        return new TestCorrelationIdFactory();
     }
 
     private class TestHealthCheckMessageMock implements HealthCheckMessageConsumer {

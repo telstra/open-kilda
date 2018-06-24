@@ -23,15 +23,15 @@ import static org.junit.Assert.assertTrue;
 import static org.openkilda.flow.FlowUtils.dumpFlows;
 import static org.openkilda.flow.FlowUtils.getLinkBandwidth;
 import static org.openkilda.flow.FlowUtils.restoreFlows;
-import static org.openkilda.messaging.info.event.IslChangeType.FAILED;
+import static org.openkilda.northbound.dto.links.LinkStatus.FAILED;
 
 import org.openkilda.LinksUtils;
 import org.openkilda.flow.FlowUtils;
-import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.northbound.dto.links.LinkDto;
 import org.openkilda.pce.RecoverableException;
 import org.openkilda.pce.provider.UnroutablePathException;
 import org.openkilda.topo.TopologyHelp;
@@ -114,8 +114,8 @@ public class FlowPathTest {
 
     @When("^all links have available bandwidth (\\d+)$")
     public void checkAvailableBandwidth(int expectedAvailableBandwidth) throws InterruptedException {
-        List<IslInfoData> links = LinksUtils.dumpLinks();
-        for (IslInfoData link : links) {
+        List<LinkDto> links = LinksUtils.dumpLinks();
+        for (LinkDto link : links) {
             int actualBandwidth = getBandwidth(expectedAvailableBandwidth,
                     link.getPath().get(0).getSwitchId(),
                     String.valueOf(link.getPath().get(0).getPortNo()));
@@ -174,7 +174,7 @@ public class FlowPathTest {
         long actualLinks = 0;
 
         for (int i = 0; i < 10; i++) {
-            List<IslInfoData> links = LinksUtils.dumpLinks();
+            List<LinkDto> links = LinksUtils.dumpLinks();
 
             // Count verified and healthy links
             actualLinks = links.stream()

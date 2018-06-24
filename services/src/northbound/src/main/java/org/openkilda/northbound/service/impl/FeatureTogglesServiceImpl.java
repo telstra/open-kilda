@@ -26,21 +26,20 @@ import org.openkilda.northbound.converter.FeatureTogglesMapper;
 import org.openkilda.northbound.messaging.MessageConsumer;
 import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.service.FeatureTogglesService;
-
 import org.openkilda.northbound.utils.RequestCorrelationId;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-
 @Service
 public class FeatureTogglesServiceImpl implements FeatureTogglesService {
 
     private final Logger LOGGER = LoggerFactory.getLogger(FeatureTogglesServiceImpl.class);
 
-    @Value("${kafka.topo.eng.topic}")
+    @Value("#{kafkaTopicsConfig.getTopoEngTopic()}")
     private String topoEngTopic;
 
     @Autowired
@@ -70,7 +69,7 @@ public class FeatureTogglesServiceImpl implements FeatureTogglesService {
                 correlationId, Destination.TOPOLOGY_ENGINE);
         messageProducer.send(topoEngTopic, requestMessage);
 
-        Message result = messageConsumer.poll(requestMessage.getCorrelationId());
+        Message result = messageConsumer.poll(correlationId);
         FeatureTogglesResponse response =
                 (FeatureTogglesResponse) validateInfoMessage(requestMessage, result, correlationId);
 

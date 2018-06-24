@@ -13,17 +13,18 @@
 #   limitations under the License.
 #
 
-import kafkareader
 import json
+import logging
 import time
 
 import gevent
 import gevent.pool
 import gevent.queue
 
-from messageclasses import MessageItem
-import logging
 import config
+import kafkareader
+from messageclasses import MessageItem
+from topologylistener import model
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +46,9 @@ known_commands = ['org.openkilda.messaging.command.flow.FlowCreateRequest',
                   'org.openkilda.messaging.command.switches.SwitchRulesSyncRequest',
                   'org.openkilda.messaging.command.switches.SwitchRulesValidateRequest',
                   'org.openkilda.messaging.command.discovery.NetworkCommandData',
-                  'org.openkilda.messaging.command.FlowsSyncRequest']
+                  'org.openkilda.messaging.command.FlowsSyncRequest',
+                  'org.openkilda.messaging.te.request.LinkPropsDrop',
+                  'org.openkilda.messaging.te.request.LinkPropsPut']
 
 
 def main_loop():
@@ -65,7 +68,7 @@ def main_loop():
         try:
             raw_event = kafkareader.read_message(consumer)
             logger.debug('READ MESSAGE %s', raw_event)
-            event = MessageItem(**json.loads(raw_event))
+            event = MessageItem(json.loads(raw_event))
 
             if event.get_message_type() in known_messages\
                     or event.get_command() in known_commands:
@@ -86,8 +89,12 @@ def topology_event_handler(event):
         attempts += 1
         if not event_handled:
             logger.error('Unable to process event: %s', event.get_type())
-            logger.error('Message body: %s', event.to_json())
+            logger.error('Message body: %s', dump_object(event))
             time.sleep(.1)
 
     logger.debug('Event processed for: %s, correlation_id: %s',
                  event.get_type(), event.correlation_id)
+
+
+def dump_object(o):
+    return json.dumps(o, cls=model.JSONEncoder, sort_keys=True, indent=4)

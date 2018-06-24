@@ -19,5 +19,4 @@ ADD tar /src
 ADD ansible /ansible
 RUN ansible-playbook -s /ansible/deploy.yml
 ADD kafka-conf/server.properties /opt/kafka/config/server.properties
-ADD kafka-conf/create_topics.sh /opt/kafka/bin/create_topics.sh
 ADD kafka-conf/run_and_configure.sh /opt/kafka/bin/

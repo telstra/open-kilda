@@ -29,18 +29,17 @@ import org.openkilda.messaging.command.flow.FlowGetRequest;
 import org.openkilda.messaging.command.flow.FlowPathRequest;
 import org.openkilda.messaging.command.flow.FlowStatusRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
-import org.openkilda.messaging.command.flow.FlowsGetRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
+import org.openkilda.messaging.info.ChunkedInfoMessage;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.flow.FlowPathResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowStatusResponse;
-import org.openkilda.messaging.info.flow.FlowsResponse;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
@@ -63,7 +62,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * appropriate kafka responses. Response type choice is based on request type.
  */
 @Component
-public class TestMessageMock implements MessageProducer, MessageConsumer<Object> {
+public class TestMessageMock implements MessageProducer, MessageConsumer {
     static final String FLOW_ID = "test-flow";
     static final String ERROR_FLOW_ID = "error-flow";
     static final String TEST_SWITCH_ID = "test-switch";
@@ -78,10 +77,10 @@ public class TestMessageMock implements MessageProducer, MessageConsumer<Object>
             FLOW_ID, 1, 1, 1, 1, 1, 1, null, FlowState.UP);
 
     private static final FlowResponse flowResponse = new FlowResponse(flowModel);
-    private static final FlowsResponse flowsResponse = new FlowsResponse(singletonList(flowModel.getFlowId()));
     private static final FlowPathResponse flowPathResponse = new FlowPathResponse(path);
     private static final FlowStatusResponse flowStatusResponse = new FlowStatusResponse(flowStatus);
-    private static final SwitchRulesResponse switchRulesResponse = new SwitchRulesResponse(singletonList(TEST_SWITCH_RULE_COOKIE));
+    private static final SwitchRulesResponse switchRulesResponse =
+            new SwitchRulesResponse(singletonList(TEST_SWITCH_RULE_COOKIE));
     private static final Map<String, CommandData> messages = new ConcurrentHashMap<>();
 
     /**
@@ -98,14 +97,8 @@ public class TestMessageMock implements MessageProducer, MessageConsumer<Object>
         } else if (data instanceof FlowUpdateRequest) {
             return new InfoMessage(flowResponse, 0, correlationId, Destination.NORTHBOUND);
         } else if (data instanceof FlowGetRequest) {
-            if (ERROR_FLOW_ID.equals(((FlowGetRequest) data).getPayload().getId())) {
-                return new ErrorMessage(new ErrorData(ErrorType.NOT_FOUND, "Flow was not found", ERROR_FLOW_ID),
-                        0, correlationId, Destination.NORTHBOUND);
-            } else {
-                return new InfoMessage(flowResponse, 0, correlationId, Destination.NORTHBOUND);
-            }
-        } else if (data instanceof FlowsGetRequest) {
-            return new InfoMessage(flowsResponse, 0, correlationId, Destination.NORTHBOUND);
+            FlowIdStatusPayload request = ((FlowGetRequest) data).getPayload();
+            return getFlowResponse(request, correlationId);
         } else if (data instanceof FlowStatusRequest) {
             return new InfoMessage(flowStatusResponse, 0, correlationId, Destination.NORTHBOUND);
         } else if (data instanceof FlowPathRequest) {
@@ -141,6 +134,19 @@ public class TestMessageMock implements MessageProducer, MessageConsumer<Object>
     public void send(String topic, Message message) {
         if (message instanceof CommandMessage) {
             messages.put(message.getCorrelationId(), ((CommandMessage) message).getData());
+        }
+    }
+
+    private Message getFlowResponse(FlowIdStatusPayload request, String correlationId) {
+        if (request != null) {
+            if (ERROR_FLOW_ID.equals((request.getId()))) {
+                return new ErrorMessage(new ErrorData(ErrorType.NOT_FOUND, "Flow was not found", ERROR_FLOW_ID),
+                        0, correlationId, Destination.NORTHBOUND);
+            } else {
+                return new InfoMessage(flowResponse, 0, correlationId, Destination.NORTHBOUND);
+            }
+        } else {
+            return new ChunkedInfoMessage(flowResponse, 0, correlationId, null);
         }
     }
 }
