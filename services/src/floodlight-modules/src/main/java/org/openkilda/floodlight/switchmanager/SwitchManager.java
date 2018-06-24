@@ -270,7 +270,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         cleanupInvalidVerificationRule(dpid);
         installVerificationRule(dpid, true);
         installVerificationRule(dpid, false);
-        installBfdMatch(dpid);
+        // TODO: when ready enable this on all switches (actually will only go on Novi's)
+//        installBfdMatch(dpid);
     }
 
     /**
