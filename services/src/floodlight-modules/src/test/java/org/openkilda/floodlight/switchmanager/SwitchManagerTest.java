@@ -15,21 +15,16 @@
 
 package org.openkilda.floodlight.switchmanager;
 
+import static org.easymock.EasyMock.*;
+import static org.junit.Assert.assertArrayEquals;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.singletonList;
-import static org.easymock.EasyMock.anyLong;
-import static org.easymock.EasyMock.anyObject;
-import static org.easymock.EasyMock.capture;
-import static org.easymock.EasyMock.createMock;
-import static org.easymock.EasyMock.expect;
-import static org.easymock.EasyMock.expectLastCall;
-import static org.easymock.EasyMock.mock;
-import static org.easymock.EasyMock.replay;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.beans.HasPropertyWithValue.hasProperty;
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.core.Every.everyItem;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -46,14 +41,22 @@ import static org.openkilda.floodlight.switchmanager.ISwitchManager.DROP_RULE_CO
 import static org.openkilda.floodlight.switchmanager.ISwitchManager.VERIFICATION_BROADCAST_RULE_COOKIE;
 import static org.openkilda.floodlight.switchmanager.ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE;
 
+import com.google.common.collect.Lists;
+import com.google.common.hash.PrimitiveSink;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import io.netty.buffer.ByteBuf;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.SwitchDescription;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
+import net.floodlightcontroller.packet.Ethernet;
+import net.floodlightcontroller.packet.IPacket;
+import net.floodlightcontroller.packet.IPv4;
+import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.restserver.IRestApiService;
+import org.apache.commons.codec.binary.Hex;
 import org.easymock.Capture;
 import org.easymock.CaptureType;
 import org.easymock.EasyMock;
@@ -63,19 +66,22 @@ import org.openkilda.floodlight.message.command.encapsulation.OutputCommands;
 import org.openkilda.floodlight.message.command.encapsulation.ReplaceSchemeOutputCommands;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
-import org.projectfloodlight.openflow.protocol.OFBarrierReply;
-import org.projectfloodlight.openflow.protocol.OFBarrierRequest;
-import org.projectfloodlight.openflow.protocol.OFFlowMod;
-import org.projectfloodlight.openflow.protocol.OFFlowModCommand;
-import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
-import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
-import org.projectfloodlight.openflow.protocol.OFFlowStatsRequest;
-import org.projectfloodlight.openflow.protocol.OFMeterMod;
-import org.projectfloodlight.openflow.protocol.OFMeterModCommand;
+import org.projectfloodlight.openflow.protocol.*;
+import org.projectfloodlight.openflow.protocol.action.OFAction;
+import org.projectfloodlight.openflow.protocol.action.OFActionNoviflowBfdStart;
+import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
+import org.projectfloodlight.openflow.protocol.action.OFActions;
+import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
-import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.U64;
+import org.projectfloodlight.openflow.protocol.match.MatchFields;
+import org.projectfloodlight.openflow.types.*;
 
+import javax.xml.crypto.Data;
+import java.net.Inet4Address;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -628,6 +634,102 @@ public class SwitchManagerTest {
         assertEquals(0L, actual.getCookie().getValue());
         assertEquals(0L, actual.getCookieMask().getValue());
         assertThat(deletedRules, containsInAnyOrder(cookie));
+    }
+
+    @Test
+    public void installBfdMatch() throws Exception {
+        // given
+        final String swDpid = "00:de:ad:be:ef:00";
+        final String manufacture = "noviflow";
+        IOFSwitch sw = createMock(IOFSwitch.class);
+        SwitchDescription switchDescription = createMock(SwitchDescription.class);
+
+        expect(ofSwitchService.getSwitch(DatapathId.of(swDpid))).andStubReturn(sw);
+        expect(sw.getOFFactory()).andStubReturn(ofFactory);
+        expect(sw.getId()).andStubReturn(DatapathId.of(swDpid));
+        expect(sw.getSwitchDescription()).andStubReturn(switchDescription);
+        expect(switchDescription.getManufacturerDescription()).andStubReturn(manufacture);
+
+        Capture <OFFlowMod> ofFlowModCapture = new Capture<>();
+        expect(sw.write(capture(ofFlowModCapture))).andReturn(true);
+
+        replay(sw, ofSwitchService, switchDescription);
+
+        // when
+        switchManager.installBfdMatch(sw.getId());
+
+        // then
+        Match match = ofFlowModCapture.getValue().getMatch();
+        assertEquals(SwitchManager.UDP_BFD_PORT, match.get(MatchField.UDP_DST).getPort());
+        assertEquals(MacAddress.of(swDpid), match.get(MatchField.ETH_DST));
+        assertEquals(EthType.IPv4, match.get(MatchField.ETH_TYPE));
+        assertEquals(IpProtocol.UDP, match.get(MatchField.IP_PROTO));
+
+        List<OFAction> actions = ofFlowModCapture.getValue().getActions();
+        assertEquals(1, actions.size());
+        assertThat(actions.get(0), instanceOf(OFActionOutput.class));
+
+        OFActionOutput output = (OFActionOutput) actions.get(0);
+        assertEquals(OFPort.LOCAL, output.getPort());
+    }
+
+
+    @Test
+    public void startBfd() throws Exception {
+
+        // given
+        final String srcSwIp = "10.0.0.1";
+        final String srcSwDpid = "00:de:ad:be:ef:00";
+        final String dstSwIp = "10.0.0.2";
+        final String dstSwDpid = "00:de:ad:be:ef:01";
+        final int BFD_INTERVAL = 1;
+        final short KEEP_ALIVE_TIMEOUT = 2;
+        final short MULTIPLIER = 1;
+        final int MYDISC = 10;
+        final int PORT_NUM = 5;
+
+        IOFSwitch srcSw = createMock(IOFSwitch.class);
+        IOFSwitch dstSw = createMock(IOFSwitch.class);
+        OFPort port = createMock(OFPort.class);
+        SwitchDescription switchDescription = createMock(SwitchDescription.class);
+
+        expect(srcSw.getInetAddress()).andStubReturn(new InetSocketAddress(srcSwIp, 48321));
+        expect(dstSw.getInetAddress()).andStubReturn(new InetSocketAddress(dstSwIp, 48322));
+        expect(srcSw.getId()).andStubReturn(DatapathId.of(srcSwDpid));
+        expect(dstSw.getId()).andStubReturn(DatapathId.of(dstSwDpid));
+        expect(switchDescription.getManufacturerDescription()).andStubReturn("Noviflow");
+        expect(srcSw.getSwitchDescription()).andStubReturn(switchDescription);
+        expect(ofSwitchService.getSwitch(DatapathId.of(srcSwDpid))).andStubReturn(srcSw);
+        expect(ofSwitchService.getSwitch(DatapathId.of(dstSwDpid))).andStubReturn(dstSw);
+        expect(srcSw.getOFFactory()).andStubReturn(ofFactory);
+        expect(dstSw.getOFFactory()).andStubReturn(ofFactory);
+        expect(port.getPortNumber()).andStubReturn(PORT_NUM);
+
+        Capture <OFPacketOut> ofPacketOutCapture = new Capture<>();
+        expect(srcSw.write(capture(ofPacketOutCapture))).andReturn(true);
+
+        replay(srcSw, dstSw, port, ofSwitchService, switchDescription);
+
+        // when
+        switchManager.startBfd(DatapathId.of(srcSwDpid), DatapathId.of(dstSwDpid), BFD_INTERVAL, KEEP_ALIVE_TIMEOUT,
+                MULTIPLIER, MYDISC, port);
+
+        // then
+        List<OFAction> actions = ofPacketOutCapture.getValue().getActions();
+        assertThat(actions.get(0), instanceOf(OFActionNoviflowBfdStart.class));
+
+        byte[] data = ofPacketOutCapture.getValue().getData();
+        IPacket packet = new Ethernet().deserialize(data, 0, data.length);
+        Ethernet ethernet = (Ethernet) packet;
+        IPv4 ip = (IPv4) ethernet.getPayload();
+        UDP udp = (UDP) ip.getPayload();
+        assertEquals(ethernet.getSourceMACAddress().toString(), srcSwDpid);
+        assertEquals(ethernet.getDestinationMACAddress().toString(), dstSwDpid);
+        assertEquals(ethernet.getEtherType(), EthType.IPv4);
+        assertEquals(ip.getSourceAddress().toString(), srcSwIp);
+        assertEquals(ip.getDestinationAddress().toString(), dstSwIp);
+        assertEquals(ip.getProtocol(), IpProtocol.UDP);
+        assertEquals(udp.getDestinationPort().getPort(), SwitchManager.UDP_BFD_PORT);
     }
 
     private void mockBarrierRequest() throws InterruptedException, ExecutionException, TimeoutException {

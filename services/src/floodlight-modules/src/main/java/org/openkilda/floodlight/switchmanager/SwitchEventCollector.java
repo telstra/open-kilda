@@ -110,6 +110,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
 //        Message message = buildExtendedSwitchMessage(sw, SwitchState.ACTIVATED, switchManager.dumpFlowTable(switchId));
 //        kafkaProducer.postMessage(topoDiscoTopic, message);
         ConnectModeRequest.Mode mode = switchManager.connectMode(null);
+        logger.debug("Floodlight is in {} mode", mode);
 
         try {
             if (mode == ConnectModeRequest.Mode.SAFE) {
