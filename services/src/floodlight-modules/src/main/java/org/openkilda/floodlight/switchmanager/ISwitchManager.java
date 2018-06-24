@@ -15,11 +15,12 @@
 
 package org.openkilda.floodlight.switchmanager;
 
-import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.module.IFloodlightService;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
+
+import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.module.IFloodlightService;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFMeterConfigStatsReply;
 import org.projectfloodlight.openflow.types.DatapathId;
@@ -40,6 +41,8 @@ public interface ISwitchManager extends IFloodlightService {
     long BFD_MATCH_RULE_COOKIE = 0x8000000000000004L;
 
     /**
+     * Sets the connection mode.
+     *
      * @param mode the mode to use, if not null
      * @return the connection mode after the set operation (if not null)
      */
@@ -61,7 +64,7 @@ public interface ISwitchManager extends IFloodlightService {
      * happesn
      *
      * @param dpid datapathId of switch
-     * @param isBroadcast
+     * @param isBroadcast boolean determines if rule matches broadcast packet
      * @throws SwitchOperationException in case of errors
      */
     void installVerificationRule(final DatapathId dpid, final boolean isBroadcast)
@@ -83,7 +86,7 @@ public interface ISwitchManager extends IFloodlightService {
      * @param dstMask Destination Mask to match on
      * @param cookie Cookie to use for this rule
      * @param priority Priority of the rule
-     * @throws SwitchOperationException
+     * @throws SwitchOperationException Switch not found
      */
     void installDropFlowCustom(final DatapathId dpid, String dstMac, String dstMask,
                                final long cookie, final int priority) throws SwitchOperationException;
@@ -158,7 +161,7 @@ public interface ISwitchManager extends IFloodlightService {
                                                       final long meterId) throws SwitchOperationException;
 
     /**
-     * Returns list of installed flows
+     * Returns list of installed flows.
      *
      * @param dpid switch id
      * @return OF flow stats entries
@@ -166,7 +169,7 @@ public interface ISwitchManager extends IFloodlightService {
     List<OFFlowStatsEntry> dumpFlowTable(final DatapathId dpid);
 
     /**
-     * Returns list of installed meters
+     * Returns list of installed meters.
      *
      * @param dpid switch id
      * @return OF meter config stats entries
@@ -202,7 +205,7 @@ public interface ISwitchManager extends IFloodlightService {
     Map<DatapathId, IOFSwitch> getAllSwitchMap();
 
     /**
-     * Deletes all non-default rules from the switch
+     * Deletes all non-default rules from the switch.
      *
      * @param dpid datapath ID of the switch
      * @return the list of cookies for removed rules
@@ -211,7 +214,7 @@ public interface ISwitchManager extends IFloodlightService {
     List<Long> deleteAllNonDefaultRules(DatapathId dpid) throws SwitchOperationException;
 
     /**
-     * Deletes the default rules (drop + verification) from the switch
+     * Deletes the default rules (drop + verification) from the switch.
      *
      * @param dpid datapath ID of the switch
      * @return the list of cookies for removed rules
@@ -220,7 +223,7 @@ public interface ISwitchManager extends IFloodlightService {
     List<Long> deleteDefaultRules(DatapathId dpid) throws SwitchOperationException;
 
     /**
-     * Delete rules that match the criteria
+     * Delete rules that match the criteria.
      *
      * @param dpid datapath ID of the switch
      * @param criteria the list of delete criteria
@@ -233,7 +236,7 @@ public interface ISwitchManager extends IFloodlightService {
      * Safely install default rules - ie monitor traffic.
      *
      * @param dpid the switch id to
-     * @throws SwitchOperationException
+     * @throws SwitchOperationException Switch not found
      */
     void startSafeMode(final DatapathId dpid) throws SwitchOperationException;
 
@@ -241,7 +244,7 @@ public interface ISwitchManager extends IFloodlightService {
      * Stop the safe install .. switch is deactivated or removed.
      *
      * @param dpid the switch id to
-     * @throws SwitchOperationException
+     * @throws SwitchOperationException Switch not founds
      */
     void stopSafeMode(final DatapathId dpid);
 
@@ -252,7 +255,7 @@ public interface ISwitchManager extends IFloodlightService {
     void sendPortUpEvents(final IOFSwitch sw) throws SwitchOperationException;
 
     /**
-     * Start BFD
+     * Start BFD.
      *
      * @param srcDpid dpid of the source switch
      * @param dstDpid dpid of the destination switch
@@ -271,10 +274,10 @@ public interface ISwitchManager extends IFloodlightService {
                          final OFPort port);
 
     /**
-     * Install BFD Match rule
+     * Install BFD Match rule.
      *
-     * @param dpid
-     * @throws SwitchOperationException
+     * @param dpid Datapath of the switch
+     * @throws SwitchOperationException Switch not found
      */
     void installBfdMatch(final DatapathId dpid) throws SwitchOperationException;
 

@@ -58,7 +58,27 @@ import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.util.FlowModUtils;
 import org.apache.commons.codec.binary.Hex;
 
-import org.projectfloodlight.openflow.protocol.*;
+import org.projectfloodlight.openflow.protocol.OFBarrierReply;
+import org.projectfloodlight.openflow.protocol.OFBarrierRequest;
+import org.projectfloodlight.openflow.protocol.OFErrorMsg;
+import org.projectfloodlight.openflow.protocol.OFFactory;
+import org.projectfloodlight.openflow.protocol.OFFlowDelete;
+import org.projectfloodlight.openflow.protocol.OFFlowMod;
+import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
+import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
+import org.projectfloodlight.openflow.protocol.OFFlowStatsRequest;
+import org.projectfloodlight.openflow.protocol.OFLegacyMeterBandDrop;
+import org.projectfloodlight.openflow.protocol.OFLegacyMeterFlags;
+import org.projectfloodlight.openflow.protocol.OFLegacyMeterMod;
+import org.projectfloodlight.openflow.protocol.OFLegacyMeterModCommand;
+import org.projectfloodlight.openflow.protocol.OFMessage;
+import org.projectfloodlight.openflow.protocol.OFMeterConfigStatsReply;
+import org.projectfloodlight.openflow.protocol.OFMeterConfigStatsRequest;
+import org.projectfloodlight.openflow.protocol.OFMeterFlags;
+import org.projectfloodlight.openflow.protocol.OFMeterMod;
+import org.projectfloodlight.openflow.protocol.OFMeterModCommand;
+import org.projectfloodlight.openflow.protocol.OFPacketOut;
+import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActions;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
@@ -69,13 +89,31 @@ import org.projectfloodlight.openflow.protocol.match.Match.Builder;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.protocol.meterband.OFMeterBandDrop;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxms;
-import org.projectfloodlight.openflow.types.*;
+import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.EthType;
+import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.IpProtocol;
+import org.projectfloodlight.openflow.types.MacAddress;
+import org.projectfloodlight.openflow.types.OFBufferId;
+import org.projectfloodlight.openflow.types.OFGroup;
+import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.OFVlanVidMatch;
+import org.projectfloodlight.openflow.types.TransportPort;
+import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.nio.BufferOverflowException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -276,7 +314,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         installVerificationRule(dpid, true);
         installVerificationRule(dpid, false);
         // TODO: when ready enable this on all switches (actually will only go on Novi's)
-//        installBfdMatch(dpid);
+        //installBfdMatch(dpid);
     }
 
     /**
@@ -1136,7 +1174,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
     /**
-     * Create an action to send packet to LOCAL CPU
+     * Create an action to send packet to LOCAL CPU.
      *
      * @param sw switch object
      * @return {@link OFAction}
@@ -1184,9 +1222,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
 
     /**
-     * Create match for BFD packets
+     * Create match for BFD packets.
      *
-     * @param sw
+     * @param sw IOFSwitch to install rule on
      * @return
      */
     private Match bfdMatch(IOFSwitch sw) {
@@ -1223,9 +1261,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
     /**
-     * Convert a DPID to a byte[]
+     * Convert a DPID to a byte[].
      *
-     * @param dpid
+     * @param dpid DataphatId
      * @return
      */
     private byte[] makeMacFromDpid(DatapathId dpid) {
@@ -1235,9 +1273,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
     /**
-     * Get the IP address from a switch
+     * Get the IP address from a switch.
      *
-     * @param sw
+     * @param sw IOFSwitch
      * @return
      */
     private IPv4Address makeIpFromSwitch(IOFSwitch sw) {
@@ -1246,14 +1284,13 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
 
     /**
-     * Build packet out for BFD start
+     * Build packet out for BFD start.
      *
-     * @param srcSw
-     * @param dstSw
-     * @return
-     * @throws BufferOverflowException
+     * @param srcSw IOFSwitch
+     * @param dstSw IOFSwitch
+     * @return byte[]
      */
-    private byte[] buildBfdPacketOutData(IOFSwitch srcSw, IOFSwitch dstSw) throws BufferOverflowException {
+    private byte[] buildBfdPacketOutData(IOFSwitch srcSw, IOFSwitch dstSw) {
         Ethernet l2 = new Ethernet().setSourceMACAddress(makeMacFromDpid(srcSw.getId()))
                 .setDestinationMACAddress(makeMacFromDpid(dstSw.getId()))
                 .setEtherType(EthType.IPv4);
@@ -1272,15 +1309,15 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
     /**
-     * Send BFD start packet to a Noviflow
+     * Send BFD start packet to a Noviflow.
      *
-     * @param srcSw
-     * @param dstSw
-     * @param interval
-     * @param keepAliveTimeout
-     * @param multiplier
-     * @param myDisc
-     * @param port
+     * @param srcSw IOFSwitch
+     * @param dstSw IOFSwitch
+     * @param interval int interval between BFD packets
+     * @param keepAliveTimeout short timeout to wait for BFD
+     * @param multiplier short //TODO: figure out what this is for...
+     * @param myDisc int //TODO: figure out what this is for...
+     * @param port OFPort port on srcSwitch
      */
 
     private void startBfdNovi(final IOFSwitch srcSw,
@@ -1299,7 +1336,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .setMyDisc(myDisc)
                 .setPortNo(port.getPortNumber())
                 .build());
-//        actions.add(srcSw.getOFFactory().actions().buildOutput().setPort(port).build());
 
         byte[] data;
         try {
@@ -1337,7 +1373,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                           final int myDisc,
                           final OFPort port) {
 
-        IOFSwitch srcSw, dstSw;
+        IOFSwitch srcSw;
+        IOFSwitch dstSw;
 
         try {
             srcSw = lookupSwitch(srcDpid);
@@ -1353,7 +1390,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         if (srcSw.getSwitchDescription().getManufacturerDescription().toLowerCase().contains("noviflow")) {
             startBfdNovi(srcSw, dstSw, interval, keepAliveTimeout, multiplier, myDisc, port);
         } else {
-            logger.error("Can not send BFD start to {} ({})", srcDpid, srcSw.getSwitchDescription().getManufacturerDescription());
+            logger.error("Can not send BFD start to {} ({})", srcDpid,
+                    srcSw.getSwitchDescription().getManufacturerDescription());
         }
     }
 

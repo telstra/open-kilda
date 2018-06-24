@@ -15,16 +15,22 @@
 
 package org.openkilda.floodlight.switchmanager;
 
-import static org.easymock.EasyMock.*;
-import static org.junit.Assert.assertArrayEquals;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.singletonList;
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.hasItem;
+import static org.easymock.EasyMock.anyLong;
+import static org.easymock.EasyMock.anyObject;
+import static org.easymock.EasyMock.capture;
+import static org.easymock.EasyMock.createMock;
+import static org.easymock.EasyMock.expect;
+import static org.easymock.EasyMock.expectLastCall;
+import static org.easymock.EasyMock.mock;
+import static org.easymock.EasyMock.replay;
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.beans.HasPropertyWithValue.hasProperty;
-import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.core.Every.everyItem;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -41,11 +47,13 @@ import static org.openkilda.floodlight.switchmanager.ISwitchManager.DROP_RULE_CO
 import static org.openkilda.floodlight.switchmanager.ISwitchManager.VERIFICATION_BROADCAST_RULE_COOKIE;
 import static org.openkilda.floodlight.switchmanager.ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE;
 
-import com.google.common.collect.Lists;
-import com.google.common.hash.PrimitiveSink;
+import org.openkilda.floodlight.message.command.encapsulation.OutputCommands;
+import org.openkilda.floodlight.message.command.encapsulation.ReplaceSchemeOutputCommands;
+import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
+import org.openkilda.messaging.payload.flow.OutputVlanType;
+
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import io.netty.buffer.ByteBuf;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.SwitchDescription;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
@@ -56,32 +64,35 @@ import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.restserver.IRestApiService;
-import org.apache.commons.codec.binary.Hex;
 import org.easymock.Capture;
 import org.easymock.CaptureType;
 import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
-import org.openkilda.floodlight.message.command.encapsulation.OutputCommands;
-import org.openkilda.floodlight.message.command.encapsulation.ReplaceSchemeOutputCommands;
-import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
-import org.openkilda.messaging.payload.flow.OutputVlanType;
-import org.projectfloodlight.openflow.protocol.*;
+
+import org.projectfloodlight.openflow.protocol.OFBarrierReply;
+import org.projectfloodlight.openflow.protocol.OFBarrierRequest;
+import org.projectfloodlight.openflow.protocol.OFFlowMod;
+import org.projectfloodlight.openflow.protocol.OFFlowModCommand;
+import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
+import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
+import org.projectfloodlight.openflow.protocol.OFFlowStatsRequest;
+import org.projectfloodlight.openflow.protocol.OFMeterMod;
+import org.projectfloodlight.openflow.protocol.OFMeterModCommand;
+import org.projectfloodlight.openflow.protocol.OFPacketOut;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActionNoviflowBfdStart;
 import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
-import org.projectfloodlight.openflow.protocol.action.OFActions;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
-import org.projectfloodlight.openflow.protocol.match.MatchFields;
-import org.projectfloodlight.openflow.types.*;
+import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.EthType;
+import org.projectfloodlight.openflow.types.IpProtocol;
+import org.projectfloodlight.openflow.types.MacAddress;
+import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.U64;
 
-import javax.xml.crypto.Data;
-import java.net.Inet4Address;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -331,7 +342,7 @@ public class SwitchManagerTest {
         replay(ofSwitchService, iofSwitch);
 
         // when
-        List<Long> deletedRules = switchManager.deleteAllNonDefaultRules(dpid);
+        final List<Long> deletedRules = switchManager.deleteAllNonDefaultRules(dpid);
 
         // then
         final OFFlowMod actual = capture.getValue();
@@ -364,7 +375,7 @@ public class SwitchManagerTest {
         replay(ofSwitchService, iofSwitch);
 
         // when
-        List<Long> deletedRules = switchManager.deleteDefaultRules(dpid);
+        final List<Long> deletedRules = switchManager.deleteDefaultRules(dpid);
 
         // then
         final List<OFFlowMod> actual = capture.getValues();
@@ -396,8 +407,8 @@ public class SwitchManagerTest {
         replay(ofSwitchService, iofSwitch);
 
         // when
-        DeleteRulesCriteria criteria = DeleteRulesCriteria.builder().cookie(cookie).build();
-        List<Long> deletedRules = switchManager.deleteRulesByCriteria(dpid, criteria);
+        final DeleteRulesCriteria criteria = DeleteRulesCriteria.builder().cookie(cookie).build();
+        final List<Long> deletedRules = switchManager.deleteRulesByCriteria(dpid, criteria);
 
         // then
         final OFFlowMod actual = capture.getValue();
@@ -432,8 +443,8 @@ public class SwitchManagerTest {
         replay(ofSwitchService, iofSwitch);
 
         // when
-        DeleteRulesCriteria criteria = DeleteRulesCriteria.builder().inPort(testInPort).build();
-        List<Long> deletedRules = switchManager.deleteRulesByCriteria(dpid, criteria);
+        final DeleteRulesCriteria criteria = DeleteRulesCriteria.builder().inPort(testInPort).build();
+        final List<Long> deletedRules = switchManager.deleteRulesByCriteria(dpid, criteria);
 
         // then
         final OFFlowMod actual = capture.getValue();
@@ -468,8 +479,8 @@ public class SwitchManagerTest {
         replay(ofSwitchService, iofSwitch);
 
         // when
-        DeleteRulesCriteria criteria = DeleteRulesCriteria.builder().inVlan((int) testInVlan).build();
-        List<Long> deletedRules = switchManager.deleteRulesByCriteria(dpid, criteria);
+        final DeleteRulesCriteria criteria = DeleteRulesCriteria.builder().inVlan((int) testInVlan).build();
+        final List<Long> deletedRules = switchManager.deleteRulesByCriteria(dpid, criteria);
 
         // then
         final OFFlowMod actual = capture.getValue();
@@ -505,10 +516,10 @@ public class SwitchManagerTest {
         replay(ofSwitchService, iofSwitch);
 
         // when
-        DeleteRulesCriteria criteria = DeleteRulesCriteria.builder()
+        final DeleteRulesCriteria criteria = DeleteRulesCriteria.builder()
                 .inPort(testInPort)
                 .inVlan((int) testInVlan).build();
-        List<Long> deletedRules = switchManager.deleteRulesByCriteria(dpid, criteria);
+        final List<Long> deletedRules = switchManager.deleteRulesByCriteria(dpid, criteria);
 
         // then
         final OFFlowMod actual = capture.getValue();
@@ -543,8 +554,8 @@ public class SwitchManagerTest {
         replay(ofSwitchService, iofSwitch);
 
         // when
-        DeleteRulesCriteria criteria = DeleteRulesCriteria.builder().priority(testPriority).build();
-        List<Long> deletedRules = switchManager.deleteRulesByCriteria(dpid, criteria);
+        final DeleteRulesCriteria criteria = DeleteRulesCriteria.builder().priority(testPriority).build();
+        final List<Long> deletedRules = switchManager.deleteRulesByCriteria(dpid, criteria);
 
         // then
         final OFFlowMod actual = capture.getValue();
@@ -586,7 +597,7 @@ public class SwitchManagerTest {
                 .inPort(testInPort)
                 .inVlan((int) testInVlan)
                 .priority(testPriority).build();
-        List<Long> deletedRules = switchManager.deleteRulesByCriteria(dpid, criteria);
+        final List<Long> deletedRules = switchManager.deleteRulesByCriteria(dpid, criteria);
 
         // then
         final OFFlowMod actual = capture.getValue();
@@ -622,8 +633,8 @@ public class SwitchManagerTest {
         replay(ofSwitchService, iofSwitch);
 
         // when
-        DeleteRulesCriteria criteria = DeleteRulesCriteria.builder().outPort(testOutPort).build();
-        List<Long> deletedRules = switchManager.deleteRulesByCriteria(dpid, criteria);
+        final DeleteRulesCriteria criteria = DeleteRulesCriteria.builder().outPort(testOutPort).build();
+        final List<Long> deletedRules = switchManager.deleteRulesByCriteria(dpid, criteria);
 
         // then
         final OFFlowMod actual = capture.getValue();
@@ -650,7 +661,7 @@ public class SwitchManagerTest {
         expect(sw.getSwitchDescription()).andStubReturn(switchDescription);
         expect(switchDescription.getManufacturerDescription()).andStubReturn(manufacture);
 
-        Capture <OFFlowMod> ofFlowModCapture = new Capture<>();
+        Capture<OFFlowMod> ofFlowModCapture = new Capture<>();
         expect(sw.write(capture(ofFlowModCapture))).andReturn(true);
 
         replay(sw, ofSwitchService, switchDescription);
@@ -682,11 +693,11 @@ public class SwitchManagerTest {
         final String srcSwDpid = "00:de:ad:be:ef:00";
         final String dstSwIp = "10.0.0.2";
         final String dstSwDpid = "00:de:ad:be:ef:01";
-        final int BFD_INTERVAL = 1;
-        final short KEEP_ALIVE_TIMEOUT = 2;
-        final short MULTIPLIER = 1;
-        final int MYDISC = 10;
-        final int PORT_NUM = 5;
+        final int Bfd_Interval = 1;
+        final short Keep_Alive_Timeout = 2;
+        final short Multiplier = 1;
+        final int My_Disc = 10;
+        final int Port_Num = 5;
 
         IOFSwitch srcSw = createMock(IOFSwitch.class);
         IOFSwitch dstSw = createMock(IOFSwitch.class);
@@ -703,16 +714,16 @@ public class SwitchManagerTest {
         expect(ofSwitchService.getSwitch(DatapathId.of(dstSwDpid))).andStubReturn(dstSw);
         expect(srcSw.getOFFactory()).andStubReturn(ofFactory);
         expect(dstSw.getOFFactory()).andStubReturn(ofFactory);
-        expect(port.getPortNumber()).andStubReturn(PORT_NUM);
+        expect(port.getPortNumber()).andStubReturn(Port_Num);
 
-        Capture <OFPacketOut> ofPacketOutCapture = new Capture<>();
+        Capture<OFPacketOut> ofPacketOutCapture = new Capture<>();
         expect(srcSw.write(capture(ofPacketOutCapture))).andReturn(true);
 
         replay(srcSw, dstSw, port, ofSwitchService, switchDescription);
 
         // when
-        switchManager.startBfd(DatapathId.of(srcSwDpid), DatapathId.of(dstSwDpid), BFD_INTERVAL, KEEP_ALIVE_TIMEOUT,
-                MULTIPLIER, MYDISC, port);
+        switchManager.startBfd(DatapathId.of(srcSwDpid), DatapathId.of(dstSwDpid), Bfd_Interval, Keep_Alive_Timeout,
+                Multiplier, My_Disc, port);
 
         // then
         List<OFAction> actions = ofPacketOutCapture.getValue().getActions();
@@ -721,8 +732,8 @@ public class SwitchManagerTest {
         byte[] data = ofPacketOutCapture.getValue().getData();
         IPacket packet = new Ethernet().deserialize(data, 0, data.length);
         Ethernet ethernet = (Ethernet) packet;
-        IPv4 ip = (IPv4) ethernet.getPayload();
-        UDP udp = (UDP) ip.getPayload();
+        final IPv4 ip = (IPv4) ethernet.getPayload();
+        final UDP udp = (UDP) ip.getPayload();
         assertEquals(ethernet.getSourceMACAddress().toString(), srcSwDpid);
         assertEquals(ethernet.getDestinationMACAddress().toString(), dstSwDpid);
         assertEquals(ethernet.getEtherType(), EthType.IPv4);
@@ -744,7 +755,7 @@ public class SwitchManagerTest {
 
     private void mockFlowStatsRequest(Long... cookies)
             throws InterruptedException, ExecutionException, TimeoutException {
-        List<OFFlowStatsEntry> ofFlowStatsEntries = Arrays.stream(cookies)
+        final List<OFFlowStatsEntry> ofFlowStatsEntries = Arrays.stream(cookies)
                 .map(cookie -> {
                     OFFlowStatsEntry ofFlowStatsEntry = mock(OFFlowStatsEntry.class);
                     expect(ofFlowStatsEntry.getCookie()).andStubReturn(U64.of(cookie));

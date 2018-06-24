@@ -15,8 +15,10 @@
 
 package org.openkilda.floodlight.switchmanager.web;
 
-import net.floodlightcontroller.restserver.RestletRoutable;
 import org.openkilda.floodlight.utils.RequestCorrelationFilter;
+
+import net.floodlightcontroller.restserver.RestletRoutable;
+
 import org.restlet.Context;
 import org.restlet.Restlet;
 import org.restlet.routing.Filter;
