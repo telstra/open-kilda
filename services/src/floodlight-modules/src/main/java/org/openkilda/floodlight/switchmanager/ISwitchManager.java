@@ -23,6 +23,7 @@ import org.openkilda.messaging.payload.flow.OutputVlanType;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFMeterConfigStatsReply;
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.OFPort;
 
 import java.util.List;
 import java.util.Map;
@@ -36,6 +37,7 @@ public interface ISwitchManager extends IFloodlightService {
     long DROP_RULE_COOKIE = 0x8000000000000001L;
     long VERIFICATION_BROADCAST_RULE_COOKIE = 0x8000000000000002L;
     long VERIFICATION_UNICAST_RULE_COOKIE = 0x8000000000000003L;
+    long BFD_MATCH_RULE_COOKIE = 0x8000000000000004L;
 
     /**
      * @param mode the mode to use, if not null
@@ -248,4 +250,34 @@ public interface ISwitchManager extends IFloodlightService {
     void sendSwitchActivate(final IOFSwitch sw) throws SwitchOperationException;
 
     void sendPortUpEvents(final IOFSwitch sw) throws SwitchOperationException;
+
+    /**
+     * Start BFD
+     *
+     * @param srcDpid dpid of the source switch
+     * @param dstDpid dpid of the destination switch
+     * @param interval interval of the BFD packets
+     * @param keepAliveTimeout //TODO: not sure what this is but Noviflow requires it
+     * @param multiplier //TODO: same as above
+     * @param myDisc //TODO: same as above
+     * @param port port to send the BFD out on the source switch
+     */
+    void startBfd(final DatapathId srcDpid,
+                         final DatapathId dstDpid,
+                         final int interval,
+                         final short keepAliveTimeout,
+                         final short multiplier,
+                         final int myDisc,
+                         final OFPort port);
+
+    /**
+     * Install BFD Match rule
+     *
+     * @param dpid
+     * @throws SwitchOperationException
+     */
+    void installBfdMatch(final DatapathId dpid) throws SwitchOperationException;
+
+    IOFSwitch lookupSwitch(DatapathId dpId) throws SwitchOperationException;
+
 }
