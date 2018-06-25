@@ -15,6 +15,8 @@
 
 package org.openkilda.pce.provider;
 
+import static org.openkilda.pce.Utils.safeAsInt;
+
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
@@ -35,7 +37,6 @@ import org.neo4j.driver.v1.Driver;
 import org.neo4j.driver.v1.Record;
 import org.neo4j.driver.v1.Session;
 import org.neo4j.driver.v1.StatementResult;
-import org.neo4j.driver.v1.Value;
 import org.neo4j.driver.v1.exceptions.ClientException;
 import org.neo4j.driver.v1.exceptions.TransientException;
 import org.slf4j.Logger;
@@ -61,6 +62,16 @@ public class NeoDriver implements PathComputer {
     @Override
     public ImmutablePair<PathInfoData, PathInfoData> getPath(Flow flow, Strategy strategy)
             throws UnroutablePathException, RecoverableException {
+        AvailableNetwork network = new AvailableNetwork(driver, flow.isIgnoreBandwidth(), flow.getBandwidth());
+        return getPath(flow, network, strategy);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public ImmutablePair<PathInfoData, PathInfoData> getPath(Flow flow, AvailableNetwork network, Strategy strategy)
+            throws UnroutablePathException, RecoverableException {
 
         long latency = 0L;
         List<PathNode> forwardNodes = new LinkedList<>();
@@ -68,7 +79,7 @@ public class NeoDriver implements PathComputer {
 
         if (! flow.isOneSwitchFlow()) {
             try {
-                Pair<LinkedList<SimpleIsl>, LinkedList<SimpleIsl>> biPath = getPathFromNetwork(flow, strategy);
+                Pair<LinkedList<SimpleIsl>, LinkedList<SimpleIsl>> biPath = getPathFromNetwork(flow, network, strategy);
                 if (biPath.getLeft().size() == 0 || biPath.getRight().size() == 0) {
                     throw new UnroutablePathException(flow);
                 }
@@ -105,11 +116,11 @@ public class NeoDriver implements PathComputer {
     /**
      * Create the query based on what the strategy is.
      */
-    private Pair<LinkedList<SimpleIsl>, LinkedList<SimpleIsl>> getPathFromNetwork(Flow flow, Strategy strategy) {
+    private Pair<LinkedList<SimpleIsl>, LinkedList<SimpleIsl>> getPathFromNetwork(Flow flow, AvailableNetwork network,
+                                                                                  Strategy strategy) {
 
         switch (strategy) {
             default:
-                AvailableNetwork network = getAvailableNetwork(flow.isIgnoreBandwidth(), flow.getBandwidth());
                 network.removeSelfLoops().reduceByCost();
                 SimpleGetShortestPath forward = new SimpleGetShortestPath(network,
                         flow.getSourceSwitch(), flow.getDestinationSwitch(), 35);
@@ -244,70 +255,6 @@ public class NeoDriver implements PathComputer {
         return results;
     }
 
-    /**
-     * This will return a network where everything is active and the isls have the bandwidth needed.
-     * This is a specialization of the general query to get the entire network.
-     * <p/>
-     * NB: If the more common case is required at some point, refactor this into reusing the getAll,
-     * then filter the results.
-     *
-     * @param ignoreBandwidth if false, then filter the ISLs based on available_bandwidth.
-     * @param flowBandwidth requested flow's bandwidth.
-     * @return {@link AvailableNetwork} network representation.
-     */
-    @Override
-    public AvailableNetwork getAvailableNetwork(boolean ignoreBandwidth, int flowBandwidth) {
-
-        String q = "MATCH (src:switch)-[isl:isl]->(dst:switch)"
-                + " WHERE src.state = 'active' AND dst.state = 'active' AND isl.status = 'active' "
-                + "   AND src.name IS NOT NULL AND dst.name IS NOT NULL";
-        if (!ignoreBandwidth) {
-            q += "   AND isl.available_bandwidth >= " + flowBandwidth;
-        }
-        q += " RETURN src.name as src_name, dst.name as dst_name "
-                + ", isl.src_port as src_port "
-                + ", isl.dst_port as dst_port "
-                + ", isl.cost as cost "
-                + ", isl.latency as latency "
-                + " ORDER BY src.name";
-
-        logger.debug("Executing getAvailableNetwork Query: {}", q);
-        AvailableNetwork network = new AvailableNetwork();
-        try (Session session = driver.session(AccessMode.READ)) {
-            StatementResult queryResults = session.run(q);
-            for (Record record : queryResults.list()) {
-                network.initOneEntry(
-                        record.get("src_name").asString(),
-                        record.get("dst_name").asString(),
-                        safeAsInt(record.get("src_port")),
-                        safeAsInt(record.get("dst_port")),
-                        safeAsInt(record.get("cost")),
-                        safeAsInt(record.get("latency"))
-                );
-            }
-        }
-
-        return network;
-    }
-
-    /**
-     * Safe transformation to integer (property value might be stored in neo4j in different types: string, null, etc).
-     * @param val the value to parse
-     * @return 0 if val is null or not parseable, the int otherwise
-     */
-    private final int safeAsInt(Value val) {
-        int asInt = 0;
-        if (!val.isNull()) {
-            try {
-                asInt = Integer.parseInt(val.asObject().toString());
-            } catch (Exception e) {
-                logger.info("Exception trying to get an Integer; the String isn't parseable. Value: {}", val);
-            }
-        }
-        return asInt;
-    }
-
-
     @Override
     public List<IslInfoData> getIsls() {
 
@@ -364,5 +311,8 @@ public class NeoDriver implements PathComputer {
         }
     }
 
-
+    @Override
+    public AvailableNetwork getAvailableNetwork(boolean ignoreBandwidth, int requestedBandwidth) {
+        return new AvailableNetwork(driver, ignoreBandwidth, requestedBandwidth);
+    }
 }

@@ -58,6 +58,7 @@ import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.pce.RecoverableException;
 import org.openkilda.pce.cache.FlowCache;
 import org.openkilda.pce.cache.ResourceCache;
+import org.openkilda.pce.model.AvailableNetwork;
 import org.openkilda.pce.provider.Auth;
 import org.openkilda.pce.provider.FlowInfo;
 import org.openkilda.pce.provider.PathComputer;
@@ -634,8 +635,11 @@ public class CrudBolt
                 try {
                     logger.warn("Origin flow {} path: {} correlationId {}", flowId, flow.getLeft().getFlowPath(),
                             correlationId);
+                    AvailableNetwork network = pathComputer.getAvailableNetwork(requestedFlow.isIgnoreBandwidth(),
+                            requestedFlow.getBandwidth());
+                    network.addIslsOccupiedByFlow(flowId);
                     ImmutablePair<PathInfoData, PathInfoData> path =
-                            pathComputer.getPath(flow.getLeft(), Strategy.COST);
+                            pathComputer.getPath(flow.getLeft(), network, Strategy.COST);
                     logger.warn("Potential New Path for flow {} with LEFT path: {}, RIGHT path: {} correlationId {}",
                             flowId, path.getLeft(), path.getRight(), correlationId);
                     boolean isFoundNewPath = (
@@ -707,7 +711,10 @@ public class CrudBolt
         try {
             flowValidator.validate(requestedFlow);
 
-            path = pathComputer.getPath(requestedFlow, Strategy.COST);
+            AvailableNetwork network = pathComputer.getAvailableNetwork(requestedFlow.isIgnoreBandwidth(),
+                    requestedFlow.getBandwidth());
+            network.addIslsOccupiedByFlow(requestedFlow.getFlowId());
+            path = pathComputer.getPath(requestedFlow, network, Strategy.COST);
             logger.info("Updated flow path: {}, correlationId {}", path, correlationId);
 
         } catch (FlowValidationException e) {

@@ -24,6 +24,7 @@ import org.openkilda.pce.algo.SimpleGetShortestPath;
 import org.openkilda.pce.model.AvailableNetwork;
 import org.openkilda.pce.model.SimpleIsl;
 import org.openkilda.pce.model.SimpleSwitch;
+import org.openkilda.pce.provider.PathComputer.Strategy;
 
 /**
  * The primary goals of this test package are to emulate the Acceptance Tests in the ATDD module.
@@ -235,7 +236,7 @@ public class PathComputerTest {
 
 
     @Test
-    public void testGetPathByCostActive_AsStr() throws UnroutablePathException, RecoverableException {
+    public void testGetPathByCostActiveAsStr() throws UnroutablePathException, RecoverableException {
         /*
          * simple happy path test .. everything has cost
          */
@@ -252,7 +253,7 @@ public class PathComputerTest {
     }
 
 
-    @Test()
+    @Test
     public void testGetPathByCostInactive() throws UnroutablePathException, RecoverableException {
         /*
          * verifies that iSL in both directions needs to be active
@@ -263,25 +264,12 @@ public class PathComputerTest {
         f.setDestinationSwitch("01:04");
         f.setBandwidth(100);
 
-        boolean caughtException = false;
-        ImmutablePair<PathInfoData, PathInfoData> path = null;
-        try {
-            path = nd.getPath(f, PathComputer.Strategy.COST);
-        } catch (UnroutablePathException e) {
-            caughtException = true;
-        }
+        ImmutablePair<PathInfoData, PathInfoData> path = nd.getPath(f, PathComputer.Strategy.COST);
 
-        boolean usingActualProperty = false;
-        if (usingActualProperty)
-            // if we use actual in query, we'll get this exception
-            Assert.assertTrue(caughtException);
-        else {
-            // otherwise we'll find the asymmetrical path
-            Assert.assertNotNull(path);
-            Assert.assertEquals(4, path.left.getPath().size());
-            // ====> only difference is it should now have C as first hop .. since B is inactive
-            Assert.assertEquals("01:03", path.left.getPath().get(1).getSwitchId()); // chooses path B
-        }
+        Assert.assertNotNull(path);
+        Assert.assertEquals(4, path.left.getPath().size());
+        // ====> only difference is it should now have C as first hop .. since B is inactive
+        Assert.assertEquals("01:03", path.left.getPath().get(1).getSwitchId()); // chooses path B
     }
 
     @Test
@@ -294,7 +282,9 @@ public class PathComputerTest {
         f.setSourceSwitch("02:01");
         f.setDestinationSwitch("02:02");
         f.setBandwidth(100);
-        ImmutablePair<PathInfoData, PathInfoData> path = nd.getPath(f, PathComputer.Strategy.COST);
+
+        AvailableNetwork network = nd.getAvailableNetwork(false, 100);
+        ImmutablePair<PathInfoData, PathInfoData> path = nd.getPath(f, network, PathComputer.Strategy.COST);
         System.out.println("path = " + path);
         Assert.assertNotNull(path);
         Assert.assertEquals(4, path.left.getPath().size());
@@ -312,7 +302,9 @@ public class PathComputerTest {
         f.setSourceSwitch("03:01");
         f.setDestinationSwitch("03:04");
         f.setBandwidth(100);
-        ImmutablePair<PathInfoData, PathInfoData> path = nd.getPath(f, PathComputer.Strategy.COST);
+
+        AvailableNetwork network = nd.getAvailableNetwork(false, 100);
+        ImmutablePair<PathInfoData, PathInfoData> path = nd.getPath(f, network, PathComputer.Strategy.COST);
         // System.out.println("path = " + path);
         Assert.assertNotNull(path);
         Assert.assertEquals(4, path.left.getPath().size());
@@ -336,16 +328,16 @@ public class PathComputerTest {
 
 
     /**
-     * Test the mechanisms of the in memory getPath
+     * Test the mechanisms of the in memory getPath.
      */
     @Test
     public void getPathTest_InitState() {
         createDiamond("active", "active", 10, 20, "05:", 1);
-        boolean ignore_bw = false;
+        boolean ignoreBw = false;
 
         long time = System.currentTimeMillis();
         System.out.println("start = " + time);
-        AvailableNetwork network = nd.getAvailableNetwork(ignore_bw, 0);
+        AvailableNetwork network = nd.getAvailableNetwork(ignoreBw, 0);
         System.out.println("\nNETWORK = " + network);
 
         System.out.println("AvailableNetwork = " + (System.currentTimeMillis() - time));
@@ -357,7 +349,7 @@ public class PathComputerTest {
         System.out.println("After Counts = " + (System.currentTimeMillis() - time));
 
         time = System.currentTimeMillis();
-        network = nd.getAvailableNetwork(ignore_bw, 0);
+        network = nd.getAvailableNetwork(ignoreBw, 0);
         System.out.println("2nd AvailableNetwork = " + (System.currentTimeMillis() - time));
         SimpleSwitch[] switches = new SimpleSwitch[network.getSwitches().values().size()];
         Arrays.sort(network.getSwitches().values().toArray(switches));
@@ -366,9 +358,9 @@ public class PathComputerTest {
         Assert.assertEquals("05:04", switches[3].dpid);
         Assert.assertEquals(2, switches[0].outbound.size());
         Assert.assertEquals(1, switches[0].outbound.get("05:02").size());
-        Assert.assertEquals(10, switches[0].outbound.get("05:02").iterator().next().cost);
+        Assert.assertEquals(10, switches[0].outbound.get("05:02").iterator().next().getCost());
         Assert.assertEquals(1, switches[0].outbound.get("05:03").size());
-        Assert.assertEquals(20, switches[0].outbound.get("05:03").iterator().next().cost);
+        Assert.assertEquals(20, switches[0].outbound.get("05:03").iterator().next().getCost());
 
         time = System.currentTimeMillis();
         SimpleGetShortestPath sgsp = new SimpleGetShortestPath(network, "05:01", "05:03", 35);
@@ -391,9 +383,9 @@ public class PathComputerTest {
     public void getPathTest_Islands() {
         createDiamond("active", "active", 10, 20, "06:", 1);
         createDiamond("active", "active", 10, 20, "07:", 1);
-        boolean ignore_bw = false;
+        boolean ignoreBw = false;
 
-        AvailableNetwork network = nd.getAvailableNetwork(ignore_bw, 0);
+        AvailableNetwork network = nd.getAvailableNetwork(ignoreBw, 0);
         network.removeSelfLoops().reduceByCost();
 
         // THIS ONE SHOULD WORK
@@ -421,27 +413,27 @@ public class PathComputerTest {
         createDiamond("active", "active", 10, 20, "08:", 1);
 
         for (int i = 0; i < 50; i++) {
-            createDiamond("active", "active", 10, 20, "10:", 4*i+1);
-            createDiamond("active", "active", 10, 20, "11:", 4*i+1);
-            createDiamond("active", "active", 10, 20, "12:", 4*i+1);
-            createDiamond("active", "active", 10, 20, "13:", 4*i+1);
+            createDiamond("active", "active", 10, 20, "10:", 4 * i + 1);
+            createDiamond("active", "active", 10, 20, "11:", 4 * i + 1);
+            createDiamond("active", "active", 10, 20, "12:", 4 * i + 1);
+            createDiamond("active", "active", 10, 20, "13:", 4 * i + 1);
         }
         for (int i = 0; i < 49; i++) {
-            String prev = String.format("%02X", 4*i+4);
-            String next = String.format("%02X", 4*i+5);
-            connectDiamonds("10:"+prev, "10:"+next, "active", 20, 50);
-            connectDiamonds("11:"+prev, "11:"+next, "active", 20, 50);
-            connectDiamonds("12:"+prev, "12:"+next, "active", 20, 50);
-            connectDiamonds("13:"+prev, "13:"+next, "active", 20, 50);
+            String prev = String.format("%02X", 4 * i + 4);
+            String next = String.format("%02X", 4 * i + 5);
+            connectDiamonds("10:" + prev, "10:" + next, "active", 20, 50);
+            connectDiamonds("11:" + prev, "11:" + next, "active", 20, 50);
+            connectDiamonds("12:" + prev, "12:" + next, "active", 20, 50);
+            connectDiamonds("13:" + prev, "13:" + next, "active", 20, 50);
         }
         connectDiamonds("10:99", "11:22", "active", 20, 50);
         connectDiamonds("11:99", "12:22", "active", 20, 50);
         connectDiamonds("12:99", "13:22", "active", 20, 50);
         connectDiamonds("13:99", "10:22", "active", 20, 50);
 
-        boolean ignore_bw = false;
+        boolean ignoreBw = false;
 
-        AvailableNetwork network = nd.getAvailableNetwork(ignore_bw, 0);
+        AvailableNetwork network = nd.getAvailableNetwork(ignoreBw, 0);
         network.removeSelfLoops().reduceByCost();
         System.out.println("network.getCounts() = " + network.getCounts());
 
@@ -476,16 +468,66 @@ public class PathComputerTest {
         flow.setDestinationSwitch(end);
         flow.setIgnoreBandwidth(false);
         flow.setBandwidth(10);
-        ImmutablePair<PathInfoData, PathInfoData> result = nd.getPath(flow,PathComputer.Strategy.COST);
+        ImmutablePair<PathInfoData, PathInfoData> result = nd.getPath(flow, PathComputer.Strategy.COST);
         // ensure start/end switches match
         List<PathNode> left = result.left.getPath();
         Assert.assertEquals(start, left.get(0).getSwitchId());
-        Assert.assertEquals(end, left.get(left.size()-1).getSwitchId());
+        Assert.assertEquals(end, left.get(left.size() - 1).getSwitchId());
         List<PathNode> right = result.right.getPath();
         Assert.assertEquals(end, right.get(0).getSwitchId());
-        Assert.assertEquals(start, right.get(right.size()-1).getSwitchId());
+        Assert.assertEquals(start, right.get(right.size() - 1).getSwitchId());
     }
 
+    /**
+     * Path should be exists for created flow in case of reroute/update.
+     */
+    @Test
+    public void shouldAlwaysFindPathForExistedFlow() throws Exception {
+        Flow flow = new Flow();
+        flow.setSourceSwitch("A1:01");      // getPath will find an isl port
+        flow.setDestinationSwitch("A1:03");
+        flow.setIgnoreBandwidth(false);
+        flow.setBandwidth(1000);
+        flow.setFlowId("flow-A1:01-A1:03");
 
+        createLinearTopoWithFlowSegments(10, "A1:", 1, flow.getFlowId());
+        AvailableNetwork network = nd.getAvailableNetwork(flow.isIgnoreBandwidth(), flow.getBandwidth());
+        network.addIslsOccupiedByFlow(flow.getFlowId());
+        ImmutablePair<PathInfoData, PathInfoData> result = nd.getPath(flow, network, Strategy.COST);
+
+        Assert.assertEquals(4, result.getLeft().getPath().size());
+        Assert.assertEquals(4, result.getRight().getPath().size());
+    }
+
+    private void createLinearTopoWithFlowSegments(int cost, String switchStart, int startIndex, String flowId) {
+        try ( Transaction tx = graphDb.beginTx() ) {
+            // A - B - C
+            Node nodeA, nodeB, nodeC;
+            int index = startIndex;
+            nodeA = createNode(switchStart + String.format("%02X", index++));
+            nodeB = createNode(switchStart + String.format("%02X", index++));
+            nodeC = createNode(switchStart + String.format("%02X", index));
+            addRel(nodeA, nodeB, "active", "active", cost, 1000, 5);
+            addRel(nodeB, nodeC, "active", "active", cost, 1000, 6);
+            addRel(nodeC, nodeB, "active", "active", cost, 1000, 6);
+            addRel(nodeB, nodeA, "active", "active", cost, 1000, 5);
+
+            addFlowSegment(flowId, nodeA, nodeB, 5, 5);
+            addFlowSegment(flowId, nodeB, nodeA, 5, 5);
+            addFlowSegment(flowId, nodeB, nodeC, 6, 6);
+            addFlowSegment(flowId, nodeC, nodeB, 6, 6);
+            tx.success();
+        }
+    }
+
+    private void addFlowSegment(String flowId, Node src, Node dst, int srcPort, int dstPort) {
+        Relationship rel;
+        rel = src.createRelationshipTo(dst, RelationshipType.withName("flow_segment"));
+        rel.setProperty("src_switch", src.getProperty("name"));
+        rel.setProperty("dst_switch", dst.getProperty("name"));
+        rel.setProperty("src_port", srcPort);
+        rel.setProperty("dst_port", dstPort);
+        rel.setProperty("flowid", flowId);
+    }
 
 }
