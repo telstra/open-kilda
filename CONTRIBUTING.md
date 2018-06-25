@@ -10,6 +10,7 @@ same process and are given the same level of review.
 - [Issues](#issues)
 - [Contributing a feature](#contributing-a-feature)
 - [Pull requests](#pull-requests)
+- [Code Style](#code-style)
 
 ## Contributor license agreements
 
@@ -76,3 +77,14 @@ be 100% complete - meaning they should include all test cases and documentation
 changes related to the change.
 
 When ready, and assuming you've signed the CLA, submit the PR.
+
+### Code Style
+
+When submitting code, please make every effort to follow existing OpenKilda conventions 
+and style in order to keep the code as readable and clean as possible. 
+
+OpenKilda uses [Checkstyle](http://checkstyle.sourceforge.net/) to make sure that all the code follows those standards. 
+Checkstyle failures during compilation indicate errors in your style and must be addressed before submitting the changes.
+
+Before start contributing with new code it is recommended to install IntelliJ CheckStyle-IDEA plugin 
+and configure it to use [OpenKilda's checkstyle configuration file](services/src/checkstyle/README.md). 
