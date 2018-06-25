@@ -45,6 +45,7 @@
         <neo4j.java.driver.version>1.5.1</neo4j.java.driver.version>
         <openflowj.version>3.2.0-kilda-2</openflowj.version>
         <slf4j.version>1.7.25</slf4j.version>
+        <log4j.version>2.11.0</log4j.version>
         <snakeyaml.version>1.18</snakeyaml.version>
         <lombok.version>1.16.20</lombok.version>
         <failsafe.version>1.0.5</failsafe.version>
@@ -177,6 +178,21 @@
                 <groupId>org.slf4j</groupId>
                 <artifactId>slf4j-log4j12</artifactId>
                 <version>${slf4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j-core</artifactId>
+                <version>${log4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j-api</artifactId>
+                <version>${log4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j-slf4j-impl</artifactId>
+                <version>${log4j.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.yaml</groupId>

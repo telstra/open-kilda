@@ -75,7 +75,7 @@ public class KafkaMessageProducer implements IFloodlightModule, IFloodlightServi
         topoDiscoTopic = topicsConfig.getTopoDiscoTopic();
 
         KafkaFloodlightConfig kafkaConfig = provider.getConfiguration(KafkaFloodlightConfig.class);
-        Context context = new Context(kafkaConfig);
+        Context context = new Context(moduleContext, kafkaConfig);
 
         initProducer(context);
         initHeartBeat(context);

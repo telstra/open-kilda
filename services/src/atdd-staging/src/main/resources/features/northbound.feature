@@ -66,7 +66,7 @@ Feature: Northbound endpoints
   @Links
   Scenario: Search link properties
     Given select a random isl and alias it as 'isl1'
-    And create link properties request for isl 'isl1'
+    And create link properties request for ISL 'isl1'
     And update request: change src_switch to 'link search test'
     And update request: change src_port to '888'
     And send update link properties request
