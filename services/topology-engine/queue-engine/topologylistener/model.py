@@ -31,7 +31,10 @@ logger = logging.getLogger(__name__)
 
 def convert_integer(raw, limit=sys.maxint):
     if not isinstance(raw, (int, long)):
-        value = int(raw, 0)
+        try:
+            value = int(raw, 0)
+        except ValueError:
+            raise exc.UnacceptableDataError(raw, 'not numeric value: {}'.format(raw))
     else:
         value = raw
 
