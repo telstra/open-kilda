@@ -10,10 +10,10 @@ import java.io.Serializable;
 public class Bandwidth implements Serializable {
 
     @JsonProperty("value")
-    private int kbps;  /* (kilo-bit per second) */
+    private long kbps;  /* (kilo-bit per second) */
 
     @JsonCreator
-    public Bandwidth(@JsonProperty("value") int kbps) {
+    public Bandwidth(@JsonProperty("value") long kbps) {
         this.kbps = kbps;
     }
 }
