@@ -4,7 +4,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.PropertySource;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
@@ -14,7 +13,6 @@ import org.openkilda.model.response.Error;
  * The Class AuthPropertyService.
  */
 @Component
-@PropertySource(name = "authMessages", value = "classpath:application.properties")
 public class AuthPropertyService {
     private static final Logger LOGGER = LoggerFactory.getLogger(AuthPropertyService.class);
 

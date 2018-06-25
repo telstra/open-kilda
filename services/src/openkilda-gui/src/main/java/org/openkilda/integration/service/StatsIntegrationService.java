@@ -1,5 +1,14 @@
 package org.openkilda.integration.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpMethod;
+import org.springframework.stereotype.Service;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -21,13 +30,6 @@ import org.openkilda.utility.ApplicationProperties;
 import org.openkilda.utility.IoUtil;
 import org.openkilda.utility.JsonUtil;
 import org.openkilda.utility.StringUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpMethod;
-import org.springframework.stereotype.Service;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
 
 /**
  * The Class StatsIntegrationService.
@@ -47,7 +49,7 @@ public class StatsIntegrationService {
     private ApplicationProperties applicationProperties;
 
     public String getStats(final String startDate, final String endDate, final String downsample,
-            final String switchId, final String port, final String flowId, final String srcSwitch, final String srcPort, final String dstSwitch, final String dstPort, StatsType statsType, final String metric)
+            final String switchId, final String port, final String flowId, final String srcSwitch, final String srcPort, final String dstSwitch, final String dstPort, final StatsType statsType, final String metric)
             throws IntegrationException {
 
         LOGGER.info("Inside getStats: switchId: " + switchId);
@@ -55,7 +57,7 @@ public class StatsIntegrationService {
             String payload = getOpenTsdbRequestBody(startDate, endDate, downsample, switchId, port,
                     flowId, srcSwitch, srcPort, dstSwitch, dstPort, statsType, metric);
 
-            LOGGER.info("Inside getStats: CorrelationId: : startDate: " + startDate + ": endDate: "
+            LOGGER.info("Inside getStats: startDate: " + startDate + ": endDate: "
                     + endDate + ": payload: " + payload);
 
             HttpResponse response =
@@ -72,7 +74,7 @@ public class StatsIntegrationService {
     }
 
     private String populateFiltersAndReturnDownsample(final List<Filter> filters,
-            final Map<String, String[]> params,Integer index) {
+            final Map<String, String[]> params,final Integer index) {
         String downsample = "";
         if (params != null) {
             for (Map.Entry<String, String[]> param : params.entrySet()) {
@@ -83,12 +85,13 @@ public class StatsIntegrationService {
                     filter.setGroupBy(Boolean.valueOf(OpenTsDB.GROUP_BY));
                     filter.setType(OpenTsDB.TYPE);
                     filter.setTagk(param.getKey());
-                    if(index == 0 && param.getKey().equals("direction"))
-                    	filter.setFilter("forward");
-                    else if(index == 1 && param.getKey().equals("direction"))
-                    	filter.setFilter("reverse");
-                    else 
-                    	filter.setFilter(param.getValue()[0]);
+                    if(index == 0 && param.getKey().equals("direction")) {
+                        filter.setFilter("forward");
+                    } else if(index == 1 && param.getKey().equals("direction")) {
+                        filter.setFilter("reverse");
+                    } else {
+                        filter.setFilter(param.getValue()[0]);
+                    }
                     filters.add(filter);
                 }
             }
@@ -97,7 +100,7 @@ public class StatsIntegrationService {
     }
 
     private Query getQuery(final String downsample, final String metric,
-            final Map<String, String[]> params, Integer index,StatsType statsType) {
+            final Map<String, String[]> params, final Integer index,final StatsType statsType) {
         List<Filter> filters = new ArrayList<Filter>();
         String paramDownSample = "";
         if (params != null) {
@@ -108,20 +111,21 @@ public class StatsIntegrationService {
             paramDownSample = downsample + "-avg";
         } else if (!StringUtil.isNullOrEmpty(paramDownSample)) {
             paramDownSample = paramDownSample + "-avg";
-        } 
+        }
         Query query = new Query();
         query.setAggregator(OpenTsDB.AGGREGATOR);
         if (!statsType.equals(StatsType.ISL)) {
             query.setRate(Boolean.valueOf(OpenTsDB.RATE));
         }
-        if(validateDownSample(paramDownSample, query))
-        	query.setDownsample(paramDownSample);
+        if(validateDownSample(paramDownSample, query)) {
+            query.setDownsample(paramDownSample);
+        }
         query.setMetric(metric);
         query.setFilters(filters);
         return query;
     }
 
-	private boolean validateDownSample(String paramDownSample, Query query) {
+	private boolean validateDownSample(String paramDownSample, final Query query) {
 		boolean isValidDownsample = false;
 		paramDownSample = paramDownSample.replaceFirst("^0+(?!$)", "");
         if(Character.isDigit(paramDownSample.charAt(0))) {
@@ -130,8 +134,9 @@ public class StatsIntegrationService {
         		String dwnSample = downSampleArr[0];
         		 Pattern pattern = Pattern.compile("[msh]");
         	     Matcher matcher = pattern.matcher(dwnSample);
-        	     if (matcher.find())
-        	    	 isValidDownsample = true;
+        	     if (matcher.find()) {
+                    isValidDownsample = true;
+                }
         	}
         }
         return isValidDownsample;
@@ -149,24 +154,25 @@ public class StatsIntegrationService {
 
     private String getOpenTsdbRequestBody(final String startDate, final String endDate,
             final String downsample, final String switchId, final String port, final String flowId,
-            final String srcSwitch,final String srcPort, final String dstSwitch, final String dstPort, StatsType statsType, final String metric) throws JsonProcessingException {
+            final String srcSwitch,final String srcPort, final String dstSwitch, final String dstPort, final StatsType statsType, final String metric) throws JsonProcessingException {
         LOGGER.info("Inside getOpenTsdbRequestBody :");
         Map<String, String[]> params = getParam(statsType, switchId, port, flowId, srcSwitch, srcPort, dstSwitch, dstPort);
         List<Query> queries = new ArrayList<Query>();
         List<String> metricList = new ArrayList<String>();
-        if(statsType.equals(StatsType.PORT))
-        	metricList = Metrics.switchValue(metric);
-        else if(statsType.equals(StatsType.FLOW))
-        	metricList = Metrics.flowValue(metric);
-        else if(statsType.equals(StatsType.ISL))
-        	metricList = Metrics.switchValue(metric);
+        if(statsType.equals(StatsType.PORT)) {
+            metricList = Metrics.switchValue(metric);
+        } else if(statsType.equals(StatsType.FLOW)) {
+            metricList = Metrics.flowValue(metric);
+        } else if(statsType.equals(StatsType.ISL)) {
+            metricList = Metrics.switchValue(metric);
+        }
         if(metricList != null && !metricList.isEmpty()){
         	for(int index = 0; index < metricList.size(); index++){
         		String metricName = metricList.get(index);
         		queries.add(getQuery(downsample, metricName, params, index,statsType));
         	}
         }
-        
+
         return getRequest(startDate, endDate, queries);
     }
 
@@ -179,7 +185,7 @@ public class StatsIntegrationService {
         return JsonUtil.toString(islStatsRequest);
     }
 
-    private Map<String, String[]> getParam(StatsType statsType, final String switchId,
+    private Map<String, String[]> getParam(final StatsType statsType, final String switchId,
             final String port, final String flowId, final String srcSwitch, final String srcPort, final String dstSwitch, final String dstPort) {
         Map<String, String[]> params = new HashMap<String, String[]>();
 
@@ -199,5 +205,5 @@ public class StatsIntegrationService {
         }
         return params;
     }
-    
+
 }

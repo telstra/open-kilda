@@ -97,6 +97,12 @@ public class BaseTest {
                 directory.mkdir();
             }
         }
+        if (file.contains(IConstantsTest.JAVASCRIPT_PATH)) {
+            File directory = new File(IConstantsTest.CLASSPATH + IConstantsTest.JAVASCRIPT_PATH);
+            if (!directory.exists()) {
+                directory.mkdir();
+            }
+        }
 
         File fileObject = new File(file);
         if (fileObject.exists()) {
