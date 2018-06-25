@@ -120,37 +120,6 @@ public class RestClientManager {
     }
 
     /**
-     * Invoke.
-     *
-     * @param <T> the generic type
-     * @param response the response
-     * @param responseClass the response class
-     * @return the http response
-     */
-    // @SuppressWarnings("rawtypes")
-    // public HttpResponse invoke(final String correlationId, String apiUrl,
-    // final HttpMethod httpMethod, final String payload, final String token,
-    // final String contentType, final String basicAuth, final Map<String, String> queryParams) {
-    // StringBuilder queryStringBuilder = new StringBuilder();
-    // if (queryParams != null) {
-    // for (String key : queryParams.keySet()) {
-    //
-    // if (!StringUtils.isNullOrEmpty(key)
-    // && !StringUtils.isNullOrEmpty(queryParams.get(key))) {
-    // if (queryStringBuilder.length() == 0 && !apiUrl.contains("?")) {
-    // queryStringBuilder.append("?");
-    // } else {
-    // queryStringBuilder.append("&");
-    // }
-    // queryStringBuilder.append(key).append("=").append(queryParams.get(key));
-    // }
-    // }
-    // }
-    // return invoke(correlationId, apiUrl + queryStringBuilder.toString(), httpMethod, payload,
-    // token, contentType, basicAuth, new HashMap());
-    // }
-
-    /**
      * Gets the response list.
      *
      * @param <T> the generic type
