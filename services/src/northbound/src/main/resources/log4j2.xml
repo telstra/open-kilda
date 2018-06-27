@@ -5,7 +5,9 @@
             <PatternLayout pattern="%d{ISO8601} %-5p [%t] %c{1.} - [%X] %m%n"/>
         </Console>
         <Socket name="LOGSTASH" host="logstash.pendev" port="5005">
-            <JsonLayout compact="true" eventEol="true" properties="true"/>
+            <JsonLayout compact="true" eventEol="true">
+                <KeyValuePair key="correlation_id" value="${ctx:correlation_id}"/>
+            </JsonLayout>
         </Socket>
         <RollingFile name="ROLLINGFILE" fileName="/var/logs/northbound/app.log"
                 filePattern="/var/logs/northbound/app-%d{MM-dd-yyyy}-%i.log.gz">

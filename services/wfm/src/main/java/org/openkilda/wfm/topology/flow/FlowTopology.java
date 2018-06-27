@@ -30,6 +30,8 @@ import org.openkilda.wfm.topology.flow.bolts.SpeakerBolt;
 import org.openkilda.wfm.topology.flow.bolts.SplitterBolt;
 import org.openkilda.wfm.topology.flow.bolts.TopologyEngineBolt;
 import org.openkilda.wfm.topology.flow.bolts.TransactionBolt;
+import org.openkilda.wfm.topology.flow.bolts.VerificationBolt;
+import org.openkilda.wfm.topology.flow.bolts.VerificationJointBolt;
 
 import org.apache.storm.generated.ComponentObject;
 import org.apache.storm.generated.StormTopology;
@@ -136,6 +138,7 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
                 // TODO: this CACHE_SYNC shouldn't be fields-grouping - there is no field - it should be all - but
                 // tackle during multi instance testing
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.CACHE_SYNC.toString(), fieldFlowId)
+                .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.VERIFICATION.toString(), fieldFlowId)
                 .fieldsGrouping(ComponentType.TRANSACTION_BOLT.toString(), StreamType.STATUS.toString(), fieldFlowId)
                 .fieldsGrouping(ComponentType.SPEAKER_BOLT.toString(), StreamType.STATUS.toString(), fieldFlowId)
                 .fieldsGrouping(
@@ -158,6 +161,7 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
         /*
          * Spout receives Topology Engine response
          */
+        // FIXME(surabujin): can be replaced with NORTHBOUND_KAFKA_SPOUT (same topic)
         KafkaSpout topologyKafkaSpout = createKafkaSpout(
                 topologyConfig.getKafkaFlowTopic(), ComponentType.TOPOLOGY_ENGINE_KAFKA_SPOUT.toString());
         builder.setSpout(ComponentType.TOPOLOGY_ENGINE_KAFKA_SPOUT.toString(), topologyKafkaSpout, parallelism);
@@ -175,11 +179,14 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
         KafkaBolt speakerKafkaBolt = createKafkaBolt(topologyConfig.getKafkaSpeakerTopic());
         builder.setBolt(ComponentType.SPEAKER_KAFKA_BOLT.toString(), speakerKafkaBolt, parallelism)
                 .shuffleGrouping(ComponentType.TRANSACTION_BOLT.toString(), StreamType.CREATE.toString())
-                .shuffleGrouping(ComponentType.TRANSACTION_BOLT.toString(), StreamType.DELETE.toString());
+                .shuffleGrouping(ComponentType.TRANSACTION_BOLT.toString(), StreamType.DELETE.toString())
+                .shuffleGrouping(
+                        ComponentType.VERIFICATION_JOINT_BOLT.toString(), VerificationJointBolt.STREAM_SPEAKER_ID);
 
         /*
          * Spout receives Speaker responses
          */
+        // FIXME(surabujin): can be replaced with NORTHBOUND_KAFKA_SPOUT (same topic)
         KafkaSpout speakerKafkaSpout = createKafkaSpout(
                 topologyConfig.getKafkaFlowTopic(), ComponentType.SPEAKER_KAFKA_SPOUT.toString());
         builder.setSpout(ComponentType.SPEAKER_KAFKA_SPOUT.toString(), speakerKafkaSpout, parallelism);
@@ -205,6 +212,20 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
         ctrlTargets.add(new CtrlBoltRef(ComponentType.TRANSACTION_BOLT.toString(), transactionBolt, boltSetup));
 
         /*
+         * Verification
+         */
+        builder.setBolt(ComponentType.VERIFICATION_BOLT.toString(), new VerificationBolt(), parallelism)
+                // CrudBolt in chain required to acquire BiFlow object
+                .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.VERIFICATION.toString())
+                // Match FL responses and extract flowId into separate tuple field
+                .shuffleGrouping(ComponentType.SPEAKER_BOLT.toString(), SpeakerBolt.STREAM_VERIFICATION_ID);
+
+        builder.setBolt(ComponentType.VERIFICATION_JOINT_BOLT.toString(), new VerificationJointBolt(), parallelism)
+                // proxy all tuples via VerificationBolt to be able to use fieldsGrouping by flowId field
+                .fieldsGrouping(
+                        ComponentType.VERIFICATION_BOLT.toString(), VerificationBolt.STREAM_ID_PROXY, fieldFlowId);
+
+        /*
          * Error processing bolt
          */
         ErrorBolt errorProcessingBolt = new ErrorBolt();
@@ -218,7 +239,9 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
         NorthboundReplyBolt northboundReplyBolt = new NorthboundReplyBolt();
         builder.setBolt(ComponentType.NORTHBOUND_REPLY_BOLT.toString(), northboundReplyBolt, parallelism)
                 .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.RESPONSE.toString())
-                .shuffleGrouping(ComponentType.ERROR_BOLT.toString(), StreamType.RESPONSE.toString());
+                .shuffleGrouping(ComponentType.ERROR_BOLT.toString(), StreamType.RESPONSE.toString())
+                .shuffleGrouping(
+                        ComponentType.VERIFICATION_JOINT_BOLT.toString(), VerificationJointBolt.STREAM_RESPONSE_ID);
 
         /*
          * Bolt sends Northbound responses

@@ -148,7 +148,7 @@ public class NorthboundRunTest {
 
     @Then("^synchronize flow cache is successful with (\\d+) dropped flows$")
     public void synchronizeFlowCache(final int droppedFlowsCount) {
-        FlowCacheSyncResults results = FlowUtils.synchFlowCache();
+        FlowCacheSyncResults results = FlowUtils.syncFlowCache();
         assertNotNull(results);
         assertEquals(droppedFlowsCount, results.getDroppedFlows().length);
     }
@@ -163,7 +163,7 @@ public class NorthboundRunTest {
     @When("^flow (\\w+) could be deleted from DB$")
     public void deleteFlowFromDbViaTE(final String flowName) {
         String flowId = FlowUtils.getFlowName(flowName);
-        boolean deleted = FlowUtils.deleteFlowViaTE(flowId);
+        boolean deleted = FlowUtils.deleteFlowViaTe(flowId);
 
         assertTrue(deleted);
     }

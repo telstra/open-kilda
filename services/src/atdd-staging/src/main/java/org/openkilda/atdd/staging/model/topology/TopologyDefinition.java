@@ -92,8 +92,18 @@ public class TopologyDefinition {
 
     public List<Isl> getIslsForActiveSwitches() {
         return isls.stream()
-                .filter(isl ->
-                        isl.getDstSwitch() != null && isl.getSrcSwitch().isActive() && isl.getDstSwitch().isActive())
+                .filter(isl -> isl.getDstSwitch() != null
+                        && isl.getSrcSwitch().isActive() && isl.getDstSwitch().isActive())
+                .collect(toList());
+    }
+
+    /**
+     * Get list of ISLs that are connected only at one side (no destination switch).
+     * The other side is usually an a-switch.
+     */
+    public List<Isl> getNotConnectedIsls() {
+        return isls.stream()
+                .filter(isl -> isl.getSrcSwitch() != null && isl.getDstSwitch() == null)
                 .collect(toList());
     }
 
