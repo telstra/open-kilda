@@ -36,6 +36,7 @@ kafka_topic_topo_cache: "kilda.topo.cache"
 kafka_topic_topo_disco: "kilda.topo.disco"
 kafka_topic_topo_eng: "kilda.topo.eng"
 kafka_topic_topo_nb: "kilda.topo.nb"
+kafka_te_consumer_group: "kilda-tpe"
 discovery_interval: 2
 discovery_timeout: "9"
 # discovery_limit of -1 is forever
