@@ -1,12 +1,13 @@
 package org.openkilda.northbound.service;
 
-import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.command.switches.InstallRulesAction;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.northbound.dto.SwitchDto;
+import org.openkilda.northbound.dto.switches.DeleteMeterResult;
+import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 
 import java.util.List;
@@ -86,4 +87,11 @@ public interface SwitchService extends BasicService {
      * @return the synchronization result.
      */
     RulesSyncResult syncRules(String switchId);
+
+    /**
+     * Removed meter from the switch.
+     * @param switchId switch datapath id.
+     * @param meterId meter to be deleted.
+     */
+    DeleteMeterResult deleteMeter(String switchId, long meterId);
 }

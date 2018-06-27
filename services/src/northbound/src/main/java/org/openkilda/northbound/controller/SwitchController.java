@@ -17,11 +17,6 @@ package org.openkilda.northbound.controller;
 
 import static org.openkilda.messaging.error.ErrorType.PARAMETERS_INVALID;
 
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiParam;
-import io.swagger.annotations.ApiResponse;
-import io.swagger.annotations.ApiResponses;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
@@ -31,11 +26,18 @@ import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.northbound.dto.SwitchDto;
+import org.openkilda.northbound.dto.switches.DeleteMeterResult;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.northbound.service.SwitchService;
 import org.openkilda.northbound.utils.ExtraAuthRequired;
 import org.openkilda.northbound.utils.RequestCorrelationId;
+
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiParam;
+import io.swagger.annotations.ApiResponse;
+import io.swagger.annotations.ApiResponses;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -121,15 +123,15 @@ public class SwitchController {
      */
     @ApiOperation(value = "Delete switch rules. Requires special authorization",
             response = Long.class, responseContainer = "List")
-    @ApiResponse(code = 200, response = Long.class, responseContainer = "List" , message = "Operation is successful")
+    @ApiResponse(code = 200, response = Long.class, responseContainer = "List", message = "Operation is successful")
     @DeleteMapping(value = "/switches/{switch-id}/rules",
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     @ExtraAuthRequired
     public ResponseEntity<List<Long>> deleteSwitchRules(
             @PathVariable("switch-id") String switchId,
-            @ApiParam(value = "default: IGNORE_DEFAULTS. Can be one of DeleteRulesAction: " +
-                    "DROP_ALL,DROP_ALL_ADD_DEFAULTS,IGNORE_DEFAULTS,OVERWRITE_DEFAULTS," +
-                    "REMOVE_DROP,REMOVE_BROADCAST,REMOVE_UNICAST,REMOVE_DEFAULTS,REMOVE_ADD_DEFAULTS",
+            @ApiParam(value = "default: IGNORE_DEFAULTS. Can be one of DeleteRulesAction: "
+                    + "DROP_ALL,DROP_ALL_ADD_DEFAULTS,IGNORE_DEFAULTS,OVERWRITE_DEFAULTS,"
+                    + "REMOVE_DROP,REMOVE_BROADCAST,REMOVE_UNICAST,REMOVE_DEFAULTS,REMOVE_ADD_DEFAULTS",
                     required = false)
             @RequestParam("delete-action") Optional<DeleteRulesAction> deleteAction,
             @RequestParam("cookie") Optional<Long> cookie,
@@ -175,14 +177,14 @@ public class SwitchController {
      */
     @ApiOperation(value = "Install switch rules. Requires special authorization",
             response = Long.class, responseContainer = "List")
-    @ApiResponse(code = 200, response = Long.class, responseContainer = "List" , message = "Operation is successful")
+    @ApiResponse(code = 200, response = Long.class, responseContainer = "List", message = "Operation is successful")
     @PutMapping(value = "/switches/{switch-id}/rules",
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     @ExtraAuthRequired
     public ResponseEntity<List<Long>> installSwitchRules(
             @PathVariable("switch-id") String switchId,
-            @ApiParam(value = "default: INSTALL_DEFAULTS. Can be one of InstallRulesAction: " +
-                    " INSTALL_DROP,INSTALL_BROADCAST,INSTALL_UNICAST,INSTALL_DEFAULTS",
+            @ApiParam(value = "default: INSTALL_DEFAULTS. Can be one of InstallRulesAction: "
+                    + " INSTALL_DROP,INSTALL_BROADCAST,INSTALL_UNICAST,INSTALL_DEFAULTS",
                     required = false)
             @RequestParam("install-action") Optional<InstallRulesAction> installAction) {
         List<Long> response = switchService
@@ -234,5 +236,16 @@ public class SwitchController {
     @ResponseStatus(HttpStatus.OK)
     public RulesSyncResult syncRules(@PathVariable(name = "switch_id") String switchId) {
         return switchService.syncRules(switchId);
+    }
+
+    /**
+     * Removes meter from the switch.
+     */
+    @ApiOperation(value = "Delete meter from the switch", response = DeleteMeterResult.class)
+    @DeleteMapping(path = "/switches/{switch_id}/meter/{meter_id}")
+    @ResponseStatus(HttpStatus.OK)
+    public DeleteMeterResult deleteMeter(@PathVariable(name = "switch_id") String switchId,
+                                         @PathVariable(name = "meter_id") long meterId) {
+        return switchService.deleteMeter(switchId, meterId);
     }
 }
