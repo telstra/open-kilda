@@ -15,10 +15,11 @@
 
 package org.openkilda.pce.cache;
 
-import com.google.common.base.MoreObjects;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.messaging.payload.ResourcePool;
+
+import com.google.common.base.MoreObjects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,15 +66,15 @@ public class ResourceCache extends Cache {
 
     /**
      * Maximum meter id value.
-     * NB: Should be the same as VLAN range at the least, could be more. The formula
-     * ensures we have a sufficient range
+     * NB: Should be the same as VLAN range at the least, could be more. The formula ensures we have a sufficient range.
+     * As centecs have limit of max value equals to 2560 we set it to 2500.
      */
-    static final int MAX_METER_ID = MIN_METER_ID + MAX_VLAN_ID - MIN_VLAN_ID;
+    static final int MAX_METER_ID = 2500;
 
     /**
      * Maximum cookie value.
      */
-    static final int MAX_COOKIE = 128*1024;
+    static final int MAX_COOKIE = 128 * 1024;
 
     /**
      * Minimum cookie value.
