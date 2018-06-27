@@ -405,8 +405,8 @@ public class CacheBolt
                         request, System.currentTimeMillis(), msgCorrelationId, Destination.WFM)));
                 outputCollector.emit(StreamType.WFM_DUMP.toString(), tuple, values);
 
-                logger.warn("Flow {} reroute command message sent with correlationId {}",
-                        flow.getLeft().getFlowId(), msgCorrelationId);
+                logger.warn("Flow {} reroute command message sent with correlationId {}, reason {}",
+                        flow.getLeft().getFlowId(), msgCorrelationId, reason);
             } catch (JsonProcessingException exception) {
                 logger.error("Could not format flow reroute request by flow={}", flow, exception);
             }
