@@ -648,11 +648,11 @@ class RecordHandler implements Runnable {
                     context.getKafkaProducer().postMessage(context.getKafkaStatsTopic(), infoMessage);
                 } catch (Exception e) {
                     logger.error("Could not get port stats data for switch {} with error {}",
-                            switchId, e.getMessage());
+                            switchId, e.getMessage(), e);
                 }
             }
         } catch (Exception e) {
-            logger.error("Could not get port data for stats {}", e.getMessage());
+            logger.error("Could not get port data for stats {}", e.getMessage(), e);
         }
     }
 
