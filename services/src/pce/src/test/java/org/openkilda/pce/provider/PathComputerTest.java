@@ -1,19 +1,19 @@
+/* Copyright 2017 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.openkilda.pce.provider;
-
-import org.junit.*;
-
-import java.io.File;
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
-
-import org.neo4j.driver.v1.*;
-import org.neo4j.graphdb.*;
-import org.neo4j.graphdb.Transaction;
-import org.neo4j.graphdb.factory.GraphDatabaseFactory;
-import org.neo4j.io.fs.FileUtils;
-import org.neo4j.kernel.configuration.BoltConnector;
-
 
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
@@ -26,35 +26,55 @@ import org.openkilda.pce.model.SimpleIsl;
 import org.openkilda.pce.model.SimpleSwitch;
 import org.openkilda.pce.provider.PathComputer.Strategy;
 
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Ignore;
+import org.junit.Test;
+import org.neo4j.driver.v1.AuthTokens;
+import org.neo4j.driver.v1.Driver;
+import org.neo4j.driver.v1.GraphDatabase;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Label;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.RelationshipType;
+import org.neo4j.graphdb.Transaction;
+import org.neo4j.graphdb.factory.GraphDatabaseFactory;
+import org.neo4j.io.fs.FileUtils;
+import org.neo4j.kernel.configuration.BoltConnector;
+
+import java.io.File;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
+
 /**
  * The primary goals of this test package are to emulate the Acceptance Tests in the ATDD module.
  * Those tests can be found in services/src/atdd/src/test/java/org/openkilda/atdd/PathComputationTest.java
- *
- * To
  */
 public class PathComputerTest {
 
     private static GraphDatabaseService graphDb;
 
-    private static final File databaseDirectory = new File( "target/neo4j-test-db" );
+    private static final File databaseDirectory = new File("target/neo4j-test-db");
     private static Driver driver;
     private static NeoDriver nd;
 
     @BeforeClass
     public static void setUpOnce() throws Exception {
-        FileUtils.deleteRecursively( databaseDirectory );       // delete neo db file
-        System.out.println("Creating Elephants \uD83D\uDC18");
+        FileUtils.deleteRecursively(databaseDirectory);       // delete neo db file
 
         // This next area enables Kilda to connect to the local db
         BoltConnector bolt = new BoltConnector("0");
         graphDb = new GraphDatabaseFactory()
-                .newEmbeddedDatabaseBuilder( databaseDirectory )
-                .setConfig( bolt.type, "BOLT" )
-                .setConfig( bolt.enabled, "true" )
-                .setConfig( bolt.listen_address, "localhost:7878" )
+                .newEmbeddedDatabaseBuilder(databaseDirectory)
+                .setConfig(bolt.type, "BOLT")
+                .setConfig(bolt.enabled, "true")
+                .setConfig(bolt.listen_address, "localhost:7878")
                 .newGraphDatabase();
 
-        driver = GraphDatabase.driver( "bolt://localhost:7878", AuthTokens.basic( "neo4j", "password" ) );
+        driver = GraphDatabase.driver("bolt://localhost:7878", AuthTokens.basic("neo4j", "password"));
         nd = new NeoDriver(driver);
 
     }
@@ -67,18 +87,17 @@ public class PathComputerTest {
 
     @Test
     public void testGetFlowInfo() {
-        try ( Transaction tx = graphDb.beginTx() ) {
-            Node node1, node2;
-            node1 = graphDb.createNode(Label.label("switch"));
+        try (Transaction tx = graphDb.beginTx()) {
+            Node node1 = graphDb.createNode(Label.label("switch"));
             node1.setProperty("name", "00:03");
-            node2 = graphDb.createNode(Label.label("switch"));
+            Node node2 = graphDb.createNode(Label.label("switch"));
             node2.setProperty("name", "00:04");
             Relationship rel1 = node1.createRelationshipTo(node2, RelationshipType.withName("flow"));
-            rel1.setProperty("flowid","f1");
+            rel1.setProperty("flowid", "f1");
             rel1.setProperty("cookie", 3);
             rel1.setProperty("meter_id", 2);
             rel1.setProperty("transit_vlan", 1);
-            rel1.setProperty("src_switch","00:03");
+            rel1.setProperty("src_switch", "00:03");
             tx.success();
         }
 
@@ -96,26 +115,15 @@ public class PathComputerTest {
         n.setProperty("state", "active");
         return n;
     }
-    private Relationship addRel (Node n1, Node n2, String status, String actual, int cost, int bw, int port){
+
+    private Relationship addRel(Node n1, Node n2, String status, String actual, int cost, int bw, int port) {
         Relationship rel;
         rel = n1.createRelationshipTo(n2, RelationshipType.withName("isl"));
-        rel.setProperty("status",status);
-        rel.setProperty("actual",actual);
-        if (cost >= 0) {rel.setProperty("cost", cost);}
-        rel.setProperty("available_bandwidth", bw);
-        rel.setProperty("latency", 5);
-        rel.setProperty("src_port", port);
-        rel.setProperty("dst_port", port);
-        rel.setProperty("src_switch", n1.getProperty("name"));
-        rel.setProperty("dst_switch", n2.getProperty("name"));
-        return rel;
-    }
-    private Relationship addRelAsString (Node n1, Node n2, String status, String actual, String cost, int bw, int port){
-        Relationship rel;
-        rel = n1.createRelationshipTo(n2, RelationshipType.withName("isl"));
-        rel.setProperty("status",status);
-        rel.setProperty("actual",actual);
-        if (cost != null && !cost.isEmpty()) {rel.setProperty("cost", cost);}
+        rel.setProperty("status", status);
+        rel.setProperty("actual", actual);
+        if (cost >= 0) {
+            rel.setProperty("cost", cost);
+        }
         rel.setProperty("available_bandwidth", bw);
         rel.setProperty("latency", 5);
         rel.setProperty("src_port", port);
@@ -125,24 +133,36 @@ public class PathComputerTest {
         return rel;
     }
 
-
-    private void createDiamond(String pathBstatus, String pathCstatus, int pathBcost, int pathCcost) {
-        createDiamond(pathBstatus, pathCstatus, pathBcost, pathCcost, "00:", 1);
+    private Relationship addRelAsString(Node n1, Node n2, String status, String actual, String cost, int bw, int port) {
+        Relationship rel;
+        rel = n1.createRelationshipTo(n2, RelationshipType.withName("isl"));
+        rel.setProperty("status", status);
+        rel.setProperty("actual", actual);
+        if (cost != null && !cost.isEmpty()) {
+            rel.setProperty("cost", cost);
+        }
+        rel.setProperty("available_bandwidth", bw);
+        rel.setProperty("latency", 5);
+        rel.setProperty("src_port", port);
+        rel.setProperty("dst_port", port);
+        rel.setProperty("src_switch", n1.getProperty("name"));
+        rel.setProperty("dst_switch", n2.getProperty("name"));
+        return rel;
     }
 
     /**
      * This will create a diamond with cost as string.
      */
-    private void createDiamondAsString(String pathBstatus, String pathCstatus, String pathBcost, String pathCcost, String switchStart, int startIndex) {
-        try ( Transaction tx = graphDb.beginTx() ) {
+    private void createDiamondAsString(String pathBstatus, String pathCstatus, String pathBcost, String pathCcost,
+                                       String switchStart, int startIndex) {
+        try (Transaction tx = graphDb.beginTx()) {
             // A - B - D
             //   + C +
-            Node nodeA, nodeB, nodeC, nodeD;
             int index = startIndex;
-            nodeA = createNode(switchStart + String.format("%02X", index++));
-            nodeB = createNode(switchStart + String.format("%02X", index++));
-            nodeC = createNode(switchStart + String.format("%02X", index++));
-            nodeD = createNode(switchStart + String.format("%02X", index++));
+            Node nodeA = createNode(switchStart + String.format("%02X", index++));
+            Node nodeB = createNode(switchStart + String.format("%02X", index++));
+            Node nodeC = createNode(switchStart + String.format("%02X", index++));
+            Node nodeD = createNode(switchStart + String.format("%02X", index++));
             String actual = (pathBstatus.equals("active") && pathCstatus.equals("active")) ? "active" : "inactive";
             addRelAsString(nodeA, nodeB, pathBstatus, actual, pathBcost, 1000, 5);
             addRelAsString(nodeA, nodeC, pathCstatus, actual, pathCcost, 1000, 6);
@@ -156,16 +176,20 @@ public class PathComputerTest {
         }
     }
 
-    private void createDiamond(String pathBstatus, String pathCstatus, int pathBcost, int pathCcost, String switchStart, int startIndex) {
-        try ( Transaction tx = graphDb.beginTx() ) {
+    private void createDiamond(String pathBstatus, String pathCstatus, int pathBcost, int pathCcost) {
+        createDiamond(pathBstatus, pathCstatus, pathBcost, pathCcost, "00:", 1);
+    }
+
+    private void createDiamond(String pathBstatus, String pathCstatus, int pathBcost, int pathCcost,
+                               String switchStart, int startIndex) {
+        try (Transaction tx = graphDb.beginTx()) {
             // A - B - D
             //   + C +
-            Node nodeA, nodeB, nodeC, nodeD;
             int index = startIndex;
-            nodeA = createNode(switchStart + String.format("%02X", index++));
-            nodeB = createNode(switchStart + String.format("%02X", index++));
-            nodeC = createNode(switchStart + String.format("%02X", index++));
-            nodeD = createNode(switchStart + String.format("%02X", index++));
+            Node nodeA = createNode(switchStart + String.format("%02X", index++));
+            Node nodeB = createNode(switchStart + String.format("%02X", index++));
+            Node nodeC = createNode(switchStart + String.format("%02X", index++));
+            Node nodeD = createNode(switchStart + String.format("%02X", index++));
             String actual = (pathBstatus.equals("active") && pathCstatus.equals("active")) ? "active" : "inactive";
             addRel(nodeA, nodeB, pathBstatus, actual, pathBcost, 1000, 5);
             addRel(nodeA, nodeC, pathCstatus, actual, pathCcost, 1000, 6);
@@ -179,33 +203,32 @@ public class PathComputerTest {
         }
     }
 
-    private void connectDiamonds(String aName, String bName, String status, int cost, int port) {
-        try ( Transaction tx = graphDb.beginTx() ) {
+    private void connectDiamonds(String switchA, String switchB, String status, int cost, int port) {
+        try (Transaction tx = graphDb.beginTx()) {
             // A - B - D
             //   + C +
-            Node nodeA = graphDb.findNode(Label.label("switch"),"name", aName);
-            Node nodeB = graphDb.findNode(Label.label("switch"),"name", bName);
+            Node nodeA = graphDb.findNode(Label.label("switch"), "name", switchA);
+            Node nodeB = graphDb.findNode(Label.label("switch"), "name", switchB);
             addRel(nodeA, nodeB, status, status, cost, 1000, port);
             addRel(nodeB, nodeA, status, status, cost, 1000, port);
             tx.success();
         }
     }
 
-
     private void createTriangleTopo(String pathABstatus, int pathABcost, int pathCcost) {
         createTriangleTopo(pathABstatus, pathABcost, pathCcost, "00:", 1);
     }
 
-    private void createTriangleTopo(String pathABstatus, int pathABcost, int pathCcost, String switchStart, int startIndex) {
-        try ( Transaction tx = graphDb.beginTx() ) {
+    private void createTriangleTopo(String pathABstatus, int pathABcost, int pathCcost, String switchStart,
+                                    int startIndex) {
+        try (Transaction tx = graphDb.beginTx()) {
             // A - B
             // + C +
-            Node nodeA, nodeB, nodeC;
             int index = startIndex;
 
-            nodeA = createNode(switchStart + String.format("%02X", index++));
-            nodeB = createNode(switchStart + String.format("%02X", index++));
-            nodeC = createNode(switchStart + String.format("%02X", index++));
+            Node nodeA = createNode(switchStart + String.format("%02X", index++));
+            Node nodeB = createNode(switchStart + String.format("%02X", index++));
+            Node nodeC = createNode(switchStart + String.format("%02X", index++));
 
             addRel(nodeA, nodeB, pathABstatus, pathABstatus, pathABcost, 1000, 5);
             addRel(nodeB, nodeA, pathABstatus, pathABstatus, pathABcost, 1000, 5);
@@ -500,13 +523,12 @@ public class PathComputerTest {
     }
 
     private void createLinearTopoWithFlowSegments(int cost, String switchStart, int startIndex, String flowId) {
-        try ( Transaction tx = graphDb.beginTx() ) {
-            // A - B - C
-            Node nodeA, nodeB, nodeC;
+        try (Transaction tx = graphDb.beginTx()) {
             int index = startIndex;
-            nodeA = createNode(switchStart + String.format("%02X", index++));
-            nodeB = createNode(switchStart + String.format("%02X", index++));
-            nodeC = createNode(switchStart + String.format("%02X", index));
+            // A - B - C
+            Node nodeA = createNode(switchStart + String.format("%02X", index++));
+            Node nodeB = createNode(switchStart + String.format("%02X", index++));
+            Node nodeC = createNode(switchStart + String.format("%02X", index));
             addRel(nodeA, nodeB, "active", "active", cost, 1000, 5);
             addRel(nodeB, nodeC, "active", "active", cost, 1000, 6);
             addRel(nodeC, nodeB, "active", "active", cost, 1000, 6);
