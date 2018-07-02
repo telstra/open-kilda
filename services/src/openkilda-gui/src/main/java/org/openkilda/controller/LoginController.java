@@ -52,7 +52,7 @@ public class LoginController extends BaseController {
 
     @Autowired
     private UserService userService;
-    
+
     @Autowired
     private PermissionRepository permissionRepository;
 
@@ -64,7 +64,6 @@ public class LoginController extends BaseController {
      */
     @RequestMapping(value = {"/", "/login"})
     public ModelAndView login(final HttpServletRequest request) {
-        LOGGER.info("[login] - start");
         return validateAndRedirect(request, IConstants.View.REDIRECT_HOME);
     }
 
@@ -76,7 +75,6 @@ public class LoginController extends BaseController {
      */
     @RequestMapping("/logout")
     public ModelAndView logout(final Model model) {
-        LOGGER.info("[logout] - start");
         return new ModelAndView(IConstants.View.LOGOUT);
     }
 
@@ -154,7 +152,6 @@ public class LoginController extends BaseController {
         if (error != null) {
             modelAndView.addObject("error", error);
         }
-        LOGGER.info("exit LoginController method authenticate");
         return modelAndView;
     }
 

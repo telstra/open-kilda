@@ -93,9 +93,7 @@ function submitFilter(){
 		 url+="?";
 		 var hasOtherField = false;
 		 if(type.length){
-			 for(var i=0; i<type.length; i++){
-				 url+='activity='+type[i]+"&";
-			 }
+			 url+='activity='+type[0]+"&";
 			 hasOtherField = true;
 		 }
 		 if(username.length){
@@ -129,7 +127,7 @@ function initUserActivity(){
 			var typesOptions = '<option value="">Select Type</option>';
 			if(types && types.length > 0){
 				for(var i=0; i < types.length; i++){
-					typesOptions +='<option value="'+types[i].name+'">'+types[i].name+'</option>';
+					typesOptions +='<option value="'+types[i].id+'">'+types[i].name+'</option>';
 				}
 			}
 			$('#typeFilterField').append(typesOptions);

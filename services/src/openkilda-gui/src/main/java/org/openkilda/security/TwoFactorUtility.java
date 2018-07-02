@@ -25,7 +25,6 @@ public class TwoFactorUtility {
             = {1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000};
 
     public static String getBase32EncryptedKey() {
-        logger.info("[getBase32EncryptedKey]");
         SecureRandom random = new SecureRandom();
         byte bytes[] = new byte[20];
         random.nextBytes(bytes);
@@ -38,7 +37,6 @@ public class TwoFactorUtility {
     }
 
     public static String generateEncryptedKey(final String base32String) {
-        logger.info("[generateEncryptedKey]");
         logger.debug("[generateEncryptedKey] param : base32String " + base32String);
         String generatedKey = null;
         try {
@@ -56,7 +54,6 @@ public class TwoFactorUtility {
     }
 
     public static String decryptKey(final String secretKey) throws Exception {
-        logger.info("[decryptKey]");
         logger.debug("[decryptKey] param : secretKey " + secretKey);
         byte[] decodedArray = Base64.decodeBase64(secretKey.getBytes());
         String decodeValue = new String(decodedArray, StandardCharsets.UTF_8);
@@ -67,7 +64,6 @@ public class TwoFactorUtility {
     }
 
     public static boolean validateOtp(final String otp, final String decryptKey) {
-        logger.info("[validateOtp]");
         logger.debug("[validateOtp] param : ,decryptKey : " + decryptKey);
         boolean otpValid = false;
         Base32 base32 = new Base32();
@@ -107,7 +103,6 @@ public class TwoFactorUtility {
     }
 
     public static String generateTOTP(final String key, final String time, final String returnDigits) {
-        logger.info("[generateTOTP]");
         logger.debug("[generateTOTP] param : key " + key + ",returnDigits : " + returnDigits);
         return generateTOTP(key, time, returnDigits, "HmacSHA1");
     }
@@ -125,7 +120,6 @@ public class TwoFactorUtility {
 
     public static String generateTOTP(final String key, final String time,
             final String returnDigits, final String crypto) {
-        logger.info("[generateTOTP]");
         logger.debug("[generateTOTP] param : key " + key + ",time : " + time + ",returnDigits: "
                 + returnDigits + ", crypto :" + crypto);
         int codeDigits = Integer.decode(returnDigits).intValue();
@@ -159,7 +153,6 @@ public class TwoFactorUtility {
     }
 
     private static byte[] hexStr2Bytes(final String hex) {
-        logger.info("[hexStr2Bytes]");
         logger.debug("[hexStr2Bytes] param : key " + hex);
         // Adding one byte to get the right conversion
         // Values starting with "0" can be converted
@@ -176,7 +169,6 @@ public class TwoFactorUtility {
     }
 
     private static byte[] hmac_sha(final String crypto, final byte[] keyBytes, final byte[] text) {
-        logger.info("[hmac_sha]");
         logger.debug("[hmac_sha] param : keyBytes " + keyBytes + ",text : " + text + ", crypto :"
                 + crypto);
 
@@ -194,7 +186,6 @@ public class TwoFactorUtility {
     }
 
     private static String bytesToHex(final byte[] bytes) {
-        logger.info("[bytesToHex]");
         logger.debug("[bytesToHex] param : bytes " + bytes);
         final char[] hexArray = "0123456789ABCDEF".toCharArray();
         char[] hexChars = new char[bytes.length * 2];

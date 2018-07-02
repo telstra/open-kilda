@@ -42,7 +42,7 @@ public class MyAccessDeniedHandler implements AccessDeniedHandler {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 
         if (auth != null) {
-            logger.info("User '" + auth.getName() + "' attempted to access the protected URL: "
+            logger.error("User '" + auth.getName() + "' attempted to access the protected URL: "
                     + httpServletRequest.getRequestURI());
         }
 

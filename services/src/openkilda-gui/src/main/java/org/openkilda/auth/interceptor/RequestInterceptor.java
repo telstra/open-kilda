@@ -25,6 +25,8 @@ import org.openkilda.auth.model.Permissions;
 import org.openkilda.auth.model.RequestContext;
 import org.openkilda.constants.IConstants;
 import org.openkilda.constants.Status;
+import org.usermanagement.dao.entity.UserEntity;
+import org.usermanagement.dao.repository.UserRepository;
 import org.usermanagement.model.Permission;
 import org.usermanagement.model.Role;
 import org.usermanagement.model.UserInfo;
@@ -51,6 +53,9 @@ public class RequestInterceptor extends HandlerInterceptorAdapter {
     @Autowired
     private MessageUtils messageUtils;
 
+    @Autowired
+    private UserRepository userRepository;
+
     @Override
     public boolean preHandle(final HttpServletRequest request, final HttpServletResponse response,
             final Object handler) throws Exception {
@@ -75,7 +80,7 @@ public class RequestInterceptor extends HandlerInterceptorAdapter {
                 updateRequestContext(correlationId, request, userInfo);
             }
         } catch (IllegalStateException ex) {
-            LOGGER.info(
+            LOGGER.error(
                     "[getLoggedInUser] Exception while retrieving user information from session. Exception: "
                             + ex.getLocalizedMessage(),
                     ex);
@@ -130,12 +135,15 @@ public class RequestInterceptor extends HandlerInterceptorAdapter {
 
     private Set<String> availablePermissions(final UserInfo userInfo) {
         Set<String> availablePermissions = new HashSet<>();
-        if(userInfo.getUserId() != 1) {
+        UserEntity userEntity = userRepository.findByUserId(userInfo.getUserId());
+        if (userInfo.getUserId() != 1 && userEntity != null
+                && Status.ACTIVE.getStatusEntity().equals(userEntity.getStatusEntity())) {
             Set<String> roles = userInfo.getRoles();
             if (roles != null && roles.size() > 0) {
                 List<Role> roleList = roleService.getRoleByName(roles);
                 for (Role role : roleList) {
-                    if (role.getPermissions() != null) {
+                    if (Status.ACTIVE.getStatusEntity().getStatus()
+                            .equalsIgnoreCase(role.getStatus()) && role.getPermissions() != null) {
                         for (Permission permission : role.getPermissions()) {
                             if (Status.ACTIVE.getStatusEntity().getStatus()
                                     .equalsIgnoreCase(permission.getStatus())) {
@@ -147,7 +155,7 @@ public class RequestInterceptor extends HandlerInterceptorAdapter {
             }
         } else {
             List<Permission> permissions = permissionService.getAllPermission(userInfo.getUserId());
-            for(Permission permission : permissions) {
+            for (Permission permission : permissions) {
                 availablePermissions.add(permission.getName());
             }
         }

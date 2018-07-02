@@ -72,6 +72,9 @@ public class ApplicationProperties {
 
     @Value("${switch.data.file.path}")
     private String switchDataFilePath;
+    
+    @Value("${UPDATE_FLOW}")
+    private String updateFlow;
 
     public String getFloodlightBaseUrl() {
         return floodlightBaseUrl;
@@ -148,5 +151,9 @@ public class ApplicationProperties {
     public String getSwitchRules() {
         return switchRules;
     }
+
+	public String getUpdateFlow() {
+		return updateFlow;
+	}
 
 }

@@ -48,42 +48,45 @@ public class LoggingFilter extends OncePerRequestFilter {
     protected void doFilterInternal(final HttpServletRequest request,
             final HttpServletResponse response, final FilterChain filterChain)
             throws ServletException, IOException {
-        // _log.info("[doFilterInternal] - ");
-        List<String> apis = Arrays.asList("stats/", "switch/");
+        if(LOGGER.isDebugEnabled()) {
+            List<String> apis = Arrays.asList("stats/", "switch/");
 
-        final long startTime = System.currentTimeMillis();
-        UUID requestId = UUID.randomUUID();
-        request.setAttribute("Id", requestId);
-        String fullRequestPath = request.getRequestURL().toString();
-        String[] contextVar = request.getRequestURL().toString().split("/");
-        String apiName = contextVar[1];
-        boolean isMatch = false;
+            final long startTime = System.currentTimeMillis();
+            UUID requestId = UUID.randomUUID();
+            request.setAttribute("Id", requestId);
+            String fullRequestPath = request.getRequestURL().toString();
+            String[] contextVar = request.getRequestURL().toString().split("/");
+            String apiName = contextVar[1];
+            boolean isMatch = false;
 
-        for (String api : apis) {
-            if (apiName.equalsIgnoreCase(api) || fullRequestPath.toLowerCase().contains(api)) {
-                isMatch = true;
-            }
-        }
-
-        if (isMatch) {
-            logRequest(request);
-        }
-        ResponseWrapper responseWrapper = new ResponseWrapper(requestId, response);
-        try {
-            filterChain.doFilter(request, responseWrapper);
-        } finally {
-            try {
-                if (isMatch) {
-                    logResponse(responseWrapper);
+            for (String api : apis) {
+                if (apiName.equalsIgnoreCase(api) || fullRequestPath.toLowerCase().contains(api)) {
+                    isMatch = true;
                 }
-            } catch (Exception e) {
-                LOGGER.error("[doFilterInternal] Exception: " + e.getMessage(), e);
             }
-        }
-        long elapsedTime = System.currentTimeMillis() - startTime;
-        if (60000 - elapsedTime < 0) {
-            LOGGER.info("[DelayedRequestDetail] - Time Taken: '{}', URL: '{}'", elapsedTime,
-                    request.getRequestURL());
+
+            if (isMatch) {
+                logRequest(request);
+            }
+            ResponseWrapper responseWrapper = new ResponseWrapper(requestId, response);
+            try {
+                filterChain.doFilter(request, responseWrapper);
+            } finally {
+                try {
+                    if (isMatch) {
+                        logResponse(responseWrapper);
+                    }
+                } catch (Exception e) {
+                    LOGGER.error("[doFilterInternal] Exception: " + e.getMessage(), e);
+                }
+            }
+            long elapsedTime = System.currentTimeMillis() - startTime;
+            if (60000 - elapsedTime < 0) {
+                LOGGER.debug("[DelayedRequestDetail] - Time Taken: '{}', URL: '{}'", elapsedTime,
+                        request.getRequestURL());
+            }
+        } else {
+            filterChain.doFilter(request, response);
         }
     }
 
@@ -108,7 +111,7 @@ public class LoggingFilter extends OncePerRequestFilter {
             msg.append("', \n\tparams: '").append(key + " : " + parameters.get(key));
         });
 
-        LOGGER.info("[logRequest] Request: " + msg.toString());
+        LOGGER.debug("[logRequest] Request: " + msg.toString());
     }
 
     /**
@@ -139,6 +142,6 @@ public class LoggingFilter extends OncePerRequestFilter {
         } catch (MismatchedInputException e) {
             msg.append("\nResponse: \n").append(content);
         }
-        LOGGER.info("[logResponse] Response: " + msg.toString());
+        LOGGER.debug("[logResponse] Response: " + msg.toString());
     }
 }
