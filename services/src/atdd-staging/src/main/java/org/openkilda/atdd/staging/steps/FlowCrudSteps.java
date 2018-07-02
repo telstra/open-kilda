@@ -28,6 +28,7 @@ import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -56,6 +57,7 @@ import org.openkilda.atdd.staging.service.traffexam.TraffExamService;
 import org.openkilda.atdd.staging.service.traffexam.model.Exam;
 import org.openkilda.atdd.staging.service.traffexam.model.ExamReport;
 import org.openkilda.atdd.staging.service.traffexam.model.ExamResources;
+import org.openkilda.atdd.staging.steps.helpers.FlowSet;
 import org.openkilda.atdd.staging.steps.helpers.FlowTrafficExamBuilder;
 import org.openkilda.atdd.staging.steps.helpers.TopologyUnderTest;
 import org.openkilda.atdd.staging.tools.SoftAssertions;
@@ -76,9 +78,13 @@ import net.jodah.failsafe.RetryPolicy;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -110,7 +116,7 @@ public class FlowCrudSteps implements En {
     @Qualifier("topologyUnderTest")
     private TopologyUnderTest topologyUnderTest;
 
-    Set<FlowPayload> flows;
+    private Set<FlowPayload> flows;
 
     @Given("^flows defined over active switches in the reference topology$")
     public void defineFlowsOverActiveSwitches() {
@@ -195,6 +201,10 @@ public class FlowCrudSteps implements En {
 
     @And("^(?:each )?flow is in UP state$")
     public void eachFlowIsInUpState() {
+        eachFlowIsUp(flows);
+    }
+
+    private void eachFlowIsUp(Set<FlowPayload> flows) {
         for (FlowPayload flow : flows) {
             FlowIdStatusPayload status = Failsafe.with(retryPolicy()
                     .retryIf(p -> p == null || ((FlowIdStatusPayload) p).getStatus() != FlowState.UP))
@@ -425,9 +435,50 @@ public class FlowCrudSteps implements En {
         }
     }
 
+    @And("^create flow between '(.*)' and '(.*)' and alias it as '(.*)'$")
+    public void createFlowBetween(String srcAlias, String dstAlias, String flowAlias) {
+        Switch srcSwitch = topologyUnderTest.getAliasedObject(srcAlias);
+        Switch dstSwitch = topologyUnderTest.getAliasedObject(dstAlias);
+        FlowPayload flow = new FlowSet().buildWithAnyPortsInUniqueVlan("auto" + getTimestamp(),
+                srcSwitch, dstSwitch, 1000);
+        northboundService.addFlow(flow);
+        topologyUnderTest.addAlias(flowAlias, flow);
+    }
+
+    @And("^'(.*)' flow is in UP state$")
+    public void flowIsUp(String flowAlias) {
+        FlowPayload flow = topologyUnderTest.getAliasedObject(flowAlias);
+        eachFlowIsUp(Collections.singleton(flow));
+    }
+
+    @When("^request all switch meters for switch '(.*)' and alias results as '(.*)'$")
+    public void requestMeters(String switchAlias, String meterAlias) {
+        Switch sw = topologyUnderTest.getAliasedObject(switchAlias);
+        topologyUnderTest.addAlias(meterAlias, floodlightService.getMeters(sw.getDpId()));
+
+    }
+
+    @And("^select first meter of '(.*)' and alias it as '(.*)'$")
+    public void selectFirstMeter(String metersAlias, String newMeterAlias) {
+        MetersEntriesMap meters = topologyUnderTest.getAliasedObject(metersAlias);
+        Entry<Integer, MeterEntry> firstMeter = meters.entrySet().iterator().next();
+        topologyUnderTest.addAlias(newMeterAlias, firstMeter);
+    }
+
+    @Then("^meters '(.*)' does not have '(.*)'$")
+    public void doesNotHaveMeter(String metersAlias, String meterAlias) {
+        MetersEntriesMap meters = topologyUnderTest.getAliasedObject(metersAlias);
+        Entry<Integer, MeterEntry> meter = topologyUnderTest.getAliasedObject(meterAlias);
+        assertFalse(meters.containsKey(meter.getKey()));
+    }
+
     private RetryPolicy retryPolicy() {
         return new RetryPolicy()
                 .withDelay(2, TimeUnit.SECONDS)
                 .withMaxRetries(10);
+    }
+
+    private String getTimestamp() {
+        return new SimpleDateFormat("ddMMMHHmm").format(new Date());
     }
 }
