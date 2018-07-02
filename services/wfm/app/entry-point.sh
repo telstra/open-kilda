@@ -1,4 +1,5 @@
-# Copyright 2017 Telstra Open Source
+#!/usr/bin/env bash
+# Copyright 2018 Telstra Open Source
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -13,19 +14,10 @@
 #   limitations under the License.
 #
 
-FROM kilda/storm:latest
+set -e
 
-ENV DEBIAN_FRONTEND noninteractive
+PATH=${PATH}:/opt/storm/bin
 
-RUN apt-get update
-RUN pip install kafka
-RUN echo "PATH=$PATH:/opt/storm/bin" >> ~/.bashrc
-
-WORKDIR /app
-ADD app /app
-ADD src/main/resources/topology.properties /app/
-CMD /app/entry-point.sh
-
-ADD target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar /app/target/
-
-RUN TZ=Australia/Melbourne date >> /container_baked_on.txt
+cd /app
+make kill-all
+exec make deploy-all
