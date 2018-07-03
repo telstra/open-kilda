@@ -4,12 +4,26 @@ KILDA CONTROLLER
 
 ## Introduction
 
+### Prerequisites
+You need to rise maven RAM limit at least up to 1G.
+
+```export MAVEN_OPTS="-Xmx1g -XX:MaxPermSize=128m"```
+
+Some build steps require Python2. If Python3 is default in your system please use `virtualenv`. Ensure that you have `tox` installed:
+
+```
+virtualenv --python=python2 .venv
+. .venv/bin/activate
+pip install tox
+```
+
 ### How to Build Kilda Controller
 
 From the base directory run these commands:
 
 1. ```make build-base```
-2. ```docker-compose build```
+2. ```make compile```
+3. ```docker-compose build```
 
 ### How to run Kilda
 
