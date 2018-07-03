@@ -1,4 +1,3 @@
-@MVP1
 Feature: Test flow integrity by sending special discovery packet by flow's path
 
   Scenario: Verify healthy flow

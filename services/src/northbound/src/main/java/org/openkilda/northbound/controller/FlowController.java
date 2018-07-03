@@ -28,6 +28,7 @@ import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
+import org.openkilda.northbound.dto.flows.UniFlowVerificationOutput;
 import org.openkilda.northbound.dto.flows.VerificationInput;
 import org.openkilda.northbound.dto.flows.VerificationOutput;
 import org.openkilda.northbound.service.FlowService;
@@ -355,6 +356,9 @@ public class FlowController {
         return response;
     }
 
+    /**
+     * Verify flow integrity by sending "ping" package over flow path.
+     */
     @ApiOperation(
             value = "Verify flow - using special network packet that is being routed in the same way as client traffic")
     @RequestMapping(path = "/flows/{flow_id}/verify", method = RequestMethod.PUT)
@@ -362,7 +366,10 @@ public class FlowController {
     public VerificationOutput verifyFlow(
             @RequestBody VerificationInput payload,
             @PathVariable("flow_id") String flowId) {
-        return flowService.verifyFlow(flowId, payload);
+        // FIXME(surabujin): The flow verification feature don't ready to production usage now due to unresolved issues.
+        UniFlowVerificationOutput errorResponse = new UniFlowVerificationOutput(
+                false, "flow verification feature is unavailable now", -1);
+        return new VerificationOutput(flowId, errorResponse, errorResponse);
     }
 
     /**
