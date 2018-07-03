@@ -102,7 +102,7 @@ public interface PathComputer extends Serializable {
         return null;
     }
 
-    default AvailableNetwork getAvailableNetwork(boolean ignore_bandwidth, int available_bandwidth) {
+    default AvailableNetwork getAvailableNetwork(boolean ignoreBandwidth, int availableBandwidth) {
         return null;
     }
 }

@@ -442,11 +442,11 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
         }
 
         try {
-            OFPort inPort = pkt.getVersion().compareTo(OFVersion.OF_12) < 0 ? pkt.getInPort()
+            final OFPort inPort = pkt.getVersion().compareTo(OFVersion.OF_12) < 0 ? pkt.getInPort()
                     : pkt.getMatch().get(MatchField.IN_PORT);
-            ByteBuffer portBB = ByteBuffer.wrap(verificationPacket.getPortId().getValue());
-            portBB.position(1);
-            OFPort remotePort = OFPort.of(portBB.getShort());
+            ByteBuffer rawPort = ByteBuffer.wrap(verificationPacket.getPortId().getValue());
+            rawPort.position(1);
+            final OFPort remotePort = OFPort.of(rawPort.getShort());
 
             long timestamp = 0;
             int pathOrdinal = 10;
@@ -458,24 +458,24 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
                         && lldptlv.getValue()[1] == 0x26
                         && lldptlv.getValue()[2] == (byte) 0xe1
                         && lldptlv.getValue()[3] == 0x0) {
-                    ByteBuffer dpidBB = ByteBuffer.wrap(lldptlv.getValue());
-                    remoteSwitch = switchService.getSwitch(DatapathId.of(dpidBB.getLong(4)));
+                    ByteBuffer raw = ByteBuffer.wrap(lldptlv.getValue());
+                    remoteSwitch = switchService.getSwitch(DatapathId.of(raw.getLong(4)));
                 } else if (lldptlv.getType() == 127 && lldptlv.getLength() == 12
                         && lldptlv.getValue()[0] == 0x0
                         && lldptlv.getValue()[1] == 0x26
                         && lldptlv.getValue()[2] == (byte) 0xe1
                         && lldptlv.getValue()[3] == 0x01) {
-                    ByteBuffer tsBB = ByteBuffer.wrap(lldptlv.getValue()); /* skip OpenFlow OUI (4 bytes above) */
+                    ByteBuffer raw = ByteBuffer.wrap(lldptlv.getValue()); /* skip OpenFlow OUI (4 bytes above) */
                     long swLatency = sw.getLatency().getValue();
-                    timestamp = tsBB.getLong(4); /* include the RX switch latency to "subtract" it */
+                    timestamp = raw.getLong(4); /* include the RX switch latency to "subtract" it */
                     timestamp = timestamp + swLatency;
                 } else if (lldptlv.getType() == 127 && lldptlv.getLength() == 8
                         && lldptlv.getValue()[0] == 0x0
                         && lldptlv.getValue()[1] == 0x26
                         && lldptlv.getValue()[2] == (byte) 0xe1
                         && lldptlv.getValue()[3] == 0x02) {
-                    ByteBuffer typeBB = ByteBuffer.wrap(lldptlv.getValue());
-                    pathOrdinal = typeBB.getInt(4);
+                    ByteBuffer raw = ByteBuffer.wrap(lldptlv.getValue());
+                    pathOrdinal = raw.getInt(4);
                 } else if (lldptlv.getType() == 127
                         && lldptlv.getValue()[0] == 0x0
                         && lldptlv.getValue()[1] == 0x26
@@ -490,9 +490,7 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
                     try {
                         DecodedJWT jwt = verifier.verify(token);
                         signed = true;
-                    }
-                    catch (JWTVerificationException e)
-                    {
+                    } catch (JWTVerificationException e) {
                         logger.error("Packet verification failed", e);
                         return Command.STOP;
                     }
@@ -509,8 +507,7 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
                 return Command.STOP;
             }
 
-            if (!signed)
-            {
+            if (!signed) {
                 logger.warn("verification packet without sign");
                 return Command.STOP;
             }

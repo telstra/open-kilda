@@ -134,97 +134,11 @@
     <suppress files="src/main/java/org/openkilda/pce/provider/PathComputer.java" lines="20" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/pce/provider/PathComputer.java" lines="59" checks="LineLength"/>
     <suppress files="src/main/java/org/openkilda/pce/provider/PathComputer.java" lines="83" checks="JavadocParagraph"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/PathComputer.java" lines="107" checks="ParameterName"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/PathComputer.java" lines="107" checks="ParameterName"/>
     <suppress files="src/main/java/org/openkilda/pce/provider/AuthNeo4j.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/main/java/org/openkilda/pce/provider/AuthNeo4j.java" lines="15" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/pce/provider/Auth.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/main/java/org/openkilda/pce/provider/FlowInfo.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/main/java/org/openkilda/pce/provider/FlowInfo.java" lines="18" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="19" checks="AvoidStarImport"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="20" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="20" checks="AvoidStarImport"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="21" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="22" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="23" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="24" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="25" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="26" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="27" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="34" checks="AvoidStarImport"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="47" checks="SummaryJavadoc"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="67" checks="WhitespaceAfter"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="68" checks="NeedBraces"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="75" checks="WhitespaceAfter"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="82" checks="WhitespaceAfter"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="101" checks="WhitespaceAfter"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="101" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="107" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="108" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="110" checks="LocalVariableName"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="111" checks="LocalVariableName"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="115" checks="WhitespaceAfter"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="115" checks="WhitespaceAfter"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="125" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="127" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="128" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="129" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="130" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="131" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="148" checks="SummaryJavadoc"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="170" checks="MethodName"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="172" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="173" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="174" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="175" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="176" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="177" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="178" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="179" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="180" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="181" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="182" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="183" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="184" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="185" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="186" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="187" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="206" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="207" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="208" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="209" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="210" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="211" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="212" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="213" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="240" checks="JavadocParagraph"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="245" checks="NonEmptyAtclauseDescription"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="249" checks="ParameterName"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="249" checks="ParameterName"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="251" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="252" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="254" checks="NeedBraces"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="256" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="257" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="258" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="259" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="260" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="275" checks="Indentation"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="280" checks="SummaryJavadoc"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="284" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="286" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="301" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="302" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="303" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="304" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="305" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="306" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="307" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="308" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="309" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="310" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="311" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="320" checks="VariableDeclarationUsageDistance"/>
     <suppress files="src/main/java/org/openkilda/pce/RecoverableException.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/main/java/org/openkilda/pce/api/FlowAdapter.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/main/java/org/openkilda/pce/api/FlowAdapter.java" lines="4" checks="CustomImportOrder"/>
@@ -600,7 +514,6 @@
     <suppress files="src/test/java/org/openkilda/pce/provider/NeoDriverTest.java" lines="151" checks="WhitespaceAfter"/>
     <suppress files="src/test/java/org/openkilda/pce/provider/NeoDriverTest.java" lines="152" checks="WhitespaceAfter"/>
     <suppress files="src/test/java/org/openkilda/pce/provider/NeoDriverTest.java" lines="153" checks="WhitespaceAfter"/>
-    <suppress files="src/test/java/org/openkilda/pce/provider/PathComputerMock.java" lines="82" checks="VariableDeclarationUsageDistance"/>
     <suppress files="src/test/java/org/openkilda/pce/algo/SimpleGetShortestPathTest.java" lines="0" checks="NewlineAtEndOfFile"/>
     <suppress files="src/test/java/org/openkilda/pce/algo/SimpleGetShortestPathTest.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/test/java/org/openkilda/pce/algo/SimpleGetShortestPathTest.java" lines="4" checks="CustomImportOrder"/>

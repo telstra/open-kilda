@@ -92,14 +92,6 @@
     <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="364" checks="AbbreviationAsWordInName"/>
     <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="375" checks="VariableDeclarationUsageDistance"/>
     <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="443" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="445" checks="AbbreviationAsWordInName"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="447" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="459" checks="AbbreviationAsWordInName"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="466" checks="AbbreviationAsWordInName"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="475" checks="AbbreviationAsWordInName"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="491" checks="RightCurly"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="493" checks="LeftCurly"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="511" checks="LeftCurly"/>
     <suppress files="src/main/java/org/openkilda/floodlight/pathverification/VerificationPacket.java" lines="32" checks="AbbreviationAsWordInName"/>
     <suppress files="src/main/java/org/openkilda/floodlight/pathverification/VerificationPacket.java" lines="44" checks="SummaryJavadoc"/>
     <suppress files="src/main/java/org/openkilda/floodlight/pathverification/VerificationPacket.java" lines="51" checks="SummaryJavadoc"/>
