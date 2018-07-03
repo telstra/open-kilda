@@ -1602,6 +1602,13 @@ table.dataTable .divTableCell .fa {
 .has-error .text-label, .has-error .error-message, .downsample-error-message, .from-error-message, .to-error-message, .has-error .form-control {
 	color: #a94442;
 }
+.error.has-error {
+	display:none;
+    color: #ff0000;
+    float: left;
+    width: 100%;
+    padding: 4px 0px;
+}
 
 .line-legend li:before {
     height: 14px;

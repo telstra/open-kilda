@@ -139,4 +139,9 @@ public class FlowService {
     public FlowStatus getFlowStatusById(String flowId) {
         return flowsIntegrationService.getFlowStatusById(flowId);
     }
+
+
+	public Flow createFlow(Flow flow) {
+		return flowsIntegrationService.createFlow(flow);
+	}
 }

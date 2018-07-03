@@ -163,7 +163,7 @@ public class RestClientManager {
             if (response.getStatusLine().getStatusCode() != HttpStatus.NO_CONTENT.value()) {
                 String responseEntity = IoUtil.toString(response.getEntity().getContent());
 
-                LOGGER.info("[getResponse]  : response object " + responseEntity);
+                LOGGER.debug("[getResponse]  : response object " + responseEntity);
                 if (!(HttpStatus.valueOf(response.getStatusLine().getStatusCode())
                         .is2xxSuccessful() && response.getEntity() != null)) {
                     String errorMessage = null;
@@ -228,6 +228,7 @@ public class RestClientManager {
         } else {
             try {
                 String content = IoUtil.toString(response.getEntity().getContent());
+                LOGGER.error("[getResponse] Invalid Response. Status Code: " + response.getStatusLine().getStatusCode() + ", content: " +  content);
                 throw new InvalidResponseException(response.getStatusLine().getStatusCode(),
                         content);
             } catch (IOException exception) {

@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -56,7 +57,6 @@ public class FlowController extends BaseController {
     @RequestMapping
     @Permissions(values = {IConstants.Permission.MENU_FLOWS})
     public ModelAndView flowList(final HttpServletRequest request) {
-        LOGGER.info("[flowList] - start");
         return validateAndRedirect(request, IConstants.View.FLOW_LIST);
     }
 
@@ -68,7 +68,6 @@ public class FlowController extends BaseController {
      */
     @RequestMapping(value = "/details")
     public ModelAndView flowDetails(final HttpServletRequest request) {
-        LOGGER.info("[flowDetails] - start");
         return validateAndRedirect(request, IConstants.View.FLOW_DETAILS);
     }
 
@@ -81,7 +80,6 @@ public class FlowController extends BaseController {
     @RequestMapping(value = "/count", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
     public @ResponseBody Collection<FlowCount> getFlowCount() {
-        LOGGER.info("[getFlowCount] - start");
         Collection<FlowCount> flowsInfo = new ArrayList<FlowCount>();
         List<Flow> flows = flowService.getAllFlowList();
         if (flows != null) {
@@ -98,7 +96,6 @@ public class FlowController extends BaseController {
     @RequestMapping(value = "/list", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
     public @ResponseBody List<FlowInfo> getFlows() {
-        LOGGER.info("[getFlows] - start");
         return flowService.getAllFlows();
     }
 
@@ -167,5 +164,19 @@ public class FlowController extends BaseController {
     public @ResponseBody FlowStatus getFlowStatusById(@PathVariable final String flowId) {
         LOGGER.info("[getFlowStatusById] - start. Flow id: " + flowId);
         return flowService.getFlowStatusById(flowId);
+    }
+
+    /**
+     * Creates the flow.
+     *
+     * @param flow the flow
+     * @return the flow
+     */
+    @RequestMapping(method = RequestMethod.PUT)
+    @ResponseStatus(HttpStatus.CREATED)
+    @Permissions(values = {IConstants.Permission.FW_FLOW_CREATE})
+    public @ResponseBody Flow createFlow(@RequestBody final Flow flow) {
+        LOGGER.info("[createFlow] - start. Flow id: " + flow.getId());
+        return flowService.createFlow(flow);
     }
 }
