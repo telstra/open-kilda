@@ -30,6 +30,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * This service takes control over the intermediate 'A Switch' in Staging which is meant to allow to
@@ -45,15 +46,21 @@ public class ASwitchServiceImpl implements ASwitchService {
     private RestTemplate restTemplate;
 
     @Override
-    public void addFlow(List<ASwitchFlow> flows) {
+    public void addFlows(List<ASwitchFlow> flows) {
         restTemplate.exchange("/flows", HttpMethod.POST,
                 new HttpEntity<>(flows, buildJsonHeaders()), String.class);
+        LOGGER.info("Added flows: {}", flows.stream()
+                .map(flow -> String.format("%s->%s", flow.getInPort(), flow.getOutPort()))
+                .collect(Collectors.toList()));
     }
 
     @Override
-    public void removeFlow(List<ASwitchFlow> flows) {
+    public void removeFlows(List<ASwitchFlow> flows) {
         restTemplate.exchange("/flows", HttpMethod.DELETE,
                 new HttpEntity<>(flows, buildJsonHeaders()), String.class);
+        LOGGER.info("Removed flows: {}", flows.stream()
+                .map(flow -> String.format("%s->%s", flow.getInPort(), flow.getOutPort()))
+                .collect(Collectors.toList()));
     }
 
     @Override
@@ -61,6 +68,20 @@ public class ASwitchServiceImpl implements ASwitchService {
         ASwitchFlow[] flows = restTemplate.exchange("/flows", HttpMethod.GET,
                 new HttpEntity(buildJsonHeaders()), ASwitchFlow[].class).getBody();
         return Arrays.asList(flows);
+    }
+
+    @Override
+    public void portsUp(List<Integer> ports) {
+        restTemplate.exchange("/ports", HttpMethod.POST,
+                new HttpEntity<>(ports, buildJsonHeaders()), String.class);
+        LOGGER.info("Brought up ports: {}", ports);
+    }
+
+    @Override
+    public void portsDown(List<Integer> ports) {
+        restTemplate.exchange("/ports", HttpMethod.DELETE,
+                new HttpEntity<>(ports, buildJsonHeaders()), String.class);
+        LOGGER.info("Brought down ports: {}", ports);
     }
 
     private HttpHeaders buildJsonHeaders() {

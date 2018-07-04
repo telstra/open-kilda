@@ -18,11 +18,6 @@ package org.openkilda.northbound.controller;
 import static org.openkilda.messaging.Utils.EXTRA_AUTH;
 import static org.openkilda.messaging.Utils.FLOW_ID;
 
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiParam;
-import io.swagger.annotations.ApiResponse;
-import io.swagger.annotations.ApiResponses;
 import org.openkilda.messaging.command.flow.SynchronizeCacheAction;
 import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.info.flow.FlowInfoData;
@@ -31,10 +26,19 @@ import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
-import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.BatchResults;
+import org.openkilda.northbound.dto.flows.FlowValidationDto;
+import org.openkilda.northbound.dto.flows.UniFlowVerificationOutput;
+import org.openkilda.northbound.dto.flows.VerificationInput;
+import org.openkilda.northbound.dto.flows.VerificationOutput;
 import org.openkilda.northbound.service.FlowService;
 import org.openkilda.northbound.utils.ExtraAuthRequired;
+
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiParam;
+import io.swagger.annotations.ApiResponse;
+import io.swagger.annotations.ApiResponses;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -186,13 +190,13 @@ public class FlowController {
     @ExtraAuthRequired
     @SuppressWarnings("unchecked") // the error is unchecked
     public ResponseEntity<List<FlowPayload>> deleteFlows(
-            @RequestHeader(value = EXTRA_AUTH, defaultValue = "0") long extra_auth) {
-        long current_auth = System.currentTimeMillis();
-        if (Math.abs(current_auth-extra_auth) > 120*1000) {
+            @RequestHeader(value = EXTRA_AUTH, defaultValue = "0") long extraAuth) {
+        long currentAuth = System.currentTimeMillis();
+        if (Math.abs(currentAuth - extraAuth) > 120 * 1000) {
             /*
              * The request needs to be within 120 seconds of the system clock.
              */
-            return new ResponseEntity("Invalid Auth: " + current_auth, new HttpHeaders(), HttpStatus.UNAUTHORIZED);
+            return new ResponseEntity("Invalid Auth: " + currentAuth, new HttpHeaders(), HttpStatus.UNAUTHORIZED);
         }
 
         List<FlowPayload> response = flowService.deleteFlows();
@@ -237,7 +241,8 @@ public class FlowController {
      * Push flows to kilda ... this can be used to get flows into kilda without kilda creating them
      * itself. Kilda won't expect to create them .. it may (and should) validate them at some stage.
      *
-     * @param externalFlows a list of flows to push to kilda for it to absorb without expectation of creating the flow rules
+     * @param externalFlows a list of flows to push to kilda for it to absorb without expectation of creating the flow
+     *        rules
      * @return list of flow
      */
     @ApiOperation(value = "Push flows without expectation of modifying switches. It can push to switch and validate.",
@@ -349,6 +354,22 @@ public class FlowController {
             response = ResponseEntity.notFound().build();
         }
         return response;
+    }
+
+    /**
+     * Verify flow integrity by sending "ping" package over flow path.
+     */
+    @ApiOperation(
+            value = "Verify flow - using special network packet that is being routed in the same way as client traffic")
+    @RequestMapping(path = "/flows/{flow_id}/verify", method = RequestMethod.PUT)
+    @ResponseStatus(HttpStatus.OK)
+    public VerificationOutput verifyFlow(
+            @RequestBody VerificationInput payload,
+            @PathVariable("flow_id") String flowId) {
+        // FIXME(surabujin): The flow verification feature don't ready to production usage now due to unresolved issues.
+        UniFlowVerificationOutput errorResponse = new UniFlowVerificationOutput(
+                false, "flow verification feature is unavailable now", -1);
+        return new VerificationOutput(flowId, errorResponse, errorResponse);
     }
 
     /**

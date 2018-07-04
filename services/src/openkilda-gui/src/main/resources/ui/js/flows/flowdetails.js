@@ -42,12 +42,12 @@ function showFlowData(obj) {
 	$(".flow_div_flow_id").html(obj.flowid);
 	$(".flow_div_source_switch").html(obj.source["switch-id"]);
 	$(".flow_div_source_port").html(obj.source["port-id"]);
-	$(".flow_div_source_switch_name").html(obj.source["switch-id"]);
+	$(".flow_div_source_switch_name").html(obj.source["switch-name"]);
 	$(".flow_div_source_vlan").html(obj.source["vlan-id"]);
 	
 	$(".flow_div_destination_switch").html(obj.destination["switch-id"]);
 	$(".flow_div_destination_port").html(obj.destination["port-id"]);
-	$(".flow_div_destination_switch_name").html(obj.destination["switch-id"]);
+	$(".flow_div_destination_switch_name").html(obj.destination["switch-name"]);
 	$(".flow_div_destination_vlan").html(obj.destination["vlan-id"]);
 	$(".flow_div_maximum_bandwidth").html(obj["maximum-bandwidth"]);
 	$(".flow_div_Status").html(obj.status);

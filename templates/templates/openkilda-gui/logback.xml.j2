@@ -1,27 +1,22 @@
 <configuration>
     <property name="LOG_PATH" value="{{ logging.logfile_path }}/kildagui/openkilda-gui.json" />
 
-    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder>
-            <pattern>%date{ISO8601} %-5level %logger{15} - [%X] %msg%n</pattern>
-        </encoder>
-    </appender>
-
     <appender name="JSONOUT" class="ch.qos.logback.core.rolling.RollingFileAppender">
       <file>${LOG_PATH}</file>
       <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
         <fileNamePattern>${LOG_PATH}.%d{yyyy-MM-dd}.%i</fileNamePattern>
          <maxFileSize>100MB</maxFileSize>
-         <totalSizeCap>20GB</totalSizeCap>
-         <maxHistory>10</maxHistory>
+         <totalSizeCap>500MB</totalSizeCap>
+         <maxHistory>5</maxHistory>
       </rollingPolicy>
       <encoder class="net.logstash.logback.encoder.LogstashEncoder" />
     </appender>
+	
     <logger name="JSONOUT" level="DEBUG">
         <appender-ref ref="JSONOUT" />
     </logger>
+	
     <root level="INFO">
         <appender-ref ref="JSONOUT" />
-        <appender-ref ref="STDOUT" />
     </root>
 </configuration>

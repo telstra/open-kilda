@@ -44,16 +44,14 @@ public abstract class BaseController implements ErrorController {
      */
     public ModelAndView validateAndRedirect(final HttpServletRequest request,
             final String viewName) {
-        LOGGER.info("[validateAndRedirect] - start. Requested view name: " + viewName);
         ModelAndView modelAndView;
         if (isUserLoggedIn()) {
             UserInfo userInfo = getLoggedInUser(request);
-            LOGGER.info("[validateAndRedirect] Logged in user. User name: " + userInfo.getName()
-                    + ", Roles: " + userInfo.getRoles());
+            LOGGER.info("[validateAndRedirect] Logged in user. view name: " + viewName + ", User name: " + userInfo.getName());
 
             modelAndView = new ModelAndView(viewName);
         } else {
-            LOGGER.info("[validateAndRedirect] User in not logged in, redirected to login page");
+            LOGGER.error("[validateAndRedirect] User in not logged in, redirected to login page. Requested view name: " + viewName);
             modelAndView = new ModelAndView(IConstants.View.LOGIN);
         }
         return modelAndView;
@@ -93,7 +91,7 @@ public abstract class BaseController implements ErrorController {
         try {
             userInfo = (UserInfo) session.getAttribute(IConstants.SESSION_OBJECT);
         } catch (IllegalStateException ex) {
-            LOGGER.info(
+            LOGGER.error(
                     "[getLoggedInUser] Exception while retrieving user information from session. Exception: "
                             + ex.getLocalizedMessage(),
                     ex);

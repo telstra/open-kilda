@@ -126,7 +126,9 @@ var common = {
 				
 			}							
 		},
-		
+		saveData:function(apiUrl,requestType,data){
+			return $.ajax({url : APP_CONTEXT+apiUrl,contentType:'application/json',dataType : "json",type : requestType,data:JSON.stringify(data)});	
+		},
 		updateData:function(apiUrl,requestType,data){
 			return $.ajax({url : APP_CONTEXT+apiUrl,contentType:'application/json',dataType : "json",type : requestType,data:JSON.stringify(data)});	
 		},
@@ -150,6 +152,39 @@ var common = {
 				
 		     return ((xa < ya) ? -1 : ((xa > ya) ?  1 : 0));
 			}
+		},
+		validateFormData:function(data){
+			var validationFlag = true;
+			$('.error').hide();
+			if(data && data.length){
+			  for(var i=0; i<data.length; i++){
+				  var ifRequired=$('#'+data[i].name).attr('required');
+				  if(typeof(ifRequired)!=='undefined' && $.trim(data[i].value) == ""){
+						  validationFlag = false;
+						 $('#'+data[i].name).addClass("errorInput");
+						 $('#'+data[i].name+"Error").show();
+				  }else{
+					  $('#'+data[i].name).removeClass("errorInput");
+					  $('#'+data[i].name+"Error").hide();
+				  }
+			   }
+			}else{
+				validationFlag=false;
+			}
+			return validationFlag;
+		},
+		matchCustomFlow:function(params,data){
+			if ($.trim(params.term) === '') {
+			    return data;
+			  }
+			if (typeof data.text === 'undefined') {
+		      return null;
+		    }
+			 if (data.text.indexOf(params.term) > -1 || data.id.indexOf(params.term) > -1) {
+		      var modifiedData = $.extend({}, data, true);
+		      return modifiedData;
+		    }
+			return null;
 		},
 		infoMessage:function(msz,type){
 			$.toast({heading:(type =='info'?'Information':type), text: msz, showHideTransition: 'fade',position: 'top-right', icon: type, hideAfter : 6000})

@@ -33,6 +33,7 @@ import cucumber.api.java.en.When;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -53,7 +54,7 @@ public class LinkPropertiesSteps {
     private List<LinkPropsDto> getLinkPropsResponse;
 
 
-    @When("^create link properties request for isl '(.*)'$")
+    @When("^create link properties request for ISL '(.*)'$")
     public void createLinkPropertiesRequest(String islAlias) {
         linkPropsRequest = new LinkPropsDto();
         Isl theIsl = topologyUnderTest.getAliasedObject(islAlias);
@@ -96,7 +97,7 @@ public class LinkPropertiesSteps {
     public void verifyResponseLinkProperties(String key, String value) {
         LinkPropsDto props = getLinkPropsResponse.stream()
                 .filter(p -> p.equals(linkPropsRequest)).findFirst().get();
-        assertThat(props.getProperty(key), equalTo(value));
+        assertThat(value, equalTo(String.valueOf(props.getProperty(key))));
     }
 
     @When("^send delete link properties request$")
@@ -106,7 +107,7 @@ public class LinkPropertiesSteps {
 
     @Then("^link props response has (\\d+) results?$")
     public void responseHasResults(int resultsAmount) {
-        assertEquals(getLinkPropsResponse.size(), resultsAmount);
+        assertEquals(resultsAmount, getLinkPropsResponse.size());
     }
 
     @When("^update request: change src_switch to '(.*)'$")
@@ -134,5 +135,19 @@ public class LinkPropertiesSteps {
     public void deleteAllLinkProperties() {
         List<LinkPropsDto> linkProps = northboundService.getAllLinkProps();
         changePropsResponse = northboundService.deleteLinkProps(linkProps);
+    }
+
+    @When("^set (.*) of '(.*)' ISL to (\\d+)$")
+    public void setCostOfIsl(String propName, String islAlias, int newCost) {
+        createLinkPropertiesRequest(islAlias);
+        linkPropsRequest.setProperty(propName, String.valueOf(newCost));
+        changePropsResponse = northboundService.updateLinkProps(Collections.singletonList(linkPropsRequest));
+    }
+
+    @Then("^property '(.*)' of (.*) ISL equals to '(.*)'$")
+    public void verifyIslProp(String propName, String islAlias, String expectedValue) {
+        createLinkPropertiesRequest(islAlias);
+        getLinkPropertiesForDefinedRequest();
+        assertEquals(expectedValue, getLinkPropsResponse.get(0).getProperty(propName));
     }
 }
