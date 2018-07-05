@@ -47,7 +47,7 @@ public class OpenTSDBTopology extends AbstractTopology<OpenTsdbTopologyConfig> {
     }
 
     @VisibleForTesting
-    static final String OTSDB_SPOUT_ID = "otsdb-spout";
+    static final String OTSDB_SPOUT_ID = "kilda.otsdb-spout";
     private static final String OTSDB_BOLT_ID = "otsdb-bolt";
     private static final String OTSDB_FILTER_BOLT_ID = OpenTSDBFilterBolt.class.getSimpleName();
     private static final String OTSDB_PARSE_BOLT_ID = DatapointParseBolt.class.getSimpleName();
