@@ -13,18 +13,18 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.info.flow;
+package org.openkilda.messaging.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.Value;
 
+import java.io.Serializable;
+
 @Value
-@JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class VerificationMeasures {
+public class PingMeters implements Serializable {
     @JsonProperty("network_latency")
     private long networkLatency;
 
@@ -35,7 +35,7 @@ public class VerificationMeasures {
     private long recipientLatency;
 
     @JsonCreator
-    public VerificationMeasures(
+    public PingMeters(
             @JsonProperty("network_latency") long networkLatency,
             @JsonProperty("sender_latency") long senderLatency,
             @JsonProperty("recipient_latency") long recipientLatency) {

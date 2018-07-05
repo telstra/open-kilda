@@ -13,34 +13,35 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.info.flow;
+package org.openkilda.messaging.model;
 
-import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.Utils;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Builder;
 import lombok.Value;
 
+import java.io.Serializable;
+
 @Value
-@Builder
-public class FlowVerificationResponse extends InfoData {
-    @JsonProperty("flow_id")
+public class PingReport implements Serializable {
+    @JsonProperty(Utils.FLOW_ID)
     private String flowId;
 
-    @JsonProperty("forward")
-    private UniFlowVerificationResponse forward;
-
-    @JsonProperty("reverse")
-    private UniFlowVerificationResponse reverse;
+    @JsonProperty("status")
+    private State state;
 
     @JsonCreator
-    public FlowVerificationResponse(
-            @JsonProperty("flow_id") String flowId,
-            @JsonProperty("forward") UniFlowVerificationResponse forward,
-            @JsonProperty("reverse") UniFlowVerificationResponse reverse) {
+    public PingReport(
+            @JsonProperty(Utils.FLOW_ID) String flowId,
+            @JsonProperty("status") State state) {
         this.flowId = flowId;
-        this.forward = forward;
-        this.reverse = reverse;
+        this.state = state;
+    }
+
+    public enum State {
+        OPERATIONAL,
+        FAILED,
+        UNRELIABLE
     }
 }

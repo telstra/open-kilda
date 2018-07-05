@@ -15,62 +15,54 @@
 
 package org.openkilda.messaging.info.flow;
 
-import org.openkilda.messaging.command.flow.UniFlowVerificationRequest;
 import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.model.Ping;
+import org.openkilda.messaging.model.Ping.Errors;
+import org.openkilda.messaging.model.PingMeters;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 import java.util.UUID;
 
 @Value
-@JsonSerialize
+@EqualsAndHashCode(callSuper = false)
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class UniFlowVerificationResponse extends InfoData {
+public class UniFlowPingResponse extends InfoData {
     @JsonProperty("ping_success")
     private boolean pingSuccess;
 
     @JsonProperty("error")
-    private FlowVerificationErrorCode error;
+    private Errors error;
 
-    @JsonProperty("measures")
-    private VerificationMeasures measures;
+    @JsonProperty("meters")
+    private PingMeters meters;
 
-    @JsonProperty("request")
-    private UniFlowVerificationRequest request;
+    @JsonProperty("ping")
+    private Ping ping;
 
     @JsonCreator
-    public UniFlowVerificationResponse(
+    public UniFlowPingResponse(
             @JsonProperty("ping_success") boolean pingSuccess,
-            @JsonProperty("error") FlowVerificationErrorCode error,
-            @JsonProperty("network_latency") VerificationMeasures measures,
-            @JsonProperty("request") UniFlowVerificationRequest request) {
+            @JsonProperty("error") Errors error,
+            @JsonProperty("meters") PingMeters meters,
+            @JsonProperty("ping") Ping ping) {
         this.pingSuccess = pingSuccess;
         this.error = error;
-        this.measures = measures;
-        this.request = request;
+        this.meters = meters;
+        this.ping = ping;
     }
 
-    public UniFlowVerificationResponse(UniFlowVerificationRequest request, VerificationMeasures measures) {
-        this(true, null, measures, request);
-    }
-
-    public UniFlowVerificationResponse(
-            UniFlowVerificationRequest request, FlowVerificationErrorCode error) {
-        this(false, error, null, request);
-    }
-
-    @JsonIgnore
-    public String getFlowId() {
-        return getRequest().getFlowId();
+    public UniFlowPingResponse(Ping ping, PingMeters meters, Ping.Errors error) {
+        this(error == null, error, meters, ping);
     }
 
     @JsonIgnore
     public UUID getPacketId() {
-        return getRequest().getPacketId();
+        return getPing().getPingId();
     }
 }

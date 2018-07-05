@@ -15,9 +15,23 @@
 
 package org.openkilda.messaging.info.flow;
 
-public enum FlowVerificationErrorCode {
-    TIMEOUT,
-    WRITE_FAILURE,
-    NOT_CAPABLE,
-    NO_SPEAKER_RESPONSE
+import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.model.PingReport;
+
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.EqualsAndHashCode;
+import lombok.Value;
+
+@Value
+@EqualsAndHashCode(callSuper = false)
+public class FlowPingReport extends InfoData {
+    @JsonProperty("report")
+    private PingReport report;
+
+    @JsonCreator
+    public FlowPingReport(
+            @JsonProperty("report") PingReport report) {
+        this.report = report;
+    }
 }

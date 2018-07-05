@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.command.flow;
+package org.openkilda.messaging.model;
 
 public enum FlowDirection {
     FORWARD,

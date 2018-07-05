@@ -13,27 +13,33 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.command.flow;
+package org.openkilda.messaging.floodlight.request;
 
 import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.model.Ping;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
-@Value
-public class FlowVerificationRequest extends CommandData {
-    @JsonProperty("flow_id")
-    private String flowId;
+import java.util.UUID;
 
-    @JsonProperty("timeout")
-    private int timeout;
+@Value
+@EqualsAndHashCode(callSuper = false)
+public class PingRequest extends CommandData {
+    @JsonProperty(value = "ping", required = true)
+    private Ping ping;
 
     @JsonCreator
-    public FlowVerificationRequest(
-            @JsonProperty("flow_id") String flowId,
-            @JsonProperty("timeout") int timeout) {
-        this.flowId = flowId;
-        this.timeout = timeout;
+    public PingRequest(
+            @JsonProperty("ping") Ping ping) {
+        this.ping = ping;
+    }
+
+    @JsonIgnore
+    public UUID getPingId() {
+        return ping.getPingId();
     }
 }

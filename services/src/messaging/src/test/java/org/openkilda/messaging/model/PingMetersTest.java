@@ -13,26 +13,24 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.command.flow;
+package org.openkilda.messaging.model;
 
-import org.openkilda.messaging.Utils;
+import org.openkilda.messaging.ObjectSerializer;
 
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.io.IOException;
-
-public class FlowVerificationRequestTest {
+public class PingMetersTest implements ObjectSerializer {
     @Test
-    public void sterilisationRoundTripTest() throws IOException {
-        FlowVerificationRequest source = new FlowVerificationRequest("flowId", 5000);
+    public void serializeLoop() throws Exception {
+        PingMeters origin = new PingMeters(1L, 2L, 3L);
 
-        String encoded = Utils.MAPPER.writeValueAsString(source);
-        FlowVerificationRequest decoded = Utils.MAPPER.readValue(encoded, FlowVerificationRequest.class);
+        serialize(origin);
+        PingMeters decoded = (PingMeters) deserialize();
 
         Assert.assertEquals(
                 String.format("%s object have been mangled in serialisation/deserialization loop",
-                        source.getClass().getName()),
-                source, decoded);
+                        origin.getClass().getName()),
+                origin, decoded);
     }
 }
