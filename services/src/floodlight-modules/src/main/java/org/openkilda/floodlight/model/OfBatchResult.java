@@ -13,18 +13,24 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight.command;
+package org.openkilda.floodlight.model;
 
-public abstract class Command {
-    private final CommandContext context;
+import java.util.List;
 
-    public Command(CommandContext context) {
-        this.context = context;
+public class OfBatchResult {
+    private final List<OfRequestResponse> batch;
+    private final boolean error;
+
+    public OfBatchResult(List<OfRequestResponse> batch, boolean error) {
+        this.batch = batch;
+        this.error = error;
     }
 
-    public abstract void execute();
+    public List<OfRequestResponse> getBatch() {
+        return batch;
+    }
 
-    protected CommandContext getContext() {
-        return context;
+    public boolean isError() {
+        return error;
     }
 }

@@ -426,7 +426,9 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
 
     private IListener.Command handlePacketIn(IOFSwitch sw, OFPacketIn pkt, FloodlightContext context) {
         long time = System.currentTimeMillis();
-        logger.debug("packet_in {} received from {}", pkt.getXid(), sw.getId());
+        final String packetIdentity = String.format("(dpId: %s, xId: %s, version: %s, type: %s)",
+                sw.getId(), pkt.getXid(), pkt.getVersion(), pkt.getType());
+        logger.debug("packet_in {}", packetIdentity);
 
         VerificationPacket verificationPacket = null;
 
@@ -553,7 +555,7 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
             logger.error("could not parse packet_in message: {}", exception.getMessage(),
                     exception);
         } catch (Exception exception) {
-            logger.error("unknown error during packet_in message processing: {}", exception.getMessage(), exception);
+            logger.error(String.format("Unhandled exception %s", packetIdentity), exception);
             throw exception;
         }
 

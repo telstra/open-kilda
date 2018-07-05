@@ -19,7 +19,7 @@ import static java.util.Arrays.asList;
 import static org.openkilda.messaging.Utils.MAPPER;
 
 import org.openkilda.floodlight.command.CommandContext;
-import org.openkilda.floodlight.command.flow.VerificationDispatchCommand;
+import org.openkilda.floodlight.command.ping.PingRequestCommand;
 import org.openkilda.floodlight.converter.IOFSwitchConverter;
 import org.openkilda.floodlight.converter.OFFlowStatsConverter;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
@@ -43,7 +43,6 @@ import org.openkilda.messaging.command.flow.InstallIngressFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.openkilda.messaging.command.flow.InstallTransitFlow;
 import org.openkilda.messaging.command.flow.RemoveFlow;
-import org.openkilda.messaging.command.flow.UniFlowVerificationRequest;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
@@ -54,6 +53,7 @@ import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.floodlight.request.PingRequest;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.NetworkSyncBeginMarker;
 import org.openkilda.messaging.info.discovery.NetworkSyncEndMarker;
@@ -118,7 +118,7 @@ class RecordHandler implements Runnable {
                     System.currentTimeMillis(), message.getCorrelationId(), replyDestination);
             context.getKafkaProducer().postMessage(replyToTopic, error);
         } catch (Exception e) {
-            logger.error("Unhandled exception: {}", e);
+            logger.error("Unhandled exception", e);
         }
     }
 
@@ -156,8 +156,8 @@ class RecordHandler implements Runnable {
             doBatchInstall(message);
         } else if (data instanceof PortsCommandData) {
             doPortsCommandDataRequest(message);
-        } else if (data instanceof UniFlowVerificationRequest) {
-            doFlowVerificationRequest(context, (UniFlowVerificationRequest) data);
+        } else if (data instanceof PingRequest) {
+            doPingRequest(context, (PingRequest) data);
         } else {
             logger.error("unknown data type: {}", data.toString());
         }
@@ -656,9 +656,9 @@ class RecordHandler implements Runnable {
         }
     }
 
-    private void doFlowVerificationRequest(CommandContext context, UniFlowVerificationRequest request) {
-        VerificationDispatchCommand verification = new VerificationDispatchCommand(context, request);
-        verification.run();
+    private void doPingRequest(CommandContext context, PingRequest request) {
+        PingRequestCommand command = new PingRequestCommand(context, request);
+        command.execute();
     }
 
     private long allocateMeterId(Long meterId, String switchId, String flowId, Long cookie) {

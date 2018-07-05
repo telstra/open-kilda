@@ -13,18 +13,26 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight.command;
+package org.openkilda.floodlight.error;
 
-public abstract class Command {
-    private final CommandContext context;
+import org.openkilda.messaging.model.Ping;
 
-    public Command(CommandContext context) {
-        this.context = context;
+public class PingImpossibleException extends AbstractException {
+    private final Ping ping;
+
+    private final Ping.Errors error;
+
+    public PingImpossibleException(Ping ping, Ping.Errors error) {
+        super(String.format("Unable to send ping %s - %s", ping, error));
+        this.ping = ping;
+        this.error = error;
     }
 
-    public abstract void execute();
+    public Ping getPing() {
+        return ping;
+    }
 
-    protected CommandContext getContext() {
-        return context;
+    public Ping.Errors getError() {
+        return error;
     }
 }

@@ -13,18 +13,14 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight.command;
+package org.openkilda.floodlight.command.ping;
 
-public abstract class Command {
-    private final CommandContext context;
+import org.openkilda.floodlight.command.CommandContext;
 
-    public Command(CommandContext context) {
-        this.context = context;
-    }
+import net.floodlightcontroller.core.IOFSwitch;
 
-    public abstract void execute();
-
-    protected CommandContext getContext() {
-        return context;
+public class PingResponseCommandFactoryImpl implements IPingResponseFactory {
+    public PingResponseCommand produce(CommandContext commandContext, IOFSwitch sw, byte[] ethPacket) {
+        return new PingResponseCommand(commandContext, sw.getId(), sw.getLatency().getValue(), ethPacket);
     }
 }

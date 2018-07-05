@@ -15,6 +15,10 @@
 
 package org.openkilda.floodlight.service;
 
+import org.openkilda.floodlight.command.CommandContext;
+import org.openkilda.floodlight.utils.CommandContextFactory;
+import org.openkilda.floodlight.utils.NewCorrelationContextRequired;
+
 import com.google.common.collect.ImmutableSet;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -31,7 +35,14 @@ import java.util.Set;
 public abstract class AbstractOfHandler implements IOFMessageListener {
     private static Logger log = LoggerFactory.getLogger(AbstractOfHandler.class);
 
-    protected abstract boolean handle(IOFSwitch sw, OFMessage message, FloodlightContext contest);
+    private final CommandContextFactory commandContextFactory;
+
+    public AbstractOfHandler(CommandContextFactory commandContextFactory) {
+        this.commandContextFactory = commandContextFactory;
+    }
+
+    protected abstract boolean handle(
+            CommandContext commandContext, IOFSwitch sw, OFMessage message, FloodlightContext contest);
 
     protected void activateSubscription(IFloodlightModuleContext moduleContext, OFType... desiredTypes) {
         IFloodlightProviderService flProviderService = moduleContext.getServiceImpl(IFloodlightProviderService.class);
@@ -51,25 +62,28 @@ public abstract class AbstractOfHandler implements IOFMessageListener {
     }
 
     @Override
+    @NewCorrelationContextRequired
     public Command receive(IOFSwitch sw, OFMessage message, FloodlightContext context) {
         boolean isHandled;
 
-        log.debug(
-                "{} - receive message (xId: {}, type: {})",
-                getClass().getCanonicalName(), message.getXid(), message.getType());
+        final CommandContext commandContext = commandContextFactory.produce();
+        final String packetIdentity = String.format(
+                "(dpId: %s, xId: %s, version: %s, type: %s)",
+                sw.getId(), message.getXid(), message.getVersion(), message.getType());
 
+        log.debug("{} - receive message {}", getClass().getCanonicalName(), packetIdentity);
         try {
-            isHandled = handle(sw, message, context);
+            isHandled = handle(commandContext, sw, message, context);
         } catch (Exception e) {
-            log.error(
-                    "Unhandled exception during processing OFMessage(xId: {}, type: {})",
-                    message.getXid(), message.getType());
+            log.error(String.format("Unhandled exception during processing %s", packetIdentity), e);
             isHandled = false;
         }
 
         if (isHandled) {
+            log.debug("{} - have HANDLED packet {}", getClass().getName(), packetIdentity);
             return Command.STOP;
         }
+        log.debug("{} - have NOT HANDLED packet {}", getClass().getName(), packetIdentity);
         return Command.CONTINUE;
     }
 
@@ -80,11 +94,15 @@ public abstract class AbstractOfHandler implements IOFMessageListener {
 
     @Override
     public boolean isCallbackOrderingPrereq(OFType type, String name) {
-        return mustHandleAfter().contains(name);
+        final boolean isMatch = mustHandleAfter().contains(name);
+        log.debug("listener ordering AFTER constraint: {} vs {} - {}", getClass().getName(), name, isMatch);
+        return isMatch;
     }
 
     @Override
     public boolean isCallbackOrderingPostreq(OFType type, String name) {
-        return mustHandleBefore().contains(name);
+        final boolean isMatch = mustHandleBefore().contains(name);
+        log.debug("listener ordering BEFORE constraint: {} vs {} - {}", getClass().getName(), name, isMatch);
+        return isMatch;
     }
 }

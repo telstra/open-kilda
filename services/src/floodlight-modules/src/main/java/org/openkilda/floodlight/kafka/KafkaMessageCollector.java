@@ -15,15 +15,24 @@
 
 package org.openkilda.floodlight.kafka;
 
-import org.openkilda.config.KafkaTopicsConfig;
+import org.openkilda.floodlight.command.ping.PingResponseCommandFactoryImpl;
 import org.openkilda.floodlight.config.KafkaFloodlightConfig;
 import org.openkilda.floodlight.config.provider.ConfigurationProvider;
+import org.openkilda.floodlight.service.ConfigService;
+import org.openkilda.floodlight.service.PingService;
+import org.openkilda.floodlight.service.batch.OfBatchService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
+import org.openkilda.floodlight.utils.CommandContextFactory;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import net.floodlightcontroller.core.IFloodlightProviderService;
+import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.threadpool.IThreadPoolService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,55 +47,81 @@ public class KafkaMessageCollector implements IFloodlightModule {
 
     private static final Logger logger = LoggerFactory.getLogger(KafkaMessageCollector.class);
 
-    /**
-     * IFloodLightModule Methods
-     */
+    private final CommandContextFactory commandContextFactory = new CommandContextFactory();
+
+    private final ConfigService configService = new ConfigService();
+    private final OfBatchService ofBatchService;
+    private final PingService pingService;
+
+    public KafkaMessageCollector() {
+        ofBatchService = new OfBatchService(commandContextFactory);
+        pingService = new PingService(commandContextFactory);
+    }
+
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
-        return null;
+        return ImmutableList.of(
+                ConfigService.class,
+                OfBatchService.class,
+                PingService.class);
     }
 
     @Override
     public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
-        return null;
+        return ImmutableMap.of(
+                OfBatchService.class, ofBatchService,
+                PingService.class, pingService,
+                ConfigService.class, configService);
     }
 
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
-        Collection<Class<? extends IFloodlightService>> services = new ArrayList<>();
-        ConsumerContext.fillDependencies(services);
-        return services;
+        Collection<Class<? extends IFloodlightService>> dependencies = new ArrayList<>();
+        ConsumerContext.fillDependencies(dependencies);
+
+        dependencies.add(IFloodlightProviderService.class);
+        dependencies.add(IOFSwitchService.class);
+        dependencies.add(IThreadPoolService.class);
+        dependencies.add(KafkaMessageProducer.class);
+
+        return dependencies;
     }
 
     @Override
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
+        commandContextFactory.init(context);
     }
 
     @Override
     public void startUp(FloodlightModuleContext moduleContext) throws FloodlightModuleException {
-        ConfigurationProvider provider = new ConfigurationProvider(moduleContext, this);
+        logger.info("Starting {}", this.getClass().getCanonicalName());
 
-        KafkaFloodlightConfig kafkaConfig = provider.getConfiguration(KafkaFloodlightConfig.class);
-        KafkaTopicsConfig topicsConfig = provider.getConfiguration(KafkaTopicsConfig.class);
-        String inputTopic = topicsConfig.getSpeakerTopic();
+        configService.init(new ConfigurationProvider(moduleContext, this));
+        ofBatchService.init(moduleContext);
+        pingService.init(moduleContext, new PingResponseCommandFactoryImpl());
 
-        ConsumerContext context = new ConsumerContext(moduleContext, kafkaConfig, topicsConfig);
+        ConsumerContext context = initContext(moduleContext);
+        initConsumer(moduleContext, context);
+    }
+
+    private ConsumerContext initContext(FloodlightModuleContext moduleContext) {
+        KafkaFloodlightConfig kafkaConfig = configService.getProvider().getConfiguration(KafkaFloodlightConfig.class);
+        return new ConsumerContext(moduleContext, kafkaConfig, configService.getTopics());
+    }
+
+    private void initConsumer(FloodlightModuleContext moduleContext, ConsumerContext context) {
         RecordHandler.Factory handlerFactory = new RecordHandler.Factory(context);
         ISwitchManager switchManager = moduleContext.getServiceImpl(ISwitchManager.class);
 
-        logger.info("Starting {}", this.getClass().getCanonicalName());
-        try {
-            ExecutorService parseRecordExecutor = Executors.newFixedThreadPool(EXEC_POOL_SIZE);
+        ExecutorService parseRecordExecutor = Executors.newFixedThreadPool(EXEC_POOL_SIZE);
 
-            Consumer consumer;
-            if (!context.isTestingMode()) {
-                consumer = new Consumer(context, parseRecordExecutor, handlerFactory, switchManager, inputTopic);
-            } else {
-                consumer = new TestAwareConsumer(context, parseRecordExecutor, handlerFactory, switchManager, inputTopic);
-            }
-            Executors.newSingleThreadExecutor().execute(consumer);
-        } catch (Exception exception) {
-            logger.error("error", exception);
+        String inputTopic = context.getKafkaSpeakerTopic();
+        Consumer consumer;
+        if (!context.isTestingMode()) {
+            consumer = new Consumer(context, parseRecordExecutor, handlerFactory, switchManager, inputTopic);
+        } else {
+            consumer = new TestAwareConsumer(context, parseRecordExecutor, handlerFactory, switchManager, inputTopic);
         }
+        Executors.newSingleThreadExecutor().execute(consumer);
     }
 }

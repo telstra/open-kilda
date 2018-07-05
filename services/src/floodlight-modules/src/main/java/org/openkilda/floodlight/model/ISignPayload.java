@@ -13,18 +13,10 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight.command;
+package org.openkilda.floodlight.model;
 
-public abstract class Command {
-    private final CommandContext context;
+import com.auth0.jwt.JWTCreator;
 
-    public Command(CommandContext context) {
-        this.context = context;
-    }
-
-    public abstract void execute();
-
-    protected CommandContext getContext() {
-        return context;
-    }
+public interface ISignPayload {
+    JWTCreator.Builder toSign(JWTCreator.Builder token);
 }

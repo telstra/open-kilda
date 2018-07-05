@@ -13,14 +13,20 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight.error;
+package org.openkilda.floodlight.utils;
 
-public class InsufficientCapabilitiesException extends AbstractException {
-    public InsufficientCapabilitiesException() {
-        this("Insufficient capabilities error");
+import org.openkilda.floodlight.command.CommandContext;
+
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
+
+public class CommandContextFactory {
+    private FloodlightModuleContext moduleContext = null;
+
+    public void init(FloodlightModuleContext moduleContext) {
+        this.moduleContext = moduleContext;
     }
 
-    public InsufficientCapabilitiesException(String s) {
-        super(s);
+    public CommandContext produce() {
+        return new CommandContext(moduleContext);
     }
 }

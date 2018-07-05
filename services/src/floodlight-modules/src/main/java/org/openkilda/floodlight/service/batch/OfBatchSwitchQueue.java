@@ -18,41 +18,42 @@ package org.openkilda.floodlight.service.batch;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.types.DatapathId;
 
-public class OfPendingMessage {
+import java.util.LinkedList;
+
+class OfBatchSwitchQueue {
     private final DatapathId dpId;
-    private final OFMessage request;
-    private long xid;
-    private OFMessage response = null;
-    private boolean pending = true;
+    private final LinkedList<OfBatch> queue = new LinkedList<>();
+    private boolean garbage = true;
 
-    public OfPendingMessage(DatapathId dpId, OFMessage request) {
+    public OfBatchSwitchQueue(DatapathId dpId) {
         this.dpId = dpId;
-        this.request = request;
-        this.xid = request.getXid();
     }
 
-    public boolean isPending() {
-        return pending;
+    public synchronized void add(OfBatch batch) {
+        queue.addLast(batch);
+        garbage = false;
     }
 
-    public long getXid() {
-        return xid;
+    public synchronized void cleanup() {
+        queue.removeIf(OfBatch::isComplete);
     }
 
-    public DatapathId getDpId() {
-        return dpId;
+    synchronized OfBatch receiveResponse(OFMessage response) {
+        OfBatch match = null;
+        for (OfBatch entry : queue) {
+            if (!entry.receiveResponse(dpId, response)) {
+                continue;
+            }
+
+            match = entry;
+            break;
+        }
+
+        garbage = queue.size() == 0;
+        return match;
     }
 
-    public OFMessage getRequest() {
-        return request;
-    }
-
-    public OFMessage getResponse() {
-        return response;
-    }
-
-    public void setResponse(OFMessage response) {
-        pending = false;
-        this.response = response;
+    public boolean isGarbage() {
+        return garbage;
     }
 }
