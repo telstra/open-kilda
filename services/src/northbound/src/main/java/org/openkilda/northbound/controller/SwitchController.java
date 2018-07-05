@@ -239,7 +239,10 @@ public class SwitchController {
     }
 
     /**
-     * Removes meter from the switch.
+     * Remove the meter from specific switch.
+     * @param switchId switch dpid.
+     * @param meterId id of the meter to be deleted.
+     * @return result of the operation wrapped into {@link DeleteMeterResult}. True means no errors is occurred.
      */
     @ApiOperation(value = "Delete meter from the switch", response = DeleteMeterResult.class)
     @DeleteMapping(path = "/switches/{switch_id}/meter/{meter_id}")

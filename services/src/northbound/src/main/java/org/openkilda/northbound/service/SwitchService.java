@@ -89,7 +89,7 @@ public interface SwitchService extends BasicService {
     RulesSyncResult syncRules(String switchId);
 
     /**
-     * Removed meter from the switch.
+     * Removes meter from the switch.
      * @param switchId switch datapath id.
      * @param meterId meter to be deleted.
      */

@@ -248,7 +248,7 @@ public class SwitchServiceImpl implements SwitchService {
 
     @Override
     public DeleteMeterResult deleteMeter(String switchId, long meterId) {
-        final String requestId = RequestCorrelationId.getId();
+        String requestId = RequestCorrelationId.getId();
         CommandWithReplyToMessage deleteCommand = new CommandWithReplyToMessage(
                 new DeleteMeterRequest(switchId, meterId),
                 System.currentTimeMillis(), requestId, Destination.TOPOLOGY_ENGINE, northboundTopic);
