@@ -10,10 +10,11 @@ import org.openkilda.northbound.dto.SwitchDto;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 public interface SwitchService extends BasicService {
 
-    List<SwitchDto> getSwitches();
+    CompletableFuture<List<SwitchDto>> getSwitches();
 
     /**
      * Get all rules from the switch. If cookie is specified, then return just that cookie rule.

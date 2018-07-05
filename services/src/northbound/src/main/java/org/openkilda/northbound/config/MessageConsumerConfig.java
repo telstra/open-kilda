@@ -15,10 +15,13 @@
 
 package org.openkilda.northbound.config;
 
+import org.openkilda.messaging.Message;
 import org.openkilda.northbound.messaging.HealthCheckMessageConsumer;
 import org.openkilda.northbound.messaging.MessageConsumer;
 import org.openkilda.northbound.messaging.kafka.KafkaHealthCheckMessageConsumer;
 import org.openkilda.northbound.messaging.kafka.KafkaMessageConsumer;
+import org.openkilda.northbound.messaging.kafka.KafkaMessageListener;
+import org.openkilda.northbound.messaging.kafka.KafkaMessagingFacade;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -30,6 +33,7 @@ import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.support.serializer.JsonDeserializer;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -68,7 +72,7 @@ public class MessageConsumerConfig {
         Map<String, Object> props = new HashMap<>();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaHosts);
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
         props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
         props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true);
         props.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, "30000");
@@ -87,8 +91,9 @@ public class MessageConsumerConfig {
      * @return kafka consumer factory
      */
     @Bean
-    public ConsumerFactory<String, String> consumerFactory() {
-        return new DefaultKafkaConsumerFactory<>(consumerConfigs());
+    public ConsumerFactory<String, Message> consumerFactory() {
+        return new DefaultKafkaConsumerFactory<>(consumerConfigs(),
+                new StringDeserializer(), new JsonDeserializer<>(Message.class));
     }
 
     /**
@@ -99,12 +104,12 @@ public class MessageConsumerConfig {
      * @return kafka listener container factory
      */
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory() {
-        ConcurrentKafkaListenerContainerFactory<String, String> factory =
+    public ConcurrentKafkaListenerContainerFactory<String, Message> kafkaListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, Message> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory());
         factory.getContainerProperties().setPollTimeout(POLL_TIMEOUT);
-        //factory.setConcurrency(10);
+        factory.setConcurrency(10);
         return factory;
     }
 
@@ -131,4 +136,15 @@ public class MessageConsumerConfig {
     public HealthCheckMessageConsumer healthCheckMessageConsumer() {
         return new KafkaHealthCheckMessageConsumer();
     }
+
+    @Bean
+    public KafkaMessageListener kafkaMessageListener() {
+        return new KafkaMessageListener();
+    }
+
+    @Bean
+    public KafkaMessagingFacade messageFacade() {
+        return new KafkaMessagingFacade();
+    }
+
 }

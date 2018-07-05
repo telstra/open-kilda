@@ -137,6 +137,10 @@ public class TestMessageMock implements MessageProducer, MessageConsumer {
         }
     }
 
+    @Override
+    public void onResponse(Object message) {
+    }
+
     private Message getFlowResponse(FlowIdStatusPayload request, String correlationId) {
         if (request != null) {
             if (ERROR_FLOW_ID.equals((request.getId()))) {

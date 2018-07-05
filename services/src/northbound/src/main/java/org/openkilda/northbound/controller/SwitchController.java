@@ -53,6 +53,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * REST Controller for switches.
@@ -83,7 +84,7 @@ public class SwitchController {
     @ApiOperation(value = "Get all available switches", response = SwitchDto.class, responseContainer = "List")
     @GetMapping(path = "/switches")
     @ResponseStatus(HttpStatus.OK)
-    public List<SwitchDto> getSwitches() {
+    public CompletableFuture<List<SwitchDto>> getSwitches() {
         return switchService.getSwitches();
     }
 
@@ -121,15 +122,15 @@ public class SwitchController {
      */
     @ApiOperation(value = "Delete switch rules. Requires special authorization",
             response = Long.class, responseContainer = "List")
-    @ApiResponse(code = 200, response = Long.class, responseContainer = "List" , message = "Operation is successful")
+    @ApiResponse(code = 200, response = Long.class, responseContainer = "List", message = "Operation is successful")
     @DeleteMapping(value = "/switches/{switch-id}/rules",
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     @ExtraAuthRequired
     public ResponseEntity<List<Long>> deleteSwitchRules(
             @PathVariable("switch-id") String switchId,
-            @ApiParam(value = "default: IGNORE_DEFAULTS. Can be one of DeleteRulesAction: " +
-                    "DROP_ALL,DROP_ALL_ADD_DEFAULTS,IGNORE_DEFAULTS,OVERWRITE_DEFAULTS," +
-                    "REMOVE_DROP,REMOVE_BROADCAST,REMOVE_UNICAST,REMOVE_DEFAULTS,REMOVE_ADD_DEFAULTS",
+            @ApiParam(value = "default: IGNORE_DEFAULTS. Can be one of DeleteRulesAction: "
+                    + "DROP_ALL,DROP_ALL_ADD_DEFAULTS,IGNORE_DEFAULTS,OVERWRITE_DEFAULTS,"
+                    + "REMOVE_DROP,REMOVE_BROADCAST,REMOVE_UNICAST,REMOVE_DEFAULTS,REMOVE_ADD_DEFAULTS",
                     required = false)
             @RequestParam("delete-action") Optional<DeleteRulesAction> deleteAction,
             @RequestParam("cookie") Optional<Long> cookie,
@@ -175,14 +176,14 @@ public class SwitchController {
      */
     @ApiOperation(value = "Install switch rules. Requires special authorization",
             response = Long.class, responseContainer = "List")
-    @ApiResponse(code = 200, response = Long.class, responseContainer = "List" , message = "Operation is successful")
+    @ApiResponse(code = 200, response = Long.class, responseContainer = "List", message = "Operation is successful")
     @PutMapping(value = "/switches/{switch-id}/rules",
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     @ExtraAuthRequired
     public ResponseEntity<List<Long>> installSwitchRules(
             @PathVariable("switch-id") String switchId,
-            @ApiParam(value = "default: INSTALL_DEFAULTS. Can be one of InstallRulesAction: " +
-                    " INSTALL_DROP,INSTALL_BROADCAST,INSTALL_UNICAST,INSTALL_DEFAULTS",
+            @ApiParam(value = "default: INSTALL_DEFAULTS. Can be one of InstallRulesAction: "
+                    + " INSTALL_DROP,INSTALL_BROADCAST,INSTALL_UNICAST,INSTALL_DEFAULTS",
                     required = false)
             @RequestParam("install-action") Optional<InstallRulesAction> installAction) {
         List<Long> response = switchService

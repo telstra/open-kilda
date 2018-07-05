@@ -16,7 +16,6 @@
 package org.openkilda.northbound.messaging.kafka;
 
 import static org.openkilda.messaging.Utils.CORRELATION_ID;
-import static org.openkilda.messaging.Utils.MAPPER;
 import static org.openkilda.messaging.error.ErrorType.INTERNAL_ERROR;
 import static org.openkilda.messaging.error.ErrorType.OPERATION_TIMED_OUT;
 
@@ -27,14 +26,10 @@ import org.openkilda.northbound.messaging.MessageConsumer;
 import org.apache.commons.collections4.map.PassiveExpiringMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
-import org.slf4j.MDC.MDCCloseable;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.PropertySource;
-import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
-import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -78,29 +73,6 @@ public class KafkaMessageConsumer implements MessageConsumer<Message> {
     }
 
     /**
-     * Receives messages from WorkFlowManager queue.
-     *
-     * @param record the message object instance
-     */
-    @KafkaListener(id = "northbound-listener", topics = "#{kafkaTopicsConfig.getNorthboundTopic()}")
-    public void receive(final String record) {
-        Message message;
-
-        try {
-            logger.trace("message received: {}", record);
-            message = MAPPER.readValue(record, Message.class);
-        } catch (IOException exception) {
-            logger.error("Could not deserialize message: {}", record, exception);
-            return;
-        }
-
-        try (MDCCloseable closable = MDC.putCloseable(CORRELATION_ID, message.getCorrelationId())) {
-            logger.debug("message received: {}", message);
-            messages.put(message.getCorrelationId(), message);
-        }
-    }
-
-    /**
      * {@inheritDoc}
      */
     @Override
@@ -122,36 +94,12 @@ public class KafkaMessageConsumer implements MessageConsumer<Message> {
                 OPERATION_TIMED_OUT, TIMEOUT_ERROR_MESSAGE, northboundTopic);
     }
 
-    //todo(Nikita C): rewrite current poll method using async way.
-    /*
-    @Async
-    public CompletableFuture<Message> asyncPoll(final String correlationId) {
-        try {
-            for (int i = POLL_TIMEOUT / POLL_PAUSE; i < POLL_TIMEOUT; i += POLL_PAUSE) {
-                if (messages.containsKey(correlationId)) {
-                    return CompletableFuture.completedFuture(messages.remove(correlationId));
-                } else if (messages.containsKey(SYSTEM_CORRELATION_ID)) {
-                    return CompletableFuture.completedFuture(messages.remove(SYSTEM_CORRELATION_ID));
-                }
-                Thread.sleep(POLL_PAUSE);
-            }
-        } catch (InterruptedException exception) {
-            logger.error("{}: {}={}", INTERRUPTED_ERROR_MESSAGE, CORRELATION_ID, correlationId);
-            throw new MessageException(correlationId, System.currentTimeMillis(),
-                    INTERNAL_ERROR, INTERRUPTED_ERROR_MESSAGE, Topic.NORTHBOUND);
-        }
-        logger.error("{}: {}={}", TIMEOUT_ERROR_MESSAGE, CORRELATION_ID, correlationId);
-        throw new MessageException(correlationId, System.currentTimeMillis(),
-                OPERATION_TIMED_OUT, TIMEOUT_ERROR_MESSAGE, Topic.NORTHBOUND);
-    }
-    */
-
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public void clear() {
-        //we shouldn't clear up collection, outdated messages are removing by default.
-        //messages.clear();
+    }
+
+    @Override
+    public void onResponse(Message message) {
+        messages.put(message.getCorrelationId(), message);
     }
 }

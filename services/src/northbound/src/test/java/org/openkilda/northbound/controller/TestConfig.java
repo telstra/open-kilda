@@ -23,6 +23,8 @@ import org.openkilda.northbound.config.WebConfig;
 import org.openkilda.northbound.messaging.HealthCheckMessageConsumer;
 import org.openkilda.northbound.messaging.MessageConsumer;
 import org.openkilda.northbound.messaging.MessageProducer;
+import org.openkilda.northbound.messaging.MessagingFacade;
+import org.openkilda.northbound.messaging.kafka.KafkaMessagingFacade;
 import org.openkilda.northbound.utils.CorrelationIdFactory;
 import org.openkilda.northbound.utils.TestCorrelationIdFactory;
 
@@ -81,6 +83,11 @@ public class TestConfig {
         return new TestCorrelationIdFactory();
     }
 
+    @Bean
+    public MessagingFacade messagingFacade() {
+        return new KafkaMessagingFacade();
+    }
+
     private class TestHealthCheckMessageMock implements HealthCheckMessageConsumer {
 
         @Override
@@ -90,7 +97,10 @@ public class TestConfig {
 
         @Override
         public void clear() {
+        }
 
+        @Override
+        public void onResponse(Map<String, String> message) {
         }
     }
 }

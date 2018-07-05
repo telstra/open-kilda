@@ -31,6 +31,7 @@ import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesSyncRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesValidateRequest;
+import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
@@ -44,9 +45,9 @@ import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.northbound.messaging.MessageConsumer;
 import org.openkilda.northbound.messaging.MessageProducer;
+import org.openkilda.northbound.messaging.MessagingFacade;
 import org.openkilda.northbound.service.SwitchService;
 import org.openkilda.northbound.utils.RequestCorrelationId;
-import org.openkilda.northbound.utils.ResponseCollector;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,6 +58,7 @@ import org.springframework.util.CollectionUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Service
@@ -74,7 +76,7 @@ public class SwitchServiceImpl implements SwitchService {
     private MessageConsumer<Message> messageConsumer;
 
     @Autowired
-    private ResponseCollector<SwitchInfoData> switchesCollector;
+    private MessagingFacade messagingFacade;
 
     @Autowired
     private SwitchMapper switchMapper;
@@ -92,17 +94,17 @@ public class SwitchServiceImpl implements SwitchService {
      * {@inheritDoc}
      */
     @Override
-    public List<SwitchDto> getSwitches() {
+    public CompletableFuture<List<SwitchDto>> getSwitches() {
         final String correlationId = RequestCorrelationId.getId();
         LOGGER.debug("Get switch request received");
         CommandMessage request = new CommandMessage(new GetSwitchesRequest(), System.currentTimeMillis(),
                 correlationId);
-        messageProducer.send(nbworkerTopic, request);
 
-        List<SwitchInfoData> switches = switchesCollector.getResult(correlationId);
-        return switches.stream()
-                .map(switchMapper::toSwitchDto)
-                .collect(Collectors.toList());
+        return messagingFacade.sendAndGetChunked(nbworkerTopic, request)
+                .thenApply(messages -> messages.stream()
+                        .map(InfoMessage::getData)
+                        .map(data -> switchMapper.toSwitchDto((SwitchInfoData) data))
+                        .collect(Collectors.toList()));
     }
 
     /**

@@ -15,6 +15,7 @@
 
 package org.openkilda.northbound.messaging;
 
+@Deprecated
 public interface MessageConsumer<T> {
     /**
      * Kafka message queue poll timeout.
@@ -38,4 +39,9 @@ public interface MessageConsumer<T> {
      * Clears message queue.
      */
     void clear();
+
+    /**
+     * Processes response of the request.
+     */
+    void onResponse(T message);
 }
