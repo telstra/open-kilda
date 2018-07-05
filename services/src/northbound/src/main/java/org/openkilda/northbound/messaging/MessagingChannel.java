@@ -18,17 +18,17 @@ package org.openkilda.northbound.messaging;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.info.ChunkedInfoMessage;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.northbound.messaging.kafka.KafkaMessagingFacade;
+import org.openkilda.northbound.messaging.kafka.KafkaMessagingChannel;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
-public interface MessagingFacade {
+public interface MessagingChannel {
 
     /**
      * Sends message to the specified topic and provides response wrapped in {@link CompletableFuture}.
      * Note: this type of request expects to receive back the response,
-     * if you don't need any responses please use {@link KafkaMessagingFacade#send(String, Message)}
+     * if you don't need any responses please use {@link KafkaMessagingChannel#send(String, Message)}
      * @param topic kafka topic where message should be sent.
      * @param message data to be sent.
      * @return response for the request.

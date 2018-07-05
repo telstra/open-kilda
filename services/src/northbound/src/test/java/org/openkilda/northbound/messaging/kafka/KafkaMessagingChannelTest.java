@@ -22,7 +22,7 @@ import org.openkilda.messaging.info.ChunkedInfoMessage;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.northbound.config.KafkaConfig;
 import org.openkilda.northbound.messaging.MessageProducer;
-import org.openkilda.northbound.messaging.MessagingFacade;
+import org.openkilda.northbound.messaging.MessagingChannel;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -46,14 +46,14 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 @RunWith(SpringRunner.class)
-public class KafkaMessagingFacadeTest {
+public class KafkaMessagingChannelTest {
     private static final Set<ChunkedInfoMessage> CHUNKED_RESPONSES = new HashSet<>();
     private static final Set<Message> RESPONSES = new HashSet<>();
     private static final String MAIN_TOPIC = "topic";
     private static final String CHUNKED_TOPIC = "chunked";
 
     @Autowired
-    private KafkaMessagingFacade messagingFacade;
+    private KafkaMessagingChannel messagingChannel;
 
     @Before
     public void reset() {
@@ -69,7 +69,7 @@ public class KafkaMessagingFacadeTest {
         RESPONSES.add(message);
 
         CompletableFuture<InfoMessage> response =
-                messagingFacade.sendAndGet(MAIN_TOPIC, new Message(time, requestId));
+                messagingChannel.sendAndGet(MAIN_TOPIC, new Message(time, requestId));
 
         InfoMessage result = response.get(1, TimeUnit.SECONDS);
         assertEquals(message.getCorrelationId(), result.getCorrelationId());
@@ -85,7 +85,7 @@ public class KafkaMessagingFacadeTest {
         prepareChunkedResponses(requestId, timestamp, messagesAmount);
         Message request = new Message(timestamp, requestId);
 
-        CompletableFuture<List<ChunkedInfoMessage>> future = messagingFacade.sendAndGetChunked(CHUNKED_TOPIC, request);
+        CompletableFuture<List<ChunkedInfoMessage>> future = messagingChannel.sendAndGetChunked(CHUNKED_TOPIC, request);
         List<ChunkedInfoMessage> result = future.get(10, TimeUnit.SECONDS);
         assertEquals(messagesAmount, result.size());
         assertEquals(requestId, result.get(0).getCorrelationId());
@@ -100,7 +100,7 @@ public class KafkaMessagingFacadeTest {
         prepareChunkedResponses(requestId, timestamp, responses);
         Message request = new Message(timestamp, requestId);
 
-        CompletableFuture<List<ChunkedInfoMessage>> future = messagingFacade.sendAndGetChunked(CHUNKED_TOPIC, request);
+        CompletableFuture<List<ChunkedInfoMessage>> future = messagingChannel.sendAndGetChunked(CHUNKED_TOPIC, request);
         List<ChunkedInfoMessage> result = future.get(60, TimeUnit.SECONDS);
         assertEquals(responses, result.size());
     }
@@ -125,20 +125,20 @@ public class KafkaMessagingFacadeTest {
     @PropertySource({"classpath:northbound.properties"})
     static class Config {
         @Bean
-        public MessagingFacade messagingFacade() {
-            return new KafkaMessagingFacade();
+        public MessagingChannel messagingChannel() {
+            return new KafkaMessagingChannel();
         }
 
         @Bean
-        public MessageProducer messageProducer(KafkaMessagingFacade messagingFacade) {
-            return new CustomMessageProducer(messagingFacade);
+        public MessageProducer messageProducer(KafkaMessagingChannel messagingChannel) {
+            return new CustomMessageProducer(messagingChannel);
         }
     }
 
     private static class CustomMessageProducer implements MessageProducer {
-        private KafkaMessagingFacade facade;
+        private KafkaMessagingChannel facade;
 
-        CustomMessageProducer(KafkaMessagingFacade facade) {
+        CustomMessageProducer(KafkaMessagingChannel facade) {
             this.facade = facade;
         }
 

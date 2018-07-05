@@ -18,10 +18,11 @@ package org.openkilda.northbound.config;
 import org.openkilda.messaging.Message;
 import org.openkilda.northbound.messaging.HealthCheckMessageConsumer;
 import org.openkilda.northbound.messaging.MessageConsumer;
+import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.messaging.kafka.KafkaHealthCheckMessageConsumer;
 import org.openkilda.northbound.messaging.kafka.KafkaMessageConsumer;
 import org.openkilda.northbound.messaging.kafka.KafkaMessageListener;
-import org.openkilda.northbound.messaging.kafka.KafkaMessagingFacade;
+import org.openkilda.northbound.messaging.kafka.KafkaMessagingChannel;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -143,8 +144,8 @@ public class MessageConsumerConfig {
     }
 
     @Bean
-    public KafkaMessagingFacade messageFacade() {
-        return new KafkaMessagingFacade();
+    public MessagingChannel messagingChannel() {
+        return new KafkaMessagingChannel();
     }
 
 }

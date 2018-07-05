@@ -40,7 +40,7 @@ public class KafkaMessageListener {
     private static final Logger logger = LoggerFactory.getLogger(KafkaMessageListener.class);
 
     @Autowired
-    private KafkaMessagingFacade messagingFacade;
+    private KafkaMessagingChannel messagingChannel;
 
     @Autowired
     private MessageConsumer<Message> messageConsumer;
@@ -53,7 +53,7 @@ public class KafkaMessageListener {
     public void onMessage(Message message) {
         try (MDCCloseable closable = MDC.putCloseable(CORRELATION_ID, message.getCorrelationId())) {
             logger.debug("Message received: {} - {}", Thread.currentThread().getId(), message);
-            messagingFacade.onResponse(message);
+            messagingChannel.onResponse(message);
 
             // fixme: it is for the support of outdated services. should be removed once KafkaConsumer will be deleted.
             messageConsumer.onResponse(message);

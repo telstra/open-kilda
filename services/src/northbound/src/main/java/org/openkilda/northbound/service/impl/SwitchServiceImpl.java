@@ -45,7 +45,7 @@ import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.northbound.messaging.MessageConsumer;
 import org.openkilda.northbound.messaging.MessageProducer;
-import org.openkilda.northbound.messaging.MessagingFacade;
+import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.service.SwitchService;
 import org.openkilda.northbound.utils.RequestCorrelationId;
 
@@ -76,7 +76,7 @@ public class SwitchServiceImpl implements SwitchService {
     private MessageConsumer<Message> messageConsumer;
 
     @Autowired
-    private MessagingFacade messagingFacade;
+    private MessagingChannel messagingChannel;
 
     @Autowired
     private SwitchMapper switchMapper;
@@ -100,7 +100,7 @@ public class SwitchServiceImpl implements SwitchService {
         CommandMessage request = new CommandMessage(new GetSwitchesRequest(), System.currentTimeMillis(),
                 correlationId);
 
-        return messagingFacade.sendAndGetChunked(nbworkerTopic, request)
+        return messagingChannel.sendAndGetChunked(nbworkerTopic, request)
                 .thenApply(messages -> messages.stream()
                         .map(InfoMessage::getData)
                         .map(data -> switchMapper.toSwitchDto((SwitchInfoData) data))

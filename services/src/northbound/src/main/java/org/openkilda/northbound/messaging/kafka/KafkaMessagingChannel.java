@@ -21,7 +21,7 @@ import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.ChunkedInfoMessage;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.northbound.messaging.MessageProducer;
-import org.openkilda.northbound.messaging.MessagingFacade;
+import org.openkilda.northbound.messaging.MessagingChannel;
 
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -42,9 +42,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * sending messages and receiving them back in one place and doing it in non-blocking way.
  */
 @Component
-public class KafkaMessagingFacade implements MessagingFacade {
+public class KafkaMessagingChannel implements MessagingChannel {
 
-    private static final Logger logger = LoggerFactory.getLogger(KafkaMessagingFacade.class);
+    private static final Logger logger = LoggerFactory.getLogger(KafkaMessagingChannel.class);
 
     /**
      * Requests that are in progress of processing.
