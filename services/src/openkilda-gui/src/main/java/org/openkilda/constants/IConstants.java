@@ -58,6 +58,8 @@ public abstract class IConstants {
     	public static final String FW_PERMISSION_VALIDATE = "fw_permission_validate";
     	
     	public static final String FW_FLOW_CREATE = "fw_flow_create";
+    	public static final String FW_FLOW_UPDATE = "fw_flow_update";
+    	public static final String FW_FLOW_DELETE = "fw_flow_delete";
     }
     
     public class SETTINGS {

@@ -1,16 +1,14 @@
 /*<![CDATA[*/
 
 $(document).ready(function() {
-
 	var flowid = window.location.href.split("#")[1]
 	var tmp_anchor = '<a href="flowdetails#' + flowid + '">' + flowid + '</a>';
 	$("#flow-id-name").parent().append(flowid);
-	
-	
 	$("#loading").css("display", "block");
 	common.getData("/flows/"+flowid,"GET").then(function(response) {
 		$("#loading").css("display", "none");
 		$('body').css('pointer-events','all'); 
+		flowObj.setFlow(response);
 		showFlowData(response);
 	},
 	function(error){
@@ -26,6 +24,11 @@ $(document).ready(function() {
 	
 	getMetricDetails.getFlowMetricData();
 	$('body').css('pointer-events','all');
+	$(document).on('click',"#cancel_update_flow",function(e){
+		$("#edit_flow_div").empty().hide();
+		$('#flow_detail_div').show();
+		
+	})
 })
 
 function callValidateFlow(flow_id){
@@ -38,43 +41,38 @@ function callValidateFlow(flow_id){
 		})
 }
 function showFlowData(obj) {
-
 	$(".flow_div_flow_id").html(obj.flowid);
 	$(".flow_div_source_switch").html(obj.source["switch-id"]);
 	$(".flow_div_source_port").html(obj.source["port-id"]);
 	$(".flow_div_source_switch_name").html(obj.source["switch-name"]);
-	$(".flow_div_source_vlan").html(obj.source["vlan-id"]);
-	
+	$(".flow_div_source_vlan").html(obj.source["vlan-id"]);	
 	$(".flow_div_destination_switch").html(obj.destination["switch-id"]);
 	$(".flow_div_destination_port").html(obj.destination["port-id"]);
 	$(".flow_div_destination_switch_name").html(obj.destination["switch-name"]);
 	$(".flow_div_destination_vlan").html(obj.destination["vlan-id"]);
 	$(".flow_div_maximum_bandwidth").html(obj["maximum-bandwidth"]);
 	$(".flow_div_Status").html(obj.status);
-
 	if (!obj.description == "") {
 		$(".flow_div_desc").html(obj.description);
 	} else {
 		$(".flow_div_desc").html("-");
 	}
 	callFlowPath(obj.flowid);
-	
 	$('#reroute_flow').click(function(e){
 		e.preventDefault();
 		callReRoute(obj.flowid);
 		
 	})
-	
 	$('#validate_flow_btn').click(function(e){
 		e.preventDefault();
 		callValidateFlow(obj.flowid);
 	});
-	
+
 }
 
-/** dev: Neeraj
- * functionality : call re-route api 
- *  **/
+
+
+
 function callReRoute(flow_id){
 	$("#path_reroute_loader").show();
 	$('#ForwardRow').find('div').remove();
@@ -107,16 +105,11 @@ function callFlowPath(flow_id) {
 	})
 }
 function openswitchDetail(switch_id){
-	console.log('switch_id',switch_id)
 	common.getData("/switch/list","GET").then(function(response){
-		console.log('response',response)
 		var switchData= response.filter(function(f){
 				return f.switch_id == switch_id;
 		})
-		//localStorage.setItem('switchDetailsJSON',JSON.stringify(switchData));
-		//window.location.href="/openkilda/switch/details#id#"+switch_id;
-	})
-	
+	})	
 }
 function showFlowPathData(response ,isloader) {
 
