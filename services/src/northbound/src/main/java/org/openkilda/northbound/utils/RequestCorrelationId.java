@@ -37,6 +37,10 @@ public final class RequestCorrelationId {
         return new RequestCorrelationClosable();
     }
 
+    public static String chain(String inner, String outer) {
+        return String.join(" : ", inner, outer);
+    }
+
     public static class RequestCorrelationClosable implements Closeable {
 
         public void close() {

@@ -2,9 +2,11 @@ package org.openkilda.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -12,8 +14,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.ModelAndView;
 
-import java.util.ArrayList;
-import java.util.Iterator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -21,10 +22,18 @@ import javax.servlet.http.HttpServletRequest;
 
 import org.apache.log4j.Logger;
 import org.openkilda.constants.IConstants;
-import org.openkilda.dao.UserRepository;
-import org.openkilda.entity.Role;
-import org.openkilda.entity.User;
-import org.openkilda.model.UserInfo;
+import org.openkilda.constants.Status;
+import org.openkilda.exception.InvalidOtpException;
+import org.openkilda.exception.OtpRequiredException;
+import org.openkilda.exception.TwoFaKeyNotSetException;
+import org.openkilda.security.CustomWebAuthenticationDetails;
+import org.openkilda.security.TwoFactorUtility;
+import org.usermanagement.dao.entity.PermissionEntity;
+import org.usermanagement.dao.entity.RoleEntity;
+import org.usermanagement.dao.entity.UserEntity;
+import org.usermanagement.dao.repository.PermissionRepository;
+import org.usermanagement.model.UserInfo;
+import org.usermanagement.service.UserService;
 
 /**
  *
@@ -42,7 +51,10 @@ public class LoginController extends BaseController {
     private AuthenticationManager authenticationManager;
 
     @Autowired
-    private UserRepository userRepository;
+    private UserService userService;
+
+    @Autowired
+    private PermissionRepository permissionRepository;
 
     /**
      * Login.
@@ -52,7 +64,6 @@ public class LoginController extends BaseController {
      */
     @RequestMapping(value = {"/", "/login"})
     public ModelAndView login(final HttpServletRequest request) {
-        LOGGER.info("[login] - start");
         return validateAndRedirect(request, IConstants.View.REDIRECT_HOME);
     }
 
@@ -64,10 +75,8 @@ public class LoginController extends BaseController {
      */
     @RequestMapping("/logout")
     public ModelAndView logout(final Model model) {
-        LOGGER.info("[logout] - start");
         return new ModelAndView(IConstants.View.LOGOUT);
     }
-
 
     /**
      * Authenticate.
@@ -82,32 +91,67 @@ public class LoginController extends BaseController {
             @RequestParam("password") final String password, final HttpServletRequest request) {
         LOGGER.info("[authenticate] - start");
         ModelAndView modelAndView = new ModelAndView(IConstants.View.LOGIN);
-        List<String> errors = new ArrayList<String>();
+        String error = null;
+        UsernamePasswordAuthenticationToken token =
+                new UsernamePasswordAuthenticationToken(username, password);
+        CustomWebAuthenticationDetails customWebAuthenticationDetails = new CustomWebAuthenticationDetails(request);
+        token.setDetails(customWebAuthenticationDetails);
+
         try {
-            UsernamePasswordAuthenticationToken token =
-                    new UsernamePasswordAuthenticationToken(username, password);
             Authentication authenticate = authenticationManager.authenticate(token);
             if (authenticate.isAuthenticated()) {
                 modelAndView.setViewName(IConstants.View.REDIRECT_HOME);
                 UserInfo userInfo = getLoggedInUser(request);
                 populateUserInfo(userInfo, username);
+                request.getSession().setAttribute(IConstants.SESSION_OBJECT, userInfo);
                 SecurityContextHolder.getContext().setAuthentication(authenticate);
+                userService.updateLoginDetail(username);
             } else {
-                errors.add("authenticate() Authentication failure with username{} and password{}");
-                LOGGER.error("authenticate() Authentication failure with username{} and password{}");
+                error = "Invalid email or password";
+                LOGGER.error(
+                        "authenticate() Authentication failure with username{} and password{}");
                 modelAndView.setViewName(IConstants.View.REDIRECT_LOGIN);
             }
+        } catch (@SuppressWarnings("unused") TwoFaKeyNotSetException e) {
+            LOGGER.error("2 FA Key not set for user: '" + username + "'.");
+            modelAndView.addObject("username", username);
+            modelAndView.addObject("password", password);
 
+            String secretKey = TwoFactorUtility.getBase32EncryptedKey();
+            modelAndView.addObject("key", secretKey);
+            userService.updateUser2FAKey(username, secretKey);
+
+            modelAndView.setViewName(IConstants.View.TWO_FA_GENERATOR);
+        } catch (@SuppressWarnings("unused") OtpRequiredException e) {
+            LOGGER.error("OTP required for user: '" + username + "'.");
+            modelAndView.addObject("username", username);
+            modelAndView.addObject("password", password);
+            modelAndView.setViewName(IConstants.View.OTP);
+        } catch (@SuppressWarnings("unused") InvalidOtpException e) {
+            LOGGER.error("Authentication code is invalid for user: '" + username + "'.");
+            error = "Authentication code is invalid";
+            modelAndView.addObject("username", username);
+            modelAndView.addObject("password", password);
+            if(customWebAuthenticationDetails.isConfigure2Fa()) {
+                UserEntity userInfo = userService.getUserByUsername(username);
+                modelAndView.addObject("key", userInfo.getTwoFaKey());
+                modelAndView.setViewName(IConstants.View.TWO_FA_GENERATOR);
+            } else {
+                modelAndView.setViewName(IConstants.View.OTP);
+            }
+        } catch (UsernameNotFoundException | BadCredentialsException e) {
+            LOGGER.error("authenticate() Authentication failure", e);
+            error = "Invalid email or password";
+            modelAndView.setViewName(IConstants.View.REDIRECT_LOGIN);
         } catch (Exception e) {
             LOGGER.error("authenticate() Authentication failure", e);
-            errors.add("authenticate() Authentication failure");
+            error = "Login Failed. Error: '" + e.getMessage() + "'.";
             modelAndView.setViewName(IConstants.View.REDIRECT_LOGIN);
+        }
 
+        if (error != null) {
+            modelAndView.addObject("error", error);
         }
-        if (errors.size() > 0) {
-            modelAndView.addObject("error", errors);
-        }
-        LOGGER.info("exit LoginController method authenticate");
         return modelAndView;
     }
 
@@ -119,20 +163,34 @@ public class LoginController extends BaseController {
      * @return user information
      */
     private void populateUserInfo(final UserInfo userInfo, final String username) {
-        User user = userRepository.findByUsername(username);
-
-        Set<Role> set = user.getRoles();
-        Iterator<?> iterator = set.iterator();
-        Role role = null;
-        while (iterator.hasNext()) {
-            role = (Role) iterator.next();
-        }
-
-        userInfo.setUserId(user.getUserId().intValue());
+        UserEntity user = userService.getUserByUsername(username);
+        Set<RoleEntity> roleEntities = user.getRoles();
+        Set<String> roles = new HashSet<String>();
+        Set<String> permissions = new HashSet<String>();
+		for (RoleEntity roleEntity : roleEntities) {
+			roles.add(roleEntity.getName());
+			userInfo.setRole("ROLE_ADMIN");
+			if (user.getUserId() != 1) {
+				Set<PermissionEntity> permissionEntities = roleEntity.getPermissions();
+				for (PermissionEntity permissionEntity : permissionEntities) {
+					if (permissionEntity.getStatusEntity().getStatusCode().equalsIgnoreCase(Status.ACTIVE.getCode())
+							&& !permissionEntity.getIsAdminPermission()) {
+						permissions.add(permissionEntity.getName());
+					}
+				}
+			}
+		}
+		if (user.getUserId() == 1) {
+			List<PermissionEntity> permissionEntities = permissionRepository.findAll();
+			for (PermissionEntity permissionEntity : permissionEntities) {
+				permissions.add(permissionEntity.getName());
+			}
+		}
+        userInfo.setUserId(user.getUserId());
         userInfo.setUsername(user.getUsername());
         userInfo.setName(user.getName());
-        if (role != null) {
-            userInfo.setRole(role.getRole());
-        }
+        userInfo.setRoles(roles);
+        userInfo.setPermissions(permissions);
+        userInfo.setIs2FaEnabled(user.getIs2FaEnabled());
     }
 }

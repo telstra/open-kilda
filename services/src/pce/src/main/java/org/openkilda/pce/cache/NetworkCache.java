@@ -397,7 +397,7 @@ public class NetworkCache extends Cache {
     public IslInfoData createOrUpdateIsl(IslInfoData isl) {
         logger.debug("Create or Update {} isl with {} parameters", isl);
 
-        if (isl == null){
+        if (isl == null) {
             throw new IllegalArgumentException("ISL can't be null in createOrUpdateIsl");
         }
 

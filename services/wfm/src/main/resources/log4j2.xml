@@ -5,7 +5,9 @@
             <PatternLayout pattern="%d{ISO8601} %-5p [%t] %c{1.} - [%X] %m%n"/>
         </Console>
         <Socket name="LOGSTASH" host="logstash" port="5001">
-            <JsonLayout compact="true" eventEol="true" properties="true"/>
+            <JsonLayout compact="true" eventEol="true" properties="true">
+                <KeyValuePair key="correlation_id" value="${ctx:correlation_id}"/>
+            </JsonLayout>
         </Socket>
     </Appenders>
     <Loggers>

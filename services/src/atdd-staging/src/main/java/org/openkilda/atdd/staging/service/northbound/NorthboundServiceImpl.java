@@ -21,12 +21,16 @@ import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
+import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.model.HealthCheck;
+import org.openkilda.messaging.payload.FeatureTogglePayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.links.LinkDto;
+import org.openkilda.northbound.dto.links.LinkPropsDto;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.switches.SwitchDto;
@@ -42,6 +46,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.Arrays;
 import java.util.List;
@@ -169,6 +174,12 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
+    public SwitchFlowEntries getSwitchRules(String switchId) {
+        return restTemplate.exchange("/api/v1/switches/{switch_id}/rules", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), SwitchFlowEntries.class, switchId).getBody();
+    }
+
+    @Override
     public RulesValidationResult validateSwitchRules(String switchId) {
         return restTemplate.exchange("/api/v1/switches/{switch_id}/rules/validate", HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), RulesValidationResult.class, switchId).getBody();
@@ -182,6 +193,58 @@ public class NorthboundServiceImpl implements NorthboundService {
         return Stream.of(links)
                 .map(this::convertToIslInfoData)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<LinkPropsDto> getAllLinkProps() {
+        return getLinkProps(null, null, null, null);
+    }
+
+    @Override
+    public List<LinkPropsDto> getLinkProps(String srcSwitch, Integer srcPort, String dstSwitch, Integer dstPort) {
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v1/link/props");
+        if (srcSwitch != null) {
+            uriBuilder.queryParam("src_switch", srcSwitch);
+        }
+        if (srcPort != null) {
+            uriBuilder.queryParam("src_port", srcPort);
+        }
+        if (dstSwitch != null) {
+            uriBuilder.queryParam("dst_switch", dstSwitch);
+        }
+        if (dstPort != null) {
+            uriBuilder.queryParam("dst_port", dstPort);
+        }
+        LinkPropsDto[] linkProps = restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), LinkPropsDto[].class).getBody();
+        return Arrays.asList(linkProps);
+    }
+
+    @Override
+    public BatchResults updateLinkProps(List<LinkPropsDto> keys) {
+        HttpEntity<List<LinkPropsDto>> httpEntity = new HttpEntity<>(keys, buildHeadersWithCorrelationId());
+        return restTemplate.exchange("/api/v1/link/props", HttpMethod.PUT, httpEntity,
+                BatchResults.class).getBody();
+    }
+
+    @Override
+    public BatchResults deleteLinkProps(List<LinkPropsDto> keys) {
+        HttpEntity<List<LinkPropsDto>> httpEntity = new HttpEntity<>(keys, buildHeadersWithCorrelationId());
+        return restTemplate.exchange("/api/v1/link/props", HttpMethod.DELETE, httpEntity,
+                BatchResults.class).getBody();
+    }
+
+    @Override
+    public FeatureTogglePayload getFeatureToggles() {
+        return restTemplate.exchange("/api/v1/features", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), FeatureTogglePayload.class).getBody();
+    }
+
+    @Override
+    public FeatureTogglePayload toggleFeature(FeatureTogglePayload request) {
+        HttpEntity<FeatureTogglePayload> httpEntity = new HttpEntity<>(request, buildHeadersWithCorrelationId());
+        return restTemplate.exchange("/api/v1/features", HttpMethod.POST, httpEntity,
+                FeatureTogglePayload.class).getBody();
     }
 
     @Override

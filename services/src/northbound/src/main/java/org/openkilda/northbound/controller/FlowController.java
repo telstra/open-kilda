@@ -355,6 +355,9 @@ public class FlowController {
         return response;
     }
 
+    /**
+     * Verify flow integrity by sending "ping" package over flow path.
+     */
     @ApiOperation(
             value = "Verify flow - using special network packet that is being routed in the same way as client traffic")
     @RequestMapping(path = "/flows/{flow_id}/ping", method = RequestMethod.PUT)

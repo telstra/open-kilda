@@ -16,10 +16,15 @@
 package org.openkilda.messaging.nbtopology.request;
 
 import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.nbtopology.annotations.ReadRequest;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 public abstract class BaseRequest extends CommandData {
+
+    @JsonIgnore
+    public boolean isReadRequest() {
+        return this.getClass().isAnnotationPresent(ReadRequest.class);
+    }
 
 }

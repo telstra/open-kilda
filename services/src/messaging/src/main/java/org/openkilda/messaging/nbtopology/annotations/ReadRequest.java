@@ -15,9 +15,16 @@
 
 package org.openkilda.messaging.nbtopology.annotations;
 
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
 /**
- * Requests marked with annotation won't change any records in DB.
+ * Requests marked with {@link ReadRequest} annotation won't change any records in DB.
  */
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.TYPE})
 public @interface ReadRequest {
 
 }

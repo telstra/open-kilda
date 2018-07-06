@@ -17,8 +17,9 @@ package org.openkilda.northbound.utils;
 
 import static org.openkilda.messaging.Utils.CORRELATION_ID;
 
-import org.apache.commons.lang3.StringUtils;
 import org.openkilda.northbound.utils.RequestCorrelationId.RequestCorrelationClosable;
+
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -33,7 +34,8 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 /**
- * Spring Web filter which initializes the correlation context with either provided "correlation_id" (HTTP header) or a new one.
+ * Spring Web filter which initializes the correlation context with either provided "correlation_id" (HTTP header) or a
+ * new one.
  */
 public class RequestCorrelationFilter extends OncePerRequestFilter {
 
@@ -50,7 +52,7 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
             correlationId = UUID.randomUUID().toString();
             LOGGER.warn("CorrelationId was not sent, generated one: {}", correlationId);
         } else {
-            correlationId = UUID.randomUUID().toString() + " : " + correlationId;
+            correlationId = RequestCorrelationId.chain(UUID.randomUUID().toString(), correlationId);
             LOGGER.trace("Found correlationId in header. Chaining: {}", correlationId);
         }
 

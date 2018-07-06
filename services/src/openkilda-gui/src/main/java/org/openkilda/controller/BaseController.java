@@ -3,6 +3,7 @@ package org.openkilda.controller;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.web.ErrorController;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -15,11 +16,17 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 
 import org.openkilda.constants.IConstants;
-import org.openkilda.model.UserInfo;
+import org.openkilda.constants.Status;
+import org.usermanagement.dao.entity.UserEntity;
+import org.usermanagement.dao.repository.UserRepository;
+import org.usermanagement.model.UserInfo;
 
 public abstract class BaseController implements ErrorController {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BaseController.class);
+
+    @Autowired
+    private UserRepository userRepository;
 
     /**
      * Validate request.
@@ -37,20 +44,14 @@ public abstract class BaseController implements ErrorController {
      */
     public ModelAndView validateAndRedirect(final HttpServletRequest request,
             final String viewName) {
-        LOGGER.info("[validateAndRedirect] - start. Requested view name: " + viewName);
         ModelAndView modelAndView;
         if (isUserLoggedIn()) {
             UserInfo userInfo = getLoggedInUser(request);
-            LOGGER.info("[validateAndRedirect] Logged in user. User name: " + userInfo.getName()
-                    + ", Roles: " + userInfo.getRole());
+            LOGGER.info("[validateAndRedirect] Logged in user. view name: " + viewName + ", User name: " + userInfo.getName());
 
-            if (userInfo.getRole().equalsIgnoreCase(IConstants.Role.USER)) {
-                modelAndView = new ModelAndView(IConstants.View.REDIRECT_HOME);
-            } else {
-                modelAndView = new ModelAndView(viewName);
-            }
+            modelAndView = new ModelAndView(viewName);
         } else {
-            LOGGER.info("[validateAndRedirect] User in not logged in, redirected to login page");
+            LOGGER.error("[validateAndRedirect] User in not logged in, redirected to login page. Requested view name: " + viewName);
             modelAndView = new ModelAndView(IConstants.View.LOGIN);
         }
         return modelAndView;
@@ -85,13 +86,12 @@ public abstract class BaseController implements ErrorController {
      * @return logged in user information.
      */
     protected UserInfo getLoggedInUser(final HttpServletRequest request) {
-        LOGGER.info("[getLoggedInUser] - start");
         HttpSession session = request.getSession();
         UserInfo userInfo = null;
         try {
             userInfo = (UserInfo) session.getAttribute(IConstants.SESSION_OBJECT);
         } catch (IllegalStateException ex) {
-            LOGGER.info(
+            LOGGER.error(
                     "[getLoggedInUser] Exception while retrieving user information from session. Exception: "
                             + ex.getLocalizedMessage(),
                     ex);
@@ -111,12 +111,23 @@ public abstract class BaseController implements ErrorController {
      *
      * @return true, if is user logged in
      */
-    protected static boolean isUserLoggedIn() {
+    protected boolean isUserLoggedIn() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (null != authentication) {
-            return (authentication.isAuthenticated()
+           boolean isValid = (authentication.isAuthenticated()
                     && !(authentication instanceof AnonymousAuthenticationToken));
+            if(isValid) {
+                UserEntity userEntity = (UserEntity) authentication.getPrincipal();
+                userEntity = userRepository.findByUserId(userEntity.getUserId());
+                if(userEntity != null && userEntity.getStatusEntity().getStatusCode().equalsIgnoreCase(Status.ACTIVE.getCode())) {
+                    isValid = true;
+                } else {
+                    isValid = false;
+                }
+            }
+            return isValid;
         } else {
+
             return false;
         }
     }
