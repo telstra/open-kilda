@@ -31,7 +31,6 @@ import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesSyncRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesValidateRequest;
-import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
@@ -102,7 +101,6 @@ public class SwitchServiceImpl implements SwitchService {
 
         return messagingChannel.sendAndGetChunked(nbworkerTopic, request)
                 .thenApply(messages -> messages.stream()
-                        .map(InfoMessage::getData)
                         .map(data -> switchMapper.toSwitchDto((SwitchInfoData) data))
                         .collect(Collectors.toList()));
     }

@@ -41,7 +41,7 @@ public interface MessageConsumer<T> {
     void clear();
 
     /**
-     * Processes response of the request.
+     * Processes the response of the request.
      */
     void onResponse(T message);
 }

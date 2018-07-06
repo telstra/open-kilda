@@ -19,59 +19,78 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.ChunkedInfoMessage;
+import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.messaging.MessagingChannel;
 
+import com.google.common.collect.Lists;
+import org.apache.commons.collections4.map.PassiveExpiringMap;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.LinkedList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import javax.annotation.PostConstruct;
 
 /**
- * The main component for all operations with kafka. All sent operations will be performed asynchronous and
- * wrapped into {@link CompletableFuture}. The main purpose of this class is to have one entrypoint for
- * sending messages and receiving them back in one place and doing it in non-blocking way.
+ * Implementation of {@link MessagingChannel} for kafka.
  */
 @Component
 public class KafkaMessagingChannel implements MessagingChannel {
 
     private static final Logger logger = LoggerFactory.getLogger(KafkaMessagingChannel.class);
 
+    @Value("${northbound.messages.expiration.minutes}")
+    private int expiredTime;
+
     /**
      * Requests that are in progress of processing.
      */
-    private final Map<String, CompletableFuture<InfoMessage>> pendingRequests = new ConcurrentHashMap<>();
-    private final Map<String, CompletableFuture<List<ChunkedInfoMessage>>> pendingChunkedRequests =
-            new ConcurrentHashMap<>();
+    private Map<String, CompletableFuture<InfoData>> pendingRequests;
+    private Map<String, CompletableFuture<List<InfoData>>> pendingChunkedRequests;
 
     /**
      * Collects messages that are not related to any known chain.
      */
-    private final Map<String, ChunkedInfoMessage> chunkedMessages = new ConcurrentHashMap<>();
+    private Map<String, ChunkedInfoMessage> unlinkedChunks;
 
     /**
      * Chains of chunked messages, it is filling by messages one by one as soon as the next linked message is received.
      */
-    private final List<LinkedList<ChunkedInfoMessage>> messagesChains = new ArrayList<>();
+    private Map<String, List<ChunkedInfoMessage>> messagesChains;
 
     @Autowired
     private MessageProducer messageProducer;
 
     /**
+     * Creates storages, that are able to remove outdated messages and requests.
+     */
+    @PostConstruct
+    public void setUp() {
+        pendingRequests = new PassiveExpiringMap<>(expiredTime, TimeUnit.MINUTES, new ConcurrentHashMap<>());
+        pendingChunkedRequests = new PassiveExpiringMap<>(expiredTime, TimeUnit.MINUTES, new ConcurrentHashMap<>());
+
+        unlinkedChunks = new PassiveExpiringMap<>(expiredTime, TimeUnit.MINUTES, new HashMap<>());
+        messagesChains = new PassiveExpiringMap<>(expiredTime, TimeUnit.MINUTES, new HashMap<>());
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
-    public CompletableFuture<InfoMessage> sendAndGet(String topic, Message message) {
-        CompletableFuture<InfoMessage> future = new CompletableFuture<>();
+    public CompletableFuture<InfoData> sendAndGet(String topic, Message message) {
+        CompletableFuture<InfoData> future = new CompletableFuture<>();
         pendingRequests.put(message.getCorrelationId(), future);
         messageProducer.send(topic, message);
         return future;
@@ -81,8 +100,8 @@ public class KafkaMessagingChannel implements MessagingChannel {
      * {@inheritDoc}
      */
     @Override
-    public CompletableFuture<List<ChunkedInfoMessage>> sendAndGetChunked(String topic, Message message) {
-        CompletableFuture<List<ChunkedInfoMessage>> future = new CompletableFuture<>();
+    public CompletableFuture<List<InfoData>> sendAndGetChunked(String topic, Message message) {
+        CompletableFuture<List<InfoData>> future = new CompletableFuture<>();
         pendingChunkedRequests.put(message.getCorrelationId(), future);
         messageProducer.send(topic, message);
         return future;
@@ -98,7 +117,7 @@ public class KafkaMessagingChannel implements MessagingChannel {
 
     /**
      * Processes messages that come back to NB topics, usually messages come as a response to some request.
-     * If this response is for the pended request then such request will be marked as completed.
+     * If this response is for pended request then such request will be marked as completed.
      * Messages might be chunked and not chunked. If chunked we need to wait until we receive the last one
      * and only then collect all responses and complete the request.
      * @param message received message.
@@ -107,79 +126,71 @@ public class KafkaMessagingChannel implements MessagingChannel {
         if (!isValid(message)) {
             logger.warn("Received invalid message: {}", message);
             return;
-        } else if (message instanceof ErrorMessage) {
+        }
+
+        if (message instanceof ErrorMessage) {
             ErrorMessage error = (ErrorMessage) message;
             logger.error("Response message is error: {}", error);
             throw new MessageException(error);
         }
 
-        InfoMessage infoMessage = (InfoMessage) message;
-        if (infoMessage instanceof ChunkedInfoMessage) {
-            ChunkedInfoMessage chunked = (ChunkedInfoMessage) infoMessage;
-            processChunkedMessage(chunked);
-        } else {
-            CompletableFuture<InfoMessage> request = pendingRequests.remove(infoMessage.getCorrelationId());
-            if (request != null) {
-                request.complete(infoMessage);
-            } else {
-                logger.warn("Received non-pending message: {}", infoMessage);
-            }
+        if (message instanceof ChunkedInfoMessage) {
+            processChunkedMessage((ChunkedInfoMessage) message);
+        } else if (pendingRequests.containsKey(message.getCorrelationId())) {
+            InfoMessage infoMessage = (InfoMessage) message;
+            CompletableFuture<InfoData> future = pendingRequests.remove(message.getCorrelationId());
+            future.complete(infoMessage.getData());
         }
     }
 
     /**
-     * Tries to find and collect all chunked messages into one chain.
+     * Performs searching and collecting all chunked messages into one chain if possible.
      */
-    private void processChunkedMessage(final ChunkedInfoMessage received) {
-        ChunkedInfoMessage message = received;
+    private synchronized void processChunkedMessage(ChunkedInfoMessage received) {
+        List<ChunkedInfoMessage> chain;
+        if (messagesChains.containsKey(received.getCorrelationId())) {
+            chain = messagesChains.remove(received.getCorrelationId());
+            chain.add(received);
+        } else if (pendingChunkedRequests.containsKey(received.getCorrelationId())) {
+            chain = Lists.newArrayList(received);
+        } else {
+            unlinkedChunks.put(received.getCorrelationId(), received);
+            return;
+        }
 
-        LinkedList<ChunkedInfoMessage> currentChain = messagesChains.stream()
-                .filter(chain -> chain.getLast().getNextRequestId().equals(received.getCorrelationId()))
-                .findAny()
-                .orElse(null);
+        ChunkedInfoMessage tail = received;
+        // Check whether next messages for current chain is already received. If yes - add them into that chain.
+        while (tail.getNextRequestId() != null && unlinkedChunks.containsKey(tail.getNextRequestId())) {
+            chain.add(tail);
+            tail = unlinkedChunks.remove(tail.getNextRequestId());
+        }
 
-        while (message != null) {
-            final String correlationId = message.getCorrelationId();
-            ChunkedInfoMessage nextMessage = null;
-
-            if (currentChain != null) {
-                currentChain.add(message);
-            } else {
-                if (pendingChunkedRequests.containsKey(correlationId)) {
-                    logger.trace("Received first message of the chain {}", correlationId);
-                    LinkedList<ChunkedInfoMessage> chain = new LinkedList<>();
-                    chain.add(message);
-                    messagesChains.add(chain);
-
-                    currentChain = chain;
-                } else {
-                    chunkedMessages.put(correlationId, message);
-                }
-            }
-
-            if (currentChain != null) {
-                final String nextCorrelationId = message.getNextRequestId();
-                if (StringUtils.isEmpty(nextCorrelationId)) {
-                    logger.debug("Found last message in the chain for request {}",
-                            currentChain.getFirst().getCorrelationId());
-                    completeChain(currentChain);
-                } else if (chunkedMessages.containsKey(nextCorrelationId)) {
-                    logger.trace("Message {} is already received", nextCorrelationId);
-                    nextMessage = chunkedMessages.remove(message.getNextRequestId());
-                }
-            }
-            message = nextMessage;
+        if (tail.getNextRequestId() == null) {
+            // found last message in the chain
+            completeChain(chain);
+        } else {
+            messagesChains.put(tail.getNextRequestId(), chain);
         }
     }
 
-    private void completeChain(LinkedList<ChunkedInfoMessage> chain) {
-        String requestId = chain.getFirst().getCorrelationId();
-        CompletableFuture<List<ChunkedInfoMessage>> future = pendingChunkedRequests.remove(requestId);
-        future.complete(chain);
+    /**
+     * Completes request.
+     */
+    private void completeChain(List<ChunkedInfoMessage> chain) {
+        List<InfoData> data = chain.stream()
+                .map(ChunkedInfoMessage::getData)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
 
-        messagesChains.remove(chain);
+        ChunkedInfoMessage firstMessage = chain.get(0);
+        pendingChunkedRequests
+                .remove(firstMessage.getCorrelationId())
+                .complete(data);
     }
 
+    /**
+     * Checks whether a message has correlationId and has known type or not.
+     */
     private boolean isValid(Message message) {
         if (StringUtils.isEmpty(message.getCorrelationId())) {
             return false;

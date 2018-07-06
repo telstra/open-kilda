@@ -16,37 +16,41 @@
 package org.openkilda.northbound.messaging;
 
 import org.openkilda.messaging.Message;
-import org.openkilda.messaging.info.ChunkedInfoMessage;
-import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.northbound.messaging.kafka.KafkaMessagingChannel;
+import org.openkilda.messaging.info.InfoData;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
+/**
+ * The main component for sending messages to internal kilda components.
+ * All sent operations will be performed asynchronous and  wrapped into {@link CompletableFuture}.
+ * The main purpose of this class is to have one entrypoint for sending messages
+ * and receiving them back in one place and doing it in non-blocking way.
+ */
 public interface MessagingChannel {
 
     /**
-     * Sends message to the specified topic and provides response wrapped in {@link CompletableFuture}.
+     * Sends the message to the specified topic and provides a response wrapped in {@link CompletableFuture}.
      * Note: this type of request expects to receive back the response,
-     * if you don't need any responses please use {@link KafkaMessagingChannel#send(String, Message)}
-     * @param topic kafka topic where message should be sent.
+     * if you don't need any responses please use {@link MessagingChannel#send(String, Message)}
+     * @param topic topic where the message should be sent.
      * @param message data to be sent.
      * @return response for the request.
      */
-    CompletableFuture<InfoMessage> sendAndGet(String topic, Message message);
+    CompletableFuture<InfoData> sendAndGet(String topic, Message message);
 
     /**
-     * Sends message to the specified topic and collects all chunked responses for this request into the list.
-     * @param topic kafka topic where message should be sent.
+     * Sends the message to the specified topic and collects all chunked responses for this request into the list.
+     * @param topic topic where the message should be sent.
      * @param message data to be sent.
      * @return response for the request.
      */
-    CompletableFuture<List<ChunkedInfoMessage>> sendAndGetChunked(String topic, Message message);
+    CompletableFuture<List<InfoData>> sendAndGetChunked(String topic, Message message);
 
     /**
-     * Sends message to the specified topic without waiting for the response.
-     * @param topic kafka topic where message should be sent.
-     * @param message data to be sent.
+     * Sends the message to the specified topic without waiting for a response.
+     * @param topic topic where the message should be sent to.
+     * @param message the data to be sent.
      */
     void send(String topic, Message message);
 

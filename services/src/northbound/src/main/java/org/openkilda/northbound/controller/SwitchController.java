@@ -17,11 +17,6 @@ package org.openkilda.northbound.controller;
 
 import static org.openkilda.messaging.error.ErrorType.PARAMETERS_INVALID;
 
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiParam;
-import io.swagger.annotations.ApiResponse;
-import io.swagger.annotations.ApiResponses;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
@@ -36,8 +31,12 @@ import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.northbound.service.SwitchService;
 import org.openkilda.northbound.utils.ExtraAuthRequired;
 import org.openkilda.northbound.utils.RequestCorrelationId;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiParam;
+import io.swagger.annotations.ApiResponse;
+import io.swagger.annotations.ApiResponses;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.http.HttpStatus;
@@ -71,15 +70,13 @@ import java.util.concurrent.CompletableFuture;
         @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
 public class SwitchController {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(SwitchController.class);
-
     @Autowired
     private SwitchService switchService;
 
     /**
-     * Get all available links.
+     * Get all available switches.
      *
-     * @return list of links.
+     * @return list of switches.
      */
     @ApiOperation(value = "Get all available switches", response = SwitchDto.class, responseContainer = "List")
     @GetMapping(path = "/switches")

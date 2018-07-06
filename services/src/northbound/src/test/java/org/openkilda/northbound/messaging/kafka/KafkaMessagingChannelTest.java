@@ -16,10 +16,15 @@
 package org.openkilda.northbound.messaging.kafka;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.info.ChunkedInfoMessage;
+import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.northbound.config.KafkaConfig;
 import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.messaging.MessagingChannel;
@@ -62,18 +67,35 @@ public class KafkaMessagingChannelTest {
     }
 
     @Test
-    public void shouldReturnCompleteResponse() throws TimeoutException, InterruptedException, ExecutionException {
+    public void shouldReturnCompletedResponse() throws TimeoutException, InterruptedException, ExecutionException {
         final String requestId = UUID.randomUUID().toString();
         final long time = System.currentTimeMillis();
-        InfoMessage message = new InfoMessage(null, time, requestId);
-        RESPONSES.add(message);
+        SwitchInfoData data = new SwitchInfoData("00:00:00:00:00:01", SwitchState.ACTIVATED, null, "hostname",
+                "description", "controller");
+        InfoMessage expected = new InfoMessage(data, time, requestId);
+        RESPONSES.add(expected);
 
-        CompletableFuture<InfoMessage> response =
+        CompletableFuture<InfoData> response =
                 messagingChannel.sendAndGet(MAIN_TOPIC, new Message(time, requestId));
 
-        InfoMessage result = response.get(1, TimeUnit.SECONDS);
-        assertEquals(message.getCorrelationId(), result.getCorrelationId());
-        assertEquals(message.getTimestamp(), result.getTimestamp());
+        InfoData result = response.get(1, TimeUnit.SECONDS);
+        assertEquals(expected.getTimestamp(), result.getTimestamp());
+        assertEquals(data, result);
+    }
+
+    @Test
+    public void shouldReturnEmptyCompletedResponse() throws TimeoutException, InterruptedException, ExecutionException {
+        final String requestId = UUID.randomUUID().toString();
+        final long time = System.currentTimeMillis();
+
+        InfoMessage expected = new InfoMessage(null, time, requestId);
+        RESPONSES.add(expected);
+
+        CompletableFuture<InfoData> response =
+                messagingChannel.sendAndGet(MAIN_TOPIC, new Message(time, requestId));
+
+        InfoData result = response.get(1, TimeUnit.SECONDS);
+        assertNull(result);
     }
 
     @Test
@@ -85,10 +107,10 @@ public class KafkaMessagingChannelTest {
         prepareChunkedResponses(requestId, timestamp, messagesAmount);
         Message request = new Message(timestamp, requestId);
 
-        CompletableFuture<List<ChunkedInfoMessage>> future = messagingChannel.sendAndGetChunked(CHUNKED_TOPIC, request);
-        List<ChunkedInfoMessage> result = future.get(10, TimeUnit.SECONDS);
+        CompletableFuture<List<InfoData>> future = messagingChannel.sendAndGetChunked(CHUNKED_TOPIC, request);
+        List<InfoData> result = future.get(10, TimeUnit.SECONDS);
         assertEquals(messagesAmount, result.size());
-        assertEquals(requestId, result.get(0).getCorrelationId());
+        assertEquals(timestamp, result.get(0).getTimestamp());
     }
 
     @Test
@@ -100,21 +122,40 @@ public class KafkaMessagingChannelTest {
         prepareChunkedResponses(requestId, timestamp, responses);
         Message request = new Message(timestamp, requestId);
 
-        CompletableFuture<List<ChunkedInfoMessage>> future = messagingChannel.sendAndGetChunked(CHUNKED_TOPIC, request);
-        List<ChunkedInfoMessage> result = future.get(60, TimeUnit.SECONDS);
+        CompletableFuture<List<InfoData>> future = messagingChannel.sendAndGetChunked(CHUNKED_TOPIC, request);
+        List<InfoData> result = future.get(10, TimeUnit.SECONDS);
         assertEquals(responses, result.size());
     }
 
+    @Test
+    public void shouldReturnEmptyList() throws Exception {
+        final String requestId = UUID.randomUUID().toString();
+        final long timestamp = System.currentTimeMillis();
+
+        ChunkedInfoMessage emptyResponse = new ChunkedInfoMessage(null, timestamp, requestId, null);
+        CHUNKED_RESPONSES.add(emptyResponse);
+        Message request = new Message(timestamp, requestId);
+
+        CompletableFuture<List<InfoData>> future = messagingChannel.sendAndGetChunked(CHUNKED_TOPIC, request);
+        List<InfoData> result = future.get(10, TimeUnit.SECONDS);
+        assertTrue(result.isEmpty());
+    }
+
+    /**
+     * Creates chunk of responses started from requestId, with predefined size.
+     */
     private void prepareChunkedResponses(String requestId, long timestamp, int size) {
         String prevRequestId = requestId;
         for (int i = 0; i < size; i++) {
             ChunkedInfoMessage response;
+            InfoData data = new SwitchInfoData("switch-" + i, SwitchState.ACTIVATED, null, null, null, null);
+
             if (i < size - 1) {
                 String nextRequestId = UUID.randomUUID().toString();
-                response = new ChunkedInfoMessage(null, timestamp, prevRequestId, nextRequestId);
+                response = new ChunkedInfoMessage(data, timestamp, prevRequestId, nextRequestId);
                 prevRequestId = nextRequestId;
             } else {
-                response = new ChunkedInfoMessage(null, timestamp, prevRequestId, null);
+                response = new ChunkedInfoMessage(data, timestamp, prevRequestId, null);
             }
             CHUNKED_RESPONSES.add(response);
         }
@@ -145,7 +186,7 @@ public class KafkaMessagingChannelTest {
         @Override
         public void send(String topic, Message message) {
             if (CHUNKED_TOPIC.equals(topic)) {
-                ExecutorService executor = Executors.newFixedThreadPool(1000);
+                ExecutorService executor = Executors.newFixedThreadPool(10);
                 CHUNKED_RESPONSES.forEach(response ->
                         executor.submit(() -> facade.onResponse(response)));
             } else {

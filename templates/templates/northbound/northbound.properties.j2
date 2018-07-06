@@ -14,6 +14,8 @@ server.contextPath=/api/v1
 
 topology.engine.rest.endpoint={{ topology_engine_rest_endpoint }}:{{ topology_engine_rest_port }}
 northbound.messages.expiration.minutes=15
+northbound.kafka.listener.threads=10
+northbound.kafka.session.timeout=30000
 
 neo4j.hosts = {{ neo4j_hosts }}
 neo4j.user = {{ neo4j_user }}

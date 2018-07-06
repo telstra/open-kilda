@@ -47,6 +47,7 @@ public class KafkaMessageListener {
 
     /**
      * Handles all messages from kafka and sends to corresponding component for further processing.
+     * <p/>
      * @param message received message.
      */
     @KafkaHandler
@@ -55,7 +56,7 @@ public class KafkaMessageListener {
             logger.debug("Message received: {} - {}", Thread.currentThread().getId(), message);
             messagingChannel.onResponse(message);
 
-            // fixme: it is for the support of outdated services. should be removed once KafkaConsumer will be deleted.
+            // todo: should be removed once KafkaConsumer will be deleted. it is for the support of outdated services.
             messageConsumer.onResponse(message);
         }
     }
