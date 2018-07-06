@@ -25,7 +25,10 @@ import java.util.List;
 
 public class KafkaRecordTranslator <K, V> implements RecordTranslator<K, V> {
     private static final long serialVersionUID = 1L;
-    public static final Fields FIELDS = new Fields("message");
+
+    public static final String FIELD_ID_PAYLOAD = "message";
+    public static final Fields FIELDS = new Fields(FIELD_ID_PAYLOAD);
+
     @Override
     public List<Object> apply(ConsumerRecord<K, V> record) {
         return new Values(record.value());

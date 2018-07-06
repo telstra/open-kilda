@@ -16,6 +16,10 @@
     <name>PathComputatationEngine</name>
     <description>Path Computatation Engine Library</description>
 
+    <properties>
+        <lombok.version>1.16.20</lombok.version>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.openkilda</groupId>

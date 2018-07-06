@@ -15,20 +15,26 @@
 
 package org.openkilda.northbound.converter;
 
-import org.openkilda.messaging.info.flow.FlowVerificationErrorCode;
-import org.openkilda.messaging.info.flow.FlowVerificationResponse;
-import org.openkilda.northbound.dto.flows.VerificationOutput;
+import org.openkilda.messaging.info.flow.FlowPingResponse;
+import org.openkilda.messaging.info.flow.UniFlowPingResponse;
+import org.openkilda.messaging.model.Ping;
+import org.openkilda.northbound.dto.flows.FlowPingOutput;
+import org.openkilda.northbound.dto.flows.UniFlowPingOutput;
 
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 
 @Mapper(componentModel = "spring")
 public interface FlowMapper {
-    VerificationOutput toVerificationOutput(FlowVerificationResponse response);
+    FlowPingOutput toFlowPingOutput(FlowPingResponse response);
+
+    @Mapping(source = "meters.networkLatency", target = "latency")
+    UniFlowPingOutput toUniFlowPing(UniFlowPingResponse response);
 
     /**
      * Translate Java's error code(enum) into human readable string.
      */
-    default String getVerificationError(FlowVerificationErrorCode error) {
+    default String getPingError(Ping.Errors error) {
         if (error == null) {
             return null;
         }
@@ -42,7 +48,11 @@ public interface FlowMapper {
                 message = "Can't send ping";
                 break;
             case NOT_CAPABLE:
-                message = "Unable to perform flow verification due to unsupported switch (at least one)";
+                message = "Can't ping - at least one of endpoints are not capable to catch pings.";
+                break;
+            case SOURCE_NOT_AVAILABLE:
+            case DEST_NOT_AVAILABLE:
+                message = "Can't ping - at least one of endpoints are unavailable";
                 break;
             default:
                 message = error.toString();

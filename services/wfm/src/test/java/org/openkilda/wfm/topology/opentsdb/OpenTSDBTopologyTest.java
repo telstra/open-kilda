@@ -51,9 +51,6 @@ public class OpenTSDBTopologyTest extends StableAbstractStormTest {
         Datapoint datapoint = new Datapoint("metric", timestamp, Collections.emptyMap(), 123);
 
         MockedSources sources = new MockedSources();
-        // TODO: rather than use Topic.OTSDB, grab it from the TopologyConfig object (which does
-        // not exist at this point in the code.
-
         Testing.withTrackedCluster(clusterParam, (cluster) ->  {
             OpenTSDBTopology topology = new TestingTargetTopology(new TestingKafkaBolt());
 

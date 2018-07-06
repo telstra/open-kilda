@@ -13,13 +13,12 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flow;
+package org.openkilda.wfm.topology.ping.model;
 
-import lombok.Data;
+import lombok.Value;
 
-@Data
-public class Constants {
-    public static Constants instance = new Constants();
-
-    private long verificationRequestTimeoutMillis = 300 * 1000;
+@Value
+public class FlowRef {
+    public final String flowId;
+    public final long cookie;
 }

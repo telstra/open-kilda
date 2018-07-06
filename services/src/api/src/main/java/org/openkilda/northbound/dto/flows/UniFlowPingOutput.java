@@ -17,31 +17,34 @@ package org.openkilda.northbound.dto.flows;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.Builder;
 import lombok.Data;
 
 @Data
-public class VerificationOutput {
-    @JsonProperty("flow_id")
-    private String flowId;
+@JsonSerialize
+public class UniFlowPingOutput {
 
-    @JsonProperty("forward")
-    private UniFlowVerificationOutput forward;
+    @JsonProperty("ping_success")
+    private boolean pingSuccess;
 
-    @JsonProperty("reverse")
-    private UniFlowVerificationOutput reverse;
+    @JsonProperty("error")
+    private String error;
+
+    @JsonProperty("latency")
+    private long latency;
 
     // To satisfy mapstruct
-    public VerificationOutput() { }
+    public UniFlowPingOutput() { }
 
     @Builder
     @JsonCreator
-    public VerificationOutput(
-            @JsonProperty("flow_id") String flowId,
-            @JsonProperty("forward") UniFlowVerificationOutput forward,
-            @JsonProperty("reverse") UniFlowVerificationOutput reverse) {
-        this.flowId = flowId;
-        this.forward = forward;
-        this.reverse = reverse;
+    public UniFlowPingOutput(
+            @JsonProperty("ping_success") boolean pingSuccess,
+            @JsonProperty("error") String error,
+            @JsonProperty("latency") long latency) {
+        this.pingSuccess = pingSuccess;
+        this.error = error;
+        this.latency = latency;
     }
 }

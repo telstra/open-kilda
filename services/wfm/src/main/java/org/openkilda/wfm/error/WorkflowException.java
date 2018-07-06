@@ -13,24 +13,23 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.dto.flows;
+package org.openkilda.wfm.error;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Value;
+import org.openkilda.wfm.AbstractBolt;
 
-import java.util.Optional;
+import lombok.Getter;
+import org.apache.storm.tuple.Tuple;
 
-@Value
-public class VerificationInput {
-    public static final int DEFAULT_TIMEOUT = 2000;
+@Getter
+public class WorkflowException extends AbstractException {
+    private final Tuple input;
 
-    @JsonProperty("timeout")
-    private int timeoutMillis;
+    public WorkflowException(AbstractBolt consumer, Tuple input, String details) {
+        super(formatMessage(consumer, details));
+        this.input = input;
+    }
 
-    @JsonCreator
-    public VerificationInput(
-            @JsonProperty("timeout") Integer timeoutMillis) {
-        this.timeoutMillis = Optional.ofNullable(timeoutMillis).orElse(DEFAULT_TIMEOUT);
+    private static String formatMessage(AbstractBolt consumer, String details) {
+        return String.format("Workflow error at %s - %s", consumer.getClass().getName(), details);
     }
 }

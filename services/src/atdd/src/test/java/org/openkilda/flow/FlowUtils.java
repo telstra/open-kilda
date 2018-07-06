@@ -39,9 +39,9 @@ import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.northbound.dto.BatchResults;
+import org.openkilda.northbound.dto.flows.FlowPingOutput;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
-import org.openkilda.northbound.dto.flows.VerificationInput;
-import org.openkilda.northbound.dto.flows.VerificationOutput;
+import org.openkilda.northbound.dto.flows.PingInput;
 import org.openkilda.pce.RecoverableException;
 import org.openkilda.pce.provider.NeoDriver;
 import org.openkilda.pce.provider.PathComputer;
@@ -824,7 +824,7 @@ public final class FlowUtils {
     /**
      * Method verifyFlow.
      */
-    public static VerificationOutput verifyFlow(String flowId, VerificationInput payload) {
+    public static FlowPingOutput verifyFlow(String flowId, PingInput payload) {
         long currentTime = System.currentTimeMillis();
         String correlationId = String.valueOf(currentTime);
 
@@ -843,7 +843,7 @@ public final class FlowUtils {
 
         int responseCode = response.getStatus();
         if (responseCode == 200) {
-            VerificationOutput result = response.readEntity(VerificationOutput.class);
+            FlowPingOutput result = response.readEntity(FlowPingOutput.class);
             System.out.println(format("====> Northbound VERIFY Flow = %s", result));
             return result;
         } else {

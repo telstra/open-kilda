@@ -39,6 +39,10 @@ public interface KafkaTopicsConfig {
     @Default("kilda.flow")
     String getFlowTopic();
 
+    @Key("flow.status")
+    @Default("kilda.flow.status")
+    String getFlowStatusTopic();
+
     @Key("health.check")
     @Default("kilda.health.check")
     String getHealthCheckTopic();
@@ -60,6 +64,10 @@ public interface KafkaTopicsConfig {
     @FallbackKey("kafka.speaker.topic")
     @Default("kilda.speaker")
     String getSpeakerTopic();
+
+    @Key("ping")
+    @Default("kilda.ping")
+    String getPingTopic();
 
     @Key("stats")
     @Default("kilda.stats")

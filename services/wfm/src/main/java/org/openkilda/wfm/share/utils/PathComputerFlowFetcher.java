@@ -46,7 +46,6 @@ public class PathComputerFlowFetcher {
                         collector.anyDefined().getFlowId(),
                         e.toString());
             }
-
         }
     }
 

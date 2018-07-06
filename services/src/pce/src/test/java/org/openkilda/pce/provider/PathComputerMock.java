@@ -45,6 +45,10 @@ public class PathComputerMock implements PathComputer {
         return 1L;
     }
 
+    @Override
+    public List<Flow> getFlow(String flowId) {
+        return Collections.emptyList();
+    }
 
     @Override
     public ImmutablePair<PathInfoData, PathInfoData> getPath(Flow flow, Strategy strategy) {
