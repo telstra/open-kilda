@@ -5,11 +5,7 @@
 
 <suppressions>
     <suppress files="src/main/java/org/openkilda/floodlight/converter/IOFSwitchConverter.java" lines="1" checks="RegexpHeader"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/converter/IOFSwitchConverter.java" lines="5" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/converter/IOFSwitchConverter.java" lines="6" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/converter/IOFSwitchConverter.java" lines="7" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/converter/IOFSwitchConverter.java" lines="8" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/converter/IOFSwitchConverter.java" lines="18" checks="AbbreviationAsWordInName"/>
+    <suppress files="src/main/java/org/openkilda/floodlight/converter/IOFSwitchConverter.java" lines="35" checks="AbbreviationAsWordInName"/>
     <suppress files="src/main/java/org/openkilda/floodlight/converter/IOFSwitchConverter.java" lines="29" checks="WhitespaceAround"/>
     <suppress files="src/main/java/org/openkilda/floodlight/converter/OFFlowStatsConverter.java" lines="23" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/floodlight/converter/OFFlowStatsConverter.java" lines="48" checks="AbbreviationAsWordInName"/>

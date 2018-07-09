@@ -17,5 +17,5 @@ package org.openkilda.messaging.info.discovery;
 
 import org.openkilda.messaging.info.InfoData;
 
-public class NetworkSyncEndMarker extends InfoData {
+public class NetworkDumpEndMarker extends InfoData {
 }
