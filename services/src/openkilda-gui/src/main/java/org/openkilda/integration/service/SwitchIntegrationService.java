@@ -28,6 +28,7 @@ import org.openkilda.integration.converter.IslLinkConverter;
 import org.openkilda.integration.converter.PortConverter;
 import org.openkilda.integration.exception.ContentNotFoundException;
 import org.openkilda.integration.exception.IntegrationException;
+import org.openkilda.integration.exception.InvalidResponseException;
 import org.openkilda.integration.model.response.IslLink;
 import org.openkilda.model.IslLinkInfo;
 import org.openkilda.model.LinkProps;
@@ -174,12 +175,17 @@ public class SwitchIntegrationService {
         String fullUri = builder.build().toUriString();
         HttpResponse response = restClientManager.invoke(fullUri, HttpMethod.GET, "", "",
                 applicationService.getAuthHeader());
-        if (RestClientManager.isValidResponse(response)) {
-            List<LinkProps> linkPropsResponses =
-                    restClientManager.getResponseList(response, LinkProps.class);
-            if (!CollectionUtil.isEmpty(linkPropsResponses)) {
-                return linkPropsResponses;
+        try {
+            if (RestClientManager.isValidResponse(response)) {
+                List<LinkProps> linkPropsResponses =
+                        restClientManager.getResponseList(response, LinkProps.class);
+                if (!CollectionUtil.isEmpty(linkPropsResponses)) {
+                    return linkPropsResponses;
+                }
             }
+        } catch (InvalidResponseException exception) {
+            LOGGER.error("Exception in getIslLinkProps " + exception.getMessage(), exception);
+            return null;
         }
         return null;
     }

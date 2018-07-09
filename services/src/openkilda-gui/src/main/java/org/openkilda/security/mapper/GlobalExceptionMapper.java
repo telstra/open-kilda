@@ -38,6 +38,7 @@ import com.fasterxml.jackson.databind.JsonMappingException.Reference;
 
 import org.openkilda.constants.HttpError;
 import org.openkilda.exception.InvalidOtpException;
+import org.openkilda.exception.TwoFaKeyNotSetException;
 import org.openkilda.model.response.ErrorMessage;
 
 /**
@@ -287,6 +288,21 @@ public class GlobalExceptionMapper extends ResponseEntityExceptionHandler {
     @ExceptionHandler(InvalidOtpException.class)
     protected ResponseEntity<Object> invalidOTP(
             InvalidOtpException ex) {
+       ex.setStackTrace(new StackTraceElement[0]);
+       return response(HttpError.UNAUTHORIZED.getHttpStatus(),
+               HttpError.UNAUTHORIZED.getCode(),
+               ex.getMessage(), ex.getMessage());
+    }
+    
+    /**
+     * Two fa key not set exception.
+     *
+     * @param ex the ex
+     * @return the response entity
+     */
+    @ExceptionHandler(TwoFaKeyNotSetException.class)
+    protected ResponseEntity<Object> twoFaKeyNotSetException(
+            TwoFaKeyNotSetException ex) {
        ex.setStackTrace(new StackTraceElement[0]);
        return response(HttpError.UNAUTHORIZED.getHttpStatus(),
                HttpError.UNAUTHORIZED.getCode(),

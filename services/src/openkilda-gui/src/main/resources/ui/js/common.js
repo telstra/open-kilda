@@ -129,6 +129,14 @@ var common = {
 		saveData:function(apiUrl,requestType,data){
 			return $.ajax({url : APP_CONTEXT+apiUrl,contentType:'application/json',dataType : "json",type : requestType,data:JSON.stringify(data)});	
 		},
+		deleteData: function(apiUrl,id,data=null){
+			if(data){
+				return $.ajax({url : APP_CONTEXT+apiUrl+"/"+id,contentType:'application/json',data:JSON.stringify(data),dataType : "json",type : "DELETE"});
+			}else{
+				return $.ajax({url : APP_CONTEXT+apiUrl+"/"+id,contentType:'application/json',dataType : "json",type : "DELETE"});
+			}
+			
+		},
 		updateData:function(apiUrl,requestType,data){
 			return $.ajax({url : APP_CONTEXT+apiUrl,contentType:'application/json',dataType : "json",type : requestType,data:JSON.stringify(data)});	
 		},
@@ -159,13 +167,24 @@ var common = {
 			if(data && data.length){
 			  for(var i=0; i<data.length; i++){
 				  var ifRequired=$('#'+data[i].name).attr('required');
+				  var ifAlphanumericOnly = $('#'+data[i].name).attr('alphanumeric-only');
 				  if(typeof(ifRequired)!=='undefined' && $.trim(data[i].value) == ""){
 						  validationFlag = false;
 						 $('#'+data[i].name).addClass("errorInput");
 						 $('#'+data[i].name+"Error").show();
+				  }else if(typeof(ifAlphanumericOnly)!=='undefined' && $.trim(data[i].value) != ""){
+					  var regex = /^[a-zA-Z0-9]*$/;
+					  var isValid = regex.test(data[i].value);
+					  validationFlag = isValid;
+					  if(!isValid){
+						  $('#'+data[i].name).addClass("errorInput");
+						  $('#'+data[i].name+"patternError").show();  
+					  }
+					  
 				  }else{
 					  $('#'+data[i].name).removeClass("errorInput");
 					  $('#'+data[i].name+"Error").hide();
+					  $('#'+data[i].name+"patternError").hide();
 				  }
 			   }
 			}else{

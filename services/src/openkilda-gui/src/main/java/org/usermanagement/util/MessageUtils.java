@@ -38,6 +38,9 @@ public class MessageUtils {
     @Value("${attribute.2fa.not.configured}")
     private String attribute2faNotConfiured;
     
+    @Value("${attribute.2fa.not.enabled}")
+    private String attribute2faNotEnabled;
+    
     @Value("${attribute.password.should.not.same}")
     private String attributePasswordShouldNotSame;
     
@@ -125,6 +128,15 @@ public class MessageUtils {
     }
 
 	/**
+	 * Gets the attribute 2 fa not enabled.
+	 *
+	 * @return the attribute 2 fa not enabled
+	 */
+	public String getAttribute2faNotEnabled() {
+        return attribute2faNotEnabled;
+    }
+
+    /**
 	 * Gets the unauthorized message.
 	 *
 	 * @return the unauthorized message
