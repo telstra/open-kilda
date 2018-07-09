@@ -55,6 +55,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import org.apache.storm.kafka.spout.internal.Timer;
+import org.apache.storm.state.InMemoryKeyValueState;
 import org.apache.storm.state.KeyValueState;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -584,6 +585,12 @@ public class OFELinkBolt
     @Override
     public String getCtrlStreamId() {
         return STREAM_ID_CTRL;
+    }
+
+    @Override
+    public void clearState() {
+        logger.info("ClearState request has been received.");
+        initState(new InMemoryKeyValueState<>());
     }
 
     @Override

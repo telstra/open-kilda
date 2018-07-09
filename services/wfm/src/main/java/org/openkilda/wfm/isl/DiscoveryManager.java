@@ -328,7 +328,6 @@ public class DiscoveryManager {
      * Check whether destination of the ISL is changed (replugged to another port/switch).
      */
     public boolean isIslMoved(String srcSwitch, int srcPort, String dstSwitch, int dstPort) {
-        boolean isMoved = false;
         NetworkEndpoint node = new NetworkEndpoint(srcSwitch, srcPort);
         List<DiscoveryLink> subjectList = findBySourceSwitch(node);
         if (!subjectList.isEmpty()) {
@@ -337,14 +336,24 @@ public class DiscoveryManager {
             }
 
             DiscoveryLink link = subjectList.get(0);
-
-            isMoved = link.isDestinationChanged(dstSwitch, dstPort);
-        } else if (removedFromDiscovery.containsKey(node)) {
-            DiscoveryLink link = removedFromDiscovery.get(node);
-            isMoved = link.isDestinationChanged(dstSwitch, dstPort);
+            if (link.isDestinationChanged(dstSwitch, dstPort)) {
+                logger.info("ISL Event: the link has been moved: {} to {}_{}", link, dstSwitch, dstPort);
+                return true;
+            } else if (link.isActive()) {
+                // An active link with the same destination is found.
+                return false;
+            }
         }
 
-        return isMoved;
+        if (removedFromDiscovery.containsKey(node)) {
+            DiscoveryLink link = removedFromDiscovery.get(node);
+            if (link.isDestinationChanged(dstSwitch, dstPort)) {
+                logger.info("ISL Event: the link has been moved: {} to {}_{}", link, dstSwitch, dstPort);
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -352,18 +361,22 @@ public class DiscoveryManager {
      */
     public NetworkEndpoint getLinkDestination(String srcSwitch, int srcPort) {
         NetworkEndpoint srcEndpoint = new NetworkEndpoint(srcSwitch, srcPort);
-        NetworkEndpoint dstEndpoint;
         List<DiscoveryLink> links = findBySourceSwitch(srcEndpoint);
         if (!links.isEmpty()) {
-            dstEndpoint = links.get(0).getDestination();
-        } else if (removedFromDiscovery.containsKey(srcEndpoint)) {
-            DiscoveryLink link = removedFromDiscovery.get(srcEndpoint);
-            dstEndpoint = link.getDestination();
-        } else {
-            throw new IllegalStateException(String.format("Not found link from %s_%s", srcSwitch, srcPort));
+            NetworkEndpoint dstEndpoint = links.get(0).getDestination();
+            if (dstEndpoint != null) {
+                return dstEndpoint;
+            }
         }
 
-        return dstEndpoint;
+        if (removedFromDiscovery.containsKey(srcEndpoint)) {
+            DiscoveryLink link = removedFromDiscovery.get(srcEndpoint);
+            if (link.getDestination() != null) {
+                return link.getDestination();
+            }
+        }
+
+        throw new IllegalStateException(String.format("Not found link from %s_%s", srcSwitch, srcPort));
     }
 
     /**
