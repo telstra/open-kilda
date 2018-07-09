@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlightcontroller.core.test;
+package org.openkilda.floodlight;
 
 import java.util.ArrayList;
 import java.util.Collection;

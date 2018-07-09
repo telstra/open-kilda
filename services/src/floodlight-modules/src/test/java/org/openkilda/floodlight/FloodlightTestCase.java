@@ -29,14 +29,14 @@
 *    License for the specific language governing permissions and limitations
 *    under the License.
 **/
-package org.openkilda.floodlightcontroller.test;
+package org.openkilda.floodlight;
 
 import static org.easymock.EasyMock.expect;
 
 import net.floodlightcontroller.core.SwitchDescription;
 import org.easymock.EasyMock;
-import org.openkilda.floodlightcontroller.core.test.MockFloodlightProvider;
-import org.openkilda.floodlightcontroller.core.test.MockSwitchManager;
+import org.openkilda.floodlight.MockFloodlightProvider;
+import org.openkilda.floodlight.MockSwitchManager;
 import org.junit.Before;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;

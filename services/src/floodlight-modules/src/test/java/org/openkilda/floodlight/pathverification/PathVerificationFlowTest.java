@@ -18,7 +18,7 @@ package org.openkilda.floodlight.pathverification;
 import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.replay;
 
-import org.openkilda.floodlightcontroller.test.FloodlightTestCase;
+import org.openkilda.floodlight.FloodlightTestCase;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
