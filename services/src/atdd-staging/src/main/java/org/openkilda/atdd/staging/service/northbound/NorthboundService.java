@@ -27,6 +27,7 @@ import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
+import org.openkilda.northbound.dto.switches.DeleteMeterResult;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 
@@ -68,6 +69,8 @@ public interface NorthboundService {
     RulesValidationResult validateSwitchRules(String switchId);
 
     List<SwitchInfoData> getAllSwitches();
+
+    DeleteMeterResult deleteMeter(String switchId, Integer meterId);
 
     //links
 
