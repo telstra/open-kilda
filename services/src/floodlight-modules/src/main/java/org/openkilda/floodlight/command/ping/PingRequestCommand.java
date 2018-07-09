@@ -22,7 +22,6 @@ import org.openkilda.floodlight.model.OfRequestResponse;
 import org.openkilda.floodlight.model.PingData;
 import org.openkilda.floodlight.service.PingService;
 import org.openkilda.floodlight.service.batch.OfBatchService;
-import org.openkilda.messaging.floodlight.request.PingRequest;
 import org.openkilda.messaging.model.Ping;
 import org.openkilda.messaging.model.Ping.Errors;
 
@@ -54,10 +53,10 @@ public class PingRequestCommand extends Abstract {
 
     private final OfBatchService batchService;
 
-    public PingRequestCommand(CommandContext context, PingRequest request) {
+    public PingRequestCommand(CommandContext context, Ping ping) {
         super(context);
 
-        ping = request.getPing();
+        this.ping = ping;
 
         FloodlightModuleContext moduleContext = context.getModuleContext();
         switchService = moduleContext.getServiceImpl(IOFSwitchService.class);
@@ -76,7 +75,7 @@ public class PingRequestCommand extends Abstract {
     }
 
     private void validate() throws PingImpossibleException {
-        final String destId = ping.getDest().getSwitchDpId();
+        final String destId = ping.getDest().getDatapath();
         IOFSwitch destSw = lookupSwitch(destId);
         if (destSw == null) {
             log.debug("Do not own ping\'s destination switch {}", destId);
@@ -90,7 +89,7 @@ public class PingRequestCommand extends Abstract {
     }
 
     private void send() throws PingImpossibleException {
-        String swId = ping.getSource().getSwitchDpId();
+        String swId = ping.getSource().getDatapath();
         IOFSwitch sw = lookupSwitch(swId);
         if (sw == null) {
             log.debug("Do not own ping's source switch {}", swId);
@@ -129,7 +128,7 @@ public class PingRequestCommand extends Abstract {
         actions.add(ofFactory.actions().buildOutput().setPort(OFPort.TABLE).build());
         pktOut.setActions(actions);
 
-        OFMessageUtils.setInPort(pktOut, OFPort.of(ping.getSource().getPortId()));
+        OFMessageUtils.setInPort(pktOut, OFPort.of(ping.getSource().getPortNumber()));
 
         return pktOut.build();
     }

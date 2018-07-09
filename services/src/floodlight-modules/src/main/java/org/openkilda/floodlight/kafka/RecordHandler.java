@@ -657,7 +657,7 @@ class RecordHandler implements Runnable {
     }
 
     private void doPingRequest(CommandContext context, PingRequest request) {
-        PingRequestCommand command = new PingRequestCommand(context, request);
+        PingRequestCommand command = new PingRequestCommand(context, request.getPing());
         command.execute();
     }
 

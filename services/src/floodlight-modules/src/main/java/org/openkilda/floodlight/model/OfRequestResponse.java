@@ -83,7 +83,7 @@ public class OfRequestResponse {
         String result = String.format("%s:%s xid: %d", message.getType(), message.getVersion(), message.getXid());
         if (message.getType() == OFType.ERROR) {
             OFErrorMsg errorMsg = (OFErrorMsg) message;
-            result += String.format("error %s:%s", errorMsg.getErrType(), errorMsg);
+            result += String.format(" %s:%s", errorMsg.getErrType(), errorMsg);
         }
         return result;
     }

@@ -21,6 +21,7 @@ import org.openkilda.floodlight.model.OfBatchResult;
 import org.openkilda.floodlight.model.OfRequestResponse;
 import org.openkilda.floodlight.switchmanager.OFInstallException;
 
+import com.google.common.collect.ImmutableList;
 import net.floodlightcontroller.core.IOFSwitch;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
@@ -38,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 class OfBatch {
     private static final Logger log = LoggerFactory.getLogger(OfBatch.class);
@@ -76,14 +78,14 @@ class OfBatch {
         writeCalled = true;
         HashMap<DatapathId, IOFSwitch> switchCache = new HashMap<>();
         try {
-            int count = writeBatch(batch, switchCache);
-            int extraCount = writeBatch(pendingBarrier.values(), switchCache);
-            log.debug("write(): {}(+{} barrier) messages", count, extraCount);
+            List<Long> payload = writeBatch(batch, switchCache);
+            List<Long> extra = writeBatch(pendingBarrier.values(), switchCache);
+            log.debug("write xId(s): {}(+{} barriers) messages", formatXidSequence(payload), formatXidSequence(extra));
         } catch (OFInstallException e) {
             error = true;
             completed = true;
 
-            log.error("Can't write OFMessage(xid={}) into {}", e.getOfMessage().getXid(), e.getDpId());
+            log.error("Can't write {} into {}", e.getOfMessage(), e.getDpId());
             pushResults();
         }
     }
@@ -118,19 +120,20 @@ class OfBatch {
         return entry != null;
     }
 
-    private int writeBatch(Collection<OfRequestResponse> batch, Map<DatapathId, IOFSwitch> switchCache)
+    private List<Long> writeBatch(Collection<OfRequestResponse> batch, Map<DatapathId, IOFSwitch> switchCache)
             throws OFInstallException {
-        int count = 0;
+        ArrayList<Long> processedXid = new ArrayList<>();
         for (OfRequestResponse record : batch) {
             DatapathId dpId = record.getDpId();
             IOFSwitch sw = switchCache.computeIfAbsent(dpId, switchUtils::lookupSwitch);
 
-            if (!sw.write(record.getRequest())) {
-                throw new OFInstallException(dpId, record.getRequest());
+            final OFMessage request = record.getRequest();
+            if (!sw.write(request)) {
+                throw new OFInstallException(dpId, request);
             }
-            count += 1;
+            processedXid.add(request.getXid());
         }
-        return count;
+        return processedXid;
     }
 
     private void pushResults() {
@@ -152,6 +155,16 @@ class OfBatch {
 
     CompletableFuture<OfBatchResult> getFuture() {
         return future;
+    }
+
+    List<OfRequestResponse> getPendingBarriers() {
+        return ImmutableList.copyOf(pendingBarrier.values());
+    }
+
+    private static String formatXidSequence(List<Long> sequence) {
+        return sequence.stream()
+                .map(Object::toString)
+                .collect(Collectors.joining(", "));
     }
 
     private static HashMap<PendingKey, OfRequestResponse> makePendingMap(

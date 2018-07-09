@@ -60,7 +60,12 @@ public class OfBatchService extends AbstractOfHandler implements IFloodlightServ
         log.debug("New OF batch request with {} message(s)", payload.size());
 
         OfBatch batch = new OfBatch(switchUtils, payload);
+        this.write(batch);
 
+        return batch.getFuture();
+    }
+
+    void write(OfBatch batch) {
         synchronized (pendingMap) {
             for (DatapathId dpId : batch.getAffectedSwitches()) {
                 OfBatchSwitchQueue queue = pendingMap.computeIfAbsent(dpId, OfBatchSwitchQueue::new);
@@ -68,7 +73,6 @@ public class OfBatchService extends AbstractOfHandler implements IFloodlightServ
             }
         }
         batch.write();
-        return batch.getFuture();
     }
 
     @Override
@@ -98,5 +102,9 @@ public class OfBatchService extends AbstractOfHandler implements IFloodlightServ
         }
 
         return true;
+    }
+
+    HashMap<DatapathId, OfBatchSwitchQueue> getPendingMap() {
+        return pendingMap;
     }
 }

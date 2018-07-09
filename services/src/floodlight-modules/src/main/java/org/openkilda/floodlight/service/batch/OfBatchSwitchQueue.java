@@ -36,6 +36,7 @@ class OfBatchSwitchQueue {
 
     public synchronized void cleanup() {
         queue.removeIf(OfBatch::isComplete);
+        garbage = queue.size() == 0;
     }
 
     synchronized OfBatch receiveResponse(OFMessage response) {
