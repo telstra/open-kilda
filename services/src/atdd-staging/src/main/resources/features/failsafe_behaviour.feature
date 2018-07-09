@@ -26,6 +26,21 @@ Feature: Failsafe Suite
     And flow has traffic going with bandwidth not less than 450 and not greater than 550
     And each flow can be deleted
 
+  Scenario: Replugging cable to some other switch/port should cause old ISL status to be changed to MOVED
+    Given select a random ISL with A-Switch and alias it as 'aswitchIsl'
+    And select a reverse path ISL for 'aswitchIsl' and alias it as 'aswitchIslReverse'
+    And select a random not connected A-Switch link and alias it as 'notConnectedLink'
+    And a potential ISL from 'aswitchIsl' source to 'notConnectedLink' source aliased as 'expectedNewIsl'
+    And a potential ISL from 'notConnectedLink' source to 'aswitchIsl' source aliased as 'expectedNewIslReverse'
+
+    When replug 'aswitchIsl' destination to 'notConnectedLink' source
+    Then ISL status changes to MOVED for ISLs: aswitchIsl, aswitchIslReverse
+    And ISL status changes to DISCOVERED for ISLs: expectedNewIsl, expectedNewIslReverse
+
+    When replug 'expectedNewIsl' source to 'aswitchIsl' destination
+    Then ISL status changes to MOVED for ISLs: expectedNewIsl, expectedNewIslReverse
+    And ISL status changes to DISCOVERED for ISLs: aswitchIsl, aswitchIslReverse
+
   Scenario: Flickering port down events should cause related ISLs to increase cost
     Given select a random ISL with A-Switch and alias it as 'aswitchIsl'
     And select a reverse path ISL for 'aswitchIsl' and alias it as 'aswitchIslReverse'
@@ -56,18 +71,3 @@ Feature: Failsafe Suite
     And property 'cost' of aswitchIslReverse ISL equals to '11000'
 
     And delete all link properties
-
-  Scenario: Replugging cable to some other switch/port should cause old ISL status to be changed to MOVED
-    Given select a random ISL with A-Switch and alias it as 'aswitchIsl'
-    And select a reverse path ISL for 'aswitchIsl' and alias it as 'aswitchIslReverse'
-    And select a random not connected A-Switch link and alias it as 'notConnectedLink'
-    And a potential ISL from 'aswitchIsl' source to 'notConnectedLink' source aliased as 'expectedNewIsl'
-    And a potential ISL from 'notConnectedLink' source to 'aswitchIsl' source aliased as 'expectedNewIslReverse'
-
-    When replug 'aswitchIsl' destination to 'notConnectedLink' source
-    Then ISL status changes to MOVED for ISLs: aswitchIsl, aswitchIslReverse
-    And ISL status changes to DISCOVERED for ISLs: expectedNewIsl, expectedNewIslReverse
-
-    When replug 'expectedNewIsl' source to 'aswitchIsl' destination
-    Then ISL status changes to MOVED for ISLs: expectedNewIsl, expectedNewIslReverse
-    And ISL status changes to DISCOVERED for ISLs: aswitchIsl, aswitchIslReverse
