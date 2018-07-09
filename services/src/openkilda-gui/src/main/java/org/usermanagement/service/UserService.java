@@ -1,17 +1,5 @@
 package org.usermanagement.service;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -28,6 +16,16 @@ import org.openkilda.log.ActivityLogger;
 import org.openkilda.log.constants.ActivityType;
 import org.openkilda.security.TwoFactorUtility;
 import org.openkilda.utility.StringUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import org.usermanagement.conversion.RoleConversionUtil;
 import org.usermanagement.conversion.UserConversionUtil;
 import org.usermanagement.dao.entity.RoleEntity;
@@ -467,5 +465,39 @@ public class UserService implements UserDetailsService {
 		}
 		return userSettingEntity.getData();
 	}
+	
+    public boolean validateOTP(final long userId, final String otp) {
+        UserEntity userEntity = userRepository.findByUserId(userId);
+        if (ValidatorUtil.isNull(userEntity)) {
+            LOGGER.error("User Entity not found for user(id: " + userId + ")");
+            throw new RequestValidationException(
+                    messageUtil.getAttributeInvalid("user_id", userId + ""));
+        }
+
+        if (userEntity.getIs2FaEnabled()) {
+            if (!userEntity.getIs2FaConfigured()) {
+                LOGGER.error("2FA key is not configured for user(id: " + userId
+                        + "). Error: " + messageUtil.getAttribute2faNotConfiured());
+                throw new TwoFaKeyNotSetException(messageUtil.getAttribute2faNotConfiured());
+            } else {
+                if (otp == null || otp.isEmpty()) {
+                    LOGGER.error("OTP code is madatory as 2FA is configured for user (id: "
+                            + userId + "). Error: "
+                            + messageUtil.getAttributeNotNull("OTP"));
+                    throw new OtpRequiredException(messageUtil.getAttributeNotNull("OTP"));
+                } else if (!TwoFactorUtility.validateOtp(otp,
+                        userEntity.getTwoFaKey())) {
+                    LOGGER.error("Invalid OTP for user (id: " + userId + "). Error: "
+                            + messageUtil.getAttributeNotvalid("OTP"));
+                    throw new InvalidOtpException(messageUtil.getAttributeNotvalid("OTP"));
+                }
+            }
+        } else {
+            LOGGER.error("2FA is not enabled for user(id: " + userId + "). Error: "
+                    + messageUtil.getAttribute2faNotEnabled());
+            throw new TwoFaKeyNotSetException(messageUtil.getAttribute2faNotEnabled());
+        }
+        return true;
+    }
 }
 

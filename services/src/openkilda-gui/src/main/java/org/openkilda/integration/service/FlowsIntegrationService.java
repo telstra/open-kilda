@@ -222,4 +222,43 @@ public class FlowsIntegrationService {
         }
         return null;
     }
+    
+    /**
+     * Update flow.
+     *
+     * @param flowId the flow id
+     * @param flow the flow
+     * @return the flow
+     */
+    public Flow updateFlow(String flowId, Flow flow){
+        try {
+            HttpResponse response = restClientManager.invoke(applicationProperties.getUpdateFlow().replace("{flow_id}", flowId),
+                    HttpMethod.PUT, objectMapper.writeValueAsString(flow), "application/json",
+                    applicationService.getAuthHeader());
+            if (RestClientManager.isValidResponse(response)) {
+                return restClientManager.getResponse(response, Flow.class);
+            }
+        } catch (JsonProcessingException e) {
+            LOGGER.error("Inside updateFlow  Exception :", e);
+            throw new IntegrationException(e);
+        }
+        return null;
+    }
+    
+    /**
+     * Update flow.
+     *
+     * @param flowId the flow id
+     * @param flow the flow
+     * @return the flow
+     */
+    public Flow deleteFlow(String flowId) {
+        HttpResponse response = restClientManager.invoke(
+                applicationProperties.getUpdateFlow().replace("{flow_id}", flowId),
+                HttpMethod.DELETE, "", "application/json", applicationService.getAuthHeader());
+        if (RestClientManager.isValidResponse(response)) {
+            return restClientManager.getResponse(response, Flow.class);
+        }
+        return null;
+    }
 }

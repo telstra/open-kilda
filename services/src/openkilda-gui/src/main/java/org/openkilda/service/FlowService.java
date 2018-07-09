@@ -17,6 +17,8 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.utility.CollectionUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.usermanagement.model.UserInfo;
+import org.usermanagement.service.UserService;
 
 /**
  * The Class ServiceFlowImpl.
@@ -30,15 +32,17 @@ public class FlowService {
 
     @Autowired
     private FlowsIntegrationService flowsIntegrationService;
+    
     @Autowired
     private SwitchIntegrationService switchIntegrationService;
-
-
+    
+    @Autowired
+    private UserService userService;
+    
     /**
      * get All Flows.
      *
      * @return SwitchRelationData
-     * @throws Exception
      */
     public List<FlowInfo> getAllFlows() {
         return flowsIntegrationService.getFlows();
@@ -48,7 +52,7 @@ public class FlowService {
     /**
      * Gets the flow count.
      *
-     * @param switchRelationData the switch relation data
+     * @param flows the flows
      * @return the flow count
      */
     public Collection<FlowCount> getFlowsCount(final List<Flow> flows) {
@@ -87,19 +91,17 @@ public class FlowService {
     /**
      * Gets the path link.
      *
-     * @param flowid the flowid
+     * @param flowId the flow id
      * @return the path link
-     * @throws IntegrationException
      */
     public FlowPath getFlowPath(final String flowId) throws IntegrationException {
         return flowsIntegrationService.getFlowPath(flowId);
     }
 
     /**
-     * Gets the all flows list
+     * Gets the all flows list.
      *
      * @return the all flow list
-     * @throws IntegrationException
      */
     public List<Flow> getAllFlowList() {
         return flowsIntegrationService.getAllFlowList();
@@ -107,8 +109,8 @@ public class FlowService {
 
     /**
      * Re route Flow by flow id.
-     * 
-     * @param flowId
+     *
+     * @param flowId the flow id
      * @return flow path
      */
     public FlowPath rerouteFlow(String flowId) {
@@ -116,10 +118,10 @@ public class FlowService {
     }
 
     /**
-     * Validate Flow by flow id.
-     * 
-     * @param flowId
-     * @return
+     * Validate Flow.
+     *
+     * @param flowId the flow id
+     * @return the string
      */
     public String validateFlow(String flowId) {
         return flowsIntegrationService.validateFlow(flowId);
@@ -127,21 +129,59 @@ public class FlowService {
 
     /**
      * Flow by flow id.
-     * 
-     * @param flowId
-     * @return
+     *
+     * @param flowId the flow id
+     * @return the flow by id
      */
     public Flow getFlowById(String flowId) {
         return flowsIntegrationService.getFlowById(flowId);
     }
 
 
+    /**
+     * Gets the flow status by id.
+     *
+     * @param flowId the flow id
+     * @return the flow status by id
+     */
     public FlowStatus getFlowStatusById(String flowId) {
         return flowsIntegrationService.getFlowStatusById(flowId);
     }
 
 
+	/**
+	 * Creates the flow.
+	 *
+	 * @param flow the flow
+	 * @return the flow
+	 */
 	public Flow createFlow(Flow flow) {
 		return flowsIntegrationService.createFlow(flow);
 	}
+	
+	/**
+	 * Update flow.
+	 *
+	 * @param flowId the flow id
+	 * @param flow the flow
+	 * @return the flow
+	 */
+	public Flow updateFlow(String flowId, Flow flow) {
+		return flowsIntegrationService.updateFlow(flowId, flow);
+	}
+	
+    /**
+     * Delete flow.
+     *
+     * @param flowId the flow id
+     * @param userInfo the user info
+     * @return the flow
+     */
+    public Flow deleteFlow(String flowId, UserInfo userInfo) {
+        if (userService.validateOTP(userInfo.getUserId(), userInfo.getCode())) {
+            return flowsIntegrationService.deleteFlow(flowId);
+        } else {
+            return null;
+        }
+    }
 }

@@ -38,6 +38,7 @@ import org.openkilda.messaging.command.discovery.NetworkCommandData;
 import org.openkilda.messaging.command.discovery.PortsCommandData;
 import org.openkilda.messaging.command.flow.BaseInstallFlow;
 import org.openkilda.messaging.command.flow.BatchInstallRequest;
+import org.openkilda.messaging.command.flow.DeleteMeterRequest;
 import org.openkilda.messaging.command.flow.InstallEgressFlow;
 import org.openkilda.messaging.command.flow.InstallIngressFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
@@ -66,6 +67,7 @@ import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.stats.PortStatus;
 import org.openkilda.messaging.info.stats.SwitchPortStatusData;
 import org.openkilda.messaging.info.switches.ConnectModeResponse;
+import org.openkilda.messaging.info.switches.DeleteMeterResponse;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
 
@@ -158,6 +160,8 @@ class RecordHandler implements Runnable {
             doPortsCommandDataRequest(message);
         } else if (data instanceof UniFlowVerificationRequest) {
             doFlowVerificationRequest(context, (UniFlowVerificationRequest) data);
+        } else if (data instanceof DeleteMeterRequest) {
+            doDeleteMeter(message, replyToTopic, replyDestination);
         } else {
             logger.error("unknown data type: {}", data.toString());
         }
@@ -173,8 +177,6 @@ class RecordHandler implements Runnable {
     }
 
     private void doDiscoverIslCommand(DiscoverIslCommandData command) {
-        logger.debug("Processing send ISL discovery command {}", command);
-
         String switchId = command.getSwitchId();
         context.getPathVerificationService().sendDiscoveryMessage(
                 DatapathId.of(switchId), OFPort.of(command.getPortNo()));
@@ -659,6 +661,25 @@ class RecordHandler implements Runnable {
     private void doFlowVerificationRequest(CommandContext context, UniFlowVerificationRequest request) {
         VerificationDispatchCommand verification = new VerificationDispatchCommand(context, request);
         verification.run();
+    }
+
+    private void doDeleteMeter(CommandMessage message, String replyToTopic, Destination replyDestination) {
+        DeleteMeterRequest request = (DeleteMeterRequest) message.getData();
+        try {
+            DatapathId dpid = DatapathId.of(request.getSwitchId());
+            long txId = context.getSwitchManager().deleteMeter(dpid, request.getMeterId());
+
+            DeleteMeterResponse response = new DeleteMeterResponse(txId != 0L);
+            InfoMessage infoMessage = new InfoMessage(response, System.currentTimeMillis(), message.getCorrelationId(),
+                    replyDestination);
+            context.getKafkaProducer().postMessage(replyToTopic, infoMessage);
+        } catch (SwitchOperationException e) {
+            logger.info("Meter deletion is unsuccessful. Switch {} not found", request.getSwitchId());
+            ErrorData errorData = new ErrorData(ErrorType.DATA_INVALID, e.getMessage(), request.getSwitchId());
+            ErrorMessage error = new ErrorMessage(errorData,
+                    System.currentTimeMillis(), message.getCorrelationId(), replyDestination);
+            context.getKafkaProducer().postMessage(replyToTopic, error);
+        }
     }
 
     private long allocateMeterId(Long meterId, String switchId, String flowId, Long cookie) {

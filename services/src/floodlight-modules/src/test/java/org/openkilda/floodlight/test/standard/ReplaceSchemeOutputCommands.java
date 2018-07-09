@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight.message.command.encapsulation;
+package org.openkilda.floodlight.test.standard;
 
 import static java.util.Collections.singletonList;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.DEFAULT_RULE_PRIORITY;

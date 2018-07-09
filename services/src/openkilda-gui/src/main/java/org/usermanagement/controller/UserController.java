@@ -2,6 +2,8 @@ package org.usermanagement.controller;
 
 import java.util.List;
 
+import javax.servlet.http.HttpServletRequest;
+
 import org.openkilda.auth.context.ServerContext;
 import org.openkilda.auth.model.Permissions;
 import org.openkilda.constants.IConstants;
@@ -216,4 +218,14 @@ public class UserController {
 		userService.saveOrUpdateSettings(userInfo);
 		return data;
 	}
+	
+    @ResponseStatus(HttpStatus.OK)
+    @RequestMapping(value = "/validateotp", method = RequestMethod.POST)
+    public boolean validateOtp(@RequestBody final UserInfo userInfo,
+            final HttpServletRequest request) {
+        LOGGER.info(
+                "[validateOTP] (userId: " + serverContext.getRequestContext().getUserId() + ")");
+        return userService.validateOTP(serverContext.getRequestContext().getUserId(),
+                userInfo.getCode());
+    }
 }

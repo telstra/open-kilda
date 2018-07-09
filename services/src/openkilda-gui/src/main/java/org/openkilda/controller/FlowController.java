@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.servlet.ModelAndView;
+import org.usermanagement.model.UserInfo;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -20,6 +21,7 @@ import java.util.List;
 
 import javax.servlet.http.HttpServletRequest;
 
+import org.openkilda.auth.context.ServerContext;
 import org.openkilda.auth.model.Permissions;
 import org.openkilda.constants.IConstants;
 import org.openkilda.integration.model.Flow;
@@ -47,6 +49,9 @@ public class FlowController extends BaseController {
 
     @Autowired
     private ActivityLogger activityLogger;
+    
+    @Autowired
+    private ServerContext serverContext;
 
     /**
      * Return to flows view.
@@ -178,5 +183,39 @@ public class FlowController extends BaseController {
     public @ResponseBody Flow createFlow(@RequestBody final Flow flow) {
         LOGGER.info("[createFlow] - start. Flow id: " + flow.getId());
         return flowService.createFlow(flow);
+    }
+
+    /**
+     * Update flow.
+     *
+     * @param flowId the flow id
+     * @param flow the flow
+     * @return the flow
+     */
+	@RequestMapping(value = "/{flowId}", method = RequestMethod.PUT)
+	@ResponseStatus(HttpStatus.CREATED)
+	@Permissions(values = {IConstants.Permission.FW_FLOW_UPDATE})
+	public @ResponseBody Flow updateFlow(@PathVariable("flowId") final String flowId,@RequestBody final Flow flow) {
+		LOGGER.info("[updateFlow] - start. Flow id: " + flowId);
+		return flowService.updateFlow(flowId, flow);
+	}
+
+    /**
+     * Delete flow.
+     *
+     * @param userInfo the user info
+     * @param flowId the flow id
+     * @return the flow
+     */
+    @RequestMapping(value = "/{flowId}", method = RequestMethod.DELETE)
+    @ResponseStatus(HttpStatus.OK)
+    @Permissions(values = {IConstants.Permission.FW_FLOW_DELETE})
+    public @ResponseBody Flow deleteFlow(@RequestBody final UserInfo userInfo,
+            @PathVariable("flowId") final String flowId) {
+        LOGGER.info("[deleteFlow] - start. Flow id: " + flowId);
+        if (serverContext.getRequestContext() != null) {
+            userInfo.setUserId(serverContext.getRequestContext().getUserId());
+        }
+        return flowService.deleteFlow(flowId, userInfo);
     }
 }

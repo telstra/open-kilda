@@ -16,6 +16,7 @@
 package org.openkilda;
 
 
+import static java.lang.String.format;
 import static org.openkilda.messaging.Destination.CTRL_CLIENT;
 import static org.openkilda.messaging.Destination.WFM_CTRL;
 import static org.openkilda.messaging.Utils.MAPPER;
@@ -62,17 +63,16 @@ public class KafkaUtils {
     public RecordMetadata postMessage(String topic, Message message)
             throws IOException, ExecutionException, InterruptedException {
 
-        KafkaProducer<Object, Object> producer = new KafkaProducer<>(connectDefaults);
-        try {
+        try (KafkaProducer<Object, Object> producer = new KafkaProducer<>(connectDefaults)) {
             String messageString = MAPPER.writeValueAsString(message);
             return producer.send(new ProducerRecord<>(topic, messageString)).get();
         } catch (JsonProcessingException exception) {
-            System.out.println(String.format("Error during json serialization: %s",
+            System.out.println(format("Error during json serialization: %s",
                     exception.getMessage()));
             exception.printStackTrace();
             throw exception;
         } catch (InterruptedException | ExecutionException exception) {
-            System.out.println(String.format("Error during KafkaProducer::send: %s",
+            System.out.println(format("Error during KafkaProducer::send: %s",
                     exception.getMessage()));
             exception.printStackTrace();
             throw exception;
@@ -101,7 +101,7 @@ public class KafkaUtils {
 
     public DumpStateManager getStateDumpsFromBolts() {
         long timestamp = System.currentTimeMillis();
-        String correlationId = String.format("atdd-%d", timestamp);
+        String correlationId = format("atdd-%d", timestamp);
         CtrlRequest dumpRequest = new CtrlRequest("*", new RequestData("dump"), timestamp,
                 correlationId, WFM_CTRL);
         try {
@@ -145,6 +145,49 @@ public class KafkaUtils {
         } catch (Exception e) {
             e.printStackTrace();
             return null;
+        }
+    }
+
+    /**
+     * Sends a clearState ctrl request to the topology component.
+     */
+    public CtrlResponse clearTopologyComponentState(String topology, String componentId) {
+        String ctrlRoute = format("%s/%s", topology, componentId);
+        long timestamp = System.currentTimeMillis();
+        String correlationId = format("atdd-%d", timestamp);
+
+        CtrlRequest clearStateRequest = new CtrlRequest(ctrlRoute, new RequestData("clearState"), timestamp,
+                correlationId, WFM_CTRL);
+        try {
+            RecordMetadata postedMessage = postMessage(settings.getControlTopic(), clearStateRequest);
+            try (KafkaConsumer<String, String> consumer = createConsumer()) {
+                consumer.subscribe(Collections.singletonList(settings.getControlTopic()),
+                        new NoOpConsumerRebalanceListener() {
+                            @Override
+                            public void onPartitionsAssigned(
+                                    Collection<TopicPartition> partitions) {
+                                for (TopicPartition topicPartition : partitions) {
+                                    consumer.seek(topicPartition, postedMessage.offset());
+                                }
+                            }
+                        });
+
+                final int NUMBER_OF_ATTEMPTS = 5;
+                int attempt = 0;
+                while (attempt++ < NUMBER_OF_ATTEMPTS) {
+                    for (ConsumerRecord<String, String> record : consumer.poll(1000)) {
+                        Message message = MAPPER.readValue(record.value(), Message.class);
+                        if (message.getDestination() == CTRL_CLIENT
+                                && message.getCorrelationId().equals(correlationId)) {
+                            return (CtrlResponse) message;
+                        }
+                    }
+                }
+
+                return null;
+            }
+        } catch (IOException | ExecutionException | InterruptedException e) {
+            throw new TopologyCtrlProcessingException(format("Unable to clear state on '%s'.", ctrlRoute), e);
         }
     }
 

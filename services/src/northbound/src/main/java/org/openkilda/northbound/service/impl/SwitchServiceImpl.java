@@ -22,6 +22,7 @@ import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.CommandWithReplyToMessage;
+import org.openkilda.messaging.command.flow.DeleteMeterRequest;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
@@ -35,11 +36,13 @@ import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.switches.ConnectModeResponse;
+import org.openkilda.messaging.info.switches.DeleteMeterResponse;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.info.switches.SyncRulesResponse;
 import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
 import org.openkilda.northbound.converter.SwitchMapper;
 import org.openkilda.northbound.dto.SwitchDto;
+import org.openkilda.northbound.dto.switches.DeleteMeterResult;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.northbound.messaging.MessageConsumer;
@@ -243,4 +246,16 @@ public class SwitchServiceImpl implements SwitchService {
         return switchMapper.toRulesSyncResult(validationResult, syncResponse.getInstalledRules());
     }
 
+    @Override
+    public DeleteMeterResult deleteMeter(String switchId, long meterId) {
+        String requestId = RequestCorrelationId.getId();
+        CommandWithReplyToMessage deleteCommand = new CommandWithReplyToMessage(
+                new DeleteMeterRequest(switchId, meterId),
+                System.currentTimeMillis(), requestId, Destination.TOPOLOGY_ENGINE, northboundTopic);
+        messageProducer.send(floodlightTopic, deleteCommand);
+
+        Message response = messageConsumer.poll(requestId);
+        DeleteMeterResponse result = (DeleteMeterResponse) validateInfoMessage(deleteCommand, response, requestId);
+        return new DeleteMeterResult(result.isDeleted());
+    }
 }

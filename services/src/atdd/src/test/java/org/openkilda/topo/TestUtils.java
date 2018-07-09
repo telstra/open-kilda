@@ -19,12 +19,14 @@ import static java.lang.String.format;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
+import org.openkilda.KafkaUtils;
+import org.openkilda.topo.builders.TeTopologyParser;
+import org.openkilda.topo.builders.TestTopologyBuilder;
+import org.openkilda.topo.exceptions.TopologyProcessingException;
+
 import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
 import com.google.common.util.concurrent.Uninterruptibles;
-import org.openkilda.topo.builders.TeTopologyParser;
-import org.openkilda.topo.exceptions.TopologyProcessingException;
-import org.openkilda.topo.builders.TestTopologyBuilder;
 
 import java.io.IOException;
 import java.net.URL;
@@ -173,14 +175,14 @@ public class TestUtils {
     /**
      * Default behavior - hit localhost
      */
-    public static void clearEverything() throws InterruptedException {
+    public static void clearEverything() throws InterruptedException, IOException {
         clearEverything("localhost");
     }
 
     /**
      * @param endpoint the kilda endpoint to clear
      */
-    public static void clearEverything(String endpoint) throws InterruptedException {
+    public static void clearEverything(String endpoint) throws InterruptedException, IOException {
         String expected = "{\"nodes\": []}";
         TopologyHelp.DeleteMininetTopology();
         // Give Mininet some time to clear things naturally
@@ -198,6 +200,11 @@ public class TestUtils {
                 break;
             }
         }
+
+        KafkaUtils kafkaUtils = new KafkaUtils();
+        // TODO: the topology name is environment dependent and may be changed during deployment,
+        // so the solution on how to send a Ctrl request should be reconsidered.
+        kafkaUtils.clearTopologyComponentState("wfm", "OFELinkBolt");
 
         Uninterruptibles.sleepUninterruptibly(3, TimeUnit.SECONDS);
     }
