@@ -173,8 +173,6 @@ class RecordHandler implements Runnable {
     }
 
     private void doDiscoverIslCommand(DiscoverIslCommandData command) {
-        logger.debug("Processing send ISL discovery command {}", command);
-
         String switchId = command.getSwitchId();
         context.getPathVerificationService().sendDiscoveryMessage(
                 DatapathId.of(switchId), OFPort.of(command.getPortNo()));
