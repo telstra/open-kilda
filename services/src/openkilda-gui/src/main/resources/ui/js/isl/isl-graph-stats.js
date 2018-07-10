@@ -22,8 +22,10 @@ var selMetric="latency";
 var graphInterval;
 
 $(function() {
-	$("#datetimepicker7ISL,#datetimepicker8ISL,#downsamplingISL,#autoreloadISL").on("change",function() {
-		getGraphData();
+	$("#datetimepicker7ISL,#datetimepicker8ISL,#downsamplingISL,#autoreloadISL,#timezone").on("change",function() {
+		if($('#selectedGraph').val() == 'isl'){
+			getGraphData();
+		}
 	});
 	$('#selectedGraph').on('change',function(e){
 		if($(this).val() == 'isl'){
@@ -56,9 +58,9 @@ $(document).ready(function() {
 		  format:'Y/m/d H:i:s',
 	});
 	$('#datetimepicker_dark').datetimepicker({theme:'dark'})
-		
+	$('#timezone').val("UTC");
 	loadGraph.loadGraphData("/stats/isl/"+source+"/"+sourcePort+"/"+target+"/"+targetPort+"/"+convertedStartDate+"/"+convertedEndDate+"/10m/"+selMetric,"GET",selMetric).then(function(response) {
-		 
+		var timezone = $('#timezone option:selected').val();
 		if(response && response.length && typeof(response[0].tags)!=='undefined' ){
 			response[0].tags.direction ="F"; // setting direction to forward
 		}
@@ -72,7 +74,7 @@ $(document).ready(function() {
 			}
 			var responseData =response;
 			responseData.push(responseReverse[0]);
-			showStatsGraph.showStatsData(responseData,selMetric);
+			showStatsGraph.showStatsData(responseData,selMetric,null,null,null,null,timezone);
 		})	
 		
 	})
@@ -88,12 +90,12 @@ function getGraphData(changeFlag) {
 	var currentDate = new Date();
 	var startDate = new Date($("#datetimepicker7ISL").val());
 	var endDate =  new Date($("#datetimepicker8ISL").val());
+	var timezone = $('#timezone option:selected').val();
 	var convertedStartDate = moment(startDate).format("YYYY-MM-DD-HH:mm:ss");	
 	var convertedEndDate = moment(endDate).format("YYYY-MM-DD-HH:mm:ss");
 	var downsampling = $("#downsamplingISL").val();
 	var downsamplingValidated = regex.test(downsampling);
 	var valid=true;
-	
 	if(downsamplingValidated == false) {	
 	
 		$("#DownsampleID").addClass("has-error")	
@@ -146,6 +148,7 @@ if(test) {
   	}else{
   		var loadUrl ="/stats/isl/"+source+"/"+sourcePort+"/"+target+"/"+targetPort+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric;
   	}
+  	
 	loadGraph.loadGraphData(loadUrl,"GET",selMetric).then(function(response) {
 		if(response && response.length && typeof(response[0].tags)!=='undefined' ){
 			response[0].tags.direction ="F";
@@ -163,7 +166,7 @@ if(test) {
 			responseData.push(responseReverse[0]);
 			$("#wait1").css("display", "none");
 			$('body').css('pointer-events', 'all');
-			showStatsGraph.showStatsData(responseData,selMetric); 
+			showStatsGraph.showStatsData(responseData,selMetric,null,null,null,null,timezone); 
 		})
 		
 })
@@ -185,6 +188,7 @@ if(test) {
 function callIntervalData(){
 	var currentDate = new Date();
 	var startDate = new Date($("#datetimepicker7ISL").val());
+	var timezone = $('#timezone option:selected').val();
 	var convertedStartDate = moment(startDate).format("YYYY-MM-DD-HH:mm:ss");	
 	var savedEnddate = new Date($('#savedEnddate').val());
 	savedEnddate = new Date(savedEnddate.getTime() + (autoreload * 1000));
@@ -196,7 +200,7 @@ function callIntervalData(){
 	loadGraph.loadGraphData("/stats/isl/"+source+"/"+sourcePort+"/"+target+"/"+targetPort+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric,"GET",selMetric).then(function(response) {
 		$("#wait1").css("display", "none");
 		$('body').css('pointer-events', 'all');
-		showStatsGraph.showStatsData(response,selMetric); 
+		showStatsGraph.showStatsData(response,selMetric,null,null,null,null,timezone); 
 	})
 }
 
