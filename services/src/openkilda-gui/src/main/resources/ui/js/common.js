@@ -429,19 +429,17 @@ function ZoomCallBack(minX, maxX, yRanges) {
 
  var showStatsGraph = {	
 
-	showStatsData:function(response,metricVal,graphCode,domId,startDate,endDate) {
-		
+	showStatsData:function(response,metricVal,graphCode,domId,startDate,endDate,timezone) {
 		var metric1 = "";
 		var metric2 = "";
 		var direction1 = "";
 		var direction2 = "";
 		var data = response;
 		var jsonResponse = response.responseJSON;
-		
 		var graphData = [];
 		 if(data){
 			 if(data.length == 0){
-					if(graphCode == 0) {
+				 	if(graphCode == 0) {
 						 var g = new Dygraph(document.getElementById("source-graph_div"), [],
 							 	 {
 							 		      drawPoints: false,
@@ -461,7 +459,6 @@ function ZoomCallBack(minX, maxX, yRanges) {
 							 	  });	
 						 return;
 					}
-				 
 			 var g = new Dygraph(document.getElementById("graphdiv"), [],
 				 	 {
 				 		      drawPoints: false,
@@ -474,8 +471,8 @@ function ZoomCallBack(minX, maxX, yRanges) {
 		 }
 		 
 		if(!jsonResponse) { 
-		    	var getValue = data[0].dps;	    	
-		    	 metric1 = data[0].metric;	
+		    	var getValue = (typeof(data[0]) !=='undefined') ? data[0].dps : 0;	    	
+		    	 metric1 = (typeof(data[0]) !=='undefined') ? data[0].metric : '';	
 		    	 
 		    	if(data.length == 2) {
 		    		var getVal = data[1].dps;
@@ -497,7 +494,10 @@ function ZoomCallBack(minX, maxX, yRanges) {
 							var dat = new Date(startDate);
 							var startTime = dat.getTime();
 							var usedDate = new Date();
-							startTime = startTime - usedDate.getTimezoneOffset() * 60 * 1000;
+							if(typeof(timezone) !== 'undefined' && timezone=='UTC'){
+								startTime = startTime - usedDate.getTimezoneOffset() * 60 * 1000;
+							}
+							
 							var arr = [new Date(startTime),null,null];
 							graphData.push(arr);
 						}
@@ -537,29 +537,213 @@ function ZoomCallBack(minX, maxX, yRanges) {
 		if(typeof(endDate)!=='undefined'){
 			var dat = new Date(endDate);
 			var lastTime = dat.getTime();
-			var usedDate = new Date(graphData[graphData.length-1][0]);
-			lastTime = lastTime - usedDate.getTimezoneOffset() * 60 * 1000;
+			var usedDate = (graphData && graphData.length) ? new Date(graphData[graphData.length-1][0]): new Date();
+			if(typeof(timezone) !== 'undefined' && timezone == 'UTC') {
+				lastTime = lastTime - usedDate.getTimezoneOffset() * 60 * 1000;
+			}
+			
 			var arr = [new Date(lastTime),null,null];
 			graphData.push(arr);
 		}
 		
 		
-		
 		if(graphCode == undefined){
 					
 			if(domId == 'source') {
-				var g = new Dygraph(document.getElementById("source-graph_div"), graphData,
-						{
-							 		      drawPoints: false,
-							 		      labels: labels,									 			 
-							 		      labelsUTC:true, 
-							 		      includeZero : true,		      
-							 		      colors: ["#495cff","#aad200"],
-							 		     zoomCallback:function(minX, maxX, yRanges){
-								 		    	ZoomCallBack(minX, maxX, yRanges)
-								 		      },
-						});
+				if(typeof(timezone) !== 'undefined' && timezone == 'UTC') {
+					var g = new Dygraph(document.getElementById("source-graph_div"), graphData,
+							{
+								 		      drawPoints: false,
+								 		      labels: labels,									 			 
+								 		      labelsUTC:true, 
+								 		      includeZero : true,		      
+								 		      colors: ["#495cff","#aad200"],
+								 		     zoomCallback:function(minX, maxX, yRanges){
+									 		    	ZoomCallBack(minX, maxX, yRanges)
+									 		      },
+							});
+				}else {
+					var g = new Dygraph(document.getElementById("source-graph_div"), graphData,
+							{
+								 		      drawPoints: false,
+								 		      labels: labels,									 			 
+								 		      colors: ["#495cff","#aad200"],
+								 		     zoomCallback:function(minX, maxX, yRanges){
+									 		    	ZoomCallBack(minX, maxX, yRanges)
+									 		      },
+							});
+				}
+				
 			}else if(domId == 'target') {
+				if(typeof(timezone) !== 'undefined' && timezone == 'UTC') {
+					var g = new Dygraph(document.getElementById("dest-graph_div"), graphData,
+							{
+								 		      drawPoints: false,
+								 		      labels: labels,	 								 			 
+								 		      labelsUTC:true,	
+								 		      includeZero : true,	      
+								 		      colors: ["#495cff","#aad200"],
+								 		     zoomCallback:function(minX, maxX, yRanges){
+									 		    	ZoomCallBack(minX, maxX, yRanges)
+									 		      },
+							});
+				} else {
+					var g = new Dygraph(document.getElementById("dest-graph_div"), graphData,
+							{
+								 		      drawPoints: false,
+								 		      labels: labels,	 								 			 
+								 		      colors: ["#495cff","#aad200"],
+								 		     zoomCallback:function(minX, maxX, yRanges){
+									 		    	ZoomCallBack(minX, maxX, yRanges)
+									 		      },
+							});
+				}
+				
+			} else {
+
+			if($('#selectedGraph').val() =='isl') {
+				if(typeof(timezone) !== 'undefined' && timezone == 'UTC') {
+					var g = new Dygraph(document.getElementById("graphdiv"), graphData,
+							{    										
+								 		      drawPoints: false,
+								 		      labels: labels,									 			 
+								 		      labelsUTC:true, 
+								 		      includeZero : true,
+								 		      colors: ["#495cff","#aad200"],
+								 		      zoomCallback:function(minX, maxX, yRanges){
+									 		    	ZoomCallBack(minX, maxX, yRanges)
+									 		      },
+							});
+				} else {
+					var g = new Dygraph(document.getElementById("graphdiv"), graphData,
+							{    										
+								 		      drawPoints: false,
+								 		      labels: labels,									 			 
+								 		      colors: ["#495cff","#aad200"],
+								 		      zoomCallback:function(minX, maxX, yRanges){
+									 		    	ZoomCallBack(minX, maxX, yRanges)
+									 		      },
+							});
+				}
+				
+			} else {
+				       if(domId == undefined) {
+				    	  if(typeof(timezone) !== 'undefined' && timezone == 'UTC') {
+				    		   var g1 = new Dygraph(document.getElementById("graphdiv"), graphData,
+										{
+													 		      drawPoints: false,
+													 		      labels:labels,	 
+													 		      labelsUTC:true,
+													 		      includeZero : true,
+													 		      drawAxesAtZero:true,
+													 		      colors: ["#495cff","#aad200"],
+													 		      zoomCallback:function(minX, maxX, yRanges){
+													 		    	ZoomCallBack(minX, maxX, yRanges)
+													 		      },
+										});
+							} else {
+								var g1 = new Dygraph(document.getElementById("graphdiv"), graphData,
+										{
+													 		      drawPoints: false,
+													 		      labels:labels,	
+													 		     includeZero : true,
+													 		      drawAxesAtZero:true,
+													 		      colors: ["#495cff","#aad200"],
+													 		      zoomCallback:function(minX, maxX, yRanges){
+													 		    	ZoomCallBack(minX, maxX, yRanges)
+													 		      },
+										});
+							}
+					        
+				       } 
+				       if(domId != undefined && graphCode == null && $('#selectedGraph').val() =='source' ) {
+				    	   
+				    	   if(typeof(timezone) !== 'undefined' && timezone == 'UTC') {
+				    		   var g1 = new Dygraph(document.getElementById("source-graph_div"), graphData,
+										  {
+											 		      drawPoints: false,
+											 		      labels: labels,								 			 
+											 		      labelsUTC:true,
+											 		      includeZero : true,
+											 		      colors: ["#495cff","#aad200"],
+											 		      zoomCallback:function(minX, maxX, yRanges){
+											 		    	ZoomCallBack(minX, maxX, yRanges)
+											 		      },
+										  });
+							} else {
+								var g1 = new Dygraph(document.getElementById("source-graph_div"), graphData,
+										  {
+											 		      drawPoints: false,
+											 		      labels: labels,								 			 
+											 		      colors: ["#495cff","#aad200"],
+											 		      zoomCallback:function(minX, maxX, yRanges){
+											 		    	ZoomCallBack(minX, maxX, yRanges)
+											 		      },
+										  });
+							}
+					       
+				       }
+				       if(domId != undefined && graphCode == null && $('#selectedGraph').val() =='target') {
+				    	   
+				    	   if(typeof(timezone) !== 'undefined' && timezone == 'UTC') {
+				    		   var g2 = new Dygraph(document.getElementById("dest-graph_div"), graphData,
+										  {
+											 		      drawPoints: false,
+											 		      labels: labels,									 			 
+											 		      labelsUTC:true, 	
+											 		      includeZero : true,	      
+											 		      colors: ["#495cff","#aad200"],
+											 		      zoomCallback:function(minX, maxX, yRanges){
+												 		    	ZoomCallBack(minX, maxX, yRanges)
+												 		      },
+										 });
+							} else {
+								var g2 = new Dygraph(document.getElementById("dest-graph_div"), graphData,
+										  {
+											 		      drawPoints: false,
+											 		      labels: labels,									 			 
+											 		      colors: ["#495cff","#aad200"],
+											 		      zoomCallback:function(minX, maxX, yRanges){
+												 		    	ZoomCallBack(minX, maxX, yRanges)
+												 		      },
+										 });
+							}
+							 	
+				       }
+			     }
+		}
+	}
+		if(graphCode == 0){
+			$("#dest-graph_div").empty();
+			if(typeof(timezone) !== 'undefined' && timezone == 'UTC') {
+				 var g = new Dygraph(document.getElementById("source-graph_div"), graphData,
+							{
+								 		      drawPoints: false,
+								 		      labels: labels,	 									 			 
+								 		      labelsUTC:true,	
+								 		      includeZero : true,      
+								 		      colors: ["#495cff","#aad200"],
+								 		     zoomCallback:function(minX, maxX, yRanges){
+									 		    	ZoomCallBack(minX, maxX, yRanges)
+									 		      },
+							});	
+			} else {
+				 var g = new Dygraph(document.getElementById("source-graph_div"), graphData,
+							{
+								 		      drawPoints: false,
+								 		      labels: labels,	 									 			 
+								 		      colors: ["#495cff","#aad200"],
+								 		     zoomCallback:function(minX, maxX, yRanges){
+									 		    	ZoomCallBack(minX, maxX, yRanges)
+									 		      },
+							});	
+			}
+			  
+
+		}
+		if(graphCode == 1){
+			$("#source-graph_div").empty();
+			if(typeof(timezone) !== 'undefined' && timezone == 'UTC') {
 				var g = new Dygraph(document.getElementById("dest-graph_div"), graphData,
 						{
 							 		      drawPoints: false,
@@ -570,93 +754,19 @@ function ZoomCallBack(minX, maxX, yRanges) {
 							 		     zoomCallback:function(minX, maxX, yRanges){
 								 		    	ZoomCallBack(minX, maxX, yRanges)
 								 		      },
-						});
+						});	
 			} else {
-
-			if($('#selectedGraph').val() =='isl') {
-				var g = new Dygraph(document.getElementById("graphdiv"), graphData,
-						{    										
+				var g = new Dygraph(document.getElementById("dest-graph_div"), graphData,
+						{
 							 		      drawPoints: false,
-							 		      labels: labels,									 			 
-							 		      labelsUTC:true, 
-							 		      includeZero : true,
+							 		      labels: labels,	 								 			 
 							 		      colors: ["#495cff","#aad200"],
-							 		      zoomCallback:function(minX, maxX, yRanges){
+							 		     zoomCallback:function(minX, maxX, yRanges){
 								 		    	ZoomCallBack(minX, maxX, yRanges)
 								 		      },
-						});
-			} else {
-				       if(domId == undefined) {
-				    	   
-					        var g1 = new Dygraph(document.getElementById("graphdiv"), graphData,
-							{
-										 		      drawPoints: false,
-										 		      labels:labels,	 
-										 		      labelsUTC:true,
-										 		      includeZero : true,
-										 		     drawAxesAtZero:true,
-										 		      colors: ["#495cff","#aad200"],
-										 		      zoomCallback:function(minX, maxX, yRanges){
-										 		    	ZoomCallBack(minX, maxX, yRanges)
-										 		      },
-							});
-				       } 
-				       if(domId != undefined && graphCode == null && $('#selectedGraph').val() =='source' ) {
-					       var g1 = new Dygraph(document.getElementById("source-graph_div"), graphData,
-									  {
-										 		      drawPoints: false,
-										 		      labels: labels,								 			 
-										 		      labelsUTC:true,
-										 		      includeZero : true,
-										 		      colors: ["#495cff","#aad200"],
-										 		      zoomCallback:function(minX, maxX, yRanges){
-										 		    	ZoomCallBack(minX, maxX, yRanges)
-										 		      },
-									  });
-				       }
-				       if(domId != undefined && graphCode == null && $('#selectedGraph').val() =='target') {
-							 var g2 = new Dygraph(document.getElementById("dest-graph_div"), graphData,
-									  {
-										 		      drawPoints: false,
-										 		      labels: labels,									 			 
-										 		      labelsUTC:true, 	
-										 		      includeZero : true,	      
-										 		      colors: ["#495cff","#aad200"],
-										 		      zoomCallback:function(minX, maxX, yRanges){
-											 		    	ZoomCallBack(minX, maxX, yRanges)
-											 		      },
-									 });	
-				       }
-			     }
-		}
-	}if(graphCode == 0){
-			$("#dest-graph_div").empty();
-			   var g = new Dygraph(document.getElementById("source-graph_div"), graphData,
-				{
-					 		      drawPoints: false,
-					 		      labels: labels,	 									 			 
-					 		      labelsUTC:true,	
-					 		      includeZero : true,      
-					 		      colors: ["#495cff","#aad200"],
-					 		     zoomCallback:function(minX, maxX, yRanges){
-						 		    	ZoomCallBack(minX, maxX, yRanges)
-						 		      },
-				});	
-
-		}
-		if(graphCode == 1){
-			$("#source-graph_div").empty();
-			  var g = new Dygraph(document.getElementById("dest-graph_div"), graphData,
-				{
-					 		      drawPoints: false,
-					 		      labels: labels,	 								 			 
-					 		      labelsUTC:true,	
-					 		      includeZero : true,	      
-					 		      colors: ["#495cff","#aad200"],
-					 		     zoomCallback:function(minX, maxX, yRanges){
-						 		    	ZoomCallBack(minX, maxX, yRanges)
-						 		      },
-				});	
+						});	
+			}
+			  
 
 			
 		}
@@ -670,7 +780,6 @@ function ZoomCallBack(minX, maxX, yRanges) {
 var showIslSwitchStats = {	
 
 		showIslSwitchStatsData:function(response,metricVal,graphCode,domId,startDate,endDate) {
-			
 			var metric1 = "";
 			var metric2 = "";
 			var direction1 = "";
@@ -678,25 +787,49 @@ var showIslSwitchStats = {
 			var data = response;
 			var jsonResponse = response.responseJSON;
 			var graphData = [];
-			 
+			var timezone = $('#timezone option:selected').val();
 			 if(data){
 				 if(data.length == 0){
 						if(graphCode == 0) {
-							 var g = new Dygraph(document.getElementById("source-graph_div"), [],
-								 	 {
-								 		      drawPoints: false,
-								 		      labels: "test",	 		      
-								 		      colors: ["#495cff","#aad200"],
-								 	  });	
+							if(typeof(timezone) != 'undefined' && timezone =='UTC') {
+								 var g = new Dygraph(document.getElementById("source-graph_div"), [],
+									 	 {
+									 		      drawPoints: false,
+									 		      labels: "test",
+									 		      labelsUTC:true,
+									 		      includeZero : true,
+									 		      colors: ["#495cff","#aad200"],
+									 	  });	
+							} else {
+								 var g = new Dygraph(document.getElementById("source-graph_div"), [],
+									 	 {
+									 		      drawPoints: false,
+									 		      labels: "test",	 		      
+									 		      colors: ["#495cff","#aad200"],
+									 	  });	
+							}
+							
 							 return;
 						}
 						if(graphCode == 1) {
-							 var g = new Dygraph(document.getElementById("dest-graph_div"), [],
-								 	 {
-								 		      drawPoints: false,
-								 		      labels: "test",	 		      
-								 		      colors: ["#495cff","#aad200"],
-								 	  });	
+							if(typeof(timezone) != 'undefined' && timezone =='UTC') {
+								 var g = new Dygraph(document.getElementById("dest-graph_div"), [],
+									 	 {
+									 		      drawPoints: false,
+									 		      labels: "test",
+									 		      labelsUTC:true,
+									 		      includeZero : true,
+									 		      colors: ["#495cff","#aad200"],
+									 	  });
+							} else {
+								 var g = new Dygraph(document.getElementById("dest-graph_div"), [],
+									 	 {
+									 		      drawPoints: false,
+									 		      labels: "test",	 		      
+									 		      colors: ["#495cff","#aad200"],
+									 	  });
+							}
+								
 							 return;
 						}
 				   } 
@@ -704,8 +837,8 @@ var showIslSwitchStats = {
 			 
 			if(!jsonResponse) {
 				
-			    	var getValue = data[0].dps;	    	
-			    	 metric1 = data[0].metric;	
+			    	var getValue = (typeof(data[0]) !=='undefined') ? data[0].dps:0;	    	
+			    	 metric1 = (typeof(data[0]) !=='undefined') ? data[0].metric:'';	
 			    	 
 			    	if(data.length == 2) {
 			    		var getVal = data[1].dps;
@@ -727,7 +860,10 @@ var showIslSwitchStats = {
 								var dat = new Date(startDate);
 								var startTime = dat.getTime();
 								var usedDate = new Date();
-								startTime = startTime - usedDate.getTimezoneOffset() * 60 * 1000;
+								if(typeof(timezone) != 'undefined' && timezone =='UTC') {
+									startTime = startTime - usedDate.getTimezoneOffset() * 60 * 1000;
+								} 
+								
 								var arr = [new Date(startTime),null,null];
 								graphData.push(arr);
 							}
@@ -767,8 +903,10 @@ var showIslSwitchStats = {
 			if(typeof(endDate)!=='undefined'){
 				var dat = new Date(endDate);
 				var lastTime = dat.getTime();
-				var usedDate = new Date(graphData[graphData.length-1][0]);
-				lastTime = lastTime - usedDate.getTimezoneOffset() * 60 * 1000;
+				var usedDate = (graphData && graphData.length) ? new Date(graphData[graphData.length-1][0]) : new Date();
+				if(typeof(timezone) != 'undefined' && timezone =='UTC') {
+					lastTime = lastTime - usedDate.getTimezoneOffset() * 60 * 1000;
+				} 
 				var arr = [new Date(lastTime),null,null];
 				graphData.push(arr);	
 			}
@@ -776,86 +914,164 @@ var showIslSwitchStats = {
 			if(graphCode == undefined){
 						
 				if(domId=='source') {
-					var g = new Dygraph(document.getElementById("source-graph_div"), graphData,
-							{
-								 		      drawPoints: false,
-								 		      labels: labels,								 			 
-								 		      labelsUTC:true,
-								 		      includeZero : true,
-								 		      colors: ["#495cff","#aad200"],
-								 		     zoomCallback:function(minX, maxX, yRanges){
-									 		    	ZoomCallBack(minX, maxX, yRanges)
-									 		      },
-							});
+					if(typeof(timezone) != 'undefined' && timezone =='UTC') {
+						var g = new Dygraph(document.getElementById("source-graph_div"), graphData,
+								{
+									 		      drawPoints: false,
+									 		      labels: labels,								 			 
+									 		      labelsUTC:true,
+									 		      includeZero : true,
+									 		      colors: ["#495cff","#aad200"],
+									 		     zoomCallback:function(minX, maxX, yRanges){
+										 		    	ZoomCallBack(minX, maxX, yRanges)
+										 		      },
+								});
+					} else {
+						var g = new Dygraph(document.getElementById("source-graph_div"), graphData,
+								{
+									 		      drawPoints: false,
+									 		      labels: labels,								 			 
+									 		      colors: ["#495cff","#aad200"],
+									 		     zoomCallback:function(minX, maxX, yRanges){
+										 		    	ZoomCallBack(minX, maxX, yRanges)
+										 		      },
+								});
+					}
+					
 				}else if(domId == 'target') {
-					var g = new Dygraph(document.getElementById("dest-graph_div"), graphData,
-							{
-								 		      drawPoints: false,
-								 		      labels: labels,								 			 
-								 		      labelsUTC:true,
-								 		      includeZero : true,
-								 		      colors: ["#495cff","#aad200"],
-								 		     zoomCallback:function(minX, maxX, yRanges){
-									 		    	ZoomCallBack(minX, maxX, yRanges)
-									 		      },
-							});
+					if(typeof(timezone) != 'undefined' && timezone =='UTC') {
+						var g = new Dygraph(document.getElementById("dest-graph_div"), graphData,
+								{
+									 		      drawPoints: false,
+									 		      labels: labels,								 			 
+									 		      labelsUTC:true,
+									 		      includeZero : true,
+									 		      colors: ["#495cff","#aad200"],
+									 		     zoomCallback:function(minX, maxX, yRanges){
+										 		    	ZoomCallBack(minX, maxX, yRanges)
+										 		      },
+								});
+					} else {
+						var g = new Dygraph(document.getElementById("dest-graph_div"), graphData,
+								{
+									 		      drawPoints: false,
+									 		      labels: labels,								 			 
+									 		      colors: ["#495cff","#aad200"],
+									 		     zoomCallback:function(minX, maxX, yRanges){
+										 		    	ZoomCallBack(minX, maxX, yRanges)
+										 		      },
+								});
+					}
+					
 				} else {
 					       if(domId != undefined && graphCode == null && $('#selectedGraph').val() == 'source') {
-						       var g1 = new Dygraph(document.getElementById("source-graph_div"), graphData,
-										  {
-											 		      drawPoints: false,
-											 		      labels: labels,									 			 
-											 		      labelsUTC:true,
-											 		      includeZero : true, 		      
-											 		      colors: ["#495cff","#aad200"],
-											 		     zoomCallback:function(minX, maxX, yRanges){
-												 		    	ZoomCallBack(minX, maxX, yRanges)
-												 		      },
-										  });
+					    	   if(typeof(timezone) != 'undefined' && timezone =='UTC') {
+					    		   var g1 = new Dygraph(document.getElementById("source-graph_div"), graphData,
+											  {
+												 		      drawPoints: false,
+												 		      labels: labels,									 			 
+												 		      labelsUTC:true,
+												 		      includeZero : true, 		      
+												 		      colors: ["#495cff","#aad200"],
+												 		     zoomCallback:function(minX, maxX, yRanges){
+													 		    	ZoomCallBack(minX, maxX, yRanges)
+													 		      },
+											  });
+								} else {
+									var g1 = new Dygraph(document.getElementById("source-graph_div"), graphData,
+											  {
+												 		      drawPoints: false,
+												 		      labels: labels,									 			 
+												 		      colors: ["#495cff","#aad200"],
+												 		     zoomCallback:function(minX, maxX, yRanges){
+													 		    	ZoomCallBack(minX, maxX, yRanges)
+													 		      },
+											  });
+								}
+						       
 					       }
 					       if(domId != undefined && graphCode == null &&  $('#selectedGraph').val() == 'target' ) {
-								 var g2 = new Dygraph(document.getElementById("dest-graph_div"), graphData,
-										  {
-											 		      drawPoints: false,
-											 		      labels: labels,									 			 
-											 		      labelsUTC:true, 
-											 		      includeZero : true,		      
-											 		      colors: ["#495cff","#aad200"],
-											 		     zoomCallback:function(minX, maxX, yRanges){
-												 		    	ZoomCallBack(minX, maxX, yRanges)
-												 		      },
-										 });	
+					    	   if(typeof(timezone) != 'undefined' && timezone =='UTC') {
+					    		   var g2 = new Dygraph(document.getElementById("dest-graph_div"), graphData,
+											  {
+												 		      drawPoints: false,
+												 		      labels: labels,									 			 
+												 		      labelsUTC:true, 
+												 		      includeZero : true,		      
+												 		      colors: ["#495cff","#aad200"],
+												 		     zoomCallback:function(minX, maxX, yRanges){
+													 		    	ZoomCallBack(minX, maxX, yRanges)
+													 		      },
+											 });
+								} else {
+									 var g2 = new Dygraph(document.getElementById("dest-graph_div"), graphData,
+											  {
+												 		      drawPoints: false,
+												 		      labels: labels,									 			 
+												 		      colors: ["#495cff","#aad200"],
+												 		     zoomCallback:function(minX, maxX, yRanges){
+													 		    	ZoomCallBack(minX, maxX, yRanges)
+													 		      },
+											 });
+								}
+									
 					       }
 				     
 			}
 		}if(graphCode == 0){
 				$("#dest-graph_div").empty();
-				   var g = new Dygraph(document.getElementById("source-graph_div"), graphData,
-					{
-						 		      drawPoints: false,
-						 		      labels: labels,	 									 			 
-						 		      labelsUTC:true,	 
-						 		      includeZero : true,     
-						 		      colors: ["#495cff","#aad200"],
-						 		     zoomCallback:function(minX, maxX, yRanges){
-							 		    	ZoomCallBack(minX, maxX, yRanges)
-							 		      },
-					});	
+				if(typeof(timezone) != 'undefined' && timezone =='UTC') {
+					var g = new Dygraph(document.getElementById("source-graph_div"), graphData,
+							{
+								 		      drawPoints: false,
+								 		      labels: labels,	 									 			 
+								 		      labelsUTC:true,	 
+								 		      includeZero : true,     
+								 		      colors: ["#495cff","#aad200"],
+								 		     zoomCallback:function(minX, maxX, yRanges){
+									 		    	ZoomCallBack(minX, maxX, yRanges)
+									 		      },
+							});	
+				} else {
+					var g = new Dygraph(document.getElementById("source-graph_div"), graphData,
+							{
+								 		      drawPoints: false,
+								 		      labels: labels,	 									 			 
+								 		      colors: ["#495cff","#aad200"],
+								 		     zoomCallback:function(minX, maxX, yRanges){
+									 		    	ZoomCallBack(minX, maxX, yRanges)
+									 		      },
+							});	
+				}
+				   
 
 			}
 			if(graphCode == 1){
 				$("#source-graph_div").empty();
-				  var g = new Dygraph(document.getElementById("dest-graph_div"), graphData,
-					{
-						 		      drawPoints: false,
-						 		      labels: labels,	 								 			 
-						 		      labelsUTC:true,	
-						 		      includeZero : true,	      
-						 		      colors: ["#495cff","#aad200"],
-						 		     zoomCallback:function(minX, maxX, yRanges){
-							 		    	ZoomCallBack(minX, maxX, yRanges)
-							 		      },
-					});	
+				if(typeof(timezone) != 'undefined' && timezone =='UTC') {
+					 var g = new Dygraph(document.getElementById("dest-graph_div"), graphData,
+								{
+									 		      drawPoints: false,
+									 		      labels: labels,	 								 			 
+									 		      labelsUTC:true,	
+									 		      includeZero : true,	      
+									 		      colors: ["#495cff","#aad200"],
+									 		     zoomCallback:function(minX, maxX, yRanges){
+										 		    	ZoomCallBack(minX, maxX, yRanges)
+										 		      },
+								});	
+				} else {
+					 var g = new Dygraph(document.getElementById("dest-graph_div"), graphData,
+								{
+									 		      drawPoints: false,
+									 		      labels: labels,	 								 			 
+									 		       colors: ["#495cff","#aad200"],
+									 		     zoomCallback:function(minX, maxX, yRanges){
+										 		    	ZoomCallBack(minX, maxX, yRanges)
+										 		      },
+								});	
+				}
+				 
 
 				
 			}
@@ -1155,12 +1371,10 @@ if(test) {
 
 $(function() {
 	
-	$("#datetimepicker7ISL,#datetimepicker8ISL,#downsamplingISL,#menulistISL,#autoreloadISL").on("change",function(event) {
-
+	$("#datetimepicker7ISL,#datetimepicker8ISL,#downsamplingISL,#menulistISL,#autoreloadISL,#timezone").on("change",function(event) {
 		if($("#selectedGraph").val() =='source') {
 			getISLGraphData(common.toggleSwitchID(srcSwitch),srcPort);	
-		}
-		if($("#selectedGraph").val() =='target'){
+		}else if($("#selectedGraph").val() =='target'){
 			getISLGraphData(common.toggleSwitchID(targetSwitch),targetPort);
 		}
 	});
