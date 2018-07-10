@@ -145,8 +145,8 @@ class OfBatch {
         }
     }
 
-    boolean isComplete() {
-        return completed;
+    boolean isGarbage() {
+        return completed || future.isCancelled();
     }
 
     Set<DatapathId> getAffectedSwitches() {

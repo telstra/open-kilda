@@ -85,14 +85,27 @@ public class OfBatchService extends AbstractOfHandler implements IFloodlightServ
             }
 
             OfBatch match = queue.receiveResponse(message);
+            if (queue.isGarbage()) {
+                pendingMap.remove(dpId);
+            }
+
             if (match == null) {
                 return false;
             }
 
-            if (match.isComplete()) {
+            if (match.isGarbage()) {
                 // clean up all affected queues
                 for (DatapathId key : match.getAffectedSwitches()) {
+                    // current queue is clean due to automatic removal garbage records into .receiveResponse() method
+                    if (dpId.equals(key)) {
+                        continue;
+                    }
+
                     OfBatchSwitchQueue affectedQueue = pendingMap.get(key);
+                    if (affectedQueue == null) {
+                        continue;
+                    }
+
                     affectedQueue.cleanup();
                     if (affectedQueue.isGarbage()) {
                         pendingMap.remove(key);

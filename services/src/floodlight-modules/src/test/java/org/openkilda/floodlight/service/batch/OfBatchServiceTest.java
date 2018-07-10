@@ -29,6 +29,7 @@ import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IOFSwitch;
 import org.easymock.EasyMockSupport;
 import org.easymock.Mock;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -66,6 +67,11 @@ public class OfBatchServiceTest extends EasyMockSupport {
         expect(switchUtils.lookupSwitch(dpIdAlpha)).andReturn(switchAlpha).anyTimes();
     }
 
+    @After
+    public void tearDown() throws Exception {
+        verifyAll();
+    }
+
     @Test
     public void handle() {
         expect(switchAlpha.write(anyObject(OFMessage.class))).andReturn(true).times(2);
@@ -101,8 +107,31 @@ public class OfBatchServiceTest extends EasyMockSupport {
 
         // cleanup must remove all complete batches
         Assert.assertEquals(0, pendingMap.size());
+    }
 
-        verifyAll();
+    @Test
+    public void futureCancel() {
+        expect(switchAlpha.write(anyObject(OFMessage.class))).andReturn(true).times(2);
+        replayAll();
+
+        final OFFactory ofFactory = switchAlpha.getOFFactory();
+        final OFPortMod requestAlpha = ofFactory.buildPortMod()
+                .setPortNo(OFPort.of(1))
+                .build();
+        OfBatch batch = new OfBatch(
+                switchUtils, ImmutableList.of(new OfRequestResponse(switchAlpha.getId(), requestAlpha)));
+        CompletableFuture<OfBatchResult> future = batch.getFuture();
+        future.cancel(false);
+
+        batchService.write(batch);
+
+        // any OF message from switch mentioned in OfBatch record
+        Assert.assertFalse(feedMessage(switchAlpha, ofFactory.errorMsgs().buildBadRequestErrorMsg()
+                .setCode(OFBadRequestCode.BAD_LEN)
+                .setXid(requestAlpha.getXid() + 1000)
+                .build()));
+
+        Assert.assertEquals(0, batchService.getPendingMap().size());
     }
 
     private boolean feedMessage(IOFSwitch sw, OFMessage message) {

@@ -240,7 +240,7 @@ public class OfBatchTest extends EasyMockSupport {
         batch.write();
 
         pushBarrierResponses(batch);
-        Assert.assertTrue(batch.isComplete());
+        Assert.assertTrue(batch.isGarbage());
 
         verifyAll();
     }
@@ -306,7 +306,7 @@ public class OfBatchTest extends EasyMockSupport {
                     .setXid(barrier.getRequest().getXid())
                     .build();
 
-            Assert.assertFalse(batch.isComplete());
+            Assert.assertFalse(batch.isGarbage());
             batch.receiveResponse(sw.getId(), reply);
         }
     }

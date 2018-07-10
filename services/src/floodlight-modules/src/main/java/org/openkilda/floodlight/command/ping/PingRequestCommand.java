@@ -18,6 +18,7 @@ package org.openkilda.floodlight.command.ping;
 import org.openkilda.floodlight.command.CommandContext;
 import org.openkilda.floodlight.error.OfBatchWriteException;
 import org.openkilda.floodlight.error.PingImpossibleException;
+import org.openkilda.floodlight.model.OfBatchResult;
 import org.openkilda.floodlight.model.OfRequestResponse;
 import org.openkilda.floodlight.model.PingData;
 import org.openkilda.floodlight.service.PingService;
@@ -43,6 +44,9 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 public class PingRequestCommand extends Abstract {
     private static Logger log = LoggerFactory.getLogger(PingRequestCommand.class);
@@ -106,15 +110,18 @@ public class PingRequestCommand extends Abstract {
         OFMessage message = makePacketOut(sw, rawPackage);
 
         logPing.info("Send ping {}", ping);
+        Future<OfBatchResult> future = batchService.write(ImmutableList.of(new OfRequestResponse(sw.getId(), message)));
         try {
-            batchService.write(ImmutableList.of(new OfRequestResponse(sw.getId(), message)))
-                    .get();
+            future.get(PingService.SWITCH_PACKET_OUT_TIMEOUT, TimeUnit.MILLISECONDS);
         } catch (ExecutionException e) {
             sendErrorResponse(ping.getPingId(), Ping.Errors.WRITE_FAILURE);
             reportSendError(e.getCause());
         } catch (InterruptedException e) {
             sendErrorResponse(ping.getPingId(), Ping.Errors.WRITE_FAILURE);
             log.error("Error during SW write: {}", e.getMessage());
+        } catch (TimeoutException e) {
+            future.cancel(false);
+            sendErrorResponse(ping.getPingId(), Ping.Errors.WRITE_FAILURE);
         }
     }
 

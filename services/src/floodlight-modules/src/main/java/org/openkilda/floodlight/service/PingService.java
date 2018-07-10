@@ -51,9 +51,12 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 public class PingService extends AbstractOfHandler implements IFloodlightService {
     private static Logger log = LoggerFactory.getLogger(PingService.class);
+
+    public static final long SWITCH_PACKET_OUT_TIMEOUT = TimeUnit.SECONDS.toMillis(1);
 
     static final U64 OF_CATCH_RULE_COOKIE = U64.of(ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE);
     private static final String NET_L3_ADDRESS = "127.0.0.2";

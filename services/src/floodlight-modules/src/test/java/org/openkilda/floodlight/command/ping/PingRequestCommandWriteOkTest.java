@@ -17,6 +17,8 @@ package org.openkilda.floodlight.command.ping;
 
 import static org.easymock.EasyMock.anyObject;
 import static org.easymock.EasyMock.expect;
+import static org.easymock.EasyMock.replay;
+import static org.easymock.EasyMock.reset;
 
 import org.openkilda.floodlight.command.CommandContext;
 import org.openkilda.floodlight.model.OfBatchResult;
@@ -25,6 +27,7 @@ import org.openkilda.floodlight.service.PingService;
 import org.openkilda.floodlight.service.batch.OfBatchService;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.model.Ping;
+import org.openkilda.messaging.model.Ping.Errors;
 
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import org.junit.Assert;
@@ -34,6 +37,8 @@ import org.projectfloodlight.openflow.types.U64;
 
 import java.util.List;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 public class PingRequestCommandWriteOkTest extends PingRequestCommandAbstractTest {
     @Override
@@ -55,7 +60,7 @@ public class PingRequestCommandWriteOkTest extends PingRequestCommandAbstractTes
 
         @SuppressWarnings("unchecked")
         Future<OfBatchResult> futureMock = createMock(Future.class);
-        expect(futureMock.get()).andReturn(null);
+        expect(futureMock.get(PingService.SWITCH_PACKET_OUT_TIMEOUT, TimeUnit.MILLISECONDS)).andReturn(null);
 
         final OfBatchService batchService = createMock(OfBatchService.class);
         moduleContext.addService(OfBatchService.class, batchService);
@@ -77,6 +82,32 @@ public class PingRequestCommandWriteOkTest extends PingRequestCommandAbstractTes
     @Test
     public void sourceSwitchIsNotCapable() throws Exception {
         expectSuccess(makePing(switchNotCapable, switchBeta));
+    }
+
+    @Test
+    public void writeTimeout() throws Exception {
+        OfBatchService batchService = moduleContext.getServiceImpl(OfBatchService.class);
+        Future<OfBatchResult> defaultFutureMock = batchService.write(null);
+        reset(defaultFutureMock);  // deactivate futureMock created in setUp method
+        reset(batchService);
+
+        @SuppressWarnings("unchecked")
+        Future<OfBatchResult> futureMock = createStrictMock(Future.class);
+        expect(futureMock.get(PingService.SWITCH_PACKET_OUT_TIMEOUT, TimeUnit.MILLISECONDS))
+                .andThrow(new TimeoutException("force timeout on future object"));
+        expect(futureMock.cancel(false)).andReturn(true);
+
+        expect(batchService.write(anyObject())).andReturn(futureMock);
+
+        replay(batchService, futureMock, defaultFutureMock);
+
+        CommandContext context = commandContextFactory.produce();
+        Ping ping = makePing(switchAlpha, switchBeta);
+        PingRequestCommand command = new PingRequestCommand(context, ping);
+
+        command.execute();
+
+        verifySentErrorResponse(ping, Errors.WRITE_FAILURE);
     }
 
     private void expectSuccess(Ping ping) {
