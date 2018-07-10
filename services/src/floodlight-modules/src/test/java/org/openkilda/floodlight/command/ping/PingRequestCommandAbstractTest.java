@@ -60,10 +60,10 @@ abstract class PingRequestCommandAbstractTest extends AbstractTest {
         moduleContext.addService(ConfigService.class, configService);
         moduleContext.addService(IOFSwitchService.class, switchService);
 
-        final DatapathId dpIdAlpha = DatapathId.of(0xfffe000001L);
-        final DatapathId dpIdBeta = DatapathId.of(0xfffe000002L);
-        final DatapathId dpIdGamma = DatapathId.of(0xfffe000003L);
-        final DatapathId dpIdDelta = DatapathId.of(0xfffe000004L);
+        final DatapathId dpIdAlpha = DatapathId.of(0xfffe000000000001L);
+        final DatapathId dpIdBeta = DatapathId.of(0xfffe000000000002L);
+        final DatapathId dpIdGamma = DatapathId.of(0xfffe000000000003L);
+        final DatapathId dpIdDelta = DatapathId.of(0xfffe000000000004L);
 
         OFFactory ofFactory = new OFFactoryVer13();
 

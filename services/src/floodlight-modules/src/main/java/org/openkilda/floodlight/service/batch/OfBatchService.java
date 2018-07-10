@@ -17,7 +17,6 @@ package org.openkilda.floodlight.service.batch;
 
 import org.openkilda.floodlight.SwitchUtils;
 import org.openkilda.floodlight.command.CommandContext;
-import org.openkilda.floodlight.model.OfBatchResult;
 import org.openkilda.floodlight.model.OfRequestResponse;
 import org.openkilda.floodlight.service.AbstractOfHandler;
 import org.openkilda.floodlight.utils.CommandContextFactory;
@@ -48,6 +47,24 @@ public class OfBatchService extends AbstractOfHandler implements IFloodlightServ
         super(commandContextFactory);
     }
 
+    /**
+     * Receive notification about lost connection to switch.
+     */
+    public void switchDisconnect(DatapathId dpId) {
+        synchronized (pendingMap) {
+            OfBatchSwitchQueue queue = pendingMap.get(dpId);
+            if (queue == null) {
+                return;
+            }
+
+            queue.lostConnection();
+            queue.cleanup();
+            if (queue.isGarbage()) {
+                pendingMap.remove(dpId);
+            }
+        }
+    }
+
     public void init(FloodlightModuleContext moduleContext) {
         switchUtils = new SwitchUtils(moduleContext.getServiceImpl(IOFSwitchService.class));
         activateSubscription(moduleContext, OFType.ERROR, OFType.BARRIER_REPLY);
@@ -56,7 +73,7 @@ public class OfBatchService extends AbstractOfHandler implements IFloodlightServ
     /**
      * Write prepared OFMessages to switches.
      */
-    public Future<OfBatchResult> write(List<OfRequestResponse> payload) {
+    public Future<List<OfRequestResponse>> write(List<OfRequestResponse> payload) {
         log.debug("New OF batch request with {} message(s)", payload.size());
 
         OfBatch batch = new OfBatch(switchUtils, payload);

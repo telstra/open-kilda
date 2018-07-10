@@ -16,9 +16,8 @@
 package org.openkilda.floodlight.command.ping;
 
 import org.openkilda.floodlight.command.CommandContext;
-import org.openkilda.floodlight.error.OfBatchWriteException;
+import org.openkilda.floodlight.error.OfBatchException;
 import org.openkilda.floodlight.error.PingImpossibleException;
-import org.openkilda.floodlight.model.OfBatchResult;
 import org.openkilda.floodlight.model.OfRequestResponse;
 import org.openkilda.floodlight.model.PingData;
 import org.openkilda.floodlight.service.PingService;
@@ -110,15 +109,16 @@ public class PingRequestCommand extends Abstract {
         OFMessage message = makePacketOut(sw, rawPackage);
 
         logPing.info("Send ping {}", ping);
-        Future<OfBatchResult> future = batchService.write(ImmutableList.of(new OfRequestResponse(sw.getId(), message)));
+        Future<List<OfRequestResponse>> future = batchService.write(ImmutableList.of(
+                new OfRequestResponse(sw.getId(), message)));
         try {
             future.get(PingService.SWITCH_PACKET_OUT_TIMEOUT, TimeUnit.MILLISECONDS);
         } catch (ExecutionException e) {
-            sendErrorResponse(ping.getPingId(), Ping.Errors.WRITE_FAILURE);
             reportSendError(e.getCause());
-        } catch (InterruptedException e) {
             sendErrorResponse(ping.getPingId(), Ping.Errors.WRITE_FAILURE);
+        } catch (InterruptedException e) {
             log.error("Error during SW write: {}", e.getMessage());
+            sendErrorResponse(ping.getPingId(), Ping.Errors.WRITE_FAILURE);
         } catch (TimeoutException e) {
             future.cancel(false);
             sendErrorResponse(ping.getPingId(), Ping.Errors.WRITE_FAILURE);
@@ -148,7 +148,7 @@ public class PingRequestCommand extends Abstract {
     private void reportSendError(Throwable rawException) {
         try {
             throw rawException;
-        } catch (OfBatchWriteException e) {
+        } catch (OfBatchException e) {
             final String prefix = String.format("Unable to send ping %s", ping);
             boolean isReported = false;
             for (OfRequestResponse error : e.getErrors()) {

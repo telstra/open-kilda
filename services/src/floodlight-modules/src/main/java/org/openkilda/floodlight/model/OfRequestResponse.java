@@ -15,6 +15,9 @@
 
 package org.openkilda.floodlight.model;
 
+import org.openkilda.floodlight.error.OfErrorResponseException;
+import org.openkilda.floodlight.error.OfWriteException;
+
 import org.projectfloodlight.openflow.protocol.OFErrorMsg;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFType;
@@ -25,6 +28,7 @@ public class OfRequestResponse {
     private final OFMessage request;
     private final long xid;
     private OFMessage response = null;
+    private OfWriteException error = null;
 
     public OfRequestResponse(DatapathId dpId, OFMessage request) {
         this.dpId = dpId;
@@ -48,21 +52,22 @@ public class OfRequestResponse {
         return response;
     }
 
-    /**
-     * Is the response an error message.
-     */
-    public boolean isError() {
-        boolean result;
-        if (response != null) {
-            result = response.getType() == OFType.ERROR;
-        } else {
-            result = false;
-        }
-        return result;
+    public OfWriteException getError() {
+        return error;
     }
 
+    /**
+     * Set response field, also set error field, if response is an error.
+     */
     public void setResponse(OFMessage response) {
         this.response = response;
+        if (OFType.ERROR == response.getType()) {
+            error = new OfErrorResponseException((OFErrorMsg) response);
+        }
+    }
+
+    public void setError(OfWriteException error) {
+        this.error = error;
     }
 
     /**
@@ -70,7 +75,9 @@ public class OfRequestResponse {
      */
     public String toString() {
         String result = String.format("%s ===> %s ===> ", formatOfMessage(request), dpId);
-        if (response != null) {
+        if (error != null) {
+            result += error.getMessage();
+        } else if (response != null) {
             result += formatOfMessage(response);
         } else {
             result += "no response";
@@ -80,11 +87,6 @@ public class OfRequestResponse {
     }
 
     private static String formatOfMessage(OFMessage message) {
-        String result = String.format("%s:%s xid: %d", message.getType(), message.getVersion(), message.getXid());
-        if (message.getType() == OFType.ERROR) {
-            OFErrorMsg errorMsg = (OFErrorMsg) message;
-            result += String.format(" %s:%s", errorMsg.getErrType(), errorMsg);
-        }
-        return result;
+        return String.format("%s:%s xid: %d", message.getType(), message.getVersion(), message.getXid());
     }
 }

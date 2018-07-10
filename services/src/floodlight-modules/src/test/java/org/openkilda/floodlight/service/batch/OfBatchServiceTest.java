@@ -20,7 +20,6 @@ import static org.easymock.EasyMock.expect;
 
 import org.openkilda.floodlight.SwitchUtils;
 import org.openkilda.floodlight.command.CommandContext;
-import org.openkilda.floodlight.model.OfBatchResult;
 import org.openkilda.floodlight.model.OfRequestResponse;
 import org.openkilda.floodlight.utils.CommandContextFactory;
 
@@ -42,6 +41,7 @@ import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 public class OfBatchServiceTest extends EasyMockSupport {
@@ -58,7 +58,7 @@ public class OfBatchServiceTest extends EasyMockSupport {
     public void setUp() throws Exception {
         injectMocks(this);
 
-        final DatapathId dpIdAlpha = DatapathId.of(0xfffe000001L);
+        final DatapathId dpIdAlpha = DatapathId.of(0xfffe000000000001L);
 
         OFFactory ofFactory = new OFFactoryVer13();
         expect(switchAlpha.getOFFactory()).andReturn(ofFactory).anyTimes();
@@ -84,7 +84,7 @@ public class OfBatchServiceTest extends EasyMockSupport {
 
         OfBatch batch = new OfBatch(
                 switchUtils, ImmutableList.of(new OfRequestResponse(switchAlpha.getId(), requestAlpha)));
-        CompletableFuture<OfBatchResult> future = batch.getFuture();
+        CompletableFuture<List<OfRequestResponse>> future = batch.getFuture();
 
         batchService.write(batch);
         Assert.assertFalse(future.isDone());
@@ -101,7 +101,7 @@ public class OfBatchServiceTest extends EasyMockSupport {
 
         // match barrier
         Assert.assertTrue(feedMessage(switchAlpha, ofFactory.buildBarrierReply()
-                .setXid(batch.getPendingBarriers().get(0).getXid())
+                .setXid(batch.getPendingBarriers().get(0).xid)
                 .build()));
         Assert.assertTrue(future.isDone());
 
@@ -120,7 +120,7 @@ public class OfBatchServiceTest extends EasyMockSupport {
                 .build();
         OfBatch batch = new OfBatch(
                 switchUtils, ImmutableList.of(new OfRequestResponse(switchAlpha.getId(), requestAlpha)));
-        CompletableFuture<OfBatchResult> future = batch.getFuture();
+        CompletableFuture<List<OfRequestResponse>> future = batch.getFuture();
         future.cancel(false);
 
         batchService.write(batch);

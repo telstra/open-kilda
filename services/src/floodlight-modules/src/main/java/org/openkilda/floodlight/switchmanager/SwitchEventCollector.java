@@ -19,6 +19,7 @@ import org.openkilda.config.KafkaTopicsConfig;
 import org.openkilda.floodlight.config.provider.ConfigurationProvider;
 import org.openkilda.floodlight.converter.IOFSwitchConverter;
 import org.openkilda.floodlight.kafka.KafkaMessageProducer;
+import org.openkilda.floodlight.service.batch.OfBatchService;
 import org.openkilda.floodlight.utils.CorrelationContext;
 import org.openkilda.floodlight.utils.NewCorrelationContextRequired;
 import org.openkilda.messaging.Message;
@@ -55,6 +56,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
     private IOFSwitchService switchService;
     private KafkaMessageProducer kafkaProducer;
     private ISwitchManager switchManager;
+    private OfBatchService batchService;
 
     private String topoDiscoTopic;
 
@@ -93,6 +95,8 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
     @Override
     @NewCorrelationContextRequired
     public void switchRemoved(final DatapathId switchId) {
+        batchService.switchDisconnect(switchId);
+
         switchManager.stopSafeMode(switchId);
         Message message = buildSwitchMessage(switchId, SwitchState.REMOVED);
         kafkaProducer.postMessage(topoDiscoTopic, message);
@@ -211,6 +215,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
         services.add(IOFSwitchService.class);
         services.add(KafkaMessageProducer.class);
         services.add(ISwitchManager.class);
+        services.add(OfBatchService.class);
         return services;
     }
 
@@ -222,6 +227,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
         switchService = context.getServiceImpl(IOFSwitchService.class);
         kafkaProducer = context.getServiceImpl(KafkaMessageProducer.class);
         switchManager = context.getServiceImpl(ISwitchManager.class);
+        batchService = context.getServiceImpl(OfBatchService.class);
 
         ConfigurationProvider provider = new ConfigurationProvider(context, this);
         KafkaTopicsConfig topicsConfig = provider.getConfiguration(KafkaTopicsConfig.class);

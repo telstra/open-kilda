@@ -21,8 +21,8 @@ import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.newCapture;
 
 import org.openkilda.floodlight.SwitchUtils;
-import org.openkilda.floodlight.error.OfBatchWriteException;
-import org.openkilda.floodlight.model.OfBatchResult;
+import org.openkilda.floodlight.error.OfBatchException;
+import org.openkilda.floodlight.error.OfLostConnectionException;
 import org.openkilda.floodlight.model.OfRequestResponse;
 
 import com.google.common.collect.ImmutableList;
@@ -32,6 +32,7 @@ import org.easymock.Capture;
 import org.easymock.CaptureType;
 import org.easymock.EasyMockSupport;
 import org.easymock.Mock;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -69,8 +70,8 @@ public class OfBatchTest extends EasyMockSupport {
     public void setUp() throws Exception {
         injectMocks(this);
 
-        final DatapathId dpIdAlpha = DatapathId.of(0xfffe000001L);
-        final DatapathId dpIdBeta = DatapathId.of(0xfffe000002L);
+        final DatapathId dpIdAlpha = DatapathId.of(0xfffe000000000001L);
+        final DatapathId dpIdBeta = DatapathId.of(0xfffe000000000002L);
 
         OFFactory ofFactory = new OFFactoryVer13();
 
@@ -82,6 +83,11 @@ public class OfBatchTest extends EasyMockSupport {
 
         expect(switchUtils.lookupSwitch(dpIdAlpha)).andReturn(switchAlpha).anyTimes();
         expect(switchUtils.lookupSwitch(dpIdBeta)).andReturn(switchBeta).anyTimes();
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        verifyAll();
     }
 
     @Test
@@ -100,7 +106,8 @@ public class OfBatchTest extends EasyMockSupport {
         OfBatch batch = new OfBatch(switchUtils, ImmutableList.of(batchRecord));
         batch.write();
 
-        verifyAll();
+        Assert.assertFalse(batch.isGarbage());
+        Assert.assertFalse(batch.getFuture().isDone());
 
         List<OFMessage> switchWriteRecords = captureSwitchWrite.getValues();
 
@@ -132,7 +139,8 @@ public class OfBatchTest extends EasyMockSupport {
         OfBatch batch = new OfBatch(switchUtils, requests);
         batch.write();
 
-        verifyAll();
+        Assert.assertFalse(batch.isGarbage());
+        Assert.assertFalse(batch.getFuture().isDone());
 
         // alpha
         Iterator<OFMessage> alphaWrite = captureAlphaWrite.getValues().iterator();
@@ -148,33 +156,38 @@ public class OfBatchTest extends EasyMockSupport {
     @Test
     public void writeFail() throws Exception {
         expect(switchAlpha.write(anyObject(OFMessage.class))).andReturn(false);
-
         replayAll();
 
         OFFlowAdd payload = switchAlpha.getOFFactory().buildFlowAdd()
                 .setPriority(0)
                 .build();
 
-        OfRequestResponse requestResponse = new OfRequestResponse(switchAlpha.getId(), payload);
-        OfBatch batch = new OfBatch(switchUtils, ImmutableList.of(requestResponse));
-
-        final CompletableFuture<OfBatchResult> future = batch.getFuture();
+        OfBatch batch = new OfBatch(switchUtils, ImmutableList.of(new OfRequestResponse(switchAlpha.getId(), payload)));
+        final CompletableFuture<List<OfRequestResponse>> future = batch.getFuture();
         batch.write();
 
-        verifyAll();
+        ensureComplete(batch);
 
         try {
             future.get();
             throw new AssertionError("Expected exception doesn't raised");
         } catch (ExecutionException e) {
             Throwable cause = e.getCause();
-            Assert.assertTrue(cause instanceof OfBatchWriteException);
+            Assert.assertTrue(cause instanceof OfBatchException);
 
-            OfBatchWriteException writeException = (OfBatchWriteException) cause;
-            OfBatchResult result = writeException.getResult();
-            Assert.assertTrue(result.isError());
-            Assert.assertEquals(0, writeException.getErrors().size());
+            OfBatchException writeException = (OfBatchException) cause;
+            Assert.assertEquals(1, writeException.getErrors().size());
         }
+    }
+
+    @Test
+    public void emptyPayload() throws Exception {
+        replayAll();
+
+        OfBatch batch = new OfBatch(switchUtils, ImmutableList.of());
+
+        batch.write();
+        ensureComplete(batch);
     }
 
     @Test
@@ -191,6 +204,7 @@ public class OfBatchTest extends EasyMockSupport {
                 new OfRequestResponse(switchAlpha.getId(), requestAlpha)));
         batch.write();
 
+        // match payload
         OFBadRequestErrorMsg response = ofFactory.errorMsgs().buildBadRequestErrorMsg()
                 .setCode(OFBadRequestCode.BAD_LEN)
                 .setXid(requestAlpha.getXid())
@@ -211,47 +225,108 @@ public class OfBatchTest extends EasyMockSupport {
                         .setXid(requestAlpha.getXid())
                         .build()));
 
-        // pending barrier response
+        // match pending barrier
         Assert.assertTrue(batch.receiveResponse(
                 switchAlpha.getId(), ofFactory.buildBarrierReply()
-                        .setXid(batch.getPendingBarriers().get(0).getXid())
+                        .setXid(batch.getPendingBarriers().get(0).xid)
                         .build()));
 
-        verifyAll();
+        ensureComplete(batch);
     }
 
     @Test
     public void waitResponses() {
-        expect(switchAlpha.write(anyObject(OFMessage.class))).andReturn(true).times(3);
+        expectTwoSwitchesRequest();
         replayAll();
 
-        final OFPortMod requestAlpha = switchAlpha.getOFFactory().buildPortMod()
-                .setPortNo(OFPort.of(1))
-                .build();
-        final OFPortMod requestBeta = switchAlpha.getOFFactory().buildPortMod()
-                .setPortNo(OFPort.of(2))
-                .build();
-
-        ArrayList<OfRequestResponse> requests = new ArrayList<>();
-        requests.add(new OfRequestResponse(switchAlpha.getId(), requestAlpha));
-        requests.add(new OfRequestResponse(switchAlpha.getId(), requestBeta));
-
+        List<OfRequestResponse> requests = twoSwitchRequest();
         OfBatch batch = new OfBatch(switchUtils, requests);
         batch.write();
 
-        pushBarrierResponses(batch);
-        Assert.assertTrue(batch.isGarbage());
-
-        verifyAll();
+        pushAllBarrierResponses(batch);
+        ensureComplete(batch);
     }
 
     @Test
     public void switchErrorResponse() throws Exception {
-        expect(switchAlpha.write(anyObject(OFMessage.class))).andReturn(true).times(2);
-        expect(switchBeta.write(anyObject(OFMessage.class))).andReturn(true).times(2);
-
+        expectTwoSwitchesRequest();
         replayAll();
 
+        List<OfRequestResponse> requests = twoSwitchRequest();
+        OfBatch batch = new OfBatch(switchUtils, requests);
+        final CompletableFuture<List<OfRequestResponse>> future = batch.getFuture();
+        
+        batch.write();
+
+        final OfRequestResponse requestBeta = requests.get(1);
+        batch.receiveResponse(switchBeta.getId(), switchBeta.getOFFactory().errorMsgs().buildBadRequestErrorMsg()
+                .setCode(OFBadRequestCode.BAD_LEN)
+                .setXid(requestBeta.getXid())
+                .build());
+
+        pushAllBarrierResponses(batch);
+        ensureComplete(batch);
+
+        try {
+            future.get();
+            throw new AssertionError("Expected exception doesn't raised");
+        } catch (ExecutionException e) {
+            OfBatchException batchException = (OfBatchException) e.getCause();
+            List<OfRequestResponse> errors = batchException.getErrors();
+
+            Assert.assertEquals(1, errors.size());
+
+            OfRequestResponse entry = errors.get(0);
+            Assert.assertSame(requestBeta, entry);
+            Assert.assertNotNull(entry.getError());
+            Assert.assertNotNull(entry.getResponse());
+        }
+    }
+
+    @Test
+    public void switchDisconnect() throws Exception {
+        expectTwoSwitchesRequest();
+        replayAll();
+
+        List<OfRequestResponse> requests = twoSwitchRequest();
+        OfBatch batch = new OfBatch(switchUtils, requests);
+        CompletableFuture<List<OfRequestResponse>> future = batch.getFuture();
+
+        batch.write();
+        batch.lostConnection(switchAlpha.getId());
+
+        Assert.assertFalse(future.isDone());
+        Assert.assertFalse(future.isCancelled());
+
+        pushBarrierResponse(batch, switchBeta);
+        ensureComplete(batch);
+
+        try {
+            future.get();
+            throw new AssertionError("Expected exception doesn't raised");
+        } catch (ExecutionException e) {
+            OfBatchException cause = (OfBatchException) e.getCause();
+
+            List<OfRequestResponse> errors = cause.getErrors();
+            Assert.assertEquals(1, errors.size());
+
+            OfRequestResponse entry = errors.get(0);
+            Assert.assertEquals(switchAlpha.getId(), entry.getDpId());
+            Assert.assertTrue(entry.getError() instanceof OfLostConnectionException);
+        }
+    }
+
+    private void expectTwoSwitchesRequest() {
+        expect(switchAlpha.write(anyObject(OFMessage.class))).andReturn(true).times(2);
+        expect(switchBeta.write(anyObject(OFMessage.class))).andReturn(true).times(2);
+    }
+
+    private void ensureComplete(OfBatch batch) {
+        Assert.assertTrue(batch.getFuture().isDone());
+        Assert.assertTrue(batch.isGarbage());
+    }
+
+    private List<OfRequestResponse> twoSwitchRequest() {
         final OFPortMod requestAlpha = switchAlpha.getOFFactory().buildPortMod()
                 .setPortNo(OFPort.of(1))
                 .build();
@@ -262,52 +337,36 @@ public class OfBatchTest extends EasyMockSupport {
         ArrayList<OfRequestResponse> requests = new ArrayList<>();
         requests.add(new OfRequestResponse(switchAlpha.getId(), requestAlpha));
         requests.add(new OfRequestResponse(switchBeta.getId(), requestBeta));
-        
-        OfBatch batch = new OfBatch(switchUtils, requests);
-        final CompletableFuture<OfBatchResult> future = batch.getFuture();
-        
-        batch.write();
 
-        batch.receiveResponse(switchBeta.getId(), switchBeta.getOFFactory().errorMsgs().buildBadRequestErrorMsg()
-                .setCode(OFBadRequestCode.BAD_LEN)
-                .setXid(requestBeta.getXid())
-                .build());
+        return requests;
+    }
 
-        pushBarrierResponses(batch);
-
-        verifyAll();
-
-        try {
-            future.get();
-            throw new AssertionError("Expected exception doesn't raised");
-        } catch (ExecutionException e) {
-            Throwable cause = e.getCause();
-            Assert.assertTrue(cause instanceof OfBatchWriteException);
-
-            OfBatchWriteException writeException = (OfBatchWriteException) cause;
-            List<OfRequestResponse> errors = writeException.getErrors();
-
-            Assert.assertEquals(1, errors.size());
-
-            OfRequestResponse errorRequest = errors.get(0);
-            Assert.assertSame(requestBeta, errorRequest.getRequest());
-            Assert.assertTrue(errorRequest.isError());
-            Assert.assertNotNull(errorRequest.getResponse());
+    private void pushAllBarrierResponses(OfBatch batch) {
+        Map<DatapathId, IOFSwitch> switches = ImmutableMap.of(
+                switchAlpha.getId(), switchAlpha,
+                switchBeta.getId(), switchBeta);
+        for (DatapathId dpId : batch.getAffectedSwitches()) {
+            pushBarrierResponse(batch, switches.get(dpId));
         }
     }
 
-    private void pushBarrierResponses(OfBatch batch) {
-        Map<DatapathId, IOFSwitch> swMap = ImmutableMap.of(
-                switchAlpha.getId(), switchAlpha,
-                switchBeta.getId(), switchBeta);
-        for (OfRequestResponse barrier : batch.getPendingBarriers()) {
-            IOFSwitch sw = swMap.get(barrier.getDpId());
+    private void pushBarrierResponse(OfBatch batch, IOFSwitch sw) {
+        final DatapathId dpId = sw.getId();
+        boolean haveMatch = false;
+        for (OfBatch.PendingKey pendingKey : batch.getPendingBarriers()) {
+            if (! pendingKey.dpId.equals(dpId)) {
+                continue;
+            }
+
+            haveMatch = true;
             OFBarrierReply reply = sw.getOFFactory().buildBarrierReply()
-                    .setXid(barrier.getRequest().getXid())
+                    .setXid(pendingKey.xid)
                     .build();
 
             Assert.assertFalse(batch.isGarbage());
-            batch.receiveResponse(sw.getId(), reply);
+            batch.receiveResponse(dpId, reply);
         }
+
+        Assert.assertTrue(haveMatch);
     }
 }

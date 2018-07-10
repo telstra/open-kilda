@@ -21,7 +21,7 @@ import static org.easymock.EasyMock.replay;
 import static org.easymock.EasyMock.reset;
 
 import org.openkilda.floodlight.command.CommandContext;
-import org.openkilda.floodlight.model.OfBatchResult;
+import org.openkilda.floodlight.model.OfRequestResponse;
 import org.openkilda.floodlight.pathverification.PathVerificationService;
 import org.openkilda.floodlight.service.PingService;
 import org.openkilda.floodlight.service.batch.OfBatchService;
@@ -59,7 +59,7 @@ public class PingRequestCommandWriteOkTest extends PingRequestCommandAbstractTes
         expect(switchNotCapable.getLatency()).andReturn(U64.of(3L)).anyTimes();
 
         @SuppressWarnings("unchecked")
-        Future<OfBatchResult> futureMock = createMock(Future.class);
+        Future<List<OfRequestResponse>> futureMock = createMock(Future.class);
         expect(futureMock.get(PingService.SWITCH_PACKET_OUT_TIMEOUT, TimeUnit.MILLISECONDS)).andReturn(null);
 
         final OfBatchService batchService = createMock(OfBatchService.class);
@@ -87,12 +87,12 @@ public class PingRequestCommandWriteOkTest extends PingRequestCommandAbstractTes
     @Test
     public void writeTimeout() throws Exception {
         OfBatchService batchService = moduleContext.getServiceImpl(OfBatchService.class);
-        Future<OfBatchResult> defaultFutureMock = batchService.write(null);
+        Future<List<OfRequestResponse>> defaultFutureMock = batchService.write(null);
         reset(defaultFutureMock);  // deactivate futureMock created in setUp method
         reset(batchService);
 
         @SuppressWarnings("unchecked")
-        Future<OfBatchResult> futureMock = createStrictMock(Future.class);
+        Future<List<OfRequestResponse>> futureMock = createStrictMock(Future.class);
         expect(futureMock.get(PingService.SWITCH_PACKET_OUT_TIMEOUT, TimeUnit.MILLISECONDS))
                 .andThrow(new TimeoutException("force timeout on future object"));
         expect(futureMock.cancel(false)).andReturn(true);

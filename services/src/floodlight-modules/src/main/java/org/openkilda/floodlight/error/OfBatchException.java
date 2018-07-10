@@ -15,30 +15,19 @@
 
 package org.openkilda.floodlight.error;
 
-import org.openkilda.floodlight.model.OfBatchResult;
 import org.openkilda.floodlight.model.OfRequestResponse;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
-public class OfBatchWriteException extends AbstractException {
-    private final OfBatchResult result;
+public class OfBatchException extends AbstractException {
+    private final List<OfRequestResponse> errors;
 
-    public OfBatchWriteException(OfBatchResult result) {
-        super("There is an error during OF write");
-        this.result = result;
+    public OfBatchException(List<OfRequestResponse> errors) {
+        super("There is an error(s) during batch operation");
+        this.errors = errors;
     }
 
-    public OfBatchResult getResult() {
-        return result;
-    }
-
-    /**
-     * Filter out all but records with error response.
-     */
     public List<OfRequestResponse> getErrors() {
-        return result.getBatch().stream()
-                .filter(OfRequestResponse::isError)
-                .collect(Collectors.toList());
+        return errors;
     }
 }

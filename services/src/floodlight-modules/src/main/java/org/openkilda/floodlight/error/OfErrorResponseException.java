@@ -13,24 +13,19 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight.model;
+package org.openkilda.floodlight.error;
 
-import java.util.List;
+import org.projectfloodlight.openflow.protocol.OFErrorMsg;
 
-public class OfBatchResult {
-    private final List<OfRequestResponse> batch;
-    private final boolean error;
+public class OfErrorResponseException extends OfWriteException {
+    private final OFErrorMsg errorResponse;
 
-    public OfBatchResult(List<OfRequestResponse> batch, boolean error) {
-        this.batch = batch;
-        this.error = error;
+    public OfErrorResponseException(OFErrorMsg error) {
+        super(String.format("%s:%s", error.getErrType(), error));
+        this.errorResponse = error;
     }
 
-    public List<OfRequestResponse> getBatch() {
-        return batch;
-    }
-
-    public boolean isError() {
-        return error;
+    public OFErrorMsg getErrorResponse() {
+        return errorResponse;
     }
 }

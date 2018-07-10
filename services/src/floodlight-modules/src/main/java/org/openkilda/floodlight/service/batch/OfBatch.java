@@ -16,27 +16,26 @@
 package org.openkilda.floodlight.service.batch;
 
 import org.openkilda.floodlight.SwitchUtils;
-import org.openkilda.floodlight.error.OfBatchWriteException;
-import org.openkilda.floodlight.model.OfBatchResult;
+import org.openkilda.floodlight.error.OfBatchException;
+import org.openkilda.floodlight.error.OfLostConnectionException;
+import org.openkilda.floodlight.error.OfWriteException;
 import org.openkilda.floodlight.model.OfRequestResponse;
-import org.openkilda.floodlight.switchmanager.OFInstallException;
 
 import com.google.common.collect.ImmutableList;
 import net.floodlightcontroller.core.IOFSwitch;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
+import org.projectfloodlight.openflow.protocol.OFBarrierRequest;
 import org.projectfloodlight.openflow.protocol.OFMessage;
-import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -46,90 +45,110 @@ class OfBatch {
 
     private final SwitchUtils switchUtils;
 
-    private final CompletableFuture<OfBatchResult> future = new CompletableFuture<>();
+    private final CompletableFuture<List<OfRequestResponse>> future = new CompletableFuture<>();
 
-    private final HashMap<PendingKey, OfRequestResponse> pending;
-    private final HashMap<PendingKey, OfRequestResponse> pendingBarrier;
-    private final HashSet<DatapathId> affectedSwitches;
+    private final HashMap<PendingKey, OfRequestResponse> pending = new HashMap<>();
+    private final HashSet<PendingKey> pendingBarriers = new HashSet<>();
+    private final HashSet<DatapathId> affectedSwitches = new HashSet<>();
 
-    private final List<OfRequestResponse> batch;
-    private boolean writeCalled = false;
-    private boolean error = false;
+    private final List<OfRequestResponse> payload = new ArrayList<>();
+    private final ArrayList<OfRequestResponse> barrier = new ArrayList<>();
+    private boolean writeIsOver = false;
     private boolean completed;
 
-    OfBatch(SwitchUtils switchUtils, List<OfRequestResponse> batch) {
+    OfBatch(SwitchUtils switchUtils, List<OfRequestResponse> requests) {
         this.switchUtils = switchUtils;
-        this.batch = batch;
+        this.payload.addAll(requests);
 
-        affectedSwitches = new HashSet<>();
-        pending = makePendingMap(batch, affectedSwitches);
+        fillPending(requests);
+        fillPendingBarriers();
 
-        List<OfRequestResponse> barriersBatch = makeBarriers(switchUtils, affectedSwitches);
-        pendingBarrier = makePendingMap(barriersBatch, null);
-
-        completed = pendingBarrier.size() == 0;
+        if (pendingBarriers.size() == 0) {
+            pushResults();
+        }
     }
 
-    synchronized void write() {
-        if (writeCalled) {
-            throw new IllegalStateException(String.format("%s.write() can be called only once", getClass().getName()));
+    void write() {
+        synchronized (this) {
+            if (writeIsOver) {
+                throw new IllegalStateException(String.format(
+                        "%s.write() can be called only once", getClass().getName()));
+            }
+            writeIsOver = true;
         }
 
-        writeCalled = true;
-        HashMap<DatapathId, IOFSwitch> switchCache = new HashMap<>();
         try {
-            List<Long> payload = writeBatch(batch, switchCache);
-            List<Long> extra = writeBatch(pendingBarrier.values(), switchCache);
-            log.debug("write xId(s): {}(+{} barriers) messages", formatXidSequence(payload), formatXidSequence(extra));
-        } catch (OFInstallException e) {
-            error = true;
-            completed = true;
-
-            log.error("Can't write {} into {}", e.getOfMessage(), e.getDpId());
+            HashMap<DatapathId, IOFSwitch> switchCache = new HashMap<>();
+            List<Long> processed = writeToSwitches(payload, switchCache);
+            processed.addAll(writeToSwitches(barrier, switchCache));
+            log.debug("write xId(s): {} messages", formatXidSequence(processed));
+        } catch (OfWriteException e) {
+            log.error(e.getMessage());
             pushResults();
         }
     }
 
     boolean receiveResponse(DatapathId dpId, OFMessage response) {
         PendingKey key = new PendingKey(dpId, response.getXid());
-        OfRequestResponse entry;
-        synchronized (pendingBarrier) {
-            entry = pendingBarrier.remove(key);
-            if (!completed && pendingBarrier.size() == 0) {
-                completed = true;
+        OfRequestResponse entry = pending.get(key);
+        if (entry == null) {
+            return false;
+        }
+
+        entry.setResponse(response);
+        log.debug("Got OF response - {}.{}:{}", response.getType(), response.getVersion(), response.getXid());
+
+        Integer stillPending = null;
+        synchronized (pendingBarriers) {
+            if (pendingBarriers.remove(key)) {
+                stillPending = pendingBarriers.size();
+            }
+        }
+
+        if (stillPending != null) {
+            int total = affectedSwitches.size();
+            log.debug("Got {} of {} barrier response (sw: {})", total - stillPending, total, dpId);
+
+            if (stillPending == 0) {
                 pushResults();
             }
         }
 
-        if (entry != null) {
-            // TODO(surabujin): should we check response type (is it possible to get error response on barrier message?)
-            log.debug("Have barrier response on {} ({})", dpId, response);
-            return true;
-        }
-
-        entry = pending.get(key);
-        if (entry != null) {
-            entry.setResponse(response);
-
-            log.debug(
-                    "Have response for some of payload messages (xId: {}, type: {})",
-                    response.getXid(), response.getType());
-            error = OFType.ERROR == response.getType();
-        }
-
-        return entry != null;
+        return true;
     }
 
-    private List<Long> writeBatch(Collection<OfRequestResponse> batch, Map<DatapathId, IOFSwitch> switchCache)
-            throws OFInstallException {
+    void lostConnection(DatapathId dpId) {
+        synchronized (pendingBarriers) {
+            for (Iterator<PendingKey> iterator = pendingBarriers.iterator(); iterator.hasNext(); ) {
+                PendingKey key = iterator.next();
+                if (! key.dpId.equals(dpId)) {
+                    continue;
+                }
+                iterator.remove();
+                break;
+            }
+        }
+
+        OfLostConnectionException error = new OfLostConnectionException(dpId);
+        for (OfRequestResponse entry : pending.values()) {
+            if (dpId.equals(entry.getDpId())) {
+                entry.setError(error);
+            }
+        }
+    }
+
+    private List<Long> writeToSwitches(List<OfRequestResponse> requests, HashMap<DatapathId, IOFSwitch> switchCache)
+            throws OfWriteException {
         ArrayList<Long> processedXid = new ArrayList<>();
-        for (OfRequestResponse record : batch) {
-            DatapathId dpId = record.getDpId();
+        for (OfRequestResponse entry : requests) {
+            DatapathId dpId = entry.getDpId();
             IOFSwitch sw = switchCache.computeIfAbsent(dpId, switchUtils::lookupSwitch);
 
-            final OFMessage request = record.getRequest();
+            final OFMessage request = entry.getRequest();
             if (!sw.write(request)) {
-                throw new OFInstallException(dpId, request);
+                OfWriteException error = new OfWriteException(dpId, request);
+                entry.setError(error);
+                throw error;
             }
             processedXid.add(request.getXid());
         }
@@ -137,11 +156,20 @@ class OfBatch {
     }
 
     private void pushResults() {
-        OfBatchResult result = new OfBatchResult(batch, error);
-        if (error) {
-            future.completeExceptionally(new OfBatchWriteException(result));
+        synchronized (future) {
+            if (completed) {
+                return;
+            }
+            completed = true;
+        }
+
+        List<OfRequestResponse> errors = payload.stream()
+                .filter(entry -> entry.getError() != null)
+                .collect(Collectors.toList());
+        if (errors.size() == 0) {
+            future.complete(payload);
         } else {
-            future.complete(result);
+            future.completeExceptionally(new OfBatchException(errors));
         }
     }
 
@@ -153,12 +181,35 @@ class OfBatch {
         return affectedSwitches;
     }
 
-    CompletableFuture<OfBatchResult> getFuture() {
+    CompletableFuture<List<OfRequestResponse>> getFuture() {
         return future;
     }
 
-    List<OfRequestResponse> getPendingBarriers() {
-        return ImmutableList.copyOf(pendingBarrier.values());
+    List<PendingKey> getPendingBarriers() {
+        synchronized (pendingBarriers) {
+            return ImmutableList.copyOf(pendingBarriers);
+        }
+    }
+
+    private void fillPending(List<OfRequestResponse> requests) {
+        for (OfRequestResponse entry : requests) {
+            PendingKey key = new PendingKey(entry.getDpId(), entry.getXid());
+            pending.put(key, entry);
+            affectedSwitches.add(entry.getDpId());
+        }
+    }
+
+    private void fillPendingBarriers() {
+        for (DatapathId dpId : affectedSwitches) {
+            IOFSwitch sw = switchUtils.lookupSwitch(dpId);
+            OFBarrierRequest request = sw.getOFFactory().barrierRequest();
+            PendingKey pendingKey = new PendingKey(dpId, request.getXid());
+
+            final OfRequestResponse requestResponse = new OfRequestResponse(dpId, request);
+            pending.put(pendingKey, requestResponse);
+            pendingBarriers.add(pendingKey);
+            barrier.add(requestResponse);
+        }
     }
 
     private static String formatXidSequence(List<Long> sequence) {
@@ -167,36 +218,7 @@ class OfBatch {
                 .collect(Collectors.joining(", "));
     }
 
-    private static HashMap<PendingKey, OfRequestResponse> makePendingMap(
-            List<OfRequestResponse> requests, Set<DatapathId> collectAffectedSwitches) {
-        final HashSet<DatapathId> switches = new HashSet<>();
-        final HashMap<PendingKey, OfRequestResponse> result = new HashMap<>();
-
-        for (OfRequestResponse entry : requests) {
-            PendingKey key = new PendingKey(entry.getDpId(), entry.getXid());
-            result.put(key, entry);
-            switches.add(entry.getDpId());
-        }
-
-        if (collectAffectedSwitches != null) {
-            collectAffectedSwitches.addAll(switches);
-        }
-
-        return result;
-    }
-
-    private static List<OfRequestResponse> makeBarriers(SwitchUtils switchUtils, Set<DatapathId> switches) {
-        final ArrayList<OfRequestResponse> result = new ArrayList<>();
-
-        for (DatapathId dpId : switches) {
-            IOFSwitch sw = switchUtils.lookupSwitch(dpId);
-            result.add(new OfRequestResponse(dpId, sw.getOFFactory().barrierRequest()));
-        }
-
-        return result;
-    }
-
-    private static class PendingKey {
+    static class PendingKey {
         DatapathId dpId;
         long xid;
 

@@ -26,16 +26,22 @@ class OfBatchSwitchQueue {
     private final LinkedList<OfBatch> queue = new LinkedList<>();
     private boolean garbage = true;
 
-    public OfBatchSwitchQueue(DatapathId dpId) {
+    OfBatchSwitchQueue(DatapathId dpId) {
         this.dpId = dpId;
     }
 
-    public synchronized void add(OfBatch batch) {
+    synchronized void add(OfBatch batch) {
         queue.addLast(batch);
         garbage = false;
     }
 
-    public synchronized void cleanup() {
+    synchronized void lostConnection() {
+        for (OfBatch entry : queue) {
+            entry.lostConnection(dpId);
+        }
+    }
+
+    synchronized void cleanup() {
         queue.removeIf(OfBatch::isGarbage);
         garbage = queue.size() == 0;
     }
@@ -65,7 +71,7 @@ class OfBatchSwitchQueue {
         return match;
     }
 
-    public boolean isGarbage() {
+    boolean isGarbage() {
         return garbage;
     }
 }
