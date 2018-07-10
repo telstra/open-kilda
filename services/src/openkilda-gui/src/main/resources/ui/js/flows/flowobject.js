@@ -54,9 +54,84 @@ class Flow {
 		}
 		return false;
 	}
+	
+	
+	createNewFlow () {
 		
+		$("#createflowconfirmModal").modal('hide');
+		$('#addflowloader').show();
+		common.getData('/switch/list').then(function(switches){
+			if(switches && switches.length){
+				var options =[];
+				for(var i=0; i<switches.length; i++){
+					var switch_state = switches[i].state;
+						options.push({id:switches[i].switch_id,text:switches[i].name+"("+switch_state.toLowerCase()+")"})
+				}
+				var vlanOptions ="<option value='0'>0</option>";
+				for(var i=1; i<=4094; i++){
+					vlanOptions+="<option value='"+i+"'>"+i+"</option>";
+				}
+				$('#addflowloader').hide();
+				$('#switchdetails_div').hide();
+				$('#breadcrum_flow').append("<li id='new_flow_crum'><i class='fa icon-double-angle-right'></i>New Flow</li>")
+				$("#add_flow_div").show().load('ui/templates/flows/addflow.html',function(){
+					$("#add_flow_div").find("#source_vlan").html(vlanOptions);
+					$("#add_flow_div").find("#target_vlan").html(vlanOptions);
+					$("#source_switch").select2({
+						width: "100%",
+		                data:options,
+		                placeholder: "Please select a switch",
+		                matcher: common.matchCustomFlow
+		            }).on("select2:close", function (e) { flowObj.checkValidate('source_switch') });
+				$("#target_switch").select2({
+					width:"100%",
+					data:options,
+					placeholder:"Please select a switch",
+					matcher: common.matchCustomFlow
+				}).on("select2:close", function (e) { flowObj.checkValidate('target_switch')});
+			
+				})
+				}else{
+				$('#addflowloader').hide();
+				common.infoMessage('No Switch Available','info');
+			}
+			
+		}).fail(function(error){
+			console.log("Error in fetching Switches:"+JSON.stringify(error))
+			common.infoMessage('Error Fetching Switches','error');
+			$('#addflowloader').hide();
+		})
+	}
+	
+	
+	cancelCreateFlow (){
+		
+		$("#add_flow_div").empty().hide();
+		$('#switchdetails_div').show();
+		$('#breadcrum_flow').find('#new_flow_crum').remove();
+		$(document).find("#flow-list").trigger('click');
+		
+	}
+	
+	createFlowConfirm () {
+		$("#createflowconfirmModal").modal('show');
+		
+	}
+	
+	editFlowConfirm(){
+		$("#editflowconfirmModal").modal('show');
+		
+	}
+	
+	
+	cancelEditFlow () {
+		$("#edit_flow_div").empty().hide();
+		$('#flow_detail_div').show();
+	}
+	
 	editFlow () {
 		var flowData = this.getFlow();
+		$("#editflowconfirmModal").modal('hide');
 		$('#editflowloader').show();
 			common.getData('/switch/list').then(function(switches) {
 				if(switches && switches.length) {
@@ -122,6 +197,7 @@ class Flow {
 					common.infoMessage('No Switch Available','info');
 				}
 			}).fail(function(error){
+				console.log("Error in fetching Switches:"+JSON.stringify(error))
 				common.infoMessage('Error Fetching Switches','error');
 				$('#editflowloader').hide();
 			});
@@ -138,6 +214,7 @@ class Flow {
 			common.infoMessage("Please fill all the fields",'error');
 			return false;
 		}
+		console.log('formData',formData);
 		if(common.validateFormData(data)){
 			var flowData ={
 					"source":{
@@ -162,6 +239,7 @@ class Flow {
 				setTimeout(function(){
 					$('#updateflowloader').hide();
 					location.reload();
+					//window.location.href = APP_CONTEXT+"/flows/details#" + flowData.flowid;
 					},500)
 			}).fail(function(error){
 				$('#updateflowloader').hide();
