@@ -57,6 +57,7 @@ public class PingService extends AbstractOfHandler implements IFloodlightService
 
     static final U64 OF_CATCH_RULE_COOKIE = U64.of(ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE);
     private static final String NET_L3_ADDRESS = "127.0.0.2";
+    private static final byte NET_L3_TTL = 96;
 
     private static final U64 reservedCookieValue = U64.of(-1);
 
@@ -143,6 +144,7 @@ public class PingService extends AbstractOfHandler implements IFloodlightService
         l3.setPayload(l4);
         l3.setSourceAddress(NET_L3_ADDRESS);
         l3.setDestinationAddress(NET_L3_ADDRESS);
+        l3.setTtl(NET_L3_TTL);
 
         Ethernet l2 = new Ethernet();
         l2.setPayload(l3);
