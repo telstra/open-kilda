@@ -16,11 +16,17 @@
 package org.openkilda.floodlight.command.ping;
 
 import static org.easymock.EasyMock.anyObject;
+import static org.easymock.EasyMock.capture;
+import static org.easymock.EasyMock.eq;
 import static org.easymock.EasyMock.expect;
+import static org.easymock.EasyMock.newCapture;
 import static org.easymock.EasyMock.replay;
 import static org.easymock.EasyMock.reset;
+import static org.easymock.EasyMock.resetToStrict;
 
 import org.openkilda.floodlight.command.CommandContext;
+import org.openkilda.floodlight.error.OfBatchException;
+import org.openkilda.floodlight.error.OfErrorResponseException;
 import org.openkilda.floodlight.model.OfRequestResponse;
 import org.openkilda.floodlight.pathverification.PathVerificationService;
 import org.openkilda.floodlight.service.PingService;
@@ -29,22 +35,40 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.model.Ping;
 import org.openkilda.messaging.model.Ping.Errors;
 
+import com.google.common.collect.ImmutableList;
 import net.floodlightcontroller.core.IFloodlightProviderService;
+import org.easymock.Capture;
+import org.easymock.Mock;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.projectfloodlight.openflow.protocol.OFBadRequestCode;
+import org.projectfloodlight.openflow.protocol.errormsg.OFBadRequestErrorMsg;
 import org.projectfloodlight.openflow.types.U64;
 
 import java.util.List;
-import java.util.concurrent.Future;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 public class PingRequestCommandWriteOkTest extends PingRequestCommandAbstractTest {
+    @Mock
+    private ScheduledFuture timeoutFuture;
+
+    @Mock
+    private CompletableFuture<List<OfRequestResponse>> writeFuture;
+
+    private Capture<List<OfRequestResponse>> ioPayloadCatch = newCapture();
+
     @Override
     @Before
     public void setUp() throws Exception {
         super.setUp();
+
+        expect(scheduler.schedule(
+                        anyObject(Runnable.class),
+                        eq(PingService.SWITCH_PACKET_OUT_TIMEOUT), eq(TimeUnit.MILLISECONDS)))
+                .andReturn(timeoutFuture);
 
         final IFloodlightProviderService providerService = createMock(IFloodlightProviderService.class);
         moduleContext.addService(IFloodlightProviderService.class, providerService);
@@ -58,13 +82,11 @@ public class PingRequestCommandWriteOkTest extends PingRequestCommandAbstractTes
         expect(switchBeta.getLatency()).andReturn(U64.of(2L)).anyTimes();
         expect(switchNotCapable.getLatency()).andReturn(U64.of(3L)).anyTimes();
 
-        @SuppressWarnings("unchecked")
-        Future<List<OfRequestResponse>> futureMock = createMock(Future.class);
-        expect(futureMock.get(PingService.SWITCH_PACKET_OUT_TIMEOUT, TimeUnit.MILLISECONDS)).andReturn(null);
+        expect(writeFuture.exceptionally(anyObject())).andReturn(null);
 
         final OfBatchService batchService = createMock(OfBatchService.class);
         moduleContext.addService(OfBatchService.class, batchService);
-        expect(batchService.write(anyObject())).andReturn(futureMock);
+        expect(batchService.write(capture(ioPayloadCatch))).andReturn(writeFuture);
 
         final IPingResponseFactory responseFactory = createMock(IPingResponseFactory.class);
 
@@ -86,37 +108,54 @@ public class PingRequestCommandWriteOkTest extends PingRequestCommandAbstractTes
 
     @Test
     public void writeTimeout() throws Exception {
-        OfBatchService batchService = moduleContext.getServiceImpl(OfBatchService.class);
-        Future<List<OfRequestResponse>> defaultFutureMock = batchService.write(null);
-        reset(defaultFutureMock);  // deactivate futureMock created in setUp method
-        reset(batchService);
+        resetToStrict(writeFuture);
+        expect(writeFuture.exceptionally(anyObject())).andReturn(null);
+        expect(writeFuture.isDone()).andReturn(false);
+        expect(writeFuture.cancel(false)).andReturn(false);
+        replay(writeFuture);
 
-        @SuppressWarnings("unchecked")
-        Future<List<OfRequestResponse>> futureMock = createStrictMock(Future.class);
-        expect(futureMock.get(PingService.SWITCH_PACKET_OUT_TIMEOUT, TimeUnit.MILLISECONDS))
-                .andThrow(new TimeoutException("force timeout on future object"));
-        expect(futureMock.cancel(false)).andReturn(true);
-
-        expect(batchService.write(anyObject())).andReturn(futureMock);
-
-        replay(batchService, futureMock, defaultFutureMock);
-
-        CommandContext context = commandContextFactory.produce();
-        Ping ping = makePing(switchAlpha, switchBeta);
-        PingRequestCommand command = new PingRequestCommand(context, ping);
+        final Ping ping = makePing(switchAlpha, switchBeta);
+        PingRequestCommand command = makeCommand(ping);
 
         command.execute();
+        command.timeout(writeFuture);
+
+        verifySentErrorResponse(ping, Errors.WRITE_FAILURE);
+    }
+
+    @Test
+    public void errorResponse() {
+        reset(timeoutFuture);
+        expect(timeoutFuture.cancel(false)).andReturn(false);
+        replay(timeoutFuture);
+
+        final Ping ping = makePing(switchAlpha, switchBeta);
+        PingRequestCommand command = makeCommand(ping);
+
+        command.execute();
+
+        List<OfRequestResponse> ioPayload = ioPayloadCatch.getValue();
+        Assert.assertEquals(1, ioPayload.size());
+        OfRequestResponse portOutRequest = ioPayload.get(0);
+        final OFBadRequestErrorMsg ofError = switchAlpha.getOFFactory().errorMsgs().buildBadRequestErrorMsg()
+                .setCode(OFBadRequestCode.BAD_LEN)
+                .build();
+        portOutRequest.setError(new OfErrorResponseException(ofError));
+        command.exceptional(new OfBatchException(ImmutableList.of(portOutRequest)), timeoutFuture);
 
         verifySentErrorResponse(ping, Errors.WRITE_FAILURE);
     }
 
     private void expectSuccess(Ping ping) {
-        CommandContext context = commandContextFactory.produce();
-        PingRequestCommand command = new PingRequestCommand(context, ping);
-
+        PingRequestCommand command = makeCommand(ping);
         command.execute();
 
         List<Message> replies = producerPostMessage.getValues();
         Assert.assertEquals(0, replies.size());
+    }
+
+    private PingRequestCommand makeCommand(Ping ping) {
+        CommandContext context = commandContextFactory.produce();
+        return new PingRequestCommand(context, ping);
     }
 }

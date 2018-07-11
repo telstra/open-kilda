@@ -127,7 +127,10 @@ public class PingService extends AbstractOfHandler implements IFloodlightService
 
         final boolean isFiltered = !OF_CATCH_RULE_COOKIE.equals(cookie);
         if (isFiltered) {
-            log.debug("Reject PACKET_IN from {} by cookie mismatch {} != {}", OF_CATCH_RULE_COOKIE, cookie);
+            log.debug(
+                    "Reject packet {}.{}:{} on {} by cookie mismatch {} != {}",
+                    packet.getType(), packet.getVersion(), packet.getXid(),
+                    sw.getId(), OF_CATCH_RULE_COOKIE, cookie);
         }
         return isFiltered;
     }

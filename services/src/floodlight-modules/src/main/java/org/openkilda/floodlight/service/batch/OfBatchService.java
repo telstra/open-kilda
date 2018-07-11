@@ -34,7 +34,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.List;
-import java.util.concurrent.Future;
+import java.util.concurrent.CompletableFuture;
 
 public class OfBatchService extends AbstractOfHandler implements IFloodlightService {
     private static final Logger log = LoggerFactory.getLogger(OfBatchService.class);
@@ -73,7 +73,7 @@ public class OfBatchService extends AbstractOfHandler implements IFloodlightServ
     /**
      * Write prepared OFMessages to switches.
      */
-    public Future<List<OfRequestResponse>> write(List<OfRequestResponse> payload) {
+    public CompletableFuture<List<OfRequestResponse>> write(List<OfRequestResponse> payload) {
         log.debug("New OF batch request with {} message(s)", payload.size());
 
         OfBatch batch = new OfBatch(switchUtils, payload);
