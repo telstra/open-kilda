@@ -147,33 +147,6 @@
     <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/OFInstallException.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/OFInstallException.java" lines="6" checks="AbbreviationAsWordInName"/>
     <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/OFInstallException.java" lines="7" checks="MutableException"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/SwitchEventCollector.java" lines="26" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/SwitchEventCollector.java" lines="27" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/SwitchEventCollector.java" lines="28" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/SwitchEventCollector.java" lines="29" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/SwitchEventCollector.java" lines="30" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/SwitchEventCollector.java" lines="31" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/SwitchEventCollector.java" lines="32" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/SwitchEventCollector.java" lines="33" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/SwitchEventCollector.java" lines="34" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/SwitchEventCollector.java" lines="35" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/SwitchEventCollector.java" lines="36" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/SwitchEventCollector.java" lines="37" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/SwitchEventCollector.java" lines="57" checks="CommentsIndentation"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/SwitchEventCollector.java" lines="110" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/SwitchEventCollector.java" lines="111" checks="CommentsIndentation"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/SwitchEventCollector.java" lines="118" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/SwitchEventCollector.java" lines="135" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/SwitchEventCollector.java" lines="136" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/SwitchEventCollector.java" lines="137" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/SwitchEventCollector.java" lines="138" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/SwitchEventCollector.java" lines="139" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/SwitchEventCollector.java" lines="140" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/SwitchEventCollector.java" lines="141" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/SwitchEventCollector.java" lines="142" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/SwitchEventCollector.java" lines="143" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/SwitchEventCollector.java" lines="144" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/SwitchEventCollector.java" lines="275" checks="OverloadMethodsDeclarationOrder"/>
     <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/SwitchNotFoundException.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/SwitchOperationException.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/web/FlowResource.java" lines="44" checks="JavadocMethod"/>
