@@ -54,7 +54,7 @@ $(document).ready(function() {
 	var convertedStartDate = moment(YesterDayDate).format("YYYY-MM-DD-HH:mm:ss");
 	var convertedEndDate = moment(EndDate).format("YYYY-MM-DD-HH:mm:ss");
 	var selMetric="bits";
-	var downsampling = "10s";
+	var downsampling = "30s";
 
 	$("#downsampling").val(downsampling)
 	$("#datetimepicker7").val(YesterDayDate);

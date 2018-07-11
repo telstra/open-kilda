@@ -69,7 +69,7 @@ $(document).ready(function() {
     	var convertedEndDate = moment(date).utc().format("YYYY-MM-DD-HH:mm:ss");	
     }
 	
-	var downsampling = "10s";
+	var downsampling = "30s";
 	
 	$("#downsampling").val(downsampling)
 	$("#datetimepicker7").val(YesterDayDate);	

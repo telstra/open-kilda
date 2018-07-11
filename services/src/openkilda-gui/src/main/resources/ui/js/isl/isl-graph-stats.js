@@ -75,7 +75,7 @@ $(document).ready(function() {
     	var convertedEndDate = moment(date).utc().format("YYYY-MM-DD-HH:mm:ss");
     }
 	
-	var downsampling = "10s";
+	var downsampling = "30s";
 	$("#downsamplingISL").val(downsampling)
 	$("#datetimepicker7ISL").val(YesterDayDate);
 	$("#datetimepicker8ISL").val(EndDate);
@@ -86,13 +86,13 @@ $(document).ready(function() {
 		  format:'Y/m/d H:i:s',
 	});
 	$('#datetimepicker_dark').datetimepicker({theme:'dark'})
-	loadGraph.loadGraphData("/stats/isl/"+source+"/"+sourcePort+"/"+target+"/"+targetPort+"/"+convertedStartDate+"/"+convertedEndDate+"/10s/"+selMetric,"GET",selMetric).then(function(response) {
+	loadGraph.loadGraphData("/stats/isl/"+source+"/"+sourcePort+"/"+target+"/"+targetPort+"/"+convertedStartDate+"/"+convertedEndDate+"/30s/"+selMetric,"GET",selMetric).then(function(response) {
 		var timezone = $('#timezone option:selected').val();
 		if(response && response.length && typeof(response[0].tags)!=='undefined' ){
 			response[0].tags.direction ="F"; // setting direction to forward
 		}
 		// calling reverse isl detail
-		var reverseUrl = "/stats/isl/"+target+"/"+targetPort+"/"+source+"/"+sourcePort+"/"+convertedStartDate+"/"+convertedEndDate+"/10s/"+selMetric
+		var reverseUrl = "/stats/isl/"+target+"/"+targetPort+"/"+source+"/"+sourcePort+"/"+convertedStartDate+"/"+convertedEndDate+"/30s/"+selMetric
 		loadGraph.loadGraphData(reverseUrl,"GET",selMetric).then(function(responseReverse) {
 			$("#wait1").css("display", "none");
 			$('body').css('pointer-events', 'all');
@@ -177,7 +177,7 @@ if(test) {
   	$("#DownsampleID").removeClass("has-error")
 	$(".downsample-error-message").html("");
   	if(typeof(changeFlag)!='undefined' &&  changeFlag){
-  		var loadUrl ="/stats/isl/"+source+"/"+sourcePort+"/"+target+"/"+targetPort+"/"+convertedStartDate+"/"+convertedEndDate+"/"+"10s"+"/"+selMetric;
+  		var loadUrl ="/stats/isl/"+source+"/"+sourcePort+"/"+target+"/"+targetPort+"/"+convertedStartDate+"/"+convertedEndDate+"/"+"30s"+"/"+selMetric;
   	}else{
   		var loadUrl ="/stats/isl/"+source+"/"+sourcePort+"/"+target+"/"+targetPort+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric;
   	}
@@ -187,7 +187,7 @@ if(test) {
 			response[0].tags.direction ="F";
 		}
 		if(typeof(changeFlag)!='undefined' &&  changeFlag){
-	  		var reverseLoadUrl ="/stats/isl/"+target+"/"+targetPort+"/"+source+"/"+sourcePort+"/"+convertedStartDate+"/"+convertedEndDate+"/"+"10s"+"/"+selMetric;
+	  		var reverseLoadUrl ="/stats/isl/"+target+"/"+targetPort+"/"+source+"/"+sourcePort+"/"+convertedStartDate+"/"+convertedEndDate+"/"+"30s"+"/"+selMetric;
 	  	}else{
 	  		var reverseLoadUrl ="/stats/isl/"+target+"/"+targetPort+"/"+source+"/"+sourcePort+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric;
 	  	}
@@ -239,12 +239,12 @@ function callIntervalData(){
 	var downsampling =$("#downsamplingISL").val()	
 	$('#wait1').show();
 
-	loadGraph.loadGraphData("/stats/isl/"+source+"/"+sourcePort+"/"+target+"/"+targetPort+"/"+convertedStartDate+"/"+convertedEndDate+"/10s/"+selMetric,"GET",selMetric).then(function(response) {
+	loadGraph.loadGraphData("/stats/isl/"+source+"/"+sourcePort+"/"+target+"/"+targetPort+"/"+convertedStartDate+"/"+convertedEndDate+"/30s/"+selMetric,"GET",selMetric).then(function(response) {
 		if(response && response.length && typeof(response[0].tags)!=='undefined' ){
 			response[0].tags.direction ="F"; // setting direction to forward
 		}
 		// calling reverse isl detail
-		var reverseUrl = "/stats/isl/"+target+"/"+targetPort+"/"+source+"/"+sourcePort+"/"+convertedStartDate+"/"+convertedEndDate+"/10s/"+selMetric
+		var reverseUrl = "/stats/isl/"+target+"/"+targetPort+"/"+source+"/"+sourcePort+"/"+convertedStartDate+"/"+convertedEndDate+"/30s/"+selMetric
 		loadGraph.loadGraphData(reverseUrl,"GET",selMetric).then(function(responseReverse) {
 			$("#wait1").css("display", "none");
 			$('body').css('pointer-events', 'all');
