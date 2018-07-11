@@ -15,6 +15,7 @@ if(page == "isl") {
 	var srcPort = obj.src_port;
 	var targetSwitch = obj.target_switch;
 	var targetPort = obj.dst_port;
+
 }
 
 var graphIntervalISL;
@@ -415,8 +416,16 @@ var graphAutoReload = {
 }
 
 function ZoomCallBack(minX, maxX, yRanges) {
-    var startDate = moment(new Date(minX)).format("YYYY/MM/DD HH:mm:ss");
-    var endDate = moment( new Date(maxX)).format("YYYY/MM/DD HH:mm:ss");
+
+	var timezone = $('#timezone option:selected').val();
+	if(timezone == 'UTC'){
+		var startDate = moment(new Date(minX)).utc().format("YYYY/MM/DD HH:mm:ss");
+	    var endDate = moment( new Date(maxX)).utc().format("YYYY/MM/DD HH:mm:ss");
+	}else{
+		var startDate = moment(new Date(minX)).format("YYYY/MM/DD HH:mm:ss");
+	    var endDate = moment( new Date(maxX)).format("YYYY/MM/DD HH:mm:ss");
+	}
+    
     if($('#datetimepicker7').length){
    	 $('#datetimepicker7').val(startDate);
    	 $('#datetimepicker8').val(endDate);
@@ -442,7 +451,7 @@ function ZoomCallBack(minX, maxX, yRanges) {
 				 	if(graphCode == 0) {
 						 var g = new Dygraph(document.getElementById("source-graph_div"), [],
 							 	 {
-							 		      drawPoints: false,
+							 		      drawPoints: true,
 							 		      labels: "test",									 			 
 							 		      labelsUTC:true, 		      
 							 		      colors: ["#495cff","#aad200"],
@@ -452,7 +461,7 @@ function ZoomCallBack(minX, maxX, yRanges) {
 					if(graphCode == 1) {
 						 var g = new Dygraph(document.getElementById("dest-graph_div"), [],
 							 	 {
-							 		      drawPoints: false,
+							 		      drawPoints: true,
 							 		      labels: "test",									 			 
 							 		      labelsUTC:true, 		      
 							 		      colors: ["#495cff","#aad200"],
@@ -461,7 +470,7 @@ function ZoomCallBack(minX, maxX, yRanges) {
 					}
 			 var g = new Dygraph(document.getElementById("graphdiv"), [],
 				 	 {
-				 		      drawPoints: false,
+				 		      drawPoints: true,
 				 		      labels: "test",									 			 
 				 		      labelsUTC:true,
 				 		      colors: ["#495cff","#aad200"],
@@ -490,17 +499,17 @@ function ZoomCallBack(minX, maxX, yRanges) {
 				    	metric1 = "F";
 				    	metric2 = "R";		    	
 				    } else {
-				    	if(typeof(startDate)!=='undefined'){
-							var dat = new Date(startDate);
-							var startTime = dat.getTime();
-							var usedDate = new Date();
-							if(typeof(timezone) !== 'undefined' && timezone=='UTC'){
-								startTime = startTime - usedDate.getTimezoneOffset() * 60 * 1000;
-							}
-							
-							var arr = [new Date(startTime),null,null];
-							graphData.push(arr);
-						}
+//				    	if(typeof(startDate)!=='undefined' && startDate!=null){
+//							var dat = new Date(startDate);
+//							var startTime = dat.getTime();
+//							var usedDate = new Date();
+//							if(typeof(timezone) !== 'undefined' && timezone=='UTC'){
+//								startTime = startTime - usedDate.getTimezoneOffset() * 60 * 1000;
+//							}
+//							
+//							var arr = [new Date(startTime),null,null];
+//							graphData.push(arr);
+//						}
 				 
 				    	 for(i in getValue) {
 
@@ -534,14 +543,13 @@ function ZoomCallBack(minX, maxX, yRanges) {
 			var labels = ['Time', metric1,metric2];
 		}
 		
-		if(typeof(endDate)!=='undefined'){
+		if(typeof(endDate)!=='undefined' && endDate!=null){
 			var dat = new Date(endDate);
 			var lastTime = dat.getTime();
 			var usedDate = (graphData && graphData.length) ? new Date(graphData[graphData.length-1][0]): new Date();
 			if(typeof(timezone) !== 'undefined' && timezone == 'UTC') {
 				lastTime = lastTime - usedDate.getTimezoneOffset() * 60 * 1000;
 			}
-			
 			var arr = [new Date(lastTime),null,null];
 			graphData.push(arr);
 		}
@@ -553,7 +561,7 @@ function ZoomCallBack(minX, maxX, yRanges) {
 				if(typeof(timezone) !== 'undefined' && timezone == 'UTC') {
 					var g = new Dygraph(document.getElementById("source-graph_div"), graphData,
 							{
-								 		      drawPoints: false,
+								 		      drawPoints: true,
 								 		      labels: labels,									 			 
 								 		      labelsUTC:true, 
 								 		      includeZero : true,		      
@@ -565,7 +573,7 @@ function ZoomCallBack(minX, maxX, yRanges) {
 				}else {
 					var g = new Dygraph(document.getElementById("source-graph_div"), graphData,
 							{
-								 		      drawPoints: false,
+								 		      drawPoints: true,
 								 		      labels: labels,									 			 
 								 		      colors: ["#495cff","#aad200"],
 								 		     zoomCallback:function(minX, maxX, yRanges){
@@ -578,7 +586,7 @@ function ZoomCallBack(minX, maxX, yRanges) {
 				if(typeof(timezone) !== 'undefined' && timezone == 'UTC') {
 					var g = new Dygraph(document.getElementById("dest-graph_div"), graphData,
 							{
-								 		      drawPoints: false,
+								 		      drawPoints: true,
 								 		      labels: labels,	 								 			 
 								 		      labelsUTC:true,	
 								 		      includeZero : true,	      
@@ -590,7 +598,7 @@ function ZoomCallBack(minX, maxX, yRanges) {
 				} else {
 					var g = new Dygraph(document.getElementById("dest-graph_div"), graphData,
 							{
-								 		      drawPoints: false,
+								 		      drawPoints: true,
 								 		      labels: labels,	 								 			 
 								 		      colors: ["#495cff","#aad200"],
 								 		     zoomCallback:function(minX, maxX, yRanges){
@@ -605,7 +613,7 @@ function ZoomCallBack(minX, maxX, yRanges) {
 				if(typeof(timezone) !== 'undefined' && timezone == 'UTC') {
 					var g = new Dygraph(document.getElementById("graphdiv"), graphData,
 							{    										
-								 		      drawPoints: false,
+								 		      drawPoints: true,
 								 		      labels: labels,									 			 
 								 		      labelsUTC:true, 
 								 		      includeZero : true,
@@ -617,7 +625,7 @@ function ZoomCallBack(minX, maxX, yRanges) {
 				} else {
 					var g = new Dygraph(document.getElementById("graphdiv"), graphData,
 							{    										
-								 		      drawPoints: false,
+								 		      drawPoints: true,
 								 		      labels: labels,									 			 
 								 		      colors: ["#495cff","#aad200"],
 								 		      zoomCallback:function(minX, maxX, yRanges){
@@ -631,11 +639,9 @@ function ZoomCallBack(minX, maxX, yRanges) {
 				    	  if(typeof(timezone) !== 'undefined' && timezone == 'UTC') {
 				    		   var g1 = new Dygraph(document.getElementById("graphdiv"), graphData,
 										{
-													 		      drawPoints: false,
+													 		      drawPoints: true,
 													 		      labels:labels,	 
 													 		      labelsUTC:true,
-													 		      includeZero : true,
-													 		      drawAxesAtZero:true,
 													 		      colors: ["#495cff","#aad200"],
 													 		      zoomCallback:function(minX, maxX, yRanges){
 													 		    	ZoomCallBack(minX, maxX, yRanges)
@@ -644,10 +650,8 @@ function ZoomCallBack(minX, maxX, yRanges) {
 							} else {
 								var g1 = new Dygraph(document.getElementById("graphdiv"), graphData,
 										{
-													 		      drawPoints: false,
+													 		      drawPoints: true,
 													 		      labels:labels,	
-													 		     includeZero : true,
-													 		      drawAxesAtZero:true,
 													 		      colors: ["#495cff","#aad200"],
 													 		      zoomCallback:function(minX, maxX, yRanges){
 													 		    	ZoomCallBack(minX, maxX, yRanges)
@@ -661,7 +665,7 @@ function ZoomCallBack(minX, maxX, yRanges) {
 				    	   if(typeof(timezone) !== 'undefined' && timezone == 'UTC') {
 				    		   var g1 = new Dygraph(document.getElementById("source-graph_div"), graphData,
 										  {
-											 		      drawPoints: false,
+											 		      drawPoints: true,
 											 		      labels: labels,								 			 
 											 		      labelsUTC:true,
 											 		      includeZero : true,
@@ -673,7 +677,7 @@ function ZoomCallBack(minX, maxX, yRanges) {
 							} else {
 								var g1 = new Dygraph(document.getElementById("source-graph_div"), graphData,
 										  {
-											 		      drawPoints: false,
+											 		      drawPoints: true,
 											 		      labels: labels,								 			 
 											 		      colors: ["#495cff","#aad200"],
 											 		      zoomCallback:function(minX, maxX, yRanges){
@@ -688,7 +692,7 @@ function ZoomCallBack(minX, maxX, yRanges) {
 				    	   if(typeof(timezone) !== 'undefined' && timezone == 'UTC') {
 				    		   var g2 = new Dygraph(document.getElementById("dest-graph_div"), graphData,
 										  {
-											 		      drawPoints: false,
+											 		      drawPoints: true,
 											 		      labels: labels,									 			 
 											 		      labelsUTC:true, 	
 											 		      includeZero : true,	      
@@ -700,7 +704,7 @@ function ZoomCallBack(minX, maxX, yRanges) {
 							} else {
 								var g2 = new Dygraph(document.getElementById("dest-graph_div"), graphData,
 										  {
-											 		      drawPoints: false,
+											 		      drawPoints: true,
 											 		      labels: labels,									 			 
 											 		      colors: ["#495cff","#aad200"],
 											 		      zoomCallback:function(minX, maxX, yRanges){
@@ -718,7 +722,7 @@ function ZoomCallBack(minX, maxX, yRanges) {
 			if(typeof(timezone) !== 'undefined' && timezone == 'UTC') {
 				 var g = new Dygraph(document.getElementById("source-graph_div"), graphData,
 							{
-								 		      drawPoints: false,
+								 		      drawPoints: true,
 								 		      labels: labels,	 									 			 
 								 		      labelsUTC:true,	
 								 		      includeZero : true,      
@@ -730,7 +734,7 @@ function ZoomCallBack(minX, maxX, yRanges) {
 			} else {
 				 var g = new Dygraph(document.getElementById("source-graph_div"), graphData,
 							{
-								 		      drawPoints: false,
+								 		      drawPoints: true,
 								 		      labels: labels,	 									 			 
 								 		      colors: ["#495cff","#aad200"],
 								 		     zoomCallback:function(minX, maxX, yRanges){
@@ -746,7 +750,7 @@ function ZoomCallBack(minX, maxX, yRanges) {
 			if(typeof(timezone) !== 'undefined' && timezone == 'UTC') {
 				var g = new Dygraph(document.getElementById("dest-graph_div"), graphData,
 						{
-							 		      drawPoints: false,
+							 		      drawPoints: true,
 							 		      labels: labels,	 								 			 
 							 		      labelsUTC:true,	
 							 		      includeZero : true,	      
@@ -758,7 +762,7 @@ function ZoomCallBack(minX, maxX, yRanges) {
 			} else {
 				var g = new Dygraph(document.getElementById("dest-graph_div"), graphData,
 						{
-							 		      drawPoints: false,
+							 		      drawPoints: true,
 							 		      labels: labels,	 								 			 
 							 		      colors: ["#495cff","#aad200"],
 							 		     zoomCallback:function(minX, maxX, yRanges){
@@ -794,7 +798,7 @@ var showIslSwitchStats = {
 							if(typeof(timezone) != 'undefined' && timezone =='UTC') {
 								 var g = new Dygraph(document.getElementById("source-graph_div"), [],
 									 	 {
-									 		      drawPoints: false,
+									 		      drawPoints: true,
 									 		      labels: "test",
 									 		      labelsUTC:true,
 									 		      includeZero : true,
@@ -803,7 +807,7 @@ var showIslSwitchStats = {
 							} else {
 								 var g = new Dygraph(document.getElementById("source-graph_div"), [],
 									 	 {
-									 		      drawPoints: false,
+									 		      drawPoints: true,
 									 		      labels: "test",	 		      
 									 		      colors: ["#495cff","#aad200"],
 									 	  });	
@@ -815,7 +819,7 @@ var showIslSwitchStats = {
 							if(typeof(timezone) != 'undefined' && timezone =='UTC') {
 								 var g = new Dygraph(document.getElementById("dest-graph_div"), [],
 									 	 {
-									 		      drawPoints: false,
+									 		      drawPoints: true,
 									 		      labels: "test",
 									 		      labelsUTC:true,
 									 		      includeZero : true,
@@ -824,7 +828,7 @@ var showIslSwitchStats = {
 							} else {
 								 var g = new Dygraph(document.getElementById("dest-graph_div"), [],
 									 	 {
-									 		      drawPoints: false,
+									 		      drawPoints: true,
 									 		      labels: "test",	 		      
 									 		      colors: ["#495cff","#aad200"],
 									 	  });
@@ -856,17 +860,17 @@ var showIslSwitchStats = {
 					    	metric1 = "F";
 					    	metric2 = "R";		    	
 					    } else {
-					    	if(typeof(startDate)!=='undefined'){
-								var dat = new Date(startDate);
-								var startTime = dat.getTime();
-								var usedDate = new Date();
-								if(typeof(timezone) != 'undefined' && timezone =='UTC') {
-									startTime = startTime - usedDate.getTimezoneOffset() * 60 * 1000;
-								} 
-								
-								var arr = [new Date(startTime),null,null];
-								graphData.push(arr);
-							}
+//					    	if(typeof(startDate)!=='undefined' && startDate!=null){
+//								var dat = new Date(startDate);
+//								var startTime = dat.getTime();
+//								var usedDate = new Date();
+//								if(typeof(timezone) != 'undefined' && timezone =='UTC') {
+//									startTime = startTime - usedDate.getTimezoneOffset() * 60 * 1000;
+//								} 
+//								
+//								var arr = [new Date(startTime),null,null];
+//								graphData.push(arr);
+//							}
 					    	 for(i in getValue) {
 							    
 					    		 if(getValue[i]<0){
@@ -900,7 +904,7 @@ var showIslSwitchStats = {
 				var labels = ['Time', metric1,metric2];
 			}
 			
-			if(typeof(endDate)!=='undefined'){
+			if(typeof(endDate)!=='undefined' && endDate!=null){
 				var dat = new Date(endDate);
 				var lastTime = dat.getTime();
 				var usedDate = (graphData && graphData.length) ? new Date(graphData[graphData.length-1][0]) : new Date();
@@ -917,7 +921,7 @@ var showIslSwitchStats = {
 					if(typeof(timezone) != 'undefined' && timezone =='UTC') {
 						var g = new Dygraph(document.getElementById("source-graph_div"), graphData,
 								{
-									 		      drawPoints: false,
+									 		      drawPoints: true,
 									 		      labels: labels,								 			 
 									 		      labelsUTC:true,
 									 		      includeZero : true,
@@ -929,7 +933,7 @@ var showIslSwitchStats = {
 					} else {
 						var g = new Dygraph(document.getElementById("source-graph_div"), graphData,
 								{
-									 		      drawPoints: false,
+									 		      drawPoints: true,
 									 		      labels: labels,								 			 
 									 		      colors: ["#495cff","#aad200"],
 									 		     zoomCallback:function(minX, maxX, yRanges){
@@ -942,7 +946,7 @@ var showIslSwitchStats = {
 					if(typeof(timezone) != 'undefined' && timezone =='UTC') {
 						var g = new Dygraph(document.getElementById("dest-graph_div"), graphData,
 								{
-									 		      drawPoints: false,
+									 		      drawPoints: true,
 									 		      labels: labels,								 			 
 									 		      labelsUTC:true,
 									 		      includeZero : true,
@@ -954,7 +958,7 @@ var showIslSwitchStats = {
 					} else {
 						var g = new Dygraph(document.getElementById("dest-graph_div"), graphData,
 								{
-									 		      drawPoints: false,
+									 		      drawPoints: true,
 									 		      labels: labels,								 			 
 									 		      colors: ["#495cff","#aad200"],
 									 		     zoomCallback:function(minX, maxX, yRanges){
@@ -968,7 +972,7 @@ var showIslSwitchStats = {
 					    	   if(typeof(timezone) != 'undefined' && timezone =='UTC') {
 					    		   var g1 = new Dygraph(document.getElementById("source-graph_div"), graphData,
 											  {
-												 		      drawPoints: false,
+												 		      drawPoints: true,
 												 		      labels: labels,									 			 
 												 		      labelsUTC:true,
 												 		      includeZero : true, 		      
@@ -980,7 +984,7 @@ var showIslSwitchStats = {
 								} else {
 									var g1 = new Dygraph(document.getElementById("source-graph_div"), graphData,
 											  {
-												 		      drawPoints: false,
+												 		      drawPoints: true,
 												 		      labels: labels,									 			 
 												 		      colors: ["#495cff","#aad200"],
 												 		     zoomCallback:function(minX, maxX, yRanges){
@@ -994,7 +998,7 @@ var showIslSwitchStats = {
 					    	   if(typeof(timezone) != 'undefined' && timezone =='UTC') {
 					    		   var g2 = new Dygraph(document.getElementById("dest-graph_div"), graphData,
 											  {
-												 		      drawPoints: false,
+												 		      drawPoints: true,
 												 		      labels: labels,									 			 
 												 		      labelsUTC:true, 
 												 		      includeZero : true,		      
@@ -1006,7 +1010,7 @@ var showIslSwitchStats = {
 								} else {
 									 var g2 = new Dygraph(document.getElementById("dest-graph_div"), graphData,
 											  {
-												 		      drawPoints: false,
+												 		      drawPoints: true,
 												 		      labels: labels,									 			 
 												 		      colors: ["#495cff","#aad200"],
 												 		     zoomCallback:function(minX, maxX, yRanges){
@@ -1023,7 +1027,7 @@ var showIslSwitchStats = {
 				if(typeof(timezone) != 'undefined' && timezone =='UTC') {
 					var g = new Dygraph(document.getElementById("source-graph_div"), graphData,
 							{
-								 		      drawPoints: false,
+								 		      drawPoints: true,
 								 		      labels: labels,	 									 			 
 								 		      labelsUTC:true,	 
 								 		      includeZero : true,     
@@ -1035,7 +1039,7 @@ var showIslSwitchStats = {
 				} else {
 					var g = new Dygraph(document.getElementById("source-graph_div"), graphData,
 							{
-								 		      drawPoints: false,
+								 		      drawPoints: true,
 								 		      labels: labels,	 									 			 
 								 		      colors: ["#495cff","#aad200"],
 								 		     zoomCallback:function(minX, maxX, yRanges){
@@ -1051,7 +1055,7 @@ var showIslSwitchStats = {
 				if(typeof(timezone) != 'undefined' && timezone =='UTC') {
 					 var g = new Dygraph(document.getElementById("dest-graph_div"), graphData,
 								{
-									 		      drawPoints: false,
+									 		      drawPoints: true,
 									 		      labels: labels,	 								 			 
 									 		      labelsUTC:true,	
 									 		      includeZero : true,	      
@@ -1063,7 +1067,7 @@ var showIslSwitchStats = {
 				} else {
 					 var g = new Dygraph(document.getElementById("dest-graph_div"), graphData,
 								{
-									 		      drawPoints: false,
+									 		      drawPoints: true,
 									 		      labels: labels,	 								 			 
 									 		       colors: ["#495cff","#aad200"],
 									 		     zoomCallback:function(minX, maxX, yRanges){
@@ -1278,8 +1282,15 @@ function getISLGraphData(switchId,portId,domId) {
 	var currentDate = new Date();
 	var startDate = new Date($("#datetimepicker7ISL").val());
 	var endDate =  new Date($("#datetimepicker8ISL").val());
-	var convertedStartDate = moment(startDate).format("YYYY-MM-DD-HH:mm:ss");	
-	var convertedEndDate = moment(endDate).format("YYYY-MM-DD-HH:mm:ss");
+	var timezone = $('#timezone option:selected').val();
+	if(timezone == 'UTC'){
+		var convertedStartDate = moment(startDate).format("YYYY-MM-DD-HH:mm:ss");	
+		var convertedEndDate = moment(endDate).format("YYYY-MM-DD-HH:mm:ss");
+	}else{
+		var convertedStartDate = moment(startDate).utc().format("YYYY-MM-DD-HH:mm:ss");	
+		var convertedEndDate = moment(endDate).utc().format("YYYY-MM-DD-HH:mm:ss");
+	}
+	
 	var downsampling = $("#downsamplingISL").val();
 	var downsamplingValidated = regex.test(downsampling);
 	var selMetric=$("select.selectbox_menulist").val();
@@ -1292,15 +1303,15 @@ function getISLGraphData(switchId,portId,domId) {
 		valid=false;
 		return
 	}
-	if(startDate.getTime() > currentDate.getTime()) {
+	if(startDate.getTime() >= currentDate.getTime()) {
 
 		$("#fromId").addClass("has-error")	
 		$(".from-error-message").html("From date should not be greater than currentDate.");				
 		valid=false;
 		return;
-	} else if(endDate.getTime() < startDate.getTime()){
+	} else if(endDate.getTime() <= startDate.getTime()){
 		$("#toId").addClass("has-error")	
-		$(".to-error-message").html("To date should not be less than from fate.");		
+		$(".to-error-message").html("To date should not be less than from date.");		
 		valid=false;
 		return;
 	}
@@ -1382,27 +1393,40 @@ $(function() {
 
 
 function callIslSwitchIntervalData(switchId,portId){ 
-	
+	if($("#selectedGraph").val() =='isl'){
+		if(graphIntervalISL){
+			clearInterval(graphIntervalISL);
+		}
+		return;
+	}
 	var currentDate = new Date();
 	var startDate = new Date($("#datetimepicker7ISL").val());
-	var convertedStartDate = moment(startDate).format("YYYY-MM-DD-HH:mm:ss");	
-	var endDate = new Date()
-	var convertedEndDate = moment(endDate).format("YYYY-MM-DD-HH:mm:ss");	
+	var timezone = $('#timezone option:selected').val();
+	var endDate = new Date();
+	if(timezone == "UTC"){
+		var convertedStartDate = moment(startDate).format("YYYY-MM-DD-HH:mm:ss");	
+		var convertedEndDate = moment(endDate).format("YYYY-MM-DD-HH:mm:ss");
+	}else{
+		var convertedStartDate = moment(startDate).utc().format("YYYY-MM-DD-HH:mm:ss");	
+		var convertedEndDate = moment(endDate).utc().format("YYYY-MM-DD-HH:mm:ss");
+	}
+		
 	var downsampling =$("#downsamplingISL").val()
-	
+	selMetric = $('#menulistISL').val();
 	var switch_id = switchId.replace(/:/g, "");
 	var url = "/stats/switchid/"+switch_id+"/port/"+portId+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric;
 	loadGraph.loadGraphData(url,"GET",selMetric).then(function(response) {
-		
+	var graphDivCode = null;	
 	if($("#selectedGraph").val() =='source'){
 		$("#waitisl1").css("display", "none");
-		$('body').css('pointer-events', 'all'); 	  
+		$('body').css('pointer-events', 'all'); 
+		graphDivCode = 0;
 	}
 	if($("#selectedGraph").val() =='target'){
 		$("#waitisl2").css("display", "none");
-		$('body').css('pointer-events', 'all'); 	  
+		$('body').css('pointer-events', 'all'); 
+		graphDivCode = 1;
 	}
-	
 	
 	showIslSwitchStats.showIslSwitchStatsData(response,selMetric,graphDivCode,"",startDate,endDate); 
 	})

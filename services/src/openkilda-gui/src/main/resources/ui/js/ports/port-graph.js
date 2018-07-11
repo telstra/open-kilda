@@ -54,7 +54,7 @@ $(document).ready(function() {
 	var convertedStartDate = moment(YesterDayDate).format("YYYY-MM-DD-HH:mm:ss");
 	var convertedEndDate = moment(EndDate).format("YYYY-MM-DD-HH:mm:ss");
 	var selMetric="bits";
-	var downsampling = "10m";
+	var downsampling = "10s";
 
 	$("#downsampling").val(downsampling)
 	$("#datetimepicker7").val(YesterDayDate);
@@ -103,7 +103,7 @@ function getGraphData() {
 		return;
 	} else if(endDate.getTime() < startDate.getTime()){
 		$("#toId").addClass("has-error")	
-		$(".to-error-message").html("To date should not be less than from fate.");		
+		$(".to-error-message").html("To date should not be less than from date.");		
 		valid=false;
 		return;
 	}
