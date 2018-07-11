@@ -17,6 +17,7 @@ package org.openkilda.messaging.payload.flow;
 
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.model.Flow;
+import org.openkilda.messaging.model.ImmutablePair;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -80,14 +81,15 @@ public final class FlowPayloadToFlowConverter {
     }
 
     /**
-     * Builds {@link FlowPayload} instance by {@link Flow} instance.
+     * Builds {@link FlowPayload} instance by {@link ImmutablePair} instance.
      *
      * @param flowId flow id
-     * @param path {@link PathInfoData} instance
+     * @param pair {@link ImmutablePair} with paths
      * @return {@link FlowPayload} instance
      */
-    public static FlowPathPayload buildFlowPathPayloadByFlowPath(String flowId, PathInfoData path) {
-        return new FlowPathPayload(flowId, path);
+    public static FlowPathPayload buildFlowPathPayloadByFlowPath(
+            String flowId, ImmutablePair<PathInfoData, PathInfoData> pair) {
+        return new FlowPathPayload(flowId, pair.left, pair.right);
     }
 
     /**

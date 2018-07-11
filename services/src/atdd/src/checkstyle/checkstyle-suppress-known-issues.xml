@@ -589,35 +589,8 @@
     <suppress files="src/test/java/org/openkilda/atdd/FlowIgnoreBandwidthTest.java" lines="97" checks="AbbreviationAsWordInName"/>
     <suppress files="src/test/java/org/openkilda/atdd/FlowIgnoreBandwidthTest.java" lines="108" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/atdd/FlowIgnoreBandwidthTest.java" lines="127" checks="LineLength"/>
-    <suppress files="src/test/java/org/openkilda/atdd/NorthboundRunTest.java" lines="19" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/atdd/NorthboundRunTest.java" lines="27" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/atdd/NorthboundRunTest.java" lines="28" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/atdd/NorthboundRunTest.java" lines="29" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/atdd/NorthboundRunTest.java" lines="30" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/atdd/NorthboundRunTest.java" lines="44" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/atdd/NorthboundRunTest.java" lines="45" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/atdd/NorthboundRunTest.java" lines="46" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/atdd/NorthboundRunTest.java" lines="56" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/atdd/NorthboundRunTest.java" lines="67" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/atdd/NorthboundRunTest.java" lines="78" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/atdd/NorthboundRunTest.java" lines="91" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/atdd/NorthboundRunTest.java" lines="101" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/atdd/NorthboundRunTest.java" lines="109" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/atdd/NorthboundRunTest.java" lines="117" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/atdd/NorthboundRunTest.java" lines="125" checks="LineLength"/>
-    <suppress files="src/test/java/org/openkilda/atdd/NorthboundRunTest.java" lines="125" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/atdd/NorthboundRunTest.java" lines="133" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/atdd/NorthboundRunTest.java" lines="141" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/atdd/NorthboundRunTest.java" lines="149" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/atdd/NorthboundRunTest.java" lines="156" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/atdd/NorthboundRunTest.java" lines="163" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/atdd/NorthboundRunTest.java" lines="164" checks="AbbreviationAsWordInName"/>
-    <suppress files="src/test/java/org/openkilda/atdd/NorthboundRunTest.java" lines="171" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/atdd/NorthboundRunTest.java" lines="180" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/atdd/NorthboundRunTest.java" lines="190" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/atdd/NorthboundRunTest.java" lines="200" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/atdd/NorthboundRunTest.java" lines="209" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/atdd/NorthboundRunTest.java" lines="220" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/atdd/NorthboundRunTest.java" lines="131" checks="LineLength"/>
+    <suppress files="src/test/java/org/openkilda/atdd/NorthboundRunTest.java" lines="170" checks="AbbreviationAsWordInName"/>
     <suppress files="src/test/java/org/openkilda/atdd/PathComputationTest.java" lines="23" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/atdd/PathComputationTest.java" lines="28" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/atdd/PathComputationTest.java" lines="28" checks="AvoidStarImport"/>

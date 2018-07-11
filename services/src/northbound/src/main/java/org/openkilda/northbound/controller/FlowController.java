@@ -302,7 +302,7 @@ public class FlowController {
     @RequestMapping(path = "/flows/{flow_id}/reroute",
             method = RequestMethod.PATCH)
     @ResponseStatus(HttpStatus.OK)
-    public FlowPathPayload rerouteFlow(@PathVariable("flow_id") String flowId) {
+    public FlowReroutePayload rerouteFlow(@PathVariable("flow_id") String flowId) {
         logger.debug("Received reroute request for flow {}", flowId);
         return flowService.rerouteFlow(flowId);
     }

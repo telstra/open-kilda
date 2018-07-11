@@ -253,7 +253,7 @@ public class CrudBolt
                         case UNPUSH:
                             handleUnpushRequest(flowId, imsg, tuple);
                             break;
-                        case PATH:
+                        case READ_BIDIRECTIONAL:
                             handlePathRequest(flowId, cmsg, tuple);
                             break;
                         case REROUTE:
@@ -797,7 +797,10 @@ public class CrudBolt
 
         logger.debug("Path flow: {}, correlationId {}", flow, message.getCorrelationId());
 
-        Values northbound = new Values(new InfoMessage(new FlowPathResponse(flow.left.getFlowPath()),
+        Values northbound = new Values(
+                new InfoMessage(
+                        new FlowPathResponse(
+                                new ImmutablePair<>(flow.left.getFlowPath(), flow.right.getFlowPath())),
                 message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
         outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
     }

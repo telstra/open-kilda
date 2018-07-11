@@ -40,8 +40,8 @@ public class FlowReinstallTest {
                 .pollInterval(Duration.ONE_SECOND)
                 .until(() -> {
             FlowPathPayload payload = FlowUtils.getFlowPath(FlowUtils.getFlowName(flow));
-            assertTrue("Flow path should exist", payload != null && payload.getPath() != null);
-            List<PathNode> path = payload.getPath().getPath();
+            assertTrue("Flow path should exist", payload != null && payload.getForwardPath() != null);
+            List<PathNode> path = payload.getForwardPath().getPath();
             boolean contains = path.stream()
                     .anyMatch(node -> switchId.equalsIgnoreCase(node.getSwitchId()));
 

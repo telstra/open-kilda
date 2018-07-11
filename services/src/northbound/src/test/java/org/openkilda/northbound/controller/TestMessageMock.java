@@ -42,6 +42,7 @@ import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowStatusResponse;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.model.Flow;
+import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
@@ -72,12 +73,12 @@ public class TestMessageMock implements MessageProducer, MessageConsumer {
             FlowState.UP.getState());
     static final FlowIdStatusPayload flowStatus = new FlowIdStatusPayload(FLOW_ID, FlowState.IN_PROGRESS);
     static final PathInfoData path = new PathInfoData(0L, Collections.emptyList());
-    static final FlowPathPayload flowPath = new FlowPathPayload(FLOW_ID, path);
+    static final FlowPathPayload flowPath = new FlowPathPayload(FLOW_ID, path, path);
     static final Flow flowModel = new Flow(FLOW_ID, 10000, false, 0L, FLOW_ID, null, FLOW_ID,
             FLOW_ID, 1, 1, 1, 1, 1, 1, null, FlowState.UP);
 
     private static final FlowResponse flowResponse = new FlowResponse(flowModel);
-    private static final FlowPathResponse flowPathResponse = new FlowPathResponse(path);
+    private static final FlowPathResponse flowPathResponse = new FlowPathResponse(new ImmutablePair<>(path, path));
     private static final FlowStatusResponse flowStatusResponse = new FlowStatusResponse(flowStatus);
     private static final SwitchRulesResponse switchRulesResponse =
             new SwitchRulesResponse(singletonList(TEST_SWITCH_RULE_COOKIE));

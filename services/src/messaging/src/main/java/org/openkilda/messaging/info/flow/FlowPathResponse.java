@@ -15,28 +15,23 @@
 
 package org.openkilda.messaging.info.flow;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
-
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
+import org.openkilda.messaging.model.ImmutablePair;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-
-import java.util.Objects;
+import lombok.Value;
 
 /**
- * Represents flow path northbound response.
+ * Represents a flow path northbound response.
  */
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonPropertyOrder({
-        "message_type",
-        Utils.PAYLOAD})
+@Value
 public class FlowPathResponse extends InfoData {
     /**
      * Serialization version number constant.
@@ -47,71 +42,15 @@ public class FlowPathResponse extends InfoData {
      * The response payload.
      */
     @JsonProperty(Utils.PAYLOAD)
-    protected PathInfoData payload;
+    protected ImmutablePair<PathInfoData, PathInfoData> payload;
 
     /**
      * Instance constructor.
      *
      * @param payload response payload
-     * @throws IllegalArgumentException if payload is null
      */
     @JsonCreator
-    public FlowPathResponse(@JsonProperty(Utils.PAYLOAD) PathInfoData payload) {
-        setPayload(payload);
-    }
-
-    /**
-     * Returns response payload.
-     *
-     * @return response payload
-     */
-    public PathInfoData getPayload() {
-        return payload;
-    }
-
-    /**
-     * Sets response payload.
-     *
-     * @param payload response payload
-     */
-    public void setPayload(PathInfoData payload) {
-        if (payload == null) {
-            throw new IllegalArgumentException("need to set payload");
-        }
+    public FlowPathResponse(@JsonProperty(Utils.PAYLOAD) ImmutablePair<PathInfoData, PathInfoData> payload) {
         this.payload = payload;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public String toString() {
-        return toStringHelper(this)
-                .add(Utils.PAYLOAD, payload)
-                .toString();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public int hashCode() {
-        return Objects.hash(payload);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean equals(Object object) {
-        if (this == object) {
-            return true;
-        }
-        if (object == null || getClass() != object.getClass()) {
-            return false;
-        }
-
-        FlowPathResponse that = (FlowPathResponse) object;
-        return Objects.equals(getPayload(), that.getPayload());
     }
 }

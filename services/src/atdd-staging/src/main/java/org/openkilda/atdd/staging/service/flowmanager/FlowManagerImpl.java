@@ -93,7 +93,7 @@ public class FlowManagerImpl implements FlowManager {
                             sdf.format(new Date()));
                     FlowPayload flow = flowSet.buildWithAnyPortsInUniqueVlan(flowId, srcSwitch, dstSwitch, bandwidth);
                     northboundService.addFlow(flow);
-                    List<PathNode> path = northboundService.getFlowPath(flowId).getPath().getPath();
+                    List<PathNode> path = northboundService.getFlowPath(flowId).getForwardPath().getPath();
                     List<TopologyDefinition.Isl> isls = new ArrayList<>();
                     for (int i = 1; i < path.size(); i += 2) {
                         PathNode from = path.get(i - 1);

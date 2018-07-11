@@ -416,7 +416,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         assertNotNull(record);
         assertNotNull(record.value());
 
-        PathInfoData payload = pathFlow(flowId);
+        PathInfoData emptyPath = pathFlow(flowId);
 
         record = nbConsumer.pollMessage();
         assertNotNull(record);
@@ -426,8 +426,9 @@ public class FlowTopologyTest extends AbstractStormTest {
         FlowPathResponse infoData = (FlowPathResponse) infoMessage.getData();
         assertNotNull(infoData);
 
-        PathInfoData flowTePayload = infoData.getPayload();
-        assertEquals(payload, flowTePayload);
+        ImmutablePair<PathInfoData, PathInfoData> flowPayload = infoData.getPayload();
+        assertEquals(emptyPath, flowPayload.left);
+        assertEquals(emptyPath, flowPayload.right);
     }
 
     @Test
@@ -739,7 +740,8 @@ public class FlowTopologyTest extends AbstractStormTest {
 
         FlowPathResponse responseData = (FlowPathResponse) response.getData();
         assertNotNull(responseData);
-        assertEquals(payload, responseData.getPayload());
+        assertEquals(payload, responseData.getPayload().left);
+        assertEquals(payload, responseData.getPayload().right);
     }
 
     @Test
@@ -1256,7 +1258,7 @@ public class FlowTopologyTest extends AbstractStormTest {
     private PathInfoData pathFlowCommand(final String flowId) throws IOException {
         System.out.println("TOPOLOGY: Path flow");
         PathInfoData payload = new PathInfoData(0L, Collections.singletonList(new PathNode("test-switch", 1, 0, null)));
-        FlowPathResponse infoData = new FlowPathResponse(payload);
+        FlowPathResponse infoData = new FlowPathResponse(new ImmutablePair<>(payload, payload));
         InfoMessage infoMessage = new InfoMessage(infoData, 0, "path-flow", Destination.WFM);
         sendTopologyEngineMessage(infoMessage);
         return payload;

@@ -201,7 +201,7 @@ public class SplitterBolt extends BaseRichBolt {
                 logger.info("Flow {} path message: values={}", flowId, values);
 
                 values = new Values(message, flowId);
-                outputCollector.emit(StreamType.PATH.toString(), tuple, values);
+                outputCollector.emit(StreamType.READ_BIDIRECTIONAL.toString(), tuple, values);
 
             } else if (data instanceof FlowCacheSyncRequest) {
                 logger.info("FlowCacheSyncRequest: values={}", values);
@@ -239,7 +239,7 @@ public class SplitterBolt extends BaseRichBolt {
         outputFieldsDeclarer.declareStream(StreamType.DELETE.toString(), FlowTopology.fieldsMessageFlowId);
         outputFieldsDeclarer.declareStream(StreamType.PUSH.toString(), FlowTopology.fieldsMessageFlowId);
         outputFieldsDeclarer.declareStream(StreamType.UNPUSH.toString(), FlowTopology.fieldsMessageFlowId);
-        outputFieldsDeclarer.declareStream(StreamType.PATH.toString(), FlowTopology.fieldsMessageFlowId);
+        outputFieldsDeclarer.declareStream(StreamType.READ_BIDIRECTIONAL.toString(), FlowTopology.fieldsMessageFlowId);
         outputFieldsDeclarer.declareStream(StreamType.STATUS.toString(), FlowTopology.fieldsMessageFlowId);
         outputFieldsDeclarer.declareStream(StreamType.CACHE_SYNC.toString(), FlowTopology.fieldsMessageFlowId);
         outputFieldsDeclarer.declareStream(StreamType.VERIFICATION.toString(), FlowTopology.fieldsMessageFlowId);
