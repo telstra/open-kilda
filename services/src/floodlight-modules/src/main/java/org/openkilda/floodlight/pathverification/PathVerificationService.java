@@ -18,11 +18,17 @@ package org.openkilda.floodlight.pathverification;
 import static org.openkilda.messaging.Utils.MAPPER;
 
 import org.openkilda.config.KafkaTopicsConfig;
+import org.openkilda.floodlight.command.Command;
+import org.openkilda.floodlight.command.CommandContext;
 import org.openkilda.floodlight.config.provider.ConfigurationProvider;
+import org.openkilda.floodlight.model.OfInput;
 import org.openkilda.floodlight.pathverification.type.PathType;
 import org.openkilda.floodlight.pathverification.web.PathVerificationServiceWebRoutable;
+import org.openkilda.floodlight.service.CommandProcessorService;
+import org.openkilda.floodlight.service.of.IInputTranslator;
+import org.openkilda.floodlight.service.of.InputService;
+import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.floodlight.utils.CorrelationContext;
-import org.openkilda.floodlight.utils.NewCorrelationContextRequired;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.IslChangeType;
@@ -36,10 +42,7 @@ import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.annotations.VisibleForTesting;
-import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
-import net.floodlightcontroller.core.IListener;
-import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
@@ -56,7 +59,6 @@ import net.floodlightcontroller.util.OFMessageUtils;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
@@ -65,7 +67,6 @@ import org.projectfloodlight.openflow.protocol.OFPortDescPropEthernet;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
-import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IPv4Address;
@@ -89,20 +90,20 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class PathVerificationService implements IFloodlightModule, IOFMessageListener, IPathVerificationService {
+public class PathVerificationService implements IFloodlightModule, IPathVerificationService, IInputTranslator {
     private static final Logger logger = LoggerFactory.getLogger(PathVerificationService.class);
     private static final Logger logIsl = LoggerFactory.getLogger(
             String.format("%s.ISL", PathVerificationService.class.getName()));
+
+    public static U64 OF_CATCH_RULE_COOKIE = U64.of(ISwitchManager.VERIFICATION_BROADCAST_RULE_COOKIE);
 
     public static final String VERIFICATION_BCAST_PACKET_DST = "08:ED:02:E3:FF:FF";
     public static final int VERIFICATION_PACKET_UDP_PORT = 61231;
     public static final String VERIFICATION_PACKET_IP_DST = "192.168.0.255";
 
     private String topoDiscoTopic;
-    private IFloodlightProviderService floodlightProvider;
     private IOFSwitchService switchService;
     private IRestApiService restApiService;
-    private boolean isAlive = false;
     private KafkaProducer<String, String> producer;
     private double islBandwidthQuotient = 1.0;
     private Algorithm algorithm;
@@ -115,6 +116,8 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
     public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
         Collection<Class<? extends IFloodlightService>> services = new ArrayList<>(3);
         services.add(IFloodlightProviderService.class);
+        services.add(CommandProcessorService.class);
+        services.add(InputService.class);
         services.add(IOFSwitchService.class);
         services.add(IRestApiService.class);
         return services;
@@ -137,14 +140,15 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
     @Override
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
         logger.debug("main pathverification service: " + this);
+
         ConfigurationProvider provider = new ConfigurationProvider(context, this);
         KafkaTopicsConfig topicsConfig = provider.getConfiguration(KafkaTopicsConfig.class);
         PathVerificationServiceConfig serviceConfig = provider.getConfiguration(PathVerificationServiceConfig.class);
 
         initConfiguration(topicsConfig, serviceConfig);
-
         initServices(context);
 
+        // FIXME(surabujin): use shared KafkaProducer i.e. org.openkilda.floodlight.kafka.KafkaMessageProducer
         producer = new KafkaProducer<>(serviceConfig.createKafkaProducerProperties());
     }
 
@@ -159,7 +163,6 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
 
     @VisibleForTesting
     void initServices(FloodlightModuleContext context) {
-        floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
         switchService = context.getServiceImpl(IOFSwitchService.class);
         restApiService = context.getServiceImpl(IRestApiService.class);
     }
@@ -183,49 +186,27 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
     @Override
     public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
         logger.info("Stating " + PathVerificationService.class.getCanonicalName());
-        floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
+
+        InputService inputService = context.getServiceImpl(InputService.class);
+        inputService.addTranslator(OFType.PACKET_IN, this);
+
         restApiService.addRestletRoutable(new PathVerificationServiceWebRoutable());
-        isAlive = true;
-    }
-
-    /**
-     * IOFMessageListener Methods.
-     */
-    @Override
-    public String getName() {
-        return PathVerificationService.class.getSimpleName();
     }
 
     @Override
-    public boolean isCallbackOrderingPostreq(OFType arg0, String arg1) {
-        return false;
-    }
-
-    @Override
-    public boolean isCallbackOrderingPrereq(OFType arg0, String arg1) {
-        return false;
-    }
-
-    @Override
-    @NewCorrelationContextRequired
-    public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext context) {
-        logger.debug("PathVerificationService received new message of type {}: {}", msg.getType(), msg.toString());
-        switch (msg.getType()) {
-            case PACKET_IN:
-                return handlePacketIn(sw, (OFPacketIn) msg, context);
-            default:
-                break;
-        }
-        return Command.CONTINUE;
+    public Command makeCommand(CommandContext context, OfInput input) {
+        return new Command(context) {
+            @Override
+            public Command call() throws Exception {
+                handlePacketIn(input);
+                return null;
+            }
+        };
     }
 
     /**
      * IPathVerificationService Methods.
      */
-
-    public boolean isAlive() {
-        return isAlive;
-    }
 
     protected List<OFAction> getDiscoveryActions(IOFSwitch sw, OFPort port) {
         // set actions
@@ -424,26 +405,23 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
         throw new Exception("Ethernet packet was not a verification packet: " + eth);
     }
 
-    private IListener.Command handlePacketIn(IOFSwitch sw, OFPacketIn pkt, FloodlightContext context) {
-        long time = System.currentTimeMillis();
-        final String packetIdentity = String.format("(dpId: %s, xId: %s, version: %s, type: %s)",
-                sw.getId(), pkt.getXid(), pkt.getVersion(), pkt.getType());
-        logger.debug("packet_in {}", packetIdentity);
+    void handlePacketIn(OfInput input) {
+        logger.debug("{} - {}", getClass().getCanonicalName(), input);
+
+        if (isCookieMismatch(input)) {
+            return;
+        }
 
         VerificationPacket verificationPacket = null;
-
-        Ethernet eth = IFloodlightProviderService.bcStore.get(context, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
-
         try {
-            verificationPacket = deserialize(eth);
+            verificationPacket = deserialize(input.getPacketInPayload());
         } catch (Exception exception) {
             logger.trace("Deserialization failure: {}, exception: {}", exception.getMessage(), exception);
-            return Command.CONTINUE;
+            return;
         }
 
         try {
-            final OFPort inPort = pkt.getVersion().compareTo(OFVersion.OF_12) < 0 ? pkt.getInPort()
-                    : pkt.getMatch().get(MatchField.IN_PORT);
+            final OFPort inPort = OFMessageUtils.getInPort((OFPacketIn) input.getMessage());
             ByteBuffer rawPort = ByteBuffer.wrap(verificationPacket.getPortId().getValue());
             rawPort.position(1);
             final OFPort remotePort = OFPort.of(rawPort.getShort());
@@ -466,9 +444,8 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
                         && lldptlv.getValue()[2] == (byte) 0xe1
                         && lldptlv.getValue()[3] == 0x01) {
                     ByteBuffer raw = ByteBuffer.wrap(lldptlv.getValue()); /* skip OpenFlow OUI (4 bytes above) */
-                    long swLatency = sw.getLatency().getValue();
                     timestamp = raw.getLong(4); /* include the RX switch latency to "subtract" it */
-                    timestamp = timestamp + swLatency;
+                    timestamp = timestamp + input.getLatency();
                 } else if (lldptlv.getType() == 127 && lldptlv.getLength() == 8
                         && lldptlv.getValue()[0] == 0x0
                         && lldptlv.getValue()[1] == 0x26
@@ -492,7 +469,7 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
                         signed = true;
                     } catch (JWTVerificationException e) {
                         logger.error("Packet verification failed", e);
-                        return Command.STOP;
+                        return;
                     }
                 }
             }
@@ -504,39 +481,26 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
             // TODO:  fix the above
 
             if (remoteSwitch == null) {
-                return Command.STOP;
+                return;
             }
 
             if (!signed) {
                 logger.warn("verification packet without sign");
-                return Command.STOP;
+                return;
             }
 
-            U64 latency = (timestamp != 0 && (time - timestamp) > 0) ? U64.of(time - timestamp) : U64.ZERO;
-
+            long latency = measureLatency(input, timestamp);
             logIsl.info("link discovered: {}-{} ===( {} ms )===> {}-{}",
-                    remoteSwitch.getId(), remotePort, latency.getValue(), sw.getId(), inPort);
+                    remoteSwitch.getId(), remotePort, latency, input.getDpId(), inPort);
 
             // this verification packet was sent from remote switch/port to received switch/port
             // so the link direction is from remote switch/port to received switch/port
             List<PathNode> nodes = Arrays.asList(
-                    new PathNode(remoteSwitch.getId().toString(), remotePort.getPortNumber(), 0, latency.getValue()),
-                    new PathNode(sw.getId().toString(), inPort.getPortNumber(), 1));
+                    new PathNode(remoteSwitch.getId().toString(), remotePort.getPortNumber(), 0, latency),
+                    new PathNode(input.getDpId().toString(), inPort.getPortNumber(), 1));
 
-            OFPortDesc port = sw.getPort(inPort);
-            long speed = Integer.MAX_VALUE;
-
-            if (port.getVersion().compareTo(OFVersion.OF_13) > 0) {
-                for (OFPortDescProp prop : port.getProperties()) {
-                    if (prop.getType() == 0x0) {
-                        speed = ((OFPortDescPropEthernet) prop).getCurrSpeed();
-                    }
-                }
-            } else {
-                speed = port.getCurrSpeed();
-            }
-
-            IslInfoData path = new IslInfoData(latency.getValue(), nodes, speed, IslChangeType.DISCOVERED,
+            long speed = getSwitchPortSpeed(input.getDpId(), inPort);
+            IslInfoData path = new IslInfoData(latency, nodes, speed, IslChangeType.DISCOVERED,
                     getAvailableBandwidth(speed));
 
             Message message = new InfoMessage(path, System.currentTimeMillis(), CorrelationContext.getId(), null);
@@ -544,7 +508,7 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
             final String json = MAPPER.writeValueAsString(message);
             logger.debug("about to send {}", json);
             producer.send(new ProducerRecord<>(topoDiscoTopic, json));
-            logger.debug("packet_in processed for {}-{}", sw.getId(), inPort);
+            logger.debug("packet_in processed for {}-{}", input.getDpId(), inPort);
 
         } catch (JsonProcessingException exception) {
             logger.error("could not create json for path packet_in: {}", exception.getMessage(), exception);
@@ -552,11 +516,50 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
             logger.error("could not parse packet_in message: {}", exception.getMessage(),
                     exception);
         } catch (Exception exception) {
-            logger.error(String.format("Unhandled exception %s", packetIdentity), exception);
+            logger.error(String.format("Unhandled exception %s", input), exception);
             throw exception;
         }
+    }
 
-        return Command.STOP;
+    private boolean isCookieMismatch(OfInput input) {
+        U64 cookie = input.packetInCookie();
+        final boolean isFiltered = cookie != null && !OF_CATCH_RULE_COOKIE.equals(cookie);
+        if (isFiltered) {
+            logger.debug("{} - cookie mismatch ({} != {})", input, OF_CATCH_RULE_COOKIE, cookie);
+        }
+        return isFiltered;
+    }
+
+    private long measureLatency(OfInput input, long sendTime) {
+        long latency = -1;
+        if (sendTime != 0) {
+            latency = input.getReceiveTime() - sendTime;
+            if (latency < 0L) {
+                latency = -1;
+            }
+        }
+        return latency;
+    }
+
+    private long getSwitchPortSpeed(DatapathId dpId, OFPort inPort) {
+        IOFSwitch sw = switchService.getSwitch(dpId);
+        OFPortDesc port = sw.getPort(inPort);
+        long speed = -1;
+
+        if (port.getVersion().compareTo(OFVersion.OF_13) > 0) {
+            for (OFPortDescProp prop : port.getProperties()) {
+                if (prop.getType() == 0) {
+                    speed = ((OFPortDescPropEthernet) prop).getCurrSpeed();
+                    break;
+                }
+            }
+        }
+
+        if (speed < 0) {
+            speed = port.getCurrSpeed();
+        }
+
+        return speed;
     }
 
     private long getAvailableBandwidth(long speed) {
