@@ -13,7 +13,6 @@ $(document).ready(function() {
 	},
 	function(error){
 		common.infoMessage('Flow does not exists, please try with new flow id','info');
-		
 		setTimeout(function(){ 
 			window.location = APP_CONTEXT+ "/flows"; 
 		}, 6000);
@@ -24,11 +23,7 @@ $(document).ready(function() {
 	
 	getMetricDetails.getFlowMetricData();
 	$('body').css('pointer-events','all');
-	$(document).on('click',"#cancel_update_flow",function(e){
-		$("#edit_flow_div").empty().hide();
-		$('#flow_detail_div').show();
-		
-	})
+	
 })
 
 function callValidateFlow(flow_id){
